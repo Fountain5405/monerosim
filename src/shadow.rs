@@ -114,12 +114,15 @@ fn generate_monerod_args(host_name: &str, node_index: u32, node_type: &NodeType,
         "--log-level=1".to_string(),
         "--log-file=/dev/stdout".to_string(),
         format!("--data-dir=/tmp/monero-{}", host_name),
+        "--non-interactive".to_string(),  // Run in non-interactive mode to avoid stdin issues
         "--no-sync".to_string(),  // Don't sync blockchain to reduce complexity
         "--disable-dns-checkpoints".to_string(),  // Disable DNS checkpoints
         "--disable-rpc-ban".to_string(),  // Disable RPC ban
         "--max-concurrency=1".to_string(),  // Limit concurrency to reduce syscall complexity
         "--p2p-bind-port=0".to_string(),  // Let the OS choose a random port
         "--rpc-bind-port=0".to_string(),  // Let the OS choose a random port
+        "--no-igd".to_string(),  // Disable UPnP port mapping
+        "--no-zmq".to_string(),  // Disable ZMQ RPC server
     ];
 
     // Add mining configuration for the first node

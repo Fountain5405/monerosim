@@ -1,0 +1,19 @@
+general:
+  stop_time: 10s
+  model_unblocked_syscall_latency: true
+  log_level: debug
+  parallelism: 1
+  seed: 12345
+  template_directory: shadow_template
+
+network:
+  graph:
+    type: 1_gbit_switch
+
+hosts:
+  testhost:
+    network_node_id: 0
+    processes:
+      - path: test_binary
+        args: ""
+        start_time: 1ms 
