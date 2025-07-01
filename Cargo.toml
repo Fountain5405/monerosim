@@ -1,0 +1,44 @@
+[package]
+name = "monerosim"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+license = "GPL-3"
+description = "Configuration utility for Monero network simulations in Shadow"
+authors = ["MoneroSim Developer"]
+
+[dependencies]
+# Command-line argument parsing with derive feature
+clap = { version = "4.5", features = ["derive"] }
+
+# YAML file parsing
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Error handling
+color-eyre = "0.6"
+thiserror = "1.0"
+
+# Standard library extensions
+humantime-serde = "1.1"
+
+# CPU core detection
+num_cpus = "1.13"
+
+# Directory traversal
+walkdir = "2.5"
+
+# Hash generation for unique binary names
+md5 = "0.7"
+
+[[bin]]
+name = "monerosim"
+path = "src/main.rs"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1 

@@ -1,0 +1,48 @@
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# Shadow simulation data
+shadow.data/
+shadow_output/
+
+# Monero build artifacts
+builds/
+monero/
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.yaml
+test_*.sh
+test_*.c
+test_*.py
+
+# Scripts that might contain sensitive data
+install_*.sh
+run_*.sh
+
+# Template directories
+shadow_template/
+
+# Binary files
+*.bin
+*.exe
+
+# Log files
+*.log
+*.out
+*.err

@@ -1,0 +1,15 @@
+# MoneroSim Configuration File
+# This file defines the parameters for Monero network simulation
+
+general:
+  # Simulation stop time (supports human-readable formats like "1h", "30m", "3600s")
+  stop_time: "30s"
+
+monero:
+  # List of node types/groups to simulate
+  nodes:
+    - count: 1
+      name: "A"
+      base_commit: "v0.18.4.0"
+      patches:
+        - "patches/testnet_from_scratch.patch" 
