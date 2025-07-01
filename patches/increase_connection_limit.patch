@@ -1,0 +1,11 @@
+--- a/contrib/epee/include/net/abstract_tcp_server2.inl
++++ b/contrib/epee/include/net/abstract_tcp_server2.inl
+@@ -873,7 +873,7 @@ namespace epee
+   {
+     std::unique_lock<std::mutex> guard(m_state.lock);
+     if (m_state.status != status_t::TERMINATED)
+-      return false;
++      return true; // Allow connections even if status is not TERMINATED
+     if (!real_remote) {
+       ec_t ec;
+       auto endpoint = connection_basic::socket_.next_layer().remote_endpoint(

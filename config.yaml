@@ -3,13 +3,17 @@
 
 general:
   # Simulation stop time (supports human-readable formats like "1h", "30m", "3600s")
-  stop_time: "30s"
+  stop_time: 10s
+  model_unblocked_syscall_latency: true
+  log_level: debug
+  parallelism: 1
+  seed: 12345
 
 monero:
   # List of node types/groups to simulate
   nodes:
-    - count: 2
-      name: "A"
-      base_commit: "v0.18.4.0"
+    - name: A
+      count: 2
+      base_commit: v0.18.4.0
       patches:
-        - "patches/testnet_from_scratch.patch"
+        - patches/testnet_from_scratch.patch
