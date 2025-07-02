@@ -100,25 +100,32 @@ fn get_system_binary_path(node_type: &NodeType) -> Result<String, color_eyre::ey
 fn generate_monerod_args(host_name: &str, node_index: u32, _node_type: &NodeType, total_nodes: u32, _is_miner: bool) -> String {
     // Derive the p2p-bind-ip for this node
     let p2p_ip = format!("11.0.0.{}", node_index + 1);
+    
+    // Calculate unique P2P port for this node (base port 28080 + node_index)
+    let p2p_port = 28080 + node_index;
+    
     let mut args = vec![
         "--testnet".to_string(),
-        "--log-level=1".to_string(), // match hand-written config
+        "--log-level=2".to_string(), // Increased for better diagnostics as recommended
         "--log-file=/dev/stdout".to_string(),
         format!("--data-dir=/tmp/monero-{}", host_name),
         "--disable-dns-checkpoints".to_string(),
         "--disable-rpc-ban".to_string(),
         "--max-concurrency=1".to_string(),
         format!("--p2p-bind-ip={}", p2p_ip),
+        format!("--p2p-bind-port={}", p2p_port), // Add unique P2P port
         "--no-igd".to_string(),
         "--no-zmq".to_string(),
         "--fixed-difficulty=100".to_string(),
         "--non-interactive".to_string(),
     ];
-    // Add exclusive node config for all other nodes
+    
+    // Add exclusive node config for all other nodes with their unique ports
     for i in 0..total_nodes {
         if i != node_index {
             let peer_ip = format!("11.0.0.{}", i + 1);
-            args.push(format!("--add-exclusive-node={}:28080", peer_ip));
+            let peer_port = 28080 + i; // Calculate peer's unique port
+            args.push(format!("--add-exclusive-node={}:{}", peer_ip, peer_port));
         }
     }
     args.join(" ")
