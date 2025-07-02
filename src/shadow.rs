@@ -48,7 +48,6 @@ struct ShadowProcess {
     args: String,
     environment: HashMap<String, String>,
     start_time: String,
-    shutdown_signal: String,
     expected_final_state: String,
 }
 
@@ -77,15 +76,12 @@ pub fn generate_shadow_config(config: &Config, builds_dir: &Path) -> Result<Stri
                 path: binary_path.clone(),
                 args: monerod_args,
                 environment,
-                start_time: "0s".to_string(),
-                shutdown_signal: "SIGTERM".to_string(),
+                start_time: format!("{}s", 5 + (node_id_counter * 2)),
                 expected_final_state: "running".to_string(),
             };
             
-            // Use the same network_node_id for all nodes (like ethshadow does)
-            // This allows multiple hosts to share the same network node and connect to each other
             let host = ShadowHost {
-                network_node_id: 0,  // All nodes use the same network node
+                network_node_id: node_id_counter,
                 processes: vec![process],
             };
             
@@ -111,7 +107,7 @@ pub fn generate_shadow_config(config: &Config, builds_dir: &Path) -> Result<Stri
         experimental: ShadowExperimental {
             use_preload_libc: true,
             use_preload_openssl_rng: true,
-            use_new_tcp: false,  // Use legacy TCP implementation
+            use_new_tcp: true,
         },
     };
     
@@ -143,7 +139,6 @@ fn generate_monerod_args(host_name: &str, node_index: u32, node_type: &NodeType,
         "--disable-dns-checkpoints".to_string(),  // Disable DNS checkpoints
         "--disable-rpc-ban".to_string(),  // Disable RPC ban
         "--max-concurrency=1".to_string(),  // Limit concurrency to reduce syscall complexity
-        format!("--p2p-bind-ip=11.0.0.{}", node_index + 1), // Bind to unique simulated IP
         format!("--p2p-bind-port={}", 28080 + node_index),  // Use predictable ports starting from 28080
         "--rpc-bind-port=0".to_string(),  // Let the OS choose a random port
         "--no-igd".to_string(),  // Disable UPnP port mapping
@@ -170,8 +165,9 @@ fn generate_monerod_args(host_name: &str, node_index: u32, node_type: &NodeType,
 
     // Add mining configuration for the first node
     if is_miner {
-        args.push("--start-mining=A1xAe2Cm2fCPhMNXprWcb9CgQKbEZtnqU6TXp4XJ83R8T4HJ5bkAxKNCAMofNRH22TcFw2yewgN1jd8dywsRG4cWE7GAbkd".to_string());
-        args.push("--mining-threads=1".to_string());
+        // Temporarily disable mining to test basic Shadow integration
+        // args.push("--start-mining=9wviCeQ2DUXEK6ypCW6V6QKFJYivE2cun5U8Jesjscg4eK4q7npfqDUJ3qLR1cdJuLB4NBu9tS7VnssF5xKhdm8eK6tW8".to_string());
+        // args.push("--mining-threads=1".to_string());
     }
 
     args.join(" ")
@@ -180,12 +176,24 @@ fn generate_monerod_args(host_name: &str, node_index: u32, node_type: &NodeType,
 fn generate_simple_network_graph(node_count: u32) -> String {
     let mut graph = String::from("graph [\n");
     
-    // Create a single network node (like ethshadow does)
-    // All hosts will share this same network node, allowing them to connect to each other
-    graph.push_str("  node [\n    id 0\n    host_bandwidth_down \"100 Mbit\"\n    host_bandwidth_up \"100 Mbit\"\n  ]\n");
+    // Add nodes
+    for i in 0..node_count {
+        graph.push_str(&format!("  node [\n    id {}\n    host_bandwidth_down \"100 Mbit\"\n    host_bandwidth_up \"100 Mbit\"\n  ]\n", i));
+    }
     
-    // Add self-loop for the single node (required by Shadow)
-    graph.push_str("  edge [\n    source 0\n    target 0\n    latency \"1 ns\"\n    packet_loss 0.0\n  ]\n");
+    // Add self-loops for each node (required by Shadow when use_shortest_path: false)
+    for i in 0..node_count {
+        graph.push_str(&format!("  edge [\n    source {}\n    target {}\n    latency \"1 ns\"\n    packet_loss 0.0\n  ]\n", i, i));
+    }
+    
+    // Add edges between all nodes (like ethshadow)
+    // This creates a complete graph where every node can connect directly to every other node
+    // Note: When use_shortest_path: false, Shadow requires exactly one edge per node pair
+    for i in 0..node_count {
+        for j in (i + 1)..node_count {
+            graph.push_str(&format!("  edge [\n    source {}\n    target {}\n    latency \"1 ms\"\n    packet_loss 0.0\n  ]\n", i, j));
+        }
+    }
     
     graph.push_str("]");
     graph

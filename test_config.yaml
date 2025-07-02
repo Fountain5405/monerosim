@@ -1,0 +1,10 @@
+# Test Configuration for MoneroSim
+# This file demonstrates different configuration values
+
+general:
+  # Short simulation for testing
+  stop_time: "30m"
+
+monero:
+  # Small network for testing
+  nodes: 3 

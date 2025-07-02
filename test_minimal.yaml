@@ -1,0 +1,10 @@
+general:
+  stop_time: 30s
+  progress: true
+
+monero:
+  nodes: 1
+  default_client: monerod
+  testnet: true
+  mining: false
+  mining_address: "" 
