@@ -70,6 +70,21 @@ pub fn generate_shadow_config(config: &Config, _builds_dir: &Path) -> Result<Str
         }
     }
 
+    // Add monitoring host that queries all nodes
+    let monitor_args = generate_monitor_args(total_nodes);
+    let monitor_process = ShadowProcess {
+        path: monitor_args,
+        args: "".to_string(),
+        environment: HashMap::new(),
+        start_time: "30s".to_string(), // Start after nodes have had time to initialize
+        expected_final_state: "running".to_string(),
+    };
+    let monitor_host = ShadowHost {
+        network_node_id: 0,
+        processes: vec![monitor_process],
+    };
+    hosts.insert("monitor".to_string(), monitor_host);
+
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
             stop_time: config.general.stop_time.clone(),
@@ -104,6 +119,9 @@ fn generate_monerod_args(host_name: &str, node_index: u32, _node_type: &NodeType
     // Calculate unique P2P port for this node (base port 28080 + node_index)
     let p2p_port = 28080 + node_index;
     
+            // Calculate unique RPC port for this node (base port 28090 + node_index)
+        let rpc_port = 28090 + node_index;
+    
     let mut args = vec![
         "--testnet".to_string(),
         "--log-level=2".to_string(), // Increased for better diagnostics as recommended
@@ -114,6 +132,9 @@ fn generate_monerod_args(host_name: &str, node_index: u32, _node_type: &NodeType
         "--max-concurrency=1".to_string(),
         format!("--p2p-bind-ip={}", p2p_ip),
         format!("--p2p-bind-port={}", p2p_port), // Add unique P2P port
+        "--rpc-bind-ip=0.0.0.0".to_string(), // Add RPC binding to same IP
+        "--confirm-external-bind".to_string(), // Allow external RPC connections
+        format!("--rpc-bind-port={}", rpc_port), // Add unique RPC port
         "--no-igd".to_string(),
         "--no-zmq".to_string(),
         "--fixed-difficulty=100".to_string(),
@@ -129,6 +150,11 @@ fn generate_monerod_args(host_name: &str, node_index: u32, _node_type: &NodeType
         }
     }
     args.join(" ")
+}
+
+fn generate_monitor_args(_total_nodes: u32) -> String {
+    // Return the path to our monitoring script
+    "./monitor_script.sh".to_string()
 }
 
 #[cfg(test)]

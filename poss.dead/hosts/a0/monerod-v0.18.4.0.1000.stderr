@@ -1,0 +1,5 @@
+[946684806] libunbound[1000:0] error: setsockopt(..., IP_MTU_DISCOVER, IP_PMTUDISC_OMIT...) failed: Protocol not available
+[946684806] libunbound[1000:0] error: setsockopt(..., IP_MTU_DISCOVER, IP_PMTUDISC_OMIT...) failed: Protocol not available
+[946684806] libunbound[1000:0] error: setsockopt(..., IP_MTU_DISCOVER, IP_PMTUDISC_OMIT...) failed: Protocol not available
+[946684806] libunbound[1000:0] error: setsockopt(..., IP_MTU_DISCOVER, IP_PMTUDISC_OMIT...) failed: Protocol not available
+[946684806] libunbound[1000:0] error: setsockopt(..., IP_MTU_DISCOVER, IP_PMTUDISC_OMIT...) failed: Protocol not available
