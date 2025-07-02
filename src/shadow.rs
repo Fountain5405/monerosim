@@ -105,57 +105,23 @@ fn generate_monerod_args(host_name: &str, node_index: u32, _node_type: &NodeType
         "--log-level=1".to_string(), // match hand-written config
         "--log-file=/dev/stdout".to_string(),
         format!("--data-dir=/tmp/monero-{}", host_name),
-        "--non-interactive".to_string(),
-        "--no-sync".to_string(),
         "--disable-dns-checkpoints".to_string(),
         "--disable-rpc-ban".to_string(),
         "--max-concurrency=1".to_string(),
         format!("--p2p-bind-ip={}", p2p_ip),
-        format!("--p2p-bind-port={}", 28080 + node_index),
-        "--rpc-bind-port=0".to_string(),
         "--no-igd".to_string(),
         "--no-zmq".to_string(),
+        "--fixed-difficulty=100".to_string(),
+        "--non-interactive".to_string(),
     ];
     // Add exclusive node config for all other nodes
     for i in 0..total_nodes {
         if i != node_index {
             let peer_ip = format!("11.0.0.{}", i + 1);
-            args.push(format!("--add-exclusive-node={}:{}", peer_ip, 28080 + i));
+            args.push(format!("--add-exclusive-node={}:28080", peer_ip));
         }
     }
-    // Conservative peer settings
-    args.push("--out-peers=1".to_string());
-    args.push("--in-peers=1".to_string());
-    args.push("--max-connections-per-ip=1".to_string());
-    args.push("--limit-rate-up=1024".to_string());
-    args.push("--limit-rate-down=1024".to_string());
     args.join(" ")
-}
-
-fn generate_simple_network_graph(node_count: u32) -> String {
-    let mut graph = String::from("graph [\n");
-    
-    // Add nodes
-    for i in 0..node_count {
-        graph.push_str(&format!("  node [\n    id {}\n    host_bandwidth_down \"100 Mbit\"\n    host_bandwidth_up \"100 Mbit\"\n  ]\n", i));
-    }
-    
-    // Add self-loops for each node (required by Shadow when use_shortest_path: false)
-    for i in 0..node_count {
-        graph.push_str(&format!("  edge [\n    source {}\n    target {}\n    latency \"1 ns\"\n    packet_loss 0.0\n  ]\n", i, i));
-    }
-    
-    // Add edges between all nodes (like ethshadow)
-    // This creates a complete graph where every node can connect directly to every other node
-    // Note: When use_shortest_path: false, Shadow requires exactly one edge per node pair
-    for i in 0..node_count {
-        for j in (i + 1)..node_count {
-            graph.push_str(&format!("  edge [\n    source {}\n    target {}\n    latency \"1 ms\"\n    packet_loss 0.0\n  ]\n", i, j));
-        }
-    }
-    
-    graph.push_str("]");
-    graph
 }
 
 #[cfg(test)]
