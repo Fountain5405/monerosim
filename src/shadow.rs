@@ -69,9 +69,20 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--log-file=/tmp/monerod.log".to_string(),
                 "--log-level=4".to_string(),
                 
+                // === TESTNET CONFIGURATION ===
+                "--testnet".to_string(),                // Run in testnet mode
+                "--disable-dns-checkpoints".to_string(), // Disable DNS checkpoints for testnet
+                
+                // === FORCE LOCAL-ONLY P2P: Disable external connections ===
+                "--no-sync".to_string(),               // Disable blockchain sync (prevents external connection attempts)
+                "--offline".to_string(),               // Disable external peer discovery completely
+                "--hide-my-port".to_string(),          // Don't advertise to external network
+                "--limit-rate-up=1".to_string(),       // Minimal upload rate (reduces external activity)
+                "--limit-rate-down=1".to_string(),     // Minimal download rate (reduces external activity)
+                "--out-peers=2".to_string(),           // Allow minimal outgoing connections for exclusive nodes
+                "--in-peers=10".to_string(),           // Allow incoming connections from our nodes
+                
                 // === SHADOW COMPATIBILITY: Single-threaded operation ===
-                "--no-sync".to_string(),               // Disable blockchain sync (prevents threading loops)
-                "--offline".to_string(),               // Disable P2P networking (Shadow will simulate)
                 "--prep-blocks-threads=1".to_string(), // Single-threaded block processing
                 "--max-concurrency=1".to_string(),     // Single-threaded for all operations
                 "--no-zmq".to_string(),                // Disable ZMQ (extra thread management)
@@ -83,10 +94,6 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--non-interactive".to_string(),       // No stdin threads
                 
                 // === P2P SETTINGS: Conservative limits ===
-                "--out-peers=2".to_string(),
-                "--in-peers=4".to_string(),
-                "--limit-rate-up=1024".to_string(),
-                "--limit-rate-down=1024".to_string(),
                 "--max-connections-per-ip=1".to_string(),
                 "--no-igd".to_string(),
                 
@@ -101,13 +108,23 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 format!("--p2p-bind-port={}", p2p_port),
             ];
 
-            // Add peer connections for non-bootstrap nodes (but P2P disabled anyway)
+            // Add exclusive peer connections for inter-node communication
             if node_counter > 0 {
-                args.push(format!("--add-peer=11.0.0.1:28080"));
+                // Connect to bootstrap node (node 0)
+                args.push(format!("--add-exclusive-node=11.0.0.1:28080"));
+                
+                // Also connect to previous node for better mesh connectivity
+                if node_counter > 1 {
+                    let prev_node_ip = format!("11.0.0.{}", node_counter);
+                    args.push(format!("--add-exclusive-node={}:28080", prev_node_ip));
+                }
             }
 
             let process = ShadowProcess {
-                path: format!("builds/{}/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod", node_type.name),
+                path: std::fs::canonicalize(format!("builds/{}/monero/bin/monerod", node_type.name))
+                    .expect("Failed to resolve absolute path to monerod")
+                    .to_string_lossy()
+                    .to_string(),
                 args: args.join(" "),
                 environment: environment.clone(),
                 start_time,
