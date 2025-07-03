@@ -1,0 +1,25 @@
+From 3d69f1f1cb692a297872e64d66a90745372ca142 Mon Sep 17 00:00:00 2001
+From: Fountain5405 <Fountain5405@keepd.com>
+Date: Thu, 3 Jul 2025 02:01:28 -0400
+Subject: [SHADOW-PATCH 2/2] Fix compilation error by including net_node.cpp in
+ net_node.inl
+
+---
+ src/p2p/net_node.inl | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index cc51d3ed8..1b33d8447 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -58,6 +58,7 @@
+ #include "cryptonote_core/cryptonote_core.h"
+ #include "net/parse.h"
+ #include "p2p/net_node.h"
++#include "p2p/net_node.cpp"
+ 
+ #include <miniupnp/miniupnpc/miniupnpc.h>
+ #include <miniupnp/miniupnpc/upnpcommands.h>
+-- 
+2.43.0
+

@@ -78,8 +78,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--hide-my-port".to_string(),          // Don't advertise to external network
                 "--limit-rate-up=1".to_string(),       // Minimal upload rate (reduces external activity)
                 "--limit-rate-down=1".to_string(),     // Minimal download rate (reduces external activity)
-                "--out-peers=2".to_string(),           // Allow minimal outgoing connections for exclusive nodes
-                "--in-peers=10".to_string(),           // Allow incoming connections from our nodes
+                "--out-peers=4".to_string(),           // Allow enough outgoing connections for exclusive nodes
+                "--in-peers=20".to_string(),           // Allow sufficient incoming connections from our nodes
                 "--disable-seed-nodes".to_string(),    // Completely disable seed node connections
                 "--no-igd".to_string(),                // Disable UPnP/IGD (prevents external discovery)
                 
@@ -95,7 +95,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--non-interactive".to_string(),       // No stdin threads
                 
                 // === P2P SETTINGS: Conservative limits ===
-                "--max-connections-per-ip=5".to_string(),  // Allow multiple connections from same IP for our nodes
+                "--max-connections-per-ip=10".to_string(), // Allow multiple connections from same IP for our nodes
                 
                 // === RPC CONFIGURATION ===
                 format!("--rpc-bind-ip={}", node_ip),
