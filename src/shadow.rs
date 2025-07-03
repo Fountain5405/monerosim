@@ -75,12 +75,13 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 
                 // === FORCE LOCAL-ONLY P2P: Disable external connections ===
                 "--no-sync".to_string(),               // Disable blockchain sync (prevents external connection attempts)
-                "--offline".to_string(),               // Disable external peer discovery completely
                 "--hide-my-port".to_string(),          // Don't advertise to external network
                 "--limit-rate-up=1".to_string(),       // Minimal upload rate (reduces external activity)
                 "--limit-rate-down=1".to_string(),     // Minimal download rate (reduces external activity)
                 "--out-peers=2".to_string(),           // Allow minimal outgoing connections for exclusive nodes
                 "--in-peers=10".to_string(),           // Allow incoming connections from our nodes
+                "--disable-seed-nodes".to_string(),    // Completely disable seed node connections
+                "--no-igd".to_string(),                // Disable UPnP/IGD (prevents external discovery)
                 
                 // === SHADOW COMPATIBILITY: Single-threaded operation ===
                 "--prep-blocks-threads=1".to_string(), // Single-threaded block processing
@@ -94,8 +95,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--non-interactive".to_string(),       // No stdin threads
                 
                 // === P2P SETTINGS: Conservative limits ===
-                "--max-connections-per-ip=1".to_string(),
-                "--no-igd".to_string(),
+                "--max-connections-per-ip=5".to_string(),  // Allow multiple connections from same IP for our nodes
                 
                 // === RPC CONFIGURATION ===
                 format!("--rpc-bind-ip={}", node_ip),
