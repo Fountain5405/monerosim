@@ -28,9 +28,11 @@ This document describes the effective optimizations implemented to make Monero w
 - `--prep-blocks-threads=1`: Single-threaded block preparation
 - `--max-concurrency=1`: Single-threaded operation
 
-**Reduced Peer Connections**:
-- Max 2 seed node connections instead of full mesh
-- Uses `--add-peer` instead of `--add-exclusive-node` for gentler connections
+**Conservative P2P Connectivity**:
+- Max 1 peer connection per node (very conservative)
+- Connects only to earlier-started nodes (prevents circular connection attempts)
+- Disables IPv6 and DNS operations to simplify networking (`--p2p-use-ipv6=false`)
+- Uses `--add-peer` for gentler connections vs `--add-exclusive-node`
 
 ### 2. Shadow Network Configuration Optimizations
 
