@@ -1,0 +1,63 @@
+general:
+  stop_time: 5m
+  model_unblocked_syscall_latency: true
+  log_level: info
+network:
+  graph:
+    type: 1_gbit_switch
+hosts:
+  a0:
+    network_node_id: 0
+    processes:
+    - path: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod
+      args: --testnet --log-level=4 --log-file=/dev/stdout --data-dir=/tmp/monero-a0 --disable-dns-checkpoints --disable-rpc-ban --p2p-bind-ip=11.0.0.1 --p2p-bind-port=28080 --rpc-bind-ip=0.0.0.0 --rpc-bind-port=28090 --out-peers=2 --in-peers=4 --limit-rate-up=1024 --limit-rate-down=1024 --rpc-access-control-origins=* --confirm-external-bind --non-interactive
+      environment:
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 0s
+  a2:
+    network_node_id: 0
+    processes:
+    - path: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod
+      args: --testnet --log-level=4 --log-file=/dev/stdout --data-dir=/tmp/monero-a2 --disable-dns-checkpoints --disable-rpc-ban --p2p-bind-ip=11.0.0.3 --p2p-bind-port=28082 --rpc-bind-ip=0.0.0.0 --rpc-bind-port=28092 --out-peers=2 --in-peers=4 --limit-rate-up=1024 --limit-rate-down=1024 --rpc-access-control-origins=* --confirm-external-bind --non-interactive --add-peer=11.0.0.1:28080
+      environment:
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 20s
+  a1:
+    network_node_id: 0
+    processes:
+    - path: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod
+      args: --testnet --log-level=4 --log-file=/dev/stdout --data-dir=/tmp/monero-a1 --disable-dns-checkpoints --disable-rpc-ban --p2p-bind-ip=11.0.0.2 --p2p-bind-port=28081 --rpc-bind-ip=0.0.0.0 --rpc-bind-port=28091 --out-peers=2 --in-peers=4 --limit-rate-up=1024 --limit-rate-down=1024 --rpc-access-control-origins=* --confirm-external-bind --non-interactive --add-peer=11.0.0.1:28080
+      environment:
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+      start_time: 10s
+  a4:
+    network_node_id: 0
+    processes:
+    - path: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod
+      args: --testnet --log-level=4 --log-file=/dev/stdout --data-dir=/tmp/monero-a4 --disable-dns-checkpoints --disable-rpc-ban --p2p-bind-ip=11.0.0.5 --p2p-bind-port=28084 --rpc-bind-ip=0.0.0.0 --rpc-bind-port=28094 --out-peers=2 --in-peers=4 --limit-rate-up=1024 --limit-rate-down=1024 --rpc-access-control-origins=* --confirm-external-bind --non-interactive --add-peer=11.0.0.1:28080
+      environment:
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+      start_time: 40s
+  a3:
+    network_node_id: 0
+    processes:
+    - path: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod
+      args: --testnet --log-level=4 --log-file=/dev/stdout --data-dir=/tmp/monero-a3 --disable-dns-checkpoints --disable-rpc-ban --p2p-bind-ip=11.0.0.4 --p2p-bind-port=28083 --rpc-bind-ip=0.0.0.0 --rpc-bind-port=28093 --out-peers=2 --in-peers=4 --limit-rate-up=1024 --limit-rate-down=1024 --rpc-access-control-origins=* --confirm-external-bind --non-interactive --add-peer=11.0.0.1:28080
+      environment:
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+      start_time: 30s

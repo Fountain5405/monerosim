@@ -46,16 +46,13 @@ fn main() -> Result<()> {
     // Build monero binaries for each node type
     build::build_monero_binaries(&build_plans)?;
     
-    // Generate Shadow configuration
-    let builds_dir = PathBuf::from("builds");
-    let shadow_config = shadow::generate_shadow_config(&config, &builds_dir)?;
-    
     // Create output directory if it doesn't exist
     std::fs::create_dir_all(&args.output)?;
     
-    // Write Shadow configuration to file
+    // Generate Shadow configuration (EthShadow approach)
+    shadow::generate_shadow_config(&config, &args.output)?;
+    
     let shadow_config_path = args.output.join("shadow.yaml");
-    std::fs::write(&shadow_config_path, shadow_config)?;
     info!("Generated Shadow configuration: {:?}", shadow_config_path);
     
     // Log the parsed configuration values
