@@ -12,7 +12,18 @@ This document describes the effective optimizations implemented to make Monero w
 
 ## Effective Solutions Implemented
 
-### 1. Monero Application-Level Optimizations (`src/shadow.rs`)
+### 1. Shadow Thread Compatibility (CRITICAL)
+
+**Issue**: Monero crashes with SIGABRT due to "Operation not permitted (src/thread.cpp:281)" when trying to modify thread properties that Shadow doesn't allow.
+
+**Root Cause**: Shadow's process emulation blocks certain thread operations that Monero attempts during runtime, causing immediate crashes after successful initialization.
+
+**Solution**: 
+- `--db-sync-mode=safe`: Use safer database synchronization to avoid aggressive threading operations
+- `--log-level=4`: Increased logging level for detailed debugging of thread-related issues
+- Single-threaded configuration minimizes thread complexity
+
+### 2. Monero Application-Level Optimizations (`src/shadow.rs`)
 
 **Connection Limits**:
 - `--out-peers=2`: Reduced from default 8 to 2 outbound connections

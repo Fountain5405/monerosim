@@ -125,36 +125,38 @@ fn generate_monerod_args(host_name: &str, node_index: u32, p2p_ip: &str, node_ip
     
     let mut args = vec![
         "--testnet".to_string(),
-        "--log-level=2".to_string(),
+        "--log-level=4".to_string(),  // Increased to level 4 for detailed debugging
         "--log-file=/dev/stdout".to_string(),
         format!("--data-dir=/tmp/monero-{}", host_name),
         "--disable-dns-checkpoints".to_string(),
         "--disable-rpc-ban".to_string(),
         
-        // === SHADOW OPTIMIZATION 1: Reduce Monero's Network Aggressiveness ===
+        // === SHADOW THREAD COMPATIBILITY ===
+        // Prevent thread operations that Shadow doesn't allow
+        "--db-sync-mode=safe".to_string(),     // Use safer DB sync to avoid aggressive threading
         
-        // Drastically reduce concurrent connections to ease Shadow's TCP load
-        "--out-peers=2".to_string(),          // Default: 8, reduced to 2
-        "--in-peers=4".to_string(),           // Default: 64, reduced to 4
-        "--max-connections-per-ip=1".to_string(), // Prevent connection storms
+        // === MONERO APPLICATION-LEVEL OPTIMIZATIONS (PART 1) ===
+        // Reduce connection aggressiveness to prevent TCP storms
+        "--out-peers=2".to_string(),           // Reduced from default 8 outbound connections
+        "--in-peers=4".to_string(),            // Reduced from default 64 inbound connections  
+        "--max-connections-per-ip=1".to_string(), // Prevent connection storms from single IP
         
-        // Bandwidth throttling to reduce data volume Shadow must handle
-        "--limit-rate-up=1024".to_string(),   // 1MB/s upload limit
-        "--limit-rate-down=1024".to_string(), // 1MB/s download limit
+        // Bandwidth throttling to reduce network load
+        "--limit-rate-up=1024".to_string(),    // 1MB/s upload limit
+        "--limit-rate-down=1024".to_string(),  // 1MB/s download limit
         
-        // Conservative sync behavior to reduce request frequency
-        "--block-sync-size=1".to_string(),    // Default: 20, sync 1 block at a time
-        "--prep-blocks-threads=1".to_string(), // Single-threaded block prep
+        // Conservative sync to reduce blockchain operations
+        "--block-sync-size=1".to_string(),     // Sync 1 block at a time vs default 20
         
-        // Reduced threading to lower system complexity for Shadow
-        "--max-concurrency=1".to_string(),    // Single-threaded operation
+        // Single-threaded operation to reduce complexity
+        "--prep-blocks-threads=1".to_string(), // Single block preparation thread
+        "--max-concurrency=1".to_string(),     // Single concurrent operation
         
         // === SHADOW COMPATIBILITY: P2P with reduced threading ===
         // Removed --offline to enable P2P connectivity
-        // Note: --p2p-use-ipv6 is disabled by default, no need to explicitly disable
         "--no-igd".to_string(),               // Disable UPnP to avoid complex network operations
         
-        // Network timing optimizations for Shadow's discrete-event scheduling
+        // === NETWORK BINDING ===
         format!("--p2p-bind-ip={}", p2p_ip),
         format!("--p2p-bind-port={}", p2p_port),
         format!("--rpc-bind-ip={}", p2p_ip),
@@ -164,23 +166,12 @@ fn generate_monerod_args(host_name: &str, node_index: u32, p2p_ip: &str, node_ip
         "--non-interactive".to_string(),
     ];
 
-    // === SHADOW OPTIMIZATION 1: Conservative Seed Node Strategy ===
-    // Add minimal seed connections to test P2P while avoiding connection storms
-    // Only connect to 1-2 other nodes maximum, and only to earlier-started nodes
-    let max_seed_connections = 1; // Very conservative: only 1 peer connection
-    let mut seed_count = 0;
-    
-    for (i, ip) in node_ips.iter().enumerate() {
-        let peer_index = i as u32;
-        // Only connect to nodes that started before this one (to avoid circular connection attempts)
-        // And limit to max_seed_connections
-        if peer_index < node_index && seed_count < max_seed_connections {
-            let seed_port = 28080 + peer_index;
-            args.push(format!("--add-peer={}:{}", ip, seed_port));
-            seed_count += 1;
-        }
+    // Add peer connections (conservative P2P topology - only connect to node a0)
+    if node_index > 0 {
+        // All nodes except a0 connect only to a0 (the seed node)
+        args.push(format!("--add-peer={}:{}", node_ips[0], 28080));
     }
-
+    
     args.join(" ")
 }
 
