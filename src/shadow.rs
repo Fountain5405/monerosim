@@ -116,7 +116,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 // Also connect to previous node for better mesh connectivity
                 if node_counter > 1 {
                     let prev_node_ip = format!("11.0.0.{}", node_counter);
-                    args.push(format!("--add-exclusive-node={}:28080", prev_node_ip));
+                    let prev_node_port = 28080 + (node_counter - 1);
+                    args.push(format!("--add-exclusive-node={}:{}", prev_node_ip, prev_node_port));
                 }
             }
 
