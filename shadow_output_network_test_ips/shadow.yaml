@@ -1,0 +1,101 @@
+general:
+  stop_time: 5m
+  model_unblocked_syscall_latency: true
+  log_level: info
+network:
+  graph:
+    type: 1_gbit_switch
+hosts:
+  a2:
+    network_node_id: 0
+    processes:
+    - path: /usr/local/bin/monerod-v0.18.4.0
+      args: --testnet --log-level=2 --log-file=/dev/stdout --data-dir=/tmp/monero-a2 --disable-dns-checkpoints --disable-rpc-ban --max-concurrency=1 --p2p-bind-ip=11.0.0.3 --p2p-bind-port=28082 --rpc-bind-ip=0.0.0.0 --confirm-external-bind --rpc-bind-port=28092 --no-igd --no-zmq --fixed-difficulty=100 --non-interactive --add-exclusive-node=11.0.0.1:28080 --add-exclusive-node=11.0.0.2:28081 --add-exclusive-node=11.0.0.4:28083 --add-exclusive-node=11.0.0.5:28084
+      environment: {}
+      start_time: 5s
+      expected_final_state: running
+    ip_addr: 11.0.0.3
+  a3:
+    network_node_id: 0
+    processes:
+    - path: /usr/local/bin/monerod-v0.18.4.0
+      args: --testnet --log-level=2 --log-file=/dev/stdout --data-dir=/tmp/monero-a3 --disable-dns-checkpoints --disable-rpc-ban --max-concurrency=1 --p2p-bind-ip=11.0.0.4 --p2p-bind-port=28083 --rpc-bind-ip=0.0.0.0 --confirm-external-bind --rpc-bind-port=28093 --no-igd --no-zmq --fixed-difficulty=100 --non-interactive --add-exclusive-node=11.0.0.1:28080 --add-exclusive-node=11.0.0.2:28081 --add-exclusive-node=11.0.0.3:28082 --add-exclusive-node=11.0.0.5:28084
+      environment: {}
+      start_time: 5s
+      expected_final_state: running
+    ip_addr: 11.0.0.4
+  testclient:
+    network_node_id: 0
+    processes:
+    - path: ./test_client.py
+      args: ''
+      environment: {}
+      start_time: 40s
+      expected_final_state: running
+    ip_addr: 11.0.0.100
+  testserver1:
+    network_node_id: 0
+    processes:
+    - path: ./test_network.py
+      args: 11.0.0.1 8080 server1
+      environment:
+        SERVER_ID: server1
+      start_time: 10s
+      expected_final_state: running
+    ip_addr: 11.0.0.1
+  a0:
+    network_node_id: 0
+    processes:
+    - path: /usr/local/bin/monerod-v0.18.4.0
+      args: --testnet --log-level=2 --log-file=/dev/stdout --data-dir=/tmp/monero-a0 --disable-dns-checkpoints --disable-rpc-ban --max-concurrency=1 --p2p-bind-ip=11.0.0.1 --p2p-bind-port=28080 --rpc-bind-ip=0.0.0.0 --confirm-external-bind --rpc-bind-port=28090 --no-igd --no-zmq --fixed-difficulty=100 --non-interactive --add-exclusive-node=11.0.0.2:28081 --add-exclusive-node=11.0.0.3:28082 --add-exclusive-node=11.0.0.4:28083 --add-exclusive-node=11.0.0.5:28084
+      environment: {}
+      start_time: 5s
+      expected_final_state: running
+    ip_addr: 11.0.0.1
+  monitor:
+    network_node_id: 0
+    processes:
+    - path: ./monitor_script.sh
+      args: ''
+      environment: {}
+      start_time: 30s
+      expected_final_state: running
+    ip_addr: null
+  testserver2:
+    network_node_id: 0
+    processes:
+    - path: ./test_network.py
+      args: 11.0.0.2 8081 server2
+      environment:
+        SERVER_ID: server2
+      start_time: 10s
+      expected_final_state: running
+    ip_addr: 11.0.0.2
+  a1:
+    network_node_id: 0
+    processes:
+    - path: /usr/local/bin/monerod-v0.18.4.0
+      args: --testnet --log-level=2 --log-file=/dev/stdout --data-dir=/tmp/monero-a1 --disable-dns-checkpoints --disable-rpc-ban --max-concurrency=1 --p2p-bind-ip=11.0.0.2 --p2p-bind-port=28081 --rpc-bind-ip=0.0.0.0 --confirm-external-bind --rpc-bind-port=28091 --no-igd --no-zmq --fixed-difficulty=100 --non-interactive --add-exclusive-node=11.0.0.1:28080 --add-exclusive-node=11.0.0.3:28082 --add-exclusive-node=11.0.0.4:28083 --add-exclusive-node=11.0.0.5:28084
+      environment: {}
+      start_time: 5s
+      expected_final_state: running
+    ip_addr: 11.0.0.2
+  testserver3:
+    network_node_id: 0
+    processes:
+    - path: ./test_network.py
+      args: 11.0.0.3 8082 server3
+      environment:
+        SERVER_ID: server3
+      start_time: 10s
+      expected_final_state: running
+    ip_addr: 11.0.0.3
+  a4:
+    network_node_id: 0
+    processes:
+    - path: /usr/local/bin/monerod-v0.18.4.0
+      args: --testnet --log-level=2 --log-file=/dev/stdout --data-dir=/tmp/monero-a4 --disable-dns-checkpoints --disable-rpc-ban --max-concurrency=1 --p2p-bind-ip=11.0.0.5 --p2p-bind-port=28084 --rpc-bind-ip=0.0.0.0 --confirm-external-bind --rpc-bind-port=28094 --no-igd --no-zmq --fixed-difficulty=100 --non-interactive --add-exclusive-node=11.0.0.1:28080 --add-exclusive-node=11.0.0.2:28081 --add-exclusive-node=11.0.0.3:28082 --add-exclusive-node=11.0.0.4:28083
+      environment: {}
+      start_time: 5s
+      expected_final_state: running
+    ip_addr: 11.0.0.5
