@@ -54,12 +54,24 @@ pub fn build_monero_binaries(build_plans: &HashMap<String, BuildPlan>) -> Result
         let build_dir = &plan.build_dir;
         let monero_dir = build_dir.join("monero");
         if !monero_dir.exists() {
-            info!("Cloning monero source to {:?} for node type '{}'...", monero_dir, name);
+            info!("Cloning Shadow-compatible monero source to {:?} for node type '{}'...", monero_dir, name);
+            let shadow_fork_path = Path::new("../monero-shadow").canonicalize()
+                .map_err(|e| color_eyre::eyre::eyre!("Failed to resolve monero-shadow path: {}", e))?;
             let status = Command::new("git")
-                .args(["clone", "https://github.com/monero-project/monero.git", monero_dir.to_str().unwrap()])
+                .args(["clone", shadow_fork_path.to_str().unwrap(), monero_dir.to_str().unwrap()])
                 .status()?;
             if !status.success() {
-                return Err(color_eyre::eyre::eyre!("Failed to clone monero source for node type '{}'", name));
+                return Err(color_eyre::eyre::eyre!("Failed to clone Shadow-compatible monero source for node type '{}'", name));
+            }
+            
+            // Switch to shadow-compatibility branch
+            info!("Switching to shadow-compatibility branch for node type '{}'...", name);
+            let branch_status = Command::new("git")
+                .arg("-C").arg(&monero_dir)
+                .args(["checkout", "shadow-compatibility"])
+                .status()?;
+            if !branch_status.success() {
+                return Err(color_eyre::eyre::eyre!("Failed to checkout shadow-compatibility branch for node type '{}'", name));
             }
         } else {
             info!("Monero source already present for node type '{}' at {:?}", name, monero_dir);
@@ -159,15 +171,26 @@ pub fn build_monero_binaries(build_plans: &HashMap<String, BuildPlan>) -> Result
             return Err(color_eyre::eyre::eyre!("Failed to update submodules for node type '{}' after patching/PRs", name));
         }
 
-        // Step 5: Build the monerod binary
-        info!("Building monerod for node type '{}'...", name);
+        // Step 5: Build the monerod binary with Shadow compatibility
+        info!("Building Shadow-compatible monerod for node type '{}'...", name);
         let jobs = num_cpus::get().to_string();
+        
+        // First, configure with Shadow compatibility flag
+        let cmake_status = Command::new("cmake")
+            .args(["-DSHADOW_BUILD=ON", "-DCMAKE_BUILD_TYPE=Release", "."])
+            .current_dir(&monero_dir)
+            .status()?;
+        if !cmake_status.success() {
+            return Err(color_eyre::eyre::eyre!("Failed to configure CMake with Shadow compatibility for node type '{}'", name));
+        }
+        
+        // Then build with make
         let make_status = Command::new("make")
-            .args([&format!("-j{}", jobs), "release"])
+            .args([&format!("-j{}", jobs)])
             .current_dir(&monero_dir)
             .status()?;
         if !make_status.success() {
-            return Err(color_eyre::eyre::eyre!("Failed to build monerod for node type '{}'", name));
+            return Err(color_eyre::eyre::eyre!("Failed to build Shadow-compatible monerod for node type '{}'", name));
         }
     }
     Ok(())
