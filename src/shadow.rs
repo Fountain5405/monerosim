@@ -149,8 +149,10 @@ fn generate_monerod_args(host_name: &str, node_index: u32, p2p_ip: &str, node_ip
         // Reduced threading to lower system complexity for Shadow
         "--max-concurrency=1".to_string(),    // Single-threaded operation
         
-        // === SHADOW COMPATIBILITY: Minimize threading issues ===
-        "--offline".to_string(),              // Disable P2P to avoid thread issues
+        // === SHADOW COMPATIBILITY: P2P with reduced threading ===
+        // Removed --offline to enable P2P connectivity
+        // Note: --p2p-use-ipv6 is disabled by default, no need to explicitly disable
+        "--no-igd".to_string(),               // Disable UPnP to avoid complex network operations
         
         // Network timing optimizations for Shadow's discrete-event scheduling
         format!("--p2p-bind-ip={}", p2p_ip),
@@ -162,17 +164,22 @@ fn generate_monerod_args(host_name: &str, node_index: u32, p2p_ip: &str, node_ip
         "--non-interactive".to_string(),
     ];
 
-    // Only add seed nodes if not running in offline mode
-    // (Commented out since we're using --offline for this test)
-    // Add seed nodes (other nodes in simulation) with conservative connection strategy
-    // Only connect to a subset to prevent connection storms
-    // let max_seed_nodes = std::cmp::min(total_nodes.saturating_sub(1), 2); // Max 2 seed connections
-    // for (i, ip) in node_ips.iter().enumerate() {
-    //     if i as u32 != node_index && (i as u32) < max_seed_nodes {
-    //         let seed_port = 28080 + i as u32;
-    //         args.push(format!("--add-peer={}:{}", ip, seed_port));
-    //     }
-    // }
+    // === SHADOW OPTIMIZATION 1: Conservative Seed Node Strategy ===
+    // Add minimal seed connections to test P2P while avoiding connection storms
+    // Only connect to 1-2 other nodes maximum, and only to earlier-started nodes
+    let max_seed_connections = 1; // Very conservative: only 1 peer connection
+    let mut seed_count = 0;
+    
+    for (i, ip) in node_ips.iter().enumerate() {
+        let peer_index = i as u32;
+        // Only connect to nodes that started before this one (to avoid circular connection attempts)
+        // And limit to max_seed_connections
+        if peer_index < node_index && seed_count < max_seed_connections {
+            let seed_port = 28080 + peer_index;
+            args.push(format!("--add-peer={}:{}", ip, seed_port));
+            seed_count += 1;
+        }
+    }
 
     args.join(" ")
 }
