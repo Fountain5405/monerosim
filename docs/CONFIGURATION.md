@@ -93,6 +93,19 @@ Each node type represents a group of identical Monero nodes with specific config
 **Range**: 1-1000 (limited by system resources)  
 **Description**: Number of nodes to create of this type.
 
+**Examples**:
+```yaml
+nodes:
+  - count: 1      # Single node (good for bootstrap)
+    name: "bootstrap"
+  
+  - count: 10     # Small network
+    name: "peers"
+  
+  - count: 100    # Large-scale simulation
+    name: "network"
+```
+
 **Performance Considerations**:
 - **1-10 nodes**: Minimal resource usage, good for development
 - **10-50 nodes**: Moderate resource usage, suitable for most research
@@ -104,6 +117,15 @@ Each node type represents a group of identical Monero nodes with specific config
 **Required**: Yes  
 **Pattern**: `^[a-zA-Z][a-zA-Z0-9_]*$`  
 **Description**: Unique identifier for the node type. Used for build directories and node naming.
+
+**Examples**:
+```yaml
+nodes:
+  - name: "A"           # Simple single-character name
+  - name: "bootstrap"   # Descriptive name
+  - name: "v18_nodes"   # Version-specific nodes
+  - name: "patched"     # Patch-specific nodes
+```
 
 **Node Naming Convention**:
 - Individual nodes are named: `{name}{index}` (e.g., `A0`, `A1`, `bootstrap0`)
@@ -167,6 +189,11 @@ nodes:
 - Applied in the order specified
 - Path is relative to MoneroSim project root
 - Must be compatible with the specified `base_commit`
+
+**Common Patches**:
+- `patches/testnet_from_scratch.patch`: Accelerated hard fork schedule (included in `shadow-complete`)
+- `patches/increased_logging.patch`: Enhanced debug output
+- `patches/performance_tuning.patch`: Optimizations for large simulations
 
 #### `prs`
 
@@ -265,6 +292,44 @@ monero:
         - "patches/modified_behavior.patch"
 ```
 
+### Performance Testing Configuration
+
+```yaml
+# Large-scale performance testing
+general:
+  stop_time: "1h"
+
+monero:
+  nodes:
+    # Large number of standard nodes
+    - count: 100
+      name: "network"
+      base_commit: "shadow-complete"
+```
+
+## Configuration Validation
+
+### Automatic Validation
+
+MoneroSim automatically validates configuration files and provides detailed error messages:
+
+```bash
+# Example validation errors
+[ERROR] Invalid stop_time format: "invalid_time"
+[ERROR] Node count must be between 1 and 1000, got: 1500
+[ERROR] Node name "123invalid" must start with a letter
+[ERROR] Patch file not found: "patches/nonexistent.patch"
+```
+
+### Manual Validation
+
+You can validate a configuration without running the simulation:
+
+```bash
+# Validate configuration only
+./target/release/monerosim --config config.yaml --validate-only
+```
+
 ## Configuration Best Practices
 
 ### 1. Start Small
@@ -338,6 +403,18 @@ monero:
       base_commit: "shadow-complete"
 ```
 
+### 4. Version Control Your Configurations
+
+Keep different configurations for different research scenarios:
+
+```
+configs/
+├── quick_test.yaml
+├── performance_benchmark.yaml
+├── consensus_research.yaml
+└── attack_simulation.yaml
+```
+
 ## Troubleshooting Configuration Issues
 
 ### Common Problems
@@ -372,6 +449,18 @@ monero:
 2. **Check logs**: Look for validation errors in MoneroSim output
 3. **Verify paths**: Ensure patch files and repositories exist
 4. **Test incremental**: Add complexity gradually
+
+## Environment Variables
+
+Some configuration can be overridden with environment variables:
+
+```bash
+# Override stop time
+MONEROSIM_STOP_TIME="1h" ./target/release/monerosim --config config.yaml
+
+# Override output directory
+MONEROSIM_OUTPUT="custom_output" ./target/release/monerosim --config config.yaml
+```
 
 ## Configuration File Templates
 
@@ -429,4 +518,4 @@ monero:
     - count: 100
       name: "network"
       base_commit: "shadow-complete"
-```
+``` 

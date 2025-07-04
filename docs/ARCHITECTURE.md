@@ -85,6 +85,18 @@ pub struct NodeType {
 6. **Compilation**: Multi-threaded build using available CPU cores
 7. **Binary Location**: Track and verify successful binary creation
 
+**Build Artifacts**:
+```
+builds/
+├── A/                          # Node type A build
+│   └── monero/
+│       ├── bin/monerod        # Built binary (preferred location)
+│       └── build/Linux/.../bin/monerod  # Alternative location
+└── B/                          # Node type B build (if configured)
+    └── monero/
+        └── ...
+```
+
 #### 3. Shadow Configuration Generation (`src/shadow.rs`)
 
 **Purpose**: Generates Shadow simulator configuration files that define the network topology, node configurations, and simulation parameters.
@@ -107,6 +119,49 @@ The current implementation uses a **star topology with sequential connections**:
 - Node assignment: `11.0.0.{node_index + 1}`
 - Port allocation: `28080 + node_index` for P2P
 - RPC ports: `18080 + node_index`
+
+**Configuration Structure**:
+```yaml
+general:
+  stop_time: "10m"
+  model_unblocked_syscall_latency: true
+
+network:
+  graph:
+    type: gml
+    inline: |
+      graph [
+        node [id 0 host_bandwidth_down="1 Gbit" host_bandwidth_up="1 Gbit"]
+        # ... additional nodes
+      ]
+
+hosts:
+  a0:
+    network_node_id: 0
+    processes:
+    - path: monerod
+      args: [--testnet, --disable-seed-nodes, ...]
+      environment:
+        RUST_LOG: "info"
+      expected_final_state: running
+```
+
+#### 4. CLI Interface (`src/main.rs`)
+
+**Purpose**: Provides the command-line interface and orchestrates the entire simulation generation process.
+
+**Command Structure**:
+```bash
+monerosim --config <config.yaml> --output <output_dir>
+```
+
+**Execution Flow**:
+1. Parse command-line arguments
+2. Load and validate configuration
+3. Prepare build plans for each node type
+4. Build Monero binaries (if needed)
+5. Generate Shadow configuration
+6. Output final configuration and usage instructions
 
 ## Shadow Integration
 
@@ -144,6 +199,38 @@ MoneroSim includes several modifications to make Monero compatible with Shadow:
 - All hard forks activated at low block heights (10, 20, 30, ...)
 - Enables immediate access to latest Monero features
 
+## Data Flow
+
+### Configuration to Execution
+
+```mermaid
+graph TD
+    A[config.yaml] --> B[Configuration Parser]
+    B --> C[Build Manager]
+    C --> D[Monero Source Clone]
+    D --> E[Patch Application]
+    E --> F[Binary Compilation]
+    F --> G[Shadow Generator]
+    G --> H[Network Topology]
+    H --> I[shadow.yaml]
+    I --> J[Shadow Execution]
+    J --> K[Simulation Results]
+```
+
+### Build Process Detail
+
+```mermaid
+graph TD
+    A[Source Repository] --> B[Git Clone]
+    B --> C[Branch Checkout]
+    C --> D[Patch Application]
+    D --> E[Submodule Init]
+    E --> F[CMake Configure]
+    F --> G[Make Build]
+    G --> H[Binary Verification]
+    H --> I[Installation]
+```
+
 ## Design Decisions
 
 ### 1. Rust Implementation
@@ -176,6 +263,16 @@ MoneroSim includes several modifications to make Monero compatible with Shadow:
 - Collaborative development support
 - Integration with existing Monero development workflow
 
+### 4. Shadow Compatibility Layer
+
+**Rationale**: Rather than creating a simplified Monero model, MoneroSim runs actual Monero code with minimal modifications for maximum fidelity.
+
+**Advantages**:
+- High fidelity simulation results
+- Easier maintenance as Monero evolves
+- Real-world applicable insights
+- Reduced development complexity
+
 ## Performance Characteristics
 
 ### Scalability
@@ -190,6 +287,13 @@ MoneroSim includes several modifications to make Monero compatible with Shadow:
 - **CPU**: Scales with simulation complexity and host CPU count
 - **Disk**: ~1-10MB per node per simulation hour for logs
 - **Network**: Simulated, no real network traffic
+
+### Optimization Strategies
+
+1. **Multi-core utilization**: Shadow parallelizes discrete events
+2. **Memory sharing**: Common binaries and libraries shared across nodes
+3. **Event batching**: Reduces simulation overhead
+4. **Selective logging**: Configurable log levels to reduce I/O
 
 ## Extensibility
 
@@ -228,3 +332,21 @@ The architecture is designed to be extensible to other cryptocurrencies:
 - **Source verification**: Git commit verification for reproducible builds
 - **Patch auditing**: All modifications are version-controlled and auditable
 - **Dependency management**: Cargo.lock ensures reproducible dependencies
+
+## Future Enhancements
+
+### Planned Features
+
+1. **WebUI**: Browser-based configuration and result visualization
+2. **Advanced topologies**: Geographic distribution simulation
+3. **Performance profiling**: Built-in performance analysis tools
+4. **Multi-version testing**: Automated testing across Monero versions
+5. **Cloud deployment**: Support for cloud-based simulation execution
+
+### Research Applications
+
+- **Network analysis**: P2P protocol performance and security
+- **Consensus research**: Hard fork behavior and network splits
+- **Performance optimization**: Bottleneck identification and resolution
+- **Attack simulation**: Eclipse attacks, Sybil attacks, network partitions
+- **Scalability analysis**: Performance with varying network sizes 
