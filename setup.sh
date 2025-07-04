@@ -168,47 +168,94 @@ fi
 # Step 3: Setup Monero Source Code for Shadow Compatibility
 print_header "Step 3: Setting Up Monero Source Code"
 
-# Remove any existing monero-shadow directory for a clean start
+# Setup directory for Shadow-compatible Monero
 MONERO_SHADOW_DIR="../monero-shadow"
-if [[ -d "$MONERO_SHADOW_DIR" ]]; then
-    print_status "Removing existing Monero source for fresh setup..."
-    rm -rf "$MONERO_SHADOW_DIR"
-fi
+MONERO_SHADOW_REPO="https://github.com/YOUR_USERNAME/monero-shadow.git"
+SHADOW_BRANCH="shadow-complete"
 
-print_status "Cloning Shadow-compatible Monero fork..."
+print_status "Setting up Shadow-compatible Monero source..."
 
-# Use the local pre-configured monero-shadow directory with comprehensive Shadow modifications
-print_status "Setting up Shadow-compatible Monero from local repository..."
-
-if [[ -d "../monero-shadow" ]]; then
-    print_status "Found local monero-shadow directory"
+# Try to use local repository first, then fallback to GitHub clone
+if [[ -d "../monero-shadow" ]] && [[ -d "../monero-shadow/.git" ]]; then
+    print_status "Found local monero-shadow repository"
     
-    # Copy the repository to our build location
-    cp -r "../monero-shadow" "$MONERO_SHADOW_DIR"
-    cd "$MONERO_SHADOW_DIR"
+    cd "../monero-shadow"
     
     # Ensure we're on the shadow-complete branch with all modifications
-    if git show-ref --verify --quiet refs/heads/shadow-complete; then
-        print_status "Switching to shadow-complete branch with all Shadow modifications..."
-        git checkout shadow-complete
-        print_success "Using shadow-complete branch with:"
+    if git show-ref --verify --quiet refs/heads/$SHADOW_BRANCH; then
+        print_status "Switching to $SHADOW_BRANCH branch with all Shadow modifications..."
+        git checkout $SHADOW_BRANCH
+        print_success "Using $SHADOW_BRANCH branch with:"
         print_success "  • Shadow compatibility patches"
         print_success "  • Seed node disabling functionality"
         print_success "  • Testnet from scratch (quick hard fork activation)"
     else
-        print_warning "shadow-complete branch not found, using current branch"
+        print_warning "$SHADOW_BRANCH branch not found, using current branch"
+        print_warning "Some Shadow modifications may be missing"
     fi
+    
+    cd - > /dev/null
+    MONERO_SHADOW_DIR="../monero-shadow"
+    
 else
-    print_error "Local monero-shadow directory not found"
-    print_error "Please ensure the monero-shadow repository exists at ../monero-shadow"
-    print_error "It should contain all Shadow compatibility modifications"
-    exit 1
+    print_status "Local monero-shadow repository not found"
+    print_status "Attempting to clone from GitHub fork..."
+    
+    # Remove any existing incomplete directory
+    if [[ -d "$MONERO_SHADOW_DIR" ]]; then
+        rm -rf "$MONERO_SHADOW_DIR"
+    fi
+    
+    # Clone from GitHub with the comprehensive branch
+    git clone --depth 1 --branch $SHADOW_BRANCH "$MONERO_SHADOW_REPO" "$MONERO_SHADOW_DIR"
+    
+    if [[ $? -eq 0 ]]; then
+        print_success "Successfully cloned Shadow-compatible Monero fork"
+        print_success "Using $SHADOW_BRANCH branch with all Shadow modifications"
+        cd "$MONERO_SHADOW_DIR"
+    else
+        print_warning "Failed to clone from $SHADOW_BRANCH branch, trying default branch..."
+        
+        # Try cloning default branch and switching
+        git clone --depth 1 "$MONERO_SHADOW_REPO" "$MONERO_SHADOW_DIR"
+        
+        if [[ $? -eq 0 ]]; then
+            cd "$MONERO_SHADOW_DIR"
+            
+            # Try to switch to shadow-complete branch
+            if git show-ref --verify --quiet refs/remotes/origin/$SHADOW_BRANCH; then
+                git checkout -b $SHADOW_BRANCH origin/$SHADOW_BRANCH
+                print_success "Successfully switched to $SHADOW_BRANCH branch"
+            else
+                print_error "GitHub repository does not contain $SHADOW_BRANCH branch"
+                print_error ""
+                print_error "SETUP REQUIRED:"
+                print_error "1. Push your local ../monero-shadow repository to GitHub"
+                print_error "2. Ensure the $SHADOW_BRANCH branch is pushed"
+                print_error "3. Update MONERO_SHADOW_REPO variable in this script"
+                print_error "4. Run this setup script again"
+                print_error ""
+                print_error "Alternatively, set up the local repository at ../monero-shadow"
+                exit 1
+            fi
+        else
+            print_error "Failed to clone Monero repository from GitHub"
+            print_error ""
+            print_error "Please either:"
+            print_error "1. Set up local repository at ../monero-shadow with $SHADOW_BRANCH branch"
+            print_error "2. Update MONERO_SHADOW_REPO variable to point to your fork"
+            print_error "3. Ensure your GitHub fork contains the $SHADOW_BRANCH branch"
+            exit 1
+        fi
+    fi
 fi
 
 # Initialize submodules
 print_status "Initializing Monero submodules..."
+cd "$MONERO_SHADOW_DIR"
 git submodule update --init --recursive
 
+# Return to monerosim directory
 cd - > /dev/null
 print_success "Monero source ready for Shadow compatibility"
 
