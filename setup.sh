@@ -32,6 +32,9 @@ print_header() {
     echo -e "${BLUE}================================${NC}"
 }
 
+# Store the script directory for reliable navigation
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Check if we're in the right directory
 if [[ ! -f "Cargo.toml" ]] || [[ ! -d "src" ]]; then
     print_error "Please run this script from the monerosim project directory"
@@ -194,7 +197,7 @@ if [[ -d "../monero-shadow" ]] && [[ -d "../monero-shadow/.git" ]]; then
         print_warning "Some Shadow modifications may be missing"
     fi
     
-    cd - > /dev/null
+    cd "$SCRIPT_DIR"
     MONERO_SHADOW_DIR="../monero-shadow"
     
 else
@@ -212,7 +215,6 @@ else
     if [[ $? -eq 0 ]]; then
         print_success "Successfully cloned Shadow-compatible Monero fork"
         print_success "Using $SHADOW_BRANCH branch with all Shadow modifications"
-        cd "$MONERO_SHADOW_DIR"
     else
         print_warning "Failed to clone from $SHADOW_BRANCH branch, trying default branch..."
         
@@ -238,6 +240,9 @@ else
                 print_error "Alternatively, set up the local repository at ../monero-shadow"
                 exit 1
             fi
+            
+            # Return to script directory
+            cd "$SCRIPT_DIR"
         else
             print_error "Failed to clone Monero repository from GitHub"
             print_error ""
@@ -255,8 +260,8 @@ print_status "Initializing Monero submodules..."
 cd "$MONERO_SHADOW_DIR"
 git submodule update --init --recursive
 
-# Return to monerosim directory
-cd - > /dev/null
+# Return to monerosim directory explicitly
+cd "$SCRIPT_DIR"
 print_success "Monero source ready for Shadow compatibility"
 
 # Step 4: Build Monero Binaries with MoneroSim
@@ -264,6 +269,14 @@ print_header "Step 4: Building Monero Binaries"
 
 print_status "Using MoneroSim to build Shadow-compatible Monero binaries..."
 print_status "This will take several minutes (15-30 minutes depending on system)..."
+
+# Ensure we're in the right directory and the binary exists
+if [[ ! -f "./target/release/monerosim" ]]; then
+    print_error "MoneroSim binary not found at ./target/release/monerosim"
+    print_error "Current directory: $(pwd)"
+    print_error "Please ensure MoneroSim was built successfully"
+    exit 1
+fi
 
 # Generate configuration and build Monero
 ./target/release/monerosim --config config.yaml --output shadow_output
@@ -328,6 +341,16 @@ if [[ -f "shadow_output/shadow.yaml" ]]; then
     print_success "Shadow configuration already generated"
 else
     print_status "Regenerating Shadow configuration files..."
+    
+    # Ensure we're in the right directory and the binary exists
+    cd "$SCRIPT_DIR"
+    if [[ ! -f "./target/release/monerosim" ]]; then
+        print_error "MoneroSim binary not found at ./target/release/monerosim"
+        print_error "Current directory: $(pwd)"
+        print_error "Please ensure MoneroSim was built successfully"
+        exit 1
+    fi
+    
     ./target/release/monerosim --config config.yaml --output shadow_output
     
     if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow.yaml" ]]; then
