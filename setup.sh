@@ -168,46 +168,53 @@ fi
 # Step 3: Setup Monero Source Code for Shadow Compatibility
 print_header "Step 3: Setting Up Monero Source Code"
 
-# Check if we need to clone Monero
+# Remove any existing monero-shadow directory for a clean start
 MONERO_SHADOW_DIR="../monero-shadow"
-if [[ ! -d "$MONERO_SHADOW_DIR" ]]; then
-    print_status "Cloning Monero repository for Shadow compatibility..."
-    
-    # Clone Monero to the expected location
-    git clone --depth 1 --branch v0.18.4.0 https://github.com/monero-project/monero.git "$MONERO_SHADOW_DIR"
-    
-    if [[ $? -ne 0 ]]; then
-        print_error "Failed to clone Monero repository"
+if [[ -d "$MONERO_SHADOW_DIR" ]]; then
+    print_status "Removing existing Monero source for fresh setup..."
+    rm -rf "$MONERO_SHADOW_DIR"
+fi
+
+print_status "Cloning official Monero repository..."
+
+# Clone official Monero to the expected location
+git clone --depth 1 --branch v0.18.4.0 https://github.com/monero-project/monero.git "$MONERO_SHADOW_DIR"
+
+if [[ $? -ne 0 ]]; then
+    print_error "Failed to clone Monero repository"
+    exit 1
+fi
+
+print_status "Applying Shadow compatibility patches..."
+
+cd "$MONERO_SHADOW_DIR"
+
+# Create a branch for our changes
+git checkout -b shadow-compatibility
+
+# Apply our Shadow compatibility patches
+if [[ -f "../monerosim/patches/shadow_compatibility.patch" ]]; then
+    print_status "Applying shadow_compatibility.patch..."
+    git apply "../monerosim/patches/shadow_compatibility.patch"
+    if [[ $? -eq 0 ]]; then
+        print_success "Applied shadow_compatibility.patch"
+        git add .
+        git commit -m "Apply Shadow compatibility patches"
+    else
+        print_error "Failed to apply shadow_compatibility.patch"
+        print_error "The patch may be incompatible with Monero v0.18.4.0"
         exit 1
     fi
-    
-    print_status "Applying Shadow compatibility patches..."
-    
-    # Create shadow-compatibility branch
-    cd "$MONERO_SHADOW_DIR"
-    git checkout -b shadow-compatibility
-    
-    # Apply our Shadow compatibility patches
-    if [[ -f "../monerosim/patches/shadow_compatibility.patch" ]]; then
-        git apply "../monerosim/patches/shadow_compatibility.patch"
-        if [[ $? -eq 0 ]]; then
-            print_success "Applied shadow_compatibility.patch"
-            git add .
-            git commit -m "Apply Shadow compatibility patches"
-        else
-            print_warning "Failed to apply shadow_compatibility.patch - continuing anyway"
-        fi
-    fi
-    
-    # Initialize submodules
-    print_status "Initializing Monero submodules..."
-    git submodule update --init --recursive
-    
-    cd - > /dev/null
-    print_success "Monero source prepared for Shadow compatibility"
 else
-    print_success "Monero source already available at $MONERO_SHADOW_DIR"
+    print_warning "shadow_compatibility.patch not found - continuing without Shadow patches"
 fi
+
+# Initialize submodules
+print_status "Initializing Monero submodules..."
+git submodule update --init --recursive
+
+cd - > /dev/null
+print_success "Monero source prepared with Shadow compatibility"
 
 # Step 4: Build Monero Binaries with MoneroSim
 print_header "Step 4: Building Monero Binaries"
