@@ -32,11 +32,15 @@ cd monerosim
 
 The setup script will:
 1. ✅ Check and install system dependencies (Rust, Shadow, build tools)
-2. ✅ Build MoneroSim from source
-3. ✅ Install Monero binaries to system PATH for Shadow compatibility
-4. ✅ Generate a test Shadow configuration
-5. ✅ Run a test simulation to verify everything works
-6. ✅ Analyze basic results and provide feedback
+2. ✅ Clone Monero source code and apply Shadow compatibility patches
+3. ✅ Build MoneroSim from source
+4. ✅ Build Monero binaries with Shadow compatibility
+5. ✅ Install Monero binaries to system PATH for Shadow compatibility
+6. ✅ Generate a test Shadow configuration
+7. ✅ Run a test simulation to verify everything works
+8. ✅ Analyze basic results and provide feedback
+
+**Note**: The setup process includes building Monero from source, which can take 20-40 minutes depending on your system.
 
 ### Manual Setup
 

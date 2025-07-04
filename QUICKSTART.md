@@ -16,14 +16,18 @@ You need:
 git clone <repository_url>
 cd monerosim
 
-# 2. Run the automated setup script
+# 2. Run the automated setup script (takes 20-40 minutes)
 ./setup.sh
 ```
 
+**Note**: The setup process includes building Monero from source with Shadow compatibility patches, which can take 20-40 minutes depending on your system.
+
 That's it! The script will:
 - ✅ Install all dependencies (Rust, Shadow, build tools)
+- ✅ Clone and patch Monero source code for Shadow compatibility
 - ✅ Build MoneroSim
-- ✅ Install Monero binaries
+- ✅ Build Monero binaries with Shadow patches
+- ✅ Install Monero binaries to system PATH
 - ✅ Run a test simulation
 - ✅ Show you the results
 

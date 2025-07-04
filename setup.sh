@@ -66,6 +66,7 @@ check_command "make"
 check_command "gcc"
 check_command "g++"
 check_command "curl"
+check_command "pkg-config"
 
 # Check for Rust
 if ! command -v rustc &> /dev/null || ! command -v cargo &> /dev/null; then
@@ -118,18 +119,18 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
     # Install basic dependencies
     for dep in "${MISSING_DEPS[@]}"; do
         case $dep in
-            "git"|"cmake"|"make"|"curl")
+            "git"|"cmake"|"make"|"curl"|"pkg-config")
                 print_status "Installing $dep..."
                 $INSTALL_CMD $dep
                 ;;
             "gcc"|"g++")
                 print_status "Installing build-essential/development tools..."
                 if [[ $PKG_MANAGER == "apt-get" ]]; then
-                    $INSTALL_CMD build-essential
+                    $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 ccache
                 elif [[ $PKG_MANAGER == "yum" ]]; then
-                    $INSTALL_CMD gcc gcc-c++ make
+                    $INSTALL_CMD gcc gcc-c++ make openssl-devel zeromq-devel unbound-devel sodium-devel libunwind-devel xz-devel readline-devel expat-devel pgm-devel qt5-linguist hidapi-devel libusbx-devel protobuf-devel protobuf-compiler systemd-devel boost-devel python3 ccache
                 elif [[ $PKG_MANAGER == "pacman" ]]; then
-                    $INSTALL_CMD base-devel
+                    $INSTALL_CMD base-devel openssl zeromq unbound sodium libunwind xz readline expat openpgm qt5-tools hidapi libusb protobuf systemd boost python ccache
                 fi
                 ;;
             "rust")
@@ -164,32 +165,90 @@ else
     exit 1
 fi
 
-# Step 3: Check for Monero binaries
-print_header "Step 3: Checking Monero Binaries"
+# Step 3: Setup Monero Source Code for Shadow Compatibility
+print_header "Step 3: Setting Up Monero Source Code"
 
-MONEROD_BINARIES=()
-if [[ -f "builds/A/monero/bin/monerod" ]]; then
-    MONEROD_BINARIES+=("builds/A/monero/bin/monerod")
-    print_success "Found Monero A binary: builds/A/monero/bin/monerod"
-elif [[ -f "builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod" ]]; then
-    MONEROD_BINARIES+=("builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod")
-    print_success "Found Monero A binary: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod"
+# Check if we need to clone Monero
+MONERO_SHADOW_DIR="../monero-shadow"
+if [[ ! -d "$MONERO_SHADOW_DIR" ]]; then
+    print_status "Cloning Monero repository for Shadow compatibility..."
+    
+    # Clone Monero to the expected location
+    git clone --depth 1 --branch v0.18.4.0 https://github.com/monero-project/monero.git "$MONERO_SHADOW_DIR"
+    
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to clone Monero repository"
+        exit 1
+    fi
+    
+    print_status "Applying Shadow compatibility patches..."
+    
+    # Create shadow-compatibility branch
+    cd "$MONERO_SHADOW_DIR"
+    git checkout -b shadow-compatibility
+    
+    # Apply our Shadow compatibility patches
+    if [[ -f "../monerosim/patches/shadow_compatibility.patch" ]]; then
+        git apply "../monerosim/patches/shadow_compatibility.patch"
+        if [[ $? -eq 0 ]]; then
+            print_success "Applied shadow_compatibility.patch"
+            git add .
+            git commit -m "Apply Shadow compatibility patches"
+        else
+            print_warning "Failed to apply shadow_compatibility.patch - continuing anyway"
+        fi
+    fi
+    
+    # Initialize submodules
+    print_status "Initializing Monero submodules..."
+    git submodule update --init --recursive
+    
+    cd - > /dev/null
+    print_success "Monero source prepared for Shadow compatibility"
+else
+    print_success "Monero source already available at $MONERO_SHADOW_DIR"
 fi
 
-if [[ -f "builds/B/monero/build/Linux/master/release/bin/monerod" ]]; then
-    MONEROD_BINARIES+=("builds/B/monero/build/Linux/master/release/bin/monerod")
-    print_success "Found Monero B binary: builds/B/monero/build/Linux/master/release/bin/monerod"
-fi
+# Step 4: Build Monero Binaries with MoneroSim
+print_header "Step 4: Building Monero Binaries"
 
-if [[ ${#MONEROD_BINARIES[@]} -eq 0 ]]; then
-    print_error "No Monero binaries found in builds/ directory"
-    print_error "You need to build Monero with patches first"
-    print_error "Please see the build instructions or run the Monero build process"
+print_status "Using MoneroSim to build Shadow-compatible Monero binaries..."
+print_status "This will take several minutes (15-30 minutes depending on system)..."
+
+# Generate configuration and build Monero
+./target/release/monerosim --config config.yaml --output shadow_output
+
+if [[ $? -eq 0 ]]; then
+    print_success "MoneroSim configuration generated and Monero built successfully"
+else
+    print_error "Failed to build Monero with MoneroSim"
+    print_error "Check the output above for build errors"
     exit 1
 fi
 
-# Step 4: Install Monero binaries to system path
-print_header "Step 4: Installing Monero Binaries"
+# Verify the binaries were built
+MONEROD_BINARIES=()
+if [[ -f "builds/A/monero/bin/monerod" ]]; then
+    MONEROD_BINARIES+=("builds/A/monero/bin/monerod")
+    print_success "Found Monero binary: builds/A/monero/bin/monerod"
+elif [[ -f "builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod" ]]; then
+    MONEROD_BINARIES+=("builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod")
+    print_success "Found Monero binary: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod"
+else
+    # Check for other possible locations
+    FOUND_BINARY=$(find builds/ -name monerod -type f 2>/dev/null | head -n1)
+    if [[ -n "$FOUND_BINARY" ]]; then
+        MONEROD_BINARIES+=("$FOUND_BINARY")
+        print_success "Found Monero binary: $FOUND_BINARY"
+    else
+        print_error "No Monero binaries found after build"
+        print_error "Build may have failed - check the MoneroSim output above"
+        exit 1
+    fi
+fi
+
+# Step 5: Install Monero binaries to system path
+print_header "Step 5: Installing Monero Binaries"
 
 print_status "Installing monerod binaries to /usr/local/bin/ for Shadow compatibility..."
 
@@ -212,21 +271,25 @@ else
     print_error "monerod installation may have issues"
 fi
 
-# Step 5: Generate Shadow configuration
-print_header "Step 5: Generating Shadow Configuration"
+# Step 6: Verify Shadow configuration
+print_header "Step 6: Verifying Shadow Configuration"
 
-print_status "Generating Shadow configuration files..."
-./target/release/monerosim --config config.yaml --output shadow_output
-
-if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow.yaml" ]]; then
-    print_success "Shadow configuration generated successfully"
+if [[ -f "shadow_output/shadow.yaml" ]]; then
+    print_success "Shadow configuration already generated"
 else
-    print_error "Failed to generate Shadow configuration"
-    exit 1
+    print_status "Regenerating Shadow configuration files..."
+    ./target/release/monerosim --config config.yaml --output shadow_output
+    
+    if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow.yaml" ]]; then
+        print_success "Shadow configuration generated successfully"
+    else
+        print_error "Failed to generate Shadow configuration"
+        exit 1
+    fi
 fi
 
-# Step 6: Run test simulation
-print_header "Step 6: Running Test Simulation"
+# Step 7: Run test simulation
+print_header "Step 7: Running Test Simulation"
 
 print_status "Running a test Shadow simulation (this may take a few minutes)..."
 print_status "Simulation will run for the duration specified in config.yaml"
@@ -244,7 +307,7 @@ if [[ $? -eq 0 ]]; then
     print_success "Simulation completed successfully!"
     
     # Quick analysis of results
-    print_header "Step 7: Basic Results Analysis"
+    print_header "Step 8: Basic Results Analysis"
     
     if [[ -d "shadow.data/hosts" ]]; then
         NODE_COUNT=$(ls shadow.data/hosts/ | wc -l)
