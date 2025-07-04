@@ -1,51 +1,52 @@
 #!/bin/bash
 
 # Monitor script for Monero nodes in Shadow simulation
-# This script continuously queries all nodes for status and connection info
+# This script polls the RPC endpoints of all nodes to check their status
 
-TOTAL_NODES=5
-LOG_FILE="/tmp/monitor.log"
+NODES=("a0" "a1" "a2" "a3" "a4")
+RPC_PORTS=(28090 28091 28092 28093 28094)
+P2P_PORTS=(28080 28081 28082 28083 28084)
 
-echo "Starting Monero node monitor at $(date)" | tee -a $LOG_FILE
+echo "=== Monero Network Monitor ==="
+echo "Time: $(date)"
+echo ""
 
-# Function to query a single node
-query_node() {
-    local node_id=$1
-    local node_ip="11.0.0.$((node_id + 1))"
-    local rpc_port=$((28090 + node_id))
+for i in "${!NODES[@]}"; do
+    NODE=${NODES[$i]}
+    RPC_PORT=${RPC_PORTS[$i]}
+    P2P_PORT=${P2P_PORTS[$i]}
+    NODE_IP="11.0.0.$((i+1))"
     
-    echo "=== Querying node $node_id ($node_ip:$rpc_port) at $(date) ===" | tee -a $LOG_FILE
+    echo "--- Node $NODE ($NODE_IP) ---"
+    echo "RPC Port: $RPC_PORT, P2P Port: $P2P_PORT"
     
-    # Query node info
-    echo "Node $node_id - get_info:" | tee -a $LOG_FILE
-    curl -s -X POST http://$node_ip:$rpc_port/json_rpc \
-        -d '{"jsonrpc":"2.0","id":"0","method":"get_info"}' \
-        -H 'Content-Type: application/json' 2>/dev/null | tee -a $LOG_FILE
+    # Check if RPC is responding
+    if curl -s --max-time 5 "http://$NODE_IP:$RPC_PORT/json_rpc" -d '{"jsonrpc":"2.0","id":"0","method":"get_info"}' > /dev/null 2>&1; then
+        echo "✅ RPC is responding"
+        
+        # Get node info
+        INFO=$(curl -s --max-time 5 "http://$NODE_IP:$RPC_PORT/json_rpc" -d '{"jsonrpc":"2.0","id":"0","method":"get_info"}')
+        if [ $? -eq 0 ]; then
+            echo "Node Info: $INFO"
+        fi
+        
+        # Get connection count
+        CONNECTIONS=$(curl -s --max-time 5 "http://$NODE_IP:$RPC_PORT/json_rpc" -d '{"jsonrpc":"2.0","id":"0","method":"get_connections_count"}')
+        if [ $? -eq 0 ]; then
+            echo "Connections: $CONNECTIONS"
+        fi
+        
+        # Get peer list
+        PEERS=$(curl -s --max-time 5 "http://$NODE_IP:$RPC_PORT/json_rpc" -d '{"jsonrpc":"2.0","id":"0","method":"get_peer_list"}')
+        if [ $? -eq 0 ]; then
+            echo "Peers: $PEERS"
+        fi
+        
+    else
+        echo "❌ RPC not responding"
+    fi
     
-    echo "" | tee -a $LOG_FILE
-    
-    # Query connections
-    echo "Node $node_id - get_connections:" | tee -a $LOG_FILE
-    curl -s -X POST http://$node_ip:$rpc_port/json_rpc \
-        -d '{"jsonrpc":"2.0","id":"0","method":"get_connections"}' \
-        -H 'Content-Type: application/json' 2>/dev/null | tee -a $LOG_FILE
-    
-    echo "" | tee -a $LOG_FILE
-    echo "----------------------------------------" | tee -a $LOG_FILE
-}
+    echo ""
+done
 
-# Main monitoring loop
-while true; do
-    echo "=== MONITORING ROUND STARTED at $(date) ===" | tee -a $LOG_FILE
-    
-    # Query all nodes
-    for i in $(seq 0 $((TOTAL_NODES - 1))); do
-        query_node $i
-    done
-    
-    echo "=== MONITORING ROUND COMPLETED at $(date) ===" | tee -a $LOG_FILE
-    echo "" | tee -a $LOG_FILE
-    
-    # Wait 10 seconds before next round
-    sleep 10
-done 
+echo "=== End Monitor ===" 

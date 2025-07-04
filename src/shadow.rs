@@ -137,6 +137,21 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         }
     }
 
+    // Add monitoring process
+    let monitor_process = ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: "-c 'while true; do ./monitor_script.sh; sleep 30; done'".to_string(),
+        environment: environment.clone(),
+        start_time: "30s".to_string(), // Start after nodes are up
+    };
+
+    let monitor_host = ShadowHost {
+        network_node_id: 0,
+        processes: vec![monitor_process],
+    };
+
+    hosts.insert("monitor".to_string(), monitor_host);
+
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
             stop_time: "10m".to_string(), // Extended time to capture P2P connections
