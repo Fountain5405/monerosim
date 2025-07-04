@@ -2,6 +2,7 @@ use crate::config::{Config, NodeType};
 use serde_yaml;
 use std::collections::HashMap;
 use std::path::Path;
+use rand::Rng;
 
 #[derive(serde::Serialize, Debug)]
 struct ShadowConfig {
@@ -61,9 +62,12 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             let node_ip = format!("11.0.0.{}", node_counter + 1);
             let p2p_port = 28080 + node_counter;
             let rpc_port = 28090 + node_counter;
-            let start_time = format!("{}s", node_counter * 10);
             
-            // Build peer connections - each node connects to node 0 (bootstrap)
+            // Randomized start time between 1 and 15 seconds
+            let start_time_s = rand::thread_rng().gen_range(1..=15);
+            let start_time = format!("{}s", start_time_s);
+            
+            // Build peer connections - each node connects to every other node
             let mut args = vec![
                 format!("--data-dir=/tmp/monero-{}", host_name),
                 "--log-file=/tmp/monerod.log".to_string(),
@@ -74,10 +78,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--disable-dns-checkpoints".to_string(), // Disable DNS checkpoints for testnet
                 
                 // === FORCE LOCAL-ONLY P2P: Disable external connections ===
-                "--no-sync".to_string(),               // Disable blockchain sync (prevents external connection attempts)
                 "--hide-my-port".to_string(),          // Don't advertise to external network
-                "--limit-rate-up=1".to_string(),       // Minimal upload rate (reduces external activity)
-                "--limit-rate-down=1".to_string(),     // Minimal download rate (reduces external activity)
                 "--out-peers=4".to_string(),           // Allow enough outgoing connections for exclusive nodes
                 "--in-peers=20".to_string(),           // Allow sufficient incoming connections from our nodes
                 "--disable-seed-nodes".to_string(),    // Completely disable seed node connections
@@ -90,8 +91,6 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 
                 // === MINIMAL OPERATION: Reduce threading pressure ===
                 "--db-sync-mode=safe".to_string(),     // Safer database operations
-                "--block-sync-size=1".to_string(),     // Minimal batch processing
-                "--fast-block-sync=0".to_string(),     // Disable fast sync (avoids threading)
                 "--non-interactive".to_string(),       // No stdin threads
                 
                 // === P2P SETTINGS: Conservative limits ===
@@ -108,16 +107,13 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 format!("--p2p-bind-port={}", p2p_port),
             ];
 
-            // Add exclusive peer connections for inter-node communication
-            if node_counter > 0 {
-                // Connect to bootstrap node (node 0)
-                args.push(format!("--add-exclusive-node=11.0.0.1:28080"));
-                
-                // Also connect to previous node for better mesh connectivity
-                if node_counter > 1 {
-                    let prev_node_ip = format!("11.0.0.{}", node_counter);
-                    let prev_node_port = 28080 + (node_counter - 1);
-                    args.push(format!("--add-exclusive-node={}:{}", prev_node_ip, prev_node_port));
+            // Add exclusive peer connections for inter-node communication (full mesh)
+            let total_nodes = config.monero.nodes.iter().map(|n| n.count).sum::<u32>();
+            for i in 0..total_nodes {
+                if i != node_counter {
+                    let peer_ip = format!("11.0.0.{}", i + 1);
+                    let peer_p2p_port = 28080 + i;
+                    args.push(format!("--add-exclusive-node={}:{}", peer_ip, peer_p2p_port));
                 }
             }
 

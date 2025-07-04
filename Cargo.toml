@@ -35,10 +35,16 @@ walkdir = "2.5"
 # Hash generation for unique binary names
 md5 = "0.7"
 
+# Random number generation
+rand = "0.8"
+
 [[bin]]
 name = "monerosim"
 path = "src/main.rs"
 
 [profile.release]
 lto = "fat"
-codegen-units = 1 
+codegen-units = 1
+
+[build-dependencies]
+# ... existing code ... 
