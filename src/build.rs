@@ -64,14 +64,14 @@ pub fn build_monero_binaries(build_plans: &HashMap<String, BuildPlan>) -> Result
                 return Err(color_eyre::eyre::eyre!("Failed to clone Shadow-compatible monero source for node type '{}'", name));
             }
             
-            // Switch to shadow-compatibility branch
-            info!("Switching to shadow-compatibility branch for node type '{}'...", name);
+            // Switch to shadow-complete branch (contains all Shadow modifications)
+            info!("Switching to shadow-complete branch for node type '{}'...", name);
             let branch_status = Command::new("git")
                 .arg("-C").arg(&monero_dir)
-                .args(["checkout", "shadow-compatibility"])
+                .args(["checkout", "shadow-complete"])
                 .status()?;
             if !branch_status.success() {
-                return Err(color_eyre::eyre::eyre!("Failed to checkout shadow-compatibility branch for node type '{}'", name));
+                return Err(color_eyre::eyre::eyre!("Failed to checkout shadow-complete branch for node type '{}'", name));
             }
         } else {
             info!("Monero source already present for node type '{}' at {:?}", name, monero_dir);

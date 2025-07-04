@@ -10,6 +10,4 @@ monero:
   nodes:
     - count: 5
       name: "A"
-      base_commit: "shadow-fork/shadow-disable-seeds"
-      patches:
-        - "patches/testnet_from_scratch.patch"
+      base_commit: "shadow-complete"
