@@ -16,6 +16,8 @@ struct ShadowGeneral {
     stop_time: String,
     model_unblocked_syscall_latency: bool,
     log_level: String,
+    #[serde(rename = "use_new_tcp")]
+    use_new_tcp: bool,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -79,8 +81,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 
                 // === FORCE LOCAL-ONLY P2P: Disable external connections ===
                 "--hide-my-port".to_string(),          // Don't advertise to external network
-                "--out-peers=4".to_string(),           // Allow enough outgoing connections for exclusive nodes
-                "--in-peers=20".to_string(),           // Allow sufficient incoming connections from our nodes
+                "--out-peers=8".to_string(),           // Increase outgoing connections for better connectivity
+                "--in-peers=8".to_string(),            // Match incoming connections for balanced network
                 "--disable-seed-nodes".to_string(),    // Completely disable seed node connections
                 "--no-igd".to_string(),                // Disable UPnP/IGD (prevents external discovery)
                 
@@ -157,6 +159,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             stop_time: "10m".to_string(), // Extended time to capture P2P connections
             model_unblocked_syscall_latency: true,
             log_level: "info".to_string(),
+            use_new_tcp: true,
         },
         network: ShadowNetwork {
             graph: ShadowGraph {
