@@ -93,7 +93,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 "--non-interactive".to_string(),       // No stdin threads
                 
                 // === P2P SETTINGS: Conservative limits ===
-                "--max-connections-per-ip=10".to_string(), // Allow multiple connections from same IP for our nodes
+                "--max-connections-per-ip=50".to_string(), // Allow multiple connections from same IP for our simulation nodes
                 
                 // === RPC CONFIGURATION ===
                 format!("--rpc-bind-ip={}", node_ip),
