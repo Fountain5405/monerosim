@@ -173,6 +173,8 @@ print_header "Step 3: Setting Up Monero Source Code"
 
 # Setup directory for Shadow-compatible Monero
 MONERO_SHADOW_DIR="../monero-shadow"
+# TODO: Update this URL to point to your GitHub fork of monero-shadow
+# The repository should contain the shadow-complete branch with all P2P fixes
 MONERO_SHADOW_REPO="https://github.com/YOUR_USERNAME/monero-shadow.git"
 SHADOW_BRANCH="shadow-complete"
 
