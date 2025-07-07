@@ -2,6 +2,10 @@
 
 **Get MoneroSim running in 5 minutes!**
 
+## 🎉 P2P Connectivity Working!
+
+MoneroSim now successfully establishes P2P connections between Monero nodes! The setup script will verify that nodes can connect and communicate with each other.
+
 ## Prerequisites
 
 You need:
@@ -62,8 +66,11 @@ shadow shadow_output/shadow.yaml
 # Check if nodes started
 grep "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout
 
-# Check P2P connections
+# Check P2P connections (should show successful connections!)
 grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
+
+# Look for TCP connection establishment
+grep "handle_accept" shadow.data/hosts/*/monerod.*.stdout
 ```
 
 ### Change Simulation Duration
