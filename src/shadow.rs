@@ -16,8 +16,6 @@ struct ShadowGeneral {
     stop_time: String,
     model_unblocked_syscall_latency: bool,
     log_level: String,
-    #[serde(rename = "use_new_tcp")]
-    use_new_tcp: bool,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -48,7 +46,6 @@ struct ShadowProcess {
 pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre::eyre::Result<()> {
     let mut hosts = HashMap::new();
     
-    // Environment variables based on EthShadow approach for threading compatibility
     let mut environment = HashMap::new();
     environment.insert("MALLOC_ARENA_MAX".to_string(), "1".to_string());
     environment.insert("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string());
@@ -72,7 +69,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             // Build peer connections - each node connects to every other node
             let mut args = vec![
                 format!("--data-dir=/tmp/monero-{}", host_name),
-                "--log-file=/tmp/monerod.log".to_string(),
+                "--log-file=/dev/stdout".to_string(),
                 "--log-level=4".to_string(),
                 
                 // === TESTNET CONFIGURATION ===
@@ -158,8 +155,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         general: ShadowGeneral {
             stop_time: "10m".to_string(), // Extended time to capture P2P connections
             model_unblocked_syscall_latency: true,
-            log_level: "info".to_string(),
-            use_new_tcp: true,
+            log_level: "trace".to_string(),
         },
         network: ShadowNetwork {
             graph: ShadowGraph {
