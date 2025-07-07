@@ -1,0 +1,29 @@
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -781,7 +781,7 @@ namespace nodetool
+     if (!m_enable_dns_seed_nodes)
+     {
+       // TODO: a domain can be set through socks, so that the remote side does the lookup for the DNS seed nodes.
+-      m_fallback_seed_nodes_added.test_and_set();
++      m_fallback_seed_nodes_added.exchange(true);
+       return get_ip_seed_nodes();
+     }
+ 
+@@ -872,7 +872,7 @@ namespace nodetool
+       } catch (const std::exception &e)
+       {
+         MERROR("Failed to fetch fallback seed nodes: " << e.what());
+-        m_fallback_seed_nodes_added.test_and_set();
++        m_fallback_seed_nodes_added.exchange(true);
+         return get_ip_seed_nodes();
+       }
+     }
+@@ -1817,7 +1817,7 @@ namespace nodetool
+ 
+         for(const auto& zone : m_network_zones)
+         {
+-          if (zone == epee::net_utils::zone::public_ && !m_fallback_seed_nodes_added.test_and_set())
++          if (zone == epee::net_utils::zone::public_ && !m_fallback_seed_nodes_added.exchange(true))
+           {
+             MINFO("No seed nodes available, trying fallback seed nodes...");
+             current_index = 0;
