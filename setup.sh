@@ -80,14 +80,7 @@ else
     print_success "Rust is available: $RUST_VERSION"
 fi
 
-# Check for Shadow
-if ! command -v shadow &> /dev/null; then
-    MISSING_DEPS+=("shadow")
-    print_warning "Shadow simulator is not installed"
-else
-    SHADOW_VERSION=$(shadow --version 2>&1 | head -n1)
-    print_success "Shadow is available: $SHADOW_VERSION"
-fi
+# Note: Shadow will be installed in Step 3 if not already present
 
 # Install missing dependencies
 if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
@@ -142,18 +135,19 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
                 source ~/.cargo/env
                 ;;
             "shadow")
-                print_warning "Shadow needs to be installed manually from https://shadow.github.io/docs/guide/install/"
-                print_warning "Please install Shadow and run this script again"
-                exit 1
+                print_status "Shadow will be installed automatically in Step 3"
                 ;;
         esac
     done
 fi
 
-# Make sure we have Rust in PATH
+# Make sure we have Rust and local binaries in PATH
 if [[ -f ~/.cargo/env ]]; then
     source ~/.cargo/env
 fi
+
+# Add ~/.local/bin to PATH for shadowformonero
+export PATH="$HOME/.local/bin:$PATH"
 
 # Step 2: Build MoneroSim
 print_header "Step 2: Building MoneroSim"
@@ -168,8 +162,64 @@ else
     exit 1
 fi
 
-# Step 3: Setup Monero Source Code for Shadow Compatibility
-print_header "Step 3: Setting Up Monero Source Code"
+# Step 3: Install Shadow Simulator
+print_header "Step 3: Installing Shadow Simulator"
+
+# Check if Shadow is already installed
+if command -v shadow &> /dev/null; then
+    SHADOW_VERSION=$(shadow --version 2>&1 | head -n1)
+    print_success "Shadow is already installed: $SHADOW_VERSION"
+    
+    # Check if it's the shadowformonero version by looking for specific optimizations
+    if shadow --version 2>&1 | grep -q "d24c0e587"; then
+        print_success "Using shadowformonero version with Monero optimizations"
+    else
+        print_warning "Standard Shadow detected - shadowformonero version recommended for better performance"
+        print_status "Proceeding with current Shadow installation..."
+    fi
+else
+    print_status "Shadow not found - installing shadowformonero..."
+    
+    # Setup directory for shadowformonero
+    SHADOWFORMONERO_DIR="../shadowformonero"
+    SHADOWFORMONERO_REPO="https://github.com/Fountain5405/shadowformonero.git"
+    
+    # Clone shadowformonero if not present
+    if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
+        print_status "Found local shadowformonero repository"
+        cd "$SHADOWFORMONERO_DIR"
+        git pull origin main
+    else
+        print_status "Cloning shadowformonero repository..."
+        if [[ -d "$SHADOWFORMONERO_DIR" ]]; then
+            rm -rf "$SHADOWFORMONERO_DIR"
+        fi
+        git clone "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
+        cd "$SHADOWFORMONERO_DIR"
+    fi
+    
+    # Install shadowformonero
+    print_status "Building and installing shadowformonero (this may take 10-20 minutes)..."
+    ./setup build --jobs $(nproc)
+    ./setup install
+    
+    # Return to script directory
+    cd "$SCRIPT_DIR"
+    
+    # Verify installation
+    if command -v shadow &> /dev/null; then
+        SHADOW_VERSION=$(shadow --version 2>&1 | head -n1)
+        print_success "shadowformonero installed successfully: $SHADOW_VERSION"
+    else
+        print_error "Failed to install shadowformonero"
+        print_error "Shadow binary not found in PATH after installation"
+        print_error "You may need to restart your shell or run: source ~/.bashrc"
+        exit 1
+    fi
+fi
+
+# Step 4: Setup Monero Source Code for Shadow Compatibility
+print_header "Step 4: Setting Up Monero Source Code"
 
 # Setup directory for Shadow-compatible Monero
 MONERO_SHADOW_DIR="../monero-shadow"
@@ -266,8 +316,8 @@ git submodule update --init --recursive
 cd "$SCRIPT_DIR"
 print_success "Monero source ready for Shadow compatibility"
 
-# Step 4: Build Monero Binaries with MoneroSim
-print_header "Step 4: Building Monero Binaries"
+# Step 5: Build Monero Binaries with MoneroSim
+print_header "Step 5: Building Monero Binaries"
 
 print_status "Using MoneroSim to build Shadow-compatible Monero binaries..."
 print_status "This will take several minutes (15-30 minutes depending on system)..."
@@ -312,8 +362,8 @@ else
     fi
 fi
 
-# Step 5: Install Monero binaries to system path
-print_header "Step 5: Installing Monero Binaries"
+# Step 6: Install Monero binaries to system path
+print_header "Step 6: Installing Monero Binaries"
 
 print_status "Installing monerod binaries to /usr/local/bin/ for Shadow compatibility..."
 
@@ -336,8 +386,8 @@ else
     print_error "monerod installation may have issues"
 fi
 
-# Step 6: Verify Shadow configuration
-print_header "Step 6: Verifying Shadow Configuration"
+# Step 7: Verify Shadow configuration
+print_header "Step 7: Verifying Shadow Configuration"
 
 if [[ -f "shadow_output/shadow.yaml" ]]; then
     print_success "Shadow configuration already generated"
@@ -363,8 +413,8 @@ else
     fi
 fi
 
-# Step 7: Run test simulation
-print_header "Step 7: Running Test Simulation"
+# Step 8: Run test simulation
+print_header "Step 8: Running Test Simulation"
 
 print_status "Running a test Shadow simulation (this may take a few minutes)..."
 print_status "Simulation will run for the duration specified in config.yaml"
@@ -382,7 +432,7 @@ if [[ $? -eq 0 ]]; then
     print_success "Simulation completed successfully!"
     
     # Quick analysis of results
-    print_header "Step 8: Basic Results Analysis"
+    print_header "Step 9: Basic Results Analysis"
     
     if [[ -d "shadow.data/hosts" ]]; then
         NODE_COUNT=$(ls shadow.data/hosts/ | wc -l)
