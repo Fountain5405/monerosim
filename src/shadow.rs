@@ -128,7 +128,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
                 path: "/bin/bash".to_string(),
                 args: format!(
                     "-c 'sleep 30 && echo \"Creating wallet and starting mining...\" && \
-                    /home/jorpjorp/monerosim_dev/monero-shadow/bin/monero-wallet-cli \
+                    builds/A/monero/bin/monero-wallet-cli \
                     --testnet \
                     --daemon-address {}:{} \
                     --generate-new-wallet /tmp/wallet-{} \

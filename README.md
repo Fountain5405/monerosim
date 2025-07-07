@@ -75,16 +75,32 @@ Edit `config.yaml` to customize your simulation:
 
 ```yaml
 general:
-  stop_time: "10m"  # How long to run the simulation
+  stop_time: "5m"  # How long to run the simulation
 
-monero:
-  nodes: 5          # Number of Monero nodes to simulate
+nodes:
+  - name: "A0"
+    ip: "11.0.0.1"
+    port: 28080
+    start_time: "10s"
+    mining: true
+    fixed_difficulty: 200
+  
+  - name: "A1"
+    ip: "11.0.0.2"
+    port: 28080
+    start_time: "120s"  # Start after A0 has time to mine blocks
 ```
 
 ### Configuration Options
 
 - **`general.stop_time`**: Simulation duration (e.g., "10m", "1h", "30s")
-- **`monero.nodes`**: Number of Monero nodes (1-100+ depending on system resources)
+- **`nodes`**: Array of individual node configurations
+  - **`name`**: Unique node identifier
+  - **`ip`**: IP address for the node
+  - **`port`**: P2P port (typically 28080)
+  - **`start_time`**: When to start this node (optional, default: "10s")
+  - **`mining`**: Whether this node should mine (optional, default: false)
+  - **`fixed_difficulty`**: Mining difficulty for testing (optional)
 
 ## Running Simulations
 
