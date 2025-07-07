@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     /// General simulation configuration
     pub general: General,
-    /// Monero-specific configuration
-    pub monero: Monero,
+    /// Individual node configurations
+    pub nodes: Vec<NodeConfig>,
 }
 
 /// General configuration settings for the simulation
@@ -16,14 +16,24 @@ pub struct General {
     pub stop_time: String,
 }
 
-/// Monero-specific configuration settings
+/// Configuration for a single Monero node
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Monero {
-    /// List of Monero node types/groups to simulate
-    pub nodes: Vec<NodeType>,
+pub struct NodeConfig {
+    /// Name of this node
+    pub name: String,
+    /// IP address for this node
+    pub ip: String,
+    /// Port for this node
+    pub port: u32,
+    /// (Optional) Start time for this node (default: "10s")
+    pub start_time: Option<String>,
+    /// (Optional) Whether this node should mine (default: false)
+    pub mining: Option<bool>,
+    /// (Optional) Fixed difficulty for mining (default: none)
+    pub fixed_difficulty: Option<u32>,
 }
 
-/// Configuration for a single Monero node type/group
+/// Legacy node type structure for backwards compatibility
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NodeType {
     /// Number of nodes of this type
@@ -40,6 +50,13 @@ pub struct NodeType {
     pub prs: Option<Vec<u32>>,
 }
 
+/// Legacy Monero configuration for backwards compatibility
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Monero {
+    /// List of Monero node types/groups to simulate
+    pub nodes: Vec<NodeType>,
+}
+
 /// Default implementation for General
 impl Default for General {
     fn default() -> Self {
@@ -49,42 +66,16 @@ impl Default for General {
     }
 }
 
-/// Default implementation for Monero
-impl Default for Monero {
+/// Default implementation for NodeConfig
+impl Default for NodeConfig {
     fn default() -> Self {
         Self {
-            nodes: vec![
-                NodeType {
-                    count: 5,
-                    name: "A".to_string(),
-                    base_commit: Some("v0.18.3.1".to_string()),
-                    patches: Some(vec!["patches/testnet_from_scratch.patch".to_string()]),
-                    base: None,
-                    prs: None,
-                },
-                NodeType {
-                    count: 3,
-                    name: "B".to_string(),
-                    base_commit: None,
-                    patches: None,
-                    base: Some("A".to_string()),
-                    prs: Some(vec![1234]),
-                },
-            ],
-        }
-    }
-}
-
-/// Default implementation for NodeType
-impl Default for NodeType {
-    fn default() -> Self {
-        Self {
-            count: 1,
-            name: "A".to_string(),
-            base_commit: Some("v0.18.3.1".to_string()),
-            patches: None,
-            base: None,
-            prs: None,
+            name: "A0".to_string(),
+            ip: "11.0.0.1".to_string(),
+            port: 28080,
+            start_time: Some("10s".to_string()),
+            mining: Some(false),
+            fixed_difficulty: None,
         }
     }
 }
@@ -94,7 +85,24 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             general: General::default(),
-            monero: Monero::default(),
+            nodes: vec![
+                NodeConfig {
+                    name: "A0".to_string(),
+                    ip: "11.0.0.1".to_string(),
+                    port: 28080,
+                    start_time: Some("10s".to_string()),
+                    mining: Some(true),
+                    fixed_difficulty: Some(200),
+                },
+                NodeConfig {
+                    name: "A1".to_string(),
+                    ip: "11.0.0.2".to_string(),
+                    port: 28080,
+                    start_time: Some("120s".to_string()),
+                    mining: Some(false),
+                    fixed_difficulty: None,
+                },
+            ],
         }
     }
 } 

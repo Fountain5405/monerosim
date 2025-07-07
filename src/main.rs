@@ -58,21 +58,19 @@ fn main() -> Result<()> {
     // Log the parsed configuration values
     info!("Successfully parsed configuration:");
     info!("  General stop time: {}", config.general.stop_time);
-    info!("  Monero node groups:");
-    for (i, node_group) in config.monero.nodes.iter().enumerate() {
-        info!("    Group {} (name: {}):", i + 1, node_group.name);
-        info!("      Count: {}", node_group.count);
-        if let Some(base_commit) = &node_group.base_commit {
-            info!("      Base commit: {}", base_commit);
+    info!("  Monero nodes:");
+    for (i, node) in config.nodes.iter().enumerate() {
+        info!("    Node {} (name: {}):", i + 1, node.name);
+        info!("      IP: {}", node.ip);
+        info!("      Port: {}", node.port);
+        if let Some(start_time) = &node.start_time {
+            info!("      Start time: {}", start_time);
         }
-        if let Some(base) = &node_group.base {
-            info!("      Base node type: {}", base);
+        if let Some(mining) = node.mining {
+            info!("      Mining: {}", mining);
         }
-        if let Some(patches) = &node_group.patches {
-            info!("      Patches: {:?}", patches);
-        }
-        if let Some(prs) = &node_group.prs {
-            info!("      PRs: {:?}", prs);
+        if let Some(difficulty) = node.fixed_difficulty {
+            info!("      Fixed difficulty: {}", difficulty);
         }
     }
     

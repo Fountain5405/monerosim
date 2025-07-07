@@ -1,8 +1,8 @@
-use crate::config::{Config, NodeType};
+use crate::config::Config;
 use serde_yaml;
 use std::collections::HashMap;
 use std::path::Path;
-use rand::Rng;
+
 
 #[derive(serde::Serialize, Debug)]
 struct ShadowConfig {
@@ -52,96 +52,114 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     environment.insert("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string());
     environment.insert("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string());
 
-    let mut node_counter = 0;
-    
-    // Generate hosts for each node type
-    for node_type in &config.monero.nodes {
-        for _ in 0..node_type.count {
-            let host_name = format!("a{}", node_counter);
-            let node_ip = format!("11.0.0.{}", node_counter + 1);
-            let p2p_port = 28080 + node_counter;
-            let rpc_port = 28090 + node_counter;
+    // Generate hosts for each node
+    for (node_index, node) in config.nodes.iter().enumerate() {
+        let host_name = node.name.to_lowercase();
+        let start_time = node.start_time.as_ref().unwrap_or(&"10s".to_string()).clone();
+        let rpc_port = node.port + 10; // RPC port is P2P port + 10
+        
+        // Build monerod arguments
+        let mut args = vec![
+            format!("--data-dir=/tmp/monero-{}", host_name),
+            "--log-file=/dev/stdout".to_string(),
+            "--log-level=4".to_string(),
             
-            // Randomized start time between 1 and 15 seconds
-            let start_time_s = rand::thread_rng().gen_range(1..=15);
-            let start_time = format!("{}s", start_time_s);
+            // === TESTNET CONFIGURATION ===
+            "--testnet".to_string(),
+            "--disable-dns-checkpoints".to_string(),
             
-            // Build peer connections - each node connects to every other node
-            let mut args = vec![
-                format!("--data-dir=/tmp/monero-{}", host_name),
-                "--log-file=/dev/stdout".to_string(),
-                "--log-level=4".to_string(),
-                
-                // === TESTNET CONFIGURATION ===
-                "--testnet".to_string(),                // Run in testnet mode
-                "--disable-dns-checkpoints".to_string(), // Disable DNS checkpoints for testnet
-                
-                // === FORCE LOCAL-ONLY P2P: Disable external connections ===
-                "--hide-my-port".to_string(),          // Don't advertise to external network
-                "--out-peers=8".to_string(),           // Increase outgoing connections for better connectivity
-                "--in-peers=8".to_string(),            // Match incoming connections for balanced network
-                "--disable-seed-nodes".to_string(),    // Completely disable seed node connections
-                "--no-igd".to_string(),                // Disable UPnP/IGD (prevents external discovery)
-                
-                // === SHADOW COMPATIBILITY: Single-threaded operation ===
-                "--prep-blocks-threads=1".to_string(), // Single-threaded block processing
-                "--max-concurrency=1".to_string(),     // Single-threaded for all operations
-                "--no-zmq".to_string(),                // Disable ZMQ (extra thread management)
-                
-                // === MINIMAL OPERATION: Reduce threading pressure ===
-                "--db-sync-mode=safe".to_string(),     // Safer database operations
-                "--non-interactive".to_string(),       // No stdin threads
-                
-                // === P2P SETTINGS: Conservative limits ===
-                "--max-connections-per-ip=50".to_string(), // Allow multiple connections from same IP for our simulation nodes
-                
-                // === RPC CONFIGURATION ===
-                format!("--rpc-bind-ip={}", node_ip),
-                format!("--rpc-bind-port={}", rpc_port),
-                "--confirm-external-bind".to_string(),
-                "--disable-rpc-ban".to_string(),
-                
-                // === P2P CONFIGURATION ===  
-                format!("--p2p-bind-ip={}", node_ip),
-                format!("--p2p-bind-port={}", p2p_port),
-            ];
+            // === FORCE LOCAL-ONLY P2P ===
+            "--hide-my-port".to_string(),
+            "--out-peers=8".to_string(),
+            "--in-peers=8".to_string(),
+            "--disable-seed-nodes".to_string(),
+            "--no-igd".to_string(),
+            
+            // === SHADOW COMPATIBILITY ===
+            "--prep-blocks-threads=1".to_string(),
+            "--max-concurrency=1".to_string(),
+            "--no-zmq".to_string(),
+            "--db-sync-mode=safe".to_string(),
+            "--non-interactive".to_string(),
+            "--max-connections-per-ip=50".to_string(),
+            
+            // === RPC CONFIGURATION ===
+            format!("--rpc-bind-ip={}", node.ip),
+            format!("--rpc-bind-port={}", rpc_port),
+            "--confirm-external-bind".to_string(),
+            "--disable-rpc-ban".to_string(),
+            
+            // === P2P CONFIGURATION ===  
+            format!("--p2p-bind-ip={}", node.ip),
+            format!("--p2p-bind-port={}", node.port),
+        ];
 
-            // Add exclusive peer connections for inter-node communication (full mesh)
-            let total_nodes = config.monero.nodes.iter().map(|n| n.count).sum::<u32>();
-            for i in 0..total_nodes {
-                if i != node_counter {
-                    let peer_ip = format!("11.0.0.{}", i + 1);
-                    let peer_p2p_port = 28080 + i;
-                    args.push(format!("--add-exclusive-node={}:{}", peer_ip, peer_p2p_port));
-                }
-            }
-
-            let process = ShadowProcess {
-                path: std::fs::canonicalize(format!("builds/{}/monero/bin/monerod", node_type.name))
-                    .expect("Failed to resolve absolute path to monerod")
-                    .to_string_lossy()
-                    .to_string(),
-                args: args.join(" "),
-                environment: environment.clone(),
-                start_time,
-            };
-
-            let host = ShadowHost {
-                network_node_id: 0, // All on same network segment
-                processes: vec![process],
-            };
-
-            hosts.insert(host_name, host);
-            node_counter += 1;
+        // Add fixed difficulty if specified
+        if let Some(difficulty) = node.fixed_difficulty {
+            args.push(format!("--fixed-difficulty={}", difficulty));
         }
+
+        // Add exclusive peer connections to all other nodes
+        for other_node in &config.nodes {
+            if other_node.name != node.name {
+                args.push(format!("--add-exclusive-node={}:{}", other_node.ip, other_node.port));
+            }
+        }
+
+        let monerod_process = ShadowProcess {
+            path: std::fs::canonicalize("builds/A/monero/bin/monerod")
+                .expect("Failed to resolve absolute path to monerod")
+                .to_string_lossy()
+                .to_string(),
+            args: args.join(" "),
+            environment: environment.clone(),
+            start_time: start_time.clone(),
+        };
+
+        let mut processes = vec![monerod_process];
+
+        // Add mining wallet process if mining is enabled
+        if node.mining.unwrap_or(false) {
+            let wallet_start_time = format!("{}s", 
+                start_time.trim_end_matches('s').parse::<u32>().unwrap_or(10) + 30
+            );
+            
+            let wallet_process = ShadowProcess {
+                path: "/bin/bash".to_string(),
+                args: format!(
+                    "-c 'sleep 30 && echo \"Creating wallet and starting mining...\" && \
+                    /home/jorpjorp/monerosim_dev/monero-shadow/bin/monero-wallet-cli \
+                    --testnet \
+                    --daemon-address {}:{} \
+                    --generate-new-wallet /tmp/wallet-{} \
+                    --password \"\" \
+                    --mnemonic-language english \
+                    --command \"start_mining 1\" \
+                    --command \"exit\" \
+                    --non-interactive'",
+                    node.ip, rpc_port, host_name
+                ),
+                environment: environment.clone(),
+                start_time: wallet_start_time,
+            };
+            
+            processes.push(wallet_process);
+        }
+
+        let host = ShadowHost {
+            network_node_id: 0,
+            processes,
+        };
+
+        hosts.insert(host_name, host);
     }
 
     // Add monitoring process
     let monitor_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: "-c 'while true; do ./monitor_script.sh; sleep 30; done'".to_string(),
+        args: "-c 'cd /home/jorpjorp/monerosim_dev/monerosim && while true; do ./monitor_script.sh; sleep 30; done'".to_string(),
         environment: environment.clone(),
-        start_time: "30s".to_string(), // Start after nodes are up
+        start_time: "30s".to_string(),
     };
 
     let monitor_host = ShadowHost {
@@ -153,7 +171,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
-            stop_time: "10m".to_string(), // Extended time to capture P2P connections
+            stop_time: config.general.stop_time.clone(),
             model_unblocked_syscall_latency: true,
             log_level: "trace".to_string(),
         },
@@ -169,104 +187,52 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     let config_yaml = serde_yaml::to_string(&shadow_config)?;
     std::fs::write(&shadow_config_path, config_yaml)?;
     
-    println!("Generated EthShadow-style Shadow configuration at {:?}", shadow_config_path);
-    println!("  - {} nodes with 10-minute simulation time", node_counter);
-    println!("  - P2P connections configured to bootstrap node");
-    println!("  - EthShadow environment variables applied");
+    println!("Generated Shadow configuration at {:?}", shadow_config_path);
+    println!("  - {} nodes with {} simulation time", config.nodes.len(), config.general.stop_time);
+    println!("  - Mining enabled on: {:?}", 
+        config.nodes.iter()
+            .filter(|n| n.mining.unwrap_or(false))
+            .map(|n| &n.name)
+            .collect::<Vec<_>>()
+    );
     Ok(())
 }
 
-fn get_system_binary_path(node_type: &NodeType) -> Result<String, color_eyre::eyre::Error> {
-    // Use Shadow-compatible monerod binaries from our builds
-    let build_path = format!("builds/{}/monero/bin/monerod", node_type.name);
-    let canonical_path = std::fs::canonicalize(&build_path)
-        .map_err(|e| color_eyre::eyre::eyre!("Failed to resolve Shadow-compatible monerod path '{}': {}", build_path, e))?;
-    Ok(canonical_path.to_string_lossy().to_string())
-}
 
-fn generate_monerod_args(host_name: &str, node_index: u32, p2p_ip: &str, node_ips: &Vec<String>, _node_type: &NodeType, total_nodes: u32, _is_miner: bool) -> String {
-    // Calculate unique P2P port for this node (base port 28080 + node_index)
-    let p2p_port = 28080 + node_index;
-    // Calculate unique RPC port for this node (base port 28090 + node_index)
-    let rpc_port = 28090 + node_index;
-    
-    let mut args = vec![
-        "--testnet".to_string(),
-        "--log-level=4".to_string(),  // Detailed logging for debugging
-        "--log-file=/dev/stdout".to_string(),
-        format!("--data-dir=/tmp/monero-{}", host_name),
-        "--disable-dns-checkpoints".to_string(),
-        "--disable-rpc-ban".to_string(),
-        
-        // === ETHSHADOW APPROACH: MINIMAL flags, rely on environment variables ===
-        // Basic P2P configuration
-        format!("--p2p-bind-ip={}", p2p_ip),
-        format!("--p2p-bind-port={}", p2p_port),
-        
-        // RPC configuration
-        "--rpc-bind-ip=0.0.0.0".to_string(),
-        format!("--rpc-bind-port={}", rpc_port),
-        
-        // Basic optimizations only
-        "--out-peers=2".to_string(),
-        "--in-peers=4".to_string(),
-        "--limit-rate-up=1024".to_string(),
-        "--limit-rate-down=1024".to_string(),
-        
-        // Essential compatibility flags  
-        "--rpc-access-control-origins=*".to_string(),
-        "--confirm-external-bind".to_string(),
-        "--non-interactive".to_string(),
-    ];
-
-    // Add simple peer connections (only to earlier nodes)
-    if node_index > 0 {
-        // Connect only to the first node for simplicity
-        args.push(format!("--add-peer={}:{}", node_ips[0], 28080));
-    }
-
-    args.join(" ")
-}
-
-fn generate_monitor_args(_total_nodes: u32) -> String {
-    // Return the path to our monitoring script
-    "./monitor_script.sh".to_string()
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
+    use crate::config::{Config, General, NodeConfig};
     
     #[test]
     fn test_generate_shadow_config() {
         let config = Config {
-            general: crate::config::General {
+            general: General {
                 stop_time: "1h".to_string(),
             },
-            monero: crate::config::Monero {
-                nodes: vec![
-                    crate::config::NodeType {
-                        name: "A".to_string(),
-                        count: 2,
-                        base_commit: Some("v0.18.4.0".to_string()),
-                        patches: Some(vec!["test.patch".to_string()]),
-                        prs: None,
-                        base: None,
-                    },
-                ],
-            },
+            nodes: vec![
+                NodeConfig {
+                    name: "A0".to_string(),
+                    ip: "11.0.0.1".to_string(),
+                    port: 28080,
+                    start_time: Some("10s".to_string()),
+                    mining: Some(true),
+                    fixed_difficulty: Some(200),
+                },
+                NodeConfig {
+                    name: "A1".to_string(),
+                    ip: "11.0.0.2".to_string(),
+                    port: 28080,
+                    start_time: Some("120s".to_string()),
+                    mining: Some(false),
+                    fixed_difficulty: None,
+                },
+            ],
         };
         
-        let builds_dir = Path::new("/tmp/builds");
-        let result = generate_shadow_config(&config, builds_dir);
+        let output_dir = std::env::temp_dir();
+        let result = generate_shadow_config(&config, &output_dir);
         assert!(result.is_ok());
-        
-        let yaml = result.unwrap();
-        assert!(yaml.contains("general:"));
-        assert!(yaml.contains("network:"));
-        assert!(yaml.contains("hosts:"));
-        assert!(yaml.contains("a0:"));
-        assert!(yaml.contains("a1:"));
     }
 } 
