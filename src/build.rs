@@ -74,6 +74,38 @@ pub fn build_monero_binaries(build_plans: &HashMap<String, BuildPlan>) -> Result
             return Err(color_eyre::eyre::eyre!("Failed to update submodules"));
         }
 
+        // Apply any available patches
+        info!("Applying patches...");
+        let patches_dir = Path::new("patches");
+        if patches_dir.exists() {
+            for entry in fs::read_dir(patches_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("patch") {
+                    info!("Applying patch: {:?}", path);
+                    let patch_path = path.canonicalize()?;
+                    let apply_status = Command::new("git")
+                        .args(["apply", "--check", patch_path.to_str().unwrap()])
+                        .current_dir(&monero_dir)
+                        .status()?;
+                    
+                    if !apply_status.success() {
+                        return Err(color_eyre::eyre::eyre!("Failed to apply patch {:?} -- maybe it is already applied?", path));
+                    }
+
+                    let apply_status = Command::new("git")
+                        .args(["apply", patch_path.to_str().unwrap()])
+                        .current_dir(&monero_dir)
+                        .status()?;
+
+                    if !apply_status.success() {
+                        return Err(color_eyre::eyre::eyre!("Failed to apply patch {:?}", path));
+                    }
+                }
+            }
+        }
+
+
         // Build the monerod binary with Shadow compatibility
         info!("Building Shadow-compatible monerod...");
         let jobs = num_cpus::get().to_string();

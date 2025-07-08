@@ -17,3 +17,4 @@ nodes:
     ip: "11.0.0.2"
     port: 28080
     start_time: "120s"  # Start after A0 has time to mine blocks
+    fixed_difficulty: 200

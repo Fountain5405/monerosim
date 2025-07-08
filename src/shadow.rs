@@ -62,7 +62,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         let mut args = vec![
             format!("--data-dir=/tmp/monero-{}", host_name),
             "--log-file=/dev/stdout".to_string(),
-            "--log-level=4".to_string(),
+            "--log-level=2".to_string(),
             
             // === TESTNET CONFIGURATION ===
             "--testnet".to_string(),
@@ -99,11 +99,18 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             args.push(format!("--fixed-difficulty={}", difficulty));
         }
 
-        // Add exclusive peer connections to all other nodes
+        // Add exclusive peer connections to nodes with a "lower" name to prevent loops
         for other_node in &config.nodes {
-            if other_node.name != node.name {
+            if other_node.name < node.name {
                 args.push(format!("--add-exclusive-node={}:{}", other_node.ip, other_node.port));
             }
+        }
+
+        // Add mining configuration if enabled
+        if node.mining.unwrap_or(false) {
+            // Use a hardcoded testnet address for mining
+            args.push("--start-mining=9wviCeWe2D8XS82k2ovp5EUYLzBt9pYNW2LXUFsZiv8S3Mt21FZ5qQaAroko1enzw3eGr9qC7X1D7Geoo2RrAotYPwq9Gm8".to_string());
+            args.push("--mining-threads=1".to_string());
         }
 
         let monerod_process = ShadowProcess {
@@ -117,34 +124,6 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         };
 
         let mut processes = vec![monerod_process];
-
-        // Add mining wallet process if mining is enabled
-        if node.mining.unwrap_or(false) {
-            let wallet_start_time = format!("{}s", 
-                start_time.trim_end_matches('s').parse::<u32>().unwrap_or(10) + 30
-            );
-            
-            let wallet_process = ShadowProcess {
-                path: "/bin/bash".to_string(),
-                args: format!(
-                    "-c 'sleep 30 && echo \"Creating wallet and starting mining...\" && \
-                    builds/A/monero/bin/monero-wallet-cli \
-                    --testnet \
-                    --daemon-address {}:{} \
-                    --generate-new-wallet /tmp/wallet-{} \
-                    --password \"\" \
-                    --mnemonic-language english \
-                    --command \"start_mining 1\" \
-                    --command \"exit\" \
-                    --non-interactive'",
-                    node.ip, rpc_port, host_name
-                ),
-                environment: environment.clone(),
-                start_time: wallet_start_time,
-            };
-            
-            processes.push(wallet_process);
-        }
 
         let host = ShadowHost {
             network_node_id: 0,
