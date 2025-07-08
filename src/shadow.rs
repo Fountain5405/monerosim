@@ -128,8 +128,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             };
             args.push(format!("--start-mining={}", mining_address));
             args.push("--mining-threads=1".to_string());
-            // Enable mining immediately
-            args.push("--bg-mining-enable".to_string());
+            // Use foreground mining instead of background mining for Shadow compatibility
+            // Background mining waits for system triggers that don't exist in virtualized environments
         }
 
         let monerod_process = ShadowProcess {
