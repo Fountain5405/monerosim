@@ -161,7 +161,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && while true; do ./monitor_script.sh; sleep 30; done'", current_dir),
         environment: environment.clone(),
-        start_time: "30s".to_string(),
+        start_time: "60s".to_string(),
     };
 
     let monitor_host = ShadowHost {
