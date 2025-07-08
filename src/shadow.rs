@@ -46,6 +46,19 @@ struct ShadowProcess {
 pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre::eyre::Result<()> {
     let mut hosts = HashMap::new();
     
+    // Clear blockchain data if fresh_blockchain is enabled
+    if config.general.fresh_blockchain.unwrap_or(false) {
+        for node in &config.nodes {
+            let host_name = node.name.to_lowercase();
+            let data_dir = format!("/tmp/monero-{}", host_name);
+            // Clean up any existing blockchain data
+            std::process::Command::new("rm")
+                .args(["-rf", &data_dir])
+                .output()
+                .ok(); // Ignore errors if directory doesn't exist
+        }
+    }
+    
     let mut environment = HashMap::new();
     environment.insert("MALLOC_ARENA_MAX".to_string(), "1".to_string());
     environment.insert("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string());
@@ -108,9 +121,15 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
         // Add mining configuration if enabled
         if node.mining.unwrap_or(false) {
-            // Use a hardcoded testnet address for mining
-            args.push("--start-mining=9wviCeWe2D8XS82k2ovp5EUYLzBt9pYNW2LXUFsZiv8S3Mt21FZ5qQaAroko1enzw3eGr9qC7X1D7Geoo2RrAotYPwq9Gm8".to_string());
+            // Generate a deterministic testnet address for mining based on node name
+            let mining_address = match node.name.as_str() {
+                "A0" => "9wviCeWe2D8XS82k2ovp5EUYLzBt9pYNW2LXUFsZiv8S3Mt21FZ5qQaAroko1enzw3eGr9qC7X1D7Geoo2RrAotYPwq9Gm8",
+                _ => "9wviCeWe2D8XS82k2ovp5EUYLzBt9pYNW2LXUFsZiv8S3Mt21FZ5qQaAroko1enzw3eGr9qC7X1D7Geoo2RrAotYPwq9Gm8"
+            };
+            args.push(format!("--start-mining={}", mining_address));
             args.push("--mining-threads=1".to_string());
+            // Enable mining immediately
+            args.push("--bg-mining-enable".to_string());
         }
 
         let monerod_process = ShadowProcess {
@@ -134,9 +153,13 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     }
 
     // Add monitoring process
+    let current_dir = std::env::current_dir()
+        .expect("Failed to get current directory")
+        .to_string_lossy()
+        .to_string();
     let monitor_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: "-c 'cd /home/jorpjorp/monerosim_dev/monerosim && while true; do ./monitor_script.sh; sleep 30; done'".to_string(),
+        args: format!("-c 'cd {} && while true; do ./monitor_script.sh; sleep 30; done'", current_dir),
         environment: environment.clone(),
         start_time: "30s".to_string(),
     };

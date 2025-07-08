@@ -14,6 +14,8 @@ pub struct Config {
 pub struct General {
     /// Simulation stop time (e.g., "1h", "30m", "3600s")
     pub stop_time: String,
+    /// Start with fresh blockchain (clears existing data)
+    pub fresh_blockchain: Option<bool>,
 }
 
 /// Configuration for a single Monero node
@@ -62,6 +64,7 @@ impl Default for General {
     fn default() -> Self {
         Self {
             stop_time: "1h".to_string(),
+            fresh_blockchain: None,
         }
     }
 }

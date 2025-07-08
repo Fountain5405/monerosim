@@ -4,6 +4,8 @@
 general:
   # Simulation stop time (supports human-readable formats like "1h", "30m", "3600s")
   stop_time: "5m"
+  # Start with fresh blockchain (clears existing data)
+  fresh_blockchain: true
 
 nodes:
   - name: "A0"
@@ -11,10 +13,10 @@ nodes:
     port: 28080
     start_time: "10s"
     mining: true
-    fixed_difficulty: 200
+    fixed_difficulty: 500
   
   - name: "A1"
     ip: "11.0.0.2"
     port: 28080
-    start_time: "120s"  # Start after A0 has time to mine blocks
-    fixed_difficulty: 200
+    start_time: "30s"  # Start closer to A0 to see initial sync
+    fixed_difficulty: 500
