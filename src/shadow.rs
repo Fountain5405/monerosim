@@ -204,7 +204,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "7s".to_string(), // Start after wallet is ready
+        start_time: "15s".to_string(), // Start after wallet is ready and has time to sync
     };
 
     let transaction_test_host = ShadowHost {
