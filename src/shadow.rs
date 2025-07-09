@@ -8,6 +8,7 @@ use std::path::Path;
 struct ShadowConfig {
     general: ShadowGeneral,
     network: ShadowNetwork,
+    experimental: ShadowExperimental,
     hosts: HashMap<String, ShadowHost>,
 }
 
@@ -16,6 +17,13 @@ struct ShadowGeneral {
     stop_time: String,
     model_unblocked_syscall_latency: bool,
     log_level: String,
+}
+
+#[derive(serde::Serialize, Debug)]
+struct ShadowExperimental {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    runahead: Option<String>,
+    use_dynamic_runahead: bool,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -159,9 +167,9 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         .to_string();
     let monitor_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && while true; do ./monitor_script.sh; sleep 30; done'", current_dir),
+        args: format!("-c 'cd {} && while true; do ./monitor_script.sh; sleep 1; done'", current_dir),
         environment: environment.clone(),
-        start_time: "60s".to_string(),
+        start_time: "1s".to_string(),
     };
 
     let monitor_host = ShadowHost {
@@ -171,11 +179,50 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("monitor".to_string(), monitor_host);
 
+    // Add wallet host for transaction testing
+    let wallet_process = ShadowProcess {
+        path: std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
+            .expect("Failed to resolve absolute path to monero-wallet-rpc")
+            .to_string_lossy()
+            .to_string(),
+        args: format!(
+            "--testnet --daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=127.0.0.1 --disable-rpc-login --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive"
+        ),
+        environment: environment.clone(),
+        start_time: "5s".to_string(), // Start after nodes are ready
+    };
+
+    let wallet_host = ShadowHost {
+        network_node_id: 0,
+        processes: vec![wallet_process],
+    };
+
+    hosts.insert("wallet".to_string(), wallet_host);
+
+    // Add transaction testing host
+    let transaction_test_process = ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
+        environment: environment.clone(),
+        start_time: "7s".to_string(), // Start after wallet is ready
+    };
+
+    let transaction_test_host = ShadowHost {
+        network_node_id: 0,
+        processes: vec![transaction_test_process],
+    };
+
+    hosts.insert("transaction-test".to_string(), transaction_test_host);
+
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
             stop_time: config.general.stop_time.clone(),
             model_unblocked_syscall_latency: true,
             log_level: "trace".to_string(),
+        },
+        experimental: ShadowExperimental {
+            runahead: None, // This will be ignored (commented out)
+            use_dynamic_runahead: true,
         },
         network: ShadowNetwork {
             graph: ShadowGraph {
