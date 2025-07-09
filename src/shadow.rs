@@ -85,8 +85,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             "--log-file=/dev/stdout".to_string(),
             "--log-level=2".to_string(),
             
-            // === TESTNET CONFIGURATION ===
-            "--testnet".to_string(),
+            // === REGTEST CONFIGURATION ===
+            "--regtest".to_string(),
             "--disable-dns-checkpoints".to_string(),
             
             // === FORCE LOCAL-ONLY P2P ===
@@ -127,18 +127,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             }
         }
 
-        // Add mining configuration if enabled
-        if node.mining.unwrap_or(false) {
-            // Generate a deterministic testnet address for mining based on node name
-            let mining_address = match node.name.as_str() {
-                "A0" => "9wviCeWe2D8XS82k2ovp5EUYLzBt9pYNW2LXUFsZiv8S3Mt21FZ5qQaAroko1enzw3eGr9qC7X1D7Geoo2RrAotYPwq9Gm8",
-                _ => "9wviCeWe2D8XS82k2ovp5EUYLzBt9pYNW2LXUFsZiv8S3Mt21FZ5qQaAroko1enzw3eGr9qC7X1D7Geoo2RrAotYPwq9Gm8"
-            };
-            args.push(format!("--start-mining={}", mining_address));
-            args.push("--mining-threads=1".to_string());
-            // Use foreground mining instead of background mining for Shadow compatibility
-            // Background mining waits for system triggers that don't exist in virtualized environments
-        }
+        // Mining will be handled by the central controller script via RPC
+        // No need for --start-mining flag in regtest mode
 
         let monerod_process = ShadowProcess {
             path: std::fs::canonicalize("builds/A/monero/bin/monerod")
@@ -186,10 +176,10 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             .to_string_lossy()
             .to_string(),
         args: format!(
-            "--testnet --daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=11.0.0.3 --disable-rpc-login --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive --confirm-external-bind"
+            "--regtest --daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=11.0.0.3 --disable-rpc-login --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive --confirm-external-bind"
         ),
         environment: environment.clone(),
-        start_time: "4s".to_string(), // Start after nodes are ready
+        start_time: "5s".to_string(), // Start after nodes and block controller are ready
     };
 
     let wallet_host = ShadowHost {
@@ -204,7 +194,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "6s".to_string(), // Start after wallet is ready and has time to sync
+        start_time: "8s".to_string(), // Start after wallet is ready and has time to sync
     };
 
     let transaction_test_host = ShadowHost {
@@ -213,6 +203,21 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     };
 
     hosts.insert("transaction-test".to_string(), transaction_test_host);
+
+    // Add block controller host for programmatic block generation
+    let block_controller_process = ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'cd {} && ./block_controller.sh'", current_dir),
+        environment: environment.clone(),
+        start_time: "2s".to_string(), // Start after nodes are ready but before monitor
+    };
+
+    let block_controller_host = ShadowHost {
+        network_node_id: 0,
+        processes: vec![block_controller_process],
+    };
+
+    hosts.insert("block-controller".to_string(), block_controller_host);
 
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
