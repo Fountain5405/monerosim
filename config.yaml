@@ -3,7 +3,7 @@
 
 general:
   # Simulation stop time (supports human-readable formats like "1h", "30m", "3600s")
-  stop_time: "10s"
+  stop_time: "30s"
   # Start with fresh blockchain (clears existing data)
   fresh_blockchain: true
 
