@@ -169,7 +169,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && while true; do ./monitor_script.sh; sleep 1; done'", current_dir),
         environment: environment.clone(),
-        start_time: "1s".to_string(),
+        start_time: "3s".to_string(),
     };
 
     let monitor_host = ShadowHost {
@@ -186,10 +186,10 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             .to_string_lossy()
             .to_string(),
         args: format!(
-            "--testnet --daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=127.0.0.1 --disable-rpc-login --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive"
+            "--testnet --daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=11.0.0.3 --disable-rpc-login --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive --confirm-external-bind"
         ),
         environment: environment.clone(),
-        start_time: "5s".to_string(), // Start after nodes are ready
+        start_time: "4s".to_string(), // Start after nodes are ready
     };
 
     let wallet_host = ShadowHost {
@@ -204,7 +204,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "15s".to_string(), // Start after wallet is ready and has time to sync
+        start_time: "6s".to_string(), // Start after wallet is ready and has time to sync
     };
 
     let transaction_test_host = ShadowHost {

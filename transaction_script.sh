@@ -6,13 +6,13 @@
 echo "=== MoneroSim Transaction Test ==="
 echo "Starting transaction test at $(date)"
 
-# Wait longer for wallet to be ready
+# Wait for wallet to be ready
 echo "Waiting for wallet RPC to be ready..."
-sleep 5
+sleep 1
 
 # Function to call wallet RPC with better error handling
 call_wallet() {
-    local response=$(curl -s --max-time 30 --connect-timeout 10 "http://127.0.0.1:28091/json_rpc" \
+    local response=$(curl -s --max-time 30 --connect-timeout 10 "http://11.0.0.3:28091/json_rpc" \
         -d "$1" \
         -H 'Content-Type: application/json' 2>/dev/null)
     echo "$response"
@@ -32,7 +32,7 @@ echo "Wallet connectivity test: $WALLET_TEST"
 
 if [[ -z "$WALLET_TEST" || "$WALLET_TEST" == *"error"* ]]; then
     echo "ERROR: Cannot connect to wallet RPC. Retrying..."
-    sleep 3
+    sleep 1
     WALLET_TEST=$(call_wallet '{"jsonrpc":"2.0","id":"0","method":"get_version"}')
     echo "Retry result: $WALLET_TEST"
 fi
@@ -49,7 +49,7 @@ if [[ "$CREATE_RESPONSE" == *"already exists"* || "$CREATE_RESPONSE" == *"error"
 fi
 
 echo "Step 3: Wait for wallet daemon sync"
-sleep 3
+sleep 1
 
 echo "Step 4: Get wallet address"
 ADDRESS_RESPONSE=$(call_wallet '{"jsonrpc":"2.0","id":"0","method":"get_address","params":{"account_index":0}}')
@@ -68,7 +68,7 @@ REFRESH_RESPONSE=$(call_wallet '{"jsonrpc":"2.0","id":"0","method":"refresh"}')
 echo "Refresh response: $REFRESH_RESPONSE"
 
 # Wait for refresh to complete
-sleep 2
+sleep 1
 
 echo "Step 7: Check balance after refresh"
 BALANCE_RESPONSE=$(call_wallet '{"jsonrpc":"2.0","id":"0","method":"get_balance","params":{"account_index":0}}')
@@ -106,7 +106,7 @@ if [[ -n "$BALANCE" && "$BALANCE" -gt 0 ]]; then
                 echo "Transaction hash: $TX_HASH"
                 
                 # Wait for transaction to propagate
-                sleep 2
+                sleep 1
                 
                 echo "Step 9: Verify transaction in node A0 mempool"
                 NODE_POOL=$(call_node '{"jsonrpc":"2.0","id":"0","method":"get_transaction_pool"}')
