@@ -12,7 +12,7 @@ sleep 1
 
 # Function to call wallet RPC with better error handling
 call_wallet() {
-    local response=$(curl -s --max-time 30 --connect-timeout 10 "http://11.0.0.3:28091/json_rpc" \
+    local response=$(curl -s --max-time 30 --connect-timeout 10 "http://11.0.0.6:28091/json_rpc" \
         -d "$1" \
         -H 'Content-Type: application/json' 2>/dev/null)
     echo "$response"

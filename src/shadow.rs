@@ -176,7 +176,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             .to_string_lossy()
             .to_string(),
         args: format!(
-            "--regtest --daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=11.0.0.3 --disable-rpc-login --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive --confirm-external-bind"
+            "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive --confirm-external-bind"
         ),
         environment: environment.clone(),
         start_time: "5s".to_string(), // Start after nodes and block controller are ready
