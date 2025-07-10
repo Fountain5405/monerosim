@@ -9,7 +9,10 @@ DAEMON_IP="11.0.0.1"
 DAEMON_RPC_PORT="28090"
 DAEMON_URL="http://${DAEMON_IP}:${DAEMON_RPC_PORT}/json_rpc"
 BLOCK_INTERVAL="0.5"  # seconds between blocks
-MINING_ADDRESS="44AFFq5kSiGBoZ4NrCW6p7qX5sT2q5PmPLVGBYatcjCQSjfjqTVFHjhysjJjSBNgRL6kn9qCqy8bMZWFNWDj3uBbNYJYvZf"
+BLOCKS_PER_INTERVAL="1"  # number of blocks to generate each interval
+
+# Use the wallet address format from the working documentation example
+MINING_ADDRESS="44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
 
 # Function to call daemon RPC
 call_daemon() {
@@ -60,25 +63,20 @@ check_daemon_ready() {
     fi
 }
 
-# Function to generate blocks via RPC
+# Function to generate blocks via RPC using the format from documentation
 generate_blocks() {
     local blocks_to_generate=$1
-    # Try generateblocks without wallet address first (works in regtest)
-    local response=$(call_daemon "generateblocks" "{\"amount_of_blocks\":$blocks_to_generate}")
+    local nonce=$((RANDOM % 1000))  # Random starting nonce
+    
+    # Use the exact format from the working documentation example
+    local response=$(call_daemon "generateblocks" "{\"amount_of_blocks\":$blocks_to_generate,\"wallet_address\":\"$MINING_ADDRESS\",\"starting_nonce\":$nonce}")
     log "Generate blocks response: $response"
     
     # Check if the response contains height (successful generation)
     if [[ "$response" =~ \"height\":[[:space:]]*[0-9]+ ]]; then
         return 0
     else
-        # If that fails, try with wallet address
-        response=$(call_daemon "generateblocks" "{\"amount_of_blocks\":$blocks_to_generate,\"wallet_address\":\"$MINING_ADDRESS\"}")
-        log "Generate blocks with address response: $response"
-        if [[ "$response" =~ \"height\":[[:space:]]*[0-9]+ ]]; then
-            return 0
-        else
-            return 1
-        fi
+        return 1
     fi
 }
 
@@ -126,7 +124,6 @@ log "Initial blockchain height: $INITIAL_HEIGHT"
 
 # Main block generation loop
 log "Starting block generation loop"
-BLOCKS_PER_INTERVAL=1 # Generate one block per interval
 while true; do
     # Generate one block
     if generate_blocks $BLOCKS_PER_INTERVAL; then
