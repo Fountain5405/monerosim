@@ -11,8 +11,8 @@ DAEMON_URL="http://${DAEMON_IP}:${DAEMON_RPC_PORT}/json_rpc"
 BLOCK_INTERVAL="0.5"  # seconds between blocks
 BLOCKS_PER_INTERVAL="1"  # number of blocks to generate each interval
 
-# Use the wallet address format from the working documentation example
-MINING_ADDRESS="44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
+# Use the wallet address that matches the wallet we're testing with
+MINING_ADDRESS="47CcWBU9ky2HEcKHhZJtAHRbTxxDCGPDh1jhh139pgSE52Y4EQRdDPgb7YX97tup2yjRsyapnxiELRjzbwaQ37zXJkUzf3b"
 
 # Function to call daemon RPC
 call_daemon() {
@@ -122,16 +122,24 @@ log "Daemon is ready, starting block generation"
 INITIAL_HEIGHT=$(get_block_height)
 log "Initial blockchain height: $INITIAL_HEIGHT"
 
-# Main block generation loop
-log "Starting block generation loop"
-while true; do
+# Main block generation loop - generate 120 blocks for hard fork progression and reward maturation
+log "Starting block generation loop - generating 120 blocks"
+TARGET_BLOCKS=120
+GENERATED_BLOCKS=0
+
+while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
     # Generate one block
     if generate_blocks $BLOCKS_PER_INTERVAL; then
-        log "Successfully generated $BLOCKS_PER_INTERVAL block(s)"
+        GENERATED_BLOCKS=$((GENERATED_BLOCKS + BLOCKS_PER_INTERVAL))
+        log "Successfully generated $BLOCKS_PER_INTERVAL block(s) - Total: $GENERATED_BLOCKS/$TARGET_BLOCKS"
     else
         log "Failed to generate blocks, retrying..."
     fi
     
     # Wait for the specified interval
     sleep $BLOCK_INTERVAL
-done 
+done
+
+log "Block generation complete! Generated $GENERATED_BLOCKS blocks"
+FINAL_HEIGHT=$(get_block_height)
+log "Final blockchain height: $FINAL_HEIGHT" 
