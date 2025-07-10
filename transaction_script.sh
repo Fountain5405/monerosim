@@ -6,6 +6,11 @@
 echo "=== MoneroSim Transaction Test ==="
 echo "Starting transaction test at $(date)"
 
+# Wait for 2 minutes (120 seconds) to allow blocks to generate and mature
+echo "Waiting 2 minutes for blocks to generate and mining rewards to mature..."
+echo "This allows time for 120+ blocks to be generated at 1 block/second"
+sleep 120
+
 # Wait for wallet to be ready
 echo "Waiting for wallet RPC to be ready..."
 sleep 1
@@ -74,15 +79,19 @@ echo "Step 7: Check balance after refresh"
 BALANCE_RESPONSE=$(call_wallet '{"jsonrpc":"2.0","id":"0","method":"get_balance","params":{"account_index":0}}')
 echo "Balance after refresh: $BALANCE_RESPONSE"
 
-# Extract balance (convert from atomic units)
-BALANCE=$(echo "$BALANCE_RESPONSE" | grep -o '"balance":[0-9]*' | cut -d':' -f2)
-echo "Raw balance (atomic units): $BALANCE"
+# Extract unlocked balance (convert from atomic units) - this is what we can spend
+UNLOCKED_BALANCE=$(echo "$BALANCE_RESPONSE" | grep -o '"unlocked_balance":[0-9]*' | cut -d':' -f2)
+TOTAL_BALANCE=$(echo "$BALANCE_RESPONSE" | grep -o '"balance":[0-9]*' | cut -d':' -f2)
+echo "Raw total balance (atomic units): $TOTAL_BALANCE"
+echo "Raw unlocked balance (atomic units): $UNLOCKED_BALANCE"
 
-if [[ -n "$BALANCE" && "$BALANCE" -gt 0 ]]; then
-    BALANCE_XMR=$((BALANCE / 1000000000000))
-    echo "Balance in XMR: $BALANCE_XMR"
+if [[ -n "$UNLOCKED_BALANCE" && "$UNLOCKED_BALANCE" -gt 0 ]]; then
+    UNLOCKED_XMR=$((UNLOCKED_BALANCE / 1000000000000))
+    TOTAL_XMR=$((TOTAL_BALANCE / 1000000000000))
+    echo "Total balance in XMR: $TOTAL_XMR"
+    echo "Unlocked balance in XMR: $UNLOCKED_XMR"
     
-    if [[ "$BALANCE_XMR" -gt 1 ]]; then
+    if [[ "$UNLOCKED_XMR" -gt 1 ]]; then
         echo "Step 8: CREATE TRANSACTION - Send 1 XMR to new address"
         
         # Generate a new address for testing
@@ -127,10 +136,10 @@ if [[ -n "$BALANCE" && "$BALANCE" -gt 0 ]]; then
             echo "❌ ERROR: Failed to create destination address"
         fi
     else
-        echo "❌ ERROR: Insufficient balance for transaction (need > 1 XMR, have $BALANCE_XMR XMR)"
+        echo "❌ ERROR: Insufficient unlocked balance for transaction (need > 1 XMR, have $UNLOCKED_XMR XMR unlocked)"
     fi
 else
-    echo "❌ ERROR: No balance available or balance check failed"
+    echo "❌ ERROR: No unlocked balance available or balance check failed"
 fi
 
 echo "=== Transaction Test Complete ===" 

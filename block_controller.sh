@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Central Block Controller Script for MoneroSim
-# This script uses the daemon's start_mining/stop_mining RPC to generate blocks
-# This approach works better in regtest mode than generateblocks
+# This script uses the daemon's generateblocks RPC to generate blocks
+# Updated for 1 block per second generation rate
 
 # Configuration
 DAEMON_IP="11.0.0.1"
 DAEMON_RPC_PORT="28090"
 DAEMON_URL="http://${DAEMON_IP}:${DAEMON_RPC_PORT}/json_rpc"
-BLOCK_INTERVAL="0.5"  # seconds between blocks
+BLOCK_INTERVAL="1.0"  # 1 second between blocks
 BLOCKS_PER_INTERVAL="1"  # number of blocks to generate each interval
 
 # Use the wallet address that matches the wallet we're testing with
@@ -80,18 +80,6 @@ generate_blocks() {
     fi
 }
 
-# Function to start mining (now using generateblocks)
-start_mining() {
-    log "Starting block generation with generateblocks RPC"
-    return 0  # generateblocks doesn't need a separate "start" call
-}
-
-# Function to stop mining (not needed for generateblocks)
-stop_mining() {
-    log "Stopping block generation"
-    return 0  # generateblocks doesn't need a separate "stop" call
-}
-
 # Function to get current block height
 get_block_height() {
     local response=$(call_daemon "get_info" "")
@@ -101,7 +89,7 @@ get_block_height() {
 # Main execution
 log "Starting block controller"
 log "Target daemon: $DAEMON_IP:$DAEMON_RPC_PORT"
-log "Block interval: ${BLOCK_INTERVAL}s"
+log "Block interval: ${BLOCK_INTERVAL}s (1 block per second)"
 log "Mining address: $MINING_ADDRESS"
 
 # Wait for daemon to be ready
@@ -122,9 +110,9 @@ log "Daemon is ready, starting block generation"
 INITIAL_HEIGHT=$(get_block_height)
 log "Initial blockchain height: $INITIAL_HEIGHT"
 
-# Main block generation loop - generate 120 blocks for hard fork progression and reward maturation
-log "Starting block generation loop - generating 120 blocks"
-TARGET_BLOCKS=120
+# Main block generation loop - generate blocks for 3 minutes (180 blocks at 1/second)
+log "Starting block generation loop - generating 180 blocks at 1 block/second"
+TARGET_BLOCKS=180
 GENERATED_BLOCKS=0
 
 while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
@@ -136,7 +124,7 @@ while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
         log "Failed to generate blocks, retrying..."
     fi
     
-    # Wait for the specified interval
+    # Wait for the specified interval (1 second)
     sleep $BLOCK_INTERVAL
 done
 
