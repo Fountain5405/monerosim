@@ -117,13 +117,27 @@ TARGET_BLOCKS=120
 GENERATED_BLOCKS=0
 
 while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
-    # Generate one block
-    if generate_blocks $BLOCKS_PER_INTERVAL; then
+    # Attempt to generate blocks with retries when daemon is busy
+    ATTEMPT=0
+    MAX_ATTEMPTS=5
+    SUCCESS=0
+    while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+        if generate_blocks $BLOCKS_PER_INTERVAL; then
+            SUCCESS=1
+            break
+        else
+            ATTEMPT=$((ATTEMPT + 1))
+            log "Daemon returned BUSY (attempt $ATTEMPT/$MAX_ATTEMPTS), retrying in 2s..."
+            sleep 2
+        fi
+    done
+    
+    if [[ $SUCCESS -eq 1 ]]; then
         GENERATED_BLOCKS=$((GENERATED_BLOCKS + BLOCKS_PER_INTERVAL))
         current_minutes=$((GENERATED_BLOCKS))
         log "Successfully generated $BLOCKS_PER_INTERVAL block(s) - Total: $GENERATED_BLOCKS/$TARGET_BLOCKS (${current_minutes} minutes simulated)"
     else
-        log "Failed to generate blocks, retrying..."
+        log "Failed to generate block after $MAX_ATTEMPTS attempts, will retry next interval"
     fi
     
     # Wait for the specified interval (60 seconds)
