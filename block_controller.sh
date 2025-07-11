@@ -2,17 +2,23 @@
 
 # Central Block Controller Script for MoneroSim
 # This script uses the daemon's generateblocks RPC to generate blocks
-# Updated for 1 block per second generation rate
+# Updated for 1 block per minute generation rate (realistic timing)
 
 # Configuration
 DAEMON_IP="11.0.0.1"
 DAEMON_RPC_PORT="28090"
 DAEMON_URL="http://${DAEMON_IP}:${DAEMON_RPC_PORT}/json_rpc"
-BLOCK_INTERVAL="1.0"  # 1 second between blocks
+BLOCK_INTERVAL="60.0"  # 60 seconds between blocks (1 block per minute)
 BLOCKS_PER_INTERVAL="1"  # number of blocks to generate each interval
 
-# Use the wallet address that matches the wallet we're testing with
-MINING_ADDRESS="47CcWBU9ky2HEcKHhZJtAHRbTxxDCGPDh1jhh139pgSE52Y4EQRdDPgb7YX97tup2yjRsyapnxiELRjzbwaQ37zXJkUzf3b"
+# Function to log with timestamp
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [BLOCK_CONTROLLER] $1"
+}
+
+# Use the address that the wallet actually generates (from transaction test output)
+MINING_ADDRESS="48S1ZANZRDGTqF7rdxCh8R4jvBELF63u9MieHNwGNYrRZWka84mN9ttV88eq2QScJRHJsdHJMNg3LDu3Z21hmaE61SWymvv"
+log "Using mining address that matches wallet: $MINING_ADDRESS"
 
 # Function to call daemon RPC
 call_daemon() {
@@ -27,11 +33,6 @@ call_daemon() {
     curl -s --max-time 10 --connect-timeout 5 "$DAEMON_URL" \
         -H 'Content-Type: application/json' \
         -d "$data" 2>/dev/null
-}
-
-# Function to log with timestamp
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [BLOCK_CONTROLLER] $1"
 }
 
 # Function to check if daemon is ready
@@ -89,7 +90,7 @@ get_block_height() {
 # Main execution
 log "Starting block controller"
 log "Target daemon: $DAEMON_IP:$DAEMON_RPC_PORT"
-log "Block interval: ${BLOCK_INTERVAL}s (1 block per second)"
+log "Block interval: ${BLOCK_INTERVAL}s (1 block per minute)"
 log "Mining address: $MINING_ADDRESS"
 
 # Wait for daemon to be ready
@@ -110,21 +111,22 @@ log "Daemon is ready, starting block generation"
 INITIAL_HEIGHT=$(get_block_height)
 log "Initial blockchain height: $INITIAL_HEIGHT"
 
-# Main block generation loop - generate blocks for 3 minutes (180 blocks at 1/second)
-log "Starting block generation loop - generating 180 blocks at 1 block/second"
-TARGET_BLOCKS=180
+# Main block generation loop - generate blocks for 2 hours (120 blocks at 1/minute)
+log "Starting block generation loop - generating 120 blocks at 1 block/minute"
+TARGET_BLOCKS=120
 GENERATED_BLOCKS=0
 
 while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
     # Generate one block
     if generate_blocks $BLOCKS_PER_INTERVAL; then
         GENERATED_BLOCKS=$((GENERATED_BLOCKS + BLOCKS_PER_INTERVAL))
-        log "Successfully generated $BLOCKS_PER_INTERVAL block(s) - Total: $GENERATED_BLOCKS/$TARGET_BLOCKS"
+        current_minutes=$((GENERATED_BLOCKS))
+        log "Successfully generated $BLOCKS_PER_INTERVAL block(s) - Total: $GENERATED_BLOCKS/$TARGET_BLOCKS (${current_minutes} minutes simulated)"
     else
         log "Failed to generate blocks, retrying..."
     fi
     
-    # Wait for the specified interval (1 second)
+    # Wait for the specified interval (60 seconds)
     sleep $BLOCK_INTERVAL
 done
 

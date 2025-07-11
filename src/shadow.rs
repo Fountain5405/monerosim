@@ -169,32 +169,52 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("monitor".to_string(), monitor_host);
 
-    // Add wallet host for transaction testing
-    let wallet_process = ShadowProcess {
+    // Add wallet1 host (mining wallet) for transaction testing
+    let wallet1_process = ShadowProcess {
         path: std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
             .expect("Failed to resolve absolute path to monero-wallet-rpc")
             .to_string_lossy()
             .to_string(),
         args: format!(
-            "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version"
+            "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet1_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1"
         ),
         environment: environment.clone(),
         start_time: "5s".to_string(), // Start after nodes and block controller are ready
     };
 
-    let wallet_host = ShadowHost {
-        network_node_id: 0,
-        processes: vec![wallet_process],
+    let wallet1_host = ShadowHost {
+        network_node_id: 0, // All hosts on the same network switch
+        processes: vec![wallet1_process],
     };
 
-    hosts.insert("wallet".to_string(), wallet_host);
+    hosts.insert("wallet1".to_string(), wallet1_host);
+
+    // Add wallet2 host (recipient wallet) for transaction testing
+    let wallet2_process = ShadowProcess {
+        path: std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
+            .expect("Failed to resolve absolute path to monero-wallet-rpc")
+            .to_string_lossy()
+            .to_string(),
+        args: format!(
+            "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28092 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet2_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1"
+        ),
+        environment: environment.clone(),
+        start_time: "5s".to_string(), // Start after nodes and block controller are ready
+    };
+
+    let wallet2_host = ShadowHost {
+        network_node_id: 0, // All hosts on the same network switch
+        processes: vec![wallet2_process],
+    };
+
+    hosts.insert("wallet2".to_string(), wallet2_host);
 
     // Add transaction testing host
     let transaction_test_process = ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "8s".to_string(), // Start after wallet is ready and has time to sync
+        start_time: "8s".to_string(), // Start after wallets are ready and have time to sync
     };
 
     let transaction_test_host = ShadowHost {
