@@ -7,109 +7,133 @@
 # Configuration
 DAEMON_IP="11.0.0.1"
 DAEMON_RPC_PORT="28090"
-DAEMON_URL="http://${DAEMON_IP}:${DAEMON_RPC_PORT}/json_rpc"
-BLOCK_INTERVAL="60.0"  # 60 seconds between blocks (1 block per minute)
-BLOCKS_PER_INTERVAL="1"  # number of blocks to generate each interval
+WALLET_RPC_IP="11.0.0.6"
+WALLET_RPC_PORT="28091"
 
 # Function to log with timestamp
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [BLOCK_CONTROLLER] $1"
 }
 
-# Use the address that the wallet actually generates (from transaction test output)
-MINING_ADDRESS="48S1ZANZRDGTqF7rdxCh8R4jvBELF63u9MieHNwGNYrRZWka84mN9ttV88eq2QScJRHJsdHJMNg3LDu3Z21hmaE61SWymvv"
-log "Using mining address that matches wallet: $MINING_ADDRESS"
-
 # Function to call daemon RPC
 call_daemon() {
     local method="$1"
     local params="$2"
-    local data="{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"$method\""
-    if [[ -n "$params" ]]; then
-        data+=",\"params\":$params"
-    fi
-    data+="}"
-    
-    curl -s --max-time 10 --connect-timeout 5 "$DAEMON_URL" \
-        -H 'Content-Type: application/json' \
-        -d "$data" 2>/dev/null
+    curl -s --max-time 10 "http://${DAEMON_IP}:${DAEMON_RPC_PORT}/json_rpc" \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\",\"params\":${params}}" \
+        -H "Content-Type: application/json"
 }
 
-# Function to check if daemon is ready
-check_daemon_ready() {
-    local response=$(call_daemon "get_info" "")
-    log "Daemon response: $response"
+# Function to call wallet RPC
+call_wallet() {
+    local method="$1"
+    local params="$2"
+    curl -s --max-time 10 "http://${WALLET_RPC_IP}:${WALLET_RPC_PORT}/json_rpc" \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\",\"params\":${params}}" \
+        -H "Content-Type: application/json"
+}
+
+# Function to get mining address from the existing wallet created by transaction script
+create_mining_wallet() {
+    log "Getting mining address from existing wallet..."
     
-    # Check if we have a valid JSON response with result and status OK
-    if [[ "$response" == *"\"result\""* ]]; then
-        log "Found result field in response"
-        # More flexible status matching to handle whitespace
-        if [[ "$response" =~ \"status\"[[:space:]]*:[[:space:]]*\"OK\" ]]; then
-            log "Found status OK in response"
-            # Also check if daemon is synchronized (required for mining)
-            if [[ "$response" =~ \"synchronized\"[[:space:]]*:[[:space:]]*true ]]; then
-                log "Daemon is synchronized - ready for mining!"
+    # Wait for the transaction script to create the wallet
+    local attempts=0
+    local max_attempts=30
+    while [[ $attempts -lt $max_attempts ]]; do
+        # Try to get the address from the existing wallet
+        local address_response=$(call_wallet "get_address" "{\"account_index\":0}")
+        log "Get address attempt $((attempts + 1)): $address_response"
+        
+        # Check if we got a valid response
+        if [[ ! "$address_response" =~ "error" ]] && [[ "$address_response" =~ "address" ]]; then
+            # Extract the address from the response
+            local address=$(echo "$address_response" | sed -n 's/.*"address"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+            
+            if [[ -n "$address" ]]; then
+                log "Successfully retrieved mining wallet address: $address"
+                echo "$address"
                 return 0
-            else
-                log "Daemon not synchronized yet, waiting..."
-                return 1
             fi
-        else
-            log "No status OK found in response"
-            return 1
         fi
-    else
-        log "No result field found in response"
-        return 1
-    fi
+        
+        log "Wallet not ready yet, waiting 2s... (attempt $((attempts + 1))/$max_attempts)"
+        sleep 2
+        attempts=$((attempts + 1))
+    done
+    
+    log "Failed to get wallet address after $max_attempts attempts"
+    return 1
 }
 
-# Function to generate blocks via RPC using the format from documentation
+# Wait for daemon to be ready
+wait_for_daemon() {
+    log "Waiting for daemon to be ready..."
+    while true; do
+        local response=$(call_daemon "get_info" "{}")
+        if [[ "$response" =~ "status".*"OK" ]]; then
+            log "Daemon is ready!"
+            return 0
+        fi
+        log "Daemon not ready yet, waiting 2s... (response: ${response:0:100})"
+        sleep 2
+    done
+}
+
+# Wait for wallet RPC to be ready
+wait_for_wallet() {
+    log "Waiting for wallet RPC to be ready..."
+    while true; do
+        local response=$(call_wallet "get_version" "{}")
+        if [[ "$response" =~ "version" ]]; then
+            log "Wallet RPC is ready"
+            return 0
+        fi
+        log "Wallet RPC not ready yet, waiting 2s..."
+        sleep 2
+    done
+}
+
+# Function to generate blocks
 generate_blocks() {
     local blocks_to_generate=$1
     local nonce=$((RANDOM % 1000))  # Random starting nonce
     
-    # Use the exact format from the working documentation example
+    # Use the mining address from our wallet
     local response=$(call_daemon "generateblocks" "{\"amount_of_blocks\":$blocks_to_generate,\"wallet_address\":\"$MINING_ADDRESS\",\"starting_nonce\":$nonce}")
     log "Generate blocks response: $response"
     
     # Check if the response contains height (successful generation)
-    if [[ "$response" =~ \"height\":[[:space:]]*[0-9]+ ]]; then
+    if [[ "$response" =~ "height\":[[:space:]]*[0-9]+" ]]; then
+        log "Block generation successful!"
         return 0
+    elif [[ "$response" =~ "BUSY" ]] || [[ "$response" =~ "Block not accepted" ]]; then
+        return 1
     else
+        log "Unexpected response: $response"
         return 1
     fi
 }
 
-# Function to get current block height
-get_block_height() {
-    local response=$(call_daemon "get_info" "")
-    echo "$response" | grep -o '"height":[0-9]*' | cut -d':' -f2
-}
-
 # Main execution
-log "Starting block controller"
-log "Target daemon: $DAEMON_IP:$DAEMON_RPC_PORT"
-log "Block interval: ${BLOCK_INTERVAL}s (1 block per minute)"
-log "Mining address: $MINING_ADDRESS"
+log "Starting MoneroSim Block Controller"
 
-# Wait for daemon to be ready
-log "Waiting for daemon to be ready..."
-READY_TIMEOUT=10
-READY_COUNT=0
-while ! check_daemon_ready; do
-    sleep 0.1
-    READY_COUNT=$((READY_COUNT + 1))
-    if [[ $READY_COUNT -gt $((READY_TIMEOUT * 10)) ]]; then
-        log "ERROR: Daemon not ready after ${READY_TIMEOUT}s, exiting"
-        exit 1
-    fi
-done
-log "Daemon is ready, starting block generation"
+# Wait for services to be ready
+wait_for_daemon
+wait_for_wallet
 
-# Record initial height
-INITIAL_HEIGHT=$(get_block_height)
-log "Initial blockchain height: $INITIAL_HEIGHT"
+# Create mining wallet and get address
+MINING_ADDRESS=$(create_mining_wallet 2>/dev/null | tail -1)
+if [[ $? -ne 0 ]] || [[ -z "$MINING_ADDRESS" ]]; then
+    log "Failed to create mining wallet, exiting"
+    exit 1
+fi
+
+log "Using mining address: $MINING_ADDRESS"
+
+# Configuration for block generation
+BLOCKS_PER_INTERVAL=1
+INTERVAL_SECONDS=60
 
 # Main block generation loop - generate blocks for 2 hours (120 blocks at 1/minute)
 log "Starting block generation loop - generating 120 blocks at 1 block/minute"
@@ -134,16 +158,17 @@ while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
     
     if [[ $SUCCESS -eq 1 ]]; then
         GENERATED_BLOCKS=$((GENERATED_BLOCKS + BLOCKS_PER_INTERVAL))
-        current_minutes=$((GENERATED_BLOCKS))
-        log "Successfully generated $BLOCKS_PER_INTERVAL block(s) - Total: $GENERATED_BLOCKS/$TARGET_BLOCKS (${current_minutes} minutes simulated)"
+        log "Successfully generated block(s). Total generated: $GENERATED_BLOCKS/$TARGET_BLOCKS"
+        
+        # Wait for the next interval (1 minute)
+        if [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; then
+            log "Waiting ${INTERVAL_SECONDS}s for next block generation..."
+            sleep $INTERVAL_SECONDS
+        fi
     else
-        log "Failed to generate block after $MAX_ATTEMPTS attempts, will retry next interval"
+        log "Failed to generate blocks after $MAX_ATTEMPTS attempts. Waiting ${INTERVAL_SECONDS}s before trying again..."
+        sleep $INTERVAL_SECONDS
     fi
-    
-    # Wait for the specified interval (60 seconds)
-    sleep $BLOCK_INTERVAL
 done
 
-log "Block generation complete! Generated $GENERATED_BLOCKS blocks"
-FINAL_HEIGHT=$(get_block_height)
-log "Final blockchain height: $FINAL_HEIGHT" 
+log "Block generation completed. Generated $GENERATED_BLOCKS blocks total." 

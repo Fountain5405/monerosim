@@ -85,8 +85,8 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             "--log-file=/dev/stdout".to_string(),
             "--log-level=2".to_string(),
             
-            // === REGTEST CONFIGURATION ===
-            "--regtest".to_string(),
+                    // === SIMULATION CONFIGURATION ===
+        "--simulation".to_string(),
             "--disable-dns-checkpoints".to_string(),
             
             // === FORCE LOCAL-ONLY P2P ===
@@ -128,10 +128,10 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         }
 
         // Mining will be handled by the central controller script via RPC
-        // No need for --start-mining flag in regtest mode
+        // No need for --start-mining flag in simulation mode
 
         let monerod_process = ShadowProcess {
-            path: std::fs::canonicalize("builds/A/monero/bin/monerod")
+            path: std::fs::canonicalize("./monerod")
                 .expect("Failed to resolve absolute path to monerod")
                 .to_string_lossy()
                 .to_string(),
@@ -171,7 +171,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     // Add wallet1 host (mining wallet) for transaction testing
     let wallet1_process = ShadowProcess {
-        path: std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
+        path: std::fs::canonicalize("./monero-wallet-rpc")
             .expect("Failed to resolve absolute path to monero-wallet-rpc")
             .to_string_lossy()
             .to_string(),
@@ -191,7 +191,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     // Add wallet2 host (recipient wallet) for transaction testing
     let wallet2_process = ShadowProcess {
-        path: std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
+        path: std::fs::canonicalize("./monero-wallet-rpc")
             .expect("Failed to resolve absolute path to monero-wallet-rpc")
             .to_string_lossy()
             .to_string(),
