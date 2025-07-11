@@ -96,21 +96,39 @@ wait_for_wallet() {
 
 # Function to generate blocks
 generate_blocks() {
-    local blocks_to_generate=$1
-    local nonce=$((RANDOM % 1000))  # Random starting nonce
+    local daemon_url="$1"
+    local wallet_address="$2"
     
-    # Use the mining address from our wallet
-    local response=$(call_daemon "generateblocks" "{\"amount_of_blocks\":$blocks_to_generate,\"wallet_address\":\"$MINING_ADDRESS\",\"starting_nonce\":$nonce}")
+    log "Sending generateblocks request to $daemon_url with address $wallet_address"
+    
+    # Send the generateblocks request
+    local response=$(curl -s --max-time 30 "$daemon_url/json_rpc" \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"generateblocks\",\"params\":{\"wallet_address\":\"$wallet_address\",\"amount_of_blocks\":1}}" \
+        -H 'Content-Type: application/json' 2>/dev/null)
+    
     log "Generate blocks response: $response"
     
+    # Check if we got any response at all
+    if [[ -z "$response" ]]; then
+        log "No response from daemon"
+        return 1
+    fi
+    
     # Check if the response contains height (successful generation)
-    if [[ "$response" =~ "height\":[[:space:]]*[0-9]+" ]]; then
-        log "Block generation successful!"
+    if echo "$response" | grep -q '"height"'; then
+        log "✅ Block generation successful!"
         return 0
-    elif [[ "$response" =~ "BUSY" ]] || [[ "$response" =~ "Block not accepted" ]]; then
+    elif echo "$response" | grep -q '"error"'; then
+        log "❌ Daemon returned error response"
+        return 1
+    elif echo "$response" | grep -q 'BUSY\|busy'; then
+        log "⏳ Daemon is busy, will retry"
+        return 1
+    elif echo "$response" | grep -q 'Block not accepted'; then
+        log "❌ Block not accepted by daemon"
         return 1
     else
-        log "Unexpected response: $response"
+        log "⚠️ Unexpected response format: $response"
         return 1
     fi
 }
@@ -146,7 +164,7 @@ while [[ $GENERATED_BLOCKS -lt $TARGET_BLOCKS ]]; do
     MAX_ATTEMPTS=5
     SUCCESS=0
     while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
-        if generate_blocks $BLOCKS_PER_INTERVAL; then
+        if generate_blocks "http://${DAEMON_IP}:${DAEMON_RPC_PORT}" "$MINING_ADDRESS"; then
             SUCCESS=1
             break
         else

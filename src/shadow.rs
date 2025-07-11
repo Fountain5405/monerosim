@@ -83,18 +83,19 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
         let mut args = vec![
             format!("--data-dir=/tmp/monero-{}", host_name),
             "--log-file=/dev/stdout".to_string(),
-            "--log-level=2".to_string(),
+            "--log-level=1".to_string(), // Reduced logging for better performance
             
-                    // === SIMULATION CONFIGURATION ===
-        "--simulation".to_string(),
+            // === SIMULATION CONFIGURATION ===
+            "--simulation".to_string(),
             "--disable-dns-checkpoints".to_string(),
             
-            // === FORCE LOCAL-ONLY P2P ===
+            // === OPTIMIZED P2P FOR SHADOW ===
             "--hide-my-port".to_string(),
-            "--out-peers=8".to_string(),
-            "--in-peers=8".to_string(),
+            "--out-peers=2".to_string(),   // Reduced from 8 for Shadow stability
+            "--in-peers=4".to_string(),    // Reduced from default for Shadow stability
             "--disable-seed-nodes".to_string(),
             "--no-igd".to_string(),
+            "--p2p-use-ipv6=false".to_string(),
             
             // === SHADOW COMPATIBILITY ===
             "--prep-blocks-threads=1".to_string(),
@@ -102,13 +103,17 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             "--no-zmq".to_string(),
             "--db-sync-mode=safe".to_string(),
             "--non-interactive".to_string(),
-            "--max-connections-per-ip=50".to_string(),
+            "--max-connections-per-ip=10".to_string(),
+            "--limit-rate-up=1024".to_string(),     // 1MB/s upload limit
+            "--limit-rate-down=1024".to_string(),   // 1MB/s download limit
+            "--block-sync-size=1".to_string(),      // Sync 1 block at a time
             
             // === RPC CONFIGURATION ===
             format!("--rpc-bind-ip={}", node.ip),
             format!("--rpc-bind-port={}", rpc_port),
             "--confirm-external-bind".to_string(),
             "--disable-rpc-ban".to_string(),
+            "--rpc-access-control-origins=*".to_string(),
             
             // === P2P CONFIGURATION ===  
             format!("--p2p-bind-ip={}", node.ip),
@@ -169,7 +174,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("monitor".to_string(), monitor_host);
 
-    // Add wallet1 host (mining wallet) for transaction testing
+    // Add wallet1 host (mining wallet) connected to A0 for transaction testing
     let wallet1_process = ShadowProcess {
         path: std::fs::canonicalize("./monero-wallet-rpc")
             .expect("Failed to resolve absolute path to monero-wallet-rpc")
@@ -189,14 +194,14 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("wallet1".to_string(), wallet1_host);
 
-    // Add wallet2 host (recipient wallet) for transaction testing
+    // Add wallet2 host (recipient wallet) connected to A1 for true inter-node transaction testing
     let wallet2_process = ShadowProcess {
         path: std::fs::canonicalize("./monero-wallet-rpc")
             .expect("Failed to resolve absolute path to monero-wallet-rpc")
             .to_string_lossy()
             .to_string(),
         args: format!(
-            "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28092 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet2_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1"
+            "--daemon-address=11.0.0.2:28090 --rpc-bind-port=28092 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet2_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1"
         ),
         environment: environment.clone(),
         start_time: "5s".to_string(), // Start after nodes and block controller are ready
@@ -209,27 +214,12 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("wallet2".to_string(), wallet2_host);
 
-    // Add transaction testing host
-    let transaction_test_process = ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
-        environment: environment.clone(),
-        start_time: "8s".to_string(), // Start after wallets are ready and have time to sync
-    };
-
-    let transaction_test_host = ShadowHost {
-        network_node_id: 0,
-        processes: vec![transaction_test_process],
-    };
-
-    hosts.insert("transaction-test".to_string(), transaction_test_host);
-
-    // Add block controller host for programmatic block generation
+    // Add block controller host that manages centralized block generation
     let block_controller_process = ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && ./block_controller.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "2s".to_string(), // Start after nodes are ready but before monitor
+        start_time: "2s".to_string(), // Start early to begin block generation
     };
 
     let block_controller_host = ShadowHost {
@@ -238,6 +228,21 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     };
 
     hosts.insert("block-controller".to_string(), block_controller_host);
+
+    // Add transaction test host that performs wallet-to-wallet transactions
+    let transaction_test_process = ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
+        environment: environment.clone(),
+        start_time: "8s".to_string(), // Start after wallets are ready
+    };
+
+    let transaction_test_host = ShadowHost {
+        network_node_id: 0,
+        processes: vec![transaction_test_process],
+    };
+
+    hosts.insert("transaction-test".to_string(), transaction_test_host);
 
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
