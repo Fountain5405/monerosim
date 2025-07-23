@@ -40,6 +40,8 @@ struct ShadowGraph {
 #[derive(serde::Serialize, Debug)]
 struct ShadowHost {
     network_node_id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ip_addr: Option<String>,
     processes: Vec<ShadowProcess>,
 }
 
@@ -52,193 +54,193 @@ struct ShadowProcess {
 }
 
 pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre::eyre::Result<()> {
-    let mut hosts = HashMap::new();
-    
-    // Clear blockchain data if fresh_blockchain is enabled
-    if config.general.fresh_blockchain.unwrap_or(false) {
-        for node in &config.nodes {
-            let host_name = node.name.to_lowercase();
-            let data_dir = format!("/tmp/monero-{}", host_name);
-            // Clean up any existing blockchain data
-            std::process::Command::new("rm")
-                .args(["-rf", &data_dir])
-                .output()
-                .ok(); // Ignore errors if directory doesn't exist
-        }
-    }
-    
-    let mut environment = HashMap::new();
-    environment.insert("MALLOC_ARENA_MAX".to_string(), "1".to_string());
-    environment.insert("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string());
-    environment.insert("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string());
-    environment.insert("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string());
+    let current_dir = std::env::current_dir()
+        .expect("Failed to get current directory")
+        .to_string_lossy()
+        .to_string();
 
-    // Generate hosts for each node
-    for (node_index, node) in config.nodes.iter().enumerate() {
-        let host_name = node.name.to_lowercase();
-        let start_time = node.start_time.as_ref().unwrap_or(&"10s".to_string()).clone();
-        let rpc_port = node.port + 10; // RPC port is P2P port + 10
+    let mut hosts: HashMap<String, ShadowHost> = HashMap::new();
+
+    // Common environment variables for all processes
+    let environment: HashMap<String, String> = [
+        ("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string()),
+        ("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string()),
+        ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
+        ("MALLOC_ARENA_MAX".to_string(), "1".to_string()),
+    ].iter().cloned().collect();
+
+    // Create Monero-specific environment variables (without pruned blocks)
+    let mut monero_environment = environment.clone();
+    monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
+    monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
+    monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), "20".to_string());
+
+    // Add each node as a host
+    for node in &config.nodes {
+        let node_name = node.name.to_lowercase();
         
-        // Build monerod arguments
+        // Build the monerod arguments
         let mut args = vec![
-            format!("--data-dir=/tmp/monero-{}", host_name),
+            format!("--data-dir=/tmp/monero-{}", node_name),
             "--log-file=/dev/stdout".to_string(),
-            "--log-level=1".to_string(), // Reduced logging for better performance
-            
-            // === SIMULATION CONFIGURATION ===
+            "--log-level=1".to_string(),
             "--simulation".to_string(),
             "--disable-dns-checkpoints".to_string(),
-            
-            // === OPTIMIZED P2P FOR SHADOW ===
-            "--hide-my-port".to_string(),
-            "--out-peers=2".to_string(),   // Reduced from 8 for Shadow stability
-            "--in-peers=4".to_string(),    // Reduced from default for Shadow stability
+            // Removed hide-my-port to improve P2P connectivity
+            "--out-peers=8".to_string(),  // Increased from 2 to 8
+            "--in-peers=8".to_string(),   // Increased from 4 to 8
             "--disable-seed-nodes".to_string(),
             "--no-igd".to_string(),
-            "--p2p-use-ipv6=false".to_string(),
-            
-            // === SHADOW COMPATIBILITY ===
             "--prep-blocks-threads=1".to_string(),
             "--max-concurrency=1".to_string(),
             "--no-zmq".to_string(),
             "--db-sync-mode=safe".to_string(),
             "--non-interactive".to_string(),
-            "--max-connections-per-ip=10".to_string(),
-            "--limit-rate-up=1024".to_string(),     // 1MB/s upload limit
-            "--limit-rate-down=1024".to_string(),   // 1MB/s download limit
-            "--block-sync-size=1".to_string(),      // Sync 1 block at a time
-            
-            // === RPC CONFIGURATION ===
+            "--max-connections-per-ip=20".to_string(), // Increased from 10 to 20
+            "--limit-rate-up=2048".to_string(),        // Increased from 1024 to 2048
+            "--limit-rate-down=2048".to_string(),      // Increased from 1024 to 2048
+            "--block-sync-size=1".to_string(),
             format!("--rpc-bind-ip={}", node.ip),
-            format!("--rpc-bind-port={}", rpc_port),
+            format!("--rpc-bind-port={}", node.port + 10), // RPC port is P2P port + 10
             "--confirm-external-bind".to_string(),
             "--disable-rpc-ban".to_string(),
             "--rpc-access-control-origins=*".to_string(),
-            
-            // === P2P CONFIGURATION ===  
+            "--regtest".to_string(),
             format!("--p2p-bind-ip={}", node.ip),
             format!("--p2p-bind-port={}", node.port),
         ];
 
-        // Add fixed difficulty if specified
-        if let Some(difficulty) = node.fixed_difficulty {
-            args.push(format!("--fixed-difficulty={}", difficulty));
+        // Always set a fixed difficulty for consistent mining and synchronization
+        // Default to 200 if not specified
+        let difficulty = node.fixed_difficulty.unwrap_or(200);
+        args.push(format!("--fixed-difficulty={}", difficulty));
+
+        // Enhanced P2P connection settings for sync node
+        if node.name == "A1" {
+            // Enhanced P2P connectivity settings for sync node
+            args.push("--add-exclusive-node=11.0.0.1:28080".to_string());
+            args.push("--add-priority-node=11.0.0.1:28080".to_string());
+            args.push("--p2p-external-port=28080".to_string()); // Explicitly set external port
+            args.push("--allow-local-ip".to_string()); // Allow connections to local IPs
+        }
+        
+        // Add specific P2P settings for mining node
+        if node.name == "A0" {
+            args.push("--p2p-external-port=28080".to_string()); // Explicitly set external port
+            args.push("--allow-local-ip".to_string()); // Allow connections to local IPs
         }
 
-        // Add exclusive peer connections to nodes with a "lower" name to prevent loops
-        for other_node in &config.nodes {
-            if other_node.name < node.name {
-                args.push(format!("--add-exclusive-node={}:{}", other_node.ip, other_node.port));
-            }
-        }
+        let monerod_path = std::fs::canonicalize("monerod")
+            .expect("Failed to resolve absolute path to monerod")
+            .to_string_lossy()
+            .to_string();
 
-        // Mining will be handled by the central controller script via RPC
-        // No need for --start-mining flag in simulation mode
-
-        let monerod_process = ShadowProcess {
-            path: std::fs::canonicalize("./monerod")
-                .expect("Failed to resolve absolute path to monerod")
-                .to_string_lossy()
-                .to_string(),
+        let node_process = ShadowProcess {
+            path: monerod_path,
             args: args.join(" "),
-            environment: environment.clone(),
-            start_time: start_time.clone(),
+            environment: monero_environment.clone(),
+            // Use the configured start time or provide defaults
+            start_time: match &node.start_time {
+                Some(time) => time.clone(),
+                None => if node.name == "A0" {
+                    "0s".to_string()
+                } else {
+                    // Default delay for A1 if not specified
+                    "1s".to_string()
+                }
+            },
         };
 
-        let mut processes = vec![monerod_process];
-
-        let host = ShadowHost {
-            network_node_id: 0,
-            processes,
+        let node_host = ShadowHost {
+            network_node_id: 0, // All hosts on the same network switch
+            ip_addr: Some(node.ip.clone()),
+            processes: vec![node_process],
         };
 
-        hosts.insert(host_name, host);
+        hosts.insert(node_name, node_host);
     }
 
-    // Add monitoring process
-    let current_dir = std::env::current_dir()
-        .expect("Failed to get current directory")
+    // Add wallet1 host (mining wallet) connected to A0
+    let wallet1_path = std::fs::canonicalize("monero-wallet-rpc")
+        .expect("Failed to resolve absolute path to monero-wallet-rpc")
         .to_string_lossy()
         .to_string();
-    let monitor_process = ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && while true; do ./monitor_script.sh; sleep 1; done'", current_dir),
-        environment: environment.clone(),
-        start_time: "3s".to_string(),
-    };
-
-    let monitor_host = ShadowHost {
-        network_node_id: 0,
-        processes: vec![monitor_process],
-    };
-
-    hosts.insert("monitor".to_string(), monitor_host);
-
-    // Add wallet1 host (mining wallet) connected to A0 for transaction testing
+    let wallet1_args = "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=11.0.0.3 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet1_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert";
+    
+    // Improved wallet directory initialization with better error handling and safer permissions
     let wallet1_process = ShadowProcess {
-        path: std::fs::canonicalize("./monero-wallet-rpc")
-            .expect("Failed to resolve absolute path to monero-wallet-rpc")
-            .to_string_lossy()
-            .to_string(),
+        path: "/bin/bash".to_string(),
         args: format!(
-            "--daemon-address=11.0.0.1:28090 --rpc-bind-port=28091 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet1_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1"
+            "-c 'mkdir -p /tmp/wallet1_data && chmod 777 /tmp/wallet1_data && {} {}'",
+            wallet1_path,
+            wallet1_args
         ),
-        environment: environment.clone(),
-        start_time: "5s".to_string(), // Start after nodes and block controller are ready
+        environment: environment.clone(), // Wallet doesn't need Monero-specific env vars
+        start_time: "45s".to_string(), // Start after both daemons are fully ready
     };
 
-    let wallet1_host = ShadowHost {
-        network_node_id: 0, // All hosts on the same network switch
+    let mut wallet1_host = ShadowHost {
+        network_node_id: 0,
+        ip_addr: Some("11.0.0.3".to_string()),
         processes: vec![wallet1_process],
     };
 
     hosts.insert("wallet1".to_string(), wallet1_host);
 
-    // Add wallet2 host (recipient wallet) connected to A1 for true inter-node transaction testing
+    // Add wallet2 host (recipient wallet) connected to A1
+    let wallet2_path = std::fs::canonicalize("monero-wallet-rpc")
+        .expect("Failed to resolve absolute path to monero-wallet-rpc")
+        .to_string_lossy()
+        .to_string();
+    let wallet2_args = "--daemon-address=11.0.0.2:28090 --rpc-bind-port=28092 --rpc-bind-ip=11.0.0.4 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet2_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert";
+
+    // Improved wallet directory initialization with better error handling and safer permissions
     let wallet2_process = ShadowProcess {
-        path: std::fs::canonicalize("./monero-wallet-rpc")
-            .expect("Failed to resolve absolute path to monero-wallet-rpc")
-            .to_string_lossy()
-            .to_string(),
+        path: "/bin/bash".to_string(),
         args: format!(
-            "--daemon-address=11.0.0.2:28090 --rpc-bind-port=28092 --rpc-bind-ip=0.0.0.0 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/wallet2_data --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1"
+            "-c 'mkdir -p /tmp/wallet2_data && chmod 777 /tmp/wallet2_data && {} {}'",
+            wallet2_path,
+            wallet2_args
         ),
-        environment: environment.clone(),
-        start_time: "5s".to_string(), // Start after nodes and block controller are ready
+        environment: environment.clone(), // Wallet doesn't need Monero-specific env vars
+        start_time: "45s".to_string(), // Start after both daemons are fully ready
     };
 
-    let wallet2_host = ShadowHost {
-        network_node_id: 0, // All hosts on the same network switch
+    let mut wallet2_host = ShadowHost {
+        network_node_id: 0,
+        ip_addr: Some("11.0.0.4".to_string()),
         processes: vec![wallet2_process],
     };
 
     hosts.insert("wallet2".to_string(), wallet2_host);
 
-    // Add block controller host that manages centralized block generation
+    // Add block controller script
     let block_controller_process = ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!("-c 'cd {} && ./block_controller.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "2s".to_string(), // Start early to begin block generation
+        start_time: "60s".to_string(), // Start after wallets are ready
     };
 
     let block_controller_host = ShadowHost {
         network_node_id: 0,
+        ip_addr: None,
         processes: vec![block_controller_process],
     };
 
     hosts.insert("block-controller".to_string(), block_controller_host);
 
-    // Add transaction test host that performs wallet-to-wallet transactions
+    // Add transaction test script
     let transaction_test_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && ./transaction_script.sh'", current_dir),
+        args: format!("-c 'cd {} && ./transaction_test.sh'", current_dir),
         environment: environment.clone(),
-        start_time: "8s".to_string(), // Start after wallets are ready
+        start_time: "75s".to_string(), // Start after wallets and block controller are ready
     };
 
     let transaction_test_host = ShadowHost {
         network_node_id: 0,
+        ip_addr: None,
         processes: vec![transaction_test_process],
     };
 
@@ -251,7 +253,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
             log_level: "trace".to_string(),
         },
         experimental: ShadowExperimental {
-            runahead: None, // This will be ignored (commented out)
+            runahead: None,
             use_dynamic_runahead: true,
         },
         network: ShadowNetwork {

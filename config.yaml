@@ -3,7 +3,7 @@
 
 general:
   # Simulation stop time (supports human-readable formats like "1h", "30m", "3600s")
-  stop_time: "7200s"
+  stop_time: "10800s"  # 3 hours for full run
   # Start with fresh blockchain (clears existing data)
   fresh_blockchain: true
 
@@ -14,7 +14,7 @@ nodes:
     start_time: "0s"
     mining: true
     fixed_difficulty: 1
-  
+
   - name: "A1"
     ip: "11.0.0.2"
     port: 28080

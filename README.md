@@ -1,250 +1,87 @@
-# MoneroSim
+# Monerosim
 
-A comprehensive tool for simulating Monero cryptocurrency networks using the Shadow discrete-event network simulator.
-
-## Overview
-
-MoneroSim is a Rust-based configuration generator that creates large-scale, discrete-event network simulations of the Monero cryptocurrency network. It generates Shadow simulator configurations that can run multiple Monero nodes in a controlled network environment, allowing researchers to study network behavior, consensus mechanisms, and performance characteristics.
-
-## Features
-
-- 🚀 **One-command setup** - Automated dependency installation and configuration
-- 🔧 **YAML-based configuration** - Simple, human-readable simulation parameters
-- 🌐 **Network topology control** - Define custom node counts and P2P connections
-- 📊 **Comprehensive logging** - Detailed simulation output and analysis
-- 🏗️ **Patch support** - Includes Monero patches for simulation compatibility
-- 🐛 **Error handling** - Robust error reporting and validation
-
-## Quick Start
-
-### Automated Setup (Recommended)
-
-The easiest way to get started is with our automated setup script:
-
-```bash
-# Clone the repository (if not already cloned)
-git clone <repository_url>
-cd monerosim
-
-# Run the automated setup script
-./setup.sh
-```
-
-The setup script will:
-1. ✅ Check and install system dependencies (Rust, Shadow, build tools)
-2. ✅ Clone Monero source code and apply Shadow compatibility patches
-3. ✅ Build MoneroSim from source
-4. ✅ Build Monero binaries with Shadow compatibility
-5. ✅ Install Monero binaries to system PATH for Shadow compatibility
-6. ✅ Generate a test Shadow configuration
-7. ✅ Run a test simulation to verify everything works
-8. ✅ Analyze basic results and provide feedback
-
-**Note**: The setup process includes building Monero from source, which can take 20-40 minutes depending on your system.
-
-### Manual Setup
-
-If you prefer manual setup or the automated script doesn't work for your system:
-
-#### Prerequisites
-
-- **Shadow Simulator** - [Installation guide](https://shadow.github.io/docs/guide/install/)
-- **Rust 1.77+** - [Install Rust](https://rustup.rs/)
-- **Build tools**: `gcc`, `g++`, `cmake`, `make`
-- **Git** for cloning repositories
-
-#### Building
-
-```bash
-# Build MoneroSim
-cargo build --release
-
-# Install Monero binaries (requires sudo)
-sudo ./install_monerod_binaries.sh
-
-# Generate Shadow configuration
-./target/release/monerosim --config config.yaml --output shadow_output
-
-# Run simulation
-shadow shadow_output/shadow.yaml
-```
-
-## Configuration
-
-Edit `config.yaml` to customize your simulation:
-
-```yaml
-general:
-  stop_time: "5m"  # How long to run the simulation
-
-nodes:
-  - name: "A0"
-    ip: "11.0.0.1"
-    port: 28080
-    start_time: "10s"
-    mining: true
-    fixed_difficulty: 200
-  
-  - name: "A1"
-    ip: "11.0.0.2"
-    port: 28080
-    start_time: "120s"  # Start after A0 has time to mine blocks
-```
-
-### Configuration Options
-
-- **`general.stop_time`**: Simulation duration (e.g., "10m", "1h", "30s")
-- **`nodes`**: Array of individual node configurations
-  - **`name`**: Unique node identifier
-  - **`ip`**: IP address for the node
-  - **`port`**: P2P port (typically 28080)
-  - **`start_time`**: When to start this node (optional, default: "10s")
-  - **`mining`**: Whether this node should mine (optional, default: false)
-  - **`fixed_difficulty`**: Mining difficulty for testing (optional)
-
-## Running Simulations
-
-### Basic Usage
-
-```bash
-# 1. Configure your simulation
-vim config.yaml
-
-# 2. Generate Shadow configuration
-./target/release/monerosim --config config.yaml --output shadow_output
-
-# 3. Run the simulation
-shadow shadow_output/shadow.yaml
-
-# 4. Analyze results
-ls shadow.data/hosts/
-```
-
-### Output Structure
-
-After running a simulation, you'll find:
-
-```
-shadow.data/
-├── shadow.log              # Main Shadow simulator log
-└── hosts/
-    ├── a0/                 # Node 0 data
-    │   ├── monerod.1000.stdout    # Monero daemon output
-    │   ├── monerod.1000.stderr    # Error output
-    │   └── ...
-    ├── a1/                 # Node 1 data
-    └── ...
-```
-
-### Analyzing Results
-
-Key log patterns to look for:
-
-```bash
-# Check if nodes started successfully
-grep "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout
-
-# Check P2P connections
-grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
-
-# Check for errors
-grep -i "error\|fail" shadow.data/hosts/*/monerod.*.stdout
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Shadow not found"**
-   - Install Shadow from https://shadow.github.io/docs/guide/install/
-   - Ensure Shadow is in your PATH
-
-2. **"monerod not found"**
-   - Run the setup script or manually install with `sudo ./install_monerod_binaries.sh`
-   - Ensure `/usr/local/bin/monerod` exists and is executable
-
-3. **P2P connection failures**
-   - This is expected in very short simulations
-   - Try increasing `stop_time` in config.yaml to "30m" or longer
-
-4. **Permission errors**
-   - The setup script requires sudo access to install monerod binaries
-   - Make sure you can run `sudo` commands
-
-### Getting Help
-
-1. Check the Shadow simulator logs: `shadow.data/shadow.log`
-2. Check individual node logs: `shadow.data/hosts/*/monerod.*.stdout`
-3. Review the configuration: `shadow_output/shadow.yaml`
-
-## Advanced Usage
-
-### Custom Network Topologies
-
-You can modify the network topology by editing the Rust source code in `src/shadow.rs`. The current implementation creates a simple topology where each node connects to the bootstrap node and the previous node.
-
-### Multiple Monero Versions
-
-The project supports building multiple Monero versions (builds A and B). The setup script automatically uses the first available build.
-
-### Performance Tuning
-
-For large simulations (10+ nodes):
-- Increase system resources (RAM, CPU)
-- Consider running on multiple cores
-- Review `SHADOW_OPTIMIZATIONS.md` for performance tips
+`monerosim` is a tool for generating configuration files for the Shadow network simulator to run Monero simulations. This document outlines the project's structure and design.
 
 ## Project Structure
 
+The project is organized into several directories, each with a specific purpose. This structure is designed to be scalable and maintainable.
+
 ```
 monerosim/
-├── src/                    # Rust source code
-│   ├── main.rs            # Main application entry point
-│   ├── config.rs          # Configuration parsing
-│   ├── shadow.rs          # Shadow configuration generation
-│   └── build.rs           # Monero build management
-├── patches/               # Monero patches for simulation compatibility
-├── builds/                # Compiled Monero binaries
-├── config.yaml           # Default simulation configuration
-├── setup.sh              # Automated setup script
-└── README.md             # This file
+├── Cargo.toml
+├── README.md
+├── src/
+│   ├── main.rs
+│   ├── lib.rs
+│   ├── config/
+│   │   ├── mod.rs
+│   │   ├── generator.rs
+│   │   ├── shadow.rs
+│   │   └── node.rs
+│   ├── network/
+│   │   ├── mod.rs
+│   │   └── topology.rs
+│   └── utils/
+│       ├── mod.rs
+│       └── fs.rs
+├── templates/
+│   ├── shadow.yaml.tera
+│   └── node.yaml.tera
+├── data/
+├── docs/
+└── scripts/
 ```
 
-## Development
+### Root Directory (`monerosim/`)
 
-### Building from Source
+*   **`Cargo.toml`**: The Rust package manifest, containing metadata and dependencies for the project.
+*   **`README.md`**: This file, providing an overview of the project and its design.
 
-```bash
-# Debug build
-cargo build
+### Source Directory (`src/`)
 
-# Release build (recommended for simulations)
-cargo build --release
+This is the main directory for the Rust source code.
 
-# Run tests
-cargo test
-```
+*   **`main.rs`**: The entry point of the application. It is responsible for parsing command-line arguments and orchestrating the configuration generation process.
+*   **`lib.rs`**: The library entry point. It contains the core logic of `monerosim`, making it possible to use `monerosim` as a library in other projects.
 
-### Contributing
+#### Configuration Module (`src/config/`)
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with `./setup.sh`
-5. Submit a pull request
+This module is responsible for handling the generation of configuration files.
 
-## License
+*   **`mod.rs`**: Declares the `config` module.
+*   **`generator.rs`**: Contains the main configuration generator, which coordinates the creation of all necessary configuration files.
+*   **`shadow.rs`**: Contains the logic for generating the main `shadow.yaml` file from a template.
+*   **`node.rs`**: Contains the logic for generating the configuration files for each individual Monero node.
 
-GPL-3.0 - See LICENSE file for details
+#### Network Module (`src/network/`)
 
-## Acknowledgments
+This module defines the network topology for the simulation.
 
-- [Shadow Simulator](https://shadow.github.io/) for discrete-event network simulation
-- [Monero Project](https://getmonero.org/) for the cryptocurrency implementation
-- Contributors and researchers using this tool
+*   **`mod.rs`**: Declares the `network` module.
+*   **`topology.rs`**: Defines the data structures and logic for representing the network graph, including nodes, connections, and their properties.
 
----
+#### Utilities Module (`src/utils/`)
 
-**Happy simulating!** 🚀
+This module contains utility functions used throughout the project.
 
-For questions or issues, please check the troubleshooting section above or create an issue in the repository.
+*   **`mod.rs`**: Declares the `utils` module.
+*   **`fs.rs`**: Provides filesystem-related utilities, such as reading from and writing to files.
+
+### Templates Directory (`templates/`)
+
+This directory holds the templates for the configuration files. A templating engine like Tera can be used to render these templates with dynamic data.
+
+*   **`shadow.yaml.tera`**: The template for the main Shadow configuration file.
+*   **`node.yaml.tera`**: The template for the configuration of an individual Monero node.
+
+### Data Directory (`data/`)
+
+This directory is for static data required by the application, such as genesis block information or default configuration parameters.
+
+### Docs Directory (`docs/`)
+
+This directory contains project documentation, such as design documents, user guides, and API documentation.
+
+### Scripts Directory (`scripts/`)
+
+This directory contains helper scripts for various tasks, such as building the project, running simulations, and analyzing simulation results.
