@@ -48,11 +48,11 @@ log_message() {
             ;;
     esac
     
-    echo -e "${color}${timestamp} [${level}] [${component}] ${message}${NC}"
+    echo -e "${color}${timestamp} [${level}] [${component}] ${message}${NC}" >&2
     
     # If this is a critical error, also log to a file
     if [[ "$level" == "$LEVEL_CRITICAL" || "$level" == "$LEVEL_ERROR" ]]; then
-        echo "${timestamp} [${level}] [${component}] ${message}" >> "monerosim_errors.log"
+        echo "${timestamp} [${level}] [${component}] ${message}" >> "monerosim_errors.log" >&2
     fi
 }
 
@@ -822,8 +822,38 @@ export -f log_message log_info log_warning log_error log_critical
 export -f retry_command call_daemon_with_retry call_wallet_with_retry
 export -f verify_daemon_ready verify_wallet_created verify_wallet_open
 export -f verify_block_generation verify_transaction verify_network_sync
-export -f verify_p2p_connectivity handle_exit
+export -f verify_p2p_connectivity handle_exit verify_wallet_directory
 
 # Export constants
 export LEVEL_INFO LEVEL_WARNING LEVEL_ERROR LEVEL_CRITICAL
 export RED YELLOW GREEN BLUE PURPLE NC
+# Function to verify wallet directory exists and is writable
+# Usage: verify_wallet_directory <wallet_dir> <component>
+verify_wallet_directory() {
+    local wallet_dir="$1"
+    local component="$2"
+    
+    log_info "$component" "Verifying wallet directory: $wallet_dir"
+    
+    if [[ ! -d "$wallet_dir" ]]; then
+        log_warning "$component" "Wallet directory does not exist, creating it: $wallet_dir"
+        mkdir -p "$wallet_dir"
+        if [[ $? -ne 0 ]]; then
+            log_critical "$component" "Failed to create wallet directory: $wallet_dir"
+            return 1
+        fi
+    fi
+    
+    if [[ ! -w "$wallet_dir" ]]; then
+        log_critical "$component" "Wallet directory is not writable: $wallet_dir"
+        return 1
+    fi
+    
+    chmod 700 "$wallet_dir"
+    if [[ $? -ne 0 ]]; then
+        log_warning "$component" "Failed to set permissions on wallet directory, continuing anyway"
+    fi
+    
+    log_info "$component" "Wallet directory verified: $wallet_dir"
+    return 0
+}

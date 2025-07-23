@@ -119,40 +119,31 @@ verify_wallet_rpc_ready() {
     return 1
 }
 
-# Function to create or open wallet with robust error handling
-create_or_open_wallet() {
+# Function to create a new wallet, assuming it does not exist
+create_new_wallet() {
     local wallet_url="$1"
     local wallet_name="$2"
     local wallet_password="$3"
     local max_attempts="$4"
     local retry_delay="$5"
     local component="$6"
-    
-    log_info "$component" "Creating or opening wallet $wallet_name..."
-    
-    # First try to open the wallet in case it already exists
-    log_info "$component" "Attempting to open existing wallet..."
-    local open_response=$(call_wallet_with_retry "$wallet_url" "open_wallet" "{\"filename\":\"$wallet_name\",\"password\":\"$wallet_password\"}" "$max_attempts" "$retry_delay" "$component")
-    local open_status=$?
-    
-    if [[ $open_status -eq 0 ]]; then
-        log_info "$component" "Wallet $wallet_name opened successfully"
+
+    log_info "$component" "Creating a new wallet: $wallet_name..."
+
+    # Attempt to create the wallet
+    local create_response
+    create_response=$(call_wallet_with_retry "$wallet_url" "create_wallet" \
+        "{\"filename\":\"$wallet_name\",\"password\":\"$wallet_password\",\"language\":\"English\"}" \
+        "$max_attempts" "$retry_delay" "$component")
+
+    if [[ "$create_response" == *'"result"'* ]]; then
+        log_info "$component" "Successfully created new wallet: $wallet_name"
         return 0
+    else
+        log_critical "$component" "Failed to create new wallet: $wallet_name"
+        log_error "$component" "Create response: $create_response"
+        return 1
     fi
-    
-    # If opening failed, try to create a new wallet
-    log_info "$component" "Opening failed, creating new wallet $wallet_name..."
-    local create_response=$(call_wallet_with_retry "$wallet_url" "create_wallet" "{\"filename\":\"$wallet_name\",\"password\":\"$wallet_password\",\"language\":\"English\"}" "$max_attempts" "$retry_delay" "$component")
-    local create_status=$?
-    
-    if [[ $create_status -eq 0 ]]; then
-        log_info "$component" "Wallet $wallet_name created successfully"
-        return 0
-    fi
-    
-    # If both failed, try to restore from seed (if we have a seed)
-    log_error "$component" "Failed to create or open wallet $wallet_name"
-    return 1
 }
 
 # Function to sanitize and validate a Monero address
@@ -161,8 +152,8 @@ sanitize_monero_address() {
     local input="$1"
     local component="$2"
     
-    # Remove ANSI color codes
-    local no_ansi=$(echo "$input" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+    # Remove ANSI color codes and other garbage
+    local no_ansi=$(echo "$input" | sed 's/\x1B\[[0-9;]*[JKmsu]//g' | tr -d '\n\r\t' | xargs)
     
     # Extract potential Monero address - standard addresses are 95 characters
     # Monero addresses start with 4 (mainnet) or 8 (testnet)
@@ -308,9 +299,9 @@ if ! verify_wallet_rpc_ready "$WALLET_URL" "$MAX_ATTEMPTS" "$RETRY_DELAY" "$COMP
     handle_exit 1 "$COMPONENT" "Wallet RPC service verification failed"
 fi
 
-# Create or open wallet with consolidated logic
-if ! create_or_open_wallet "$WALLET_URL" "$WALLET_NAME" "$WALLET_PASSWORD" "$MAX_ATTEMPTS" "$RETRY_DELAY" "$COMPONENT"; then
-    handle_exit 1 "$COMPONENT" "Wallet creation/opening failed"
+# Create a new wallet
+if ! create_new_wallet "$WALLET_URL" "$WALLET_NAME" "$WALLET_PASSWORD" "$MAX_ATTEMPTS" "$RETRY_DELAY" "$COMPONENT"; then
+    handle_exit 1 "$COMPONENT" "Wallet creation failed"
 fi
 
 # Get wallet address with enhanced error handling

@@ -171,7 +171,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     let wallet1_process = ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'mkdir -p /tmp/wallet1_data && chmod 777 /tmp/wallet1_data && {} {}'",
+            "-c 'rm -rf /tmp/wallet1_data && mkdir -p /tmp/wallet1_data && chmod 777 /tmp/wallet1_data && {} {}'",
             wallet1_path,
             wallet1_args
         ),
@@ -198,7 +198,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     let wallet2_process = ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'mkdir -p /tmp/wallet2_data && chmod 777 /tmp/wallet2_data && {} {}'",
+            "-c 'rm -rf /tmp/wallet2_data && mkdir -p /tmp/wallet2_data && chmod 777 /tmp/wallet2_data && {} {}'",
             wallet2_path,
             wallet2_args
         ),
@@ -230,21 +230,21 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("block-controller".to_string(), block_controller_host);
 
-    // Add transaction test script
-    let transaction_test_process = ShadowProcess {
+    // Add simple test script
+    let simple_test_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && ./transaction_test.sh'", current_dir),
+        args: format!("-c 'cd {} && ./simple_test.sh'", current_dir),
         environment: environment.clone(),
         start_time: "75s".to_string(), // Start after wallets and block controller are ready
     };
 
-    let transaction_test_host = ShadowHost {
+    let simple_test_host = ShadowHost {
         network_node_id: 0,
         ip_addr: None,
-        processes: vec![transaction_test_process],
+        processes: vec![simple_test_process],
     };
 
-    hosts.insert("transaction-test".to_string(), transaction_test_host);
+    hosts.insert("simple-test".to_string(), simple_test_host);
 
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
