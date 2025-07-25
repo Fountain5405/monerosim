@@ -16,6 +16,8 @@ pub struct General {
     pub stop_time: String,
     /// Start with fresh blockchain (clears existing data)
     pub fresh_blockchain: Option<bool>,
+    /// (Optional) Absolute path to the Python virtual environment
+    pub python_venv: Option<String>,
 }
 
 /// Configuration for a single Monero node
@@ -65,6 +67,7 @@ impl Default for General {
         Self {
             stop_time: "1h".to_string(),
             fresh_blockchain: None,
+            python_venv: None,
         }
     }
 }

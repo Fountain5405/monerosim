@@ -1,6 +1,7 @@
 # MoneroSim Configuration File
 # This file defines the parameters for Monero network simulation
 
+python_venv: /home/lever65/monerosim_dev/monerosim/venv
 general:
   # Simulation stop time (supports human-readable formats like "1h", "30m", "3600s")
   stop_time: "10800s"  # 3 hours for full run

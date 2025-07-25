@@ -149,8 +149,22 @@ fi
 # Add ~/.local/bin to PATH for shadowformonero
 export PATH="$HOME/.local/bin:$PATH"
 
+# Step 2: Install Python dependencies
+print_header "Step 2: Installing Python Dependencies"
+
+check_command "python3"
+check_command "pip3"
+
+print_status "Installing Python packages from scripts/requirements.txt..."
+if pip3 install --user -r scripts/requirements.txt; then
+    print_success "Python dependencies installed successfully"
+else
+    print_error "Failed to install Python dependencies"
+    print_error "Please check your pip3 installation and scripts/requirements.txt"
+    exit 1
+fi
 # Step 2: Build MoneroSim
-print_header "Step 2: Building MoneroSim"
+print_header "Step 3: Building MoneroSim"
 
 print_status "Building MoneroSim with cargo..."
 cargo build --release
@@ -163,7 +177,7 @@ else
 fi
 
 # Step 3: Install Shadow Simulator
-print_header "Step 3: Installing Shadow Simulator"
+print_header "Step 4: Installing Shadow Simulator"
 
 # Check if Shadow is already installed
 if command -v shadow &> /dev/null; then
@@ -219,7 +233,7 @@ else
 fi
 
 # Step 4: Setup Monero Source Code for Shadow Compatibility
-print_header "Step 4: Setting Up Monero Source Code"
+print_header "Step 5: Setting Up Monero Source Code"
 
 # Setup directory for Shadow-compatible Monero
 MONERO_SHADOW_DIR="../monero-shadow"
@@ -317,7 +331,7 @@ cd "$SCRIPT_DIR"
 print_success "Monero source ready for Shadow compatibility"
 
 # Step 5: Build Monero Binaries with MoneroSim
-print_header "Step 5: Building Monero Binaries"
+print_header "Step 6: Building Monero Binaries"
 
 print_status "Using MoneroSim to build Shadow-compatible Monero binaries..."
 print_status "This will take several minutes (15-30 minutes depending on system)..."
@@ -363,7 +377,7 @@ else
 fi
 
 # Step 6: Install Monero binaries to system path
-print_header "Step 6: Installing Monero Binaries"
+print_header "Step 7: Installing Monero Binaries"
 
 print_status "Installing monerod binaries to /usr/local/bin/ for Shadow compatibility..."
 
@@ -387,7 +401,7 @@ else
 fi
 
 # Step 7: Verify Shadow configuration
-print_header "Step 7: Verifying Shadow Configuration"
+print_header "Step 8: Verifying Shadow Configuration"
 
 if [[ -f "shadow_output/shadow.yaml" ]]; then
     print_success "Shadow configuration already generated"
@@ -414,7 +428,7 @@ else
 fi
 
 # Step 8: Run test simulation
-print_header "Step 8: Running Test Simulation"
+print_header "Step 9: Running Test Simulation"
 
 print_status "Running a test Shadow simulation (this may take a few minutes)..."
 print_status "Simulation will run for the duration specified in config.yaml"
@@ -432,7 +446,7 @@ if [[ $? -eq 0 ]]; then
     print_success "Simulation completed successfully!"
     
     # Quick analysis of results
-    print_header "Step 9: Basic Results Analysis"
+    print_header "Step 10: Basic Results Analysis"
     
     if [[ -d "shadow.data/hosts" ]]; then
         NODE_COUNT=$(ls shadow.data/hosts/ | wc -l)

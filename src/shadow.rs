@@ -230,21 +230,27 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("block-controller".to_string(), block_controller_host);
 
-    // Add simple test script
-    let simple_test_process = ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && ./simple_test.sh'", current_dir),
+    // Add comprehensive test script
+    let python_executable = config.general.python_venv
+        .as_ref()
+        .map(|venv| format!("{}/bin/python", venv))
+        .unwrap_or_else(|| "python3".to_string());
+
+    let script_path = Path::new(&current_dir).join("scripts").join("send_transaction.py");
+    let comprehensive_test_process = ShadowProcess {
+        path: python_executable,
+        args: script_path.to_string_lossy().to_string(),
         environment: environment.clone(),
-        start_time: "75s".to_string(), // Start after wallets and block controller are ready
+        start_time: "9000s".to_string(), // Start after wallets and block controller are ready
     };
 
-    let simple_test_host = ShadowHost {
+    let comprehensive_test_host = ShadowHost {
         network_node_id: 0,
         ip_addr: None,
-        processes: vec![simple_test_process],
+        processes: vec![comprehensive_test_process],
     };
 
-    hosts.insert("simple-test".to_string(), simple_test_host);
+    hosts.insert("comprehensive-test".to_string(), comprehensive_test_host);
 
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
@@ -291,6 +297,8 @@ mod tests {
         let config = Config {
             general: General {
                 stop_time: "1h".to_string(),
+                fresh_blockchain: Some(true),
+                python_venv: Some("/path/to/venv".to_string()),
             },
             nodes: vec![
                 NodeConfig {
