@@ -69,12 +69,10 @@ The configuration file defines the simulation parameters:
 
 ### Testing Scripts
 
-Several shell scripts provide testing and monitoring capabilities:
+Several shell scripts provide testing and monitoring capabilities. They all run within the shadow environment
 - `simple_test.sh`: Basic mining and synchronization test
-- `transaction_test.sh`: Complete workflow test including transactions
 - `sync_check.sh`: Verifies network synchronization
 - `block_controller.sh`: Controls block generation
-- `transaction_script.sh`: Handles wallet transactions
 - `monitor_script.sh`: Monitors the simulation status
 - `error_handling.sh`: Provides error handling and logging utilities
 - `network_config.sh`: Centralizes network configuration
@@ -136,10 +134,8 @@ Shell scripts provide flexible testing capabilities and can be easily modified o
 
 ### Scripts
 - `/block_controller.sh`: Controls block generation
-- `/transaction_test.sh`: Tests transaction functionality
 - `/sync_check.sh`: Verifies node synchronization
 - `/simple_test.sh`: Basic functionality test
-- `/transaction_script.sh`: Handles wallet transactions
 - `/monitor_script.sh`: Monitors simulation status
 - `/error_handling.sh`: Error handling utilities
 - `/network_config.sh`: Network configuration

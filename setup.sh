@@ -115,7 +115,7 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
     # Install basic dependencies
     for dep in "${MISSING_DEPS[@]}"; do
         case $dep in
-            "git"|"cmake"|"make"|"curl"|"pkg-config")
+            "git"|"cmake"|"make"|"curl"|"pkg-config"|"jq")
                 print_status "Installing $dep..."
                 $INSTALL_CMD $dep
                 ;;

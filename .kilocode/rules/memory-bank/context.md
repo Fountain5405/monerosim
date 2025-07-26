@@ -2,75 +2,43 @@
 
 ## Current Status
 
-Monerosim is in active development with a focus on achieving a minimum viable simulation. The project has made significant progress with the following components:
+The minimum viable simulation for Monerosim is now **working**. The project has successfully demonstrated core functionality, including:
 
-- Basic configuration file generation for Shadow
-- Integration with Shadow network simulator
-- Modified Monero daemon compatibility
-- Script-based testing infrastructure
+- **P2P Connectivity**: Nodes can successfully connect to each other.
+- **Block Generation**: The mining node (`A0`) generates new blocks as expected.
+- **Block Synchronization**: The second node (`A1`) successfully synchronizes the blockchain from the mining node.
+- **Transaction Processing**: A transaction was successfully created on the mining node, sent to the second node, and confirmed on the network.
+
+With the primary goal achieved, the project is moving from initial implementation to a phase of stabilization and feature expansion.
 
 ## Recent Developments
 
-- Initial implementation of P2P connectivity between Monero nodes
-- Basic block generation and synchronization functionality implementation
-- Wallet integration for transaction testing is in place
-- Error handling and monitoring scripts have been developed
-- Modified configuration to use full blocks instead of pruned blocks by removing MONERO_SYNC_PRUNED_BLOCKS environment variable
+- **Achieved Minimum Viable Simulation**: Successfully ran a complete simulation with two nodes, including mining, synchronization, and a confirmed transaction.
+- **Resolved Critical Issues**: Fixed all major P2P connectivity, block generation, and wallet integration issues that were previously blocking progress.
+- **Validated Core Architecture**: The current architecture and configuration have been proven effective for a basic Monero network simulation in Shadow.
 
 ## Current Focus
 
-The current primary focus is to achieve a minimum working simulation with the following requirements:
-1. Two Monero nodes running in the simulation
-2. One node functioning as a mining node
-3. The second node synchronizing from the mining node
-4. Transaction sending from the mining node to the second node
+With the minimal simulation working, the current focus has shifted to:
 
-## Known Issues
-
-### P2P Connectivity Issues
-- Node A0 (mining node) fails to connect to peers with "No available peer in white list filtered by 1" errors
-- No P2P connectivity is established between nodes
-
-### Block Generation Issues
-- Block-controller script fails with "Failed to get wallet address" error
-- No evidence of successful block generation on node A0
-- Node A0 initializes with blockchain height 693 but doesn't mine new blocks
-
-### Block Synchronization Issues
-- Since node A1 fails to start and there's no P2P connectivity, block synchronization cannot occur
-- No evidence of blockchain synchronization in the logs
-
-### Transaction Processing Issues
-- Transaction-test script fails with "Failed to get Wallet1 balance after multiple attempts"
-- Wallet1 (mining wallet) encounters errors: "file not found "/tmp/wallet1_data/mining_wallet.keys""
-- No transactions are processed between wallets
+1.  **Stabilization and Refinement**: Ensuring the simulation is reliable, reproducible, and provides consistent results. This includes improving test scripts and error handling.
+2.  **Documentation**: Thoroughly documenting the working configuration and the steps required to run the simulation.
+3.  **Planning Medium-Term Goals**: Defining the next set of features, such as expanding the network topology and enhancing monitoring capabilities.
 
 ## Next Steps
 
-1. **Short-term (Current Sprint)**:
-   - Fix Node A1 Configuration:
-     - Verify all command-line options are compatible with the Monero version being used
-   - Address Wallet File Issues:
-     - Ensure wallet directories are properly created and accessible
-     - Check permissions on /tmp/wallet1_data and /tmp/wallet2_data directories
-   - Debug P2P Connectivity:
-     - Review network configuration in shadow.yaml
-     - Ensure IP addresses and ports are correctly configured
-     - Verify that exclusive node and priority node settings are working correctly
-   - Improve Error Handling:
-     - Add more robust error handling in the scripts to provide clearer diagnostics
-     - Implement retries with exponential backoff for critical operations
-   - Run Shadow simulation with a 10-minute timeout to ensure completion
-   - Document the working configuration for reproducibility
+1.  **Short-term (Current Sprint)**:
+    - **Improve Test Automation**: Enhance `transaction_test.sh` and other scripts to provide clear pass/fail results and better diagnostics.
+    - **Code Cleanup and Refactoring**: Refactor scripts and Rust code to improve readability and maintainability now that a working baseline is established.
+    - **Document Working Configuration**: Create detailed documentation explaining the parameters and setup for the successful simulation.
+    - **Performance Baseline**: Measure and document the performance of the current simulation to serve as a baseline for future optimizations.
 
-2. **Medium-term**:
-   - Expand simulation to support more complex network topologies
-   - Improve performance and reliability of node synchronization
-   - Add support for different Monero node configurations
-   - Enhance monitoring and analysis capabilities
+2.  **Medium-term**:
+    - **Expand Network Topologies**: Add support for more complex network configurations (e.g., more than two nodes, different connection patterns).
+    - **Enhance Monitoring and Analysis**: Improve `monitor_script.sh` to provide more detailed insights into network health, transaction flow, and node status.
+    - **Configuration Flexibility**: Abstract and generalize the configuration to make it easier to define different simulation scenarios.
 
-3. **Long-term**:
-   - Develop a web UI for configuration and visualization
-   - Support for testing protocol modifications
-   - Integration with CI/CD pipelines for automated testing
-   - Advanced network condition simulation (latency, packet loss, etc.)
+3.  **Long-term**:
+    - **UI for Configuration/Visualization**: Develop a user interface to simplify the creation of simulation configurations and visualize the results.
+    - **Protocol Modification Testing**: Build the capability to test modifications to the Monero protocol within the simulation environment.
+    - **CI/CD Integration**: Integrate the simulation tests into a continuous integration pipeline for automated testing.
