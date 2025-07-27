@@ -83,6 +83,15 @@ log_critical() {
 
 # ===== RETRY MECHANISMS =====
 
+# Function to calculate exponential backoff delay
+exponential_backoff() {
+    local attempt=$1
+    local base_delay=$2
+    local max_delay=$3
+    local delay=$(( base_delay * 2 ** (attempt - 1) ))
+    echo $(( delay > max_delay ? max_delay : delay ))
+}
+
 # Function to execute a command with retries
 # Usage: retry_command <max_attempts> <delay> <command> [args...]
 retry_command() {
@@ -819,7 +828,7 @@ handle_exit() {
 
 # Export all functions
 export -f log_message log_info log_warning log_error log_critical
-export -f retry_command call_daemon_with_retry call_wallet_with_retry
+export -f exponential_backoff retry_command call_daemon_with_retry call_wallet_with_retry
 export -f verify_daemon_ready verify_wallet_created verify_wallet_open
 export -f verify_block_generation verify_transaction verify_network_sync
 export -f verify_p2p_connectivity handle_exit verify_wallet_directory
