@@ -2,7 +2,7 @@
 # Wrapper script to run monitor.py inside Shadow simulation
 
 # Source the network configuration
-source /home/lever65/monerosim_dev/monerosim/network_config.sh
+source "$(dirname "$0")/network_config.sh"
 
 # Wait a bit for nodes to start
 sleep 10

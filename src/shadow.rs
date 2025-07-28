@@ -217,7 +217,7 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
     // Add block controller script
     let block_controller_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cd {} && ./block_controller.sh'", current_dir),
+        args: format!("-c 'cd {} && ./legacy_scripts/block_controller.sh'", current_dir),
         environment: environment.clone(),
         start_time: "60s".to_string(), // Start after wallets are ready
     };
