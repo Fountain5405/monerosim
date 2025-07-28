@@ -1,0 +1,31 @@
+# Medium-scale agent-based simulation configuration
+# 10 regular users, 3 marketplaces, 2 mining pools
+
+general:
+  simulation_duration: 1800  # 30 minutes
+  log_level: info
+  
+network:
+  # Simple network topology
+  type: simple
+  
+agents:
+  # Regular users who send transactions
+  regular_users:
+    count: 10
+    transaction_interval: 60  # seconds between transactions
+    min_transaction_amount: 0.1
+    max_transaction_amount: 5.0
+    
+  # Marketplaces that receive payments
+  marketplaces:
+    count: 3
+    
+  # Mining pools that generate blocks
+  mining_pools:
+    count: 2
+    
+# Block generation settings
+block_generation:
+  interval: 60  # seconds between blocks
+  pools_per_round: 1  # how many pools mine simultaneously

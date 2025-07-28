@@ -1,0 +1,12 @@
+# Small-scale agent-based simulation configuration
+# 2 regular users, 1 marketplace, 1 mining pool
+
+general:
+  stop_time: 600s  # 10 minutes
+  fresh_blockchain: true
+  
+# Dummy nodes section (required by parser but ignored in agent mode)
+nodes:
+  - name: dummy
+    ip: 11.0.0.1
+    port: 28080
