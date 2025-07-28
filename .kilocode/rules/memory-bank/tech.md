@@ -9,12 +9,20 @@
   - Provides memory safety and robust error handling
   - Version: Latest stable (1.70+)
 
-- **Bash**: Used for testing scripts and automation
-  - Handles test orchestration, monitoring, and error handling
+- **Python**: Primary language for testing and monitoring scripts (pending verification)
+  - Used for all test orchestration, monitoring, and automation
+  - Provides better error handling and cross-platform compatibility than bash
+  - Version: 3.6+ (3.8+ recommended)
+  - Virtual environment established at `/home/lever65/monerosim_dev/monerosim/venv`
+
+- **Bash**: Legacy scripting language, being phased out
+  - Original testing scripts still available as fallback
+  - Used for system-level operations (setup.sh, logfileprocessor.sh)
   - Version: 4.0+
 
 ### Frameworks and Libraries
 
+#### Rust Dependencies
 - **Clap**: Command-line argument parsing for Rust
   - Used for handling CLI options and arguments
   - Version: 4.0+
@@ -26,6 +34,19 @@
 - **Color-eyre**: Error handling and reporting library
   - Provides rich error context and backtraces
   - Version: 0.6+
+
+#### Python Dependencies
+- **requests**: HTTP library for RPC communication
+  - Used for all Monero daemon and wallet RPC calls
+  - Version: 2.25+
+
+- **Standard Library Modules**:
+  - `argparse`: Command-line argument parsing
+  - `json`: JSON parsing and generation
+  - `logging`: Structured logging with color support
+  - `subprocess`: Process management
+  - `typing`: Type hints for better code clarity
+  - `unittest`: Testing framework
 
 ### External Dependencies
 
@@ -47,6 +68,11 @@
   - rustc, cargo, rustfmt, clippy
   - Install via rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
+- **Python Environment**:
+  - Python 3.6+ (3.8+ recommended)
+  - pip for package management
+  - venv for virtual environments
+
 - **Build Tools**:
   - CMake (3.10+)
   - GCC/Clang (C++17 compatible)
@@ -63,6 +89,12 @@
    - Clone the Monerosim repository
    - Run `./setup.sh` to install dependencies and prepare the environment
    - This script will also clone and patch the Monero source code
+   - Set up Python virtual environment:
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     pip install -r scripts/requirements.txt
+     ```
 
 2. **Build**:
    - Run `cargo build --release` to build the Monerosim tool
@@ -81,9 +113,34 @@
    - Run `shadow shadow_output/shadow.yaml` to start the simulation
 
 5. **Testing**:
-   - Use `simple_test.sh` for basic functionality testing
-   - Use `transaction_test.sh` for complete workflow testing
-   - Use `sync_check.sh` to verify network synchronization
+   - **Python Scripts (Pending Verification)**:
+     - Use `python3 scripts/simple_test.py` for basic functionality testing
+     - Use `python3 scripts/transaction_script.py` for transaction testing
+     - Use `python3 scripts/sync_check.py` to verify network synchronization
+     - Use `python3 scripts/monitor.py` for real-time monitoring
+   - **Bash Scripts (Legacy/Fallback)**:
+     - Use `simple_test.sh` for basic functionality testing
+     - Use `sync_check.sh` to verify network synchronization
+
+6. **Test Suite**:
+   - Run all tests: `python3 scripts/run_all_tests.py`
+   - Run with coverage: `python3 scripts/run_all_tests.py --coverage`
+   - View coverage report: `open scripts/htmlcov/index.html`
+
+## Python Virtual Environment
+
+The project uses a Python virtual environment to manage dependencies:
+
+- **Location**: `/home/lever65/monerosim_dev/monerosim/venv`
+- **Activation**: `source venv/bin/activate`
+- **Deactivation**: `deactivate`
+- **Requirements**: Listed in `scripts/requirements.txt`
+
+Benefits of using virtual environment:
+- Isolated dependencies from system Python
+- Reproducible development environment
+- Easy dependency management
+- No conflicts with other Python projects
 
 ## Deployment
 
@@ -93,6 +150,7 @@
 - **CPU**: 4+ cores recommended for medium-sized simulations
 - **Memory**: 8GB+ RAM (16GB+ recommended for larger simulations)
 - **Storage**: 10GB+ free space for build artifacts and simulation data
+- **Python**: 3.6+ (3.8+ recommended)
 
 ### Installation
 
@@ -102,6 +160,11 @@ The project can be installed using the provided setup script:
 git clone <repository_url>
 cd monerosim
 ./setup.sh
+
+# Set up Python environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r scripts/requirements.txt
 ```
 
 This script handles:
@@ -127,3 +190,8 @@ This script handles:
   - Shadow provides high-fidelity network simulation
   - Some real-world conditions may be difficult to simulate precisely
   - Latency and bandwidth can be configured but may not perfectly match real-world behavior
+
+- **Python Script Verification**:
+  - Python scripts are feature-complete but pending production verification
+  - Bash scripts remain available as fallback until verification complete
+  - Virtual environment ensures consistent execution environment

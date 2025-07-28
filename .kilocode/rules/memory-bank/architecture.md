@@ -69,13 +69,29 @@ The configuration file defines the simulation parameters:
 
 ### Testing Scripts
 
-Several shell scripts provide testing and monitoring capabilities. They all run within the shadow environment
+The project includes comprehensive testing scripts that run within the shadow environment. A Python migration has been completed (pending verification) to improve reliability and maintainability:
+
+#### Python Scripts (Pending Verification)
+- `scripts/simple_test.py`: Basic mining and synchronization test
+- `scripts/sync_check.py`: Verifies network synchronization
+- `scripts/block_controller.py`: Controls block generation
+- `scripts/monitor.py`: Monitors the simulation status
+- `scripts/transaction_script.py`: Enhanced transaction handling
+- `scripts/test_p2p_connectivity.py`: P2P connection verification
+
+#### Supporting Python Modules
+- `scripts/error_handling.py`: Provides error handling and logging utilities
+- `scripts/network_config.py`: Centralizes network configuration
+
+#### Legacy Bash Scripts (Still Available)
 - `simple_test.sh`: Basic mining and synchronization test
 - `sync_check.sh`: Verifies network synchronization
 - `block_controller.sh`: Controls block generation
 - `monitor_script.sh`: Monitors the simulation status
 - `error_handling.sh`: Provides error handling and logging utilities
 - `network_config.sh`: Centralizes network configuration
+
+**Note**: The Python scripts are feature-complete but await verification in production simulations before fully replacing the bash scripts.
 
 ## Network Architecture
 
@@ -122,7 +138,7 @@ Rather than creating a simplified Monero model, Monerosim runs actual Monero cod
 
 ### 4. Script-Based Testing
 
-Shell scripts provide flexible testing capabilities and can be easily modified or extended to test different aspects of the Monero network.
+Shell scripts provide flexible testing capabilities and can be easily modified or extended to test different aspects of the Monero network. Python scripts (pending verification) offer improved reliability and better error handling.
 
 ## File Paths
 
@@ -132,7 +148,17 @@ Shell scripts provide flexible testing capabilities and can be easily modified o
 - `/src/build.rs`: Build process management
 - `/src/shadow.rs`: Shadow configuration generation
 
-### Scripts
+### Scripts (Python - Pending Verification)
+- `/scripts/block_controller.py`: Controls block generation
+- `/scripts/sync_check.py`: Verifies node synchronization
+- `/scripts/simple_test.py`: Basic functionality test
+- `/scripts/monitor.py`: Monitors simulation status
+- `/scripts/transaction_script.py`: Transaction handling
+- `/scripts/test_p2p_connectivity.py`: P2P connectivity test
+- `/scripts/error_handling.py`: Error handling utilities
+- `/scripts/network_config.py`: Network configuration
+
+### Scripts (Bash - Legacy)
 - `/block_controller.sh`: Controls block generation
 - `/sync_check.sh`: Verifies node synchronization
 - `/simple_test.sh`: Basic functionality test
