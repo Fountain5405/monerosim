@@ -2,12 +2,14 @@
 # 10 regular users, 3 marketplaces, 2 mining pools
 
 general:
-  simulation_duration: 1800  # 30 minutes
+  stop_time: "4h"
+  fresh_blockchain: true
   log_level: info
   
 network:
-  # Simple network topology
   type: simple
+  bandwidth: "1Gbps"
+  latency: "10ms"
   
 agents:
   # Regular users who send transactions
@@ -19,13 +21,16 @@ agents:
     
   # Marketplaces that receive payments
   marketplaces:
-    count: 3
+    count: 2
+    payment_processing_delay: 5
     
   # Mining pools that generate blocks
   mining_pools:
     count: 2
+    mining_threads: 1
     
 # Block generation settings
 block_generation:
   interval: 60  # seconds between blocks
   pools_per_round: 1  # how many pools mine simultaneously
+  difficulty_adjustment: "fixed"

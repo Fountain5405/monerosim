@@ -462,6 +462,239 @@ MONEROSIM_STOP_TIME="1h" ./target/release/monerosim --config config.yaml
 MONEROSIM_OUTPUT="custom_output" ./target/release/monerosim --config config.yaml
 ```
 
+## Agent-Based Configuration
+
+MoneroSim supports sophisticated agent-based simulations that model realistic cryptocurrency network behavior with autonomous participants.
+
+### Agent Configuration Files
+
+MoneroSim includes pre-configured agent simulation templates:
+
+- `config_agents_small.yaml` - Small scale (2 users, 1 marketplace, 1 mining pool)
+- `config_agents_medium.yaml` - Medium scale (10 users, 3 marketplaces, 2 mining pools)
+- `config_agents_large.yaml` - Large scale (100 users, 10 marketplaces, 5 mining pools)
+
+### Agent Types
+
+#### Regular Users
+- Send transactions to marketplaces
+- Maintain personal wallets
+- Configurable transaction patterns
+
+#### Marketplaces
+- Receive payments from users
+- Track transaction history
+- Publish receiving addresses
+
+#### Mining Pools
+- Generate blocks under coordination
+- Respond to mining control signals
+- Track mining statistics
+
+#### Block Controller
+- Orchestrates mining across pools
+- Ensures consistent block generation
+- Implements round-robin pool selection
+
+### Small Agent Configuration Example
+
+```yaml
+# config_agents_small.yaml
+general:
+  stop_time: "30m"
+
+monero:
+  nodes:
+    - count: 5
+      name: "A"
+      base_commit: "shadow-complete"
+
+agents:
+  regular_users:
+    - count: 2
+      name_prefix: "user"
+      transaction_interval: 300  # seconds
+      transaction_amount: 0.1
+      
+  marketplaces:
+    - count: 1
+      name_prefix: "marketplace"
+      
+  mining_pools:
+    - count: 1
+      name_prefix: "pool"
+      mining_threads: 1
+      
+  block_controller:
+    enabled: true
+    block_interval: 120  # seconds
+```
+
+### Medium Agent Configuration Example
+
+```yaml
+# config_agents_medium.yaml
+general:
+  stop_time: "1h"
+
+monero:
+  nodes:
+    - count: 20
+      name: "A"
+      base_commit: "shadow-complete"
+
+agents:
+  regular_users:
+    - count: 10
+      name_prefix: "user"
+      transaction_interval: 180
+      transaction_amount: 0.05
+      
+  marketplaces:
+    - count: 3
+      name_prefix: "marketplace"
+      
+  mining_pools:
+    - count: 2
+      name_prefix: "pool"
+      mining_threads: 2
+      
+  block_controller:
+    enabled: true
+    block_interval: 120
+```
+
+### Large Agent Configuration Example
+
+```yaml
+# config_agents_large.yaml
+general:
+  stop_time: "2h"
+
+monero:
+  nodes:
+    - count: 100
+      name: "A"
+      base_commit: "shadow-complete"
+
+agents:
+  regular_users:
+    - count: 100
+      name_prefix: "user"
+      transaction_interval: 60
+      transaction_amount: 0.01
+      
+  marketplaces:
+    - count: 10
+      name_prefix: "marketplace"
+      
+  mining_pools:
+    - count: 5
+      name_prefix: "pool"
+      mining_threads: 4
+      
+  block_controller:
+    enabled: true
+    block_interval: 60
+```
+
+### Agent Configuration Parameters
+
+#### Regular User Parameters
+
+```yaml
+regular_users:
+  - count: 10                    # Number of user agents
+    name_prefix: "user"          # Prefix for agent names
+    transaction_interval: 300    # Seconds between transactions
+    transaction_amount: 0.1      # Amount to send per transaction
+    start_delay: 60             # Seconds to wait before first transaction
+    wallet_refresh_interval: 10  # Seconds between wallet refreshes
+```
+
+#### Marketplace Parameters
+
+```yaml
+marketplaces:
+  - count: 3                     # Number of marketplace agents
+    name_prefix: "marketplace"   # Prefix for agent names
+    address_refresh_interval: 30 # Seconds between address updates
+    payment_check_interval: 10   # Seconds between payment checks
+```
+
+#### Mining Pool Parameters
+
+```yaml
+mining_pools:
+  - count: 2                     # Number of mining pool agents
+    name_prefix: "pool"          # Prefix for agent names
+    mining_threads: 2            # Number of mining threads
+    signal_check_interval: 5     # Seconds between mining signal checks
+```
+
+#### Block Controller Parameters
+
+```yaml
+block_controller:
+  enabled: true                  # Enable/disable block controller
+  block_interval: 120           # Seconds between block generation
+  pool_rotation: "round_robin"  # Pool selection strategy
+  start_delay: 30              # Seconds before first block
+```
+
+### Running Agent-Based Simulations
+
+```bash
+# Generate configuration for small agent simulation
+./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output
+
+# Run the simulation
+shadow shadow_agents_output/shadow_agents.yaml
+
+# Monitor agent activity
+tail -f /tmp/monerosim_shared/*.json
+```
+
+### Agent Communication Architecture
+
+Agents communicate through shared state files:
+
+```
+/tmp/monerosim_shared/
+├── users.json                    # List of all user agents
+├── marketplaces.json            # List of all marketplace agents
+├── mining_pools.json            # List of all mining pools
+├── block_controller.json        # Block controller status
+├── transactions.json            # Transaction log
+├── blocks_found.json           # Block discovery log
+├── marketplace_payments.json    # Payment tracking
+├── mining_signals/             # Mining control signals
+│   ├── poolalpha.json
+│   └── poolbeta.json
+└── [agent]_stats.json          # Per-agent statistics
+```
+
+### Traditional vs Agent-Based Configuration
+
+#### Traditional Configuration
+- Simple node setup
+- Manual transaction testing
+- Direct mining control
+- Good for basic functionality testing
+
+#### Agent-Based Configuration
+- Realistic network behavior
+- Autonomous participants
+- Coordinated mining
+- Good for research and analysis
+
+### Troubleshooting Agent Configurations
+
+1. **Mining RPC Issues**: If mining RPC methods fail, ensure Monero is built with mining support
+2. **Agent Startup**: Agents require proper sequencing - daemons first, then wallets, then agents
+3. **Shared State**: Ensure `/tmp/monerosim_shared/` directory has proper permissions
+4. **Performance**: Start with small configurations and scale up gradually
+
 ## Configuration File Templates
 
 ### Template: Basic Network
@@ -518,4 +751,38 @@ monero:
     - count: 100
       name: "network"
       base_commit: "shadow-complete"
-``` 
+```
+
+### Template: Agent-Based Research
+
+```yaml
+# Agent-based cryptocurrency network research
+general:
+  stop_time: "1h"
+
+monero:
+  nodes:
+    - count: 50
+      name: "A"
+      base_commit: "shadow-complete"
+
+agents:
+  regular_users:
+    - count: 40
+      name_prefix: "user"
+      transaction_interval: 120
+      transaction_amount: 0.05
+      
+  marketplaces:
+    - count: 5
+      name_prefix: "marketplace"
+      
+  mining_pools:
+    - count: 3
+      name_prefix: "pool"
+      mining_threads: 2
+      
+  block_controller:
+    enabled: true
+    block_interval: 90
+```

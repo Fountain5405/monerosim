@@ -2,11 +2,27 @@
 # 2 regular users, 1 marketplace, 1 mining pool
 
 general:
-  stop_time: 600s  # 10 minutes
+  stop_time: "10m"
   fresh_blockchain: true
+  log_level: debug  # More verbose for debugging
   
-# Dummy nodes section (required by parser but ignored in agent mode)
-nodes:
-  - name: dummy
-    ip: 11.0.0.1
-    port: 28080
+agents:
+  # Regular users who send transactions
+  regular_users:
+    count: 2
+    transaction_interval: 30  # seconds between transactions
+    min_transaction_amount: 0.5
+    max_transaction_amount: 2.0
+    
+  # Marketplaces that receive payments
+  marketplaces:
+    count: 1
+    
+  # Mining pools that generate blocks
+  mining_pools:
+    count: 1
+    
+# Block generation settings
+block_generation:
+  interval: 30  # seconds between blocks
+  pools_per_round: 1

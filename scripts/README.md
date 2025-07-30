@@ -1,6 +1,6 @@
 # Monerosim Python Scripts
 
-This directory contains Python scripts for testing, monitoring, and managing Monero nodes within the Shadow network simulation environment. These scripts have been migrated from Bash to Python for improved reliability, maintainability, and cross-platform compatibility.
+This directory contains the primary Python scripts for testing, monitoring, and managing Monero nodes within the Shadow network simulation environment. These scripts have been fully migrated from Bash to Python and are now the official implementation, providing improved reliability, maintainability, and cross-platform compatibility.
 
 ## 📋 Table of Contents
 
@@ -16,13 +16,13 @@ This directory contains Python scripts for testing, monitoring, and managing Mon
 
 ## Overview
 
-The Monerosim Python scripts provide comprehensive tools for:
+The Monerosim Python scripts are the primary implementation for:
 - Testing Monero network functionality
 - Monitoring node status and synchronization
 - Managing block generation and transactions
 - Verifying P2P connectivity
 
-All scripts share common modules for configuration and error handling, ensuring consistent behavior across the toolkit.
+All scripts share common modules for configuration and error handling, ensuring consistent behavior across the toolkit. The legacy Bash scripts have been moved to `legacy_scripts/` directory and are deprecated.
 
 ## Available Scripts
 
@@ -320,11 +320,13 @@ python -m pytest scripts/test_*.py --cov=scripts --cov-report=html
 
 ## Migration Information
 
-These Python scripts are migrated versions of the original Bash scripts. For detailed information about the migration:
+The Python scripts have been successfully migrated from the original Bash scripts and are now the primary implementation. The migration is complete and verified in production use.
 
 - [Migration Guide](MIGRATION_GUIDE.md) - Comprehensive migration documentation
 - [Migration Summary](MIGRATION_SUMMARY.md) - Statistics and benefits analysis
 - Individual migration summaries in script directories
+
+**Note**: The original Bash scripts are deprecated and have been moved to the `legacy_scripts/` directory for historical reference only.
 
 ## Troubleshooting
 
@@ -381,6 +383,30 @@ When adding new scripts or modifying existing ones:
 3. Include comprehensive docstrings
 4. Write unit tests for new functionality
 5. Update relevant documentation
+
+## Python Scripts vs Legacy Bash Scripts
+
+### Current Status
+
+- **Python Scripts**: Primary implementation, fully tested and verified
+- **Bash Scripts**: Deprecated, moved to `legacy_scripts/` directory
+
+### Why Python?
+
+1. **Better Error Handling**: Comprehensive exception handling and retry logic
+2. **Cross-Platform**: Works consistently across different operating systems
+3. **Type Safety**: Type hints improve code clarity and catch errors early
+4. **Testing**: Extensive unit test coverage (95%+)
+5. **Maintainability**: Cleaner code structure and better modularity
+
+### Migration Path
+
+If you have custom scripts or workflows using the old Bash scripts:
+
+1. Review the Python equivalents in this directory
+2. Update your Shadow configuration files to use Python scripts
+3. Test thoroughly in your environment
+4. Remove references to legacy Bash scripts
 
 ## License
 

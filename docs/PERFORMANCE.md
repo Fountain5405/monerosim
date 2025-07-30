@@ -296,6 +296,25 @@ monero:
 - Reduced logging
 - Reuse builds
 
+**Agent Testing Configuration**:
+```yaml
+# Minimal agent configuration
+general:
+  stop_time: "5m"
+
+monero:
+  nodes:
+    - count: 3
+      name: "A"
+
+agents:
+  regular_users:
+    - count: 2
+      transaction_interval: 60
+  marketplaces:
+    - count: 1
+```
+
 ### 2. Research and Analysis
 
 **Goal**: Accurate results with reasonable performance
@@ -361,6 +380,37 @@ monero:
 - Standardized configurations
 - Detailed monitoring
 - Performance metrics collection
+
+### 5. Agent-Based Research
+
+**Goal**: Study realistic network behavior
+
+```yaml
+# Agent research configuration
+general:
+  stop_time: "2h"
+
+monero:
+  nodes:
+    - count: 30
+      name: "A"
+
+agents:
+  regular_users:
+    - count: 20
+      transaction_interval: 180
+  marketplaces:
+    - count: 5
+  mining_pools:
+    - count: 2
+      mining_threads: 2
+```
+
+**Optimizations**:
+- Staggered agent startup
+- Optimized transaction intervals
+- Limited mining threads
+- Efficient shared state updates
 
 ## Troubleshooting Performance Issues
 
@@ -476,6 +526,60 @@ hosts:
         MONERO_DB_SYNC_MODE: "fast"
 ```
 
+### 4. Agent-Specific Optimizations
+
+#### Shared State Optimization
+
+```bash
+# Use tmpfs for shared state (RAM-based)
+sudo mkdir -p /tmp/monerosim_shared
+sudo mount -t tmpfs -o size=1G tmpfs /tmp/monerosim_shared
+
+# Or use local SSD instead of network storage
+ln -s /local/ssd/monerosim_shared /tmp/monerosim_shared
+```
+
+#### Agent Startup Optimization
+
+```python
+# In agent code, implement staggered startup
+import time
+import random
+
+class OptimizedAgent(BaseAgent):
+    def __init__(self):
+        # Add random delay to prevent thundering herd
+        startup_delay = random.uniform(0, 30)
+        time.sleep(startup_delay)
+        super().__init__()
+```
+
+#### Transaction Batching
+
+```python
+# Batch multiple transactions to reduce overhead
+class BatchedUser(RegularUser):
+    def send_transactions(self):
+        transactions = []
+        for _ in range(5):  # Batch 5 transactions
+            tx = self.create_transaction()
+            transactions.append(tx)
+        
+        # Send all at once
+        self.wallet_rpc.send_batch(transactions)
+```
+
+#### Mining Pool Optimization
+
+```yaml
+# Optimize mining pool configuration
+mining_pools:
+  - count: 3
+    mining_threads: 4  # Match CPU cores
+    signal_check_interval: 10  # Reduce polling frequency
+    block_generation_timeout: 300  # Longer timeout for stability
+```
+
 ### 2. Hardware-Specific Optimizations
 
 #### Multi-CPU Systems
@@ -550,6 +654,39 @@ network:
 - **Scale gradually**: Increase complexity step by step
 - **Monitor resources**: Track system usage during development
 - **Document performance**: Record successful configurations
+- **Agent considerations**: Plan for agent overhead in resource allocation
+
+### Agent-Specific Best Practices
+
+1. **Agent Deployment**:
+   - Start agents in waves, not all at once
+   - Use smaller agent counts initially
+   - Monitor shared state file sizes
+   - Consider agent type distribution
+
+2. **Resource Planning**:
+   - Add 100-300MB RAM per agent
+   - Reserve IOPS for shared state access
+   - Use local SSD for shared state directory
+   - Plan for longer simulation times
+
+3. **Monitoring Agents**:
+   ```bash
+   # Monitor agent activity
+   watch -n 1 'ls -la /tmp/monerosim_shared/*.json | tail -10'
+   
+   # Check agent resource usage
+   ps aux | grep -E "(regular_user|marketplace|mining_pool)" | awk '{sum+=$6} END {print "Total Agent RAM: " sum/1024 " MB"}'
+   
+   # Monitor shared state I/O
+   iotop -o -p $(pgrep -f "regular_user|marketplace|mining_pool" | tr '\n' ',' | sed 's/,$//')
+   ```
+
+4. **Troubleshooting Performance**:
+   - If agents are slow, check shared state contention
+   - Reduce transaction frequency for better performance
+   - Use fewer mining pools to reduce coordination overhead
+   - Monitor Python GIL contention with many agents
 
 ### 2. Execution
 
@@ -571,3 +708,28 @@ network:
 - **Update dependencies**: Keep system and tools current
 - **Monitor system health**: Check for hardware issues
 - **Backup configurations**: Preserve working setups
+- **Clean shared state**: Clear `/tmp/monerosim_shared/` between runs
+
+## Agent Performance Tuning Guide
+
+### Quick Reference
+
+| Agent Count | RAM Overhead | Simulation Speed | Recommended Hardware |
+|-------------|--------------|------------------|---------------------|
+| 1-10        | 0.5-1 GB     | 1.5-3x real-time | 8GB RAM, 4 cores   |
+| 10-50       | 1-10 GB      | 0.8-2x real-time | 16GB RAM, 8 cores  |
+| 50-100      | 10-30 GB     | 0.3-1x real-time | 32GB RAM, 16 cores |
+| 100+        | 30+ GB       | <0.5x real-time  | 64GB RAM, 32 cores |
+
+### Optimization Checklist
+
+- [ ] Use local SSD for shared state
+- [ ] Implement agent startup delays
+- [ ] Optimize transaction intervals
+- [ ] Limit mining threads per pool
+- [ ] Use appropriate log levels
+- [ ] Monitor resource usage continuously
+- [ ] Clean shared state between runs
+- [ ] Use Python virtual environment
+- [ ] Consider agent type balance
+- [ ] Test scalability incrementally

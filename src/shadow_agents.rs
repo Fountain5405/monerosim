@@ -280,18 +280,18 @@ pub fn generate_agent_shadow_config(
         next_ip += 1;
     }
     
-    // 3. Create Mining Pools (mining-enabled daemon + agent)
+    // 3. Create Additional Nodes (formerly mining pools, now just regular nodes for network robustness)
     for i in 0..agent_config.mining_pools {
-        let pool_id = format!("pool{}", if i == 0 { "alpha" } else { "beta" });
+        let node_id = format!("node{:03}", i);
         let node_ip = format!("11.0.0.{}", next_ip);
         let node_port = 28080;
         let node_rpc_port = 29100 + (i * 10) as u16;
         
         let mut processes = Vec::new();
         
-        // Mining-enabled daemon
+        // Regular daemon (no mining capabilities needed)
         let daemon_args = vec![
-            format!("--data-dir=/tmp/monero-{}", pool_id),
+            format!("--data-dir=/tmp/monero-{}", node_id),
             "--log-file=/dev/stdout".to_string(),
             "--log-level=1".to_string(),
             "--simulation".to_string(),
@@ -317,7 +317,7 @@ pub fn generate_agent_shadow_config(
             "--regtest".to_string(),
             format!("--p2p-bind-ip={}", node_ip),
             format!("--p2p-bind-port={}", node_port),
-            "--fixed-difficulty=100".to_string(), // Lower difficulty for mining pools
+            "--fixed-difficulty=200".to_string(),
             "--allow-local-ip".to_string(),
             "--add-priority-node=11.0.0.1:28080".to_string(),
             "--add-priority-node=11.0.0.2:28080".to_string(),
@@ -335,20 +335,9 @@ pub fn generate_agent_shadow_config(
             start_time: format!("{}s", 5 + i * 5),
         });
         
-        // Mining pool agent
-        let agent_args = format!(
-            "--id {} --node-rpc {} --mining-threads 1 --rpc-host {}",
-            pool_id, node_rpc_port, node_ip
-        );
+        // No agent needed for these additional nodes
         
-        processes.push(ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: create_agent_command(&current_dir, "mining_pool.py", &agent_args),
-            environment: environment.clone(),
-            start_time: format!("{}s", 40 + i * 5),
-        });
-        
-        hosts.insert(pool_id, ShadowHost {
+        hosts.insert(node_id, ShadowHost {
             network_node_id: 0,
             ip_addr: Some(node_ip),
             processes,
@@ -357,19 +346,58 @@ pub fn generate_agent_shadow_config(
         next_ip += 1;
     }
     
-    // 4. Add Block Controller Agent
-    let block_controller_process = ShadowProcess {
+    // 4. Add Block Controller with its own wallet
+    let block_controller_id = "blockcontroller";
+    let block_controller_ip = format!("11.0.0.{}", next_ip);
+    let block_controller_wallet_port = 29200;
+    
+    let mut block_controller_processes = Vec::new();
+    
+    // Block controller wallet (connects to first user's daemon for simplicity)
+    let wallet_path = std::fs::canonicalize("monero-wallet-rpc")
+        .expect("Failed to resolve absolute path to monero-wallet-rpc")
+        .to_string_lossy()
+        .to_string();
+        
+    let wallet_args = format!(
+        "--daemon-address=11.0.0.10:28090 --rpc-bind-port={} --rpc-bind-ip={} \
+         --disable-rpc-login --trusted-daemon --log-level=1 \
+         --wallet-dir=/tmp/{}_wallet --non-interactive --confirm-external-bind \
+         --allow-mismatched-daemon-version --max-concurrency=1 \
+         --daemon-ssl-allow-any-cert --password \"\"",
+        block_controller_wallet_port, block_controller_ip, block_controller_id
+    );
+    
+    block_controller_processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: create_agent_command(&current_dir, "block_controller.py", "--interval 120 --blocks 1"),
+        args: format!(
+            "-c 'mkdir -p /tmp/{}_wallet && {} {}'",
+            block_controller_id, wallet_path, wallet_args
+        ),
+        environment: environment.clone(),
+        start_time: "50s".to_string(), // Start after nodes are up
+    });
+    
+    // Block controller agent with wallet RPC info
+    let agent_args = format!(
+        "--interval 120 --blocks 1 --wallet-rpc {} --wallet-host {} --daemon-host 11.0.0.10 --daemon-rpc 28090",
+        block_controller_wallet_port, block_controller_ip
+    );
+    
+    block_controller_processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: create_agent_command(&current_dir, "block_controller.py", &agent_args),
         environment: environment.clone(),
         start_time: "90s".to_string(),
-    };
-    
-    hosts.insert("blockcontroller".to_string(), ShadowHost {
-        network_node_id: 0,
-        ip_addr: None,
-        processes: vec![block_controller_process],
     });
+    
+    hosts.insert(block_controller_id.to_string(), ShadowHost {
+        network_node_id: 0,
+        ip_addr: Some(block_controller_ip),
+        processes: block_controller_processes,
+    });
+    
+    next_ip += 1;
     
     // 5. Add monitoring scripts (optional)
     let monitor_process = ShadowProcess {

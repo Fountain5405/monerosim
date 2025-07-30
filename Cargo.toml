@@ -38,6 +38,10 @@ md5 = "0.7"
 # Random number generation
 rand = "0.8"
 
+[dev-dependencies]
+# Temporary files for testing
+tempfile = "3.8"
+
 [[bin]]
 name = "monerosim"
 path = "src/main.rs"

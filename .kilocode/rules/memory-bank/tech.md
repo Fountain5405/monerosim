@@ -9,15 +9,15 @@
   - Provides memory safety and robust error handling
   - Version: Latest stable (1.70+)
 
-- **Python**: Primary language for testing and monitoring scripts (pending verification)
+- **Python**: Primary language for testing and monitoring scripts
   - Used for all test orchestration, monitoring, and automation
   - Provides better error handling and cross-platform compatibility than bash
   - Version: 3.6+ (3.8+ recommended)
   - Virtual environment established at `/home/lever65/monerosim_dev/monerosim/venv`
 
-- **Bash**: Legacy scripting language, being phased out
-  - Original testing scripts still available as fallback
-  - Used for system-level operations (setup.sh, logfileprocessor.sh)
+- **Bash**: Legacy scripting language (deprecated)
+  - Original testing scripts moved to `legacy_scripts/` directory
+  - Used only for system-level operations (setup.sh, logfileprocessor.sh)
   - Version: 4.0+
 
 ### Frameworks and Libraries
@@ -113,14 +113,13 @@
    - Run `shadow shadow_output/shadow.yaml` to start the simulation
 
 5. **Testing**:
-   - **Python Scripts (Pending Verification)**:
+   - **Python Scripts (Primary Implementation)**:
      - Use `python3 scripts/simple_test.py` for basic functionality testing
      - Use `python3 scripts/transaction_script.py` for transaction testing
      - Use `python3 scripts/sync_check.py` to verify network synchronization
      - Use `python3 scripts/monitor.py` for real-time monitoring
-   - **Bash Scripts (Legacy/Fallback)**:
-     - Use `simple_test.sh` for basic functionality testing
-     - Use `sync_check.sh` to verify network synchronization
+   - **Bash Scripts (Deprecated)**:
+     - Available in `legacy_scripts/` for historical reference only
 
 6. **Test Suite**:
    - Run all tests: `python3 scripts/run_all_tests.py`
@@ -191,7 +190,7 @@ This script handles:
   - Some real-world conditions may be difficult to simulate precisely
   - Latency and bandwidth can be configured but may not perfectly match real-world behavior
 
-- **Python Script Verification**:
-  - Python scripts are feature-complete but pending production verification
-  - Bash scripts remain available as fallback until verification complete
+- **Python Script Implementation**:
+  - Python scripts are the primary implementation for all testing and monitoring
+  - Bash scripts are deprecated and available in `legacy_scripts/` for historical reference only
   - Virtual environment ensures consistent execution environment

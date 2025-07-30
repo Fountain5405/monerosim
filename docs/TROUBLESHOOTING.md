@@ -31,6 +31,15 @@ ls shadow.data/hosts/*/monerod.*.stdout
 
 # MoneroSim build logs
 tail -f builds/*/monero/build.log
+
+# Python script logs
+ls shadow.data/hosts/*/simple_test.*.stdout
+ls shadow.data/hosts/*/monitor.*.stdout
+
+# Agent logs (for agent-based simulations)
+ls shadow.data/hosts/*/regular_user*.stdout
+ls shadow.data/hosts/*/marketplace*.stdout
+ls shadow.data/hosts/*/mining_pool*.stdout
 ```
 
 ## Common Issues and Solutions
@@ -547,8 +556,33 @@ grep "slow\|timeout\|delay" shadow.data/hosts/*/monerod.*.stdout
 export MONEROSIM_DEBUG=1
 export RUST_LOG=debug
 
+# For Python scripts
+export LOG_LEVEL=DEBUG
+
 # Run with debug output
 ./target/release/monerosim --config config.yaml --output debug_output
+```
+
+#### Python Script Debugging
+
+**Interactive debugging**:
+```bash
+# Use Python debugger
+python -m pdb scripts/simple_test.py
+
+# Common pdb commands:
+# n - next line
+# s - step into function
+# c - continue
+# l - list code
+# p variable - print variable
+```
+
+**Add debug prints**:
+```python
+# In scripts, use logging instead of print
+from error_handling import log_debug
+log_debug(f"Variable value: {variable}")
 ```
 
 #### Performance Profiling
@@ -624,6 +658,10 @@ When reporting issues, include:
 rustup update
 cargo update
 
+# Update Python packages
+source venv/bin/activate
+pip install --upgrade -r scripts/requirements.txt
+
 # Clean old builds
 cargo clean
 rm -rf builds/
@@ -631,6 +669,9 @@ rm -rf builds/
 # Update monero-shadow
 cd ../monero-shadow
 git pull origin shadow-complete
+
+# Clean agent shared state
+rm -rf /tmp/monerosim_shared/
 ```
 
 ### 2. Testing Strategy
@@ -640,6 +681,13 @@ git pull origin shadow-complete
 # Use version control for configurations
 # Keep backup of working configurations
 # Document any workarounds or special settings
+
+# Test Python scripts individually before full simulation
+python3 scripts/simple_test.py
+python3 scripts/sync_check.py
+
+# Run unit tests before deployment
+python -m pytest scripts/test_*.py -v
 ```
 
 ### 3. Monitoring
@@ -649,4 +697,44 @@ git pull origin shadow-complete
 # Keep logs for analysis
 # Track performance metrics
 # Document successful configurations
+
+# Use monitoring script during simulations
+python3 scripts/monitor.py --refresh 5
+
+# Monitor agent activity
+tail -f /tmp/monerosim_shared/*.json
+```
+
+## Common Python Script Commands
+
+### Testing Scripts
+
+```bash
+# Basic functionality test
+python3 scripts/simple_test.py
+
+# Synchronization check
+python3 scripts/sync_check.py --continuous --wait-time 30
+
+# Transaction testing
+python3 scripts/transaction_script.py
+
+# P2P connectivity (must run in Shadow)
+python3 scripts/test_p2p_connectivity.py
+
+# Real-time monitoring
+python3 scripts/monitor.py --refresh 10
+```
+
+### Agent Commands
+
+```bash
+# Run individual agents for testing
+python3 agents/regular_user.py --name user001 --daemon-url http://11.0.0.1:18081
+
+# Test marketplace agent
+python3 agents/marketplace.py --name market001 --daemon-url http://11.0.0.2:18081
+
+# Test mining pool
+python3 agents/mining_pool.py --name poolalpha --daemon-url http://11.0.0.3:18081
 ```

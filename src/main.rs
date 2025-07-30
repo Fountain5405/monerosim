@@ -2,16 +2,19 @@ use clap::Parser;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
 use env_logger::Env;
-use log::info;
-use std::fs::File;
+use log::{info, warn};
 use std::path::PathBuf;
 
 mod build;
 mod config;
+mod config_v2;
+mod config_loader;
+mod config_compat;
 mod shadow;
 mod shadow_agents;
 
-use config::Config;
+use config::Config as OldConfig;
+use config_v2::Config as NewConfig;
 use shadow_agents::{AgentConfig, generate_agent_shadow_config};
 
 /// Configuration utility for Monero network simulations in Shadow
@@ -26,60 +29,65 @@ struct Args {
     #[arg(short, long, default_value = "shadow_output")]
     output: PathBuf,
     
-    /// Enable agent-based simulation mode
+    /// Migrate configuration to new format
     #[arg(long)]
-    agents: bool,
+    migrate: bool,
     
-    /// Number of regular users (for agent mode)
-    #[arg(long, default_value = "10")]
-    users: u32,
-    
-    /// Number of marketplaces (for agent mode)
-    #[arg(long, default_value = "2")]
-    marketplaces: u32,
-    
-    /// Number of mining pools (for agent mode)
-    #[arg(long, default_value = "2")]
-    pools: u32,
-    
-    /// Transaction frequency for regular users (0.0-1.0)
-    #[arg(long, default_value = "0.1")]
-    tx_frequency: f64,
+    /// Output path for migrated configuration
+    #[arg(long, requires = "migrate")]
+    migrate_output: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
+    // Initialize error handling
+    color_eyre::install()?;
+    
     // Parse command-line arguments
     let args = Args::parse();
     
     // Initialize logging with default filter level of "info"
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     
-    info!("Starting MoneroSim configuration parser");
+    info!("Starting MoneroSim configuration parser v2");
     info!("Configuration file: {:?}", args.config);
     info!("Output directory: {:?}", args.output);
     
-    // Read and parse the configuration file
-    let config = load_config(&args.config)?;
-    
-    // Create output directory if it doesn't exist
-    std::fs::create_dir_all(&args.output)?;
-    
-    if args.agents {
-        // Agent-based simulation mode
-        info!("Running in agent-based simulation mode");
+    // Handle migration if requested
+    if args.migrate {
+        let output_path = args.migrate_output.unwrap_or_else(|| {
+            let mut path = args.config.clone();
+            path.set_extension("migrated.yaml");
+            path
+        });
         
-        // Create agent configuration
-        let agent_config = AgentConfig {
-            regular_users: args.users,
-            marketplaces: args.marketplaces,
-            mining_pools: args.pools,
-            transaction_frequency: args.tx_frequency,
-            min_transaction_amount: 0.1,
-            max_transaction_amount: 1.0,
-        };
+        config_loader::migrate_config(&args.config, &output_path)?;
+        info!("Configuration migrated successfully to: {:?}", output_path);
+        return Ok(());
+    }
+    
+    // Check configuration compatibility
+    config_loader::check_config_compatibility(&args.config)?;
+    
+    // Load configuration using new system
+    let new_config = config_loader::load_config(&args.config)?;
+    
+    // Determine if we should use agent mode based on configuration structure
+    let use_agent_mode = config_compat::should_use_agent_mode(&new_config, false);
+    
+    if use_agent_mode {
+        // Extract agent configuration
+        let agent_config = config_compat::extract_agent_config(&new_config)
+            .ok_or_else(|| color_eyre::eyre::eyre!("Failed to extract agent configuration"))?;
+        
+        // Convert to old format for compatibility with existing functions
+        let old_config = config_compat::convert_to_old_format(&new_config)?;
+        
+        // Create output directory if it doesn't exist
+        std::fs::create_dir_all(&args.output)?;
         
         // Generate agent-based Shadow configuration
-        generate_agent_shadow_config(&config, &agent_config, &args.output)?;
+        info!("Running in agent-based simulation mode");
+        generate_agent_shadow_config(&old_config, &agent_config, &args.output)?;
         
         let shadow_config_path = args.output.join("shadow_agents.yaml");
         info!("Generated Agent-based Shadow configuration: {:?}", shadow_config_path);
@@ -94,23 +102,29 @@ fn main() -> Result<()> {
         // Traditional simulation mode
         info!("Running in traditional simulation mode");
         
+        // Convert to old format for compatibility
+        let old_config = config_compat::convert_to_old_format(&new_config)?;
+        
+        // Create output directory if it doesn't exist
+        std::fs::create_dir_all(&args.output)?;
+        
         // Prepare build directories and log the build plan
-        let build_plans = build::prepare_builds(&config)?;
+        let build_plans = build::prepare_builds(&old_config)?;
         
         // Build monero binaries for each node type
         build::build_monero_binaries(&build_plans)?;
         
         // Generate Shadow configuration (traditional approach)
-        shadow::generate_shadow_config(&config, &args.output)?;
+        shadow::generate_shadow_config(&old_config, &args.output)?;
         
         let shadow_config_path = args.output.join("shadow.yaml");
         info!("Generated Shadow configuration: {:?}", shadow_config_path);
         
         // Log the parsed configuration values
         info!("Successfully parsed configuration:");
-        info!("  General stop time: {}", config.general.stop_time);
+        info!("  General stop time: {}", old_config.general.stop_time);
         info!("  Monero nodes:");
-        for (i, node) in config.nodes.iter().enumerate() {
+        for (i, node) in old_config.nodes.iter().enumerate() {
             info!("    Node {} (name: {}):", i + 1, node.name);
             info!("      IP: {}", node.ip);
             info!("      Port: {}", node.port);
@@ -132,24 +146,33 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Load and parse the configuration from a YAML file
-/// 
-/// This function reads the specified YAML file and deserializes it into our Config struct.
-/// It includes robust error handling for file reading and YAML parsing.
-/// 
-/// # Arguments
-/// * `config_path` - Path to the YAML configuration file
-/// 
-/// # Returns
-/// * `Result<Config>` - The parsed configuration or an error
-fn load_config(config_path: &PathBuf) -> Result<Config> {
-    // Open the configuration file
-    let file = File::open(config_path)
-        .wrap_err_with(|| format!("Unable to read configuration file: {:?}", config_path))?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
     
-    // Parse the YAML content into our Config struct
-    let config: Config = serde_yaml::from_reader(file)
-        .wrap_err_with(|| format!("Failed to parse YAML configuration from: {:?}", config_path))?;
+    #[test]
+    fn test_cli_parsing() {
+        let args = Args::parse_from(&[
+            "monerosim",
+            "--config", "test.yaml",
+        ]);
+        
+        assert_eq!(args.config, PathBuf::from("test.yaml"));
+        assert_eq!(args.output, PathBuf::from("shadow_output"));
+    }
     
-    Ok(config)
+    #[test]
+    fn test_migration_args() {
+        let args = Args::parse_from(&[
+            "monerosim",
+            "--config", "test.yaml",
+            "--migrate",
+            "--migrate-output", "test_migrated.yaml",
+        ]);
+        
+        assert!(args.migrate);
+        assert_eq!(args.migrate_output, Some(PathBuf::from("test_migrated.yaml")));
+    }
 }

@@ -16,7 +16,18 @@ This document provides comprehensive guidance for developers working on MoneroSi
    rustup component add clippy rustfmt
    ```
 
-2. **System Dependencies**
+2. **Python Environment**
+   ```bash
+   # Ensure Python 3.6+ is installed
+   python3 --version
+   
+   # Install pip if not available
+   sudo apt-get install python3-pip  # Ubuntu/Debian
+   sudo dnf install python3-pip      # Fedora/RHEL
+   sudo pacman -S python-pip         # Arch Linux
+   ```
+
+3. **System Dependencies**
    ```bash
    # Ubuntu/Debian
    sudo apt-get install git cmake make gcc g++ pkg-config libssl-dev
@@ -28,7 +39,7 @@ This document provides comprehensive guidance for developers working on MoneroSi
    sudo pacman -S git cmake make gcc pkgconf openssl
    ```
 
-3. **Shadow Simulator**
+4. **Shadow Simulator**
    - Follow the official installation guide: https://shadow.github.io/docs/guide/install/
    - Ensure Shadow is in your PATH
 
@@ -46,6 +57,11 @@ cd monero-shadow
 git checkout shadow-complete
 cd ../monerosim
 
+# Set up Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r scripts/requirements.txt
+
 # Build MoneroSim
 cargo build --release
 ```
@@ -58,14 +74,34 @@ monerosim/
 │   ├── main.rs              # CLI entry point and orchestration
 │   ├── config.rs            # Configuration parsing and validation
 │   ├── build.rs             # Monero build management
-│   └── shadow.rs            # Shadow configuration generation
+│   ├── shadow.rs            # Shadow configuration generation
+│   └── shadow_agents.rs     # Agent-based Shadow configuration
+├── agents/                  # Agent framework (Python)
+│   ├── base_agent.py        # Base agent class
+│   ├── regular_user.py      # Regular user agent
+│   ├── marketplace.py       # Marketplace agent
+│   ├── mining_pool.py       # Mining pool agent
+│   ├── block_controller.py  # Block controller agent
+│   └── monero_rpc.py        # Monero RPC client
+├── scripts/                 # Python testing and monitoring scripts
+│   ├── simple_test.py       # Basic functionality test
+│   ├── sync_check.py        # Synchronization verification
+│   ├── block_controller.py  # Block generation control
+│   ├── monitor.py           # Real-time monitoring
+│   ├── transaction_script.py # Transaction testing
+│   ├── test_p2p_connectivity.py # P2P connection test
+│   ├── error_handling.py    # Common error handling utilities
+│   └── network_config.py    # Network configuration
+├── legacy_scripts/          # Deprecated Bash scripts (for reference)
 ├── patches/                 # Monero patches for simulation compatibility
 ├── builds/                  # Compiled Monero binaries (created during build)
 ├── docs/                    # Project documentation
 ├── config.yaml             # Default simulation configuration
+├── config_agents_*.yaml    # Agent-based simulation configs
 ├── setup.sh                # Automated setup script
 ├── Cargo.toml              # Rust dependencies and metadata
 ├── Cargo.lock              # Locked dependency versions
+├── venv/                   # Python virtual environment (created during setup)
 └── README.md               # Basic project information
 ```
 
@@ -104,6 +140,14 @@ monerosim/
   - IP address and port allocation
   - Shadow YAML configuration output
   - EthShadow compatibility
+
+#### `shadow_agents.rs`
+- **Purpose**: Agent-based Shadow configuration generation
+- **Key Features**:
+  - Complex network topology with multiple participant types
+  - Agent process configuration
+  - Scalable simulation support (small to large networks)
+  - Shared state directory setup
 
 ## Development Workflow
 
@@ -354,6 +398,112 @@ Closes #123
 - [ ] Error handling is appropriate
 - [ ] Performance impact is considered
 
+## Agent Framework Development
+
+### Overview
+
+The agent framework enables realistic cryptocurrency network simulations with autonomous participants:
+
+- **Regular Users**: Send transactions to marketplaces
+- **Marketplaces**: Receive and track payments
+- **Mining Pools**: Generate blocks under coordination
+- **Block Controller**: Orchestrates mining across pools
+
+### Agent Development Workflow
+
+1. **Create New Agent Type**:
+   ```python
+   # agents/new_agent.py
+   from base_agent import BaseAgent
+   
+   class NewAgent(BaseAgent):
+       def setup(self):
+           """Initialize agent state"""
+           pass
+           
+       def run(self):
+           """Main agent behavior loop"""
+           pass
+   ```
+
+2. **Test Agent Locally**:
+   ```bash
+   # Activate virtual environment
+   source venv/bin/activate
+   
+   # Run agent tests
+   python -m pytest agents/test_new_agent.py
+   ```
+
+3. **Integrate with Shadow**:
+   - Update `shadow_agents.rs` to include new agent type
+   - Add agent configuration to `config_agents_*.yaml`
+   - Test in simulation environment
+
+### Agent Communication
+
+Agents communicate through shared state files:
+```
+/tmp/monerosim_shared/
+├── users.json              # User agent registry
+├── marketplaces.json       # Marketplace registry
+├── mining_pools.json       # Mining pool registry
+├── transactions.json       # Transaction log
+└── [agent]_stats.json      # Per-agent statistics
+```
+
+## Python Script Development
+
+### Script Standards
+
+All Python scripts follow these standards:
+
+1. **Type Hints**: Use type annotations for all functions
+2. **Error Handling**: Use `error_handling.py` utilities
+3. **Configuration**: Use `network_config.py` for network settings
+4. **Logging**: Structured logging with color support
+5. **Testing**: Include comprehensive unit tests
+
+### Adding New Scripts
+
+1. **Create Script**:
+   ```python
+   #!/usr/bin/env python3
+   """Script description"""
+   
+   from typing import Dict, List
+   from error_handling import setup_logging, make_rpc_call
+   from network_config import NetworkConfig
+   
+   def main() -> int:
+       """Main function"""
+       logger = setup_logging("script_name")
+       config = NetworkConfig()
+       # Script logic here
+       return 0
+   
+   if __name__ == "__main__":
+       sys.exit(main())
+   ```
+
+2. **Add Tests**:
+   ```python
+   # scripts/test_new_script.py
+   import unittest
+   from unittest.mock import patch, MagicMock
+   from new_script import main
+   
+   class TestNewScript(unittest.TestCase):
+       def test_main(self):
+           # Test implementation
+           pass
+   ```
+
+3. **Update Documentation**:
+   - Add to `scripts/README.md`
+   - Create `scripts/README_new_script.md`
+   - Update `docs/PYTHON_SCRIPTS.md`
+
 ## Useful Development Commands
 
 ```bash
@@ -363,14 +513,24 @@ cargo test                     # Run tests
 cargo clippy                   # Lint checking
 cargo fmt                      # Format code
 
+# Python development
+source venv/bin/activate       # Activate virtual environment
+python -m pytest scripts/      # Run all Python tests
+python -m pytest --cov=scripts # Run with coverage
+python -m black scripts/       # Format Python code
+python -m pylint scripts/      # Lint Python code
+
 # Performance analysis
 cargo build --release          # Optimized build
 time ./target/release/monerosim # Time execution
 
 # Documentation
-cargo doc --open               # Generate and view docs
+cargo doc --open               # Generate and view Rust docs
+python -m pydoc -b             # Browse Python documentation
 
 # Dependency management
-cargo update                   # Update dependencies
-cargo audit                    # Security audit
+cargo update                   # Update Rust dependencies
+cargo audit                    # Security audit for Rust
+pip list --outdated           # Check outdated Python packages
+pip-audit                     # Security audit for Python
 ```
