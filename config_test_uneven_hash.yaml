@@ -1,0 +1,47 @@
+# Test configuration for uneven hashrate distribution.
+# 3 mining nodes with one having a dominant hashrate.
+mode: agent
+
+general:
+  stop_time: "15m"
+  fresh_blockchain: true
+  log_level: info
+
+nodes:
+  - name: "node-1"
+    ip: "11.0.0.1"
+    port: 28080
+  - name: "node-2"
+    ip: "11.0.0.2"
+    port: 28080
+  - name: "node-3"
+    ip: "11.0.0.3"
+    port: 28080
+  - name: "node-4"
+    ip: "11.0.0.4"
+    port: 28080
+  - name: "node-5"
+    ip: "11.0.0.5"
+    port: 28080
+  - name: "node-6"
+    ip: "11.0.0.6"
+    port: 28080
+
+agents:
+  regular_users:
+    count: 2
+    transaction_interval: 30
+    min_transaction_amount: 0.5
+    max_transaction_amount: 2.0
+    
+  marketplaces:
+    count: 1
+
+  mining_pools:
+    count: 3 # This will be used to create the mining nodes.
+    
+mining:
+  block_time: 60
+  number_of_mining_nodes: 3
+  mining_distribution: [70, 20, 10] # One dominant miner
+  solo_miner_threshold: 15

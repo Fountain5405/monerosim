@@ -140,6 +140,19 @@ class MoneroRPC(BaseRPC):
         """Get alternate chains"""
         result = self._make_request("get_alternate_chains")
         return result.get("chains", [])
+        
+    def generate_block(self, wallet_address: str, amount_of_blocks: int = 1) -> Dict[str, Any]:
+        """
+        Generate a new block on the network. This is a restricted RPC call.
+        Requires monerod to be run with --regtest and --confirm-external-bind,
+        or with RPC authentication.
+        """
+        params = {
+            "amount_of_blocks": amount_of_blocks,
+            "wallet_address": wallet_address,
+            "pre_pow_blob": "sim"  # Special value for simulation to prevent hanging
+        }
+        return self._make_request("generateblocks", params)
 
 
 class WalletRPC(BaseRPC):

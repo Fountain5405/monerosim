@@ -1,5 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+/// Configuration for the mining simulation
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MiningConfig {
+    /// Target block time in seconds
+    pub block_time: u64,
+    /// Number of nodes that will be selected to mine
+    pub number_of_mining_nodes: u32,
+    /// Hashrate distribution among the mining nodes
+    pub mining_distribution: Vec<u32>,
+    /// Percentage of hashrate below which a miner is considered a "solo miner"
+    pub solo_miner_threshold: f64,
+}
+
 /// Top-level configuration structure that mirrors the YAML configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -7,6 +20,25 @@ pub struct Config {
     pub general: General,
     /// Individual node configurations
     pub nodes: Vec<NodeConfig>,
+    /// (Optional) Mining simulation configuration
+    #[serde(default)]
+    pub mining: Option<MiningConfig>,
+}
+
+impl Config {
+    /// Validates the configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(mining_config) = &self.mining {
+            if mining_config.mining_distribution.len() != mining_config.number_of_mining_nodes as usize {
+                return Err(format!(
+                    "The length of 'mining_distribution' ({}) must match 'number_of_mining_nodes' ({})",
+                    mining_config.mining_distribution.len(),
+                    mining_config.number_of_mining_nodes
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// General configuration settings for the simulation
@@ -109,6 +141,7 @@ impl Default for Config {
                     fixed_difficulty: None,
                 },
             ],
+            mining: None,
         }
     }
-} 
+}

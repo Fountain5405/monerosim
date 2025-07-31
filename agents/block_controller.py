@@ -16,8 +16,9 @@ import sys
 import time
 import argparse
 import logging
+import random
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from .base_agent import BaseAgent
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
@@ -55,6 +56,7 @@ class BlockControllerAgent(BaseAgent):
         self.total_blocks_generated = 0
         self.blockchain_height = 0
         self.start_time = time.time()
+        self.miners: List[Dict[str, Any]] = []
         
     def setup(self):
         """Override setup to handle wallet RPC connection with custom host"""
@@ -126,6 +128,9 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error(f"Failed to get wallet address: {e}")
             raise
         
+        # Load miner registry on startup
+        self._load_miner_registry()
+        
         # Register as block controller
         controller_data = {
             "agent_id": self.agent_id,
@@ -146,32 +151,80 @@ class BlockControllerAgent(BaseAgent):
         except RPCError as e:
             self.logger.warning(f"Failed to get initial height: {e}")
             
+    def _load_miner_registry(self):
+        """Load miner information from the shared state file."""
+        self.logger.info("Loading miner registry from miners.json...")
+        miners = self.read_shared_list("miners.json")
+        if not miners:
+            self.logger.warning("Miner registry 'miners.json' is empty or not found.")
+            self.miners = []
+        else:
+            self.miners = miners
+            self.logger.info(f"Loaded {len(self.miners)} miners from registry.")
+
+    def _select_winning_miner(self) -> Optional[Dict[str, Any]]:
+        """Select a winning miner based on hashrate."""
+        if not self.miners:
+            self.logger.warning("No miners in registry, cannot select a winner.")
+            return None
+        
+        hash_rates = [miner.get("hash_rate", 0) for miner in self.miners]
+        total_hash_rate = sum(hash_rates)
+
+        if total_hash_rate == 0:
+            self.logger.warning("Total hash rate of all miners is zero. Falling back to random choice.")
+            return random.choice(self.miners)
+
+        # Weighted random selection
+        winner = random.choices(self.miners, weights=hash_rates, k=1)[0]
+        self.logger.info(f"Selected winning miner: {winner.get('agent_id')} with hash rate {winner.get('hash_rate')}")
+        return winner
+        
     def _generate_blocks(self):
-        """Generate blocks using daemon's generateblocks RPC method"""
+        """Select a winner and generate blocks to their address."""
+        # Reload the registry each time to get the latest list of miners
+        self._load_miner_registry()
+
+        winner = self._select_winning_miner()
+        if not winner:
+            self.logger.error("Block generation failed: Could not select a winning miner.")
+            return False
+
+        winner_address = winner.get("wallet_address")
+        if not winner_address:
+            self.logger.error(f"Block generation failed: Winning miner {winner.get('agent_id')} has no wallet_address.")
+            return False
+            
         try:
-            # Get current height before generation
             initial_height = self.daemon_rpc.get_height()
+            self.logger.info(f"Generating {self.blocks_per_generation} block(s) for winner: {winner.get('agent_id')}")
             
-            self.logger.info(f"Generating {self.blocks_per_generation} block(s)...")
-            self.logger.info(f"Initial height: {initial_height}")
+            result = self.daemon_rpc.generate_block(
+                wallet_address=winner_address,
+                amount_of_blocks=self.blocks_per_generation
+            )
             
-            # Call generateblocks on daemon (same as working scripts/block_controller.py)
-            result = self.daemon_rpc._make_request("generateblocks", {
-                "amount_of_blocks": self.blocks_per_generation,
-                "wallet_address": self.wallet_address
-            })
-            
-            if result:
+            if result and result.get("status") == "OK":
                 blocks_generated = len(result.get("blocks", []))
-                new_height = result.get("height", initial_height)
+                new_height = result.get("height", initial_height + blocks_generated)
                 
-                self.logger.info(f"Successfully generated {blocks_generated} blocks")
+                self.logger.info(f"Successfully generated {blocks_generated} blocks for {winner.get('agent_id')}")
                 self.logger.info(f"New height: {new_height}")
                 
                 self.total_blocks_generated += blocks_generated
                 self.blockchain_height = new_height
                 self.last_block_time = time.time()
                 
+                # Log block discovery
+                for block_hash in result.get("blocks", []):
+                    block_info = {
+                        "miner_id": winner.get("agent_id"),
+                        "block_hash": block_hash,
+                        "height": new_height - (blocks_generated - 1) + result.get("blocks", []).index(block_hash),
+                        "timestamp": time.time()
+                    }
+                    self.append_shared_list("blocks_found.json", block_info)
+
                 return True
             else:
                 self.logger.warning(f"Unexpected generateblocks response: {result}")
@@ -181,7 +234,7 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error(f"Failed to generate blocks: {e}")
             return False
         except Exception as e:
-            self.logger.error(f"Unexpected error generating blocks: {e}")
+            self.logger.error(f"Unexpected error generating blocks: {e}", exc_info=True)
             return False
             
     def _update_statistics(self):

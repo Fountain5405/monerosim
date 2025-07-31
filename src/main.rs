@@ -13,7 +13,7 @@ mod config_compat;
 mod shadow;
 mod shadow_agents;
 
-use config::Config as OldConfig;
+use config::Config;
 use config_v2::Config as NewConfig;
 use shadow_agents::{AgentConfig, generate_agent_shadow_config};
 
@@ -69,8 +69,16 @@ fn main() -> Result<()> {
     config_loader::check_config_compatibility(&args.config)?;
     
     // Load configuration using new system
-    let new_config = config_loader::load_config(&args.config)?;
-    
+    let config_str = std::fs::read_to_string(&args.config)
+        .wrap_err("Failed to read configuration file")?;
+    let new_config: NewConfig = serde_yaml::from_str(&config_str)
+        .wrap_err("Failed to parse configuration file to new format")?;
+
+    // Validate the configuration
+    if let Err(e) = new_config.validate() {
+        return Err(color_eyre::eyre::eyre!(e));
+    }
+
     // Determine if we should use agent mode based on configuration structure
     let use_agent_mode = config_compat::should_use_agent_mode(&new_config, false);
     
@@ -98,6 +106,9 @@ fn main() -> Result<()> {
         info!("  Transaction frequency: {}", agent_config.transaction_frequency);
         
         info!("Ready to run Shadow simulation with: shadow {:?}", shadow_config_path);
+        
+        // Exit early to prevent traditional flow from running
+        return Ok(());
     } else {
         // Traditional simulation mode
         info!("Running in traditional simulation mode");

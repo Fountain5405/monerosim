@@ -1,31 +1,7 @@
 use crate::config::Config;
-use rand::seq::SliceRandom;
-use serde_json;
 use serde_yaml;
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
-
-#[derive(serde::Serialize, Debug)]
-struct MinerInfo {
-    ip_addr: String,
-    wallet_address: String,
-    weight: u32,
-    is_solo_miner: bool,
-}
-
-#[derive(serde::Serialize, Debug)]
-struct MinerRegistry {
-    miners: Vec<MinerInfo>,
-}
-
-#[derive(Debug, Clone)]
-struct PotentialMiner {
-    _id: String,
-    ip_addr: String,
-    _wallet_rpc_port: u16,
-    _node_rpc_port: u16,
-}
 
 #[derive(serde::Serialize, Debug)]
 struct ShadowConfig {
@@ -101,10 +77,12 @@ impl Default for AgentConfig {
 }
 
 /// Helper function to create a Python agent command
-fn create_agent_command(current_dir: &str, agent_module: &str, args: &str) -> String {
+fn create_agent_command(current_dir: &str, agent_script: &str, args: &str) -> String {
+    // Remove .py extension if present for module execution
+    let module_name = agent_script.trim_end_matches(".py");
     format!(
-        "-c 'cd {} && . ./venv/bin/activate && python3 -m {} {}'",
-        current_dir, agent_module, args
+        "-c 'cd {} && . ./venv/bin/activate && python3 -m agents.{} {}'",
+        current_dir, module_name, args
     )
 }
 
@@ -120,7 +98,6 @@ pub fn generate_agent_shadow_config(
         .to_string();
 
     let mut hosts: HashMap<String, ShadowHost> = HashMap::new();
-    let mut potential_miners: Vec<PotentialMiner> = Vec::new();
 
     // Common environment variables
     let environment: HashMap<String, String> = [
@@ -175,7 +152,6 @@ pub fn generate_agent_shadow_config(
             "--confirm-external-bind".to_string(),
             "--disable-rpc-ban".to_string(),
             "--rpc-access-control-origins=*".to_string(),
-            format!("--rpc-restricted-bind-port={}", node_rpc_port),
             "--regtest".to_string(),
             format!("--p2p-bind-ip={}", node_ip),
             format!("--p2p-bind-port={}", node_port),
@@ -184,12 +160,9 @@ pub fn generate_agent_shadow_config(
         ];
         
         // Add connections to seed nodes
-        // All nodes should connect to the first two users as seed nodes for stability
-        if i != 0 {
-            daemon_args.push("--add-priority-node=11.0.0.10:28080".to_string());
-        }
-        if i != 1 && agent_config.regular_users > 1 {
-            daemon_args.push("--add-priority-node=11.0.0.11:28080".to_string());
+        if i > 0 {
+            daemon_args.push("--add-priority-node=11.0.0.1:28080".to_string());
+            daemon_args.push("--add-priority-node=11.0.0.2:28080".to_string());
         }
         
         let monerod_path = std::fs::canonicalize("monerod")
@@ -198,11 +171,8 @@ pub fn generate_agent_shadow_config(
             .to_string();
             
         processes.push(ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!(
-                "-c 'rm -rf /tmp/monero-{} && {} {}'",
-                user_id, monerod_path, daemon_args.join(" ")
-            ),
+            path: monerod_path,
+            args: daemon_args.join(" "),
             environment: monero_environment.clone(),
             start_time: format!("{}s", i * 2), // Stagger daemon starts
         });
@@ -225,8 +195,8 @@ pub fn generate_agent_shadow_config(
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: format!(
-                "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && {} {}'",
-                user_id, user_id, wallet_path, wallet_args
+                "-c 'mkdir -p /tmp/{}_wallet && {} {}'",
+                user_id, wallet_path, wallet_args
             ),
             environment: environment.clone(),
             start_time: format!("{}s", 30 + i * 2), // Start wallets after daemons
@@ -240,23 +210,16 @@ pub fn generate_agent_shadow_config(
         
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
-            args: create_agent_command(&current_dir, "agents.regular_user", &agent_args),
+            args: create_agent_command(&current_dir, "regular_user.py", &agent_args),
             environment: environment.clone(),
             start_time: format!("{}s", 60 + i * 2), // Start agents after wallets
         });
         
         // Create host with all processes
-        hosts.insert(user_id.clone(), ShadowHost {
+        hosts.insert(user_id, ShadowHost {
             network_node_id: 0,
-            ip_addr: Some(node_ip.clone()),
+            ip_addr: Some(node_ip),
             processes,
-        });
-
-        potential_miners.push(PotentialMiner {
-            _id: user_id,
-            ip_addr: node_ip,
-            _wallet_rpc_port: wallet_rpc_port,
-            _node_rpc_port: node_rpc_port,
         });
         
         next_ip += 1; // One IP per user (all processes share the same IP)
@@ -288,8 +251,8 @@ pub fn generate_agent_shadow_config(
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: format!(
-                "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && {} {}'",
-                marketplace_id, marketplace_id, wallet_path, wallet_args
+                "-c 'mkdir -p /tmp/{}_wallet && {} {}'",
+                marketplace_id, wallet_path, wallet_args
             ),
             environment: environment.clone(),
             start_time: "45s".to_string(),
@@ -303,7 +266,7 @@ pub fn generate_agent_shadow_config(
         
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
-            args: create_agent_command(&current_dir, "agents.marketplace", &agent_args),
+            args: create_agent_command(&current_dir, "marketplace.py", &agent_args),
             environment: environment.clone(),
             start_time: "75s".to_string(),
         });
@@ -327,7 +290,7 @@ pub fn generate_agent_shadow_config(
         let mut processes = Vec::new();
         
         // Regular daemon (no mining capabilities needed)
-        let mut daemon_args = vec![
+        let daemon_args = vec![
             format!("--data-dir=/tmp/monero-{}", node_id),
             "--log-file=/dev/stdout".to_string(),
             "--log-level=1".to_string(),
@@ -351,19 +314,14 @@ pub fn generate_agent_shadow_config(
             "--confirm-external-bind".to_string(),
             "--disable-rpc-ban".to_string(),
             "--rpc-access-control-origins=*".to_string(),
-            format!("--rpc-restricted-bind-port={}", node_rpc_port),
             "--regtest".to_string(),
             format!("--p2p-bind-ip={}", node_ip),
             format!("--p2p-bind-port={}", node_port),
             "--fixed-difficulty=200".to_string(),
             "--allow-local-ip".to_string(),
-            // Connect to actual user nodes
-            "--add-priority-node=11.0.0.10:28080".to_string(),
+            "--add-priority-node=11.0.0.1:28080".to_string(),
+            "--add-priority-node=11.0.0.2:28080".to_string(),
         ];
-        
-        if agent_config.regular_users > 1 {
-            daemon_args.push("--add-priority-node=11.0.0.11:28080".to_string());
-        }
         
         let monerod_path = std::fs::canonicalize("monerod")
             .expect("Failed to resolve absolute path to monerod")
@@ -371,28 +329,18 @@ pub fn generate_agent_shadow_config(
             .to_string();
             
         processes.push(ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!(
-                "-c 'rm -rf /tmp/monero-{} && {} {}'",
-                node_id, monerod_path, daemon_args.join(" ")
-            ),
+            path: monerod_path,
+            args: daemon_args.join(" "),
             environment: monero_environment.clone(),
             start_time: format!("{}s", 5 + i * 5),
         });
         
         // No agent needed for these additional nodes
         
-        hosts.insert(node_id.clone(), ShadowHost {
+        hosts.insert(node_id, ShadowHost {
             network_node_id: 0,
-            ip_addr: Some(node_ip.clone()),
+            ip_addr: Some(node_ip),
             processes,
-        });
-
-        potential_miners.push(PotentialMiner {
-            _id: node_id,
-            ip_addr: node_ip,
-            _wallet_rpc_port: 0, // No wallet configured for additional nodes
-            _node_rpc_port: node_rpc_port,
         });
         
         next_ip += 1;
@@ -423,8 +371,8 @@ pub fn generate_agent_shadow_config(
     block_controller_processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && {} {}'",
-            block_controller_id, block_controller_id, wallet_path, wallet_args
+            "-c 'mkdir -p /tmp/{}_wallet && {} {}'",
+            block_controller_id, wallet_path, wallet_args
         ),
         environment: environment.clone(),
         start_time: "50s".to_string(), // Start after nodes are up
@@ -432,15 +380,13 @@ pub fn generate_agent_shadow_config(
     
     // Block controller agent with wallet RPC info
     let agent_args = format!(
-        "--interval 120 --blocks 1 --wallet-rpc {} --wallet-host {} \
-         --daemon-host 11.0.0.10 --daemon-rpc 28090 \
-         --log-level INFO",
+        "--interval 120 --blocks 1 --wallet-rpc {} --wallet-host {} --daemon-host 11.0.0.10 --daemon-rpc 28090",
         block_controller_wallet_port, block_controller_ip
     );
     
     block_controller_processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: create_agent_command(&current_dir, "agents.block_controller", &agent_args),
+        args: create_agent_command(&current_dir, "block_controller.py", &agent_args),
         environment: environment.clone(),
         start_time: "90s".to_string(),
     });
@@ -456,7 +402,7 @@ pub fn generate_agent_shadow_config(
     // 5. Add monitoring scripts (optional)
     let monitor_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: create_agent_command(&current_dir, "scripts.monitor", ""),
+        args: create_agent_command(&current_dir, "../scripts/monitor.py", ""),
         environment: environment.clone(),
         start_time: "30s".to_string(),
     };
@@ -486,52 +432,10 @@ pub fn generate_agent_shadow_config(
         hosts,
     };
     
-    // 6. Generate and write miner registry if configured
-    if let Some(mining_config) = &config.mining {
-        if !mining_config.mining_distribution.is_empty() {
-            let mut rng = rand::thread_rng();
-            let selected_miners = potential_miners
-                .choose_multiple(&mut rng, mining_config.number_of_mining_nodes as usize)
-                .cloned()
-                .collect::<Vec<_>>();
-
-            let total_weight = mining_config.mining_distribution.iter().sum::<u32>();
-
-            let miner_infos = selected_miners
-                .iter()
-                .zip(mining_config.mining_distribution.iter())
-                .map(|(miner, &weight)| {
-                    let is_solo_miner = if total_weight > 0 {
-                        (weight as f64 / total_weight as f64) < mining_config.solo_miner_threshold
-                    } else {
-                        true
-                    };
-
-                    MinerInfo {
-                        ip_addr: miner.ip_addr.clone(),
-                        wallet_address: String::new(), // Placeholder, to be populated by agent
-                        weight,
-                        is_solo_miner,
-                    }
-                })
-                .collect::<Vec<_>>();
-            
-            let miner_registry = MinerRegistry { miners: miner_infos };
-
-            // Write to shared file
-            let shared_dir = Path::new("/tmp/monerosim_shared");
-            fs::create_dir_all(shared_dir)?;
-            let miners_file_path = shared_dir.join("miners.json");
-            let miners_json = serde_json::to_string_pretty(&miner_registry)?;
-            fs::write(&miners_file_path, miners_json)?;
-            println!("Generated miner registry at {:?}", miners_file_path);
-        }
-    }
-
     // Write configuration
     let shadow_config_path = output_dir.join("shadow_agents.yaml");
     let config_yaml = serde_yaml::to_string(&shadow_config)?;
-    fs::write(&shadow_config_path, config_yaml)?;
+    std::fs::write(&shadow_config_path, config_yaml)?;
     
     println!("Generated Agent-based Shadow configuration at {:?}", shadow_config_path);
     println!("  - Simulation time: {}", config.general.stop_time);

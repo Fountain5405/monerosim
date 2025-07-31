@@ -16,28 +16,16 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 # Handle imports for both direct execution and module import
-try:
-    from error_handling import (
-        log_info, log_warning, log_error, log_critical,
-        verify_daemon_ready, verify_wallet_directory,
-        call_daemon_with_retry, call_wallet_with_retry,
-        handle_exit, exponential_backoff
-    )
-    from network_config import (
-        DAEMON_IP, DAEMON_RPC_PORT, WALLET1_IP, WALLET1_RPC_PORT,
-        WALLET1_NAME, WALLET1_PASSWORD, get_wallet_config
-    )
-except ImportError:
-    from scripts.error_handling import (
-        log_info, log_warning, log_error, log_critical,
-        verify_daemon_ready, verify_wallet_directory,
-        call_daemon_with_retry, call_wallet_with_retry,
-        handle_exit, exponential_backoff
-    )
-    from scripts.network_config import (
-        DAEMON_IP, DAEMON_RPC_PORT, WALLET1_IP, WALLET1_RPC_PORT,
-        WALLET1_NAME, WALLET1_PASSWORD, get_wallet_config
-    )
+from .error_handling import (
+    log_info, log_warning, log_error, log_critical,
+    verify_daemon_ready, verify_wallet_directory,
+    call_daemon_with_retry, call_wallet_with_retry,
+    handle_exit, exponential_backoff
+)
+from .network_config import (
+    DAEMON_IP, DAEMON_RPC_PORT, WALLET1_IP, WALLET1_RPC_PORT,
+    WALLET1_NAME, WALLET1_PASSWORD, get_wallet_config
+)
 
 # Component name for logging
 COMPONENT = "BLOCK_CONTROLLER"

@@ -3,17 +3,18 @@ use std::collections::HashMap;
 
 /// Unified configuration that supports both traditional and agent modes
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "mode")]
 pub enum Config {
-    Traditional(TraditionalConfig),
+    #[serde(rename = "agent")]
     Agent(AgentConfig),
+    #[serde(rename = "traditional")]
+    Traditional(TraditionalConfig),
 }
 
 /// Traditional mode configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TraditionalConfig {
     pub general: GeneralConfig,
-    pub nodes: Vec<NodeConfig>,
 }
 
 /// Agent mode configuration
@@ -187,37 +188,6 @@ impl TraditionalConfig {
             ));
         }
         
-        // Validate nodes
-        if self.nodes.is_empty() {
-            return Err(ValidationError::InvalidNode(
-                "At least one node must be configured".to_string()
-            ));
-        }
-        
-        // Check for unique IPs
-        let mut ips = std::collections::HashSet::new();
-        for node in &self.nodes {
-            if !ips.insert(&node.ip) {
-                return Err(ValidationError::InvalidNode(
-                    format!("Duplicate IP address: {}", node.ip)
-                ));
-            }
-            
-            // Validate port range
-            if node.port == 0 || node.port > 65535 {
-                return Err(ValidationError::InvalidNode(
-                    format!("Invalid port {} for node {}", node.port, node.name)
-                ));
-            }
-        }
-        
-        // Check that at least one mining node exists
-        let has_mining_node = self.nodes.iter().any(|n| n.mining.unwrap_or(false));
-        if !has_mining_node {
-            return Err(ValidationError::InvalidNode(
-                "At least one node must have mining enabled".to_string()
-            ));
-        }
         
         Ok(())
     }

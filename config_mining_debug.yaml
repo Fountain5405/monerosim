@@ -1,0 +1,41 @@
+# Minimal mining-only debug configuration
+# Focus on block generation with minimal users
+mode: agent
+
+general:
+  stop_time: "30m"  # 30 minutes for quick testing
+  fresh_blockchain: true
+  log_level: debug
+
+nodes:
+  - name: "node-1"
+    ip: "11.0.0.1"
+    port: 28080
+  - name: "node-2"
+    ip: "11.0.0.2"
+    port: 28080
+  - name: "node-3"
+    ip: "11.0.0.3"
+    port: 28080
+  
+agents:
+  # Minimal users just to satisfy requirements
+  regular_users:
+    count: 1
+    transaction_interval: 300  # Very infrequent transactions (5 minutes)
+    min_transaction_amount: 0.1
+    max_transaction_amount: 0.1
+    
+  # One marketplace to receive transactions
+  marketplaces:
+    count: 1
+    
+  # 3 mining pools with different hashrates
+  mining_pools:
+    count: 3
+
+mining:
+  block_time: 30  # Generate blocks every 30 seconds
+  number_of_mining_nodes: 3
+  mining_distribution: [50, 30, 20]  # Pool 0: 50%, Pool 1: 30%, Pool 2: 20%
+  solo_miner_threshold: 10

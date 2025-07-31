@@ -1,0 +1,44 @@
+# Test configuration for even hashrate distribution.
+# 2 mining nodes with equal hashrate.
+mode: agent
+
+general:
+  stop_time: "15m"
+  fresh_blockchain: true
+  log_level: info
+
+nodes:
+  - name: "node-1"
+    ip: "11.0.0.1"
+    port: 28080
+  - name: "node-2"
+    ip: "11.0.0.2"
+    port: 28080
+  - name: "node-3"
+    ip: "11.0.0.3"
+    port: 28080
+  - name: "node-4"
+    ip: "11.0.0.4"
+    port: 28080
+  - name: "node-5"
+    ip: "11.0.0.5"
+    port: 28080
+
+agents:
+  regular_users:
+    count: 2
+    transaction_interval: 30
+    min_transaction_amount: 0.5
+    max_transaction_amount: 2.0
+    
+  marketplaces:
+    count: 1
+    
+  mining_pools:
+    count: 2 # This will be used to create the mining nodes.
+
+mining:
+  block_time: 60
+  number_of_mining_nodes: 2
+  mining_distribution: [50, 50]
+  solo_miner_threshold: 10

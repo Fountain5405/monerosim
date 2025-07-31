@@ -302,21 +302,6 @@ pub fn generate_shadow_config(config: &Config, output_dir: &Path) -> color_eyre:
 
     hosts.insert("p2p-test".to_string(), p2p_test_host);
 
-    // Add transaction script
-    let transaction_process = ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: create_python_script_command(&current_dir, "transaction_script.py"),
-        environment: environment.clone(),
-        start_time: "7200s".to_string(), // Start after 2 hours when network is stable
-    };
-
-    let transaction_host = ShadowHost {
-        network_node_id: 0,
-        ip_addr: None,
-        processes: vec![transaction_process],
-    };
-
-    hosts.insert("transaction-test".to_string(), transaction_host);
 
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {

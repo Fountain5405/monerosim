@@ -14,14 +14,8 @@ pub fn convert_to_old_format(new_config: &NewConfig) -> Result<OldConfig> {
                     fresh_blockchain: trad_config.general.fresh_blockchain,
                     python_venv: trad_config.general.python_venv.clone(),
                 },
-                nodes: trad_config.nodes.iter().map(|n| NodeConfig {
-                    name: n.name.clone(),
-                    ip: n.ip.clone(),
-                    port: n.port,
-                    start_time: n.start_time.clone(),
-                    mining: n.mining,
-                    fixed_difficulty: n.fixed_difficulty,
-                }).collect(),
+                nodes: vec![],
+                mining: None,
             })
         }
         NewConfig::Agent(agent_config) => {
@@ -29,33 +23,14 @@ pub fn convert_to_old_format(new_config: &NewConfig) -> Result<OldConfig> {
             // This is used when --agents flag forces agent mode
             warn!("Converting agent configuration to traditional format for compatibility");
             
-            // Create two dummy nodes for minimal compatibility
-            let nodes = vec![
-                NodeConfig {
-                    name: "A0".to_string(),
-                    ip: "11.0.0.1".to_string(),
-                    port: 28080,
-                    start_time: Some("0s".to_string()),
-                    mining: Some(true),
-                    fixed_difficulty: Some(200),
-                },
-                NodeConfig {
-                    name: "A1".to_string(),
-                    ip: "11.0.0.2".to_string(),
-                    port: 28080,
-                    start_time: Some("1s".to_string()),
-                    mining: Some(false),
-                    fixed_difficulty: None,
-                },
-            ];
-            
             Ok(OldConfig {
                 general: General {
                     stop_time: agent_config.general.stop_time.clone(),
                     fresh_blockchain: agent_config.general.fresh_blockchain,
                     python_venv: agent_config.general.python_venv.clone(),
                 },
-                nodes,
+                nodes: vec![],
+                mining: None,
             })
         }
     }
