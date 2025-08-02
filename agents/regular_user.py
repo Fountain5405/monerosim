@@ -23,8 +23,17 @@ class RegularUserAgent(BaseAgent):
     
     def __init__(self, agent_id: str, node_rpc_port: int, wallet_rpc_port: int,
                  transaction_frequency: float = 0.1, min_amount: float = 0.1,
-                 max_amount: float = 1.0, rpc_host: str = "127.0.0.1"):
-        super().__init__(agent_id, node_rpc_port, wallet_rpc_port, rpc_host)
+                 max_amount: float = 1.0, rpc_host: str = "127.0.0.1",
+                 hash_rate: Optional[int] = None,
+                 **kwargs):
+        super().__init__(
+            agent_id=agent_id,
+            node_rpc_port=node_rpc_port,
+            wallet_rpc_port=wallet_rpc_port,
+            rpc_host=rpc_host,
+            hash_rate=hash_rate,
+            **kwargs
+        )
         
         # Behavior parameters
         self.transaction_frequency = transaction_frequency  # Probability of sending tx per iteration
@@ -217,8 +226,12 @@ class RegularUserAgent(BaseAgent):
         except RPCError as e:
             self.logger.error(f"Failed to check transactions: {e}")
             
-    def run_iteration(self):
-        """Single iteration of user behavior"""
+    def run_iteration(self) -> float:
+        """
+        Single iteration of user behavior.
+        Returns:
+            float: Recommended sleep time in seconds.
+        """
         # Periodic wallet refresh
         if time.time() - self.last_balance_check > 30:
             try:
@@ -228,16 +241,16 @@ class RegularUserAgent(BaseAgent):
                 self.last_balance_check = time.time()
             except RPCError as e:
                 self.logger.error(f"Failed to refresh wallet: {e}")
-                
+
         # Check pending transactions
         self._check_pending_transactions()
-        
+
         # Decide whether to send a transaction
         if self._should_send_transaction():
             self._send_transaction()
-            
-        # Sleep for a bit (simulate user activity patterns)
-        time.sleep(random.uniform(5, 15))
+
+        # Return a random sleep duration
+        return random.uniform(5, 15)
         
     def _cleanup_agent(self):
         """Clean up wallet resources"""
@@ -252,12 +265,10 @@ class RegularUserAgent(BaseAgent):
 def main():
     """Main entry point for regular user agent"""
     parser = RegularUserAgent.create_argument_parser("Regular User Agent for Monerosim")
-    parser.add_argument('--tx-frequency', type=float, default=0.1,
-                       help='Transaction frequency (0.0-1.0)')
-    parser.add_argument('--min-amount', type=float, default=0.1,
-                       help='Minimum transaction amount in XMR')
-    parser.add_argument('--max-amount', type=float, default=1.0,
-                       help='Maximum transaction amount in XMR')
+    parser.add_argument('--tx-frequency', type=float, default=0.1, help='Transaction frequency (0.0-1.0)')
+    parser.add_argument('--min-amount', type=float, default=0.1, help='Minimum transaction amount in XMR')
+    parser.add_argument('--max-amount', type=float, default=1.0, help='Maximum transaction amount in XMR')
+    parser.add_argument('--hash-rate', type=int, help='Hash rate for mining (if this agent is a miner)')
     
     args = parser.parse_args()
     
@@ -268,12 +279,17 @@ def main():
     # Create and run agent
     agent = RegularUserAgent(
         agent_id=args.id,
-        node_rpc_port=args.node_rpc,
-        wallet_rpc_port=args.wallet_rpc,
+        shared_dir=args.shared_dir,
+        node_rpc_port=args.node_rpc_port,
+        wallet_rpc_port=args.wallet_rpc_port,
+        p2p_port=args.p2p_port,
         transaction_frequency=args.tx_frequency,
         min_amount=args.min_amount,
         max_amount=args.max_amount,
-        rpc_host=args.rpc_host
+        rpc_host=args.rpc_host,
+        log_level=args.log_level,
+        attributes=args.attributes,
+        hash_rate=args.hash_rate
     )
     
     agent.run()

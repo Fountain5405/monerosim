@@ -1,6 +1,5 @@
 # Test configuration for even hashrate distribution.
 # 2 mining nodes with equal hashrate.
-mode: agent
 
 general:
   stop_time: "15m"

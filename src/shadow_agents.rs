@@ -1,15 +1,15 @@
-use crate::config::Config;
+use crate::config_v2::Config;
 use rand::seq::SliceRandom;
 use serde_json;
 use serde_yaml;
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 
 #[derive(serde::Serialize, Debug)]
 struct MinerInfo {
     ip_addr: String,
-    wallet_address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    wallet_address: Option<String>,
     weight: u32,
     is_solo_miner: bool,
 }
@@ -19,13 +19,6 @@ struct MinerRegistry {
     miners: Vec<MinerInfo>,
 }
 
-#[derive(Debug, Clone)]
-struct PotentialMiner {
-    _id: String,
-    ip_addr: String,
-    _wallet_rpc_port: u16,
-    _node_rpc_port: u16,
-}
 
 #[derive(serde::Serialize, Debug)]
 struct ShadowConfig {
@@ -76,6 +69,14 @@ struct ShadowProcess {
     start_time: String,
 }
 
+/// Generate a random start time between 1 and 180 seconds
+fn generate_random_start_time() -> String {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let random_seconds = rng.gen_range(1..=180);
+    format!("{}s", random_seconds)
+}
+
 /// Agent configuration for the simulation
 #[derive(Debug)]
 pub struct AgentConfig {
@@ -101,10 +102,10 @@ impl Default for AgentConfig {
 }
 
 /// Helper function to create a Python agent command
-fn create_agent_command(current_dir: &str, agent_module: &str, args: &str) -> String {
+fn create_agent_command(current_dir: &str, agent_module: &str, args: &[String]) -> String {
     format!(
         "-c 'cd {} && . ./venv/bin/activate && python3 -m {} {}'",
-        current_dir, agent_module, args
+        current_dir, agent_module, args.join(" ")
     )
 }
 
@@ -120,7 +121,6 @@ pub fn generate_agent_shadow_config(
         .to_string();
 
     let mut hosts: HashMap<String, ShadowHost> = HashMap::new();
-    let mut potential_miners: Vec<PotentialMiner> = Vec::new();
 
     // Common environment variables
     let environment: HashMap<String, String> = [
@@ -146,6 +146,7 @@ pub fn generate_agent_shadow_config(
         let node_port = 28080;
         let node_rpc_port = 28090 + (i * 10) as u16;
         let wallet_rpc_port = node_rpc_port + 1;
+        let p2p_port = 28080;
         
         // Create processes for this user
         let mut processes = Vec::new();
@@ -204,7 +205,7 @@ pub fn generate_agent_shadow_config(
                 user_id, monerod_path, daemon_args.join(" ")
             ),
             environment: monero_environment.clone(),
-            start_time: format!("{}s", i * 2), // Stagger daemon starts
+            start_time: format!("{}s", 5 + i * 2), // Start daemons first
         });
         
         // 2. Wallet RPC
@@ -225,19 +226,37 @@ pub fn generate_agent_shadow_config(
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: format!(
-                "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && {} {}'",
-                user_id, user_id, wallet_path, wallet_args
+                "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && while ! nc -z {} {}; do echo \"Waiting for daemon at {}:{}...\"; sleep 2; done && {} {}'",
+                user_id, user_id, node_ip, node_rpc_port, node_ip, node_rpc_port, wallet_path, wallet_args
             ),
             environment: environment.clone(),
-            start_time: format!("{}s", 30 + i * 2), // Start wallets after daemons
+            start_time: format!("{}s", 55 + i * 2), // Start wallets 5 seconds before agents
         });
         
         // 3. Regular user agent
-        let agent_args = format!(
-            "--id {} --node-rpc {} --wallet-rpc {} --tx-frequency {} --rpc-host {}",
-            user_id, node_rpc_port, wallet_rpc_port, agent_config.transaction_frequency, node_ip
-        );
+        let mut agent_args = vec![
+            format!("--id {}", user_id),
+            format!("--shared-dir {}", output_dir.to_str().unwrap()),
+            format!("--rpc-host {}", node_ip),
+            format!("--node-rpc-port {}", node_rpc_port),
+            format!("--wallet-rpc-port {}", wallet_rpc_port),
+            format!("--p2p-port {}", p2p_port),
+            format!("--log-level DEBUG"),
+            format!("--tx-frequency {}", agent_config.transaction_frequency),
+        ];
         
+        // Check if this user should be a miner based on mining_distribution
+        if let Some(mining_config) = &config.mining {
+            if i < mining_config.number_of_mining_nodes {
+                agent_args.push("--attributes mining".to_string());
+                // Add hash rate for this miner
+                if (i as usize) < mining_config.mining_distribution.len() {
+                    let hash_rate = mining_config.mining_distribution[i as usize];
+                    agent_args.push(format!("--hash-rate {}", hash_rate));
+                }
+            }
+        }
+
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: create_agent_command(&current_dir, "agents.regular_user", &agent_args),
@@ -252,70 +271,11 @@ pub fn generate_agent_shadow_config(
             processes,
         });
 
-        potential_miners.push(PotentialMiner {
-            _id: user_id,
-            ip_addr: node_ip,
-            _wallet_rpc_port: wallet_rpc_port,
-            _node_rpc_port: node_rpc_port,
-        });
         
         next_ip += 1; // One IP per user (all processes share the same IP)
     }
     
-    // 2. Create Marketplaces (wallet only + agent)
-    for i in 0..agent_config.marketplaces {
-        let marketplace_id = format!("marketplace{:03}", i);
-        let marketplace_ip = format!("11.0.0.{}", next_ip);
-        let wallet_rpc_port = 29000 + (i * 10) as u16;
-        
-        let mut processes = Vec::new();
-        
-        // Marketplace wallet (connects to first user's daemon)
-        let wallet_path = std::fs::canonicalize("monero-wallet-rpc")
-            .expect("Failed to resolve absolute path to monero-wallet-rpc")
-            .to_string_lossy()
-            .to_string();
-            
-        let wallet_args = format!(
-            "--daemon-address=11.0.0.10:28090 --rpc-bind-port={} --rpc-bind-ip={} \
-             --disable-rpc-login --trusted-daemon --log-level=1 \
-             --wallet-dir=/tmp/{}_wallet --non-interactive --confirm-external-bind \
-             --allow-mismatched-daemon-version --max-concurrency=1 \
-             --daemon-ssl-allow-any-cert",
-            wallet_rpc_port, marketplace_ip, marketplace_id
-        );
-        
-        processes.push(ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!(
-                "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && {} {}'",
-                marketplace_id, marketplace_id, wallet_path, wallet_args
-            ),
-            environment: environment.clone(),
-            start_time: "45s".to_string(),
-        });
-        
-        // Marketplace agent
-        let agent_args = format!(
-            "--id {} --wallet-rpc {} --rpc-host {}",
-            marketplace_id, wallet_rpc_port, marketplace_ip
-        );
-        
-        processes.push(ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: create_agent_command(&current_dir, "agents.marketplace", &agent_args),
-            environment: environment.clone(),
-            start_time: "75s".to_string(),
-        });
-        
-        hosts.insert(marketplace_id, ShadowHost {
-            network_node_id: 0,
-            ip_addr: Some(marketplace_ip),
-            processes,
-        });
-        
-        next_ip += 1;
-    }
+    // Marketplace creation logic removed as per user request.
     
     // 3. Create Additional Nodes (formerly mining pools, now just regular nodes for network robustness)
     for i in 0..agent_config.mining_pools {
@@ -377,7 +337,7 @@ pub fn generate_agent_shadow_config(
                 node_id, monerod_path, daemon_args.join(" ")
             ),
             environment: monero_environment.clone(),
-            start_time: format!("{}s", 5 + i * 5),
+            start_time: format!("{}s", 5 + i * 5), // Start daemons early (5s for first node, 10s for second, etc.)
         });
         
         // No agent needed for these additional nodes
@@ -388,12 +348,6 @@ pub fn generate_agent_shadow_config(
             processes,
         });
 
-        potential_miners.push(PotentialMiner {
-            _id: node_id,
-            ip_addr: node_ip,
-            _wallet_rpc_port: 0, // No wallet configured for additional nodes
-            _node_rpc_port: node_rpc_port,
-        });
         
         next_ip += 1;
     }
@@ -402,9 +356,10 @@ pub fn generate_agent_shadow_config(
     let block_controller_id = "blockcontroller";
     let block_controller_ip = format!("11.0.0.{}", next_ip);
     let block_controller_wallet_port = 29200;
+    let block_controller_daemon_port = 29100;
     
     let mut block_controller_processes = Vec::new();
-    
+
     // Block controller wallet (connects to first user's daemon for simplicity)
     let wallet_path = std::fs::canonicalize("monero-wallet-rpc")
         .expect("Failed to resolve absolute path to monero-wallet-rpc")
@@ -415,29 +370,30 @@ pub fn generate_agent_shadow_config(
         "--daemon-address=11.0.0.10:28090 --rpc-bind-port={} --rpc-bind-ip={} \
          --disable-rpc-login --trusted-daemon --log-level=1 \
          --wallet-dir=/tmp/{}_wallet --non-interactive --confirm-external-bind \
-         --allow-mismatched-daemon-version --max-concurrency=1 \
-         --daemon-ssl-allow-any-cert --password \"\"",
+         --allow-mismatched-daemon-version --max-concurrency=1",
         block_controller_wallet_port, block_controller_ip, block_controller_id
     );
     
     block_controller_processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && {} {}'",
+            "-c 'rm -rf /tmp/{}_wallet && mkdir -p /tmp/{}_wallet && while ! nc -z 11.0.0.10 28090; do echo \"Waiting for daemon at 11.0.0.10:28090...\"; sleep 2; done && {} {}'",
             block_controller_id, block_controller_id, wallet_path, wallet_args
         ),
         environment: environment.clone(),
-        start_time: "50s".to_string(), // Start after nodes are up
+        start_time: "85s".to_string(), // Start 5 seconds before agent
     });
     
     // Block controller agent with wallet RPC info
-    let agent_args = format!(
-        "--interval 120 --blocks 1 --wallet-rpc {} --wallet-host {} \
-         --daemon-host 11.0.0.10 --daemon-rpc 28090 \
-         --log-level INFO",
-        block_controller_wallet_port, block_controller_ip
-    );
-    
+    let agent_args = vec![
+        "--id block_controller".to_string(),
+        format!("--shared-dir {}", output_dir.to_str().unwrap()),
+        format!("--rpc-host {}", block_controller_ip),
+        format!("--wallet-rpc-port {}", block_controller_wallet_port),
+        format!("--node-rpc-port 28090"),
+        "--log-level DEBUG".to_string(),
+    ];
+
     block_controller_processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: create_agent_command(&current_dir, "agents.block_controller", &agent_args),
@@ -456,7 +412,7 @@ pub fn generate_agent_shadow_config(
     // 5. Add monitoring scripts (optional)
     let monitor_process = ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: create_agent_command(&current_dir, "scripts.monitor", ""),
+        args: create_agent_command(&current_dir, "scripts.monitor", &[]),
         environment: environment.clone(),
         start_time: "30s".to_string(),
     };
@@ -486,52 +442,13 @@ pub fn generate_agent_shadow_config(
         hosts,
     };
     
-    // 6. Generate and write miner registry if configured
-    if let Some(mining_config) = &config.mining {
-        if !mining_config.mining_distribution.is_empty() {
-            let mut rng = rand::thread_rng();
-            let selected_miners = potential_miners
-                .choose_multiple(&mut rng, mining_config.number_of_mining_nodes as usize)
-                .cloned()
-                .collect::<Vec<_>>();
-
-            let total_weight = mining_config.mining_distribution.iter().sum::<u32>();
-
-            let miner_infos = selected_miners
-                .iter()
-                .zip(mining_config.mining_distribution.iter())
-                .map(|(miner, &weight)| {
-                    let is_solo_miner = if total_weight > 0 {
-                        (weight as f64 / total_weight as f64) < mining_config.solo_miner_threshold
-                    } else {
-                        true
-                    };
-
-                    MinerInfo {
-                        ip_addr: miner.ip_addr.clone(),
-                        wallet_address: String::new(), // Placeholder, to be populated by agent
-                        weight,
-                        is_solo_miner,
-                    }
-                })
-                .collect::<Vec<_>>();
-            
-            let miner_registry = MinerRegistry { miners: miner_infos };
-
-            // Write to shared file
-            let shared_dir = Path::new("/tmp/monerosim_shared");
-            fs::create_dir_all(shared_dir)?;
-            let miners_file_path = shared_dir.join("miners.json");
-            let miners_json = serde_json::to_string_pretty(&miner_registry)?;
-            fs::write(&miners_file_path, miners_json)?;
-            println!("Generated miner registry at {:?}", miners_file_path);
-        }
-    }
+    // Step 6 has been removed to prevent race conditions. The agents themselves
+    // will now be responsible for creating and managing the node_registry.json file.
 
     // Write configuration
     let shadow_config_path = output_dir.join("shadow_agents.yaml");
     let config_yaml = serde_yaml::to_string(&shadow_config)?;
-    fs::write(&shadow_config_path, config_yaml)?;
+    std::fs::write(&shadow_config_path, config_yaml)?;
     
     println!("Generated Agent-based Shadow configuration at {:?}", shadow_config_path);
     println!("  - Simulation time: {}", config.general.stop_time);

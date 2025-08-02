@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config_v2::Config;
 use color_eyre::Result;
 use log::info;
 use std::collections::HashMap;

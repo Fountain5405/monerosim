@@ -1,6 +1,5 @@
 # Test configuration for uneven hashrate distribution.
 # 3 mining nodes with one having a dominant hashrate.
-mode: agent
 
 general:
   stop_time: "15m"

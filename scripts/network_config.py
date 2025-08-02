@@ -18,12 +18,12 @@ except ImportError:
 MODULE_NAME = "NETWORK_CONFIG"
 
 # Daemon Nodes Configuration
-A0_IP: str = "11.0.0.1"          # Mining node IP
+A0_IP: str = "11.0.0.10"          # Mining node IP
 A0_RPC_PORT: str = "28090"       # Mining node RPC port
 A0_RPC: str = f"http://{A0_IP}:{A0_RPC_PORT}/json_rpc"
 
-A1_IP: str = "11.0.0.2"          # Sync node IP
-A1_RPC_PORT: str = "28090"       # Sync node RPC port
+A1_IP: str = "11.0.0.11"          # Sync node IP
+A1_RPC_PORT: str = "28100"       # Sync node RPC port
 A1_RPC: str = f"http://{A1_IP}:{A1_RPC_PORT}/json_rpc"
 
 # Wallet Nodes Configuration - Updated to match current shadow.yaml configuration
@@ -51,30 +51,38 @@ WALLET1_ADDRESS_FALLBACK: str = "9tUBnwk5FUXVSKnVbXBjQESkLyS5eWjPHzq2KgQEz3Zcbc1
 WALLET2_ADDRESS_FALLBACK: str = "9tUBnwk5FUXVSKnVbXBjQESkLyS5eWjPHzq2KgQEz3Zcbc1G1oUBHx8Qpc9JnQMNDVQiUBNNopa5qKWuHEJQUW9b2xr2X3K"
 
 
-def get_daemon_config(node_id: str = "A0") -> Dict[str, str]:
+def get_node_registry(shared_dir: str = "/tmp/monerosim_shared") -> Dict[str, Any]:
+    """Read the node registry from the shared directory."""
+    registry_path = f"{shared_dir}/node_registry.json"
+    try:
+        with open(registry_path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        log_warning(MODULE_NAME, f"Node registry not found at {registry_path}")
+        return {"agents": []}
+    except json.JSONDecodeError:
+        log_warning(MODULE_NAME, f"Could not decode node registry at {registry_path}")
+        return {"agents": []}
+
+def get_daemon_config(node_id: str = "user000") -> Dict[str, str]:
     """
-    Get daemon configuration for a specific node.
+    Get daemon configuration for a specific node from the node registry.
     
     Args:
-        node_id: Node identifier (e.g., "A0", "A1")
+        node_id: Node identifier (e.g., "user000", "user001")
         
     Returns:
         Dictionary containing IP, port, and RPC URL for the daemon
     """
-    if node_id == "A0":
-        return {
-            "ip": A0_IP,
-            "port": A0_RPC_PORT,
-            "rpc_url": A0_RPC
-        }
-    elif node_id == "A1":
-        return {
-            "ip": A1_IP,
-            "port": A1_RPC_PORT,
-            "rpc_url": A1_RPC
-        }
-    else:
-        raise ValueError(f"Unknown node ID: {node_id}")
+    registry = get_node_registry()
+    for agent in registry.get("agents", []):
+        if agent.get("agent_id") == node_id:
+            return {
+                "ip": agent.get("ip_addr"),
+                "port": agent.get("node_rpc_port"),
+                "rpc_url": f"http://{agent.get('ip_addr')}:{agent.get('node_rpc_port')}/json_rpc"
+            }
+    raise ValueError(f"Unknown node ID: {node_id}")
 
 
 def get_wallet_config(wallet_id: int) -> Dict[str, str]:

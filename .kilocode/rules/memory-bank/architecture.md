@@ -11,14 +11,11 @@ Monerosim is a Rust-based tool that generates configuration files for the Shadow
 │  CLI Interface (main.rs)                                   │
 │  ├── Configuration Parser (config.rs)                     │
 │  ├── Build Manager (build.rs)                             │
-│  ├── Shadow Generator (shadow.rs)                         │
 │  └── Agent Shadow Generator (shadow_agents.rs)            │
 ├─────────────────────────────────────────────────────────────┤
 │  Agent Framework (Python)                                  │
 │  ├── Base Agent (base_agent.py)                          │
 │  ├── Regular User Agent (regular_user.py)                │
-│  ├── Marketplace Agent (marketplace.py)                   │
-│  ├── Mining Pool Agent (mining_pool.py)                  │
 │  ├── Block Controller Agent (block_controller.py)        │
 │  └── Monero RPC Client (monero_rpc.py)                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -45,7 +42,7 @@ The project is organized into several key components:
 - Parses command-line arguments
 - Orchestrates the configuration generation process
 - Coordinates the build process and shadow configuration generation
-- Supports both traditional and agent-based simulation modes
+- Supports agent-based simulation mode
 
 ### 2. Configuration Management (`src/config.rs`)
 
@@ -62,12 +59,6 @@ The project is organized into several key components:
 - Compiles Monero with Shadow-specific flags
 
 ### 4. Shadow Configuration Generation
-
-#### Traditional Mode (`src/shadow.rs`)
-- Generates Shadow YAML configuration files
-- Defines network topology and connections
-- Configures Monero daemon processes
-- Sets up wallet processes for transaction testing
 
 #### Agent-Based Mode (`src/shadow_agents.rs`)
 - Generates Shadow configurations for agent-based simulations
@@ -89,21 +80,8 @@ The agent framework provides a sophisticated simulation environment where differ
 #### Regular User Agent (`agents/regular_user.py`)
 - Simulates typical Monero users
 - Maintains personal wallets
-- Sends transactions to marketplaces based on configurable patterns
 - Monitors transaction confirmations
 - Configurable transaction frequency and amounts
-
-#### Marketplace Agent (`agents/marketplace.py`)
-- Represents services that receive payments
-- Tracks incoming transactions
-- Maintains transaction history
-- Publishes receiving addresses for users
-
-#### Mining Pool Agent (`agents/mining_pool.py`)
-- Participates in coordinated mining
-- Responds to mining control signals
-- Tracks mining statistics and blocks found
-- Supports configurable mining threads
 
 #### Block Controller Agent (`agents/block_controller.py`)
 - Orchestrates mining across multiple pools
@@ -129,9 +107,9 @@ The configuration file defines the simulation parameters:
 ### Agent Configuration Files
 
 New configuration files for agent-based simulations:
-- `config_agents_small.yaml`: 2 users, 1 marketplace, 1 mining pool
-- `config_agents_medium.yaml`: 10 users, 3 marketplaces, 2 mining pools  
-- `config_agents_large.yaml`: 100 users, 10 marketplaces, 5 mining pools
+- `config_agents_small.yaml`: 2 users
+- `config_agents_medium.yaml`: 10 users
+- `config_agents_large.yaml`: 100 users
 
 ### Testing Scripts
 
@@ -185,8 +163,6 @@ The agent-based architecture supports complex, realistic network simulations:
 ```mermaid
 graph TD
     subgraph "Mining Infrastructure"
-        MP1[Mining Pool Alpha]
-        MP2[Mining Pool Beta]
         BC[Block Controller]
     end
     
@@ -196,10 +172,6 @@ graph TD
         UN[... User N]
     end
     
-    subgraph "Marketplace Services"
-        M1[Marketplace 001]
-        M2[Marketplace 002]
-    end
     
     BC -.->|Controls| MP1
     BC -.->|Controls| MP2
@@ -240,10 +212,7 @@ Key features of the agent-based topology:
    - Monero daemons initialize first
    - Wallet RPC services start next
    - Agents activate and begin their behaviors
-4. Agents interact autonomously:
-   - Mining pools coordinate block generation
-   - Users send transactions to marketplaces
-   - Marketplaces track incoming payments
+4. Agents interact autonomously
 5. Shared state files enable agent coordination
 6. Results are collected and analyzed
 
@@ -254,12 +223,9 @@ Agents communicate through a shared state mechanism:
 ```
 /tmp/monerosim_shared/
 ├── users.json                    # List of all user agents
-├── marketplaces.json            # List of all marketplace agents
-├── mining_pools.json            # List of all mining pools
 ├── block_controller.json        # Block controller status
 ├── transactions.json            # Transaction log
 ├── blocks_found.json           # Block discovery log
-├── marketplace_payments.json    # Payment tracking
 ├── mining_signals/             # Mining control signals
 │   ├── poolalpha.json
 │   └── poolbeta.json
@@ -314,14 +280,11 @@ Python was chosen for agents because:
 - `/src/main.rs`: Main application entry point
 - `/src/config.rs`: Configuration management
 - `/src/build.rs`: Build process management
-- `/src/shadow.rs`: Shadow configuration generation
 - `/src/shadow_agents.rs`: Agent-based Shadow configuration
 
 ### Agent Framework
 - `/agents/base_agent.py`: Base agent class
 - `/agents/regular_user.py`: Regular user implementation
-- `/agents/marketplace.py`: Marketplace implementation
-- `/agents/mining_pool.py`: Mining pool implementation
 - `/agents/block_controller.py`: Block controller implementation
 - `/agents/monero_rpc.py`: RPC client library
 

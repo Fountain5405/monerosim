@@ -14,15 +14,8 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
     // Parse the YAML content
     let config: Config = serde_yaml::from_reader(file)?;
     
-    // Detect and log the mode
-    match &config {
-        Config::Traditional(_) => {
-            info!("Detected traditional node-based configuration");
-        }
-        Config::Agent(_) => {
-            info!("Detected agent-based configuration");
-        }
-    }
+    // Log that we're using agent mode
+    info!("Detected agent-based configuration");
     
     // Validate the configuration
     config.validate()?;
@@ -44,42 +37,38 @@ pub fn apply_agent_overrides(
     config: &mut Config,
     overrides: &AgentCliOverrides,
 ) -> Result<()> {
-    if let Config::Agent(agent_config) = config {
-        // Apply user count override
-        if let Some(users) = overrides.users {
-            info!("Overriding regular_users.count from {} to {}", 
-                  agent_config.agents.regular_users.count, users);
-            agent_config.agents.regular_users.count = users;
-        }
-        
-        // Apply marketplace count override
-        if let Some(marketplaces) = overrides.marketplaces {
-            info!("Overriding marketplaces.count from {} to {}", 
-                  agent_config.agents.marketplaces.count, marketplaces);
-            agent_config.agents.marketplaces.count = marketplaces;
-        }
-        
-        // Apply mining pool count override
-        if let Some(pools) = overrides.pools {
-            info!("Overriding mining_pools.count from {} to {}", 
-                  agent_config.agents.mining_pools.count, pools);
-            agent_config.agents.mining_pools.count = pools;
-        }
-        
-        // Apply transaction frequency override
-        if let Some(tx_freq) = overrides.tx_frequency {
-            // Convert frequency (0.0-1.0) to interval in seconds
-            let interval = (60.0 / tx_freq) as u32;
-            info!("Overriding transaction_interval to {} seconds (frequency: {})", 
-                  interval, tx_freq);
-            agent_config.agents.regular_users.transaction_interval = Some(interval);
-        }
-        
-        // Re-validate after applying overrides
-        config.validate()?;
-    } else {
-        warn!("CLI agent overrides specified but configuration is in traditional mode");
+    // Apply user count override
+    if let Some(users) = overrides.users {
+        info!("Overriding regular_users.count from {} to {}",
+              config.agents.regular_users.count, users);
+        config.agents.regular_users.count = users;
     }
+    
+    // Apply marketplace count override
+    if let Some(marketplaces) = overrides.marketplaces {
+        info!("Overriding marketplaces.count from {} to {}",
+              config.agents.marketplaces.count, marketplaces);
+        config.agents.marketplaces.count = marketplaces;
+    }
+    
+    // Apply mining pool count override
+    if let Some(pools) = overrides.pools {
+        info!("Overriding mining_pools.count from {} to {}",
+              config.agents.mining_pools.count, pools);
+        config.agents.mining_pools.count = pools;
+    }
+    
+    // Apply transaction frequency override
+    if let Some(tx_freq) = overrides.tx_frequency {
+        // Convert frequency (0.0-1.0) to interval in seconds
+        let interval = (60.0 / tx_freq) as u32;
+        info!("Overriding transaction_interval to {} seconds (frequency: {})",
+              interval, tx_freq);
+        config.agents.regular_users.transaction_interval = Some(interval);
+    }
+    
+    // Re-validate after applying overrides
+    config.validate()?;
     
     Ok(())
 }
@@ -153,26 +142,6 @@ mod tests {
     use tempfile::NamedTempFile;
     
     #[test]
-    fn test_load_traditional_config() {
-        let yaml = r#"
-general:
-  stop_time: "3h"
-  fresh_blockchain: true
-nodes:
-  - name: "A0"
-    ip: "11.0.0.1"
-    port: 28080
-    mining: true
-"#;
-        
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", yaml).unwrap();
-        
-        let config = load_config(temp_file.path()).unwrap();
-        assert!(config.is_traditional_mode());
-    }
-    
-    #[test]
     fn test_load_agent_config() {
         let yaml = r#"
 general:
@@ -221,13 +190,9 @@ agents:
         
         apply_agent_overrides(&mut config, &overrides).unwrap();
         
-        if let Config::Agent(agent_config) = config {
-            assert_eq!(agent_config.agents.regular_users.count, 50);
-            assert_eq!(agent_config.agents.marketplaces.count, 5);
-            assert_eq!(agent_config.agents.mining_pools.count, 2); // unchanged
-            assert_eq!(agent_config.agents.regular_users.transaction_interval, Some(120));
-        } else {
-            panic!("Expected agent config");
-        }
+        assert_eq!(config.agents.regular_users.count, 50);
+        assert_eq!(config.agents.marketplaces.count, 5);
+        assert_eq!(config.agents.mining_pools.count, 2); // unchanged
+        assert_eq!(config.agents.regular_users.transaction_interval, Some(120));
     }
 }

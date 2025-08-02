@@ -1,31 +1,111 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Unified configuration that supports both traditional and agent modes
+/// Unified configuration that supports only agent mode
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "mode")]
-pub enum Config {
-    #[serde(rename = "agent")]
-    Agent(AgentConfig),
-    #[serde(rename = "traditional")]
-    Traditional(TraditionalConfig),
-}
-
-/// Traditional mode configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TraditionalConfig {
-    pub general: GeneralConfig,
-}
-
-/// Agent mode configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AgentConfig {
+pub struct Config {
     pub general: GeneralConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<NetworkConfig>,
     pub agents: AgentDefinitions,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub block_generation: Option<BlockGenerationConfig>,
+    pub mining: Option<MiningConfig>,
+}
+
+impl Config {
+    /// Validate the configuration
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        // Validate general settings
+        if self.general.stop_time.is_empty() {
+            return Err(ValidationError::InvalidGeneral(
+                "stop_time cannot be empty".to_string()
+            ));
+        }
+        
+        // Validate agent counts
+        if self.agents.regular_users.count == 0 {
+            return Err(ValidationError::InvalidAgent(
+                "regular_users.count must be greater than 0".to_string()
+            ));
+        }
+        
+        if self.agents.marketplaces.count == 0 {
+            return Err(ValidationError::InvalidAgent(
+                "marketplaces.count must be greater than 0".to_string()
+            ));
+        }
+        
+        if self.agents.mining_pools.count == 0 {
+            return Err(ValidationError::InvalidAgent(
+                "mining_pools.count must be greater than 0".to_string()
+            ));
+        }
+        
+        // Validate transaction amounts
+        if let (Some(min), Some(max)) = (
+            self.agents.regular_users.min_transaction_amount,
+            self.agents.regular_users.max_transaction_amount
+        ) {
+            if min > max {
+                return Err(ValidationError::InvalidAgent(
+                    "min_transaction_amount cannot be greater than max_transaction_amount".to_string()
+                ));
+            }
+            if min <= 0.0 {
+                return Err(ValidationError::InvalidAgent(
+                    "min_transaction_amount must be positive".to_string()
+                ));
+            }
+        }
+        
+        // Validate mining settings
+        if let Some(mining) = &self.mining {
+            if mining.block_time < 30 {
+                return Err(ValidationError::InvalidAgent(
+                    "mining.block_time must be at least 30 seconds".to_string()
+                ));
+            }
+            if mining.number_of_mining_nodes == 0 {
+                return Err(ValidationError::InvalidAgent(
+                    "mining.number_of_mining_nodes must be greater than 0".to_string()
+                ));
+            }
+            if mining.mining_distribution.len() != mining.number_of_mining_nodes as usize {
+                return Err(ValidationError::InvalidAgent(
+                    format!(
+                        "mining.mining_distribution length ({}) must match number_of_mining_nodes ({})",
+                        mining.mining_distribution.len(), mining.number_of_mining_nodes
+                    )
+                ));
+            }
+            if mining.solo_miner_threshold <= 0.0 || mining.solo_miner_threshold >= 1.0 {
+                return Err(ValidationError::InvalidAgent(
+                    "mining.solo_miner_threshold must be between 0.0 and 1.0".to_string()
+                ));
+            }
+        }
+        
+        // Validate network settings
+        if let Some(network) = &self.network {
+            if network.network_type.is_empty() {
+                return Err(ValidationError::InvalidNetwork(
+                    "network type cannot be empty".to_string()
+                ));
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Get the general configuration
+    pub fn general(&self) -> &GeneralConfig {
+        &self.general
+    }
+    
+    /// Check if this is an agent configuration (always true now)
+    pub fn is_agent_mode(&self) -> bool {
+        true
+    }
 }
 
 /// Shared general configuration
@@ -38,20 +118,6 @@ pub struct GeneralConfig {
     pub python_venv: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<String>,
-}
-
-/// Configuration for a single Monero node (traditional mode)
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct NodeConfig {
-    pub name: String,
-    pub ip: String,
-    pub port: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub start_time: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mining: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fixed_difficulty: Option<u32>,
 }
 
 /// Agent definitions
@@ -117,15 +183,15 @@ pub struct CustomAgentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<HashMap<String, serde_yaml::Value>>,
 }
-
-/// Block generation configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BlockGenerationConfig {
-    pub interval: u32,
-    pub pools_per_round: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub difficulty_adjustment: Option<String>,
+/// Mining configuration
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MiningConfig {
+    pub block_time: u32,
+    pub number_of_mining_nodes: u32,
+    pub mining_distribution: Vec<u32>,
+    pub solo_miner_threshold: f64,
 }
+
 
 /// Network configuration
 #[derive(Debug, Serialize, Deserialize)]
@@ -141,8 +207,6 @@ pub struct NetworkConfig {
 /// Configuration validation errors
 #[derive(Debug, thiserror::Error)]
 pub enum ValidationError {
-    #[error("Invalid node configuration: {0}")]
-    InvalidNode(String),
     #[error("Invalid agent configuration: {0}")]
     InvalidAgent(String),
     #[error("Invalid general configuration: {0}")]
@@ -151,127 +215,6 @@ pub enum ValidationError {
     InvalidNetwork(String),
 }
 
-impl Config {
-    /// Validate the configuration
-    pub fn validate(&self) -> Result<(), ValidationError> {
-        match self {
-            Config::Traditional(cfg) => cfg.validate(),
-            Config::Agent(cfg) => cfg.validate(),
-        }
-    }
-    
-    /// Get the general configuration
-    pub fn general(&self) -> &GeneralConfig {
-        match self {
-            Config::Traditional(cfg) => &cfg.general,
-            Config::Agent(cfg) => &cfg.general,
-        }
-    }
-    
-    /// Check if this is an agent configuration
-    pub fn is_agent_mode(&self) -> bool {
-        matches!(self, Config::Agent(_))
-    }
-    
-    /// Check if this is a traditional configuration
-    pub fn is_traditional_mode(&self) -> bool {
-        matches!(self, Config::Traditional(_))
-    }
-}
-
-impl TraditionalConfig {
-    fn validate(&self) -> Result<(), ValidationError> {
-        // Validate general settings
-        if self.general.stop_time.is_empty() {
-            return Err(ValidationError::InvalidGeneral(
-                "stop_time cannot be empty".to_string()
-            ));
-        }
-        
-        
-        Ok(())
-    }
-}
-
-impl AgentConfig {
-    fn validate(&self) -> Result<(), ValidationError> {
-        // Validate general settings
-        if self.general.stop_time.is_empty() {
-            return Err(ValidationError::InvalidGeneral(
-                "stop_time cannot be empty".to_string()
-            ));
-        }
-        
-        // Validate agent counts
-        if self.agents.regular_users.count == 0 {
-            return Err(ValidationError::InvalidAgent(
-                "regular_users.count must be greater than 0".to_string()
-            ));
-        }
-        
-        if self.agents.marketplaces.count == 0 {
-            return Err(ValidationError::InvalidAgent(
-                "marketplaces.count must be greater than 0".to_string()
-            ));
-        }
-        
-        if self.agents.mining_pools.count == 0 {
-            return Err(ValidationError::InvalidAgent(
-                "mining_pools.count must be greater than 0".to_string()
-            ));
-        }
-        
-        // Validate transaction amounts
-        if let (Some(min), Some(max)) = (
-            self.agents.regular_users.min_transaction_amount,
-            self.agents.regular_users.max_transaction_amount
-        ) {
-            if min > max {
-                return Err(ValidationError::InvalidAgent(
-                    "min_transaction_amount cannot be greater than max_transaction_amount".to_string()
-                ));
-            }
-            if min <= 0.0 {
-                return Err(ValidationError::InvalidAgent(
-                    "min_transaction_amount must be positive".to_string()
-                ));
-            }
-        }
-        
-        // Validate block generation settings
-        if let Some(block_gen) = &self.block_generation {
-            if block_gen.interval < 30 {
-                return Err(ValidationError::InvalidAgent(
-                    "block_generation.interval must be at least 30 seconds".to_string()
-                ));
-            }
-            if block_gen.pools_per_round == 0 {
-                return Err(ValidationError::InvalidAgent(
-                    "block_generation.pools_per_round must be greater than 0".to_string()
-                ));
-            }
-            if block_gen.pools_per_round > self.agents.mining_pools.count {
-                return Err(ValidationError::InvalidAgent(
-                    format!(
-                        "block_generation.pools_per_round ({}) cannot exceed mining_pools.count ({})",
-                        block_gen.pools_per_round, self.agents.mining_pools.count
-                    )
-                ));
-            }
-        }
-        
-        // Validate network settings
-        if let Some(network) = &self.network {
-            if network.network_type.is_empty() {
-                return Err(ValidationError::InvalidNetwork(
-                    "network type cannot be empty".to_string()
-                ));
-            }
-        }
-        
-        Ok(())
-    }
-}
 
 /// Default implementations
 impl Default for GeneralConfig {
@@ -317,53 +260,10 @@ impl Default for MiningPoolConfig {
     }
 }
 
-impl Default for BlockGenerationConfig {
-    fn default() -> Self {
-        Self {
-            interval: 60,
-            pools_per_round: 1,
-            difficulty_adjustment: Some("fixed".to_string()),
-        }
-    }
-}
-
-impl Default for NodeConfig {
-    fn default() -> Self {
-        Self {
-            name: "node".to_string(),
-            ip: "11.0.0.1".to_string(),
-            port: 28080,
-            start_time: Some("0s".to_string()),
-            mining: Some(false),
-            fixed_difficulty: None,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
-    #[test]
-    fn test_traditional_config_parsing() {
-        let yaml = r#"
-general:
-  stop_time: "3h"
-  fresh_blockchain: true
-nodes:
-  - name: "A0"
-    ip: "11.0.0.1"
-    port: 28080
-    mining: true
-  - name: "A1"
-    ip: "11.0.0.2"
-    port: 28080
-"#;
-        
-        let config: Config = serde_yaml::from_str(yaml).unwrap();
-        assert!(config.is_traditional_mode());
-        assert!(config.validate().is_ok());
-    }
     
     #[test]
     fn test_agent_config_parsing() {
@@ -379,9 +279,11 @@ agents:
     count: 3
   mining_pools:
     count: 2
-block_generation:
-  interval: 60
-  pools_per_round: 1
+mining:
+  block_time: 120
+  number_of_mining_nodes: 3
+  mining_distribution: [70, 20, 10]
+  solo_miner_threshold: 0.05
 "#;
         
         let config: Config = serde_yaml::from_str(yaml).unwrap();
@@ -391,15 +293,6 @@ block_generation:
     
     #[test]
     fn test_validation_errors() {
-        // Test empty nodes
-        let yaml = r#"
-general:
-  stop_time: "1h"
-nodes: []
-"#;
-        let config: Config = serde_yaml::from_str(yaml).unwrap();
-        assert!(config.validate().is_err());
-        
         // Test zero agent count
         let yaml = r#"
 general:

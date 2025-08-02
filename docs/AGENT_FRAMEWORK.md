@@ -17,7 +17,7 @@
 
 ## Overview
 
-The Monerosim Agent Framework is a sophisticated simulation capability that enables realistic cryptocurrency network behavior modeling. Unlike traditional simulations that focus solely on network topology and protocol mechanics, the agent framework introduces autonomous participants that make independent decisions, creating emergent network behaviors that closely mirror real-world cryptocurrency ecosystems.
+The Monerosim Agent Framework is a sophisticated simulation capability that enables realistic cryptocurrency network behavior modeling. The agent framework introduces autonomous participants that make independent decisions, creating emergent network behaviors that closely mirror real-world cryptocurrency ecosystems.
 
 ### Why the Agent Framework?
 

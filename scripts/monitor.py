@@ -28,7 +28,7 @@ try:
         call_daemon_with_retry, verify_daemon_ready, handle_exit
     )
     from network_config import (
-        A0_RPC, A1_RPC, get_daemon_config
+        get_node_registry, get_daemon_config
     )
 except ImportError:
     sys.path.append('..')
@@ -426,11 +426,10 @@ def main():
                 log_error(COMPONENT, "Use format: name=url")
                 handle_exit(1, COMPONENT, "Invalid node specification")
     else:
-        # Default nodes
-        nodes = [
-            NodeStatus("A0", A0_RPC),
-            NodeStatus("A1", A1_RPC)
-        ]
+        # Default nodes from registry
+        registry = get_node_registry()
+        for agent in registry.get("agents", []):
+            nodes.append(NodeStatus(agent.get("agent_id"), f"http://{agent.get('ip_addr')}:{agent.get('node_rpc_port')}/json_rpc"))
     
     log_info(COMPONENT, f"Monitoring {len(nodes)} nodes")
     

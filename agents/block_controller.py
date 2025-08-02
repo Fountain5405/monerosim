@@ -2,14 +2,11 @@
 """
 Agent-based Block Controller for Monerosim
 
-This version uses the proven wallet-based block generation approach from scripts/block_controller.py
-instead of trying to control mining pools through RPC methods that don't exist.
-
-The block controller:
-- Creates its own wallet to get a mining address
-- Uses the daemon's generateblocks RPC method
-- Generates blocks at regular intervals
-- Tracks blockchain progress
+This stateless coordinator:
+- Reads the node registry to find available miners
+- Selects a miner using weighted-random selection
+- Makes dynamic RPC calls to generate blocks on the winner's daemon
+- Does not maintain any local state or wallet
 """
 
 import sys
@@ -20,172 +17,121 @@ import random
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
+# Try to import numpy, but handle the case where it's not available
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+    import warnings
+    warnings.warn("NumPy not available, using fallback weighted selection method")
+
 from .base_agent import BaseAgent
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 
 
 class BlockControllerAgent(BaseAgent):
-    """Agent that generates blocks using daemon's generateblocks method"""
+    """Stateless coordinator that selects miners and triggers block generation"""
     
     def __init__(self, agent_id: str = "block_controller",
-                 wallet_rpc_port: int = 29200,
-                 wallet_host: str = "11.0.0.254",
-                 daemon_host: str = "11.0.0.252",
-                 daemon_rpc_port: int = 29100,
                  target_block_interval: int = 120,
-                 blocks_per_generation: int = 1):
-        # Initialize without wallet RPC port to prevent base class from creating connection
-        super().__init__(agent_id, node_rpc_port=None, wallet_rpc_port=None)
-        
-        # Store wallet connection info
-        self.wallet_host = wallet_host
-        self.wallet_rpc_port = wallet_rpc_port
-        
-        # Direct daemon connection for generateblocks
-        self.daemon_host = daemon_host
-        self.daemon_rpc_port = daemon_rpc_port
-        self.daemon_rpc = MoneroRPC(daemon_host, daemon_rpc_port)
+                 blocks_per_generation: int = 1,
+                 **kwargs):
+        # Call parent constructor without wallet parameters
+        super().__init__(
+            agent_id=agent_id,
+            **kwargs
+        )
         
         # Configuration
         self.target_block_interval = target_block_interval
         self.blocks_per_generation = blocks_per_generation
         
-        # State
-        self.wallet_address = None
+        # Timing
         self.last_block_time = 0
-        self.total_blocks_generated = 0
-        self.blockchain_height = 0
         self.start_time = time.time()
-        self.miners: List[Dict[str, Any]] = []
-        
-    def setup(self):
-        """Override setup to handle wallet RPC connection with custom host"""
-        # Skip base class wallet setup, we'll do it ourselves
-        # Call agent-specific setup
-        self._setup_agent()
         
     def _setup_agent(self):
-        """Initialize block controller with wallet"""
+        """Initialize stateless block controller"""
         self.logger.info("Block Controller initializing...")
         
-        # Create wallet RPC connection with specific host
-        self.logger.info(f"Connecting to wallet RPC at {self.wallet_host}:{self.wallet_rpc_port}")
-        self.wallet_rpc = WalletRPC(self.wallet_host, self.wallet_rpc_port)
-        
-        # Wait for daemon to be ready
-        max_attempts = 30
-        for attempt in range(max_attempts):
-            try:
-                if self.daemon_rpc.is_ready():
-                    self.logger.info("Daemon RPC is ready")
-                    break
-            except Exception as e:
-                self.logger.warning(f"Daemon not ready yet (attempt {attempt + 1}/{max_attempts}): {e}")
-                time.sleep(2)
-        else:
-            raise RuntimeError("Daemon RPC failed to become ready")
-        
-        # Wait for wallet RPC to be ready
-        for attempt in range(max_attempts):
-            try:
-                if self.wallet_rpc.is_ready():
-                    self.logger.info("Wallet RPC is ready")
-                    break
-            except Exception as e:
-                self.logger.warning(f"Wallet RPC not ready yet (attempt {attempt + 1}/{max_attempts}): {e}")
-                time.sleep(2)
-        else:
-            raise RuntimeError("Wallet RPC failed to become ready")
-        
-        # Create or open wallet
-        wallet_name = "blockcontroller"
-        wallet_password = ""
-        
-        try:
-            # Try to create wallet
-            self.logger.info(f"Creating wallet '{wallet_name}'...")
-            self.wallet_rpc.create_wallet(wallet_name, wallet_password)
-            self.logger.info("Successfully created new wallet")
-        except RPCError as e:
-            if "already exists" in str(e):
-                # Wallet exists, try to open it
-                self.logger.info("Wallet already exists, opening it...")
-                try:
-                    self.wallet_rpc.open_wallet(wallet_name, wallet_password)
-                    self.logger.info("Successfully opened existing wallet")
-                except RPCError as e:
-                    self.logger.error(f"Failed to open wallet: {e}")
-                    raise
-            else:
-                self.logger.error(f"Failed to create wallet: {e}")
-                raise
-        
-        # Get wallet address
-        try:
-            self.wallet_address = self.wallet_rpc.get_address()
-            self.logger.info(f"Using wallet address: {self.wallet_address}")
-        except RPCError as e:
-            self.logger.error(f"Failed to get wallet address: {e}")
-            raise
-        
-        # Load miner registry on startup
-        self._load_miner_registry()
-        
-        # Register as block controller
+        # Register as block controller (without wallet)
         controller_data = {
             "agent_id": self.agent_id,
             "type": "block_controller",
-            "wallet_address": self.wallet_address,
             "target_interval": self.target_block_interval,
             "blocks_per_generation": self.blocks_per_generation,
-            "daemon_host": self.daemon_host,
-            "daemon_port": self.daemon_rpc_port,
             "timestamp": time.time()
         }
         self.write_shared_state("block_controller.json", controller_data)
         
-        # Get initial blockchain height
-        try:
-            self.blockchain_height = self.daemon_rpc.get_height()
-            self.logger.info(f"Initial blockchain height: {self.blockchain_height}")
-        except RPCError as e:
-            self.logger.warning(f"Failed to get initial height: {e}")
+        self.logger.info("Stateless block controller initialized")
             
-    def _load_miner_registry(self):
+    def _load_miner_registry(self) -> List[Dict[str, Any]]:
         """Load miner information from the shared state file."""
-        self.logger.info("Loading miner registry from miners.json...")
-        miners = self.read_shared_list("miners.json")
+        self.logger.info("Loading miner registry from node_registry.json...")
+        registry_data = self.read_shared_state("node_registry.json")
+        all_agents = registry_data.get("agents", []) if registry_data else []
+        
+        # Filter for agents with the 'mining' attribute
+        miners = [
+            agent for agent in all_agents
+            if "mining" in agent.get("attributes", []) and agent.get("wallet_address")
+        ]
+        
         if not miners:
-            self.logger.warning("Miner registry 'miners.json' is empty or not found.")
-            self.miners = []
+            self.logger.warning("No mining-enabled agents found in the registry.")
         else:
-            self.miners = miners
-            self.logger.info(f"Loaded {len(self.miners)} miners from registry.")
+            self.logger.info(f"Loaded {len(miners)} mining-enabled agents from registry.")
+            
+        return miners
 
-    def _select_winning_miner(self) -> Optional[Dict[str, Any]]:
-        """Select a winning miner based on hashrate."""
-        if not self.miners:
+    def _select_winning_miner(self, miners: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Select a winning miner based on hashrate using weighted selection."""
+        if not miners:
             self.logger.warning("No miners in registry, cannot select a winner.")
             return None
         
-        hash_rates = [miner.get("hash_rate", 0) for miner in self.miners]
-        total_hash_rate = sum(hash_rates)
+        # Extract weights for each miner
+        weights = [miner.get("hash_rate", 0) for miner in miners]
+        total_weight = sum(weights)
 
-        if total_hash_rate == 0:
+        if total_weight == 0:
             self.logger.warning("Total hash rate of all miners is zero. Falling back to random choice.")
-            return random.choice(self.miners)
+            return random.choice(miners)
 
-        # Weighted random selection
-        winner = random.choices(self.miners, weights=hash_rates, k=1)[0]
+        # Use numpy for weighted random selection if available
+        if NUMPY_AVAILABLE:
+            normalized_weights = np.array(weights, dtype=float) / total_weight
+            winner_index = np.random.choice(len(miners), p=normalized_weights)
+        else:
+            # Fallback implementation using built-in random module
+            # Create a cumulative distribution
+            cumulative_weights = []
+            cumulative_sum = 0
+            for weight in weights:
+                cumulative_sum += weight
+                cumulative_weights.append(cumulative_sum)
+            
+            # Select a random value and find the corresponding miner
+            random_value = random.uniform(0, total_weight)
+            winner_index = 0
+            for i, cumulative_weight in enumerate(cumulative_weights):
+                if random_value <= cumulative_weight:
+                    winner_index = i
+                    break
+        
+        winner = miners[winner_index]
+        
         self.logger.info(f"Selected winning miner: {winner.get('agent_id')} with hash rate {winner.get('hash_rate')}")
         return winner
         
-    def _generate_blocks(self):
-        """Select a winner and generate blocks to their address."""
+    def _generate_blocks(self) -> bool:
+        """Select a winner and generate blocks on their daemon."""
         # Reload the registry each time to get the latest list of miners
-        self._load_miner_registry()
+        miners = self._load_miner_registry()
 
-        winner = self._select_winning_miner()
+        winner = self._select_winning_miner(miners)
         if not winner:
             self.logger.error("Block generation failed: Could not select a winning miner.")
             return False
@@ -195,43 +141,40 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error(f"Block generation failed: Winning miner {winner.get('agent_id')} has no wallet_address.")
             return False
             
+        # Create dynamic RPC client for the winner's daemon
+        winner_ip = winner.get("ip_addr", "127.0.0.1")
+        winner_port = winner.get("node_rpc_port", 28080)  # Default port if not specified
+        winner_daemon_rpc = MoneroRPC(winner_ip, winner_port)
+        
+        self.logger.info(f"Generating {self.blocks_per_generation} block(s) for winner: {winner.get('agent_id')} at {winner_ip}:{winner_port}")
+        
         try:
-            initial_height = self.daemon_rpc.get_height()
-            self.logger.info(f"Generating {self.blocks_per_generation} block(s) for winner: {winner.get('agent_id')}")
-            
-            result = self.daemon_rpc.generate_block(
+            result = winner_daemon_rpc.generate_block(
                 wallet_address=winner_address,
                 amount_of_blocks=self.blocks_per_generation
             )
             
             if result and result.get("status") == "OK":
                 blocks_generated = len(result.get("blocks", []))
-                new_height = result.get("height", initial_height + blocks_generated)
-                
                 self.logger.info(f"Successfully generated {blocks_generated} blocks for {winner.get('agent_id')}")
-                self.logger.info(f"New height: {new_height}")
-                
-                self.total_blocks_generated += blocks_generated
-                self.blockchain_height = new_height
-                self.last_block_time = time.time()
                 
                 # Log block discovery
                 for block_hash in result.get("blocks", []):
                     block_info = {
                         "miner_id": winner.get("agent_id"),
                         "block_hash": block_hash,
-                        "height": new_height - (blocks_generated - 1) + result.get("blocks", []).index(block_hash),
                         "timestamp": time.time()
                     }
                     self.append_shared_list("blocks_found.json", block_info)
 
+                self.last_block_time = time.time()
                 return True
             else:
                 self.logger.warning(f"Unexpected generateblocks response: {result}")
                 return False
                 
         except RPCError as e:
-            self.logger.error(f"Failed to generate blocks: {e}")
+            self.logger.error(f"Failed to generate blocks on winner's daemon: {e}")
             return False
         except Exception as e:
             self.logger.error(f"Unexpected error generating blocks: {e}", exc_info=True)
@@ -241,44 +184,33 @@ class BlockControllerAgent(BaseAgent):
         """Update and log block controller statistics"""
         stats = {
             "controller_id": self.agent_id,
-            "wallet_address": self.wallet_address,
-            "total_blocks_generated": self.total_blocks_generated,
-            "current_height": self.blockchain_height,
             "last_block_time": self.last_block_time,
-            "daemon_host": self.daemon_host,
-            "daemon_port": self.daemon_rpc_port,
             "timestamp": time.time()
         }
         
         self.write_shared_state("block_controller_stats.json", stats)
-        
-        # Calculate block rate
-        if self.last_block_time > 0:
-            runtime = time.time() - self.start_time
-            if runtime > 0 and self.total_blocks_generated > 0:
-                blocks_per_hour = (self.total_blocks_generated / runtime) * 3600
-                self.logger.info(
-                    f"Stats - Total blocks: {self.total_blocks_generated}, "
-                    f"Height: {self.blockchain_height}, "
-                    f"Rate: {blocks_per_hour:.2f} blocks/hour"
-                )
                 
-    def run_iteration(self):
-        """Single iteration of block generation"""
+    def run_iteration(self) -> float:
+        """
+        Single iteration of block generation.
+        Returns:
+            float: Recommended sleep time in seconds.
+        """
         current_time = time.time()
         time_since_last_block = current_time - self.last_block_time
-        
-        # Check if it's time to generate new blocks
+
         if time_since_last_block >= self.target_block_interval:
             self.logger.info(f"Time to generate blocks (last block {time_since_last_block:.1f}s ago)")
-            
             if self._generate_blocks():
                 self._update_statistics()
             else:
                 self.logger.warning("Block generation failed, will retry next interval")
-        
-        # Small sleep to prevent tight loops
-        time.sleep(1)
+            
+            # After generation, check again in the target interval
+            return self.target_block_interval
+        else:
+            # Calculate time until next block generation
+            return self.target_block_interval - time_since_last_block
         
     def _cleanup_agent(self):
         """Clean up block controller resources"""
@@ -288,55 +220,35 @@ class BlockControllerAgent(BaseAgent):
         # Write final summary
         summary = {
             "controller_id": self.agent_id,
-            "wallet_address": self.wallet_address,
-            "total_blocks_generated": self.total_blocks_generated,
-            "final_height": self.blockchain_height,
             "runtime_seconds": time.time() - self.start_time,
             "final_timestamp": time.time()
         }
         
         try:
             self.write_shared_state("block_controller_final.json", summary)
-            self.logger.info(
-                f"Final summary - Generated {self.total_blocks_generated} blocks, "
-                f"final height: {self.blockchain_height}"
-            )
+            self.logger.info("Final summary written")
         except:
             pass
 
 
 def main():
     """Main entry point for block controller agent"""
-    parser = argparse.ArgumentParser(description="Block Controller Agent for Monerosim")
-    parser.add_argument('--id', default='block_controller', help='Agent ID')
-    parser.add_argument('--interval', type=int, default=120,
-                       help='Target interval between blocks in seconds')
-    parser.add_argument('--blocks', type=int, default=1,
-                       help='Number of blocks per generation')
-    parser.add_argument('--wallet-rpc', type=int, default=29200,
-                       help='Wallet RPC port')
-    parser.add_argument('--wallet-host', default='11.0.0.254',
-                       help='Wallet RPC host')
-    parser.add_argument('--daemon-host', default='11.0.0.252',
-                       help='Daemon RPC host')
-    parser.add_argument('--daemon-rpc', type=int, default=29100,
-                       help='Daemon RPC port')
-    parser.add_argument('--log-level', default='INFO',
-                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-                       help='Logging level')
+    parser = BlockControllerAgent.create_argument_parser("Block Controller Agent for Monerosim")
+    parser.add_argument('--interval', type=int, default=120, help='Target interval between blocks in seconds')
+    parser.add_argument('--blocks', type=int, default=1, help='Number of blocks per generation')
     
     args = parser.parse_args()
     
     # Set logging level
     logging.basicConfig(level=getattr(logging, args.log_level))
     
-    # Create and run agent
+    # Create and run agent (without wallet parameters)
     agent = BlockControllerAgent(
         agent_id=args.id,
-        wallet_rpc_port=args.wallet_rpc,
-        wallet_host=args.wallet_host,
-        daemon_host=args.daemon_host,
-        daemon_rpc_port=args.daemon_rpc,
+        shared_dir=args.shared_dir,
+        rpc_host=args.rpc_host,
+        log_level=args.log_level,
+        attributes=args.attributes,
         target_block_interval=args.interval,
         blocks_per_generation=args.blocks
     )

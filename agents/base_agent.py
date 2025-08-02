@@ -10,6 +10,7 @@ import os
 import signal
 import sys
 import time
+import fcntl
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -20,35 +21,59 @@ from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 class BaseAgent(ABC):
     """Abstract base class for all Monerosim agents"""
     
-    def __init__(self, agent_id: str, node_rpc_port: Optional[int] = None,
-                 wallet_rpc_port: Optional[int] = None, rpc_host: str = "127.0.0.1"):
+    def __init__(self, agent_id: str,
+                 shared_dir: Optional[Path] = None,
+                 node_rpc_port: Optional[int] = None,
+                 wallet_rpc_port: Optional[int] = None,
+                 p2p_port: Optional[int] = None,
+                 rpc_host: str = "127.0.0.1",
+                 log_level: str = "INFO",
+                 attributes: Optional[List[str]] = None,
+                 hash_rate: Optional[int] = None):
         self.agent_id = agent_id
+        self._shared_dir = shared_dir
         self.node_rpc_port = node_rpc_port
         self.wallet_rpc_port = wallet_rpc_port
+        self.p2p_port = p2p_port
         self.rpc_host = rpc_host
+        self.log_level = log_level
+        self.attributes = attributes or []
+        self.hash_rate = hash_rate
         self.running = True
         
-        # Set up logging
-        self.logger = self._setup_logging()
+        # Shared state directory
+        if shared_dir is None:
+            shared_dir = Path("/tmp/monerosim_shared")
+        self._shared_dir = shared_dir
+        self._shared_dir.mkdir(mode=0o700, exist_ok=True)
         
-        # RPC connections (initialized in setup)
+        # Initialize RPC connections first (required for logging context)
         self.node_rpc: Optional[MoneroRPC] = None
         self.wallet_rpc: Optional[WalletRPC] = None
         
-        # Shared state directory
-        self.shared_dir = Path("/tmp/monerosim_shared")
-        self.shared_dir.mkdir(exist_ok=True)
+        # Set up logging
+        self.logger = self._setup_logging()
         
         # Register signal handlers
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
         
         self.logger.info(f"Initialized {self.__class__.__name__} with ID: {agent_id}")
+        self.logger.debug(f"Shared directory: {self._shared_dir}")
+        
+    @property
+    def shared_dir(self):
+        return self._shared_dir
+        
+    @shared_dir.setter
+    def shared_dir(self, value):
+        self._shared_dir = value
         
     def _setup_logging(self) -> logging.Logger:
         """Set up agent-specific logging"""
         logger = logging.getLogger(f"{self.__class__.__name__}[{self.agent_id}]")
-        logger.setLevel(logging.INFO)
+        level = getattr(logging, self.log_level.upper(), logging.INFO)
+        logger.setLevel(level)
         
         # Console handler with formatting
         handler = logging.StreamHandler(sys.stdout)
@@ -62,8 +87,9 @@ class BaseAgent(ABC):
         
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals gracefully"""
-        self.logger.info(f"Received signal {signum}, shutting down...")
+        self.logger.info(f"Received signal {signum}, setting self.running to False")
         self.running = False
+        self.logger.info("Shutdown signal handled")
         
     def setup(self):
         """Set up RPC connections and perform agent-specific initialization"""
@@ -93,34 +119,45 @@ class BaseAgent(ABC):
         # Call agent-specific setup
         self._setup_agent()
         
+        # Register self in the node registry after wallet is set up
+        self._register_self()
+        
     @abstractmethod
     def _setup_agent(self):
         """Agent-specific setup logic (to be implemented by subclasses)"""
         pass
         
     @abstractmethod
-    def run_iteration(self):
-        """Single iteration of agent behavior (to be implemented by subclasses)"""
+    def run_iteration(self) -> float:
+        """
+        Single iteration of agent behavior.
+        Returns:
+            float: The recommended time to sleep (in seconds) before the next iteration.
+        """
         pass
-        
+
     def run(self):
         """Main agent loop"""
         try:
-            # Initial setup
             self.setup()
-            
             self.logger.info("Starting main agent loop")
-            
-            # Main behavior loop
+
+            next_run_time = time.time()
+
             while self.running:
-                try:
-                    self.run_iteration()
-                except Exception as e:
-                    self.logger.error(f"Error in agent iteration: {e}", exc_info=True)
-                    # Continue running unless it's a critical error
-                    
-                # Small sleep to prevent tight loops
+                if time.time() >= next_run_time:
+                    self.logger.debug("Starting agent iteration")
+                    try:
+                        sleep_duration = self.run_iteration()
+                        next_run_time = time.time() + (sleep_duration or 1.0)
+                    except Exception as e:
+                        self.logger.error(f"Error in agent iteration: {e}", exc_info=True)
+                        next_run_time = time.time() + 5  # Default sleep on error
+
+                # Responsive sleep
                 time.sleep(0.1)
+
+            self.logger.info("Agent run loop finished")
                 
         except Exception as e:
             self.logger.error(f"Fatal error in agent: {e}", exc_info=True)
@@ -191,6 +228,82 @@ class BaseAgent(ABC):
         data = self.read_shared_state(filename)
         return data if isinstance(data, list) else []
         
+    def _register_self(self):
+        """Register this agent in the node registry with atomic file updates"""
+        registry_path = self.shared_dir / "node_registry.json"
+        lock_path = self.shared_dir / "node_registry.lock"
+        
+        self.logger.info(f"Attempting to register in registry: {registry_path.resolve()}")
+
+        # First, ensure the file exists using a separate lock file for creation
+        try:
+            with open(lock_path, "w") as lock_f:
+                self.logger.debug(f"Acquiring lock on {lock_path}")
+                fcntl.flock(lock_f, fcntl.LOCK_EX)
+                self.logger.debug(f"Acquired lock on {lock_path}")
+                try:
+                    if not registry_path.exists():
+                        self.logger.warning(f"Registry file not found at {registry_path}. Creating it.")
+                        with open(registry_path, "w") as f:
+                            json.dump({"agents": []}, f, indent=4)
+                        self.logger.info(f"Successfully created registry file at {registry_path}")
+                finally:
+                    self.logger.debug(f"Releasing lock on {lock_path}")
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+        except Exception as e:
+            self.logger.error(f"Failed to create or lock registry file: {e}", exc_info=True)
+            return
+
+        # Now, atomically update the now-existing registry file
+        try:
+            with open(registry_path, "r+") as f:
+                self.logger.debug(f"Acquiring lock on {registry_path}")
+                fcntl.flock(f, fcntl.LOCK_EX)
+                self.logger.debug(f"Acquired lock on {registry_path}")
+                try:
+                    # Handle potentially empty file
+                    content = f.read()
+                    if not content.strip():
+                        data = {"agents": []}
+                    else:
+                        f.seek(0)
+                        data = json.load(f)
+                    
+                    # Find and update the agent's entry or create a new one
+                    agent_found = False
+                    for agent in data.get("agents", []):
+                        if agent.get("agent_id") == self.agent_id:
+                            agent["wallet_address"] = getattr(self, 'wallet_address', None)
+                            agent_found = True
+                            break
+                    
+                    if not agent_found:
+                        new_agent_entry = {
+                            "agent_id": self.agent_id,
+                            "type": self.__class__.__name__.lower().replace('agent', ''),
+                            "attributes": self.attributes,
+                            "hash_rate": getattr(self, 'hash_rate', None),
+                            "ip_addr": self.rpc_host,
+                            "p2p_port": self.p2p_port,
+                            "node_rpc_port": self.node_rpc_port,
+                            "wallet_rpc_port": self.wallet_rpc_port,
+                            "wallet_address": getattr(self, 'wallet_address', None),
+                            "timestamp": time.time()
+                        }
+                        data.setdefault("agents", []).append(new_agent_entry)
+                    
+                    f.seek(0)
+                    json.dump(data, f, indent=4)
+                    f.truncate()
+                finally:
+                    self.logger.debug(f"Releasing lock on {registry_path}")
+                    fcntl.flock(f, fcntl.LOCK_UN)
+        except Exception as e:
+            self.logger.error(f"Failed to lock and update registry file: {e}", exc_info=True)
+            return
+
+        self.logger.info(f"Successfully registered agent {self.agent_id} in node registry")
+        
     # Utility methods
     
     def wait_for_height(self, target_height: int, timeout: int = 300):
@@ -233,10 +346,11 @@ class BaseAgent(ABC):
         """Create standard argument parser for agents"""
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument('--id', required=True, help='Agent ID')
-        parser.add_argument('--node-rpc', type=int, help='Node RPC port')
-        parser.add_argument('--wallet-rpc', type=int, help='Wallet RPC port')
+        parser.add_argument('--shared-dir', type=Path, default=Path('/tmp/monerosim_shared'), help='Shared directory for simulation state')
         parser.add_argument('--rpc-host', default='127.0.0.1', help='RPC host address')
-        parser.add_argument('--log-level', default='INFO',
-                          choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-                          help='Logging level')
+        parser.add_argument('--node-rpc-port', type=int, help='Node RPC port')
+        parser.add_argument('--wallet-rpc-port', type=int, help='Wallet RPC port')
+        parser.add_argument('--p2p-port', type=int, help='P2P port of the agent\'s node')
+        parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Logging level')
+        parser.add_argument('--attributes', nargs='*', default=[], help='List of agent attributes (e.g., mining)')
         return parser

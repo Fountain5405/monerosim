@@ -74,7 +74,6 @@ monerosim/
 │   ├── main.rs              # CLI entry point and orchestration
 │   ├── config.rs            # Configuration parsing and validation
 │   ├── build.rs             # Monero build management
-│   ├── shadow.rs            # Shadow configuration generation
 │   └── shadow_agents.rs     # Agent-based Shadow configuration
 ├── agents/                  # Agent framework (Python)
 │   ├── base_agent.py        # Base agent class
@@ -132,14 +131,6 @@ monerosim/
   - Patch application
   - CMake configuration and building
   - Binary location and verification
-
-#### `shadow.rs`
-- **Purpose**: Shadow simulator configuration generation
-- **Key Features**:
-  - Network topology creation
-  - IP address and port allocation
-  - Shadow YAML configuration output
-  - EthShadow compatibility
 
 #### `shadow_agents.rs`
 - **Purpose**: Agent-based Shadow configuration generation
@@ -311,9 +302,9 @@ To add a new configuration option:
    }
    ```
 
-3. **Update Shadow configuration generation** in `src/shadow.rs`:
+3. **Update Shadow configuration generation** in `src/shadow_agents.rs`:
    ```rust
-   pub fn generate_shadow_config(config: &Config) -> Result<String, Box<dyn std::error::Error>> {
+   pub fn generate_agent_shadow_config(config: &Config) -> Result<String, Box<dyn std::error::Error>> {
        // Use the new configuration option
        let new_value = config.general.new_option.as_deref().unwrap_or("default");
        

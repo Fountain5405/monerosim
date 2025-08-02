@@ -161,20 +161,6 @@ environment:
 
 #### Network Topology Optimization
 
-```rust
-// In src/shadow.rs, optimize topology generation
-// Use simpler topologies for better performance
-
-// Star topology (fastest)
-fn generate_star_topology(nodes: &[NodeType]) -> String {
-    // Simple star with minimal connections
-}
-
-// Mesh topology (more realistic, slower)
-fn generate_mesh_topology(nodes: &[NodeType]) -> String {
-    // Full mesh with all connections
-}
-```
 
 ### 3. System-Level Optimization
 

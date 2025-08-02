@@ -6,9 +6,8 @@ This document provides a comprehensive technical overview of MoneroSim's archite
 
 MoneroSim is a discrete-event network simulation framework built specifically for analyzing Monero cryptocurrency networks at scale. It bridges the gap between the Monero cryptocurrency daemon and the Shadow discrete-event network simulator, enabling researchers to study network behavior, consensus mechanisms, and performance characteristics in controlled environments.
 
-MoneroSim now supports two simulation modes:
-1. **Traditional Mode**: Basic 2-node simulation for fundamental testing
-2. **Agent-Based Mode**: Scalable, realistic network simulation with autonomous participants
+MoneroSim now supports only agent-based simulation mode:
+1. **Agent-Based Mode**: Scalable, realistic network simulation with autonomous participants
 
 ## Core Architecture
 
@@ -21,7 +20,6 @@ MoneroSim now supports two simulation modes:
 │  CLI Interface (main.rs)                                   │
 │  ├── Configuration Parser (config.rs)                     │
 │  ├── Build Manager (build.rs)                             │
-│  ├── Shadow Generator (shadow.rs)                         │
 │  └── Agent Shadow Generator (shadow_agents.rs)            │
 ├─────────────────────────────────────────────────────────────┤
 │  Agent Framework (Python)                                  │
@@ -63,7 +61,7 @@ MoneroSim now supports two simulation modes:
 - Support for human-readable time formats ("10m", "1h", "30s")
 - Multiple node type configurations
 - Patch and build customization options
-- Support for both traditional and agent-based configurations
+- Support for agent-based configurations
 
 **Data Structures**:
 ```rust
@@ -118,23 +116,6 @@ builds/
 ```
 
 #### 3. Shadow Configuration Generation
-
-##### Traditional Mode (`src/shadow.rs`)
-
-**Purpose**: Generates Shadow simulator configuration files for basic network simulations.
-
-**Key Features**:
-- Simple network topology generation
-- IP address allocation and management
-- Port assignment and P2P connection mapping
-- Environment variable configuration for Monero nodes
-- EthShadow-style configuration compatibility
-
-**Network Topology**:
-The traditional implementation uses a **star topology with sequential connections**:
-- Node `a0` acts as a bootstrap node
-- Each subsequent node connects to `a0` and the previous node
-- This provides redundancy while maintaining connectivity
 
 ##### Agent-Based Mode (`src/shadow_agents.rs`)
 
@@ -276,9 +257,6 @@ All Bash scripts have been moved to `legacy_scripts/` and are retained only for 
 
 **Command Structure**:
 ```bash
-# Traditional mode
-monerosim --config <config.yaml> --output <output_dir>
-
 # Agent-based mode
 monerosim --config <config_agents_small.yaml> --output <output_dir>
 ```
@@ -286,11 +264,10 @@ monerosim --config <config_agents_small.yaml> --output <output_dir>
 **Execution Flow**:
 1. Parse command-line arguments
 2. Load and validate configuration
-3. Detect simulation mode (traditional vs agent-based)
-4. Prepare build plans for each node type
-5. Build Monero binaries (if needed)
-6. Generate appropriate Shadow configuration
-7. Output final configuration and usage instructions
+3. Prepare build plans for each node type
+4. Build Monero binaries (if needed)
+5. Generate appropriate Shadow configuration
+6. Output final configuration and usage instructions
 
 ## Agent Communication Architecture
 
@@ -355,22 +332,6 @@ MoneroSim includes several modifications to make Monero compatible with Shadow:
 
 ## Data Flow
 
-### Traditional Mode Configuration to Execution
-
-```mermaid
-graph TD
-    A[config.yaml] --> B[Configuration Parser]
-    B --> C[Build Manager]
-    C --> D[Monero Source Clone]
-    D --> E[Patch Application]
-    E --> F[Binary Compilation]
-    F --> G[Shadow Generator]
-    G --> H[Network Topology]
-    H --> I[shadow.yaml]
-    I --> J[Shadow Execution]
-    J --> K[Python Test Scripts]
-    K --> L[Simulation Results]
-```
 
 ### Agent-Based Mode Configuration to Execution
 
@@ -470,11 +431,6 @@ graph TD
 
 ## Performance Characteristics
 
-### Traditional Mode Scalability
-
-- **Small simulations** (1-10 nodes): Near real-time execution
-- **Medium simulations** (10-50 nodes): 2-5x faster than real-time
-- **Large simulations** (50+ nodes): Dependent on host resources
 
 ### Agent-Based Mode Scalability
 
@@ -538,7 +494,7 @@ The Python infrastructure includes sophisticated error handling:
 
 ### Custom Network Topologies
 
-Modify `src/shadow.rs` or `src/shadow_agents.rs` to implement alternative connection patterns:
+Modify `src/shadow_agents.rs` to implement alternative connection patterns:
 - Mesh networks
 - Ring topologies
 - Random graphs

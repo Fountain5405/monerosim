@@ -1,6 +1,5 @@
 # Minimal mining-only debug configuration
 # Focus on block generation with minimal users
-mode: agent
 
 general:
   stop_time: "30m"  # 30 minutes for quick testing

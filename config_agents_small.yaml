@@ -2,7 +2,7 @@
 # 2 regular users, 1 marketplace, 1 mining pool
 
 general:
-  stop_time: "10m"
+  stop_time: "60m"
   fresh_blockchain: true
   log_level: debug  # More verbose for debugging
   
@@ -22,7 +22,9 @@ agents:
   mining_pools:
     count: 1
     
-# Block generation settings
-block_generation:
-  interval: 30  # seconds between blocks
-  pools_per_round: 1
+# Mining settings
+mining:
+  block_time: 120
+  number_of_mining_nodes: 3
+  mining_distribution: [70, 20, 10]
+  solo_miner_threshold: 0.05

@@ -505,10 +505,6 @@ general:
    ```
 
 2. **Use different network range**:
-   ```rust
-   // Modify src/shadow.rs
-   // Change IP allocation logic
-   ```
 
 #### Port Conflicts
 
@@ -525,9 +521,6 @@ general:
    ```
 
 2. **Use different port ranges**:
-   ```rust
-   // Modify port allocation in src/shadow.rs
-   ```
 
 ### 7. Analysis and Debugging
 

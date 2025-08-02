@@ -1,6 +1,6 @@
 # Migration Guide: From Traditional to Agent-Based Simulations
 
-This guide helps you transition from traditional 2-node Monero simulations to the new agent-based simulation framework in Monerosim. The agent framework enables realistic cryptocurrency network behavior modeling with autonomous participants.
+This guide helps you understand the agent-based simulation framework in Monerosim. The agent framework enables realistic cryptocurrency network behavior modeling with autonomous participants.
 
 ## Overview of Agent-Based Simulations
 
@@ -8,24 +8,6 @@ Agent-based simulations represent a paradigm shift from simple node-to-node test
 
 ## Key Differences
 
-### Traditional Simulations
-
-```
-┌─────────┐         ┌─────────┐
-│   A0    │ ──────> │   A1    │
-│ Mining  │         │  Sync   │
-└─────────┘         └─────────┘
-     │                   │
-     v                   v
-┌─────────┐         ┌─────────┐
-│ Wallet1 │ ──────> │ Wallet2 │
-└─────────┘  Tx     └─────────┘
-```
-
-- **Fixed topology**: 2 nodes with predetermined roles
-- **Manual control**: Scripts explicitly control each action
-- **Limited scale**: Difficult to scale beyond a few nodes
-- **Predictable behavior**: Same sequence every time
 
 ### Agent-Based Simulations
 
@@ -75,24 +57,6 @@ Agent-based simulations represent a paradigm shift from simple node-to-node test
 
 ## Configuration Differences
 
-### Traditional Configuration (`config.yaml`)
-
-```yaml
-general:
-  simulation_duration: 10800
-  
-nodes:
-  - name: A0
-    ip: 11.0.0.1
-    port: 18080
-    mining: true
-    
-  - name: A1
-    ip: 11.0.0.2
-    port: 18081
-    mining: false
-    add_exclusive_node: 11.0.0.1:18080
-```
 
 ### Agent-Based Configuration (`config_agents_small.yaml`)
 
@@ -166,31 +130,19 @@ Monerosim provides three pre-configured agent simulation scales:
 
 ### Step 2: Generate Agent Configuration
 
-**Traditional approach:**
-```bash
-./target/release/monerosim --config config.yaml --output shadow_output
-```
-
 **Agent-based approach:**
 ```bash
 # For small scale
-./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output --agents
+./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output
 
 # For medium scale
-./target/release/monerosim --config config_agents_medium.yaml --output shadow_agents_output --agents
+./target/release/monerosim --config config_agents_medium.yaml --output shadow_agents_output
 
 # For large scale
-./target/release/monerosim --config config_agents_large.yaml --output shadow_agents_output --agents
+./target/release/monerosim --config config_agents_large.yaml --output shadow_agents_output
 ```
-
-Note the `--agents` flag that enables agent-based configuration generation.
 
 ### Step 3: Run the Simulation
-
-**Traditional:**
-```bash
-shadow shadow_output/shadow.yaml
-```
 
 **Agent-based:**
 ```bash
@@ -233,7 +185,7 @@ This shows:
 ### 2. Generate Shadow Configuration
 
 ```bash
-./target/release/monerosim --config config_agents_small.yaml --output test_output_small --agents
+./target/release/monerosim --config config_agents_small.yaml --output test_output_small
 ```
 
 ### 3. Run Simulation
@@ -480,6 +432,6 @@ agents:
 
 ## Conclusion
 
-Agent-based simulations represent a significant advancement in cryptocurrency network testing. While more complex than traditional 2-node setups, they provide invaluable insights into network behavior, scalability, and emergent properties. Start with small-scale simulations to familiarize yourself with the framework, then gradually scale up as needed for your research or testing requirements.
+Agent-based simulations represent a significant advancement in cryptocurrency network testing. They provide invaluable insights into network behavior, scalability, and emergent properties. Start with small-scale simulations to familiarize yourself with the framework, then gradually scale up as needed for your research or testing requirements.
 
 The agent framework is actively being developed, and feedback is welcome. For the latest updates and known issues, check the `docs/AGENT_FRAMEWORK.md` documentation.

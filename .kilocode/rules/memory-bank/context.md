@@ -11,10 +11,10 @@ The Monerosim agent-based simulation is now **fully functional** with an enhance
 - **Transaction Processing**: Ready for testing
 
 ### Agent Framework Status (Enhanced)
-- **Framework Architecture**: Complete with mining registry
-- **Agent Types**: All 5 agent types operational
+- **Framework Architecture**: Not really working
+- **Agent Types**: Focusing on mining agents
 - **RPC Integration**: Working
-- **Shared State Communication**: Working
+- **Shared State Communication**: Not working
 - **Mining Coordination**: Enhanced with weighted random selection based on hashrate
 
 ### New Mining Architecture (Implemented)
@@ -76,7 +76,6 @@ With the mining issue debugged and workaround implemented, focus shifts to perma
 3. **Medium-term**:
    - Consider dynamic miner registration approach
    - Implement more sophisticated mining strategies
-   - Add support for mining pool hierarchies
 
 ## Technical Achievements
 

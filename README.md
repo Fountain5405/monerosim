@@ -5,9 +5,7 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 ## Key Features
 
 - **Shadow Integration**: Seamlessly generates Shadow network simulator configurations for Monero
-- **Dual Simulation Modes**:
-  - **Traditional Mode**: Small-scale simulations with direct node control
-  - **Agent-Based Mode**: Sophisticated simulations with autonomous network participants
+- **Agent-Based Mode**: Sophisticated simulations with autonomous network participants
 - **Production Ready**: Proven in production with comprehensive test coverage
 - **Python-First Testing**: Modern Python test suite with 95%+ coverage
 - **Reproducible Research**: Deterministic simulations for scientific analysis
@@ -26,19 +24,10 @@ A Rust-based tool for generating configuration files for the Shadow network simu
    cargo build --release
    ```
 
-3. **Run a Traditional Simulation**
-   ```bash
-   # Generate Shadow configuration
-   ./target/release/monerosim --config config.yaml --output shadow_output
-   
-   # Run the simulation
-   shadow shadow_output/shadow.yaml
-   ```
-
-4. **Run an Agent-Based Simulation**
+3. **Run an Agent-Based Simulation**
    ```bash
    # Generate agent-based configuration (small/medium/large)
-   ./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output --agents
+   ./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output
    
    # Run the simulation
    shadow shadow_agents_output/shadow_agents.yaml
@@ -52,7 +41,6 @@ monerosim/
 │   ├── main.rs              # CLI entry point
 │   ├── config.rs            # Configuration parsing
 │   ├── build.rs             # Monero build management
-│   ├── shadow.rs            # Traditional Shadow config generation
 │   └── shadow_agents.rs     # Agent-based Shadow config generation
 ├── agents/                   # Python agent framework
 │   ├── base_agent.py        # Base agent class
