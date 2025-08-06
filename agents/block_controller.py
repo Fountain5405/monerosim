@@ -3,7 +3,7 @@
 Agent-based Block Controller for Monerosim
 
 This stateless coordinator:
-- Reads the node registry to find available miners
+- Reads the miner registry from miners.json to find available miners
 - Selects a miner using weighted-random selection
 - Makes dynamic RPC calls to generate blocks on the winner's daemon
 - Does not maintain any local state or wallet
@@ -14,6 +14,7 @@ import time
 import argparse
 import logging
 import random
+import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -68,22 +69,100 @@ class BlockControllerAgent(BaseAgent):
         self.logger.info("Stateless block controller initialized")
             
     def _load_miner_registry(self) -> List[Dict[str, Any]]:
-        """Load miner information from the shared state file."""
-        self.logger.info("Loading miner registry from node_registry.json...")
-        registry_data = self.read_shared_state("node_registry.json")
-        all_agents = registry_data.get("agents", []) if registry_data else []
-        
-        # Filter for agents with the 'mining' attribute
-        miners = [
-            agent for agent in all_agents
-            if "mining" in agent.get("attributes", []) and agent.get("wallet_address")
-        ]
-        
-        if not miners:
-            self.logger.warning("No mining-enabled agents found in the registry.")
-        else:
-            self.logger.info(f"Loaded {len(miners)} mining-enabled agents from registry.")
+        """
+        Load miner information from the miners.json file.
+        """
+        if not self.shared_dir:
+            self.logger.error("Shared directory not configured, cannot load miner registry.")
+            return []
+
+        miners_registry_path = self.shared_dir / "miners.json"
+        if not miners_registry_path.exists():
+            self.logger.error(f"Miners registry not found at {miners_registry_path}")
+            return []
+
+        try:
+            with open(miners_registry_path, 'r') as f:
+                miner_data = json.load(f)
+        except Exception as e:
+            self.logger.error(f"Failed to load miners.json: {e}")
+            return []
+
+        miners = []
+        for miner in miner_data.get("miners", []):
+            # Get wallet RPC port (standard port 28082 for all agents)
+            wallet_rpc_port = 28082
             
+            try:
+                wallet_rpc = WalletRPC(miner["ip_addr"], wallet_rpc_port)
+                wallet_rpc.wait_until_ready()
+                
+                # Try to create wallet first, then get address
+                # Extract agent ID from IP address (e.g., 11.0.0.10 -> user000)
+                ip_parts = miner["ip_addr"].split('.')
+                if len(ip_parts) == 4:
+                    agent_index = int(ip_parts[3]) - 10
+                    agent_id = f"user{agent_index:03d}"
+                else:
+                    agent_id = "unknown"
+                
+                wallet_name = f"{agent_id}_wallet"
+                address = None
+                
+                # First try to open existing wallet
+                try:
+                    self.logger.info(f"Attempting to open wallet '{wallet_name}' for miner at {miner['ip_addr']}")
+                    wallet_rpc.open_wallet(wallet_name, password="")
+                    # If open succeeds, get the address
+                    address = wallet_rpc.get_address()
+                    self.logger.info(f"Successfully opened existing wallet '{wallet_name}'")
+                except RPCError as open_err:
+                    # If wallet doesn't exist or can't be opened, try to create it
+                    if "Wallet not found" in str(open_err) or "Failed to open wallet" in str(open_err):
+                        try:
+                            self.logger.info(f"Wallet doesn't exist, creating '{wallet_name}'")
+                            wallet_rpc.create_wallet(wallet_name, password="")
+                            # If creation succeeds, get the address
+                            address = wallet_rpc.get_address()
+                            self.logger.info(f"Successfully created new wallet '{wallet_name}'")
+                        except RPCError as create_err:
+                            self.logger.error(f"Failed to create wallet: {create_err}")
+                            # Last attempt - maybe wallet is already loaded
+                            try:
+                                self.logger.warning("Attempting to get address from current wallet")
+                                address = wallet_rpc.get_address()
+                            except RPCError as addr_err:
+                                self.logger.error(f"Failed to get address: {addr_err}")
+                                continue  # Skip this miner
+                    else:
+                        # Some other error opening wallet, try to get address anyway
+                        self.logger.warning(f"Error opening wallet: {open_err}, trying to get address from current wallet")
+                        try:
+                            address = wallet_rpc.get_address()
+                        except RPCError as addr_err:
+                            self.logger.error(f"Failed to get address: {addr_err}")
+                            continue  # Skip this miner
+                
+                if address:
+                    miner["wallet_address"] = address
+                    miner["agent_id"] = agent_id
+                    miners.append(miner)
+                    self.logger.info(f"Successfully added miner {agent_id} with address {address[:12]}...")
+                else:
+                    self.logger.warning(f"No address obtained for miner at {miner['ip_addr']}, skipping")
+                
+            except RPCError as e:
+                self.logger.error(f"Failed to setup miner at {miner['ip_addr']}: {e}")
+                continue  # Skip this miner and continue with the next one
+            except Exception as e:
+                self.logger.error(f"Unexpected error for miner at {miner['ip_addr']}: {e}")
+                continue  # Skip this miner and continue with the next one
+
+        if not miners:
+            self.logger.warning("No miners found in registry.")
+        else:
+            self.logger.info(f"Loaded {len(miners)} miners from {miners_registry_path}.")
+
         return miners
 
     def _select_winning_miner(self, miners: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -92,12 +171,12 @@ class BlockControllerAgent(BaseAgent):
             self.logger.warning("No miners in registry, cannot select a winner.")
             return None
         
-        # Extract weights for each miner
-        weights = [miner.get("hash_rate", 0) for miner in miners]
+        # Extract weights for each miner (using 'weight' field from miners.json)
+        weights = [miner.get("weight", 0) for miner in miners]
         total_weight = sum(weights)
 
         if total_weight == 0:
-            self.logger.warning("Total hash rate of all miners is zero. Falling back to random choice.")
+            self.logger.warning("Total weight of all miners is zero. Falling back to random choice.")
             return random.choice(miners)
 
         # Use numpy for weighted random selection if available
@@ -123,7 +202,7 @@ class BlockControllerAgent(BaseAgent):
         
         winner = miners[winner_index]
         
-        self.logger.info(f"Selected winning miner: {winner.get('agent_id')} with hash rate {winner.get('hash_rate')}")
+        self.logger.info(f"Selected winning miner with IP {winner.get('ip_addr')} with weight {winner.get('weight')}")
         return winner
         
     def _generate_blocks(self) -> bool:
@@ -136,17 +215,29 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error("Block generation failed: Could not select a winning miner.")
             return False
 
+        # Get wallet address from the agent registry
         winner_address = winner.get("wallet_address")
-        if not winner_address:
-            self.logger.error(f"Block generation failed: Winning miner {winner.get('agent_id')} has no wallet_address.")
-            return False
             
         # Create dynamic RPC client for the winner's daemon
         winner_ip = winner.get("ip_addr", "127.0.0.1")
-        winner_port = winner.get("node_rpc_port", 28080)  # Default port if not specified
-        winner_daemon_rpc = MoneroRPC(winner_ip, winner_port)
         
-        self.logger.info(f"Generating {self.blocks_per_generation} block(s) for winner: {winner.get('agent_id')} at {winner_ip}:{winner_port}")
+        # Get winner IP address
+        winner_agent_id = winner.get("agent_id")
+        winner_ip = winner.get("ip_addr", "127.0.0.1")
+        
+        # Use standard RPC port 28081 for all nodes
+        winner_port = 28081
+        
+        self.logger.info(f"Using standard RPC port {winner_port} for agent {winner_agent_id} at {winner_ip}")
+        
+        # Create RPC client with improved error handling
+        try:
+            winner_daemon_rpc = MoneroRPC(winner_ip, winner_port)
+        except Exception as e:
+            self.logger.error(f"Failed to create RPC client for {winner_ip}:{winner_port}: {e}", exc_info=True)
+            return False
+        
+        self.logger.info(f"Generating {self.blocks_per_generation} block(s) for winner agent at {winner_ip}:{winner_port}")
         
         try:
             result = winner_daemon_rpc.generate_block(
@@ -156,12 +247,12 @@ class BlockControllerAgent(BaseAgent):
             
             if result and result.get("status") == "OK":
                 blocks_generated = len(result.get("blocks", []))
-                self.logger.info(f"Successfully generated {blocks_generated} blocks for {winner.get('agent_id')}")
+                self.logger.info(f"Successfully generated {blocks_generated} blocks")
                 
                 # Log block discovery
                 for block_hash in result.get("blocks", []):
                     block_info = {
-                        "miner_id": winner.get("agent_id"),
+                        "miner_ip": winner_ip,
                         "block_hash": block_hash,
                         "timestamp": time.time()
                     }
@@ -174,10 +265,13 @@ class BlockControllerAgent(BaseAgent):
                 return False
                 
         except RPCError as e:
-            self.logger.error(f"Failed to generate blocks on winner's daemon: {e}")
+            self.logger.error(f"Failed to generate blocks on winner agent's daemon at {winner_ip}:{winner_port}: {e}")
+            # Log more details about the connection
+            self.logger.error(f"Connection details: IP={winner_ip}, Port={winner_port}, Agent={winner.get('agent_id')}")
             return False
         except Exception as e:
             self.logger.error(f"Unexpected error generating blocks: {e}", exc_info=True)
+            self.logger.error(f"Connection details: IP={winner_ip}, Port={winner_port}, Agent={winner.get('agent_id')}")
             return False
             
     def _update_statistics(self):

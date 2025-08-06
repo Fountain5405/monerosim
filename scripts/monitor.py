@@ -4,7 +4,7 @@ monitor.py - Monitoring Script for MoneroSim
 
 This script monitors the status of the Monero simulation, providing real-time
 information about:
-- Node status and synchronization
+- Agent status and synchronization
 - Blockchain height and growth
 - Peer connections
 - Mining status
@@ -28,7 +28,7 @@ try:
         call_daemon_with_retry, verify_daemon_ready, handle_exit
     )
     from network_config import (
-        get_node_registry, get_daemon_config
+        get_agent_registry, get_daemon_config
     )
 except ImportError:
     sys.path.append('..')
@@ -49,8 +49,8 @@ DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_RETRY_DELAY = 2
 
 
-class NodeStatus:
-    """Container for node status information."""
+class AgentStatus:
+    """Container for agent status information."""
     
     def __init__(self, name: str, url: str):
         self.name = name
@@ -75,20 +75,20 @@ class NodeStatus:
         self.error: Optional[str] = None
 
 
-def get_node_info(node_url: str, max_attempts: int, retry_delay: float) -> Optional[Dict[str, Any]]:
+def get_agent_info(agent_url: str, max_attempts: int, retry_delay: float) -> Optional[Dict[str, Any]]:
     """
-    Get comprehensive node information.
+    Get comprehensive agent information.
     
     Args:
-        node_url: URL of the node RPC endpoint
+        agent_url: URL of the agent RPC endpoint
         max_attempts: Maximum number of attempts
         retry_delay: Delay between attempts
         
     Returns:
-        Dictionary with node information or None if failed
+        Dictionary with agent information or None if failed
     """
     success, response = call_daemon_with_retry(
-        node_url, "get_info", {}, max_attempts, retry_delay, COMPONENT
+        agent_url, "get_info", {}, max_attempts, retry_delay, COMPONENT
     )
     
     if success:
@@ -96,12 +96,12 @@ def get_node_info(node_url: str, max_attempts: int, retry_delay: float) -> Optio
     return None
 
 
-def get_mining_status(node_url: str, max_attempts: int, retry_delay: float) -> Optional[Dict[str, Any]]:
+def get_mining_status(agent_url: str, max_attempts: int, retry_delay: float) -> Optional[Dict[str, Any]]:
     """
-    Get mining status from node.
+    Get mining status from agent.
     
     Args:
-        node_url: URL of the node RPC endpoint
+        agent_url: URL of the agent RPC endpoint
         max_attempts: Maximum number of attempts
         retry_delay: Delay between attempts
         
@@ -109,7 +109,7 @@ def get_mining_status(node_url: str, max_attempts: int, retry_delay: float) -> O
         Dictionary with mining status or None if failed
     """
     success, response = call_daemon_with_retry(
-        node_url, "mining_status", {}, max_attempts, retry_delay, COMPONENT
+        agent_url, "mining_status", {}, max_attempts, retry_delay, COMPONENT
     )
     
     if success:
@@ -117,12 +117,12 @@ def get_mining_status(node_url: str, max_attempts: int, retry_delay: float) -> O
     return None
 
 
-def get_connections(node_url: str, max_attempts: int, retry_delay: float) -> Optional[List[Dict[str, Any]]]:
+def get_connections(agent_url: str, max_attempts: int, retry_delay: float) -> Optional[List[Dict[str, Any]]]:
     """
-    Get peer connections from node.
+    Get peer connections from agent.
     
     Args:
-        node_url: URL of the node RPC endpoint
+        agent_url: URL of the agent RPC endpoint
         max_attempts: Maximum number of attempts
         retry_delay: Delay between attempts
         
@@ -130,7 +130,7 @@ def get_connections(node_url: str, max_attempts: int, retry_delay: float) -> Opt
         List of connections or None if failed
     """
     success, response = call_daemon_with_retry(
-        node_url, "get_connections", {}, max_attempts, retry_delay, COMPONENT
+        agent_url, "get_connections", {}, max_attempts, retry_delay, COMPONENT
     )
     
     if success:
@@ -138,47 +138,47 @@ def get_connections(node_url: str, max_attempts: int, retry_delay: float) -> Opt
     return None
 
 
-def update_node_status(node: NodeStatus, max_attempts: int, retry_delay: float) -> None:
+def update_agent_status(agent: AgentStatus, max_attempts: int, retry_delay: float) -> None:
     """
-    Update node status with latest information.
+    Update agent status with latest information.
     
     Args:
-        node: NodeStatus object to update
+        agent: AgentStatus object to update
         max_attempts: Maximum number of attempts
         retry_delay: Delay between attempts
     """
-    # Get basic node info
-    info = get_node_info(node.url, max_attempts, retry_delay)
+    # Get basic agent info
+    info = get_agent_info(agent.url, max_attempts, retry_delay)
     if info:
-        node.height = info.get("height", 0)
-        node.target_height = info.get("target_height", 0)
-        node.difficulty = info.get("difficulty", 0)
-        node.tx_count = info.get("tx_count", 0)
-        node.tx_pool_size = info.get("tx_pool_size", 0)
-        node.incoming_connections = info.get("incoming_connections_count", 0)
-        node.outgoing_connections = info.get("outgoing_connections_count", 0)
-        node.white_peerlist_size = info.get("white_peerlist_size", 0)
-        node.grey_peerlist_size = info.get("grey_peerlist_size", 0)
-        node.status = info.get("status", "unknown")
-        node.synchronized = info.get("synchronized", False)
-        node.cumulative_difficulty = info.get("cumulative_difficulty", 0)
-        node.top_block_hash = info.get("top_block_hash", "")
-        node.block_reward = info.get("block_reward", 0)
-        node.error = None
+        agent.height = info.get("height", 0)
+        agent.target_height = info.get("target_height", 0)
+        agent.difficulty = info.get("difficulty", 0)
+        agent.tx_count = info.get("tx_count", 0)
+        agent.tx_pool_size = info.get("tx_pool_size", 0)
+        agent.incoming_connections = info.get("incoming_connections_count", 0)
+        agent.outgoing_connections = info.get("outgoing_connections_count", 0)
+        agent.white_peerlist_size = info.get("white_peerlist_size", 0)
+        agent.grey_peerlist_size = info.get("grey_peerlist_size", 0)
+        agent.status = info.get("status", "unknown")
+        agent.synchronized = info.get("synchronized", False)
+        agent.cumulative_difficulty = info.get("cumulative_difficulty", 0)
+        agent.top_block_hash = info.get("top_block_hash", "")
+        agent.block_reward = info.get("block_reward", 0)
+        agent.error = None
     else:
-        node.error = "Failed to get node info"
+        agent.error = "Failed to get agent info"
     
     # Get mining status (may not be available in regtest mode)
-    mining_status = get_mining_status(node.url, max_attempts, retry_delay)
+    mining_status = get_mining_status(agent.url, max_attempts, retry_delay)
     if mining_status:
-        node.mining_active = mining_status.get("active", False)
-        node.hashrate = mining_status.get("speed", 0)
+        agent.mining_active = mining_status.get("active", False)
+        agent.hashrate = mining_status.get("speed", 0)
     else:
         # Mining status might not be available (e.g., in regtest mode)
         # This is not an error, just unavailable information
-        log_info(COMPONENT, f"Mining status not available for {node.name} (this is normal in regtest mode)")
+        log_info(COMPONENT, f"Mining status not available for {agent.name} (this is normal in regtest mode)")
     
-    node.last_update = datetime.now()
+    agent.last_update = datetime.now()
 
 
 def format_size(size_bytes: int) -> str:
@@ -200,79 +200,79 @@ def format_hashrate(hashrate: int) -> str:
         return f"{hashrate/1000000:.2f} MH/s"
 
 
-def print_node_status(node: NodeStatus, verbose: bool = False) -> None:
+def print_agent_status(agent: AgentStatus, verbose: bool = False) -> None:
     """
-    Print formatted node status.
+    Print formatted agent status.
     
     Args:
-        node: NodeStatus object to print
+        agent: AgentStatus object to print
         verbose: Whether to print verbose output
     """
     print(f"\n{'='*60}")
-    print(f"Node: {node.name}")
+    print(f"Agent: {agent.name}")
     print(f"{'='*60}")
     
-    if node.error:
-        print(f"ERROR: {node.error}")
+    if agent.error:
+        print(f"ERROR: {agent.error}")
         return
     
     # Basic info
-    print(f"Status: {node.status}")
-    print(f"Synchronized: {'Yes' if node.synchronized else 'No'}")
-    print(f"Height: {node.height:,} / {node.target_height:,}")
-    if node.target_height > 0:
-        sync_percent = (node.height / node.target_height) * 100
+    print(f"Status: {agent.status}")
+    print(f"Synchronized: {'Yes' if agent.synchronized else 'No'}")
+    print(f"Height: {agent.height:,} / {agent.target_height:,}")
+    if agent.target_height > 0:
+        sync_percent = (agent.height / agent.target_height) * 100
         print(f"Sync Progress: {sync_percent:.1f}%")
     
     # Mining info
-    if node.mining_active:
-        print(f"Mining: Active ({format_hashrate(node.hashrate)})")
+    if agent.mining_active:
+        print(f"Mining: Active ({format_hashrate(agent.hashrate)})")
     else:
         print(f"Mining: Inactive")
     
     # Network info
-    print(f"Connections: {node.incoming_connections} in / {node.outgoing_connections} out")
-    print(f"Peer Lists: {node.white_peerlist_size} white / {node.grey_peerlist_size} grey")
+    print(f"Connections: {agent.incoming_connections} in / {agent.outgoing_connections} out")
+    print(f"Peer Lists: {agent.white_peerlist_size} white / {agent.grey_peerlist_size} grey")
     
     # Transaction pool
-    print(f"TX Pool: {node.tx_pool_size} transactions")
-    print(f"Total TXs: {node.tx_count:,}")
+    print(f"TX Pool: {agent.tx_pool_size} transactions")
+    print(f"Total TXs: {agent.tx_count:,}")
     
     # Blockchain info
-    print(f"Difficulty: {node.difficulty:,}")
-    if node.block_reward > 0:
-        reward_xmr = node.block_reward / 1e12
+    print(f"Difficulty: {agent.difficulty:,}")
+    if agent.block_reward > 0:
+        reward_xmr = agent.block_reward / 1e12
         print(f"Block Reward: {reward_xmr:.12f} XMR")
     
     # Verbose information
     if verbose:
         print(f"\nVerbose Details:")
-        print(f"URL: {node.url}")
-        print(f"Cumulative Difficulty: {node.cumulative_difficulty:,}")
-        if node.top_block_hash:
-            print(f"Top Block Hash: {node.top_block_hash[:16]}...")
+        print(f"URL: {agent.url}")
+        print(f"Cumulative Difficulty: {agent.cumulative_difficulty:,}")
+        if agent.top_block_hash:
+            print(f"Top Block Hash: {agent.top_block_hash[:16]}...")
     
     # Last update
-    if node.last_update:
-        print(f"Last Update: {node.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
+    if agent.last_update:
+        print(f"Last Update: {agent.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
-def print_comparison(nodes: List[NodeStatus]) -> None:
+def print_comparison(agents: List[AgentStatus]) -> None:
     """
-    Print comparison between nodes.
+    Print comparison between agents.
     
     Args:
-        nodes: List of NodeStatus objects to compare
+        agents: List of AgentStatus objects to compare
     """
-    if len(nodes) < 2:
+    if len(agents) < 2:
         return
     
     print(f"\n{'='*60}")
-    print("Node Comparison")
+    print("Agent Comparison")
     print(f"{'='*60}")
     
     # Height comparison
-    heights = [(n.name, n.height) for n in nodes if not n.error]
+    heights = [(n.name, n.height) for n in agents if not n.error]
     if heights:
         max_height = max(h[1] for h in heights)
         min_height = min(h[1] for h in heights)
@@ -288,29 +288,29 @@ def print_comparison(nodes: List[NodeStatus]) -> None:
     
     # Connection comparison
     print("\nConnections:")
-    for node in nodes:
-        if not node.error:
-            total_conn = node.incoming_connections + node.outgoing_connections
-            print(f"  {node.name}: {total_conn} total ({node.incoming_connections} in / {node.outgoing_connections} out)")
+    for agent in agents:
+        if not agent.error:
+            total_conn = agent.incoming_connections + agent.outgoing_connections
+            print(f"  {agent.name}: {total_conn} total ({agent.incoming_connections} in / {agent.outgoing_connections} out)")
     
     # Mining status
     print("\nMining Status:")
-    for node in nodes:
-        if not node.error:
-            if node.mining_active:
-                print(f"  {node.name}: Active ({format_hashrate(node.hashrate)})")
+    for agent in agents:
+        if not agent.error:
+            if agent.mining_active:
+                print(f"  {agent.name}: Active ({format_hashrate(agent.hashrate)})")
             else:
-                print(f"  {node.name}: Inactive")
+                print(f"  {agent.name}: Inactive")
 
 
-def monitor_loop(nodes: List[NodeStatus], refresh_interval: int,
+def monitor_loop(agents: List[AgentStatus], refresh_interval: int,
                 max_attempts: int, retry_delay: float,
                 clear_screen: bool = True, verbose: bool = False) -> None:
     """
     Main monitoring loop.
     
     Args:
-        nodes: List of NodeStatus objects to monitor
+        agents: List of AgentStatus objects to monitor
         refresh_interval: Time between updates in seconds
         max_attempts: Maximum number of attempts for RPC calls
         retry_delay: Delay between RPC attempts
@@ -330,16 +330,16 @@ def monitor_loop(nodes: List[NodeStatus], refresh_interval: int,
             print(f"MoneroSim Monitor - Iteration #{iteration}")
             print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
-            # Update all nodes
-            for node in nodes:
-                update_node_status(node, max_attempts, retry_delay)
+            # Update all agents
+            for agent in agents:
+                update_agent_status(agent, max_attempts, retry_delay)
             
-            # Print status for each node
-            for node in nodes:
-                print_node_status(node, verbose)
+            # Print status for each agent
+            for agent in agents:
+                print_agent_status(agent, verbose)
             
             # Print comparison
-            print_comparison(nodes)
+            print_comparison(agents)
             
             print(f"\nRefreshing in {refresh_interval} seconds... (Press Ctrl+C to stop)")
             time.sleep(refresh_interval)
@@ -351,14 +351,21 @@ def monitor_loop(nodes: List[NodeStatus], refresh_interval: int,
 def main():
     """Main function for monitor script."""
     parser = argparse.ArgumentParser(
-        description="Monitor Monero nodes in Shadow simulation"
+        description="Monitor Monero agents in Shadow simulation"
     )
     
     # Add command line arguments
     parser.add_argument(
+        "--agents",
+        nargs="+",
+        help="List of agents to monitor (format: name=url)",
+        default=None
+    )
+    # For backward compatibility
+    parser.add_argument(
         "--nodes",
         nargs="+",
-        help="List of nodes to monitor (format: name=url)",
+        help="[DEPRECATED] Use --agents instead. List of nodes to monitor (format: name=url)",
         default=None
     )
     parser.add_argument(
@@ -414,57 +421,70 @@ def main():
     log_info(COMPONENT, "=== MoneroSim Monitor ===")
     log_info(COMPONENT, f"Starting monitor at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # Parse nodes
-    nodes = []
-    if args.nodes:
-        for node_spec in args.nodes:
-            if "=" in node_spec:
-                name, url = node_spec.split("=", 1)
-                nodes.append(NodeStatus(name, url))
+    # Parse agents
+    agents = []
+    
+    # Handle both --agents and --nodes (for backward compatibility)
+    agent_specs = args.agents or args.nodes
+    
+    if agent_specs:
+        if args.nodes and not args.agents:
+            log_warning(COMPONENT, "The --nodes parameter is deprecated. Please use --agents instead.")
+            
+        for agent_spec in agent_specs:
+            if "=" in agent_spec:
+                name, url = agent_spec.split("=", 1)
+                agents.append(AgentStatus(name, url))
             else:
-                log_error(COMPONENT, f"Invalid node specification: {node_spec}")
+                log_error(COMPONENT, f"Invalid agent specification: {agent_spec}")
                 log_error(COMPONENT, "Use format: name=url")
-                handle_exit(1, COMPONENT, "Invalid node specification")
+                handle_exit(1, COMPONENT, "Invalid agent specification")
     else:
-        # Default nodes from registry
-        registry = get_node_registry()
+        # Default agents from registry
+        registry = get_agent_registry()
         for agent in registry.get("agents", []):
-            nodes.append(NodeStatus(agent.get("agent_id"), f"http://{agent.get('ip_addr')}:{agent.get('node_rpc_port')}/json_rpc"))
+            # Handle both formats for backward compatibility
+            agent_id = agent.get("agent_id") or agent.get("id")
+            ip_addr = agent.get("ip_addr")
+            rpc_port = agent.get("agent_rpc_port") or agent.get("node_rpc_port")
+            
+            if agent_id and ip_addr and rpc_port:
+                agents.append(AgentStatus(agent_id, f"http://{ip_addr}:{rpc_port}/json_rpc"))
     
-    log_info(COMPONENT, f"Monitoring {len(nodes)} nodes")
+    log_info(COMPONENT, f"Monitoring {len(agents)} agents")
     
-    # Verify all nodes are reachable
+    # Verify all agents are reachable
     all_ready = True
-    for node in nodes:
-        if not verify_daemon_ready(node.url, node.name, args.max_attempts, 
-                                 args.retry_delay, COMPONENT):
-            log_error(COMPONENT, f"Node {node.name} is not ready")
+    for agent in agents:
+        if not verify_daemon_ready(agent.url, agent.name, args.max_attempts,
+                                  args.retry_delay, COMPONENT):
+            log_error(COMPONENT, f"Agent {agent.name} is not ready")
             all_ready = False
     
     if not all_ready:
-        handle_exit(1, COMPONENT, "Not all nodes are ready")
+        handle_exit(1, COMPONENT, "Not all agents are ready")
     
     if args.once:
         # Single run mode
         log_info(COMPONENT, "Running single status check")
         
-        # Update all nodes
-        for node in nodes:
-            update_node_status(node, args.max_attempts, args.retry_delay)
+        # Update all agents
+        for agent in agents:
+            update_agent_status(agent, args.max_attempts, args.retry_delay)
         
         # Print status
-        for node in nodes:
-            print_node_status(node, args.verbose)
+        for agent in agents:
+            print_agent_status(agent, args.verbose)
         
         # Print comparison
-        print_comparison(nodes)
+        print_comparison(agents)
         
         log_info(COMPONENT, "Monitor check completed")
         handle_exit(0, COMPONENT, "Single run completed successfully")
     else:
         # Continuous monitoring mode
         log_info(COMPONENT, f"Starting continuous monitoring (refresh every {args.refresh} seconds)")
-        monitor_loop(nodes, args.refresh, args.max_attempts, args.retry_delay,
+        monitor_loop(agents, args.refresh, args.max_attempts, args.retry_delay,
                     not args.no_clear, args.verbose)
         
         handle_exit(0, COMPONENT, "Monitoring stopped")
