@@ -72,9 +72,11 @@ class BaseRPC:
     def is_ready(self) -> bool:
         """Check if the RPC service is ready"""
         try:
+            # For wallets, we just need to check if we can make any RPC call
+            # We'll use get_version which doesn't require a wallet to be loaded
             self._make_request("get_version")
             return True
-        except:
+        except Exception:
             return False
             
     def wait_until_ready(self, max_wait: int = 60, check_interval: int = 1):
@@ -185,13 +187,36 @@ class WalletRPC(BaseRPC):
         return self._make_request("close_wallet")
         
     def get_address(self, account_index: int = 0, address_index: int = 0) -> str:
-        """Get wallet address"""
-        params = {
-            "account_index": account_index,
-            "address_index": address_index
-        }
-        result = self._make_request("get_address", params)
-        return result.get("address", "")
+        """Get the primary address of the wallet, with retries for 'No wallet file' error."""
+        max_retries = 10
+        retry_delay = 5  # seconds
+        for i in range(max_retries):
+            try:
+                params = {
+                    "account_index": account_index,
+                    "address_index": [address_index]
+                }
+                response = self._make_request("get_address", params)
+                if "addresses" in response and response["addresses"]:
+                    return response["addresses"][0]["address"]
+                else:
+                    self.logger.warning(f"get_address response did not contain an address: {response}")
+            except RPCError as e:
+                if "No wallet file" in str(e):
+                    if i < max_retries - 1:
+                        self.logger.warning(f"Wallet file not yet available, retrying in {retry_delay}s... ({i+1}/{max_retries})")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        self.logger.error(f"Wallet file not available after {max_retries} retries. Aborting.")
+                        raise
+                else:
+                    raise
+            except Exception as e:
+                self.logger.error(f"An unexpected error occurred in get_address: {e}")
+                raise
+
+        raise RPCError("Failed to get wallet address after multiple retries.")
         
     def get_balance(self, account_index: int = 0) -> Dict[str, Any]:
         """Get wallet balance"""

@@ -78,8 +78,6 @@ monerosim/
 ├── agents/                  # Agent framework (Python)
 │   ├── base_agent.py        # Base agent class
 │   ├── regular_user.py      # Regular user agent
-│   ├── marketplace.py       # Marketplace agent
-│   ├── mining_pool.py       # Mining pool agent
 │   ├── block_controller.py  # Block controller agent
 │   └── monero_rpc.py        # Monero RPC client
 ├── scripts/                 # Python testing and monitoring scripts
@@ -396,8 +394,6 @@ Closes #123
 The agent framework enables realistic cryptocurrency network simulations with autonomous participants:
 
 - **Regular Users**: Send transactions to marketplaces
-- **Marketplaces**: Receive and track payments
-- **Mining Pools**: Generate blocks under coordination
 - **Block Controller**: Orchestrates mining across pools
 
 ### Agent Development Workflow
@@ -437,8 +433,6 @@ Agents communicate through shared state files:
 ```
 /tmp/monerosim_shared/
 ├── users.json              # User agent registry
-├── marketplaces.json       # Marketplace registry
-├── mining_pools.json       # Mining pool registry
 ├── transactions.json       # Transaction log
 └── [agent]_stats.json      # Per-agent statistics
 ```

@@ -27,8 +27,6 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
 #[derive(Debug, Clone)]
 pub struct AgentCliOverrides {
     pub users: Option<u32>,
-    pub marketplaces: Option<u32>,
-    pub pools: Option<u32>,
     pub tx_frequency: Option<f64>,
 }
 
@@ -39,32 +37,14 @@ pub fn apply_agent_overrides(
 ) -> Result<()> {
     // Apply user count override
     if let Some(users) = overrides.users {
-        info!("Overriding regular_users.count from {} to {}",
-              config.agents.regular_users.count, users);
-        config.agents.regular_users.count = users;
-    }
-    
-    // Apply marketplace count override
-    if let Some(marketplaces) = overrides.marketplaces {
-        info!("Overriding marketplaces.count from {} to {}",
-              config.agents.marketplaces.count, marketplaces);
-        config.agents.marketplaces.count = marketplaces;
-    }
-    
-    // Apply mining pool count override
-    if let Some(pools) = overrides.pools {
-        info!("Overriding mining_pools.count from {} to {}",
-              config.agents.mining_pools.count, pools);
-        config.agents.mining_pools.count = pools;
+        info!("User count override is no longer supported in the new configuration format");
+        // The new format doesn't have a simple count field, so we can't apply this override
     }
     
     // Apply transaction frequency override
     if let Some(tx_freq) = overrides.tx_frequency {
-        // Convert frequency (0.0-1.0) to interval in seconds
-        let interval = (60.0 / tx_freq) as u32;
-        info!("Overriding transaction_interval to {} seconds (frequency: {})",
-              interval, tx_freq);
-        config.agents.regular_users.transaction_interval = Some(interval);
+        info!("Transaction frequency override is no longer supported in the new configuration format");
+        // The new format doesn't have a simple transaction_interval field, so we can't apply this override
     }
     
     // Re-validate after applying overrides
@@ -146,13 +126,13 @@ mod tests {
         let yaml = r#"
 general:
   stop_time: "30m"
+network:
+  type: "1_gbit_switch"
 agents:
-  regular_users:
-    count: 10
-  marketplaces:
-    count: 3
-  mining_pools:
-    count: 2
+  user_agents:
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "regular_user.py"
 "#;
         
         let mut temp_file = NamedTempFile::new().unwrap();
@@ -167,13 +147,13 @@ agents:
         let yaml = r#"
 general:
   stop_time: "30m"
+network:
+  type: "1_gbit_switch"
 agents:
-  regular_users:
-    count: 10
-  marketplaces:
-    count: 3
-  mining_pools:
-    count: 2
+  user_agents:
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "regular_user.py"
 "#;
         
         let mut temp_file = NamedTempFile::new().unwrap();
@@ -183,16 +163,10 @@ agents:
         
         let overrides = AgentCliOverrides {
             users: Some(50),
-            marketplaces: Some(5),
-            pools: None,
             tx_frequency: Some(0.5),
         };
         
+        // This should not fail, but the overrides won't have any effect
         apply_agent_overrides(&mut config, &overrides).unwrap();
-        
-        assert_eq!(config.agents.regular_users.count, 50);
-        assert_eq!(config.agents.marketplaces.count, 5);
-        assert_eq!(config.agents.mining_pools.count, 2); // unchanged
-        assert_eq!(config.agents.regular_users.transaction_interval, Some(120));
     }
 }

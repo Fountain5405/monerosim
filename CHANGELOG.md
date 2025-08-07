@@ -26,15 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sophisticated agent-based simulation framework for realistic network behavior modeling
 - Five distinct agent types:
   - Regular User Agent: Simulates typical Monero users with configurable transaction patterns
-  - Marketplace Agent: Represents services that receive and track payments
-  - Mining Pool Agent: Participates in coordinated mining activities
   - Block Controller Agent: Orchestrates mining across multiple pools
   - Base Agent: Abstract base class providing common functionality
 - Shared state communication architecture for agent coordination
 - Scalable simulation configurations:
-  - Small: 2 users, 1 marketplace, 1 mining pool
-  - Medium: 10 users, 3 marketplaces, 2 mining pools
-  - Large: 100 users, 10 marketplaces, 5 mining pools
+  - Small: 2 users
+  - Medium: 10 users
+  - Large: 100 users
 - Monero RPC client library (monero_rpc.py) for clean Python interface to Monero APIs
 - Agent framework documentation and architecture diagrams
 

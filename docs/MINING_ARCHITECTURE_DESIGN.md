@@ -7,7 +7,7 @@ This document specifies a simulation framework for a proof-of-work blockchain ne
 The system comprises two primary components:
 
 1.  **Block Controller**: A central agent responsible for orchestrating the block generation process.
-2.  **Mining Nodes**: Standard Monero daemon instances that participate in the simulation and generate blocks when instructed by the Block Controller.
+2.  **Designated Miners**: Standard Monero daemon instances that participate in the simulation and generate blocks when instructed by the Block Controller.
 
 This architecture replaces a deterministic, single-generator model with a computationally trivial, probabilistic selection managed by the Block Controller. This allows for a more realistic simulation of the block discovery process in a proof-of-work network.
 
@@ -19,7 +19,7 @@ The Block Controller is the central component of the mining simulation. It maint
 
 **Responsibilities**:
 
-*   **Maintain Miner Registry**: Manages a registry of all potential Mining Nodes, mapping each miner's IP address to a specific integer "weight" and its unique wallet address.
+*   **Maintain Miner Registry**: Manages a registry of all potential Designated Miners, mapping each miner's IP address to a specific integer "weight" and its unique wallet address.
 *   **Weighted Random Selection**: In each block generation cycle, it performs a weighted random selection to choose a single winning miner for the current block.
 *   **Block Generation RPC**: Initiates an RPC request to the selected miner's blockchain daemon, instructing it to generate a new block.
 
@@ -27,13 +27,13 @@ The Block Controller is the central component of the mining simulation. It maint
 
 The Block Controller's operational loop executes every `N` minutes, where `N` is the target block time. In each cycle, the Controller performs the following actions:
 
-1.  It references the registry of active Mining Nodes and their corresponding weights.
+1.  It references the registry of active Designated Miners and their corresponding weights.
 2.  It conducts a weighted random selection to choose a single winning miner for the current block.
 3.  It initiates an RPC request to the selected miner's blockchain daemon, instructing it to generate a new block.
 
-### 2.2. Mining Nodes
+### 2.2. Designated Miners
 
-Each Mining Node is a standard Monero daemon instance with the following properties:
+Each Designated Miner is a standard Monero daemon instance with the following properties:
 
 *   **Unique Network IP Address**: A unique IP address within the simulation network.
 *   **Unique Wallet Address**: A unique wallet address for receiving block rewards.
@@ -74,7 +74,7 @@ A "solo miner" is defined as a mining node with a hashrate below the `solo_miner
 graph TD
     subgraph "Configuration Generation (monerosim)"
         A[config_agents_small.yaml] --> B{monerosim binary};
-        B -- "1. Randomly select N miners" --> C((All Nodes));
+        B -- "1. Randomly select N designated miners" --> C((All Nodes));
         B -- "2. Assign weights" --> D[Miner Registry<br/>(IP, Weight, Wallet)];
         D -- "3. Write to shared state" --> E((/tmp/monerosim_shared/miners.json));
     end
@@ -83,9 +83,9 @@ graph TD
         F[Block Controller] -- "4. Read Miner Registry" --> E;
         F -- "5. Weighted Random Selection" --> G{Select Winner};
         subgraph "Simulated Monero Network"
-            M1[Mining Node 1];
-            M2[Mining Node 2];
-            MN[... Mining Node N];
+            M1[Designated Miner 1];
+            M2[Designated Miner 2];
+            MN[... Designated Miner N];
         end
         G -- "6. RPC: Generate Block" --> M2;
     end

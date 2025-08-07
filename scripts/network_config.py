@@ -20,20 +20,20 @@ MODULE_NAME = "NETWORK_CONFIG"
 
 # Daemon Agents Configuration
 A0_IP: str = "11.0.0.10"          # Mining node IP
-A0_RPC_PORT: str = "28090"       # Mining node RPC port
+A0_RPC_PORT: str = "28081"       # Mining node RPC port
 A0_RPC: str = f"http://{A0_IP}:{A0_RPC_PORT}/json_rpc"
 
 A1_IP: str = "11.0.0.11"          # Sync agent IP
-A1_RPC_PORT: str = "28100"       # Sync node RPC port
+A1_RPC_PORT: str = "28081"       # Sync node RPC port
 A1_RPC: str = f"http://{A1_IP}:{A1_RPC_PORT}/json_rpc"
 
 # Wallet Agents Configuration - Updated to match current shadow.yaml configuration
-WALLET1_IP: str = "11.0.0.3"     # Mining wallet IP
-WALLET1_RPC_PORT: str = "28091"  # Mining wallet RPC port
+WALLET1_IP: str = "11.0.0.10"     # Mining wallet IP
+WALLET1_RPC_PORT: str = "28082"  # Mining wallet RPC port
 WALLET1_RPC: str = f"http://{WALLET1_IP}:{WALLET1_RPC_PORT}/json_rpc"
 
-WALLET2_IP: str = "11.0.0.4"     # Recipient wallet IP
-WALLET2_RPC_PORT: str = "28092"  # Recipient wallet RPC port
+WALLET2_IP: str = "11.0.0.11"     # Recipient wallet IP
+WALLET2_RPC_PORT: str = "28082"  # Recipient wallet RPC port
 WALLET2_RPC: str = f"http://{WALLET2_IP}:{WALLET2_RPC_PORT}/json_rpc"
 
 # For backward compatibility with scripts using different variable names

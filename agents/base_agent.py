@@ -23,23 +23,34 @@ class BaseAgent(ABC):
     
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
-                 node_rpc_port: Optional[int] = None,
+                 agent_rpc_port: Optional[int] = None,
                  wallet_rpc_port: Optional[int] = None,
                  p2p_port: Optional[int] = None,
                  rpc_host: str = "127.0.0.1",
                  log_level: str = "INFO",
                  attributes: Optional[List[str]] = None,
-                 hash_rate: Optional[int] = None):
+                 hash_rate: Optional[int] = None,
+                 tx_frequency: Optional[int] = None):
         self.agent_id = agent_id
         self._shared_dir = shared_dir
-        self.node_rpc_port = node_rpc_port
+        self.agent_rpc_port = agent_rpc_port
         self.wallet_rpc_port = wallet_rpc_port
         self.p2p_port = p2p_port
         self.rpc_host = rpc_host
         self.log_level = log_level
-        self.attributes = attributes or []
+        self.attributes_list = attributes or []
         self.hash_rate = hash_rate
+        self.tx_frequency = tx_frequency
         self.running = True
+
+        # Convert attributes list to a dictionary
+        self.attributes: Dict[str, Any] = {}
+        if self.attributes_list:
+            if len(self.attributes_list) % 2 != 0:
+                self.logger.warning("Attributes list has an odd number of elements. Some attributes may be ignored.")
+            for i in range(0, len(self.attributes_list), 2):
+                if i + 1 < len(self.attributes_list):
+                    self.attributes[self.attributes_list[i]] = self.attributes_list[i+1]
         
         # Shared state directory
         if shared_dir is None:
@@ -48,7 +59,7 @@ class BaseAgent(ABC):
         self._shared_dir.mkdir(mode=0o700, exist_ok=True)
         
         # Initialize RPC connections first (required for logging context)
-        self.node_rpc: Optional[MoneroRPC] = None
+        self.agent_rpc: Optional[MoneroRPC] = None
         self.wallet_rpc: Optional[WalletRPC] = None
         
         # Set up logging
@@ -93,16 +104,16 @@ class BaseAgent(ABC):
         
     def setup(self):
         """Set up RPC connections and perform agent-specific initialization"""
-        # Connect to node RPC if port provided
-        if self.node_rpc_port:
-            self.logger.info(f"Connecting to node RPC at {self.rpc_host}:{self.node_rpc_port}")
-            self.node_rpc = MoneroRPC(self.rpc_host, self.node_rpc_port)
+        # Connect to agent RPC if port provided
+        if self.agent_rpc_port:
+            self.logger.info(f"Connecting to agent RPC at {self.rpc_host}:{self.agent_rpc_port}")
+            self.agent_rpc = MoneroRPC(self.rpc_host, self.agent_rpc_port)
             try:
-                self.node_rpc.wait_until_ready(max_wait=120)
-                info = self.node_rpc.get_info()
-                self.logger.info(f"Connected to node: height={info.get('height', 0)}")
+                self.agent_rpc.wait_until_ready(max_wait=120)
+                info = self.agent_rpc.get_info()
+                self.logger.info(f"Connected to agent: height={info.get('height', 0)}")
             except RPCError as e:
-                self.logger.error(f"Failed to connect to node RPC: {e}")
+                self.logger.error(f"Failed to connect to agent RPC: {e}")
                 raise
                 
         # Connect to wallet RPC if port provided
@@ -115,8 +126,8 @@ class BaseAgent(ABC):
             except RPCError as e:
                 self.logger.error(f"Failed to connect to wallet RPC: {e}")
                 raise
-                
-        # Call agent-specific setup
+        
+        # Call agent-specific setup after RPC connections are established
         self._setup_agent()
         
         # Register self in the node registry after wallet is set up
@@ -230,10 +241,10 @@ class BaseAgent(ABC):
         
     def _register_self(self):
         """Register this agent in the node registry with atomic file updates"""
-        registry_path = self.shared_dir / "node_registry.json"
-        lock_path = self.shared_dir / "node_registry.lock"
+        registry_path = self.shared_dir / "agent_registry.json"
+        lock_path = self.shared_dir / "agent_registry.lock"
         
-        self.logger.info(f"Attempting to register in registry: {registry_path.resolve()}")
+        self.logger.info(f"Attempting to register in agent registry: {registry_path.resolve()}")
 
         # First, ensure the file exists using a separate lock file for creation
         try:
@@ -285,7 +296,7 @@ class BaseAgent(ABC):
                             "hash_rate": getattr(self, 'hash_rate', None),
                             "ip_addr": self.rpc_host,
                             "p2p_port": self.p2p_port,
-                            "node_rpc_port": self.node_rpc_port,
+                            "agent_rpc_port": self.agent_rpc_port,
                             "wallet_rpc_port": self.wallet_rpc_port,
                             "wallet_address": getattr(self, 'wallet_address', None),
                             "timestamp": time.time()
@@ -302,18 +313,18 @@ class BaseAgent(ABC):
             self.logger.error(f"Failed to lock and update registry file: {e}", exc_info=True)
             return
 
-        self.logger.info(f"Successfully registered agent {self.agent_id} in node registry")
+        self.logger.info(f"Successfully registered agent {self.agent_id} in agent registry")
         
     # Utility methods
     
     def wait_for_height(self, target_height: int, timeout: int = 300):
         """Wait for blockchain to reach target height"""
-        if not self.node_rpc:
-            raise RuntimeError("No node RPC connection")
+        if not self.agent_rpc:
+            raise RuntimeError("No agent RPC connection")
             
         start_time = time.time()
         while time.time() - start_time < timeout:
-            current_height = self.node_rpc.get_height()
+            current_height = self.agent_rpc.get_height()
             if current_height >= target_height:
                 return True
             self.logger.debug(f"Waiting for height {target_height}, current: {current_height}")
@@ -323,13 +334,13 @@ class BaseAgent(ABC):
         
     def wait_for_wallet_sync(self, timeout: int = 300):
         """Wait for wallet to sync with daemon"""
-        if not self.wallet_rpc or not self.node_rpc:
+        if not self.wallet_rpc or not self.agent_rpc:
             raise RuntimeError("Missing RPC connections")
             
         start_time = time.time()
         while time.time() - start_time < timeout:
             wallet_height = self.wallet_rpc.get_height()
-            daemon_height = self.node_rpc.get_height()
+            daemon_height = self.agent_rpc.get_height()
             
             if wallet_height >= daemon_height - 1:  # Allow 1 block difference
                 self.logger.info(f"Wallet synced at height {wallet_height}")
@@ -348,9 +359,11 @@ class BaseAgent(ABC):
         parser.add_argument('--id', required=True, help='Agent ID')
         parser.add_argument('--shared-dir', type=Path, default=Path('/tmp/monerosim_shared'), help='Shared directory for simulation state')
         parser.add_argument('--rpc-host', default='127.0.0.1', help='RPC host address')
-        parser.add_argument('--node-rpc-port', type=int, help='Node RPC port')
+        parser.add_argument('--agent-rpc-port', type=int, help='Agent RPC port')
         parser.add_argument('--wallet-rpc-port', type=int, help='Wallet RPC port')
         parser.add_argument('--p2p-port', type=int, help='P2P port of the agent\'s node')
         parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Logging level')
         parser.add_argument('--attributes', nargs='*', default=[], help='List of agent attributes (e.g., mining)')
+        parser.add_argument('--hash-rate', type=int, help='Hash rate for mining agents')
+        parser.add_argument('--tx-frequency', type=int, help='Transaction frequency in seconds for regular users')
         return parser

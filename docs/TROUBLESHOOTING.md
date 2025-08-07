@@ -38,8 +38,6 @@ ls shadow.data/hosts/*/monitor.*.stdout
 
 # Agent logs (for agent-based simulations)
 ls shadow.data/hosts/*/regular_user*.stdout
-ls shadow.data/hosts/*/marketplace*.stdout
-ls shadow.data/hosts/*/mining_pool*.stdout
 ```
 
 ## Common Issues and Solutions
@@ -725,9 +723,4 @@ python3 scripts/monitor.py --refresh 10
 # Run individual agents for testing
 python3 agents/regular_user.py --name user001 --daemon-url http://11.0.0.1:18081
 
-# Test marketplace agent
-python3 agents/marketplace.py --name market001 --daemon-url http://11.0.0.2:18081
-
-# Test mining pool
-python3 agents/mining_pool.py --name poolalpha --daemon-url http://11.0.0.3:18081
 ```

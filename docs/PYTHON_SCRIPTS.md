@@ -279,7 +279,6 @@ class BaseAgent(ABC):
 
 **Features**:
 - Personal wallet management
-- Transaction sending to marketplaces
 - Configurable transaction patterns
 - Balance monitoring
 
@@ -292,55 +291,14 @@ python3 agents/regular_user.py \
     --transaction-interval 300
 ```
 
-### Marketplace Agent (marketplace.py)
-
-**Purpose**: Represents services that receive payments.
-
-**Location**: `agents/marketplace.py`
-
-**Features**:
-- Payment address generation
-- Transaction tracking
-- Payment history maintenance
-- Address publishing to shared state
-
-**Usage**:
-```bash
-python3 agents/marketplace.py \
-    --name marketplace001 \
-    --daemon-url http://11.0.0.2:18081/json_rpc \
-    --wallet-port 28092
-```
-
-### Mining Pool Agent (mining_pool.py)
-
-**Purpose**: Participates in coordinated mining operations.
-
-**Location**: `agents/mining_pool.py`
-
-**Features**:
-- Mining control signal monitoring
-- Block generation statistics
-- Configurable mining threads
-- Coordination with block controller
-
-**Usage**:
-```bash
-python3 agents/mining_pool.py \
-    --name poolalpha \
-    --daemon-url http://11.0.0.3:18081/json_rpc \
-    --wallet-port 28093 \
-    --mining-threads 2
-```
 
 ### Block Controller Agent (block_controller.py)
 
-**Purpose**: Orchestrates mining across multiple pools.
+**Purpose**: Orchestrates mining.
 
 **Location**: `agents/block_controller.py`
 
 **Features**:
-- Round-robin pool selection
 - Mining signal generation
 - Blockchain progress monitoring
 - Consistent block generation
@@ -590,14 +548,6 @@ mypy scripts/*.py agents/*.py
            # Custom initialization
    ```
 
-2. **Use Shared State Properly**:
-   ```python
-   # Read state
-   state = self.read_shared_state("users.json")
-   
-   # Update state atomically
-   self.update_shared_state("users.json", new_state)
-   ```
 
 3. **Handle Signals**:
    ```python
@@ -664,7 +614,7 @@ python3 scripts/simple_test.py
 
 1. **WebSocket Support**: Real-time monitoring via web interface
 2. **Metrics Export**: Prometheus/Grafana integration
-3. **Advanced Agents**: Exchange, miner, and merchant agents
+3. **Advanced Agents**: Exchange and merchant agents
 4. **Performance Profiling**: Built-in profiling tools
 5. **Configuration UI**: Web-based configuration interface
 

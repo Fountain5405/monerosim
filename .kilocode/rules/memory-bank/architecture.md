@@ -15,7 +15,6 @@ Monerosim is a Rust-based tool that generates configuration files for the Shadow
 ├─────────────────────────────────────────────────────────────┤
 │  Agent Framework (Python)                                  │
 │  ├── Base Agent (base_agent.py)                          │
-│  ├── Regular User Agent (regular_user.py)                │
 │  ├── Block Controller Agent (block_controller.py)        │
 │  └── Monero RPC Client (monero_rpc.py)                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -77,16 +76,9 @@ The agent framework provides a sophisticated simulation environment where differ
 - Implements shared state management for inter-agent communication
 - Includes signal handling and graceful shutdown
 
-#### Regular User Agent (`agents/regular_user.py`)
-- Simulates typical Monero users
-- Maintains personal wallets
-- Monitors transaction confirmations
-- Configurable transaction frequency and amounts
-
 #### Block Controller Agent (`agents/block_controller.py`)
-- Orchestrates mining across multiple pools
+- Orchestrates mining for a single miner.
 - Ensures consistent block generation
-- Implements round-robin pool selection
 - Monitors blockchain progress
 
 #### Monero RPC Client (`agents/monero_rpc.py`)
@@ -165,25 +157,17 @@ graph TD
     subgraph "Mining Infrastructure"
         BC[Block Controller]
     end
-    
+
     subgraph "User Network"
         U1[User 001]
-        U2[User 002]
-        UN[... User N]
     end
-    
-    
-    BC -.->|Controls| MP1
-    BC -.->|Controls| MP2
-    
-    U1 -->|Transactions| M1
-    U1 -->|Transactions| M2
-    U2 -->|Transactions| M1
-    UN -->|Transactions| M2
-    
-    MP1 -->|Blocks| U1
-    MP1 -->|Blocks| U2
-    MP2 -->|Blocks| UN
+
+
+    BC -.->|Controls| M1[Miner]
+
+    U1 -->|Transactions| N1[Node 1]
+
+    M1 -->|Blocks| U1
 ```
 
 Key features of the agent-based topology:
@@ -222,13 +206,9 @@ Agents communicate through a shared state mechanism:
 
 ```
 /tmp/monerosim_shared/
-├── users.json                    # List of all user agents
 ├── block_controller.json        # Block controller status
 ├── transactions.json            # Transaction log
 ├── blocks_found.json           # Block discovery log
-├── mining_signals/             # Mining control signals
-│   ├── poolalpha.json
-│   └── poolbeta.json
 └── [agent]_stats.json          # Per-agent statistics
 ```
 
@@ -284,7 +264,6 @@ Python was chosen for agents because:
 
 ### Agent Framework
 - `/agents/base_agent.py`: Base agent class
-- `/agents/regular_user.py`: Regular user implementation
 - `/agents/block_controller.py`: Block controller implementation
 - `/agents/monero_rpc.py`: RPC client library
 

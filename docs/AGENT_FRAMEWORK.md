@@ -23,7 +23,7 @@ The Monerosim Agent Framework is a sophisticated simulation capability that enab
 
 Traditional network simulations often fail to capture the complex interactions between different types of network participants. The agent framework was created to:
 
-- **Model Realistic Behavior**: Simulate how real users, marketplaces, and mining pools interact
+- **Model Realistic Behavior**: Simulate how real users and designated miners interact
 - **Enable Emergent Properties**: Allow complex behaviors to emerge from simple agent rules
 - **Support Research**: Provide a platform for studying cryptocurrency economics and network dynamics
 - **Test at Scale**: Simulate networks from small (2-10 participants) to large (100+ participants)
@@ -40,7 +40,7 @@ Traditional network simulations often fail to capture the complex interactions b
 
 ## Architecture
 
-The agent framework is built on a modular architecture that separates concerns and enables easy extension:
+The agent framework is built on a modular architecture that separates concerns and enables easy extension. The architecture has been simplified to use a unified agent model where every node is a user_agent with appropriate attributes.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -54,8 +54,6 @@ The agent framework is built on a modular architecture that separates concerns a
 ├─────────────────────────────────────────────────────────────┤
 │  Specialized Agents                                         │
 │  ├── Regular User Agent (regular_user.py)                  │
-│  ├── Marketplace Agent (marketplace.py)                    │
-│  ├── Mining Pool Agent (mining_pool.py)                    │
 │  └── Block Controller Agent (block_controller.py)          │
 ├─────────────────────────────────────────────────────────────┤
 │  RPC Communication Layer (monero_rpc.py)                   │
@@ -66,7 +64,8 @@ The agent framework is built on a modular architecture that separates concerns a
 │  Shadow Integration (shadow_agents.rs)                     │
 │  ├── Configuration Generation                              │
 │  ├── Process Orchestration                                 │
-│  └── Network Topology Setup                                │
+│  ├── Network Topology Setup                                │
+│  └── Agent Registry Management                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -108,7 +107,7 @@ Represents typical Monero users who maintain wallets and send transactions.
 
 **Characteristics:**
 - Maintains a personal wallet
-- Sends transactions to marketplaces at configurable intervals
+- Sends transactions at configurable intervals
 - Monitors transaction confirmations
 - Adjusts behavior based on wallet balance
 
@@ -122,45 +121,9 @@ Represents typical Monero users who maintain wallets and send transactions.
 2. Register address in shared state
 3. Periodically check balance
 4. Decide whether to send transaction based on frequency parameter
-5. Select random marketplace from available list
-6. Send transaction with random amount within configured range
-7. Track pending transactions until confirmed
+5. Send transaction with random amount within configured range
+6. Track pending transactions until confirmed
 
-### Marketplace Agent (marketplace.py)
-
-Represents services that receive payments from users.
-
-**Characteristics:**
-- Operates a receiving wallet
-- Tracks all incoming payments
-- Maintains transaction history
-- Publishes receiving address for users
-
-**Key Functionality:**
-- Monitors incoming transfers continuously
-- Logs payment details (amount, sender, confirmation status)
-- Updates statistics (total received, transaction count)
-- Provides payment history for analysis
-
-**Statistics Tracked:**
-- Total amount received
-- Number of transactions
-- Current balance (locked and unlocked)
-- Payment timestamps and confirmation status
-
-### Mining Pool Agent (mining_pool.py)
-
-Represents mining pools that participate in block generation.
-
-**Note**: The current implementation faces challenges with mining RPC methods. The original design intended for pools to:
-- Start/stop mining based on signals from block controller
-- Track blocks found
-- Report mining statistics
-
-**Current Status:**
-- Mining RPC methods (`start_mining`, `stop_mining`, `mining_status`) return "Method not found"
-- This prevents the intended mining coordination
-- Alternative approach implemented in Block Controller Agent
 
 ### Block Controller Agent (block_controller.py)
 
@@ -192,15 +155,9 @@ Agents communicate through a shared state mechanism using JSON files in a common
 ```
 /tmp/monerosim_shared/
 ├── users.json                    # List of all user agents
-├── marketplaces.json            # List of all marketplace agents  
-├── mining_pools.json            # List of all mining pools
 ├── block_controller.json        # Block controller status
 ├── transactions.json            # Transaction log
 ├── blocks_found.json           # Block discovery log
-├── marketplace_payments.json    # Payment tracking
-├── mining_signals/             # Mining control signals
-│   ├── poolalpha.json
-│   └── poolbeta.json
 └── [agent]_stats.json          # Per-agent statistics
 ```
 
@@ -208,8 +165,8 @@ Agents communicate through a shared state mechanism using JSON files in a common
 
 The shared state mechanism enables:
 
-1. **Service Discovery**: Agents can find other agents (e.g., users finding marketplaces)
-2. **Coordination**: Block controller can signal mining pools
+1. **Service Discovery**: Agents can find other agents
+2. **Coordination**: Block controller can coordinate block generation
 3. **Monitoring**: External tools can observe simulation progress
 4. **Analysis**: Researchers can analyze agent interactions
 
@@ -227,24 +184,12 @@ The shared state mechanism enables:
 ]
 ```
 
-**marketplaces.json** - Array of marketplace registrations:
-```json
-[
-  {
-    "agent_id": "marketplace001",
-    "address": "4B7Y...",
-    "type": "marketplace",
-    "timestamp": 1234567890.456
-  }
-]
-```
-
 **transactions.json** - Array of transaction records:
 ```json
 [
   {
     "sender": "user001",
-    "recipient": "marketplace001",
+    "recipient": "user002",
     "amount": 1.5,
     "tx_hash": "abc123...",
     "timestamp": 1234567891.789
@@ -256,67 +201,56 @@ The shared state mechanism enables:
 
 ### Agent Configuration Files
 
-Monerosim provides three pre-configured agent simulation scales:
+Monerosim provides pre-configured agent simulation scales. The configuration has been simplified to use a unified agent architecture where every node is a user_agent with appropriate attributes.
 
 #### Small Scale (config_agents_small.yaml)
 ```yaml
 general:
-  stop_time: "10m"
+  stop_time: "60m"
   fresh_blockchain: true
-  log_level: debug
-  
+  log_level: debug  # More verbose for debugging
+
+network:
+  type: "1_gbit_switch"
+
 agents:
-  regular_users:
-    count: 2
-    transaction_interval: 30
-    min_transaction_amount: 0.5
-    max_transaction_amount: 2.0
+  user_agents:
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "30"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "30"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+    - daemon: "monerod"
+      is_miner: true
     
-  marketplaces:
-    count: 1
+  block_controller:
+    script: "agents.block_controller"
     
-  mining_pools:
-    count: 1
-    
-block_generation:
-  interval: 30
-  pools_per_round: 1
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"
 ```
 
-#### Medium Scale (config_agents_medium.yaml)
-```yaml
-agents:
-  regular_users:
-    count: 10
-    transaction_interval: 60
-    
-  marketplaces:
-    count: 3
-    
-  mining_pools:
-    count: 2
-```
-
-#### Large Scale (config_agents_large.yaml)
-```yaml
-agents:
-  regular_users:
-    count: 100
-    transaction_interval: 120
-    
-  marketplaces:
-    count: 10
-    
-  mining_pools:
-    count: 5
-```
+In this configuration:
+- Regular user agents have a daemon, wallet, and user script
+- Mining nodes are also user agents with the `is_miner` attribute set to true
+- All nodes are treated consistently as user_agents with different attributes
 
 ### Shadow Integration
 
 The `shadow_agents.rs` module generates Shadow configuration that:
 
 1. Creates Monero daemon processes for each user
-2. Creates wallet RPC processes for users and marketplaces
+2. Creates wallet RPC processes for users
 3. Launches agent processes with appropriate parameters
 4. Sets up network topology with proper IP addressing
 5. Configures process start times to ensure proper initialization order
@@ -386,25 +320,49 @@ All shared state files are stored in `/tmp/monerosim_shared/`:
 /tmp/monerosim_shared/
 ├── Registration Files
 │   ├── users.json                 # All registered users
-│   ├── marketplaces.json         # All registered marketplaces
-│   └── mining_pools.json         # All registered mining pools
+│   └── node_registry.json         # Registry of all nodes with attributes
 │
 ├── Activity Logs
 │   ├── transactions.json         # All transactions sent
-│   ├── marketplace_payments.json # All payments received
 │   └── blocks_found.json        # All blocks discovered
 │
 ├── Control Files
-│   ├── block_controller.json    # Block controller configuration
-│   └── mining_signals/          # Mining control signals
-│       ├── poolalpha.json
-│       └── poolbeta.json
+│   └── block_controller.json    # Block controller configuration
 │
 └── Statistics Files
     ├── user_[id]_stats.json     # Per-user statistics
-    ├── marketplace_[id]_stats.json # Per-marketplace statistics
-    ├── pool_[id]_stats.json     # Per-pool statistics
     └── block_controller_stats.json # Block generation statistics
+```
+
+The `node_registry.json` file is a new addition that documents all attributes for every user_agent:
+
+```json
+{
+  "agents": [
+    {
+      "id": "user001",
+      "ip_addr": "11.0.0.10",
+      "daemon": true,
+      "wallet": true,
+      "user_script": "agents.regular_user",
+      "is_miner": false,
+      "attributes": {
+        "transaction_interval": "30",
+        "min_transaction_amount": "0.5",
+        "max_transaction_amount": "2.0"
+      }
+    },
+    {
+      "id": "node001",
+      "ip_addr": "11.0.0.12",
+      "daemon": true,
+      "wallet": false,
+      "user_script": null,
+      "is_miner": true,
+      "attributes": {}
+    }
+  ]
+}
 ```
 
 ### File Update Patterns
@@ -427,9 +385,8 @@ All shared state files are stored in `/tmp/monerosim_shared/`:
 2. **Transaction Decision Process**:
    ```python
    if balance >= min_amount and random() < transaction_frequency:
-       marketplace = select_random_marketplace()
        amount = random(min_amount, max_amount)
-       send_transaction(marketplace, amount)
+       send_transaction(amount)
    ```
 
 3. **Transaction Lifecycle**:
@@ -438,25 +395,6 @@ All shared state files are stored in `/tmp/monerosim_shared/`:
    - Track in pending list
    - Monitor for confirmations
    - Remove from pending when confirmed
-
-### Marketplace Behavior
-
-1. **Initialization**:
-   - Create receiving wallet
-   - Publish address to shared state
-   - Begin monitoring for payments
-
-2. **Payment Processing**:
-   - Check for new incoming transfers every 20 seconds
-   - Log each new payment with details
-   - Update running statistics
-   - Write payment records to shared state
-
-3. **Statistics Tracking**:
-   - Total amount received
-   - Transaction count
-   - Current balances
-   - Payment history
 
 ### Block Controller Behavior
 
@@ -593,23 +531,23 @@ result = self.daemon_rpc._make_request("generateblocks", {
 ```python
 # User agent decides to send transaction
 def _send_transaction(self):
-    # Get available marketplaces
-    marketplaces = self._get_marketplace_addresses()
-    marketplace = random.choice(marketplaces)
-    
     # Generate random amount
     amount = random.uniform(self.min_amount, self.max_amount)
     
+    # Send transaction to a random user
+    recipients = self._get_user_addresses()
+    recipient = random.choice(recipients)
+    
     # Send transaction
     result = self.wallet_rpc.transfer([{
-        "address": marketplace["address"],
+        "address": recipient["address"],
         "amount": int(amount * 1e12)
     }])
     
     # Log to shared state
     self.append_shared_list("transactions.json", {
         "sender": self.agent_id,
-        "recipient": marketplace["agent_id"],
+        "recipient": recipient["agent_id"],
         "amount": amount,
         "tx_hash": result["tx_hash"],
         "timestamp": time.time()
@@ -621,18 +559,42 @@ def _send_transaction(self):
 ```yaml
 # config_custom.yaml
 agents:
-  regular_users:
-    count: 20
-    transaction_interval: 45
-    min_transaction_amount: 0.01
-    max_transaction_amount: 0.5
+  user_agents:
+    # Regular users
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "45"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.5"
+    # Repeat for 20 users...
     
-  marketplaces:
-    count: 5
+    # Mining nodes
+    - daemon: "monerod"
+      is_miner: true
+      attributes:
+        hashrate: "30"
+    - daemon: "monerod"
+      is_miner: true
+      attributes:
+        hashrate: "25"
+    - daemon: "monerod"
+      is_miner: true
+      attributes:
+        hashrate: "20"
+    - daemon: "monerod"
+      is_miner: true
+      attributes:
+        hashrate: "15"
+    - daemon: "monerod"
+      is_miner: true
+      attributes:
+        hashrate: "10"
     
-block_generation:
-  interval: 60  # 1 minute blocks
-  blocks_per_generation: 2
+  block_controller:
+    script: "agents.block_controller"
+    arguments: ["--block-time", "60"]
 ```
 
 ### Example 3: Analyzing Simulation Results
@@ -660,14 +622,14 @@ print(f"Transactions per user: {df.groupby('sender').size().mean():.2f}")
 
 1. **Additional Agent Types**:
    - **Exchange Agents**: Simulate cryptocurrency exchanges
-   - **Miner Agents**: Individual miners (not pools)
+   - **Miner Agents**: Individual miners (not mining pools)
    - **Merchant Agents**: E-commerce participants
    - **Attacker Agents**: Various attack scenarios
 
 2. **Enhanced Behaviors**:
    - Dynamic transaction patterns based on market conditions
    - Price discovery mechanisms
-   - Reputation systems for marketplaces
+   - Reputation systems for designated miners
    - Mining difficulty adjustments
 
 3. **Network Effects**:

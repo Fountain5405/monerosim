@@ -221,7 +221,7 @@ def main():
         help="Interval between checks in continuous mode (default: 30 seconds)"
     )
     
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     
     log_info(COMPONENT, "=== MoneroSim Synchronization Check ===")
     log_info(COMPONENT, f"Starting sync check at {time.strftime('%Y-%m-%d %H:%M:%S')}")

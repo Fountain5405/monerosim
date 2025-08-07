@@ -25,8 +25,6 @@ MoneroSim now supports only agent-based simulation mode:
 │  Agent Framework (Python)                                  │
 │  ├── Base Agent (base_agent.py)                          │
 │  ├── Regular User Agent (regular_user.py)                │
-│  ├── Marketplace Agent (marketplace.py)                   │
-│  ├── Mining Pool Agent (mining_pool.py)                  │
 │  ├── Block Controller Agent (block_controller.py)        │
 │  └── Monero RPC Client (monero_rpc.py)                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -122,7 +120,7 @@ builds/
 **Purpose**: Generates Shadow configurations for complex, realistic network simulations with autonomous agents.
 
 **Key Features**:
-- Support for multiple participant types (users, marketplaces, mining pools)
+- Support for multiple participant types (users, designated miners)
 - Scalable configurations (small: 2-10, medium: 10-50, large: 50-100+ participants)
 - Automatic agent process configuration
 - Shared state directory setup
@@ -132,8 +130,6 @@ builds/
 ```mermaid
 graph TD
     subgraph "Mining Infrastructure"
-        MP1[Mining Pool Alpha]
-        MP2[Mining Pool Beta]
         BC[Block Controller]
     end
     
@@ -143,22 +139,15 @@ graph TD
         UN[... User N]
     end
     
-    subgraph "Marketplace Services"
-        M1[Marketplace 001]
-        M2[Marketplace 002]
-    end
+    BC -.->|Controls| M1[Miner]
     
-    BC -.->|Controls| MP1
-    BC -.->|Controls| MP2
+    U1 -->|Transactions| N1[Node 1]
+    U2 -->|Transactions| N1
+    UN -->|Transactions| N1
     
-    U1 -->|Transactions| M1
-    U1 -->|Transactions| M2
-    U2 -->|Transactions| M1
-    UN -->|Transactions| M2
-    
-    MP1 -->|Blocks| U1
-    MP1 -->|Blocks| U2
-    MP2 -->|Blocks| UN
+    M1 -->|Blocks| U1
+    M1 -->|Blocks| U2
+    M1 -->|Blocks| UN
 ```
 
 **IP Allocation**:
@@ -182,21 +171,9 @@ The agent framework provides a sophisticated simulation environment where differ
 ##### Regular User Agent (`agents/regular_user.py`)
 - Simulates typical Monero users
 - Maintains personal wallets
-- Sends transactions to marketplaces based on configurable patterns
 - Monitors transaction confirmations
 - Configurable transaction frequency and amounts
 
-##### Marketplace Agent (`agents/marketplace.py`)
-- Represents services that receive payments
-- Tracks incoming transactions
-- Maintains transaction history
-- Publishes receiving addresses for users
-
-##### Mining Pool Agent (`agents/mining_pool.py`)
-- Participates in coordinated mining
-- Responds to mining control signals
-- Tracks mining statistics and blocks found
-- Supports configurable mining threads
 
 ##### Block Controller Agent (`agents/block_controller.py`)
 - Orchestrates mining across multiple pools
@@ -275,16 +252,11 @@ The agent framework uses a shared state mechanism for coordination:
 
 ```
 /tmp/monerosim_shared/
-├── users.json                    # List of all user agents
-├── marketplaces.json            # List of all marketplace agents
-├── mining_pools.json            # List of all mining pools
-├── block_controller.json        # Block controller status
-├── transactions.json            # Transaction log
+├── agent_registry.json         # Registry of all agents
+├── miners.json                 # List of all miner agents and their weights
+├── block_controller.json       # Block controller status
+├── transactions.json           # Transaction log
 ├── blocks_found.json           # Block discovery log
-├── marketplace_payments.json    # Payment tracking
-├── mining_signals/             # Mining control signals
-│   ├── poolalpha.json
-│   └── poolbeta.json
 └── [agent]_stats.json          # Per-agent statistics
 ```
 
@@ -531,7 +503,7 @@ The architecture is designed to be extensible to other cryptocurrencies:
 3. **Performance profiling**: Built-in performance analysis tools
 4. **Multi-version testing**: Automated testing across Monero versions
 5. **Cloud deployment**: Support for cloud-based simulation execution
-6. **Enhanced agent behaviors**: More sophisticated trading patterns
+6. **Enhanced agent behaviors**: More sophisticated transaction patterns
 7. **Attack simulations**: Network attack and defense scenarios
 
 ### Research Applications

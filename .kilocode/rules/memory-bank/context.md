@@ -8,14 +8,13 @@ The Monerosim agent-based simulation is now **fully functional** with an enhance
 - **P2P Connectivity**: Working
 - **Block Generation**: Working with new weighted selection
 - **Block Synchronization**: Working
-- **Transaction Processing**: Ready for testing
 
-### Agent Framework Status (Enhanced)
-- **Framework Architecture**: Not really working
-- **Agent Types**: Focusing on mining agents
+### Agent Framework Status (Simplified)
+- **Framework Architecture**: Simplified to core user and network nodes
+- **Agent Types**: RegularUserAgent and BlockControllerAgent
 - **RPC Integration**: Working
-- **Shared State Communication**: Not working
-- **Mining Coordination**: Enhanced with weighted random selection based on hashrate
+- **Shared State Communication**: Working
+- **Mining Coordination**: Retained BlockControllerAgent for weighted-random block generation
 
 ### New Mining Architecture (Implemented)
 - **Miner Registry**: JSON-based registry tracking all miners with their hashrates
@@ -24,6 +23,14 @@ The Monerosim agent-based simulation is now **fully functional** with an enhance
 - **Test Coverage**: Comprehensive test suite with 100% pass rate
 
 ## Recent Developments
+
+- **Fixed Block Controller Wallet Handling** (Date: 2025-08-06):
+  - Resolved critical issue where block controller failed after first block generation
+  - Root cause: Improper wallet handling when wallets already existed
+  - Solution: Reversed operation order - now tries to open wallet first, creates only if needed
+  - Added robust error handling to continue processing even if individual miners fail
+  - Created test suite to verify wallet handling scenarios
+  - Documented fix in `BLOCK_CONTROLLER_WALLET_FIX_REPORT.md`
 
 - **Debugged Missing miners.json Issue** (Date: 2025-07-31):
   - Identified root cause: configuration system design gap
@@ -49,33 +56,30 @@ The Monerosim agent-based simulation is now **fully functional** with an enhance
 
 ## Current Focus
 
-With the mining issue debugged and workaround implemented, focus shifts to permanent fixes and production deployment.
+With the refactoring complete, focus shifts to verifying the simplified architecture and ensuring all components function as expected.
 
 1. **Immediate Actions**:
-   - Use manual `miners.json` workaround for current simulations
-   - Document workaround in user guides
-   - Monitor block generation in production
+   - Verify the simulation runs correctly with the updated configuration.
+   - Ensure `BlockControllerAgent` continues to function as expected for weighted-random block generation.
+   - Update user guides and documentation to reflect the simplified architecture.
 
 2. **Code Fixes**:
-   - Update `config_v2.rs` to include mining configuration
-   - Fix `config_compat.rs` to properly convert mining settings
-   - Add integration tests for configuration parsing
+   - Ensure no regressions were introduced during the refactoring.
 
 ## Next Steps
 
 1. **Immediate**:
-   - Apply workaround to all agent simulations
-   - Update documentation with miners.json requirements
-   - Test with medium and large scale configurations
+   - Conduct comprehensive testing of the simplified agent-based simulation.
+   - Verify that `config_agents_small.yaml` is correctly parsed and used.
+   - Confirm that `src/shadow_agents.rs` generates the correct Shadow configuration.
 
 2. **Short-term**:
-   - Implement permanent fix in configuration system
-   - Add automated tests for miners.json generation
-   - Create migration guide for existing configs
+   - Extend testing to medium and large-scale configurations to ensure scalability.
+   - Develop new test cases specifically for the simplified architecture.
 
 3. **Medium-term**:
-   - Consider dynamic miner registration approach
-   - Implement more sophisticated mining strategies
+   - Explore further simplifications or enhancements to the agent framework based on simulation results.
+   - Consider adding new agent types if required by future research objectives.
 
 ## Technical Achievements
 
@@ -85,8 +89,5 @@ With the mining issue debugged and workaround implemented, focus shifts to perma
 - Maintained backward compatibility with manual intervention
 - Achieved clean separation of debugging and implementation concerns
 
-## Known Issues
-
-- **Configuration System Gap**: Mining section in YAML files is ignored
-  - **Workaround**: Manually create `/tmp/monerosim_shared/miners.json`
-  - **Permanent Fix**: Pending code changes to config system
+## Operational Context
+It is critical to remember that all Monerosim components, including Monero nodes, wallets, and all Python-based agents and test scripts, operate entirely within the Shadow network simulator. Any interactions or data exchanges occur within this simulated environment.

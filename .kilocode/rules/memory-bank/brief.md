@@ -17,3 +17,8 @@ monerosim - Configuration and build system - this is the new software we are cre
 Can modify build process and configuration generation
 Can enhance network topology generation
 Can add new simulation features and parameters
+
+## Simulation Environment
+All core Monerosim operations, including the execution of Monero daemons, wallets, and all Python test and agent scripts, run exclusively within the Shadow network simulator environment. This ensures a controlled, deterministic, and reproducible simulation.
+
+

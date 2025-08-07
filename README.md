@@ -45,8 +45,6 @@ monerosim/
 ├── agents/                   # Python agent framework
 │   ├── base_agent.py        # Base agent class
 │   ├── regular_user.py      # User agent implementation
-│   ├── marketplace.py       # Marketplace agent
-│   ├── mining_pool.py       # Mining pool agent
 │   ├── block_controller.py  # Mining orchestration
 │   └── monero_rpc.py        # RPC client library
 ├── scripts/                  # Python test and utility scripts
@@ -91,8 +89,6 @@ The agent-based simulation framework enables realistic cryptocurrency network mo
 
 ### Agent Types
 - **Regular Users**: Autonomous wallet holders sending transactions
-- **Marketplaces**: Services receiving and tracking payments
-- **Mining Pools**: Coordinated block generation participants
 - **Block Controller**: Orchestrates mining across pools
 
 ### Simulation Scales

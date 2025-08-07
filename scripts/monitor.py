@@ -412,7 +412,7 @@ def main():
         help="Alias for --refresh, sets refresh interval in seconds"
     )
     
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     
     # Handle interval alias
     if args.interval is not None:

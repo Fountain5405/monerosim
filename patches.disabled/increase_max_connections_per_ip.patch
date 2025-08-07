@@ -1,7 +1,0 @@
---- a/src/p2p/net_node.cpp
-+++ b/src/p2p/net_node.cpp
-@@ -172,7 +172,7 @@ namespace nodetool
-     };
-     const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip = {"max-connections-per-ip", "Maximum number of p2p connections allowed from the same IP address", 50};
- 
-     boost::optional<std::vector<proxy>> get_proxies(boost::program_options::variables_map const& vm)

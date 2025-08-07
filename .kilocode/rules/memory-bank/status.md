@@ -52,7 +52,7 @@ The agent framework enables realistic cryptocurrency network simulations with:
 
 1. **Multiple Agent Types**:
    - **Regular Users**: Autonomous wallet holders who send transactions
-   - **Block Controller**: Orchestrates mining across pools
+   - **Block Controller**: Orchestrates mining
 
 2. **Scalable Simulations**:
    - **Small**: 2-10 participants for development
@@ -73,7 +73,7 @@ The agent framework enables realistic cryptocurrency network simulations with:
 
 ### Agent Framework Testing Results
 
-- **Small-scale test completed**: 10 users, 2 marketplaces, 2 mining pools
+- **Small-scale test completed**: 10 users
 - **Agent initialization**: SUCCESS - All agents started correctly
 - **Wallet creation**: SUCCESS - All wallets created
 - **Shared state communication**: SUCCESS - Agents coordinated properly
