@@ -6,14 +6,16 @@ This comprehensive guide covers all Python scripts in the MoneroSim project, inc
 
 1. [Overview](#overview)
 2. [Environment Setup](#environment-setup)
-3. [Core Testing Scripts](#core-testing-scripts)
-4. [Monitoring Scripts](#monitoring-scripts)
-5. [Agent Framework](#agent-framework)
-6. [Supporting Modules](#supporting-modules)
-7. [Usage Examples](#usage-examples)
-8. [Testing and Quality Assurance](#testing-and-quality-assurance)
-9. [Migration from Bash](#migration-from-bash)
-10. [Best Practices](#best-practices)
+3. [Agent Discovery System](#agent-discovery-system)
+4. [Core Testing Scripts](#core-testing-scripts)
+5. [Monitoring Scripts](#monitoring-scripts)
+6. [Agent Framework](#agent-framework)
+7. [Supporting Modules](#supporting-modules)
+8. [Usage Examples](#usage-examples)
+9. [Testing and Quality Assurance](#testing-and-quality-assurance)
+10. [Migration from Bash](#migration-from-bash)
+11. [Migration from Legacy Network Configuration](#migration-from-legacy-network-configuration)
+12. [Best Practices](#best-practices)
 
 ## Overview
 
@@ -63,6 +65,25 @@ pylint>=2.6.0         # Code linter
 mypy>=0.790           # Type checker
 ```
 
+## Agent Discovery System
+
+MoneroSim now uses a dynamic agent discovery system that replaces the legacy hardcoded network configuration. The new system automatically discovers agents and their configurations from shared state files.
+
+### Key Components
+
+- **agent_discovery.py**: Core module for dynamic agent discovery
+- **Shared State Files**: JSON files in `/tmp/monerosim_shared/` that store agent information
+- **Agent Registry**: Central registry of all agents in the simulation
+
+### Benefits of Agent Discovery
+
+1. **Dynamic Configuration**: No hardcoded IP addresses or ports
+2. **Scalability**: Automatically adapts to different simulation sizes
+3. **Flexibility**: Supports different agent types and attributes
+4. **Maintainability**: Easier to modify and extend the system
+
+For detailed information about the agent discovery system, see [scripts/README_agent_discovery.md](scripts/README_agent_discovery.md).
+
 ## Core Testing Scripts
 
 ### simple_test.py
@@ -83,7 +104,7 @@ python3 scripts/simple_test.py
 ```
 
 **Configuration**:
-- Uses `network_config.py` for node addresses
+- Uses `agent_discovery.py` for dynamic agent discovery
 - Configurable timeouts and retry attempts
 - Supports custom RPC endpoints via environment variables
 
@@ -340,26 +361,44 @@ print(f"Balance: {balance['balance']}")
 
 ## Supporting Modules
 
-### network_config.py
+### agent_discovery.py
 
-**Purpose**: Centralized network configuration for all scripts.
+**Purpose**: Dynamic agent discovery system for all scripts.
 
-**Location**: `scripts/network_config.py`
+**Location**: `scripts/agent_discovery.py`
 
 **Features**:
-- Node IP addresses and ports
-- Wallet configurations
-- Network topology definition
-- Environment variable support
+- Discovers agents from shared state files
+- Provides agent information (IP, port, RPC URL)
+- Handles different agent types (miners, users, wallets)
+- Includes caching for performance
 
 **Usage**:
 ```python
-from network_config import NetworkConfig
+from agent_discovery import AgentDiscovery, AgentDiscoveryError
 
-config = NetworkConfig()
-daemon_url = config.get_daemon_url("A0")
-wallet_url = config.get_wallet_url("wallet1")
+# Create agent discovery instance
+ad = AgentDiscovery()
+
+# Get all agents
+registry = ad.get_agent_registry()
+print(f"Found {len(registry['agents'])} agents")
+
+# Get miner agents
+miners = ad.get_miner_agents()
+print(f"Found {len(miners)} miner agents")
+
+# Get wallet agents
+wallets = ad.get_wallet_agents()
+print(f"Found {len(wallets)} wallet agents")
+
+# Get agent by ID
+agent = ad.get_agent_by_id("user001")
+if agent:
+    print(f"Agent {agent['id']} found at {agent['ip_addr']}")
 ```
+
+For detailed API documentation, see [scripts/README_agent_discovery.md](scripts/README_agent_discovery.md).
 
 ### error_handling.py
 
@@ -478,7 +517,6 @@ mypy scripts/*.py agents/*.py
 | transaction_script.py | test_transaction_script.py | 97% |
 | test_p2p_connectivity.py | test_test_p2p_connectivity.py | 94% |
 | monitor.py | test_monitor.py | 92% |
-| network_config.py | test_network_config.py | 100% |
 | error_handling.py | test_error_handling.py | 99% |
 
 ## Migration from Bash
@@ -502,6 +540,51 @@ mypy scripts/*.py agents/*.py
 4. **Monitor Performance**: Compare results with legacy scripts
 5. **Remove Legacy References**: Update documentation and configurations
 
+## Migration from Legacy Network Configuration
+
+MoneroSim has migrated from the legacy hardcoded network configuration approach to the new `agent_discovery.py` system with dynamic discovery. This migration provides:
+
+1. **Dynamic Configuration**: No hardcoded IP addresses or ports
+2. **Better Scalability**: Automatically adapts to different simulation sizes
+3. **Improved Flexibility**: Supports different agent types and attributes
+4. **Enhanced Maintainability**: Easier to modify and extend the system
+
+### Migration Example
+
+**Legacy approach (hardcoded configuration)**:
+```python
+# Note: This approach has been removed and replaced with Agent Discovery
+# Legacy hardcoded network configuration approach has been removed from the project
+```
+
+**New approach (agent_discovery.py)**:
+```python
+from agent_discovery import AgentDiscovery, AgentDiscoveryError
+
+try:
+    ad = AgentDiscovery()
+    
+    # Get miner agents (dynamic)
+    miners = ad.get_miner_agents()
+    if miners:
+        print(f"Miner RPC URL: {miners[0]['daemon_rpc_url']}")
+    
+    # Get wallet agents (dynamic)
+    wallets = ad.get_wallet_agents()
+    if wallets:
+        print(f"Wallet RPC URL: {wallets[0]['wallet_rpc_url']}")
+except AgentDiscoveryError as e:
+    print(f"Agent discovery failed: {e}")
+```
+
+### Migration Steps
+
+1. **Replace Imports**: Change legacy hardcoded configuration imports to `from agent_discovery import ...`
+2. **Update Code Patterns**: Replace hardcoded node/wallet references with dynamic discovery
+3. **Add Error Handling**: Use try/except blocks to handle `AgentDiscoveryError`
+4. **Test Thoroughly**: Ensure all scripts work with the new discovery system
+5. **Update Documentation**: Reflect changes in all documentation files
+
 ## Best Practices
 
 ### Script Development
@@ -522,12 +605,17 @@ mypy scripts/*.py agents/*.py
        return None
    ```
 
-3. **Use Configuration Module**:
-   ```python
-   from network_config import NetworkConfig
-   config = NetworkConfig()
-   # Don't hardcode URLs
-   ```
+3. **Use Agent Discovery Module**:
+    ```python
+    from agent_discovery import AgentDiscovery, AgentDiscoveryError
+    try:
+        ad = AgentDiscovery()
+        agents = ad.get_miner_agents()
+        # Don't hardcode URLs, use dynamic discovery
+    except AgentDiscoveryError as e:
+        # Handle discovery errors
+        pass
+    ```
 
 4. **Add Logging**:
    ```python
@@ -581,7 +669,8 @@ mypy scripts/*.py agents/*.py
 
 2. **RPC Connection Failed**:
    - Check daemon is running
-   - Verify network configuration
+   - Verify agent discovery is working
+   - Check shared state files in `/tmp/monerosim_shared/`
    - Test with curl manually
 
 3. **Virtual Environment Issues**:
@@ -604,9 +693,11 @@ python3 scripts/simple_test.py
 ### Getting Help
 
 1. Check individual script documentation (README_*.md files)
-2. Review test files for usage examples
-3. Enable debug logging for detailed output
-4. Check Shadow simulation logs
+2. Review [scripts/README_agent_discovery.md](scripts/README_agent_discovery.md) for agent discovery information
+3. Review test files for usage examples
+4. Enable debug logging for detailed output
+5. Check Shadow simulation logs
+6. Verify shared state files in `/tmp/monerosim_shared/`
 
 ## Future Enhancements
 

@@ -18,6 +18,7 @@ The Monerosim architecture has evolved to use a unified agent model where:
 - **Better Resource Management**: More efficient allocation of simulation resources
 - **Enhanced Realism**: More accurate modeling of cryptocurrency network behavior
 - **Scalability**: Better support for large-scale simulations
+- **Dynamic Agent Discovery**: Agents can discover and interact with each other without hardcoded configurations using the Agent Discovery System
 
 ## Migration Steps
 
@@ -216,6 +217,58 @@ with open(agent_registry_file, 'r') as f:
     agent_registry_data = json.load(f)
 ```
 
+### 6. Migrate to Agent Discovery System
+
+The unified agent architecture is enhanced by the Agent Discovery System, which provides a dynamic mechanism for agents to discover and interact with each other without hardcoded configurations.
+
+#### Legacy Network Configuration (Deprecated)
+
+```python
+# Legacy approach using hardcoded network configurations
+# Note: This approach has been removed and replaced with Agent Discovery
+```
+
+#### New Agent Discovery System
+
+```python
+# New approach using dynamic agent discovery
+from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+
+try:
+    ad = AgentDiscovery()
+    
+    # Discover all wallet agents
+    wallet_agents = ad.get_wallet_agents()
+    if len(wallet_agents) < 2:
+        print("Need at least 2 wallet agents for transactions")
+        return
+    
+    # Discover miner agents
+    miner_agents = ad.get_miner_agents()
+    if not miner_agents:
+        print("No miners found - transactions may not be confirmed")
+    
+    # Discover block controllers
+    block_controllers = ad.get_block_controllers()
+    
+    # Use discovered agents
+    sender = wallet_agents[0]
+    receiver = wallet_agents[1]
+    print(f"Sending transaction from {sender['agent_id']} to {receiver['agent_id']}")
+    
+except AgentDiscoveryError as e:
+    print(f"Agent discovery error: {e}")
+```
+
+#### Benefits of Agent Discovery
+
+- **Dynamic Discovery**: Agents automatically discover each other without hardcoded configurations
+- **Flexibility**: Easy to add, remove, or modify agents without updating code
+- **Resilience**: Agents can handle changes in the network topology during runtime
+- **Simplified Code**: No need to manually manage network configurations in scripts
+
+For detailed information about the Agent Discovery System, see `scripts/README_agent_discovery.md`.
+
 ## Common Migration Challenges
 
 ### 1. Hashrate Distribution
@@ -296,3 +349,73 @@ After migrating your configuration, run the verification script to ensure everyt
 ## Backward Compatibility
 
 For backward compatibility, Monerosim still generates a `node_registry.json` file alongside the new `agent_registry.json`. However, this is deprecated and will be removed in a future version. Please update your scripts to use the new agent registry.
+
+## Migration to Agent Discovery System
+
+As part of the migration to the unified agent architecture, we recommend also migrating to the Agent Discovery System. This system provides a more flexible and dynamic approach to agent interactions:
+
+### Steps to Migrate to Agent Discovery
+
+1. **Replace Legacy Configuration Imports**:
+   ```python
+   # New
+   from scripts.agent_discovery import AgentDiscovery
+   ```
+
+2. **Update Agent Discovery Code**:
+   ```python
+   # New
+   ad = AgentDiscovery()
+   agents = ad.find_agents_by_type("user_agent")
+   ```
+
+3. **Handle Discovery Errors**:
+   ```python
+   from scripts.agent_discovery import AgentDiscoveryError
+   
+   try:
+       ad = AgentDiscovery()
+       agents = ad.get_wallet_agents()
+   except AgentDiscoveryError as e:
+       print(f"Discovery failed: {e}")
+   ```
+
+4. **Use Shared State Files**:
+   The Agent Discovery System automatically reads from shared state files in `/tmp/monerosim_shared/`:
+   - `agent_registry.json` - All registered agents
+   - `miners.json` - Mining agent information
+   - `wallets.json` - Wallet agent information
+   - `block_controller.json` - Block controller status
+
+### Example: Complete Migration
+
+```python
+# Legacy approach
+# Note: This approach has been removed and replaced with Agent Discovery
+def send_transaction_legacy():
+    # This code has been removed - see Agent Discovery approach below
+    pass
+
+# New approach with Agent Discovery
+from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+
+def send_transaction_new():
+    try:
+        ad = AgentDiscovery()
+        wallet_agents = ad.get_wallet_agents()
+        
+        if len(wallet_agents) < 2:
+            print("Insufficient wallet agents for transaction")
+            return
+            
+        sender = wallet_agents[0]
+        receiver = wallet_agents[1]
+        
+        # Send transaction logic...
+        print(f"Sending from {sender['agent_id']} to {receiver['agent_id']}")
+        
+    except AgentDiscoveryError as e:
+        print(f"Agent discovery error: {e}")
+```
+
+The Agent Discovery System provides a more robust and flexible approach to agent interactions in the unified agent architecture. For more details, see `scripts/README_agent_discovery.md`.

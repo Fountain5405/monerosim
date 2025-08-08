@@ -62,11 +62,13 @@ agents:
 
 ## Agent Configuration
 
+MoneroSim's configuration system works in conjunction with the [`agent_discovery.py`](scripts/agent_discovery.md) module to provide dynamic agent discovery during simulation. The YAML configuration defines the initial agent setup, while the agent discovery system enables agents to dynamically find and interact with each other during runtime.
+
 ### `agents.user_agents`
 
-**Type**: `array[UserAgent]`  
-**Required**: No  
-**Description**: A list of user agents to simulate.
+**Type**: `array[UserAgent]`
+**Required**: No
+**Description**: A list of user agents to simulate. These agents will be automatically registered with the agent discovery system at runtime.
 
 #### UserAgent Object
 
@@ -84,9 +86,9 @@ agents:
 
 ### `agents.block_controller`
 
-**Type**: `BlockController`  
-**Required**: No  
-**Description**: Configures the block controller agent.
+**Type**: `BlockController`
+**Required**: No
+**Description**: Configures the block controller agent. The block controller is automatically discoverable by other agents through the agent discovery system.
 
 #### BlockController Object
 
@@ -99,9 +101,9 @@ arguments: (optional)
 
 ### `agents.pure_script_agents`
 
-**Type**: `array[PureScriptAgent]`  
-**Required**: No  
-**Description**: Agents that run a simple script without a daemon or wallet.
+**Type**: `array[PureScriptAgent]`
+**Required**: No
+**Description**: Agents that run a simple script without a daemon or wallet. These agents can also be discovered by other agents through the agent discovery system.
 
 #### PureScriptAgent Object
 
@@ -109,6 +111,17 @@ arguments: (optional)
 - script: "scripts.monitor"
   arguments: [] (optional)
 ```
+
+## Agent Discovery Integration
+
+The configuration system integrates with the [`agent_discovery.py`](scripts/agent_discovery.md) module to provide dynamic agent discovery during simulation:
+
+- **Automatic Registration**: All agents defined in the configuration are automatically registered in the shared state files (`/tmp/monerosim_shared/agent_registry.json`)
+- **Dynamic Discovery**: Agents can discover each other at runtime using the `AgentDiscovery` class
+- **Agent Classification**: Agents are automatically classified by type (miners, users, wallets, block controllers)
+- **Shared State**: Agent information is stored in shared JSON files for coordination between agents
+
+For more details on using the agent discovery system, see [`scripts/README_agent_discovery.md`](scripts/README_agent_discovery.md).
 
 ## Complete Example
 

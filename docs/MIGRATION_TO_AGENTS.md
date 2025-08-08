@@ -6,6 +6,8 @@ This guide helps you understand the agent-based simulation framework in Monerosi
 
 Agent-based simulations represent a paradigm shift from simple node-to-node testing to complex, realistic network behavior modeling. Instead of manually scripting interactions between two nodes, agents autonomously make decisions and interact based on configurable behaviors.
 
+A key component of this approach is the **Agent Discovery System** (`scripts/agent_discovery.py`), which provides a dynamic mechanism for agents to discover and interact with each other without relying on hardcoded network configurations. This system reads agent information from shared state files in `/tmp/monerosim_shared/` and provides a clean API for agents to find and communicate with each other.
+
 ## Key Differences
 
 
@@ -54,6 +56,7 @@ Agent-based simulations represent a paradigm shift from simple node-to-node test
 4. **Attack Simulation**: Model various attack scenarios
 5. **Economic Modeling**: Study transaction patterns and fee markets
 6. **Research Platform**: Ideal for academic and protocol research
+7. **Dynamic Agent Discovery**: Agents can discover and interact with each other without hardcoded configurations, enabling more flexible and realistic simulations
 
 ## Configuration Differences
 
@@ -62,47 +65,40 @@ Agent-based simulations represent a paradigm shift from simple node-to-node test
 
 ```yaml
 general:
-  simulation_duration: 10800
-  
-# Regular Monero nodes
-nodes:
-  - name: node001
-    ip: 11.0.1.1
-    port: 18080
-    mining: false
-    
-  - name: node002
-    ip: 11.0.1.2
-    port: 18080
-    mining: false
-    
-# Agent definitions
+  stop_time: "3h"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"  # Network topology
+
 agents:
-  regular_users:
-    - name: user001
-      wallet_port: 28081
-      connected_node: node001
-      transaction_frequency: 60  # seconds
-      
-    - name: user002
-      wallet_port: 28082
-      connected_node: node002
-      transaction_frequency: 120
-      
-  marketplaces:
-    - name: marketplace001
-      wallet_port: 28090
-      connected_node: node001
-      
-  mining_pools:
-    - name: poolalpha
-      connected_node: node001
-      mining_threads: 1
-      
+  user_agents:
+    # Miner example
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"  # Required for miners
+      is_miner: true
+      attributes:
+        hashrate: "25"  # Percentage of total hashrate
+    
+    # Regular user example
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+
   block_controller:
-    name: controller
-    target_block_time: 120  # seconds
+    script: "agents.block_controller"
+    
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"
 ```
+
+This configuration uses the unified agent architecture where all network participants are defined as agents. The Agent Discovery System automatically registers these agents and makes them discoverable to each other through shared state files.
 
 ## Migration Steps
 
@@ -157,15 +153,23 @@ Agent simulations create shared state files for monitoring:
 # Monitor agent status
 ls /tmp/monerosim_shared/
 
-# View active users
-cat /tmp/monerosim_shared/users.json
+# View all registered agents
+cat /tmp/monerosim_shared/agent_registry.json
 
-# Check marketplace payments
-cat /tmp/monerosim_shared/marketplace_payments.json
+# View miner information
+cat /tmp/monerosim_shared/miners.json
 
-# Monitor mining coordination
-cat /tmp/monerosim_shared/mining_signals/poolalpha.json
+# Check wallet information
+cat /tmp/monerosim_shared/wallets.json
+
+# Monitor block controller status
+cat /tmp/monerosim_shared/block_controller.json
+
+# View transaction logs
+cat /tmp/monerosim_shared/transactions.json
 ```
+
+The Agent Discovery System uses these shared state files to provide agents with up-to-date information about other agents in the simulation.
 
 ## Example: Small Scale Simulation
 
@@ -176,11 +180,12 @@ cat config_agents_small.yaml
 ```
 
 This shows:
-- 10 Monero nodes
-- 10 regular users (each with own wallet)
-- 2 marketplaces
-- 2 mining pools
-- 1 block controller
+- Multiple user agents (some with mining capabilities)
+- A block controller for coordinating mining
+- Monitoring and sync check scripts
+- Network topology configuration
+
+The Agent Discovery System will automatically discover all these components and make them available to each other through the shared state files.
 
 ### 2. Generate Shadow Configuration
 
@@ -213,64 +218,86 @@ tail -f shadow.data/hosts/poolalpha/poolalpha.stdout
 
 ```yaml
 general:
-  simulation_duration: 7200  # 2 hours
-  
-nodes:
-  # Define Monero nodes (non-mining)
-  - name: node001
-    ip: 11.0.1.1
-    port: 18080
-    mining: false
-    
+  stop_time: "2h"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+
 agents:
-  # Define different agent types
-  regular_users:
-    - name: alice
-      wallet_port: 28081
-      connected_node: node001
-      transaction_frequency: 300  # Every 5 minutes
-      transaction_amount: 0.1
-      
-  marketplaces:
-    - name: shop001
-      wallet_port: 28090
-      connected_node: node001
-      
-  mining_pools:
-    - name: pool001
-      connected_node: node001
-      mining_threads: 2
+  user_agents:
+    # Regular user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "300"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "0.1"
+    
+    # Miner
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "100"  # 100% of hashrate
+
+  block_controller:
+    script: "agents.block_controller"
+    
+  pure_script_agents:
+    - script: "scripts.monitor"
 ```
+
+This configuration uses the Agent Discovery System to automatically discover and connect agents. No hardcoded IP addresses or ports are needed.
 
 ### Advanced Configuration
 
 ```yaml
 agents:
-  regular_users:
-    - name: power_user
-      wallet_port: 28081
-      connected_node: node001
-      transaction_frequency: 30  # Very active
-      transaction_amount: 1.0
-      preferred_marketplaces: ["premium_shop"]
-      
-    - name: casual_user
-      wallet_port: 28082
-      connected_node: node002
-      transaction_frequency: 3600  # Once per hour
-      transaction_amount: 0.01
-      
-  marketplaces:
-    - name: premium_shop
-      wallet_port: 28090
-      connected_node: node001
-      fee_percentage: 2.5
-      
-    - name: budget_shop
-      wallet_port: 28091
-      connected_node: node002
-      fee_percentage: 1.0
+  user_agents:
+    # Power user with high transaction frequency
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "30"  # Very active
+        min_transaction_amount: "1.0"
+        max_transaction_amount: "1.0"
+        
+    # Casual user with low transaction frequency
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "3600"  # Once per hour
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.01"
+    
+    # Large mining pool
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "60"  # 60% of network hashrate
+        
+    # Small mining pool
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "40"  # 40% of network hashrate
+
+  block_controller:
+    script: "agents.block_controller"
+    
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"
 ```
+
+The Agent Discovery System automatically manages the discovery and interaction between all these agents, making it easy to create complex simulations with many different types of participants.
 
 ## Troubleshooting Agent Simulations
 
@@ -316,31 +343,55 @@ agents:
 ### Debugging Techniques
 
 1. **Check Shared State**:
-   ```bash
-   # Monitor all shared state files
-   watch -n 1 'ls -la /tmp/monerosim_shared/'
-   
-   # View specific agent state
-   cat /tmp/monerosim_shared/user001_stats.json
-   ```
+    ```bash
+    # Monitor all shared state files
+    watch -n 1 'ls -la /tmp/monerosim_shared/'
+    
+    # View agent registry
+    cat /tmp/monerosim_shared/agent_registry.json
+    
+    # View miner information
+    cat /tmp/monerosim_shared/miners.json
+    
+    # View wallet information
+    cat /tmp/monerosim_shared/wallets.json
+    
+    # View block controller status
+    cat /tmp/monerosim_shared/block_controller.json
+    
+    # View transaction logs
+    cat /tmp/monerosim_shared/transactions.json
+    ```
 
-2. **Agent Logs**:
-   ```bash
-   # View all agent logs
-   find shadow.data/hosts -name "*.stdout" -exec tail -f {} +
-   
-   # Filter for errors
-   grep -r "ERROR" shadow.data/hosts/
-   ```
+2. **Agent Discovery Debugging**:
+    ```bash
+    # Test agent discovery from Python
+    python3 -c "
+    from scripts.agent_discovery import AgentDiscovery
+    ad = AgentDiscovery()
+    print('Agent Registry:', ad.get_agent_registry())
+    print('Miners:', ad.get_miner_agents())
+    print('Wallets:', ad.get_wallet_agents())
+    "
+    ```
 
-3. **Network Analysis**:
-   ```bash
-   # Check P2P connections
-   grep "Incoming connection" shadow.data/hosts/*/monerod*.stdout
-   
-   # Monitor transaction flow
-   grep "transaction received" shadow.data/hosts/*/monerod*.stdout
-   ```
+3. **Agent Logs**:
+    ```bash
+    # View all agent logs
+    find shadow.data/hosts -name "*.stdout" -exec tail -f {} +
+    
+    # Filter for errors
+    grep -r "ERROR" shadow.data/hosts/
+    ```
+
+4. **Network Analysis**:
+    ```bash
+    # Check P2P connections
+    grep "Incoming connection" shadow.data/hosts/*/monerod*.stdout
+    
+    # Monitor transaction flow
+    grep "transaction received" shadow.data/hosts/*/monerod*.stdout
+    ```
 
 ## Performance Considerations
 
@@ -382,6 +433,8 @@ agents:
 3. **Incremental Scaling**: Gradually increase scale to find optimal performance
 4. **Document Behaviors**: Record observed agent interactions for analysis
 5. **Version Control**: Track agent configuration changes in git
+6. **Use Agent Discovery**: Leverage the Agent Discovery System for dynamic agent interactions instead of hardcoded configurations
+7. **Monitor Shared State**: Regularly check shared state files to understand agent interactions and system status
 
 ## Example Use Cases
 
@@ -390,48 +443,103 @@ agents:
 ```yaml
 # Simulate different user types
 agents:
-  regular_users:
+  user_agents:
     # Day trader - frequent small transactions
-    - name: trader001
-      transaction_frequency: 60
-      transaction_amount: 0.01
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.01"
       
-    # Investor - infrequent large transactions  
-    - name: investor001
-      transaction_frequency: 3600
-      transaction_amount: 10.0
+    # Investor - infrequent large transactions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "3600"
+        min_transaction_amount: "10.0"
+        max_transaction_amount: "10.0"
+    
+    # Miner to support transactions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "100"
 ```
 
-### 2. Marketplace Competition
-
-```yaml
-# Multiple marketplaces with different characteristics
-agents:
-  marketplaces:
-    - name: fast_shop
-      confirmation_requirement: 1
-      
-    - name: secure_shop
-      confirmation_requirement: 10
-```
-
-### 3. Mining Pool Dynamics
+### 2. Mining Pool Dynamics
 
 ```yaml
 # Competing mining pools
 agents:
-  mining_pools:
-    - name: big_pool
-      mining_threads: 4
-      fee_percentage: 1.0
+  user_agents:
+    # Large mining pool
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "70"  # 70% of network hashrate
       
-    - name: small_pool
-      mining_threads: 1
-      fee_percentage: 0.5
+    # Small mining pool
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "30"  # 30% of network hashrate
+    
+    # Regular users to create transactions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "120"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+
+  block_controller:
+    script: "agents.block_controller"
+```
+
+### 3. Using Agent Discovery in Custom Scripts
+
+```python
+# Example of using Agent Discovery in a custom script
+from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+
+def custom_transaction_script():
+    try:
+        # Initialize agent discovery
+        ad = AgentDiscovery()
+        
+        # Discover wallet agents
+        wallet_agents = ad.get_wallet_agents()
+        if len(wallet_agents) < 2:
+            print("Need at least 2 wallet agents for transactions")
+            return
+        
+        # Discover miner agents
+        miner_agents = ad.get_miner_agents()
+        if not miner_agents:
+            print("No miners found - transactions may not be confirmed")
+        
+        # Use discovered agents for transactions
+        sender = wallet_agents[0]
+        receiver = wallet_agents[1]
+        
+        print(f"Sending transaction from {sender['agent_id']} to {receiver['agent_id']}")
+        # Transaction logic here...
+        
+    except AgentDiscoveryError as e:
+        print(f"Agent discovery error: {e}")
 ```
 
 ## Conclusion
 
-Agent-based simulations represent a significant advancement in cryptocurrency network testing. They provide invaluable insights into network behavior, scalability, and emergent properties. Start with small-scale simulations to familiarize yourself with the framework, then gradually scale up as needed for your research or testing requirements.
+Agent-based simulations represent a significant advancement in cryptocurrency network testing. They provide invaluable insights into network behavior, scalability, and emergent properties. The Agent Discovery System further enhances this approach by providing a dynamic, flexible mechanism for agents to discover and interact with each other without relying on hardcoded configurations.
 
-The agent framework is actively being developed, and feedback is welcome. For the latest updates and known issues, check the `docs/AGENT_FRAMEWORK.md` documentation.
+Start with small-scale simulations to familiarize yourself with the framework, then gradually scale up as needed for your research or testing requirements. The Agent Discovery System makes it easy to create complex, realistic simulations with many different types of participants.
+
+The agent framework is actively being developed, and feedback is welcome. For the latest updates and known issues, check the `docs/AGENT_FRAMEWORK.md` documentation. For detailed information about the Agent Discovery System, see `scripts/README_agent_discovery.md`.

@@ -42,6 +42,57 @@ ls shadow.data/hosts/*/regular_user*.stdout
 
 ## Common Issues and Solutions
 
+### Agent Discovery Issues
+
+#### Issue: Agent Discovery System fails to find agents
+
+**Possible Causes**:
+1. Shared state files not created
+2. Agent registration failed
+3. File permission issues with shared state directory
+
+**Solutions**:
+1. Verify shared state directory and files:
+   ```bash
+   # Check if directory exists
+   ls -la /tmp/monerosim_shared/
+   
+   # Create if missing
+   mkdir -p /tmp/monerosim_shared
+   
+   # Set proper permissions
+   chmod 755 /tmp/monerosim_shared/
+   ```
+
+2. Check agent registration in logs:
+   ```bash
+   # Look for agent registration messages
+   grep "agent.*register" shadow.data/hosts/*/bash.*.stdout
+   
+   # Check for errors in agent initialization
+   grep "ERROR.*agent" shadow.data/hosts/*/bash.*.stdout
+   ```
+
+3. Test Agent Discovery manually:
+   ```python
+   # Manual test of Agent Discovery
+   from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+   
+   try:
+       ad = AgentDiscovery()
+       stats = ad.get_registry_stats()
+       print(f"Registry stats: {stats}")
+       
+       # Try to find specific agent types
+       miners = ad.get_miner_agents()
+       wallets = ad.get_wallet_agents()
+       controllers = ad.get_block_controllers()
+       
+       print(f"Miners: {len(miners)}, Wallets: {len(wallets)}, Controllers: {len(controllers)}")
+   except AgentDiscoveryError as e:
+       print(f"Agent discovery failed: {e}")
+   ```
+
 ### 1. Setup and Installation Issues
 
 #### "Shadow not found" Error
@@ -486,7 +537,144 @@ general:
    ln -s /path/to/ssd/shadow.data shadow.data
    ```
 
-### 6. Network and Connectivity Issues
+### 6. Agent Discovery Issues
+
+#### Agent Discovery System Not Working
+
+**Symptoms**:
+```
+[ERROR] Failed to discover agents
+[ERROR] AgentDiscoveryError: No agents found
+```
+
+**Solutions**:
+1. **Check shared state files**:
+   ```bash
+   # Verify shared state directory exists
+   ls -la /tmp/monerosim_shared/
+   
+   # Check for required files
+   ls -la /tmp/monerosim_shared/{agent_registry,miners,wallets,block_controller}.json
+   ```
+
+2. **Verify agent registration**:
+   ```bash
+   # Check if agents are registering
+   tail -f /tmp/monerosim_shared/agent_registry.json
+   
+   # Monitor agent activity
+   watch -n 1 'ls -la /tmp/monerosim_shared/*.json'
+   ```
+
+3. **Test Agent Discovery manually**:
+   ```python
+   # Test Agent Discovery System
+   from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+   
+   try:
+       ad = AgentDiscovery()
+       agents = ad.get_agent_registry()
+       print(f"Found {len(agents)} agents")
+       
+       miners = ad.get_miner_agents()
+       print(f"Found {len(miners)} miners")
+       
+       wallets = ad.get_wallet_agents()
+       print(f"Found {len(wallets)} wallets")
+   except AgentDiscoveryError as e:
+       print(f"Agent discovery error: {e}")
+   ```
+
+#### Shared State File Corruption
+
+**Symptoms**:
+```
+[ERROR] Failed to parse shared state file
+[ERROR] JSON decode error
+```
+
+**Solutions**:
+1. **Check file integrity**:
+   ```bash
+   # Validate JSON syntax
+   python3 -c "import json; json.load(open('/tmp/monerosim_shared/agent_registry.json'))"
+   
+   # Check file permissions
+   ls -la /tmp/monerosim_shared/
+   ```
+
+2. **Clear and regenerate**:
+   ```bash
+   # Clear shared state
+   rm -rf /tmp/monerosim_shared/
+   mkdir -p /tmp/monerosim_shared
+   
+   # Restart simulation
+   shadow shadow_agents_output/shadow_agents.yaml
+   ```
+
+3. **Monitor file creation**:
+   ```bash
+   # Watch for file creation during simulation
+   inotifywait -m /tmp/monerosim_shared/ -e create
+   ```
+
+#### Agent Discovery Performance Issues
+
+**Symptoms**:
+```
+[WARNING] Agent discovery taking too long
+[ERROR] Timeout during agent discovery
+```
+
+**Solutions**:
+1. **Optimize shared state storage**:
+   ```bash
+   # Use tmpfs for better performance
+   sudo mount -t tmpfs -o size=1G tmpfs /tmp/monerosim_shared
+   
+   # Or use SSD storage
+   ln -s /path/to/ssd/monerosim_shared /tmp/monerosim_shared
+   ```
+
+2. **Check cache effectiveness**:
+   ```python
+   # Monitor Agent Discovery cache
+   from scripts.agent_discovery import AgentDiscovery
+   
+   ad = AgentDiscovery()
+   
+   # First call (reads from disk)
+   agents1 = ad.get_agent_registry()
+   
+   # Second call (uses cache)
+   agents2 = ad.get_agent_registry()
+   
+   # Force cache refresh
+   ad.refresh_cache()
+   agents3 = ad.get_agent_registry()
+   ```
+
+3. **Reduce agent discovery frequency**:
+   ```python
+   # Cache agent information instead of repeated discovery
+   class OptimizedAgent(BaseAgent):
+       def __init__(self):
+           super().__init__()
+           self.agent_discovery = AgentDiscovery()
+           self.cached_agents = None
+           self.last_discovery = 0
+       
+       def get_agents(self):
+           # Only rediscover every 30 seconds
+           current_time = time.time()
+           if self.cached_agents is None or current_time - self.last_discovery > 30:
+               self.cached_agents = self.agent_discovery.get_agent_registry()
+               self.last_discovery = current_time
+           return self.cached_agents
+   ```
+
+### 7. Network and Connectivity Issues
 
 #### IP Address Conflicts
 
@@ -717,10 +905,57 @@ python3 scripts/test_p2p_connectivity.py
 python3 scripts/monitor.py --refresh 10
 ```
 
+### Agent Discovery Commands
+
+```bash
+# Test agent discovery system
+python3 -c "
+from scripts.agent_discovery import AgentDiscovery
+ad = AgentDiscovery()
+print(f'Total agents: {len(ad.get_agent_registry())}')
+print(f'Miners: {len(ad.get_miner_agents())}')
+print(f'Wallets: {len(ad.get_wallet_agents())}')
+print(f'Block controllers: {len(ad.get_block_controllers())}')
+"
+
+# Monitor shared state files
+watch -n 1 'ls -la /tmp/monerosim_shared/*.json'
+tail -f /tmp/monerosim_shared/agent_registry.json
+
+# Test agent discovery with error handling
+python3 -c "
+from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+try:
+    ad = AgentDiscovery()
+    wallet_agents = ad.get_wallet_agents()
+    print(f'Found {len(wallet_agents)} wallet agents')
+    if len(wallet_agents) < 2:
+        print('Script would exit with insufficient wallet agents (expected behavior)')
+    else:
+        print('Script would proceed with transaction')
+except AgentDiscoveryError as e:
+    print(f'AgentDiscoveryError: {e}')
+except Exception as e:
+    print(f'Unexpected error: {e}')
+"
+For more details on the Agent Discovery System, see [`scripts/README_agent_discovery.md`](scripts/README_agent_discovery.md).
+```
+
 ### Agent Commands
 
 ```bash
 # Run individual agents for testing
 python3 agents/regular_user.py --name user001 --daemon-url http://11.0.0.1:18081
 
+# Test agent with discovery integration
+python3 -c "
+from agents.regular_user import RegularUser
+from scripts.agent_discovery import AgentDiscovery
+
+# Create agent with automatic discovery
+agent = RegularUser('test_user')
+agent.setup()
+agent.run()
+agent.cleanup()
+"
 ```

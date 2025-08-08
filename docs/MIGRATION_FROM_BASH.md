@@ -168,18 +168,41 @@ python -m pdb scripts/simple_test.py
 
 **Old (Bash):**
 ```bash
-# Edit network_config.sh directly
-vim legacy_scripts/network_config.sh
+# Edit hardcoded network configuration directly
+# Note: This approach has been removed and replaced with Agent Discovery
+# vim legacy_scripts/network_config.sh
 ```
 
 **New (Python):**
 ```python
-# Use network_config module programmatically
-from network_config import NetworkConfig
+# Use agent_discovery module for dynamic agent discovery
+from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
 
-config = NetworkConfig()
-config.set_custom_host("A2", "11.0.0.3", 18083, 28083)
+try:
+    # Initialize agent discovery
+    ad = AgentDiscovery()
+    
+    # Discover available agents dynamically
+    wallet_agents = ad.get_wallet_agents()
+    miner_agents = ad.get_miner_agents()
+    block_controllers = ad.get_block_controllers()
+    
+    # Get specific agent by ID
+    specific_agent = ad.get_agent_by_id("agent_id")
+    
+    # Find agents by type
+    user_agents = ad.find_agents_by_type("user")
+    
+    # Refresh cache if needed
+    ad.refresh_cache()
+    
+except AgentDiscoveryError as e:
+    print(f"Agent discovery failed: {e}")
 ```
+
+For more details on using the agent discovery system, see [`scripts/README_agent_discovery.md`](scripts/README_agent_discovery.md).
+
+**Note:** The legacy hardcoded network configuration approach has been completely removed in favor of the dynamic agent discovery system. All network configuration is now handled automatically at runtime.
 
 ## Migration Steps
 
@@ -249,7 +272,7 @@ Update any internal documentation or runbooks to reference the Python scripts.
 
 - Legacy bash scripts remain available in `legacy_scripts/` directory
 - Both implementations produce compatible output formats
-- Network configuration remains the same
+- Network configuration is now handled dynamically through agent discovery
 - No changes to Shadow or Monero configuration required
 
 ## Troubleshooting

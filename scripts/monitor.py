@@ -12,6 +12,8 @@ information about:
 - System resource usage
 
 This is a Python implementation that replaces the monitor_script.sh functionality.
+It uses dynamic agent discovery to automatically find and monitor all agents
+in the simulation without requiring hardcoded configurations.
 """
 
 import sys
@@ -21,24 +23,26 @@ import json
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 
+# Dynamic Agent Discovery
+# This script uses the AgentDiscovery class to automatically find and monitor
+# all agents in the simulation without requiring hardcoded configurations.
+# The discovery system reads agent information from the shared state directory
+# (/tmp/monerosim_shared/) where agent registry files are stored.
+
 # Handle imports for both direct execution and module import
 try:
+    from .error_handling import (
+        log_info, log_warning, log_error, log_critical, log_success,
+        call_daemon_with_retry, verify_daemon_ready, handle_exit
+    )
+    from .agent_discovery import AgentDiscovery
+except ImportError:
+    # Fallback for when running as a script directly
     from error_handling import (
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_daemon_ready, handle_exit
     )
-    from network_config import (
-        get_agent_registry, get_daemon_config
-    )
-except ImportError:
-    sys.path.append('..')
-    from scripts.error_handling import (
-        log_info, log_warning, log_error, log_critical, log_success,
-        call_daemon_with_retry, verify_daemon_ready, handle_exit
-    )
-    from scripts.network_config import (
-        A0_RPC, A1_RPC, get_daemon_config
-    )
+    from agent_discovery import AgentDiscovery
 
 # Component name for logging
 COMPONENT = "MONITOR"
@@ -351,14 +355,14 @@ def monitor_loop(agents: List[AgentStatus], refresh_interval: int,
 def main():
     """Main function for monitor script."""
     parser = argparse.ArgumentParser(
-        description="Monitor Monero agents in Shadow simulation"
+        description="Monitor Monero agents in Shadow simulation using dynamic agent discovery"
     )
     
     # Add command line arguments
     parser.add_argument(
         "--agents",
         nargs="+",
-        help="List of agents to monitor (format: name=url)",
+        help="List of agents to monitor (format: name=url). If not specified, agents will be discovered automatically.",
         default=None
     )
     # For backward compatibility
@@ -440,28 +444,64 @@ def main():
                 log_error(COMPONENT, "Use format: name=url")
                 handle_exit(1, COMPONENT, "Invalid agent specification")
     else:
-        # Default agents from registry
-        registry = get_agent_registry()
-        for agent in registry.get("agents", []):
-            # Handle both formats for backward compatibility
-            agent_id = agent.get("agent_id") or agent.get("id")
-            ip_addr = agent.get("ip_addr")
-            rpc_port = agent.get("agent_rpc_port") or agent.get("node_rpc_port")
+        # Default agents from dynamic discovery
+        try:
+            discovery = AgentDiscovery()
+            registry = discovery.get_agent_registry()
             
-            if agent_id and ip_addr and rpc_port:
-                agents.append(AgentStatus(agent_id, f"http://{ip_addr}:{rpc_port}/json_rpc"))
+            # Get all agents from the registry
+            agents_data = registry.get("agents", [])
+            
+            # Handle both list and dictionary formats
+            if isinstance(agents_data, list):
+                for agent_data in agents_data:
+                    # Handle both formats for backward compatibility
+                    agent_id = agent_data.get("agent_id") or agent_data.get("id")
+                    ip_addr = agent_data.get("ip_addr")
+                    rpc_port = agent_data.get("agent_rpc_port") or agent_data.get("node_rpc_port")
+                    
+                    if agent_id and ip_addr and rpc_port:
+                        agents.append(AgentStatus(agent_id, f"http://{ip_addr}:{rpc_port}/json_rpc"))
+            elif isinstance(agents_data, dict):
+                for agent_id, agent_data in agents_data.items():
+                    ip_addr = agent_data.get("ip_addr")
+                    rpc_port = agent_data.get("agent_rpc_port") or agent_data.get("node_rpc_port")
+                    
+                    if ip_addr and rpc_port:
+                        agents.append(AgentStatus(agent_id, f"http://{ip_addr}:{rpc_port}/json_rpc"))
+            
+            if not agents:
+                log_warning(COMPONENT, "No agents found in registry. The simulation may not be running.")
+                log_info(COMPONENT, "Use --agents parameter to specify agents manually.")
+                
+        except Exception as e:
+            log_error(COMPONENT, f"Failed to discover agents: {e}")
+            log_info(COMPONENT, "Use --agents parameter to specify agents manually.")
     
     log_info(COMPONENT, f"Monitoring {len(agents)} agents")
     
+    # If no agents were discovered and none were specified manually, exit with error
+    if not agents:
+        log_error(COMPONENT, "No agents to monitor")
+        log_info(COMPONENT, "Please specify agents with --agents parameter or ensure the simulation is running")
+        handle_exit(1, COMPONENT, "No agents to monitor")
+    
     # Verify all agents are reachable
     all_ready = True
+    unreachable_agents = []
+    
     for agent in agents:
         if not verify_daemon_ready(agent.url, agent.name, args.max_attempts,
                                   args.retry_delay, COMPONENT):
             log_error(COMPONENT, f"Agent {agent.name} is not ready")
+            unreachable_agents.append(agent.name)
             all_ready = False
     
     if not all_ready:
+        log_error(COMPONENT, f"Unreachable agents: {', '.join(unreachable_agents)}")
+        if len(unreachable_agents) == len(agents):
+            log_error(COMPONENT, "All agents are unreachable. The simulation may not be running.")
+            log_info(COMPONENT, "Please check if the Shadow simulation is active and agents are properly configured.")
         handle_exit(1, COMPONENT, "Not all agents are ready")
     
     if args.once:

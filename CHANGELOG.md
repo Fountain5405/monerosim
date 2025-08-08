@@ -7,18 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Dynamic Agent Discovery System for runtime agent discovery through shared state files
+- Agent Discovery module (scripts/agent_discovery.py) with comprehensive API for finding agents
+- Support for agent registry, miners, wallets, and block controllers discovery
+- Performance-optimized agent discovery with 5-second TTL cache
+- Type-based and attribute-based agent filtering capabilities
+- Comprehensive documentation for Agent Discovery System (scripts/README_agent_discovery.md)
+
 ### Changed
 - Updated all documentation to reflect Python as the primary implementation language
 - Reorganized project structure with Python-first approach on main branch
 - Cleaned up root directory structure for better organization
+- Replaced hardcoded network configuration with dynamic agent discovery
+- Updated all Python scripts to use Agent Discovery System instead of hardcoded configuration
+- Removed hardcoded network configuration approach completely as it's no longer needed
+- Enhanced agent framework with dynamic discovery capabilities
+- Improved simulation scalability with dynamic agent registration
 
 ### Removed
 - Removed outdated documentation files that referenced bash scripts as primary
 - Removed redundant configuration examples from root directory
+- Removed hardcoded network configuration approach in favor of dynamic agent discovery system
 
 ### Fixed
 - Fixed documentation inconsistencies between Python and bash script references
 - Corrected file path references throughout the codebase
+- Resolved issues with hardcoded network configurations in agent interactions
 
 ## [1.2.0] - 2025-01-28
 
@@ -51,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite with 95%+ code coverage
 - Python modules for common functionality:
   - error_handling.py: Centralized error handling and logging utilities
-  - network_config.py: Network configuration management
+  - agent_discovery.py: Dynamic agent discovery system
 - Python virtual environment at `/home/lever65/monerosim_dev/monerosim/venv`
 - Enhanced transaction_script.py with improved error handling and retry logic
 - Detailed migration documentation and script-specific READMEs

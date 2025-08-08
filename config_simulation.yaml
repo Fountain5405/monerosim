@@ -1,9 +1,9 @@
-# Custom configuration for 5 miners with specific hashrate distribution
-# Simulation duration: 3 hours (10800 seconds)
+# Configuration for 5 miners and 5 regular users
+# Simulation duration: 1 hour
 # Hashrate distribution: 25%, 25%, 20%, 20%, 10%
 
 general:
-  stop_time: "3h"  # 3 hours (10800 seconds)
+  stop_time: "1h"
   fresh_blockchain: true
   log_level: info
 
@@ -15,39 +15,39 @@ agents:
     # Miner 1 - 25% hashrate
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      is_miner: true
       attributes:
-        is_miner: "true"
         hashrate: "25"
-    
+
     # Miner 2 - 25% hashrate
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      is_miner: true
       attributes:
-        is_miner: "true"
         hashrate: "25"
-    
+
     # Miner 3 - 20% hashrate
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      is_miner: true
       attributes:
-        is_miner: "true"
         hashrate: "20"
-    
+
     # Miner 4 - 20% hashrate
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      is_miner: true
       attributes:
-        is_miner: "true"
         hashrate: "20"
-    
+
     # Miner 5 - 10% hashrate
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      is_miner: true
       attributes:
-        is_miner: "true"
         hashrate: "10"
-    
-    # Regular user for transaction testing
+
+    # Regular User 1
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       user_script: "agents.regular_user"
@@ -55,8 +55,35 @@ agents:
         transaction_interval: "60"
         min_transaction_amount: "0.5"
         max_transaction_amount: "2.0"
-    
-    # Another regular user for transaction testing
+
+    # Regular User 2
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+
+    # Regular User 3
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+
+    # Regular User 4
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+
+    # Regular User 5
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       user_script: "agents.regular_user"
@@ -67,7 +94,7 @@ agents:
 
   block_controller:
     script: "agents.block_controller"
-    
+
   pure_script_agents:
     - script: "scripts.monitor"
     - script: "scripts.sync_check"

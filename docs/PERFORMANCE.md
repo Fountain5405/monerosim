@@ -514,6 +514,37 @@ hosts:
 
 ### 4. Agent-Specific Optimizations
 
+#### Agent Discovery System Optimization
+
+The new Agent Discovery System (`scripts/agent_discovery.py`) provides significant performance improvements over the legacy hardcoded configuration approach:
+
+```python
+# Use Agent Discovery for efficient agent lookup
+from scripts.agent_discovery import AgentDiscovery
+
+class OptimizedAgent(BaseAgent):
+    def __init__(self):
+        super().__init__()
+        # Initialize agent discovery with caching
+        self.agent_discovery = AgentDiscovery()
+    
+    def find_wallet_agents(self):
+        # Efficient discovery with caching (5-second TTL)
+        wallet_agents = self.agent_discovery.get_wallet_agents()
+        return wallet_agents
+    
+    def find_miner_agents(self):
+        # Dynamic miner discovery
+        miner_agents = self.agent_discovery.get_miner_agents()
+        return miner_agents
+```
+
+Benefits of Agent Discovery System:
+- **Dynamic Discovery**: Agents are discovered at runtime from shared state files
+- **Caching**: 5-second TTL cache reduces file I/O operations
+- **Error Handling**: Robust error handling for missing or corrupted files
+- **Scalability**: Efficient lookup algorithms scale with agent count
+
 #### Shared State Optimization
 
 ```bash
@@ -525,12 +556,19 @@ sudo mount -t tmpfs -o size=1G tmpfs /tmp/monerosim_shared
 ln -s /local/ssd/monerosim_shared /tmp/monerosim_shared
 ```
 
+The Agent Discovery System reads from these shared state files:
+- `agent_registry.json`: All registered agents
+- `miners.json`: Mining agents with hashrate information
+- `wallets.json`: Wallet agents with addresses
+- `block_controller.json`: Block controller status
+
 #### Agent Startup Optimization
 
 ```python
 # In agent code, implement staggered startup
 import time
 import random
+from scripts.agent_discovery import AgentDiscovery
 
 class OptimizedAgent(BaseAgent):
     def __init__(self):
@@ -538,14 +576,26 @@ class OptimizedAgent(BaseAgent):
         startup_delay = random.uniform(0, 30)
         time.sleep(startup_delay)
         super().__init__()
+        
+        # Initialize agent discovery after startup delay
+        self.agent_discovery = AgentDiscovery()
 ```
 
 #### Transaction Batching
 
 ```python
 # Batch multiple transactions to reduce overhead
+from scripts.agent_discovery import AgentDiscovery
+
 class BatchedUser(RegularUser):
+    def __init__(self):
+        super().__init__()
+        self.agent_discovery = AgentDiscovery()
+    
     def send_transactions(self):
+        # Discover wallet agents dynamically
+        wallet_agents = self.agent_discovery.get_wallet_agents()
+        
         transactions = []
         for _ in range(5):  # Batch 5 transactions
             tx = self.create_transaction()
@@ -558,12 +608,17 @@ class BatchedUser(RegularUser):
 #### Mining Pool Optimization
 
 ```yaml
-# Optimize mining pool configuration
-mining_pools:
-  - count: 3
-    mining_threads: 4  # Match CPU cores
-    signal_check_interval: 10  # Reduce polling frequency
-    block_generation_timeout: 300  # Longer timeout for stability
+# Optimize mining pool configuration using unified agent architecture
+agents:
+  user_agents:
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "25"  # Percentage of total hashrate
+        mining_threads: 4  # Match CPU cores
+        signal_check_interval: 10  # Reduce polling frequency
+        block_generation_timeout: 300  # Longer timeout for stability
 ```
 
 ### 2. Hardware-Specific Optimizations
@@ -649,30 +704,43 @@ network:
    - Use smaller agent counts initially
    - Monitor shared state file sizes
    - Consider agent type distribution
+   - Use the Agent Discovery System for dynamic agent registration
 
 2. **Resource Planning**:
    - Add 100-300MB RAM per agent
    - Reserve IOPS for shared state access
    - Use local SSD for shared state directory
    - Plan for longer simulation times
+   - Account for Agent Discovery System caching overhead
 
 3. **Monitoring Agents**:
    ```bash
    # Monitor agent activity
    watch -n 1 'ls -la /tmp/monerosim_shared/*.json | tail -10'
    
+   # Check specific shared state files used by Agent Discovery
+   watch -n 1 'ls -la /tmp/monerosim_shared/{agent_registry,miners,wallets,block_controller}.json'
+   
    # Check agent resource usage
-   ps aux | grep -E "(regular_user|marketplace|mining_pool)" | awk '{sum+=$6} END {print "Total Agent RAM: " sum/1024 " MB"}'
+   ps aux | grep -E "(regular_user|block_controller|wallet)" | awk '{sum+=$6} END {print "Total Agent RAM: " sum/1024 " MB"}'
    
    # Monitor shared state I/O
-   iotop -o -p $(pgrep -f "regular_user|marketplace|mining_pool" | tr '\n' ',' | sed 's/,$//')
+   iotop -o -p $(pgrep -f "regular_user|block_controller|wallet" | tr '\n' ',' | sed 's/,$//')
    ```
 
-4. **Troubleshooting Performance**:
+4. **Agent Discovery Optimization**:
+   - Use the Agent Discovery System for dynamic agent configuration
+   - Implement proper error handling for agent discovery operations
+   - Cache agent information when possible to reduce file I/O
+   - Monitor shared state file sizes for performance impact
+   - For more details, see `scripts/README_agent_discovery.md`
+
+5. **Troubleshooting Performance**:
    - If agents are slow, check shared state contention
    - Reduce transaction frequency for better performance
-   - Use fewer mining pools to reduce coordination overhead
+   - Use fewer mining agents to reduce coordination overhead
    - Monitor Python GIL contention with many agents
+   - Check Agent Discovery System cache effectiveness
 
 ### 2. Execution
 
@@ -712,10 +780,13 @@ network:
 - [ ] Use local SSD for shared state
 - [ ] Implement agent startup delays
 - [ ] Optimize transaction intervals
-- [ ] Limit mining threads per pool
+- [ ] Limit mining threads per agent
 - [ ] Use appropriate log levels
 - [ ] Monitor resource usage continuously
 - [ ] Clean shared state between runs
 - [ ] Use Python virtual environment
 - [ ] Consider agent type balance
 - [ ] Test scalability incrementally
+- [ ] Use Agent Discovery System for dynamic agent configuration
+- [ ] Monitor Agent Discovery System cache effectiveness
+- [ ] Implement proper error handling for agent discovery operations

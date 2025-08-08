@@ -31,7 +31,7 @@ MoneroSim now supports only agent-based simulation mode:
 │  Testing & Monitoring Scripts (Python)                     │
 │  ├── Core Scripts (simple_test.py, sync_check.py, etc.)  │
 │  ├── Error Handling Module (error_handling.py)           │
-│  ├── Network Configuration (network_config.py)           │
+│  ├── Agent Discovery System (agent_discovery.py)         │
 │  └── Test Suite (95%+ coverage)                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Shadow Network Simulator                                  │
@@ -206,11 +206,12 @@ All testing and monitoring scripts have been migrated from Bash to Python, provi
   - Graceful error recovery
   - Consistent error reporting
 
-- **`scripts/network_config.py`**: Centralizes network configuration
-  - Node IP and port management
-  - Wallet configuration
-  - Network topology information
-  - Configuration validation
+- **`scripts/agent_discovery.py`**: Dynamic agent discovery system
+  - Automatic discovery of agents in the simulation
+  - Dynamic agent registry management
+  - Agent type classification (miners, users, wallets, etc.)
+  - Caching for performance optimization
+  - Comprehensive error handling
 
 ##### Test Suite
 - **`scripts/run_all_tests.py`**: Comprehensive test runner
@@ -226,7 +227,6 @@ All Bash scripts have been moved to `legacy_scripts/` and are retained only for 
 - `legacy_scripts/block_controller.sh`
 - `legacy_scripts/monitor_script.sh`
 - `legacy_scripts/error_handling.sh`
-- `legacy_scripts/network_config.sh`
 
 #### 6. CLI Interface (`src/main.rs`)
 
@@ -254,17 +254,37 @@ The agent framework uses a shared state mechanism for coordination:
 /tmp/monerosim_shared/
 ├── agent_registry.json         # Registry of all agents
 ├── miners.json                 # List of all miner agents and their weights
+├── wallets.json                # List of all wallet agents
 ├── block_controller.json       # Block controller status
 ├── transactions.json           # Transaction log
 ├── blocks_found.json           # Block discovery log
 └── [agent]_stats.json          # Per-agent statistics
 ```
 
+### Agent Discovery System
+
+The `scripts/agent_discovery.py` module provides a dynamic system for discovering agents in the simulation, replacing the previous hardcoded configuration approach. Key features include:
+
+- **Dynamic Discovery**: Automatically discovers agents from shared state files
+- **Agent Classification**: Categorizes agents by type (miners, users, wallets, block controllers)
+- **Caching**: 5-second TTL cache for performance optimization
+- **Error Handling**: Comprehensive error handling with `AgentDiscoveryError` class
+- **API Methods**:
+  - `get_agent_registry()`: Get complete agent registry
+  - `find_agents_by_type()`: Find agents by type
+  - `get_miner_agents()`: Get all miner agents
+  - `get_wallet_agents()`: Get all wallet agents
+  - `get_block_controllers()`: Get block controller agents
+  - `get_agent_by_id()`: Get specific agent by ID
+
+For detailed usage examples and API documentation, see [`scripts/README_agent_discovery.md`](scripts/README_agent_discovery.md).
+
 This architecture enables:
 - **Decentralized coordination**: No central control point
 - **Fault tolerance**: Agents can recover from failures
 - **Observability**: All actions are logged and traceable
 - **Flexibility**: Easy to add new agent types
+- **Scalability**: Dynamic discovery supports growing simulation sizes
 
 ## Shadow Integration
 

@@ -6,6 +6,7 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 
 - **Shadow Integration**: Seamlessly generates Shadow network simulator configurations for Monero
 - **Agent-Based Mode**: Sophisticated simulations with autonomous network participants
+- **Dynamic Agent Discovery**: Runtime agent discovery through shared state files
 - **Production Ready**: Proven in production with comprehensive test coverage
 - **Python-First Testing**: Modern Python test suite with 95%+ coverage
 - **Reproducible Research**: Deterministic simulations for scientific analysis
@@ -48,6 +49,7 @@ monerosim/
 │   ├── block_controller.py  # Mining orchestration
 │   └── monero_rpc.py        # RPC client library
 ├── scripts/                  # Python test and utility scripts
+│   ├── agent_discovery.py   # Dynamic agent discovery system
 │   ├── simple_test.py       # Basic functionality test
 │   ├── sync_check.py        # Network synchronization test
 │   ├── transaction_script.py # Transaction testing
@@ -66,6 +68,8 @@ monerosim/
 - [Development Guide](docs/DEVELOPMENT.md) - Contributing and development workflow
 - [Performance Guide](docs/PERFORMANCE.md) - Optimization and scaling
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Agent Discovery System](scripts/README_agent_discovery.md) - Dynamic agent discovery
+- [Unified Agent Architecture](docs/UNIFIED_AGENT_ARCHITECTURE.md) - Agent framework design
 
 ## Python Scripts
 
@@ -77,11 +81,34 @@ Monerosim uses Python as the primary scripting language for all testing and moni
 - **Run All Tests**: `python3 scripts/run_all_tests.py`
 
 Key scripts:
+- `agent_discovery.py` - Dynamic agent discovery system
 - `simple_test.py` - Verifies basic mining and synchronization
 - `transaction_script.py` - Tests transaction processing
 - `sync_check.py` - Monitors blockchain synchronization
 - `monitor.py` - Real-time simulation monitoring
 - `block_controller.py` - Controls block generation timing
+
+### Agent Discovery System
+
+The Agent Discovery System provides dynamic agent discovery through shared state files, replacing hardcoded network configurations:
+
+```python
+from scripts.agent_discovery import AgentDiscovery
+
+# Initialize the discovery system
+ad = AgentDiscovery()
+
+# Find all miners
+miners = ad.get_miner_agents()
+
+# Find wallets with sufficient balance
+wallets = ad.get_wallet_agents()
+
+# Get agent by ID
+agent = ad.get_agent_by_id('user001')
+```
+
+For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
 
 ## Agent Framework
 
@@ -101,6 +128,18 @@ The agent-based simulation framework enables realistic cryptocurrency network mo
 - Shared state mechanism for agent coordination
 - Realistic transaction patterns and mining behaviors
 - Scalable from small tests to large network simulations
+- Dynamic agent discovery through shared state files
+
+### Agent Discovery Integration
+
+The Agent Discovery System provides a unified interface for discovering and interacting with agents:
+
+- **Dynamic Discovery**: Agents are discovered at runtime from shared state files
+- **Type-Based Queries**: Find agents by type (miners, wallets, block controllers)
+- **Attribute Filtering**: Filter agents based on their attributes
+- **Caching**: Performance-optimized with 5-second TTL cache
+
+For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
 
 ## Requirements
 
@@ -146,6 +185,28 @@ We welcome contributions! Please follow these guidelines:
 2. Run tests to ensure nothing breaks
 3. Update documentation if needed
 4. Submit PR with clear description
+
+### Working with Agent Discovery
+
+When developing new agents or scripts, use the Agent Discovery System for dynamic agent interactions:
+
+```python
+from scripts.agent_discovery import AgentDiscovery
+
+# Initialize in your script
+ad = AgentDiscovery()
+
+# Find agents dynamically
+miners = ad.get_miner_agents()
+wallets = ad.get_wallet_agents()
+
+# Use agent information for interactions
+for miner in miners:
+    # Interact with miner
+    pass
+```
+
+For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
 
 ### Code Style
 - **Rust**: Follow standard Rust conventions (use `cargo fmt` and `cargo clippy`)

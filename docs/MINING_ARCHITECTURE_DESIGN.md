@@ -19,54 +19,149 @@ The Block Controller is the central component of the mining simulation. It maint
 
 **Responsibilities**:
 
-*   **Maintain Miner Registry**: Manages a registry of all potential Designated Miners, mapping each miner's IP address to a specific integer "weight" and its unique wallet address.
+*   **Maintain Miner Registry**: Manages a registry of all potential Designated Miners, mapping each miner's agent ID to a specific integer "weight" and its unique wallet address.
 *   **Weighted Random Selection**: In each block generation cycle, it performs a weighted random selection to choose a single winning miner for the current block.
 *   **Block Generation RPC**: Initiates an RPC request to the selected miner's blockchain daemon, instructing it to generate a new block.
+*   **Agent Discovery Integration**: Uses the Agent Discovery System to dynamically discover and interact with miners without hardcoded configurations.
 
 **Operational Loop**:
 
 The Block Controller's operational loop executes every `N` minutes, where `N` is the target block time. In each cycle, the Controller performs the following actions:
 
-1.  It references the registry of active Designated Miners and their corresponding weights.
+1.  It uses the Agent Discovery System to get the latest registry of active Designated Miners and their corresponding weights.
 2.  It conducts a weighted random selection to choose a single winning miner for the current block.
 3.  It initiates an RPC request to the selected miner's blockchain daemon, instructing it to generate a new block.
+4.  It updates the shared state with information about the newly generated block.
 
 ### 2.2. Designated Miners
 
 Each Designated Miner is a standard Monero daemon instance with the following properties:
 
-*   **Unique Network IP Address**: A unique IP address within the simulation network.
+*   **Unique Agent ID**: A unique identifier within the simulation network.
 *   **Unique Wallet Address**: A unique wallet address for receiving block rewards.
 *   **"Mining-Enabled" Status**: A flag indicating whether the node is actively participating in the mining simulation.
 
-When a node's mining status is active, it registers its IP address with the Block Controller.
+When a node's mining status is active, the Agent Discovery System automatically registers it with the Block Controller through shared state files.
 
 ## 3. Configuration Schema
 
 The following changes will be made to the configuration schema to support the new mining architecture:
 
-The configuration will be updated to allow for dynamic assignment of mining roles and hashrate distribution. Instead of pre-assigning IPs, the user will specify the number of miners and their relative weights. The `monerosim` tool will then randomly select nodes to fulfill these roles during the generation of the `shadow.yaml` file.
+The configuration will be updated to allow for dynamic assignment of mining roles and hashrate distribution. Instead of pre-assigning IPs, the user will specify miners as user agents with `is_miner: true` and their relative hashrate. The `monerosim` tool will then automatically register these miners with the Agent Discovery System.
 
-*   A new `mining` section will be added to `config_agents_*.yaml`.
-*   This section will define the target `block_time`, the total `number_of_mining_nodes`, and a `mining_distribution` list of integer weights.
+*   Miners are defined as user agents with `is_miner: true` in the `user_agents` section.
+*   Each miner specifies its hashrate as a percentage in the `attributes` section.
+*   The Block Controller uses the Agent Discovery System to find all miners and their hashrates.
 
-**Note:** The length of the `mining_distribution` array must match `number_of_mining_nodes`. The weights are relative and do not need to sum to 100; the selection probability is calculated as `miner_weight / sum_of_all_weights`.
+**Note:** The hashrate values are percentages and should sum to 100 across all miners. The Agent Discovery System automatically calculates the selection probability as `miner_hashrate / sum_of_all_hashrates`.
 
 ```yaml
-mining:
-  block_time: 120 # Target block time in seconds
-  number_of_mining_nodes: 7
-  mining_distribution: [25, 25, 10, 10, 10, 5, 5]
-  solo_miner_threshold: 2 # Percentage of hashrate below which a miner is considered a "solo miner"
+agents:
+  user_agents:
+    # Mining agents
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "25"  # 25% of network hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "25"  # 25% of network hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"  # 10% of network hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"  # 10% of network hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"  # 10% of network hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "5"   # 5% of network hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "5"   # 5% of network hashrate
+    
+    # Regular user agents
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+
+  block_controller:
+    script: "agents.block_controller"
+    arguments:
+      - "--interval 120"  # Target block time in seconds
+      - "--solo-miner-threshold 2"  # Percentage threshold for solo miners
 ```
 
-### 3.1. Future Hashrate Distribution Models
+### 3.1. Agent Discovery Integration
 
-While the initial implementation will use a simple array for the `mining_distribution`, the system should be designed to accommodate more complex, function-based distributions in the future. This will allow for more sophisticated hashrate distribution models, such as exponential or stair-step functions, without requiring a complete redesign of the configuration system. This is a key principle for the implementation and should be considered during development.
+The Agent Discovery System provides a clean API for the Block Controller to discover and interact with miners:
+
+```python
+from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+
+class BlockController:
+    def __init__(self):
+        self.ad = AgentDiscovery()
+        
+    def select_miner_for_block(self):
+        try:
+            # Get all miner agents
+            miners = self.ad.get_miner_agents()
+            if not miners:
+                raise AgentDiscoveryError("No miners found")
+                
+            # Calculate total hashrate
+            total_hashrate = sum(float(miner['hashrate']) for miner in miners)
+            
+            # Perform weighted random selection
+            import random
+            rand_val = random.uniform(0, total_hashrate)
+            cumulative = 0
+            
+            for miner in miners:
+                cumulative += float(miner['hashrate'])
+                if rand_val <= cumulative:
+                    return miner
+                    
+            # Fallback to last miner
+            return miners[-1]
+            
+        except AgentDiscoveryError as e:
+            print(f"Error selecting miner: {e}")
+            return None
+```
+
+This approach eliminates the need for hardcoded miner configurations and allows for dynamic discovery of miners as they join or leave the simulation. For more details on the Agent Discovery System, see [`scripts/README_agent_discovery.md`](scripts/README_agent_discovery.md).
 
 ### 3.2. Solo Miner Behavior
 
 A "solo miner" is defined as a mining node with a hashrate below the `solo_miner_threshold`. In addition to their mining activities, solo miners should also behave as regular users, making transactions and participating in the network in a manner consistent with a standard user agent. This dual role should be reflected in the agent's implementation.
+
+The Agent Discovery System automatically identifies solo miners based on their hashrate percentage:
+
+```python
+def is_solo_miner(miner, threshold=2):
+    return float(miner['hashrate']) < threshold
+```
 
 ## 4. Architectural Diagram
 
@@ -74,20 +169,22 @@ A "solo miner" is defined as a mining node with a hashrate below the `solo_miner
 graph TD
     subgraph "Configuration Generation (monerosim)"
         A[config_agents_small.yaml] --> B{monerosim binary};
-        B -- "1. Randomly select N designated miners" --> C((All Nodes));
-        B -- "2. Assign weights" --> D[Miner Registry<br/>(IP, Weight, Wallet)];
-        D -- "3. Write to shared state" --> E((/tmp/monerosim_shared/miners.json));
+        B -- "1. Process user agents with is_miner: true" --> C((Miner Agents));
+        B -- "2. Create agent registry" --> D[Agent Discovery System<br/>(agent_registry.json)];
+        B -- "3. Create miner registry" --> E[Miner Registry<br/>(miners.json)];
     end
 
     subgraph "Simulation Execution (shadow)"
-        F[Block Controller] -- "4. Read Miner Registry" --> E;
-        F -- "5. Weighted Random Selection" --> G{Select Winner};
+        F[Block Controller] -- "4. Use Agent Discovery System" --> D;
+        F -- "5. Get miner agents" --> E;
+        F -- "6. Weighted Random Selection" --> G{Select Winner};
         subgraph "Simulated Monero Network"
-            M1[Designated Miner 1];
-            M2[Designated Miner 2];
-            MN[... Designated Miner N];
+            M1[Miner Agent 1<br/>hashrate: 25%];
+            M2[Miner Agent 2<br/>hashrate: 25%];
+            MN[... Miner Agent N<br/>hashrate: ...%];
         end
-        G -- "6. RPC: Generate Block" --> M2;
+        G -- "7. RPC: Generate Block" --> M2;
+        M2 -- "8. Update shared state" --> H[(Shared State Files<br/>miners.json, blocks_found.json)];
     end
 ```
 
@@ -96,25 +193,30 @@ graph TD
 The implementation will be carried out in the following phases:
 
 1.  **Configuration Schema Update**:
-    *   Update the `config.rs` module to support the `number_of_mining_nodes` and `mining_distribution` fields.
-    *   Implement validation to ensure the length of the `mining_distribution` array matches `number_of_mining_nodes`.
+    *   Update the configuration schema to support miners as user agents with `is_miner: true`.
+    *   Implement validation to ensure the hashrate values are properly specified.
 
-2.  **Agent Configuration Logic**:
-    *   In `shadow_agents.rs`, implement a mechanism to collect all potential mining nodes (e.g., all `user` and `additional` nodes).
-    *   Implement logic to randomly select `number_of_mining_nodes` from the collected pool.
-    *   Assign the weights from `mining_distribution` to the selected miners.
-    *   Write the resulting miner registry (containing IP, weight, wallet address, and a boolean `is_solo_miner` flag) to a shared JSON file (e.g., `/tmp/monerosim_shared/miners.json`). The `is_solo_miner` flag should be set based on the `solo_miner_threshold`.
+2.  **Agent Discovery System Implementation**:
+    *   Implement the `scripts/agent_discovery.py` module to provide a clean API for discovering agents.
+    *   Implement methods for discovering miner agents, wallet agents, and block controllers.
+    *   Implement caching and error handling for agent discovery operations.
 
-3.  **Block Controller Refactoring**:
-    *   Refactor the `BlockController` agent to read the miner registry from the shared JSON file on startup.
-    *   Implement the weighted random selection algorithm based on the weights in the registry.
-    *   Remove the old round-robin logic.
+3.  **Agent Configuration Logic**:
+    *   In `shadow_agents.rs`, implement a mechanism to collect all user agents with `is_miner: true`.
+    *   Write the resulting miner registry (containing agent ID, hashrate, wallet address, and a boolean `is_solo_miner` flag) to a shared JSON file (e.g., `/tmp/monerosim_shared/miners.json`). The `is_solo_miner` flag should be set based on the `solo_miner_threshold`.
+    *   Write the agent registry to `/tmp/monerosim_shared/agent_registry.json`.
 
-4.  **RPC and Daemon Integration**:
+4.  **Block Controller Refactoring**:
+    *   Refactor the `BlockController` agent to use the Agent Discovery System for discovering miners.
+    *   Implement the weighted random selection algorithm based on the hashrates in the registry.
+    *   Remove the old round-robin logic and hardcoded miner configurations.
+
+5.  **RPC and Daemon Integration**:
     *   Implement the necessary RPC calls to instruct a `monerod` instance to generate a block with a specific coinbase transaction.
     *   Ensure that the `monerod` instances are configured to accept these RPC calls.
 
-5.  **Testing and Validation**:
+6.  **Testing and Validation**:
     *   Develop a comprehensive test suite to validate the new mining architecture.
     *   Run simulations with various hashrate distributions to ensure that the block generation is correctly distributed.
     *   Verify that block rewards are correctly assigned to the winning miners' wallet addresses.
+    *   Test the Agent Discovery System to ensure it correctly discovers and categorizes agents.

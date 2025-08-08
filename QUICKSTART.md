@@ -51,13 +51,13 @@ Once setup completes, you can:
 
 ```bash
 # Edit simulation parameters
-vim config.yaml
+vim config_agents_small.yaml
 
 # Generate new configuration
-./target/release/monerosim --config config.yaml --output shadow_output
+./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output
 
 # Run simulation
-shadow shadow_output/shadow.yaml
+shadow shadow_agents_output/shadow_agents.yaml
 ```
 
 ### Analyze Results
@@ -71,17 +71,45 @@ grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
 
 # Look for TCP connection establishment
 grep "handle_accept" shadow.data/hosts/*/monerod.*.stdout
+
+# Check agent discovery files
+ls -la /tmp/monerosim_shared/
+cat /tmp/monerosim_shared/agent_registry.json
 ```
+
+### Agent Discovery System
+
+MoneroSim uses a dynamic agent discovery system that automatically finds and tracks agents during simulation:
+
+- **Agent Registry**: `/tmp/monerosim_shared/agent_registry.json` contains all agent information
+- **Dynamic Discovery**: Agents are discovered at runtime, not hardcoded
+- **Type-Based Queries**: Find miners, wallets, and other agents by type
+
+For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
 
 ### Change Simulation Duration
 
-Edit `config.yaml`:
+Edit `config_agents_small.yaml`:
 ```yaml
 general:
   stop_time: "30m"  # Run for 30 minutes instead of 10
 
-monero:
-  nodes: 8          # Simulate 8 nodes instead of 5
+agents:
+  user_agents:
+    # Add more users to increase simulation size
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "50"
+    
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
 ```
 
 ## Common Issues
@@ -97,5 +125,6 @@ monero:
 - Check the full README.md for detailed documentation
 - Look at Shadow logs: `shadow.data/shadow.log`
 - Check node logs: `shadow.data/hosts/*/monerod.*.stdout`
+- Review Agent Discovery documentation: [Agent Discovery System](scripts/README_agent_discovery.md)
 
-**Happy simulating!** 🚀 
+**Happy simulating!** 🚀

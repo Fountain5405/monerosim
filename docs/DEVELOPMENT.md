@@ -88,7 +88,7 @@ monerosim/
 │   ├── transaction_script.py # Transaction testing
 │   ├── test_p2p_connectivity.py # P2P connection test
 │   ├── error_handling.py    # Common error handling utilities
-│   └── network_config.py    # Network configuration
+│   └── agent_discovery.py   # Agent discovery system
 ├── legacy_scripts/          # Deprecated Bash scripts (for reference)
 ├── patches/                 # Monero patches for simulation compatibility
 ├── builds/                  # Compiled Monero binaries (created during build)
@@ -432,10 +432,15 @@ The agent framework enables realistic cryptocurrency network simulations with au
 Agents communicate through shared state files:
 ```
 /tmp/monerosim_shared/
-├── users.json              # User agent registry
+├── agent_registry.json     # Registry of all agents
+├── miners.json             # List of all miner agents and their weights
+├── wallets.json            # List of all wallet agents
+├── block_controller.json   # Block controller status
 ├── transactions.json       # Transaction log
 └── [agent]_stats.json      # Per-agent statistics
 ```
+
+The [`agent_discovery.py`](scripts/agent_discovery.py) module provides a dynamic system for discovering agents in the simulation, replacing the previous hardcoded network configuration approach. For more details, see [`scripts/README_agent_discovery.md`](scripts/README_agent_discovery.md).
 
 ## Python Script Development
 
@@ -445,7 +450,7 @@ All Python scripts follow these standards:
 
 1. **Type Hints**: Use type annotations for all functions
 2. **Error Handling**: Use `error_handling.py` utilities
-3. **Configuration**: Use `network_config.py` for network settings
+3. **Agent Discovery**: Use `agent_discovery.py` for dynamic agent discovery
 4. **Logging**: Structured logging with color support
 5. **Testing**: Include comprehensive unit tests
 
@@ -458,13 +463,20 @@ All Python scripts follow these standards:
    
    from typing import Dict, List
    from error_handling import setup_logging, make_rpc_call
-   from network_config import NetworkConfig
+   from agent_discovery import AgentDiscovery, AgentDiscoveryError
    
    def main() -> int:
        """Main function"""
        logger = setup_logging("script_name")
-       config = NetworkConfig()
-       # Script logic here
+       try:
+           agent_discovery = AgentDiscovery()
+           # Discover agents dynamically
+           wallet_agents = agent_discovery.get_wallet_agents()
+           miner_agents = agent_discovery.get_miner_agents()
+           # Script logic here
+       except AgentDiscoveryError as e:
+           logger.error(f"Agent discovery failed: {e}")
+           return 1
        return 0
    
    if __name__ == "__main__":

@@ -17,7 +17,7 @@
 
 ## Overview
 
-The Monerosim Agent Framework is a sophisticated simulation capability that enables realistic cryptocurrency network behavior modeling. The agent framework introduces autonomous participants that make independent decisions, creating emergent network behaviors that closely mirror real-world cryptocurrency ecosystems.
+The Monerosim Agent Framework is a sophisticated simulation capability that enables realistic cryptocurrency network behavior modeling. The agent framework introduces autonomous participants that make independent decisions, creating emergent network behaviors that closely mirror real-world cryptocurrency ecosystems. The framework now includes an Agent Discovery System that dynamically discovers agents and their configurations, replacing the legacy hardcoded network configuration approach.
 
 ### Why the Agent Framework?
 
@@ -55,6 +55,12 @@ The agent framework is built on a modular architecture that separates concerns a
 │  Specialized Agents                                         │
 │  ├── Regular User Agent (regular_user.py)                  │
 │  └── Block Controller Agent (block_controller.py)          │
+├─────────────────────────────────────────────────────────────┤
+│  Agent Discovery System (agent_discovery.py)               │
+│  ├── Dynamic Agent Discovery                                │
+│  ├── Agent Registry Management                             │
+│  ├── Shared State File Reading                              │
+│  └── Caching and Performance Optimization                   │
 ├─────────────────────────────────────────────────────────────┤
 │  RPC Communication Layer (monero_rpc.py)                   │
 │  ├── Daemon RPC Client                                     │
@@ -154,6 +160,9 @@ Agents communicate through a shared state mechanism using JSON files in a common
 
 ```
 /tmp/monerosim_shared/
+├── agent_registry.json          # Registry of all agents with attributes
+├── miners.json                  # List of all mining agents
+├── wallets.json                 # List of all wallet agents
 ├── users.json                    # List of all user agents
 ├── block_controller.json        # Block controller status
 ├── transactions.json            # Transaction log
@@ -245,6 +254,17 @@ In this configuration:
 - Mining nodes are also user agents with the `is_miner` attribute set to true
 - All nodes are treated consistently as user_agents with different attributes
 
+### Agent Discovery Integration
+
+The agent discovery system integrates seamlessly with the YAML configuration:
+
+1. **Configuration Parsing**: The `shadow_agents.rs` module parses the YAML configuration and generates the necessary shared state files
+2. **Agent Registry**: Creates `agent_registry.json` with all agent information
+3. **Specialized Registries**: Creates specialized files like `miners.json` and `wallets.json` for efficient access
+4. **Dynamic Discovery**: Agents use the `AgentDiscovery` class to find other agents at runtime
+
+This approach eliminates the need for hardcoded network configurations and allows agents to dynamically discover and interact with each other.
+
 ### Shadow Integration
 
 The `shadow_agents.rs` module generates Shadow configuration that:
@@ -320,7 +340,9 @@ All shared state files are stored in `/tmp/monerosim_shared/`:
 /tmp/monerosim_shared/
 ├── Registration Files
 │   ├── users.json                 # All registered users
-│   └── node_registry.json         # Registry of all nodes with attributes
+│   ├── agent_registry.json        # Registry of all agents with attributes
+│   ├── miners.json                # List of all mining agents
+│   └── wallets.json               # List of all wallet agents
 │
 ├── Activity Logs
 │   ├── transactions.json         # All transactions sent
@@ -334,7 +356,7 @@ All shared state files are stored in `/tmp/monerosim_shared/`:
     └── block_controller_stats.json # Block generation statistics
 ```
 
-The `node_registry.json` file is a new addition that documents all attributes for every user_agent:
+The `agent_registry.json` file documents all attributes for every agent (note: `node_registry.json` was renamed to `agent_registry.json`):
 
 ```json
 {
@@ -534,8 +556,10 @@ def _send_transaction(self):
     # Generate random amount
     amount = random.uniform(self.min_amount, self.max_amount)
     
-    # Send transaction to a random user
-    recipients = self._get_user_addresses()
+    # Send transaction to a random user using agent discovery
+    from scripts.agent_discovery import AgentDiscovery
+    ad = AgentDiscovery()
+    recipients = ad.get_wallet_agents()
     recipient = random.choice(recipients)
     
     # Send transaction
@@ -675,10 +699,86 @@ The agent framework enables research in:
    - Network topology effects
    - Information propagation
 
+## Agent Discovery System
+
+The Agent Discovery System provides a dynamic way for agents to discover and interact with each other, replacing the legacy hardcoded network configuration approach. This system is implemented in `scripts/agent_discovery.py` and provides a clean API for agent discovery.
+
+### Key Components
+
+1. **AgentDiscovery Class**: Main class that provides methods for discovering agents
+2. **Shared State Files**: JSON files that store agent information in `/tmp/monerosim_shared/`
+3. **Caching Mechanism**: Improves performance by caching agent information
+4. **Error Handling**: Robust error handling for missing files or invalid data
+
+### Benefits
+
+1. **Dynamic Discovery**: Agents can discover other agents at runtime without hardcoded configurations
+2. **Scalability**: Easily scales to support large numbers of agents
+3. **Flexibility**: Supports different types of agents (miners, users, wallets, etc.)
+4. **Maintainability**: Eliminates the need to update hardcoded configurations when the network changes
+
+### API Examples
+
+```python
+from scripts.agent_discovery import AgentDiscovery
+
+# Initialize agent discovery
+ad = AgentDiscovery()
+
+# Get all agents
+all_agents = ad.get_agent_registry()
+
+# Find agents by type
+miners = ad.get_miner_agents()
+wallets = ad.get_wallet_agents()
+
+# Get a specific agent by ID
+agent = ad.get_agent_by_id("user001")
+
+# Refresh cache if needed
+ad.refresh_cache()
+```
+
+For more detailed information about the Agent Discovery System, see [`scripts/README_agent_discovery.md`](../scripts/README_agent_discovery.md).
+
+## Migration from Legacy Network Configuration
+
+The Agent Framework has transitioned from a hardcoded network configuration approach to a dynamic agent discovery system:
+
+### Legacy Approach
+
+```python
+# Legacy approach using hardcoded network configuration
+# Note: This approach has been removed and replaced with Agent Discovery
+```
+
+### New Agent Discovery Approach
+
+```python
+# New approach using agent discovery
+from scripts.agent_discovery import AgentDiscovery
+
+# Initialize agent discovery
+ad = AgentDiscovery()
+
+# Get agent information dynamically
+agent = ad.get_agent_by_id("user001")
+ip_address = agent["ip_addr"]
+daemon_port = agent["daemon_port"]
+wallet_port = agent["wallet_port"]
+```
+
+### Benefits of Migration
+
+1. **No Hardcoded Configurations**: Eliminates the need to update hardcoded IP addresses and ports
+2. **Dynamic Network Support**: Agents can join and leave the network dynamically
+3. **Improved Scalability**: Easily scales to support large numbers of agents
+4. **Better Maintainability**: Reduces the risk of configuration errors and inconsistencies
+
 ## Conclusion
 
 The Monerosim Agent Framework represents a significant advancement in cryptocurrency network simulation. By introducing autonomous agents that model real-world participants, it enables researchers and developers to study complex network behaviors that emerge from simple individual actions.
 
-The framework is production-ready and has been successfully tested at various scales. While some challenges remain (particularly with mining RPC integration), the alternative approaches implemented ensure that simulations can proceed effectively.
+The framework is production-ready and has been successfully tested at various scales. The new Agent Discovery System replaces the legacy hardcoded network configuration approach, providing a more flexible, scalable, and maintainable solution for agent interaction.
 
 For questions, bug reports, or contributions, please refer to the main Monerosim repository.
