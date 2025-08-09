@@ -1,0 +1,30 @@
+{
+  "test_name": "End-to-End Test for is_miner Configuration Transition",
+  "test_date": "2025-08-08",
+  "test_results": {
+    "small": {
+      "migration": true,
+      "config_generation": true,
+      "shadow_simulation": true,
+      "agent_identification": true,
+      "mining": true,
+      "transaction": false
+    },
+    "medium": {
+      "migration": true,
+      "config_generation": true,
+      "agent_identification": true
+    },
+    "large": {
+      "migration": true,
+      "config_generation": true,
+      "agent_identification": true
+    }
+  },
+  "summary": {
+    "total_tests": 12,
+    "passed_tests": 11,
+    "failed_tests": 1,
+    "success_rate": "91.7%"
+  }
+}
