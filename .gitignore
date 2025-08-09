@@ -2,6 +2,10 @@
 /target/
 Cargo.lock
 
+# Python virtual environments
+.venv/
+venv/
+
 # Shadow simulation data
 shadow.data/
 shadow_output/
