@@ -1,0 +1,58 @@
+general:
+  stop_time: "1h"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+
+agents:
+  user_agents:
+    # Miner 1 - 20% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "20"
+    
+    # Miner 2 - 20% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "20"
+    
+    # Miner 3 - 20% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "20"
+    
+    # Miner 4 - 20% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "20"
+    
+    # Miner 5 - 10% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "10"
+    
+    # Miner 6 - 10% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "10"
+
+  block_controller:
+    script: "agents.block_controller"
+    
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"

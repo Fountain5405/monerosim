@@ -1,0 +1,622 @@
+2000-01-01 00:01:31.003	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.13:57856 INC] Calling RPC method get_address
+2000-01-01 00:01:36.003	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:01:36.003	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.13:57856 INC] Calling RPC method get_address
+2000-01-01 00:01:41.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:01:41.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.13:57856 INC] Calling RPC method get_address
+2000-01-01 00:01:46.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:01:46.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.13:57856 INC] Calling RPC method get_address
+2000-01-01 00:01:51.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:01:51.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.13:57856 INC] Calling RPC method get_address
+2000-01-01 00:01:51.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:01:51.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:02:21.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:02:21.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:02:51.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:02:51.004	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:03:21.005	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:03:21.005	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:03:51.005	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:03:51.005	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:04:21.006	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:04:21.006	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:04:51.006	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:04:51.006	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:05:21.006	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:05:21.006	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:05:51.007	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:05:51.007	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:06:21.007	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:06:21.007	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:06:51.007	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:06:51.007	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:07:21.008	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:07:21.008	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:07:51.008	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:07:51.008	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:08:21.008	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:08:21.008	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:08:51.009	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:08:51.009	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:09:21.009	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:09:21.009	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:09:51.009	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:09:51.009	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:10:21.010	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:10:21.010	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:10:51.010	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:10:51.010	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:11:21.010	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:11:21.010	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:11:51.011	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:11:51.011	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:12:21.011	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:12:21.011	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:12:51.012	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:12:51.012	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:13:21.012	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:13:21.012	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:13:51.012	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:13:51.012	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:14:21.013	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:14:21.013	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:14:51.013	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:14:51.013	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:15:21.013	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:15:21.013	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:15:51.014	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:15:51.014	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:16:21.014	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:16:21.014	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:16:51.014	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:16:51.014	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:17:21.015	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:17:21.015	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:17:51.015	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:17:51.015	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:18:21.015	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:18:21.015	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:18:51.016	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:18:51.016	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:19:21.016	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:19:21.016	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:19:51.017	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:19:51.017	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:20:21.017	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:20:21.017	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:20:51.017	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:20:51.017	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:21:21.018	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:21:21.018	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:21:51.018	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:21:51.018	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:22:21.018	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:22:21.018	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:22:51.019	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:22:51.019	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:23:21.019	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:23:21.019	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:23:51.019	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:23:51.019	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:24:21.020	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:24:21.020	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:24:51.020	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:24:51.020	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:25:21.020	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:25:21.020	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:25:51.021	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:25:51.021	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:26:21.021	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:26:21.021	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:26:51.021	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:26:51.021	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:27:21.022	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:27:21.022	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:27:51.022	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:27:51.022	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:28:21.023	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:28:21.023	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:28:51.023	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:28:51.023	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:29:21.023	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:29:21.023	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:29:51.024	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:29:51.024	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:30:21.024	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:30:21.024	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:30:51.024	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:30:51.024	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:31:21.025	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:31:21.025	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:31:51.025	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:31:51.025	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:32:21.025	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:32:21.025	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:32:51.026	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:32:51.026	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:33:21.026	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:33:21.026	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:33:51.026	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:33:51.026	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:34:16.384	[RPC0]	WARNING	net	contrib/epee/include/net/abstract_tcp_server2.inl:928	IP_TOS setsockopt failed: Protocol not available; continuing without TOS
+2000-01-01 00:34:16.384	[RPC0]	WARNING	net	contrib/epee/include/net/abstract_tcp_server2.inl:936	TCP_NODELAY setsockopt failed: Protocol not available; continuing without changing NODELAY
+2000-01-01 00:34:16.384	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:16.384	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:164	[11.0.0.14:11421 INC] Calling RPC method get_version
+2000-01-01 00:34:16.386	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:16.386	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:143	[11.0.0.14:11421 INC] Calling RPC method open_wallet
+2000-01-01 00:34:16.386	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:34:16.386	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:1390	setting daemon to http://11.0.0.13:28081
+2000-01-01 00:34:16.386	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:34:16.387	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:34:16.387	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8719	ringdb path set to .shared-ringdb
+2000-01-01 00:34:16.387	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:34:16.388	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:34:16.389	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:6448	e || !exists. THROW EXCEPTION: error::file_not_found
+2000-01-01 00:34:16.389	[RPC0]	WARNING	net.http	src/wallet/wallet_errors.h:999	/home/lever65/monerosim_dev/monero-shadow/src/wallet/wallet2.cpp:6448:N5tools5error15file_error_baseILi1EEE: file not found "/tmp/monerosim_shared/user003_wallet/user003_wallet.keys"
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: tools::error::file_error_base<1>
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0x4e6042) [0x555555a3a042]:_dev/monerosim/monero-wallet-rpc(+0x4e6042) [0x555555a3a042]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x455244) [0x5555559a9244]:_dev/monerosim/monero-wallet-rpc(+0x455244) [0x5555559a9244]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x45764c) [0x5555559ab64c]:_dev/monerosim/monero-wallet-rpc(+0x45764c) [0x5555559ab64c]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x21c762) [0x555555770762]:_dev/monerosim/monero-wallet-rpc(+0x21c762) [0x555555770762]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x341078) [0x555555895078]:_dev/monerosim/monero-wallet-rpc(+0x341078) [0x555555895078]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:34:16.389	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:34:16.389	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556568000: Function not implemented
+2000-01-01 00:34:16.389	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556567000: Function not implemented
+2000-01-01 00:34:16.391	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:16.391	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:142	[11.0.0.14:11421 INC] Calling RPC method create_wallet
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'asa' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'ave' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'boa' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'cal' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'dar' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'don' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'dos' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'eco' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'eje' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'fax' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'feo' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'fin' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'gen' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'gol' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'haz' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'ira' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'luz' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'mar' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'mes' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'mil' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'oca' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'ojo' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'ola' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'oro' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'oso' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'pan' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'pez' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'pie' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'red' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'res' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	INFO	default	src/mnemonics/language_base.h:132	Español word 'rey' is shorter than its prefix length, 4
+2000-01-01 00:34:16.391	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:34:16.391	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:1390	setting daemon to http://11.0.0.13:28081
+2000-01-01 00:34:16.391	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:34:16.391	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:34:16.392	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8719	ringdb path set to .shared-ringdb
+2000-01-01 00:34:16.392	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:34:16.392	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:34:16.633	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:34:16.633	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8743	caching ringdb key
+2000-01-01 00:34:16.633	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:34:16.633	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: std::__ios_failure
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0xb0) [0x7ffff70aab0c]:_64-linux-gnu/libstdc++.so.6(_ZSt19__throw_ios_failurePKc+0xb0) [0x7ffff70aab0c]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x133ee5) [0x7ffff7133ee5]:_64-linux-gnu/libstdc++.so.6(+0x133ee5) [0x7ffff7133ee5]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x98d48b) [0x555555ee148b]:_dev/monerosim/monero-wallet-rpc(+0x98d48b) [0x555555ee148b]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x3c0a2c) [0x555555914a2c]:_dev/monerosim/monero-wallet-rpc(+0x3c0a2c) [0x555555914a2c]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x43a345) [0x55555598e345]:_dev/monerosim/monero-wallet-rpc(+0x43a345) [0x55555598e345]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x43a9eb) [0x55555598e9eb]:_dev/monerosim/monero-wallet-rpc(+0x43a9eb) [0x55555598e9eb]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x4424c3) [0x5555559964c3]:_dev/monerosim/monero-wallet-rpc(+0x4424c3) [0x5555559964c3]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x227373) [0x55555577b373]:_dev/monerosim/monero-wallet-rpc(+0x227373) [0x55555577b373]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x341553) [0x555555895553]:_dev/monerosim/monero-wallet-rpc(+0x341553) [0x555555895553]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [18]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [19]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [20]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [21]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:34:16.633	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:4506	failed to generate wallet keys file /tmp/monerosim_shared/user003_wallet/user003_wallet.keys.new
+2000-01-01 00:34:16.633	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:5457	!r. THROW EXCEPTION: error::file_save_error
+2000-01-01 00:34:16.633	[RPC0]	WARNING	net.http	src/wallet/wallet_errors.h:999	/home/lever65/monerosim_dev/monero-shadow/src/wallet/wallet2.cpp:5457:N5tools5error15file_error_baseILi3EEE: failed to save file "/tmp/monerosim_shared/user003_wallet/user003_wallet.keys"
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: tools::error::file_error_base<3>
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0x4e5610) [0x555555a39610]:_dev/monerosim/monero-wallet-rpc(+0x4e5610) [0x555555a39610]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x43ac49) [0x55555598ec49]:_dev/monerosim/monero-wallet-rpc(+0x43ac49) [0x55555598ec49]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x4424c3) [0x5555559964c3]:_dev/monerosim/monero-wallet-rpc(+0x4424c3) [0x5555559964c3]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x227373) [0x55555577b373]:_dev/monerosim/monero-wallet-rpc(+0x227373) [0x55555577b373]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x341553) [0x555555895553]:_dev/monerosim/monero-wallet-rpc(+0x341553) [0x555555895553]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:34:16.633	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:34:16.633	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b4000: Function not implemented
+2000-01-01 00:34:16.633	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556a35000: Function not implemented
+2000-01-01 00:34:16.633	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556a34000: Function not implemented
+2000-01-01 00:34:16.635	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:16.635	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:21.027	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:34:21.027	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:34:21.637	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:21.637	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:26.639	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:26.639	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:31.641	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:31.641	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:36.643	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:36.643	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:41.645	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:41.645	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:46.647	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:46.647	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:51.027	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:34:51.027	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:34:51.649	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:51.649	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:34:56.651	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:34:56.651	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:35:01.653	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:35:01.653	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:11421 INC] Calling RPC method get_address
+2000-01-01 00:35:21.028	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:35:21.028	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:35:51.028	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:35:51.028	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:36:21.028	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:36:21.028	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:36:51.029	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:36:51.029	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:37:21.029	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:37:21.029	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:37:51.029	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:37:51.029	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:38:21.030	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:38:21.030	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:38:51.030	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:38:51.030	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:39:21.030	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:39:21.030	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:39:51.031	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:39:51.031	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:40:21.031	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:40:21.031	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:40:51.031	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:40:51.031	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:41:21.032	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:41:21.032	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:41:51.032	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:41:51.032	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:42:21.032	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:42:21.032	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:42:51.033	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:42:51.033	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:43:21.033	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:43:21.033	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:43:51.034	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:43:51.034	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:44:21.034	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:44:21.034	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:44:51.034	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:44:51.034	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:45:21.035	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:45:21.035	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:45:51.035	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:45:51.035	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:46:21.035	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:46:21.035	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:46:51.036	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:46:51.036	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:47:00.161	[RPC0]	WARNING	net	contrib/epee/include/net/abstract_tcp_server2.inl:928	IP_TOS setsockopt failed: Protocol not available; continuing without TOS
+2000-01-01 00:47:00.161	[RPC0]	WARNING	net	contrib/epee/include/net/abstract_tcp_server2.inl:936	TCP_NODELAY setsockopt failed: Protocol not available; continuing without changing NODELAY
+2000-01-01 00:47:00.161	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:00.161	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:164	[11.0.0.14:26253 INC] Calling RPC method get_version
+2000-01-01 00:47:00.163	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:00.163	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:143	[11.0.0.14:26253 INC] Calling RPC method open_wallet
+2000-01-01 00:47:00.163	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:47:00.163	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:1390	setting daemon to http://11.0.0.13:28081
+2000-01-01 00:47:00.163	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:47:00.163	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:47:00.164	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8719	ringdb path set to .shared-ringdb
+2000-01-01 00:47:00.164	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:47:00.164	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:47:00.165	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:6448	e || !exists. THROW EXCEPTION: error::file_not_found
+2000-01-01 00:47:00.165	[RPC0]	WARNING	net.http	src/wallet/wallet_errors.h:999	/home/lever65/monerosim_dev/monero-shadow/src/wallet/wallet2.cpp:6448:N5tools5error15file_error_baseILi1EEE: file not found "/tmp/monerosim_shared/user003_wallet/user003_wallet.keys"
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: tools::error::file_error_base<1>
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0x4e6042) [0x555555a3a042]:_dev/monerosim/monero-wallet-rpc(+0x4e6042) [0x555555a3a042]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x455244) [0x5555559a9244]:_dev/monerosim/monero-wallet-rpc(+0x455244) [0x5555559a9244]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x45764c) [0x5555559ab64c]:_dev/monerosim/monero-wallet-rpc(+0x45764c) [0x5555559ab64c]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x21c762) [0x555555770762]:_dev/monerosim/monero-wallet-rpc(+0x21c762) [0x555555770762]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x341078) [0x555555895078]:_dev/monerosim/monero-wallet-rpc(+0x341078) [0x555555895078]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:47:00.165	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:47:00.165	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556afe000: Function not implemented
+2000-01-01 00:47:00.165	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556afd000: Function not implemented
+2000-01-01 00:47:00.167	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:00.167	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:142	[11.0.0.14:26253 INC] Calling RPC method create_wallet
+2000-01-01 00:47:00.167	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:47:00.167	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:1390	setting daemon to http://11.0.0.13:28081
+2000-01-01 00:47:00.167	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:47:00.167	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:47:00.167	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8719	ringdb path set to .shared-ringdb
+2000-01-01 00:47:00.167	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:47:00.167	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:47:00.409	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:47:00.409	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8743	caching ringdb key
+2000-01-01 00:47:00.409	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:47:00.409	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: std::__ios_failure
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0xb0) [0x7ffff70aab0c]:_64-linux-gnu/libstdc++.so.6(_ZSt19__throw_ios_failurePKc+0xb0) [0x7ffff70aab0c]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x133ee5) [0x7ffff7133ee5]:_64-linux-gnu/libstdc++.so.6(+0x133ee5) [0x7ffff7133ee5]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x98d48b) [0x555555ee148b]:_dev/monerosim/monero-wallet-rpc(+0x98d48b) [0x555555ee148b]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x3c0a2c) [0x555555914a2c]:_dev/monerosim/monero-wallet-rpc(+0x3c0a2c) [0x555555914a2c]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x43a345) [0x55555598e345]:_dev/monerosim/monero-wallet-rpc(+0x43a345) [0x55555598e345]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x43a9eb) [0x55555598e9eb]:_dev/monerosim/monero-wallet-rpc(+0x43a9eb) [0x55555598e9eb]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x4424c3) [0x5555559964c3]:_dev/monerosim/monero-wallet-rpc(+0x4424c3) [0x5555559964c3]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x227373) [0x55555577b373]:_dev/monerosim/monero-wallet-rpc(+0x227373) [0x55555577b373]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x341553) [0x555555895553]:_dev/monerosim/monero-wallet-rpc(+0x341553) [0x555555895553]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [18]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [19]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [20]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [21]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:47:00.409	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:4506	failed to generate wallet keys file /tmp/monerosim_shared/user003_wallet/user003_wallet.keys.new
+2000-01-01 00:47:00.409	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:5457	!r. THROW EXCEPTION: error::file_save_error
+2000-01-01 00:47:00.409	[RPC0]	WARNING	net.http	src/wallet/wallet_errors.h:999	/home/lever65/monerosim_dev/monero-shadow/src/wallet/wallet2.cpp:5457:N5tools5error15file_error_baseILi3EEE: failed to save file "/tmp/monerosim_shared/user003_wallet/user003_wallet.keys"
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: tools::error::file_error_base<3>
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0x4e5610) [0x555555a39610]:_dev/monerosim/monero-wallet-rpc(+0x4e5610) [0x555555a39610]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x43ac49) [0x55555598ec49]:_dev/monerosim/monero-wallet-rpc(+0x43ac49) [0x55555598ec49]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x4424c3) [0x5555559964c3]:_dev/monerosim/monero-wallet-rpc(+0x4424c3) [0x5555559964c3]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x227373) [0x55555577b373]:_dev/monerosim/monero-wallet-rpc(+0x227373) [0x55555577b373]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x341553) [0x555555895553]:_dev/monerosim/monero-wallet-rpc(+0x341553) [0x555555895553]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:47:00.409	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:47:00.409	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b4000: Function not implemented
+2000-01-01 00:47:00.409	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556b0e000: Function not implemented
+2000-01-01 00:47:00.409	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556b0d000: Function not implemented
+2000-01-01 00:47:00.411	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:00.411	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:05.413	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:05.413	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:10.415	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:10.415	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:15.417	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:15.417	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:20.419	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:20.419	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:21.036	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:47:21.036	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:47:25.421	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:25.421	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:30.423	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:30.423	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:35.425	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:35.425	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:40.427	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:40.427	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:45.429	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:47:45.429	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:26253 INC] Calling RPC method get_address
+2000-01-01 00:47:51.036	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:47:51.036	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:48:21.037	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:48:21.037	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:48:51.037	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:48:51.037	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:49:21.037	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:49:21.037	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:49:51.038	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:49:51.038	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:50:21.038	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:50:21.038	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:50:51.038	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:50:51.039	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:51:21.039	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:51:21.039	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:51:51.039	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:51:51.039	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:52:21.040	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:52:21.040	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:52:51.040	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:52:51.040	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:53:21.040	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:53:21.040	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:53:51.041	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:53:51.041	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:54:21.041	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:54:21.041	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:54:51.041	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:54:51.041	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:55:21.042	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:55:21.042	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:55:51.042	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:55:51.042	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:56:21.042	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:56:21.042	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:56:51.043	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:56:51.043	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:57:21.043	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:57:21.043	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:57:51.043	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:57:51.043	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:58:21.044	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:58:21.044	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:58:51.044	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:58:51.044	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:59:21.045	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:59:21.045	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:59:43.933	[RPC0]	WARNING	net	contrib/epee/include/net/abstract_tcp_server2.inl:928	IP_TOS setsockopt failed: Protocol not available; continuing without TOS
+2000-01-01 00:59:43.933	[RPC0]	WARNING	net	contrib/epee/include/net/abstract_tcp_server2.inl:936	TCP_NODELAY setsockopt failed: Protocol not available; continuing without changing NODELAY
+2000-01-01 00:59:43.933	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:43.933	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:164	[11.0.0.14:17674 INC] Calling RPC method get_version
+2000-01-01 00:59:43.935	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:43.935	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:143	[11.0.0.14:17674 INC] Calling RPC method open_wallet
+2000-01-01 00:59:43.935	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:59:43.935	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:1390	setting daemon to http://11.0.0.13:28081
+2000-01-01 00:59:43.935	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:59:43.935	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:59:43.936	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8719	ringdb path set to .shared-ringdb
+2000-01-01 00:59:43.936	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:59:43.936	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:59:43.937	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:6448	e || !exists. THROW EXCEPTION: error::file_not_found
+2000-01-01 00:59:43.937	[RPC0]	WARNING	net.http	src/wallet/wallet_errors.h:999	/home/lever65/monerosim_dev/monero-shadow/src/wallet/wallet2.cpp:6448:N5tools5error15file_error_baseILi1EEE: file not found "/tmp/monerosim_shared/user003_wallet/user003_wallet.keys"
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: tools::error::file_error_base<1>
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0x4e6042) [0x555555a3a042]:_dev/monerosim/monero-wallet-rpc(+0x4e6042) [0x555555a3a042]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x455244) [0x5555559a9244]:_dev/monerosim/monero-wallet-rpc(+0x455244) [0x5555559a9244]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x45764c) [0x5555559ab64c]:_dev/monerosim/monero-wallet-rpc(+0x45764c) [0x5555559ab64c]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x21c762) [0x555555770762]:_dev/monerosim/monero-wallet-rpc(+0x21c762) [0x555555770762]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x341078) [0x555555895078]:_dev/monerosim/monero-wallet-rpc(+0x341078) [0x555555895078]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:59:43.937	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:59:43.937	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556a33000: Function not implemented
+2000-01-01 00:59:43.937	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556a31000: Function not implemented
+2000-01-01 00:59:43.939	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:43.939	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:142	[11.0.0.14:17674 INC] Calling RPC method create_wallet
+2000-01-01 00:59:43.939	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:59:43.939	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:1390	setting daemon to http://11.0.0.13:28081
+2000-01-01 00:59:43.939	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:59:43.939	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:59:43.940	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8719	ringdb path set to .shared-ringdb
+2000-01-01 00:59:43.940	[RPC0]	INFO	net	contrib/epee/src/net_parse_helpers.cpp:138	[PARSE URI] regex not matched for uri: ^(([^:]*?)://)?(\[(.*)\](:(\d+))?)(.*)?
+2000-01-01 00:59:43.940	[RPC0]	INFO	net.ssl	contrib/epee/src/net_ssl.cpp:146	Generating SSL certificate
+2000-01-01 00:59:44.181	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:59:44.181	[RPC0]	INFO	wallet.wallet2	src/wallet/wallet2.cpp:8743	caching ringdb key
+2000-01-01 00:59:44.181	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:59:44.181	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b3000: Function not implemented
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: std::__ios_failure
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0xb0) [0x7ffff70aab0c]:_64-linux-gnu/libstdc++.so.6(_ZSt19__throw_ios_failurePKc+0xb0) [0x7ffff70aab0c]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x133ee5) [0x7ffff7133ee5]:_64-linux-gnu/libstdc++.so.6(+0x133ee5) [0x7ffff7133ee5]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x98d48b) [0x555555ee148b]:_dev/monerosim/monero-wallet-rpc(+0x98d48b) [0x555555ee148b]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x3c0a2c) [0x555555914a2c]:_dev/monerosim/monero-wallet-rpc(+0x3c0a2c) [0x555555914a2c]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x43a345) [0x55555598e345]:_dev/monerosim/monero-wallet-rpc(+0x43a345) [0x55555598e345]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x43a9eb) [0x55555598e9eb]:_dev/monerosim/monero-wallet-rpc(+0x43a9eb) [0x55555598e9eb]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x4424c3) [0x5555559964c3]:_dev/monerosim/monero-wallet-rpc(+0x4424c3) [0x5555559964c3]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x227373) [0x55555577b373]:_dev/monerosim/monero-wallet-rpc(+0x227373) [0x55555577b373]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x341553) [0x555555895553]:_dev/monerosim/monero-wallet-rpc(+0x341553) [0x555555895553]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [18]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [19]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [20]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [21]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:59:44.181	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:4506	failed to generate wallet keys file /tmp/monerosim_shared/user003_wallet/user003_wallet.keys.new
+2000-01-01 00:59:44.181	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:5457	!r. THROW EXCEPTION: error::file_save_error
+2000-01-01 00:59:44.181	[RPC0]	WARNING	net.http	src/wallet/wallet_errors.h:999	/home/lever65/monerosim_dev/monero-shadow/src/wallet/wallet2.cpp:5457:N5tools5error15file_error_baseILi3EEE: failed to save file "/tmp/monerosim_shared/user003_wallet/user003_wallet.keys"
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:134	Exception: tools::error::file_error_base<3>
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:135	Unwound call stack:
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [1]  0xb0) [0x5555556ce1a0]:_dev/monerosim/monero-wallet-rpc(__cxa_throw+0xb0) [0x5555556ce1a0]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [2]  0x4e5610) [0x555555a39610]:_dev/monerosim/monero-wallet-rpc(+0x4e5610) [0x555555a39610]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [3]  0x43ac49) [0x55555598ec49]:_dev/monerosim/monero-wallet-rpc(+0x43ac49) [0x55555598ec49]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [4]  0x4424c3) [0x5555559964c3]:_dev/monerosim/monero-wallet-rpc(+0x4424c3) [0x5555559964c3]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [5]  0x227373) [0x55555577b373]:_dev/monerosim/monero-wallet-rpc(+0x227373) [0x55555577b373]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [6]  0x341553) [0x555555895553]:_dev/monerosim/monero-wallet-rpc(+0x341553) [0x555555895553]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [7]  0x36c657) [0x5555558c0657]:_dev/monerosim/monero-wallet-rpc(+0x36c657) [0x5555558c0657]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [8]  0x282d1d) [0x5555557d6d1d]:_dev/monerosim/monero-wallet-rpc(+0x282d1d) [0x5555557d6d1d]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [9]  0x2ca1ef) [0x55555581e1ef]:_dev/monerosim/monero-wallet-rpc(+0x2ca1ef) [0x55555581e1ef]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [10]  0x2ca761) [0x55555581e761]:_dev/monerosim/monero-wallet-rpc(+0x2ca761) [0x55555581e761]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [11]  0x2deb4b) [0x555555832b4b]:_dev/monerosim/monero-wallet-rpc(+0x2deb4b) [0x555555832b4b]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [12]  0x26f065) [0x5555557c3065]:_dev/monerosim/monero-wallet-rpc(+0x26f065) [0x5555557c3065]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [13]  0x20c4cd) [0x5555557604cd]:_dev/monerosim/monero-wallet-rpc(+0x20c4cd) [0x5555557604cd]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [14]  0x28bdec) [0x5555557dfdec]:_dev/monerosim/monero-wallet-rpc(+0x28bdec) [0x5555557dfdec]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [15]  0x1699f) [0x7ffff7f1c99f]:_64-linux-gnu/libboost_thread.so.1.83.0(+0x1699f) [0x7ffff7f1c99f]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [16]  0x9caa4) [0x7ffff6c9caa4]:_64-linux-gnu/libc.so.6(+0x9caa4) [0x7ffff6c9caa4]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	    [17]  0x129c3c) [0x7ffff6d29c3c]:_64-linux-gnu/libc.so.6(+0x129c3c) [0x7ffff6d29c3c]
+2000-01-01 00:59:44.181	[RPC0]	INFO	stacktrace	src/common/stack_trace.cpp:173	
+2000-01-01 00:59:44.181	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x7ffff62b4000: Function not implemented
+2000-01-01 00:59:44.181	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556aaf000: Function not implemented
+2000-01-01 00:59:44.181	[RPC0]	ERROR	mlocker	contrib/epee/src/mlocker.cpp:86	Error unlocking page at 0x555556aae000: Function not implemented
+2000-01-01 00:59:44.183	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:44.183	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:17674 INC] Calling RPC method get_address
+2000-01-01 00:59:49.185	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:49.185	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:17674 INC] Calling RPC method get_address
+2000-01-01 00:59:51.045	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.13] POST /json_rpc
+2000-01-01 00:59:51.045	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:71	[11.0.0.13:57856 INC] Calling RPC method get_balance
+2000-01-01 00:59:54.187	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:54.187	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:17674 INC] Calling RPC method get_address
+2000-01-01 00:59:59.189	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:67	HTTP [11.0.0.14] POST /json_rpc
+2000-01-01 00:59:59.189	[RPC0]	INFO	wallet.rpc	src/wallet/wallet_rpc_server.h:72	[11.0.0.14:17674 INC] Calling RPC method get_address

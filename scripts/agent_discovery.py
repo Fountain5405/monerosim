@@ -75,7 +75,7 @@ class AgentDiscovery:
             
             # Create console handler
             console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)
+            console_handler.setLevel(logging.DEBUG)
             
             # Create formatter
             formatter = logging.Formatter(
@@ -421,37 +421,63 @@ class AgentDiscovery:
                 registry = self.get_agent_registry(force_refresh)
                 agents = registry.get("agents", [])
                 
+                # Log the structure of the agents data
+                self.logger.debug(f"Agents data type: {type(agents)}")
+                if isinstance(agents, dict):
+                    self.logger.debug(f"Agents dict keys: {list(agents.keys())}")
+                    if agents:
+                        first_key = next(iter(agents))
+                        self.logger.debug(f"First agent keys: {list(agents[first_key].keys())}")
+                elif isinstance(agents, list) and agents:
+                    self.logger.debug(f"First agent keys: {list(agents[0].keys())}")
+                
+                # Create a mapping of agent IP addresses to agent data for quick lookup
+                # since miners.json uses IP addresses as identifiers
+                agent_ip_map = {}
+                
                 if isinstance(agents, list):
-                    # Create a mapping of agent IDs to agent data for quick lookup
-                    agent_map = {}
                     for agent_data in agents:
-                        agent_id = agent_data.get("id") or agent_data.get("agent_id")
-                        if agent_id:
-                            agent_map[agent_id] = agent_data
+                        ip_addr = agent_data.get("ip_addr")
+                        if ip_addr:
+                            agent_ip_map[ip_addr] = agent_data
+                            self.logger.debug(f"Added agent with IP {ip_addr} to map")
+                elif isinstance(agents, dict):
+                    for agent_id, agent_data in agents.items():
+                        ip_addr = agent_data.get("ip_addr")
+                        if ip_addr:
+                            agent_ip_map[ip_addr] = agent_data
+                            self.logger.debug(f"Added agent with IP {ip_addr} to map")
+                
+                self.logger.debug(f"Created agent IP map with {len(agent_ip_map)} entries")
+                self.logger.debug(f"Agent IP map keys: {list(agent_ip_map.keys())}")
+                
+                # Enrich miner data with port information from the main agents list
+                for miner in miners:
+                    miner_ip = miner.get("ip_addr")
+                    miner_id = miner.get("id")
+                    self.logger.debug(f"Processing miner {miner_id} with IP {miner_ip} and keys: {list(miner.keys())}")
                     
-                    self.logger.debug(f"Created agent map with {len(agent_map)} entries")
-                    
-                    # Enrich miner data with port information from the main agents list
-                    for miner in miners:
-                        miner_id = miner.get("id")
-                        self.logger.debug(f"Processing miner {miner_id} with keys: {list(miner.keys())}")
+                    if miner_ip and miner_ip in agent_ip_map:
+                        agent_data = agent_ip_map[miner_ip]
+                        self.logger.debug(f"Found matching agent with keys: {list(agent_data.keys())}")
                         
-                        if miner_id in agent_map:
-                            agent_data = agent_map[miner_id]
-                            self.logger.debug(f"Found matching agent with keys: {list(agent_data.keys())}")
-                            
-                            # Copy port information if not already present
-                            if "daemon_rpc_port" not in miner and "daemon_rpc_port" in agent_data:
-                                miner["daemon_rpc_port"] = agent_data["daemon_rpc_port"]
-                                self.logger.debug(f"Added daemon_rpc_port: {agent_data['daemon_rpc_port']}")
-                            if "agent_rpc_port" not in miner and "agent_rpc_port" in agent_data:
-                                miner["agent_rpc_port"] = agent_data["agent_rpc_port"]
-                                self.logger.debug(f"Added agent_rpc_port: {agent_data['agent_rpc_port']}")
-                            if "wallet_rpc_port" not in miner and "wallet_rpc_port" in agent_data:
-                                miner["wallet_rpc_port"] = agent_data["wallet_rpc_port"]
-                                self.logger.debug(f"Added wallet_rpc_port: {agent_data['wallet_rpc_port']}")
-                        else:
-                            self.logger.debug(f"No matching agent found for miner {miner_id}")
+                        # Copy port information if not already present
+                        if "daemon_rpc_port" not in miner and "daemon_rpc_port" in agent_data:
+                            miner["daemon_rpc_port"] = agent_data["daemon_rpc_port"]
+                            self.logger.debug(f"Added daemon_rpc_port: {agent_data['daemon_rpc_port']}")
+                        if "agent_rpc_port" not in miner and "agent_rpc_port" in agent_data:
+                            miner["agent_rpc_port"] = agent_data["agent_rpc_port"]
+                            self.logger.debug(f"Added agent_rpc_port: {agent_data['agent_rpc_port']}")
+                        if "wallet_rpc_port" not in miner and "wallet_rpc_port" in agent_data:
+                            miner["wallet_rpc_port"] = agent_data["wallet_rpc_port"]
+                            self.logger.debug(f"Added wallet_rpc_port: {agent_data['wallet_rpc_port']}")
+                        # Also add the agent_id for future reference
+                        if "agent_id" not in miner and "id" in agent_data:
+                            miner["agent_id"] = agent_data["id"]
+                            self.logger.debug(f"Added agent_id: {agent_data['id']}")
+                    else:
+                        self.logger.debug(f"No matching agent found for miner with IP {miner_ip}")
+                        self.logger.debug(f"Available IPs in map: {list(agent_ip_map.keys())}")
             
             self.logger.info(f"Found {len(miners)} miner agents")
             return miners

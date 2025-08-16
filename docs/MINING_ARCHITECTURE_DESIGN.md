@@ -158,10 +158,6 @@ A "solo miner" is defined as a mining node with a hashrate below the `solo_miner
 
 The Agent Discovery System automatically identifies solo miners based on their hashrate percentage:
 
-```python
-def is_solo_miner(miner, threshold=2):
-    return float(miner['hashrate']) < threshold
-```
 
 ## 4. Architectural Diagram
 
@@ -203,7 +199,7 @@ The implementation will be carried out in the following phases:
 
 3.  **Agent Configuration Logic**:
     *   In `shadow_agents.rs`, implement a mechanism to collect all user agents with `is_miner: true`.
-    *   Write the resulting miner registry (containing agent ID, hashrate, wallet address, and a boolean `is_solo_miner` flag) to a shared JSON file (e.g., `/tmp/monerosim_shared/miners.json`). The `is_solo_miner` flag should be set based on the `solo_miner_threshold`.
+    *   Write the resulting miner registry (containing agent ID, hashrate, and wallet address) to a shared JSON file (e.g., `/tmp/monerosim_shared/miners.json`).
     *   Write the agent registry to `/tmp/monerosim_shared/agent_registry.json`.
 
 4.  **Block Controller Refactoring**:

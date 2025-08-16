@@ -1,0 +1,73 @@
+general:
+  stop_time: 1h
+  fresh_blockchain: true
+  log_level: info
+network:
+  type: 1_gbit_switch
+agents:
+  user_agents:
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    attributes:
+      hashrate: '25'
+      is_miner: 'true'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    attributes:
+      hashrate: '25'
+      is_miner: 'true'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    attributes:
+      hashrate: '20'
+      is_miner: 'true'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    attributes:
+      hashrate: '20'
+      is_miner: 'true'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    attributes:
+      hashrate: '10'
+      is_miner: 'true'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    user_script: agents.regular_user
+    attributes:
+      transaction_interval: '60'
+      min_transaction_amount: '0.5'
+      max_transaction_amount: '2.0'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    user_script: agents.regular_user
+    attributes:
+      transaction_interval: '60'
+      min_transaction_amount: '0.5'
+      max_transaction_amount: '2.0'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    user_script: agents.regular_user
+    attributes:
+      transaction_interval: '60'
+      min_transaction_amount: '0.5'
+      max_transaction_amount: '2.0'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    user_script: agents.regular_user
+    attributes:
+      transaction_interval: '60'
+      min_transaction_amount: '0.5'
+      max_transaction_amount: '2.0'
+  - daemon: monerod
+    wallet: monero-wallet-rpc
+    user_script: agents.regular_user
+    attributes:
+      transaction_interval: '60'
+      min_transaction_amount: '0.5'
+      max_transaction_amount: '2.0'
+  block_controller:
+    script: agents.block_controller
+  pure_script_agents:
+  - script: scripts.monitor
+  - script: scripts.sync_check

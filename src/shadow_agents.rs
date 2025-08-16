@@ -14,7 +14,6 @@ struct MinerInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     wallet_address: Option<String>,
     weight: u32,
-    is_solo_miner: bool,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -156,7 +155,6 @@ fn add_daemon_process(
         "--confirm-external-bind".to_string(),
         "--disable-rpc-ban".to_string(),
         "--rpc-access-control-origins=*".to_string(),
-        format!("--rpc-restricted-bind-port={}", agent_rpc_port),
         "--regtest".to_string(),
         format!("--p2p-bind-ip={}", agent_ip),
         format!("--p2p-bind-port={}", agent_port),
@@ -169,6 +167,11 @@ fn add_daemon_process(
         if j < index {
             daemon_args.push(format!("--add-exclusive-node={}", seed));
         }
+    }
+    
+    // Special case for the first node (index 0) - connect to the second node if available
+    if index == 0 && seed_agents.len() > 1 {
+        daemon_args.push(format!("--add-exclusive-node={}", seed_agents[1]));
     }
 
     processes.push(ShadowProcess {
@@ -220,6 +223,17 @@ fn add_wallet_process(
         .to_string_lossy()
         .to_string();
 
+    // First, create the wallet directory in a separate process
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!(
+            "-c 'mkdir -p /tmp/monerosim_shared/{}_wallet'",
+            agent_id
+        ),
+        environment: environment.clone(),
+        start_time: format!("{}s", 54 + index * 2), // Start before wallet RPC
+    });
+
     // Launch wallet RPC directly - it will create wallets on demand
     let wallet_path = std::fs::canonicalize("monero-wallet-rpc")
         .expect("Failed to resolve absolute path to monero-wallet-rpc")
@@ -238,8 +252,8 @@ fn add_wallet_process(
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'mkdir -p /tmp/monerosim_shared/{}_wallet && {} {}'",
-            agent_id, wallet_path, wallet_args
+            "-c '{} {}'",
+            wallet_path, wallet_args
         ),
         environment: environment.clone(),
         start_time: format!("{}s", 55 + index * 2),
@@ -277,11 +291,11 @@ fn add_user_agent_process(
         for (key, value) in attrs {
             if key == "transaction_interval" {
                 agent_args.push(format!("--tx-frequency {}", value));
-            } else if key == "min_transaction_amount" || key == "max_transaction_amount" {
+            } else if key == "min_transaction_amount" || key == "max_transaction_amount" || key == "is_miner" {
                 // These should be passed as attributes
                 agent_args.push(format!("--attributes {} {}", key, value));
-            } else if key != "is_miner" && key != "hashrate" {
-                // Pass other attributes directly, but filter out is_miner and hashrate
+            } else if key != "hashrate" {
+                // Pass other attributes directly, but filter out hashrate only
                 agent_args.push(format!("--{} {}", key, value));
             }
         }
@@ -318,11 +332,25 @@ fn process_user_agents(
     shared_dir: &Path,
     current_dir: &str,
 ) -> color_eyre::eyre::Result<()> {
-    // Process User Agents
+    // First, build the seed_agents list
+    if let Some(user_agents) = &agents.user_agents {
+        for (i, user_agent_config) in user_agents.iter().enumerate() {
+            let is_miner = user_agent_config.is_miner_value();
+            let agent_ip = format!("11.0.0.{}", 10 + i as u8);
+            let agent_port = 28080;
+
+            // Add to seed agents if it's one of the first two users or a miner
+            if i < 2 || is_miner {
+                seed_agents.push(format!("{}:{}", agent_ip, agent_port));
+            }
+        }
+    }
+
+    // Now process all user agents
     if let Some(user_agents) = &agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
             // Check if this is a miner agent
-            let is_miner = user_agent_config.is_miner.unwrap_or(false);
+            let is_miner = user_agent_config.is_miner_value();
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
             
@@ -336,11 +364,6 @@ fn process_user_agents(
             // Since each agent has its own IP address, they can all use the same port
             let wallet_rpc_port = 28082;
             let p2p_port = 28080;
-
-            // Add to seed agents if it's one of the first two users or a miner
-            if i < 2 || is_miner {
-                seed_agents.push(format!("{}:{}", agent_ip, agent_port));
-            }
 
             let mut processes = Vec::new();
 
@@ -606,16 +629,13 @@ pub fn generate_agent_shadow_config(
     // Populate agent registry from user_agents
     if let Some(user_agents) = &config.agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
-            let is_miner = user_agent_config.is_miner.unwrap_or(false);
+            let is_miner = user_agent_config.is_miner_value();
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
             
             let agent_ip = format!("11.0.0.{}", 10 + i as u8);
             
-            let mut attributes = user_agent_config.attributes.clone().unwrap_or_default();
-            if is_miner {
-                attributes.insert("is_miner".to_string(), "true".to_string());
-            }
+            let attributes = user_agent_config.attributes.clone().unwrap_or_default();
 
             let agent_info = AgentInfo {
                 id: agent_id,
@@ -645,7 +665,7 @@ pub fn generate_agent_shadow_config(
     // Populate miner registry from user_agents that are miners
     if let Some(user_agents) = &config.agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
-            if user_agent_config.is_miner.unwrap_or(false) {
+            if user_agent_config.is_miner_value() {
                 let agent_id = format!("user{:03}", i);
                 let agent_ip = format!("11.0.0.{}", 10 + i as u8);
                 
@@ -657,7 +677,6 @@ pub fn generate_agent_shadow_config(
                         .and_then(|attrs| attrs.get("hashrate"))
                         .and_then(|h| h.parse::<u32>().ok())
                         .unwrap_or(0),
-                    is_solo_miner: true,
                 };
                 
                 miner_registry.miners.push(miner_info);

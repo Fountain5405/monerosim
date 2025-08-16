@@ -42,7 +42,11 @@ class BaseAgent(ABC):
         self.hash_rate = hash_rate
         self.tx_frequency = tx_frequency
         self.running = True
+        self._is_miner = False  # Default to False
 
+        # Set up logging first
+        self.logger = self._setup_logging()
+        
         # Convert attributes list to a dictionary
         self.attributes: Dict[str, Any] = {}
         if self.attributes_list:
@@ -51,6 +55,9 @@ class BaseAgent(ABC):
             for i in range(0, len(self.attributes_list), 2):
                 if i + 1 < len(self.attributes_list):
                     self.attributes[self.attributes_list[i]] = self.attributes_list[i+1]
+        
+        # Extract is_miner from attributes
+        self._extract_is_miner()
         
         # Shared state directory
         if shared_dir is None:
@@ -61,9 +68,6 @@ class BaseAgent(ABC):
         # Initialize RPC connections first (required for logging context)
         self.agent_rpc: Optional[MoneroRPC] = None
         self.wallet_rpc: Optional[WalletRPC] = None
-        
-        # Set up logging
-        self.logger = self._setup_logging()
         
         # Register signal handlers
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -80,6 +84,44 @@ class BaseAgent(ABC):
     def shared_dir(self, value):
         self._shared_dir = value
         
+    @property
+    def is_miner(self) -> bool:
+        """Return whether this agent is a miner"""
+        return self._is_miner
+        
+    def _extract_is_miner(self):
+        """Extract is_miner from attributes and handle both string and boolean values"""
+        if 'is_miner' in self.attributes:
+            is_miner_value = self.attributes['is_miner']
+            
+            # Handle string representations
+            if isinstance(is_miner_value, str):
+                if is_miner_value.lower() in ('true', '1', 'yes', 'on'):
+                    self._is_miner = True
+                elif is_miner_value.lower() in ('false', '0', 'no', 'off'):
+                    self._is_miner = False
+                else:
+                    self.logger.warning(f"Invalid string value for is_miner: '{is_miner_value}'. Defaulting to False.")
+                    self._is_miner = False
+            
+            # Handle boolean values
+            elif isinstance(is_miner_value, bool):
+                self._is_miner = is_miner_value
+            
+            # Handle numeric values
+            elif isinstance(is_miner_value, (int, float)):
+                self._is_miner = bool(is_miner_value)
+            
+            # Handle other types
+            else:
+                self.logger.warning(f"Unsupported type for is_miner: {type(is_miner_value)}. Defaulting to False.")
+                self._is_miner = False
+                
+            self.logger.debug(f"Extracted is_miner={self._is_miner} from attributes")
+        else:
+            self.logger.debug("No is_miner attribute found, defaulting to False")
+            self._is_miner = False
+            
     def _setup_logging(self) -> logging.Logger:
         """Set up agent-specific logging"""
         logger = logging.getLogger(f"{self.__class__.__name__}[{self.agent_id}]")

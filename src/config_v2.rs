@@ -75,9 +75,31 @@ pub struct UserAgentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_script: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_miner: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<HashMap<String, String>>,
+}
+
+impl UserAgentConfig {
+    /// Check if this agent is a miner based on attributes
+    /// Returns true if "is_miner" is found in attributes and is "true" or true
+    /// Returns false if "is_miner" is not found or is "false" or false
+    pub fn is_miner_value(&self) -> bool {
+        if let Some(attrs) = &self.attributes {
+            if let Some(is_miner_value) = attrs.get("is_miner") {
+                // Handle string representations
+                match is_miner_value.as_str() {
+                    "true" | "True" | "TRUE" => return true,
+                    "false" | "False" | "FALSE" => return false,
+                    _ => {} // Continue to check other formats
+                }
+                
+                // Try to parse as boolean directly
+                if let Ok(parsed_bool) = is_miner_value.parse::<bool>() {
+                    return parsed_bool;
+                }
+            }
+        }
+        false
+    }
 }
 
 /// Block controller agent configuration
@@ -165,6 +187,62 @@ agents:
         let config: Config = serde_yaml::from_str(yaml).unwrap();
         assert!(config.is_agent_mode());
         assert!(config.validate().is_ok());
+        
+        // Test the is_miner_value method
+        if let Some(user_agents) = &config.agents.user_agents {
+            // First agent should not be a miner (no is_miner attribute)
+            assert!(!user_agents[0].is_miner_value());
+            
+            // Second agent should be a miner (is_miner: "true")
+            assert!(user_agents[1].is_miner_value());
+        }
+    }
+    
+    #[test]
+    fn test_is_miner_value() {
+        let mut agent = UserAgentConfig {
+            daemon: "monerod".to_string(),
+            wallet: None,
+            user_script: None,
+            attributes: None,
+        };
+        
+        // Test with no attributes (should return false)
+        assert!(!agent.is_miner_value());
+        
+        // Test with empty attributes (should return false)
+        agent.attributes = Some(HashMap::new());
+        assert!(!agent.is_miner_value());
+        
+        // Test with is_miner: "true"
+        let mut attrs = HashMap::new();
+        attrs.insert("is_miner".to_string(), "true".to_string());
+        agent.attributes = Some(attrs);
+        assert!(agent.is_miner_value());
+        
+        // Test with is_miner: "false"
+        let mut attrs = HashMap::new();
+        attrs.insert("is_miner".to_string(), "false".to_string());
+        agent.attributes = Some(attrs);
+        assert!(!agent.is_miner_value());
+        
+        // Test with is_miner: "True" (case insensitive)
+        let mut attrs = HashMap::new();
+        attrs.insert("is_miner".to_string(), "True".to_string());
+        agent.attributes = Some(attrs);
+        assert!(agent.is_miner_value());
+        
+        // Test with is_miner: "FALSE" (case insensitive)
+        let mut attrs = HashMap::new();
+        attrs.insert("is_miner".to_string(), "FALSE".to_string());
+        agent.attributes = Some(attrs);
+        assert!(!agent.is_miner_value());
+        
+        // Test with is_miner: "invalid" (should return false)
+        let mut attrs = HashMap::new();
+        attrs.insert("is_miner".to_string(), "invalid".to_string());
+        agent.attributes = Some(attrs);
+        assert!(!agent.is_miner_value());
     }
     
     #[test]
