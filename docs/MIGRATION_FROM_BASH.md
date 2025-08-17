@@ -22,7 +22,7 @@ The Python migration replaces all bash testing scripts with equivalent Python im
 |-------------------|-------------------|---------|
 | `legacy_scripts/simple_test.sh` | `scripts/simple_test.py` | Basic functionality test |
 | `legacy_scripts/sync_check.sh` | `scripts/sync_check.py` | Network synchronization verification |
-| `legacy_scripts/block_controller.sh` | `scripts/block_controller.py` | Block generation control |
+| `legacy_scripts/block_controller.sh` | `scripts/block_controller.py` (DEPRECATED) | Block generation control (use `BlockControllerAgent` for agent-based simulations) |
 | `legacy_scripts/monitor_script.sh` | `scripts/monitor.py` | Real-time simulation monitoring |
 | `legacy_scripts/test_p2p_connectivity.sh` | `scripts/test_p2p_connectivity.py` | P2P connection verification |
 | N/A | `scripts/transaction_script.py` | Enhanced transaction handling |
@@ -81,7 +81,7 @@ python scripts/sync_check.py
 python scripts/sync_check.py --max-attempts 20 --check-interval 5
 ```
 
-### Block Controller
+### Block Controller (DEPRECATED)
 
 **Old (Bash):**
 ```bash
@@ -89,12 +89,10 @@ python scripts/sync_check.py --max-attempts 20 --check-interval 5
 ./legacy_scripts/block_controller.sh stop
 ```
 
-**New (Python):**
+**New (Python - DEPRECATED):**
 ```bash
-python scripts/block_controller.py start
-python scripts/block_controller.py stop
-# or with custom settings
-python scripts/block_controller.py start --threads 2 --interval 30
+# This script is deprecated. For agent-based simulations, use BlockControllerAgent.
+python scripts/block_controller.py --block-interval 60 --blocks-per-generation 1
 ```
 
 ### Monitor

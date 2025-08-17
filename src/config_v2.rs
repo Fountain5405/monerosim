@@ -86,9 +86,9 @@ impl UserAgentConfig {
         if let Some(attrs) = &self.attributes {
             if let Some(is_miner_value) = attrs.get("is_miner") {
                 // Handle string representations
-                match is_miner_value.as_str() {
-                    "true" | "True" | "TRUE" => return true,
-                    "false" | "False" | "FALSE" => return false,
+                match is_miner_value.to_lowercase().as_str() {
+                    "true" | "1" | "yes" | "on" => return true,
+                    "false" | "0" | "no" | "off" => return false,
                     _ => {} // Continue to check other formats
                 }
                 

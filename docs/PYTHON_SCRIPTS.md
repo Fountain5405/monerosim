@@ -118,32 +118,33 @@ python3 scripts/simple_test.py
 [INFO] ✅ Basic mining and synchronization test PASSED
 ```
 
-### block_controller.py
+### block_controller.py (DEPRECATED)
 
-**Purpose**: Manages continuous block generation for mining nodes.
+**Purpose**: Manages continuous block generation for mining nodes. **This script is deprecated in favor of the `BlockControllerAgent` (defined in `agents/block_controller.py`) which is part of the unified agent-based simulation framework.** This standalone script will only use the first discovered miner for block generation. For advanced, scalable block generation with weighted random selection, please use the agent-based simulation by configuring `block_controller` in your `config.yaml`.
 
 **Location**: `scripts/block_controller.py`
 
 **Features**:
-- Automated wallet creation and management
-- Periodic block generation (default: every 2 minutes)
-- Graceful shutdown handling
-- Wallet RPC integration
+- Dynamic agent discovery (limited to first miner)
+- Automatic configuration of daemon and wallet endpoints
+- Basic block generation control
+- Robust error handling
 
 **Usage**:
 ```bash
-# Run with default settings
+# Run with default settings (uses first discovered miner)
 python3 scripts/block_controller.py
 
 # Custom configuration
-python3 scripts/block_controller.py --interval 60 --wallet-name custom_wallet
+python3 scripts/block_controller.py --block-interval 60 --blocks-per-generation 2
 ```
 
 **Command-line Options**:
-- `--interval`: Seconds between block generation (default: 120)
-- `--wallet-name`: Name for the mining wallet (default: "mining_wallet")
-- `--daemon-url`: Custom daemon RPC URL
-- `--wallet-url`: Custom wallet RPC URL
+- `--block-interval`: Time in seconds between block generations (default: 120)
+- `--blocks-per-generation`: Number of blocks to generate each time (default: 1)
+- `--max-attempts`: Maximum number of attempts for connection and operations (default: 30)
+- `--retry-delay`: Base delay in seconds between retries (default: 2)
+- `--test-mode`: Run in test mode (discover agents but don't start block generation)
 
 ### sync_check.py
 

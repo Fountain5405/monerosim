@@ -54,14 +54,6 @@ The Monerosim project has been transitioning from a node-based architecture to a
 6. `scripts/test_agent_registration.py` - Updated test file
 7. `scripts/monitor.py` - Updated monitoring script
 
-## Backward Compatibility
-
-To ensure backward compatibility, the following measures were implemented:
-
-1. **Dual Registry Files**: The system now writes both `agent_registry.json` and `node_registry.json` (for backward compatibility)
-2. **Legacy Function Support**: Added wrapper functions like `get_node_registry()` that call the new `get_agent_registry()` function
-3. **Flexible Field Access**: Code now checks for both old and new field names (e.g., `agent.get("agent_rpc_port") or agent.get("node_rpc_port")`)
-4. **Command-line Argument Support**: Scripts that accepted `--nodes` now also accept `--agents` with a deprecation warning
 
 ## Testing
 

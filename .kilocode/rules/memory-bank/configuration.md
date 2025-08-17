@@ -27,8 +27,8 @@ agents:
     # Miner example
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"  # Required for miners
-      is_miner: true
       attributes:
+        is_miner: true # Boolean indicator (true/false, "true"/"false", "1"/"0", "yes"/"no", "on"/"off")
         hashrate: "25"  # Percentage of total hashrate
     
     # Regular user example

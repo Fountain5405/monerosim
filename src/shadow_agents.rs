@@ -577,11 +577,11 @@ pub fn generate_agent_shadow_config(
     let mut next_ip = 10; // Start from 11.0.0.10
 
     // Helper to get absolute path for binaries
-    let monerod_path = std::fs::canonicalize("monerod")
+    let monerod_path = std::fs::canonicalize("builds/A/monero/bin/monerod")
         .map_err(|e| color_eyre::eyre::eyre!("Failed to resolve absolute path to monerod: {}", e))?
         .to_string_lossy()
         .to_string();
-    let wallet_path = std::fs::canonicalize("monero-wallet-rpc")
+    let wallet_path = std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
         .map_err(|e| color_eyre::eyre::eyre!("Failed to resolve absolute path to monero-wallet-rpc: {}", e))?
         .to_string_lossy()
         .to_string();

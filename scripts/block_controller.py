@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """
+DEPRECATED: This script is deprecated in favor of the BlockControllerAgent (agents/block_controller.py)
+which is part of the unified agent-based simulation framework.
+This script will only use the first discovered miner for block generation.
+For advanced, scalable block generation with weighted random selection, please use the agent-based simulation.
+
 block_controller.py - Central Block Controller Script for MoneroSim
 
 This script controls block generation in the Monero simulation by using the daemon's

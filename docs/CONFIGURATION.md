@@ -77,11 +77,11 @@ MoneroSim's configuration system works in conjunction with the [`agent_discovery
   wallet: "monero-wallet-rpc" (optional)
   user_script: "agents.regular_user" (optional)
   attributes:
-    is_miner: "true" (optional)
-    hashrate: "50" (optional, for miners)
-    transaction_interval: "60" (optional, for users)
-    min_transaction_amount: "0.1" (optional, for users)
-    max_transaction_amount: "1.0" (optional, for users)
+    is_miner: "true" | "false" | "1" | "0" | "yes" | "no" | "on" | "off" (optional, boolean indicator for miners)
+    hashrate: "50" (optional, for miners, percentage of total network hashrate)
+    transaction_interval: "60" (optional, for users, seconds between transactions)
+    min_transaction_amount: "0.1" (optional, for users, minimum XMR for transactions)
+    max_transaction_amount: "1.0" (optional, for users, maximum XMR for transactions)
 ```
 
 ### `agents.block_controller`
