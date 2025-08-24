@@ -1,12 +1,8 @@
-use crate::config_v2::{
-    Config, AgentDefinitions, UserAgentConfig, BlockControllerConfig, PureScriptAgentConfig,
-};
-use rand::seq::SliceRandom;
+use crate::config_v2::{Config, AgentDefinitions};
 use serde_json;
 use serde_yaml;
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::Command;
 
 #[derive(serde::Serialize, Debug)]
 struct MinerInfo {
@@ -235,10 +231,7 @@ fn add_wallet_process(
     });
 
     // Launch wallet RPC directly - it will create wallets on demand
-    let wallet_path = std::fs::canonicalize("monero-wallet-rpc")
-        .expect("Failed to resolve absolute path to monero-wallet-rpc")
-        .to_string_lossy()
-        .to_string();
+    let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
         
     let wallet_args = format!(
         "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} \
@@ -577,14 +570,8 @@ pub fn generate_agent_shadow_config(
     let mut next_ip = 10; // Start from 11.0.0.10
 
     // Helper to get absolute path for binaries
-    let monerod_path = std::fs::canonicalize("builds/A/monero/bin/monerod")
-        .map_err(|e| color_eyre::eyre::eyre!("Failed to resolve absolute path to monerod: {}", e))?
-        .to_string_lossy()
-        .to_string();
-    let wallet_path = std::fs::canonicalize("builds/A/monero/bin/monero-wallet-rpc")
-        .map_err(|e| color_eyre::eyre::eyre!("Failed to resolve absolute path to monero-wallet-rpc: {}", e))?
-        .to_string_lossy()
-        .to_string();
+    let monerod_path = "/usr/local/bin/monerod".to_string();
+    let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
 
     // Store seed nodes for P2P connections
     let mut seed_nodes: Vec<String> = Vec::new();
@@ -626,49 +613,93 @@ pub fn generate_agent_shadow_config(
         agents: Vec::new(),
     };
 
-    // Populate agent registry from user_agents
+    // Populate agent registry from all agent types
+    let mut current_ip_counter = 10; // Start IP counter for agent registry
+
+    // Add user agents to registry
     if let Some(user_agents) = &config.agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
-            let is_miner = user_agent_config.is_miner_value();
-            // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
-            
-            let agent_ip = format!("11.0.0.{}", 10 + i as u8);
-            
+            let agent_ip = format!("11.0.0.{}", current_ip_counter);
+            current_ip_counter += 1;
+
             let attributes = user_agent_config.attributes.clone().unwrap_or_default();
 
             let agent_info = AgentInfo {
                 id: agent_id,
                 ip_addr: agent_ip,
-                daemon: true, // Daemon is now required
+                daemon: true,
                 wallet: user_agent_config.wallet.is_some(),
                 user_script: user_agent_config.user_script.clone(),
                 attributes,
                 wallet_rpc_port: if user_agent_config.wallet.is_some() { Some(28082) } else { None },
                 daemon_rpc_port: Some(28081),
             };
-            
             agent_registry.agents.push(agent_info);
         }
     }
-    
+
+    // Add block controller to registry
+    if config.agents.block_controller.is_some() {
+        let block_controller_id = "blockcontroller".to_string();
+        let block_controller_ip = format!("11.0.0.{}", current_ip_counter);
+        current_ip_counter += 1;
+
+        let agent_info = AgentInfo {
+            id: block_controller_id,
+            ip_addr: block_controller_ip,
+            daemon: false, // Block controller does not run a daemon
+            wallet: false, // Block controller does not have a wallet
+            user_script: config.agents.block_controller.as_ref().map(|c| c.script.clone()),
+            attributes: HashMap::new(), // No specific attributes for block controller
+            wallet_rpc_port: None,
+            daemon_rpc_port: None,
+        };
+        agent_registry.agents.push(agent_info);
+    }
+
+    // Add pure script agents to registry
+    if let Some(pure_script_agents) = &config.agents.pure_script_agents {
+        for (i, pure_script_config) in pure_script_agents.iter().enumerate() {
+            let script_id = format!("script{:03}", i);
+            let script_ip = format!("11.0.0.{}", current_ip_counter);
+            current_ip_counter += 1;
+
+            let agent_info = AgentInfo {
+                id: script_id,
+                ip_addr: script_ip,
+                daemon: false, // Pure script agents do not run a daemon
+                wallet: false, // Pure script agents do not have a wallet
+                user_script: Some(pure_script_config.script.clone()),
+                attributes: HashMap::new(), // No specific attributes for pure script agents
+                wallet_rpc_port: None,
+                daemon_rpc_port: None,
+            };
+            agent_registry.agents.push(agent_info);
+        }
+    }
+
     // Write agent registry to file
     let agent_registry_path = shared_dir_path.join("agent_registry.json");
     let agent_registry_json = serde_json::to_string_pretty(&agent_registry)?;
     std::fs::write(&agent_registry_path, &agent_registry_json)?;
-    
+
     // Create miner registry
     let mut miner_registry = MinerRegistry {
         miners: Vec::new(),
     };
-    
+
     // Populate miner registry from user_agents that are miners
     if let Some(user_agents) = &config.agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
             if user_agent_config.is_miner_value() {
                 let agent_id = format!("user{:03}", i);
-                let agent_ip = format!("11.0.0.{}", 10 + i as u8);
-                
+                // Find the IP address from the already populated agent_registry
+                let agent_ip = agent_registry.agents.iter()
+                    .find(|a| a.id == agent_id)
+                    .map(|a| a.ip_addr.clone())
+                    .unwrap_or_else(|| format!("11.0.0.{}", 10 + i as u8)); // Fallback
+
                 let miner_info = MinerInfo {
                     ip_addr: agent_ip,
                     wallet_address: None, // Will be populated by the block controller
@@ -678,12 +709,11 @@ pub fn generate_agent_shadow_config(
                         .and_then(|h| h.parse::<u32>().ok())
                         .unwrap_or(0),
                 };
-                
                 miner_registry.miners.push(miner_info);
             }
         }
     }
-    
+
     // Write miner registry to file
     let miner_registry_path = shared_dir_path.join("miners.json");
     let miner_registry_json = serde_json::to_string_pretty(&miner_registry)?;
@@ -697,12 +727,7 @@ pub fn generate_agent_shadow_config(
     // Create final Shadow configuration
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
-            // Force to 1h as requested if longer than 1h
-            stop_time: if config.general.stop_time.ends_with('h') || config.general.stop_time.ends_with('m') {
-                "1h".to_string()
-            } else {
-                "1h".to_string()
-            },
+            stop_time: config.general.stop_time.clone(),
             model_unblocked_syscall_latency: true,
             log_level: config.general.log_level.clone().unwrap_or("trace".to_string()),
         },

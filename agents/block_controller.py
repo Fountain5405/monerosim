@@ -67,103 +67,178 @@ class BlockControllerAgent(BaseAgent):
         self.write_shared_state("block_controller.json", controller_data)
         
         self.logger.info("Stateless block controller initialized")
-            
-    def _load_miner_registry(self) -> List[Dict[str, Any]]:
-        """
-        Load miner information from the miners.json file.
-        """
-        if not self.shared_dir:
-            self.logger.error("Shared directory not configured, cannot load miner registry.")
-            return []
 
+        # Initialize all agent wallets and update the agent registry
+        self._initialize_all_agent_wallets()
+            
+    def _initialize_all_agent_wallets(self):
+        """
+        Iterate through all agents in the registry, initialize their wallets,
+        and update the registry with their wallet addresses.
+        """
+        self.logger.info("Starting centralized wallet initialization for all agents...")
+        agent_registry_path = self.shared_dir / "agent_registry.json"
+        if not agent_registry_path.exists():
+            self.logger.error(f"Agent registry not found at {agent_registry_path}")
+            return
+
+        try:
+            with open(agent_registry_path, 'r') as f:
+                agent_data = json.load(f)
+        except Exception as e:
+            self.logger.error(f"Failed to load agent_registry.json: {e}")
+            return
+
+        updated_agents = []
+        for agent in agent_data.get("agents", []):
+            # Only process agents that have a wallet
+            if "wallet_rpc_port" not in agent:
+                updated_agents.append(agent)
+                continue
+
+            wallet_rpc_port = agent["wallet_rpc_port"]
+            ip_addr = agent["ip_addr"]
+            agent_id = agent["id"]
+            
+            try:
+                wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
+                wallet_rpc.wait_until_ready()
+                
+                wallet_name = f"{agent_id}_wallet"
+                address = None
+                
+                try:
+                    self.logger.info(f"Attempting to open wallet '{wallet_name}' for agent {agent_id}")
+                    wallet_rpc.open_wallet(wallet_name, password="")
+                    address = wallet_rpc.get_address()
+                    self.logger.info(f"Successfully opened existing wallet '{wallet_name}' for {agent_id}")
+                except RPCError:
+                    try:
+                        self.logger.info(f"Wallet not found, creating '{wallet_name}' for agent {agent_id}")
+                        wallet_rpc.create_wallet(wallet_name, password="")
+                        address = wallet_rpc.get_address()
+                        self.logger.info(f"Successfully created new wallet '{wallet_name}' for {agent_id}")
+                    except RPCError as create_err:
+                        self.logger.error(f"Failed to create wallet for {agent_id}: {create_err}")
+                        continue
+                
+                if address:
+                    self.logger.debug(f"Address type: {type(address)}, value: {address}")
+                    self.logger.debug(f"Agent type: {type(agent)}, value: {agent}")
+                    agent.update({"wallet_address": address})
+                    self.logger.info(f"Updated agent {agent_id} with wallet address.")
+
+                    # Update miners.json with wallet address if this agent is a miner
+                    if agent.get("attributes", {}).get("is_miner") == "true":
+                        self._update_miner_wallet_address(agent_id, address)
+
+            except Exception as e:
+                self.logger.error(f"Error processing wallet for agent {agent_id}: {e}")
+            
+            updated_agents.append(agent)
+
+        # Write the updated agent data back to the registry
+        try:
+            with open(agent_registry_path, 'w') as f:
+                json.dump({"agents": updated_agents}, f, indent=2)
+            self.logger.info("Successfully updated agent_registry.json with all wallet addresses.")
+        except Exception as e:
+            self.logger.error(f"Failed to write updated agent_registry.json: {e}")
+
+    def _update_miner_wallet_address(self, agent_id: str, wallet_address: str):
+        """
+        Update the miners.json file with the wallet address for a specific miner.
+        """
         miners_registry_path = self.shared_dir / "miners.json"
         if not miners_registry_path.exists():
-            self.logger.error(f"Miners registry not found at {miners_registry_path}")
-            return []
+            self.logger.error(f"Miner registry not found at {miners_registry_path}")
+            return
 
         try:
             with open(miners_registry_path, 'r') as f:
                 miner_data = json.load(f)
         except Exception as e:
             self.logger.error(f"Failed to load miners.json: {e}")
+            return
+
+        updated = False
+        for miner in miner_data.get("miners", []):
+            # Infer agent_id from IP, assuming a consistent pattern
+            ip_parts = miner["ip_addr"].split('.')
+            if len(ip_parts) == 4:
+                miner_agent_index = int(ip_parts[3]) - 10
+                miner_agent_id = f"user{miner_agent_index:03d}"
+                
+                if miner_agent_id == agent_id:
+                    miner["wallet_address"] = wallet_address
+                    updated = True
+                    self.logger.info(f"Updated miners.json for {agent_id} with wallet address.")
+                    break
+            else:
+                self.logger.warning(f"Could not determine agent_id for miner with IP {miner['ip_addr']}")
+
+        if updated:
+            try:
+                with open(miners_registry_path, 'w') as f:
+                    json.dump(miner_data, f, indent=2)
+            except Exception as e:
+                self.logger.error(f"Failed to write updated miners.json: {e}")
+        else:
+            self.logger.warning(f"Miner {agent_id} not found in miners.json to update wallet address.")
+
+    def _load_miner_registry(self) -> List[Dict[str, Any]]:
+        """
+        Load miner information from miners.json and enrich with wallet addresses
+        from the agent_registry.json.
+        """
+        if not self.shared_dir:
+            self.logger.error("Shared directory not configured, cannot load miner registry.")
             return []
 
-        miners = []
+        miners_registry_path = self.shared_dir / "miners.json"
+        miners_registry_path = self.shared_dir / "miners.json"
+        agent_registry_path = self.shared_dir / "agent_registry.json"
+
+        if not miners_registry_path.exists() or not agent_registry_path.exists():
+            self.logger.error("Miner or agent registry not found.")
+            return []
+
+        try:
+            with open(miners_registry_path, 'r') as f:
+                miner_data = json.load(f)
+            with open(agent_registry_path, 'r') as f:
+                agent_data = json.load(f)
+        except Exception as e:
+            self.logger.error(f"Failed to load registry files: {e}")
+            return []
+
+        # Create a lookup for wallet addresses from the agent registry
+        agent_wallets = {agent["id"]: agent.get("wallet_address") for agent in agent_data.get("agents", [])}
+
+        enriched_miners = []
         for miner in miner_data.get("miners", []):
-            # Get wallet RPC port (standard port 28082 for all agents)
-            wallet_rpc_port = 28082
-            
-            try:
-                wallet_rpc = WalletRPC(miner["ip_addr"], wallet_rpc_port)
-                wallet_rpc.wait_until_ready()
-                
-                # Try to create wallet first, then get address
-                # Extract agent ID from IP address (e.g., 11.0.0.10 -> user000)
-                ip_parts = miner["ip_addr"].split('.')
-                if len(ip_parts) == 4:
-                    agent_index = int(ip_parts[3]) - 10
-                    agent_id = f"user{agent_index:03d}"
-                else:
-                    agent_id = "unknown"
-                
-                wallet_name = f"{agent_id}_wallet"
-                address = None
-                
-                # First try to open existing wallet
-                try:
-                    self.logger.info(f"Attempting to open wallet '{wallet_name}' for miner at {miner['ip_addr']}")
-                    wallet_rpc.open_wallet(wallet_name, password="")
-                    # If open succeeds, get the address
-                    address = wallet_rpc.get_address()
-                    self.logger.info(f"Successfully opened existing wallet '{wallet_name}'")
-                except RPCError as open_err:
-                    # If wallet doesn't exist or can't be opened, try to create it
-                    if "Wallet not found" in str(open_err) or "Failed to open wallet" in str(open_err):
-                        try:
-                            self.logger.info(f"Wallet doesn't exist, creating '{wallet_name}'")
-                            wallet_rpc.create_wallet(wallet_name, password="")
-                            # If creation succeeds, get the address
-                            address = wallet_rpc.get_address()
-                            self.logger.info(f"Successfully created new wallet '{wallet_name}'")
-                        except RPCError as create_err:
-                            self.logger.error(f"Failed to create wallet: {create_err}")
-                            # Last attempt - maybe wallet is already loaded
-                            try:
-                                self.logger.warning("Attempting to get address from current wallet")
-                                address = wallet_rpc.get_address()
-                            except RPCError as addr_err:
-                                self.logger.error(f"Failed to get address: {addr_err}")
-                                continue  # Skip this miner
-                    else:
-                        # Some other error opening wallet, try to get address anyway
-                        self.logger.warning(f"Error opening wallet: {open_err}, trying to get address from current wallet")
-                        try:
-                            address = wallet_rpc.get_address()
-                        except RPCError as addr_err:
-                            self.logger.error(f"Failed to get address: {addr_err}")
-                            continue  # Skip this miner
-                
-                if address:
-                    miner["wallet_address"] = address
-                    miner["agent_id"] = agent_id
-                    miners.append(miner)
-                    self.logger.info(f"Successfully added miner {agent_id} with address {address[:12]}...")
-                else:
-                    self.logger.warning(f"No address obtained for miner at {miner['ip_addr']}, skipping")
-                
-            except RPCError as e:
-                self.logger.error(f"Failed to setup miner at {miner['ip_addr']}: {e}")
-                continue  # Skip this miner and continue with the next one
-            except Exception as e:
-                self.logger.error(f"Unexpected error for miner at {miner['ip_addr']}: {e}")
-                continue  # Skip this miner and continue with the next one
+            # Infer agent_id from IP, assuming a consistent pattern
+            ip_parts = miner["ip_addr"].split('.')
+            if len(ip_parts) == 4:
+                agent_index = int(ip_parts[3]) - 10
+                agent_id = f"user{agent_index:03d}"
+                miner["agent_id"] = agent_id
 
-        if not miners:
-            self.logger.warning("No miners found in registry.")
+                # Enrich with wallet address
+                if agent_id in agent_wallets:
+                    miner["wallet_address"] = agent_wallets[agent_id]
+                    enriched_miners.append(miner)
+                else:
+                    self.logger.warning(f"Wallet address not found for miner {agent_id} in agent registry.")
+            else:
+                self.logger.warning(f"Could not determine agent_id for miner with IP {miner['ip_addr']}")
+
+        if not enriched_miners:
+            self.logger.warning("No miners successfully enriched with wallet addresses.")
         else:
-            self.logger.info(f"Loaded {len(miners)} miners from {miners_registry_path}.")
-
-        return miners
+            self.logger.info(f"Successfully loaded and enriched {len(enriched_miners)} miners.")
+            
+        return enriched_miners
 
     def _select_winning_miner(self, miners: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Select a winning miner based on hashrate using weighted selection."""

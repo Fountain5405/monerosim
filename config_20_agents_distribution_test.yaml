@@ -1,0 +1,178 @@
+general:
+  stop_time: "6h"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+
+agents:
+  user_agents:
+    # Miners (5 agents)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "25"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "25"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "20"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "20"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: 'true'
+        hashrate: "10"
+
+    # Recipient Agents (10 agents) - can receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "25" # Corresponds to miner 1
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "25" # Corresponds to miner 2
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "20" # Corresponds to miner 3
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "20" # Corresponds to miner 4
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "10" # Corresponds to miner 5
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "25" # Corresponds to miner 1
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "25" # Corresponds to miner 2
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "20" # Corresponds to miner 3
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "20" # Corresponds to miner 4
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        distribution_share: "10" # Corresponds to miner 5
+
+    # Non-Recipient Agents (5 agents) - cannot receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "false"
+        transaction_interval: "30"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.1"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "false"
+        transaction_interval: "30"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.1"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "false"
+        transaction_interval: "30"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.1"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "false"
+        transaction_interval: "30"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.1"
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "false"
+        transaction_interval: "30"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.1"
+
+  block_controller:
+    script: "agents.block_controller"
+    
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"
+    - script: "agents.miner_distributor" # Add the miner distributor agent
