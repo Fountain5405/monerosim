@@ -1,4 +1,5 @@
-use crate::config_v2::{Config, AgentDefinitions};
+use crate::config_v2::{Config, AgentDefinitions, Network};
+use crate::gml_parser::{self, GmlGraph, GmlNode, validate_topology, get_autonomous_systems};
 use serde_json;
 use serde_yaml;
 use std::collections::HashMap;
@@ -73,6 +74,40 @@ struct ShadowNetwork {
 struct ShadowGraph {
     #[serde(rename = "type")]
     graph_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    file: Option<ShadowFileSource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nodes: Option<Vec<ShadowNetworkNode>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    edges: Option<Vec<ShadowNetworkEdge>>,
+}
+
+#[derive(serde::Serialize, Debug)]
+struct ShadowFileSource {
+    path: String,
+}
+
+#[derive(serde::Serialize, Debug)]
+struct ShadowNetworkNode {
+    id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bandwidth_down: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bandwidth_up: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    packet_loss: Option<String>,
+}
+
+#[derive(serde::Serialize, Debug)]
+struct ShadowNetworkEdge {
+    source: u32,
+    target: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    latency: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bandwidth: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    packet_loss: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -81,6 +116,10 @@ struct ShadowHost {
     #[serde(skip_serializing_if = "Option::is_none")]
     ip_addr: Option<String>,
     processes: Vec<ShadowProcess>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bandwidth_down: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bandwidth_up: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -99,6 +138,340 @@ fn generate_random_start_time() -> String {
     format!("{}s", random_seconds)
 }
 
+/// Get AS number from a GML node
+fn get_node_as_number(gml_node: &GmlNode) -> Option<String> {
+    gml_node.attributes.get("AS").or_else(|| gml_node.attributes.get("as")).cloned()
+}
+
+/// Global IP Registry for centralized IP management across all agent types
+#[derive(Debug)]
+pub struct GlobalIpRegistry {
+    /// Tracks all assigned IP addresses to prevent collisions
+    assigned_ips: HashMap<String, String>, // IP -> Agent ID
+    /// Subnet allocation for different agent types with adequate spacing
+    subnet_allocations: HashMap<AgentType, SubnetAllocation>,
+    /// Next available IP counters for each subnet
+    subnet_counters: HashMap<String, u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AgentType {
+    UserAgent,
+    BlockController,
+    PureScriptAgent,
+}
+
+#[derive(Debug)]
+pub struct SubnetAllocation {
+    pub base_subnet: String,
+    pub start_ip: u8,
+    pub end_ip: u8,
+    pub spacing: u8, // Minimum spacing between agent types
+}
+
+impl GlobalIpRegistry {
+    pub fn new() -> Self {
+        let mut subnet_allocations = HashMap::new();
+        let mut subnet_counters = HashMap::new();
+
+        // Unique IP assignment for each agent to simulate true global distribution
+        // Each agent gets a unique IP from different subnets
+        subnet_allocations.insert(AgentType::UserAgent, SubnetAllocation {
+            base_subnet: "192.168".to_string(), // Base for all user agents
+            start_ip: 10,
+            end_ip: 254, // Allow full range for unique IPs
+            spacing: 0,
+        });
+
+        subnet_allocations.insert(AgentType::BlockController, SubnetAllocation {
+            base_subnet: "192.168".to_string(), // Same base but different subnet logic
+            start_ip: 10,
+            end_ip: 254,
+            spacing: 0,
+        });
+
+        subnet_allocations.insert(AgentType::PureScriptAgent, SubnetAllocation {
+            base_subnet: "192.168".to_string(), // Same base but different subnet logic
+            start_ip: 10,
+            end_ip: 254,
+            spacing: 0,
+        });
+
+        // Initialize counters
+        for allocation in subnet_allocations.values() {
+            subnet_counters.insert(allocation.base_subnet.clone(), allocation.start_ip);
+        }
+
+        GlobalIpRegistry {
+            assigned_ips: HashMap::new(),
+            subnet_allocations,
+            subnet_counters,
+        }
+    }
+
+    /// Assign a unique IP address for the given agent type and ID
+    /// Distributes agents across different IP ranges to simulate global internet distribution
+    pub fn assign_ip(&mut self, agent_type: AgentType, agent_id: &str) -> Result<String, String> {
+        // Extract numeric part from agent_id (e.g., "user005" -> 5)
+        let agent_number = if let Some(num_str) = agent_id.strip_prefix("user") {
+            num_str.parse::<u32>().unwrap_or(0)
+        } else if let Some(num_str) = agent_id.strip_prefix("script") {
+            100 + num_str.parse::<u32>().unwrap_or(0) // Offset script agents
+        } else {
+            // For blockcontroller and other special cases
+            match agent_id {
+                "blockcontroller" => 200,
+                _ => 0,
+            }
+        };
+
+        // Global IP distribution - simulate different geographic regions
+        // North America: 10.x.x.x, 192.168.x.x
+        // Europe: 172.16-31.x.x
+        // Asia: 203.x.x.x, 210.x.x.x
+        // South America: 200.x.x.x
+        // Africa: 197.x.x.x
+        // Oceania: 202.x.x.x
+
+        let (octet1, octet2, region_name) = match agent_number % 6 {
+            0 => (10, (agent_number / 6) % 256, "North America"),     // 10.x.x.x
+            1 => (172, 16 + (agent_number / 6) % 16, "Europe"),       // 172.16-31.x.x
+            2 => (203, (agent_number / 6) % 256, "Asia"),             // 203.x.x.x
+            3 => (200, (agent_number / 6) % 256, "South America"),    // 200.x.x.x
+            4 => (197, (agent_number / 6) % 256, "Africa"),           // 197.x.x.x
+            5 => (202, (agent_number / 6) % 256, "Oceania"),          // 202.x.x.x
+            _ => (10, 0, "Default"),
+        };
+
+        // For North America, also use 192.168.x.x range occasionally
+        let (final_octet1, final_octet2) = if octet1 == 10 && (agent_number % 12) == 0 {
+            (192, 168) // Occasionally use 192.168.x.x for North America
+        } else {
+            (octet1, octet2)
+        };
+
+        // Create unique subnet and host
+        let subnet_octet3 = agent_number % 256;
+        let host_octet4 = 10 + (agent_number / 256) % 246; // Keep host part in valid range
+
+        let ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4);
+
+        // Check if this IP is already assigned
+        if !self.assigned_ips.contains_key(&ip) {
+            self.assigned_ips.insert(ip.clone(), agent_id.to_string());
+            Ok(ip)
+        } else {
+            // Fallback: try a different host IP
+            let fallback_ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4 + 100);
+            if !self.assigned_ips.contains_key(&fallback_ip) {
+                self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
+                Ok(fallback_ip)
+            } else {
+                Err(format!("Could not assign unique IP for agent {}", agent_id))
+            }
+        }
+    }
+
+    /// Check if an IP is already assigned
+    pub fn is_ip_assigned(&self, ip: &str) -> bool {
+        self.assigned_ips.contains_key(ip)
+    }
+
+    /// Get the agent ID that owns a given IP
+    pub fn get_agent_for_ip(&self, ip: &str) -> Option<&String> {
+        self.assigned_ips.get(ip)
+    }
+
+    /// Get all assigned IPs for debugging
+    pub fn get_all_assigned_ips(&self) -> &HashMap<String, String> {
+        &self.assigned_ips
+    }
+
+    /// Get statistics about IP allocation
+    pub fn get_allocation_stats(&self) -> HashMap<String, usize> {
+        let mut stats = HashMap::new();
+        for (subnet, _) in &self.subnet_counters {
+            let count = self.assigned_ips.keys()
+                .filter(|ip| ip.starts_with(&format!("{}.", subnet)))
+                .count();
+            stats.insert(subnet.clone(), count);
+        }
+        stats
+    }
+}
+
+/// Legacy AS-aware subnet manager for backward compatibility with GML topologies
+#[derive(Debug)]
+pub struct AsSubnetManager {
+    subnet_counters: HashMap<String, u8>,
+}
+
+impl AsSubnetManager {
+    pub fn new() -> Self {
+        let mut subnet_counters = HashMap::new();
+        subnet_counters.insert("65001".to_string(), 100); // Start from 192.168.100.x for AS 65001
+        subnet_counters.insert("65002".to_string(), 100); // Start from 192.168.101.x for AS 65002
+        subnet_counters.insert("65003".to_string(), 100); // Start from 192.168.102.x for AS 65003
+        AsSubnetManager { subnet_counters }
+    }
+
+    /// Get the subnet base for an AS number
+    pub fn get_subnet_base(as_number: &str) -> Option<&'static str> {
+        match as_number {
+            "65001" => Some("192.168.100"),
+            "65002" => Some("192.168.101"),
+            "65003" => Some("192.168.102"),
+            _ => None,
+        }
+    }
+
+    /// Assign IP address based on AS number
+    pub fn assign_as_aware_ip(&mut self, as_number: &str) -> Option<String> {
+        if let Some(subnet_base) = Self::get_subnet_base(as_number) {
+            let counter = self.subnet_counters.get_mut(as_number)?;
+            // Check if we've exhausted the subnet (255 is the max for IPv4 last octet)
+            if *counter >= 255 {
+                return None; // Subnet exhausted
+            }
+            let ip = format!("{}.{}", subnet_base, counter);
+            *counter = counter.checked_add(1).unwrap_or(255); // Use checked_add to prevent overflow
+            Some(ip)
+        } else {
+            None
+        }
+    }
+}
+
+/// Get IP address for an agent using the centralized Global IP Registry
+pub fn get_agent_ip(
+    agent_type: AgentType,
+    agent_id: &str,
+    agent_index: usize,
+    network_node_id: u32,
+    gml_graph: Option<&GmlGraph>,
+    using_gml_topology: bool,
+    subnet_manager: &mut AsSubnetManager,
+    ip_registry: &mut GlobalIpRegistry,
+) -> String {
+    // For GML topologies with AS information, try AS-aware assignment first
+    if using_gml_topology {
+        if let Some(gml) = gml_graph {
+            // Find the GML node with the matching network_node_id
+            if let Some(gml_node) = gml.nodes.iter().find(|node| node.id == network_node_id) {
+                // First, check if the GML node already has an IP address assigned
+                if let Some(existing_ip) = gml_node.get_ip() {
+                    // Check if this IP conflicts with our registry
+                    if !ip_registry.is_ip_assigned(&existing_ip) {
+                        // Register this IP in our central registry
+                        ip_registry.assigned_ips.insert(existing_ip.clone(), agent_id.to_string());
+                        return existing_ip;
+                    }
+                }
+
+                // Try AS-aware assignment using the legacy AS subnet manager
+                if let Some(as_number) = get_node_as_number(gml_node) {
+                    if let Some(as_ip) = subnet_manager.assign_as_aware_ip(&as_number) {
+                        // Check if this AS IP conflicts with our registry
+                        if !ip_registry.is_ip_assigned(&as_ip) {
+                            // Register this IP in our central registry
+                            ip_registry.assigned_ips.insert(as_ip.clone(), agent_id.to_string());
+                            return as_ip;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Use the centralized IP registry for assignment
+    match ip_registry.assign_ip(agent_type, agent_id) {
+        Ok(ip) => ip,
+        Err(error) => {
+            // Fallback to legacy assignment if centralized registry fails
+            eprintln!("Warning: IP registry assignment failed for {}: {}. Using fallback.", agent_id, error);
+
+            // Fallback logic using geographic subnets
+            let fallback_ip = match agent_type {
+                AgentType::UserAgent => format!("192.168.10.{}", 10 + agent_index),
+                AgentType::BlockController => format!("192.168.20.{}", 10 + agent_index),
+                AgentType::PureScriptAgent => format!("192.168.30.{}", 10 + agent_index),
+            };
+
+            // Try to register the fallback IP
+            if !ip_registry.is_ip_assigned(&fallback_ip) {
+                ip_registry.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
+            }
+
+            fallback_ip
+        }
+    }
+}
+
+
+/// Generate Shadow network configuration from GML graph
+fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_eyre::eyre::Result<ShadowGraph> {
+    // Validate the topology first
+    validate_topology(gml_graph).map_err(|e| color_eyre::eyre::eyre!("Invalid GML topology: {}", e))?;
+
+    // Instead of trying to embed the GML content directly, we'll use Shadow's ability
+    // to read the GML file directly by specifying the path
+    Ok(ShadowGraph {
+        graph_type: "gml".to_string(), // Shadow uses "gml" type for GML files
+        file: Some(ShadowFileSource {
+            path: gml_path.to_string(),
+        }), // Path to the external GML file as FileSource struct
+        nodes: None, // Not needed when using external file
+        edges: None, // Not needed when using external file
+    })
+}
+
+/// Distribute agents across GML network nodes intelligently
+pub fn distribute_agents_across_gml_nodes(
+    gml_graph: &GmlGraph,
+    num_agents: usize,
+) -> Vec<u32> {
+    if gml_graph.nodes.is_empty() {
+        return vec![0; num_agents]; // Fallback to node 0
+    }
+
+    // Get autonomous systems for better distribution
+    let as_groups = get_autonomous_systems(gml_graph);
+
+    let mut agent_assignments = Vec::new();
+
+    // If we have AS groups, distribute agents proportionally across them
+    if as_groups.len() > 1 {
+        // Calculate proportional distribution
+        let total_nodes: usize = as_groups.iter().map(|group| group.len()).sum();
+
+        for i in 0..num_agents {
+            // Find which AS this agent should go to based on proportional distribution
+            let mut cumulative_nodes = 0;
+            let mut target_as_index = 0;
+
+            for (as_idx, as_group) in as_groups.iter().enumerate() {
+                cumulative_nodes += as_group.len();
+                if i * total_nodes / num_agents < cumulative_nodes {
+                    target_as_index = as_idx;
+                    break;
+                }
+            }
+
+            let as_group = &as_groups[target_as_index];
+            // Within the AS, distribute round-robin
+            let node_in_as = as_group[i % as_group.len()];
+            agent_assignments.push(node_in_as);
+        }
+    } else {
+        // Simple round-robin distribution across all nodes
+        for i in 0..num_agents {
+            let node_id = gml_graph.nodes[i % gml_graph.nodes.len()].id;
+            agent_assignments.push(node_id);
+        }
+    }
+
+    agent_assignments
+}
 
 /// Helper function to create a Python agent command
 fn create_agent_command(current_dir: &str, script_path: &str, args: &[String]) -> String {
@@ -111,8 +484,8 @@ fn create_agent_command(current_dir: &str, script_path: &str, args: &[String]) -
         // It's a file path
         format!("python3 {} {}", script_path, args.join(" "))
     };
-    // Return a single bash -c command that cds into workspace, activates venv, then runs python_cmd.
-    format!("cd {} && . ./venv/bin/activate && {}", current_dir, python_cmd)
+    // Return a simplified command that sets up environment and runs python_cmd.
+    format!("cd {} && export PYTHONPATH=\"${{PYTHONPATH}}:{}\" && export PATH=\"${{PATH}}:/usr/local/bin\" && {}", current_dir, current_dir, python_cmd)
 }
 
 /// Add a Monero daemon process to the processes list
@@ -196,19 +569,7 @@ fn add_wallet_process(
     
     // Create wallet JSON content
     let wallet_json_content = format!(
-        r#"{{
-  "version": 1,
-  "filename": "{}",
-  "scan_from_height": 0,
-  "password": "",
-  "viewkey": "",
-  "spendkey": "",
-  "seed": "",
-  "seed_passphrase": "",
-  "address": "",
-  "restore_height": 0,
-  "autosave_current": true
-}}"#,
+        r#"{{"version": 1,"filename": "{}","scan_from_height": 0,"password": "","viewkey": "","spendkey": "","seed": "","seed_passphrase": "","address": "","restore_height": 0,"autosave_current": true}}"#,
         wallet_name
     );
 
@@ -234,11 +595,7 @@ fn add_wallet_process(
     let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
         
     let wallet_args = format!(
-        "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} \
-         --disable-rpc-login --trusted-daemon --log-level=1 \
-         --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind \
-         --allow-mismatched-daemon-version --max-concurrency=1 \
-         --daemon-ssl-allow-any-cert",
+        "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert",
         agent_ip, agent_rpc_port, wallet_rpc_port, agent_ip, agent_id
     );
     
@@ -267,6 +624,7 @@ fn add_user_agent_process(
     shared_dir: &Path,
     current_dir: &str,
     index: usize,
+    stop_time: &str,
 ) {
     let mut agent_args = vec![
         format!("--id {}", agent_id),
@@ -276,6 +634,7 @@ fn add_user_agent_process(
         format!("--wallet-rpc-port {}", wallet_rpc_port),
         format!("--p2p-port {}", p2p_port),
         format!("--log-level DEBUG"),
+        format!("--stop-time {}", stop_time),
     ];
 
     // Add attributes from config as command-line arguments
@@ -284,52 +643,112 @@ fn add_user_agent_process(
         for (key, value) in attrs {
             if key == "transaction_interval" {
                 agent_args.push(format!("--tx-frequency {}", value));
-            } else if key == "min_transaction_amount" || key == "max_transaction_amount" || key == "is_miner" {
+            } else if key == "min_transaction_amount" || key == "max_transaction_amount" || key == "is_miner" ||
+                      key == "can_receive_distributions" || key == "location" || key == "city" {
                 // These should be passed as attributes
                 agent_args.push(format!("--attributes {} {}", key, value));
             } else if key != "hashrate" {
                 // Pass other attributes directly, but filter out hashrate only
-                agent_args.push(format!("--{} {}", key, value));
+                agent_args.push(format!("--attributes {} {}", key, value));
             }
         }
     }
 
+    // Remove stop-time from agent args since agents handle their own lifecycle
+    agent_args.retain(|arg| !arg.starts_with("--stop-time"));
+
+    // Simplified command without nc dependency - just sleep and retry
+    let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
+        format!("python3 -m {} {}", script, agent_args.join(" "))
+    } else {
+        format!("python3 {} {}", script, agent_args.join(" "))
+    };
+
+    // Create a simple wrapper script that handles retries internally
+    let wrapper_script = format!(
+        r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+# Simple retry loop without nc dependency
+for i in {{1..30}}; do
+    if curl -s --max-time 1 http://{}:{} >/dev/null 2>&1; then
+        echo "Wallet RPC ready, starting agent..."
+        {} 2>&1
+        exit $?
+    fi
+    echo "Waiting for wallet RPC... (attempt $i/30)"
+    sleep 3
+done
+
+echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
+{} 2>&1
+"#,
+        current_dir,
+        current_dir,
+        agent_ip,
+        wallet_rpc_port,
+        python_cmd,
+        python_cmd
+    );
+
+    // Write wrapper script to a temporary file and execute it
+    let script_path = format!("/tmp/agent_{}_wrapper.sh", agent_id);
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!(
-            "-c 'while ! nc -z {ip} {wport}; do echo \"Waiting for wallet RPC at {ip}:{wport}...\"; sleep 2; done && cd {cwd} && . ./venv/bin/activate && {cmd}'",
-            ip = agent_ip,
-            wport = wallet_rpc_port,
-            cwd = current_dir,
-            cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
-                format!("python3 -m {} {}", script, agent_args.join(" "))
-            } else {
-                format!("python3 {} {}", script, agent_args.join(" "))
-            }
-        ),
+        args: format!("-c 'cat > {} << \\EOF\n{}\nEOF\nbash {}'", script_path, wrapper_script, script_path),
         environment: environment.clone(),
-        start_time: format!("{}s", 60 + index * 2), // Start agents after wallets
+        start_time: format!("{}s", 65 + index * 2), // Start agents after wallets with some buffer
     });
 }
-
 /// Process user agents
 fn process_user_agents(
     agents: &AgentDefinitions,
     hosts: &mut HashMap<String, ShadowHost>,
     seed_agents: &mut Vec<String>,
-    next_ip: &mut u8,
+    subnet_manager: &mut AsSubnetManager,
+    ip_registry: &mut GlobalIpRegistry,
     monerod_path: &str,
     wallet_path: &str,
     environment: &HashMap<String, String>,
     monero_environment: &HashMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
+    gml_graph: Option<&GmlGraph>,
+    using_gml_topology: bool,
 ) -> color_eyre::eyre::Result<()> {
+    // Get agent distribution across GML nodes if available AND we're actually using GML topology
+    let agent_node_assignments = if let Some(gml) = gml_graph {
+        if let Some(user_agents) = &agents.user_agents {
+            if using_gml_topology {
+                distribute_agents_across_gml_nodes(gml, user_agents.len())
+            } else {
+                // If we're not using GML topology (fallback to switch), all agents go to node 0
+                vec![0; user_agents.len()]
+            }
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
+
     // First, build the seed_agents list
     if let Some(user_agents) = &agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
             let is_miner = user_agent_config.is_miner_value();
-            let agent_ip = format!("11.0.0.{}", 10 + i as u8);
+            // Use consistent naming for all user agents
+            let agent_id = format!("user{:03}", i);
+
+            // Determine network node ID for this agent
+            let network_node_id = if i < agent_node_assignments.len() {
+                agent_node_assignments[i]
+            } else {
+                0 // Fallback to node 0 for switch-based networks
+            };
+
+            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 28080;
 
             // Add to seed agents if it's one of the first two users or a miner
@@ -346,13 +765,20 @@ fn process_user_agents(
             let is_miner = user_agent_config.is_miner_value();
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
-            
-            let agent_ip = format!("11.0.0.{}", next_ip);
+
+            // Determine network node ID for this agent
+            let network_node_id = if i < agent_node_assignments.len() {
+                agent_node_assignments[i]
+            } else {
+                0 // Fallback to node 0 for switch-based networks
+            };
+
+            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 28080;
-            
+
             // Use standard RPC ports for all agents
             let agent_rpc_port = 28081;
-            
+
             // Use standard wallet RPC port for all agents
             // Since each agent has its own IP address, they can all use the same port
             let wallet_rpc_port = 28082;
@@ -410,17 +836,27 @@ fn process_user_agents(
                     shared_dir,
                     current_dir,
                     i,
+                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
                 );
             }
 
             // Only add the host if it has any processes
             if !processes.is_empty() {
+                // Determine network node ID based on GML assignment or fallback
+                let network_node_id = if i < agent_node_assignments.len() {
+                    agent_node_assignments[i]
+                } else {
+                    0 // Fallback to node 0 for switch-based networks
+                };
+                
                 hosts.insert(agent_id.clone(), ShadowHost {
-                    network_node_id: 0,
+                    network_node_id,
                     ip_addr: Some(agent_ip.clone()),
                     processes,
+                    bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+                    bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
                 });
-                *next_ip += 1; // One IP per agent (all processes share the same IP)
+                // Note: next_ip is already incremented in get_agent_ip function
             }
         }
     }
@@ -432,14 +868,21 @@ fn process_user_agents(
 fn process_block_controller(
     agents: &AgentDefinitions,
     hosts: &mut HashMap<String, ShadowHost>,
-    next_ip: &mut u8,
+    subnet_manager: &mut AsSubnetManager,
+    ip_registry: &mut GlobalIpRegistry,
     environment: &HashMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
+    stop_time: &str,
+    gml_graph: Option<&GmlGraph>,
+    using_gml_topology: bool,
+    agent_offset: usize,
 ) -> color_eyre::eyre::Result<()> {
     if let Some(block_controller_config) = &agents.block_controller {
         let block_controller_id = "blockcontroller";
-        let block_controller_ip = format!("11.0.0.{}", next_ip);
+        // Assign block controller to node 0 (which has bandwidth info in GML)
+        let network_node_id = 0;
+        let block_controller_ip = get_agent_ip(AgentType::BlockController, block_controller_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
         let mut processes = Vec::new();
 
         let mut agent_args = vec![
@@ -452,28 +895,45 @@ fn process_block_controller(
             agent_args.extend(args.iter().cloned());
         }
 
-        // Block controller will self-discover miners from agent_registry.json, so we only need Python env
+        // Simplified command for block controller
+        let python_cmd = if block_controller_config.script.contains('.') && !block_controller_config.script.contains('/') && !block_controller_config.script.contains('\\') {
+            format!("python3 -m {} {}", block_controller_config.script, agent_args.join(" "))
+        } else {
+            format!("python3 {} {}", block_controller_config.script, agent_args.join(" "))
+        };
+
+        // Create a simple wrapper script for block controller
+        let wrapper_script = format!(
+            r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+echo "Starting block controller..."
+{} 2>&1
+"#,
+            current_dir,
+            current_dir,
+            python_cmd
+        );
+
+        // Write wrapper script to a temporary file and execute it
+        let script_path = format!("/tmp/{}_wrapper.sh", block_controller_id);
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
-            args: format!(
-                "-c 'cd {cwd} && . ./venv/bin/activate && {cmd}'",
-                cwd = current_dir,
-                cmd = if block_controller_config.script.contains('.') && !block_controller_config.script.contains('/') && !block_controller_config.script.contains('\\') {
-                    format!("python3 -m {} {}", block_controller_config.script, agent_args.join(" "))
-                } else {
-                    format!("python3 {} {}", block_controller_config.script, agent_args.join(" "))
-                }
-            ),
+            args: format!("-c 'cat > {} << \\EOF\n{}\nEOF\nbash {}'", script_path, wrapper_script, script_path),
             environment: environment.clone(),
             start_time: "90s".to_string(), // Fixed start time for block controller
         });
 
         hosts.insert(block_controller_id.to_string(), ShadowHost {
-            network_node_id: 0,
+            network_node_id, // Use the assigned GML node with bandwidth info
             ip_addr: Some(block_controller_ip),
             processes,
+            bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+            bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
         });
-        *next_ip += 1;
+        // Note: next_ip is already incremented in get_agent_ip function
     }
 
     Ok(())
@@ -483,15 +943,22 @@ fn process_block_controller(
 fn process_pure_script_agents(
     agents: &AgentDefinitions,
     hosts: &mut HashMap<String, ShadowHost>,
-    next_ip: &mut u8,
+    subnet_manager: &mut AsSubnetManager,
+    ip_registry: &mut GlobalIpRegistry,
     environment: &HashMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
+    stop_time: &str,
+    gml_graph: Option<&GmlGraph>,
+    using_gml_topology: bool,
+    agent_offset: usize,
 ) -> color_eyre::eyre::Result<()> {
     if let Some(pure_script_agents) = &agents.pure_script_agents {
         for (i, pure_script_config) in pure_script_agents.iter().enumerate() {
             let script_id = format!("script{:03}", i);
-            let script_ip = format!("11.0.0.{}", next_ip);
+            // Assign pure scripts to node 0 (which has bandwidth info in GML)
+            let network_node_id = 0;
+            let script_ip = get_agent_ip(AgentType::PureScriptAgent, &script_id, agent_offset + i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let mut processes = Vec::new();
 
             let mut script_args = vec![
@@ -504,27 +971,46 @@ fn process_pure_script_agents(
                 script_args.extend(args.iter().cloned());
             }
 
+            // Simplified command for pure script agents
+            let python_cmd = if pure_script_config.script.contains('.') && !pure_script_config.script.contains('/') && !pure_script_config.script.contains('\\') {
+                format!("python3 -m {} {}", pure_script_config.script, script_args.join(" "))
+            } else {
+                format!("python3 {} {}", pure_script_config.script, script_args.join(" "))
+            };
+
+            // Create a simple wrapper script for pure script agents
+            let wrapper_script = format!(
+                r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+echo "Starting pure script agent {}..."
+{} 2>&1
+"#,
+                current_dir,
+                current_dir,
+                script_id,
+                python_cmd
+            );
+
+            // Write wrapper script to a temporary file and execute it
+            let script_path = format!("/tmp/{}_wrapper.sh", script_id);
             processes.push(ShadowProcess {
                 path: "/bin/bash".to_string(),
-                args: format!(
-                    "-c 'cd {cwd} && . ./venv/bin/activate && {cmd}'",
-                    cwd = current_dir,
-                    cmd = if pure_script_config.script.contains('.') && !pure_script_config.script.contains('/') && !pure_script_config.script.contains('\\') {
-                        format!("python3 -m {} {}", pure_script_config.script, script_args.join(" "))
-                    } else {
-                        format!("python3 {} {}", pure_script_config.script, script_args.join(" "))
-                    }
-                ),
+                args: format!("-c 'cat > {} << \\EOF\n{}\nEOF\nbash {}'", script_path, wrapper_script, script_path),
                 environment: environment.clone(),
                 start_time: format!("{}s", 30 + i * 5), // Staggered start times
             });
 
             hosts.insert(script_id.clone(), ShadowHost {
-                network_node_id: 0,
+                network_node_id, // Use the assigned GML node with bandwidth info
                 ip_addr: Some(script_ip),
                 processes,
+                bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+                bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
             });
-            *next_ip += 1;
+            // Note: next_ip is already incremented in get_agent_ip function
         }
     }
 
@@ -544,6 +1030,17 @@ pub fn generate_agent_shadow_config(
         .to_string_lossy()
         .to_string();
 
+    // Load and validate GML graph if specified
+    let gml_graph = if let Some(Network::Gml { path }) = &config.network {
+        let graph = gml_parser::parse_gml_file(path)?;
+        validate_topology(&graph).map_err(|e| color_eyre::eyre::eyre!("GML validation failed: {}", e))?;
+        println!("Loaded GML topology from '{}' with {} nodes and {} edges",
+                 path, graph.nodes.len(), graph.edges.len());
+        Some(graph)
+    } else {
+        None
+    };
+
     let mut hosts: HashMap<String, ShadowHost> = HashMap::new();
 
     // Common environment variables
@@ -559,6 +1056,9 @@ pub fn generate_agent_shadow_config(
     if let Some(log_level) = &config.general.log_level {
         environment.insert("MONEROSIM_LOG_LEVEL".to_string(), log_level.to_uppercase());
     }
+    
+    // Add stop_time to the environment
+    environment.insert("stop_time".to_string(), config.general.stop_time.clone());
 
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
@@ -566,8 +1066,11 @@ pub fn generate_agent_shadow_config(
     monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), "20".to_string());
 
-    // Base IP allocation
-    let mut next_ip = 10; // Start from 11.0.0.10
+    // Create centralized IP registry for robust IP management
+    let mut ip_registry = GlobalIpRegistry::new();
+
+    // Create AS-aware subnet manager for GML topology compatibility
+    let mut subnet_manager = AsSubnetManager::new();
 
     // Helper to get absolute path for binaries
     let monerod_path = "/usr/local/bin/monerod".to_string();
@@ -576,36 +1079,62 @@ pub fn generate_agent_shadow_config(
     // Store seed nodes for P2P connections
     let mut seed_nodes: Vec<String> = Vec::new();
 
+    // Determine if we're actually using GML topology based on network configuration
+    let using_gml_topology = if let Some(Network::Gml { path: _ }) = &config.network {
+        true // We're using GML topology
+    } else {
+        false // We're using switch topology
+    };
+    
     // Process all agent types from the configuration
     process_user_agents(
         &config.agents,
         &mut hosts,
         &mut seed_nodes,
-        &mut next_ip,
+        &mut subnet_manager,
+        &mut ip_registry,
         &monerod_path,
         &wallet_path,
         &environment,
         &monero_environment,
         shared_dir_path,
         &current_dir,
+        gml_graph.as_ref(),
+        using_gml_topology,
     )?;
+
+    // Calculate offset for block controller and script agents to avoid IP collisions
+    // Use a larger offset to ensure clear separation between agent types
+    let user_agent_count = config.agents.user_agents.as_ref().map(|ua| ua.len()).unwrap_or(0);
+    let block_controller_offset = user_agent_count + 100; // Reserve 100 IPs for user agents
+    let script_offset = user_agent_count + 200; // Reserve another 100 IPs for block controller and other uses
 
     process_block_controller(
         &config.agents,
         &mut hosts,
-        &mut next_ip,
+        &mut subnet_manager,
+        &mut ip_registry,
         &environment,
         shared_dir_path,
         &current_dir,
+        &config.general.stop_time,
+        gml_graph.as_ref(),
+        using_gml_topology,
+        block_controller_offset,
     )?;
 
     process_pure_script_agents(
         &config.agents,
         &mut hosts,
-        &mut next_ip,
+        &mut subnet_manager,
+        &mut ip_registry,
         &environment,
         shared_dir_path,
         &current_dir,
+        &config.general.stop_time,
+        gml_graph.as_ref(),
+        using_gml_topology,
+        script_offset,
     )?;
 
     // Create agent registry
@@ -614,16 +1143,26 @@ pub fn generate_agent_shadow_config(
     };
 
     // Populate agent registry from all agent types
-    let mut current_ip_counter = 10; // Start IP counter for agent registry
+    // Extract IPs from the already created hosts instead of generating new ones
 
     // Add user agents to registry
     if let Some(user_agents) = &config.agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
             let agent_id = format!("user{:03}", i);
-            let agent_ip = format!("11.0.0.{}", current_ip_counter);
-            current_ip_counter += 1;
 
-            let attributes = user_agent_config.attributes.clone().unwrap_or_default();
+            // Get IP from the corresponding host that was already created
+            let agent_ip = hosts.get(&agent_id)
+                .and_then(|host| host.ip_addr.clone())
+                .unwrap_or_else(|| {
+                    // Fallback to geographic IP assignment
+                    format!("192.168.10.{}", 10 + i)
+                });
+
+            let mut attributes = user_agent_config.attributes.clone().unwrap_or_default();
+
+            // Add computed is_miner attribute to the agent registry
+            let is_miner = user_agent_config.is_miner_value();
+            attributes.insert("is_miner".to_string(), is_miner.to_string());
 
             let agent_info = AgentInfo {
                 id: agent_id,
@@ -642,8 +1181,14 @@ pub fn generate_agent_shadow_config(
     // Add block controller to registry
     if config.agents.block_controller.is_some() {
         let block_controller_id = "blockcontroller".to_string();
-        let block_controller_ip = format!("11.0.0.{}", current_ip_counter);
-        current_ip_counter += 1;
+
+        // Get IP from the corresponding host that was already created
+        let block_controller_ip = hosts.get(&block_controller_id)
+            .and_then(|host| host.ip_addr.clone())
+            .unwrap_or_else(|| {
+                // Fallback to geographic IP assignment for block controller
+                format!("192.168.20.{}", 10 + block_controller_offset)
+            });
 
         let agent_info = AgentInfo {
             id: block_controller_id,
@@ -662,8 +1207,14 @@ pub fn generate_agent_shadow_config(
     if let Some(pure_script_agents) = &config.agents.pure_script_agents {
         for (i, pure_script_config) in pure_script_agents.iter().enumerate() {
             let script_id = format!("script{:03}", i);
-            let script_ip = format!("11.0.0.{}", current_ip_counter);
-            current_ip_counter += 1;
+
+            // Get IP from the corresponding host that was already created
+            let script_ip = hosts.get(&script_id)
+                .and_then(|host| host.ip_addr.clone())
+                .unwrap_or_else(|| {
+                    // Fallback to geographic IP assignment for script agents
+                    format!("192.168.30.{}", 10 + i)
+                });
 
             let agent_info = AgentInfo {
                 id: script_id,
@@ -698,19 +1249,44 @@ pub fn generate_agent_shadow_config(
                 let agent_ip = agent_registry.agents.iter()
                     .find(|a| a.id == agent_id)
                     .map(|a| a.ip_addr.clone())
-                    .unwrap_or_else(|| format!("11.0.0.{}", 10 + i as u8)); // Fallback
+                    .unwrap_or_else(|| {
+                        // Geographic IP assignment for miners
+                        format!("192.168.10.{}", 10 + i)
+                    }); // Fallback
 
+                // Determine miner weight (hashrate)
+                // If no valid hashrate is specified, default to 10 (for even distribution)
+                let weight = user_agent_config.attributes
+                    .as_ref()
+                    .and_then(|attrs| attrs.get("hashrate"))
+                    .and_then(|h| h.parse::<u32>().ok())
+                    .unwrap_or(10); // Default to 10 instead of 0 for better distribution
+                
                 let miner_info = MinerInfo {
                     ip_addr: agent_ip,
                     wallet_address: None, // Will be populated by the block controller
-                    weight: user_agent_config.attributes
-                        .as_ref()
-                        .and_then(|attrs| attrs.get("hashrate"))
-                        .and_then(|h| h.parse::<u32>().ok())
-                        .unwrap_or(0),
+                    weight,
                 };
                 miner_registry.miners.push(miner_info);
             }
+        }
+    }
+
+    // Validate the miner registry before writing
+    if miner_registry.miners.is_empty() {
+        println!("Warning: No miners were found in the configuration. Mining will not work correctly.");
+    } else {
+        // Calculate total weight to ensure it's positive
+        let total_weight: u32 = miner_registry.miners.iter().map(|m| m.weight).sum();
+        if total_weight == 0 {
+            println!("Warning: Total mining hashrate weight is zero. Setting default weights of 10 for each miner.");
+            // Set default weights if total is zero
+            for miner in miner_registry.miners.iter_mut() {
+                miner.weight = 10;
+            }
+        } else {
+            println!("Mining weight distribution: {} miners with total weight {}",
+                     miner_registry.miners.len(), total_weight);
         }
     }
 
@@ -736,8 +1312,34 @@ pub fn generate_agent_shadow_config(
             use_dynamic_runahead: true,
         },
         network: ShadowNetwork {
-            graph: ShadowGraph {
-                graph_type: config.network.as_ref().map_or("1_gbit_switch".to_string(), |n| n.network_type.clone()),
+            graph: match &config.network {
+                Some(Network::Gml { path }) => {
+                    // Use the loaded and validated GML graph to generate network config
+                    if let Some(ref gml) = gml_graph {
+                        // Pass both the GML graph and the path to the file
+                        generate_gml_network_config(gml, path)?
+                    } else {
+                        // Fallback to switch if GML loading failed
+                        ShadowGraph {
+                            graph_type: "1_gbit_switch".to_string(),
+                            file: None,
+                            nodes: None,
+                            edges: None,
+                        }
+                    }
+                },
+                Some(Network::Switch { network_type, .. }) => ShadowGraph {
+                    graph_type: network_type.clone(),
+                    file: None,
+                    nodes: None,
+                    edges: None,
+                },
+                None => ShadowGraph {
+                    graph_type: "1_gbit_switch".to_string(),
+                    file: None,
+                    nodes: None,
+                    edges: None,
+                },
             },
         },
         hosts: sorted_hosts_map,
@@ -750,7 +1352,39 @@ pub fn generate_agent_shadow_config(
     println!("Generated Agent-based Shadow configuration at {:?}", output_path);
     println!("  - Simulation time: {}", config.general.stop_time);
     println!("  - Total hosts: {}", shadow_config.hosts.len());
+    
+    // Show network topology information
+    match &config.network {
+        Some(Network::Gml { path }) => {
+            if let Some(ref gml) = gml_graph {
+                println!("  - Network topology: GML from '{}' ({} nodes, {} edges)",
+                         path, gml.nodes.len(), gml.edges.len());
+                
+                // Show autonomous systems if available
+                let as_groups = get_autonomous_systems(gml);
+                if as_groups.len() > 1 {
+                    println!("  - Autonomous systems: {} groups", as_groups.len());
+                }
+            }
+        },
+        Some(Network::Switch { network_type, .. }) => {
+            println!("  - Network topology: Switch ({})", network_type);
+        },
+        None => {
+            println!("  - Network topology: Default switch (1_gbit_switch)");
+        }
+    }
+    
     println!("  - Agent registry created at {:?}", agent_registry_path);
+    println!("  - Miner registry created at {:?}", miner_registry_path);
+
+    // Log IP allocation statistics
+    let ip_stats = ip_registry.get_allocation_stats();
+    println!("  - IP Allocation Summary:");
+    for (subnet, count) in ip_stats {
+        println!("    - {}: {} IPs assigned", subnet, count);
+    }
+    println!("  - Total IPs assigned: {}", ip_registry.get_all_assigned_ips().len());
 
     Ok(())
 }
