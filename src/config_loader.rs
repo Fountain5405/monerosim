@@ -1,4 +1,4 @@
-use crate::config_v2::{Config, ValidationError};
+use crate::config_v2::Config;
 use color_eyre::Result;
 use log::{info, warn};
 use std::fs::File;

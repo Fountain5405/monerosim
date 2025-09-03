@@ -6,7 +6,7 @@ use std::collections::HashMap;
 pub struct Config {
     pub general: GeneralConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<NetworkConfig>,
+    pub network: Option<Network>,
     pub agents: AgentDefinitions,
 }
 
@@ -22,10 +22,21 @@ impl Config {
         
         // Validate network settings
         if let Some(network) = &self.network {
-            if network.network_type.is_empty() {
-                return Err(ValidationError::InvalidNetwork(
-                    "network type cannot be empty".to_string()
-                ));
+            match network {
+                Network::Gml { path } => {
+                    if path.is_empty() {
+                        return Err(ValidationError::InvalidNetwork(
+                            "GML path cannot be empty".to_string(),
+                        ));
+                    }
+                }
+                Network::Switch { network_type, .. } => {
+                    if network_type.is_empty() {
+                        return Err(ValidationError::InvalidNetwork(
+                            "Network type cannot be empty for Switch".to_string(),
+                        ));
+                    }
+                }
             }
         }
         
@@ -119,15 +130,21 @@ pub struct PureScriptAgentConfig {
 }
 
 
-/// Network configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct NetworkConfig {
-    #[serde(rename = "type")]
-    pub network_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bandwidth: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latency: Option<String>,
+/// Network configuration, supporting different topology types
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum Network {
+    Switch {
+        #[serde(rename = "type")]
+        network_type: String, // e.g., "1_gbit_switch"
+        #[serde(skip_serializing_if = "Option::is_none")]
+        bandwidth: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        latency: Option<String>,
+    },
+    Gml {
+        path: String,
+    },
 }
 
 /// Configuration validation errors
@@ -150,6 +167,16 @@ impl Default for GeneralConfig {
             fresh_blockchain: Some(true),
             python_venv: None,
             log_level: Some("info".to_string()),
+        }
+    }
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Network::Switch {
+            network_type: "1_gbit_switch".to_string(),
+            bandwidth: None,
+            latency: None,
         }
     }
 }

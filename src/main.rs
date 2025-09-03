@@ -2,16 +2,15 @@ use clap::Parser;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
 use env_logger::Env;
-use log::{info, warn};
+use log::info;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-mod build;
-mod config_v2;
-mod config_loader;
-mod shadow_agents;
+pub mod config_v2;
+pub mod config_loader;
+pub mod shadow_agents;
+pub mod gml_parser;
 
-use config_v2::Config as NewConfig;
 use shadow_agents::generate_agent_shadow_config;
 
 /// Configuration utility for Monero network simulations in Shadow

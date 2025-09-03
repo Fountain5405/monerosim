@@ -325,14 +325,14 @@ class BaseAgent(ABC):
                     # Find and update the agent's entry or create a new one
                     agent_found = False
                     for agent in data.get("agents", []):
-                        if agent.get("agent_id") == self.agent_id:
+                        if agent.get("id") == self.agent_id:
                             agent["wallet_address"] = getattr(self, 'wallet_address', None)
                             agent_found = True
                             break
                     
                     if not agent_found:
                         new_agent_entry = {
-                            "agent_id": self.agent_id,
+                            "id": self.agent_id,
                             "type": self.__class__.__name__.lower().replace('agent', ''),
                             "attributes": self.attributes,
                             "hash_rate": getattr(self, 'hash_rate', None),

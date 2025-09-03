@@ -150,8 +150,9 @@ class BlockControllerAgent(BaseAgent):
         Update the miners.json file with the wallet address for a specific miner.
         """
         miners_registry_path = self.shared_dir / "miners.json"
+
         if not miners_registry_path.exists():
-            self.logger.error(f"Miner registry not found at {miners_registry_path}")
+            self.logger.error(f"Miners registry file not found")
             return
 
         try:
@@ -161,21 +162,14 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error(f"Failed to load miners.json: {e}")
             return
 
+        # Find and update the miner with matching agent_id
         updated = False
         for miner in miner_data.get("miners", []):
-            # Infer agent_id from IP, assuming a consistent pattern
-            ip_parts = miner["ip_addr"].split('.')
-            if len(ip_parts) == 4:
-                miner_agent_index = int(ip_parts[3]) - 10
-                miner_agent_id = f"user{miner_agent_index:03d}"
-                
-                if miner_agent_id == agent_id:
-                    miner["wallet_address"] = wallet_address
-                    updated = True
-                    self.logger.info(f"Updated miners.json for {agent_id} with wallet address.")
-                    break
-            else:
-                self.logger.warning(f"Could not determine agent_id for miner with IP {miner['ip_addr']}")
+            if miner["agent_id"] == agent_id:
+                miner["wallet_address"] = wallet_address
+                updated = True
+                self.logger.info(f"Updated miners.json for {agent_id} with wallet address.")
+                break
 
         if updated:
             try:
@@ -196,7 +190,6 @@ class BlockControllerAgent(BaseAgent):
             return []
 
         miners_registry_path = self.shared_dir / "miners.json"
-        miners_registry_path = self.shared_dir / "miners.json"
         agent_registry_path = self.shared_dir / "agent_registry.json"
 
         if not miners_registry_path.exists() or not agent_registry_path.exists():
@@ -212,32 +205,25 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error(f"Failed to load registry files: {e}")
             return []
 
-        # Create a lookup for wallet addresses from the agent registry
+        # Create lookup for wallet addresses from the agent registry
         agent_wallets = {agent["id"]: agent.get("wallet_address") for agent in agent_data.get("agents", [])}
 
         enriched_miners = []
         for miner in miner_data.get("miners", []):
-            # Infer agent_id from IP, assuming a consistent pattern
-            ip_parts = miner["ip_addr"].split('.')
-            if len(ip_parts) == 4:
-                agent_index = int(ip_parts[3]) - 10
-                agent_id = f"user{agent_index:03d}"
-                miner["agent_id"] = agent_id
+            agent_id = miner["agent_id"]
 
-                # Enrich with wallet address
-                if agent_id in agent_wallets:
-                    miner["wallet_address"] = agent_wallets[agent_id]
-                    enriched_miners.append(miner)
-                else:
-                    self.logger.warning(f"Wallet address not found for miner {agent_id} in agent registry.")
+            # Enrich with wallet address
+            if agent_id in agent_wallets and agent_wallets[agent_id] is not None:
+                miner["wallet_address"] = agent_wallets[agent_id]
+                enriched_miners.append(miner)
             else:
-                self.logger.warning(f"Could not determine agent_id for miner with IP {miner['ip_addr']}")
+                self.logger.warning(f"Wallet address not found for miner {agent_id} in agent registry.")
 
         if not enriched_miners:
             self.logger.warning("No miners successfully enriched with wallet addresses.")
         else:
             self.logger.info(f"Successfully loaded and enriched {len(enriched_miners)} miners.")
-            
+
         return enriched_miners
 
     def _select_winning_miner(self, miners: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -292,13 +278,10 @@ class BlockControllerAgent(BaseAgent):
 
         # Get wallet address from the agent registry
         winner_address = winner.get("wallet_address")
-            
+
         # Create dynamic RPC client for the winner's daemon
         winner_ip = winner.get("ip_addr", "127.0.0.1")
-        
-        # Get winner IP address
         winner_agent_id = winner.get("agent_id")
-        winner_ip = winner.get("ip_addr", "127.0.0.1")
         
         # Use standard RPC port 28081 for all nodes
         winner_port = 28081

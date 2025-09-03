@@ -7,6 +7,7 @@ use std::path::Path;
 
 #[derive(serde::Serialize, Debug)]
 struct MinerInfo {
+    agent_id: String,
     ip_addr: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     wallet_address: Option<String>,
@@ -1263,6 +1264,7 @@ pub fn generate_agent_shadow_config(
                     .unwrap_or(10); // Default to 10 instead of 0 for better distribution
                 
                 let miner_info = MinerInfo {
+                    agent_id: agent_id.clone(),
                     ip_addr: agent_ip,
                     wallet_address: None, // Will be populated by the block controller
                     weight,
