@@ -1,4 +1,4 @@
-use crate::config_v2::{Config, AgentDefinitions, Network};
+use crate::config_v2::{Config, AgentDefinitions, Network, PeerMode, Topology};
 use crate::gml_parser::{self, GmlGraph, GmlNode, validate_topology, get_autonomous_systems};
 use serde_json;
 use serde_yaml;
@@ -144,6 +144,108 @@ fn get_node_as_number(gml_node: &GmlNode) -> Option<String> {
     gml_node.attributes.get("AS").or_else(|| gml_node.attributes.get("as")).cloned()
 }
 
+/// Generate peer connections based on topology template
+fn generate_topology_connections(
+    topology: &Topology,
+    agent_index: usize,
+    total_agents: usize,
+    seed_agents: &[String],
+    agent_ip: &str,
+) -> Vec<String> {
+    match topology {
+        Topology::Star => {
+            // Star topology: all nodes connect to the first seed node (hub)
+            if seed_agents.is_empty() {
+                vec![]
+            } else {
+                // Don't connect to self
+                if seed_agents[0].starts_with(&format!("{}:", agent_ip)) {
+                    vec![]
+                } else {
+                    vec![format!("--add-exclusive-node={}", seed_agents[0])]
+                }
+            }
+        }
+        Topology::Mesh => {
+            // Mesh topology: connect to all other agents
+            let mut connections = Vec::new();
+            for seed in seed_agents.iter() {
+                // Don't connect to self
+                if !seed.starts_with(&format!("{}:", agent_ip)) {
+                    connections.push(format!("--add-exclusive-node={}", seed));
+                }
+            }
+            connections
+        }
+        Topology::Ring => {
+            // Ring topology: connect to previous and next agents in ring
+            let mut connections = Vec::new();
+            if !seed_agents.is_empty() {
+                let prev_index = if agent_index == 0 { seed_agents.len() - 1 } else { agent_index - 1 };
+                let next_index = if agent_index == seed_agents.len() - 1 { 0 } else { agent_index + 1 };
+
+                if prev_index < seed_agents.len() {
+                    let prev_seed = &seed_agents[prev_index];
+                    // Don't connect to self
+                    if !prev_seed.starts_with(&format!("{}:", agent_ip)) {
+                        connections.push(format!("--add-exclusive-node={}", prev_seed));
+                    }
+                }
+                if next_index < seed_agents.len() {
+                    let next_seed = &seed_agents[next_index];
+                    // Don't connect to self
+                    if !next_seed.starts_with(&format!("{}:", agent_ip)) {
+                        connections.push(format!("--add-exclusive-node={}", next_seed));
+                    }
+                }
+            }
+            connections
+        }
+        Topology::Dag => {
+            // DAG topology: hierarchical connections (original logic)
+            let mut connections = Vec::new();
+            for (j, seed) in seed_agents.iter().enumerate() {
+                if j < agent_index {
+                    // Don't connect to self
+                    if !seed.starts_with(&format!("{}:", agent_ip)) {
+                        connections.push(format!("--add-exclusive-node={}", seed));
+                    }
+                }
+            }
+            connections
+        }
+    }
+}
+
+
+/// Validate topology configuration
+fn validate_topology_config(topology: &Topology, total_agents: usize) -> Result<(), String> {
+    match topology {
+        Topology::Mesh => {
+            // Mesh topology requires reasonable number of agents
+            if total_agents > 50 {
+                return Err("Mesh topology not recommended for networks with more than 50 agents due to connection overhead".to_string());
+            }
+        }
+        Topology::Ring => {
+            // Ring topology requires at least 3 agents for meaningful connections
+            if total_agents < 3 {
+                return Err("Ring topology requires at least 3 agents".to_string());
+            }
+        }
+        Topology::Star => {
+            // Star topology requires at least 2 agents
+            if total_agents < 2 {
+                return Err("Star topology requires at least 2 agents".to_string());
+            }
+        }
+        Topology::Dag => {
+            // DAG is always valid
+        }
+    }
+    Ok(())
+}
+
 /// Global IP Registry for centralized IP management across all agent types
 #[derive(Debug)]
 pub struct GlobalIpRegistry {
@@ -262,13 +364,18 @@ impl GlobalIpRegistry {
             self.assigned_ips.insert(ip.clone(), agent_id.to_string());
             Ok(ip)
         } else {
-            // Fallback: try a different host IP
-            let fallback_ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4 + 100);
-            if !self.assigned_ips.contains_key(&fallback_ip) {
-                self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
-                Ok(fallback_ip)
+            // Check if it's assigned to the same agent
+            if self.assigned_ips.get(&ip) == Some(&agent_id.to_string()) {
+                Ok(ip)
             } else {
-                Err(format!("Could not assign unique IP for agent {}", agent_id))
+                // Fallback: try a different host IP
+                let fallback_ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4 + 100);
+                if !self.assigned_ips.contains_key(&fallback_ip) {
+                    self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
+                    Ok(fallback_ip)
+                } else {
+                    Err(format!("Could not assign unique IP for agent {}", agent_id))
+                }
             }
         }
     }
@@ -500,6 +607,8 @@ fn add_daemon_process(
     monero_environment: &HashMap<String, String>,
     seed_agents: &[String],
     index: usize,
+    peer_mode: &PeerMode,
+    topology: Option<&Topology>,
 ) {
     let mut daemon_args = vec![
         format!("--data-dir=/tmp/monero-{}", agent_id),
@@ -532,16 +641,18 @@ fn add_daemon_process(
         "--allow-local-ip".to_string(),
     ];
 
-    // Add connections to seed agents using DAG pattern (only connect to nodes with lower index)
-    for (j, seed) in seed_agents.iter().enumerate() {
-        if j < index {
-            daemon_args.push(format!("--add-exclusive-node={}", seed));
+    // Add peer connection flags using proper Monero peer connection mechanism
+    // Only the first daemon (index 0) acts as seed node, others use --add-exclusive-node
+    if index == 0 {
+        // First daemon is the seed node - no peer flags needed
+    } else {
+        // Non-seed nodes use --add-exclusive-node to connect directly to seed nodes
+        for seed_node in seed_agents.iter() {
+            // Don't add self as peer
+            if !seed_node.starts_with(&format!("{}:", agent_ip)) {
+                daemon_args.push(format!("--add-exclusive-node={}", seed_node));
+            }
         }
-    }
-    
-    // Special case for the first node (index 0) - connect to the second node if available
-    if index == 0 && seed_agents.len() > 1 {
-        daemon_args.push(format!("--add-exclusive-node={}", seed_agents[1]));
     }
 
     processes.push(ShadowProcess {
@@ -644,12 +755,13 @@ fn add_user_agent_process(
         for (key, value) in attrs {
             if key == "transaction_interval" {
                 agent_args.push(format!("--tx-frequency {}", value));
-            } else if key == "min_transaction_amount" || key == "max_transaction_amount" || key == "is_miner" ||
-                      key == "can_receive_distributions" || key == "location" || key == "city" {
-                // These should be passed as attributes
+            } else if (key == "min_transaction_amount" || key == "max_transaction_amount" ||
+                      key == "can_receive_distributions" || key == "location" || key == "city") ||
+                      (key == "is_miner" && value == "true") {
+                // These should be passed as attributes, but only pass is_miner if it's true
                 agent_args.push(format!("--attributes {} {}", key, value));
-            } else if key != "hashrate" {
-                // Pass other attributes directly, but filter out hashrate only
+            } else if key != "hashrate" && key != "is_miner" {
+                // Pass other attributes directly, but filter out hashrate and is_miner (when false)
                 agent_args.push(format!("--attributes {} {}", key, value));
             }
         }
@@ -696,11 +808,23 @@ echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
 
     // Write wrapper script to a temporary file and execute it
     let script_path = format!("/tmp/agent_{}_wrapper.sh", agent_id);
+    let script_creation_time = format!("{}s", 64 + index * 2);
+    let script_execution_time = format!("{}s", 65 + index * 2);
+
+    // Process 1: Create wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cat > {} << \\EOF\n{}\nEOF\nbash {}'", script_path, wrapper_script, script_path),
+        args: format!("-c 'cat > {} << \\EOF\n{}\\nEOF'", script_path, wrapper_script),
         environment: environment.clone(),
-        start_time: format!("{}s", 65 + index * 2), // Start agents after wallets with some buffer
+        start_time: script_creation_time,
+    });
+
+    // Process 2: Execute wrapper script
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: script_path.clone(),
+        environment: environment.clone(),
+        start_time: script_execution_time,
     });
 }
 /// Process user agents
@@ -708,6 +832,7 @@ fn process_user_agents(
     agents: &AgentDefinitions,
     hosts: &mut HashMap<String, ShadowHost>,
     seed_agents: &mut Vec<String>,
+    effective_seed_nodes: &[String],
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
     monerod_path: &str,
@@ -718,6 +843,8 @@ fn process_user_agents(
     current_dir: &str,
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
+    peer_mode: &PeerMode,
+    topology: Option<&Topology>,
 ) -> color_eyre::eyre::Result<()> {
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
     let agent_node_assignments = if let Some(gml) = gml_graph {
@@ -735,7 +862,8 @@ fn process_user_agents(
         Vec::new()
     };
 
-    // First, build the seed_agents list
+    // First, collect agent information and build seed_agents based on peer mode
+    let mut agent_info = Vec::new();
     if let Some(user_agents) = &agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
             let is_miner = user_agent_config.is_miner_value();
@@ -752,9 +880,50 @@ fn process_user_agents(
             let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 28080;
 
-            // Add to seed agents if it's one of the first two users or a miner
-            if i < 2 || is_miner {
+            agent_info.push((i, is_miner, agent_id, agent_ip, agent_port));
+        }
+    }
+
+    // Build seed_agents based on peer mode
+    match peer_mode {
+        PeerMode::Hardcoded => {
+            // Use configured seed nodes if available, otherwise fall back to first agent
+            if !effective_seed_nodes.is_empty() {
+                seed_agents.extend(effective_seed_nodes.iter().cloned());
+            } else if let Some((_, _, _, agent_ip, agent_port)) = agent_info.first() {
                 seed_agents.push(format!("{}:{}", agent_ip, agent_port));
+            }
+        }
+        PeerMode::Dynamic => {
+            // Use miners as seed nodes
+            for (_, is_miner, _, agent_ip, agent_port) in &agent_info {
+                if *is_miner {
+                    seed_agents.push(format!("{}:{}", agent_ip, *agent_port));
+                }
+            }
+            // If no miners, fall back to first agent
+            if seed_agents.is_empty() {
+                if let Some((_, _, _, agent_ip, agent_port)) = agent_info.first() {
+                    seed_agents.push(format!("{}:{}", agent_ip, agent_port));
+                }
+            }
+        }
+        PeerMode::Hybrid => {
+            // Combine configured seed nodes and miners
+            seed_agents.extend(effective_seed_nodes.iter().cloned());
+            for (_, is_miner, _, agent_ip, agent_port) in &agent_info {
+                if *is_miner {
+                    let seed_addr = format!("{}:{}", agent_ip, agent_port);
+                    if !seed_agents.contains(&seed_addr) {
+                        seed_agents.push(seed_addr);
+                    }
+                }
+            }
+            // If no seeds at all, fall back to first agent
+            if seed_agents.is_empty() {
+                if let Some((_, _, _, agent_ip, agent_port)) = agent_info.first() {
+                    seed_agents.push(format!("{}:{}", agent_ip, agent_port));
+                }
             }
         }
     }
@@ -777,6 +946,7 @@ fn process_user_agents(
             let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 28080;
 
+
             // Use standard RPC ports for all agents
             let agent_rpc_port = 28081;
 
@@ -798,6 +968,8 @@ fn process_user_agents(
                 monero_environment,
                 seed_agents,
                 i,
+                peer_mode,
+                topology,
             );
 
             // Add wallet process if wallet is specified
@@ -920,9 +1092,19 @@ echo "Starting block controller..."
 
         // Write wrapper script to a temporary file and execute it
         let script_path = format!("/tmp/{}_wrapper.sh", block_controller_id);
+
+        // Process 1: Create wrapper script
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
-            args: format!("-c 'cat > {} << \\EOF\n{}\nEOF\nbash {}'", script_path, wrapper_script, script_path),
+            args: format!("-c 'cat > {} << \\EOF\n{}\\nEOF'", script_path, wrapper_script),
+            environment: environment.clone(),
+            start_time: "89s".to_string(), // Create script before execution
+        });
+
+        // Process 2: Execute wrapper script
+        processes.push(ShadowProcess {
+            path: "/bin/bash".to_string(),
+            args: script_path.clone(),
             environment: environment.clone(),
             start_time: "90s".to_string(), // Fixed start time for block controller
         });
@@ -997,11 +1179,23 @@ echo "Starting pure script agent {}..."
 
             // Write wrapper script to a temporary file and execute it
             let script_path = format!("/tmp/{}_wrapper.sh", script_id);
+            let script_creation_time = format!("{}s", 29 + i * 5);
+            let script_execution_time = format!("{}s", 30 + i * 5);
+
+            // Process 1: Create wrapper script
             processes.push(ShadowProcess {
                 path: "/bin/bash".to_string(),
-                args: format!("-c 'cat > {} << \\EOF\n{}\nEOF\nbash {}'", script_path, wrapper_script, script_path),
+                args: format!("-c 'cat > {} << \\EOF\n{}\\nEOF'", script_path, wrapper_script),
                 environment: environment.clone(),
-                start_time: format!("{}s", 30 + i * 5), // Staggered start times
+                start_time: script_creation_time,
+            });
+
+            // Process 2: Execute wrapper script
+            processes.push(ShadowProcess {
+                path: "/bin/bash".to_string(),
+                args: script_path.clone(),
+                environment: environment.clone(),
+                start_time: script_execution_time,
             });
 
             hosts.insert(script_id.clone(), ShadowHost {
@@ -1032,7 +1226,7 @@ pub fn generate_agent_shadow_config(
         .to_string();
 
     // Load and validate GML graph if specified
-    let gml_graph = if let Some(Network::Gml { path }) = &config.network {
+    let gml_graph = if let Some(Network::Gml { path, .. }) = &config.network {
         let graph = gml_parser::parse_gml_file(path)?;
         validate_topology(&graph).map_err(|e| color_eyre::eyre::eyre!("GML validation failed: {}", e))?;
         println!("Loaded GML topology from '{}' with {} nodes and {} edges",
@@ -1081,17 +1275,51 @@ pub fn generate_agent_shadow_config(
     let mut seed_nodes: Vec<String> = Vec::new();
 
     // Determine if we're actually using GML topology based on network configuration
-    let using_gml_topology = if let Some(Network::Gml { path: _ }) = &config.network {
+    let using_gml_topology = if let Some(Network::Gml { path: _, .. }) = &config.network {
         true // We're using GML topology
     } else {
         false // We're using switch topology
     };
-    
+
+    // Extract peer mode, seed nodes, and topology from configuration
+    let (peer_mode, seed_node_list, topology) = match &config.network {
+        Some(Network::Gml { peer_mode, seed_nodes, topology, .. }) => {
+            let mode = peer_mode.as_ref().unwrap_or(&PeerMode::Dynamic).clone();
+            let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
+            let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
+            (mode, seeds, Some(topo))
+        }
+        Some(Network::Switch { peer_mode, seed_nodes, topology, .. }) => {
+            let mode = peer_mode.as_ref().unwrap_or(&PeerMode::Dynamic).clone();
+            let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
+            let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
+            (mode, seeds, Some(topo))
+        }
+        None => {
+            // Default to Dynamic mode with no seed nodes and DAG topology
+            (PeerMode::Dynamic, Vec::new(), Some(Topology::Dag))
+        }
+    };
+
+    // Validate topology configuration
+    if let Some(topo) = &topology {
+        if let Some(user_agents) = &config.agents.user_agents {
+            if let Err(e) = validate_topology_config(topo, user_agents.len()) {
+                println!("Warning: Topology validation failed: {}", e);
+                // Continue with default DAG topology
+            }
+        }
+    }
+
+    // Use the configured seed nodes (simplified - only first agent is seed)
+    let effective_seed_nodes = seed_node_list;
+
     // Process all agent types from the configuration
     process_user_agents(
         &config.agents,
         &mut hosts,
         &mut seed_nodes,
+        &effective_seed_nodes,
         &mut subnet_manager,
         &mut ip_registry,
         &monerod_path,
@@ -1102,7 +1330,10 @@ pub fn generate_agent_shadow_config(
         &current_dir,
         gml_graph.as_ref(),
         using_gml_topology,
+        &peer_mode,
+        topology.as_ref(),
     )?;
+
 
     // Calculate offset for block controller and script agents to avoid IP collisions
     // Use a larger offset to ensure clear separation between agent types
@@ -1315,7 +1546,7 @@ pub fn generate_agent_shadow_config(
         },
         network: ShadowNetwork {
             graph: match &config.network {
-                Some(Network::Gml { path }) => {
+                Some(Network::Gml { path, .. }) => {
                     // Use the loaded and validated GML graph to generate network config
                     if let Some(ref gml) = gml_graph {
                         // Pass both the GML graph and the path to the file
@@ -1357,11 +1588,11 @@ pub fn generate_agent_shadow_config(
     
     // Show network topology information
     match &config.network {
-        Some(Network::Gml { path }) => {
+        Some(Network::Gml { path, .. }) => {
             if let Some(ref gml) = gml_graph {
                 println!("  - Network topology: GML from '{}' ({} nodes, {} edges)",
                          path, gml.nodes.len(), gml.edges.len());
-                
+
                 // Show autonomous systems if available
                 let as_groups = get_autonomous_systems(gml);
                 if as_groups.len() > 1 {

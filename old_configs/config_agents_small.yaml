@@ -1,0 +1,52 @@
+# Small configuration for end-to-end testing
+# 2 miners and 2 regular users
+# Simulation duration: 30 minutes
+
+general:
+  stop_time: "30m"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+
+agents:
+  user_agents:
+    # Miner 1 - 60% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "60"
+
+    # Miner 2 - 40% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "40"
+
+    # Regular User 1
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+
+    # Regular User 2
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "90"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+
+  block_controller:
+    script: "agents.block_controller"
+
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"

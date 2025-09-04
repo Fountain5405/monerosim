@@ -12,77 +12,87 @@ network:
 
 agents:
   user_agents:
-    # Miner 1 - 15% hashrate
+    # Miner 1 - 15% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "15"
+        can_receive_distributions: true
 
-    # Miner 2 - 15% hashrate
+    # Miner 2 - 15% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "15"
+        can_receive_distributions: "true"
 
-    # Miner 3 - 12% hashrate
+    # Miner 3 - 12% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "12"
+        can_receive_distributions: false
 
-    # Miner 4 - 12% hashrate
+    # Miner 4 - 12% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "12"
+        can_receive_distributions: "false"
 
-    # Miner 5 - 10% hashrate
+    # Miner 5 - 10% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "10"
+        can_receive_distributions: "1"
 
-    # Miner 6 - 10% hashrate
+    # Miner 6 - 10% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "10"
+        can_receive_distributions: "yes"
 
-    # Miner 7 - 8% hashrate
+    # Miner 7 - 8% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "8"
+        can_receive_distributions: "0"
 
-    # Miner 8 - 8% hashrate
+    # Miner 8 - 8% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "8"
+        can_receive_distributions: "no"
 
-    # Miner 9 - 5% hashrate
+    # Miner 9 - 5% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "5"
+        can_receive_distributions: "on"
 
-    # Miner 10 - 5% hashrate
+    # Miner 10 - 5% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       is_miner: true
       attributes:
         hashrate: "5"
+        can_receive_distributions: "off"
 
-    # Regular Users with diverse transaction patterns
+    # Regular Users with diverse transaction patterns and distribution settings
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       user_script: "agents.regular_user"
@@ -90,6 +100,7 @@ agents:
         transaction_interval: "60"
         min_transaction_amount: "0.5"
         max_transaction_amount: "2.0"
+        can_receive_distributions: true
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -98,6 +109,7 @@ agents:
         transaction_interval: "90"
         min_transaction_amount: "0.1"
         max_transaction_amount: "1.0"
+        can_receive_distributions: false
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -106,6 +118,7 @@ agents:
         transaction_interval: "120"
         min_transaction_amount: "1.0"
         max_transaction_amount: "5.0"
+        can_receive_distributions: "true"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -114,6 +127,7 @@ agents:
         transaction_interval: "45"
         min_transaction_amount: "0.2"
         max_transaction_amount: "3.0"
+        can_receive_distributions: "false"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -122,6 +136,7 @@ agents:
         transaction_interval: "180"
         min_transaction_amount: "0.05"
         max_transaction_amount: "0.5"
+        can_receive_distributions: "on"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -130,6 +145,7 @@ agents:
         transaction_interval: "75"
         min_transaction_amount: "0.3"
         max_transaction_amount: "1.5"
+        can_receive_distributions: "off"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -138,6 +154,7 @@ agents:
         transaction_interval: "150"
         min_transaction_amount: "2.0"
         max_transaction_amount: "10.0"
+        can_receive_distributions: true
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -146,6 +163,7 @@ agents:
         transaction_interval: "100"
         min_transaction_amount: "0.1"
         max_transaction_amount: "0.8"
+        can_receive_distributions: false
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -154,6 +172,7 @@ agents:
         transaction_interval: "65"
         min_transaction_amount: "0.4"
         max_transaction_amount: "2.5"
+        can_receive_distributions: "true"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -162,6 +181,7 @@ agents:
         transaction_interval: "110"
         min_transaction_amount: "0.7"
         max_transaction_amount: "4.0"
+        can_receive_distributions: "false"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -170,6 +190,7 @@ agents:
         transaction_interval: "130"
         min_transaction_amount: "0.15"
         max_transaction_amount: "1.2"
+        can_receive_distributions: "1"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -178,6 +199,7 @@ agents:
         transaction_interval: "85"
         min_transaction_amount: "0.25"
         max_transaction_amount: "3.5"
+        can_receive_distributions: "0"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -186,6 +208,7 @@ agents:
         transaction_interval: "170"
         min_transaction_amount: "0.08"
         max_transaction_amount: "0.7"
+        can_receive_distributions: "yes"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -194,6 +217,7 @@ agents:
         transaction_interval: "95"
         min_transaction_amount: "0.35"
         max_transaction_amount: "2.8"
+        can_receive_distributions: "no"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -202,6 +226,7 @@ agents:
         transaction_interval: "140"
         min_transaction_amount: "1.5"
         max_transaction_amount: "7.0"
+        can_receive_distributions: "on"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -210,6 +235,7 @@ agents:
         transaction_interval: "80"
         min_transaction_amount: "0.12"
         max_transaction_amount: "0.9"
+        can_receive_distributions: "off"
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -218,6 +244,7 @@ agents:
         transaction_interval: "160"
         min_transaction_amount: "0.6"
         max_transaction_amount: "3.2"
+        can_receive_distributions: true
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -226,6 +253,7 @@ agents:
         transaction_interval: "105"
         min_transaction_amount: "0.45"
         max_transaction_amount: "1.8"
+        can_receive_distributions: false
 
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -234,6 +262,7 @@ agents:
         transaction_interval: "125"
         min_transaction_amount: "0.9"
         max_transaction_amount: "6.0"
+        can_receive_distributions: "true"
 
   block_controller:
     script: "agents.block_controller"

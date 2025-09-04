@@ -1,0 +1,1070 @@
+general:
+  stop_time: 5h
+  model_unblocked_syscall_latency: true
+  log_level: info
+network:
+  graph:
+    type: gml
+    file:
+      path: global_network_20_nodes_no_comments.gml
+experimental:
+  use_dynamic_runahead: true
+hosts:
+  user004:
+    network_node_id: 13
+    ip_addr: 172.16.0.19
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user004 && /usr/local/bin/monerod --data-dir=/tmp/monero-user004 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=172.16.0.19 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=172.16.0.19 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 13s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user004_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 62s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://172.16.0.19:28081 --rpc-bind-port=28082 --rpc-bind-ip=172.16.0.19 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user004_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 63s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 172.16.0.19 28082; do echo "Waiting for wallet RPC at 172.16.0.19:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user004 --shared-dir /tmp/monerosim_shared --rpc-host 172.16.0.19 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes city Johannesburg --attributes location Africa --attributes is_miner true --attributes can_receive_distributions true'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 68s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user006:
+    network_node_id: 17
+    ip_addr: 11.0.0.16
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user006 && /usr/local/bin/monerod --data-dir=/tmp/monero-user006 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=11.0.0.16 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=11.0.0.16 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 17s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user006_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 66s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://11.0.0.16:28081 --rpc-bind-port=28082 --rpc-bind-ip=11.0.0.16 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user006_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 67s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 11.0.0.16 28082; do echo "Waiting for wallet RPC at 11.0.0.16:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user006 --shared-dir /tmp/monerosim_shared --rpc-host 11.0.0.16 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes can_receive_distributions true --attributes min_transaction_amount 0.3 --attributes location North America --attributes city Toronto --attributes max_transaction_amount 1.5 --tx-frequency 90'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 72s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user007:
+    network_node_id: 18
+    ip_addr: 11.0.0.17
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user007 && /usr/local/bin/monerod --data-dir=/tmp/monero-user007 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=11.0.0.17 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=11.0.0.17 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 19s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user007_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 68s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://11.0.0.17:28081 --rpc-bind-port=28082 --rpc-bind-ip=11.0.0.17 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user007_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 69s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 11.0.0.17 28082; do echo "Waiting for wallet RPC at 11.0.0.17:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user007 --shared-dir /tmp/monerosim_shared --rpc-host 11.0.0.17 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes min_transaction_amount 0.4 --attributes can_receive_distributions true --attributes location North America --attributes city Miami --attributes max_transaction_amount 1.8 --tx-frequency 75'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 74s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user012:
+    network_node_id: 2
+    ip_addr: 10.0.0.19
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user012 && /usr/local/bin/monerod --data-dir=/tmp/monero-user012 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=10.0.0.19 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=10.0.0.19 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 29s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user012_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 78s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://10.0.0.19:28081 --rpc-bind-port=28082 --rpc-bind-ip=10.0.0.19 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user012_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 79s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 10.0.0.19 28082; do echo "Waiting for wallet RPC at 10.0.0.19:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user012 --shared-dir /tmp/monerosim_shared --rpc-host 10.0.0.19 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --tx-frequency 80 --attributes can_receive_distributions true --attributes city Singapore --attributes min_transaction_amount 0.5 --attributes max_transaction_amount 2.2 --attributes location Asia'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 84s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user013:
+    network_node_id: 6
+    ip_addr: 192.168.0.14
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user013 && /usr/local/bin/monerod --data-dir=/tmp/monero-user013 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=192.168.0.14 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=192.168.0.14 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 31s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user013_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 80s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://192.168.0.14:28081 --rpc-bind-port=28082 --rpc-bind-ip=192.168.0.14 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user013_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 81s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 192.168.0.14 28082; do echo "Waiting for wallet RPC at 192.168.0.14:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user013 --shared-dir /tmp/monerosim_shared --rpc-host 192.168.0.14 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes location Asia --attributes city Seoul --tx-frequency 120 --attributes min_transaction_amount 0.3 --attributes max_transaction_amount 1.5 --attributes can_receive_distributions true'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 86s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user001:
+    network_node_id: 10
+    ip_addr: 172.16.0.16
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user001 && /usr/local/bin/monerod --data-dir=/tmp/monero-user001 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=172.16.0.16 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=172.16.0.16 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 7s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user001_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 56s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://172.16.0.16:28081 --rpc-bind-port=28082 --rpc-bind-ip=172.16.0.16 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user001_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 57s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 172.16.0.16 28082; do echo "Waiting for wallet RPC at 172.16.0.16:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user001 --shared-dir /tmp/monerosim_shared --rpc-host 172.16.0.16 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes city Chicago --attributes is_miner true --attributes can_receive_distributions true --attributes location North America'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 62s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user009:
+    network_node_id: 4
+    ip_addr: 10.0.0.16
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user009 && /usr/local/bin/monerod --data-dir=/tmp/monero-user009 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=10.0.0.16 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=10.0.0.16 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 23s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user009_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 72s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://10.0.0.16:28081 --rpc-bind-port=28082 --rpc-bind-ip=10.0.0.16 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user009_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 73s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 10.0.0.16 28082; do echo "Waiting for wallet RPC at 10.0.0.16:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user009 --shared-dir /tmp/monerosim_shared --rpc-host 10.0.0.16 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes min_transaction_amount 0.6 --attributes max_transaction_amount 2.5 --attributes location Europe --attributes city Paris --tx-frequency 70 --attributes can_receive_distributions true'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 78s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user017:
+    network_node_id: 16
+    ip_addr: 11.0.0.18
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user017 && /usr/local/bin/monerod --data-dir=/tmp/monero-user017 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=11.0.0.18 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=11.0.0.18 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 39s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user017_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 88s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://11.0.0.18:28081 --rpc-bind-port=28082 --rpc-bind-ip=11.0.0.18 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user017_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 89s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 11.0.0.18 28082; do echo "Waiting for wallet RPC at 11.0.0.18:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user017 --shared-dir /tmp/monerosim_shared --rpc-host 11.0.0.18 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes can_receive_distributions true --attributes min_transaction_amount 0.3 --attributes city Cairo --attributes max_transaction_amount 1.3 --tx-frequency 160 --attributes location Africa'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 94s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user016:
+    network_node_id: 5
+    ip_addr: 192.168.0.17
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user016 && /usr/local/bin/monerod --data-dir=/tmp/monero-user016 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=192.168.0.17 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=192.168.0.17 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 37s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user016_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 86s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://192.168.0.17:28081 --rpc-bind-port=28082 --rpc-bind-ip=192.168.0.17 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user016_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 87s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 192.168.0.17 28082; do echo "Waiting for wallet RPC at 192.168.0.17:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user016 --shared-dir /tmp/monerosim_shared --rpc-host 192.168.0.17 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes min_transaction_amount 0.2 --tx-frequency 130 --attributes can_receive_distributions true --attributes location South America --attributes city Buenos Aires --attributes max_transaction_amount 1.0'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 92s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user008:
+    network_node_id: 3
+    ip_addr: 10.0.0.15
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user008 && /usr/local/bin/monerod --data-dir=/tmp/monero-user008 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=10.0.0.15 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=10.0.0.15 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 21s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user008_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 70s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://10.0.0.15:28081 --rpc-bind-port=28082 --rpc-bind-ip=10.0.0.15 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user008_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 71s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 10.0.0.15 28082; do echo "Waiting for wallet RPC at 10.0.0.15:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user008 --shared-dir /tmp/monerosim_shared --rpc-host 10.0.0.15 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes min_transaction_amount 0.2 --attributes can_receive_distributions true --tx-frequency 85 --attributes location Europe --attributes city Frankfurt --attributes max_transaction_amount 1.2'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 76s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user014:
+    network_node_id: 7
+    ip_addr: 192.168.0.15
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user014 && /usr/local/bin/monerod --data-dir=/tmp/monero-user014 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=192.168.0.15 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=192.168.0.15 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 33s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user014_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 82s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://192.168.0.15:28081 --rpc-bind-port=28082 --rpc-bind-ip=192.168.0.15 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user014_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 83s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 192.168.0.15 28082; do echo "Waiting for wallet RPC at 192.168.0.15:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user014 --shared-dir /tmp/monerosim_shared --rpc-host 192.168.0.15 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes max_transaction_amount 2.8 --attributes can_receive_distributions true --attributes city Mumbai --tx-frequency 100 --attributes min_transaction_amount 0.7 --attributes location Asia'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 88s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user011:
+    network_node_id: 1
+    ip_addr: 10.0.0.18
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user011 && /usr/local/bin/monerod --data-dir=/tmp/monero-user011 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=10.0.0.18 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=10.0.0.18 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 27s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user011_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 76s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://10.0.0.18:28081 --rpc-bind-port=28082 --rpc-bind-ip=10.0.0.18 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user011_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 77s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 10.0.0.18 28082; do echo "Waiting for wallet RPC at 10.0.0.18:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user011 --shared-dir /tmp/monerosim_shared --rpc-host 10.0.0.18 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes max_transaction_amount 3.0 --attributes min_transaction_amount 0.8 --tx-frequency 110 --attributes can_receive_distributions true --attributes location Asia --attributes city Hong Kong'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 82s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  script000:
+    network_node_id: 0
+    ip_addr: 10.0.0.21
+    processes:
+    - path: /bin/bash
+      args: -c 'cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m scripts.monitor --id script000 --shared-dir /tmp/monerosim_shared --log-level DEBUG --stop-time 5h'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 30s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user015:
+    network_node_id: 8
+    ip_addr: 192.168.0.16
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user015 && /usr/local/bin/monerod --data-dir=/tmp/monero-user015 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=192.168.0.16 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=192.168.0.16 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 35s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user015_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 84s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://192.168.0.16:28081 --rpc-bind-port=28082 --rpc-bind-ip=192.168.0.16 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user015_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 85s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 192.168.0.16 28082; do echo "Waiting for wallet RPC at 192.168.0.16:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user015 --shared-dir /tmp/monerosim_shared --rpc-host 192.168.0.16 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes city Sao Paulo --attributes can_receive_distributions true --attributes location South America --tx-frequency 140 --attributes min_transaction_amount 0.4 --attributes max_transaction_amount 1.8'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 90s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user002:
+    network_node_id: 11
+    ip_addr: 172.16.0.17
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user002 && /usr/local/bin/monerod --data-dir=/tmp/monero-user002 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=172.16.0.17 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=172.16.0.17 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 9s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user002_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 58s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://172.16.0.17:28081 --rpc-bind-port=28082 --rpc-bind-ip=172.16.0.17 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user002_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 59s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 172.16.0.17 28082; do echo "Waiting for wallet RPC at 172.16.0.17:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user002 --shared-dir /tmp/monerosim_shared --rpc-host 172.16.0.17 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes can_receive_distributions true --attributes city London --attributes location Europe --attributes is_miner true'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 64s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user003:
+    network_node_id: 12
+    ip_addr: 172.16.0.18
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user003 && /usr/local/bin/monerod --data-dir=/tmp/monero-user003 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=172.16.0.18 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=172.16.0.18 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 11s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user003_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 60s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://172.16.0.18:28081 --rpc-bind-port=28082 --rpc-bind-ip=172.16.0.18 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user003_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 61s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 172.16.0.18 28082; do echo "Waiting for wallet RPC at 172.16.0.18:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user003 --shared-dir /tmp/monerosim_shared --rpc-host 172.16.0.18 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes can_receive_distributions true --attributes city Tokyo --attributes is_miner true --attributes location Asia'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 66s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user010:
+    network_node_id: 0
+    ip_addr: 10.0.0.17
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user010 && /usr/local/bin/monerod --data-dir=/tmp/monero-user010 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=10.0.0.17 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=10.0.0.17 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 25s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user010_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 74s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://10.0.0.17:28081 --rpc-bind-port=28082 --rpc-bind-ip=10.0.0.17 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user010_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 75s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 10.0.0.17 28082; do echo "Waiting for wallet RPC at 10.0.0.17:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user010 --shared-dir /tmp/monerosim_shared --rpc-host 10.0.0.17 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes city Amsterdam --attributes min_transaction_amount 0.1 --attributes can_receive_distributions true --attributes location Europe --attributes max_transaction_amount 0.8 --tx-frequency 95'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 80s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user005:
+    network_node_id: 19
+    ip_addr: 11.0.0.15
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user005 && /usr/local/bin/monerod --data-dir=/tmp/monero-user005 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=11.0.0.15 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=11.0.0.15 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 15s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user005_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 64s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://11.0.0.15:28081 --rpc-bind-port=28082 --rpc-bind-ip=11.0.0.15 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user005_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 65s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 11.0.0.15 28082; do echo "Waiting for wallet RPC at 11.0.0.15:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user005 --shared-dir /tmp/monerosim_shared --rpc-host 11.0.0.15 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes max_transaction_amount 2.0 --attributes can_receive_distributions true --attributes city Los Angeles --tx-frequency 60 --attributes min_transaction_amount 0.5 --attributes location North America'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 70s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user018:
+    network_node_id: 14
+    ip_addr: 11.0.0.19
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user018 && /usr/local/bin/monerod --data-dir=/tmp/monero-user018 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=11.0.0.19 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=11.0.0.19 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.10:28080 --add-exclusive-node=172.16.0.11:28080 --add-exclusive-node=172.16.0.12:28080 --add-exclusive-node=172.16.0.13:28080 --add-exclusive-node=172.16.0.14:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 41s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user018_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 90s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://11.0.0.19:28081 --rpc-bind-port=28082 --rpc-bind-ip=11.0.0.19 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user018_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 91s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 11.0.0.19 28082; do echo "Waiting for wallet RPC at 11.0.0.19:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user018 --shared-dir /tmp/monerosim_shared --rpc-host 11.0.0.19 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --tx-frequency 150 --attributes min_transaction_amount 0.5 --attributes city Lagos --attributes max_transaction_amount 2.0 --attributes can_receive_distributions true --attributes location Africa'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 96s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user000:
+    network_node_id: 9
+    ip_addr: 172.16.0.15
+    processes:
+    - path: /bin/bash
+      args: -c 'rm -rf /tmp/monero-user000 && /usr/local/bin/monerod --data-dir=/tmp/monero-user000 --log-file=/dev/stdout --log-level=1 --simulation --disable-dns-checkpoints --out-peers=4 --in-peers=4 --disable-seed-nodes --no-igd --prep-blocks-threads=1 --max-concurrency=1 --no-zmq --db-sync-mode=safe --non-interactive --max-connections-per-ip=50 --limit-rate-up=1024 --limit-rate-down=1024 --block-sync-size=1 --rpc-bind-ip=172.16.0.15 --rpc-bind-port=28081 --confirm-external-bind --disable-rpc-ban --rpc-access-control-origins=* --regtest --p2p-bind-ip=172.16.0.15 --p2p-bind-port=28080 --fixed-difficulty=200 --allow-local-ip --add-exclusive-node=172.16.0.11:28080'
+      environment:
+        stop_time: 5h
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_DISABLE_DNS: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        PYTHONUNBUFFERED: '1'
+      start_time: 5s
+    - path: /bin/bash
+      args: -c 'mkdir -p /tmp/monerosim_shared/user000_wallet'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 54s
+    - path: /bin/bash
+      args: -c '/usr/local/bin/monero-wallet-rpc --daemon-address=http://172.16.0.15:28081 --rpc-bind-port=28082 --rpc-bind-ip=172.16.0.15 --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/user000_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 55s
+    - path: /bin/bash
+      args: -c 'while ! nc -z 172.16.0.15 28082; do echo "Waiting for wallet RPC at 172.16.0.15:28082..."; sleep 2; done && cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.regular_user --id user000 --shared-dir /tmp/monerosim_shared --rpc-host 172.16.0.15 --agent-rpc-port 28081 --wallet-rpc-port 28082 --p2p-port 28080 --log-level DEBUG --stop-time 5h --attributes city New York --attributes location North America --attributes is_miner true --attributes can_receive_distributions true'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 60s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  blockcontroller:
+    network_node_id: 0
+    ip_addr: 10.0.0.20
+    processes:
+    - path: /bin/bash
+      args: -c 'cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m agents.block_controller --id blockcontroller --shared-dir /tmp/monerosim_shared --log-level DEBUG --stop-time 5h'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 90s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  script001:
+    network_node_id: 0
+    ip_addr: 10.0.0.22
+    processes:
+    - path: /bin/bash
+      args: -c 'cd /home/lever65/monerosim_dev/monerosim && . ./venv/bin/activate && python3 -m scripts.sync_check --id script001 --shared-dir /tmp/monerosim_shared --log-level DEBUG --stop-time 5h'
+      environment:
+        PYTHONUNBUFFERED: '1'
+        stop_time: 5h
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_ARENA_MAX: '1'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        MONEROSIM_LOG_LEVEL: INFO
+        MALLOC_TRIM_THRESHOLD_: '131072'
+      start_time: 35s
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'

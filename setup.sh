@@ -153,14 +153,28 @@ export PATH="$HOME/.local/bin:$PATH"
 print_header "Step 2: Installing Python Dependencies"
 
 check_command "python3"
-check_command "pip3"
+
+# Check if we have a virtual environment
+VENV_DIR="$SCRIPT_DIR/venv"
+if [[ ! -d "$VENV_DIR" ]]; then
+    print_status "Creating Python virtual environment..."
+    python3 -m venv "$VENV_DIR"
+fi
+
+# Activate the virtual environment
+print_status "Activating virtual environment..."
+source "$VENV_DIR/bin/activate"
+
+# Upgrade pip within the virtual environment
+print_status "Upgrading pip..."
+pip install --upgrade pip
 
 print_status "Installing Python packages from scripts/requirements.txt..."
-if pip3 install --user -r scripts/requirements.txt; then
+if pip install -r scripts/requirements.txt; then
     print_success "Python dependencies installed successfully"
 else
     print_error "Failed to install Python dependencies"
-    print_error "Please check your pip3 installation and scripts/requirements.txt"
+    print_error "Please check your pip installation and scripts/requirements.txt"
     exit 1
 fi
 # Step 2: Build MoneroSim
@@ -330,56 +344,82 @@ git submodule update --init --recursive
 cd "$SCRIPT_DIR"
 print_success "Monero source ready for Shadow compatibility"
 
-# Step 5: Build Monero Binaries with MoneroSim
+# Step 5: Build Monero Binaries Directly
 print_header "Step 6: Building Monero Binaries"
 
-print_status "Using MoneroSim to build Shadow-compatible Monero binaries..."
+print_status "Building Shadow-compatible Monero binaries directly..."
 print_status "This will take several minutes (15-30 minutes depending on system)..."
 
-# Ensure we're in the right directory and the binary exists
-if [[ ! -f "./target/release/monerosim" ]]; then
-    print_error "MoneroSim binary not found at ./target/release/monerosim"
-    print_error "Current directory: $(pwd)"
-    print_error "Please ensure MoneroSim was built successfully"
+# Navigate to monero-shadow directory
+cd "$MONERO_SHADOW_DIR"
+
+# Configure with CMake using Shadow compatibility flags
+print_status "Configuring Monero with Shadow compatibility..."
+cmake -DSHADOW_BUILD=ON -DCMAKE_BUILD_TYPE=Release .
+
+if [[ $? -ne 0 ]]; then
+    print_error "Failed to configure Monero with CMake"
     exit 1
 fi
 
-# Generate configuration and build Monero
-./target/release/monerosim --config config.yaml --output shadow_output
+# Build with make using all available processors
+print_status "Building Monero binaries..."
+make -j$(nproc)
 
-if [[ $? -eq 0 ]]; then
-    print_success "MoneroSim configuration generated and Monero built successfully"
-else
-    print_error "Failed to build Monero with MoneroSim"
-    print_error "Check the output above for build errors"
+if [[ $? -ne 0 ]]; then
+    print_error "Failed to build Monero binaries"
     exit 1
 fi
+
+print_success "Monero binaries built successfully"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
 
 # Verify the binaries were built
 MONEROD_BINARIES=()
-if [[ -f "builds/A/monero/bin/monerod" ]]; then
-    MONEROD_BINARIES+=("builds/A/monero/bin/monerod")
-    print_success "Found Monero binary: builds/A/monero/bin/monerod"
-elif [[ -f "builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod" ]]; then
-    MONEROD_BINARIES+=("builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod")
-    print_success "Found Monero binary: builds/A/monero/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod"
+if [[ -f "$MONERO_SHADOW_DIR/bin/monerod" ]]; then
+    MONEROD_BINARIES+=("$MONERO_SHADOW_DIR/bin/monerod")
+    print_success "Found Monero binary: $MONERO_SHADOW_DIR/bin/monerod"
+elif [[ -f "$MONERO_SHADOW_DIR/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod" ]]; then
+    MONEROD_BINARIES+=("$MONERO_SHADOW_DIR/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod")
+    print_success "Found Monero binary: $MONERO_SHADOW_DIR/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monerod"
 else
-    # Check for other possible locations
-    FOUND_BINARY=$(find builds/ -name monerod -type f 2>/dev/null | head -n1)
+    # Check for other possible locations in the monero-shadow directory
+    FOUND_BINARY=$(find "$MONERO_SHADOW_DIR" -name monerod -type f 2>/dev/null | head -n1)
     if [[ -n "$FOUND_BINARY" ]]; then
         MONEROD_BINARIES+=("$FOUND_BINARY")
         print_success "Found Monero binary: $FOUND_BINARY"
     else
         print_error "No Monero binaries found after build"
-        print_error "Build may have failed - check the MoneroSim output above"
+        print_error "Build may have failed - check the CMake and make output above"
         exit 1
+    fi
+fi
+
+# Also check for monero-wallet-rpc binary
+MONERO_WALLET_BINARIES=()
+if [[ -f "$MONERO_SHADOW_DIR/bin/monero-wallet-rpc" ]]; then
+    MONERO_WALLET_BINARIES+=("$MONERO_SHADOW_DIR/bin/monero-wallet-rpc")
+    print_success "Found Monero wallet binary: $MONERO_SHADOW_DIR/bin/monero-wallet-rpc"
+elif [[ -f "$MONERO_SHADOW_DIR/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monero-wallet-rpc" ]]; then
+    MONERO_WALLET_BINARIES+=("$MONERO_SHADOW_DIR/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monero-wallet-rpc")
+    print_success "Found Monero wallet binary: $MONERO_SHADOW_DIR/build/Linux/_HEAD_detached_at_v0.18.4.0_/release/bin/monero-wallet-rpc"
+else
+    # Check for other possible locations in the monero-shadow directory
+    FOUND_WALLET_BINARY=$(find "$MONERO_SHADOW_DIR" -name monero-wallet-rpc -type f 2>/dev/null | head -n1)
+    if [[ -n "$FOUND_WALLET_BINARY" ]]; then
+        MONERO_WALLET_BINARIES+=("$FOUND_WALLET_BINARY")
+        print_success "Found Monero wallet binary: $FOUND_WALLET_BINARY"
+    else
+        print_warning "No Monero wallet binary found after build"
     fi
 fi
 
 # Step 6: Install Monero binaries to system path
 print_header "Step 7: Installing Monero Binaries"
 
-print_status "Installing monerod binaries to /usr/local/bin/ for Shadow compatibility..."
+print_status "Installing Monero binaries to /usr/local/bin/ for Shadow compatibility..."
 
 # Check if we have sudo access
 if ! sudo -n true 2>/dev/null; then
@@ -387,11 +427,27 @@ if ! sudo -n true 2>/dev/null; then
     print_status "You will be prompted for your password..."
 fi
 
-# Install the first available binary as the default
+# Install the monerod binary
 MAIN_BINARY="${MONEROD_BINARIES[0]}"
-print_status "Installing primary binary: $MAIN_BINARY -> /usr/local/bin/monerod"
+print_status "Installing monerod binary: $MAIN_BINARY -> /usr/local/bin/monerod"
 sudo cp "$MAIN_BINARY" /usr/local/bin/monerod
 sudo chmod +x /usr/local/bin/monerod
+
+# Install monero-wallet-rpc if found
+if [[ ${#MONERO_WALLET_BINARIES[@]} -gt 0 ]]; then
+    MAIN_WALLET_BINARY="${MONERO_WALLET_BINARIES[0]}"
+    print_status "Installing monero-wallet-rpc binary: $MAIN_WALLET_BINARY -> /usr/local/bin/monero-wallet-rpc"
+    sudo cp "$MAIN_WALLET_BINARY" /usr/local/bin/monero-wallet-rpc
+    sudo chmod +x /usr/local/bin/monero-wallet-rpc
+    
+    # Also create a simulation-specific copy for Shadow compatibility
+    sudo cp "$MAIN_WALLET_BINARY" /usr/local/bin/monero-wallet-rpc-simulation
+    sudo chmod +x /usr/local/bin/monero-wallet-rpc-simulation
+fi
+
+# Create simulation-specific copies for Shadow compatibility
+sudo cp "$MAIN_BINARY" /usr/local/bin/monerod-simulation
+sudo chmod +x /usr/local/bin/monerod-simulation
 
 # Verify the binary works
 if /usr/local/bin/monerod --version >/dev/null 2>&1; then
@@ -400,10 +456,17 @@ else
     print_error "monerod installation may have issues"
 fi
 
+# Verify the wallet binary works if installed
+if [[ -f "/usr/local/bin/monero-wallet-rpc" ]] && /usr/local/bin/monero-wallet-rpc --version >/dev/null 2>&1; then
+    print_success "Successfully installed monero-wallet-rpc to /usr/local/bin/"
+else
+    print_warning "monero-wallet-rpc installation may have issues"
+fi
+
 # Step 7: Verify Shadow configuration
 print_header "Step 8: Verifying Shadow Configuration"
 
-if [[ -f "shadow_output/shadow.yaml" ]]; then
+if [[ -f "shadow_output/shadow_agents.yaml" ]]; then
     print_success "Shadow configuration already generated"
 else
     print_status "Regenerating Shadow configuration files..."
@@ -419,7 +482,7 @@ else
     
     ./target/release/monerosim --config config.yaml --output shadow_output
     
-    if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow.yaml" ]]; then
+    if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow_agents.yaml" ]]; then
         print_success "Shadow configuration generated successfully"
     else
         print_error "Failed to generate Shadow configuration"
@@ -431,7 +494,7 @@ fi
 print_header "Step 9: Running Test Simulation"
 
 print_status "Running a test Shadow simulation (this may take a few minutes)..."
-print_status "Simulation will run for the duration specified in config.yaml"
+print_status "Simulation will run for the duration specified in config_6_miners.yaml"
 
 # Clean up any existing shadow data
 if [[ -d "shadow.data" ]]; then
@@ -440,7 +503,7 @@ if [[ -d "shadow.data" ]]; then
 fi
 
 # Run the simulation
-shadow shadow_output/shadow.yaml
+shadow shadow_output/shadow_agents.yaml
 
 if [[ $? -eq 0 ]]; then
     print_success "Simulation completed successfully!"
@@ -481,13 +544,13 @@ print_header "Setup Complete!"
 print_success "MoneroSim is now ready to use!"
 echo ""
 print_status "Quick usage guide:"
-echo "  1. Edit config.yaml to adjust simulation parameters"
+echo "  1. Edit config_6_miners.yaml to adjust simulation parameters"
 echo "  2. Generate new configuration: ./target/release/monerosim --config config.yaml --output shadow_output"
-echo "  3. Run simulation: shadow shadow_output/shadow.yaml"
+echo "  3. Run simulation: shadow shadow_output/shadow_agents.yaml"
 echo "  4. Analyze results in shadow.data/ directory"
 echo ""
-print_status "Configuration files: shadow_output/"
+print_status "Configuration files: shadow_agents_output/"
 print_status "Simulation logs: shadow.data/hosts/*/monerod.*.stdout"
 print_status "Shadow log: shadow.data/shadow.log"
 echo ""
-print_success "Happy simulating!" 
+print_success "Happy simulating!"

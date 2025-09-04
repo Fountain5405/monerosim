@@ -7,13 +7,14 @@
 3. [Agent Types](#agent-types)
 4. [Communication Architecture](#communication-architecture)
 5. [Configuration](#configuration)
-6. [Running Simulations](#running-simulations)
-7. [Shared State Structure](#shared-state-structure)
-8. [Agent Behaviors](#agent-behaviors)
-9. [Scalability](#scalability)
-10. [Troubleshooting](#troubleshooting)
-11. [Examples](#examples)
-12. [Future Enhancements](#future-enhancements)
+6. [Agent Attributes](#agent-attributes)
+7. [Running Simulations](#running-simulations)
+8. [Shared State Structure](#shared-state-structure)
+9. [Agent Behaviors](#agent-behaviors)
+10. [Scalability](#scalability)
+11. [Troubleshooting](#troubleshooting)
+12. [Examples](#examples)
+13. [Future Enhancements](#future-enhancements)
 
 ## Overview
 
@@ -121,6 +122,7 @@ Represents typical Monero users who maintain wallets and send transactions.
 - `transaction_frequency`: Probability of sending transaction per iteration (0.0-1.0)
 - `min_amount`: Minimum transaction amount in XMR
 - `max_amount`: Maximum transaction amount in XMR
+- `can_receive_distributions`: Boolean indicating if agent can receive mining distributions (default: true)
 
 **Behavior Pattern:**
 1. Initialize wallet and get address
@@ -146,6 +148,7 @@ Orchestrates block generation across the network using a proven approach.
 **Configuration Parameters:**
 - `target_block_interval`: Seconds between block generations
 - `blocks_per_generation`: Number of blocks to generate each time
+- `can_receive_distributions`: Boolean indicating if agent can receive mining distributions (default: true)
 
 **Behavior Pattern:**
 1. Create wallet and get mining address
@@ -265,6 +268,76 @@ The agent discovery system integrates seamlessly with the YAML configuration:
 
 This approach eliminates the need for hardcoded network configurations and allows agents to dynamically discover and interact with each other.
 
+## Agent Attributes
+
+Agent attributes are configuration parameters that define the behavior and capabilities of each agent. These attributes are specified in the YAML configuration files and are used by the agent framework to customize agent behavior.
+
+### Common Attributes
+
+#### can_receive_distributions
+
+The `can_receive_distributions` attribute is a boolean flag that indicates whether an agent can receive mining distributions from the Miner Distributor Agent. This attribute is used by the agent discovery system to filter agents when distributing mining rewards.
+
+**Purpose:**
+- Control which agents receive mining distributions
+- Enable selective distribution of mining rewards
+- Support different economic models in simulations
+
+**Supported Values:**
+- `true` or `"true"`: Agent can receive distributions
+- `false` or `"false"`: Agent cannot receive distributions
+- `"1"` or `"yes"` or `"on"`: Agent can receive distributions (alternative true values)
+- `"0"` or `"no"` or `"off"`: Agent cannot receive distributions (alternative false values)
+
+**Default Behavior:**
+- If not specified, agents default to `true` (can receive distributions)
+
+**Examples:**
+```yaml
+# Agent that can receive distributions
+- daemon: "monerod"
+  wallet: "monero-wallet-rpc"
+  user_script: "agents.regular_user"
+  attributes:
+    transaction_interval: "60"
+    min_transaction_amount: "0.5"
+    max_transaction_amount: "2.0"
+    can_receive_distributions: true
+
+# Agent that cannot receive distributions
+- daemon: "monerod"
+  wallet: "monero-wallet-rpc"
+  user_script: "agents.regular_user"
+  attributes:
+    transaction_interval: "90"
+    min_transaction_amount: "0.1"
+    max_transaction_amount: "1.0"
+    can_receive_distributions: false
+
+# Using alternative boolean formats
+- daemon: "monerod"
+  wallet: "monero-wallet-rpc"
+  is_miner: true
+  attributes:
+    hashrate: "25"
+    can_receive_distributions: "yes"
+
+- daemon: "monerod"
+  wallet: "monero-wallet-rpc"
+  is_miner: true
+  attributes:
+    hashrate: "20"
+    can_receive_distributions: "0"
+```
+
+**Integration with Miner Distributor Agent:**
+The Miner Distributor Agent uses the `can_receive_distributions` attribute to filter agents when distributing mining rewards. Only agents with this attribute set to a truthy value will be included in the distribution list.
+
+**Network Dynamics Impact:**
+- Agents that cannot receive distributions will not get mining rewards
+- This can create different economic models within the simulation
+- Useful for studying scenarios with restricted reward distribution
+
 ### Shadow Integration
 
 The `shadow_agents.rs` module generates Shadow configuration that:
@@ -371,7 +444,8 @@ The `agent_registry.json` file documents all attributes for every agent (note: `
       "attributes": {
         "transaction_interval": "30",
         "min_transaction_amount": "0.5",
-        "max_transaction_amount": "2.0"
+        "max_transaction_amount": "2.0",
+        "can_receive_distributions": true
       }
     },
     {
@@ -592,6 +666,7 @@ agents:
         transaction_interval: "45"
         min_transaction_amount: "0.01"
         max_transaction_amount: "0.5"
+        can_receive_distributions: true
     # Repeat for 20 users...
     
     # Mining nodes
@@ -599,22 +674,27 @@ agents:
       is_miner: true
       attributes:
         hashrate: "30"
+        can_receive_distributions: true
     - daemon: "monerod"
       is_miner: true
       attributes:
         hashrate: "25"
+        can_receive_distributions: false
     - daemon: "monerod"
       is_miner: true
       attributes:
         hashrate: "20"
+        can_receive_distributions: "yes"
     - daemon: "monerod"
       is_miner: true
       attributes:
         hashrate: "15"
+        can_receive_distributions: "0"
     - daemon: "monerod"
       is_miner: true
       attributes:
         hashrate: "10"
+        can_receive_distributions: "on"
     
   block_controller:
     script: "agents.block_controller"

@@ -5,8 +5,12 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 ## Key Features
 
 - **Shadow Integration**: Seamlessly generates Shadow network simulator configurations for Monero
+- **Dual Network Topologies**: Support for both simple switch-based and complex GML-based networks
+- **AS-Aware IP Assignment**: Intelligent IP allocation based on Autonomous System groupings
 - **Agent-Based Mode**: Sophisticated simulations with autonomous network participants
 - **Dynamic Agent Discovery**: Runtime agent discovery through shared state files
+- **Advanced Peer Discovery**: Multiple peer discovery modes (Dynamic, Hardcoded, Hybrid) with intelligent seed selection
+- **Topology Templates**: Pre-built network topologies (Star, Mesh, Ring, DAG) for structured simulations
 - **Production Ready**: Proven in production with comprehensive test coverage
 - **Python-First Testing**: Modern Python test suite with 95%+ coverage
 - **Reproducible Research**: Deterministic simulations for scientific analysis
@@ -64,7 +68,9 @@ monerosim/
 ## Documentation
 
 - [Architecture Overview](docs/ARCHITECTURE.md) - System design and components
-- [Configuration Guide](docs/CONFIGURATION.md) - How to configure simulations
+- [Configuration Guide](docs/CONFIGURATION.md) - How to configure simulations (includes GML networks)
+- [Topology Features](docs/TOPOLOGY_FEATURES.md) - Peer discovery modes and topology templates
+- [GML IP Assignment and AS Distribution](docs/GML_IP_ASSIGNMENT_AS_DISTRIBUTION.md) - Complex network topologies
 - [Development Guide](docs/DEVELOPMENT.md) - Contributing and development workflow
 - [Performance Guide](docs/PERFORMANCE.md) - Optimization and scaling
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
@@ -109,6 +115,37 @@ agent = ad.get_agent_by_id('user001')
 ```
 
 For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
+
+## Peer Discovery Modes
+
+Monerosim supports three peer discovery modes that control how Monero nodes connect to each other:
+
+### Dynamic Mode
+- **Automatic seed selection** based on mining capability, network centrality, and geographic distribution
+- **Intelligent algorithm** that prioritizes miners and distributes seeds across different IP subnets
+- **No manual configuration** required - optimal seeds are selected automatically
+- **Best for**: Research simulations where you want realistic, optimized peer connections
+
+### Hardcoded Mode
+- **Explicit seed nodes** defined in configuration
+- **Topology templates** (Star, Mesh, Ring, DAG) for structured network patterns
+- **Predictable connections** for reproducible testing
+- **Best for**: Controlled experiments and validation scenarios
+
+### Hybrid Mode
+- **Combines topology-based connections** with peer discovery
+- **Structured primary connections** plus dynamic discovery for robustness
+- **DNS discovery support** for maximum connectivity
+- **Best for**: Production-like simulations with controlled structure
+
+## Topology Templates
+
+Pre-built network topology templates for structured peer connections:
+
+- **Star**: All nodes connect to a central hub (ideal for large networks)
+- **Mesh**: Fully connected network (best for small networks ≤10 agents)
+- **Ring**: Circular connections (good for circular communication patterns)
+- **DAG**: Hierarchical connections (traditional blockchain patterns, default)
 
 ## Agent Framework
 

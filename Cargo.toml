@@ -27,15 +27,6 @@ thiserror = "1.0"
 # Standard library extensions
 humantime-serde = "1.1"
 
-# CPU core detection
-num_cpus = "1.13"
-
-# Directory traversal
-walkdir = "2.5"
-
-# Hash generation for unique binary names
-md5 = "0.7"
-
 # Random number generation
 rand = "0.8"
 
@@ -50,6 +41,3 @@ path = "src/main.rs"
 [profile.release]
 lto = "fat"
 codegen-units = 1
-
-[build-dependencies]
-# ... existing code ... 

@@ -5,6 +5,8 @@ general:
 
 network:
   type: "1_gbit_switch"
+  peer_mode: "Dynamic"
+  topology: "Mesh"
 
 agents:
   user_agents:

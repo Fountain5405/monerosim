@@ -1,0 +1,409 @@
+# GML-based network topology configuration for large-scale testing
+# 40 total agents: 10 miners + 20 mining receivers + 10 regular users
+# Simulation duration: 5 hours
+# Network: Complex GML-based topology for realistic network conditions
+
+general:
+  stop_time: "5h"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  path: "testnet.gml"
+
+agents:
+  user_agents:
+    # ===== MINERS (10 agents with 10% hashrate each) =====
+    
+    # Miner 1 - 10% hashrate, can receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: true
+
+    # Miner 2 - 10% hashrate, can receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "true"
+
+    # Miner 3 - 10% hashrate, can receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "1"
+
+    # Miner 4 - 10% hashrate, can receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "yes"
+
+    # Miner 5 - 10% hashrate, can receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "on"
+
+    # Miner 6 - 10% hashrate, cannot receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: false
+
+    # Miner 7 - 10% hashrate, cannot receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "false"
+
+    # Miner 8 - 10% hashrate, cannot receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "0"
+
+    # Miner 9 - 10% hashrate, cannot receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "no"
+
+    # Miner 10 - 10% hashrate, cannot receive distributions
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      is_miner: true
+      attributes:
+        hashrate: "10"
+        can_receive_distributions: "off"
+
+    # ===== MINING RECEIVERS (20 agents that can receive mining distributions) =====
+    
+    # Mining Receiver 1 - High-value receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "300"
+        min_transaction_amount: "5.0"
+        max_transaction_amount: "20.0"
+        can_receive_distributions: true
+
+    # Mining Receiver 2 - Medium-value receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "240"
+        min_transaction_amount: "2.0"
+        max_transaction_amount: "10.0"
+        can_receive_distributions: "true"
+
+    # Mining Receiver 3 - Low-value receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "180"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "3.0"
+        can_receive_distributions: "1"
+
+    # Mining Receiver 4 - Fast transaction receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "120"
+        min_transaction_amount: "1.0"
+        max_transaction_amount: "5.0"
+        can_receive_distributions: "yes"
+
+    # Mining Receiver 5 - Slow transaction receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "600"
+        min_transaction_amount: "10.0"
+        max_transaction_amount: "50.0"
+        can_receive_distributions: "on"
+
+    # Mining Receiver 6 - Micro-transaction receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "90"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        can_receive_distributions: true
+
+    # Mining Receiver 7 - Medium frequency receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "200"
+        min_transaction_amount: "1.5"
+        max_transaction_amount: "7.5"
+        can_receive_distributions: "true"
+
+    # Mining Receiver 8 - High frequency receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.2"
+        max_transaction_amount: "2.0"
+        can_receive_distributions: "1"
+
+    # Mining Receiver 9 - Variable amount receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "150"
+        min_transaction_amount: "0.05"
+        max_transaction_amount: "15.0"
+        can_receive_distributions: "yes"
+
+    # Mining Receiver 10 - Conservative receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "360"
+        min_transaction_amount: "3.0"
+        max_transaction_amount: "12.0"
+        can_receive_distributions: "on"
+
+    # Mining Receiver 11 - Active trader
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "75"
+        min_transaction_amount: "0.8"
+        max_transaction_amount: "4.0"
+        can_receive_distributions: true
+
+    # Mining Receiver 12 - Bulk receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "450"
+        min_transaction_amount: "20.0"
+        max_transaction_amount: "100.0"
+        can_receive_distributions: "true"
+
+    # Mining Receiver 13 - Regular receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "210"
+        min_transaction_amount: "1.2"
+        max_transaction_amount: "6.0"
+        can_receive_distributions: "1"
+
+    # Mining Receiver 14 - Quick receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "45"
+        min_transaction_amount: "0.3"
+        max_transaction_amount: "1.8"
+        can_receive_distributions: "yes"
+
+    # Mining Receiver 15 - Moderate receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "270"
+        min_transaction_amount: "2.5"
+        max_transaction_amount: "8.0"
+        can_receive_distributions: "on"
+
+    # Mining Receiver 16 - Frequent small receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "105"
+        min_transaction_amount: "0.15"
+        max_transaction_amount: "0.75"
+        can_receive_distributions: true
+
+    # Mining Receiver 17 - Medium-large receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "330"
+        min_transaction_amount: "7.0"
+        max_transaction_amount: "25.0"
+        can_receive_distributions: "true"
+
+    # Mining Receiver 18 - Balanced receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "165"
+        min_transaction_amount: "1.8"
+        max_transaction_amount: "9.0"
+        can_receive_distributions: "1"
+
+    # Mining Receiver 19 - Patient receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "540"
+        min_transaction_amount: "15.0"
+        max_transaction_amount: "75.0"
+        can_receive_distributions: "yes"
+
+    # Mining Receiver 20 - Steady receiver
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "225"
+        min_transaction_amount: "2.2"
+        max_transaction_amount: "11.0"
+        can_receive_distributions: "on"
+
+    # ===== REGULAR USERS (10 agents for transaction activity, cannot receive distributions) =====
+    
+    # Regular User 1 - High-frequency trader
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "30"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        can_receive_distributions: false
+
+    # Regular User 2 - Medium-frequency trader
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "120"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "3.0"
+        can_receive_distributions: "false"
+
+    # Regular User 3 - Low-frequency trader
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "300"
+        min_transaction_amount: "2.0"
+        max_transaction_amount: "10.0"
+        can_receive_distributions: "0"
+
+    # Regular User 4 - Micro-transaction user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "45"
+        min_transaction_amount: "0.05"
+        max_transaction_amount: "0.5"
+        can_receive_distributions: "no"
+
+    # Regular User 5 - Bulk transaction user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "600"
+        min_transaction_amount: "10.0"
+        max_transaction_amount: "50.0"
+        can_receive_distributions: "off"
+
+    # Regular User 6 - Active day trader
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "90"
+        min_transaction_amount: "0.8"
+        max_transaction_amount: "4.0"
+        can_receive_distributions: false
+
+    # Regular User 7 - Conservative user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "450"
+        min_transaction_amount: "5.0"
+        max_transaction_amount: "20.0"
+        can_receive_distributions: "false"
+
+    # Regular User 8 - Variable pattern user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "180"
+        min_transaction_amount: "0.2"
+        max_transaction_amount: "8.0"
+        can_receive_distributions: "0"
+
+    # Regular User 9 - Quick transaction user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.3"
+        max_transaction_amount: "2.5"
+        can_receive_distributions: "no"
+
+    # Regular User 10 - Steady transaction user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "240"
+        min_transaction_amount: "1.5"
+        max_transaction_amount: "6.0"
+        can_receive_distributions: "off"
+
+  # ===== BLOCK CONTROLLER =====
+  block_controller:
+    script: "agents.block_controller"
+
+  # ===== MONITORING AGENTS =====
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"

@@ -38,9 +38,11 @@ graph TD
 
 ### 3. Recipient Discovery Mechanism
 - Read from the agent registry to find all agents with wallets
+- Filter agents based on the `can_receive_distributions` attribute
 - Exclude the selected miner from potential recipients
 - Retrieve wallet addresses via RPC calls
 - Support both random and round-robin selection strategies
+- Implement fallback behavior if no agents have the attribute set
 
 ### 4. Transaction Management
 - Create transactions with configurable amounts
@@ -62,6 +64,23 @@ attributes:
   max_retries: "3"  # Maximum retry attempts for failed transactions
   recipient_selection: "random"  # random, round_robin
 ```
+
+### Recipient Agent Configuration
+
+User agents that should receive miner distributions need to include the `can_receive_distributions` attribute in their configuration:
+
+```yaml
+attributes:
+  can_receive_distributions: "true"  # Indicates this agent can receive miner distributions
+  transaction_interval: "60"  # For regular user agents
+  min_transaction_amount: "0.1"  # For regular user agents
+  max_transaction_amount: "1.0"  # For regular user agents
+```
+
+The `can_receive_distributions` attribute supports the same boolean value formats as other boolean attributes in the system:
+- String representations: "true"/"false", "1"/"0", "yes"/"no", "on"/"off"
+- Case-insensitive: "True", "TRUE", "false", "FALSE" are all valid
+- Default behavior: If not specified, agents cannot receive distributions unless no agents have this attribute set (fallback mode)
 
 ## Implementation Details
 
@@ -302,28 +321,74 @@ def _select_recipient(self) -> Optional[Dict[str, Any]]:
     
     # Find all agents with wallets that are not the selected miner
     potential_recipients = []
+    distribution_enabled_recipients = []
+    
     for agent in agent_registry.get("agents", []):
         # Skip if this is the selected miner
         if agent.get("id") == self.selected_miner.get("agent_id"):
             continue
         
         # Only consider agents with wallets
-        if agent.get("wallet_rpc_port"):
-            potential_recipients.append(agent)
+        if not agent.get("wallet_rpc_port"):
+            continue
+            
+        # Check if agent can receive distributions
+        can_receive = self._parse_boolean_attribute(
+            agent.get("attributes", {}).get("can_receive_distributions", "false")
+        )
+        
+        potential_recipients.append(agent)
+        if can_receive:
+            distribution_enabled_recipients.append(agent)
     
-    if not potential_recipients:
+    # Use distribution-enabled recipients if available, otherwise fall back to all recipients
+    recipients_to_use = distribution_enabled_recipients if distribution_enabled_recipients else potential_recipients
+    
+    if not recipients_to_use:
         self.logger.warning("No potential recipients found")
         return None
+    
+    # Log which recipient pool we're using
+    if distribution_enabled_recipients:
+        self.logger.info(f"Selecting from {len(distribution_enabled_recipients)} distribution-enabled recipients")
+    else:
+        self.logger.info("No distribution-enabled recipients found, falling back to all wallet agents")
     
     # Apply recipient selection strategy
     if self.recipient_selection == "round_robin":
         # Round-robin selection
-        recipient = potential_recipients[self.recipient_index % len(potential_recipients)]
+        recipient = recipients_to_use[self.recipient_index % len(recipients_to_use)]
         self.recipient_index += 1
         return recipient
     else:  # random
         # Random selection
-        return random.choice(potential_recipients)
+        return random.choice(recipients_to_use)
+
+def _parse_boolean_attribute(self, value: str) -> bool:
+    """
+    Parse a boolean attribute value, supporting multiple formats.
+    
+    Args:
+        value: String value to parse
+        
+    Returns:
+        Boolean interpretation of the value
+    """
+    if not value:
+        return False
+        
+    # Handle string representations
+    value_lower = value.lower()
+    if value_lower in ("true", "1", "yes", "on"):
+        return True
+    elif value_lower in ("false", "0", "no", "off"):
+        return False
+    
+    # Try to parse as boolean directly
+    try:
+        return value.lower() == "true"
+    except:
+        return False
 
 def _get_recipient_address(self, recipient: Dict[str, Any]) -> Optional[str]:
     """
@@ -467,6 +532,35 @@ agents:
         is_miner: 'true'
         hashrate: "25"
     
+    # Recipient Agents (can receive distributions)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+    
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "45"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+    
+    # Non-Recipient Agent (cannot receive distributions)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "false"
+        transaction_interval: "30"
+        min_transaction_amount: "0.01"
+        max_transaction_amount: "0.1"
+    
     # Miner Distributor Agent
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -500,3 +594,6 @@ agents:
 2. **Transaction Pool Monitoring**: Monitor mempool and adjust fees accordingly
 3. **Multi-signature Transactions**: Support for more complex transaction types
 4. **Scheduled Transactions**: Support for time-delayed or recurring transactions
+5. **Advanced Recipient Filtering**: Extend the `can_receive_distributions` attribute to support more sophisticated recipient selection criteria, such as minimum balance requirements, transaction history, or custom eligibility rules
+6. **Distribution Quotas**: Implement quota systems to limit how much each recipient can receive over time
+7. **Priority Recipients**: Add priority levels for recipients to ensure certain agents receive distributions first

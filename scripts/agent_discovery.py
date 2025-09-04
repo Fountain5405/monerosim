@@ -52,6 +52,11 @@ class AgentDiscovery:
         self._registry_cache_time: float = 0
         self.cache_ttl = 5  # Cache TTL in seconds
         
+        # Cache for distribution recipients
+        self._distribution_recipients_cache: Optional[List[Dict[str, Any]]] = None
+        self._distribution_recipients_cache_time: float = 0
+        self._distribution_recipients_cache_ttl = 10  # Cache TTL for distribution recipients
+        
         # Ensure the shared state directory exists
         try:
             self.shared_state_dir.mkdir(parents=True, exist_ok=True)
@@ -541,7 +546,7 @@ class AgentDiscovery:
                 # Handle both list and dictionary formats
                 if isinstance(agents, list):
                     for agent_data in agents:
-                        if "wallet" in agent_data or "wallet_rpc" in agent_data:
+                        if "wallet" in agent_data or "wallet_rpc" in agent_data or "wallet_rpc_port" in agent_data:
                             agent_copy = agent_data.copy()
                             # Ensure ID is present
                             if "id" not in agent_copy and "agent_id" in agent_copy:
@@ -549,7 +554,7 @@ class AgentDiscovery:
                             wallets.append(agent_copy)
                 elif isinstance(agents, dict):
                     for agent_id, agent_data in agents.items():
-                        if "wallet" in agent_data or "wallet_rpc" in agent_data:
+                        if "wallet" in agent_data or "wallet_rpc" in agent_data or "wallet_rpc_port" in agent_data:
                             agent_copy = agent_data.copy()
                             agent_copy["id"] = agent_id
                             wallets.append(agent_copy)
@@ -727,6 +732,109 @@ class AgentDiscovery:
             error_msg = f"Failed to get registry stats: {e}"
             self.logger.error(error_msg)
             raise AgentDiscoveryError(error_msg)
+    
+    def _parse_boolean_attribute(self, value: str) -> bool:
+        """
+        Parse a boolean attribute value, supporting multiple formats.
+        
+        This method is consistent with the implementation in MinerDistributorAgent.
+        
+        Args:
+            value: String value to parse
+            
+        Returns:
+            Boolean interpretation of the value
+        """
+        if not value:
+            return False
+            
+        # Handle string representations
+        value_lower = value.lower()
+        if value_lower in ("true", "1", "yes", "on"):
+            return True
+        elif value_lower in ("false", "0", "no", "off"):
+            return False
+        
+        # Try to parse as boolean directly
+        try:
+            return value.lower() == "true"
+        except:
+            self.logger.warning(f"Invalid boolean attribute value: '{value}', defaulting to False")
+            return False
+    
+    def _is_distribution_recipients_cache_valid(self) -> bool:
+        """
+        Check if the distribution recipients cache is still valid based on TTL.
+        
+        Returns:
+            True if cache is valid, False otherwise.
+        """
+        return (time.time() - self._distribution_recipients_cache_time) < self._distribution_recipients_cache_ttl
+    
+    def get_distribution_recipients(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """
+        Return all agents that can receive distributions.
+        
+        This method filters agents based on the can_receive_distributions attribute
+        and implements fallback behavior when no agents have the attribute.
+        
+        Args:
+            force_refresh: If True, bypass the cache and reload from disk.
+            
+        Returns:
+            List of agent dictionaries that can receive distributions.
+            
+        Raises:
+            AgentDiscoveryError: If the registry cannot be loaded.
+        """
+        self.logger.debug("Getting distribution recipients")
+        
+        # Return cached data if valid and not forcing refresh
+        if not force_refresh and self._distribution_recipients_cache is not None and self._is_distribution_recipients_cache_valid():
+            self.logger.debug("Returning cached distribution recipients")
+            return self._distribution_recipients_cache
+        
+        try:
+            # Get all wallet agents
+            wallet_agents = self.get_wallet_agents(force_refresh)
+            
+            # Filter agents based on can_receive_distributions attribute
+            distribution_enabled_recipients = []
+            potential_recipients = []
+            
+            for agent in wallet_agents:
+                # Check if agent can receive distributions
+                attributes = agent.get("attributes", {})
+                can_receive_value = attributes.get("can_receive_distributions", "false")
+                can_receive = self._parse_boolean_attribute(can_receive_value)
+                
+                potential_recipients.append(agent)
+                if can_receive:
+                    distribution_enabled_recipients.append(agent)
+                    self.logger.debug(f"Agent {agent.get('id')} can receive distributions")
+                else:
+                    self.logger.debug(f"Agent {agent.get('id')} cannot receive distributions")
+            
+            # Use distribution-enabled recipients if available, otherwise fall back to all recipients
+            recipients_to_use = distribution_enabled_recipients if distribution_enabled_recipients else potential_recipients
+            
+            # Log which recipient pool we're using
+            if distribution_enabled_recipients:
+                self.logger.info(f"Found {len(distribution_enabled_recipients)} distribution-enabled recipients")
+            else:
+                self.logger.info("No distribution-enabled recipients found, falling back to all wallet agents")
+                self.logger.info(f"Using {len(potential_recipients)} potential recipients")
+            
+            # Update cache
+            self._distribution_recipients_cache = recipients_to_use
+            self._distribution_recipients_cache_time = time.time()
+            
+            return recipients_to_use
+            
+        except Exception as e:
+            error_msg = f"Failed to get distribution recipients: {e}"
+            self.logger.error(error_msg)
+            raise AgentDiscoveryError(error_msg)
 
 
 # Convenience functions for direct usage
@@ -810,6 +918,20 @@ def get_wallet_agents(shared_state_dir: str = "/tmp/monerosim_shared") -> List[D
     return discovery.get_wallet_agents()
 
 
+def get_distribution_recipients(shared_state_dir: str = "/tmp/monerosim_shared") -> List[Dict[str, Any]]:
+    """
+    Convenience function to get distribution recipients.
+    
+    Args:
+        shared_state_dir: Path to the shared state directory.
+        
+    Returns:
+        List of agent dictionaries that can receive distributions.
+    """
+    discovery = AgentDiscovery(shared_state_dir)
+    return discovery.get_distribution_recipients()
+
+
 if __name__ == "__main__":
     # Example usage
     try:
@@ -826,6 +948,10 @@ if __name__ == "__main__":
         # Get wallet agents
         wallets = discovery.get_wallet_agents()
         print(f"Wallets: {json.dumps(wallets, indent=2)}")
+        
+        # Get distribution recipients
+        distribution_recipients = discovery.get_distribution_recipients()
+        print(f"Distribution recipients: {json.dumps(distribution_recipients, indent=2)}")
         
         # Get registry stats
         stats = discovery.get_registry_stats()

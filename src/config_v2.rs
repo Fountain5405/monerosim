@@ -1,6 +1,30 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Peer mode options for network configuration
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum PeerMode {
+    /// Dynamic peer discovery using network protocols
+    Dynamic,
+    /// Hardcoded list of peers
+    Hardcoded,
+    /// Hybrid approach combining dynamic and hardcoded peers
+    Hybrid,
+}
+
+/// Topology templates for peer connections
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum Topology {
+    /// Star topology: all nodes connect to a central hub
+    Star,
+    /// Mesh topology: all nodes connect to all other nodes
+    Mesh,
+    /// Ring topology: circular connections between nodes
+    Ring,
+    /// DAG (Directed Acyclic Graph): hierarchical connections
+    Dag,
+}
+
 /// Unified configuration that supports only agent mode
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -23,26 +47,57 @@ impl Config {
         // Validate network settings
         if let Some(network) = &self.network {
             match network {
-                Network::Gml { path } => {
+                Network::Gml { path, peer_mode, seed_nodes, .. } => {
                     if path.is_empty() {
                         return Err(ValidationError::InvalidNetwork(
                             "GML path cannot be empty".to_string(),
                         ));
                     }
+                    Self::validate_peer_config(peer_mode, seed_nodes)?;
                 }
-                Network::Switch { network_type, .. } => {
+                Network::Switch { network_type, peer_mode, seed_nodes, .. } => {
                     if network_type.is_empty() {
                         return Err(ValidationError::InvalidNetwork(
                             "Network type cannot be empty for Switch".to_string(),
                         ));
                     }
+                    Self::validate_peer_config(peer_mode, seed_nodes)?;
                 }
             }
         }
         
         Ok(())
     }
-    
+
+    /// Validate peer configuration based on peer mode
+    fn validate_peer_config(peer_mode: &Option<PeerMode>, seed_nodes: &Option<Vec<String>>) -> Result<(), ValidationError> {
+        if let Some(mode) = peer_mode {
+            match mode {
+                PeerMode::Hardcoded | PeerMode::Hybrid => {
+                    if seed_nodes.is_none() || seed_nodes.as_ref().unwrap().is_empty() {
+                        return Err(ValidationError::InvalidNetwork(
+                            format!("seed_nodes must be provided and non-empty for peer_mode {:?}", mode)
+                        ));
+                    }
+                }
+                PeerMode::Dynamic => {
+                    // For Dynamic, seed_nodes can be None or empty
+                }
+            }
+        }
+
+        // If seed_nodes is provided, ensure it's not empty
+        if let Some(nodes) = seed_nodes {
+            if nodes.is_empty() {
+                return Err(ValidationError::InvalidNetwork(
+                    "seed_nodes cannot be an empty list".to_string()
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Get the general configuration
     pub fn general(&self) -> &GeneralConfig {
         &self.general
@@ -141,9 +196,21 @@ pub enum Network {
         bandwidth: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         latency: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        peer_mode: Option<PeerMode>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        seed_nodes: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        topology: Option<Topology>,
     },
     Gml {
         path: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        peer_mode: Option<PeerMode>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        seed_nodes: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        topology: Option<Topology>,
     },
 }
 
@@ -177,6 +244,9 @@ impl Default for Network {
             network_type: "1_gbit_switch".to_string(),
             bandwidth: None,
             latency: None,
+            peer_mode: Some(PeerMode::Dynamic),
+            seed_nodes: None,
+            topology: Some(Topology::Dag), // Default to DAG for backward compatibility
         }
     }
 }
@@ -284,5 +354,96 @@ agents: {}
         // The validation logic for agent counts needs to be updated to reflect the new structure.
         // For now, we'll just assert that it doesn't panic.
         // assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_peer_mode_validation() {
+        // Test Dynamic without seed_nodes - should pass
+        let yaml = r#"
+general:
+  stop_time: "1h"
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Dynamic"
+agents: {}
+"#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_ok());
+
+        // Test Hardcoded without seed_nodes - should fail
+        let yaml = r#"
+general:
+  stop_time: "1h"
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Hardcoded"
+agents: {}
+"#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_err());
+
+        // Test Hardcoded with seed_nodes - should pass
+        let yaml = r#"
+general:
+  stop_time: "1h"
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Hardcoded"
+  seed_nodes: ["node1", "node2"]
+agents: {}
+"#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_ok());
+
+        // Test Hybrid with seed_nodes - should pass
+        let yaml = r#"
+general:
+  stop_time: "1h"
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Hybrid"
+  seed_nodes: ["node1"]
+agents: {}
+"#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_ok());
+
+        // Test empty seed_nodes - should fail
+        let yaml = r#"
+general:
+  stop_time: "1h"
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Hardcoded"
+  seed_nodes: []
+agents: {}
+"#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_err());
+
+        // Test GML with peer_mode
+        let yaml = r#"
+general:
+  stop_time: "1h"
+network:
+  path: "test.gml"
+  peer_mode: "Dynamic"
+agents: {}
+"#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_default_network() {
+        let network = Network::default();
+        match network {
+            Network::Switch { peer_mode, seed_nodes, topology, .. } => {
+                assert_eq!(peer_mode, Some(PeerMode::Dynamic));
+                assert_eq!(seed_nodes, None);
+                assert_eq!(topology, Some(Topology::Dag));
+            }
+            _ => panic!("Default should be Switch"),
+        }
     }
 }

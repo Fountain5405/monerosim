@@ -1,0 +1,335 @@
+# Global Network Configuration - 30 Agents Across 6 Continents
+# 10 miners with equal 10% hashrate each and 20 mining distribution receivers
+# Uses GML-based network topology for realistic global network simulation
+
+general:
+  stop_time: "6h"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  path: "global_network_30_nodes_with_loops.gml"
+
+agents:
+  user_agents:
+    # North America Miners (AS 65001 & 65002)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "North America"
+        city: "New York"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "North America"
+        city: "Chicago"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "North America"
+        city: "Toronto"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "North America"
+        city: "Vancouver"
+
+    # Europe Miners (AS 65003 & 65004)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "Europe"
+        city: "London"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "Europe"
+        city: "Frankfurt"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "Europe"
+        city: "Amsterdam"
+
+    # Asia Miners (AS 65005 & 65006)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Tokyo"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Seoul"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "10"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Mumbai"
+
+    # North America Distribution Receivers
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+        can_receive_distributions: true
+        location: "North America"
+        city: "Los Angeles"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "90"
+        min_transaction_amount: "0.3"
+        max_transaction_amount: "1.5"
+        can_receive_distributions: true
+        location: "North America"
+        city: "Seattle"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "75"
+        min_transaction_amount: "0.4"
+        max_transaction_amount: "1.8"
+        can_receive_distributions: true
+        location: "North America"
+        city: "Miami"
+
+    # Europe Distribution Receivers
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "85"
+        min_transaction_amount: "0.2"
+        max_transaction_amount: "1.2"
+        can_receive_distributions: true
+        location: "Europe"
+        city: "Paris"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "70"
+        min_transaction_amount: "0.6"
+        max_transaction_amount: "2.5"
+        can_receive_distributions: true
+        location: "Europe"
+        city: "Zurich"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "95"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "0.8"
+        can_receive_distributions: true
+        location: "Europe"
+        city: "Stockholm"
+
+    # Asia Distribution Receivers
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "110"
+        min_transaction_amount: "0.8"
+        max_transaction_amount: "3.0"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Hong Kong"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "80"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.2"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Singapore"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "120"
+        min_transaction_amount: "0.3"
+        max_transaction_amount: "1.5"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Bangalore"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "100"
+        min_transaction_amount: "0.7"
+        max_transaction_amount: "2.8"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Delhi"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "130"
+        min_transaction_amount: "0.4"
+        max_transaction_amount: "1.8"
+        can_receive_distributions: true
+        location: "Asia"
+        city: "Chennai"
+
+    # South America Distribution Receivers
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "140"
+        min_transaction_amount: "0.4"
+        max_transaction_amount: "1.8"
+        can_receive_distributions: true
+        location: "South America"
+        city: "Sao Paulo"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "130"
+        min_transaction_amount: "0.2"
+        max_transaction_amount: "1.0"
+        can_receive_distributions: true
+        location: "South America"
+        city: "Buenos Aires"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "125"
+        min_transaction_amount: "0.6"
+        max_transaction_amount: "2.2"
+        can_receive_distributions: true
+        location: "South America"
+        city: "Santiago"
+
+    # Africa Distribution Receivers
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "160"
+        min_transaction_amount: "0.3"
+        max_transaction_amount: "1.3"
+        can_receive_distributions: true
+        location: "Africa"
+        city: "Johannesburg"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "150"
+        min_transaction_amount: "0.5"
+        max_transaction_amount: "2.0"
+        can_receive_distributions: true
+        location: "Africa"
+        city: "Cairo"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "145"
+        min_transaction_amount: "0.4"
+        max_transaction_amount: "1.6"
+        can_receive_distributions: true
+        location: "Africa"
+        city: "Lagos"
+
+    # Oceania Distribution Receivers
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "135"
+        min_transaction_amount: "0.7"
+        max_transaction_amount: "2.5"
+        can_receive_distributions: true
+        location: "Oceania"
+        city: "Sydney"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "155"
+        min_transaction_amount: "0.3"
+        max_transaction_amount: "1.4"
+        can_receive_distributions: true
+        location: "Oceania"
+        city: "Auckland"
+
+  block_controller:
+    script: "agents.block_controller"
+
+  miner_distributor:
+    script: "agents.miner_distributor"
+    attributes:
+      distribution_interval: "300"
+      min_distribution_amount: "0.1"
+      max_distribution_amount: "1.0"
+
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"

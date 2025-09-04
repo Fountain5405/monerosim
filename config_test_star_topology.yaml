@@ -1,0 +1,59 @@
+# Test configuration for Star topology
+# All nodes connect to central hub (first agent)
+# Requirements: ≥2 agents
+
+general:
+  stop_time: "3m"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Hardcoded"
+  topology: "Star"
+  seed_nodes:
+    - "192.168.0.10:28080"  # Will be updated to first agent IP
+
+agents:
+  user_agents:
+    # Central hub (first agent)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "50"
+
+    # Spoke nodes (connect only to hub)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "25"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "25"
+
+    # Regular users
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "60"
+
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "90"
+
+  block_controller:
+    script: "agents.block_controller"
+
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"

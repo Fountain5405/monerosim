@@ -2,20 +2,26 @@
 
 ## System Overview
 
-Monerosim is a Rust-based tool that generates configuration files for the Shadow network simulator to run Monero cryptocurrency network simulations. The architecture follows a modular design with clear separation of concerns and now includes an advanced agent-based simulation framework.
+Monerosim is a Rust-based tool that generates configuration files for the Shadow network simulator to run Monero cryptocurrency network simulations. The architecture follows a modular design with clear separation of concerns and now includes an advanced agent-based simulation framework with dual network topology support.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     MoneroSim                              │
 ├─────────────────────────────────────────────────────────────┤
 │  CLI Interface (main.rs)                                   │
-│  ├── Configuration Parser (config.rs)                     │
-│  ├── Build Manager (build.rs)                             │
+│  ├── Configuration Parser (config_v2.rs)                  │
+│  ├── GML Parser (gml_parser.rs)                           │
 │  └── Agent Shadow Generator (shadow_agents.rs)            │
+├─────────────────────────────────────────────────────────────┤
+│  Network Topology Support                                  │
+│  ├── Switch-Based Networks (Simple)                       │
+│  └── GML-Based Networks (Complex)                         │
 ├─────────────────────────────────────────────────────────────┤
 │  Agent Framework (Python)                                  │
 │  ├── Base Agent (base_agent.py)                          │
 │  ├── Block Controller Agent (block_controller.py)        │
+│  ├── Regular User Agent (regular_user.py)                │
+│  ├── Miner Distributor Agent (miner_distributor.py)      │
 │  └── Monero RPC Client (monero_rpc.py)                   │
 ├─────────────────────────────────────────────────────────────┤
 │  Shadow Network Simulator                                  │
@@ -31,6 +37,10 @@ Monerosim is a Rust-based tool that generates configuration files for the Shadow
 └─────────────────────────────────────────────────────────────┘
 ```
 
+The system now supports two distinct network topology modes:
+- **Switch-Based Networks**: Simple, high-performance topologies using Shadow's built-in switch models
+- **GML-Based Networks**: Complex, realistic network topologies defined using Graph Modeling Language (GML) files
+
 ## Source Code Structure
 
 The project is organized into several key components:
@@ -43,12 +53,13 @@ The project is organized into several key components:
 - Coordinates the build process and shadow configuration generation
 - Supports agent-based simulation mode
 
-### 2. Configuration Management (`src/config.rs`)
+### 2. Configuration Management (`src/config_v2.rs`)
 
-- Defines data structures for configuration
-- Parses YAML configuration files
-- Validates configuration parameters
+- Defines unified data structures for agent-based configuration
+- Parses YAML configuration files with dual network topology support
+- Validates configuration parameters including GML file paths
 - Provides default values for optional parameters
+- Supports both switch-based and GML-based network configurations
 
 ### 3. Build Management (`src/build.rs`)
 
@@ -57,13 +68,32 @@ The project is organized into several key components:
 - Applies Shadow compatibility patches
 - Compiles Monero with Shadow-specific flags
 
+### 3. GML Parser (`src/gml_parser.rs`)
+
+- Custom Graph Modeling Language (GML) parser implementation
+- Supports nodes, edges, and attributes for complex network topologies
+- Validates network topology integrity (connectivity, node references)
+- Groups nodes by Autonomous System (AS) numbers for realistic distribution
+- Provides backward compatibility with legacy graph structures
+- Handles network attributes like bandwidth, latency, and packet loss
+
 ### 4. Shadow Configuration Generation
 
 #### Agent-Based Mode (`src/shadow_agents.rs`)
 - Generates Shadow configurations for agent-based simulations
-- Creates complex network topologies with multiple participant types
+- Creates complex network topologies from GML files or simple switch-based models
+- Intelligently distributes agents across GML network nodes using AS-aware algorithms
 - Configures agent processes alongside Monero nodes
 - Supports scalable simulations from small to large networks
+- Generates agent and miner registries for runtime coordination
+
+#### Peer Discovery System (`src/shadow_agents.rs`)
+- Implements three peer discovery modes: Dynamic, Hardcoded, and Hybrid
+- Supports four network topologies: Star, Mesh, Ring, and DAG
+- Generates appropriate peer connection configurations based on selected mode and topology
+- Handles seed node configuration for Hardcoded and Hybrid modes
+- Validates topology requirements and agent counts
+- Ensures proper network connectivity for all simulation scenarios
 
 ### 5. Agent Framework (`agents/`)
 
@@ -131,74 +161,177 @@ The project includes comprehensive testing scripts that run within the shadow en
 
 ## Network Architecture
 
-### Traditional Network Topology
+Monerosim supports two distinct network topology approaches, each optimized for different simulation requirements:
 
-The traditional implementation uses a simple network topology:
-- Node `A0` acts as a mining node (generates blocks)
-- Node `A1` synchronizes from `A0`
-- Two wallet instances for transaction testing:
-  - `wallet1` connected to `A0` (mining wallet)
-  - `wallet2` connected to `A1` (recipient wallet)
+### Switch-Based Network Topology
+
+The switch-based implementation uses Shadow's built-in network models for high-performance simulations:
+
+```yaml
+network:
+  type: "1_gbit_switch"
+```
 
 ```mermaid
 graph TD
-    A0[A0 - Mining Node] --> A1[A1 - Sync Node]
-    A0 --> W1[Wallet1 - Mining Wallet]
-    A1 --> W2[Wallet2 - Recipient Wallet]
-    W1 -- Transaction --> W2
+    subgraph "Switch Network"
+        SW[1 Gbit Switch]
+        SW --- A1[Agent 1]
+        SW --- A2[Agent 2]
+        SW --- A3[Agent 3]
+        SW --- A4[Agent N...]
+    end
 ```
 
-### Agent-Based Network Topology
+**Characteristics:**
+- **High Performance**: Optimized for speed and resource efficiency
+- **Simple Configuration**: Single network type parameter
+- **Uniform Connectivity**: All nodes have identical network characteristics
+- **Scalable**: Handles large numbers of agents efficiently
 
-The agent-based architecture supports complex, realistic network simulations:
+### GML-Based Network Topology
+
+The GML-based implementation supports complex, realistic network topologies defined using Graph Modeling Language:
+
+```yaml
+network:
+  path: "testnet.gml"
+```
+
+```mermaid
+graph TD
+    subgraph "GML Network"
+        subgraph "AS 65001"
+            N1[Node 1]
+            N2[Node 2]
+        end
+        subgraph "AS 65002"
+            N3[Node 3]
+            N4[Node 4]
+        end
+        N1 ---|10ms, 1Gbit| N2
+        N3 ---|5ms, 100Mbit| N4
+        N2 ---|50ms, 10Mbit| N3
+    end
+```
+
+**Characteristics:**
+- **Realistic Topology**: Models actual internet infrastructure
+- **Autonomous Systems**: Supports AS-aware agent distribution
+- **Variable Network Conditions**: Different bandwidth, latency, packet loss per link
+- **Complex Routing**: Multi-hop paths between agents
+- **Research-Grade**: Suitable for academic network studies
+
+### Agent-Based Network Participants
+
+Both network types support the same agent-based simulation framework:
 
 ```mermaid
 graph TD
     subgraph "Mining Infrastructure"
         BC[Block Controller]
+        M1[Miner 1]
+        M2[Miner 2]
     end
 
     subgraph "User Network"
-        U1[User 001]
+        U1[Regular User 1]
+        U2[Regular User 2]
+        MD[Miner Distributor]
     end
 
+    subgraph "Monitoring"
+        MON[Monitor Agent]
+        SYNC[Sync Check Agent]
+    end
 
-    BC -.->|Controls| M1[Miner]
-
-    U1 -->|Transactions| N1[Node 1]
-
+    BC -.->|Coordinates| M1
+    BC -.->|Coordinates| M2
     M1 -->|Blocks| U1
+    M2 -->|Blocks| U2
+    MD -->|Distributions| M1
+    MD -->|Distributions| M2
+    U1 -->|Transactions| U2
 ```
 
-Key features of the agent-based topology:
+**Key Features:**
 - **Scalable**: Supports 2 to 100+ participants
 - **Realistic**: Models actual cryptocurrency network behavior
 - **Autonomous**: Agents make independent decisions
 - **Coordinated**: Block generation is orchestrated for consistency
+- **Topology-Agnostic**: Works with both switch and GML networks
 
 ## Data Flow
 
-### Traditional Workflow
+Monerosim supports two distinct configuration workflows depending on the chosen network topology:
 
-1. User creates or modifies `config.yaml`
-2. Monerosim parses the configuration
-3. Monerosim builds Monero binaries with Shadow compatibility
-4. Monerosim generates Shadow configuration files
-5. Shadow simulator runs the simulation
-6. Testing scripts verify functionality
-7. Results are analyzed
+### Switch-Based Workflow
 
-### Agent-Based Workflow
+1. User creates or modifies `config.yaml`, specifying a switch network type.
+2. Monerosim parses the YAML configuration.
+3. Monerosim generates a Shadow configuration with switch-based topology.
+4. Shadow starts all processes in the switch network.
+5. Agents interact through the high-performance switch.
+6. Results are collected and analyzed.
 
-1. User selects agent configuration (small/medium/large)
-2. Monerosim generates agent-aware Shadow configuration
-3. Shadow starts all processes in proper sequence:
-   - Monero daemons initialize first
-   - Wallet RPC services start next
-   - Agents activate and begin their behaviors
-4. Agents interact autonomously
-5. Shared state files enable agent coordination
-6. Results are collected and analyzed
+### GML-Based Workflow
+
+1. User creates or modifies `config.yaml`, specifying a GML topology file.
+2. Monerosim parses the YAML configuration and validates the GML file path.
+3. GML Parser loads and validates the network topology.
+4. Agent distribution algorithm assigns agents to GML nodes (AS-aware).
+5. Shadow Agent Generator creates configuration with embedded GML topology.
+6. Shadow starts all processes in the specified network topology.
+7. Agents interact autonomously across the simulated internet.
+8. Results are collected and analyzed.
+
+### Comprehensive Data Flow Diagram
+
+```mermaid
+graph TD
+    subgraph "Configuration Input"
+        CONFIG[config.yaml]
+        GML[testnet.gml]
+    end
+
+    subgraph "MoneroSim Core"
+        PARSER[Config Parser<br/>config_v2.rs]
+        GMLP[GML Parser<br/>gml_parser.rs]
+        GENERATOR[Shadow Agent Generator<br/>shadow_agents.rs]
+    end
+
+    subgraph "Network Topology Decision"
+        SWITCH{Switch Network?}
+        GMLNET{GML Network?}
+    end
+
+    subgraph "Agent Distribution"
+        SIMPLE[Simple Round-Robin<br/>Distribution]
+        ASAWARE[AS-Aware Intelligent<br/>Distribution]
+    end
+
+    subgraph "Output Generation"
+        SHADOWCONF[shadow_agents.yaml]
+        AGENTREG[agent_registry.json]
+        MINERREG[miners.json]
+    end
+
+    CONFIG --> PARSER
+    PARSER --> SWITCH
+    PARSER --> GMLNET
+    
+    SWITCH -->|type: "1_gbit_switch"| SIMPLE
+    GMLNET -->|path: "testnet.gml"| GML
+    GML --> GMLP
+    GMLP --> ASAWARE
+    
+    SIMPLE --> GENERATOR
+    ASAWARE --> GENERATOR
+    
+    GENERATOR --> SHADOWCONF
+    GENERATOR --> AGENTREG
+    GENERATOR --> MINERREG
+```
 
 ## Agent Communication Architecture
 
@@ -209,6 +342,8 @@ Agents communicate through a shared state mechanism:
 ├── block_controller.json        # Block controller status
 ├── transactions.json            # Transaction log
 ├── blocks_found.json           # Block discovery log
+├── agent_registry.json         # Agent registry for discovery
+├── miners.json                 # Miner registry with hashrate weights
 └── [agent]_stats.json          # Per-agent statistics
 ```
 
@@ -217,6 +352,122 @@ This architecture enables:
 - **Fault tolerance**: Agents can recover from failures
 - **Observability**: All actions are logged and traceable
 - **Flexibility**: Easy to add new agent types
+
+## Peer Discovery Architecture
+
+The peer discovery system enables dynamic agent discovery and supports scaling to hundreds of agents. It replaces the legacy hardcoded network configuration approach with intelligent peer connection management.
+
+### Peer Discovery Modes
+
+1. **Dynamic Mode**:
+   - Intelligent seed selection algorithm
+   - Miners are prioritized as seed nodes
+   - Automatic adaptation to network changes
+   - Best for research and optimization scenarios
+
+2. **Hardcoded Mode**:
+   - Explicit peer connections based on topology templates
+   - Predictable and reproducible connections
+   - Manual configuration for precise control
+   - Best for testing and validation
+
+3. **Hybrid Mode**:
+   - Combines structured topology with discovery elements
+   - GML-based network topologies with dynamic elements
+   - Robust for complex network scenarios
+   - Best for production-like simulations
+
+### Network Topologies
+
+The system supports four fundamental network topologies:
+
+1. **Star Topology**: Hub-and-spoke architecture with central coordination
+2. **Mesh Topology**: Fully connected network for maximum redundancy
+3. **Ring Topology**: Circular connections for structured communication
+4. **DAG Topology**: Traditional blockchain behavior (default)
+
+### Agent Discovery System (`scripts/agent_discovery.py`)
+
+The AgentDiscovery class provides comprehensive agent discovery capabilities:
+
+- **Registry Management**: Loads and caches agent information from shared state
+- **Type-based Filtering**: Find agents by type (miner, wallet, daemon, etc.)
+- **Attribute-based Filtering**: Find agents by specific attributes
+- **Distribution Recipients**: Identify agents eligible for mining distributions
+- **Error Handling**: Robust error handling with detailed logging
+- **Caching**: Performance optimization with configurable TTL
+
+### Integration with Shadow Configuration
+
+The peer discovery system integrates seamlessly with Shadow configuration generation:
+
+- **Topology Validation**: Ensures network connectivity requirements are met
+- **Peer Connection Generation**: Creates appropriate `--add-exclusive-node` arguments
+- **Seed Node Management**: Handles explicit seed node configuration
+- **Scalability Support**: Efficient handling of large agent counts
+
+## GML Integration
+
+### GML File Format Requirements
+
+Monerosim supports a subset of the Graph Modeling Language (GML) specification optimized for network simulation:
+
+```gml
+graph [
+  # Graph-level attributes (optional)
+  directed 1
+  
+  # Network nodes
+  node [ id 0 AS "65001" bandwidth "1000Mbit" ]
+  node [ id 1 AS "65001" bandwidth "500Mbit" ]
+  node [ id 2 AS "65002" bandwidth "100Mbit" ]
+  
+  # Network edges (connections)
+  edge [ source 0 target 1 latency "10ms" bandwidth "1Gbit" ]
+  edge [ source 1 target 2 latency "50ms" bandwidth "100Mbit" packet_loss "0.1%" ]
+  edge [ source 2 target 0 latency "75ms" bandwidth "10Mbit" ]
+]
+```
+
+### Supported GML Attributes
+
+#### Node Attributes
+- **`id`** (required): Unique numeric identifier for the node
+- **`label`** (optional): Human-readable name for the node
+- **`AS`** or **`as`** (optional): Autonomous System number for grouping
+- **`bandwidth`**, **`bandwidth_up`**, **`bandwidth_down`** (optional): Node bandwidth limits
+- **`packet_loss`** (optional): Node-level packet loss percentage
+
+#### Edge Attributes
+- **`source`** (required): Source node ID
+- **`target`** (required): Target node ID
+- **`latency`** (optional): Link latency (default: "10ms")
+- **`bandwidth`** (optional): Link bandwidth (default: "1000Mbit")
+- **`packet_loss`** (optional): Link packet loss percentage
+
+### Agent Distribution Algorithm
+
+The GML integration includes an intelligent agent distribution algorithm:
+
+1. **Autonomous System Detection**: Groups nodes by AS numbers if available
+2. **AS-Aware Distribution**: Distributes agents across different AS groups for realism
+3. **Load Balancing**: Ensures even distribution within AS groups
+4. **Fallback Strategy**: Uses round-robin distribution if no AS information is available
+
+```rust
+// Example distribution for 6 agents across 2 AS groups
+AS 65001: [Node 0, Node 1] -> Agents [0, 2, 4]
+AS 65002: [Node 2, Node 3] -> Agents [1, 3, 5]
+```
+
+### Network Topology Validation
+
+The GML parser includes comprehensive validation:
+
+- **Node ID Uniqueness**: Ensures no duplicate node IDs
+- **Edge Validity**: Verifies all edges reference existing nodes
+- **Connectivity Check**: Warns about disconnected networks
+- **Attribute Validation**: Validates bandwidth and latency formats
 
 ## Design Decisions
 
@@ -254,13 +505,39 @@ Python was chosen for agents because:
 - Good async/concurrent programming support
 - Accessible for researchers to modify
 
+### 7. Custom GML Parser Implementation
+
+A custom GML parser was implemented instead of using existing libraries because:
+- **Lightweight**: Minimal dependencies and fast parsing
+- **Shadow-Specific**: Optimized for Shadow network simulator requirements
+- **Validation**: Built-in topology validation and error reporting
+- **Flexibility**: Easy to extend with new attributes and features
+- **Control**: Full control over parsing behavior and error handling
+
+### 8. Dual Network Topology Support
+
+The decision to support both switch and GML topologies provides:
+- **Performance vs. Realism Trade-off**: Switch for speed, GML for accuracy
+- **Backward Compatibility**: Existing configurations continue to work
+- **Research Flexibility**: Researchers can choose appropriate complexity level
+- **Development Efficiency**: Simple switch networks for development and testing
+
+### 9. Autonomous System-Aware Agent Distribution
+
+The AS-aware distribution algorithm was implemented to:
+- **Model Real Networks**: Reflects actual internet topology structure
+- **Improve Realism**: Agents are distributed as they would be in reality
+- **Enable Research**: Supports studies of inter-AS cryptocurrency traffic
+- **Maintain Simplicity**: Falls back to simple distribution when AS info is unavailable
+
 ## File Paths
 
 ### Source Code
 - `/src/main.rs`: Main application entry point
-- `/src/config.rs`: Configuration management
-- `/src/build.rs`: Build process management
-- `/src/shadow_agents.rs`: Agent-based Shadow configuration
+- `/src/config_v2.rs`: Unified configuration management with dual topology support
+- `/src/gml_parser.rs`: Graph Modeling Language parser and validation
+- `/src/shadow_agents.rs`: Agent-based Shadow configuration with GML integration
+- `/src/build.rs`: Build process management (legacy)
 
 ### Agent Framework
 - `/agents/base_agent.py`: Base agent class
@@ -274,6 +551,7 @@ Python was chosen for agents because:
 - `/scripts/monitor.py`: Monitors simulation status
 - `/scripts/transaction_script.py`: Transaction handling
 - `/scripts/test_p2p_connectivity.py`: P2P connectivity test
+- `/scripts/agent_discovery.py`: Agent discovery system
 - `/scripts/error_handling.py`: Error handling utilities
 - `/scripts/network_config.py`: Network configuration
 
@@ -286,12 +564,18 @@ Python was chosen for agents because:
 - `/legacy_scripts/network_config.sh`: Network configuration
 
 ### Configuration
-- `/config.yaml`: Main configuration file
-- `/config_agents_small.yaml`: Small agent simulation
-- `/config_agents_medium.yaml`: Medium agent simulation
-- `/config_agents_large.yaml`: Large agent simulation
-- `/shadow_output/shadow.yaml`: Generated Shadow configuration
+- `/config.yaml`: Main configuration file (switch-based network)
+- `/config_agents_small.yaml`: Small agent simulation (switch-based)
+- `/config_agents_medium.yaml`: Medium agent simulation (switch-based)
+- `/config_agents_large.yaml`: Large agent simulation (switch-based)
+- `/testnet.gml`: Example GML network topology file
 - `/shadow_agents_output/shadow_agents.yaml`: Generated agent configuration
+
+### Generated Runtime Files
+- `/tmp/monerosim_shared/agent_registry.json`: Runtime agent information
+- `/tmp/monerosim_shared/miners.json`: Miner registry with hashrate weights
+- `/tmp/monerosim_shared/block_controller.json`: Block controller status
+- `/tmp/monerosim_shared/transactions.json`: Transaction log
 
 ## Performance Considerations
 

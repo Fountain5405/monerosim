@@ -1,0 +1,32 @@
+general:
+  stop_time: "30m"  # Longer simulation to allow for proper initialization
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"  # Simple network for testing
+
+agents:
+  user_agents:
+    # Miner with explicit hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "20"
+    
+    # Miner without explicit hashrate (should get default value)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+    
+    # Regular user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+  
+  block_controller:
+    script: "agents.block_controller"
+    
+  pure_script_agents:
+    - script: "scripts.monitor"

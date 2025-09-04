@@ -1,0 +1,44 @@
+# Test configuration for 3-node dynamic peer discovery
+# Tests intelligent seed selection algorithm
+# Expected: Node 0 (miner) selected as primary seed, Node 1 as secondary
+
+general:
+  stop_time: "3m"
+  fresh_blockchain: true
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Dynamic"  # Automatic seed selection
+  topology: "Mesh"      # All nodes connect to each other
+
+agents:
+  user_agents:
+    # Primary seed candidate (miner, high priority)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "70"
+
+    # Secondary seed candidate (miner, medium priority)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "30"
+
+    # Regular user (lowest priority)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        can_receive_distributions: "true"
+        transaction_interval: "30"
+
+  block_controller:
+    script: "agents.block_controller"
+
+  pure_script_agents:
+    - script: "scripts.monitor"
+    - script: "scripts.sync_check"
