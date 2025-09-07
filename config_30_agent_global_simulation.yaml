@@ -1,5 +1,5 @@
 general:
-  stop_time: "4h"
+  stop_time: "6h"
   fresh_blockchain: true
   log_level: debug
 

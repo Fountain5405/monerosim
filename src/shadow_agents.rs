@@ -533,7 +533,8 @@ fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_ey
     })
 }
 
-/// Distribute agents across GML network nodes intelligently
+/// Distribute agents across GML network nodes with guaranteed distribution
+/// Ensures every node gets at least one agent when possible to prevent Shadow connectivity errors
 pub fn distribute_agents_across_gml_nodes(
     gml_graph: &GmlGraph,
     num_agents: usize,
@@ -542,43 +543,91 @@ pub fn distribute_agents_across_gml_nodes(
         return vec![0; num_agents]; // Fallback to node 0
     }
 
-    // Get autonomous systems for better distribution
-    let as_groups = get_autonomous_systems(gml_graph);
-
+    let num_nodes = gml_graph.nodes.len();
     let mut agent_assignments = Vec::new();
 
-    // If we have AS groups, distribute agents proportionally across them
-    if as_groups.len() > 1 {
-        // Calculate proportional distribution
-        let total_nodes: usize = as_groups.iter().map(|group| group.len()).sum();
+    // Get autonomous systems for AS-aware distribution
+    let as_groups = get_autonomous_systems(gml_graph);
 
-        for i in 0..num_agents {
-            // Find which AS this agent should go to based on proportional distribution
-            let mut cumulative_nodes = 0;
-            let mut target_as_index = 0;
+    // First pass: Assign exactly 1 agent to each node (up to min(num_agents, num_nodes))
+    let agents_assigned_first_pass = std::cmp::min(num_agents, num_nodes);
 
-            for (as_idx, as_group) in as_groups.iter().enumerate() {
-                cumulative_nodes += as_group.len();
-                if i * total_nodes / num_agents < cumulative_nodes {
-                    target_as_index = as_idx;
-                    break;
-                }
-            }
+    // Create initial assignments ensuring each node gets at least one agent
+    for i in 0..agents_assigned_first_pass {
+        let node_id = gml_graph.nodes[i].id;
+        agent_assignments.push(node_id);
+    }
 
-            let as_group = &as_groups[target_as_index];
-            // Within the AS, distribute round-robin
-            let node_in_as = as_group[i % as_group.len()];
-            agent_assignments.push(node_in_as);
+    // Handle case where we have more nodes than agents in first pass
+    if num_agents < num_nodes {
+        // Some nodes won't get agents - this is acceptable but may cause connectivity issues
+        // Fill remaining agent assignments with the first node to maintain vector size
+        for _ in num_agents..num_nodes {
+            agent_assignments.push(gml_graph.nodes[0].id);
         }
-    } else {
-        // Simple round-robin distribution across all nodes
-        for i in 0..num_agents {
-            let node_id = gml_graph.nodes[i % gml_graph.nodes.len()].id;
-            agent_assignments.push(node_id);
+        return agent_assignments;
+    }
+
+    // Second pass: Distribute remaining agents proportionally across all nodes
+    let remaining_agents = num_agents - agents_assigned_first_pass;
+
+    if remaining_agents > 0 {
+        // Distribute remaining agents proportionally
+        if as_groups.len() > 1 {
+            // AS-aware proportional distribution for remaining agents
+            distribute_remaining_agents_as_aware(&mut agent_assignments, &as_groups, remaining_agents, gml_graph);
+        } else {
+            // Simple proportional distribution across all nodes
+            distribute_remaining_agents_simple(&mut agent_assignments, gml_graph, remaining_agents);
         }
     }
 
     agent_assignments
+}
+
+/// Distribute remaining agents proportionally across autonomous systems
+fn distribute_remaining_agents_as_aware(
+    agent_assignments: &mut Vec<u32>,
+    as_groups: &[Vec<u32>],
+    remaining_agents: usize,
+    gml_graph: &GmlGraph,
+) {
+    let total_nodes: usize = as_groups.iter().map(|group| group.len()).sum();
+
+    for i in 0..remaining_agents {
+        // Find which AS this agent should go to based on proportional distribution
+        let mut cumulative_nodes = 0;
+        let mut target_as_index = 0;
+
+        for (as_idx, as_group) in as_groups.iter().enumerate() {
+            cumulative_nodes += as_group.len();
+            if i * total_nodes / remaining_agents < cumulative_nodes {
+                target_as_index = as_idx;
+                break;
+            }
+        }
+
+        let as_group = &as_groups[target_as_index];
+        // Within the AS, distribute round-robin
+        let node_in_as = as_group[i % as_group.len()];
+        agent_assignments.push(node_in_as);
+    }
+}
+
+/// Distribute remaining agents proportionally across all nodes (simple approach)
+fn distribute_remaining_agents_simple(
+    agent_assignments: &mut Vec<u32>,
+    gml_graph: &GmlGraph,
+    remaining_agents: usize,
+) {
+    let num_nodes = gml_graph.nodes.len();
+
+    for i in 0..remaining_agents {
+        // Simple proportional distribution across all nodes
+        let node_index = i % num_nodes;
+        let node_id = gml_graph.nodes[node_index].id;
+        agent_assignments.push(node_id);
+    }
 }
 
 /// Helper function to create a Python agent command
@@ -618,8 +667,14 @@ fn add_daemon_process(
         "--disable-dns-checkpoints".to_string(),
         "--out-peers=4".to_string(),
         "--in-peers=4".to_string(),
-        "--disable-seed-nodes".to_string(),
-        "--no-igd".to_string(),
+        // Only disable built-in seed nodes for non-Dynamic modes
+        // For Dynamic mode, we allow seed nodes to be used
+        if !matches!(peer_mode, PeerMode::Dynamic) {
+            "--disable-seed-nodes".to_string()
+        } else {
+            // For Dynamic mode, don't disable seed nodes - let Monero use them
+            "--no-igd".to_string()
+        },
         "--prep-blocks-threads=1".to_string(),
         "--max-concurrency=1".to_string(),
         "--no-zmq".to_string(),
@@ -641,16 +696,44 @@ fn add_daemon_process(
         "--allow-local-ip".to_string(),
     ];
 
-    // Add peer connection flags using proper Monero peer connection mechanism
-    // Only the first daemon (index 0) acts as seed node, others use --add-exclusive-node
-    if index == 0 {
-        // First daemon is the seed node - no peer flags needed
-    } else {
-        // Non-seed nodes use --add-exclusive-node to connect directly to seed nodes
-        for seed_node in seed_agents.iter() {
-            // Don't add self as peer
-            if !seed_node.starts_with(&format!("{}:", agent_ip)) {
-                daemon_args.push(format!("--add-exclusive-node={}", seed_node));
+    // Add peer connection flags based on peer mode
+    match peer_mode {
+        PeerMode::Dynamic => {
+            // For Dynamic mode, let Monero handle natural P2P discovery
+            // Only add seed nodes if explicitly configured
+            if !seed_agents.is_empty() {
+                for seed_node in seed_agents.iter() {
+                    // Don't add self as peer
+                    if !seed_node.starts_with(&format!("{}:", agent_ip)) {
+                        daemon_args.push(format!("--seed-node={}", seed_node));
+                    }
+                }
+            }
+            // No additional peer connection flags - let Monero discover peers naturally
+        }
+        PeerMode::Hardcoded => {
+            // For Hardcoded mode, use explicit peer connections
+            if index == 0 {
+                // First daemon is the seed node - no peer flags needed
+            } else {
+                // Non-seed nodes use --add-exclusive-node to connect directly to seed nodes
+                for seed_node in seed_agents.iter() {
+                    // Don't add self as peer
+                    if !seed_node.starts_with(&format!("{}:", agent_ip)) {
+                        daemon_args.push(format!("--add-exclusive-node={}", seed_node));
+                    }
+                }
+            }
+        }
+        PeerMode::Hybrid => {
+            // For Hybrid mode, combine seed nodes and explicit peers
+            if !seed_agents.is_empty() {
+                for seed_node in seed_agents.iter() {
+                    // Don't add self as peer
+                    if !seed_node.starts_with(&format!("{}:", agent_ip)) {
+                        daemon_args.push(format!("--add-exclusive-node={}", seed_node));
+                    }
+                }
             }
         }
     }
@@ -692,15 +775,15 @@ fn add_wallet_process(
         .to_string_lossy()
         .to_string();
 
-    // First, create the wallet directory in a separate process
+    // First, clean up any existing wallet files and create the wallet directory
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'mkdir -p /tmp/monerosim_shared/{}_wallet'",
-            agent_id
+            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet'",
+            agent_id, agent_id
         ),
         environment: environment.clone(),
-        start_time: format!("{}s", 54 + index * 2), // Start before wallet RPC
+        start_time: format!("{}s", 50 + index * 2), // Start earlier to ensure cleanup completes
     });
 
     // Launch wallet RPC directly - it will create wallets on demand
@@ -718,7 +801,7 @@ fn add_wallet_process(
             wallet_path, wallet_args
         ),
         environment: environment.clone(),
-        start_time: format!("{}s", 55 + index * 2),
+        start_time: format!("{}s", 60 + index * 2), // Increased delay to ensure cleanup completes
     });
 }
 
@@ -895,17 +978,11 @@ fn process_user_agents(
             }
         }
         PeerMode::Dynamic => {
-            // Use miners as seed nodes
-            for (_, is_miner, _, agent_ip, agent_port) in &agent_info {
-                if *is_miner {
-                    seed_agents.push(format!("{}:{}", agent_ip, *agent_port));
-                }
-            }
-            // If no miners, fall back to first agent
-            if seed_agents.is_empty() {
-                if let Some((_, _, _, agent_ip, agent_port)) = agent_info.first() {
-                    seed_agents.push(format!("{}:{}", agent_ip, agent_port));
-                }
+            // For true natural P2P discovery, don't use any seed nodes
+            // Monero will discover peers naturally through the network
+            // Only add seed nodes if explicitly configured in the config
+            if !effective_seed_nodes.is_empty() {
+                seed_agents.extend(effective_seed_nodes.iter().cloned());
             }
         }
         PeerMode::Hybrid => {

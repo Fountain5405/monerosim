@@ -20,7 +20,7 @@ class RPCError(Exception):
 class BaseRPC:
     """Base class for RPC communication"""
     
-    def __init__(self, host: str, port: int, timeout: int = 30):
+    def __init__(self, host: str, port: int, timeout: int = 60):
         self.url = f"http://{host}:{port}/json_rpc"
         self.timeout = timeout
         self.session = self._create_session()
@@ -79,14 +79,19 @@ class BaseRPC:
         except Exception:
             return False
             
-    def wait_until_ready(self, max_wait: int = 60, check_interval: int = 1):
-        """Wait until the RPC service is ready"""
+    def wait_until_ready(self, max_wait: int = 120, check_interval: int = 1):
+        """Wait until the RPC service is ready with exponential backoff"""
         start_time = time.time()
+        attempt = 0
         while time.time() - start_time < max_wait:
             if self.is_ready():
                 self.logger.info(f"RPC service ready at {self.url}")
                 return
-            time.sleep(check_interval)
+            # Exponential backoff with jitter
+            delay = min(check_interval * (2 ** attempt), 10)  # Cap at 10 seconds
+            self.logger.debug(f"RPC service not ready, retrying in {delay:.1f}s (attempt {attempt + 1})")
+            time.sleep(delay)
+            attempt += 1
         raise RPCError(f"RPC service not ready after {max_wait} seconds")
 
 
@@ -160,7 +165,7 @@ class MoneroRPC(BaseRPC):
 class WalletRPC(BaseRPC):
     """Monero wallet RPC client"""
     
-    def __init__(self, host: str, port: int, timeout: int = 30):
+    def __init__(self, host: str, port: int, timeout: int = 60):
         super().__init__(host, port, timeout)
         # Wallet RPC uses a different endpoint
         self.url = f"http://{host}:{port}/json_rpc"

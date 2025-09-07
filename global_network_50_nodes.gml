@@ -1,5 +1,5 @@
 graph [
-  comment "Comprehensive Global Network Topology - 30 Nodes Across 6 Continents for 30-Agent Simulation"
+  comment "Comprehensive Global Network Topology - 50 Nodes Across 6 Continents for 50-Agent Simulation"
   directed 0
 
   node [
@@ -300,6 +300,606 @@ graph [
     bandwidth 200000000
     packet_loss 0.12
     location "Auckland"
+  ]
+
+  node [
+    id 30
+    label "NA-Boston-Core-Router"
+    AS "65010"
+    ip "10.5.0.1"
+    bandwidth 1000000000
+    packet_loss 0.05
+    location "Boston"
+  ]
+
+  node [
+    id 31
+    label "NA-Atlanta-Edge-Router"
+    AS "65010"
+    ip "10.5.0.2"
+    bandwidth 500000000
+    packet_loss 0.08
+    location "Atlanta"
+  ]
+
+  node [
+    id 32
+    label "NA-Denver-Core-Router"
+    AS "65010"
+    ip "10.5.0.3"
+    bandwidth 1000000000
+    packet_loss 0.06
+    location "Denver"
+  ]
+
+  node [
+    id 33
+    label "NA-Phoenix-Edge-Router"
+    AS "65010"
+    ip "10.5.0.4"
+    bandwidth 500000000
+    packet_loss 0.08
+    location "Phoenix"
+  ]
+
+  node [
+    id 34
+    label "NA-SaltLake-Edge-Router"
+    AS "65010"
+    ip "10.5.0.5"
+    bandwidth 500000000
+    packet_loss 0.1
+    location "Salt_Lake"
+  ]
+
+  node [
+    id 35
+    label "EU-Berlin-Core-Router"
+    AS "65011"
+    ip "10.6.0.1"
+    bandwidth 1000000000
+    packet_loss 0.04
+    location "Berlin"
+  ]
+
+  node [
+    id 36
+    label "EU-Madrid-Edge-Router"
+    AS "65011"
+    ip "10.6.0.2"
+    bandwidth 500000000
+    packet_loss 0.07
+    location "Madrid"
+  ]
+
+  node [
+    id 37
+    label "EU-Rome-Core-Router"
+    AS "65011"
+    ip "10.6.0.3"
+    bandwidth 1000000000
+    packet_loss 0.04
+    location "Rome"
+  ]
+
+  node [
+    id 38
+    label "EU-Vienna-Edge-Router"
+    AS "65011"
+    ip "10.6.0.4"
+    bandwidth 500000000
+    packet_loss 0.07
+    location "Vienna"
+  ]
+
+  node [
+    id 39
+    label "EU-Prague-Edge-Router"
+    AS "65011"
+    ip "10.6.0.5"
+    bandwidth 500000000
+    packet_loss 0.07
+    location "Prague"
+  ]
+
+  node [
+    id 40
+    label "AS-Beijing-Core-Router"
+    AS "65012"
+    ip "10.7.0.1"
+    bandwidth 1000000000
+    packet_loss 0.06
+    location "Beijing"
+  ]
+
+  node [
+    id 41
+    label "AS-Shanghai-Edge-Router"
+    AS "65012"
+    ip "10.7.0.2"
+    bandwidth 500000000
+    packet_loss 0.1
+    location "Shanghai"
+  ]
+
+  node [
+    id 42
+    label "AS-Shenzhen-Core-Router"
+    AS "65012"
+    ip "10.7.0.3"
+    bandwidth 1000000000
+    packet_loss 0.06
+    location "Shenzhen"
+  ]
+
+  node [
+    id 43
+    label "AS-Guangzhou-Edge-Router"
+    AS "65012"
+    ip "10.7.0.4"
+    bandwidth 500000000
+    packet_loss 0.1
+    location "Guangzhou"
+  ]
+
+  node [
+    id 44
+    label "AS-Chengdu-Edge-Router"
+    AS "65012"
+    ip "10.7.0.5"
+    bandwidth 500000000
+    packet_loss 0.1
+    location "Chengdu"
+  ]
+
+  node [
+    id 45
+    label "SA-Rio-Core-Router"
+    AS "65013"
+    ip "10.8.0.1"
+    bandwidth 500000000
+    packet_loss 0.12
+    location "Rio_de_Janeiro"
+  ]
+
+  node [
+    id 46
+    label "AF-Nairobi-Edge-Router"
+    AS "65013"
+    ip "10.8.0.2"
+    bandwidth 200000000
+    packet_loss 0.2
+    location "Nairobi"
+  ]
+
+  node [
+    id 47
+    label "OC-Perth-Core-Router"
+    AS "65013"
+    ip "10.8.0.3"
+    bandwidth 500000000
+    packet_loss 0.08
+    location "Perth"
+  ]
+
+  node [
+    id 48
+    label "AF-CapeTown-Edge-Router"
+    AS "65013"
+    ip "10.8.0.4"
+    bandwidth 200000000
+    packet_loss 0.2
+    location "Cape_Town"
+  ]
+
+  node [
+    id 49
+    label "OC-Melbourne-Edge-Router"
+    AS "65013"
+    ip "10.8.0.5"
+    bandwidth 200000000
+    packet_loss 0.12
+    location "Melbourne"
+  ]
+
+  edge [
+    source 0
+    target 0
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.05
+  ]
+
+  edge [
+    source 1
+    target 1
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.05
+  ]
+
+  edge [
+    source 2
+    target 2
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 3
+    target 3
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 4
+    target 4
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 5
+    target 5
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 6
+    target 6
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 7
+    target 7
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 8
+    target 8
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.04
+  ]
+
+  edge [
+    source 9
+    target 9
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.04
+  ]
+
+  edge [
+    source 10
+    target 10
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 11
+    target 11
+    latency "10ms"
+    bandwidth 10000000000
+    packet_loss 0.02
+  ]
+
+  edge [
+    source 12
+    target 12
+    latency "10ms"
+    bandwidth 10000000000
+    packet_loss 0.02
+  ]
+
+  edge [
+    source 13
+    target 13
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.05
+  ]
+
+  edge [
+    source 14
+    target 14
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 15
+    target 15
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 16
+    target 16
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 17
+    target 17
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 18
+    target 18
+    latency "10ms"
+    bandwidth 10000000000
+    packet_loss 0.03
+  ]
+
+  edge [
+    source 19
+    target 19
+    latency "10ms"
+    bandwidth 10000000000
+    packet_loss 0.03
+  ]
+
+  edge [
+    source 20
+    target 20
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 21
+    target 21
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 22
+    target 22
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.12
+  ]
+
+  edge [
+    source 23
+    target 23
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.12
+  ]
+
+  edge [
+    source 24
+    target 24
+    latency "10ms"
+    bandwidth 200000000
+    packet_loss 0.15
+  ]
+
+  edge [
+    source 25
+    target 25
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.15
+  ]
+
+  edge [
+    source 26
+    target 26
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.15
+  ]
+
+  edge [
+    source 27
+    target 27
+    latency "10ms"
+    bandwidth 200000000
+    packet_loss 0.2
+  ]
+
+  edge [
+    source 28
+    target 28
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 29
+    target 29
+    latency "10ms"
+    bandwidth 200000000
+    packet_loss 0.12
+  ]
+
+  edge [
+    source 30
+    target 30
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.05
+  ]
+
+  edge [
+    source 31
+    target 31
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 32
+    target 32
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 33
+    target 33
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 34
+    target 34
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 35
+    target 35
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.04
+  ]
+
+  edge [
+    source 36
+    target 36
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 37
+    target 37
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.04
+  ]
+
+  edge [
+    source 38
+    target 38
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 39
+    target 39
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 40
+    target 40
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 41
+    target 41
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 42
+    target 42
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 43
+    target 43
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 44
+    target 44
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 45
+    target 45
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.12
+  ]
+
+  edge [
+    source 46
+    target 46
+    latency "10ms"
+    bandwidth 200000000
+    packet_loss 0.2
+  ]
+
+  edge [
+    source 47
+    target 47
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 48
+    target 48
+    latency "10ms"
+    bandwidth 200000000
+    packet_loss 0.2
+  ]
+
+  edge [
+    source 49
+    target 49
+    latency "10ms"
+    bandwidth 200000000
+    packet_loss 0.12
   ]
 
 
@@ -930,5 +1530,213 @@ graph [
     bandwidth 20000000
     packet_loss 0.16
     comment "Connect South America to Africa"
+  ]
+
+  edge [
+    source 30
+    target 31
+    latency "5ms"
+    bandwidth 1000000000
+    packet_loss 0.05
+  ]
+
+  edge [
+    source 31
+    target 32
+    latency "15ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 32
+    target 33
+    latency "10ms"
+    bandwidth 500000000
+    packet_loss 0.08
+  ]
+
+  edge [
+    source 33
+    target 34
+    latency "8ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 35
+    target 36
+    latency "8ms"
+    bandwidth 1000000000
+    packet_loss 0.04
+  ]
+
+  edge [
+    source 36
+    target 37
+    latency "12ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 37
+    target 38
+    latency "6ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 38
+    target 39
+    latency "4ms"
+    bandwidth 500000000
+    packet_loss 0.07
+  ]
+
+  edge [
+    source 40
+    target 41
+    latency "10ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 41
+    target 42
+    latency "8ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 42
+    target 43
+    latency "5ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 43
+    target 44
+    latency "12ms"
+    bandwidth 500000000
+    packet_loss 0.1
+  ]
+
+  edge [
+    source 45
+    target 46
+    latency "20ms"
+    bandwidth 200000000
+    packet_loss 0.2
+  ]
+
+  edge [
+    source 46
+    target 47
+    latency "150ms"
+    bandwidth 200000000
+    packet_loss 0.15
+  ]
+
+  edge [
+    source 47
+    target 48
+    latency "180ms"
+    bandwidth 200000000
+    packet_loss 0.18
+  ]
+
+  edge [
+    source 48
+    target 49
+    latency "25ms"
+    bandwidth 200000000
+    packet_loss 0.12
+  ]
+
+  edge [
+    source 30
+    target 35
+    latency "80ms"
+    bandwidth 200000000
+    packet_loss 0.3
+  ]
+
+  edge [
+    source 35
+    target 40
+    latency "180ms"
+    bandwidth 100000000
+    packet_loss 0.7
+  ]
+
+  edge [
+    source 40
+    target 45
+    latency "200ms"
+    bandwidth 50000000
+    packet_loss 0.15
+  ]
+
+  edge [
+    source 45
+    target 47
+    latency "250ms"
+    bandwidth 30000000
+    packet_loss 0.18
+  ]
+
+  edge [
+    source 30
+    target 0
+    latency "15ms"
+    bandwidth 1000000000
+    packet_loss 0.05
+  ]
+
+  edge [
+    source 35
+    target 8
+    latency "20ms"
+    bandwidth 1000000000
+    packet_loss 0.04
+  ]
+
+  edge [
+    source 40
+    target 14
+    latency "30ms"
+    bandwidth 1000000000
+    packet_loss 0.06
+  ]
+
+  edge [
+    source 45
+    target 22
+    latency "50ms"
+    bandwidth 500000000
+    packet_loss 0.12
+  ]
+
+  edge [
+    source 46
+    target 25
+    latency "100ms"
+    bandwidth 200000000
+    packet_loss 0.2
+  ]
+
+  edge [
+    source 47
+    target 28
+    latency "120ms"
+    bandwidth 500000000
+    packet_loss 0.08
   ]
 ]

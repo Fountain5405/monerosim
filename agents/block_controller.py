@@ -55,7 +55,7 @@ class BlockControllerAgent(BaseAgent):
     def _setup_agent(self):
         """Initialize stateless block controller"""
         self.logger.info("Block Controller initializing...")
-        
+
         # Register as block controller (without wallet)
         controller_data = {
             "agent_id": self.agent_id,
@@ -65,8 +65,12 @@ class BlockControllerAgent(BaseAgent):
             "timestamp": time.time()
         }
         self.write_shared_state("block_controller.json", controller_data)
-        
+
         self.logger.info("Stateless block controller initialized")
+
+        # Wait for wallets to fully start up before attempting connections
+        self.logger.info("Waiting 30 seconds for wallet services to fully initialize...")
+        time.sleep(30)
 
         # Initialize all agent wallets and update the agent registry
         self._initialize_all_agent_wallets()
@@ -136,6 +140,9 @@ class BlockControllerAgent(BaseAgent):
                 self.logger.error(f"Error processing wallet for agent {agent_id}: {e}")
             
             updated_agents.append(agent)
+
+            # Small delay between agents to avoid overwhelming the system
+            time.sleep(2)
 
         # Write the updated agent data back to the registry
         try:
