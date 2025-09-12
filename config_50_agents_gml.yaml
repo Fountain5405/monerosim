@@ -8,7 +8,7 @@ general:
   log_level: info
 
 network:
-  path: "global_network_50_nodes.gml"
+  path: "20250911/global_network_50_nodes.gml"
   peer_mode: "Dynamic"
   topology: "Dag"
   seed_nodes:

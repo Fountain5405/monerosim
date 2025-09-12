@@ -630,20 +630,6 @@ fn distribute_remaining_agents_simple(
     }
 }
 
-/// Helper function to create a Python agent command
-fn create_agent_command(current_dir: &str, script_path: &str, args: &[String]) -> String {
-    // Build the python invocation without wrapping it in another "-c" so callers
-    // can prepend their own "-c '... && {}'" safely.
-    let python_cmd = if script_path.contains('.') && !script_path.contains('/') && !script_path.contains('\\') {
-        // It's a module: use -m
-        format!("python3 -m {} {}", script_path, args.join(" "))
-    } else {
-        // It's a file path
-        format!("python3 {} {}", script_path, args.join(" "))
-    };
-    // Return a simplified command that sets up environment and runs python_cmd.
-    format!("cd {} && export PYTHONPATH=\"${{PYTHONPATH}}:{}\" && export PATH=\"${{PATH}}:/usr/local/bin\" && {}", current_dir, current_dir, python_cmd)
-}
 
 /// Add a Monero daemon process to the processes list
 fn add_daemon_process(
@@ -1232,11 +1218,7 @@ fn process_pure_script_agents(
             }
 
             // Simplified command for pure script agents
-            let python_cmd = if pure_script_config.script.contains('.') && !pure_script_config.script.contains('/') && !pure_script_config.script.contains('\\') {
-                format!("python3 -m {} {}", pure_script_config.script, script_args.join(" "))
-            } else {
-                format!("python3 {} {}", pure_script_config.script, script_args.join(" "))
-            };
+            let python_cmd = format!("python3 {} {}", pure_script_config.script, script_args.join(" "));
 
             // Create a simple wrapper script for pure script agents
             let wrapper_script = format!(
