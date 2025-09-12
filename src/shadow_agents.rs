@@ -651,8 +651,8 @@ fn add_daemon_process(
         "--log-level=1".to_string(),
         "--simulation".to_string(),
         "--disable-dns-checkpoints".to_string(),
-        "--out-peers=4".to_string(),
-        "--in-peers=4".to_string(),
+        //"--out-peers=4".to_string(),
+        //"--in-peers=4".to_string(),
         // Only disable built-in seed nodes for non-Dynamic modes
         // For Dynamic mode, we allow seed nodes to be used
         if !matches!(peer_mode, PeerMode::Dynamic) {
@@ -678,7 +678,7 @@ fn add_daemon_process(
         "--regtest".to_string(),
         format!("--p2p-bind-ip={}", agent_ip),
         format!("--p2p-bind-port={}", agent_port),
-        "--fixed-difficulty=200".to_string(),
+        //"--fixed-difficulty=200".to_string(),
         "--allow-local-ip".to_string(),
     ];
 

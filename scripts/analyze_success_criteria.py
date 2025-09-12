@@ -5,6 +5,9 @@ from pathlib import Path
 import json
 from typing import Dict, Set, Tuple, List
 from glob import glob
+import concurrent.futures
+import threading
+from datetime import datetime
 
 # Define data structures
 Block = Tuple[int, str]  # (height, hash)
@@ -105,9 +108,15 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
 
     return dict(events)
 
-def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
+def parse_log_file_threaded(file_path: str) -> Dict[str, List]:
     """
-    Analyze all host logs in the directory.
+    Thread-safe wrapper for parse_log_file.
+    """
+    return parse_log_file(file_path)
+
+def analyze_simulation(log_dir: str = 'shadow.data/hosts', max_workers: int = 4) -> Dict:
+    """
+    Analyze all host logs in the directory using multi-threading.
     Returns aggregated data and success report.
     """
     log_path = Path(log_dir)
@@ -121,39 +130,58 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
     all_txs_received = defaultdict(set)
     all_txs_included = defaultdict(set)  # tx_hash -> set of heights
 
-    # Iterate over hosts
+    # Collect all log files to process
+    log_files_to_process = []
     for host_dir in log_path.iterdir():
         if not host_dir.is_dir():
             continue
         host_name = host_dir.name
-
+        
         # Find all bash.*.stdout files
         log_files = glob(str(host_dir / 'bash.*.stdout'))
-
-        node_events = {'blocks_mined': set(), 'blocks_received': set(), 'tx_created': set(), 'tx_received': set(), 'tx_included': {}}
-
         for log_file in log_files:
-            events = parse_log_file(log_file)
+            log_files_to_process.append((host_name, log_file))
 
-            # Aggregate for this node
-            node_events['blocks_mined'].update(events.get('blocks_mined', []))
-            node_events['blocks_received'].update(events.get('blocks_received', []))
-            node_events['tx_created'].update(events.get('tx_created', []))
-            node_events['tx_received'].update(events.get('tx_received', []))
-            for tx_h, height in events.get('tx_included', []):
-                if tx_h not in node_events['tx_included']:
-                    node_events['tx_included'][tx_h] = set()
-                node_events['tx_included'][tx_h].add(height)
+    # Process log files in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        future_to_file = {
+            executor.submit(parse_log_file_threaded, log_file): (host_name, log_file)
+            for host_name, log_file in log_files_to_process
+        }
+        
+        # Process results as they complete
+        host_events = defaultdict(lambda: {'blocks_mined': set(), 'blocks_received': set(),
+                                        'tx_created': set(), 'tx_received': set(), 'tx_included': {}})
+        
+        for future in concurrent.futures.as_completed(future_to_file):
+            host_name, log_file = future_to_file[future]
+            try:
+                events = future.result()
+                
+                # Aggregate for this host
+                host_events[host_name]['blocks_mined'].update(events.get('blocks_mined', []))
+                host_events[host_name]['blocks_received'].update(events.get('blocks_received', []))
+                host_events[host_name]['tx_created'].update(events.get('tx_created', []))
+                host_events[host_name]['tx_received'].update(events.get('tx_received', []))
+                for tx_h, height in events.get('tx_included', []):
+                    if tx_h not in host_events[host_name]['tx_included']:
+                        host_events[host_name]['tx_included'][tx_h] = set()
+                    host_events[host_name]['tx_included'][tx_h].add(height)
+                    
+            except Exception as exc:
+                print(f'Error processing {log_file}: {exc}')
 
-        # Global aggregation
-        all_blocks_mined.update(node_events['blocks_mined'])
-        all_blocks_received[host_name] = node_events['blocks_received']
-        all_txs_created.update(node_events['tx_created'])
-        all_txs_received[host_name] = node_events['tx_received']
-        for tx_h, heights in node_events['tx_included'].items():
+    # Global aggregation
+    for host_name, events in host_events.items():
+        all_blocks_mined.update(events['blocks_mined'])
+        all_blocks_received[host_name] = events['blocks_received']
+        all_txs_created.update(events['tx_created'])
+        all_txs_received[host_name] = events['tx_received']
+        for tx_h, heights in events['tx_included'].items():
             all_txs_included[tx_h].update(heights)
-
-        node_data[host_name] = node_events
+        
+        node_data[host_name] = events
 
     # Verify success criteria
     report = {
@@ -168,7 +196,7 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
     blocks_created = len(all_blocks_mined) > 0
     report['criteria']['blocks_created'] = {
         'success': blocks_created,
-        'details': list(all_blocks_mined) if blocks_created else 'No blocks mined'
+        'details': f"{len(all_blocks_mined)} blocks mined" if blocks_created else "No blocks mined"
     }
 
     # 2. Blocks propagated: Blocks are propagated to all user nodes
@@ -176,7 +204,7 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
     blocks_propagated = blocks_created and all(len(received) > 0 for received in user_blocks_received.values())
     report['criteria']['blocks_propagated'] = {
         'success': blocks_propagated,
-        'details': {node: len(received) for node, received in user_blocks_received.items()}
+        'details': f"{len(user_blocks_received)} user nodes received blocks" if blocks_propagated else "Not all user nodes received blocks"
     }
 
     # 3. Transactions created and broadcast: Transactions are created and broadcast to all nodes
@@ -184,7 +212,7 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
     txs_propagated = txs_created_broadcast and all(len(received) > 0 for received in all_txs_received.values())
     report['criteria']['transactions_created_broadcast'] = {
         'success': txs_created_broadcast and txs_propagated,
-        'details': {'total_created': len(all_txs_created), 'nodes_received': {node: len(recvd) for node, recvd in all_txs_received.items()}}
+        'details': f"{len(all_txs_created)} transactions created and propagated" if txs_created_broadcast and txs_propagated else "Transactions not properly created or propagated"
     }
 
     # 4. Transactions in blocks: All created txs are included in some block
@@ -195,10 +223,7 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
             txs_in_blocks = False
     report['criteria']['transactions_in_blocks'] = {
         'success': txs_in_blocks,
-        'details': {
-            'included_txs': len(included_txs),
-            'missing_txs': list(all_txs_created - included_txs) if txs_created_broadcast and not txs_in_blocks else []
-        }
+        'details': f"{len(included_txs)}/{len(all_txs_created)} transactions included in blocks" if txs_created_broadcast else "No transactions created"
     }
 
     # Overall success
@@ -207,30 +232,96 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts') -> Dict:
 
     return {'node_data': node_data, 'report': report}
 
+def generate_summary_report(report: Dict) -> str:
+    """
+    Generate a clean summary report with less granular data.
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    summary = []
+    summary.append("Monerosim Simulation Success Analysis Report")
+    summary.append("=" * 50)
+    summary.append(f"Generated: {timestamp}")
+    summary.append("")
+    
+    # Basic statistics
+    summary.append("Simulation Overview:")
+    summary.append(f"  Number of nodes analyzed: {report['num_nodes']}")
+    summary.append(f"  Total blocks mined: {report['total_blocks_mined']}")
+    summary.append(f"  Total unique transactions created: {report['total_txs_created']}")
+    summary.append(f"  Total transactions included in blocks: {report['total_txs_included']}")
+    summary.append("")
+    
+    # Success criteria
+    summary.append("Success Criteria Results:")
+    summary.append("")
+    
+    for criterion, data in report['criteria'].items():
+        status = "PASS" if data['success'] else "FAIL"
+        summary.append(f"  • {criterion.replace('_', ' ').title()}: {status}")
+        summary.append(f"    {data['details']}")
+        summary.append("")
+    
+    # Overall success
+    summary.append("Overall Result:")
+    overall_status = "SUCCESS" if report['overall_success'] else "FAILURE"
+    summary.append(f"  {overall_status}")
+    summary.append("")
+    
+    # Recommendations
+    if not report['overall_success']:
+        summary.append("Recommendations:")
+        summary.append("  • Check network connectivity between nodes")
+        summary.append("  • Verify mining configuration")
+        summary.append("  • Ensure transaction broadcasting is working")
+        summary.append("  • Check block propagation timing")
+    
+    return "\n".join(summary)
+
+def save_summary_report(report: Dict, filename: str = None):
+    """
+    Save the summary report to a file.
+    """
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"simulation_summary_report_{timestamp}.txt"
+    
+    summary = generate_summary_report(report)
+    
+    with open(filename, 'w') as f:
+        f.write(summary)
+    
+    print(f"Summary report saved to: {filename}")
+    return filename
+
 def main():
     try:
-        analysis = analyze_simulation()
-        print("Simulation Success Analysis Report")
-        print("=" * 50)
+        print("Starting simulation analysis with multi-threading support...")
+        analysis = analyze_simulation(max_workers=4)
         report = analysis['report']
-        print(f"Number of nodes analyzed: {report['num_nodes']}")
-        print(f"Total blocks mined: {report['total_blocks_mined']}")
-        print(f"Total unique txs created: {report['total_txs_created']}")
-        print(f"Total txs included in blocks: {report['total_txs_included']}")
-        print(f"\nOverall Success: {'YES' if report['overall_success'] else 'NO'}")
-        print("\nDetailed Criteria:")
-        for criterion, data in report['criteria'].items():
-            status = "PASS" if data['success'] else "FAIL"
-            print(f"\n{criterion.replace('_', ' ').title()}: {status}")
-            print(f"Details: {data['details']}")
-
-        # Save report to JSON
+        
+        # Print clean summary to console
+        summary = generate_summary_report(report)
+        print("\n" + summary)
+        
+        # Save summary report to file
+        summary_file = save_summary_report(report)
+        
+        # Save detailed report to JSON (maintain existing functionality)
         with open('success_analysis_report.json', 'w') as f:
             json.dump(analysis, f, indent=2, default=str)
-        print("\nFull report saved to success_analysis_report.json")
-
+        print(f"\nDetailed report saved to success_analysis_report.json")
+        
+        return {
+            'success': True,
+            'summary_file': summary_file,
+            'detailed_file': 'success_analysis_report.json',
+            'overall_success': report['overall_success']
+        }
+        
     except Exception as e:
         print(f"Error during analysis: {e}")
+        return {'success': False, 'error': str(e)}
 
 if __name__ == "__main__":
     main()
