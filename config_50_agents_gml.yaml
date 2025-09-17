@@ -8,11 +8,7 @@ general:
   log_level: info
 
 network:
-  path: "20250911/global_network_50_nodes.gml"
-  peer_mode: "Dynamic"
-  topology: "Dag"
-  seed_nodes:
-    - "192.168.100.100:28080"  # user000 as seed node
+  path: "global_network_50_nodes.gml"
 
 agents:
   user_agents:

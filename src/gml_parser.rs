@@ -490,7 +490,18 @@ impl Parser {
                                 .map_err(|_| eyre!("Invalid edge target: {}", value))?);
                         }
                         _ => {
-                            attributes.insert(key, value);
+                            // Special handling for packet_loss: convert percentage strings to floats
+                            let processed_value = if key == "packet_loss" && value.ends_with('%') {
+                                // Remove '%' and parse as float, then divide by 100
+                                if let Ok(percentage) = value.trim_end_matches('%').parse::<f64>() {
+                                    format!("{}", percentage / 100.0)
+                                } else {
+                                    value // Keep original if parsing fails
+                                }
+                            } else {
+                                value
+                            };
+                            attributes.insert(key, processed_value);
                         }
                     }
                 }

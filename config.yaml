@@ -8,8 +8,8 @@ network:
   peer_mode: "Hardcoded"
   topology: "Dag"
   seed_nodes:
-    - "192.168.1.10:28080"
-    - "192.168.1.11:28080"
+    - "192.168.0.10:28080"
+    - "172.16.1.10:28080"
 
 agents:
   user_agents:

@@ -9,27 +9,22 @@ general:
 
 network:
   path: "testnet.gml"
-  peer_mode: "Hybrid"
-  topology: "Ring"
-  seed_nodes:
-    - "10.0.0.10:28080"
-    - "192.168.0.10:28080"
 
 agents:
   user_agents:
     # Miner 1 - 60% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "60"
         can_receive_distributions: true
 
     # Miner 2 - 40% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "40"
         can_receive_distributions: false
 

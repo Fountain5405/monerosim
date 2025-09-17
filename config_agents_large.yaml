@@ -15,82 +15,82 @@ agents:
     # Miner 1 - 15% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "15"
         can_receive_distributions: true
 
     # Miner 2 - 15% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "15"
-        can_receive_distributions: "true"
+        can_receive_distributions: true
 
     # Miner 3 - 12% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "12"
         can_receive_distributions: false
 
     # Miner 4 - 12% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "12"
-        can_receive_distributions: "false"
+        can_receive_distributions: false
 
     # Miner 5 - 10% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "10"
-        can_receive_distributions: "1"
+        can_receive_distributions: true
 
     # Miner 6 - 10% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "10"
-        can_receive_distributions: "yes"
+        can_receive_distributions: true
 
     # Miner 7 - 8% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "8"
-        can_receive_distributions: "0"
+        can_receive_distributions: false
 
     # Miner 8 - 8% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "8"
-        can_receive_distributions: "no"
+        can_receive_distributions: false
 
     # Miner 9 - 5% hashrate, can receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "5"
-        can_receive_distributions: "on"
+        can_receive_distributions: true
 
     # Miner 10 - 5% hashrate, cannot receive distributions
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: true
         hashrate: "5"
-        can_receive_distributions: "off"
+        can_receive_distributions: false
 
     # Regular Users with diverse transaction patterns and distribution settings
     - daemon: "monerod"

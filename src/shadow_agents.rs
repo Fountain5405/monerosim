@@ -521,15 +521,99 @@ fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_ey
     // Validate the topology first
     validate_topology(gml_graph).map_err(|e| color_eyre::eyre::eyre!("Invalid GML topology: {}", e))?;
 
-    // Instead of trying to embed the GML content directly, we'll use Shadow's ability
-    // to read the GML file directly by specifying the path
+    // Create a temporary GML file with converted attributes (e.g., packet_loss percentages to floats)
+    let temp_gml_path = format!("/tmp/monerosim_gml_{}.gml", std::process::id());
+
+    let mut gml_content = String::new();
+    gml_content.push_str("graph [\n");
+
+    // Add graph attributes
+    for (key, value) in &gml_graph.attributes {
+        gml_content.push_str(&format!("  {} {}\n", key, value));
+    }
+
+    // Add nodes
+    for node in &gml_graph.nodes {
+        gml_content.push_str("  node [\n");
+        gml_content.push_str(&format!("    id {}\n", node.id));
+        if let Some(label) = &node.label {
+            gml_content.push_str(&format!("    label \"{}\"\n", label));
+        }
+        for (key, value) in &node.attributes {
+            let processed_value = if key == "bandwidth" {
+                if value.ends_with("Gbit") {
+                    // Convert Gbit to Mbit
+                    if let Ok(gbit) = value.trim_end_matches("Gbit").parse::<f64>() {
+                        format!("{}", gbit * 1000.0)
+                    } else {
+                        value.clone()
+                    }
+                } else if value.ends_with("Mbit") {
+                    // Remove "Mbit" suffix
+                    value.trim_end_matches("Mbit").to_string()
+                } else {
+                    value.clone()
+                }
+            } else {
+                value.clone()
+            };
+            gml_content.push_str(&format!("    {} {}\n", key, processed_value));
+        }
+        gml_content.push_str("  ]\n");
+    }
+
+    // Add edges with converted attributes
+    for edge in &gml_graph.edges {
+        gml_content.push_str("  edge [\n");
+        gml_content.push_str(&format!("    source {}\n", edge.source));
+        gml_content.push_str(&format!("    target {}\n", edge.target));
+        for (key, value) in &edge.attributes {
+            let (processed_value, quote) = if key == "packet_loss" || key == "bandwidth" {
+                // These are numeric values, no quotes
+                let processed = if key == "bandwidth" {
+                    if value.ends_with("Gbit") {
+                        // Convert Gbit to Mbit
+                        if let Ok(gbit) = value.trim_end_matches("Gbit").parse::<f64>() {
+                            format!("{}", gbit * 1000.0)
+                        } else {
+                            value.clone()
+                        }
+                    } else if value.ends_with("Mbit") {
+                        // Remove "Mbit" suffix
+                        value.trim_end_matches("Mbit").to_string()
+                    } else {
+                        value.clone()
+                    }
+                } else {
+                    value.clone()
+                };
+                (processed, false)
+            } else {
+                // Keep latency as string with unit, quoted
+                (value.clone(), true)
+            };
+            if quote {
+                gml_content.push_str(&format!("    {} \"{}\"\n", key, processed_value));
+            } else {
+                gml_content.push_str(&format!("    {} {}\n", key, processed_value));
+            }
+        }
+        gml_content.push_str("  ]\n");
+    }
+
+    gml_content.push_str("]\n");
+
+    // Write the temporary GML file
+    std::fs::write(&temp_gml_path, &gml_content)
+        .map_err(|e| color_eyre::eyre::eyre!("Failed to write temporary GML file: {}", e))?;
+
     Ok(ShadowGraph {
-        graph_type: "gml".to_string(), // Shadow uses "gml" type for GML files
+        graph_type: "gml".to_string(),
         file: Some(ShadowFileSource {
-            path: gml_path.to_string(),
-        }), // Path to the external GML file as FileSource struct
-        nodes: None, // Not needed when using external file
-        edges: None, // Not needed when using external file
+            path: temp_gml_path,
+        }),
+        nodes: None,
+        edges: None,
     })
 }
 
@@ -931,11 +1015,18 @@ fn process_user_agents(
         Vec::new()
     };
 
-    // First, collect agent information and build seed_agents based on peer mode
+    // First, collect all agent information to build connection graphs
     let mut agent_info = Vec::new();
+    let mut miners = Vec::new();
+    let mut seed_nodes = Vec::new();
+    let mut regular_agents = Vec::new();
+
     if let Some(user_agents) = &agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
             let is_miner = user_agent_config.is_miner_value();
+            let is_seed_node = user_agent_config.attributes.as_ref()
+                .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
+                .unwrap_or(false);
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
 
@@ -949,53 +1040,109 @@ fn process_user_agents(
             let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 28080;
 
-            agent_info.push((i, is_miner, agent_id, agent_ip, agent_port));
+            let agent_entry = (i, is_miner, is_seed_node, agent_id, agent_ip.clone(), agent_port);
+
+            if is_miner {
+                miners.push(agent_entry);
+            } else if is_seed_node {
+                seed_nodes.push(agent_entry);
+            } else {
+                regular_agents.push(agent_entry);
+            }
+
+            agent_info.push((i, is_miner, is_seed_node, agent_id, agent_ip, agent_port));
         }
     }
 
-    // Build seed_agents based on peer mode
-    match peer_mode {
-        PeerMode::Hardcoded => {
-            // Use configured seed nodes if available, otherwise fall back to first agent
-            if !effective_seed_nodes.is_empty() {
-                seed_agents.extend(effective_seed_nodes.iter().cloned());
-            } else if let Some((_, _, _, agent_ip, agent_port)) = agent_info.first() {
-                seed_agents.push(format!("{}:{}", agent_ip, agent_port));
-            }
-        }
-        PeerMode::Dynamic => {
-            // For true natural P2P discovery, don't use any seed nodes
-            // Monero will discover peers naturally through the network
-            // Only add seed nodes if explicitly configured in the config
-            if !effective_seed_nodes.is_empty() {
-                seed_agents.extend(effective_seed_nodes.iter().cloned());
-            }
-        }
-        PeerMode::Hybrid => {
-            // Combine configured seed nodes and miners
-            seed_agents.extend(effective_seed_nodes.iter().cloned());
-            for (_, is_miner, _, agent_ip, agent_port) in &agent_info {
-                if *is_miner {
-                    let seed_addr = format!("{}:{}", agent_ip, agent_port);
-                    if !seed_agents.contains(&seed_addr) {
-                        seed_agents.push(seed_addr);
-                    }
-                }
-            }
-            // If no seeds at all, fall back to first agent
-            if seed_agents.is_empty() {
-                if let Some((_, _, _, agent_ip, agent_port)) = agent_info.first() {
-                    seed_agents.push(format!("{}:{}", agent_ip, agent_port));
-                }
+    // Ensure we have exactly 5 seed nodes; if less, promote some regular agents
+    while seed_nodes.len() < 5 {
+        if let Some((i, _, _, id, ip, port)) = regular_agents.pop() {
+            seed_nodes.push((i, false, true, id, ip, port));
+        } else {
+            // If no more regular agents, promote from miners if needed
+            if let Some((i, _, _, id, ip, port)) = miners.pop() {
+                seed_nodes.push((i, true, true, id, ip, port));
             }
         }
     }
 
-    // Now process all user agents
+    // Build seed_agents list for dynamic mode
+    for (_, _, _, _, agent_ip, agent_port) in &seed_nodes {
+        let seed_addr = format!("{}:{}", agent_ip, agent_port);
+        seed_agents.push(seed_addr);
+    }
+
+    // Generate fixed connections for initial network bootstrap
+    // Miners connect in Ring among themselves
+    let mut miner_connections = HashMap::new();
+    for (i, (_, _, _, id, ip, _)) in miners.iter().enumerate() {
+        let mut connections = Vec::new();
+        // Connect to previous and next miner
+        let prev = if i == 0 { miners.len() - 1 } else { i - 1 };
+        let next = if i == miners.len() - 1 { 0 } else { i + 1 };
+        if prev < miners.len() {
+            let prev_miner = &miners[prev];
+            if prev_miner.4 != *ip { // Don't connect to self
+                connections.push(format!("--add-peer={}:{}", prev_miner.4, prev_miner.5));
+            }
+        }
+        if next < miners.len() {
+            let next_miner = &miners[next];
+            if next_miner.4 != *ip { // Don't connect to self
+                connections.push(format!("--add-peer={}:{}", next_miner.4, next_miner.5));
+            }
+        }
+        miner_connections.insert(id.clone(), connections);
+    }
+
+    // Seed nodes connect to all miners and to each other in Ring
+    let mut seed_connections = HashMap::new();
+    for (i, (_, _, _, id, ip, _)) in seed_nodes.iter().enumerate() {
+        let mut connections = Vec::new();
+        // Connect to all miners
+        for (_, _, _, _, m_ip, m_port) in &miners {
+            if m_ip != ip {
+                connections.push(format!("--add-peer={}:{}", m_ip, m_port));
+            }
+        }
+        // Connect to other seeds in Ring
+        let prev = if i == 0 { seed_nodes.len() - 1 } else { i - 1 };
+        let next = if i == seed_nodes.len() - 1 { 0 } else { i + 1 };
+        if prev < seed_nodes.len() {
+            let prev_seed = &seed_nodes[prev];
+            if prev_seed.4 != *ip {
+                connections.push(format!("--add-peer={}:{}", prev_seed.4, prev_seed.5));
+            }
+        }
+        if next < seed_nodes.len() {
+            let next_seed = &seed_nodes[next];
+            if next_seed.4 != *ip {
+                connections.push(format!("--add-peer={}:{}", next_seed.4, next_seed.5));
+            }
+        }
+        seed_connections.insert(id.clone(), connections);
+    }
+
+    // Regular agents will use seed nodes for --seed-node
+
+    // Now process all user agents with staggered start times
     if let Some(user_agents) = &agents.user_agents {
         for (i, user_agent_config) in user_agents.iter().enumerate() {
-            // Check if this is a miner agent
-            let is_miner = user_agent_config.is_miner_value();
+            // Determine agent type and start time
+            let (is_miner, is_seed_node) = user_agent_config.is_miner_value();
+            let start_time_daemon = if is_miner {
+                format!("{}s", i * 2) // Miners start early, staggered by 2s
+            } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
+                "3600s".to_string() // Seeds start at 60 min
+            } else {
+                // Regular agents start at 65 min + stagger
+                let regular_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
+                format!("3900 + {}s", regular_index * 1) // Stagger by 1s
+            };
+
+            // Wallet start time: all at 120 min + stagger
+            let wallet_start_time = format!("7200 + {}s", i * 1); // Stagger wallets by 1s
+
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
 
@@ -1008,7 +1155,6 @@ fn process_user_agents(
 
             let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 28080;
-
 
             // Use standard RPC ports for all agents
             let agent_rpc_port = 28081;
@@ -1020,22 +1166,88 @@ fn process_user_agents(
 
             let mut processes = Vec::new();
 
-            // Add Monero daemon process
-            add_daemon_process(
-                &mut processes,
-                &agent_id,
-                &agent_ip,
-                agent_port,
-                agent_rpc_port,
-                monerod_path,
-                monero_environment,
-                seed_agents,
-                i,
-                peer_mode,
-                topology,
-            );
+            // Add Monero daemon process with appropriate connections
+            let mut daemon_args_base = vec![
+                format!("--data-dir=/tmp/monero-{}", agent_id),
+                "--log-file=/dev/stdout".to_string(),
+                "--log-level=1".to_string(),
+                "--simulation".to_string(),
+                "--disable-dns-checkpoints".to_string(),
+                //"--out-peers=4".to_string(),
+                //"--in-peers=4".to_string(),
+                // Only disable built-in seed nodes for non-Dynamic modes
+                // For Dynamic mode, we allow seed nodes to be used
+                if !matches!(peer_mode, PeerMode::Dynamic) {
+                    "--disable-seed-nodes".to_string()
+                } else {
+                    // For Dynamic mode, don't disable seed nodes - let Monero use them
+                    "--no-igd".to_string()
+                },
+                "--prep-blocks-threads=1".to_string(),
+                "--max-concurrency=1".to_string(),
+                "--no-zmq".to_string(),
+                "--db-sync-mode=safe".to_string(),
+                "--non-interactive".to_string(),
+                "--max-connections-per-ip=50".to_string(),
+                "--limit-rate-up=1024".to_string(),
+                "--limit-rate-down=1024".to_string(),
+                "--block-sync-size=1".to_string(),
+                format!("--rpc-bind-ip={}", agent_ip),
+                format!("--rpc-bind-port={}", agent_rpc_port),
+                "--confirm-external-bind".to_string(),
+                "--disable-rpc-ban".to_string(),
+                "--rpc-access-control-origins=*".to_string(),
+                "--regtest".to_string(),
+                format!("--p2p-bind-ip={}", agent_ip),
+                format!("--p2p-bind-port={}", p2p_port),
+                //"--fixed-difficulty=200".to_string(),
+                "--allow-local-ip".to_string(),
+            ];
 
-            // Add wallet process if wallet is specified
+            // Add initial fixed connections and seed nodes
+            if is_miner {
+                // Miners connect to other miners
+                if let Some(conns) = miner_connections.get(&agent_id) {
+                    for conn in conns {
+                        daemon_args_base.push(conn.clone());
+                    }
+                }
+            } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
+                // Seed nodes connect to miners and other seeds
+                if let Some(conns) = seed_connections.get(&agent_id) {
+                    for conn in conns {
+                        daemon_args_base.push(conn.clone());
+                    }
+                }
+            } else {
+                // Regular agents use seed nodes
+                for seed_addr in seed_agents.iter() {
+                    if !seed_addr.starts_with(&format!("{}:", agent_ip)) {
+                        daemon_args_base.push(format!("--seed-node={}", seed_addr));
+                    }
+                }
+            }
+
+            // All agents get seed nodes for dynamic discovery
+            for seed_addr in seed_agents.iter() {
+                if !seed_addr.starts_with(&format!("{}:", agent_ip)) {
+                    daemon_args_base.push(format!("--seed-node={}", seed_addr));
+                }
+            }
+
+            let daemon_args = daemon_args_base.join(" ");
+
+            processes.push(ShadowProcess {
+                path: "/bin/bash".to_string(),
+                args: format!(
+                    "-c 'rm -rf /tmp/monero-{} && {} {}'",
+                    agent_id, monerod_path, daemon_args
+                ),
+                environment: monero_environment.clone(),
+                start_time: start_time_daemon,
+            });
+
+            // Add wallet process if wallet is specified, but staggered at 120 min
             if user_agent_config.wallet.is_some() {
                 add_wallet_process(
                     &mut processes,
@@ -1047,6 +1259,11 @@ fn process_user_agents(
                     environment,
                     i,
                 );
+
+                // Override wallet start time
+                if let Some(last_process) = processes.last_mut() {
+                    last_process.start_time = wallet_start_time;
+                }
             }
 
             // Add user agent script if specified
