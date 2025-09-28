@@ -79,6 +79,7 @@ class BlockControllerAgent(BaseAgent):
         """
         Iterate through all agents in the registry, initialize their wallets,
         and update the registry with their wallet addresses.
+        Includes retry logic for failed wallet initializations.
         """
         self.logger.info("Starting centralized wallet initialization for all agents...")
         agent_registry_path = self.shared_dir / "agent_registry.json"
@@ -93,24 +94,40 @@ class BlockControllerAgent(BaseAgent):
             self.logger.error(f"Failed to load agent_registry.json: {e}")
             return
 
-        updated_agents = []
+        # Separate miners from regular agents - miners are critical and need retry logic
+        miners = []
+        regular_agents = []
+
         for agent in agent_data.get("agents", []):
+            if agent.get("attributes", {}).get("is_miner") == "true":
+                miners.append(agent)
+            else:
+                regular_agents.append(agent)
+
+        self.logger.info(f"Found {len(miners)} miners and {len(regular_agents)} regular agents to initialize")
+
+        # Process miners first with retry logic
+        updated_miners = self._initialize_agent_wallets_with_retry(miners, max_retries=5, retry_delay=30)
+
+        # Process regular agents (less critical, single attempt)
+        updated_regular = []
+        for agent in regular_agents:
             # Only process agents that have a wallet
             if "wallet_rpc_port" not in agent:
-                updated_agents.append(agent)
+                updated_regular.append(agent)
                 continue
 
             wallet_rpc_port = agent["wallet_rpc_port"]
             ip_addr = agent["ip_addr"]
             agent_id = agent["id"]
-            
+
             try:
                 wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
                 wallet_rpc.wait_until_ready()
-                
+
                 wallet_name = f"{agent_id}_wallet"
                 address = None
-                
+
                 try:
                     self.logger.info(f"Attempting to open wallet '{wallet_name}' for agent {agent_id}")
                     wallet_rpc.open_wallet(wallet_name, password="")
@@ -124,25 +141,25 @@ class BlockControllerAgent(BaseAgent):
                         self.logger.info(f"Successfully created new wallet '{wallet_name}' for {agent_id}")
                     except RPCError as create_err:
                         self.logger.error(f"Failed to create wallet for {agent_id}: {create_err}")
+                        updated_regular.append(agent)
                         continue
-                
+
                 if address:
                     self.logger.debug(f"Address type: {type(address)}, value: {address}")
-                    self.logger.debug(f"Agent type: {type(agent)}, value: {agent}")
                     agent.update({"wallet_address": address})
                     self.logger.info(f"Updated agent {agent_id} with wallet address.")
 
-                    # Update miners.json with wallet address if this agent is a miner
-                    if agent.get("attributes", {}).get("is_miner") == "true":
-                        self._update_miner_wallet_address(agent_id, address)
-
             except Exception as e:
                 self.logger.error(f"Error processing wallet for agent {agent_id}: {e}")
-            
-            updated_agents.append(agent)
+                updated_regular.append(agent)
+            else:
+                updated_regular.append(agent)
 
             # Small delay between agents to avoid overwhelming the system
             time.sleep(2)
+
+        # Combine updated agents
+        updated_agents = updated_miners + updated_regular
 
         # Write the updated agent data back to the registry
         try:
@@ -151,6 +168,83 @@ class BlockControllerAgent(BaseAgent):
             self.logger.info("Successfully updated agent_registry.json with all wallet addresses.")
         except Exception as e:
             self.logger.error(f"Failed to write updated agent_registry.json: {e}")
+
+    def _initialize_agent_wallets_with_retry(self, agents, max_retries=3, retry_delay=30):
+        """
+        Initialize wallets for a list of agents with retry logic.
+        Critical for miners to ensure they get wallet addresses.
+        """
+        self.logger.info(f"Initializing wallets for {len(agents)} agents with retry logic (max_retries={max_retries})")
+
+        remaining_agents = agents.copy()
+        updated_agents = []
+
+        for attempt in range(max_retries):
+            if not remaining_agents:
+                break
+
+            self.logger.info(f"Retry attempt {attempt + 1}/{max_retries} for {len(remaining_agents)} remaining agents")
+
+            still_remaining = []
+
+            for agent in remaining_agents:
+                wallet_rpc_port = agent["wallet_rpc_port"]
+                ip_addr = agent["ip_addr"]
+                agent_id = agent["id"]
+
+                try:
+                    wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
+                    wallet_rpc.wait_until_ready()
+
+                    wallet_name = f"{agent_id}_wallet"
+                    address = None
+
+                    try:
+                        self.logger.info(f"Attempting to open wallet '{wallet_name}' for agent {agent_id} (attempt {attempt + 1})")
+                        wallet_rpc.open_wallet(wallet_name, password="")
+                        address = wallet_rpc.get_address()
+                        self.logger.info(f"Successfully opened existing wallet '{wallet_name}' for {agent_id}")
+                    except RPCError:
+                        try:
+                            self.logger.info(f"Wallet not found, creating '{wallet_name}' for agent {agent_id} (attempt {attempt + 1})")
+                            wallet_rpc.create_wallet(wallet_name, password="")
+                            address = wallet_rpc.get_address()
+                            self.logger.info(f"Successfully created new wallet '{wallet_name}' for {agent_id}")
+                        except RPCError as create_err:
+                            self.logger.warning(f"Failed to create wallet for {agent_id} (attempt {attempt + 1}): {create_err}")
+                            still_remaining.append(agent)
+                            continue
+
+                    if address:
+                        self.logger.debug(f"Address type: {type(address)}, value: {address}")
+                        agent.update({"wallet_address": address})
+                        self.logger.info(f"Updated agent {agent_id} with wallet address.")
+
+                        # Update miners.json with wallet address if this agent is a miner
+                        if agent.get("attributes", {}).get("is_miner") == "true":
+                            self._update_miner_wallet_address(agent_id, address)
+
+                        updated_agents.append(agent)
+                    else:
+                        still_remaining.append(agent)
+
+                except Exception as e:
+                    self.logger.warning(f"Error processing wallet for agent {agent_id} (attempt {attempt + 1}): {e}")
+                    still_remaining.append(agent)
+
+            remaining_agents = still_remaining
+
+            # Wait before next retry attempt (except on the last attempt)
+            if remaining_agents and attempt < max_retries - 1:
+                self.logger.info(f"Waiting {retry_delay} seconds before next retry attempt...")
+                time.sleep(retry_delay)
+
+        if remaining_agents:
+            self.logger.error(f"Failed to initialize wallets for {len(remaining_agents)} agents after {max_retries} attempts: {[a['id'] for a in remaining_agents]}")
+            # Add failed agents back to updated list without wallet addresses
+            updated_agents.extend(remaining_agents)
+
+        return updated_agents
 
     def _update_miner_wallet_address(self, agent_id: str, wallet_address: str):
         """

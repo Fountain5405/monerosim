@@ -1,6 +1,7 @@
 # Core dependencies
 requests>=2.28.0
 PyYAML>=6.0
+networkx>=3.0
 
 # Testing dependencies
 pytest>=7.4.0

@@ -8,6 +8,12 @@ from glob import glob
 import concurrent.futures
 import threading
 from datetime import datetime
+import sys
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from scripts.error_handling import log_info
 
 # Define data structures
 Block = Tuple[int, str]  # (height, hash)
@@ -114,14 +120,36 @@ def parse_log_file_threaded(file_path: str) -> Dict[str, List]:
     """
     return parse_log_file(file_path)
 
-def analyze_simulation(log_dir: str = 'shadow.data/hosts', max_workers: int = 4) -> Dict:
+def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
     """
     Analyze all host logs in the directory using multi-threading.
     Returns aggregated data and success report.
+    If log_dir is None, finds the most recent shadow.data/hosts directory.
     """
-    log_path = Path(log_dir)
-    if not log_path.exists():
-        raise ValueError(f"Log directory {log_dir} not found.")
+    if log_dir is None:
+        workspace = Path('.')
+        current_shadow_path = workspace / 'shadow.data' / 'hosts'
+        if current_shadow_path.exists():
+            log_path = current_shadow_path
+        else:
+            # Find the most recent dated shadow.data directory
+            shadow_dirs = []
+            for d in workspace.iterdir():
+                if d.is_dir() and re.match(r'\d{8}', d.name):
+                    shadow_path = d / 'shadow.data' / 'hosts'
+                    if shadow_path.exists():
+                        shadow_dirs.append((d.stat().st_mtime, shadow_path))
+            if not shadow_dirs:
+                raise ValueError("No shadow.data/hosts directory found in current workspace or dated subdirectories.")
+            # Sort by modification time, take the most recent
+            shadow_dirs.sort(reverse=True)
+            log_path = shadow_dirs[0][1]
+    else:
+        log_path = Path(log_dir)
+        if not log_path.exists():
+            raise ValueError(f"Log directory {log_dir} not found.")
+
+    log_info("analyze_simulation", f"Using log directory: {log_path}")
 
     node_data = {}
     all_blocks_mined = set()
@@ -207,12 +235,13 @@ def analyze_simulation(log_dir: str = 'shadow.data/hosts', max_workers: int = 4)
         'details': f"{len(user_blocks_received)} user nodes received blocks" if blocks_propagated else "Not all user nodes received blocks"
     }
 
-    # 3. Transactions created and broadcast: Transactions are created and broadcast to all nodes
+    # 3. Transactions created and broadcast: Transactions are created and broadcast to all user nodes
     txs_created_broadcast = len(all_txs_created) > 0
-    txs_propagated = txs_created_broadcast and all(len(received) > 0 for received in all_txs_received.values())
+    user_txs_received = {node: received for node, received in all_txs_received.items() if node.startswith('user')}
+    txs_propagated = txs_created_broadcast and all(len(received) > 0 for received in user_txs_received.values())
     report['criteria']['transactions_created_broadcast'] = {
         'success': txs_created_broadcast and txs_propagated,
-        'details': f"{len(all_txs_created)} transactions created and propagated" if txs_created_broadcast and txs_propagated else "Transactions not properly created or propagated"
+        'details': f"{len(all_txs_created)} transactions created and propagated to {len(user_txs_received)} user nodes" if txs_created_broadcast and txs_propagated else "Transactions not properly created or propagated"
     }
 
     # 4. Transactions in blocks: All created txs are included in some block

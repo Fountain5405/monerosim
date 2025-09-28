@@ -38,7 +38,7 @@ The Peer Discovery System is a comprehensive framework that enables dynamic agen
 **Configuration**:
 ```yaml
 network:
-  type: "1_gbit_switch"
+  type: [either switch or a gml file]
   peer_mode: "Dynamic"
   topology: "Mesh"
 ```
@@ -54,7 +54,7 @@ network:
 **Configuration**:
 ```yaml
 network:
-  type: "1_gbit_switch"
+  type: "[either 1_gb_switch or a gml file]"
   peer_mode: "Hardcoded"
   topology: "Star"
   seed_nodes:
@@ -162,23 +162,6 @@ The peer discovery system integrates seamlessly with Shadow configuration genera
 2. **Peer Connection Generation**: Creates appropriate `--add-exclusive-node` arguments
 3. **Seed Node Management**: Handles explicit seed node configuration
 4. **Scalability Support**: Efficient handling of large agent counts
-
-### Example Shadow Configuration Output
-```yaml
-hosts:
-  user000:
-    processes:
-    - path: /path/to/monerod
-      args:
-        --add-exclusive-node=192.168.0.10:28080
-        --add-exclusive-node=172.16.1.10:28080
-  user001:
-    processes:
-    - path: /path/to/monerod
-      args:
-        --add-exclusive-node=192.168.0.10:28080
-        --add-exclusive-node=203.0.2.10:28080
-```
 
 ## Testing and Validation
 

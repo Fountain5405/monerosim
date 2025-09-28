@@ -141,14 +141,22 @@ pub struct UserAgentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_script: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_miner: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<HashMap<String, String>>,
 }
 
 impl UserAgentConfig {
-    /// Check if this agent is a miner based on attributes
-    /// Returns true if "is_miner" is found in attributes and is "true" or true
-    /// Returns false if "is_miner" is not found or is "false" or false
+    /// Check if this agent is a miner based on top-level field or attributes
+    /// Returns true if is_miner is true or "is_miner" in attributes is "true" or true
+    /// Returns false otherwise
     pub fn is_miner_value(&self) -> bool {
+        // Check top-level is_miner field first
+        if let Some(is_miner) = self.is_miner {
+            return is_miner;
+        }
+
+        // Fall back to attributes
         if let Some(attrs) = &self.attributes {
             if let Some(is_miner_value) = attrs.get("is_miner") {
                 // Handle string representations
@@ -157,7 +165,7 @@ impl UserAgentConfig {
                     "false" | "0" | "no" | "off" => return false,
                     _ => {} // Continue to check other formats
                 }
-                
+
                 // Try to parse as boolean directly
                 if let Ok(parsed_bool) = is_miner_value.parse::<bool>() {
                     return parsed_bool;
@@ -301,6 +309,7 @@ agents:
             daemon: "monerod".to_string(),
             wallet: None,
             user_script: None,
+            is_miner: None,
             attributes: None,
         };
         

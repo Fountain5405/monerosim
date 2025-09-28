@@ -1,0 +1,26 @@
+
+Network Connectivity Analysis Summary
+=====================================
+
+Simulation Configuration:
+- Config file: config_47_agents.yaml
+- GML topology: caida_connected_sparse_with_loops_fixed.gml
+
+Network Statistics:
+- Total Monero nodes: 46
+- Total successful connections: 733
+- Connected components: 1
+- Isolated nodes: 0
+- Average degree: 31.87
+- Clustering coefficient: 0.756
+- Network density: 0.708
+
+Connection Events:
+- Total successful connections: 7007
+
+Isolated Nodes:
+
+
+Connected Components:
+
+Component 1 (46 nodes): user000, user001, user002, user003, user004, user005, user006, user007, user008, user009, user010, user011, user012, user013, user014, user015, user016, user017, user018, user019, user020, user021, user022, user023, user024, user025, user026, user027, user028, user029, user030, user031, user032, user033, user034, user035, user036, user037, user038, user039, user040, user041, user042, user043, user044, user045

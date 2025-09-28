@@ -2,25 +2,7 @@
 
 ## Current Status
 
-The Monerosim agent-based simulation is now **fully functional** with an enhanced mining architecture. A new weighted random miner selection system has been successfully implemented and tested, allowing for realistic distribution of mining rewards based on hashrate contributions.
-
-### Core Simulation Status (Verified)
-- **P2P Connectivity**: Working
-- **Block Generation**: Working with new weighted selection
-- **Block Synchronization**: Working
-
-### Agent Framework Status (Simplified)
-- **Framework Architecture**: Simplified to core user and network nodes
-- **Agent Types**: RegularUserAgent and BlockControllerAgent
-- **RPC Integration**: Working
-- **Shared State Communication**: Working
-- **Mining Coordination**: Retained BlockControllerAgent for weighted-random block generation
-
-### New Mining Architecture (Implemented)
-- **Miner Registry**: JSON-based registry tracking all miners with their hashrates
-- **Weighted Selection**: Each miner has a probability of being selected proportional to their hashrate
-- **Dynamic Updates**: Registry reloaded for each block generation
-- **Test Coverage**: Comprehensive test suite with 100% pass rate
+The Monerosim agent-based simulation is still in development and has things that are broken that need fixing. 
 
 ## Recent Developments
 
@@ -56,38 +38,10 @@ The Monerosim agent-based simulation is now **fully functional** with an enhance
 
 ## Current Focus
 
-With the refactoring complete, focus shifts to verifying the simplified architecture and ensuring all components function as expected.
-
-1. **Immediate Actions**:
-   - Verify the simulation runs correctly with the updated configuration.
-   - Ensure `BlockControllerAgent` continues to function as expected for weighted-random block generation.
-   - Update user guides and documentation to reflect the simplified architecture.
-
-2. **Code Fixes**:
-   - Ensure no regressions were introduced during the refactoring.
-
-## Next Steps
-
-1. **Immediate**:
-   - Conduct comprehensive testing of the simplified agent-based simulation.
-   - Verify that `config_agents_small.yaml` is correctly parsed and used.
-   - Confirm that `src/shadow_agents.rs` generates the correct Shadow configuration.
-
-2. **Short-term**:
-   - Extend testing to medium and large-scale configurations to ensure scalability.
-   - Develop new test cases specifically for the simplified architecture.
-
-3. **Medium-term**:
-   - Explore further simplifications or enhancements to the agent framework based on simulation results.
-   - Consider adding new agent types if required by future research objectives.
-
-## Technical Achievements
-
-- Successfully debugged complex configuration issue
-- Created effective workaround maintaining functionality
-- Documented root cause and multiple fix options
-- Maintained backward compatibility with manual intervention
-- Achieved clean separation of debugging and implementation concerns
+The current focus is making sure that the dynamic peer discovery works, and that the complex network topologies using gml files work. 
 
 ## Operational Context
 It is critical to remember that all Monerosim components, including Monero nodes, wallets, and all Python-based agents and test scripts, operate entirely within the Shadow network simulator. Any interactions or data exchanges occur within this simulated environment.
+
+## Analysis Context
+It is critical to remember that the logs for each run for each agent are stored in /home/lever65/monerosim_dev/monerosim/shadow.data/hosts .

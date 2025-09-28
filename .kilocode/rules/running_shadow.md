@@ -32,3 +32,5 @@ If you use Method C to run the simulation in the background, you can monitor its
 tail shadow.log
 ```
 This command will display the last few lines of the file. Run it occasionally to see where things are. You shouldn't just watch the logs constantly, this uses a lot of resources. 
+
+**CRITICAL**: DO NOT USE "tail -f" to watch the logs. This uses too many resources.
