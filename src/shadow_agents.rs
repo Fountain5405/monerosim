@@ -1529,6 +1529,100 @@ echo "Starting block controller..."
     Ok(())
 }
 
+/// Process miner distributor agent
+fn process_miner_distributor(
+    agents: &AgentDefinitions,
+    hosts: &mut HashMap<String, ShadowHost>,
+    subnet_manager: &mut AsSubnetManager,
+    ip_registry: &mut GlobalIpRegistry,
+    environment: &HashMap<String, String>,
+    shared_dir: &Path,
+    current_dir: &str,
+    stop_time: &str,
+    gml_graph: Option<&GmlGraph>,
+    using_gml_topology: bool,
+    agent_offset: usize,
+    peer_mode: &PeerMode,
+) -> color_eyre::eyre::Result<()> {
+    if let Some(miner_distributor_config) = &agents.miner_distributor {
+        let miner_distributor_id = "minerdistributor";
+        // Assign miner distributor to node 0 (which has bandwidth info in GML)
+        let network_node_id = 0;
+        let miner_distributor_ip = get_agent_ip(AgentType::BlockController, miner_distributor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+        let mut processes = Vec::new();
+
+        let mut agent_args = vec![
+            format!("--id {}", miner_distributor_id),
+            format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+            format!("--log-level DEBUG"),
+        ];
+
+        // Add attributes from config
+        if let Some(attrs) = &miner_distributor_config.attributes {
+            for (key, value) in attrs {
+                agent_args.push(format!("--attributes {} {}", key, value));
+            }
+        }
+
+        // Simplified command for miner distributor
+        let python_cmd = if miner_distributor_config.script.contains('.') && !miner_distributor_config.script.contains('/') && !miner_distributor_config.script.contains('\\') {
+            format!("python3 -m {} {}", miner_distributor_config.script, agent_args.join(" "))
+        } else {
+            format!("python3 {} {}", miner_distributor_config.script, agent_args.join(" "))
+        };
+
+        // Create a simple wrapper script for miner distributor
+        let wrapper_script = format!(
+            r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+echo "Starting miner distributor..."
+{} 2>&1
+"#,
+            current_dir,
+            current_dir,
+            python_cmd
+        );
+
+        // Write wrapper script to a temporary file and execute it
+        let script_path = format!("/tmp/{}_wrapper.sh", miner_distributor_id);
+
+        // Process 1: Create wrapper script
+        processes.push(ShadowProcess {
+            path: "/bin/bash".to_string(),
+            args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
+            environment: environment.clone(),
+            start_time: "89s".to_string(), // Create script before execution
+        });
+
+        // Process 2: Execute wrapper script
+        let miner_distributor_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
+            "30s".to_string() // Dynamic mode: miner distributor starts after block controller
+        } else {
+            "90s".to_string() // Other modes: keep original timing
+        };
+        processes.push(ShadowProcess {
+            path: "/bin/bash".to_string(),
+            args: script_path.clone(),
+            environment: environment.clone(),
+            start_time: miner_distributor_start_time,
+        });
+
+        hosts.insert(miner_distributor_id.to_string(), ShadowHost {
+            network_node_id, // Use the assigned GML node with bandwidth info
+            ip_addr: Some(miner_distributor_ip),
+            processes,
+            bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+            bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
+        });
+        // Note: next_ip is already incremented in get_agent_ip function
+    }
+
+    Ok(())
+}
+
 /// Process pure script agents
 fn process_pure_script_agents(
     agents: &AgentDefinitions,
@@ -1776,6 +1870,21 @@ pub fn generate_agent_shadow_config(
         &peer_mode,
     )?;
 
+    process_miner_distributor(
+        &config.agents,
+        &mut hosts,
+        &mut subnet_manager,
+        &mut ip_registry,
+        &environment,
+        shared_dir_path,
+        &current_dir,
+        &config.general.stop_time,
+        gml_graph.as_ref(),
+        using_gml_topology,
+        block_controller_offset + 10, // Offset from block controller
+        &peer_mode,
+    )?;
+
     process_pure_script_agents(
         &config.agents,
         &mut hosts,
@@ -1850,6 +1959,33 @@ pub fn generate_agent_shadow_config(
             wallet: false, // Block controller does not have a wallet
             user_script: config.agents.block_controller.as_ref().map(|c| c.script.clone()),
             attributes: HashMap::new(), // No specific attributes for block controller
+            wallet_rpc_port: None,
+            daemon_rpc_port: None,
+        };
+        agent_registry.agents.push(agent_info);
+    }
+
+    // Add miner distributor to registry
+    if config.agents.miner_distributor.is_some() {
+        let miner_distributor_id = "minerdistributor".to_string();
+
+        // Get IP from the corresponding host that was already created
+        let miner_distributor_ip = hosts.get(&miner_distributor_id)
+            .and_then(|host| host.ip_addr.clone())
+            .unwrap_or_else(|| {
+                // Fallback to geographic IP assignment for miner distributor
+                format!("192.168.21.{}", 10 + block_controller_offset)
+            });
+
+        let agent_info = AgentInfo {
+            id: miner_distributor_id,
+            ip_addr: miner_distributor_ip,
+            daemon: false, // Miner distributor does not run a daemon
+            wallet: false, // Miner distributor does not have a wallet
+            user_script: config.agents.miner_distributor.as_ref().map(|c| c.script.clone()),
+            attributes: config.agents.miner_distributor.as_ref()
+                .and_then(|c| c.attributes.clone())
+                .unwrap_or_default(),
             wallet_rpc_port: None,
             daemon_rpc_port: None,
         };

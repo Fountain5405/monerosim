@@ -3,108 +3,105 @@ IP Address Analysis Summary
 ===========================
 
 Total Unique IP Addresses: 46
-Total IP Mentions: 4661
+Total IP Mentions: 4659
 
 IP Frequency Distribution:
-- 5 mentions: 1 IPs
-- 23 mentions: 1 IPs
-- 29 mentions: 1 IPs
-- 44 mentions: 1 IPs
+- 10 mentions: 1 IPs
+- 16 mentions: 1 IPs
+- 18 mentions: 1 IPs
+- 41 mentions: 1 IPs
+- 46 mentions: 1 IPs
 - 47 mentions: 1 IPs
-- 53 mentions: 1 IPs
+- 48 mentions: 1 IPs
 - 57 mentions: 1 IPs
-- 61 mentions: 1 IPs
-- 62 mentions: 1 IPs
-- 63 mentions: 2 IPs
-- 66 mentions: 1 IPs
-- 69 mentions: 1 IPs
-- 74 mentions: 1 IPs
+- 61 mentions: 2 IPs
+- 65 mentions: 1 IPs
 - 75 mentions: 1 IPs
-- 79 mentions: 1 IPs
-- 86 mentions: 1 IPs
-- 94 mentions: 2 IPs
-- 98 mentions: 2 IPs
-- 109 mentions: 1 IPs
-- 112 mentions: 1 IPs
-- 113 mentions: 1 IPs
-- 116 mentions: 1 IPs
-- 117 mentions: 1 IPs
+- 78 mentions: 1 IPs
+- 84 mentions: 2 IPs
+- 88 mentions: 1 IPs
+- 89 mentions: 1 IPs
+- 90 mentions: 1 IPs
+- 95 mentions: 3 IPs
+- 96 mentions: 1 IPs
+- 98 mentions: 1 IPs
+- 107 mentions: 1 IPs
+- 113 mentions: 2 IPs
+- 115 mentions: 1 IPs
 - 119 mentions: 1 IPs
-- 120 mentions: 1 IPs
 - 123 mentions: 1 IPs
-- 126 mentions: 1 IPs
-- 129 mentions: 2 IPs
-- 133 mentions: 2 IPs
-- 134 mentions: 1 IPs
-- 135 mentions: 1 IPs
-- 138 mentions: 2 IPs
-- 141 mentions: 1 IPs
+- 128 mentions: 1 IPs
+- 131 mentions: 2 IPs
+- 132 mentions: 2 IPs
+- 136 mentions: 1 IPs
+- 137 mentions: 1 IPs
+- 138 mentions: 4 IPs
+- 139 mentions: 1 IPs
 - 142 mentions: 1 IPs
-- 143 mentions: 1 IPs
-- 145 mentions: 1 IPs
-- 150 mentions: 2 IPs
-- 162 mentions: 1 IPs
-- 164 mentions: 1 IPs
+- 151 mentions: 1 IPs
+- 152 mentions: 1 IPs
+- 154 mentions: 1 IPs
+- 215 mentions: 1 IPs
 
 Top 10 Most Used IP Addresses:
 
-1. 197.0.4.10
-   Frequency: 164 mentions
-   Ports: 28080
-   Associated Nodes: user004 (miner)
-
-
-2. 172.16.1.10
-   Frequency: 162 mentions
-   Ports: 28080
-   Associated Nodes: user001 (miner)
-   Geolocation: Private IP address - no public geolocation available
-
-
-3. 200.0.3.10
-   Frequency: 150 mentions
-   Ports: 28080
-   Associated Nodes: user003 (miner)
-
-
-4. 197.1.10.10
-   Frequency: 150 mentions
-   Ports: 28080
-   Associated Nodes: user010 (miner)
-
-
-5. 197.2.16.10
-   Frequency: 145 mentions
-   Ports: 28080
-   Associated Nodes: user016 (miner)
-
-
-6. 203.3.20.10
-   Frequency: 143 mentions
-   Ports: 28080
-   Associated Nodes: user020 (miner)
-
-
-7. 202.1.11.10
-   Frequency: 142 mentions
-   Ports: 28080
-   Associated Nodes: user011 (miner)
-
-
-8. 197.3.22.10
-   Frequency: 141 mentions
-   Ports: 28080
-   Associated Nodes: user022 (miner)
-
-
-9. 203.0.2.10
-   Frequency: 138 mentions
+1. 203.0.2.10
+   Frequency: 215 mentions
    Ports: 28080
    Associated Nodes: user002 (miner)
 
 
-10. 202.4.29.10
+2. 200.1.9.10
+   Frequency: 154 mentions
+   Ports: 28080
+   Associated Nodes: user009 (miner)
+
+
+3. 202.3.23.10
+   Frequency: 152 mentions
+   Ports: 28080
+   Associated Nodes: user023 (miner)
+
+
+4. 203.5.32.10
+   Frequency: 151 mentions
+   Ports: 28080
+   Associated Nodes: user032 (miner)
+
+
+5. 197.5.34.10
+   Frequency: 142 mentions
+   Ports: 28080
+   Associated Nodes: user034 (miner)
+
+
+6. 203.3.20.10
+   Frequency: 139 mentions
+   Ports: 28080
+   Associated Nodes: user020 (miner)
+
+
+7. 197.0.4.10
    Frequency: 138 mentions
    Ports: 28080
-   Associated Nodes: user029 (miner)
+   Associated Nodes: user004 (miner)
+
+
+8. 197.3.22.10
+   Frequency: 138 mentions
+   Ports: 28080
+   Associated Nodes: user022 (miner)
+
+
+9. 197.4.28.10
+   Frequency: 138 mentions
+   Ports: 28080
+   Associated Nodes: user028 (miner)
+
+
+10. 172.16.1.10
+   Frequency: 138 mentions
+   Ports: 28080
+   Associated Nodes: user001 (miner)
+   Geolocation: Private IP address - no public geolocation available
 

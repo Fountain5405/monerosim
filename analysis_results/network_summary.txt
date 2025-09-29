@@ -8,15 +8,15 @@ Simulation Configuration:
 
 Network Statistics:
 - Total Monero nodes: 46
-- Total successful connections: 646
+- Total successful connections: 641
 - Connected components: 1
 - Isolated nodes: 0
-- Average degree: 28.09
-- Clustering coefficient: 0.644
-- Network density: 0.624
+- Average degree: 27.87
+- Clustering coefficient: 0.635
+- Network density: 0.619
 
 Connection Events:
-- Total successful connections: 4661
+- Total successful connections: 4659
 
 Isolated Nodes:
 

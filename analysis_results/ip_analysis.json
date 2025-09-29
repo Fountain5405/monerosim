@@ -1,9 +1,87 @@
 {
   "total_unique_ips": 46,
-  "total_ip_mentions": 4661,
+  "total_ip_mentions": 4659,
   "ip_details": {
+    "203.0.2.10": {
+      "frequency": 215,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user002",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "200.1.9.10": {
+      "frequency": 154,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user009",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "202.3.23.10": {
+      "frequency": 152,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user023",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "203.5.32.10": {
+      "frequency": 151,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user032",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "197.5.34.10": {
+      "frequency": 142,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user034",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "203.3.20.10": {
+      "frequency": 139,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user020",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
     "197.0.4.10": {
-      "frequency": 164,
+      "frequency": 138,
       "ports": [
         "28080"
       ],
@@ -15,8 +93,34 @@
       ],
       "geolocation": null
     },
+    "197.3.22.10": {
+      "frequency": 138,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user022",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "197.4.28.10": {
+      "frequency": 138,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user028",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
     "172.16.1.10": {
-      "frequency": 162,
+      "frequency": 138,
       "ports": [
         "28080"
       ],
@@ -31,151 +135,21 @@
         "note": "Private IP address - no public geolocation available"
       }
     },
-    "200.0.3.10": {
-      "frequency": 150,
+    "203.1.8.10": {
+      "frequency": 137,
       "ports": [
         "28080"
       ],
       "associated_nodes": [
         {
-          "name": "user003",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "197.1.10.10": {
-      "frequency": 150,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user010",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "197.2.16.10": {
-      "frequency": 145,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user016",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "203.3.20.10": {
-      "frequency": 143,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user020",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "202.1.11.10": {
-      "frequency": 142,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user011",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "197.3.22.10": {
-      "frequency": 141,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user022",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "203.0.2.10": {
-      "frequency": 138,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user002",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "202.4.29.10": {
-      "frequency": 138,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user029",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "200.3.21.10": {
-      "frequency": 135,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user021",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "202.0.5.10": {
-      "frequency": 134,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user005",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "203.5.32.10": {
-      "frequency": 133,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user032",
+          "name": "user008",
           "type": "miner"
         }
       ],
       "geolocation": null
     },
     "200.4.27.10": {
-      "frequency": 133,
+      "frequency": 136,
       "ports": [
         "28080"
       ],
@@ -187,34 +161,8 @@
       ],
       "geolocation": null
     },
-    "200.5.33.10": {
-      "frequency": 129,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user033",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "200.2.15.10": {
-      "frequency": 129,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user015",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
     "203.4.26.10": {
-      "frequency": 126,
+      "frequency": 132,
       "ports": [
         "28080"
       ],
@@ -224,31 +172,10 @@
           "type": "miner"
         }
       ],
-      "geolocation": {
-        "country": "Australia",
-        "region": "Western Australia",
-        "city": "Perth",
-        "org": null,
-        "asn": null,
-        "latitude": -31.9522,
-        "longitude": 115.8614
-      }
-    },
-    "202.3.23.10": {
-      "frequency": 123,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user023",
-          "type": "miner"
-        }
-      ],
       "geolocation": null
     },
     "202.2.17.10": {
-      "frequency": 120,
+      "frequency": 132,
       "ports": [
         "28080"
       ],
@@ -260,40 +187,79 @@
       ],
       "geolocation": null
     },
-    "197.4.28.10": {
+    "202.1.11.10": {
+      "frequency": 131,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user011",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "200.0.3.10": {
+      "frequency": 131,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user003",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "200.3.21.10": {
+      "frequency": 128,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user021",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "197.2.16.10": {
+      "frequency": 123,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user016",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "202.0.5.10": {
       "frequency": 119,
       "ports": [
         "28080"
       ],
       "associated_nodes": [
         {
-          "name": "user028",
+          "name": "user005",
           "type": "miner"
         }
       ],
       "geolocation": null
     },
-    "197.5.34.10": {
-      "frequency": 117,
+    "197.1.10.10": {
+      "frequency": 115,
       "ports": [
         "28080"
       ],
       "associated_nodes": [
         {
-          "name": "user034",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "200.1.9.10": {
-      "frequency": 116,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user009",
+          "name": "user010",
           "type": "miner"
         }
       ],
@@ -312,21 +278,47 @@
       ],
       "geolocation": null
     },
-    "203.1.8.10": {
-      "frequency": 112,
+    "200.2.15.10": {
+      "frequency": 113,
       "ports": [
         "28080"
       ],
       "associated_nodes": [
         {
-          "name": "user008",
+          "name": "user015",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "200.5.33.10": {
+      "frequency": 107,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user033",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "202.5.35.10": {
+      "frequency": 98,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user035",
           "type": "miner"
         }
       ],
       "geolocation": null
     },
     "200.6.39.10": {
-      "frequency": 109,
+      "frequency": 96,
       "ports": [
         "28080"
       ],
@@ -339,7 +331,7 @@
       "geolocation": null
     },
     "202.6.41.10": {
-      "frequency": 98,
+      "frequency": 95,
       "ports": [
         "28080"
       ],
@@ -351,47 +343,21 @@
       ],
       "geolocation": null
     },
-    "200.7.45.10": {
-      "frequency": 98,
+    "202.4.29.10": {
+      "frequency": 95,
       "ports": [
         "28080"
       ],
       "associated_nodes": [
         {
-          "name": "user045",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "203.6.38.10": {
-      "frequency": 94,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user038",
-          "type": "miner"
-        }
-      ],
-      "geolocation": null
-    },
-    "202.5.35.10": {
-      "frequency": 94,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user035",
+          "name": "user029",
           "type": "miner"
         }
       ],
       "geolocation": null
     },
     "197.6.40.10": {
-      "frequency": 86,
+      "frequency": 95,
       "ports": [
         "28080"
       ],
@@ -403,8 +369,53 @@
       ],
       "geolocation": null
     },
+    "203.6.38.10": {
+      "frequency": 90,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user038",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "10.3.18.10": {
+      "frequency": 89,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user018",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
+    "172.20.25.10": {
+      "frequency": 88,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user025",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
     "203.7.44.10": {
-      "frequency": 79,
+      "frequency": 84,
       "ports": [
         "28080"
       ],
@@ -416,8 +427,53 @@
       ],
       "geolocation": null
     },
-    "192.168.0.10": {
+    "200.7.45.10": {
+      "frequency": 84,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user045",
+          "type": "miner"
+        }
+      ],
+      "geolocation": null
+    },
+    "172.18.13.10": {
+      "frequency": 78,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user013",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
+    "172.21.31.10": {
       "frequency": 75,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user031",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
+    "192.168.0.10": {
+      "frequency": 65,
       "ports": [
         "28080"
       ],
@@ -433,7 +489,7 @@
       }
     },
     "10.1.6.10": {
-      "frequency": 74,
+      "frequency": 61,
       "ports": [
         "28080"
       ],
@@ -448,56 +504,8 @@
         "note": "Private IP address - no public geolocation available"
       }
     },
-    "172.17.7.10": {
-      "frequency": 69,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user007",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
-    "10.3.18.10": {
-      "frequency": 66,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user018",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
-    "172.18.13.10": {
-      "frequency": 63,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user013",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
     "172.19.19.10": {
-      "frequency": 63,
+      "frequency": 61,
       "ports": [
         "28080"
       ],
@@ -513,7 +521,7 @@
       }
     },
     "10.5.30.10": {
-      "frequency": 62,
+      "frequency": 57,
       "ports": [
         "28080"
       ],
@@ -528,72 +536,8 @@
         "note": "Private IP address - no public geolocation available"
       }
     },
-    "172.21.31.10": {
-      "frequency": 61,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user031",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
-    "172.20.25.10": {
-      "frequency": 57,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user025",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
-    "172.23.43.10": {
-      "frequency": 53,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user043",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
-    "172.22.37.10": {
-      "frequency": 47,
-      "ports": [
-        "28080"
-      ],
-      "associated_nodes": [
-        {
-          "name": "user037",
-          "type": "miner"
-        }
-      ],
-      "geolocation": {
-        "type": "private",
-        "note": "Private IP address - no public geolocation available"
-      }
-    },
     "10.7.42.10": {
-      "frequency": 44,
+      "frequency": 48,
       "ports": [
         "28080"
       ],
@@ -608,14 +552,46 @@
         "note": "Private IP address - no public geolocation available"
       }
     },
-    "192.168.24.10": {
-      "frequency": 29,
+    "172.23.43.10": {
+      "frequency": 47,
       "ports": [
         "28080"
       ],
       "associated_nodes": [
         {
-          "name": "user024",
+          "name": "user043",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
+    "172.17.7.10": {
+      "frequency": 46,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user007",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
+    "172.22.37.10": {
+      "frequency": 41,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user037",
           "type": "miner"
         }
       ],
@@ -625,7 +601,7 @@
       }
     },
     "192.168.12.10": {
-      "frequency": 23,
+      "frequency": 18,
       "ports": [
         "28080"
       ],
@@ -640,8 +616,24 @@
         "note": "Private IP address - no public geolocation available"
       }
     },
+    "192.168.24.10": {
+      "frequency": 16,
+      "ports": [
+        "28080"
+      ],
+      "associated_nodes": [
+        {
+          "name": "user024",
+          "type": "miner"
+        }
+      ],
+      "geolocation": {
+        "type": "private",
+        "note": "Private IP address - no public geolocation available"
+      }
+    },
     "192.168.36.10": {
-      "frequency": 5,
+      "frequency": 10,
       "ports": [
         "28080"
       ],
@@ -658,44 +650,41 @@
     }
   },
   "ip_frequency_distribution": {
-    "126": 1,
-    "119": 1,
-    "143": 1,
-    "164": 1,
-    "113": 1,
-    "129": 2,
-    "133": 2,
-    "117": 1,
-    "141": 1,
-    "150": 2,
+    "98": 1,
+    "131": 2,
+    "132": 2,
     "123": 1,
-    "57": 1,
-    "162": 1,
-    "5": 1,
-    "74": 1,
-    "135": 1,
-    "66": 1,
-    "98": 2,
-    "53": 1,
-    "44": 1,
-    "145": 1,
-    "109": 1,
+    "119": 1,
+    "151": 1,
+    "152": 1,
+    "215": 1,
     "142": 1,
-    "63": 2,
-    "47": 1,
-    "116": 1,
-    "112": 1,
-    "79": 1,
-    "94": 2,
-    "138": 2,
-    "134": 1,
-    "29": 1,
-    "61": 1,
-    "62": 1,
-    "120": 1,
-    "86": 1,
-    "69": 1,
+    "154": 1,
+    "107": 1,
+    "88": 1,
+    "41": 1,
+    "136": 1,
+    "89": 1,
+    "113": 2,
+    "138": 4,
+    "61": 2,
+    "78": 1,
+    "84": 2,
+    "137": 1,
+    "139": 1,
+    "115": 1,
+    "90": 1,
+    "128": 1,
+    "57": 1,
+    "95": 3,
+    "96": 1,
     "75": 1,
-    "23": 1
+    "48": 1,
+    "46": 1,
+    "10": 1,
+    "16": 1,
+    "65": 1,
+    "47": 1,
+    "18": 1
   }
 }

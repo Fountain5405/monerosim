@@ -425,6 +425,13 @@ agents:
   block_controller:
     script: "agents.block_controller"
 
+  miner_distributor:
+    script: "agents.miner_distributor"
+    attributes:
+      transaction_frequency: "30"
+      min_transaction_amount: "0.5"
+      max_transaction_amount: "2.0"
+
   pure_script_agents:
     - script: "scripts.monitor"
     - script: "scripts.sync_check"
