@@ -926,6 +926,7 @@ fn add_user_agent_process(
     current_dir: &str,
     index: usize,
     stop_time: &str,
+    custom_start_time: Option<&str>,
 ) {
     let mut agent_args = vec![
         format!("--id {}", agent_id),
@@ -997,8 +998,18 @@ echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
 
     // Write wrapper script to a temporary file and execute it
     let script_path = format!("/tmp/agent_{}_wrapper.sh", agent_id);
-    let script_creation_time = format!("{}s", 64 + index * 2);
-    let script_execution_time = format!("{}s", 65 + index * 2);
+
+    // Use custom start time if provided, otherwise use default staggered timing
+    let (script_creation_time, script_execution_time) = if let Some(custom_time) = custom_start_time {
+        if let Ok(seconds) = parse_duration_to_seconds(custom_time) {
+            (format!("{}s", seconds - 1), custom_time.to_string())
+        } else {
+            // Fallback to default timing if parsing fails
+            (format!("{}s", 64 + index * 2), format!("{}s", 65 + index * 2))
+        }
+    } else {
+        (format!("{}s", 64 + index * 2), format!("{}s", 65 + index * 2))
+    };
 
     // Process 1: Create wrapper script
     processes.push(ShadowProcess {
@@ -1228,6 +1239,21 @@ fn process_user_agents(
                 format!("{}s", 60 + i * 1)
             };
 
+            // Agent start time: ensure agents start after their wallet services are ready
+            let agent_start_time = if matches!(peer_mode, PeerMode::Dynamic) && !is_miner {
+                // For regular users in Dynamic mode, start agent after wallet is ready
+                // Parse wallet start time and add buffer for wallet initialization
+                if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
+                    format!("{}s", wallet_seconds + 20) // 20 second buffer after wallet starts
+                } else {
+                    // Fallback timing
+                    format!("{}s", 65 + i * 2)
+                }
+            } else {
+                // For miners and other modes, use original staggered timing
+                format!("{}s", 65 + i * 2)
+            };
+
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
 
@@ -1384,6 +1410,7 @@ fn process_user_agents(
                     current_dir,
                     i,
                     environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    Some(&agent_start_time), // Pass the calculated agent start time
                 );
             }
 

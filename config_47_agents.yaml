@@ -8,11 +8,7 @@ general:
 
 network:
   path: "caida_connected_sparse_with_loops_fixed.gml"
-  peer_mode: "Hybrid"
-  topology: "Ring"
-  seed_nodes:
-    - "192.168.1.10:28080"
-    - "192.168.1.11:28080"
+  peer_mode: "Dynamic"
 
 agents:
   user_agents:
