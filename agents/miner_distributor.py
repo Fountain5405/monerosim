@@ -18,6 +18,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from .base_agent import BaseAgent
+from .monero_rpc import WalletRPC
 
 
 class MinerDistributorAgent(BaseAgent):
@@ -33,29 +34,42 @@ class MinerDistributorAgent(BaseAgent):
     
     def __init__(self, agent_id: str, **kwargs):
         super().__init__(agent_id=agent_id, **kwargs)
-        
+
         # Initialize transaction-specific parameters
         self.min_transaction_amount = 0.1
         self.max_transaction_amount = 1.0
         self.transaction_frequency = 60
         self.miner_selection_strategy = "weighted"
         self.transaction_priority = 1
-        self.max_retries = 3
+        self.max_retries = 5
         self.recipient_selection = "random"
+        self.initial_fund_amount = 1.0
         
+        # Wait time parameters for mining reward maturation
+        self.initial_wait_time = 3600  # 1 hour in seconds (default)
+        self.balance_check_interval = 30  # Check balance every 30 seconds
+        self.max_wait_time = 7200  # Maximum 2 hours to wait before giving up
+
         # Runtime state
         self.miners = []
         self.selected_miner = None
         self.last_transaction_time = 0
         self.recipient_index = 0
+        self.startup_time = time.time()
+        self.waiting_for_maturity = True
+        self.last_balance_check = 0
+        self.balance_check_attempts = 0
     
     def _setup_agent(self):
         """Initialize the miner distributor agent"""
         # Parse configuration attributes
         self._parse_configuration()
-        
+
         # Register in agent registry
         self._register_as_miner_distributor_agent()
+
+        # Perform initial funding of eligible agents
+        self._perform_initial_funding()
     
     def _parse_configuration(self):
         """Parse configuration attributes from self.attributes"""
@@ -109,6 +123,70 @@ class MinerDistributorAgent(BaseAgent):
                     self.logger.info(f"Recipient selection strategy set to {strategy}")
                 else:
                     self.logger.warning(f"Invalid recipient selection strategy: {strategy}, using default 'random'")
+
+            # Parse initial fund amount
+            if 'initial_fund_amount' in self.attributes:
+                amount = float(self.attributes['initial_fund_amount'])
+                if amount > 0:
+                    self.initial_fund_amount = amount
+                    self.logger.info(f"Initial fund amount set to {amount} XMR")
+                else:
+                    self.logger.warning(f"Invalid initial fund amount: {amount}, using default 1.0 XMR")
+            
+            # Parse initial wait time for mining reward maturation
+            if 'initial_wait_time' in self.attributes:
+                wait_time = self.attributes['initial_wait_time']
+                if isinstance(wait_time, (int, float)):
+                    self.initial_wait_time = int(wait_time)
+                    self.logger.info(f"Initial wait time set to {self.initial_wait_time} seconds")
+                elif isinstance(wait_time, str):
+                    # Handle time strings like "1h", "30m", "3600s"
+                    try:
+                        if wait_time.endswith('h'):
+                            self.initial_wait_time = int(float(wait_time[:-1]) * 3600)
+                        elif wait_time.endswith('m'):
+                            self.initial_wait_time = int(float(wait_time[:-1]) * 60)
+                        elif wait_time.endswith('s'):
+                            self.initial_wait_time = int(float(wait_time[:-1]))
+                        else:
+                            self.initial_wait_time = int(float(wait_time))
+                        self.logger.info(f"Initial wait time set to {self.initial_wait_time} seconds")
+                    except ValueError:
+                        self.logger.warning(f"Invalid initial wait time format: {wait_time}, using default 3600 seconds")
+                else:
+                    self.logger.warning(f"Invalid initial wait time type: {type(wait_time)}, using default 3600 seconds")
+            
+            # Parse balance check interval
+            if 'balance_check_interval' in self.attributes:
+                interval = int(self.attributes['balance_check_interval'])
+                if interval > 0:
+                    self.balance_check_interval = interval
+                    self.logger.info(f"Balance check interval set to {interval} seconds")
+                else:
+                    self.logger.warning(f"Invalid balance check interval: {interval}, using default 30 seconds")
+            
+            # Parse maximum wait time
+            if 'max_wait_time' in self.attributes:
+                max_wait = self.attributes['max_wait_time']
+                if isinstance(max_wait, (int, float)):
+                    self.max_wait_time = int(max_wait)
+                    self.logger.info(f"Maximum wait time set to {self.max_wait_time} seconds")
+                elif isinstance(max_wait, str):
+                    # Handle time strings like "2h", "120m", "7200s"
+                    try:
+                        if max_wait.endswith('h'):
+                            self.max_wait_time = int(float(max_wait[:-1]) * 3600)
+                        elif max_wait.endswith('m'):
+                            self.max_wait_time = int(float(max_wait[:-1]) * 60)
+                        elif max_wait.endswith('s'):
+                            self.max_wait_time = int(float(max_wait[:-1]))
+                        else:
+                            self.max_wait_time = int(float(max_wait))
+                        self.logger.info(f"Maximum wait time set to {self.max_wait_time} seconds")
+                    except ValueError:
+                        self.logger.warning(f"Invalid max wait time format: {max_wait}, using default 7200 seconds")
+                else:
+                    self.logger.warning(f"Invalid max wait time type: {type(max_wait)}, using default 7200 seconds")
             
         except (ValueError, TypeError) as e:
             self.logger.error(f"Error parsing configuration attributes: {e}")
@@ -166,7 +244,188 @@ class MinerDistributorAgent(BaseAgent):
         
         self.write_shared_state(f"{self.agent_id}_distributor_info.json", distributor_info)
         self.logger.info(f"Registered miner distributor info for {self.agent_id}")
+
+    def _perform_initial_funding(self):
+        """
+        Perform initial funding of eligible agents before the main mining cycle begins.
+        Sends initial_fund_amount to all agents with can_receive_distributions=true.
+        """
+        self.logger.info("Starting initial funding of eligible agents")
+
+        # Check if we should wait for mining rewards to mature
+        current_time = time.time()
+        elapsed_time = current_time - self.startup_time
+        
+        if self.waiting_for_maturity:
+            if elapsed_time < self.initial_wait_time:
+                remaining_wait = self.initial_wait_time - elapsed_time
+                self.logger.info(f"Waiting for mining rewards to mature... {remaining_wait:.0f} seconds remaining")
+                
+                # Check if it's time to check balance
+                if current_time - self.last_balance_check >= self.balance_check_interval:
+                    self._check_miner_balance()
+                    self.last_balance_check = current_time
+                
+                return
+            else:
+                self.logger.info("Initial wait period completed, proceeding with funding")
+                self.waiting_for_maturity = False
+        
+        # Discover available miners
+        self._discover_miners()
+        if not self.miners:
+            self.logger.warning("No miners available for initial funding")
+            return
+
+        # Select a miner for initial funding (use the first available miner with wallet)
+        selected_miner = None
+        for miner in self.miners:
+            if miner.get("wallet_address"):
+                selected_miner = miner
+                break
+
+        if not selected_miner:
+            self.logger.warning("No miner with wallet address available for initial funding")
+            self.logger.info("Will attempt to fund miners first to create wallet addresses")
+            self._fund_miners_first()
+            return
+
+        self.logger.info(f"Selected miner {selected_miner.get('agent_id')} for initial funding")
+
+        # Find all eligible recipients (agents with can_receive_distributions=true and wallets)
+        agent_registry = self.read_shared_state("agent_registry.json")
+        if not agent_registry:
+            self.logger.warning("Agent registry not found, cannot perform initial funding")
+            return
+
+        eligible_recipients = []
+        for agent in agent_registry.get("agents", []):
+            # Skip the selected miner
+            if agent.get("id") == selected_miner.get("agent_id"):
+                continue
+
+            # Check if agent has wallet
+            if not agent.get("wallet_rpc_port"):
+                continue
+
+            # Check if agent can receive distributions
+            can_receive = self._parse_boolean_attribute(
+                agent.get("attributes", {}).get("can_receive_distributions", "false")
+            )
+
+            if can_receive:
+                eligible_recipients.append(agent)
+
+        if not eligible_recipients:
+            self.logger.info("No eligible recipients found for initial funding")
+            return
+
+        self.logger.info(f"Found {len(eligible_recipients)} eligible recipients for initial funding")
+
+        # Send initial funding to each eligible recipient
+        funded_count = 0
+        for recipient in eligible_recipients:
+            success = self._send_transaction(selected_miner, recipient, self.initial_fund_amount)
+            if success:
+                funded_count += 1
+                self.logger.info(f"Initial funding sent to {recipient.get('id')}: {self.initial_fund_amount} XMR")
+            else:
+                self.logger.warning(f"Failed to send initial funding to {recipient.get('id')}")
+
+        self.logger.info(f"Initial funding completed: {funded_count}/{len(eligible_recipients)} agents funded")
     
+    def _fund_miners_first(self):
+        """
+        Fund miners first to ensure they have wallet addresses before distributing to others.
+        This addresses the bootstrapping issue where miners need to be funded before they can send transactions.
+        """
+        self.logger.info("Starting miner funding to address bootstrapping issue")
+        
+        # Find all miners that need funding
+        miners_to_fund = []
+        for miner in self.miners:
+            if not miner.get("wallet_address"):
+                miners_to_fund.append(miner)
+        
+        if not miners_to_fund:
+            self.logger.info("All miners already have wallet addresses")
+            return
+        
+        self.logger.info(f"Found {len(miners_to_fund)} miners that need funding")
+        
+        # For now, we'll use a simple approach: fund each miner with a small amount
+        # In a real implementation, this might involve a special funding mechanism
+        funded_count = 0
+        for miner in miners_to_fund:
+            # Create a temporary recipient entry for the miner
+            miner_recipient = {
+                "id": miner.get("agent_id"),
+                "ip_addr": miner.get("ip_addr"),
+                "wallet_rpc_port": miner.get("wallet_rpc_port"),
+                "attributes": {}
+            }
+            
+            # Try to get the miner's wallet address
+            address = self._get_recipient_address(miner_recipient)
+            if address:
+                self.logger.info(f"Miner {miner.get('agent_id')} already has address: {address}")
+                funded_count += 1
+            else:
+                self.logger.warning(f"Could not retrieve wallet address for miner {miner.get('agent_id')}")
+        
+        self.logger.info(f"Miner funding completed: {funded_count}/{len(miners_to_fund)} miners have addresses")
+        
+        # If we successfully funded some miners, try initial funding again
+        if funded_count > 0:
+            self.logger.info("Re-attempting initial funding after miner funding")
+            self._perform_initial_funding()
+    
+    def _check_miner_balance(self):
+        """
+        Check if any miner has sufficient unlocked balance for transactions.
+        This helps distinguish between "no money" and "money not yet unlocked" scenarios.
+        """
+        self.balance_check_attempts += 1
+        self.logger.info(f"Checking miner balances (attempt {self.balance_check_attempts})")
+        
+        for miner in self.miners:
+            try:
+                miner_rpc = WalletRPC(host=miner['ip_addr'], port=miner['wallet_rpc_port'])
+                
+                # Get wallet information
+                wallet_info = miner_rpc.get_wallet_info()
+                if not wallet_info:
+                    self.logger.warning(f"Could not get wallet info for miner {miner.get('agent_id')}")
+                    continue
+                
+                # Check balance
+                balance = wallet_info.get('balance', 0)
+                unlocked_balance = wallet_info.get('unlocked_balance', 0)
+                
+                self.logger.info(f"Miner {miner.get('agent_id')} - Balance: {balance} XMR, Unlocked: {unlocked_balance} XMR")
+                
+                # If we find a miner with sufficient unlocked balance, we can proceed
+                if unlocked_balance >= self.initial_fund_amount:
+                    self.logger.info(f"Miner {miner.get('agent_id')} has sufficient unlocked balance ({unlocked_balance} XMR)")
+                    self.waiting_for_maturity = False
+                    return True
+                
+            except Exception as e:
+                self.logger.warning(f"Error checking balance for miner {miner.get('agent_id')}: {e}")
+                continue
+        
+        # Check if we've exceeded the maximum wait time
+        current_time = time.time()
+        elapsed_time = current_time - self.startup_time
+        
+        if elapsed_time >= self.max_wait_time:
+            self.logger.warning(f"Maximum wait time ({self.max_wait_time} seconds) exceeded, proceeding with funding attempt")
+            self.waiting_for_maturity = False
+            return True
+        
+        self.logger.info("No miners have sufficient unlocked balance yet, continuing to wait")
+        return False
+
     def run_iteration(self) -> float:
         """Single iteration of Monero distribution behavior"""
         # Re-discover miners each iteration to get updated wallet addresses
@@ -349,60 +608,231 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.warning(f"Invalid boolean attribute value: '{value}', defaulting to False")
             return False
     
-    def _get_recipient_address(self, recipient: Dict[str, Any]) -> Optional[str]:
+    def _validate_transaction_params(self, address: str, amount: float) -> bool:
         """
-        Get the wallet address for a recipient.
+        Validate transaction parameters before sending.
         
         Args:
-            recipient: Recipient agent information
+            address: Recipient wallet address
+            amount: Transaction amount in XMR
             
+        Returns:
+            True if parameters are valid, False otherwise
+        """
+        # Validate address format
+        if not address or not isinstance(address, str):
+            self.logger.error(f"Invalid address: {address}")
+            return False
+        
+        # Basic Monero address validation (4-95 characters, starts with 4 or 8)
+        if not (address.startswith(('4', '8')) and 4 <= len(address) <= 95):
+            self.logger.error(f"Invalid Monero address format: {address}")
+            return False
+        
+        # Validate amount
+        if not isinstance(amount, (int, float)) or amount <= 0:
+            self.logger.error(f"Invalid amount: {amount} (must be positive)")
+            return False
+        
+        # Check minimum transaction amount
+        if amount < self.min_transaction_amount:
+            self.logger.error(f"Amount {amount} is below minimum {self.min_transaction_amount}")
+            return False
+        
+        # Check maximum transaction amount
+        if amount > self.max_transaction_amount:
+            self.logger.error(f"Amount {amount} exceeds maximum {self.max_transaction_amount}")
+            return False
+        
+        # Check for reasonable maximum (1000 XMR as sanity check)
+        if amount > 1000:
+            self.logger.error(f"Amount {amount} exceeds reasonable maximum (1000 XMR)")
+            return False
+        
+        # Additional validation: check if amount would result in valid atomic units
+        # Monero uses 12 decimal places, so we need to ensure the amount can be properly converted
+        try:
+            amount_atomic = int(amount * 10**12)
+            if amount_atomic <= 0:
+                self.logger.error(f"Amount {amount} XMR converts to invalid atomic units: {amount_atomic}")
+                return False
+            
+            # Check for dust amount (minimum atomic unit is 1)
+            if amount_atomic < 1:  # This should never happen with positive amounts, but good to check
+                self.logger.error(f"Amount {amount} XMR is below minimum atomic unit (1 piconero)")
+                return False
+        except (ValueError, OverflowError) as e:
+            self.logger.error(f"Failed to convert amount {amount} to atomic units: {e}")
+            return False
+        
+        self.logger.debug(f"Transaction parameters validated: address={address}, amount={amount} XMR ({amount_atomic} atomic)")
+        return True
+    
+    def _get_recipient_address(self, recipient: Dict[str, Any]) -> Optional[str]:
+        """
+        Get the wallet address for a recipient with improved error handling and retries.
+
+        Args:
+            recipient: Recipient agent information
+
         Returns:
             Wallet address or None if unable to retrieve
         """
-        # Placeholder implementation - would need RPC connection to get address
-        # For now, try to get from registry
-        wallet_address = recipient.get("wallet_address")
-        self.logger.debug(f"Inside _get_recipient_address: recipient.get('wallet_address') returned {wallet_address}")
-        return wallet_address
+        max_retries = 5
+        retry_delay = 3
+        
+        for attempt in range(max_retries):
+            try:
+                rpc = WalletRPC(host=recipient['ip_addr'], port=recipient['wallet_rpc_port'])
+                
+                # Wait for wallet to be ready
+                rpc.wait_until_ready(max_wait=180, check_interval=2)
+                
+                # Get address with error handling
+                address = rpc.get_address()
+                
+                if not address:
+                    self.logger.warning(f"Empty address returned for recipient {recipient['id']}")
+                    return None
+                
+                # Validate address format
+                if not (address.startswith(('4', '8')) and 4 <= len(address) <= 95):
+                    self.logger.error(f"Invalid address format for recipient {recipient['id']}: {address}")
+                    return None
+                
+                self.logger.debug(f"Retrieved address for recipient {recipient['id']}: {address}")
+                return address
+                
+            except Exception as e:
+                self.logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to get address for recipient {recipient['id']}: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    self.logger.error(f"Failed to get address for recipient {recipient['id']} after {max_retries} attempts: {e}")
+                    return None
     
-    def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any]) -> bool:
+    def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any], amount: Optional[float] = None) -> bool:
         """
         Send a transaction from the selected miner to the recipient.
-        
+
         Args:
             miner: Miner information including wallet details
             recipient: Recipient information including address
-            
+
         Returns:
             True if transaction was sent successfully, False otherwise
         """
-        # Placeholder implementation - would need RPC connection to send transactions
-        self.logger.info(f"Would send transaction from {miner.get('agent_id')} to {recipient.get('id')}")
-        
-        # Generate random transaction amount
-        amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
-        
-        self.logger.debug(f"Recipient object before getting address: {recipient}")
         # Get recipient's wallet address
         recipient_address = self._get_recipient_address(recipient)
-        self.logger.debug(f"Recipient address retrieved: {recipient_address}")
         if not recipient_address:
             self.logger.error(f"Failed to get recipient address for {recipient.get('id')}")
             return False
+
+        # Validate and set transaction amount
+        if amount is None:
+            amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
         
-        # Record transaction in shared state (simulated)
-        tx_hash = f"simulated_tx_{int(time.time())}"
-        self._record_transaction(
-            tx_hash=tx_hash,
-            sender_id=miner.get("agent_id"),
-            recipient_id=recipient.get("id"),
-            amount=amount
-        )
-        
-        self.logger.info(f"Simulated transaction: {tx_hash} "
-                      f"from {miner.get('agent_id')} to {recipient.get('id')} "
-                      f"for {amount} XMR")
-        return True
+        # Validate transaction parameters
+        if not self._validate_transaction_params(recipient_address, amount):
+            return False
+
+        # Convert XMR to atomic units (picomonero) for the RPC call
+        # 1 XMR = 10^12 picomonero (atomic units)
+        try:
+            amount_atomic = int(amount * 10**12)
+            if amount_atomic <= 0:
+                self.logger.error(f"Invalid atomic unit conversion: {amount} XMR -> {amount_atomic} atomic units")
+                return False
+        except (ValueError, OverflowError) as e:
+            self.logger.error(f"Failed to convert amount {amount} to atomic units: {e}")
+            return False
+
+        # Connect to miner's wallet RPC with retries
+        for attempt in range(self.max_retries):
+            try:
+                miner_rpc = WalletRPC(host=miner['ip_addr'], port=miner['wallet_rpc_port'])
+                
+                # Prepare transaction parameters with detailed logging
+                tx_params = {
+                    'destinations': [{'address': recipient_address, 'amount': amount_atomic}],
+                    'priority': self.transaction_priority,
+                    'get_tx_key': True,
+                    'do_not_relay': False
+                }
+                
+                self.logger.debug(f"Transaction parameters: {json.dumps(tx_params, indent=2)}")
+                self.logger.info(f"Preparing transaction: {amount} XMR ({amount_atomic} atomic units) to {recipient_address}")
+                
+                # Send transaction
+                tx = miner_rpc.transfer(**tx_params)
+                tx_hash = tx.get('tx_hash', '')
+                
+                if not tx_hash:
+                    self.logger.error(f"Transaction response missing tx_hash: {tx}")
+                    return False
+
+                # Record transaction in shared state (store original XMR amount)
+                self._record_transaction(
+                    tx_hash=tx_hash,
+                    sender_id=miner.get("agent_id"),
+                    recipient_id=recipient.get("id"),
+                    amount=amount
+                )
+
+                self.logger.info(f"Transaction sent successfully: {tx_hash} "
+                              f"from {miner.get('agent_id')} to {recipient.get('id')} "
+                              f"for {amount} XMR ({amount_atomic} atomic units)")
+                return True
+
+            except Exception as e:
+                error_msg = str(e).lower()
+                
+                # Check for specific error types to determine retry strategy
+                if "not enough money" in error_msg or "insufficient funds" in error_msg:
+                    self.logger.warning(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Insufficient funds in miner wallet")
+                    
+                    # If this is a permanent failure (no money at all), don't retry
+                    if attempt == 0:
+                        # Check if this might be a "money not yet unlocked" issue
+                        self.logger.info("Checking if this is a 'money not yet unlocked' issue...")
+                        if self._check_miner_balance():
+                            self.logger.info("Miner has balance but it's not yet unlocked, will wait and retry")
+                            if attempt < self.max_retries - 1:
+                                time.sleep(60)  # Wait longer for unlock
+                                continue
+                        else:
+                            self.logger.error("Miner has insufficient funds, cannot complete transaction")
+                            return False
+                    else:
+                        self.logger.error(f"Miner still has insufficient funds after {attempt + 1} attempts")
+                        return False
+                        
+                elif "invalid params" in error_msg:
+                    self.logger.error(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Invalid parameters")
+                    self.logger.error(f"Invalid parameters detected - Amount: {amount} XMR ({amount_atomic} atomic units), Address: {recipient_address}")
+                    self.logger.error(f"Transaction parameters that caused error: {json.dumps(tx_params, indent=2)}")
+                    # Invalid params are usually not recoverable, so don't retry
+                    return False
+                    
+                elif "wallet is not ready" in error_msg or "wallet not ready" in error_msg:
+                    self.logger.warning(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Wallet not ready")
+                    if attempt < self.max_retries - 1:
+                        time.sleep(5 * (attempt + 1))  # Progressive wait for wallet to be ready
+                        continue
+                    else:
+                        self.logger.error(f"Wallet still not ready after {self.max_retries} attempts")
+                        return False
+                        
+                else:
+                    # Generic error - could be network issue, temporary failure, etc.
+                    self.logger.warning(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: {e}")
+                    if attempt < self.max_retries - 1:
+                        time.sleep(2 ** attempt)  # Exponential backoff
+                        continue
+                    else:
+                        self.logger.error(f"Failed to send transaction after {self.max_retries} attempts due to: {e}")
+                        return False
     
     def _record_transaction(self, tx_hash: str, sender_id: str, recipient_id: str, amount: float):
         """Record transaction in shared state"""

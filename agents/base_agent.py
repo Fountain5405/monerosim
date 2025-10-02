@@ -163,7 +163,7 @@ class BaseAgent(ABC):
             self.logger.info(f"Connecting to wallet RPC at {self.rpc_host}:{self.wallet_rpc_port}")
             self.wallet_rpc = WalletRPC(self.rpc_host, self.wallet_rpc_port)
             try:
-                self.wallet_rpc.wait_until_ready(max_wait=120)
+                self.wallet_rpc.wait_until_ready(max_wait=180)
                 self.logger.info("Connected to wallet RPC")
             except RPCError as e:
                 self.logger.error(f"Failed to connect to wallet RPC: {e}")

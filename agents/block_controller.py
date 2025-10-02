@@ -69,8 +69,8 @@ class BlockControllerAgent(BaseAgent):
         self.logger.info("Stateless block controller initialized")
 
         # Wait for wallets to fully start up before attempting connections
-        self.logger.info("Waiting 30 seconds for wallet services to fully initialize...")
-        time.sleep(30)
+        self.logger.info("Waiting 60 seconds for wallet services to fully initialize...")
+        time.sleep(60)
 
         # Initialize all agent wallets and update the agent registry
         self._initialize_all_agent_wallets()
@@ -123,7 +123,8 @@ class BlockControllerAgent(BaseAgent):
 
             try:
                 wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
-                wallet_rpc.wait_until_ready()
+                # Increase timeout for wallet readiness check
+                wallet_rpc.wait_until_ready(max_wait=180)
 
                 wallet_name = f"{agent_id}_wallet"
                 address = None
@@ -169,7 +170,7 @@ class BlockControllerAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Failed to write updated agent_registry.json: {e}")
 
-    def _initialize_agent_wallets_with_retry(self, agents, max_retries=3, retry_delay=30):
+    def _initialize_agent_wallets_with_retry(self, agents, max_retries=5, retry_delay=60):
         """
         Initialize wallets for a list of agents with retry logic.
         Critical for miners to ensure they get wallet addresses.
@@ -194,26 +195,18 @@ class BlockControllerAgent(BaseAgent):
 
                 try:
                     wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
-                    wallet_rpc.wait_until_ready()
+                    # Increase timeout for wallet readiness check
+                    wallet_rpc.wait_until_ready(max_wait=180)
 
                     wallet_name = f"{agent_id}_wallet"
-                    address = None
-
-                    try:
-                        self.logger.info(f"Attempting to open wallet '{wallet_name}' for agent {agent_id} (attempt {attempt + 1})")
-                        wallet_rpc.open_wallet(wallet_name, password="")
+                    
+                    if wallet_rpc.ensure_wallet_exists(wallet_name):
                         address = wallet_rpc.get_address()
-                        self.logger.info(f"Successfully opened existing wallet '{wallet_name}' for {agent_id}")
-                    except RPCError:
-                        try:
-                            self.logger.info(f"Wallet not found, creating '{wallet_name}' for agent {agent_id} (attempt {attempt + 1})")
-                            wallet_rpc.create_wallet(wallet_name, password="")
-                            address = wallet_rpc.get_address()
-                            self.logger.info(f"Successfully created new wallet '{wallet_name}' for {agent_id}")
-                        except RPCError as create_err:
-                            self.logger.warning(f"Failed to create wallet for {agent_id} (attempt {attempt + 1}): {create_err}")
-                            still_remaining.append(agent)
-                            continue
+                        self.logger.info(f"Successfully ensured wallet '{wallet_name}' exists for {agent_id}")
+                    else:
+                        self.logger.warning(f"Failed to ensure wallet exists for {agent_id}")
+                        still_remaining.append(agent)
+                        continue
 
                     if address:
                         self.logger.debug(f"Address type: {type(address)}, value: {address}")
@@ -399,9 +392,8 @@ class BlockControllerAgent(BaseAgent):
         self.logger.info(f"Generating {self.blocks_per_generation} block(s) for winner agent at {winner_ip}:{winner_port}")
         
         try:
-            result = winner_daemon_rpc.generate_block(
-                wallet_address=winner_address,
-                amount_of_blocks=self.blocks_per_generation
+            result = winner_daemon_rpc.ensure_mining(
+                wallet_address=winner_address
             )
             
             if result and result.get("status") == "OK":

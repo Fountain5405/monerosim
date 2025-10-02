@@ -19,7 +19,7 @@ rm -rf shadow.data shadow.log
 This runs the simulation as a background process and saves all output to a log file. The terminal is immediately available for other commands. This is the recommended approach for long or non-interactive simulation runs.
 
 ```bash
-rm -rf shadow.data && nohup shadow shadow_agents_output/shadow_agents.yaml > shadow.log 2>&1 &
+rm -rf shadow.data && nohup shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
 ```
 *   `nohup`: Allows the process to continue running even if the terminal session is closed.
 *   `&`: Puts the command into a background process.
@@ -34,3 +34,9 @@ tail shadow.log
 This command will display the last few lines of the file. Run it occasionally to see where things are. You shouldn't just watch the logs constantly, this uses a lot of resources. 
 
 **CRITICAL**: DO NOT USE "tail -f" to watch the logs. This uses too many resources.
+
+The simulation usually ends with something like this;
+
+"Simulation Termination: The simulation terminated with "142 managed processes in unexpected final state" - processes were killed by Shadow rather than exiting cleanly."
+
+This is acceptable, as it means that the simulation reached its time limit and just stopped all the processes. 

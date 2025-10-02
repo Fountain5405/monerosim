@@ -57,6 +57,11 @@ class AgentDiscovery:
         self._distribution_recipients_cache_time: float = 0
         self._distribution_recipients_cache_ttl = 10  # Cache TTL for distribution recipients
         
+        # Cache for miners
+        self._miner_agents_cache: Optional[List[Dict[str, Any]]] = None
+        self._miner_agents_cache_time: float = 0
+        self._miner_agents_cache_ttl = 10  # Cache TTL for miners
+        
         # Ensure the shared state directory exists
         try:
             self.shared_state_dir.mkdir(parents=True, exist_ok=True)
@@ -256,8 +261,15 @@ class AgentDiscovery:
             registry = self.get_agent_registry(force_refresh)
             agents = registry.get("agents", [])
             
-            self.logger.debug(f"Agents type: {type(agents)}")
-            self.logger.debug(f"Registry keys: {list(registry.keys())}")
+            # Add robust handling for different data structures
+            if isinstance(agents, dict):
+                agents = list(agents.values())
+            
+            if not isinstance(agents, list):
+                self.logger.warning(f"Unexpected data type for agents: {type(agents)}")
+                return []
+            
+            self.logger.debug(f"Processing {len(agents)} agents to find type '{agent_type}'")
             
             matching_agents = []
             
@@ -356,6 +368,13 @@ class AgentDiscovery:
         """
         self.logger.debug("Getting miner agents")
         
+        # Return cached data if valid and not forcing refresh
+        current_time = time.time()
+        if not force_refresh and self._miner_agents_cache is not None and \
+           (current_time - self._miner_agents_cache_time) < self._miner_agents_cache_ttl:
+            self.logger.debug("Returning cached miner agents")
+            return self._miner_agents_cache
+            
         try:
             # Try to find miners by type first
             miners = self.find_agents_by_type("miner", force_refresh)
@@ -485,6 +504,11 @@ class AgentDiscovery:
                         self.logger.debug(f"Available IPs in map: {list(agent_ip_map.keys())}")
             
             self.logger.info(f"Found {len(miners)} miner agents")
+            
+            # Update cache
+            self._miner_agents_cache = miners
+            self._miner_agents_cache_time = time.time()
+            
             return miners
             
         except Exception as e:

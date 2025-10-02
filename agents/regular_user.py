@@ -58,6 +58,7 @@ class RegularUserAgent(BaseAgent):
             # First try to open existing wallet
             try:
                 self.logger.info(f"Attempting to open wallet '{wallet_name}' for miner {self.agent_id}")
+                self.wallet_rpc.wait_until_ready(max_wait=180)
                 self.wallet_rpc.open_wallet(wallet_name, password="")
                 # If open succeeds, get the address
                 self.wallet_address = self.wallet_rpc.get_address()
@@ -76,6 +77,7 @@ class RegularUserAgent(BaseAgent):
                         # Last attempt - maybe wallet is already loaded
                         try:
                             self.logger.warning("Attempting to get address from current wallet")
+                            self.wallet_rpc.wait_until_ready(max_wait=180)
                             self.wallet_address = self.wallet_rpc.get_address()
                         except Exception as addr_err:
                             self.logger.error(f"Failed to get address: {addr_err}")
@@ -84,6 +86,7 @@ class RegularUserAgent(BaseAgent):
                     # Some other error opening wallet, try to get address anyway
                     self.logger.warning(f"Error opening wallet: {open_err}, trying to get address from current wallet")
                     try:
+                        self.wallet_rpc.wait_until_ready(max_wait=180)
                         self.wallet_address = self.wallet_rpc.get_address()
                     except Exception as addr_err:
                         self.logger.error(f"Failed to get address: {addr_err}")
@@ -115,6 +118,7 @@ class RegularUserAgent(BaseAgent):
             # First try to open existing wallet
             try:
                 self.logger.info(f"Attempting to open wallet '{wallet_name}' for user {self.agent_id}")
+                self.wallet_rpc.wait_until_ready(max_wait=180)
                 self.wallet_rpc.open_wallet(wallet_name, password="")
                 # If open succeeds, get the address
                 self.wallet_address = self.wallet_rpc.get_address()
@@ -133,6 +137,7 @@ class RegularUserAgent(BaseAgent):
                         # Last attempt - maybe wallet is already loaded
                         try:
                             self.logger.warning("Attempting to get address from current wallet")
+                            self.wallet_rpc.wait_until_ready(max_wait=180)
                             self.wallet_address = self.wallet_rpc.get_address()
                         except Exception as addr_err:
                             self.logger.error(f"Failed to get address: {addr_err}")
@@ -141,6 +146,7 @@ class RegularUserAgent(BaseAgent):
                     # Some other error opening wallet, try to get address anyway
                     self.logger.warning(f"Error opening wallet: {open_err}, trying to get address from current wallet")
                     try:
+                        self.wallet_rpc.wait_until_ready(max_wait=180)
                         self.wallet_address = self.wallet_rpc.get_address()
                     except Exception as addr_err:
                         self.logger.error(f"Failed to get address: {addr_err}")
@@ -309,7 +315,7 @@ class RegularUserAgent(BaseAgent):
         # Filter out self and agents without wallet addresses
         other_agents = [
             agent for agent in agents
-            if agent.get('agent_id') != self.agent_id and agent.get('wallet_address')
+            if agent.get('id') != self.agent_id and agent.get('wallet_address')
         ]
         
         return other_agents

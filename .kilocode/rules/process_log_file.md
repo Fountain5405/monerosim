@@ -2,9 +2,6 @@
 
 This rule tells you how to handle log files efficiently.
 
-## Critical Update Notice
-**IMPORTANT**: The legacy bash log processor (`logfileprocessor.sh`) has been replaced with a superior Python implementation.
-
 ## How to Process Log Files
 
 The log files are located in individual folders for each host in shadow.data/hosts/[name_of_host]/[name_of_log_file]
@@ -49,3 +46,6 @@ The log files are located in individual folders for each host in shadow.data/hos
    "I've analyzed the processed log file `shadow.data/hosts/node000/bash.1000.stdout.processed_log` which shows..."
 
 4. **Access original log files directly when detailed investigation is needed**.
+
+5. **NEVER DIRECTLY INGEST UNPROCESSED LOG FILES UNLESS EXPLICITY INSTRUCTED TO BY THE USER**
+   Instead use grep to look for specific lines if needed. But always start with the processed log files. 

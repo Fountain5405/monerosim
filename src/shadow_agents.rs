@@ -1208,8 +1208,8 @@ fn process_user_agents(
                         format!("{}s", 20 + i * 20) // Remaining miners every 20s starting t=40s
                     }
                 } else {
-                    // Regular users after 30 minutes (1800s), one every 5 minutes (300s)
-                    format!("{}s", 1800 + (i.saturating_sub(miners.len())) * 300)
+                    // Regular users after 130 minutes (7800s), one every 5 minutes (300s)
+                    format!("{}s", 7800 + (i.saturating_sub(miners.len())) * 300)
                 }
             } else {
                 // Original logic for other modes
@@ -1218,9 +1218,9 @@ fn process_user_agents(
                 } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
                     "3600s".to_string() // Seeds start at 60 min
                 } else {
-                    // Regular agents start at 65 min + stagger
+                    // Regular agents start at 130 min + stagger
                     let regular_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
-                    format!("{}s", 3900 + regular_index * 1) // Stagger by 1s
+                    format!("{}s", 7800 + regular_index * 1) // Stagger by 1s
                 }
             };
 
@@ -1495,20 +1495,30 @@ echo "Starting block controller..."
         // Write wrapper script to a temporary file and execute it
         let script_path = format!("/tmp/{}_wrapper.sh", block_controller_id);
 
-        // Process 1: Create wrapper script
-        processes.push(ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
-            environment: environment.clone(),
-            start_time: "89s".to_string(), // Create script before execution
-        });
-
-        // Process 2: Execute wrapper script
+        // Determine execution start time
         let block_controller_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
             "20s".to_string() // Dynamic mode: block controller starts at 20s
         } else {
             "90s".to_string() // Other modes: keep original timing
         };
+
+        // Calculate script creation time (1 second before execution)
+        let script_creation_time = if let Ok(exec_seconds) = parse_duration_to_seconds(&block_controller_start_time) {
+            format!("{}s", exec_seconds.saturating_sub(1))
+        } else {
+            // Fallback if parsing fails
+            "89s".to_string()
+        };
+
+        // Process 1: Create wrapper script
+        processes.push(ShadowProcess {
+            path: "/bin/bash".to_string(),
+            args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
+            environment: environment.clone(),
+            start_time: script_creation_time,
+        });
+
+        // Process 2: Execute wrapper script
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: script_path.clone(),
@@ -1589,20 +1599,30 @@ echo "Starting miner distributor..."
         // Write wrapper script to a temporary file and execute it
         let script_path = format!("/tmp/{}_wrapper.sh", miner_distributor_id);
 
+        // Determine execution start time
+        let miner_distributor_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
+            "3900s".to_string() // Dynamic mode: miner distributor starts at 65 minutes
+        } else {
+            "3900s".to_string() // Other modes: also start at 65 minutes
+        };
+
+        // Calculate script creation time (1 second before execution)
+        let script_creation_time = if let Ok(exec_seconds) = parse_duration_to_seconds(&miner_distributor_start_time) {
+            format!("{}s", exec_seconds.saturating_sub(1))
+        } else {
+            // Fallback if parsing fails
+            "89s".to_string()
+        };
+
         // Process 1: Create wrapper script
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
             environment: environment.clone(),
-            start_time: "89s".to_string(), // Create script before execution
+            start_time: script_creation_time,
         });
 
         // Process 2: Execute wrapper script
-        let miner_distributor_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-            "30s".to_string() // Dynamic mode: miner distributor starts after block controller
-        } else {
-            "90s".to_string() // Other modes: keep original timing
-        };
         processes.push(ShadowProcess {
             path: "/bin/bash".to_string(),
             args: script_path.clone(),

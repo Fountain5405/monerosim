@@ -569,7 +569,7 @@ The AS-aware distribution algorithm was implemented to:
 - `/config_agents_medium.yaml`: Medium agent simulation (switch-based)
 - `/config_agents_large.yaml`: Large agent simulation (switch-based)
 - `/testnet.gml`: Example GML network topology file
-- `/shadow_agents_output/shadow_agents.yaml`: Generated agent configuration
+- `/shadow_output/shadow_agents.yaml`: Generated agent configuration
 
 ### Generated Runtime Files
 - `/tmp/monerosim_shared/agent_registry.json`: Runtime agent information

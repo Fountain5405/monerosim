@@ -2,7 +2,7 @@
 # Simulation duration: 5 hours
 
 general:
-  stop_time: "18000s"
+  stop_time: "24000s"
   fresh_blockchain: true
   log_level: info
 
@@ -431,6 +431,8 @@ agents:
       transaction_frequency: "30"
       min_transaction_amount: "0.5"
       max_transaction_amount: "2.0"
+      initial_fund_amount: "1.0"
+      wait_time: "3900"  # 65 minutes in seconds (configurable)
 
   pure_script_agents:
     - script: "scripts.monitor"

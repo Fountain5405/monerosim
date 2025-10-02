@@ -8,12 +8,20 @@ import time
 import logging
 from typing import Dict, Any, Optional, List
 import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 
 
 class RPCError(Exception):
     """Custom exception for RPC-related errors"""
+    pass
+
+
+class MethodNotAvailableError(RPCError):
+    """Exception raised when an RPC method is not available"""
+    pass
+
+
+class WalletError(RPCError):
+    """Exception raised for wallet-specific errors"""
     pass
 
 
@@ -25,20 +33,11 @@ class BaseRPC:
         self.timeout = timeout
         self.session = self._create_session()
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.available_methods = {}
         
     def _create_session(self) -> requests.Session:
         """Create a requests session with retry logic"""
         session = requests.Session()
-        retry = Retry(
-            total=3,
-            read=3,
-            connect=3,
-            backoff_factor=0.3,
-            status_forcelist=(500, 502, 504)
-        )
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
         return session
         
     def _make_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -76,8 +75,50 @@ class BaseRPC:
             # We'll use get_version which doesn't require a wallet to be loaded
             self._make_request("get_version")
             return True
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"RPC service not ready: {e}")
             return False
+    
+    def detect_available_methods(self, methods_to_check: List[str]) -> Dict[str, bool]:
+        """
+        Detect which RPC methods are available in this Monero instance.
+        
+        Args:
+            methods_to_check: List of method names to check
+            
+        Returns:
+            Dictionary mapping method names to availability (True/False)
+        """
+        result = {}
+        for method in methods_to_check:
+            try:
+                # Make a minimal request to check if the method exists
+                # We use empty params or minimal required params
+                if method == "start_mining":
+                    # start_mining requires wallet_address
+                    self._make_request(method, {"wallet_address": "dummy", "threads_count": 1})
+                elif method == "generateblocks":
+                    # generateblocks requires wallet_address and amount_of_blocks
+                    self._make_request(method, {"wallet_address": "dummy", "amount_of_blocks": 1})
+                else:
+                    # For other methods, try with empty params
+                    self._make_request(method, {})
+                result[method] = True
+            except RPCError as e:
+                # Check if the error indicates method not found vs other errors
+                error_str = str(e).lower()
+                if "method not found" in error_str or "unknown method" in error_str:
+                    result[method] = False
+                else:
+                    # If we get other errors, the method exists but had parameter issues
+                    result[method] = True
+            except Exception:
+                # For any other exception, assume method is not available
+                result[method] = False
+        
+        self.available_methods.update(result)
+        self.logger.info(f"Detected available methods: {result}")
+        return result
             
     def wait_until_ready(self, max_wait: int = 120, check_interval: int = 1):
         """Wait until the RPC service is ready with exponential backoff"""
@@ -98,6 +139,11 @@ class BaseRPC:
 class MoneroRPC(BaseRPC):
     """Monero daemon RPC client"""
     
+    def __init__(self, host: str, port: int, timeout: int = 60):
+        super().__init__(host, port, timeout)
+        # Initialize with common methods to check
+        self.mining_methods = ["start_mining", "stop_mining", "mining_status", "generateblocks"]
+        
     def get_info(self) -> Dict[str, Any]:
         """Get general daemon information"""
         return self._make_request("get_info")
@@ -124,15 +170,39 @@ class MoneroRPC(BaseRPC):
             "do_background_mining": False,
             "ignore_battery": True
         }
-        return self._make_request("start_mining", params)
+        try:
+            return self._make_request("start_mining", params)
+        except RPCError as e:
+            error_str = str(e).lower()
+            if "method not found" in error_str or "unknown method" in error_str:
+                self.logger.warning("start_mining method not available")
+                self.available_methods["start_mining"] = False
+                raise MethodNotAvailableError("start_mining method not available")
+            raise
         
     def stop_mining(self) -> Dict[str, Any]:
         """Stop mining"""
-        return self._make_request("stop_mining")
+        try:
+            return self._make_request("stop_mining")
+        except RPCError as e:
+            error_str = str(e).lower()
+            if "method not found" in error_str or "unknown method" in error_str:
+                self.logger.warning("stop_mining method not available")
+                self.available_methods["stop_mining"] = False
+                raise MethodNotAvailableError("stop_mining method not available")
+            raise
         
     def mining_status(self) -> Dict[str, Any]:
         """Get mining status"""
-        return self._make_request("mining_status")
+        try:
+            return self._make_request("mining_status")
+        except RPCError as e:
+            error_str = str(e).lower()
+            if "method not found" in error_str or "unknown method" in error_str:
+                self.logger.warning("mining_status method not available")
+                self.available_methods["mining_status"] = False
+                raise MethodNotAvailableError("mining_status method not available")
+            raise
         
     def get_block_count(self) -> int:
         """Get block count"""
@@ -159,7 +229,63 @@ class MoneroRPC(BaseRPC):
             "wallet_address": wallet_address,
             "pre_pow_blob": "sim"  # Special value for simulation to prevent hanging
         }
-        return self._make_request("generateblocks", params)
+        try:
+            return self._make_request("generateblocks", params)
+        except RPCError as e:
+            error_str = str(e).lower()
+            if "method not found" in error_str or "unknown method" in error_str:
+                self.logger.warning("generateblocks method not available")
+                self.available_methods["generateblocks"] = False
+                raise MethodNotAvailableError("generateblocks method not available")
+            raise
+    
+    def ensure_mining(self, wallet_address: str, threads: int = 1) -> Dict[str, Any]:
+        """
+        Ensure mining is active using available methods.
+        This method tries different mining approaches based on what's available.
+        
+        Args:
+            wallet_address: The wallet address to mine to
+            threads: Number of mining threads
+            
+        Returns:
+            Dictionary with mining status
+            
+        Raises:
+            MethodNotAvailableError: If no mining methods are available
+        """
+        # Check if we've already detected available methods
+        if not self.available_methods:
+            self.detect_available_methods(self.mining_methods)
+        
+        # Try start_mining first if available
+        if self.available_methods.get("start_mining", True):
+            try:
+                self.logger.info(f"Attempting to start mining using start_mining method")
+                result = self.start_mining(wallet_address, threads)
+                self.logger.info(f"Mining started successfully with start_mining")
+                return {"status": "OK", "method": "start_mining", "result": result}
+            except MethodNotAvailableError:
+                self.logger.warning("start_mining method not available, trying alternatives")
+            except RPCError as e:
+                self.logger.warning(f"start_mining failed: {e}, trying alternatives")
+        
+        # Try generateblocks if start_mining is not available or failed
+        if self.available_methods.get("generateblocks", True):
+            try:
+                self.logger.info(f"Attempting to generate blocks using generateblocks method")
+                result = self.generate_block(wallet_address, 1)
+                self.logger.info(f"Block generated successfully with generateblocks")
+                return {"status": "OK", "method": "generateblocks", "result": result}
+            except MethodNotAvailableError:
+                self.logger.warning("generateblocks method not available")
+            except RPCError as e:
+                self.logger.warning(f"generateblocks failed: {e}")
+        
+        # If we get here, no mining methods are available
+        error_msg = "No mining methods available (tried: start_mining, generateblocks)"
+        self.logger.error(error_msg)
+        raise MethodNotAvailableError(error_msg)
 
 
 class WalletRPC(BaseRPC):
@@ -169,6 +295,7 @@ class WalletRPC(BaseRPC):
         super().__init__(host, port, timeout)
         # Wallet RPC uses a different endpoint
         self.url = f"http://{host}:{port}/json_rpc"
+        self.current_wallet = None
         
     def create_wallet(self, filename: str, password: str = "", language: str = "English") -> Dict[str, Any]:
         """Create a new wallet"""
@@ -177,7 +304,16 @@ class WalletRPC(BaseRPC):
             "password": password,
             "language": language
         }
-        return self._make_request("create_wallet", params)
+        try:
+            result = self._make_request("create_wallet", params)
+            self.current_wallet = filename
+            return result
+        except RPCError as e:
+            error_str = str(e).lower()
+            if "already exists" in error_str:
+                self.logger.info(f"Wallet '{filename}' already exists, trying to open it")
+                return self.open_wallet(filename, password)
+            raise WalletError(f"Failed to create wallet '{filename}': {e}")
         
     def open_wallet(self, filename: str, password: str = "") -> Dict[str, Any]:
         """Open an existing wallet"""
@@ -185,7 +321,16 @@ class WalletRPC(BaseRPC):
             "filename": filename,
             "password": password
         }
-        return self._make_request("open_wallet", params)
+        try:
+            result = self._make_request("open_wallet", params)
+            self.current_wallet = filename
+            return result
+        except RPCError as e:
+            error_str = str(e).lower()
+            if "no such file or directory" in error_str or "wallet file not found" in error_str:
+                self.logger.info(f"Wallet '{filename}' not found, trying to create it")
+                return self.create_wallet(filename, password)
+            raise WalletError(f"Failed to open wallet '{filename}': {e}")
         
     def close_wallet(self) -> Dict[str, Any]:
         """Close the current wallet"""
@@ -207,21 +352,65 @@ class WalletRPC(BaseRPC):
                 else:
                     self.logger.warning(f"get_address response did not contain an address: {response}")
             except RPCError as e:
-                if "No wallet file" in str(e):
+                error_str = str(e)
+                if "No wallet file" in error_str or "wallet not loaded" in error_str.lower():
                     if i < max_retries - 1:
                         self.logger.warning(f"Wallet file not yet available, retrying in {retry_delay}s... ({i+1}/{max_retries})")
                         time.sleep(retry_delay)
+                        
+                        # Try to open the wallet if it's not loaded
+                        if self.current_wallet:
+                            try:
+                                self.logger.info(f"Attempting to reopen wallet '{self.current_wallet}'")
+                                self.open_wallet(self.current_wallet)
+                            except Exception as open_err:
+                                self.logger.warning(f"Failed to reopen wallet: {open_err}")
+                        
                         continue
                     else:
                         self.logger.error(f"Wallet file not available after {max_retries} retries. Aborting.")
-                        raise
+                        raise WalletError(f"Wallet file not available after {max_retries} retries: {e}")
                 else:
                     raise
             except Exception as e:
                 self.logger.error(f"An unexpected error occurred in get_address: {e}")
                 raise
 
-        raise RPCError("Failed to get wallet address after multiple retries.")
+        raise WalletError("Failed to get wallet address after multiple retries.")
+    
+    def ensure_wallet_exists(self, filename: str, password: str = "") -> bool:
+        """
+        Ensure a wallet exists and is open, creating it if necessary.
+        This method tries to open the wallet first, and only creates it if it doesn't exist.
+        
+        Args:
+            filename: Wallet filename
+            password: Wallet password
+            
+        Returns:
+            True if wallet is successfully opened or created
+            
+        Raises:
+            WalletError: If wallet cannot be opened or created
+        """
+        try:
+            self.logger.info(f"Attempting to open wallet '{filename}'")
+            self.open_wallet(filename, password)
+            self.logger.info(f"Successfully opened wallet '{filename}'")
+            return True
+        except WalletError as e:
+            if "not found" in str(e).lower():
+                try:
+                    self.logger.info(f"Wallet '{filename}' not found, creating it")
+                    self.create_wallet(filename, password)
+                    self.logger.info(f"Successfully created wallet '{filename}'")
+                    return True
+                except WalletError as create_err:
+                    self.logger.error(f"Failed to create wallet '{filename}': {create_err}")
+                    raise
+            else:
+                self.logger.error(f"Failed to open wallet '{filename}': {e}")
+                raise
         
     def get_balance(self, account_index: int = 0) -> Dict[str, Any]:
         """Get wallet balance"""
