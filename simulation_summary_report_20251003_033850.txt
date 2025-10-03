@@ -1,0 +1,26 @@
+Monerosim Simulation Success Analysis Report
+==================================================
+Generated: 2025-10-03 03:38:50
+
+Simulation Overview:
+  Number of nodes analyzed: 50
+  Total blocks mined: 136
+  Total unique transactions created: 272
+  Total transactions included in blocks: 272
+
+Success Criteria Results:
+
+  • Blocks Created: PASS
+    136 blocks mined
+
+  • Blocks Propagated: PASS
+    46 user nodes received blocks
+
+  • Transactions Created Broadcast: PASS
+    272 transactions created and propagated to 46 user nodes
+
+  • Transactions In Blocks: PASS
+    272/272 transactions included in blocks
+
+Overall Result:
+  SUCCESS

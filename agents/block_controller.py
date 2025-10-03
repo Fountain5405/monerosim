@@ -397,22 +397,40 @@ class BlockControllerAgent(BaseAgent):
             )
             
             if result and result.get("status") == "OK":
-                blocks_generated = len(result.get("blocks", []))
-                self.logger.info(f"Successfully generated {blocks_generated} blocks")
+                # The actual block hashes are in the "result" field of the response
+                # Different methods return different response formats
+                method_used = result.get("method", "unknown")
+                inner_result = result.get("result", {})
                 
-                # Log block discovery
-                for block_hash in result.get("blocks", []):
-                    block_info = {
-                        "miner_ip": winner_ip,
-                        "block_hash": block_hash,
-                        "timestamp": time.time()
-                    }
-                    self.append_shared_list("blocks_found.json", block_info)
+                # Extract blocks based on the method used
+                blocks = []
+                if method_used == "generateblocks":
+                    # generateblocks returns blocks directly in the result
+                    blocks = inner_result.get("blocks", [])
+                elif method_used == "start_mining":
+                    # start_mining doesn't return block hashes directly
+                    # We'll count it as 1 block generated for logging purposes
+                    blocks = ["mining_started"]
+                else:
+                    self.logger.warning(f"Unknown mining method used: {method_used}")
+                
+                blocks_generated = len(blocks)
+                self.logger.info(f"Successfully generated {blocks_generated} blocks using {method_used} method")
+                
+                # Log block discovery (only for actual block hashes)
+                if method_used == "generateblocks":
+                    for block_hash in blocks:
+                        block_info = {
+                            "miner_ip": winner_ip,
+                            "block_hash": block_hash,
+                            "timestamp": time.time()
+                        }
+                        self.append_shared_list("blocks_found.json", block_info)
 
                 self.last_block_time = time.time()
                 return True
             else:
-                self.logger.warning(f"Unexpected generateblocks response: {result}")
+                self.logger.warning(f"Unexpected mining response: {result}")
                 return False
                 
         except RPCError as e:
