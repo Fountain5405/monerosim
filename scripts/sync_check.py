@@ -41,7 +41,7 @@ try:
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_network_sync, handle_exit
     )
-    from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+    from agents.agent_discovery import AgentDiscovery, AgentDiscoveryError
 except ImportError:
     # Handle case where script is run from different directory
     sys.path.append('.')
@@ -49,7 +49,7 @@ except ImportError:
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_network_sync, handle_exit
     )
-    from scripts.agent_discovery import AgentDiscovery, AgentDiscoveryError
+    from agents.agent_discovery import AgentDiscovery, AgentDiscoveryError
 
 # Component name for logging
 COMPONENT = "SYNC_CHECK"

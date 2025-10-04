@@ -386,7 +386,7 @@ The system supports four fundamental network topologies:
 3. **Ring Topology**: Circular connections for structured communication
 4. **DAG Topology**: Traditional blockchain behavior (default)
 
-### Agent Discovery System (`scripts/agent_discovery.py`)
+### Agent Discovery System (`agents/agent_discovery.py`)
 
 The AgentDiscovery class provides comprehensive agent discovery capabilities:
 
@@ -540,6 +540,7 @@ The AS-aware distribution algorithm was implemented to:
 - `/src/build.rs`: Build process management (legacy)
 
 ### Agent Framework
+- `/agents/agent_discovery.py`: Dynamic agent discovery system
 - `/agents/base_agent.py`: Base agent class
 - `/agents/block_controller.py`: Block controller implementation
 - `/agents/monero_rpc.py`: RPC client library
@@ -551,7 +552,6 @@ The AS-aware distribution algorithm was implemented to:
 - `/scripts/monitor.py`: Monitors simulation status
 - `/scripts/transaction_script.py`: Transaction handling
 - `/scripts/test_p2p_connectivity.py`: P2P connectivity test
-- `/scripts/agent_discovery.py`: Agent discovery system
 - `/scripts/error_handling.py`: Error handling utilities
 - `/scripts/network_config.py`: Network configuration
 

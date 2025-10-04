@@ -39,7 +39,7 @@ from networkx.readwrite import graphml
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.error_handling import log_error, log_info, log_warning
-from scripts.agent_discovery import AgentDiscovery
+from agents.agent_discovery import AgentDiscovery
 
 
 def find_latest_shadow_data():

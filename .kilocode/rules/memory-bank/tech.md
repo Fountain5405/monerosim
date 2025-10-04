@@ -212,7 +212,7 @@ The peer discovery system is implemented as a comprehensive Python framework tha
 
 ### Key Technical Components
 
-#### AgentDiscovery Class (`scripts/agent_discovery.py`)
+#### AgentDiscovery Class (`agents/agent_discovery.py`)
 - **Caching Mechanism**: 5-second TTL cache for agent registry data
 - **File Format Support**: Handles both JSON list and dictionary formats
 - **Error Recovery**: Graceful handling of missing or corrupted registry files

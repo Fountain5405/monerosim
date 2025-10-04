@@ -8,7 +8,7 @@ The Peer Discovery System is a comprehensive framework that enables dynamic agen
 
 ### Core Components
 
-1. **AgentDiscovery Class** (`scripts/agent_discovery.py`)
+1. **AgentDiscovery Class** (`agents/agent_discovery.py`)
    - Main discovery engine that loads and caches agent information
    - Provides methods for finding agents by type, attributes, and capabilities
    - Implements caching for performance optimization
@@ -188,7 +188,7 @@ The peer discovery system integrates seamlessly with Shadow configuration genera
 
 ### Basic Usage
 ```python
-from scripts.agent_discovery import AgentDiscovery
+from agents.agent_discovery import AgentDiscovery
 
 # Initialize discovery system
 discovery = AgentDiscovery()
@@ -207,7 +207,7 @@ recipients = discovery.get_distribution_recipients()
 ### Advanced Filtering
 ```python
 # Find agents by multiple criteria
-from scripts.agent_discovery import AgentDiscovery
+from agents.agent_discovery import AgentDiscovery
 
 discovery = AgentDiscovery()
 

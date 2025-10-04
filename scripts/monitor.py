@@ -35,14 +35,14 @@ try:
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_daemon_ready, handle_exit
     )
-    from .agent_discovery import AgentDiscovery
+    from agents.agent_discovery import AgentDiscovery
 except ImportError:
     # Fallback for when running as a script directly
     from error_handling import (
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_daemon_ready, handle_exit
     )
-    from agent_discovery import AgentDiscovery
+    from agents.agent_discovery import AgentDiscovery
 
 # Component name for logging
 COMPONENT = "MONITOR"

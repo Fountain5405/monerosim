@@ -85,7 +85,7 @@ MoneroSim uses a dynamic agent discovery system that automatically finds and tra
 - **Dynamic Discovery**: Agents are discovered at runtime, not hardcoded
 - **Type-Based Queries**: Find miners, wallets, and other agents by type
 
-For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
+For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ### Change Simulation Duration
 
@@ -125,6 +125,6 @@ agents:
 - Check the full README.md for detailed documentation
 - Look at Shadow logs: `shadow.data/shadow.log`
 - Check node logs: `shadow.data/hosts/*/monerod.*.stdout`
-- Review Agent Discovery documentation: [Agent Discovery System](scripts/README_agent_discovery.md)
+- Review Agent Discovery documentation: [Agent Discovery System](agents/README_agent_discovery.md)
 
 **Happy simulating!** 🚀

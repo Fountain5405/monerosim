@@ -48,12 +48,12 @@ monerosim/
 │   ├── build.rs             # Monero build management
 │   └── shadow_agents.rs     # Agent-based Shadow config generation
 ├── agents/                   # Python agent framework
+│   ├── agent_discovery.py   # Dynamic agent discovery system
 │   ├── base_agent.py        # Base agent class
 │   ├── regular_user.py      # User agent implementation
 │   ├── block_controller.py  # Mining orchestration
 │   └── monero_rpc.py        # RPC client library
 ├── scripts/                  # Python test and utility scripts
-│   ├── agent_discovery.py   # Dynamic agent discovery system
 │   ├── simple_test.py       # Basic functionality test
 │   ├── sync_check.py        # Network synchronization test
 │   ├── transaction_script.py # Transaction testing
@@ -74,7 +74,7 @@ monerosim/
 - [Development Guide](docs/DEVELOPMENT.md) - Contributing and development workflow
 - [Performance Guide](docs/PERFORMANCE.md) - Optimization and scaling
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Agent Discovery System](scripts/README_agent_discovery.md) - Dynamic agent discovery
+- [Agent Discovery System](agents/README_agent_discovery.md) - Dynamic agent discovery
 - [Unified Agent Architecture](docs/UNIFIED_AGENT_ARCHITECTURE.md) - Agent framework design
 
 ## Python Scripts
@@ -87,19 +87,24 @@ Monerosim uses Python as the primary scripting language for all testing and moni
 - **Run All Tests**: `python3 scripts/run_all_tests.py`
 
 Key scripts:
-- `agent_discovery.py` - Dynamic agent discovery system
 - `simple_test.py` - Verifies basic mining and synchronization
 - `transaction_script.py` - Tests transaction processing
 - `sync_check.py` - Monitors blockchain synchronization
 - `monitor.py` - Real-time simulation monitoring
 - `block_controller.py` - Controls block generation timing
 
+Key agents:
+- `agent_discovery.py` - Dynamic agent discovery system
+- `base_agent.py` - Base agent class
+- `regular_user.py` - User agent implementation
+- `block_controller.py` - Mining orchestration
+
 ### Agent Discovery System
 
 The Agent Discovery System provides dynamic agent discovery through shared state files, replacing hardcoded network configurations:
 
 ```python
-from scripts.agent_discovery import AgentDiscovery
+from agents.agent_discovery import AgentDiscovery
 
 # Initialize the discovery system
 ad = AgentDiscovery()
@@ -114,7 +119,7 @@ wallets = ad.get_wallet_agents()
 agent = ad.get_agent_by_id('user001')
 ```
 
-For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
+For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ## Peer Discovery Modes
 
@@ -228,7 +233,7 @@ We welcome contributions! Please follow these guidelines:
 When developing new agents or scripts, use the Agent Discovery System for dynamic agent interactions:
 
 ```python
-from scripts.agent_discovery import AgentDiscovery
+from agents.agent_discovery import AgentDiscovery
 
 # Initialize in your script
 ad = AgentDiscovery()
