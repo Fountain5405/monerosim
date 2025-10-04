@@ -94,7 +94,7 @@ class RegularUserAgent(BaseAgent):
             
             if self.wallet_address:
                 self.logger.info(f"Miner wallet address: {self.wallet_address}")
-                # Register miner information for the block controller
+                # Register miner information for the block controller with improved error handling
                 self._register_miner_info()
             else:
                 self.logger.error(f"Failed to obtain wallet address for miner {self.agent_id}")
@@ -154,6 +154,8 @@ class RegularUserAgent(BaseAgent):
             
             if self.wallet_address:
                 self.logger.info(f"User wallet address: {self.wallet_address}")
+                # Register user information for the agent discovery system
+                self._register_user_info()
                 # Initialize transaction parameters
                 self._setup_transaction_parameters()
             else:
@@ -163,17 +165,70 @@ class RegularUserAgent(BaseAgent):
             self.logger.error(f"Failed to setup regular user: {e}")
     
     def _register_miner_info(self):
-        """Register miner information for the block controller"""
+        """Register miner information for the block controller with atomic file operations"""
+        if not self.wallet_address:
+            self.logger.warning(f"No wallet address available for miner {self.agent_id}, skipping registration")
+            return
+            
         miner_info = {
             "agent_id": self.agent_id,
             "wallet_address": self.wallet_address,
             "hash_rate": self.hash_rate,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "agent_type": "miner"
         }
         
-        # Write miner info to shared state
-        self.write_shared_state(f"{self.agent_id}_miner_info.json", miner_info)
-        self.logger.info(f"Registered miner info for {self.agent_id}")
+        # Use atomic file operations with retry logic
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                # Write miner info to shared state
+                self.write_shared_state(f"{self.agent_id}_miner_info.json", miner_info)
+                self.logger.info(f"Successfully registered miner info for {self.agent_id}")
+                return
+            except Exception as e:
+                self.logger.warning(f"Failed to register miner info (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    self.logger.error(f"Failed to register miner info after {max_retries} attempts")
+    
+    def _register_user_info(self):
+        """Register user information for the agent discovery system with atomic file operations"""
+        if not self.wallet_address:
+            self.logger.warning(f"No wallet address available for user {self.agent_id}, skipping registration")
+            return
+            
+        user_info = {
+            "agent_id": self.agent_id,
+            "wallet_address": self.wallet_address,
+            "timestamp": time.time(),
+            "agent_type": "regular_user",
+            "tx_frequency": getattr(self, 'tx_frequency', None),
+            "min_tx_amount": getattr(self, 'min_tx_amount', None),
+            "max_tx_amount": getattr(self, 'max_tx_amount', None)
+        }
+        
+        # Use atomic file operations with retry logic
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                # Write user info to shared state
+                self.write_shared_state(f"{self.agent_id}_user_info.json", user_info)
+                self.logger.info(f"Successfully registered user info for {self.agent_id}")
+                return
+            except Exception as e:
+                self.logger.warning(f"Failed to register user info (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    self.logger.error(f"Failed to register user info after {max_retries} attempts")
     
     def _setup_transaction_parameters(self):
         """Setup transaction parameters for regular users"""

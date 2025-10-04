@@ -72,176 +72,125 @@ class BlockControllerAgent(BaseAgent):
         self.logger.info("Waiting 60 seconds for wallet services to fully initialize...")
         time.sleep(60)
 
-        # Initialize all agent wallets and update the agent registry
-        self._initialize_all_agent_wallets()
+        # Wait for miners to register their wallet addresses in shared state
+        self._wait_for_miner_wallet_registration()
             
-    def _initialize_all_agent_wallets(self):
+    def _wait_for_miner_wallet_registration(self):
         """
-        Iterate through all agents in the registry, initialize their wallets,
-        and update the registry with their wallet addresses.
-        Includes retry logic for failed wallet initializations.
+        Wait for miners to register their wallet addresses in shared state.
+        This method replaces the centralized wallet initialization approach
+        with a decentralized waiting mechanism.
         """
-        self.logger.info("Starting centralized wallet initialization for all agents...")
+        self.logger.info("Waiting for miners to register their wallet addresses...")
+        
+        # Get the list of expected miners from miners.json
+        miners_registry_path = self.shared_dir / "miners.json"
+        if not miners_registry_path.exists():
+            self.logger.error("Miners registry file not found, cannot wait for wallet registration")
+            return
+            
+        try:
+            with open(miners_registry_path, 'r') as f:
+                miner_data = json.load(f)
+        except Exception as e:
+            self.logger.error(f"Failed to load miners.json: {e}")
+            return
+            
+        expected_miners = set(miner["agent_id"] for miner in miner_data.get("miners", []))
+        self.logger.info(f"Expecting wallet registration from {len(expected_miners)} miners: {expected_miners}")
+        
+        # Wait for miners to register their wallets
+        max_wait_time = 300  # 5 minutes maximum wait time
+        check_interval = 10  # Check every 10 seconds
+        start_time = time.time()
+        registered_miners = set()
+        
+        while time.time() - start_time < max_wait_time:
+            # Check for individual miner info files
+            for agent_id in expected_miners:
+                if agent_id not in registered_miners:
+                    miner_info_file = self.shared_dir / f"{agent_id}_miner_info.json"
+                    if miner_info_file.exists():
+                        try:
+                            with open(miner_info_file, 'r') as f:
+                                miner_info = json.load(f)
+                                if "wallet_address" in miner_info:
+                                    registered_miners.add(agent_id)
+                                    self.logger.info(f"Miner {agent_id} registered wallet address: {miner_info['wallet_address']}")
+                        except Exception as e:
+                            self.logger.warning(f"Error reading miner info for {agent_id}: {e}")
+            
+            # Check if all miners have registered
+            if len(registered_miners) == len(expected_miners):
+                self.logger.info("All miners have registered their wallet addresses!")
+                break
+                
+            # Wait before next check
+            time.sleep(check_interval)
+            elapsed = time.time() - start_time
+            self.logger.info(f"Waiting for miner wallet registration... {len(registered_miners)}/{len(expected_miners)} registered (elapsed: {elapsed:.1f}s)")
+        
+        # Report final status
+        if len(registered_miners) < len(expected_miners):
+            missing_miners = expected_miners - registered_miners
+            self.logger.warning(f"Not all miners registered their wallets. Missing: {missing_miners}")
+        else:
+            self.logger.info("All miners successfully registered their wallet addresses!")
+        
+        # Update the agent registry with the collected wallet addresses
+        self._update_agent_registry_with_miner_wallets(registered_miners)
+
+    def _update_agent_registry_with_miner_wallets(self, registered_miners: set):
+        """
+        Update the agent registry with wallet addresses from miner info files.
+        This replaces the centralized wallet initialization approach.
+        """
+        self.logger.info(f"Updating agent registry with wallet addresses for {len(registered_miners)} registered miners")
+        
         agent_registry_path = self.shared_dir / "agent_registry.json"
         if not agent_registry_path.exists():
             self.logger.error(f"Agent registry not found at {agent_registry_path}")
             return
-
+            
         try:
             with open(agent_registry_path, 'r') as f:
                 agent_data = json.load(f)
         except Exception as e:
             self.logger.error(f"Failed to load agent_registry.json: {e}")
             return
-
-        # Separate miners from regular agents - miners are critical and need retry logic
-        miners = []
-        regular_agents = []
-
+            
+        # Update agents with wallet addresses from miner info files
+        updated_agents = []
         for agent in agent_data.get("agents", []):
-            if agent.get("attributes", {}).get("is_miner") == "true":
-                miners.append(agent)
-            else:
-                regular_agents.append(agent)
-
-        self.logger.info(f"Found {len(miners)} miners and {len(regular_agents)} regular agents to initialize")
-
-        # Process miners first with retry logic
-        updated_miners = self._initialize_agent_wallets_with_retry(miners, max_retries=5, retry_delay=30)
-
-        # Process regular agents (less critical, single attempt)
-        updated_regular = []
-        for agent in regular_agents:
-            # Only process agents that have a wallet
-            if "wallet_rpc_port" not in agent:
-                updated_regular.append(agent)
-                continue
-
-            wallet_rpc_port = agent["wallet_rpc_port"]
-            ip_addr = agent["ip_addr"]
             agent_id = agent["id"]
-
-            try:
-                wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
-                # Increase timeout for wallet readiness check
-                wallet_rpc.wait_until_ready(max_wait=180)
-
-                wallet_name = f"{agent_id}_wallet"
-                address = None
-
-                try:
-                    self.logger.info(f"Attempting to open wallet '{wallet_name}' for agent {agent_id}")
-                    wallet_rpc.open_wallet(wallet_name, password="")
-                    address = wallet_rpc.get_address()
-                    self.logger.info(f"Successfully opened existing wallet '{wallet_name}' for {agent_id}")
-                except RPCError:
+            
+            # If this is a registered miner, update their wallet address
+            if agent_id in registered_miners:
+                miner_info_file = self.shared_dir / f"{agent_id}_miner_info.json"
+                if miner_info_file.exists():
                     try:
-                        self.logger.info(f"Wallet not found, creating '{wallet_name}' for agent {agent_id}")
-                        wallet_rpc.create_wallet(wallet_name, password="")
-                        address = wallet_rpc.get_address()
-                        self.logger.info(f"Successfully created new wallet '{wallet_name}' for {agent_id}")
-                    except RPCError as create_err:
-                        self.logger.error(f"Failed to create wallet for {agent_id}: {create_err}")
-                        updated_regular.append(agent)
-                        continue
-
-                if address:
-                    self.logger.debug(f"Address type: {type(address)}, value: {address}")
-                    agent.update({"wallet_address": address})
-                    self.logger.info(f"Updated agent {agent_id} with wallet address.")
-
-            except Exception as e:
-                self.logger.error(f"Error processing wallet for agent {agent_id}: {e}")
-                updated_regular.append(agent)
-            else:
-                updated_regular.append(agent)
-
-            # Small delay between agents to avoid overwhelming the system
-            time.sleep(2)
-
-        # Combine updated agents
-        updated_agents = updated_miners + updated_regular
-
+                        with open(miner_info_file, 'r') as f:
+                            miner_info = json.load(f)
+                            if "wallet_address" in miner_info:
+                                agent["wallet_address"] = miner_info["wallet_address"]
+                                self.logger.info(f"Updated agent {agent_id} with wallet address from miner info file")
+                    except Exception as e:
+                        self.logger.warning(f"Error reading miner info for {agent_id}: {e}")
+            
+            updated_agents.append(agent)
+            
         # Write the updated agent data back to the registry
         try:
             with open(agent_registry_path, 'w') as f:
                 json.dump({"agents": updated_agents}, f, indent=2)
-            self.logger.info("Successfully updated agent_registry.json with all wallet addresses.")
+            self.logger.info("Successfully updated agent_registry.json with miner wallet addresses.")
         except Exception as e:
             self.logger.error(f"Failed to write updated agent_registry.json: {e}")
-
-    def _initialize_agent_wallets_with_retry(self, agents, max_retries=5, retry_delay=60):
-        """
-        Initialize wallets for a list of agents with retry logic.
-        Critical for miners to ensure they get wallet addresses.
-        """
-        self.logger.info(f"Initializing wallets for {len(agents)} agents with retry logic (max_retries={max_retries})")
-
-        remaining_agents = agents.copy()
-        updated_agents = []
-
-        for attempt in range(max_retries):
-            if not remaining_agents:
-                break
-
-            self.logger.info(f"Retry attempt {attempt + 1}/{max_retries} for {len(remaining_agents)} remaining agents")
-
-            still_remaining = []
-
-            for agent in remaining_agents:
-                wallet_rpc_port = agent["wallet_rpc_port"]
-                ip_addr = agent["ip_addr"]
-                agent_id = agent["id"]
-
-                try:
-                    wallet_rpc = WalletRPC(ip_addr, wallet_rpc_port)
-                    # Increase timeout for wallet readiness check
-                    wallet_rpc.wait_until_ready(max_wait=180)
-
-                    wallet_name = f"{agent_id}_wallet"
-                    
-                    if wallet_rpc.ensure_wallet_exists(wallet_name):
-                        address = wallet_rpc.get_address()
-                        self.logger.info(f"Successfully ensured wallet '{wallet_name}' exists for {agent_id}")
-                    else:
-                        self.logger.warning(f"Failed to ensure wallet exists for {agent_id}")
-                        still_remaining.append(agent)
-                        continue
-
-                    if address:
-                        self.logger.debug(f"Address type: {type(address)}, value: {address}")
-                        agent.update({"wallet_address": address})
-                        self.logger.info(f"Updated agent {agent_id} with wallet address.")
-
-                        # Update miners.json with wallet address if this agent is a miner
-                        if agent.get("attributes", {}).get("is_miner") == "true":
-                            self._update_miner_wallet_address(agent_id, address)
-
-                        updated_agents.append(agent)
-                    else:
-                        still_remaining.append(agent)
-
-                except Exception as e:
-                    self.logger.warning(f"Error processing wallet for agent {agent_id} (attempt {attempt + 1}): {e}")
-                    still_remaining.append(agent)
-
-            remaining_agents = still_remaining
-
-            # Wait before next retry attempt (except on the last attempt)
-            if remaining_agents and attempt < max_retries - 1:
-                self.logger.info(f"Waiting {retry_delay} seconds before next retry attempt...")
-                time.sleep(retry_delay)
-
-        if remaining_agents:
-            self.logger.error(f"Failed to initialize wallets for {len(remaining_agents)} agents after {max_retries} attempts: {[a['id'] for a in remaining_agents]}")
-            # Add failed agents back to updated list without wallet addresses
-            updated_agents.extend(remaining_agents)
-
-        return updated_agents
 
     def _update_miner_wallet_address(self, agent_id: str, wallet_address: str):
         """
         Update the miners.json file with the wallet address for a specific miner.
+        This method is kept for backward compatibility but is less used in the new approach.
         """
         miners_registry_path = self.shared_dir / "miners.json"
 
@@ -277,41 +226,66 @@ class BlockControllerAgent(BaseAgent):
     def _load_miner_registry(self) -> List[Dict[str, Any]]:
         """
         Load miner information from miners.json and enrich with wallet addresses
-        from the agent_registry.json.
+        from miner info files (decentralized approach) or agent_registry.json as fallback.
         """
         if not self.shared_dir:
             self.logger.error("Shared directory not configured, cannot load miner registry.")
             return []
 
         miners_registry_path = self.shared_dir / "miners.json"
-        agent_registry_path = self.shared_dir / "agent_registry.json"
 
-        if not miners_registry_path.exists() or not agent_registry_path.exists():
-            self.logger.error("Miner or agent registry not found.")
+        if not miners_registry_path.exists():
+            self.logger.error("Miner registry not found.")
             return []
 
         try:
             with open(miners_registry_path, 'r') as f:
                 miner_data = json.load(f)
-            with open(agent_registry_path, 'r') as f:
-                agent_data = json.load(f)
         except Exception as e:
-            self.logger.error(f"Failed to load registry files: {e}")
+            self.logger.error(f"Failed to load miners.json: {e}")
             return []
-
-        # Create lookup for wallet addresses from the agent registry
-        agent_wallets = {agent["id"]: agent.get("wallet_address") for agent in agent_data.get("agents", [])}
 
         enriched_miners = []
         for miner in miner_data.get("miners", []):
             agent_id = miner["agent_id"]
-
-            # Enrich with wallet address
-            if agent_id in agent_wallets and agent_wallets[agent_id] is not None:
-                miner["wallet_address"] = agent_wallets[agent_id]
+            
+            # First try to get wallet address from miner info file (decentralized approach)
+            miner_info_file = self.shared_dir / f"{agent_id}_miner_info.json"
+            wallet_address = None
+            
+            if miner_info_file.exists():
+                try:
+                    with open(miner_info_file, 'r') as f:
+                        miner_info = json.load(f)
+                        wallet_address = miner_info.get("wallet_address")
+                        if wallet_address:
+                            self.logger.debug(f"Found wallet address for {agent_id} in miner info file")
+                except Exception as e:
+                    self.logger.warning(f"Error reading miner info file for {agent_id}: {e}")
+            
+            # Fallback to agent registry if miner info file doesn't exist or doesn't have wallet address
+            if not wallet_address:
+                agent_registry_path = self.shared_dir / "agent_registry.json"
+                if agent_registry_path.exists():
+                    try:
+                        with open(agent_registry_path, 'r') as f:
+                            agent_data = json.load(f)
+                        
+                        for agent in agent_data.get("agents", []):
+                            if agent["id"] == agent_id:
+                                wallet_address = agent.get("wallet_address")
+                                if wallet_address:
+                                    self.logger.debug(f"Found wallet address for {agent_id} in agent registry")
+                                break
+                    except Exception as e:
+                        self.logger.warning(f"Error reading agent registry for {agent_id}: {e}")
+            
+            # Enrich with wallet address if found
+            if wallet_address:
+                miner["wallet_address"] = wallet_address
                 enriched_miners.append(miner)
             else:
-                self.logger.warning(f"Wallet address not found for miner {agent_id} in agent registry.")
+                self.logger.warning(f"Wallet address not found for miner {agent_id} in any source.")
 
         if not enriched_miners:
             self.logger.warning("No miners successfully enriched with wallet addresses.")
