@@ -32,7 +32,7 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 3. **Run an Agent-Based Simulation**
    ```bash
    # Generate agent-based configuration (small/medium/large)
-   ./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output
+   ./target/release/monerosim --config config_47_agents.yaml --output shadow_agents_output
    
    # Run the simulation
    shadow shadow_agents_output/shadow_agents.yaml

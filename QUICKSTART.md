@@ -51,10 +51,10 @@ Once setup completes, you can:
 
 ```bash
 # Edit simulation parameters
-vim config_agents_small.yaml
+vim config_47_agents.yaml
 
 # Generate new configuration
-./target/release/monerosim --config config_agents_small.yaml --output shadow_agents_output
+./target/release/monerosim --config config_47_agents.yaml --output shadow_agents_output
 
 # Run simulation
 shadow shadow_agents_output/shadow_agents.yaml
@@ -89,7 +89,7 @@ For more details, see [Agent Discovery System](agents/README_agent_discovery.md)
 
 ### Change Simulation Duration
 
-Edit `config_agents_small.yaml`:
+Edit `config_47_agents.yaml`:
 ```yaml
 general:
   stop_time: "30m"  # Run for 30 minutes instead of 10

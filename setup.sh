@@ -480,7 +480,7 @@ else
         exit 1
     fi
     
-    ./target/release/monerosim --config config.yaml --output shadow_output
+    ./target/release/monerosim --config config_47_agents.yaml --output shadow_output
     
     if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow_agents.yaml" ]]; then
         print_success "Shadow configuration generated successfully"
@@ -494,7 +494,7 @@ fi
 print_header "Step 9: Running Test Simulation"
 
 print_status "Running a test Shadow simulation (this may take a few minutes)..."
-print_status "Simulation will run for the duration specified in config_6_miners.yaml"
+print_status "Simulation will run for the duration specified in config_47_agents.yaml"
 
 # Clean up any existing shadow data
 if [[ -d "shadow.data" ]]; then
@@ -544,7 +544,7 @@ print_header "Setup Complete!"
 print_success "MoneroSim is now ready to use!"
 echo ""
 print_status "Quick usage guide:"
-echo "  1. Edit config_6_miners.yaml to adjust simulation parameters"
+echo "  1. Edit config_47_agents.yaml to adjust simulation parameters"
 echo "  2. Generate new configuration: ./target/release/monerosim --config config.yaml --output shadow_output"
 echo "  3. Run simulation: shadow shadow_output/shadow_agents.yaml"
 echo "  4. Analyze results in shadow.data/ directory"
