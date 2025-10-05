@@ -494,7 +494,7 @@ fi
 print_header "Step 9: Optional Test Simulation"
 
 print_status "Setup is complete! You can now run a test simulation to verify everything works."
-print_warning "⚠️  WARNING: The test simulation (config_47_agents.yaml) runs for approximately 6-7 hours"
+print_warning "⚠️  WARNING: The test simulation (config_47_agents.yaml) runs for approximately 45 minutes"
 print_warning "   This is a comprehensive test with 47 agents and complex network topology"
 print_status ""
 print_status "Choose an option:"
@@ -505,7 +505,7 @@ read -p "Run test simulation? (y/N): " -n 1 -r
 echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_status "Running test simulation (this will take 6-7 hours)..."
+    print_status "Running test simulation (this will take 45 minutes )..."
     print_status "You can monitor progress with: tail -f shadow.log"
     print_status "Or check agent logs in: shadow.data/hosts/*/"
 
