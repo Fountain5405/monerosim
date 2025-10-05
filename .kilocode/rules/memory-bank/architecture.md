@@ -133,17 +133,26 @@ New configuration files for agent-based simulations:
 - `config_agents_medium.yaml`: 10 users
 - `config_agents_large.yaml`: 100 users
 
-### Testing Scripts
+### Agent Framework (`agents/`)
 
-The project includes comprehensive testing scripts that run within the shadow environment. A Python migration has been completed and verified to improve reliability and maintainability:
+The agent framework consists of autonomous scripts that run within the Shadow simulation environment, representing different types of network participants:
 
-#### Python Scripts (Primary Implementation)
-- `scripts/simple_test.py`: Basic mining and synchronization test
-- `scripts/sync_check.py`: Verifies network synchronization
-- `scripts/block_controller.py`: Controls block generation
-- `scripts/monitor.py`: Monitors the simulation status
-- `scripts/transaction_script.py`: Enhanced transaction handling
-- `scripts/test_p2p_connectivity.py`: P2P connection verification
+#### Core Agent Classes
+- `agents/base_agent.py`: Abstract base class for all agents with lifecycle management
+- `agents/block_controller.py`: Orchestrates mining across the network
+- `agents/regular_user.py`: Simulates regular cryptocurrency users with transaction behavior
+- `agents/miner_distributor.py`: Manages mining reward distribution
+- `agents/monero_rpc.py`: RPC client library for Monero daemon and wallet communication
+- `agents/agent_discovery.py`: Dynamic agent discovery system for peer coordination
+
+### External Scripts (`scripts/`)
+
+The project includes external utility scripts that run outside the Shadow environment for post-simulation analysis and processing:
+
+#### Log Analysis and Processing Scripts
+- `scripts/log_processor.py`: Intelligent log processing and analysis
+- `scripts/analyze_network_connectivity.py`: Network connectivity analysis
+- `scripts/analyze_success_criteria.py`: Success criteria evaluation
 
 #### Supporting Python Modules
 - `scripts/error_handling.py`: Provides error handling and logging utilities
@@ -157,7 +166,7 @@ The project includes comprehensive testing scripts that run within the shadow en
 - `legacy_scripts/error_handling.sh`: Provides error handling and logging utilities
 - `legacy_scripts/network_config.sh`: Centralizes network configuration
 
-**Note**: The Python scripts are the primary implementation and have been verified in production simulations. Bash scripts are deprecated and retained only for historical reference.
+**Note**: Agents run within Shadow as part of the simulation, while scripts run externally for setup, monitoring, and analysis. The Python scripts are the primary implementation and have been verified in production simulations. Bash scripts are deprecated and retained only for historical reference.
 
 ## Network Architecture
 
@@ -543,15 +552,14 @@ The AS-aware distribution algorithm was implemented to:
 - `/agents/agent_discovery.py`: Dynamic agent discovery system
 - `/agents/base_agent.py`: Base agent class
 - `/agents/block_controller.py`: Block controller implementation
+- `/agents/regular_user.py`: Regular user agent implementation
+- `/agents/miner_distributor.py`: Mining reward distribution agent
 - `/agents/monero_rpc.py`: RPC client library
 
-### Scripts (Python - Primary Implementation)
-- `/scripts/block_controller.py`: Controls block generation
-- `/scripts/sync_check.py`: Verifies node synchronization
-- `/scripts/simple_test.py`: Basic functionality test
-- `/scripts/monitor.py`: Monitors simulation status
-- `/scripts/transaction_script.py`: Transaction handling
-- `/scripts/test_p2p_connectivity.py`: P2P connectivity test
+### External Scripts
+- `/scripts/log_processor.py`: Intelligent log processing and analysis
+- `/scripts/analyze_network_connectivity.py`: Network connectivity analysis
+- `/scripts/analyze_success_criteria.py`: Success criteria evaluation
 - `/scripts/error_handling.py`: Error handling utilities
 - `/scripts/network_config.py`: Network configuration
 
