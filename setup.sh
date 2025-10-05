@@ -196,14 +196,70 @@ print_header "Step 4: Installing Shadow Simulator"
 # Check if Shadow is already installed
 if command -v shadow &> /dev/null; then
     SHADOW_VERSION=$(shadow --version 2>&1 | head -n1)
-    print_success "Shadow is already installed: $SHADOW_VERSION"
-    
+    print_success "Existing Shadow installation detected: $SHADOW_VERSION"
+
     # Check if it's the shadowformonero version by looking for specific optimizations
     if shadow --version 2>&1 | grep -q "d24c0e587"; then
-        print_success "Using shadowformonero version with Monero optimizations"
+        print_success "✅ Using shadowformonero version with Monero optimizations - perfect for Monerosim!"
     else
-        print_warning "Standard Shadow detected - shadowformonero version recommended for better performance"
-        print_status "Proceeding with current Shadow installation..."
+        print_warning "⚠️  Standard Shadow detected"
+        print_status ""
+        print_status "Monerosim requires a custom fork of Shadow (shadowformonero) that includes:"
+        echo "  • Optimized Monero network simulation support"
+        echo "  • Enhanced performance for cryptocurrency workloads"
+        echo "  • Better compatibility with Monero's P2P networking"
+        print_status ""
+        print_status "Choose an option:"
+        echo "  y/Y - Install shadowformonero (recommended for Monerosim)"
+        echo "  n/N - Continue with existing Shadow installation"
+        echo ""
+        read -p "Install shadowformonero? (Y/n): " -n 1 -r
+        echo ""
+
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            print_status "Installing shadowformonero..."
+            print_status "This will take 10-20 minutes..."
+
+            # Setup directory for shadowformonero
+            SHADOWFORMONERO_DIR="../shadowformonero"
+            SHADOWFORMONERO_REPO="https://github.com/Fountain5405/shadowformonero.git"
+
+            # Clone shadowformonero if not present
+            if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
+                print_status "Found local shadowformonero repository"
+                cd "$SHADOWFORMONERO_DIR"
+                git pull origin main
+            else
+                print_status "Cloning shadowformonero repository..."
+                if [[ -d "$SHADOWFORMONERO_DIR" ]]; then
+                    rm -rf "$SHADOWFORMONERO_DIR"
+                fi
+                git clone "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
+                cd "$SHADOWFORMONERO_DIR"
+            fi
+
+            # Install shadowformonero
+            print_status "Building and installing shadowformonero..."
+            ./setup build --jobs $(nproc)
+            ./setup install
+
+            # Return to script directory
+            cd "$SCRIPT_DIR"
+
+            # Verify installation
+            if command -v shadow &> /dev/null; then
+                NEW_SHADOW_VERSION=$(shadow --version 2>&1 | head -n1)
+                print_success "shadowformonero installed successfully: $NEW_SHADOW_VERSION"
+            else
+                print_error "Failed to install shadowformonero"
+                print_error "Shadow binary not found in PATH after installation"
+                print_error "You may need to restart your shell or run: source ~/.bashrc"
+                exit 1
+            fi
+        else
+            print_warning "Continuing with existing Shadow installation"
+            print_warning "Note: Some Monerosim features may not work optimally with standard Shadow"
+        fi
     fi
 else
     print_status "Shadow not found - installing shadowformonero..."
