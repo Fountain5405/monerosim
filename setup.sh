@@ -490,53 +490,70 @@ else
     fi
 fi
 
-# Step 8: Run test simulation
-print_header "Step 9: Running Test Simulation"
+# Step 8: Optional Test Simulation
+print_header "Step 9: Optional Test Simulation"
 
-print_status "Running a test Shadow simulation (this may take a few minutes)..."
-print_status "Simulation will run for the duration specified in config_47_agents.yaml"
+print_status "Setup is complete! You can now run a test simulation to verify everything works."
+print_warning "⚠️  WARNING: The test simulation (config_47_agents.yaml) runs for approximately 6-7 hours"
+print_warning "   This is a comprehensive test with 47 agents and complex network topology"
+print_status ""
+print_status "Choose an option:"
+echo "  y/Y - Run the full test simulation (6-7 hours)"
+echo "  n/N - Skip test simulation and exit setup"
+echo ""
+read -p "Run test simulation? (y/N): " -n 1 -r
+echo ""
 
-# Clean up any existing shadow data
-if [[ -d "shadow.data" ]]; then
-    print_status "Cleaning up previous simulation data..."
-    rm -rf shadow.data/
-fi
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    print_status "Running test simulation (this will take 6-7 hours)..."
+    print_status "You can monitor progress with: tail -f shadow.log"
+    print_status "Or check agent logs in: shadow.data/hosts/*/"
 
-# Run the simulation
-shadow shadow_output/shadow_agents.yaml
+    # Clean up any existing shadow data
+    if [[ -d "shadow.data" ]]; then
+        print_status "Cleaning up previous simulation data..."
+        rm -rf shadow.data/
+    fi
 
-if [[ $? -eq 0 ]]; then
-    print_success "Simulation completed successfully!"
-    
-    # Quick analysis of results
-    print_header "Step 10: Basic Results Analysis"
-    
-    if [[ -d "shadow.data/hosts" ]]; then
-        NODE_COUNT=$(ls shadow.data/hosts/ | wc -l)
-        print_status "Simulation created $NODE_COUNT node(s)"
-        
-        # Check for successful RPC initialization
-        RPC_SUCCESS=$(grep -r "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout 2>/dev/null | wc -l)
-        print_status "Nodes with successful RPC initialization: $RPC_SUCCESS"
-        
-        # Check for P2P connections
-        P2P_CONNECTIONS=$(grep -r "Connected success" shadow.data/hosts/*/monerod.*.stdout 2>/dev/null | wc -l)
-        print_status "Successful P2P connections established: $P2P_CONNECTIONS"
-        
-        if [[ $RPC_SUCCESS -gt 0 ]]; then
-            print_success "Monero nodes started successfully!"
+    # Run the simulation
+    shadow shadow_output/shadow_agents.yaml
+
+    if [[ $? -eq 0 ]]; then
+        print_success "Simulation completed successfully!"
+
+        # Quick analysis of results
+        print_header "Step 10: Basic Results Analysis"
+
+        if [[ -d "shadow.data/hosts" ]]; then
+            NODE_COUNT=$(ls shadow.data/hosts/ | wc -l)
+            print_status "Simulation created $NODE_COUNT node(s)"
+
+            # Check for successful RPC initialization
+            RPC_SUCCESS=$(grep -r "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout 2>/dev/null | wc -l)
+            print_status "Nodes with successful RPC initialization: $RPC_SUCCESS"
+
+            # Check for P2P connections
+            P2P_CONNECTIONS=$(grep -r "Connected success" shadow.data/hosts/*/monerod.*.stdout 2>/dev/null | wc -l)
+            print_status "Successful P2P connections established: $P2P_CONNECTIONS"
+
+            if [[ $RPC_SUCCESS -gt 0 ]]; then
+                print_success "Monero nodes started successfully!"
+            fi
+
+            if [[ $P2P_CONNECTIONS -gt 0 ]]; then
+                print_success "P2P connections are working!"
+            else
+                print_warning "No P2P connections detected - this may be expected for short simulations"
+            fi
         fi
-        
-        if [[ $P2P_CONNECTIONS -gt 0 ]]; then
-            print_success "P2P connections are working!"
-        else
-            print_warning "No P2P connections detected - this may be expected for short simulations"
-        fi
+    else
+        print_error "Simulation failed"
+        print_status "Check shadow.data/shadow.log for details"
+        exit 1
     fi
 else
-    print_error "Simulation failed"
-    print_status "Check shadow.data/shadow.log for details"
-    exit 1
+    print_status "Skipping test simulation as requested."
+    print_status "You can run it later with: shadow shadow_output/shadow_agents.yaml"
 fi
 
 # Final success message
