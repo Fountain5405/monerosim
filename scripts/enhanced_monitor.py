@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
-enhanced_monitor.py - Enhanced Monitoring Script for MoneroSim
+enhanced_monitor.py - Live Log Monitoring Script for MoneroSim
 
-This script provides advanced monitoring capabilities for the Monero simulation,
-building upon the original monitor.py with additional features:
-- Real-time blockchain visualization
-- Transaction flow tracking
+This script provides advanced monitoring capabilities for the Monero simulation
+by parsing live log files from the Shadow environment. It monitors agent activity
+in real-time by reading log files from shadow.data/hosts/[agent]/ directories.
+
+Features:
+- Real-time blockchain visualization from logs
+- Transaction flow tracking from agent logs
 - Network topology visualization
 - Performance metrics tracking
 - Alerting system for anomalies
 - Historical data collection
 - Export capabilities for analysis
 
-This enhanced version uses dynamic agent discovery to automatically find and 
-monitor all agents in the simulation without requiring hardcoded configurations.
+This version parses live log files instead of using RPC calls, making it suitable
+for monitoring simulations where external RPC access is not available.
 """
 
 import sys
@@ -22,26 +25,19 @@ import argparse
 import json
 import csv
 import os
+import re
+import glob
 from typing import Dict, List, Optional, Tuple, Any, Set
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
 import statistics
 import math
+import select
+import fcntl
 
-# Handle imports for both direct execution and module import
-try:
-    from .error_handling import (
-        log_info, log_warning, log_error, log_critical, log_success,
-        call_daemon_with_retry, verify_daemon_ready, handle_exit
-    )
-    from agents.agent_discovery import AgentDiscovery
-except ImportError:
-    # Fallback for when running as a script directly
-    from error_handling import (
-        log_info, log_warning, log_error, log_critical, log_success,
-        call_daemon_with_retry, verify_daemon_ready, handle_exit
-    )
-    from agents.agent_discovery import AgentDiscovery
+# Import error handling
+from error_handling import log_info, log_warning, log_error, log_critical, log_success, handle_exit
+from agents.agent_discovery import AgentDiscovery
 
 # Component name for logging
 COMPONENT = "ENHANCED_MONITOR"
@@ -56,10 +52,10 @@ DEFAULT_ALERT_THRESHOLD = 2.0  # Standard deviations for anomaly detection
 
 class AgentStatus:
     """Enhanced container for agent status information with historical tracking."""
-    
-    def __init__(self, name: str, url: str):
+
+    def __init__(self, name: str, log_dir: str):
         self.name = name
-        self.url = url
+        self.log_dir = log_dir
         self.height: int = 0
         self.target_height: int = 0
         self.difficulty: int = 0
@@ -78,20 +74,24 @@ class AgentStatus:
         self.top_block_hash: str = ""
         self.last_update: Optional[datetime] = None
         self.error: Optional[str] = None
-        
+
+        # Log parsing state
+        self.last_log_position: Dict[str, int] = {}  # file -> position
+        self.log_files: List[str] = []
+
         # Historical data tracking
         self.height_history: deque = deque(maxlen=DEFAULT_HISTORY_SIZE)
         self.hashrate_history: deque = deque(maxlen=DEFAULT_HISTORY_SIZE)
         self.tx_count_history: deque = deque(maxlen=DEFAULT_HISTORY_SIZE)
         self.connection_history: deque = deque(maxlen=DEFAULT_HISTORY_SIZE)
         self.timestamp_history: deque = deque(maxlen=DEFAULT_HISTORY_SIZE)
-        
+
         # Performance metrics
         self.avg_height_rate: float = 0.0
         self.avg_hashrate: float = 0.0
         self.avg_tx_rate: float = 0.0
         self.connection_stability: float = 0.0
-        
+
         # Alert tracking
         self.alerts: List[Dict[str, Any]] = []
 
@@ -226,73 +226,198 @@ class EnhancedMonitor:
         self.export_format = "json"  # json, csv
         self.export_file = None
         
-    def discover_agents(self) -> List[AgentStatus]:
-        """Discover agents using the agent discovery system."""
+    def find_log_directories(self, base_dir: str = "shadow.data/hosts") -> List[Tuple[str, str]]:
+        """Find agent log directories in the Shadow data directory."""
+        log_dirs = []
+
+        if not os.path.exists(base_dir):
+            log_warning(COMPONENT, f"Shadow data directory not found: {base_dir}")
+            return log_dirs
+
+        try:
+            for item in os.listdir(base_dir):
+                agent_dir = os.path.join(base_dir, item)
+                if os.path.isdir(agent_dir):
+                    # Check if it contains log files
+                    log_files = glob.glob(os.path.join(agent_dir, "*.stdout")) + \
+                               glob.glob(os.path.join(agent_dir, "*.stderr")) + \
+                               glob.glob(os.path.join(agent_dir, "*.log"))
+
+                    if log_files:
+                        log_dirs.append((item, agent_dir))
+                        log_info(COMPONENT, f"Found agent logs: {item} -> {agent_dir}")
+
+        except Exception as e:
+            log_error(COMPONENT, f"Error scanning log directories: {e}")
+
+        return log_dirs
+
+    def discover_agents(self, base_log_dir: str = "shadow.data/hosts") -> List[AgentStatus]:
+        """Discover agents by finding their log directories."""
         agents = []
-        
+
+        # First try to get agent info from registry for network topology
         try:
             registry = self.discovery.get_agent_registry()
             agents_data = registry.get("agents", [])
-            
-            # Handle both list and dictionary formats
+        except Exception:
+            agents_data = []
+
+        # Find log directories
+        log_dirs = self.find_log_directories(base_log_dir)
+
+        for agent_name, log_dir in log_dirs:
+            agent = AgentStatus(agent_name, log_dir)
+
+            # Find log files for this agent
+            agent.log_files = glob.glob(os.path.join(log_dir, "*.stdout")) + \
+                             glob.glob(os.path.join(log_dir, "*.stderr")) + \
+                             glob.glob(os.path.join(log_dir, "*.log"))
+
+            agents.append(agent)
+
+            # Try to get network topology info from registry
+            agent_info = None
             if isinstance(agents_data, list):
-                for agent_data in agents_data:
-                    agent_id = agent_data.get("agent_id") or agent_data.get("id")
-                    ip_addr = agent_data.get("ip_addr")
-                    rpc_port = agent_data.get("agent_rpc_port") or agent_data.get("node_rpc_port")
-                    
-                    if agent_id and ip_addr and rpc_port:
-                        agents.append(AgentStatus(agent_id, f"http://{ip_addr}:{rpc_port}/json_rpc"))
-                        
-                        # Add to network topology
-                        as_num = agent_data.get("as_num")
-                        self.network_topology.add_node(agent_id, ip_addr, as_num)
+                for data in agents_data:
+                    if data.get("id") == agent_name or data.get("agent_id") == agent_name:
+                        agent_info = data
+                        break
             elif isinstance(agents_data, dict):
-                for agent_id, agent_data in agents_data.items():
-                    ip_addr = agent_data.get("ip_addr")
-                    rpc_port = agent_data.get("agent_rpc_port") or agent_data.get("node_rpc_port")
-                    
-                    if ip_addr and rpc_port:
-                        agents.append(AgentStatus(agent_id, f"http://{ip_addr}:{rpc_port}/json_rpc"))
-                        
-                        # Add to network topology
-                        as_num = agent_data.get("as_num")
-                        self.network_topology.add_node(agent_id, ip_addr, as_num)
-            
-        except Exception as e:
-            log_error(COMPONENT, f"Failed to discover agents: {e}")
-            
+                agent_info = agents_data.get(agent_name)
+
+            if agent_info:
+                ip_addr = agent_info.get("ip_addr", "unknown")
+                as_num = agent_info.get("as_num")
+                self.network_topology.add_node(agent_name, ip_addr, as_num)
+
         return agents
         
+    def parse_log_line(self, line: str) -> Dict[str, Any]:
+        """Parse a single log line for monitoring data."""
+        data = {}
+
+        # Height information
+        height_match = re.search(r'HEIGHT (\d+)', line)
+        if height_match:
+            data['height'] = int(height_match.group(1))
+
+        # Difficulty
+        diff_match = re.search(r'difficulty[:\s]+(\d+)', line)
+        if diff_match:
+            data['difficulty'] = int(diff_match.group(1))
+
+        # Transaction count
+        tx_match = re.search(r'tx_count[:\s]+(\d+)', line)
+        if tx_match:
+            data['tx_count'] = int(tx_match.group(1))
+
+        # Transaction pool size
+        tx_pool_match = re.search(r'tx_pool_size[:\s]+(\d+)', line)
+        if tx_pool_match:
+            data['tx_pool_size'] = int(tx_pool_match.group(1))
+
+        # Connections
+        incoming_match = re.search(r'incoming_connections_count[:\s]+(\d+)', line)
+        if incoming_match:
+            data['incoming_connections'] = int(incoming_match.group(1))
+
+        outgoing_match = re.search(r'outgoing_connections_count[:\s]+(\d+)', line)
+        if outgoing_match:
+            data['outgoing_connections'] = int(outgoing_match.group(1))
+
+        # Peer lists
+        white_match = re.search(r'white_peerlist_size[:\s]+(\d+)', line)
+        if white_match:
+            data['white_peerlist_size'] = int(white_match.group(1))
+
+        grey_match = re.search(r'grey_peerlist_size[:\s]+(\d+)', line)
+        if grey_match:
+            data['grey_peerlist_size'] = int(grey_match.group(1))
+
+        # Status
+        if 'synchronized' in line.lower():
+            data['synchronized'] = True
+
+        # Mining status
+        if 'mining' in line.lower():
+            if 'active' in line.lower() or 'started' in line.lower():
+                data['mining_active'] = True
+            hashrate_match = re.search(r'speed[:\s]+(\d+)', line)
+            if hashrate_match:
+                data['hashrate'] = int(hashrate_match.group(1))
+
+        # Block reward
+        reward_match = re.search(r'block_reward[:\s]+(\d+)', line)
+        if reward_match:
+            data['block_reward'] = int(reward_match.group(1))
+
+        # Cumulative difficulty
+        cum_diff_match = re.search(r'cumulative_difficulty[:\s]+(\d+)', line)
+        if cum_diff_match:
+            data['cumulative_difficulty'] = int(cum_diff_match.group(1))
+
+        # Top block hash
+        hash_match = re.search(r'top_block_hash[:\s]+([0-9a-f]{64})', line)
+        if hash_match:
+            data['top_block_hash'] = hash_match.group(1)
+
+        # Transaction information
+        tx_hash_match = re.search(r'tx_hash[:\s]+([0-9a-f]{64})', line)
+        if tx_hash_match:
+            data['transaction'] = {
+                'hash': tx_hash_match.group(1),
+                'timestamp': time.time()
+            }
+
+        return data
+
+    def read_new_log_lines(self, agent: AgentStatus) -> List[str]:
+        """Read new lines from agent's log files."""
+        new_lines = []
+
+        for log_file in agent.log_files:
+            if not os.path.exists(log_file):
+                continue
+
+            # Get current file size
+            try:
+                current_size = os.path.getsize(log_file)
+                last_pos = agent.last_log_position.get(log_file, 0)
+
+                if current_size > last_pos:
+                    with open(log_file, 'r') as f:
+                        f.seek(last_pos)
+                        lines = f.readlines()
+                        new_lines.extend(lines)
+                        agent.last_log_position[log_file] = f.tell()
+
+            except Exception as e:
+                log_warning(COMPONENT, f"Error reading log file {log_file}: {e}")
+
+        return new_lines
+
     def update_agent_status(self, agent: AgentStatus) -> None:
-        """Update agent status with latest information."""
-        # Get basic agent info
-        info = self.get_agent_info(agent.url)
-        if info:
-            agent.height = info.get("height", 0)
-            agent.target_height = info.get("target_height", 0)
-            agent.difficulty = info.get("difficulty", 0)
-            agent.tx_count = info.get("tx_count", 0)
-            agent.tx_pool_size = info.get("tx_pool_size", 0)
-            agent.incoming_connections = info.get("incoming_connections_count", 0)
-            agent.outgoing_connections = info.get("outgoing_connections_count", 0)
-            agent.white_peerlist_size = info.get("white_peerlist_size", 0)
-            agent.grey_peerlist_size = info.get("grey_peerlist_size", 0)
-            agent.status = info.get("status", "unknown")
-            agent.synchronized = info.get("synchronized", False)
-            agent.cumulative_difficulty = info.get("cumulative_difficulty", 0)
-            agent.top_block_hash = info.get("top_block_hash", "")
-            agent.block_reward = info.get("block_reward", 0)
-            agent.error = None
-        else:
-            agent.error = "Failed to get agent info"
-        
-        # Get mining status
-        mining_status = self.get_mining_status(agent.url)
-        if mining_status:
-            agent.mining_active = mining_status.get("active", False)
-            agent.hashrate = mining_status.get("speed", 0)
-        
+        """Update agent status by parsing latest log lines."""
+        # Read new log lines
+        new_lines = self.read_new_log_lines(agent)
+
+        # Parse each new line
+        for line in new_lines:
+            parsed_data = self.parse_log_line(line.strip())
+            if parsed_data:
+                # Update agent status with parsed data
+                for key, value in parsed_data.items():
+                    if key == 'transaction':
+                        # Handle transaction separately
+                        tx_data = value
+                        self.tx_tracker.add_transaction(
+                            tx_data['hash'], agent.name, "unknown",
+                            0.0, tx_data['timestamp']
+                        )
+                    elif hasattr(agent, key):
+                        setattr(agent, key, value)
+
         # Update historical data
         timestamp = time.time()
         agent.height_history.append(agent.height)
@@ -300,13 +425,13 @@ class EnhancedMonitor:
         agent.tx_count_history.append(agent.tx_count)
         agent.connection_history.append(agent.incoming_connections + agent.outgoing_connections)
         agent.timestamp_history.append(timestamp)
-        
+
         # Calculate performance metrics
         self._calculate_performance_metrics(agent)
-        
+
         # Check for anomalies
         self._check_anomalies(agent)
-        
+
         agent.last_update = datetime.now()
         
     def _calculate_performance_metrics(self, agent: AgentStatus):
@@ -338,6 +463,15 @@ class EnhancedMonitor:
                 if mean_conn > 0:
                     agent.connection_stability = 1 - (stdev_conn / mean_conn)
                     
+    def _format_hashrate(self, hashrate: int) -> str:
+        """Format hashrate for display."""
+        if hashrate >= 1000000:
+            return f"{hashrate/1000000:.2f} MH/s"
+        elif hashrate >= 1000:
+            return f"{hashrate/1000:.2f} KH/s"
+        else:
+            return f"{hashrate} H/s"
+
     def _check_anomalies(self, agent: AgentStatus):
         """Check for anomalies in agent metrics."""
         # Check height anomaly
@@ -347,7 +481,7 @@ class EnhancedMonitor:
         if alert:
             self.alert_manager.add_alert(alert)
             agent.alerts.append(alert)
-            
+
         # Check hashrate anomaly
         alert = self.alert_manager.check_anomaly(
             "hashrate", agent.hashrate, agent.hashrate_history, agent.name
@@ -355,7 +489,7 @@ class EnhancedMonitor:
         if alert:
             self.alert_manager.add_alert(alert)
             agent.alerts.append(alert)
-            
+
         # Check connection anomaly
         total_connections = agent.incoming_connections + agent.outgoing_connections
         alert = self.alert_manager.check_anomaly(
@@ -365,35 +499,6 @@ class EnhancedMonitor:
             self.alert_manager.add_alert(alert)
             agent.alerts.append(alert)
             
-    def get_agent_info(self, agent_url: str) -> Optional[Dict[str, Any]]:
-        """Get comprehensive agent information."""
-        success, response = call_daemon_with_retry(
-            agent_url, "get_info", {}, self.max_attempts, self.retry_delay, COMPONENT
-        )
-        
-        if success:
-            return response.get("result", {})
-        return None
-        
-    def get_mining_status(self, agent_url: str) -> Optional[Dict[str, Any]]:
-        """Get mining status from agent."""
-        success, response = call_daemon_with_retry(
-            agent_url, "mining_status", {}, self.max_attempts, self.retry_delay, COMPONENT
-        )
-        
-        if success:
-            return response.get("result", {})
-        return None
-        
-    def get_connections(self, agent_url: str) -> Optional[List[Dict[str, Any]]]:
-        """Get peer connections from agent."""
-        success, response = call_daemon_with_retry(
-            agent_url, "get_connections", {}, self.max_attempts, self.retry_delay, COMPONENT
-        )
-        
-        if success:
-            return response.get("result", {}).get("connections", [])
-        return None
         
     def print_enhanced_status(self, agent: AgentStatus, verbose: bool = False):
         """Print enhanced agent status with additional metrics."""
@@ -452,11 +557,12 @@ class EnhancedMonitor:
         # Verbose information
         if verbose:
             print(f"\nVerbose Details:")
-            print(f"  URL: {agent.url}")
+            print(f"  Log Directory: {agent.log_dir}")
             print(f"  Cumulative Difficulty: {agent.cumulative_difficulty:,}")
             if agent.top_block_hash:
                 print(f"  Top Block Hash: {agent.top_block_hash[:16]}...")
-                
+            print(f"  Log Files: {len(agent.log_files)}")
+
         # Last update
         if agent.last_update:
             print(f"\nLast Update: {agent.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -601,7 +707,7 @@ def main():
     parser.add_argument(
         "--agents",
         nargs="+",
-        help="List of agents to monitor (format: name=url). If not specified, agents will be discovered automatically.",
+        help="List of agents to monitor (format: name=log_dir). If not specified, agents will be discovered automatically.",
         default=None
     )
     parser.add_argument(
@@ -611,16 +717,9 @@ def main():
         help=f"Refresh interval in seconds (default: {DEFAULT_REFRESH_INTERVAL})"
     )
     parser.add_argument(
-        "--max-attempts",
-        type=int,
-        default=DEFAULT_MAX_ATTEMPTS,
-        help=f"Maximum RPC attempts (default: {DEFAULT_MAX_ATTEMPTS})"
-    )
-    parser.add_argument(
-        "--retry-delay",
-        type=float,
-        default=DEFAULT_RETRY_DELAY,
-        help=f"Delay between RPC attempts (default: {DEFAULT_RETRY_DELAY})"
+        "--log-dir",
+        default="shadow.data/hosts",
+        help="Base directory containing agent log directories (default: shadow.data/hosts)"
     )
     parser.add_argument(
         "--no-clear",
@@ -664,56 +763,42 @@ def main():
     log_info(COMPONENT, f"Starting enhanced monitor at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Initialize enhanced monitor
-    monitor = EnhancedMonitor(
-        refresh_interval=args.refresh,
-        max_attempts=args.max_attempts,
-        retry_delay=args.retry_delay
-    )
-    
+    monitor = EnhancedMonitor(refresh_interval=args.refresh)
+
     # Configure alert threshold
     monitor.alert_manager.threshold = args.alert_threshold
-    
+
     # Configure export
     monitor.export_enabled = not args.no_export
     if args.export_format:
         monitor.export_format = args.export_format
     if args.export_file:
         monitor.export_file = args.export_file
-    
+
     # Discover agents
     if args.agents:
         # Manual agent specification
         for agent_spec in args.agents:
             if "=" in agent_spec:
-                name, url = agent_spec.split("=", 1)
-                monitor.agents.append(AgentStatus(name, url))
+                name, log_dir = agent_spec.split("=", 1)
+                agent = AgentStatus(name, log_dir)
+                # Find log files
+                agent.log_files = glob.glob(os.path.join(log_dir, "*.stdout")) + \
+                                 glob.glob(os.path.join(log_dir, "*.stderr")) + \
+                                 glob.glob(os.path.join(log_dir, "*.log"))
+                monitor.agents.append(agent)
             else:
                 log_error(COMPONENT, f"Invalid agent specification: {agent_spec}")
                 handle_exit(1, COMPONENT, "Invalid agent specification")
     else:
         # Automatic discovery
-        monitor.agents = monitor.discover_agents()
-        
+        monitor.agents = monitor.discover_agents(args.log_dir)
+
     if not monitor.agents:
         log_error(COMPONENT, "No agents to monitor")
         handle_exit(1, COMPONENT, "No agents to monitor")
-        
+
     log_info(COMPONENT, f"Monitoring {len(monitor.agents)} agents")
-    
-    # Verify all agents are reachable
-    all_ready = True
-    unreachable_agents = []
-    
-    for agent in monitor.agents:
-        if not verify_daemon_ready(agent.url, agent.name, args.max_attempts,
-                                  args.retry_delay, COMPONENT):
-            log_error(COMPONENT, f"Agent {agent.name} is not ready")
-            unreachable_agents.append(agent.name)
-            all_ready = False
-            
-    if not all_ready:
-        log_error(COMPONENT, f"Unreachable agents: {', '.join(unreachable_agents)}")
-        handle_exit(1, COMPONENT, "Not all agents are ready")
         
     if args.once:
         # Single run mode

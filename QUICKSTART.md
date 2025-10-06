@@ -26,14 +26,15 @@ cd monerosim
 
 **Note**: The setup process includes building Monero from source with Shadow compatibility patches, which can take 20-40 minutes depending on your system.
 
-That's it! The script will:
+The script will:
 - ✅ Install all dependencies (Rust, Shadow, build tools)
 - ✅ Clone and patch Monero source code for Shadow compatibility
 - ✅ Build MoneroSim
 - ✅ Build Monero binaries with Shadow patches
 - ✅ Install Monero binaries to system PATH
-- ✅ Run a test simulation
-- ✅ Show you the results
+- ✅ Prompt you about Shadow installation (if existing Shadow detected)
+- ✅ Prompt you whether to run a test simulation (config_47_agents.yaml takes 6-7 hours)
+- ✅ Show you the results if you choose to run the test
 
 ## What You'll See
 
@@ -46,6 +47,11 @@ The script will output colored progress messages:
 ## After Setup
 
 Once setup completes, you can:
+
+**Note**: For analysis scripts and agent operations, activate the Python virtual environment:
+```bash
+source venv/bin/activate
+```
 
 ### Run Custom Simulations
 
@@ -61,6 +67,15 @@ shadow shadow_agents_output/shadow_agents.yaml
 ```
 
 ### Analyze Results
+
+First, process the logs for summarized analysis:
+
+```bash
+source venv/bin/activate
+python scripts/log_processor.py
+```
+
+This creates `.processed_log` files with summarized information. Check these files first for a quick overview, or use grep commands for specific patterns:
 
 ```bash
 # Check if nodes started
