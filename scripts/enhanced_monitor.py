@@ -37,6 +37,7 @@ import fcntl
 
 # Import error handling
 from error_handling import log_info, log_warning, log_error, log_critical, log_success, handle_exit
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agents.agent_discovery import AgentDiscovery
 
 # Component name for logging
@@ -73,6 +74,7 @@ class AgentStatus:
         self.cumulative_difficulty: int = 0
         self.top_block_hash: str = ""
         self.last_update: Optional[datetime] = None
+        self.last_mining_time: Optional[str] = None
         self.error: Optional[str] = None
 
         # Log parsing state
@@ -302,7 +304,7 @@ class EnhancedMonitor:
         if height_match:
             data['height'] = int(height_match.group(1))
 
-        # Difficulty
+        # Difficulty (handle both "difficulty:" and "difficulty:\t")
         diff_match = re.search(r'difficulty[:\s]+(\d+)', line)
         if diff_match:
             data['difficulty'] = int(diff_match.group(1))
@@ -339,13 +341,13 @@ class EnhancedMonitor:
         if 'synchronized' in line.lower():
             data['synchronized'] = True
 
-        # Mining status
-        if 'mining' in line.lower():
-            if 'active' in line.lower() or 'started' in line.lower():
-                data['mining_active'] = True
-            hashrate_match = re.search(r'speed[:\s]+(\d+)', line)
-            if hashrate_match:
-                data['hashrate'] = int(hashrate_match.group(1))
+        # Mining status - detect when block controller calls generateblocks on this agent
+        if 'Calling RPC method generateblocks' in line:
+            data['mining_active'] = True
+            # Extract timestamp for recent mining activity
+            timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})', line)
+            if timestamp_match:
+                data['last_mining_time'] = timestamp_match.group(1)
 
         # Block reward
         reward_match = re.search(r'block_reward[:\s]+(\d+)', line)
@@ -426,6 +428,9 @@ class EnhancedMonitor:
         agent.connection_history.append(agent.incoming_connections + agent.outgoing_connections)
         agent.timestamp_history.append(timestamp)
 
+        # Determine mining status based on recent activity
+        agent.mining_active = self._is_recently_mining(agent)
+
         # Calculate performance metrics
         self._calculate_performance_metrics(agent)
 
@@ -463,6 +468,75 @@ class EnhancedMonitor:
                 if mean_conn > 0:
                     agent.connection_stability = 1 - (stdev_conn / mean_conn)
                     
+    def _is_recently_mining(self, agent: AgentStatus) -> bool:
+        """Check if agent has been mining recently (within last 10 minutes of sim time)."""
+        if not agent.last_mining_time:
+            return False
+
+        try:
+            # Parse the simulation timestamp (format: 2000-01-01 00:42:27.035)
+            mining_time = datetime.strptime(agent.last_mining_time, "%Y-%m-%d %H:%M:%S.%f")
+
+            # Get current simulation time from agent's logs
+            current_sim_time = self._get_current_simulation_time(agent)
+            if not current_sim_time:
+                return False
+
+            # Check if mining was within last 10 minutes
+            time_diff = current_sim_time - mining_time
+            return time_diff.total_seconds() < 600  # 10 minutes
+
+        except (ValueError, AttributeError):
+            return False
+
+    def _get_current_simulation_time(self, agent: AgentStatus) -> Optional[datetime]:
+        """Extract current simulation time from agent's recent log entries."""
+        # Read the last few lines of the agent's log to get current sim time
+        for log_file in agent.log_files:
+            if not os.path.exists(log_file):
+                continue
+
+            try:
+                with open(log_file, 'r') as f:
+                    # Read last 10 lines
+                    lines = f.readlines()[-10:]
+                    for line in reversed(lines):
+                        # Extract timestamp from log line
+                        timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})', line)
+                        if timestamp_match:
+                            return datetime.strptime(timestamp_match.group(1), "%Y-%m-%d %H:%M:%S.%f")
+            except Exception:
+                continue
+        return None
+
+    def _get_simulation_time_status(self) -> str:
+        """Get current simulation time status from agents."""
+        sim_times = []
+        for agent in self.agents:
+            sim_time = self._get_current_simulation_time(agent)
+            if sim_time:
+                sim_times.append(sim_time)
+
+        if sim_times:
+            latest_time = max(sim_times)
+            return latest_time.strftime("%Y-%m-%d %H:%M:%S")
+        return "Unknown"
+
+    def _rediscover_agents(self):
+        """Re-discover agents to catch any that have started since initial discovery."""
+        try:
+            current_agent_names = {agent.name for agent in self.agents}
+            new_agents = self.discover_agents()
+
+            # Add any new agents we haven't seen before
+            for agent in new_agents:
+                if agent.name not in current_agent_names:
+                    log_info(COMPONENT, f"Discovered new agent: {agent.name}")
+                    self.agents.append(agent)
+
+        except Exception as e:
+            log_warning(COMPONENT, f"Error during agent rediscovery: {e}")
+
     def _format_hashrate(self, hashrate: int) -> str:
         """Format hashrate for display."""
         if hashrate >= 1000000:
@@ -567,22 +641,66 @@ class EnhancedMonitor:
         if agent.last_update:
             print(f"\nLast Update: {agent.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
             
+    def print_simulation_summary_table(self):
+        """Print a summary ASCII table of all agents."""
+        print(f"\n{'='*100}")
+        print("Simulation Summary")
+        print(f"{'='*100}")
+
+        # Table header
+        header = "| {:<15} | {:<8} | {:<6} | {:<10} | {:<12} | {:<8} | {:<12} |".format(
+            "Agent", "Height", "Sync", "Mining", "Connections", "TX Count", "Last Update"
+        )
+        print(header)
+        print("|-" + "-"*15 + "-|-" + "-"*8 + "-|-" + "-"*6 + "-|-" + "-"*10 + "-|-" + "-"*12 + "-|-" + "-"*8 + "-|-" + "-"*12 + "-|")
+
+        # Sort agents by name for consistent display
+        sorted_agents = sorted(self.agents, key=lambda x: x.name)
+
+        for agent in sorted_agents:
+            # Format data
+            height = str(agent.height) if agent.height > 0 else "0"
+            sync_status = "✓" if agent.synchronized else "✗"
+            mining_status = "✓" if agent.mining_active else "✗"
+            connections = f"{agent.incoming_connections + agent.outgoing_connections}"
+            tx_count = str(agent.tx_count) if agent.tx_count > 0 else "0"
+            last_update = agent.last_update.strftime("%H:%M:%S") if agent.last_update else "N/A"
+
+            # Print row
+            row = "| {:<15} | {:<8} | {:<6} | {:<10} | {:<12} | {:<8} | {:<12} |".format(
+                agent.name[:15], height[:8], sync_status, mining_status,
+                connections[:10], tx_count[:8], last_update
+            )
+            print(row)
+
+        print(f"{'='*100}")
+
+        # Summary statistics
+        total_agents = len(self.agents)
+        synced_agents = sum(1 for agent in self.agents if agent.synchronized)
+        mining_agents = sum(1 for agent in self.agents if agent.mining_active)
+        total_height = sum(agent.height for agent in self.agents)
+        avg_height = total_height / total_agents if total_agents > 0 else 0
+
+        print(f"Summary: {total_agents} agents | {synced_agents} synced | {mining_agents} mining | Avg height: {avg_height:.1f}")
+        print(f"{'='*100}")
+
     def print_network_topology(self):
         """Print network topology visualization."""
         print(f"\n{'='*60}")
         print("Network Topology")
         print(f"{'='*60}")
-        
+
         # Group by AS
         as_groups = defaultdict(list)
         for node_id, node_info in self.network_topology.nodes.items():
             as_num = node_info.get("as_num", "Unknown")
             as_groups[as_num].append(node_id)
-            
+
         print(f"Autonomous Systems:")
         for as_num, nodes in as_groups.items():
             print(f"  AS {as_num}: {', '.join(nodes)}")
-            
+
         # Print connections
         print(f"\nConnections:")
         for node1, node2 in self.network_topology.connections:
@@ -667,9 +785,14 @@ class EnhancedMonitor:
                 if clear_screen:
                     print("\033[2J\033[H")  # ANSI escape codes to clear screen
                     
+                sim_time = self._get_simulation_time_status()
                 print(f"MoneroSim Enhanced Monitor - Iteration #{iteration}")
-                print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"Real Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Sim Time: {sim_time}")
                 
+                # Periodically rediscover agents (every 5 iterations)
+                if iteration % 5 == 1:
+                    self._rediscover_agents()
+
                 # Update all agents
                 for agent in self.agents:
                     self.update_agent_status(agent)
@@ -677,7 +800,10 @@ class EnhancedMonitor:
                 # Print status for each agent
                 for agent in self.agents:
                     self.print_enhanced_status(agent, verbose)
-                    
+
+                # Print simulation summary table
+                self.print_simulation_summary_table()
+
                 # Print network topology
                 self.print_network_topology()
                 
@@ -811,7 +937,10 @@ def main():
         # Print status
         for agent in monitor.agents:
             monitor.print_enhanced_status(agent, args.verbose)
-            
+
+        # Print simulation summary table
+        monitor.print_simulation_summary_table()
+
         # Print network topology
         monitor.print_network_topology()
         
