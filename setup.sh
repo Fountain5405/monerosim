@@ -122,7 +122,7 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
             "gcc"|"g++")
                 print_status "Installing build-essential/development tools..."
                 if [[ $PKG_MANAGER == "apt-get" ]]; then
-                    $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 ccache
+                    $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 python3-venv ccache
                 elif [[ $PKG_MANAGER == "yum" ]]; then
                     $INSTALL_CMD gcc gcc-c++ make openssl-devel zeromq-devel unbound-devel sodium-devel libunwind-devel xz-devel readline-devel expat-devel pgm-devel qt5-linguist hidapi-devel libusbx-devel protobuf-devel protobuf-compiler systemd-devel boost-devel python3 ccache
                 elif [[ $PKG_MANAGER == "pacman" ]]; then
@@ -159,6 +159,11 @@ VENV_DIR="$SCRIPT_DIR/venv"
 if [[ ! -d "$VENV_DIR" ]]; then
     print_status "Creating Python virtual environment..."
     python3 -m venv "$VENV_DIR"
+    if [[ ! -d "$VENV_DIR" ]]; then
+        print_error "Failed to create Python virtual environment"
+        print_error "Please ensure python3-venv is installed and try again"
+        exit 1
+    fi
 fi
 
 # Activate the virtual environment
