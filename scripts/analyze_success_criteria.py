@@ -18,6 +18,11 @@ from scripts.error_handling import log_info
 # Define data structures
 Block = Tuple[int, str]  # (height, hash)
 
+# Constants
+DEFAULT_MAX_WORKERS = 4
+TIMESTAMP_PATTERN = r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3}\s*'
+
+
 def parse_log_file(file_path: str) -> Dict[str, List]:
     """
     Parse a single log file for Monero events.
@@ -26,8 +31,13 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
     Each value is a list of relevant tuples or dicts.
     """
     events = defaultdict(list)
-    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-        lines = f.readlines()
+
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    except Exception as e:
+        log_info("analyze_success_criteria", f"Error reading file {file_path}: {e}")
+        return dict(events)
 
     normalized_lines = []
     for line in lines:
@@ -35,7 +45,7 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
         if not line:
             continue
         # Strip timestamp prefix
-        line = re.sub(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3}\s*', '', line)
+        line = re.sub(TIMESTAMP_PATTERN, '', line)
         # Normalize multiple spaces/tabs to single space
         line = re.sub(r'\s+', ' ', line).strip()
         normalized_lines.append(line)
@@ -114,13 +124,8 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
 
     return dict(events)
 
-def parse_log_file_threaded(file_path: str) -> Dict[str, List]:
-    """
-    Thread-safe wrapper for parse_log_file.
-    """
-    return parse_log_file(file_path)
 
-def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
+def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKERS) -> Dict:
     """
     Analyze all host logs in the directory using multi-threading.
     Returns aggregated data and success report.
@@ -164,7 +169,7 @@ def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
         if not host_dir.is_dir():
             continue
         host_name = host_dir.name
-        
+
         # Find all bash.*.stdout files
         log_files = glob(str(host_dir / 'bash.*.stdout'))
         for log_file in log_files:
@@ -174,19 +179,19 @@ def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         future_to_file = {
-            executor.submit(parse_log_file_threaded, log_file): (host_name, log_file)
+            executor.submit(parse_log_file, log_file): (host_name, log_file)
             for host_name, log_file in log_files_to_process
         }
-        
+
         # Process results as they complete
         host_events = defaultdict(lambda: {'blocks_mined': set(), 'blocks_received': set(),
                                         'tx_created': set(), 'tx_received': set(), 'tx_included': {}})
-        
+
         for future in concurrent.futures.as_completed(future_to_file):
             host_name, log_file = future_to_file[future]
             try:
                 events = future.result()
-                
+
                 # Aggregate for this host
                 host_events[host_name]['blocks_mined'].update(events.get('blocks_mined', []))
                 host_events[host_name]['blocks_received'].update(events.get('blocks_received', []))
@@ -196,7 +201,7 @@ def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
                     if tx_h not in host_events[host_name]['tx_included']:
                         host_events[host_name]['tx_included'][tx_h] = set()
                     host_events[host_name]['tx_included'][tx_h].add(height)
-                    
+
             except Exception as exc:
                 print(f'Error processing {log_file}: {exc}')
 
@@ -208,7 +213,7 @@ def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
         all_txs_received[host_name] = events['tx_received']
         for tx_h, heights in events['tx_included'].items():
             all_txs_included[tx_h].update(heights)
-        
+
         node_data[host_name] = events
 
     # Verify success criteria
@@ -261,18 +266,19 @@ def analyze_simulation(log_dir: str = None, max_workers: int = 4) -> Dict:
 
     return {'node_data': node_data, 'report': report}
 
+
 def generate_summary_report(report: Dict) -> str:
     """
     Generate a clean summary report with less granular data.
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     summary = []
     summary.append("Monerosim Simulation Success Analysis Report")
     summary.append("=" * 50)
     summary.append(f"Generated: {timestamp}")
     summary.append("")
-    
+
     # Basic statistics
     summary.append("Simulation Overview:")
     summary.append(f"  Number of nodes analyzed: {report['num_nodes']}")
@@ -280,23 +286,23 @@ def generate_summary_report(report: Dict) -> str:
     summary.append(f"  Total unique transactions created: {report['total_txs_created']}")
     summary.append(f"  Total transactions included in blocks: {report['total_txs_included']}")
     summary.append("")
-    
+
     # Success criteria
     summary.append("Success Criteria Results:")
     summary.append("")
-    
+
     for criterion, data in report['criteria'].items():
         status = "PASS" if data['success'] else "FAIL"
         summary.append(f"  • {criterion.replace('_', ' ').title()}: {status}")
         summary.append(f"    {data['details']}")
         summary.append("")
-    
+
     # Overall success
     summary.append("Overall Result:")
     overall_status = "SUCCESS" if report['overall_success'] else "FAILURE"
     summary.append(f"  {overall_status}")
     summary.append("")
-    
+
     # Recommendations
     if not report['overall_success']:
         summary.append("Recommendations:")
@@ -304,8 +310,9 @@ def generate_summary_report(report: Dict) -> str:
         summary.append("  • Verify mining configuration")
         summary.append("  • Ensure transaction broadcasting is working")
         summary.append("  • Check block propagation timing")
-    
+
     return "\n".join(summary)
+
 
 def save_summary_report(report: Dict, filename: str = None):
     """
@@ -314,43 +321,45 @@ def save_summary_report(report: Dict, filename: str = None):
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"simulation_summary_report_{timestamp}.txt"
-    
+
     summary = generate_summary_report(report)
-    
+
     with open(filename, 'w') as f:
         f.write(summary)
-    
+
     print(f"Summary report saved to: {filename}")
     return filename
+
 
 def main():
     try:
         print("Starting simulation analysis with multi-threading support...")
-        analysis = analyze_simulation(max_workers=4)
+        analysis = analyze_simulation(max_workers=DEFAULT_MAX_WORKERS)
         report = analysis['report']
-        
+
         # Print clean summary to console
         summary = generate_summary_report(report)
         print("\n" + summary)
-        
+
         # Save summary report to file
         summary_file = save_summary_report(report)
-        
+
         # Save detailed report to JSON (maintain existing functionality)
         with open('success_analysis_report.json', 'w') as f:
             json.dump(analysis, f, indent=2, default=str)
         print(f"\nDetailed report saved to success_analysis_report.json")
-        
+
         return {
             'success': True,
             'summary_file': summary_file,
             'detailed_file': 'success_analysis_report.json',
             'overall_success': report['overall_success']
         }
-        
+
     except Exception as e:
         print(f"Error during analysis: {e}")
         return {'success': False, 'error': str(e)}
+
 
 if __name__ == "__main__":
     main()

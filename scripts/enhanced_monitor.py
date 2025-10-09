@@ -100,14 +100,14 @@ class AgentStatus:
 
 class TransactionTracker:
     """Track transactions across the network."""
-    
+
     def __init__(self):
         self.transactions: Dict[str, Dict[str, Any]] = {}
         self.tx_flow: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
         self.total_tx_count: int = 0
         self.total_volume: float = 0.0
-        
-    def add_transaction(self, tx_hash: str, sender: str, recipient: str, 
+
+    def add_transaction(self, tx_hash: str, sender: str, recipient: str,
                        amount: float, timestamp: float):
         """Add a transaction to the tracker."""
         self.transactions[tx_hash] = {
@@ -117,12 +117,12 @@ class TransactionTracker:
             "timestamp": timestamp,
             "confirmed": False
         }
-        
+
         # Track flow
         self.tx_flow[sender].append((recipient, timestamp))
         self.total_tx_count += 1
         self.total_volume += amount
-        
+
     def confirm_transaction(self, tx_hash: str):
         """Mark a transaction as confirmed."""
         if tx_hash in self.transactions:
@@ -131,12 +131,12 @@ class TransactionTracker:
 
 class NetworkTopology:
     """Track and visualize network topology."""
-    
+
     def __init__(self):
         self.nodes: Dict[str, Dict[str, Any]] = {}
         self.connections: Set[Tuple[str, str]] = set()
         self.as_mapping: Dict[str, str] = {}
-        
+
     def add_node(self, node_id: str, ip_addr: str, as_num: Optional[str] = None):
         """Add a node to the topology."""
         self.nodes[node_id] = {
@@ -146,7 +146,7 @@ class NetworkTopology:
         }
         if as_num:
             self.as_mapping[node_id] = as_num
-            
+
     def add_connection(self, node1: str, node2: str):
         """Add a connection between two nodes."""
         self.connections.add((node1, node2))
@@ -157,26 +157,26 @@ class NetworkTopology:
 
 class AlertManager:
     """Manage alerts for anomalies."""
-    
+
     def __init__(self, threshold: float = DEFAULT_ALERT_THRESHOLD):
         self.threshold = threshold
         self.alerts: List[Dict[str, Any]] = []
-        
-    def check_anomaly(self, metric_name: str, current_value: float, 
+
+    def check_anomaly(self, metric_name: str, current_value: float,
                      history: deque, agent_name: str) -> Optional[Dict[str, Any]]:
         """Check if a metric value is anomalous based on historical data."""
         if len(history) < 10:  # Need sufficient history
             return None
-            
+
         try:
             mean = statistics.mean(history)
             stdev = statistics.stdev(history)
-            
+
             if stdev == 0:  # No variation
                 return None
-                
+
             z_score = abs((current_value - mean) / stdev)
-            
+
             if z_score > self.threshold:
                 return {
                     "type": "anomaly",
@@ -190,13 +190,13 @@ class AlertManager:
                 }
         except (statistics.StatisticsError, ZeroDivisionError):
             pass
-            
+
         return None
-        
+
     def add_alert(self, alert: Dict[str, Any]):
         """Add an alert."""
         self.alerts.append(alert)
-        
+
     def get_active_alerts(self) -> List[Dict[str, Any]]:
         """Get alerts that are still active (within last hour)."""
         cutoff_time = datetime.now() - timedelta(hours=1)
@@ -208,26 +208,26 @@ class AlertManager:
 
 class EnhancedMonitor:
     """Enhanced monitor with advanced monitoring capabilities."""
-    
+
     def __init__(self, refresh_interval: int = DEFAULT_REFRESH_INTERVAL,
                  max_attempts: int = DEFAULT_MAX_ATTEMPTS,
                  retry_delay: float = DEFAULT_RETRY_DELAY):
         self.refresh_interval = refresh_interval
         self.max_attempts = max_attempts
         self.retry_delay = retry_delay
-        
+
         # Initialize components
         self.agents: List[AgentStatus] = []
         self.tx_tracker = TransactionTracker()
         self.network_topology = NetworkTopology()
         self.alert_manager = AlertManager()
         self.discovery = AgentDiscovery()
-        
+
         # Export settings
         self.export_enabled = False
         self.export_format = "json"  # json, csv
         self.export_file = None
-        
+
     def find_log_directories(self, base_dir: str = "shadow.data/hosts") -> List[Tuple[str, str]]:
         """Find agent log directories in the Shadow data directory."""
         log_dirs = []
@@ -294,7 +294,7 @@ class EnhancedMonitor:
                 self.network_topology.add_node(agent_name, ip_addr, as_num)
 
         return agents
-        
+
     def parse_log_line(self, line: str) -> Dict[str, Any]:
         """Parse a single log line for monitoring data."""
         data = {}
@@ -438,7 +438,7 @@ class EnhancedMonitor:
         self._check_anomalies(agent)
 
         agent.last_update = datetime.now()
-        
+
     def _calculate_performance_metrics(self, agent: AgentStatus):
         """Calculate performance metrics for an agent."""
         if len(agent.height_history) >= 2:
@@ -447,17 +447,17 @@ class EnhancedMonitor:
             if time_diff > 0:
                 height_rate = (agent.height_history[-1] - agent.height_history[-2]) / time_diff
                 agent.avg_height_rate = height_rate
-                
+
         # Calculate averages
         if agent.hashrate_history:
             agent.avg_hashrate = statistics.mean(agent.hashrate_history)
-            
+
         if len(agent.tx_count_history) >= 2:
             time_diff = agent.timestamp_history[-1] - agent.timestamp_history[-2]
             if time_diff > 0:
                 tx_rate = (agent.tx_count_history[-1] - agent.tx_count_history[-2]) / time_diff
                 agent.avg_tx_rate = tx_rate
-                
+
         # Calculate connection stability
         if agent.connection_history:
             connections = list(agent.connection_history)
@@ -467,7 +467,7 @@ class EnhancedMonitor:
                 stdev_conn = statistics.stdev(connections) if len(connections) > 1 else 0
                 if mean_conn > 0:
                     agent.connection_stability = 1 - (stdev_conn / mean_conn)
-                    
+
     def _is_recently_mining(self, agent: AgentStatus) -> bool:
         """Check if agent has been mining recently (within last 10 minutes of sim time)."""
         if not agent.last_mining_time:
@@ -572,18 +572,17 @@ class EnhancedMonitor:
         if alert:
             self.alert_manager.add_alert(alert)
             agent.alerts.append(alert)
-            
-        
+
     def print_enhanced_status(self, agent: AgentStatus, verbose: bool = False):
         """Print enhanced agent status with additional metrics."""
         print(f"\n{'='*60}")
         print(f"Agent: {agent.name}")
         print(f"{'='*60}")
-        
+
         if agent.error:
             print(f"ERROR: {agent.error}")
             return
-            
+
         # Basic info
         print(f"Status: {agent.status}")
         print(f"Synchronized: {'Yes' if agent.synchronized else 'No'}")
@@ -591,43 +590,43 @@ class EnhancedMonitor:
         if agent.target_height > 0:
             sync_percent = (agent.height / agent.target_height) * 100
             print(f"Sync Progress: {sync_percent:.1f}%")
-            
+
         # Performance metrics
         print(f"\nPerformance Metrics:")
         print(f"  Height Rate: {agent.avg_height_rate:.4f} blocks/sec")
         print(f"  Avg Hashrate: {self._format_hashrate(agent.avg_hashrate)}")
         print(f"  TX Rate: {agent.avg_tx_rate:.4f} tx/sec")
         print(f"  Connection Stability: {agent.connection_stability:.2%}")
-        
+
         # Mining info
         if agent.mining_active:
             print(f"\nMining: Active ({self._format_hashrate(agent.hashrate)})")
         else:
             print(f"\nMining: Inactive")
-            
+
         # Network info
         print(f"\nNetwork:")
         print(f"  Connections: {agent.incoming_connections} in / {agent.outgoing_connections} out")
         print(f"  Peer Lists: {agent.white_peerlist_size} white / {agent.grey_peerlist_size} grey")
-        
+
         # Transaction pool
         print(f"\nTransactions:")
         print(f"  TX Pool: {agent.tx_pool_size} transactions")
         print(f"  Total TXs: {agent.tx_count:,}")
-        
+
         # Blockchain info
         print(f"\nBlockchain:")
         print(f"  Difficulty: {agent.difficulty:,}")
         if agent.block_reward > 0:
             reward_xmr = agent.block_reward / 1e12
             print(f"  Block Reward: {reward_xmr:.12f} XMR")
-            
+
         # Alerts
         if agent.alerts:
             print(f"\n⚠️  Active Alerts:")
             for alert in agent.alerts[-3:]:  # Show last 3 alerts
                 print(f"  - {alert['metric']}: {alert['severity']} severity (Z-score: {alert['z_score']:.2f})")
-                
+
         # Verbose information
         if verbose:
             print(f"\nVerbose Details:")
@@ -640,7 +639,7 @@ class EnhancedMonitor:
         # Last update
         if agent.last_update:
             print(f"\nLast Update: {agent.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
-            
+
     def print_simulation_summary_table(self):
         """Print a summary ASCII table of all agents."""
         print(f"\n{'='*100}")
@@ -707,7 +706,7 @@ class EnhancedMonitor:
             if (node1, node2) not in self.network_topology.connections:
                 continue  # Avoid duplicates
             print(f"  {node1} <-> {node2}")
-            
+
     def print_alerts(self):
         """Print active alerts."""
         alerts = self.alert_manager.get_active_alerts()
@@ -715,18 +714,18 @@ class EnhancedMonitor:
             print(f"\n{'='*60}")
             print("Active Alerts")
             print(f"{'='*60}")
-            
+
             for alert in alerts:
                 print(f"⚠️  {alert['agent']} - {alert['metric']}: {alert['severity']}")
                 print(f"   Current: {alert['current_value']:.2f}, Mean: {alert['mean']:.2f}")
                 print(f"   Z-score: {alert['z_score']:.2f}, Time: {alert['timestamp']}")
-                
+
     def export_data(self, filename: str = None):
         """Export monitoring data."""
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"monerosim_monitor_{timestamp}.{self.export_format}"
-            
+
         try:
             if self.export_format == "json":
                 with open(filename, 'w') as f:
@@ -746,12 +745,12 @@ class EnhancedMonitor:
                         ],
                         "alerts": self.alert_manager.get_active_alerts()
                     }, f, indent=2)
-                    
+
             elif self.export_format == "csv":
                 with open(filename, 'w', newline='') as f:
                     writer = csv.writer(f)
                     writer.writerow(["Agent", "Height", "Hashrate", "TX Count", "Connections", "Status"])
-                    
+
                     for agent in self.agents:
                         writer.writerow([
                             agent.name,
@@ -761,34 +760,34 @@ class EnhancedMonitor:
                             agent.incoming_connections + agent.outgoing_connections,
                             agent.status
                         ])
-                        
+
             log_success(COMPONENT, f"Data exported to {filename}")
-            
+
         except Exception as e:
             log_error(COMPONENT, f"Failed to export data: {e}")
-            
+
     def run_monitoring(self, clear_screen: bool = True, verbose: bool = False,
                       export_format: str = None, export_file: str = None):
         """Run the enhanced monitoring loop."""
         iteration = 0
-        
+
         if export_format:
             self.export_format = export_format
         if export_file:
             self.export_file = export_file
-            
+
         try:
             while True:
                 iteration += 1
-                
+
                 # Clear screen if requested
                 if clear_screen:
                     print("\033[2J\033[H")  # ANSI escape codes to clear screen
-                    
+
                 sim_time = self._get_simulation_time_status()
                 print(f"MoneroSim Enhanced Monitor - Iteration #{iteration}")
                 print(f"Real Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Sim Time: {sim_time}")
-                
+
                 # Periodically rediscover agents (every 5 iterations)
                 if iteration % 5 == 1:
                     self._rediscover_agents()
@@ -796,7 +795,7 @@ class EnhancedMonitor:
                 # Update all agents
                 for agent in self.agents:
                     self.update_agent_status(agent)
-                    
+
                 # Print status for each agent
                 for agent in self.agents:
                     self.print_enhanced_status(agent, verbose)
@@ -806,17 +805,17 @@ class EnhancedMonitor:
 
                 # Print network topology
                 self.print_network_topology()
-                
+
                 # Print alerts
                 self.print_alerts()
-                
+
                 # Export data if enabled
                 if self.export_enabled:
                     self.export_data(self.export_file)
-                    
+
                 print(f"\nRefreshing in {self.refresh_interval} seconds... (Press Ctrl+C to stop)")
                 time.sleep(self.refresh_interval)
-                
+
         except KeyboardInterrupt:
             log_info(COMPONENT, "Monitoring stopped by user")
             if self.export_enabled:
@@ -828,7 +827,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Enhanced monitor for Monero agents in Shadow simulation with advanced features"
     )
-    
+
     # Add command line arguments
     parser.add_argument(
         "--agents",
@@ -882,12 +881,12 @@ def main():
         default=DEFAULT_ALERT_THRESHOLD,
         help=f"Alert threshold in standard deviations (default: {DEFAULT_ALERT_THRESHOLD})"
     )
-    
+
     args, _ = parser.parse_known_args()
-    
+
     log_info(COMPONENT, "=== MoneroSim Enhanced Monitor ===")
     log_info(COMPONENT, f"Starting enhanced monitor at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
     # Initialize enhanced monitor
     monitor = EnhancedMonitor(refresh_interval=args.refresh)
 
@@ -925,15 +924,15 @@ def main():
         handle_exit(1, COMPONENT, "No agents to monitor")
 
     log_info(COMPONENT, f"Monitoring {len(monitor.agents)} agents")
-        
+
     if args.once:
         # Single run mode
         log_info(COMPONENT, "Running single enhanced status check")
-        
+
         # Update all agents
         for agent in monitor.agents:
             monitor.update_agent_status(agent)
-            
+
         # Print status
         for agent in monitor.agents:
             monitor.print_enhanced_status(agent, args.verbose)
@@ -943,26 +942,26 @@ def main():
 
         # Print network topology
         monitor.print_network_topology()
-        
+
         # Print alerts
         monitor.print_alerts()
-        
+
         # Export data
         if monitor.export_enabled:
             monitor.export_data(monitor.export_file)
-            
+
         log_info(COMPONENT, "Enhanced monitor check completed")
         handle_exit(0, COMPONENT, "Single run completed successfully")
     else:
         # Continuous monitoring mode
         log_info(COMPONENT, f"Starting enhanced continuous monitoring (refresh every {args.refresh} seconds)")
         monitor.run_monitoring(
-            not args.no_clear, 
+            not args.no_clear,
             args.verbose,
             args.export_format,
             args.export_file
         )
-        
+
         handle_exit(0, COMPONENT, "Enhanced monitoring stopped")
 
 

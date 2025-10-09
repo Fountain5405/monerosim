@@ -41,13 +41,21 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.error_handling import log_error, log_info, log_warning
 from agents.agent_discovery import AgentDiscovery
 
+# Constants
+DEFAULT_BASE_DIR = "/home/lever65/monerosim_dev/monerosim"
+DEFAULT_LOGS_DIR = f"{DEFAULT_BASE_DIR}/shadow.data/hosts"
+DEFAULT_OUTPUT_DIR = f"{DEFAULT_BASE_DIR}/analysis_results"
+IPAPI_TIMEOUT = 5
+MAX_RETRIES = 3
 
-def find_latest_shadow_data():
+
+def find_latest_shadow_data(base_dir: str = DEFAULT_BASE_DIR) -> Path:
     """Find the most recent shadow.data directory, prioritizing current workspace."""
-    workspace = Path('..')  # From scripts/ to root
+    workspace = Path(base_dir)
     current_shadow_path = workspace / 'shadow.data'
     if current_shadow_path.exists():
         return current_shadow_path
+
     # Fallback to dated subdirectories
     shadow_dirs = []
     for d in workspace.iterdir():
@@ -55,23 +63,27 @@ def find_latest_shadow_data():
             shadow_path = d / 'shadow.data'
             if shadow_path.exists():
                 shadow_dirs.append((d.stat().st_mtime, shadow_path))
+
     if not shadow_dirs:
-        return Path('../shadow.data')  # Fallback to default
+        return Path(f'{base_dir}/shadow.data')  # Fallback to default
+
     shadow_dirs.sort(reverse=True)
     return shadow_dirs[0][1]
 
 
-def find_latest_shadow_config():
+def find_latest_shadow_config(base_dir: str = DEFAULT_BASE_DIR) -> Path:
     """Find the most recent shadow_agents.yaml in shadow_agents_output directories."""
-    workspace = Path('..')
+    workspace = Path(base_dir)
     config_files = []
     for d in workspace.iterdir():
         if d.is_dir() and d.name.startswith('shadow_agents_output'):
             config_path = d / 'shadow_agents.yaml'
             if config_path.exists():
                 config_files.append((d.stat().st_mtime, config_path))
+
     if not config_files:
-        return Path('../shadow_agents_output/shadow_agents.yaml')  # Fallback
+        return Path(f'{base_dir}/shadow_agents_output/shadow_agents.yaml')  # Fallback
+
     config_files.sort(reverse=True)
     return config_files[0][1]
 
@@ -83,7 +95,7 @@ class NetworkConnectivityAnalyzer:
         self.config_file = Path(config_file)
         self.logs_dir = Path(logs_dir)
         # Create output directory in monerosim root
-        monerosim_root = Path('/home/lever65/monerosim_dev/monerosim')
+        monerosim_root = Path(DEFAULT_BASE_DIR)
         self.output_dir = monerosim_root / output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -96,10 +108,10 @@ class NetworkConnectivityAnalyzer:
 
         # Data structures
         self.connections = defaultdict(set)  # node -> set of connected nodes
-        self.connection_events = []  # List of (timestamp, event_type, node1, node2)
-        self.node_info = {}  # node -> {'ip': ip, 'type': 'miner'/'user', 'name': name}
+        self.connection_events = []  # List of connection events
+        self.node_info = {}  # node -> info dict
         self.ip_to_node = {}  # ip -> node_name
-        self.ip_analysis = defaultdict(lambda: {'count': 0, 'ports': set(), 'geolocation': None})  # ip -> analysis data
+        self.ip_analysis = defaultdict(lambda: {'count': 0, 'ports': set(), 'geolocation': None})
 
         # Log patterns - only successful connections
         self.successful_connection_pattern = re.compile(
@@ -109,8 +121,8 @@ class NetworkConnectivityAnalyzer:
     def _load_config(self) -> dict:
         """Load the simulation configuration file."""
         try:
+            import yaml
             with open(self.config_file, 'r') as f:
-                import yaml
                 return yaml.safe_load(f)
         except Exception as e:
             log_error("NetworkConnectivityAnalyzer", f"Failed to load config file {self.config_file}: {e}")
@@ -131,11 +143,11 @@ class NetworkConnectivityAnalyzer:
         try:
             with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
                 for line_num, line in enumerate(f, 1):
-                    # Extract timestamp if available (assuming format: YYYY-MM-DD HH:MM:SS)
+                    # Extract timestamp if available
                     timestamp_match = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', line)
                     timestamp = timestamp_match.group(0) if timestamp_match else f"line_{line_num}"
 
-                    # Check for successful connections (handshaked)
+                    # Check for successful connections
                     successful_conn = self.successful_connection_pattern.search(line)
                     if successful_conn:
                         ip, port = successful_conn.groups()
@@ -153,13 +165,12 @@ class NetworkConnectivityAnalyzer:
         # Map IP to node name
         target_node = self.ip_to_node.get(ip)
         if not target_node:
-            # Try to find node by IP
             target_node = self._find_node_by_ip(ip)
             if target_node:
                 self.ip_to_node[ip] = target_node
 
         if target_node and target_node != node_name:
-            # Record directed connection (from this node to target)
+            # Record directed connection
             self.connections[node_name].add(target_node)
 
             self.connection_events.append({
@@ -190,8 +201,7 @@ class NetworkConnectivityAnalyzer:
                 if host_data.get('ip_addr') == ip:
                     return host_name
 
-        # If not found, create a synthetic node name based on IP
-        # This handles cases where IPs don't match the registry
+        # If not found, create a synthetic node name
         synthetic_name = f"node_{ip.replace('.', '_').replace(':', '_')}"
         if synthetic_name not in self.node_info:
             self.node_info[synthetic_name] = {
@@ -205,8 +215,8 @@ class NetworkConnectivityAnalyzer:
         """Load the Shadow configuration file."""
         shadow_config_path = find_latest_shadow_config()
         try:
+            import yaml
             with open(shadow_config_path, 'r') as f:
-                import yaml
                 return yaml.safe_load(f)
         except Exception as e:
             log_warning("NetworkConnectivityAnalyzer", f"Could not load shadow config {shadow_config_path}: {e}")
@@ -253,7 +263,6 @@ class NetworkConnectivityAnalyzer:
             for node in nodes_to_remove:
                 del self.node_info[node]
                 if node in self.ip_to_node.values():
-                    # Remove from ip_to_node mapping
                     ips_to_remove = [ip for ip, name in self.ip_to_node.items() if name == node]
                     for ip in ips_to_remove:
                         del self.ip_to_node[ip]
@@ -349,14 +358,12 @@ class NetworkConnectivityAnalyzer:
         """Load GML with fixes for common issues."""
         try:
             import tempfile
-            import os
 
             # Read the file and add missing labels
             with open(self.gml_file, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             # Add label attribute to nodes that don't have it
-            # Pattern: node [ id X ... ] -> node [ id X label "X" ... ]
             import re
 
             def add_label(match):
@@ -422,13 +429,13 @@ class NetworkConnectivityAnalyzer:
 
     def _get_ip_geolocation(self, ip: str) -> Optional[dict]:
         """Get geolocation data for an IP address."""
-        # Skip private IPs (10.x.x.x, 192.168.x.x, etc.)
+        # Skip private IPs
         if ip.startswith(('10.', '192.168.', '172.', '127.', '169.254.')):
             return {'type': 'private', 'note': 'Private IP address - no public geolocation available'}
 
         try:
-            # Use ipapi.co for geolocation (free tier)
-            response = requests.get(f'http://ipapi.co/{ip}/json/', timeout=5)
+            # Use ipapi.co for geolocation
+            response = requests.get(f'http://ipapi.co/{ip}/json/', timeout=IPAPI_TIMEOUT)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('error'):
@@ -502,7 +509,7 @@ class NetworkConnectivityAnalyzer:
         # 2. Text summary
         summary = f"""
 Network Connectivity Analysis Summary
-=====================================
+====================================
 
 Simulation Configuration:
 - Config file: {self.config_file}
@@ -619,42 +626,10 @@ Top 10 Most Used IP Addresses:
             raise
 
 
-def find_latest_shadow_data():
-    """Find the most recent shadow.data directory, prioritizing current workspace."""
-    workspace = Path('..')  # From scripts/ to root
-    current_shadow_path = workspace / 'shadow.data'
-    if current_shadow_path.exists():
-        return current_shadow_path
-    # Fallback to dated subdirectories
-    shadow_dirs = []
-    for d in workspace.iterdir():
-        if d.is_dir() and re.match(r'\d{8}', d.name):
-            shadow_path = d / 'shadow.data'
-            if shadow_path.exists():
-                shadow_dirs.append((d.stat().st_mtime, shadow_path))
-    if not shadow_dirs:
-        return Path('../shadow.data')  # Fallback to default
-    shadow_dirs.sort(reverse=True)
-    return shadow_dirs[0][1]
-
-def find_latest_shadow_config():
-    """Find the most recent shadow_agents.yaml in shadow_agents_output directories."""
-    workspace = Path('..')
-    config_files = []
-    for d in workspace.iterdir():
-        if d.is_dir() and d.name.startswith('shadow_agents_output'):
-            config_path = d / 'shadow_agents.yaml'
-            if config_path.exists():
-                config_files.append((d.stat().st_mtime, config_path))
-    if not config_files:
-        return Path('../shadow_agents_output/shadow_agents.yaml')  # Fallback
-    config_files.sort(reverse=True)
-    return config_files[0][1]
-
 def main():
     parser = argparse.ArgumentParser(description="Analyze Monero P2P network connectivity from Shadow logs")
     parser.add_argument('--config', required=True, help='Path to simulation config file')
-    parser.add_argument('--logs', default='/home/lever65/monerosim_dev/monerosim/shadow.data/hosts', help='Path to shadow.data/hosts directory')
+    parser.add_argument('--logs', default=DEFAULT_LOGS_DIR, help='Path to shadow.data/hosts directory')
     parser.add_argument('--output', help='Output directory (default: analysis_results subfolder)')
 
     args = parser.parse_args()

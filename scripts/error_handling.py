@@ -41,45 +41,45 @@ class ColorCodes:
 
 class ErrorHandler:
     """Main error handling class providing logging and utility functions."""
-    
+
     def __init__(self, error_log_file: str = "monerosim_errors.log"):
         """
         Initialize the error handler.
-        
+
         Args:
             error_log_file: Path to the error log file
         """
         self.error_log_file = Path(error_log_file)
         self._setup_file_logger()
-    
+
     def _setup_file_logger(self):
         """Set up file logging for errors and critical messages."""
         self.file_logger = logging.getLogger('monerosim_errors')
         self.file_logger.setLevel(logging.ERROR)
-        
+
         # Create file handler
         file_handler = logging.FileHandler(self.error_log_file, mode='a')
         file_handler.setLevel(logging.ERROR)
-        
+
         # Create formatter
         formatter = logging.Formatter('%(asctime)s [%(levelname)s] [%(component)s] %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
         file_handler.setFormatter(formatter)
-        
+
         # Add handler to logger
         self.file_logger.addHandler(file_handler)
-    
+
     def log_message(self, level: LogLevel, component: str, message: str) -> None:
         """
         Log a message with timestamp and severity level.
-        
+
         Args:
             level: Severity level of the message
             component: Component name generating the log
             message: The log message
         """
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+
         # Set color based on severity level
         color_map = {
             LogLevel.INFO: ColorCodes.GREEN,
@@ -88,11 +88,11 @@ class ErrorHandler:
             LogLevel.CRITICAL: ColorCodes.PURPLE
         }
         color = color_map.get(level, ColorCodes.BLUE)
-        
+
         # Print to stderr with color
-        print(f"{color}{timestamp} [{level.value}] [{component}] {message}{ColorCodes.NC}", 
+        print(f"{color}{timestamp} [{level.value}] [{component}] {message}{ColorCodes.NC}",
               file=sys.stderr)
-        
+
         # Log to file if error or critical
         if level in [LogLevel.ERROR, LogLevel.CRITICAL]:
             self.file_logger.log(
@@ -100,19 +100,19 @@ class ErrorHandler:
                 message,
                 extra={'component': component}
             )
-    
+
     def log_info(self, component: str, message: str) -> None:
         """Log an info message."""
         self.log_message(LogLevel.INFO, component, message)
-    
+
     def log_warning(self, component: str, message: str) -> None:
         """Log a warning message."""
         self.log_message(LogLevel.WARNING, component, message)
-    
+
     def log_error(self, component: str, message: str) -> None:
         """Log an error message."""
         self.log_message(LogLevel.ERROR, component, message)
-    
+
     def log_critical(self, component: str, message: str) -> None:
         """Log a critical message."""
         self.log_message(LogLevel.CRITICAL, component, message)
@@ -122,12 +122,12 @@ class ErrorHandler:
 def exponential_backoff(attempt: int, base_delay: float, max_delay: float) -> float:
     """
     Calculate exponential backoff delay.
-    
+
     Args:
         attempt: Current attempt number (1-based)
         base_delay: Base delay in seconds
         max_delay: Maximum delay in seconds
-        
+
     Returns:
         Calculated delay in seconds
     """
@@ -136,38 +136,38 @@ def exponential_backoff(attempt: int, base_delay: float, max_delay: float) -> fl
 
 class RetryHandler:
     """Handles retry logic for commands and RPC calls."""
-    
+
     def __init__(self, error_handler: ErrorHandler):
         """
         Initialize retry handler.
-        
+
         Args:
             error_handler: ErrorHandler instance for logging
         """
         self.error_handler = error_handler
-    
-    def retry_command(self, command: list, max_attempts: int, delay: float, 
+
+    def retry_command(self, command: list, max_attempts: int, delay: float,
                      component: str) -> Tuple[bool, str]:
         """
         Execute a command with retries.
-        
+
         Args:
             command: Command and arguments as a list
             max_attempts: Maximum number of attempts
             delay: Delay between attempts in seconds
             component: Component name for logging
-            
+
         Returns:
             Tuple of (success, output)
         """
         for attempt in range(1, max_attempts + 1):
-            self.error_handler.log_info(component, 
+            self.error_handler.log_info(component,
                 f"Attempt {attempt}/{max_attempts}: {' '.join(command)}")
-            
+
             try:
-                result = subprocess.run(command, capture_output=True, text=True, 
+                result = subprocess.run(command, capture_output=True, text=True,
                                       check=True)
-                self.error_handler.log_info(component, 
+                self.error_handler.log_info(component,
                     f"Command succeeded on attempt {attempt}")
                 return True, result.stdout
             except subprocess.CalledProcessError as e:
@@ -179,14 +179,14 @@ class RetryHandler:
                     self.error_handler.log_error(component,
                         f"Command failed after {max_attempts} attempts")
                     return False, e.stderr if e.stderr else str(e)
-        
+
         return False, "Max attempts reached"
-    
+
     def call_daemon_with_retry(self, daemon_url: str, method: str, params: Dict[str, Any],
                               max_attempts: int, delay: float, component: str) -> Tuple[bool, Dict[str, Any]]:
         """
         Call daemon RPC with retry logic.
-        
+
         Args:
             daemon_url: URL of the daemon RPC endpoint
             method: RPC method name
@@ -194,16 +194,16 @@ class RetryHandler:
             max_attempts: Maximum number of attempts
             delay: Base delay between attempts
             component: Component name for logging
-            
+
         Returns:
             Tuple of (success, response_dict)
         """
         for attempt in range(1, max_attempts + 1):
             current_delay = exponential_backoff(attempt, delay, 60)
-            
+
             self.error_handler.log_info(component,
                 f"RPC call attempt {attempt}/{max_attempts}: {method}")
-            
+
             try:
                 # Check if daemon is reachable
                 ping_response = requests.get(daemon_url, timeout=5)
@@ -222,7 +222,7 @@ class RetryHandler:
                     self.error_handler.log_error(component,
                         f"Daemon URL {daemon_url} is not reachable after {max_attempts} attempts")
                     return False, {"error": "Daemon URL not reachable"}
-            
+
             # Make the actual RPC call
             try:
                 payload = {
@@ -233,7 +233,7 @@ class RetryHandler:
                 }
                 response = requests.post(daemon_url, json=payload, timeout=30)
                 response_data = response.json()
-                
+
                 if "result" in response_data:
                     self.error_handler.log_info(component,
                         f"RPC call succeeded on attempt {attempt}")
@@ -251,7 +251,7 @@ class RetryHandler:
                         return False, response_data
                 else:
                     raise ValueError("Invalid response format")
-                    
+
             except Exception as e:
                 self.error_handler.log_warning(component,
                     f"RPC call failed on attempt {attempt}: {e}")
@@ -264,14 +264,14 @@ class RetryHandler:
                     self.error_handler.log_error(component,
                         f"RPC call failed after {max_attempts} attempts: {e}")
                     return False, {"error": str(e)}
-        
+
         return False, {"error": "Max attempts reached"}
-    
+
     def call_wallet_with_retry(self, wallet_url: str, method: str, params: Dict[str, Any],
                               max_attempts: int, delay: float, component: str) -> Tuple[bool, Dict[str, Any]]:
         """
         Call wallet RPC with retry logic.
-        
+
         Args:
             wallet_url: URL of the wallet RPC endpoint
             method: RPC method name
@@ -279,16 +279,16 @@ class RetryHandler:
             max_attempts: Maximum number of attempts
             delay: Base delay between attempts
             component: Component name for logging
-            
+
         Returns:
             Tuple of (success, response_dict)
         """
         for attempt in range(1, max_attempts + 1):
             current_delay = exponential_backoff(attempt, delay, 60)
-            
+
             self.error_handler.log_info(component,
                 f"Wallet RPC call attempt {attempt}/{max_attempts}: {method}")
-            
+
             try:
                 # Check if wallet is reachable
                 ping_response = requests.get(wallet_url, timeout=5)
@@ -307,7 +307,7 @@ class RetryHandler:
                     self.error_handler.log_error(component,
                         f"Wallet URL {wallet_url} is not reachable after {max_attempts} attempts")
                     return False, {"error": "Wallet URL not reachable"}
-            
+
             # Make the actual RPC call
             try:
                 payload = {
@@ -318,7 +318,7 @@ class RetryHandler:
                 }
                 response = requests.post(wallet_url, json=payload, timeout=30)
                 response_data = response.json()
-                
+
                 if "result" in response_data:
                     self.error_handler.log_info(component,
                         f"Wallet RPC call succeeded on attempt {attempt}")
@@ -327,17 +327,17 @@ class RetryHandler:
                     error_info = response_data["error"]
                     error_code = error_info.get("code", None)
                     error_message = error_info.get("message", "")
-                    
+
                     self.error_handler.log_warning(component,
                         f"Wallet RPC call returned error on attempt {attempt}: "
                         f"code={error_code}, message={error_message}")
-                    
+
                     # Special handling for wallet already exists error
-                    if (error_code == -1 and method == "create_wallet" and 
+                    if (error_code == -1 and method == "create_wallet" and
                         "already exists" in error_message):
                         self.error_handler.log_info(component,
                             "Wallet already exists, trying to open it instead...")
-                        
+
                         # Try to open the wallet
                         open_params = {
                             "filename": params.get("filename"),
@@ -351,12 +351,12 @@ class RetryHandler:
                         }
                         open_response = requests.post(wallet_url, json=open_payload, timeout=30)
                         open_data = open_response.json()
-                        
+
                         if "result" in open_data:
                             self.error_handler.log_info(component,
                                 "Successfully opened existing wallet")
                             return True, open_data
-                    
+
                     if attempt < max_attempts:
                         self.error_handler.log_info(component,
                             f"Retrying in {current_delay} seconds...")
@@ -366,7 +366,7 @@ class RetryHandler:
                         return False, response_data
                 else:
                     raise ValueError("Invalid response format")
-                    
+
             except Exception as e:
                 self.error_handler.log_warning(component,
                     f"Wallet RPC call failed on attempt {attempt}: {e}")
@@ -379,50 +379,50 @@ class RetryHandler:
                     self.error_handler.log_error(component,
                         f"Wallet RPC call failed after {max_attempts} attempts: {e}")
                     return False, {"error": str(e)}
-        
+
         return False, {"error": "Max attempts reached"}
 
 # ===== VERIFICATION FUNCTIONS =====
 
 class VerificationHandler:
     """Handles verification of various MoneroSim components."""
-    
+
     def __init__(self, error_handler: ErrorHandler, retry_handler: RetryHandler):
         """
         Initialize verification handler.
-        
+
         Args:
             error_handler: ErrorHandler instance for logging
             retry_handler: RetryHandler instance for RPC calls
         """
         self.error_handler = error_handler
         self.retry_handler = retry_handler
-    
+
     def verify_daemon_ready(self, daemon_url: str, daemon_name: str,
                            max_attempts: int, delay: float, component: str) -> bool:
         """
         Verify daemon readiness.
-        
+
         Args:
             daemon_url: URL of the daemon RPC endpoint
             daemon_name: Name of the daemon for logging
             max_attempts: Maximum number of attempts
             delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             True if daemon is ready, False otherwise
         """
         self.error_handler.log_info(component, f"Verifying {daemon_name} readiness...")
-        
+
         success, response = self.retry_handler.call_daemon_with_retry(
             daemon_url, "get_info", {}, max_attempts, delay, component)
-        
+
         if success:
             result = response.get("result", {})
             daemon_status = result.get("status", "unknown")
             height = result.get("height", 0)
-            
+
             self.error_handler.log_info(component,
                 f"{daemon_name} is ready. Status: {daemon_status}, Height: {height}")
             return True
@@ -430,12 +430,12 @@ class VerificationHandler:
             self.error_handler.log_critical(component,
                 f"Failed to verify {daemon_name} readiness")
             return False
-    
+
     def verify_wallet_created(self, wallet_url: str, wallet_name: str, wallet_password: str,
                              max_attempts: int, delay: float, component: str) -> bool:
         """
         Verify wallet creation.
-        
+
         Args:
             wallet_url: URL of the wallet RPC endpoint
             wallet_name: Name of the wallet
@@ -443,22 +443,22 @@ class VerificationHandler:
             max_attempts: Maximum number of attempts
             delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             True if wallet is created/opened, False otherwise
         """
         self.error_handler.log_info(component, f"Verifying wallet creation for {wallet_name}...")
-        
+
         # First try to open existing wallet
         open_params = {"filename": wallet_name, "password": wallet_password}
         success, response = self.retry_handler.call_wallet_with_retry(
             wallet_url, "open_wallet", open_params, max_attempts, delay, component)
-        
+
         if success:
             self.error_handler.log_info(component,
                 f"Wallet {wallet_name} already exists and was opened successfully")
             return True
-        
+
         # If opening failed, try to create new wallet
         self.error_handler.log_info(component, f"Creating new wallet {wallet_name}...")
         create_params = {
@@ -468,19 +468,19 @@ class VerificationHandler:
         }
         success, response = self.retry_handler.call_wallet_with_retry(
             wallet_url, "create_wallet", create_params, max_attempts, delay, component)
-        
+
         if success:
             self.error_handler.log_info(component, f"Wallet {wallet_name} created successfully")
             return True
         else:
             self.error_handler.log_critical(component, f"Failed to create wallet {wallet_name}")
             return False
-    
+
     def verify_wallet_open(self, wallet_url: str, wallet_name: str, wallet_password: str,
                           max_attempts: int, delay: float, component: str) -> bool:
         """
         Verify wallet opening.
-        
+
         Args:
             wallet_url: URL of the wallet RPC endpoint
             wallet_name: Name of the wallet
@@ -488,23 +488,23 @@ class VerificationHandler:
             max_attempts: Maximum number of attempts
             delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             True if wallet is opened, False otherwise
         """
         self.error_handler.log_info(component, f"Verifying wallet opening for {wallet_name}...")
-        
+
         open_params = {"filename": wallet_name, "password": wallet_password}
         success, response = self.retry_handler.call_wallet_with_retry(
             wallet_url, "open_wallet", open_params, max_attempts, delay, component)
-        
+
         if success:
             self.error_handler.log_info(component, f"Wallet {wallet_name} opened successfully")
-            
+
             # Verify we can get the address
             success, addr_response = self.retry_handler.call_wallet_with_retry(
                 wallet_url, "get_address", {"account_index": 0}, max_attempts, delay, component)
-            
+
             if success:
                 address = addr_response.get("result", {}).get("address", "")
                 self.error_handler.log_info(component, f"Wallet address verified: {address}")
@@ -516,12 +516,12 @@ class VerificationHandler:
         else:
             self.error_handler.log_critical(component, f"Failed to open wallet {wallet_name}")
             return False
-    
+
     def verify_block_generation(self, daemon_url: str, wallet_address: str, num_blocks: int,
                                max_attempts: int, delay: float, component: str) -> bool:
         """
         Verify block generation.
-        
+
         Args:
             daemon_url: URL of the daemon RPC endpoint
             wallet_address: Address to receive mining rewards
@@ -529,23 +529,23 @@ class VerificationHandler:
             max_attempts: Maximum number of attempts
             delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             True if blocks were generated, False otherwise
         """
         self.error_handler.log_info(component, "Verifying block generation...")
-        
+
         # Get initial height
         success, initial_response = self.retry_handler.call_daemon_with_retry(
             daemon_url, "get_info", {}, max_attempts, delay, component)
-        
+
         if not success:
             self.error_handler.log_critical(component, "Failed to get initial block height")
             return False
-        
+
         initial_height = initial_response.get("result", {}).get("height", 0)
         self.error_handler.log_info(component, f"Initial block height: {initial_height}")
-        
+
         # Generate blocks
         self.error_handler.log_info(component, f"Generating {num_blocks} blocks...")
         gen_params = {
@@ -555,27 +555,27 @@ class VerificationHandler:
         }
         success, gen_response = self.retry_handler.call_daemon_with_retry(
             daemon_url, "generateblocks", gen_params, max_attempts, delay, component)
-        
+
         if not success:
             self.error_handler.log_critical(component, "Failed to generate blocks")
             return False
-        
+
         # Count generated blocks
         blocks = gen_response.get("result", {}).get("blocks", [])
         blocks_generated = len(blocks)
         self.error_handler.log_info(component, f"Blocks generated: {blocks_generated}")
-        
+
         # Verify new height
         success, final_response = self.retry_handler.call_daemon_with_retry(
             daemon_url, "get_info", {}, max_attempts, delay, component)
-        
+
         if not success:
             self.error_handler.log_critical(component, "Failed to get final block height")
             return False
-        
+
         final_height = final_response.get("result", {}).get("height", 0)
         self.error_handler.log_info(component, f"Final block height: {final_height}")
-        
+
         # Check if height increased by expected amount
         expected_height = initial_height + num_blocks
         if final_height >= expected_height:
@@ -586,12 +586,12 @@ class VerificationHandler:
             self.error_handler.log_error(component,
                 f"Block generation verification failed: Expected height {expected_height}, got {final_height}")
             return False
-    
+
     def verify_transaction(self, from_wallet_url: str, to_address: str, amount: int,
                           max_attempts: int, delay: float, component: str) -> Optional[str]:
         """
         Verify transaction processing.
-        
+
         Args:
             from_wallet_url: URL of the sending wallet RPC endpoint
             to_address: Recipient address
@@ -599,30 +599,30 @@ class VerificationHandler:
             max_attempts: Maximum number of attempts
             delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             Transaction hash if successful, None otherwise
         """
         self.error_handler.log_info(component,
             f"Verifying transaction of {amount} atomic units to {to_address}...")
-        
+
         # Get initial balance
         success, balance_response = self.retry_handler.call_wallet_with_retry(
             from_wallet_url, "get_balance", {"account_index": 0}, max_attempts, delay, component)
-        
+
         if not success:
             self.error_handler.log_critical(component, "Failed to get initial balance")
             return None
-        
+
         unlocked_balance = balance_response.get("result", {}).get("unlocked_balance", 0)
         self.error_handler.log_info(component, f"Initial unlocked balance: {unlocked_balance} atomic units")
-        
+
         # Check if we have enough funds
         if unlocked_balance < amount:
             self.error_handler.log_error(component,
                 f"Insufficient funds: Have {unlocked_balance}, need {amount}")
             return None
-        
+
         # Send transaction
         self.error_handler.log_info(component, "Sending transaction...")
         transfer_params = {
@@ -633,25 +633,25 @@ class VerificationHandler:
         }
         success, transfer_response = self.retry_handler.call_wallet_with_retry(
             from_wallet_url, "transfer", transfer_params, max_attempts, delay, component)
-        
+
         if not success:
             self.error_handler.log_critical(component, "Failed to send transaction")
             return None
-        
+
         # Extract transaction hash
         tx_hash = transfer_response.get("result", {}).get("tx_hash", "")
         if not tx_hash:
             self.error_handler.log_error(component, "Failed to extract transaction hash")
             return None
-        
+
         self.error_handler.log_info(component, f"Transaction sent successfully. Hash: {tx_hash}")
         return tx_hash
-    
+
     def verify_network_sync(self, node1_url: str, node2_url: str, max_height_diff: int,
                            max_attempts: int, delay: float, component: str) -> bool:
         """
         Verify network synchronization between two nodes.
-        
+
         Args:
             node1_url: URL of the first node
             node2_url: URL of the second node
@@ -659,45 +659,45 @@ class VerificationHandler:
             max_attempts: Maximum number of attempts
             delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             True if nodes are synchronized, False otherwise
         """
         self.error_handler.log_info(component, "Verifying network synchronization...")
-        
+
         for attempt in range(1, max_attempts + 1):
             self.error_handler.log_info(component, f"Sync check attempt {attempt}/{max_attempts}")
-            
+
             # Get info from both nodes
             success1, node1_response = self.retry_handler.call_daemon_with_retry(
                 node1_url, "get_info", {}, 3, 2, component)
             success2, node2_response = self.retry_handler.call_daemon_with_retry(
                 node2_url, "get_info", {}, 3, 2, component)
-            
+
             if not success1 or not success2:
                 self.error_handler.log_warning(component,
                     "Failed to get info from one or both nodes")
                 time.sleep(delay)
                 continue
-            
+
             # Extract heights and hashes
             node1_info = node1_response.get("result", {})
             node2_info = node2_response.get("result", {})
-            
+
             node1_height = node1_info.get("height", 0)
             node2_height = node2_info.get("height", 0)
             node1_hash = node1_info.get("top_block_hash", "")
             node2_hash = node2_info.get("top_block_hash", "")
-            
+
             self.error_handler.log_info(component,
                 f"Node1 height: {node1_height}, hash: {node1_hash}")
             self.error_handler.log_info(component,
                 f"Node2 height: {node2_height}, hash: {node2_hash}")
-            
+
             # Calculate height difference
             height_diff = abs(node1_height - node2_height)
             self.error_handler.log_info(component, f"Height difference: {height_diff} blocks")
-            
+
             # Check if synchronized
             if height_diff <= max_height_diff:
                 if node1_hash == node2_hash or node1_height == node2_height:
@@ -710,20 +710,20 @@ class VerificationHandler:
             else:
                 self.error_handler.log_warning(component,
                     f"Nodes are not yet synchronized (diff: {height_diff})")
-            
+
             time.sleep(delay)
-        
+
         self.error_handler.log_error(component,
             f"Synchronization verification failed after {max_attempts} attempts")
         return False
-    
+
     def verify_p2p_connectivity(self, node1_url: str, node1_name: str,
                                node2_url: str, node2_name: str,
                                max_attempts: int, retry_delay: float,
                                component: str) -> bool:
         """
         Verify P2P connectivity between two nodes.
-        
+
         Args:
             node1_url: URL of the first node
             node1_name: Name of the first node
@@ -732,63 +732,63 @@ class VerificationHandler:
             max_attempts: Maximum number of attempts
             retry_delay: Delay between attempts
             component: Component name for logging
-            
+
         Returns:
             True if nodes are connected, False otherwise
         """
         self.error_handler.log_info(component,
             f"Verifying P2P connectivity between {node1_name} and {node2_name}...")
-        
+
         # Extract IPs from URLs
         import re
         ip_pattern = r'(\d+\.\d+\.\d+\.\d+)'
         node1_ip_match = re.search(ip_pattern, node1_url)
         node2_ip_match = re.search(ip_pattern, node2_url)
-        
+
         if not node1_ip_match or not node2_ip_match:
             self.error_handler.log_error(component, "Failed to extract IP addresses from URLs")
             return False
-        
+
         node1_ip = node1_ip_match.group(1)
         node2_ip = node2_ip_match.group(1)
-        
+
         for attempt in range(1, max_attempts + 1):
             self.error_handler.log_info(component,
                 f"P2P connectivity check attempt {attempt}/{max_attempts}")
-            
+
             # Check connections on both nodes
             success1, conn1_response = self.retry_handler.call_daemon_with_retry(
                 node1_url, "get_connections", {}, 3, 2, component)
             success2, conn2_response = self.retry_handler.call_daemon_with_retry(
                 node2_url, "get_connections", {}, 3, 2, component)
-            
+
             if not success1 or not success2:
                 self.error_handler.log_warning(component,
                     "Failed to get connection information from one or both nodes")
                 time.sleep(retry_delay)
                 continue
-            
+
             # Extract connections
             connections1 = conn1_response.get("result", {}).get("connections", [])
             connections2 = conn2_response.get("result", {}).get("connections", [])
-            
+
             conn_count1 = len(connections1)
             conn_count2 = len(connections2)
-            
+
             self.error_handler.log_info(component, f"{node1_name} has {conn_count1} P2P connections")
             self.error_handler.log_info(component, f"{node2_name} has {conn_count2} P2P connections")
-            
+
             # Check if nodes have any connections
             if conn_count1 == 0 and conn_count2 == 0:
                 self.error_handler.log_warning(component,
                     f"Both nodes have no P2P connections. Retrying in {retry_delay}s...")
                 time.sleep(retry_delay)
                 continue
-            
+
             # Check if nodes are connected to each other
             node1_connected_to_node2 = False
             node2_connected_to_node1 = False
-            
+
             # Check node1's connections for node2
             for conn in connections1:
                 peer_address = conn.get("address", "")
@@ -797,11 +797,11 @@ class VerificationHandler:
                     self.error_handler.log_info(component,
                         f"✅ {node1_name} is connected to {node2_name}")
                     break
-            
+
             if not node1_connected_to_node2:
                 self.error_handler.log_warning(component,
                     f"❌ {node1_name} is NOT connected to {node2_name}")
-            
+
             # Check node2's connections for node1
             for conn in connections2:
                 peer_address = conn.get("address", "")
@@ -810,31 +810,31 @@ class VerificationHandler:
                     self.error_handler.log_info(component,
                         f"✅ {node2_name} is connected to {node1_name}")
                     break
-            
+
             if not node2_connected_to_node1:
                 self.error_handler.log_warning(component,
                     f"❌ {node2_name} is NOT connected to {node1_name}")
-            
+
             # Count incoming/outgoing connections
             node1_incoming = sum(1 for c in connections1 if c.get("incoming", False))
             node1_outgoing = conn_count1 - node1_incoming
             node2_incoming = sum(1 for c in connections2 if c.get("incoming", False))
             node2_outgoing = conn_count2 - node2_incoming
-            
+
             self.error_handler.log_info(component,
                 f"{node1_name} has {node1_incoming} incoming and {node1_outgoing} outgoing connections")
             self.error_handler.log_info(component,
                 f"{node2_name} has {node2_incoming} incoming and {node2_outgoing} outgoing connections")
-            
+
             # Check if both nodes are connected to each other
             if node1_connected_to_node2 and node2_connected_to_node1:
                 self.error_handler.log_info(component,
                     f"✅ P2P connectivity verified: Bidirectional connection established "
                     f"between {node1_name} and {node2_name}")
-                
+
                 # Log connection details
                 self.error_handler.log_info(component, "Connection details:")
-                
+
                 # Log node1's connection to node2
                 for conn in connections1:
                     if node2_ip in conn.get("address", ""):
@@ -844,7 +844,7 @@ class VerificationHandler:
                         self.error_handler.log_info(component,
                             f"  {node1_name} -> {node2_name}: State={state}, "
                             f"Live time={live_time}s, Incoming={incoming}")
-                
+
                 # Log node2's connection to node1
                 for conn in connections2:
                     if node1_ip in conn.get("address", ""):
@@ -854,42 +854,42 @@ class VerificationHandler:
                         self.error_handler.log_info(component,
                             f"  {node2_name} -> {node1_name}: State={state}, "
                             f"Live time={live_time}s, Incoming={incoming}")
-                
+
                 return True
             else:
                 # On last attempt, provide detailed diagnostics
                 if attempt == max_attempts:
                     self.error_handler.log_error(component,
                         f"❌ P2P connectivity verification failed after {max_attempts} attempts")
-                    
+
                     # Check peer lists for diagnostic information
                     self.error_handler.log_info(component,
                         "Checking peer lists for diagnostic information...")
-                    
+
                     success1, peer1_response = self.retry_handler.call_daemon_with_retry(
                         node1_url, "get_peer_list", {}, 3, 2, component)
                     success2, peer2_response = self.retry_handler.call_daemon_with_retry(
                         node2_url, "get_peer_list", {}, 3, 2, component)
-                    
+
                     if success1 and success2:
                         # Check if nodes know about each other
                         peer_list1 = str(peer1_response)
                         peer_list2 = str(peer2_response)
-                        
+
                         if node2_ip in peer_list1:
                             self.error_handler.log_info(component,
                                 f"{node1_name} knows about {node2_name} in its peer list")
                         else:
                             self.error_handler.log_error(component,
                                 f"{node1_name} does NOT have {node2_name} in its peer list")
-                        
+
                         if node1_ip in peer_list2:
                             self.error_handler.log_info(component,
                                 f"{node2_name} knows about {node1_name} in its peer list")
                         else:
                             self.error_handler.log_error(component,
                                 f"{node2_name} does NOT have {node1_name} in its peer list")
-                    
+
                     self.error_handler.log_error(component,
                         "Possible reasons for P2P connectivity failure:")
                     self.error_handler.log_error(component,
@@ -900,32 +900,32 @@ class VerificationHandler:
                         "3. P2P port conflicts")
                     self.error_handler.log_error(component,
                         "4. Node startup timing issues")
-                    
+
                     return False
-                
+
                 self.error_handler.log_warning(component,
                     f"Nodes are not fully connected. Retrying in {retry_delay}s...")
                 time.sleep(retry_delay)
-        
+
         self.error_handler.log_error(component,
             f"P2P connectivity verification failed after {max_attempts} attempts")
         return False
-    
+
     def verify_wallet_directory(self, wallet_dir: str, component: str) -> bool:
         """
         Verify wallet directory exists and is writable.
-        
+
         Args:
             wallet_dir: Path to the wallet directory
             component: Component name for logging
-            
+
         Returns:
             True if directory is ready, False otherwise
         """
         self.error_handler.log_info(component, f"Verifying wallet directory: {wallet_dir}")
-        
+
         wallet_path = Path(wallet_dir)
-        
+
         if not wallet_path.exists():
             self.error_handler.log_warning(component,
                 f"Wallet directory does not exist, creating it: {wallet_dir}")
@@ -935,12 +935,12 @@ class VerificationHandler:
                 self.error_handler.log_critical(component,
                     f"Failed to create wallet directory: {wallet_dir} - {e}")
                 return False
-        
+
         if not wallet_path.is_dir():
             self.error_handler.log_critical(component,
                 f"Wallet path exists but is not a directory: {wallet_dir}")
             return False
-        
+
         # Check if writable
         test_file = wallet_path / ".test_write"
         try:
@@ -950,14 +950,14 @@ class VerificationHandler:
             self.error_handler.log_critical(component,
                 f"Wallet directory is not writable: {wallet_dir} - {e}")
             return False
-        
+
         # Try to set permissions
         try:
             wallet_path.chmod(0o700)
         except Exception as e:
             self.error_handler.log_warning(component,
                 f"Failed to set permissions on wallet directory, continuing anyway: {e}")
-        
+
         self.error_handler.log_info(component, f"Wallet directory verified: {wallet_dir}")
         return True
 
@@ -967,7 +967,7 @@ def handle_exit(exit_code: int, component: str, message: str,
                 error_handler: Optional[ErrorHandler] = None) -> None:
     """
     Handle script exit with logging.
-    
+
     Args:
         exit_code: Exit code to use
         component: Component name for logging
@@ -976,12 +976,12 @@ def handle_exit(exit_code: int, component: str, message: str,
     """
     if error_handler is None:
         error_handler = ErrorHandler()
-    
+
     if exit_code == 0:
         error_handler.log_info(component, f"Script completed successfully: {message}")
     else:
         error_handler.log_critical(component, f"Script failed with exit code {exit_code}: {message}")
-    
+
     sys.exit(exit_code)
 
 # ===== CONVENIENCE FUNCTIONS =====
@@ -994,14 +994,14 @@ _default_verification_handler = None
 def get_default_handlers() -> Tuple[ErrorHandler, RetryHandler, VerificationHandler]:
     """Get or create default handler instances."""
     global _default_error_handler, _default_retry_handler, _default_verification_handler
-    
+
     if _default_error_handler is None:
         _default_error_handler = ErrorHandler()
     if _default_retry_handler is None:
         _default_retry_handler = RetryHandler(_default_error_handler)
     if _default_verification_handler is None:
         _default_verification_handler = VerificationHandler(_default_error_handler, _default_retry_handler)
-    
+
     return _default_error_handler, _default_retry_handler, _default_verification_handler
 
 # Convenience logging functions
@@ -1117,10 +1117,10 @@ if __name__ == "__main__":
     log_warning("TEST", "This is a warning message")
     log_error("TEST", "This is an error message")
     log_critical("TEST", "This is a critical message")
-    
+
     # Test command retry
     success, output = retry_command(["echo", "Hello, World!"], 3, 1, "TEST")
     if success:
         log_info("TEST", f"Command output: {output.strip()}")
-    
+
     log_info("TEST", "Error handling module test completed")

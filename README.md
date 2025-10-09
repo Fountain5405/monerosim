@@ -44,7 +44,7 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 monerosim/
 ├── src/                      # Rust source code
 │   ├── main.rs              # CLI entry point
-│   ├── config.rs            # Configuration parsing
+│   ├── config_v2.rs         # Configuration parsing
 │   ├── build.rs             # Monero build management
 │   └── shadow_agents.rs     # Agent-based Shadow config generation
 ├── agents/                   # Python agent framework
@@ -67,15 +67,14 @@ monerosim/
 
 ## Documentation
 
-- [Architecture Overview](docs/ARCHITECTURE.md) - System design and components
-- [Configuration Guide](docs/CONFIGURATION.md) - How to configure simulations (includes GML networks)
-- [Topology Features](docs/TOPOLOGY_FEATURES.md) - Peer discovery modes and topology templates
-- [GML IP Assignment and AS Distribution](docs/GML_IP_ASSIGNMENT_AS_DISTRIBUTION.md) - Complex network topologies
-- [Development Guide](docs/DEVELOPMENT.md) - Contributing and development workflow
-- [Performance Guide](docs/PERFORMANCE.md) - Optimization and scaling
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Architecture Overview](.kilocode/rules/memory-bank/architecture.md) - System design and components
+- [Configuration Guide](.kilocode/rules/memory-bank/configuration.md) - How to configure simulations (includes GML networks)
+- [Peer Discovery System](.kilocode/rules/memory-bank/peer_discovery.md) - Dynamic agent discovery and topologies
+- [GML Integration](.kilocode/rules/memory-bank/architecture.md#gml-integration) - Complex network topologies
+- [Development Guide](.kilocode/rules/memory-bank/tech.md) - Technical stack and development setup
+- [Project Status](.kilocode/rules/memory-bank/status.md) - Current development status
 - [Agent Discovery System](agents/README_agent_discovery.md) - Dynamic agent discovery
-- [Unified Agent Architecture](docs/UNIFIED_AGENT_ARCHITECTURE.md) - Agent framework design
+- [Brief Overview](.kilocode/rules/memory-bank/brief.md) - Project goals and requirements
 
 ## Python Scripts
 
@@ -181,7 +180,7 @@ The Agent Discovery System provides a unified interface for discovering and inte
 - **Attribute Filtering**: Filter agents based on their attributes
 - **Caching**: Performance-optimized with 5-second TTL cache
 
-For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
+For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ## Requirements
 
@@ -248,7 +247,7 @@ for miner in miners:
     pass
 ```
 
-For more details, see [Agent Discovery System](scripts/README_agent_discovery.md).
+For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ### Code Style
 - **Rust**: Follow standard Rust conventions (use `cargo fmt` and `cargo clippy`)

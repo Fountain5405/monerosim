@@ -107,17 +107,17 @@ For more details, see [Agent Discovery System](agents/README_agent_discovery.md)
 Edit `config_47_agents.yaml`:
 ```yaml
 general:
-  stop_time: "30m"  # Run for 30 minutes instead of 10
+  stop_time: "30m"  # Run for 30 minutes instead of ~6.7 hours
 
 agents:
   user_agents:
     # Add more users to increase simulation size
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      is_miner: true
       attributes:
+        is_miner: "true"
         hashrate: "50"
-    
+
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       user_script: "agents.regular_user"

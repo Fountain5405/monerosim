@@ -14,7 +14,11 @@ import argparse
 from collections import defaultdict, deque
 import sys
 
-def build_graph_from_aslinks(input_file):
+# Constants
+DEFAULT_MAX_NODES = 800
+
+
+def build_graph_from_aslinks(input_file: str) -> defaultdict:
     """Build undirected graph from CAIDA AS-links."""
     graph = defaultdict(set)
 
@@ -32,7 +36,8 @@ def build_graph_from_aslinks(input_file):
 
     return graph
 
-def find_connected_components(graph):
+
+def find_connected_components(graph: defaultdict) -> list:
     """Find all connected components using BFS."""
     visited = set()
     components = []
@@ -63,7 +68,8 @@ def find_connected_components(graph):
 
     return components
 
-def extract_largest_component(graph, max_nodes=1000):
+
+def extract_largest_component(graph: defaultdict, max_nodes: int = DEFAULT_MAX_NODES) -> set:
     """Extract and limit the largest connected component."""
     components = find_connected_components(graph)
     largest_component = max(components, key=len) if components else set()
@@ -73,17 +79,16 @@ def extract_largest_component(graph, max_nodes=1000):
 
     # Limit size for Shadow compatibility
     if len(largest_component) > max_nodes:
-        limited_component = list(largest_component)[:max_nodes]
+        limited_component = set(list(largest_component)[:max_nodes])
         print(f"Limited to {max_nodes} nodes for Shadow compatibility")
     else:
-        limited_component = list(largest_component)
+        limited_component = largest_component
 
-    return set(limited_component)
+    return limited_component
 
-def create_subgraph_aslinks(input_file, output_file, component_nodes):
+
+def create_subgraph_aslinks(input_file: str, output_file: str, component_nodes: set) -> None:
     """Create AS-links file for the component."""
-    component_set = set(component_nodes)
-
     with open(input_file, 'r') as f, open(output_file, 'w') as out:
         for line in f:
             parts = line.strip().split()
@@ -91,14 +96,15 @@ def create_subgraph_aslinks(input_file, output_file, component_nodes):
                 try:
                     source = int(parts[1])
                     target = int(parts[2])
-                    if source in component_set and target in component_set:
+                    if source in component_nodes and target in component_nodes:
                         out.write(line)
                 except ValueError:
                     continue
 
     print(f"Created subgraph with {len(component_nodes)} nodes")
 
-def convert_aslinks_to_gml(input_file, output_file, component_nodes):
+
+def convert_aslinks_to_gml(input_file: str, output_file: str, component_nodes: set) -> None:
     """Convert component AS-links to GML."""
     as_nodes = {}  # Map AS number to node ID
     edges = []
@@ -158,12 +164,13 @@ def convert_aslinks_to_gml(input_file, output_file, component_nodes):
 
     print(f"Converted to GML: {len(as_nodes)} nodes, {len(edges)} edges")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Create connected CAIDA subgraph for Shadow")
     parser.add_argument("input_file", help="CAIDA AS-links file")
     parser.add_argument("output_gml", help="Output GML file")
-    parser.add_argument("--max_nodes", type=int, default=800,
-                       help="Maximum nodes in subgraph (default: 800)")
+    parser.add_argument("--max_nodes", type=int, default=DEFAULT_MAX_NODES,
+                        help=f"Maximum nodes in subgraph (default: {DEFAULT_MAX_NODES})")
 
     args = parser.parse_args()
 
@@ -181,6 +188,7 @@ def main():
     convert_aslinks_to_gml(subgraph_file, args.output_gml, component)
 
     print(f"Success! Created connected CAIDA subgraph: {args.output_gml}")
+
 
 if __name__ == "__main__":
     main()

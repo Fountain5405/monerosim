@@ -29,7 +29,7 @@ def rolling_hash(s: str, window_size: int = 10) -> Set[int]:
     """Calculate rolling hash values for string."""
     if len(s) < window_size:
         return {hash(s)}
-    
+
     hashes = set()
     for i in range(len(s) - window_size + 1):
         window = s[i:i + window_size]
@@ -90,29 +90,29 @@ NORMALIZATION_PATTERNS = [
 def normalize_line(line: str) -> str:
     """
     Normalize a log line by removing/replacing dynamic content.
-    
+
     Args:
         line: Raw log line
-        
+
     Returns:
         Normalized log line
     """
     # Check cache first
     if line in _normalization_cache:
         return _normalization_cache[line]
-    
+
     normalized = line
-    
+
     # Remove timestamp at the beginning if present
     normalized = re.sub(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?\s*', '', normalized)
-    
+
     # Normalize whitespace
     normalized = re.sub(r'\s+', ' ', normalized).strip()
-    
+
     # Apply all normalization patterns
     for pattern, replacement in NORMALIZATION_PATTERNS:
         normalized = re.sub(pattern, replacement, normalized)
-    
+
     # Cache the result
     _normalization_cache[line] = normalized
     return normalized
@@ -120,11 +120,11 @@ def normalize_line(line: str) -> str:
 def levenshtein_distance(s1: str, s2: str) -> int:
     """
     Calculate the Levenshtein distance between two strings.
-    
+
     Args:
         s1: First string
         s2: Second string
-        
+
     Returns:
         Levenshtein distance
     """
@@ -149,30 +149,30 @@ def levenshtein_distance(s1: str, s2: str) -> int:
 def calculate_similarity_levenshtein(line1: str, line2: str) -> float:
     """
     Calculate similarity using Levenshtein distance.
-    
+
     Args:
         line1: First string
         line2: Second string
-        
+
     Returns:
         Similarity score between 0.0 and 1.0
     """
     # Normalize both lines first
     norm1 = normalize_line(line1)
     norm2 = normalize_line(line2)
-    
+
     # If they're exactly the same after normalization, 100% similar
     if norm1 == norm2:
         return 1.0
-    
+
     # If either is empty, 0% similar
     if len(norm1) == 0 or len(norm2) == 0:
         return 0.0
-    
+
     # Calculate Levenshtein distance
     distance = levenshtein_distance(norm1, norm2)
     max_len = max(len(norm1), len(norm2))
-    
+
     # Convert distance to similarity (0.0 - 1.0)
     similarity = 1.0 - (distance / max_len)
     return similarity
@@ -180,46 +180,46 @@ def calculate_similarity_levenshtein(line1: str, line2: str) -> float:
 def smart_sample_lines(lines: List[str], chunk_size: int = 500) -> List[str]:
     """
     Smart sampling of lines from a large file.
-    
+
     Args:
         lines: List of all lines in the file
         chunk_size: Size of chunks to sample
-        
+
     Returns:
         Sampled lines
     """
     total_lines = len(lines)
-    
+
     if total_lines <= 1000:
         # For small files, return all lines
         return lines
-    
+
     # Take first and last chunks
     first_chunk = lines[:chunk_size]
     last_chunk = lines[-chunk_size:]
-    
+
     # Generate random chunks from the middle
     middle_lines = lines[chunk_size:-chunk_size]
     middle_size = len(middle_lines)
-    
+
     if middle_size > 0:
         # Sample 3 random chunks from the middle
         num_chunks = min(3, max(1, middle_size // chunk_size))
         sampled_middle = []
-        
+
         for _ in range(num_chunks):
             if middle_size > chunk_size:
                 start = random.randint(0, middle_size - chunk_size)
                 sampled_middle.extend(middle_lines[start:start + chunk_size])
             else:
                 sampled_middle.extend(middle_lines)
-        
+
         # Combine all chunks
         result = first_chunk + last_chunk + sampled_middle
     else:
         # If no middle section, just use first and last
         result = first_chunk + last_chunk
-    
+
     # Remove duplicates while preserving order
     seen = set()
     unique_result = []
@@ -227,42 +227,42 @@ def smart_sample_lines(lines: List[str], chunk_size: int = 500) -> List[str]:
         if line not in seen:
             seen.add(line)
             unique_result.append(line)
-    
+
     return unique_result
 
 def fuzzy_group_lines(lines: List[str], similarity_threshold: float = 0.90) -> Dict[str, List[Tuple[int, str]]]:
     """
     Group similar lines using fuzzy matching.
-    
+
     Args:
         lines: List of log lines
         similarity_threshold: Threshold for considering lines similar (0.0-1.0)
-        
+
     Returns:
         Dictionary mapping normalized patterns to list of (index, original_line) tuples
     """
     # Normalize all lines
     normalized_lines = [(i, line, normalize_line(line)) for i, line in enumerate(lines)]
-    
+
     # Precompute rolling hashes for quick filtering
     line_hashes = [(i, original_line, normalized_line, rolling_hash(normalized_line))
                   for i, original_line, normalized_line in normalized_lines]
-    
+
     # Group similar lines using fuzzy matching
     groups = defaultdict(list)
     pattern_to_representative = {}  # Map patterns to their representative normalized line
     pattern_to_hash = {}  # Map patterns to their representative hash
-    
+
     for i, original_line, normalized_line, line_hash in line_hashes:
         # Find the best matching group using hash similarity as a pre-filter
         best_group = None
         best_similarity = 0.0
-        
+
         # Compare with representatives of existing groups using hash overlap as pre-filter
         for pattern, representative_hash in pattern_to_hash.items():
             # Quick hash overlap check to pre-filter candidates
             hash_overlap = len(line_hash.intersection(representative_hash)) / max(len(line_hash), 1)
-            
+
             # Only do expensive Levenshtein calculation if hash overlap is promising
             if hash_overlap > 0.5:  # At least 50% hash overlap
                 representative = pattern_to_representative[pattern]
@@ -270,7 +270,7 @@ def fuzzy_group_lines(lines: List[str], similarity_threshold: float = 0.90) -> D
                 if similarity >= similarity_threshold and similarity > best_similarity:
                     best_similarity = similarity
                     best_group = pattern
-        
+
         # If we found a matching group, add to it
         if best_group is not None:
             groups[best_group].append((i, original_line))
@@ -280,57 +280,57 @@ def fuzzy_group_lines(lines: List[str], similarity_threshold: float = 0.90) -> D
             groups[normalized_line].append((i, original_line))
             pattern_to_representative[normalized_line] = normalized_line
             pattern_to_hash[normalized_line] = line_hash
-    
+
     return groups
 
-def process_log_content(lines: List[str], similarity_threshold: float = 0.90, 
+def process_log_content(lines: List[str], similarity_threshold: float = 0.90,
                        min_occurrences: int = 3, context_lines: int = 10) -> str:
     """
     Process log content with intelligent fuzzy matching.
-    
+
     Args:
         lines: List of log lines
         similarity_threshold: Threshold for considering lines similar (0.0-1.0)
         min_occurrences: Minimum occurrences to consider a pattern significant
         context_lines: Number of context lines to preserve at start/end
-        
+
     Returns:
         Processed log content as string
     """
     if not lines:
         return ""
-    
+
     # Preserve first and last context lines verbatim
     total_lines = len(lines)
     preserved_start = lines[:context_lines] if total_lines > context_lines else lines
     preserved_end = lines[-context_lines:] if total_lines > context_lines and total_lines > 2 * context_lines else []
-    
+
     # Process middle content with fuzzy matching
     if total_lines > 2 * context_lines:
         middle_lines = lines[context_lines:-context_lines]
     else:
         middle_lines = []
-    
+
     # Group similar lines
     line_groups = fuzzy_group_lines(middle_lines, similarity_threshold)
-    
+
     # Count pattern occurrences
     pattern_counts = Counter()
     for pattern, entries in line_groups.items():
         pattern_counts[pattern] = len(entries)
-    
+
     # Identify significant patterns
     significant_patterns = {
-        pattern for pattern, count in pattern_counts.items() 
+        pattern for pattern, count in pattern_counts.items()
         if count >= min_occurrences
     }
-    
+
     # Build output
     output_lines = []
-    
+
     # Add preserved start lines
     output_lines.extend(preserved_start)
-    
+
     # Add header for grouped patterns if we have any
     if significant_patterns:
         output_lines.append("")
@@ -338,26 +338,26 @@ def process_log_content(lines: List[str], similarity_threshold: float = 0.90,
         output_lines.append("GROUPED SIMILAR LOG ENTRIES (with counts)")
         output_lines.append("=" * 60)
         output_lines.append("")
-    
+
     # Process significant patterns
     processed_patterns = set()
     rare_lines = []
-    
+
     # Sort patterns by count (descending) for consistent output
     sorted_patterns = sorted(pattern_counts.items(), key=lambda x: x[1], reverse=True)
-    
+
     for pattern, count in sorted_patterns:
         if pattern in significant_patterns and pattern not in processed_patterns:
             # Add pattern header with count
             output_lines.append(f"[COUNT: {count:4d}] Pattern: {pattern}")
-            
+
             # Add some example lines (max 3)
             examples = line_groups[pattern][:3]
             for _, line in examples:
                 # Only add non-empty lines
                 if line.strip():
                     output_lines.append(f"    Example: {line.strip()}")
-            
+
             output_lines.append("")
             processed_patterns.add(pattern)
         elif pattern not in processed_patterns:
@@ -365,17 +365,17 @@ def process_log_content(lines: List[str], similarity_threshold: float = 0.90,
             for _, line in line_groups[pattern]:
                 if line.strip():
                     rare_lines.append(line)
-    
+
     # Add rare/unique lines section
     if rare_lines:
         output_lines.append("=" * 60)
         output_lines.append("RARE/UNIQUE LOG ENTRIES (verbatim)")
         output_lines.append("=" * 60)
         output_lines.append("")
-        
+
         # Preserve all rare lines verbatim
         output_lines.extend(rare_lines)
-    
+
     # Add preserved end lines
     if preserved_end:
         output_lines.append("")
@@ -384,20 +384,20 @@ def process_log_content(lines: List[str], similarity_threshold: float = 0.90,
         output_lines.append("=" * 60)
         output_lines.append("")
         output_lines.extend(preserved_end)
-    
+
     return "\n".join(output_lines)
 
 def process_single_log_file(file_path: str, similarity_threshold: float = 0.90,
                            min_occurrences: int = 3, context_lines: int = 10) -> str:
     """
     Process a single log file.
-    
+
     Args:
         file_path: Path to the log file
         similarity_threshold: Threshold for considering lines similar
         min_occurrences: Minimum occurrences for pattern significance
         context_lines: Number of context lines to preserve
-        
+
     Returns:
         Processed content as string
     """
@@ -407,21 +407,21 @@ def process_single_log_file(file_path: str, similarity_threshold: float = 0.90,
     except Exception as e:
         log_error("LOG_PROCESSOR", f"Failed to read file {file_path}: {e}")
         return ""
-    
+
     if not lines:
         return ""
-    
+
     # Apply smart sampling for large files
     sampled_lines = smart_sample_lines(lines)
-    
+
     # Process the content
     processed_content = process_log_content(
-        sampled_lines, 
-        similarity_threshold, 
-        min_occurrences, 
+        sampled_lines,
+        similarity_threshold,
+        min_occurrences,
         context_lines
     )
-    
+
     return processed_content
 
 def find_log_files(base_dir: str, processed_extension: str) -> List[str]:
@@ -606,6 +606,7 @@ def main():
                 failed_count += 1
 
     log_info("LOG_PROCESSOR", f"Log file processing complete. Processed {processed_count} files. Failures: {failed_count}.")
+
 
 if __name__ == "__main__":
     main()

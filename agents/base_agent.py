@@ -395,17 +395,20 @@ class BaseAgent(ABC):
         return False
         
     @staticmethod
-    def create_argument_parser(description: str) -> argparse.ArgumentParser:
+    def create_argument_parser(description: str, default_shared_dir: str = '/tmp/monerosim_shared',
+                             default_rpc_host: str = '127.0.0.1', default_log_level: str = 'INFO') -> argparse.ArgumentParser:
         """Create standard argument parser for agents"""
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument('--id', required=True, help='Agent ID')
-        parser.add_argument('--shared-dir', type=Path, default=Path('/tmp/monerosim_shared'), help='Shared directory for simulation state')
-        parser.add_argument('--rpc-host', default='127.0.0.1', help='RPC host address')
+        parser.add_argument('--shared-dir', type=Path, default=Path(default_shared_dir),
+                          help='Shared directory for simulation state')
+        parser.add_argument('--rpc-host', default=default_rpc_host, help='RPC host address')
         parser.add_argument('--agent-rpc-port', type=int, help='Agent RPC port')
         parser.add_argument('--wallet-rpc-port', type=int, help='Wallet RPC port')
         parser.add_argument('--p2p-port', type=int, help='P2P port of the agent\'s node')
-        parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Logging level')
-        parser.add_argument('--attributes', nargs='*', default=[], help='List of agent attributes (e.g., mining)')
+        parser.add_argument('--log-level', default=default_log_level,
+                          choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Logging level')
+        parser.add_argument('--attributes', nargs='*', default=[], help='List of agent attributes (key value pairs)')
         parser.add_argument('--hash-rate', type=int, help='Hash rate for mining agents')
         parser.add_argument('--tx-frequency', type=int, help='Transaction frequency in seconds for regular users')
         return parser

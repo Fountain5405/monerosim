@@ -1,5 +1,5 @@
-# Configuration for 47 agents: 5 miners, 2 seed nodes, 40 regular users
-# Simulation duration: 5 hours
+# Configuration for 47 agents: 5 miners, 40 regular users
+# Simulation duration: ~6.7 hours (24000 seconds)
 
 general:
   stop_time: "24000s"

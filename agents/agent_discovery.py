@@ -48,15 +48,12 @@ class AgentDiscovery:
         self._registry_cache_time: float = 0
         self.cache_ttl = 5  # Cache TTL in seconds
         
-        # Cache for distribution recipients
-        self._distribution_recipients_cache: Optional[List[Dict[str, Any]]] = None
-        self._distribution_recipients_cache_time: float = 0
-        self._distribution_recipients_cache_ttl = 10  # Cache TTL for distribution recipients
-        
-        # Cache for miners
-        self._miner_agents_cache: Optional[List[Dict[str, Any]]] = None
-        self._miner_agents_cache_time: float = 0
-        self._miner_agents_cache_ttl = 10  # Cache TTL for miners
+        # Unified cache system
+        self._caches = {
+            'registry': {'data': None, 'time': 0, 'ttl': 5},
+            'distribution_recipients': {'data': None, 'time': 0, 'ttl': 10},
+            'miner_agents': {'data': None, 'time': 0, 'ttl': 10}
+        }
         
         # Ensure the shared state directory exists
         try:
@@ -94,14 +91,20 @@ class AgentDiscovery:
         
         return logger
     
-    def _is_cache_valid(self) -> bool:
+    def _is_cache_valid(self, cache_name: str) -> bool:
         """
-        Check if the registry cache is still valid based on TTL.
-        
+        Check if a cache is still valid based on TTL.
+
+        Args:
+            cache_name: Name of the cache to check
+
         Returns:
             True if cache is valid, False otherwise.
         """
-        return (time.time() - self._registry_cache_time) < self.cache_ttl
+        cache = self._caches.get(cache_name)
+        if not cache:
+            return False
+        return (time.time() - cache['time']) < cache['ttl']
     
     def _load_registry_file(self, file_path: Path) -> Dict[str, Any]:
         """
@@ -154,9 +157,9 @@ class AgentDiscovery:
             AgentDiscoveryError: If the registry cannot be loaded.
         """
         # Return cached data if valid and not forcing refresh
-        if not force_refresh and self._registry_cache is not None and self._is_cache_valid():
+        if not force_refresh and self._caches['registry']['data'] is not None and self._is_cache_valid('registry'):
             self.logger.debug("Returning cached agent registry")
-            return self._registry_cache
+            return self._caches['registry']['data']
         
         self.logger.info("Loading agent registry from shared state directory")
         
@@ -226,8 +229,8 @@ class AgentDiscovery:
                     continue
             
             # Update cache
-            self._registry_cache = registry
-            self._registry_cache_time = time.time()
+            self._caches['registry']['data'] = registry
+            self._caches['registry']['time'] = time.time()
             
             self.logger.info(f"Successfully loaded agent registry with {len(registry['agents'])} agents")
             return registry
@@ -365,11 +368,9 @@ class AgentDiscovery:
         self.logger.debug("Getting miner agents")
         
         # Return cached data if valid and not forcing refresh
-        current_time = time.time()
-        if not force_refresh and self._miner_agents_cache is not None and \
-           (current_time - self._miner_agents_cache_time) < self._miner_agents_cache_ttl:
+        if not force_refresh and self._caches['miner_agents']['data'] is not None and self._is_cache_valid('miner_agents'):
             self.logger.debug("Returning cached miner agents")
-            return self._miner_agents_cache
+            return self._caches['miner_agents']['data']
             
         try:
             # Try to find miners by type first
@@ -502,8 +503,8 @@ class AgentDiscovery:
             self.logger.info(f"Found {len(miners)} miner agents")
             
             # Update cache
-            self._miner_agents_cache = miners
-            self._miner_agents_cache_time = time.time()
+            self._caches['miner_agents']['data'] = miners
+            self._caches['miner_agents']['time'] = time.time()
             
             return miners
             
@@ -733,8 +734,8 @@ class AgentDiscovery:
                 "total_wallets": len(wallets),
                 "total_block_controllers": len(block_controllers),
                 "last_updated": registry.get("last_updated", 0),
-                "cache_time": self._registry_cache_time,
-                "cache_valid": self._is_cache_valid()
+                "cache_time": self._caches['registry']['time'],
+                "cache_valid": self._is_cache_valid('registry')
             }
             
             # Count agents by type
@@ -782,14 +783,6 @@ class AgentDiscovery:
             self.logger.warning(f"Invalid boolean attribute value: '{value}', defaulting to False")
             return False
     
-    def _is_distribution_recipients_cache_valid(self) -> bool:
-        """
-        Check if the distribution recipients cache is still valid based on TTL.
-        
-        Returns:
-            True if cache is valid, False otherwise.
-        """
-        return (time.time() - self._distribution_recipients_cache_time) < self._distribution_recipients_cache_ttl
     
     def get_distribution_recipients(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
@@ -810,9 +803,9 @@ class AgentDiscovery:
         self.logger.debug("Getting distribution recipients")
         
         # Return cached data if valid and not forcing refresh
-        if not force_refresh and self._distribution_recipients_cache is not None and self._is_distribution_recipients_cache_valid():
+        if not force_refresh and self._caches['distribution_recipients']['data'] is not None and self._is_cache_valid('distribution_recipients'):
             self.logger.debug("Returning cached distribution recipients")
-            return self._distribution_recipients_cache
+            return self._caches['distribution_recipients']['data']
         
         try:
             # Get all wallet agents
@@ -846,8 +839,8 @@ class AgentDiscovery:
                 self.logger.info(f"Using {len(potential_recipients)} potential recipients")
             
             # Update cache
-            self._distribution_recipients_cache = recipients_to_use
-            self._distribution_recipients_cache_time = time.time()
+            self._caches['distribution_recipients']['data'] = recipients_to_use
+            self._caches['distribution_recipients']['time'] = time.time()
             
             return recipients_to_use
             

@@ -42,127 +42,68 @@ class RegularUserAgent(BaseAgent):
             # Regular user setup logic
             self._setup_regular_user()
     
+    def _setup_wallet(self, wallet_type: str):
+        """Common wallet setup logic for both miners and regular users"""
+        self.logger.info(f"Setting up {wallet_type} functionality")
+        if not self.wallet_rpc:
+            self.logger.warning(f"No wallet RPC connection available for {wallet_type}")
+            return
+
+        try:
+            wallet_name = f"{self.agent_id}_wallet"
+            self.wallet_address = self._ensure_wallet_exists(wallet_name)
+
+            if self.wallet_address:
+                self.logger.info(f"{wallet_type.title()} wallet address: {self.wallet_address}")
+                if wallet_type == "miner":
+                    self._register_miner_info()
+                else:  # regular user
+                    self._register_user_info()
+                    self._setup_transaction_parameters()
+            else:
+                self.logger.error(f"Failed to obtain wallet address for {wallet_type} {self.agent_id}")
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup {wallet_type}: {e}")
+
+    def _ensure_wallet_exists(self, wallet_name: str) -> Optional[str]:
+        """Ensure a wallet exists and return its address"""
+        try:
+            self.logger.info(f"Attempting to open wallet '{wallet_name}' for {self.agent_id}")
+            self.wallet_rpc.wait_until_ready(max_wait=180)
+            self.wallet_rpc.open_wallet(wallet_name, password="")
+            address = self.wallet_rpc.get_address()
+            self.logger.info(f"Successfully opened existing wallet '{wallet_name}'")
+            return address
+        except Exception as open_err:
+            if "Wallet not found" in str(open_err) or "Failed to open wallet" in str(open_err):
+                try:
+                    self.logger.info(f"Wallet doesn't exist, creating '{wallet_name}'")
+                    self.wallet_rpc.create_wallet(wallet_name, password="")
+                    address = self.wallet_rpc.get_address()
+                    self.logger.info(f"Successfully created new wallet '{wallet_name}'")
+                    return address
+                except Exception as create_err:
+                    self.logger.error(f"Failed to create wallet: {create_err}")
+            else:
+                self.logger.warning(f"Error opening wallet: {open_err}")
+
+            # Last attempt - get address from current wallet
+            try:
+                self.logger.warning("Attempting to get address from current wallet")
+                self.wallet_rpc.wait_until_ready(max_wait=180)
+                return self.wallet_rpc.get_address()
+            except Exception as addr_err:
+                self.logger.error(f"Failed to get address: {addr_err}")
+                return None
+
     def _setup_miner(self):
         """Setup logic for miner agents"""
-        self.logger.info("Setting up miner functionality")
-        # Ensure wallet is available for mining rewards
-        if not self.wallet_rpc:
-            self.logger.warning("No wallet RPC connection available for miner")
-            return
-            
-        try:
-            # Extract agent ID to create wallet name
-            wallet_name = f"{self.agent_id}_wallet"
-            self.wallet_address = None
-            
-            # First try to open existing wallet
-            try:
-                self.logger.info(f"Attempting to open wallet '{wallet_name}' for miner {self.agent_id}")
-                self.wallet_rpc.wait_until_ready(max_wait=180)
-                self.wallet_rpc.open_wallet(wallet_name, password="")
-                # If open succeeds, get the address
-                self.wallet_address = self.wallet_rpc.get_address()
-                self.logger.info(f"Successfully opened existing wallet '{wallet_name}'")
-            except Exception as open_err:
-                # If wallet doesn't exist or can't be opened, try to create it
-                if "Wallet not found" in str(open_err) or "Failed to open wallet" in str(open_err):
-                    try:
-                        self.logger.info(f"Wallet doesn't exist, creating '{wallet_name}'")
-                        self.wallet_rpc.create_wallet(wallet_name, password="")
-                        # If creation succeeds, get the address
-                        self.wallet_address = self.wallet_rpc.get_address()
-                        self.logger.info(f"Successfully created new wallet '{wallet_name}'")
-                    except Exception as create_err:
-                        self.logger.error(f"Failed to create wallet: {create_err}")
-                        # Last attempt - maybe wallet is already loaded
-                        try:
-                            self.logger.warning("Attempting to get address from current wallet")
-                            self.wallet_rpc.wait_until_ready(max_wait=180)
-                            self.wallet_address = self.wallet_rpc.get_address()
-                        except Exception as addr_err:
-                            self.logger.error(f"Failed to get address: {addr_err}")
-                            return
-                else:
-                    # Some other error opening wallet, try to get address anyway
-                    self.logger.warning(f"Error opening wallet: {open_err}, trying to get address from current wallet")
-                    try:
-                        self.wallet_rpc.wait_until_ready(max_wait=180)
-                        self.wallet_address = self.wallet_rpc.get_address()
-                    except Exception as addr_err:
-                        self.logger.error(f"Failed to get address: {addr_err}")
-                        return
-            
-            if self.wallet_address:
-                self.logger.info(f"Miner wallet address: {self.wallet_address}")
-                # Register miner information for the block controller with improved error handling
-                self._register_miner_info()
-            else:
-                self.logger.error(f"Failed to obtain wallet address for miner {self.agent_id}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to setup miner: {e}")
-    
+        self._setup_wallet("miner")
+
     def _setup_regular_user(self):
         """Setup logic for regular user agents"""
-        self.logger.info("Setting up regular user functionality")
-        # Ensure wallet is available for transactions
-        if not self.wallet_rpc:
-            self.logger.warning("No wallet RPC connection available for regular user")
-            return
-            
-        try:
-            # Extract agent ID to create wallet name
-            wallet_name = f"{self.agent_id}_wallet"
-            self.wallet_address = None
-            
-            # First try to open existing wallet
-            try:
-                self.logger.info(f"Attempting to open wallet '{wallet_name}' for user {self.agent_id}")
-                self.wallet_rpc.wait_until_ready(max_wait=180)
-                self.wallet_rpc.open_wallet(wallet_name, password="")
-                # If open succeeds, get the address
-                self.wallet_address = self.wallet_rpc.get_address()
-                self.logger.info(f"Successfully opened existing wallet '{wallet_name}'")
-            except Exception as open_err:
-                # If wallet doesn't exist or can't be opened, try to create it
-                if "Wallet not found" in str(open_err) or "Failed to open wallet" in str(open_err):
-                    try:
-                        self.logger.info(f"Wallet doesn't exist, creating '{wallet_name}'")
-                        self.wallet_rpc.create_wallet(wallet_name, password="")
-                        # If creation succeeds, get the address
-                        self.wallet_address = self.wallet_rpc.get_address()
-                        self.logger.info(f"Successfully created new wallet '{wallet_name}'")
-                    except Exception as create_err:
-                        self.logger.error(f"Failed to create wallet: {create_err}")
-                        # Last attempt - maybe wallet is already loaded
-                        try:
-                            self.logger.warning("Attempting to get address from current wallet")
-                            self.wallet_rpc.wait_until_ready(max_wait=180)
-                            self.wallet_address = self.wallet_rpc.get_address()
-                        except Exception as addr_err:
-                            self.logger.error(f"Failed to get address: {addr_err}")
-                            return
-                else:
-                    # Some other error opening wallet, try to get address anyway
-                    self.logger.warning(f"Error opening wallet: {open_err}, trying to get address from current wallet")
-                    try:
-                        self.wallet_rpc.wait_until_ready(max_wait=180)
-                        self.wallet_address = self.wallet_rpc.get_address()
-                    except Exception as addr_err:
-                        self.logger.error(f"Failed to get address: {addr_err}")
-                        return
-            
-            if self.wallet_address:
-                self.logger.info(f"User wallet address: {self.wallet_address}")
-                # Register user information for the agent discovery system
-                self._register_user_info()
-                # Initialize transaction parameters
-                self._setup_transaction_parameters()
-            else:
-                self.logger.error(f"Failed to obtain wallet address for user {self.agent_id}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to setup regular user: {e}")
+        self._setup_wallet("regular user")
     
     def _register_miner_info(self):
         """Register miner information for the block controller with atomic file operations"""

@@ -73,124 +73,99 @@ class MinerDistributorAgent(BaseAgent):
     
     def _parse_configuration(self):
         """Parse configuration attributes from self.attributes"""
-        try:
-            # Parse transaction frequency
-            if 'transaction_frequency' in self.attributes:
-                self.transaction_frequency = int(self.attributes['transaction_frequency'])
-                self.logger.info(f"Transaction frequency set to {self.transaction_frequency} seconds")
-            
-            # Parse transaction amount range
-            if 'min_transaction_amount' in self.attributes:
-                self.min_transaction_amount = float(self.attributes['min_transaction_amount'])
-                self.logger.info(f"Minimum transaction amount set to {self.min_transaction_amount} XMR")
-            
-            if 'max_transaction_amount' in self.attributes:
-                self.max_transaction_amount = float(self.attributes['max_transaction_amount'])
-                self.logger.info(f"Maximum transaction amount set to {self.max_transaction_amount} XMR")
-            
-            # Parse miner selection strategy
-            if 'miner_selection_strategy' in self.attributes:
-                strategy = self.attributes['miner_selection_strategy'].lower()
-                if strategy in ['weighted', 'balance', 'random']:
-                    self.miner_selection_strategy = strategy
-                    self.logger.info(f"Miner selection strategy set to {strategy}")
-                else:
-                    self.logger.warning(f"Invalid miner selection strategy: {strategy}, using default 'weighted'")
-            
-            # Parse transaction priority
-            if 'transaction_priority' in self.attributes:
-                priority = int(self.attributes['transaction_priority'])
-                if 0 <= priority <= 3:
-                    self.transaction_priority = priority
-                    self.logger.info(f"Transaction priority set to {priority}")
-                else:
-                    self.logger.warning(f"Invalid transaction priority: {priority}, using default 1")
-            
-            # Parse max retries
-            if 'max_retries' in self.attributes:
-                retries = int(self.attributes['max_retries'])
-                if retries > 0:
-                    self.max_retries = retries
-                    self.logger.info(f"Max retries set to {retries}")
-                else:
-                    self.logger.warning(f"Invalid max retries: {retries}, using default 3")
-            
-            # Parse recipient selection strategy
-            if 'recipient_selection' in self.attributes:
-                strategy = self.attributes['recipient_selection'].lower()
-                if strategy in ['random', 'round_robin']:
-                    self.recipient_selection = strategy
-                    self.logger.info(f"Recipient selection strategy set to {strategy}")
-                else:
-                    self.logger.warning(f"Invalid recipient selection strategy: {strategy}, using default 'random'")
+        config_mappings = {
+            'transaction_frequency': ('int', 'transaction_frequency', 60),
+            'min_transaction_amount': ('float', 'min_transaction_amount', 0.1),
+            'max_transaction_amount': ('float', 'max_transaction_amount', 1.0),
+            'miner_selection_strategy': ('choice', 'miner_selection_strategy', 'weighted', ['weighted', 'balance', 'random']),
+            'transaction_priority': ('int_range', 'transaction_priority', 1, 0, 3),
+            'max_retries': ('int_min', 'max_retries', 5, 1),
+            'recipient_selection': ('choice', 'recipient_selection', 'random', ['random', 'round_robin']),
+            'initial_fund_amount': ('float_min', 'initial_fund_amount', 1.0, 0),
+            'initial_wait_time': ('time_duration', 'initial_wait_time', 3600),
+            'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
+            'max_wait_time': ('time_duration', 'max_wait_time', 7200)
+        }
 
-            # Parse initial fund amount
-            if 'initial_fund_amount' in self.attributes:
-                amount = float(self.attributes['initial_fund_amount'])
-                if amount > 0:
-                    self.initial_fund_amount = amount
-                    self.logger.info(f"Initial fund amount set to {amount} XMR")
+        for attr_name, (type_name, field_name, *args) in config_mappings.items():
+            self._parse_single_attribute(attr_name, type_name, field_name, *args)
+
+    def _parse_single_attribute(self, attr_name: str, type_name: str, field_name: str, *args):
+        """Parse a single configuration attribute"""
+        if attr_name not in self.attributes:
+            return
+
+        value = self.attributes[attr_name]
+        try:
+            if type_name == 'int':
+                parsed = int(value)
+                setattr(self, field_name, parsed)
+                self.logger.info(f"{field_name} set to {parsed}")
+            elif type_name == 'float':
+                parsed = float(value)
+                setattr(self, field_name, parsed)
+                self.logger.info(f"{field_name} set to {parsed}")
+            elif type_name == 'choice':
+                default, choices = args
+                choice = value.lower()
+                if choice in choices:
+                    setattr(self, field_name, choice)
+                    self.logger.info(f"{field_name} set to {choice}")
                 else:
-                    self.logger.warning(f"Invalid initial fund amount: {amount}, using default 1.0 XMR")
-            
-            # Parse initial wait time for mining reward maturation
-            if 'initial_wait_time' in self.attributes:
-                wait_time = self.attributes['initial_wait_time']
-                if isinstance(wait_time, (int, float)):
-                    self.initial_wait_time = int(wait_time)
-                    self.logger.info(f"Initial wait time set to {self.initial_wait_time} seconds")
-                elif isinstance(wait_time, str):
-                    # Handle time strings like "1h", "30m", "3600s"
-                    try:
-                        if wait_time.endswith('h'):
-                            self.initial_wait_time = int(float(wait_time[:-1]) * 3600)
-                        elif wait_time.endswith('m'):
-                            self.initial_wait_time = int(float(wait_time[:-1]) * 60)
-                        elif wait_time.endswith('s'):
-                            self.initial_wait_time = int(float(wait_time[:-1]))
-                        else:
-                            self.initial_wait_time = int(float(wait_time))
-                        self.logger.info(f"Initial wait time set to {self.initial_wait_time} seconds")
-                    except ValueError:
-                        self.logger.warning(f"Invalid initial wait time format: {wait_time}, using default 3600 seconds")
+                    self.logger.warning(f"Invalid {field_name}: {choice}, using default {default}")
+            elif type_name == 'int_range':
+                default, min_val, max_val = args
+                parsed = int(value)
+                if min_val <= parsed <= max_val:
+                    setattr(self, field_name, parsed)
+                    self.logger.info(f"{field_name} set to {parsed}")
                 else:
-                    self.logger.warning(f"Invalid initial wait time type: {type(wait_time)}, using default 3600 seconds")
-            
-            # Parse balance check interval
-            if 'balance_check_interval' in self.attributes:
-                interval = int(self.attributes['balance_check_interval'])
-                if interval > 0:
-                    self.balance_check_interval = interval
-                    self.logger.info(f"Balance check interval set to {interval} seconds")
+                    self.logger.warning(f"Invalid {field_name}: {parsed}, using default {default}")
+            elif type_name == 'int_min':
+                default, min_val = args
+                parsed = int(value)
+                if parsed >= min_val:
+                    setattr(self, field_name, parsed)
+                    self.logger.info(f"{field_name} set to {parsed}")
                 else:
-                    self.logger.warning(f"Invalid balance check interval: {interval}, using default 30 seconds")
-            
-            # Parse maximum wait time
-            if 'max_wait_time' in self.attributes:
-                max_wait = self.attributes['max_wait_time']
-                if isinstance(max_wait, (int, float)):
-                    self.max_wait_time = int(max_wait)
-                    self.logger.info(f"Maximum wait time set to {self.max_wait_time} seconds")
-                elif isinstance(max_wait, str):
-                    # Handle time strings like "2h", "120m", "7200s"
-                    try:
-                        if max_wait.endswith('h'):
-                            self.max_wait_time = int(float(max_wait[:-1]) * 3600)
-                        elif max_wait.endswith('m'):
-                            self.max_wait_time = int(float(max_wait[:-1]) * 60)
-                        elif max_wait.endswith('s'):
-                            self.max_wait_time = int(float(max_wait[:-1]))
-                        else:
-                            self.max_wait_time = int(float(max_wait))
-                        self.logger.info(f"Maximum wait time set to {self.max_wait_time} seconds")
-                    except ValueError:
-                        self.logger.warning(f"Invalid max wait time format: {max_wait}, using default 7200 seconds")
+                    self.logger.warning(f"Invalid {field_name}: {parsed}, using default {default}")
+            elif type_name == 'float_min':
+                default, min_val = args
+                parsed = float(value)
+                if parsed > min_val:
+                    setattr(self, field_name, parsed)
+                    self.logger.info(f"{field_name} set to {parsed}")
                 else:
-                    self.logger.warning(f"Invalid max wait time type: {type(max_wait)}, using default 7200 seconds")
-            
+                    self.logger.warning(f"Invalid {field_name}: {parsed}, using default {default}")
+            elif type_name == 'time_duration':
+                default = args[0]
+                parsed = self._parse_time_duration(value)
+                if parsed is not None:
+                    setattr(self, field_name, parsed)
+                    self.logger.info(f"{field_name} set to {parsed} seconds")
+                else:
+                    self.logger.warning(f"Invalid {field_name} format: {value}, using default {default} seconds")
         except (ValueError, TypeError) as e:
-            self.logger.error(f"Error parsing configuration attributes: {e}")
-            self.logger.info("Using default configuration values")
+            default = args[0] if args else 'default'
+            self.logger.warning(f"Error parsing {field_name}: {e}, using default {default}")
+
+    def _parse_time_duration(self, value: str) -> Optional[int]:
+        """Parse time duration string (e.g., '1h', '30m', '3600s')"""
+        if isinstance(value, (int, float)):
+            return int(value)
+        elif isinstance(value, str):
+            try:
+                if value.endswith('h'):
+                    return int(float(value[:-1]) * 3600)
+                elif value.endswith('m'):
+                    return int(float(value[:-1]) * 60)
+                elif value.endswith('s'):
+                    return int(float(value[:-1]))
+                else:
+                    return int(float(value))
+            except ValueError:
+                return None
+        return None
     
     def _discover_miners(self):
         """
