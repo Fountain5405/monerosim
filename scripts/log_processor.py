@@ -177,13 +177,14 @@ def calculate_similarity_levenshtein(line1: str, line2: str) -> float:
     similarity = 1.0 - (distance / max_len)
     return similarity
 
-def smart_sample_lines(lines: List[str], chunk_size: int = 500) -> List[str]:
+def smart_sample_lines(lines: List[str], chunk_size: int = 500, num_middle_chunks: int = 3) -> List[str]:
     """
-    Smart sampling of lines from a large file.
+    Smart sampling of lines from a large file with configurable chunking.
 
     Args:
         lines: List of all lines in the file
         chunk_size: Size of chunks to sample
+        num_middle_chunks: Number of random chunks to sample from the middle
 
     Returns:
         Sampled lines
@@ -203,8 +204,8 @@ def smart_sample_lines(lines: List[str], chunk_size: int = 500) -> List[str]:
     middle_size = len(middle_lines)
 
     if middle_size > 0:
-        # Sample 3 random chunks from the middle
-        num_chunks = min(3, max(1, middle_size // chunk_size))
+        # Sample specified number of random chunks from the middle
+        num_chunks = min(num_middle_chunks, max(1, middle_size // chunk_size))
         sampled_middle = []
 
         for _ in range(num_chunks):
@@ -388,7 +389,8 @@ def process_log_content(lines: List[str], similarity_threshold: float = 0.90,
     return "\n".join(output_lines)
 
 def process_single_log_file(file_path: str, similarity_threshold: float = 0.90,
-                           min_occurrences: int = 3, context_lines: int = 10) -> str:
+                           min_occurrences: int = 3, context_lines: int = 10,
+                           chunk_params: tuple = None) -> str:
     """
     Process a single log file.
 
@@ -397,6 +399,7 @@ def process_single_log_file(file_path: str, similarity_threshold: float = 0.90,
         similarity_threshold: Threshold for considering lines similar
         min_occurrences: Minimum occurrences for pattern significance
         context_lines: Number of context lines to preserve
+        chunk_params: Tuple of (num_middle_chunks, chunk_size) for sampling, or None to process all lines
 
     Returns:
         Processed content as string
@@ -411,8 +414,12 @@ def process_single_log_file(file_path: str, similarity_threshold: float = 0.90,
     if not lines:
         return ""
 
-    # Apply smart sampling for large files
-    sampled_lines = smart_sample_lines(lines)
+    # Apply chunking if specified, otherwise process all lines
+    if chunk_params:
+        num_middle_chunks, chunk_size = chunk_params
+        sampled_lines = smart_sample_lines(lines, chunk_size, num_middle_chunks)
+    else:
+        sampled_lines = lines  # Process all lines
 
     # Process the content
     processed_content = process_log_content(
@@ -460,7 +467,8 @@ def _process_and_write(file_path: str,
                        similarity_threshold: float,
                        min_occurrences: int,
                        context_lines: int,
-                       dry_run: bool) -> Tuple[str, bool, str]:
+                       dry_run: bool,
+                       chunk_params: tuple = None) -> Tuple[str, bool, str]:
     """
     Worker-safe function: process a file and write its processed counterpart.
     Returns (file_path, success, message).
@@ -470,7 +478,8 @@ def _process_and_write(file_path: str,
             file_path,
             similarity_threshold,
             min_occurrences,
-            context_lines
+            context_lines,
+            chunk_params
         )
 
         if not processed_content:
@@ -535,13 +544,25 @@ def main():
                         help="Maximum number of parallel workers (default: half of CPUs)")
     parser.add_argument("--per-host-parallelism", type=int, default=0,
                         help="If >0, also parallelize inside each host group up to this limit")
+    parser.add_argument("--chunk", help="Enable chunking with format 'num_middle_chunks,chunk_size' (e.g., '3,500'). If not specified, processes entire file.")
 
     args = parser.parse_args()
 
+    # Parse chunk parameters if provided
+    chunk_params = None
+    if args.chunk:
+        try:
+            num_middle_chunks, chunk_size = map(int, args.chunk.split(','))
+            chunk_params = (num_middle_chunks, chunk_size)
+        except ValueError:
+            log_error("LOG_PROCESSOR", "Invalid --chunk format. Use 'num_middle_chunks,chunk_size'")
+            return
+
     log_info("LOG_PROCESSOR", f"Starting log processing in: {args.base_dir}")
+    chunk_info = f"chunking={chunk_params}" if chunk_params else "chunking=disabled (full processing)"
     log_info("LOG_PROCESSOR", f"Configuration: similarity_threshold={args.similarity_threshold}, "
                               f"min_occurrences={args.min_occurrences}, context_lines={args.context_lines}, "
-                              f"max_workers={args.max_workers}, per_host_parallelism={args.per_host_parallelism}")
+                              f"max_workers={args.max_workers}, per_host_parallelism={args.per_host_parallelism}, {chunk_info}")
 
     # Find log files to process
     log_files = find_log_files(args.base_dir, args.processed_extension)
@@ -588,7 +609,8 @@ def main():
                 args.similarity_threshold,
                 args.min_occurrences,
                 args.context_lines,
-                args.dry_run
+                args.dry_run,
+                chunk_params
             ): file_path for file_path in tasks
         }
 
