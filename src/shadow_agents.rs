@@ -282,6 +282,8 @@ fn validate_topology_config(topology: &Topology, total_agents: usize) -> Result<
 pub struct GlobalIpRegistry {
     /// Tracks all assigned IP addresses to prevent collisions
     assigned_ips: HashMap<String, String>, // IP -> Agent ID
+    /// Fast lookup for IP uniqueness checking
+    used_ips: std::collections::HashSet<String>,
     /// Subnet allocation for different agent types with adequate spacing
     subnet_allocations: HashMap<AgentType, SubnetAllocation>,
     /// Next available IP counters for each subnet
@@ -338,6 +340,7 @@ impl GlobalIpRegistry {
 
         GlobalIpRegistry {
             assigned_ips: HashMap::new(),
+            used_ips: std::collections::HashSet::new(),
             subnet_allocations,
             subnet_counters,
         }
@@ -392,18 +395,20 @@ impl GlobalIpRegistry {
 
         let ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4);
 
-        // Check if this IP is already assigned
-        if !self.assigned_ips.contains_key(&ip) {
+        // Check if this IP is already assigned using HashSet for fast lookup
+        if !self.used_ips.contains(&ip) {
+            self.used_ips.insert(ip.clone());
             self.assigned_ips.insert(ip.clone(), agent_id.to_string());
             Ok(ip)
         } else {
-            // Check if it's assigned to the same agent
+            // Check if it's assigned to the same agent (shouldn't happen with HashSet, but being safe)
             if self.assigned_ips.get(&ip) == Some(&agent_id.to_string()) {
                 Ok(ip)
             } else {
                 // Fallback: try a different host IP
                 let fallback_ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4 + 100);
-                if !self.assigned_ips.contains_key(&fallback_ip) {
+                if !self.used_ips.contains(&fallback_ip) {
+                    self.used_ips.insert(fallback_ip.clone());
                     self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
                     Ok(fallback_ip)
                 } else {
@@ -413,9 +418,26 @@ impl GlobalIpRegistry {
         }
     }
 
-    /// Check if an IP is already assigned
+    /// Check if an IP is already assigned (fast HashSet lookup)
     pub fn is_ip_assigned(&self, ip: &str) -> bool {
-        self.assigned_ips.contains_key(ip)
+        self.used_ips.contains(ip)
+    }
+
+    /// Register a pre-allocated IP from GML file
+    pub fn register_pre_allocated_ip(&mut self, ip: &str, agent_id: &str) -> Result<(), String> {
+        if self.used_ips.contains(ip) {
+            if let Some(existing_agent) = self.assigned_ips.get(ip) {
+                if existing_agent != agent_id {
+                    return Err(format!("IP {} already assigned to agent {}", ip, existing_agent));
+                }
+            }
+            // If same agent, it's OK
+            Ok(())
+        } else {
+            self.used_ips.insert(ip.to_string());
+            self.assigned_ips.insert(ip.to_string(), agent_id.to_string());
+            Ok(())
+        }
     }
 
     /// Get the agent ID that owns a given IP
@@ -484,6 +506,7 @@ impl AsSubnetManager {
 }
 
 /// Get IP address for an agent using the centralized Global IP Registry
+/// Priority order: 1) Pre-allocated GML IP, 2) AS-aware IP, 3) Dynamic IP assignment
 pub fn get_agent_ip(
     agent_type: AgentType,
     agent_id: &str,
@@ -494,42 +517,78 @@ pub fn get_agent_ip(
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
 ) -> String {
-    // For GML topologies with AS information, try AS-aware assignment first
+    // For GML topologies, try pre-allocated and AS-aware assignment first
     if using_gml_topology {
         if let Some(gml) = gml_graph {
             // Find the GML node with the matching network_node_id
             if let Some(gml_node) = gml.nodes.iter().find(|node| node.id == network_node_id) {
-                // First, check if the GML node already has an IP address assigned
-                if let Some(existing_ip) = gml_node.get_ip() {
-                    // Check if this IP conflicts with our registry
-                    if !ip_registry.is_ip_assigned(&existing_ip) {
-                        // Register this IP in our central registry
-                        ip_registry.assigned_ips.insert(existing_ip.clone(), agent_id.to_string());
-                        return existing_ip;
-                    }
-                }
-
-                // Try AS-aware assignment using the legacy AS subnet manager
-                if let Some(as_number) = get_node_as_number(gml_node) {
-                    if let Some(as_ip) = subnet_manager.assign_as_aware_ip(&as_number) {
-                        // Check if this AS IP conflicts with our registry
-                        if !ip_registry.is_ip_assigned(&as_ip) {
+                // Priority 1: Check for pre-allocated IP from GML node
+                if let Some(pre_allocated_ip) = gml_node.get_ip() {
+                    // Validate IP format
+                    if !GmlNode::is_valid_ip(pre_allocated_ip) {
+                        log::warn!("Invalid pre-allocated IP '{}' for node {} in GML file", pre_allocated_ip, network_node_id);
+                    } else {
+                        // Check for conflicts with existing assignments
+                        if let Some(conflicting_agent) = ip_registry.get_agent_for_ip(pre_allocated_ip) {
+                            if conflicting_agent != agent_id {
+                                log::warn!("IP conflict detected: {} already assigned to agent {}, agent {} (node {}) will use fallback IP",
+                                           pre_allocated_ip, conflicting_agent, agent_id, network_node_id);
+                                // Continue to fallback instead of panicking
+                            } else {
+                                log::debug!("Using pre-allocated IP {} for agent {} (node {})", pre_allocated_ip, agent_id, network_node_id);
+                                return pre_allocated_ip.to_string();
+                            }
+                        } else {
                             // Register this IP in our central registry
-                            ip_registry.assigned_ips.insert(as_ip.clone(), agent_id.to_string());
-                            return as_ip;
+                            if let Err(conflict) = ip_registry.register_pre_allocated_ip(pre_allocated_ip, agent_id) {
+                                log::error!("Failed to register pre-allocated IP {} for agent {}: {}", pre_allocated_ip, agent_id, conflict);
+                                // Continue to fallback
+                            } else {
+                                log::info!("Assigned pre-allocated IP {} to agent {} (node {})", pre_allocated_ip, agent_id, network_node_id);
+                                return pre_allocated_ip.to_string();
+                            }
                         }
                     }
                 }
+
+                // Priority 2: Try AS-aware assignment using the legacy AS subnet manager
+                if let Some(as_number) = get_node_as_number(gml_node) {
+                    if let Some(as_ip) = subnet_manager.assign_as_aware_ip(&as_number) {
+                        // Check if this AS IP conflicts with our registry
+                        if let Some(conflicting_agent) = ip_registry.get_agent_for_ip(&as_ip) {
+                            if conflicting_agent != agent_id {
+                                log::warn!("AS-aware IP {} for agent {} conflicts with existing assignment to {}", as_ip, agent_id, conflicting_agent);
+                            } else {
+                                log::debug!("Using AS-aware IP {} for agent {} (AS {}, node {})", as_ip, agent_id, as_number, network_node_id);
+                                return as_ip;
+                            }
+                        } else {
+                            // Register this IP in our central registry
+                            if let Err(conflict) = ip_registry.register_pre_allocated_ip(&as_ip, agent_id) {
+                                log::warn!("Failed to register AS-aware IP {} for agent {}: {}", as_ip, agent_id, conflict);
+                                // Continue to fallback
+                            } else {
+                                log::info!("Assigned AS-aware IP {} to agent {} (AS {}, node {})", as_ip, agent_id, as_number, network_node_id);
+                                return as_ip;
+                            }
+                        }
+                    }
+                }
+            } else {
+                log::warn!("Agent {} assigned to node {} which doesn't exist in GML topology", agent_id, network_node_id);
             }
         }
     }
 
-    // Use the centralized IP registry for assignment
+    // Priority 3: Use the centralized IP registry for dynamic assignment
     match ip_registry.assign_ip(agent_type, agent_id) {
-        Ok(ip) => ip,
+        Ok(ip) => {
+            log::info!("Assigned dynamic IP {} to agent {} using global registry", ip, agent_id);
+            ip
+        },
         Err(error) => {
             // Fallback to legacy assignment if centralized registry fails
-            eprintln!("Warning: IP registry assignment failed for {}: {}. Using fallback.", agent_id, error);
+            log::warn!("IP registry assignment failed for {}: {}. Using geographic fallback.", agent_id, error);
 
             // Fallback logic using geographic subnets
             let fallback_ip = match agent_type {
@@ -539,20 +598,72 @@ pub fn get_agent_ip(
             };
 
             // Try to register the fallback IP
-            if !ip_registry.is_ip_assigned(&fallback_ip) {
+            if let Some(conflicting_agent) = ip_registry.get_agent_for_ip(&fallback_ip) {
+                if conflicting_agent != agent_id {
+                    log::error!("Fallback IP {} conflicts with existing assignment to {}", fallback_ip, conflicting_agent);
+                }
+            } else {
                 ip_registry.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
             }
 
+            log::info!("Assigned fallback IP {} to agent {}", fallback_ip, agent_id);
             fallback_ip
         }
     }
 }
 
 
+/// Validate GML topology for IP conflicts and inconsistencies
+fn validate_gml_ip_consistency(gml_graph: &GmlGraph) -> Result<(), String> {
+    use std::collections::HashSet;
+
+    let mut assigned_ips = HashSet::new();
+    let mut nodes_with_ips = 0;
+    let mut nodes_without_ips = 0;
+
+    for node in &gml_graph.nodes {
+        if let Some(ip) = node.get_ip() {
+            // Check IP format
+            if !GmlNode::is_valid_ip(ip) {
+                return Err(format!("Invalid IP address '{}' for node {}", ip, node.id));
+            }
+
+            // Check for duplicates
+            if !assigned_ips.insert(ip.to_string()) {
+                return Err(format!("Duplicate IP address '{}' found in GML file (nodes have conflicting IPs)", ip));
+            }
+
+            nodes_with_ips += 1;
+        } else {
+            nodes_without_ips += 1;
+        }
+    }
+
+    // Log IP assignment statistics
+    let total_nodes = gml_graph.nodes.len();
+    if nodes_with_ips > 0 {
+        let coverage_percentage = (nodes_with_ips as f64 / total_nodes as f64 * 100.0).round();
+        log::info!("GML IP assignment: {} nodes with pre-allocated IPs, {} nodes without ({}% coverage)",
+                  nodes_with_ips, nodes_without_ips, coverage_percentage);
+
+        if nodes_without_ips > 0 && nodes_with_ips > 0 {
+            log::warn!("Inconsistent IP assignment in GML file: {} nodes have IPs, {} nodes don't. This may cause unpredictable IP assignment behavior.",
+                      nodes_with_ips, nodes_without_ips);
+        }
+    } else {
+        log::info!("No pre-allocated IPs in GML file - all IPs will be assigned dynamically");
+    }
+
+    Ok(())
+}
+
 /// Generate Shadow network configuration from GML graph
 fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_eyre::eyre::Result<ShadowGraph> {
     // Validate the topology first
     validate_topology(gml_graph).map_err(|e| color_eyre::eyre::eyre!("Invalid GML topology: {}", e))?;
+
+    // Validate IP consistency
+    validate_gml_ip_consistency(gml_graph).map_err(|e| color_eyre::eyre::eyre!("GML IP validation failed: {}", e))?;
 
     // Create a temporary GML file with converted attributes (e.g., packet_loss percentages to floats)
     let temp_gml_path = format!("/tmp/monerosim_gml_{}.gml", std::process::id());
@@ -573,8 +684,9 @@ fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_ey
             gml_content.push_str(&format!("    label \"{}\"\n", label));
         }
         for (key, value) in &node.attributes {
-            let processed_value = if key == "bandwidth" {
-                if value.ends_with("Gbit") {
+            let (processed_value, quote) = if key == "bandwidth" {
+                // Bandwidth is numeric, no quotes needed
+                let processed = if value.ends_with("Gbit") {
                     // Convert Gbit to Mbit
                     if let Ok(gbit) = value.trim_end_matches("Gbit").parse::<f64>() {
                         format!("{}", gbit * 1000.0)
@@ -586,11 +698,17 @@ fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_ey
                     value.trim_end_matches("Mbit").to_string()
                 } else {
                     value.clone()
-                }
+                };
+                (processed, false)
             } else {
-                value.clone()
+                // String attributes like "region" need to be quoted
+                (value.clone(), true)
             };
-            gml_content.push_str(&format!("    {} {}\n", key, processed_value));
+            if quote {
+                gml_content.push_str(&format!("    {} \"{}\"\n", key, processed_value));
+            } else {
+                gml_content.push_str(&format!("    {} {}\n", key, processed_value));
+            }
         }
         gml_content.push_str("  ]\n");
     }
@@ -651,7 +769,7 @@ fn generate_gml_network_config(gml_graph: &GmlGraph, gml_path: &str) -> color_ey
 }
 
 /// Distribute agents across GML network nodes with guaranteed distribution
-/// Ensures every node gets at least one agent when possible to prevent Shadow connectivity errors
+/// Supports sparse placement for large-scale topologies and region-aware distribution
 pub fn distribute_agents_across_gml_nodes(
     gml_graph: &GmlGraph,
     num_agents: usize,
@@ -663,39 +781,42 @@ pub fn distribute_agents_across_gml_nodes(
     let num_nodes = gml_graph.nodes.len();
     let mut agent_assignments = Vec::new();
 
-    // Get autonomous systems for AS-aware distribution
-    let as_groups = get_autonomous_systems(gml_graph);
+    // Check for region information for region-aware distribution
+    let has_regions = gml_graph.nodes.iter().any(|node| node.get_region().is_some());
 
-    // First pass: Assign exactly 1 agent to each node (up to min(num_agents, num_nodes))
-    let agents_assigned_first_pass = std::cmp::min(num_agents, num_nodes);
-
-    // Create initial assignments ensuring each node gets at least one agent
-    for i in 0..agents_assigned_first_pass {
-        let node_id = gml_graph.nodes[i].id;
-        agent_assignments.push(node_id);
-    }
-
-    // Handle case where we have more nodes than agents in first pass
-    if num_agents < num_nodes {
-        // Some nodes won't get agents - this is acceptable but may cause connectivity issues
-        // Fill remaining agent assignments with the first node to maintain vector size
-        for _ in num_agents..num_nodes {
-            agent_assignments.push(gml_graph.nodes[0].id);
-        }
-        return agent_assignments;
-    }
-
-    // Second pass: Distribute remaining agents proportionally across all nodes
-    let remaining_agents = num_agents - agents_assigned_first_pass;
-
-    if remaining_agents > 0 {
-        // Distribute remaining agents proportionally
-        if as_groups.len() > 1 {
-            // AS-aware proportional distribution for remaining agents
-            distribute_remaining_agents_as_aware(&mut agent_assignments, &as_groups, remaining_agents, gml_graph);
+    if num_agents <= num_nodes {
+        // Sparse or equal placement: distribute agents across available nodes
+        if has_regions {
+            // Region-aware sparse distribution
+            distribute_agents_region_aware(&mut agent_assignments, gml_graph, num_agents);
         } else {
-            // Simple proportional distribution across all nodes
-            distribute_remaining_agents_simple(&mut agent_assignments, gml_graph, remaining_agents);
+            // Round-robin sparse distribution for even coverage
+            distribute_agents_round_robin(&mut agent_assignments, gml_graph, num_agents);
+        }
+    } else {
+        // Dense placement: more agents than nodes, use original logic
+        log::warn!("More agents ({}) than nodes ({}). Some nodes will host multiple agents, which may impact performance.", num_agents, num_nodes);
+
+        // Get autonomous systems for AS-aware distribution
+        let as_groups = get_autonomous_systems(gml_graph);
+
+        // First pass: Assign exactly 1 agent to each node
+        for node in &gml_graph.nodes {
+            agent_assignments.push(node.id);
+        }
+
+        // Second pass: Distribute remaining agents proportionally across all nodes
+        let remaining_agents = num_agents - num_nodes;
+
+        if remaining_agents > 0 {
+            // Distribute remaining agents proportionally
+            if as_groups.len() > 1 {
+                // AS-aware proportional distribution for remaining agents
+                distribute_remaining_agents_as_aware(&mut agent_assignments, &as_groups, remaining_agents, gml_graph);
+            } else {
+                // Simple proportional distribution across all nodes
+                distribute_remaining_agents_simple(&mut agent_assignments, gml_graph, remaining_agents);
+            }
         }
     }
 
@@ -744,6 +865,174 @@ fn distribute_remaining_agents_simple(
         let node_index = i % num_nodes;
         let node_id = gml_graph.nodes[node_index].id;
         agent_assignments.push(node_id);
+    }
+}
+
+/// Distribute agents using round-robin spacing for sparse placement
+/// Example: 1000 agents on 5000 nodes -> agents at nodes 0, 5, 10, 15, etc.
+fn distribute_agents_round_robin(
+    agent_assignments: &mut Vec<u32>,
+    gml_graph: &GmlGraph,
+    num_agents: usize,
+) {
+    let num_nodes = gml_graph.nodes.len();
+
+    if num_agents >= num_nodes {
+        // Fall back to assigning one agent per node
+        for node in &gml_graph.nodes {
+            agent_assignments.push(node.id);
+        }
+        return;
+    }
+
+    // Calculate spacing for even distribution
+    let spacing = num_nodes as f64 / num_agents as f64;
+    let coverage_percentage = (num_agents as f64 / num_nodes as f64 * 100.0).round();
+
+    log::info!("Sparse agent placement: {} agents across {} nodes ({}% coverage) using round-robin distribution",
+               num_agents, num_nodes, coverage_percentage);
+
+    for i in 0..num_agents {
+        // Calculate node index using spacing
+        let node_index = ((i as f64 * spacing).round() as usize).min(num_nodes - 1);
+        let node_id = gml_graph.nodes[node_index].id;
+        agent_assignments.push(node_id);
+
+        log::debug!("Agent {} assigned to node {}", i, node_id);
+    }
+}
+
+/// Distribute agents across regions when region information is available
+fn distribute_agents_region_aware(
+    agent_assignments: &mut Vec<u32>,
+    gml_graph: &GmlGraph,
+    num_agents: usize,
+) {
+    use std::collections::HashMap;
+
+    // Group nodes by region
+    let mut region_groups: HashMap<String, Vec<usize>> = HashMap::new();
+    let mut nodes_without_region = Vec::new();
+
+    for (i, node) in gml_graph.nodes.iter().enumerate() {
+        if let Some(region) = node.get_region() {
+            region_groups.entry(region.to_string()).or_insert_with(Vec::new).push(i);
+        } else {
+            nodes_without_region.push(i);
+        }
+    }
+
+    // Calculate agents per region proportionally, but cap at number of nodes per region
+    let total_regional_nodes: usize = region_groups.values().map(|v| v.len()).sum();
+    let mut agents_per_region = HashMap::new();
+
+    // First pass: assign 1 agent to each region that has nodes
+    let num_regions = region_groups.len();
+    let mut remaining_agents = num_agents.saturating_sub(num_regions);
+
+    for (region, nodes) in &region_groups {
+        let base_agents = if !nodes.is_empty() { 1 } else { 0 };
+        let max_additional = nodes.len().saturating_sub(base_agents);
+
+        // Calculate additional agents proportionally
+        let region_percentage = nodes.len() as f64 / total_regional_nodes as f64;
+        let additional_agents = (remaining_agents as f64 * region_percentage).round() as usize;
+        let capped_additional = additional_agents.min(max_additional);
+
+        let total_for_region = base_agents + capped_additional;
+        agents_per_region.insert(region.clone(), total_for_region);
+        remaining_agents = remaining_agents.saturating_sub(capped_additional);
+    }
+
+    // Distribute any remaining agents to regions that can still take more
+    if remaining_agents > 0 {
+        let mut regions_by_remaining_capacity: Vec<_> = region_groups.iter()
+            .map(|(r, nodes)| {
+                let current = agents_per_region.get(r).unwrap_or(&0);
+                let remaining_capacity = nodes.len().saturating_sub(*current);
+                (r.clone(), remaining_capacity)
+            })
+            .filter(|(_, capacity)| *capacity > 0)
+            .collect();
+
+        regions_by_remaining_capacity.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by capacity descending
+
+        for (region, _) in regions_by_remaining_capacity {
+            if remaining_agents == 0 { break; }
+            *agents_per_region.get_mut(&region).unwrap() += 1;
+            remaining_agents -= 1;
+        }
+    }
+
+    // Log geographic distribution
+    log::info!("Geographic agent distribution:");
+    for (region, count) in &agents_per_region {
+        let percentage = (*count as f64 / num_agents as f64 * 100.0).round();
+        log::info!("  {}: {} agents ({}%)", region, count, percentage);
+    }
+
+    // Assign agents to unique nodes, preferring correct region
+    let mut used_nodes = std::collections::HashSet::new();
+    let mut agent_index = 0;
+
+    // First, assign agents to their preferred regions
+    for (region, agent_count) in &agents_per_region.clone() {
+        if let Some(node_indices) = region_groups.get(region) {
+            let mut assigned_in_region = 0;
+            for i in 0..*agent_count {
+                if agent_index >= num_agents { break; }
+
+                // Find an unused node in this region
+                let mut node_assigned = false;
+                for j in 0..node_indices.len() {
+                    let node_idx = node_indices[(i + j) % node_indices.len()];
+                    let node_id = gml_graph.nodes[node_idx].id;
+                    if !used_nodes.contains(&node_id) {
+                        agent_assignments.push(node_id);
+                        used_nodes.insert(node_id);
+                        log::debug!("Agent {} (region {}) assigned to node {}", agent_index, region, node_id);
+                        agent_index += 1;
+                        assigned_in_region += 1;
+                        node_assigned = true;
+                        break;
+                    }
+                }
+
+                if !node_assigned {
+                    // No more available nodes in this region
+                    break;
+                }
+            }
+
+            // Update the count for this region
+            if let Some(count) = agents_per_region.get_mut(region) {
+                *count = assigned_in_region;
+            }
+        }
+    }
+
+    // Handle any remaining agents by assigning to unused nodes from any region
+    while agent_index < num_agents {
+        // Find any unused node
+        let mut assigned = false;
+        for (i, node) in gml_graph.nodes.iter().enumerate() {
+            let node_id = node.id;
+            if !used_nodes.contains(&node_id) {
+                agent_assignments.push(node_id);
+                used_nodes.insert(node_id);
+                log::debug!("Agent {} assigned to unused node {} (any region)", agent_index, node_id);
+                agent_index += 1;
+                assigned = true;
+                break;
+            }
+        }
+
+        if !assigned {
+            // No more unused nodes, fallback to node 0
+            agent_assignments.push(0);
+            log::warn!("Agent {} assigned to fallback node 0 (no unused nodes)", agent_index);
+            agent_index += 1;
+        }
     }
 }
 
@@ -865,6 +1154,7 @@ fn add_wallet_process(
     wallet_path: &str,
     environment: &HashMap<String, String>,
     index: usize,
+    wallet_start_time: &str,
 ) {
     let wallet_name = format!("{}_wallet", agent_id);
     
@@ -881,6 +1171,13 @@ fn add_wallet_process(
         .to_string_lossy()
         .to_string();
 
+    // Calculate wallet cleanup start time (2 seconds before wallet start)
+    let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
+        format!("{}s", wallet_seconds.saturating_sub(2))
+    } else {
+        format!("{}s", 48 + index * 2) // Fallback
+    };
+
     // First, clean up any existing wallet files and create the wallet directory
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
@@ -889,17 +1186,17 @@ fn add_wallet_process(
             agent_id, agent_id
         ),
         environment: environment.clone(),
-        start_time: format!("{}s", 50 + index * 2), // Start earlier to ensure cleanup completes
+        start_time: cleanup_start_time, // Start earlier to ensure cleanup completes
     });
 
     // Launch wallet RPC directly - it will create wallets on demand
     let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
-        
+
     let wallet_args = format!(
         "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert",
         agent_ip, agent_rpc_port, wallet_rpc_port, agent_ip, agent_id
     );
-    
+
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
@@ -907,7 +1204,7 @@ fn add_wallet_process(
             wallet_path, wallet_args
         ),
         environment: environment.clone(),
-        start_time: format!("{}s", 60 + index * 2), // Increased delay to ensure cleanup completes
+        start_time: wallet_start_time.to_string(), // Use the calculated wallet start time
     });
 }
 
@@ -1200,58 +1497,62 @@ fn process_user_agents(
                 .unwrap_or(false);
 
             let start_time_daemon = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Dynamic mode staggered launch sequence
+                // Dynamic mode staggered launch sequence - adjusted for short simulations
                 if is_miner {
                     if i == 0 {
                         "0s".to_string() // First miner (node 0) at t=0s
                     } else {
-                        format!("{}s", 20 + i * 20) // Remaining miners every 20s starting t=40s
+                        format!("{}s", 2 + i * 2) // Remaining miners every 2s starting t=4s
                     }
                 } else {
-                    // Regular users after 130 minutes (7800s), one every 5 minutes (300s)
-                    format!("{}s", 7800 + (i.saturating_sub(miners.len())) * 300)
+                    // Regular users start after miners, staggered by 2s
+                    format!("{}s", 10 + (i.saturating_sub(miners.len())) * 2)
                 }
             } else {
-                // Original logic for other modes
+                // Original logic for other modes - adjusted for short simulations
                 if is_miner {
-                    format!("{}s", i * 2) // Miners start early, staggered by 2s
+                    format!("{}s", i * 1) // Miners start early, staggered by 1s
                 } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
-                    "3600s".to_string() // Seeds start at 60 min
+                    "5s".to_string() // Seeds start at 5s
                 } else {
-                    // Regular agents start at 130 min + stagger
+                    // Regular agents start after seeds, staggered by 1s
                     let regular_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
-                    format!("{}s", 7800 + regular_index * 1) // Stagger by 1s
+                    format!("{}s", 10 + regular_index * 1) // Stagger by 1s
                 }
             };
 
-            // Wallet start time: coordinate with daemon start time for regular users
-            let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) && !is_miner {
-                // For regular users in Dynamic mode, start wallet after daemon is ready
-                // Parse daemon start time and add 10 seconds for wallet startup
+            // Wallet start time: coordinate with daemon start time
+            let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
+                // Dynamic mode: start wallet 5 seconds after daemon
                 if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
-                    format!("{}s", daemon_seconds + 10)
+                    format!("{}s", daemon_seconds + 5)
                 } else {
-                    // Fallback if parsing fails
-                    format!("{}s", 60 + i * 1)
+                    format!("{}s", 5 + i * 1)
                 }
             } else {
-                // For miners and other modes, use original timing
-                format!("{}s", 60 + i * 1)
+                // Other modes: start wallet 5 seconds after daemon
+                if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
+                    format!("{}s", daemon_seconds + 5)
+                } else {
+                    format!("{}s", 5 + i * 1)
+                }
             };
 
             // Agent start time: ensure agents start after their wallet services are ready
-            let agent_start_time = if matches!(peer_mode, PeerMode::Dynamic) && !is_miner {
-                // For regular users in Dynamic mode, start agent after wallet is ready
-                // Parse wallet start time and add buffer for wallet initialization
+            let agent_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
+                // Dynamic mode: start agent 10 seconds after wallet
                 if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
-                    format!("{}s", wallet_seconds + 20) // 20 second buffer after wallet starts
+                    format!("{}s", wallet_seconds + 10)
                 } else {
-                    // Fallback timing
-                    format!("{}s", 65 + i * 2)
+                    format!("{}s", 15 + i * 1)
                 }
             } else {
-                // For miners and other modes, use original staggered timing
-                format!("{}s", 65 + i * 2)
+                // Other modes: start agent 10 seconds after wallet
+                if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
+                    format!("{}s", wallet_seconds + 10)
+                } else {
+                    format!("{}s", 15 + i * 1)
+                }
             };
 
             // Use consistent naming for all user agents
@@ -1367,7 +1668,7 @@ fn process_user_agents(
                 start_time: start_time_daemon,
             });
 
-            // Add wallet process if wallet is specified, but staggered at 120 min
+            // Add wallet process if wallet is specified
             if user_agent_config.wallet.is_some() {
                 add_wallet_process(
                     &mut processes,
@@ -1378,12 +1679,8 @@ fn process_user_agents(
                     wallet_path,
                     environment,
                     i,
+                    &wallet_start_time,
                 );
-
-                // Override wallet start time
-                if let Some(last_process) = processes.last_mut() {
-                    last_process.start_time = wallet_start_time;
-                }
             }
 
             // Add user agent script if specified
@@ -2104,6 +2401,28 @@ pub fn generate_agent_shadow_config(
     let miner_registry_path = shared_dir_path.join("miners.json");
     let miner_registry_json = serde_json::to_string_pretty(&miner_registry)?;
     std::fs::write(&miner_registry_path, &miner_registry_json)?;
+
+    // For GML topologies, ensure all nodes in the GML file have corresponding hosts in Shadow
+    // This is required because Shadow expects a 1:1 mapping between GML nodes and hosts
+    if let Some(gml) = &gml_graph {
+        if using_gml_topology {
+            for node in &gml.nodes {
+                let dummy_host_name = format!("gml-node-{}", node.id);
+                if !hosts.contains_key(&dummy_host_name) {
+                    // Create a dummy host for this GML node with no processes
+                    let dummy_host = ShadowHost {
+                        network_node_id: node.id,
+                        ip_addr: None, // No IP needed for dummy hosts
+                        processes: Vec::new(), // No processes to run
+                        bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+                        bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
+                    };
+                    hosts.insert(dummy_host_name, dummy_host);
+                    log::debug!("Created dummy host for GML node {}", node.id);
+                }
+            }
+        }
+    }
 
     // Sort hosts by key to ensure consistent ordering in the output file
     let mut sorted_hosts: Vec<(String, ShadowHost)> = hosts.into_iter().collect();

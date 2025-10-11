@@ -1,0 +1,54 @@
+# Sparse Agent Placement Configuration
+# This configuration demonstrates 100 agents on a 1000-node topology
+# Shows how to use sparse placement for efficient large-network simulation
+# Use with: python scripts/create_large_scale_gml.py --output topology_1k.gml --nodes 1000
+
+general:
+  stop_time: "1h"          # Shorter simulation for testing
+  fresh_blockchain: true
+  log_level: "debug"       # Detailed logging for sparse placement
+
+network:
+  path: "topology_1k.gml"  # Smaller topology for faster testing
+  peer_mode: "Dynamic"     # Dynamic discovery works well with sparse placement
+  topology: "Star"         # Star topology for clear hub-and-spoke structure
+
+agents:
+  user_agents:
+    # 10 miners - will be placed sparsely across the 1000 nodes
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "10"                   # Higher individual hashrate
+        can_receive_distributions: true
+      count: 10                          # Only 10 miners
+
+    # 90 regular users - sparse placement across remaining nodes
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"       # More frequent transactions
+        min_transaction_amount: "0.01"   # Smaller transactions
+        max_transaction_amount: "0.1"    # Smaller transactions
+        can_receive_distributions: false
+      count: 90                          # 90 user agents
+
+  block_controller:
+    script: "agents.block_controller"
+
+# Sparse Placement Benefits:
+# - 100 agents on 1000 nodes = 10% density
+# - Efficient use of network resources
+# - Geographic distribution maintained
+# - Reduced memory footprint
+# - Faster simulation execution
+# - Realistic large-network behavior
+
+# Expected Behavior:
+# - Agents placed on different GML nodes
+# - IPs assigned from pre-allocated geographic ranges
+# - Dynamic peer discovery finds nearby agents
+# - Transactions flow through the network topology
+# - Mining distributed across geographic regions

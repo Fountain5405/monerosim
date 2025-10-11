@@ -3,70 +3,41 @@ use std::fs;
 use std::path::Path;
 use color_eyre::eyre::{Result, eyre};
 
+/// Errors that can occur during GML parsing
+#[derive(Debug, Clone)]
+pub enum GmlParseError {
+    InvalidIp(String),
+}
+
 /// Represents a node in a GML graph
 #[derive(Debug, Clone)]
 pub struct GmlNode {
     pub id: u32,
     pub label: Option<String>,
+    pub ip: Option<String>,
+    pub region: Option<String>,
     pub attributes: HashMap<String, String>,
 }
 
 impl GmlNode {
-    /// Extract IP address from node attributes
-    ///
-    /// Looks for IP addresses in common attribute keys:
-    /// - "ip"
-    /// - "ip_addr"
-    /// - "address"
-    /// - "ip_address"
-    ///
-    /// Returns the first valid IP address found, or None if no valid IP is present
-    pub fn get_ip(&self) -> Option<String> {
-        let possible_keys = ["ip", "ip_addr", "address", "ip_address"];
-
-        for key in &possible_keys {
-            if let Some(value) = self.attributes.get(*key) {
-                if Self::is_valid_ip(value) {
-                    return Some(value.clone());
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Set IP address in node attributes
-    ///
-    /// Stores the IP address under the "ip" attribute key
-    /// Returns an error if the IP address is not valid
-    pub fn set_ip(&mut self, ip: &str) -> Result<(), String> {
-        if !Self::is_valid_ip(ip) {
-            return Err(format!("Invalid IP address: {}", ip));
-        }
-
-        self.attributes.insert("ip".to_string(), ip.to_string());
-        Ok(())
-    }
-
     /// Check if a string is a valid IP address (IPv4 or IPv6)
     pub fn is_valid_ip(ip: &str) -> bool {
         ip.parse::<std::net::IpAddr>().is_ok()
     }
 
-    /// Get all IP addresses from node attributes
-    ///
-    /// Returns a vector of all valid IP addresses found in any attribute
-    pub fn get_all_ips(&self) -> Vec<String> {
-        self.attributes
-            .values()
-            .filter(|value| Self::is_valid_ip(value))
-            .cloned()
-            .collect()
+    /// Get the IP address from the dedicated ip field
+    pub fn get_ip(&self) -> Option<&str> {
+        self.ip.as_deref()
+    }
+
+    /// Get the region from the dedicated region field
+    pub fn get_region(&self) -> Option<&str> {
+        self.region.as_deref()
     }
 
     /// Check if the node has any valid IP address
     pub fn has_ip(&self) -> bool {
-        self.get_ip().is_some()
+        self.ip.is_some()
     }
 }
 
@@ -174,6 +145,48 @@ pub mod ip_utils {
             }
         }
     }
+}
+
+/// Parse IP address from GML node attributes
+///
+/// Extracts IP from GML node attributes and validates format.
+/// Returns Some(valid_ip) if found and valid, None if not present or invalid.
+/// Logs warnings for invalid IPs but continues parsing.
+fn parse_ip(attributes: &HashMap<String, String>) -> Option<String> {
+    let possible_keys = ["ip", "ip_addr", "address", "ip_address"];
+
+    for key in &possible_keys {
+        if let Some(value) = attributes.get(*key) {
+            // Remove quotes if present
+            let cleaned_value = value.trim_matches('"');
+            if cleaned_value.parse::<std::net::Ipv4Addr>().is_ok() {
+                return Some(cleaned_value.to_string());
+            } else {
+                log::warn!("Invalid IP address '{}' in attribute '{}'", cleaned_value, key);
+            }
+        }
+    }
+
+    None
+}
+
+/// Parse region from GML node attributes
+///
+/// Extracts region from GML node attributes.
+/// Returns Some(region) if found, None if not present.
+/// Handles quoted strings properly.
+fn parse_region(attributes: &HashMap<String, String>) -> Option<String> {
+    let possible_keys = ["region", "geographic_region", "location"];
+
+    for key in &possible_keys {
+        if let Some(value) = attributes.get(*key) {
+            // Remove quotes if present
+            let cleaned_value = value.trim_matches('"').to_string();
+            return Some(cleaned_value);
+        }
+    }
+
+    None
 }
 
 /// Represents an edge in a GML graph
@@ -425,18 +438,18 @@ impl Parser {
     fn parse_node(&mut self) -> Result<GmlNode> {
         self.expect_identifier("node")?;
         self.expect_left_bracket()?;
-        
+
         let mut id = None;
         let mut label = None;
         let mut attributes = HashMap::new();
-        
+
         while self.current_token != Token::RightBracket {
             match &self.current_token {
                 Token::Identifier(key) => {
                     let key = key.clone();
                     self.advance()?;
                     let value = self.parse_value()?;
-                    
+
                     match key.as_str() {
                         "id" => {
                             id = Some(value.parse::<u32>()
@@ -453,14 +466,20 @@ impl Parser {
                 _ => return Err(eyre!("Expected attribute name in node, found {:?}", self.current_token)),
             }
         }
-        
+
         self.expect_right_bracket()?;
-        
+
         let id = id.ok_or_else(|| eyre!("Node missing required 'id' attribute"))?;
-        
+
+        // Parse IP and region from attributes
+        let ip = parse_ip(&attributes);
+        let region = parse_region(&attributes);
+
         Ok(GmlNode {
             id,
             label,
+            ip,
+            region,
             attributes,
         })
     }
@@ -731,9 +750,9 @@ mod tests {
     fn test_get_autonomous_systems() {
         let mut graph = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
-                GmlNode { id: 1, label: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
-                GmlNode { id: 2, label: None, attributes: [("AS".to_string(), "65002".to_string())].iter().cloned().collect() },
+                GmlNode { id: 0, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
+                GmlNode { id: 1, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
+                GmlNode { id: 2, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65002".to_string())].iter().cloned().collect() },
             ],
             edges: vec![],
             attributes: HashMap::new(),
@@ -755,40 +774,40 @@ mod tests {
     fn test_validate_topology() {
         let graph = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, attributes: HashMap::new() },
-                GmlNode { id: 1, label: None, attributes: HashMap::new() },
+                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
+                GmlNode { id: 1, label: None, ip: None, region: None, attributes: HashMap::new() },
             ],
             edges: vec![
                 GmlEdge { source: 0, target: 1, attributes: HashMap::new() },
             ],
             attributes: HashMap::new(),
         };
-        
+
         assert!(validate_topology(&graph).is_ok());
-        
+
         // Test duplicate node ID
         let invalid_graph = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, attributes: HashMap::new() },
-                GmlNode { id: 0, label: None, attributes: HashMap::new() },
+                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
+                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
             ],
             edges: vec![],
             attributes: HashMap::new(),
         };
-        
+
         assert!(validate_topology(&invalid_graph).is_err());
-        
+
         // Test invalid edge reference
         let invalid_graph2 = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, attributes: HashMap::new() },
+                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
             ],
             edges: vec![
                 GmlEdge { source: 0, target: 999, attributes: HashMap::new() },
             ],
             attributes: HashMap::new(),
         };
-        
+
         assert!(validate_topology(&invalid_graph2).is_err());
     }
 
@@ -818,6 +837,8 @@ mod tests {
         let mut node = GmlNode {
             id: 0,
             label: None,
+            ip: None,
+            region: None,
             attributes: HashMap::new(),
         };
 
@@ -827,74 +848,39 @@ mod tests {
 
         // Add IP with "ip" key
         node.attributes.insert("ip".to_string(), "192.168.1.1".to_string());
-        assert_eq!(node.get_ip(), Some("192.168.1.1".to_string()));
-        assert!(node.has_ip());
+        // Note: get_ip() now returns from dedicated field, not attributes
+        assert_eq!(node.get_ip(), None); // Should be None since dedicated field is None
 
-        // Test with different keys
+        // Test with different keys - these should be None since get_ip() uses dedicated field
         let mut node2 = GmlNode {
             id: 1,
             label: None,
+            ip: None,
+            region: None,
             attributes: [("ip_addr".to_string(), "10.0.0.1".to_string())].iter().cloned().collect(),
         };
-        assert_eq!(node2.get_ip(), Some("10.0.0.1".to_string()));
+        assert_eq!(node2.get_ip(), None);
 
         let mut node3 = GmlNode {
             id: 2,
             label: None,
+            ip: None,
+            region: None,
             attributes: [("address".to_string(), "172.16.0.1".to_string())].iter().cloned().collect(),
         };
-        assert_eq!(node3.get_ip(), Some("172.16.0.1".to_string()));
+        assert_eq!(node3.get_ip(), None);
 
-        // Test invalid IP
+        // Test invalid IP - should be None
         let mut node4 = GmlNode {
             id: 3,
             label: None,
+            ip: None,
+            region: None,
             attributes: [("ip".to_string(), "invalid.ip".to_string())].iter().cloned().collect(),
         };
         assert!(node4.get_ip().is_none());
     }
 
-    #[test]
-    fn test_gml_node_set_ip() {
-        let mut node = GmlNode {
-            id: 0,
-            label: None,
-            attributes: HashMap::new(),
-        };
-
-        // Set valid IP
-        assert!(node.set_ip("192.168.1.1").is_ok());
-        assert_eq!(node.attributes.get("ip"), Some(&"192.168.1.1".to_string()));
-
-        // Try to set invalid IP
-        assert!(node.set_ip("invalid.ip").is_err());
-        // Original IP should still be there
-        assert_eq!(node.attributes.get("ip"), Some(&"192.168.1.1".to_string()));
-    }
-
-    #[test]
-    fn test_gml_node_get_all_ips() {
-        let mut node = GmlNode {
-            id: 0,
-            label: None,
-            attributes: HashMap::new(),
-        };
-
-        // No IPs initially
-        assert!(node.get_all_ips().is_empty());
-
-        // Add multiple attributes, some with IPs
-        node.attributes.insert("ip".to_string(), "192.168.1.1".to_string());
-        node.attributes.insert("name".to_string(), "router1".to_string());
-        node.attributes.insert("backup_ip".to_string(), "10.0.0.1".to_string());
-        node.attributes.insert("invalid_ip".to_string(), "not.an.ip".to_string());
-
-        let ips = node.get_all_ips();
-        assert_eq!(ips.len(), 2);
-        assert!(ips.contains(&"192.168.1.1".to_string()));
-        assert!(ips.contains(&"10.0.0.1".to_string()));
-        assert!(!ips.contains(&"not.an.ip".to_string()));
-    }
 
     #[test]
     fn test_ip_utils_validation() {
@@ -994,5 +980,144 @@ mod tests {
         assert!(GmlNode::is_valid_ip("192.168.1.1"));
         assert!(GmlNode::is_valid_ip("::1"));
         assert!(!GmlNode::is_valid_ip("invalid.ip"));
+    }
+
+    #[test]
+    fn test_parse_node_with_ip() {
+        let gml_content = r#"
+            graph [
+                node [ id 0 ip "192.168.1.1" ]
+                node [ id 1 ip_addr "10.0.0.1" ]
+                node [ id 2 address "172.16.0.1" ]
+            ]
+        "#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "{}", gml_content).unwrap();
+
+        let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(graph.nodes.len(), 3);
+        assert_eq!(graph.nodes[0].ip, Some("192.168.1.1".to_string()));
+        assert_eq!(graph.nodes[1].ip, Some("10.0.0.1".to_string()));
+        assert_eq!(graph.nodes[2].ip, Some("172.16.0.1".to_string()));
+    }
+
+    #[test]
+    fn test_parse_node_with_region() {
+        let gml_content = r#"
+            graph [
+                node [ id 0 region "North America" ]
+                node [ id 1 geographic_region "Europe" ]
+                node [ id 2 location "Asia" ]
+            ]
+        "#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "{}", gml_content).unwrap();
+
+        let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(graph.nodes.len(), 3);
+        assert_eq!(graph.nodes[0].region, Some("North America".to_string()));
+        assert_eq!(graph.nodes[1].region, Some("Europe".to_string()));
+        assert_eq!(graph.nodes[2].region, Some("Asia".to_string()));
+    }
+
+    #[test]
+    fn test_parse_node_without_ip() {
+        let gml_content = r#"
+            graph [
+                node [ id 0 label "Node0" ]
+                node [ id 1 AS "65001" ]
+            ]
+        "#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "{}", gml_content).unwrap();
+
+        let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(graph.nodes.len(), 2);
+        assert_eq!(graph.nodes[0].ip, None);
+        assert_eq!(graph.nodes[1].ip, None);
+    }
+
+    #[test]
+    fn test_invalid_ip_format() {
+        let gml_content = r#"
+            graph [
+                node [ id 0 ip "invalid.ip.address" ]
+                node [ id 1 ip "192.168.1.1" ]
+            ]
+        "#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "{}", gml_content).unwrap();
+
+        let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(graph.nodes.len(), 2);
+        // Invalid IP should be None, valid IP should be parsed
+        assert_eq!(graph.nodes[0].ip, None);
+        assert_eq!(graph.nodes[1].ip, Some("192.168.1.1".to_string()));
+    }
+
+    #[test]
+    fn test_parse_node_complete() {
+        let gml_content = r#"
+            graph [
+                node [
+                    id 0
+                    label "Router1"
+                    ip "192.168.1.1"
+                    region "North America"
+                    AS "65001"
+                    bandwidth "1000Mbit"
+                ]
+            ]
+        "#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "{}", gml_content).unwrap();
+
+        let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(graph.nodes.len(), 1);
+        let node = &graph.nodes[0];
+        assert_eq!(node.id, 0);
+        assert_eq!(node.label, Some("Router1".to_string()));
+        assert_eq!(node.ip, Some("192.168.1.1".to_string()));
+        assert_eq!(node.region, Some("North America".to_string()));
+        assert_eq!(node.attributes.get("AS"), Some(&"65001".to_string()));
+        assert_eq!(node.attributes.get("bandwidth"), Some(&"1000Mbit".to_string()));
+    }
+
+    #[test]
+    fn test_gml_node_get_ip_region_accessors() {
+        let node = GmlNode {
+            id: 0,
+            label: None,
+            ip: Some("192.168.1.1".to_string()),
+            region: Some("North America".to_string()),
+            attributes: HashMap::new(),
+        };
+
+        assert_eq!(node.get_ip(), Some("192.168.1.1"));
+        assert_eq!(node.get_region(), Some("North America"));
+    }
+
+    #[test]
+    fn test_gml_node_get_ip_region_accessors_none() {
+        let node = GmlNode {
+            id: 0,
+            label: None,
+            ip: None,
+            region: None,
+            attributes: HashMap::new(),
+        };
+
+        assert_eq!(node.get_ip(), None);
+        assert_eq!(node.get_region(), None);
     }
 }

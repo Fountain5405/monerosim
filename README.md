@@ -15,6 +15,39 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 - **Python-First Testing**: Modern Python test suite with 95%+ coverage
 - **Reproducible Research**: Deterministic simulations for scientific analysis
 
+## Network Scaling and Large-Scale Topologies
+
+Monerosim now supports large-scale network simulations using authentic CAIDA AS-links data for realistic internet topology modeling.
+
+### Features
+- **CAIDA-Based Topologies**: Generate authentic internet topologies using real AS relationship data
+- **Three-Tier Scaling**: Intelligent algorithms for different network sizes (50-5000 nodes)
+- **AS Relationship Semantics**: Preserve customer-provider, peer-peer, and sibling relationships
+- **Geographic IP Distribution**: Pre-allocated IPs across 6 continents based on AS locations
+- **Sparse Agent Placement**: Efficient placement of hundreds of agents on thousands of nodes
+- **Memory-Efficient**: <2GB peak memory usage for 5000-node generation
+- **Deterministic Generation**: Reproducible topologies with random seeds
+
+### Quick Example
+```bash
+# Generate 5000-node CAIDA-based topology
+python gml_processing/create_large_scale_caida_gml.py \
+  --caida-file gml_processing/caida_aslinks.txt \
+  --output topology_5k_caida.gml \
+  --nodes 5000
+
+# Create configuration with GML topology
+# (edit config.yaml to use network.path: "topology_5k_caida.gml")
+
+# Generate Shadow configuration
+./target/release/monerosim --config config.yaml
+
+# Run simulation
+shadow shadow_output/shadow_agents.yaml
+```
+
+For detailed information, see [NETWORK_SCALING_GUIDE.md](NETWORK_SCALING_GUIDE.md).
+
 ## Quick Start
 
 1. **Clone and Setup**
