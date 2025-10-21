@@ -1208,8 +1208,8 @@ fn process_user_agents(
                         format!("{}s", 20 + i * 20) // Remaining miners every 20s starting t=40s
                     }
                 } else {
-                    // Regular users after 130 minutes (7800s), one every 5 minutes (300s)
-                    format!("{}s", 7800 + (i.saturating_sub(miners.len())) * 300)
+                    // Regular users after 60 minutes (3600s), one every 5 minutes (300s)
+                    format!("{}s", 3600 + (i.saturating_sub(miners.len())) * 300)
                 }
             } else {
                 // Original logic for other modes
@@ -1601,9 +1601,9 @@ echo "Starting miner distributor..."
 
         // Determine execution start time
         let miner_distributor_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-            "3900s".to_string() // Dynamic mode: miner distributor starts at 65 minutes
+            "5400s".to_string() // Dynamic mode: miner distributor starts at 90 minutes
         } else {
-            "3900s".to_string() // Other modes: also start at 65 minutes
+            "5400s".to_string() // Other modes: also start at 90 minutes
         };
 
         // Calculate script creation time (1 second before execution)
