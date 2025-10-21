@@ -7,7 +7,7 @@ general:
   log_level: info
 
 network:
-  path: "caida_connected_sparse_with_loops_fixed.gml"
+  path: "gml_processing/test_5000_nodes_caida_undirected_selfloops.gml"
   peer_mode: "Dynamic"
 
 agents:
