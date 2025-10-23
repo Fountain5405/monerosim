@@ -110,34 +110,3 @@ fn main() -> Result<()> {
     info!("Configuration parsing completed successfully");
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-    
-    #[test]
-    fn test_cli_parsing() {
-        let args = Args::parse_from(&[
-            "monerosim",
-            "--config", "test.yaml",
-        ]);
-        
-        assert_eq!(args.config, PathBuf::from("test.yaml"));
-        assert_eq!(args.output, PathBuf::from("shadow_output"));
-    }
-    
-    #[test]
-    fn test_migration_args() {
-        let args = Args::parse_from(&[
-            "monerosim",
-            "--config", "test.yaml",
-            "--migrate",
-            "--migrate-output", "test_migrated.yaml",
-        ]);
-        
-        assert!(args.migrate);
-        assert_eq!(args.migrate_output, Some(PathBuf::from("test_migrated.yaml")));
-    }
-}

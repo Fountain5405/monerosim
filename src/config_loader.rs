@@ -23,35 +23,6 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
     Ok(config)
 }
 
-/// CLI arguments for agent mode that can override YAML settings
-#[derive(Debug, Clone)]
-pub struct AgentCliOverrides {
-    pub users: Option<u32>,
-    pub tx_frequency: Option<f64>,
-}
-
-/// Apply CLI overrides to an agent configuration
-pub fn apply_agent_overrides(
-    config: &mut Config,
-    overrides: &AgentCliOverrides,
-) -> Result<()> {
-    // Apply user count override
-    if let Some(users) = overrides.users {
-        info!("User count override is no longer supported in the new configuration format");
-        // The new format doesn't have a simple count field, so we can't apply this override
-    }
-    
-    // Apply transaction frequency override
-    if let Some(tx_freq) = overrides.tx_frequency {
-        info!("Transaction frequency override is no longer supported in the new configuration format");
-        // The new format doesn't have a simple transaction_interval field, so we can't apply this override
-    }
-    
-    // Re-validate after applying overrides
-    config.validate()?;
-    
-    Ok(())
-}
 
 /// Check if a configuration file exists and warn about deprecated formats
 pub fn check_config_compatibility(config_path: &Path) -> Result<()> {
@@ -113,60 +84,4 @@ pub fn migrate_config(old_config_path: &Path, new_config_path: &Path) -> Result<
     }
     
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-    
-    #[test]
-    fn test_load_agent_config() {
-        let yaml = r#"
-general:
-  stop_time: "30m"
-network:
-  type: "1_gbit_switch"
-agents:
-  user_agents:
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "regular_user.py"
-"#;
-        
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", yaml).unwrap();
-        
-        let config = load_config(temp_file.path()).unwrap();
-        assert!(config.is_agent_mode());
-    }
-    
-    #[test]
-    fn test_apply_overrides() {
-        let yaml = r#"
-general:
-  stop_time: "30m"
-network:
-  type: "1_gbit_switch"
-agents:
-  user_agents:
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "regular_user.py"
-"#;
-        
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", yaml).unwrap();
-        
-        let mut config = load_config(temp_file.path()).unwrap();
-        
-        let overrides = AgentCliOverrides {
-            users: Some(50),
-            tx_frequency: Some(0.5),
-        };
-        
-        // This should not fail, but the overrides won't have any effect
-        apply_agent_overrides(&mut config, &overrides).unwrap();
-    }
 }

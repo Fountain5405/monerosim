@@ -41,111 +41,6 @@ impl GmlNode {
     }
 }
 
-/// IP address validation and utility functions
-pub mod ip_utils {
-    use std::net::IpAddr;
-
-    /// Validate if a string is a valid IP address (IPv4 or IPv6)
-    pub fn is_valid_ip(ip: &str) -> bool {
-        ip.parse::<IpAddr>().is_ok()
-    }
-
-    /// Validate if a string is a valid IPv4 address
-    pub fn is_valid_ipv4(ip: &str) -> bool {
-        match ip.parse::<IpAddr>() {
-            Ok(addr) => addr.is_ipv4(),
-            Err(_) => false,
-        }
-    }
-
-    /// Validate if a string is a valid IPv6 address
-    pub fn is_valid_ipv6(ip: &str) -> bool {
-        match ip.parse::<IpAddr>() {
-            Ok(addr) => addr.is_ipv6(),
-            Err(_) => false,
-        }
-    }
-
-    /// Extract all valid IP addresses from a vector of strings
-    pub fn extract_valid_ips(values: &[String]) -> Vec<String> {
-        values
-            .iter()
-            .filter(|value| is_valid_ip(value))
-            .cloned()
-            .collect()
-    }
-
-    /// Format an IP address with a subnet mask (assumes /24 for IPv4, /64 for IPv6)
-    pub fn format_with_subnet(ip: &str) -> Result<String, String> {
-        match ip.parse::<IpAddr>() {
-            Ok(addr) => {
-                if addr.is_ipv4() {
-                    Ok(format!("{}/24", ip))
-                } else {
-                    Ok(format!("{}/64", ip))
-                }
-            }
-            Err(_) => Err(format!("Invalid IP address: {}", ip)),
-        }
-    }
-
-    /// Check if an IP address is in a private range
-    pub fn is_private_ip(ip: &str) -> Result<bool, String> {
-        match ip.parse::<IpAddr>() {
-            Ok(addr) => {
-                match addr {
-                    IpAddr::V4(ipv4) => {
-                        let octets = ipv4.octets();
-                        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-                        Ok(octets[0] == 10 ||
-                           (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31) ||
-                           (octets[0] == 192 && octets[1] == 168))
-                    }
-                    IpAddr::V6(ipv6) => {
-                        // fc00::/7 (unique local addresses)
-                        let segments = ipv6.segments();
-                        Ok(segments[0] & 0xfe00 == 0xfc00)
-                    }
-                }
-            }
-            Err(_) => Err(format!("Invalid IP address: {}", ip)),
-        }
-    }
-
-    /// Generate a sequential IP address range
-    ///
-    /// # Examples
-    /// ```
-    /// use monerosim::gml_parser::ip_utils;
-    /// let range = ip_utils::generate_ip_range("192.168.1.1", 5).unwrap();
-    /// assert_eq!(range, vec!["192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4", "192.168.1.5"]);
-    /// ```
-    pub fn generate_ip_range(start_ip: &str, count: usize) -> Result<Vec<String>, String> {
-        let start_addr: IpAddr = start_ip.parse().map_err(|_| format!("Invalid start IP: {}", start_ip))?;
-
-        match start_addr {
-            IpAddr::V4(ipv4) => {
-                let mut result = Vec::new();
-                let mut current = ipv4;
-
-                for _ in 0..count {
-                    result.push(current.to_string());
-                    // Increment the last octet
-                    let octets = current.octets();
-                    if octets[3] == 255 {
-                        return Err("IP range would exceed 255".to_string());
-                    }
-                    current = std::net::Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3] + 1);
-                }
-
-                Ok(result)
-            }
-            IpAddr::V6(_) => {
-                Err("IPv6 range generation not implemented".to_string())
-            }
-        }
-    }
-}
 
 /// Parse IP address from GML node attributes
 ///
@@ -421,19 +316,6 @@ impl Parser {
         }
     }
 
-    fn parse_attributes(&mut self) -> Result<HashMap<String, String>> {
-        let mut attributes = HashMap::new();
-        
-        while let Token::Identifier(key) = &self.current_token.clone() {
-            let key = key.clone();
-            self.advance()?;
-            
-            let value = self.parse_value()?;
-            attributes.insert(key, value);
-        }
-        
-        Ok(attributes)
-    }
 
     fn parse_node(&mut self) -> Result<GmlNode> {
         self.expect_identifier("node")?;
