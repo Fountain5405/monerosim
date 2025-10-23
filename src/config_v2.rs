@@ -132,6 +132,8 @@ pub struct AgentDefinitions {
     pub miner_distributor: Option<MinerDistributorConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pure_script_agents: Option<Vec<PureScriptAgentConfig>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simulation_monitor: Option<SimulationMonitorConfig>,
 }
 
 /// User agent configuration
@@ -198,6 +200,22 @@ pub struct MinerDistributorConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PureScriptAgentConfig {
     pub script: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<Vec<String>>,
+}
+
+/// Simulation monitor agent configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SimulationMonitorConfig {
+    pub script: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poll_interval: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_alerts: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detailed_logging: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Vec<String>>,
 }
