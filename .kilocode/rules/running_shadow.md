@@ -1,42 +1,33 @@
-# Shadow Simulation Execution Protocol
+# Shadow Simulation Execution
 
-When executing Shadow simulations, follow this protocol to ensure proper execution, logging, and monitoring.
+## Pre-Execution Checklist
 
-## 1. Clean Previous Data
-
-**CRITICAL**: Always clean up data from previous runs to prevent conflicts and ensure a clean state.
-
+**CRITICAL**:
 ```bash
+# 1. Kill existing Shadow processes
+pkill shadow
+
+# 2. Clean previous data
 rm -rf shadow.data shadow.log
 ```
 
-**CRITICAL**: Always make sure there are no current shadow processes running. 
-
-## 2. Run the simulation
-
-### Method C: Background Mode (for Long-Running Simulations)
-
-This runs the simulation as a background process and saves all output to a log file. The terminal is immediately available for other commands. This is the recommended approach for long or non-interactive simulation runs.
+## Running Simulation (Background Mode)
 
 ```bash
 rm -rf shadow.data && nohup shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
 ```
-*   `nohup`: Allows the process to continue running even if the terminal session is closed.
-*   `&`: Puts the command into a background process.
 
-## 3. Monitoring a Background Simulation
+## Monitoring
 
-If you use Method C to run the simulation in the background, you can monitor its progress by "tailing" the log file:
-
+Check progress occasionally (NOT continuously):
 ```bash
 tail shadow.log
 ```
-This command will display the last few lines of the file. Run it occasionally to see where things are. You shouldn't just watch the logs constantly, this uses a lot of resources. 
 
-**CRITICAL**: DO NOT USE "tail -f" to watch the logs. This uses too many resources.
+**NEVER use `tail -f`** - wastes resources
 
-The simulation usually ends with something like this;
+## Normal Termination
 
-"Simulation Termination: The simulation terminated with "142 managed processes in unexpected final state" - processes were killed by Shadow rather than exiting cleanly."
-
-This is acceptable, as it means that the simulation reached its time limit and just stopped all the processes. 
+Expect: "N managed processes in unexpected final state"
+- Means: Simulation reached time limit, killed processes
+- Status: **Normal behavior**, not an error 

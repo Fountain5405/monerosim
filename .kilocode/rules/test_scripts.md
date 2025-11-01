@@ -1,16 +1,18 @@
-# Shadow Simulation Test Scripts
+# Testing Simulation Behavior
 
-When trying to analyze how the simulation is functioning, use these approaches. 
+**CRITICAL**: Simulation environment isolated - external scripts cannot access it during runtime.
 
-**CRITICAL**: The simulation environment is not accessible to scripts outside of the simulation. 
+## Two Testing Approaches
 
-# Option 1 - Wait for the simulation to end
+**1. Post-Simulation Analysis** (Recommended):
+- Wait for simulation completion
+- Analyze logs in `shadow.data/hosts/`
+- Never use `tail -f` (resource intensive)
+- Use processed logs (`.processed_log` files) first
 
-If you wait for the simulation to end, you can analyze all of the log files.
-Do not use "tail -f" to watch the logs. This uses too many resources. 
-
-# Option 2 - Design scripts to run inside of the shadow simulation
-
-You can create scripts that can run inside of the shadow simulation. You have to make sure that the shadow config files will launch the script.
-You can then monitor the output of these test scripts via the logs they produce. 
+**2. In-Simulation Monitoring**:
+- Add monitoring agents to Shadow config
+- Agents write logs internally
+- Review logs post-simulation
+- Example: `simulation_monitor.py` agent 
 

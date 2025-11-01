@@ -1,29 +1,31 @@
-# Monerosim Configuration System
-
-## Current Configuration Approach
-
-Monerosim now uses a unified agent-based configuration system that no longer makes a distinction between nodes and agents. This is a significant architectural change from previous versions.
-
-### Key Configuration Principles
-
-1. **Unified Agent Model**: All network participants (miners, users, etc.) are defined as agents
-2. **No Separate Node Configuration**: The legacy `nodes` section is no longer used
-3. **User Agents with Attributes**: Miners are defined as user agents with `is_miner: true`
-4. **Wallet Integration**: Miners require both daemon and wallet components
+# Monerosim Configuration Guide
 
 ## Configuration Structure
 
+All configurations use YAML format with unified agent-based model:
+
 ```yaml
 general:
-  stop_time: "3h"  # Duration of simulation
-  fresh_blockchain: true
-  log_level: info
+  stop_time: "3h"           # Simulation duration
+  fresh_blockchain: true     # Start from genesis
+  log_level: info           # trace/debug/info/warn/error
 
 network:
-  type: "1_gbit_switch"  # Network topology
-  peer_mode: "Dynamic"   # Peer discovery mode: "Dynamic", "Hardcoded", "Hybrid"
-  topology: "Mesh"       # Network topology: "Star", "Mesh", "Ring", "Dag"
-  seed_nodes: []         # Optional explicit seed nodes for Hardcoded/Hybrid modes
+  # Option 1: Simple switch network
+  type: "1_gbit_switch"
+
+  # Option 2: Complex GML topology
+  path: "topology.gml"
+
+  # Peer discovery mode
+  peer_mode: "Dynamic"      # Dynamic/Hardcoded/Hybrid
+
+  # Network topology
+  topology: "Mesh"          # Star/Mesh/Ring/DAG
+
+  # Optional: explicit seeds (Hardcoded/Hybrid only)
+  seed_nodes:
+    - "192.168.1.10:28080"
 
 agents:
   user_agents:
@@ -31,9 +33,9 @@ agents:
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"  # Required for miners
       attributes:
-        is_miner: true # Boolean indicator (true/false, "true"/"false", "1"/"0", "yes"/"no", "on"/"off")
-        hashrate: "25"  # Percentage of total hashrate
-        can_receive_distributions: true  # Distribution eligibility
+        is_miner: true              # Boolean
+        hashrate: "25"              # % of total hashrate
+        can_receive_distributions: true
 
     # Regular user example
     - daemon: "monerod"
@@ -43,110 +45,47 @@ agents:
         transaction_interval: "60"
         min_transaction_amount: "0.5"
         max_transaction_amount: "2.0"
-        can_receive_distributions: false  # Distribution eligibility
 
   block_controller:
     script: "agents.block_controller"
 
   pure_script_agents:
     - script: "scripts.monitor"
-    - script: "scripts.sync_check"
 ```
 
-## Hashrate Distribution
+## Peer Discovery Modes
 
-When configuring miners, the `hashrate` attribute defines the percentage of the total network hashrate allocated to that miner. The sum of all miner hashrates should equal 100.
+**Dynamic** - Auto seed selection, miners prioritized
+- Best for: Research, optimization
+- Pros: Intelligent, no manual config
+- Cons: Less predictable
 
-Example distribution:
-- Miner 1: 25%
-- Miner 2: 25%
-- Miner 3: 20%
-- Miner 4: 20%
-- Miner 5: 10%
+**Hardcoded** - Explicit topology templates
+- Best for: Testing, validation
+- Pros: Predictable, reproducible
+- Cons: Manual configuration
 
-## Peer Discovery Configuration
+**Hybrid** - GML topology + discovery
+- Best for: Production-like sims
+- Pros: Robust, flexible
+- Cons: Complex config
 
-### Peer Modes
+## Network Topologies
 
-Monerosim supports three peer discovery modes that control how agents connect to each other:
+**Star**: All connect to hub (first agent). Min: 2 agents
+**Mesh**: Fully connected. Min: 2 agents, slow >50
+**Ring**: Circular connections. Min: 3 agents
+**DAG**: Blockchain default. Min: 2 agents
 
-1. **Dynamic Mode**:
-   - **Description**: Intelligent seed selection with miners prioritized as seeds
-   - **Best for**: Research, optimization, realism
-   - **When to use**: When you want automatic seed selection
-   - **Pros**: Intelligent, adaptive, no manual configuration
-   - **Cons**: Less predictable, may vary between runs
+## Important Rules
 
-2. **Hardcoded Mode**:
-   - **Description**: Explicit peer connections based on topology templates
-   - **Best for**: Testing, validation, reproducibility
-   - **When to use**: When you need exact control over connections
-   - **Pros**: Predictable, reproducible, explicit
-   - **Cons**: Manual configuration required
-
-3. **Hybrid Mode**:
-   - **Description**: Combines structure with discovery for complex networks
-   - **Best for**: Production-like simulations
-   - **When to use**: When combining structure with discovery
-   - **Pros**: Robust, flexible, realistic
-   - **Cons**: More complex configuration
-
-### Network Topologies
-
-Four topology templates are available:
-
-1. **Star Topology**:
-   - All nodes connect to a central hub (first agent)
-   - Best for: Hierarchical networks, central authority
-   - Minimum agents: 2
-
-2. **Mesh Topology**:
-   - Every node connects to every other node
-   - Best for: Maximum redundancy, fully connected behavior
-   - Minimum agents: 2 (but scales poorly >50 agents)
-
-3. **Ring Topology**:
-   - Nodes connect in circular pattern
-   - Best for: Structured but distributed connections
-   - Minimum agents: 3
-
-4. **DAG Topology**:
-   - Traditional blockchain behavior (default)
-   - Best for: Standard cryptocurrency networks
-   - Minimum agents: 2
-
-### Seed Nodes Configuration
-
-For Hardcoded and Hybrid modes, you can optionally specify explicit seed nodes:
-
-```yaml
-network:
-  peer_mode: "Hardcoded"
-  topology: "Star"
-  seed_nodes:
-    - "192.168.1.10:28080"
-    - "192.168.1.11:28080"
-```
-
-## Distribution Eligibility
-
-The `can_receive_distributions` attribute controls whether agents can receive mining reward distributions:
-
-- **true/1/yes/on**: Agent can receive distributions
-- **false/0/no/off**: Agent cannot receive distributions
-
-This attribute supports multiple formats for flexibility in configuration.
-
-## Important Notes
-
-1. **Wallet Requirement**: All miners must have both a daemon and a wallet to enable the block controller to get addresses for mining rewards
-2. **No Nodes Section**: Never use a `nodes` section in configuration files
-3. **IP Assignment**: IP addresses are automatically assigned by the system
-4. **Port Configuration**: Standard ports are used for all services
-5. **Peer Mode Compatibility**: Dynamic mode doesn't use seed_nodes; Hardcoded/Hybrid modes can use them
-6. **Topology Requirements**: Some topologies require minimum agent counts
+1. **Miners need wallet**: Both daemon + wallet required
+2. **No `nodes` section**: Legacy format deprecated
+3. **Hashrate sum**: Should equal 100 across all miners
+4. **Distribution eligibility**: `can_receive_distributions` boolean
+5. **IP auto-assigned**: System handles geographic distribution
+6. **Boolean formats**: true/false, "true"/"false", 1/0, "yes"/"no", "on"/"off"
 
 ## Example Configurations
 
-- `config_custom_miners.yaml`: Custom miner configuration with specific hashrate distribution
-- `config.yaml`: Standard configuration for general testing
+The working configuation, scale (30 agents): `config_30_agents.yaml`

@@ -1,0 +1,110 @@
+{
+  "timestamp": "2025-11-01T12:10:28.238084",
+  "transactions": {
+    "total_transactions": 144,
+    "unique_transaction_hashes": 144,
+    "total_amount_transferred": 74.18723946228386,
+    "transactions_by_sender": {
+      "user000": 30,
+      "user002": 24,
+      "user003": 13,
+      "user004": 21,
+      "user006": 5,
+      "user018": 2,
+      "user005": 3,
+      "user028": 1,
+      "user031": 6,
+      "user027": 5,
+      "user016": 5,
+      "user007": 2,
+      "user010": 2,
+      "user025": 2,
+      "user014": 3,
+      "user015": 3,
+      "user022": 2,
+      "user011": 1,
+      "user008": 1,
+      "user023": 2,
+      "user009": 1,
+      "user021": 3,
+      "user030": 2,
+      "user017": 2,
+      "user013": 1,
+      "user024": 1,
+      "user012": 1
+    },
+    "average_transaction_amount": 0.5151891629325268
+  },
+  "blocks": {
+    "total_blocks": 117,
+    "blocks_by_miner": {
+      "200.0.3.10": 10,
+      "172.16.1.10": 32,
+      "203.0.2.10": 30,
+      "192.168.0.10": 33,
+      "197.0.4.10": 12
+    },
+    "block_timing": {
+      "first_block_time": 946685170.4862612,
+      "last_block_time": 946699128.5230092,
+      "total_duration": 13958.036747932434,
+      "average_block_time": 120.32790299941753,
+      "blocks_per_hour": 30.176163568446775
+    },
+    "transaction_stats": {
+      "total_transactions_in_blocks": 140,
+      "average_transactions_per_block": 1.1965811965811965,
+      "max_transactions_in_block": 10,
+      "min_transactions_in_block": 0,
+      "blocks_with_transactions": 38,
+      "empty_blocks": 79
+    },
+    "data_source": "enhanced"
+  },
+  "agents": {
+    "total_agents": 35,
+    "miner_agents": 5,
+    "user_agents": 30,
+    "agent_types": {
+      "miner": 5,
+      "user": 30
+    }
+  },
+  "transaction_inclusion": {
+    "transactions_in_blocks": 140,
+    "inclusion_rate": 0.9722222222222222,
+    "total_transactions": 144,
+    "total_blocks": 117,
+    "data_available": true,
+    "data_source": "blocks_with_transactions.json"
+  },
+  "success_criteria": {
+    "criteria": {
+      "blocks_created": {
+        "success": true,
+        "details": "117 blocks mined"
+      },
+      "blocks_propagated": {
+        "success": true,
+        "details": "117 blocks available to 30 user nodes"
+      },
+      "transactions_created_broadcast": {
+        "success": true,
+        "details": "144 transactions created"
+      },
+      "transactions_in_blocks": {
+        "success": true,
+        "details": "140/144 transactions included in blocks"
+      }
+    },
+    "overall_success": true,
+    "summary": {
+      "total_blocks": 117,
+      "total_transactions": 144,
+      "user_nodes": 30,
+      "transaction_inclusion_data_available": true,
+      "transactions_in_blocks": 140,
+      "success_rate": 0.9722222222222222
+    }
+  }
+}
