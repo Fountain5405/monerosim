@@ -6,12 +6,9 @@ use log::info;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub mod config_v2;
-pub mod config_loader;
-pub mod shadow_agents;
-pub mod gml_parser;
-
-use shadow_agents::generate_agent_shadow_config;
+// Use modules from the library instead of redeclaring them
+use monerosim::shadow_agents::generate_agent_shadow_config;
+use monerosim::config_loader;
 
 /// Configuration utility for Monero network simulations in Shadow
 #[derive(Parser, Debug)]

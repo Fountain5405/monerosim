@@ -540,6 +540,7 @@ pub fn validate_topology(graph: &GmlGraph) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+use crate::utils::ip_utils;
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
