@@ -1,5 +1,5 @@
 cargo build --release
-target/release/monerosim --config config_30_agents.yaml 
+target/release/monerosim --config config_30_agents_mshim.yaml
 rm -rf shadow.data/
 rm -rf shadow.log 
 nohup shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &

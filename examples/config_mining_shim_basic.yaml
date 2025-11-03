@@ -1,0 +1,35 @@
+# Basic Mining Shim Configuration
+# This example demonstrates a simple 2-node setup with mining shim:
+# - 1 miner node using mining shim for deterministic mining
+# - 1 observer node that synchronizes from the miner
+
+general:
+  stop_time: "5m"              # 5 minute simulation
+  fresh_blockchain: true       # Start from genesis block
+  log_level: info              # Logging level
+  simulation_seed: 42          # Required for deterministic mining shim results
+  mining_shim_path: "./mining_shim/libminingshim.so"  # Path to mining shim library
+
+network:
+  type: "1_gbit_switch"        # Simple network topology
+
+agents:
+  user_agents:
+    # Miner agent - uses mining shim for deterministic mining
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true              # Enables mining shim
+        hashrate: "10000000"        # 10 MH/s mining power
+        can_receive_distributions: true
+
+    # Observer agent - synchronizes blockchain from miner
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"      # Send transaction every 60 seconds
+        min_transaction_amount: "0.1"   # Minimum 0.1 XMR per transaction
+        max_transaction_amount: "1.0"   # Maximum 1.0 XMR per transaction
+
+  # Note: No block_controller needed - mining shim handles mining directly

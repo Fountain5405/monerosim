@@ -33,6 +33,8 @@ pub fn process_user_agents(
     using_gml_topology: bool,
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
+    simulation_seed: u64,
+    mining_shim_path: &Option<String>,
 ) -> color_eyre::eyre::Result<()> {
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
     let agent_node_assignments = if let Some(gml) = gml_graph {
@@ -301,6 +303,19 @@ pub fn process_user_agents(
                 "--allow-local-ip".to_string(),
             ];
 
+            // Create mining shim environment for miners
+            let mut miner_environment = monero_environment.clone();
+            if is_miner {
+                // Add mining shim environment variables
+                miner_environment.insert("MINER_HASHRATE".to_string(),
+                    user_agent_config.attributes.as_ref()
+                        .and_then(|attrs| attrs.get("hashrate"))
+                        .map_or("10", |v| v).to_string());
+                miner_environment.insert("AGENT_ID".to_string(), i.to_string());
+                miner_environment.insert("SIMULATION_SEED".to_string(), simulation_seed.to_string());
+                miner_environment.insert("MININGSHIM_LOG_LEVEL".to_string(), "info".to_string());
+            }
+
             // Only disable built-in seed nodes for miners
             if is_miner {
                 daemon_args_base.push("--disable-seed-nodes".to_string());
@@ -353,13 +368,39 @@ pub fn process_user_agents(
 
             let daemon_args = daemon_args_base.join(" ");
 
+            // Use mining shim environment for miners, regular environment for others
+            let process_environment = if is_miner {
+                miner_environment.clone()
+            } else {
+                monero_environment.clone()
+            };
+
+            // Inject LD_PRELOAD for miners
+            let mut final_process_environment = process_environment.clone();
+            if is_miner {
+                // Convert relative path to absolute path for LD_PRELOAD
+                let shim_path = mining_shim_path.as_ref()
+                    .map(|s| s.as_str())
+                    .unwrap_or("./mining_shim/libminingshim.so");
+                
+                // Convert to absolute path if relative
+                let absolute_shim_path = if shim_path.starts_with('/') {
+                    shim_path.to_string()
+                } else {
+                    // Resolve relative path from current_dir
+                    format!("{}/{}", current_dir, shim_path)
+                };
+                
+                final_process_environment.insert("LD_PRELOAD".to_string(), absolute_shim_path);
+            }
+
             processes.push(crate::shadow::ShadowProcess {
                 path: "/bin/bash".to_string(),
                 args: format!(
                     "-c 'rm -rf /tmp/monero-{} && {} {}'",
                     agent_id, monerod_path, daemon_args
                 ),
-                environment: monero_environment.clone(),
+                environment: final_process_environment,
                 start_time: start_time_daemon,
             });
 

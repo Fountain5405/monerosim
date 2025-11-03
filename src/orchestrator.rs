@@ -171,6 +171,15 @@ pub fn generate_agent_shadow_config(
         environment.insert("MONEROSIM_LOG_LEVEL".to_string(), log_level.to_uppercase());
     }
 
+    // Generate or load simulation seed
+    let simulation_seed = config.general.simulation_seed.unwrap_or_else(|| {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    });
+
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
@@ -268,6 +277,8 @@ pub fn generate_agent_shadow_config(
         using_gml_topology,
         &peer_mode,
         topology.as_ref(),
+        simulation_seed,
+        &config.general.mining_shim_path,
     )?;
 
 

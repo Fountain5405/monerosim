@@ -119,6 +119,10 @@ pub struct GeneralConfig {
     pub python_venv: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simulation_seed: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mining_shim_path: Option<String>,
 }
 
 /// Agent definitions
@@ -270,6 +274,8 @@ impl Default for GeneralConfig {
             fresh_blockchain: Some(true),
             python_venv: None,
             log_level: Some("info".to_string()),
+            simulation_seed: None,
+            mining_shim_path: None,
         }
     }
 }

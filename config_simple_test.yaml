@@ -5,6 +5,8 @@ general:
   stop_time: "600s"  # 10 minutes
   fresh_blockchain: true
   log_level: info
+  simulation_seed: 12345
+  mining_shim_path: "./mining_shim/libminingshim.so"
 
 network:
   type: "1_gbit_switch"  # Simple switch network for testing

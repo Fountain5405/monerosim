@@ -641,7 +641,7 @@ hosts:
       - path: "/usr/local/bin/monerod-simulation"
         args: "--data-dir=/tmp/monero-miner001 --rpc-bind-port=28081"
         environment:
-          LD_PRELOAD: "/usr/local/lib/libminingshim.so"
+          LD_PRELOAD: "./mining_shim/libminingshim.so"
           MININGSHIM_CONFIG: "/etc/miningshim.yaml"
           MININGSHIM_LOG_LEVEL: "INFO"
         start_time: "0s"
@@ -678,7 +678,7 @@ sudo cp miningshim.yaml /etc/miningshim.yaml
 
 # Set appropriate permissions
 sudo chmod 644 /etc/miningshim.yaml
-sudo chmod 755 /usr/local/lib/libminingshim.so
+sudo chmod 755 ./mining_shim/libminingshim.so
 ```
 
 ### 8.3 Integration with Monerosim

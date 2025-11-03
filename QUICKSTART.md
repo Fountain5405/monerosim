@@ -22,6 +22,12 @@ cd monerosim
 
 # 2. Run the automated setup script (takes 20-40 minutes)
 ./setup.sh
+
+# 3. Build Mining Shim (for mining simulations)
+cd mining_shim
+make clean && make
+sudo make install
+cd ..
 ```
 
 **Note**: The setup process includes building Monero from source with Shadow compatibility patches, which can take 20-40 minutes depending on your system.
@@ -64,6 +70,21 @@ vim config_47_agents.yaml
 
 # Run simulation
 shadow shadow_agents_output/shadow_agents.yaml
+```
+
+### Run Mining Shim Simulations
+
+For deterministic mining simulations with the mining shim:
+
+```bash
+# Use mining shim example configuration
+./target/release/monerosim --config examples/config_mining_shim_basic.yaml --output mining_output
+
+# Run simulation with mining shim
+shadow mining_output/shadow_agents.yaml
+
+# Check mining results
+cat /tmp/miningshim_metrics_agent*.json
 ```
 
 ### Analyze Results

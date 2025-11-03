@@ -73,6 +73,109 @@ agents:
 - **Sparse Agent Placement**: 100 agents on 2000+ node topology
 - **Dynamic Peer Discovery**: Automatic connection establishment
 
+## Mining Shim Examples
+
+These examples demonstrate the new mining shim implementation for deterministic, high-performance mining simulations.
+
+### Files
+
+- `config_mining_shim_basic.yaml`: Simple 2-node setup with mining shim
+- `config_mining_shim_multi_miner.yaml`: Multi-miner network with different hashrate distributions
+
+### Key Features Demonstrated
+
+- **Deterministic Mining**: Same seed produces identical results across runs
+- **Performance**: 10-100x faster than traditional block controller
+- **Scalability**: Efficient simulation of large mining networks
+- **No Block Controller**: Mining coordination handled automatically by shim
+
+### Basic Mining Shim Example
+
+```yaml
+general:
+  stop_time: "5m"
+  simulation_seed: 42                    # Required for determinism
+  mining_shim_path: "./mining_shim/libminingshim.so"
+
+network:
+  type: "1_gbit_switch"
+
+agents:
+  user_agents:
+    # Miner using mining shim
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "10000000"            # 10 MH/s
+
+    # Observer node
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "60"
+```
+
+### Multi-Miner Example
+
+Demonstrates mining pool economics with different hashrate distributions:
+
+```yaml
+general:
+  stop_time: "10m"
+  simulation_seed: 12345
+  mining_shim_path: "./mining_shim/libminingshim.so"
+
+agents:
+  user_agents:
+    # Large miner (40% of network hashrate)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "40000000"
+
+    # Medium miner (35% of network hashrate)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "35000000"
+
+    # Small miner (25% of network hashrate)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "25000000"
+```
+
+### Running Mining Shim Examples
+
+```bash
+# Basic example
+./target/release/monerosim --config examples/config_mining_shim_basic.yaml --output mining_output
+shadow mining_output/shadow_agents.yaml
+
+# Check results
+cat /tmp/miningshim_metrics_agent*.json
+
+# Multi-miner example
+./target/release/monerosim --config examples/config_mining_shim_multi_miner.yaml --output multi_mining_output
+shadow multi_mining_output/shadow_agents.yaml
+```
+
+### Benefits Over Block Controller
+
+| Aspect | Block Controller | Mining Shim |
+|--------|------------------|-------------|
+| Performance | Python overhead | Native C performance |
+| Determinism | Limited | Full determinism |
+| Scalability | ~10 miners max | 100+ miners supported |
+| Setup | Complex coordination | Simple configuration |
+| Maintenance | Python logic | Mathematical model |
+
 ## Other Examples
 
 See the main `examples/` directory for additional configuration examples:

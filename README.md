@@ -11,6 +11,7 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 - **Dynamic Agent Discovery**: Runtime agent discovery through shared state files
 - **Advanced Peer Discovery**: Multiple peer discovery modes (Dynamic, Hardcoded, Hybrid) with intelligent seed selection
 - **Topology Templates**: Pre-built network topologies (Star, Mesh, Ring, DAG) for structured simulations
+- **Mining Shim**: Deterministic probabilistic mining simulation replacing CPU-intensive PoW calculations
 - **Production Ready**: Proven in production with comprehensive test coverage
 - **Python-First Testing**: Modern Python test suite with 95%+ coverage
 - **Reproducible Research**: Deterministic simulations for scientific analysis
@@ -66,10 +67,60 @@ For detailed information, see [NETWORK_SCALING_GUIDE.md](NETWORK_SCALING_GUIDE.m
    ```bash
    # Generate agent-based configuration (small/medium/large)
    ./target/release/monerosim --config config_47_agents.yaml --output shadow_agents_output
-   
+
    # Run the simulation
    shadow shadow_agents_output/shadow_agents.yaml
    ```
+
+## Mining Shim Quick Start
+
+The Mining Shim provides deterministic probabilistic mining simulation, replacing CPU-intensive Proof-of-Work calculations with efficient mathematical modeling.
+
+### Basic Mining Shim Setup
+
+1. **Build the Mining Shim**
+   ```bash
+   cd mining_shim
+   make
+   sudo make install  # Installs to /usr/local/lib/
+   ```
+
+2. **Configure Simulation**
+   ```yaml
+   general:
+     stop_time: "5m"
+     simulation_seed: 42  # For deterministic results
+
+   network:
+     type: "1_gbit_switch"
+
+   agents:
+     user_agents:
+       # Miner with mining shim
+       - daemon: "monerod"
+         wallet: "monero-wallet-rpc"
+         attributes:
+           is_miner: true
+           hashrate: "10000000"  # 10 MH/s
+   ```
+
+3. **Run Simulation**
+   ```bash
+   # Generate configuration
+   ./target/release/monerosim --config config_mining_shim.yaml
+
+   # Run with mining shim
+   shadow shadow_output/shadow_agents.yaml
+   ```
+
+### Key Benefits
+
+- **Performance**: Eliminates CPU-intensive mining calculations
+- **Determinism**: Identical results across runs with same seed
+- **Scalability**: Efficient simulation of large mining networks
+- **Accuracy**: Probabilistic model matches real-world mining behavior
+
+For detailed usage, see [MINING_SHIM_USAGE.md](MINING_SHIM_USAGE.md).
 
 ## Project Structure
 
@@ -104,6 +155,9 @@ monerosim/
 - [Configuration Guide](.kilocode/rules/memory-bank/configuration.md) - How to configure simulations (includes GML networks)
 - [Peer Discovery System](.kilocode/rules/memory-bank/peer_discovery.md) - Dynamic agent discovery and topologies
 - [GML Integration](.kilocode/rules/memory-bank/architecture.md#gml-integration) - Complex network topologies
+- [Mining Shim Usage](MINING_SHIM_USAGE.md) - Comprehensive mining shim documentation
+- [Mining Shim Integration](docs/MINING_SHIM_INTEGRATION.md) - Developer integration guide
+- [Migration Guide](MIGRATION_GUIDE.md) - Transitioning from block controller to mining shim
 - [Development Guide](.kilocode/rules/memory-bank/tech.md) - Technical stack and development setup
 - [Project Status](.kilocode/rules/memory-bank/status.md) - Current development status
 - [Agent Discovery System](agents/README_agent_discovery.md) - Dynamic agent discovery
@@ -237,6 +291,11 @@ sudo apt-get install build-essential cmake libglib2.0-dev libevent-dev libigraph
 
 # Run setup script
 ./setup.sh
+
+# Build Mining Shim (optional, for mining simulations)
+cd mining_shim
+make
+sudo make install  # Installs to /usr/local/lib/
 
 # Set up Python environment
 python3 -m venv venv

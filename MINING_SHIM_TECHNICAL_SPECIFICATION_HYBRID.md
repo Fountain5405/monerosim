@@ -446,7 +446,7 @@ hosts:
       - path: "/usr/local/bin/monerod-simulation"
         args: "--data-dir=/tmp/monero-miner001 --rpc-bind-port=28081"
         environment:
-          LD_PRELOAD: "/usr/local/lib/libminingshim.so"
+          LD_PRELOAD: "./mining_shim/libminingshim.so"
           MINER_HASHRATE: "1000000"
           AGENT_ID: "1"
           SIMULATION_SEED: "12345"
