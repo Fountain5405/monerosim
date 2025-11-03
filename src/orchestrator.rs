@@ -3,17 +3,18 @@
 //! This module coordinates the overall configuration generation process,
 //! managing the flow from configuration parsing through Shadow YAML generation.
 
-use crate::config_v2::{Config, AgentDefinitions, Network, PeerMode};
+use crate::config_v2::{Config, Network, PeerMode};
 use crate::gml_parser::{self, GmlGraph, validate_topology, get_autonomous_systems};
 use crate::shadow::{
     MinerInfo, MinerRegistry, AgentInfo, AgentRegistry,
     ShadowConfig, ShadowGeneral, ShadowExperimental, ShadowNetwork, ShadowGraph,
-    ShadowFileSource, ShadowHost, ShadowProcess,
+    ShadowFileSource, ShadowHost,
 };
-use crate::topology::{Topology, generate_topology_connections, distribute_agents_across_topology};
+use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
+use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
 use serde_yaml;
 use std::collections::HashMap;
@@ -250,7 +251,7 @@ pub fn generate_agent_shadow_config(
     };
 
     // Process all agent types from the configuration
-    crate::shadow_agents::process_user_agents(
+    process_user_agents(
         &config.agents,
         &mut hosts,
         &mut seed_nodes,
@@ -276,7 +277,7 @@ pub fn generate_agent_shadow_config(
     let block_controller_offset = user_agent_count + 100; // Reserve 100 IPs for user agents
     let script_offset = user_agent_count + 200; // Reserve another 100 IPs for block controller and other uses
 
-    crate::shadow_agents::process_block_controller(
+    process_block_controller(
         &config.agents,
         &mut hosts,
         &mut subnet_manager,
@@ -291,7 +292,7 @@ pub fn generate_agent_shadow_config(
         &peer_mode,
     )?;
 
-    crate::shadow_agents::process_miner_distributor(
+    process_miner_distributor(
         &config.agents,
         &mut hosts,
         &mut subnet_manager,
@@ -306,7 +307,7 @@ pub fn generate_agent_shadow_config(
         &peer_mode,
     )?;
 
-    crate::shadow_agents::process_pure_script_agents(
+    process_pure_script_agents(
         &config.agents,
         &mut hosts,
         &mut subnet_manager,
@@ -320,7 +321,7 @@ pub fn generate_agent_shadow_config(
         script_offset,
     )?;
 
-    crate::shadow_agents::process_simulation_monitor(
+    process_simulation_monitor(
         &config.agents,
         &mut hosts,
         &mut subnet_manager,

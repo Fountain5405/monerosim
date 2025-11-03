@@ -7,7 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // Use modules from the library instead of redeclaring them
-use monerosim::shadow_agents::generate_agent_shadow_config;
+use monerosim::orchestrator::generate_agent_shadow_config;
 use monerosim::config_loader;
 
 /// Configuration utility for Monero network simulations in Shadow

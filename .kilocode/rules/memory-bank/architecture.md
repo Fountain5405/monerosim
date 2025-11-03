@@ -12,8 +12,18 @@ Rust tool generating Shadow simulator configs for Monero network simulations wit
 - `main.rs:112` - CLI entry point (clap argument parser)
 - `config_v2.rs:292` - Type-safe config structures (serde YAML/JSON)
 - `config_loader.rs:87` - Config file loading and migration
-- `shadow_agents.rs:2525` - Shadow YAML generation + network topology
+- `shadow_orchestrator.rs` - Main orchestration logic (replaces shadow_agents.rs)
 - `gml_parser.rs:1004` - GML graph parser for complex topologies
+
+**Modular Architecture (Post-Refactoring)**:
+- `src/agent/` - Agent lifecycle and processing (7 files)
+- `src/ip/` - IP allocation and management (3 files)
+- `src/process/` - Process configuration generation (4 files)
+- `src/registry/` - Agent and miner registries (3 files)
+- `src/shadow/` - Shadow YAML structures (3 files)
+- `src/topology/` - Network topology logic (3 files)
+- `src/utils/` - Shared utilities (3 files)
+- `src/mining_shim/` - Mining strategy implementations (8 files)
 
 **Key Functions**:
 - IP allocation with geographic distribution (6 continents)

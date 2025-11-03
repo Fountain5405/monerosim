@@ -14,6 +14,7 @@
 - GML network topology support with AS-aware distribution
 - Peer discovery system with Dynamic/Hardcoded/Hybrid modes
 - Comprehensive integration testing completed
+- **Shadow Agents Refactoring**: Completed 10-phase modular refactoring of shadow_agents.rs into 7 specialized modules (29 files total), achieving 95.6% test pass rate and clean compilation
 
 ## Key Implementation Details
 - All components run within Shadow network simulator

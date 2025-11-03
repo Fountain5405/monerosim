@@ -39,12 +39,13 @@
 //!
 //! ```rust,no_run
 //! use monerosim::{config_loader, orchestrator};
+//! use std::path::Path;
 //!
 //! // Load configuration from YAML file
-//! let config = config_loader::load_config("config.yaml")?;
+//! let config = config_loader::load_config(Path::new("config.yaml"))?;
 //!
 //! // Generate Shadow configuration
-//! let shadow_config = orchestrator::generate_shadow_config(&config, "shadow_output")?;
+//! let shadow_config = orchestrator::generate_agent_shadow_config(&config, Path::new("shadow_output"))?;
 //!
 //! // The shadow_output directory now contains:
 //! // - shadow_agents.yaml: Shadow simulator configuration
@@ -100,7 +101,6 @@
 // Existing modules
 pub mod config_v2;
 pub mod config_loader;
-pub mod shadow_agents;
 pub mod gml_parser;
 
 // New modular components - Phase 1 scaffolding

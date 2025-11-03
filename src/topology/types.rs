@@ -3,7 +3,6 @@
 //! This file contains type definitions for different network topology
 //! patterns supported by the system (Star, Mesh, Ring, DAG).
 
-use serde::{Deserialize, Serialize};
 
 /// Re-export types from config_v2 to maintain API compatibility
 pub use crate::config_v2::{Topology, PeerMode};

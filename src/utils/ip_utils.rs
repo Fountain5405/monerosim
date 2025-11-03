@@ -1,3 +1,4 @@
+
 use std::net::IpAddr;
 
 /// IP utility functions for validation and manipulation
@@ -71,7 +72,7 @@ pub fn generate_ip_range(start_ip: &str, count: usize) -> Result<Vec<String>, St
         match ip_addr {
             IpAddr::V4(ipv4) => {
                 let mut result = Vec::new();
-                let mut octets = ipv4.octets();
+                let octets = ipv4.octets();
 
                 for i in 0..count {
                     // Simple increment - this will fail if we go beyond 255

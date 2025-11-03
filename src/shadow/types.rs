@@ -4,7 +4,7 @@
 //! configurations, including host definitions, process configurations,
 //! network topology structures, and agent/miner registry types.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 
 // ============================================================================

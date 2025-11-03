@@ -3,7 +3,7 @@
 //! This file handles generation of Shadow process configurations
 //! for pure script agents that run without daemon or wallet processes.
 
-use crate::config_v2::{AgentDefinitions, PureScriptAgentConfig};
+use crate::config_v2::AgentDefinitions;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType};
 use std::collections::HashMap;

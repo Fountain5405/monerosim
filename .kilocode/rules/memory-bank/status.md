@@ -17,6 +17,7 @@
 3. **GML Network Topology**: Complex AS-aware topologies, 50-5000 nodes
 4. **Peer Discovery System**: Dynamic/Hardcoded/Hybrid modes with 100% test pass rate
 5. **Integration Testing**: Comprehensive validation and reporting
+6. **Shadow Agents Refactoring**: Completed 10-phase modular refactoring of shadow_agents.rs into 7 specialized modules (29 files total), achieving 95.6% test pass rate and clean compilation
 
 ### Scale Achievements
 - **Agent Framework**: Scales 2-40 participants

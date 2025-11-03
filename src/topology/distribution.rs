@@ -73,6 +73,12 @@ fn distribute_agents_gml(node_count: usize, as_numbers: &[Option<String>]) -> Ve
         debug!("AS {}: {} nodes", as_num, nodes.len());
     }
 
+    // If no AS groups found, fall back to round-robin distribution across all nodes
+    if as_groups.is_empty() {
+        debug!("No AS groups found, using round-robin distribution across all nodes");
+        return (0..node_count).map(|i| Some(i % as_numbers.len())).collect();
+    }
+
     // Distribute agents across AS groups
     let mut assignments = Vec::with_capacity(node_count);
     let mut used_nodes = HashSet::new();

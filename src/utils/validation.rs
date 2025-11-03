@@ -24,8 +24,13 @@ use crate::config_v2::Topology;
 /// ```
 /// use monerosim::utils::validation::validate_gml_ip_consistency;
 /// use monerosim::gml_parser::{GmlGraph, GmlNode};
+/// use std::collections::HashMap;
 ///
-/// let mut graph = GmlGraph::new();
+/// let mut graph = GmlGraph {
+///     nodes: Vec::new(),
+///     edges: Vec::new(),
+///     attributes: HashMap::new(),
+/// };
 /// // Add nodes and edges...
 /// assert!(validate_gml_ip_consistency(&graph).is_ok());
 /// ```
