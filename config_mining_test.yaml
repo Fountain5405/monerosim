@@ -1,0 +1,38 @@
+general:
+  simulation_seed: 42
+  stop_time: "10m"
+  fresh_blockchain: true
+  mining_shim_path: "./mining_shim/libminingshim.so"
+  log_level: info
+
+network:
+  type: "1_gbit_switch"
+  peer_mode: "Dynamic"
+  topology: "Mesh"
+
+agents:
+  user_agents:
+    # Miner 1 - 70% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "70"
+        can_receive_distributions: true
+
+    # Miner 2 - 30% hashrate
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: true
+        hashrate: "30"
+        can_receive_distributions: false
+
+    # Regular user - no mining
+    - daemon: "monerod"
+      user_script: "agents.regular_user"
+      attributes:
+        is_miner: false
+        transaction_interval: "30"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"

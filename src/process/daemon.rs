@@ -30,20 +30,17 @@ use std::collections::HashMap;
 /// * `agent_id` - Unique identifier for the agent
 /// * `agent_ip` - IP address assigned to the agent
 /// * `daemon_port` - RPC port for the daemon
-/// * `wallet_port` - RPC port for the wallet
-/// * `mining_shim_path` - Path to the mining shim library
-/// * `hashrate` - Mining hashrate percentage (0-100)
-/// * `simulation_seed` - Seed for deterministic simulation behavior
 /// * `environment` - Base environment variables
-/// * `index` - Agent index for timing calculations
+/// * `mining_shim_path` - Path to the mining shim library
+/// * `_index` - Agent index for timing calculations (unused)
 /// * `daemon_start_time` - When the daemon should start
 ///
 /// # Mining Shim Integration
 ///
 /// The mining shim is loaded via LD_PRELOAD and configured with:
-/// - `MINER_HASHRATE`: Hashrate value from agent attributes
+/// - `MINER_HASHRATE`: Hashrate value from agent attributes (default: 100)
 /// - `AGENT_ID`: Unique agent identifier
-/// - `SIMULATION_SEED`: Seed for deterministic behavior
+/// - `SIMULATION_SEED`: Seed for deterministic behavior (default: 42)
 /// - `MININGSHIM_LOG_LEVEL`: Logging level (default: info)
 /// - `MINING_ADDRESS`: Real wallet address from miner_init.sh (environment variable)
 ///
@@ -58,39 +55,36 @@ pub fn add_miner_daemon_process(
     agent_id: &str,
     agent_ip: &str,
     daemon_port: u16,
-    wallet_port: u16,
-    mining_shim_path: &str,
-    hashrate: &str,
-    simulation_seed: u64,
     environment: &HashMap<String, String>,
+    mining_shim_path: &str,
     _index: usize,
     daemon_start_time: &str,
 ) {
-    // NOTE: This function is now DEPRECATED for mining shim integration
-    // The miner_init.sh script handles both wallet address retrieval AND monerod launch
-    // This function should NOT be called for mining shim configurations
-    //
-    // Mining Architecture:
-    // 1. miner_init.sh runs first (queries wallet RPC for real address)
-    // 2. Script exports MINING_ADDRESS environment variable
-    // 3. Script launches monerod directly with the real address
-    // 4. Mining shim (LD_PRELOAD) intercepts mining calls for deterministic behavior
-    //
-    // This function is kept for backward compatibility but should not be used
-    // with mining_shim_path configurations
+    // Miner daemon configuration with mining shim
+    let daemon_path = "/usr/local/bin/monerod";
+    let daemon_args = format!(
+        "--rpc-bind-ip={} --rpc-bind-port={} --confirm-external-bind --log-level=1 --data-dir=/tmp/monerosim_shared/{}_data --simulation --start-mining=${{MINING_ADDRESS}} --mining-threads=1",
+        agent_ip, daemon_port, agent_id
+    );
 
-    eprintln!("WARNING: add_miner_daemon_process called but should not be used with mining shim!");
-    eprintln!("The miner_init.sh script should handle monerod launch for mining shim integration");
+    // Create environment with mining shim preloaded
+    let mut miner_env = environment.clone();
+    miner_env.insert("LD_PRELOAD".to_string(), mining_shim_path.to_string());
+    miner_env.insert("MINER_HASHRATE".to_string(), "100".to_string()); // Default hashrate
+    miner_env.insert("AGENT_ID".to_string(), agent_id.to_string());
+    miner_env.insert("SIMULATION_SEED".to_string(), "42".to_string());
+    miner_env.insert("MININGSHIM_LOG_LEVEL".to_string(), "info".to_string());
+    // Set hardcoded mining address for simulation
+    miner_env.insert("MINING_ADDRESS".to_string(), "888tNkZrPN6JsEgekjMnABU4TBzc2Dt29EPAvkRxbANsAnjyPbb3iQ1YBRk1UXcdRsiKc9dhwMVgN5S9cQUiyoogDavup3H".to_string());
 
-    // For backward compatibility, create a no-op process that does nothing
-    // This prevents breaking existing code that might call this function
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: "-c 'echo \"Deprecated add_miner_daemon_process called - doing nothing\"'".to_string(),
-        environment: environment.clone(),
+        args: format!("-c '{} {}'", daemon_path, daemon_args),
+        environment: miner_env,
         start_time: daemon_start_time.to_string(),
     });
 }
+
 
 
 /// Add a standard daemon process to the processes list

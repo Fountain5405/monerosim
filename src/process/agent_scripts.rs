@@ -54,8 +54,8 @@ pub fn add_user_agent_process(
         }
     }
 
-    // Remove stop-time from agent args since agents handle their own lifecycle
-    agent_args.retain(|arg| !arg.starts_with("--stop-time"));
+    // Keep stop-time in agent args so agents know when to exit
+    // agent_args.retain(|arg| !arg.starts_with("--stop-time"));
 
     // Simplified command without nc dependency - just sleep and retry
     let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
@@ -64,33 +64,37 @@ pub fn add_user_agent_process(
         format!("python3 {} {}", script, agent_args.join(" "))
     };
 
-    // Create a simple wrapper script that handles retries internally
+    // Create a simple wrapper script that handles retries internally and includes timeout
     let wrapper_script = format!(
         r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
 export PATH="${{PATH}}:/usr/local/bin"
 
-# Simple retry loop without nc dependency
+# Start agent with timeout to match simulation duration (600 seconds = 10 minutes)
+# Give 30 seconds grace period before simulation end
+timeout 570 {} &
+AGENT_PID=$!
+
+# Wait for wallet RPC to be ready
 for i in {{1..30}}; do
     if curl -s --max-time 1 http://{}:{} >/dev/null 2>&1; then
-        echo "Wallet RPC ready, starting agent..."
-        {} 2>&1
-        exit $?
+        echo "Wallet RPC ready"
+        break
     fi
     echo "Waiting for wallet RPC... (attempt $i/30)"
     sleep 3
 done
 
-echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
-{} 2>&1
+# Wait for agent to complete or timeout
+wait $AGENT_PID
+exit $?
 "#,
         current_dir,
         current_dir,
-        agent_ip,
-        wallet_rpc_port,
         python_cmd,
-        python_cmd
+        agent_ip,
+        wallet_rpc_port
     );
 
     // Write wrapper script to a temporary file and execute it

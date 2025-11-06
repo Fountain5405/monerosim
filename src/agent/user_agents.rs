@@ -218,39 +218,7 @@ pub fn process_user_agents(
                 }
             };
 
-            // Wallet start time: coordinate with daemon start time (reduced delay)
-            let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Dynamic mode: start wallet 2 seconds after daemon (reduced from 5s)
-                if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
-                    format!("{}s", daemon_seconds + 2)
-                } else {
-                    format!("{}s", 2 + i)
-                }
-            } else {
-                // Other modes: start wallet 2 seconds after daemon (reduced from 5s)
-                if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
-                    format!("{}s", daemon_seconds + 2)
-                } else {
-                    format!("{}s", 2 + i)
-                }
-            };
 
-            // Agent start time: ensure agents start after their wallet services are ready (reduced delay)
-            let agent_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Dynamic mode: start agent 3 seconds after wallet (reduced from 10s)
-                if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
-                    format!("{}s", wallet_seconds + 3)
-                } else {
-                    format!("{}s", 5 + i)
-                }
-            } else {
-                // Other modes: start agent 3 seconds after wallet (reduced from 10s)
-                if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
-                    format!("{}s", wallet_seconds + 3)
-                } else {
-                    format!("{}s", 5 + i)
-                }
-            };
 
             // Use consistent naming for all user agents
             let agent_id = format!("user{:03}", i);
@@ -295,25 +263,47 @@ pub fn process_user_agents(
                 })
                 .unwrap_or_else(|| format!("{}/mining_shim/libminingshim.so", current_dir));
 
-            // Add daemon process ONLY for non-miners
-            // Miners have their daemon launched by miner_init.sh with mining shim preloaded
-            if !is_miner {
-                add_standard_daemon_process(
-                    &mut processes,
-                    &agent_id,
-                    &agent_ip,
-                    agent_rpc_port,
-                    &monero_environment,
-                    i,
-                    &start_time_daemon,
-                );
-            }
+            // Calculate timing sequence: agent_start_time -> daemon_start_time -> wallet_start_time
 
-            // Note: The new daemon process functions handle all the daemon configuration,
-            // environment setup, and process creation internally. The peer connections
-            // and other daemon arguments are now handled within the daemon module.
+            // Agent start time: base timing for this agent
+            let agent_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
+                // Dynamic mode: start agent 3 seconds after wallet (reduced from 10s)
+                format!("{}s", 5 + i)
+            } else {
+                // Other modes: start agent 3 seconds after wallet (reduced from 10s)
+                format!("{}s", 5 + i)
+            };
 
-            // Add wallet process if wallet is specified
+            // Daemon start time: for miners, daemon starts after miner_init.sh completes
+            let daemon_start_time = if is_miner {
+                // Daemon starts 1 second after miner_init.sh completes
+                if let Ok(init_seconds) = parse_duration_to_seconds(&agent_start_time) {
+                    format!("{}s", init_seconds + 2)
+                } else {
+                    format!("{}s", 7 + i)
+                }
+            } else {
+                start_time_daemon
+            };
+
+            // Wallet start time: start wallet 3 seconds after daemon to ensure daemon is ready
+            let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
+                // Dynamic mode: start wallet 3 seconds after daemon to ensure daemon is ready
+                if let Ok(daemon_seconds) = parse_duration_to_seconds(&daemon_start_time) {
+                    format!("{}s", daemon_seconds + 3)
+                } else {
+                    format!("{}s", 3 + i)
+                }
+            } else {
+                // Other modes: start wallet 3 seconds after daemon to ensure daemon is ready
+                if let Ok(daemon_seconds) = parse_duration_to_seconds(&daemon_start_time) {
+                    format!("{}s", daemon_seconds + 3)
+                } else {
+                    format!("{}s", 3 + i)
+                }
+            };
+
+            // Add wallet process first for miners (needed for miner_init.sh)
             if user_agent_config.wallet.is_some() {
                 add_wallet_process(
                     &mut processes,
@@ -328,7 +318,7 @@ pub fn process_user_agents(
                 );
             }
 
-            // Add miner initialization process for miners
+            // Add miner initialization process for miners (runs after wallet is ready)
             if is_miner {
                 add_miner_init_process(
                     &mut processes,
@@ -340,6 +330,34 @@ pub fn process_user_agents(
                     &agent_start_time,
                 );
             }
+
+            // Miners get mining shim preloaded via LD_PRELOAD
+            if is_miner {
+                add_miner_daemon_process(
+                    &mut processes,
+                    &agent_id,
+                    &agent_ip,
+                    agent_rpc_port,
+                    &monero_environment,
+                    mining_shim_path.as_deref().unwrap_or(""),
+                    i,
+                    &daemon_start_time,
+                );
+            } else {
+                add_standard_daemon_process(
+                    &mut processes,
+                    &agent_id,
+                    &agent_ip,
+                    agent_rpc_port,
+                    &monero_environment,
+                    i,
+                    &daemon_start_time,
+                );
+            }
+
+            // Note: The new daemon process functions handle all the daemon configuration,
+            // environment setup, and process creation internally. The peer connections
+            // and other daemon arguments are now handled within the daemon module.
 
             // Add user agent script if specified
             let user_script = user_agent_config.user_script.clone().unwrap_or_else(|| {

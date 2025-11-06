@@ -10,7 +10,7 @@ general:
   mining_shim_path: "./mining_shim/libminingshim.so"
 
 network:
-  path: "gml_processing/test_5000_nodes_caida_undirected_selfloops.gml"
+  path: "60_nodes_caida_undirected_selfloops.gml"
   peer_mode: "Dynamic"
 
 agents:

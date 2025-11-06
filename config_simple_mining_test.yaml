@@ -1,0 +1,41 @@
+# Simple mining shim test configuration
+# 2 agents: 1 miner, 1 regular user
+# Short simulation for quick testing
+
+general:
+  stop_time: "600s"  # 10 minutes
+  fresh_blockchain: true
+  log_level: info
+  simulation_seed: 42
+  mining_shim_path: "./mining_shim/libminingshim.so"
+
+network:
+  type: "1_gbit_switch"  # Simple switch network for testing
+  peer_mode: "Dynamic"
+
+agents:
+  user_agents:
+    # Miner 1 - 100% hashrate (only miner)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      attributes:
+        is_miner: "true"
+        hashrate: "100"
+        can_receive_distributions: true
+
+    # Regular user
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        transaction_interval: "30"
+        min_transaction_amount: "0.1"
+        max_transaction_amount: "1.0"
+        can_receive_distributions: true
+
+  simulation_monitor:
+    script: "agents.simulation_monitor"
+    poll_interval: 60  # 1 minute
+    status_file: "shadow.data/monerosim_monitor.log"
+    enable_alerts: true
+    detailed_logging: true

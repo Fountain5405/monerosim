@@ -52,21 +52,59 @@ pub fn add_wallet_process(
         start_time: cleanup_start_time, // Start earlier to ensure cleanup completes
     });
 
-    // Launch wallet RPC directly - it will create wallets on demand
-    let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
+    // Create wallet RPC wrapper script with timeout mechanism
+    let wallet_wrapper_content = format!(
+        r#"#!/bin/bash
+# Wallet RPC wrapper with timeout for Shadow simulation
+cd /home/lever65/monerosim_dev/monerosim
 
-    let wallet_args = format!(
-        "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert",
-        agent_ip, agent_rpc_port, wallet_rpc_port, agent_ip, agent_id
+# Start wallet RPC in background
+/usr/local/bin/monero-wallet-rpc \
+  --daemon-address=http://{}:{} \
+  --rpc-bind-port={} \
+  --rpc-bind-ip={} \
+  --disable-rpc-login \
+  --trusted-daemon \
+  --log-level=1 \
+  --wallet-dir=/tmp/monerosim_shared/{}_wallet \
+  --non-interactive \
+  --confirm-external-bind \
+  --allow-mismatched-daemon-version \
+  --max-concurrency=1 \
+  --daemon-ssl-allow-any-cert &
+WALLET_PID=$!
+
+# Wait for wallet to be ready or timeout
+for i in {{1..60}}; do
+  if curl -s --max-time 1 http://{}:{} >/dev/null 2>&1; then
+    echo "Wallet RPC ready"
+    break
+  fi
+  sleep 1
+done
+
+# Keep wallet running until simulation end (Shadow will kill the process)
+wait $WALLET_PID
+"#,
+        agent_ip, agent_rpc_port, wallet_rpc_port, agent_ip, agent_id, agent_ip, wallet_rpc_port
     );
 
+    // Create the wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c '{} {}'",
-            wallet_path, wallet_args
+            "-c 'cat > /tmp/wallet_wrapper_{}.sh << EOF\n{}\nEOF'",
+            agent_id, wallet_wrapper_content
         ),
         environment: environment.clone(),
-        start_time: wallet_start_time.to_string(), // Use the calculated wallet start time
+        start_time: format!("{}s", parse_duration_to_seconds(wallet_start_time).unwrap_or(0) - 1),
+    });
+
+    // Make it executable and run it
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'chmod +x /tmp/wallet_wrapper_{}.sh && /tmp/wallet_wrapper_{}.sh'", agent_id, agent_id),
+        environment: environment.clone(),
+        start_time: wallet_start_time.to_string(),
     });
 }

@@ -163,7 +163,7 @@ void load_configuration(void) {
 // Shadow detection
 bool is_running_under_shadow(void) {
     const char* ld_preload = getenv("LD_PRELOAD");
-    return ld_preload && strstr(ld_preload, "libshadow");
+    return ld_preload && (strstr(ld_preload, "libshadow") || strstr(ld_preload, "libminingshim"));
 }
 
 // Environment validation
