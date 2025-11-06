@@ -22,6 +22,11 @@
 //! - IP allocation conflict detection
 //! - Agent configuration verification
 //!
+//! **Wallet Generation** (`wallet.rs`):
+//! - Deterministic wallet address generation for simulation
+//! - Monero address format validation and encoding
+//! - Seed-based address derivation for reproducibility
+//!
 //! ## Usage Patterns
 //!
 //! These utilities are designed to be:
@@ -62,7 +67,9 @@
 pub mod duration;
 pub mod ip_utils;
 pub mod validation;
+pub mod wallet;
 
 // Re-export commonly used utility functions
 pub use duration::parse_duration_to_seconds;
 pub use validation::{validate_gml_ip_consistency, validate_topology_config};
+pub use wallet::generate_deterministic_wallet_address;

@@ -91,3 +91,5 @@ pub mod pure_scripts;
 pub use types::ProcessType;
 pub use wallet::add_wallet_process;
 pub use agent_scripts::add_user_agent_process;
+pub use daemon::{add_miner_daemon_process, add_standard_daemon_process};
+pub use agent_scripts::add_miner_init_process;

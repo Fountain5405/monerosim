@@ -11,7 +11,7 @@ use crate::shadow::ShadowHost;
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::process::{add_wallet_process, add_user_agent_process};
+use crate::process::{add_wallet_process, add_user_agent_process, add_miner_daemon_process, add_standard_daemon_process, add_miner_init_process};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -275,134 +275,43 @@ pub fn process_user_agents(
 
             let mut processes = Vec::new();
 
-            // Add Monero daemon process with appropriate connections
-            let mut daemon_args_base = vec![
-                format!("--data-dir=/tmp/monero-{}", agent_id),
-                "--log-file=/dev/stdout".to_string(),
-                "--log-level=1".to_string(),
-                "--simulation".to_string(),
-                "--disable-dns-checkpoints".to_string(),
-                "--prep-blocks-threads=1".to_string(),
-                "--max-concurrency=1".to_string(),
-                "--no-zmq".to_string(),
-                "--db-sync-mode=safe".to_string(),
-                "--non-interactive".to_string(),
-                "--max-connections-per-ip=50".to_string(),
-                "--limit-rate-up=1024".to_string(),
-                "--limit-rate-down=1024".to_string(),
-                "--block-sync-size=1".to_string(),
-                format!("--rpc-bind-ip={}", agent_ip),
-                format!("--rpc-bind-port={}", agent_rpc_port),
-                "--confirm-external-bind".to_string(),
-                "--disable-rpc-ban".to_string(),
-                "--rpc-access-control-origins=*".to_string(),
-                "--regtest".to_string(),
-                format!("--p2p-bind-ip={}", agent_ip),
-                format!("--p2p-bind-port={}", p2p_port),
-                //"--fixed-difficulty=200".to_string(),
-                "--allow-local-ip".to_string(),
-            ];
-
-            // Create mining shim environment for miners
-            let mut miner_environment = monero_environment.clone();
-            if is_miner {
-                // Add mining shim environment variables
-                miner_environment.insert("MINER_HASHRATE".to_string(),
-                    user_agent_config.attributes.as_ref()
-                        .and_then(|attrs| attrs.get("hashrate"))
-                        .map_or("10", |v| v).to_string());
-                miner_environment.insert("AGENT_ID".to_string(), i.to_string());
-                miner_environment.insert("SIMULATION_SEED".to_string(), simulation_seed.to_string());
-                miner_environment.insert("MININGSHIM_LOG_LEVEL".to_string(), "info".to_string());
-            }
-
-            // Only disable built-in seed nodes for miners
-            if is_miner {
-                daemon_args_base.push("--disable-seed-nodes".to_string());
-            }
-
-            // Add initial fixed connections and seed nodes
-            if is_miner {
-                // Miners connect to other miners
-                if let Some(conns) = miner_connections.get(&agent_id) {
-                    for conn in conns {
-                        daemon_args_base.push(conn.clone());
-                    }
-                }
-            } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
-                // Seed nodes connect to miners and other seeds
-                if let Some(conns) = seed_connections.get(&agent_id) {
-                    for conn in conns {
-                        daemon_args_base.push(conn.clone());
-                    }
-                }
+            // Extract hashrate for miners
+            let hashrate = if is_miner {
+                user_agent_config.attributes.as_ref()
+                    .and_then(|attrs| attrs.get("hashrate"))
+                    .map_or("10", |v| v).to_string()
             } else {
-                // Regular agents will get peer connections based on peer_mode below
-            }
-
-            // For regular agents, add peer connections based on peer mode
-            let is_actual_seed_node = seed_nodes.iter().any(|(idx, _, _, _, _, _)| *idx == i);
-            if !is_miner && !is_actual_seed_node {
-                // Add seed node connections for all modes
-                for seed_node in seed_agents.iter() {
-                    if !seed_node.starts_with(&format!("{}:", agent_ip)) {
-                        let peer_arg = if matches!(peer_mode, PeerMode::Dynamic) {
-                            format!("--seed-node={}", seed_node)
-                        } else {
-                            format!("--add-priority-node={}", seed_node)
-                        };
-                        daemon_args_base.push(peer_arg);
-                    }
-                }
-
-                // For Hybrid mode, also add topology-based connections
-                if matches!(peer_mode, PeerMode::Hybrid) {
-                    if let Some(topo) = topology {
-                        let topology_connections = generate_topology_connections(topo, i, &all_agent_ips, &agent_ip);
-                        for conn in topology_connections {
-                            daemon_args_base.push(conn);
-                        }
-                    }
-                }
-            }
-
-            let daemon_args = daemon_args_base.join(" ");
-
-            // Use mining shim environment for miners, regular environment for others
-            let process_environment = if is_miner {
-                miner_environment.clone()
-            } else {
-                monero_environment.clone()
+                "10".to_string() // Default, not used for non-miners
             };
 
-            // Inject LD_PRELOAD for miners
-            let mut final_process_environment = process_environment.clone();
-            if is_miner {
-                // Convert relative path to absolute path for LD_PRELOAD
-                let shim_path = mining_shim_path.as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or("./mining_shim/libminingshim.so");
-                
-                // Convert to absolute path if relative
-                let absolute_shim_path = if shim_path.starts_with('/') {
-                    shim_path.to_string()
-                } else {
-                    // Resolve relative path from current_dir
-                    format!("{}/{}", current_dir, shim_path)
-                };
-                
-                final_process_environment.insert("LD_PRELOAD".to_string(), absolute_shim_path);
+            // Determine mining shim path for miners
+            let mining_shim_path_str = mining_shim_path.as_ref()
+                .map(|s| {
+                    if s.starts_with('/') {
+                        s.clone()
+                    } else {
+                        format!("{}/{}", current_dir, s)
+                    }
+                })
+                .unwrap_or_else(|| format!("{}/mining_shim/libminingshim.so", current_dir));
+
+            // Add daemon process ONLY for non-miners
+            // Miners have their daemon launched by miner_init.sh with mining shim preloaded
+            if !is_miner {
+                add_standard_daemon_process(
+                    &mut processes,
+                    &agent_id,
+                    &agent_ip,
+                    agent_rpc_port,
+                    &monero_environment,
+                    i,
+                    &start_time_daemon,
+                );
             }
 
-            processes.push(crate::shadow::ShadowProcess {
-                path: "/bin/bash".to_string(),
-                args: format!(
-                    "-c 'rm -rf /tmp/monero-{} && {} {}'",
-                    agent_id, monerod_path, daemon_args
-                ),
-                environment: final_process_environment,
-                start_time: start_time_daemon,
-            });
+            // Note: The new daemon process functions handle all the daemon configuration,
+            // environment setup, and process creation internally. The peer connections
+            // and other daemon arguments are now handled within the daemon module.
 
             // Add wallet process if wallet is specified
             if user_agent_config.wallet.is_some() {
@@ -416,6 +325,19 @@ pub fn process_user_agents(
                     environment,
                     i,
                     &wallet_start_time,
+                );
+            }
+
+            // Add miner initialization process for miners
+            if is_miner {
+                add_miner_init_process(
+                    &mut processes,
+                    &agent_id,
+                    &agent_ip,
+                    wallet_rpc_port,
+                    agent_rpc_port,
+                    &monero_environment,
+                    &agent_start_time,
                 );
             }
 

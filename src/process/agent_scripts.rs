@@ -111,7 +111,7 @@ echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
     // Process 1: Create wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
+        args: format!("-c 'cat > {} << EOF\n{}EOF'", script_path, wrapper_script),
         environment: environment.clone(),
         start_time: script_creation_time,
     });
@@ -122,5 +122,47 @@ echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
         args: script_path.clone(),
         environment: environment.clone(),
         start_time: script_execution_time,
+    });
+}
+
+/// Add a miner initialization process to processes list
+pub fn add_miner_init_process(
+    processes: &mut Vec<ShadowProcess>,
+    agent_id: &str,
+    agent_ip: &str,
+    wallet_rpc_port: u16,
+    daemon_rpc_port: u16,
+    environment: &HashMap<String, String>,
+    start_time: &str,
+) {
+    let miner_init_script = format!(
+        r#"#!/bin/bash
+cd /home/lever65/monerosim_dev/monerosim
+export PYTHONPATH="${{PYTHONPATH}}:/home/lever65/monerosim_dev/monerosim"
+export PATH="${{PATH}}:/usr/local/bin"
+
+# Run miner initialization script
+./agents/miner_init.sh {} {} {} {} MINER_WALLET_ADDRESS 2>&1
+"#,
+        agent_id, agent_ip, wallet_rpc_port, daemon_rpc_port
+    );
+
+    // Write miner init script to a temporary file
+    let script_path = format!("/tmp/miner_init_{}.sh", agent_id);
+
+    // Process 1: Create miner init script
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'cat > {} << EOF\n{}\nEOF'", script_path, miner_init_script),
+        environment: environment.clone(),
+        start_time: start_time.to_string(),
+    });
+
+    // Process 2: Make script executable and run it
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'chmod +x {} && {}'", script_path, script_path),
+        environment: environment.clone(),
+        start_time: format!("{}s", parse_duration_to_seconds(start_time).unwrap_or(0) + 1),
     });
 }

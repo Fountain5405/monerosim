@@ -16,10 +16,20 @@ The Mining Shim is a C shared library (`libminingshim.so`) that intercepts Moner
 
 ### How It Works
 
-The mining shim uses `LD_PRELOAD` to intercept these Monero daemon functions:
-- `start_mining()` - Begins probabilistic mining loop
-- `stop_mining()` - Stops mining operations
-- `handle_new_block_notify()` - Handles peer block notifications
+The mining shim uses Monero's built-in hook system to register mining callbacks. This replaces the previous LD_PRELOAD approach with a clean, official API.
+
+**Hook Registration Process:**
+1. Mining shim library loads and registers hook functions with monerod
+2. Monerod calls registered hooks at key mining events
+3. Shim implements probabilistic mining using exponential distribution
+4. Deterministic results achieved through seeded PRNG
+
+**Key Hook Points:**
+- `mining_start_hook` - Begins probabilistic mining loop
+- `mining_stop_hook` - Stops mining operations
+- `find_nonce_hook` - Generates deterministic nonces
+- `block_found_hook` - Handles successful block discovery
+- `difficulty_update_hook` - Responds to network difficulty changes
 
 ### Probabilistic Mining Model
 
@@ -33,14 +43,25 @@ Where:
 
 ## Quick Start
 
-### 1. Build and Install
+### 1. Build Monerod with Mining Hooks
+
+First, ensure monerod is built with mining hooks enabled:
+
+```bash
+# In monero-shadow repository
+cd builds/A/monero/build
+cmake -DMONERO_MINING_HOOKS_ENABLED=ON ..
+make -j$(nproc)
+```
+
+### 2. Build and Install Mining Shim
 
 ```bash
 # Build the mining shim
 cd mining_shim
 make clean && make
 
-# Install system-wide
+# Install system-wide (optional)
 sudo make install
 ```
 
@@ -265,10 +286,28 @@ watch -n 10 'cat /tmp/miningshim_metrics_agent1.json | jq .blocks_found'
 - **Time Advancement**: Uses `pthread_cond_timedwait` for efficient simulation
 - **No CPU Waste**: Mining calculations don't consume real CPU time
 - **Deterministic**: Same seed always produces identical results
+- **Hook-Based**: Official monerod API integration (no LD_PRELOAD required)
 
 ## Troubleshooting
 
 ### Common Issues
+
+#### Mining Hooks Not Enabled
+
+**Symptoms**: Mining doesn't start, no shim logs, "hooks not registered" errors
+**Solution**:
+```bash
+# Verify monerod was built with hooks enabled
+nm -D /usr/local/bin/monerod | grep monero_register_mining
+
+# Check MONERO_MINING_HOOKS_ENABLED environment variable
+echo $MONERO_MINING_HOOKS_ENABLED
+
+# Rebuild monerod with hooks if missing
+cd builds/A/monero/build
+cmake -DMONERO_MINING_HOOKS_ENABLED=ON ..
+make -j$(nproc)
+```
 
 #### Mining Shim Not Loaded
 
@@ -278,8 +317,11 @@ watch -n 10 'cat /tmp/miningshim_metrics_agent1.json | jq .blocks_found'
 # Verify library exists
 ls -la ./mining_shim/libminingshim.so
 
-# Check LD_PRELOAD in Shadow config
-grep "LD_PRELOAD" shadow_output/shadow_agents.yaml
+# Check library loads correctly
+ldd ./mining_shim/libminingshim.so
+
+# Verify hook registration functions are found
+nm -D ./mining_shim/libminingshim.so | grep hook
 ```
 
 #### Missing Environment Variables
@@ -325,23 +367,32 @@ environment:
 
 ### Verification Steps
 
-1. **Check Library Loading**:
-   ```bash
-   # Verify symbol interception
-   nm -D ./mining_shim/libminingshim.so | grep start_mining
-   ```
+1. **Check Hook Registration**:
+    ```bash
+    # Verify monerod has hook functions exported
+    nm -D /usr/local/bin/monerod | grep monero_register_mining
+
+    # Check mining shim library loads hook functions
+    nm -D ./mining_shim/libminingshim.so | grep hook
+    ```
 
 2. **Validate Configuration**:
-   ```bash
-   # Check Shadow YAML contains shim
-   grep -A 5 "LD_PRELOAD" shadow_output/shadow_agents.yaml
-   ```
+    ```bash
+    # Check Shadow YAML contains mining shim library
+    grep -A 5 "mining_shim" shadow_output/shadow_agents.yaml
+
+    # Verify environment variables are set
+    grep -A 10 "environment:" shadow_output/shadow_agents.yaml
+    ```
 
 3. **Monitor Initialization**:
-   ```bash
-   # Watch for initialization messages
-   tail -f /tmp/miningshim_agent1.log | grep "initialized"
-   ```
+    ```bash
+    # Watch for hook registration messages
+    tail -f /tmp/miningshim_agent1.log | grep "hooks registered"
+
+    # Check for mining start confirmation
+    tail -f /tmp/miningshim_agent1.log | grep "Mining start intercepted"
+    ```
 
 ## Best Practices
 
@@ -368,47 +419,58 @@ environment:
 
 ### Key Differences
 
-| Aspect | Block Controller | Mining Shim |
-|--------|------------------|-------------|
-| Architecture | Python agent coordination | C library interception |
+| Aspect | Block Controller | Mining Shim (Hook-Based) |
+|--------|------------------|--------------------------|
+| Architecture | Python agent coordination | Official monerod hook API |
 | Performance | Python overhead | Native C performance |
 | Determinism | Limited | Full determinism |
 | Scalability | Limited to small networks | Scales to 100+ miners |
 | Maintenance | Complex Python logic | Simple mathematical model |
+| Integration | External Python process | Direct monerod integration |
+| Reliability | Process communication overhead | Direct function calls |
 
 ### Migration Steps
 
-1. **Remove Block Controller**:
-   ```yaml
-   # Remove this section
-   agents:
-     block_controller:
-       script: "agents.block_controller"
-   ```
+1. **Build Monerod with Hooks**:
+    ```bash
+    # Ensure monerod supports mining hooks
+    cd builds/A/monero/build
+    cmake -DMONERO_MINING_HOOKS_ENABLED=ON ..
+    make -j$(nproc)
+    ```
 
-2. **Add Mining Shim**:
-   ```yaml
-   # Add mining_shim_path to general
-   general:
-     mining_shim_path: "./mining_shim/libminingshim.so"
-     simulation_seed: 42  # Required for determinism
-   ```
+2. **Remove Block Controller**:
+    ```yaml
+    # Remove this section
+    agents:
+      block_controller:
+        script: "agents.block_controller"
+    ```
 
-3. **Update Miner Configuration**:
-   ```yaml
-   agents:
-     user_agents:
-       - daemon: "monerod"
-         wallet: "monero-wallet-rpc"
-         attributes:
-           is_miner: true
-           hashrate: "25000000"  # Add hashrate attribute
-   ```
+3. **Add Mining Shim**:
+    ```yaml
+    # Add mining_shim_path to general
+    general:
+      mining_shim_path: "./mining_shim/libminingshim.so"
+      simulation_seed: 42  # Required for determinism
+    ```
 
-4. **Test Migration**:
-   - Run short simulation (1-2 minutes)
-   - Verify blocks are being mined
-   - Check deterministic behavior with same seed
+4. **Update Miner Configuration**:
+    ```yaml
+    agents:
+      user_agents:
+        - daemon: "monerod"
+          wallet: "monero-wallet-rpc"
+          attributes:
+            is_miner: true
+            hashrate: "25000000"  # Add hashrate attribute
+    ```
+
+5. **Test Migration**:
+    - Run short simulation (1-2 minutes)
+    - Verify blocks are being mined
+    - Check deterministic behavior with same seed
+    - Look for "hooks registered successfully" in logs
 
 ## Advanced Usage
 
@@ -500,5 +562,10 @@ For issues or questions:
 
 ## Version History
 
-- **v1.0** (2025-11-03): Initial release with core mining interception
-- Features: Probabilistic mining, deterministic PRNG, Shadow integration, comprehensive logging
+- **v2.0** (2025-11-04): Hook-based architecture migration
+  - Replaced LD_PRELOAD with official monerod mining hooks
+  - Improved reliability and performance
+  - Better integration with Shadow simulator
+  - Enhanced deterministic behavior
+- **v1.0** (2025-11-03): Initial release with LD_PRELOAD interception
+  - Features: Probabilistic mining, deterministic PRNG, Shadow integration, comprehensive logging

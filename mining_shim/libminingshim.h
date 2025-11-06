@@ -6,18 +6,17 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-// Define drand48_data structure for systems that don't have it
-#ifndef __drand48_data_defined
-struct drand48_data {
+// Include stdlib for drand48_data
+#include <stdlib.h>
+
+// Define our own drand48_data structure to avoid incomplete type issues
+typedef struct {
     unsigned short int __x[3];    /* Current state.  */
     unsigned short int __old_x[3]; /* Old state.  */
     unsigned short int __c;       /* Additive const. in congruential formula.  */
     unsigned short int __init;    /* Flag for initializing.  */
     unsigned long long int __a;   /* Factor in congruential formula.  */
-};
-typedef struct drand48_data drand48_data_t;
-#define __drand48_data_defined 1
-#endif
+} drand48_data_t;
 
 // Log levels
 typedef enum log_level {
@@ -119,11 +118,76 @@ void export_metrics_to_file(const char* filepath);
 void handle_mining_error(const char* error_context);
 void* get_monerod_function(const char* symbol_name);
 
-// Intercepted functions (these will be called by monerod)
-void start_mining(void* miner_context, const char* wallet_address,
-                  uint64_t threads_count, bool background_mining);
-void stop_mining(void* miner_context);
-void handle_new_block_notify(void* blockchain_context, const block_info_t* new_block);
+// Hook function types (matching mining_hooks.h)
+typedef bool (*mining_start_hook_t)(
+    void* miner_instance,
+    const void* wallet_address,
+    uint64_t threads_count,
+    bool background_mining,
+    bool ignore_battery
+);
+
+typedef bool (*mining_stop_hook_t)(void* miner_instance);
+
+typedef bool (*find_nonce_hook_t)(
+    void* miner_instance,
+    void* block_ptr,
+    uint64_t difficulty,
+    uint64_t height,
+    const void* seed_hash,
+    uint32_t* nonce_out
+);
+
+typedef bool (*block_found_hook_t)(
+    void* miner_instance,
+    void* block_ptr,
+    uint64_t height
+);
+
+typedef void (*difficulty_update_hook_t)(
+    void* miner_instance,
+    uint64_t new_difficulty,
+    uint64_t height
+);
+
+// Hook registration function types
+typedef void (*register_mining_start_hook_t)(mining_start_hook_t hook);
+typedef void (*register_mining_stop_hook_t)(mining_stop_hook_t hook);
+typedef void (*register_find_nonce_hook_t)(find_nonce_hook_t hook);
+typedef void (*register_block_found_hook_t)(block_found_hook_t hook);
+typedef void (*register_difficulty_update_hook_t)(difficulty_update_hook_t hook);
+
+// Hook implementations (called by monerod)
+bool mining_shim_start_hook(
+    void* miner_instance,
+    const void* wallet_address,
+    uint64_t threads_count,
+    bool background_mining,
+    bool ignore_battery
+);
+
+bool mining_shim_stop_hook(void* miner_instance);
+
+bool mining_shim_find_nonce_hook(
+    void* miner_instance,
+    void* block_ptr,
+    uint64_t difficulty,
+    uint64_t height,
+    const void* seed_hash,
+    uint32_t* nonce_out
+);
+
+bool mining_shim_block_found_hook(
+    void* miner_instance,
+    void* block_ptr,
+    uint64_t height
+);
+
+void mining_shim_difficulty_update_hook(
+    void* miner_instance,
+    uint64_t new_difficulty,
+    uint64_t height
+);
 
 // Global state declarations (defined in .c file)
 extern shim_config_t g_config;

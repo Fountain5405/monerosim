@@ -8,15 +8,47 @@ This guide provides technical details for developers integrating the Mining Shim
 
 ### How the Mining Shim Works
 
-The mining shim (`libminingshim.so`) uses `LD_PRELOAD` to intercept these key Monero functions:
+The mining shim (`libminingshim.so`) uses Monero's built-in hook system to register mining callbacks. This replaces the previous LD_PRELOAD approach with a clean, official API.
 
+**Hook Registration Process:**
+1. Mining shim library loads and registers hook functions with monerod
+2. Monerod calls registered hooks at key mining events
+3. Shim implements probabilistic mining using exponential distribution
+4. Deterministic results achieved through seeded PRNG
+
+**Key Hook Points:**
 ```c
-// Core mining functions intercepted
-void start_mining(void* miner_context, const char* wallet_address,
-                  uint64_t threads_count, bool background_mining);
-void stop_mining(void* miner_context);
-void handle_new_block_notify(void* blockchain_context,
-                             const block_info_t* new_block);
+// Hook function types
+typedef bool (*mining_start_hook_t)(
+    void* miner_instance,
+    const void* wallet_address,
+    uint64_t threads_count,
+    bool background_mining,
+    bool ignore_battery
+);
+
+typedef bool (*mining_stop_hook_t)(void* miner_instance);
+
+typedef bool (*find_nonce_hook_t)(
+    void* miner_instance,
+    void* block_ptr,
+    uint64_t difficulty,
+    uint64_t height,
+    const void* seed_hash,
+    uint32_t* nonce_out
+);
+
+typedef bool (*block_found_hook_t)(
+    void* miner_instance,
+    void* block_ptr,
+    uint64_t height
+);
+
+typedef void (*difficulty_update_hook_t)(
+    void* miner_instance,
+    uint64_t new_difficulty,
+    uint64_t height
+);
 ```
 
 ### Integration Points in Monerosim
@@ -24,8 +56,9 @@ void handle_new_block_notify(void* blockchain_context,
 The mining shim integrates with Monerosim at these key points:
 
 1. **Configuration Generation**: Rust code sets environment variables for each miner
-2. **Shadow YAML Generation**: Adds `LD_PRELOAD` and environment variables to miner processes
-3. **Runtime Execution**: Library loads and intercepts mining calls during simulation
+2. **Shadow YAML Generation**: Adds mining shim library and environment variables to miner processes
+3. **Runtime Execution**: Library loads, registers hooks with monerod, and handles mining events during simulation
+4. **Hook Registration**: Mining shim registers callback functions with monerod's hook system
 
 ## Configuration Integration
 
@@ -113,13 +146,16 @@ hosts:
       - path: "/usr/local/bin/monerod"
         args: "--data-dir /tmp/miner001 --start-mining <wallet_address>"
         environment:
-          # Mining shim injection
+          # Mining shim library (hook-based approach)
           LD_PRELOAD: "./mining_shim/libminingshim.so"
 
           # Required shim configuration
           MINER_HASHRATE: "25000000"
           AGENT_ID: "1"
           SIMULATION_SEED: "42"
+
+          # Enable mining hooks in monerod
+          MONERO_MINING_HOOKS_ENABLED: "1"
 
           # Optional shim configuration
           MININGSHIM_LOG_LEVEL: "INFO"
@@ -135,7 +171,7 @@ The mining shim should be built as part of the Monerosim setup:
 ```makefile
 # In mining_shim/Makefile
 CC = gcc
-CFLAGS = -Wall -Wextra -fPIC -O2 -DNDEBUG
+CFLAGS = -Wall -Wextra -fPIC -O2 -DNDEBUG -DMONERO_MINING_HOOKS_ENABLED
 LDFLAGS = -shared
 LIBS = -lpthread -lm -ldl
 
@@ -154,6 +190,11 @@ install: $(TARGET)
 clean:
 	rm -f $(TARGET)
 ```
+
+**Key Build Flags:**
+- `-DMONERO_MINING_HOOKS_ENABLED`: Enables hook-based compilation
+- `-fPIC`: Required for shared library
+- `-shared`: Creates shared object file
 
 ### Setup Script Integration
 
@@ -253,6 +294,13 @@ void __attribute__((constructor)) shim_initialize(void) {
         exit(1);
     }
 
+    // Validate monerod has mining hooks enabled
+    const char* hooks_enabled = getenv("MONERO_MINING_HOOKS_ENABLED");
+    if (!hooks_enabled || strcmp(hooks_enabled, "1") != 0) {
+        fprintf(stderr, "[MININGSHIM ERROR] MONERO_MINING_HOOKS_ENABLED not set to 1\n");
+        exit(1);
+    }
+
     // Validate running under Shadow
     if (!is_running_under_shadow()) {
         fprintf(stderr, "[MININGSHIM WARNING] Not running under Shadow simulator\n");
@@ -265,7 +313,10 @@ void __attribute__((constructor)) shim_initialize(void) {
     initialize_metrics();
     initialize_mining_state();
 
-    miningshim_log(LOG_INFO, "Mining shim initialized successfully");
+    // Register mining hooks with monerod
+    register_mining_hooks();
+
+    miningshim_log(LOG_INFO, "Mining shim initialized and hooks registered successfully");
 }
 ```
 

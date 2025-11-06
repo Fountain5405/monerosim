@@ -416,7 +416,7 @@ cd "$MONERO_SHADOW_DIR"
 
 # Configure with CMake using Shadow compatibility flags
 print_status "Configuring Monero with Shadow compatibility..."
-cmake -DSHADOW_BUILD=ON -DCMAKE_BUILD_TYPE=Release .
+cmake -DSHADOW_BUILD=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-rdynamic" .
 
 if [[ $? -ne 0 ]]; then
     print_error "Failed to configure Monero with CMake"

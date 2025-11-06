@@ -14,7 +14,7 @@ use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
+use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
 use serde_yaml;
 use std::collections::HashMap;
@@ -186,6 +186,32 @@ pub fn generate_agent_shadow_config(
     monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), "20".to_string());
 
+    // Mining shim environment variables (global for all miner processes)
+    if let Some(mining_shim_path) = &config.general.mining_shim_path {
+        // Resolve mining shim library path (handle both relative and absolute paths)
+        let resolved_mining_shim_path = if mining_shim_path.starts_with('/') {
+            mining_shim_path.clone()
+        } else {
+            format!("{}/{}", current_dir, mining_shim_path)
+        };
+
+        // Validate mining shim library exists
+        if !std::path::Path::new(&resolved_mining_shim_path).exists() {
+            println!("Warning: Mining shim library not found at '{}'. Mining functionality may not work correctly.", resolved_mining_shim_path);
+        } else {
+            println!("Using mining shim library: {}", resolved_mining_shim_path);
+        }
+
+        // Add global mining shim environment variables
+        // Note: LD_PRELOAD is set globally for all processes, but MINER_HASHRATE and AGENT_ID
+        // are set per-process in the daemon.rs module to avoid conflicts
+        monero_environment.insert("LD_PRELOAD".to_string(), resolved_mining_shim_path);
+        monero_environment.insert("SIMULATION_SEED".to_string(), simulation_seed.to_string());
+        monero_environment.insert("MININGSHIM_LOG_LEVEL".to_string(), "info".to_string());
+    } else {
+        println!("Warning: No mining shim path configured. Mining will use default behavior.");
+    }
+
     // Create centralized IP registry for robust IP management
     let mut ip_registry = GlobalIpRegistry::new();
 
@@ -282,26 +308,10 @@ pub fn generate_agent_shadow_config(
     )?;
 
 
-    // Calculate offset for block controller and script agents to avoid IP collisions
+    // Calculate offset for script agents to avoid IP collisions
     // Use a larger offset to ensure clear separation between agent types
     let user_agent_count = config.agents.user_agents.as_ref().map(|ua| ua.len()).unwrap_or(0);
-    let block_controller_offset = user_agent_count + 100; // Reserve 100 IPs for user agents
-    let script_offset = user_agent_count + 200; // Reserve another 100 IPs for block controller and other uses
-
-    process_block_controller(
-        &config.agents,
-        &mut hosts,
-        &mut subnet_manager,
-        &mut ip_registry,
-        &environment,
-        shared_dir_path,
-        &current_dir,
-        &config.general.stop_time,
-        gml_graph.as_ref(),
-        using_gml_topology,
-        block_controller_offset,
-        &peer_mode,
-    )?;
+    let script_offset = user_agent_count + 200; // Reserve 200 IPs for user agents and other uses
 
     process_miner_distributor(
         &config.agents,
@@ -314,7 +324,7 @@ pub fn generate_agent_shadow_config(
         &config.general.stop_time,
         gml_graph.as_ref(),
         using_gml_topology,
-        block_controller_offset + 10, // Offset from block controller
+        script_offset + 10, // Offset from script agents
         &peer_mode,
     )?;
 
@@ -387,30 +397,6 @@ pub fn generate_agent_shadow_config(
         }
     }
 
-    // Add block controller to registry
-    if config.agents.block_controller.is_some() {
-        let block_controller_id = "blockcontroller".to_string();
-
-        // Get IP from the corresponding host that was already created
-        let block_controller_ip = hosts.get(&block_controller_id)
-            .and_then(|host| host.ip_addr.clone())
-            .unwrap_or_else(|| {
-                // Fallback to geographic IP assignment for block controller
-                format!("192.168.20.{}", 10 + block_controller_offset)
-            });
-
-        let agent_info = AgentInfo {
-            id: block_controller_id,
-            ip_addr: block_controller_ip,
-            daemon: false, // Block controller does not run a daemon
-            wallet: false, // Block controller does not have a wallet
-            user_script: config.agents.block_controller.as_ref().map(|c| c.script.clone()),
-            attributes: HashMap::new(), // No specific attributes for block controller
-            wallet_rpc_port: None,
-            daemon_rpc_port: None,
-        };
-        agent_registry.agents.push(agent_info);
-    }
 
     // Add miner distributor to registry
     if config.agents.miner_distributor.is_some() {
@@ -421,7 +407,7 @@ pub fn generate_agent_shadow_config(
             .and_then(|host| host.ip_addr.clone())
             .unwrap_or_else(|| {
                 // Fallback to geographic IP assignment for miner distributor
-                format!("192.168.21.{}", 10 + block_controller_offset)
+                format!("192.168.21.{}", 10 + script_offset)
             });
 
         let agent_info = AgentInfo {
