@@ -1,0 +1,114 @@
+# Example Configuration: Autonomous Mining
+# 
+# This configuration demonstrates the new independent mining control system where
+# each miner operates autonomously using Poisson distribution for block discovery.
+# This replaces the old centralized block_controller approach.
+#
+# Key Features:
+# - Deterministic: simulation_seed ensures reproducible results across runs
+# - Autonomous: Each miner independently determines when to generate blocks
+# - Realistic: Uses Poisson distribution to model mining probability
+# - Simple: No central coordination required
+
+general:
+  stop_time: "30m"          # Simulation duration (30 minutes)
+  fresh_blockchain: true     # Start from genesis block
+  log_level: info           # Logging level: trace/debug/info/warn/error
+  
+  # REQUIRED: Global seed for deterministic mining behavior
+  # Same seed + same config = identical simulation results
+  # Change this value to get different random sequences
+  simulation_seed: 12345
+
+network:
+  type: "1_gbit_switch"     # Simple switch network for clarity
+  peer_mode: "Dynamic"       # Automatic peer discovery
+  topology: "DAG"           # Blockchain-optimized topology
+
+agents:
+  user_agents:
+    # ============================================================================
+    # MINER 1 - 60% of network hashrate
+    # ============================================================================
+    # This miner will find approximately 60% of all blocks due to higher hashrate.
+    # The mining_script enables autonomous block generation using Poisson timing.
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      
+      # NEW: Mining script for autonomous mining (required for miners)
+      # This replaces the old centralized block_controller approach
+      mining_script: "agents.autonomous_miner"
+      
+      attributes:
+        is_miner: true        # Mark as mining-enabled agent
+        hashrate: "60"        # Percentage of total network hashrate (0-100)
+        can_receive_distributions: true  # Optional: can receive funds from distributor
+    
+    # ============================================================================
+    # MINER 2 - 40% of network hashrate
+    # ============================================================================
+    # This miner will find approximately 40% of all blocks.
+    # Together, both miners' hashrates should sum to 100%.
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      
+      # Mining script enables autonomous block generation
+      mining_script: "agents.autonomous_miner"
+      
+      attributes:
+        is_miner: true
+        hashrate: "40"        # Remaining 40% of network hashrate
+        can_receive_distributions: true
+
+# ================================================================================
+# HOW IT WORKS
+# ================================================================================
+#
+# 1. Each miner runs independently in its own process
+# 2. The miner queries network difficulty via RPC
+# 3. Using its hashrate percentage, it calculates time until next block using:
+#    time = -ln(1 - random) / (hashrate × total_network_hashrate / difficulty)
+# 4. Miner sleeps for that calculated time
+# 5. Miner generates block via RPC
+# 6. Process repeats
+#
+# This creates realistic, probabilistic mining behavior without central control.
+#
+# ================================================================================
+# KEY PARAMETERS
+# ================================================================================
+#
+# simulation_seed:
+#   - Global seed for deterministic random number generation
+#   - Same seed produces identical mining behavior across runs
+#   - Change value to get different mining sequences
+#
+# mining_script:
+#   - Must be "agents.autonomous_miner" for mining agents
+#   - Enables independent block generation
+#   - No block_controller needed
+#
+# hashrate:
+#   - Percentage of total network hashrate (0-100)
+#   - All miners' hashrates should sum to 100%
+#   - Higher hashrate = finds more blocks (probabilistically)
+#
+# can_receive_distributions:
+#   - Optional attribute for miner_distributor compatibility
+#   - Set to true if you want this agent to receive distributed funds
+#   - Not required for basic mining functionality
+#
+# ================================================================================
+# MIGRATION FROM OLD FORMAT
+# ================================================================================
+#
+# If you have old configurations using block_controller, use the migration tool:
+#
+#   python scripts/migrate_mining_config.py old_config.yaml
+#
+# This will:
+# - Add simulation_seed to general section
+# - Add mining_script to each miner agent
+# - Remove the block_controller section
+# - Create backup of original file
+#

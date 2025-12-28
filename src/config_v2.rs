@@ -119,6 +119,12 @@ pub struct GeneralConfig {
     pub python_venv: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<String>,
+    #[serde(default = "default_simulation_seed")]
+    pub simulation_seed: u64,
+}
+
+fn default_simulation_seed() -> u64 {
+    12345
 }
 
 /// Agent definitions
@@ -144,6 +150,8 @@ pub struct UserAgentConfig {
     pub wallet: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_script: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mining_script: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_miner: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -270,6 +278,7 @@ impl Default for GeneralConfig {
             fresh_blockchain: Some(true),
             python_venv: None,
             log_level: Some("info".to_string()),
+            simulation_seed: default_simulation_seed(),
         }
     }
 }

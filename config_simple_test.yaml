@@ -1,42 +1,32 @@
-# Minimal configuration for IP allocation testing
-# Just 2 nodes: 1 miner and 1 regular user
-
+agents:
+  simulation_monitor:
+    detailed_logging: false
+    enable_alerts: true
+    poll_interval: 60
+    script: agents.simulation_monitor
+    status_file: shadow.data/monerosim_monitor.log
+  user_agents:
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '100'
+      is_miner: true
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '2.0'
+      min_transaction_amount: '0.5'
+      transaction_interval: '60'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
 general:
-  stop_time: "600s"  # 10 minutes
   fresh_blockchain: true
   log_level: info
-
+  stop_time: 600s
+  simulation_seed: 70542
 network:
-  type: "1_gbit_switch"  # Simple switch network for testing
-  peer_mode: "Dynamic"
-  topology: "Star"  # Simple star topology
-
-agents:
-  user_agents:
-    # Miner node - 100% hashrate
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: true
-        hashrate: "100"
-        can_receive_distributions: true
-
-    # Regular user node
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "60"
-        min_transaction_amount: "0.5"
-        max_transaction_amount: "2.0"
-        can_receive_distributions: true
-
-  block_controller:
-    script: "agents.block_controller"
-
-  simulation_monitor:
-    script: "agents.simulation_monitor"
-    poll_interval: 60  # 1 minute
-    status_file: "shadow.data/monerosim_monitor.log"
-    enable_alerts: true
-    detailed_logging: false
+  peer_mode: Dynamic
+  topology: Star
+  type: 1_gbit_switch

@@ -37,7 +37,8 @@ Rust tool generating Shadow simulator configs for Monero network simulations wit
 **Agent Types**:
 - `base_agent.py` - Abstract base class with lifecycle management
 - `regular_user.py` - Transaction-generating users
-- `block_controller.py` - Mining orchestration
+- `autonomous_miner.py` - Independent mining agents with Poisson distribution
+- `block_controller.py` - DEPRECATED: Legacy centralized mining (use autonomous_miner)
 - `miner_distributor.py` - Mining reward distribution
 - `simulation_monitor.py` - Real-time simulation monitoring
 - `agent_discovery.py` - Dynamic agent discovery (5-sec TTL cache)
@@ -143,6 +144,19 @@ graph [
 ]
 ```
 **Features**: AS grouping, bandwidth/latency/packet-loss modeling, connectivity validation
+
+## Mining Architecture
+
+**Autonomous Mining** (Current):
+- Each miner agent independently generates blocks
+- Poisson distribution for realistic inter-block times
+- Hashrate determines mining probability
+- Fully deterministic with `simulation_seed`
+- No centralized coordinator required
+
+**Legacy Block Controller** (Deprecated):
+- Centralized mining orchestration
+- Being phased out in favor of autonomous miners
 
 ## Key Design Decisions
 

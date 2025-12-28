@@ -18,6 +18,7 @@
 4. **Peer Discovery System**: Dynamic/Hardcoded/Hybrid modes with 100% test pass rate
 5. **Integration Testing**: Comprehensive validation and reporting
 6. **Shadow Agents Refactoring**: Completed 10-phase modular refactoring of shadow_agents.rs into 7 specialized modules (29 files total), achieving 95.6% test pass rate and clean compilation
+7. **Independent Mining Control**: Autonomous mining agents with Poisson distribution, deterministic seeding, comprehensive test suite
 
 ### Scale Achievements
 - **Agent Framework**: Scales 2-40 participants
@@ -33,9 +34,9 @@
 - Impact: Cosmetic, doesn't affect results
 - Status: ignored
 
-**Block Controller** (Needs Verification):
-- Mining coordination needs validation in latest builds
-- Status: Debugging in progress
+**Block Controller** (Deprecated):
+- Legacy centralized mining approach
+- Status: Replaced by autonomous_miner, migration utility available
 
 **Transaction Flow** (Needs Debug):
 - Regular users not sending transactions in recent tests
@@ -46,7 +47,7 @@
 - GML topology testing at scale
 - Determinism and reproducibility improvements
 - Simulation stability enhancements
-- Shifting to mining shim instead of block controller for mining
+- Completed shift to autonomous mining (deprecated block controller)
 
 ## Next Priorities
 

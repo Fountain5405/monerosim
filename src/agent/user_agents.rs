@@ -11,7 +11,7 @@ use crate::shadow::ShadowHost;
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::process::{add_wallet_process, add_user_agent_process};
+use crate::process::{add_wallet_process, add_user_agent_process, create_mining_agent_process};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -378,32 +378,52 @@ pub fn process_user_agents(
                 );
             }
 
-            // Add user agent script if specified
-            let user_script = user_agent_config.user_script.clone().unwrap_or_else(|| {
-                if is_miner {
-                    "agents.regular_user".to_string()
-                } else {
-                    "agents.regular_user".to_string()
-                }
-            });
-
-            if !user_script.is_empty() {
-                add_user_agent_process(
-                    &mut processes,
+            // Add agent script - check for mining_script first, then user_script
+            if let Some(mining_script) = &user_agent_config.mining_script {
+                // This is a mining agent - use the mining agent process
+                let mining_processes = create_mining_agent_process(
                     &agent_id,
                     &agent_ip,
                     agent_rpc_port,
-                    wallet_rpc_port,
-                    p2p_port,
-                    &user_script,
+                    Some(wallet_rpc_port),
+                    mining_script,
                     user_agent_config.attributes.as_ref(),
                     environment,
                     shared_dir,
                     current_dir,
                     i,
                     environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                    Some(&agent_start_time), // Pass the calculated agent start time
+                    Some(&agent_start_time),
                 );
+                processes.extend(mining_processes);
+            } else {
+                // Regular user agent script
+                let user_script = user_agent_config.user_script.clone().unwrap_or_else(|| {
+                    if is_miner {
+                        "agents.regular_user".to_string()
+                    } else {
+                        "agents.regular_user".to_string()
+                    }
+                });
+
+                if !user_script.is_empty() {
+                    add_user_agent_process(
+                        &mut processes,
+                        &agent_id,
+                        &agent_ip,
+                        agent_rpc_port,
+                        wallet_rpc_port,
+                        p2p_port,
+                        &user_script,
+                        user_agent_config.attributes.as_ref(),
+                        environment,
+                        shared_dir,
+                        current_dir,
+                        i,
+                        environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                        Some(&agent_start_time), // Pass the calculated agent start time
+                    );
+                }
             }
 
             // Only add the host if it has any processes

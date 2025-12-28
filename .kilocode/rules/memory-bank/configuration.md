@@ -9,6 +9,7 @@ general:
   stop_time: "3h"           # Simulation duration
   fresh_blockchain: true     # Start from genesis
   log_level: info           # trace/debug/info/warn/error
+  simulation_seed: 12345    # NEW: Global seed for determinism
 
 network:
   # Option 1: Simple switch network
@@ -29,12 +30,13 @@ network:
 
 agents:
   user_agents:
-    # Miner example
+    # Miner example (NEW autonomous mining)
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"  # Required for miners
+      mining_script: "agents.autonomous_miner"  # Required for miners
       attributes:
         is_miner: true              # Boolean
-        hashrate: "25"              # % of total hashrate
+        hashrate: "60"              # % of total hashrate
         can_receive_distributions: true
 
     # Regular user example
@@ -46,8 +48,9 @@ agents:
         min_transaction_amount: "0.5"
         max_transaction_amount: "2.0"
 
-  block_controller:
-    script: "agents.block_controller"
+  # DEPRECATED: block_controller (use autonomous_miner instead)
+  # block_controller:
+  #   script: "agents.block_controller"
 
   pure_script_agents:
     - script: "scripts.monitor"
@@ -77,14 +80,26 @@ agents:
 **Ring**: Circular connections. Min: 3 agents
 **DAG**: Blockchain default. Min: 2 agents
 
+## Mining Configuration
+
+**Autonomous Mining** (Recommended):
+- Set `simulation_seed` in `general` section for reproducibility
+- Add `mining_script: "agents.autonomous_miner"` to miner agents
+- Each miner independently decides when to mine
+- Poisson distribution ensures realistic block times
+
+**Migration**:
+- Old configs with `block_controller` can be migrated using `scripts/migrate_mining_config.py`
+
 ## Important Rules
 
-1. **Miners need wallet**: Both daemon + wallet required
+1. **Miners need wallet + mining_script**: Both daemon, wallet, and mining_script required for autonomous miners
 2. **No `nodes` section**: Legacy format deprecated
 3. **Hashrate sum**: Should equal 100 across all miners
 4. **Distribution eligibility**: `can_receive_distributions` boolean
 5. **IP auto-assigned**: System handles geographic distribution
 6. **Boolean formats**: true/false, "true"/"false", 1/0, "yes"/"no", "on"/"off"
+7. **Simulation seed**: Set `simulation_seed` in `general` for reproducible mining
 
 ## Example Configurations
 

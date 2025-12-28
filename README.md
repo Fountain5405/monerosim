@@ -15,6 +15,39 @@ A Rust-based tool for generating configuration files for the Shadow network simu
 - **Python-First Testing**: Modern Python test suite with 95%+ coverage
 - **Reproducible Research**: Deterministic simulations for scientific analysis
 
+## Independent Mining Control
+
+Monerosim uses autonomous mining agents for deterministic, reproducible simulations:
+
+### Configuration Example
+```yaml
+general:
+  simulation_seed: 12345  # For reproducibility
+
+agents:
+  user_agents:
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      mining_script: "agents.autonomous_miner"  # Autonomous mining
+      attributes:
+        is_miner: true
+        hashrate: "60"  # % of total network hashrate
+```
+
+### Key Features
+- **Reproducible Mining**: Same `simulation_seed` produces identical block sequences
+- **Autonomous Miners**: Each miner independently decides when to mine blocks
+- **Poisson Distribution**: Realistic inter-block time distribution
+- **Deterministic**: Perfect reproducibility for scientific research
+
+### Migration from Block Controller
+If you have old configurations using `block_controller`, use the migration utility:
+```bash
+python scripts/migrate_mining_config.py your_config.yaml
+```
+
+See [`config_autonomous_mining.yaml`](config_autonomous_mining.yaml) for a complete example.
+
 ## Network Scaling and Large-Scale Topologies
 
 Monerosim now supports large-scale network simulations using authentic CAIDA AS-links data for realistic internet topology modeling.

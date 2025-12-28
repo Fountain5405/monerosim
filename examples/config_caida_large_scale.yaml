@@ -1,34 +1,28 @@
-general:
-  stop_time: "2h"
-  fresh_blockchain: true
-  log_level: info
-
-network:
-  path: "examples/topology_large_2000.gml"  # Use CAIDA-based topology
-  peer_mode: "Dynamic"
-  topology: "Mesh"
-
 agents:
   user_agents:
-    # 20 miners distributed across the topology
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: true
-        hashrate: "5"  # Each miner gets 5% of total hashrate
-        can_receive_distributions: true
-      count: 20
-
-    # 80 regular users for transaction activity
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "300"  # Transaction every 5 minutes
-        min_transaction_amount: "0.1"
-        max_transaction_amount: "2.0"
-        can_receive_distributions: false
-      count: 80
-
-  block_controller:
-    script: "agents.block_controller"
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '5'
+      is_miner: true
+    count: 20
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '2.0'
+      min_transaction_amount: '0.1'
+      transaction_interval: '300'
+    count: 80
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+general:
+  fresh_blockchain: true
+  log_level: info
+  stop_time: 2h
+  simulation_seed: 28281
+network:
+  path: examples/topology_large_2000.gml
+  peer_mode: Dynamic
+  topology: Mesh

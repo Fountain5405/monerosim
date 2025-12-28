@@ -12,7 +12,7 @@ use crate::shadow::{
 };
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
+use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_simulation_seed};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
@@ -139,6 +139,16 @@ pub fn generate_agent_shadow_config(
     const SHARED_DIR: &str = "/tmp/monerosim_shared";
     let shared_dir_path = Path::new(SHARED_DIR);
 
+    // Validate simulation seed
+    validate_simulation_seed(config.general.simulation_seed)
+        .map_err(|e| color_eyre::eyre::eyre!("Simulation seed validation failed: {}", e))?;
+
+    // Validate mining configuration
+    if let Some(user_agents) = &config.agents.user_agents {
+        validate_mining_config(user_agents)
+            .map_err(|e| color_eyre::eyre::eyre!("Mining configuration validation failed: {}", e))?;
+    }
+
     let current_dir = std::env::current_dir()
         .map_err(|e| color_eyre::eyre::eyre!("Failed to get current directory: {}", e))?
         .to_string_lossy()
@@ -164,6 +174,7 @@ pub fn generate_agent_shadow_config(
         ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
         ("MALLOC_ARENA_MAX".to_string(), "1".to_string()),
         ("PYTHONUNBUFFERED".to_string(), "1".to_string()), // Ensure Python output is unbuffered
+        ("SIMULATION_SEED".to_string(), config.general.simulation_seed.to_string()), // Add simulation seed for all agents
     ].iter().cloned().collect();
 
     // Add MONEROSIM_LOG_LEVEL if specified in config

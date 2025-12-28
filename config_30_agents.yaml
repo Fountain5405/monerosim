@@ -1,316 +1,275 @@
-# Configuration for 32 agents: 5 miners, 27 regular users
-# Simulation duration: ~6.7 hours (24000 seconds)
-
+agents:
+  miner_distributor:
+    attributes:
+      initial_fund_amount: '1.0'
+      max_transaction_amount: '2.0'
+      min_transaction_amount: '0.5'
+      transaction_frequency: '30'
+      wait_time: '3900'
+    script: agents.miner_distributor
+  simulation_monitor:
+    detailed_logging: false
+    enable_alerts: true
+    poll_interval: 300
+    script: agents.simulation_monitor
+    status_file: shadow.data/monerosim_monitor.log
+  user_agents:
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '25'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '25'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '30'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '10'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '10'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '2.0'
+      min_transaction_amount: '0.5'
+      transaction_interval: '60'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '1.0'
+      min_transaction_amount: '0.1'
+      transaction_interval: '90'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '5.0'
+      min_transaction_amount: '1.0'
+      transaction_interval: '120'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '3.0'
+      min_transaction_amount: '0.2'
+      transaction_interval: '45'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '0.5'
+      min_transaction_amount: '0.05'
+      transaction_interval: '180'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '1.5'
+      min_transaction_amount: '0.3'
+      transaction_interval: '75'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '10.0'
+      min_transaction_amount: '2.0'
+      transaction_interval: '150'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '0.8'
+      min_transaction_amount: '0.1'
+      transaction_interval: '100'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '2.5'
+      min_transaction_amount: '0.4'
+      transaction_interval: '65'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '4.0'
+      min_transaction_amount: '0.7'
+      transaction_interval: '110'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '1.2'
+      min_transaction_amount: '0.15'
+      transaction_interval: '130'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '3.5'
+      min_transaction_amount: '0.25'
+      transaction_interval: '85'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '0.7'
+      min_transaction_amount: '0.08'
+      transaction_interval: '170'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '2.8'
+      min_transaction_amount: '0.35'
+      transaction_interval: '95'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '7.0'
+      min_transaction_amount: '1.5'
+      transaction_interval: '140'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '0.9'
+      min_transaction_amount: '0.12'
+      transaction_interval: '80'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '3.2'
+      min_transaction_amount: '0.6'
+      transaction_interval: '160'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '1.8'
+      min_transaction_amount: '0.45'
+      transaction_interval: '105'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '6.0'
+      min_transaction_amount: '0.9'
+      transaction_interval: '125'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '2.2'
+      min_transaction_amount: '0.3'
+      transaction_interval: '70'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '1.5'
+      min_transaction_amount: '0.2'
+      transaction_interval: '135'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '3.0'
+      min_transaction_amount: '0.5'
+      transaction_interval: '115'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '0.8'
+      min_transaction_amount: '0.1'
+      transaction_interval: '155'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '2.5'
+      min_transaction_amount: '0.4'
+      transaction_interval: '50'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '8.0'
+      min_transaction_amount: '1.2'
+      transaction_interval: '150'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: false
+      max_transaction_amount: '1.5'
+      min_transaction_amount: '0.2'
+      transaction_interval: '75'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
+  - attributes:
+      can_receive_distributions: true
+      max_transaction_amount: '0.8'
+      min_transaction_amount: '0.06'
+      transaction_interval: '180'
+    daemon: monerod
+    user_script: agents.regular_user
+    wallet: monero-wallet-rpc
 general:
-  stop_time: "14400s"
   fresh_blockchain: true
   log_level: info
-
+  stop_time: 14400s
+  simulation_seed: 22035
 network:
-  path: "gml_processing/test_5000_nodes_caida_undirected_selfloops.gml"
-  peer_mode: "Dynamic"
-
-agents:
-  user_agents:
-    # Miner 1 - 25% hashrate
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: "true"
-        hashrate: "25"
-        can_receive_distributions: true
-
-    # Miner 2 - 25% hashrate
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: "true"
-        hashrate: "25"
-        can_receive_distributions: true
-
-    # Miner 3 - 30% hashrate
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: "true"
-        hashrate: "30"
-        can_receive_distributions: true
-
-    # Miner 4 - 10% hashrate
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: "true"
-        hashrate: "10"
-        can_receive_distributions: true
-
-    # Miner 5 - 10% hashrate
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      attributes:
-        is_miner: "true"
-        hashrate: "10"
-        can_receive_distributions: true
-
-    # Regular Users (27 total)
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "60"
-        min_transaction_amount: "0.5"
-        max_transaction_amount: "2.0"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "90"
-        min_transaction_amount: "0.1"
-        max_transaction_amount: "1.0"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "120"
-        min_transaction_amount: "1.0"
-        max_transaction_amount: "5.0"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "45"
-        min_transaction_amount: "0.2"
-        max_transaction_amount: "3.0"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "180"
-        min_transaction_amount: "0.05"
-        max_transaction_amount: "0.5"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "75"
-        min_transaction_amount: "0.3"
-        max_transaction_amount: "1.5"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "150"
-        min_transaction_amount: "2.0"
-        max_transaction_amount: "10.0"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "100"
-        min_transaction_amount: "0.1"
-        max_transaction_amount: "0.8"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "65"
-        min_transaction_amount: "0.4"
-        max_transaction_amount: "2.5"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "110"
-        min_transaction_amount: "0.7"
-        max_transaction_amount: "4.0"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "130"
-        min_transaction_amount: "0.15"
-        max_transaction_amount: "1.2"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "85"
-        min_transaction_amount: "0.25"
-        max_transaction_amount: "3.5"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "170"
-        min_transaction_amount: "0.08"
-        max_transaction_amount: "0.7"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "95"
-        min_transaction_amount: "0.35"
-        max_transaction_amount: "2.8"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "140"
-        min_transaction_amount: "1.5"
-        max_transaction_amount: "7.0"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "80"
-        min_transaction_amount: "0.12"
-        max_transaction_amount: "0.9"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "160"
-        min_transaction_amount: "0.6"
-        max_transaction_amount: "3.2"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "105"
-        min_transaction_amount: "0.45"
-        max_transaction_amount: "1.8"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "125"
-        min_transaction_amount: "0.9"
-        max_transaction_amount: "6.0"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "70"
-        min_transaction_amount: "0.3"
-        max_transaction_amount: "2.2"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "135"
-        min_transaction_amount: "0.2"
-        max_transaction_amount: "1.5"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "115"
-        min_transaction_amount: "0.5"
-        max_transaction_amount: "3.0"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "155"
-        min_transaction_amount: "0.1"
-        max_transaction_amount: "0.8"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "50"
-        min_transaction_amount: "0.4"
-        max_transaction_amount: "2.5"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "150"
-        min_transaction_amount: "1.2"
-        max_transaction_amount: "8.0"
-        can_receive_distributions: true
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "75"
-        min_transaction_amount: "0.2"
-        max_transaction_amount: "1.5"
-        can_receive_distributions: false
-
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "180"
-        min_transaction_amount: "0.06"
-        max_transaction_amount: "0.8"
-        can_receive_distributions: true
-
-  block_controller:
-    script: "agents.block_controller"
-
-  miner_distributor:
-    script: "agents.miner_distributor"
-    attributes:
-      transaction_frequency: "30"
-      min_transaction_amount: "0.5"
-      max_transaction_amount: "2.0"
-      initial_fund_amount: "1.0"
-      wait_time: "3900"  # 65 minutes in seconds (configurable)
-
-  simulation_monitor:
-    script: "agents.simulation_monitor"
-    poll_interval: 300  # 5 minutes
-    status_file: "shadow.data/monerosim_monitor.log"
-    enable_alerts: true
-    detailed_logging: false
+  path: gml_processing/test_5000_nodes_caida_undirected_selfloops.gml
+  peer_mode: Dynamic

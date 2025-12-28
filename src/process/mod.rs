@@ -90,4 +90,4 @@ pub mod pure_scripts;
 // Re-export commonly used functions for convenience
 pub use types::ProcessType;
 pub use wallet::add_wallet_process;
-pub use agent_scripts::add_user_agent_process;
+pub use agent_scripts::{add_user_agent_process, create_mining_agent_process};
