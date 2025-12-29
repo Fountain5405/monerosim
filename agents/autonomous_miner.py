@@ -93,22 +93,12 @@ class AutonomousMinerAgent(BaseAgent):
             self.logger.error(f"Failed to connect to daemon: {e}")
             raise
         
-        # Wait for wallet to be ready and get address
-        if not self.wallet_rpc:
-            self.logger.error("Wallet RPC not initialized")
-            raise RuntimeError("Wallet RPC connection required for mining rewards")
-            
-        self.logger.info("Waiting for wallet to be ready...")
-        try:
-            self.wallet_rpc.wait_until_ready(max_wait=180)
-            
-            # Get wallet address for mining rewards
-            self.wallet_address = self.wallet_rpc.get_address()
-            self.logger.info(f"Mining to wallet address: {self.wallet_address}")
-            
-        except RPCError as e:
-            self.logger.error(f"Failed to connect to wallet: {e}")
-            raise
+        # Get wallet address for mining - try multiple approaches
+        # generateblocks RPC only needs a valid address string, not a loaded wallet
+        self.wallet_address = self._get_mining_address()
+        if not self.wallet_address:
+            self.logger.error("Failed to obtain mining address")
+            raise RuntimeError("Mining address required for block rewards")
         
         # Activate mining
         self.mining_active = True
@@ -116,6 +106,78 @@ class AutonomousMinerAgent(BaseAgent):
         self.logger.info(f"✓ Mining activated with {self.hashrate_pct}% hashrate")
         self.logger.info(f"Using Poisson distribution for block discovery timing")
         
+    def _get_mining_address(self) -> Optional[str]:
+        """
+        Poll for wallet address from miner_info file (created by regular_user.py).
+
+        In the hybrid approach:
+        - regular_user.py runs on this node and creates the wallet
+        - regular_user.py writes the address to {agent_id}_miner_info.json
+        - autonomous_miner.py polls this file until address is available
+
+        This decouples wallet creation from mining, allowing both to proceed
+        without blocking each other.
+
+        Returns:
+            Valid Monero address string, or None if polling times out
+        """
+        import json
+        from pathlib import Path
+
+        if not self.shared_dir:
+            self.logger.error("No shared directory configured, cannot poll for address")
+            return None
+
+        miner_info_file = Path(self.shared_dir) / f"{self.agent_id}_miner_info.json"
+        agent_registry_file = Path(self.shared_dir) / "agent_registry.json"
+
+        # Poll configuration
+        max_wait_time = 300  # 5 minutes maximum wait
+        poll_interval = 5   # Check every 5 seconds
+        start_time = time.time()
+
+        self.logger.info(f"Polling for wallet address (regular_user.py should register it)...")
+
+        while time.time() - start_time < max_wait_time:
+            # Try miner info file first (preferred - written by regular_user.py)
+            if miner_info_file.exists():
+                try:
+                    with open(miner_info_file, 'r') as f:
+                        miner_info = json.load(f)
+                        if "wallet_address" in miner_info:
+                            address = miner_info["wallet_address"]
+                            self.logger.info(f"Found wallet address in miner info file: {address[:20]}...")
+                            return address
+                except Exception as e:
+                    self.logger.debug(f"Error reading miner info file: {e}")
+
+            # Fallback to agent registry
+            if agent_registry_file.exists():
+                try:
+                    with open(agent_registry_file, 'r') as f:
+                        registry = json.load(f)
+                        for agent in registry.get("agents", []):
+                            if agent.get("id") == self.agent_id:
+                                if "wallet_address" in agent:
+                                    address = agent["wallet_address"]
+                                    self.logger.info(f"Found wallet address in agent registry: {address[:20]}...")
+                                    return address
+                except Exception as e:
+                    self.logger.debug(f"Error reading agent registry: {e}")
+
+            # Wait before next poll
+            elapsed = time.time() - start_time
+            self.logger.debug(f"Waiting for wallet address... (elapsed: {elapsed:.1f}s)")
+            time.sleep(poll_interval)
+
+        # Timeout - use fallback address for simulation
+        self.logger.warning(f"Timeout waiting for wallet address after {max_wait_time}s")
+        self.logger.warning(f"Using fallback simulation address (rewards won't be tracked)")
+
+        # Fallback to a known valid address for simulation purposes
+        fallback_address = "44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
+        return fallback_address
+
     def _parse_mining_config(self):
         """
         Parse mining-specific configuration from attributes.
@@ -127,9 +189,14 @@ class AutonomousMinerAgent(BaseAgent):
         Raises:
             ValueError: If hashrate is missing or invalid
         """
+        # DIAGNOSTIC: Log what attributes we actually have
+        self.logger.info(f"Autonomous miner attributes: {self.attributes}")
+        self.logger.info(f"Attributes keys: {list(self.attributes.keys())}")
+        
         # Get hashrate percentage (required)
         hashrate_str = self.attributes.get('hashrate')
         if not hashrate_str:
+            self.logger.error(f"Missing 'hashrate' attribute. Available attributes: {self.attributes}")
             raise ValueError("Missing required attribute 'hashrate'")
             
         try:
@@ -180,50 +247,57 @@ class AutonomousMinerAgent(BaseAgent):
     def _calculate_next_block_time(self) -> float:
         """
         Calculate time until next block discovery using Poisson distribution.
-        
+
         Uses the formula: T = -ln(1 - U) / λ
         Where:
             - U is a uniform random number [0, 1)
-            - λ (lambda) = agent_hashrate / network_difficulty
+            - λ (lambda) = 1 / expected_agent_block_time
+            - expected_agent_block_time = TARGET_BLOCK_TIME / hashrate_fraction
             - T is the time in seconds until next block
-        
+
+        For Monero, TARGET_BLOCK_TIME = 120 seconds (2 minutes).
+        A miner with 25% of network hashrate expects to find blocks every 480 seconds on average.
+
         Returns:
             Time in seconds until next block discovery attempt
         """
-        # Get current difficulty
-        difficulty = self._get_current_difficulty()
-        
-        # Calculate agent's effective hashrate
-        agent_hashrate = (self.hashrate_pct / 100.0) * self.total_network_hashrate
-        
-        # Calculate lambda (success rate)
-        # Avoid division by zero
-        if difficulty == 0:
-            self.logger.warning("Difficulty is zero, using minimum value 1")
-            difficulty = 1
-            
-        lambda_rate = agent_hashrate / difficulty
-        
+        # Monero target block time is 120 seconds
+        TARGET_BLOCK_TIME = 120.0
+
+        # Calculate expected time for THIS agent to find a block
+        # If agent has 25% hashrate, they should find 1 block per 4 network blocks on average
+        hashrate_fraction = self.hashrate_pct / 100.0
+
+        if hashrate_fraction <= 0:
+            self.logger.warning("Invalid hashrate fraction, using 1%")
+            hashrate_fraction = 0.01
+
+        expected_agent_block_time = TARGET_BLOCK_TIME / hashrate_fraction
+
+        # Lambda (rate parameter) = 1 / expected_time
+        lambda_rate = 1.0 / expected_agent_block_time
+
         # Generate uniform random number in [0, 1)
         u = random.random()
-        
+
         # Avoid log(0) edge case
         if u >= 1.0:
             u = 0.999999
-        
+
         # Calculate time using exponential distribution (Poisson interarrival times)
         try:
             time_seconds = -math.log(1.0 - u) / lambda_rate
         except (ValueError, ZeroDivisionError) as e:
             self.logger.error(f"Error calculating block time: {e}")
-            # Fallback to a reasonable default (e.g., 120 seconds)
-            time_seconds = 120.0
-        
+            # Fallback to expected agent block time
+            time_seconds = expected_agent_block_time
+
+        # Log the calculation for debugging (only at DEBUG level to reduce log spam)
         self.logger.debug(f"Next block in {time_seconds:.1f}s "
-                         f"(hashrate: {agent_hashrate:.0f} H/s, "
-                         f"difficulty: {difficulty}, "
+                         f"(hashrate: {self.hashrate_pct}%, "
+                         f"expected avg: {expected_agent_block_time:.1f}s, "
                          f"λ={lambda_rate:.6f})")
-        
+
         return time_seconds
         
     def _generate_block(self) -> bool:

@@ -378,14 +378,55 @@ pub fn process_user_agents(
                 );
             }
 
-            // Add agent script - check for mining_script first, then user_script
+            // Add agent scripts
+            // For hybrid mining approach: run regular_user first (wallet setup), then mining_script
             if let Some(mining_script) = &user_agent_config.mining_script {
-                // This is a mining agent - use the mining agent process
+                // HYBRID APPROACH: Run both regular_user (for wallet) AND mining_script
+
+                // Step 1: Run regular_user.py first for wallet creation and address registration
+                // This handles wallet creation and writes to {agent_id}_miner_info.json
+                let wallet_setup_script = user_agent_config.user_script.clone()
+                    .unwrap_or_else(|| "agents.regular_user".to_string());
+
+                if !wallet_setup_script.is_empty() {
+                    add_user_agent_process(
+                        &mut processes,
+                        &agent_id,
+                        &agent_ip,
+                        agent_rpc_port,
+                        wallet_rpc_port,
+                        p2p_port,
+                        &wallet_setup_script,
+                        user_agent_config.attributes.as_ref(),
+                        environment,
+                        shared_dir,
+                        current_dir,
+                        i,
+                        environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                        Some(&agent_start_time),
+                    );
+                }
+
+                // Step 2: Run mining_script (autonomous_miner.py) which polls for the address
+                // Start mining script a bit later to give regular_user time to register address
+                let mining_start_time = if let Ok(agent_seconds) = parse_duration_to_seconds(&agent_start_time) {
+                    format!("{}s", agent_seconds + 10) // Start 10 seconds after regular_user
+                } else {
+                    format!("{}s", 75 + i * 2) // Fallback timing
+                };
+
+                // Pass wallet_rpc_port if wallet is configured
+                let mining_wallet_port = if user_agent_config.wallet.is_some() {
+                    Some(wallet_rpc_port)
+                } else {
+                    None
+                };
+
                 let mining_processes = create_mining_agent_process(
                     &agent_id,
                     &agent_ip,
                     agent_rpc_port,
-                    Some(wallet_rpc_port),
+                    mining_wallet_port,
                     mining_script,
                     user_agent_config.attributes.as_ref(),
                     environment,
@@ -393,11 +434,11 @@ pub fn process_user_agents(
                     current_dir,
                     i,
                     environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                    Some(&agent_start_time),
+                    Some(&mining_start_time),
                 );
                 processes.extend(mining_processes);
             } else {
-                // Regular user agent script
+                // Regular user agent script (no mining_script specified)
                 let user_script = user_agent_config.user_script.clone().unwrap_or_else(|| {
                     if is_miner {
                         "agents.regular_user".to_string()
@@ -421,7 +462,7 @@ pub fn process_user_agents(
                         current_dir,
                         i,
                         environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                        Some(&agent_start_time), // Pass the calculated agent start time
+                        Some(&agent_start_time),
                     );
                 }
             }

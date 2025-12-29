@@ -1,0 +1,29 @@
+agents:
+  user_agents:
+  # Hybrid approach: regular_user.py creates wallet, autonomous_miner.py handles mining
+  - attributes:
+      hashrate: '40'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      hashrate: '35'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+  - attributes:
+      hashrate: '25'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+general:
+  fresh_blockchain: true
+  log_level: info
+  stop_time: 900s
+  simulation_seed: 12345
+network:
+  path: gml_processing/caida_connected_sparse_with_loops_fixed.gml
+  peer_mode: Dynamic

@@ -50,3 +50,13 @@ shadow_template/
 *.err
 
 20250911/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Backup files
+*.bak

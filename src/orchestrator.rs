@@ -373,6 +373,9 @@ pub fn generate_agent_shadow_config(
             let is_miner = user_agent_config.is_miner_value();
             attributes.insert("is_miner".to_string(), is_miner.to_string());
 
+            // DEBUG: Log what attributes we have before adding to registry
+            log::info!("Agent {}: attributes = {:?}", agent_id, attributes);
+
             let agent_info = AgentInfo {
                 id: agent_id,
                 ip_addr: agent_ip,
@@ -495,7 +498,17 @@ pub fn generate_agent_shadow_config(
     // Write agent registry to file
     let agent_registry_path = shared_dir_path.join("agent_registry.json");
     let agent_registry_json = serde_json::to_string_pretty(&agent_registry)?;
+    
+    // DEBUG: Log registry structure before writing
+    log::info!("Agent registry has {} agents", agent_registry.agents.len());
+    log::info!("Agent registry JSON preview (first 500 chars): {}",
+               &agent_registry_json.chars().take(500).collect::<String>());
+    
     std::fs::write(&agent_registry_path, &agent_registry_json)?;
+    
+    // DEBUG: Verify file was written
+    let written_size = std::fs::metadata(&agent_registry_path)?.len();
+    log::info!("Wrote agent registry to {:?}, size: {} bytes", agent_registry_path, written_size);
 
     // Create miner registry
     let mut miner_registry = MinerRegistry {

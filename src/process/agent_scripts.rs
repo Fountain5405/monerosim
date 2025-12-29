@@ -37,20 +37,16 @@ pub fn add_user_agent_process(
     ];
 
     // Add attributes from config as command-line arguments
+    // This ensures attributes are available inside Shadow's isolated filesystem
     if let Some(attrs) = attributes {
-        // Map specific attributes to their correct parameter names
         for (key, value) in attrs {
+            // Map transaction_interval to --tx-frequency for backward compatibility
             if key == "transaction_interval" {
                 agent_args.push(format!("--tx-frequency {}", value));
-            } else if (key == "min_transaction_amount" || key == "max_transaction_amount" ||
-                      key == "can_receive_distributions" || key == "location" || key == "city") ||
-                      (key == "is_miner" && value == "true") {
-                // These should be passed as attributes, but only pass is_miner if it's true
-                agent_args.push(format!("--attributes {} {}", key, value));
-            } else if key != "hashrate" && key != "is_miner" {
-                // Pass other attributes directly, but filter out hashrate and is_miner (when false)
-                agent_args.push(format!("--attributes {} {}", key, value));
             }
+            // Pass ALL attributes as --attributes key value pairs
+            // This bypasses Shadow filesystem isolation issues
+            agent_args.push(format!("--attributes {} {}", key, value));
         }
     }
 
@@ -111,7 +107,7 @@ echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
     // Process 1: Create wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
+        args: format!("-c 'cat > {} << '\"'\"'EOF'\"'\"'\n{}EOF'", script_path, wrapper_script),
         environment: environment.clone(),
         start_time: script_creation_time,
     });
@@ -175,8 +171,10 @@ pub fn create_mining_agent_process(
     };
     
     // Create a simple wrapper script that handles retries internally
-    let wrapper_script = format!(
-        r#"#!/bin/bash
+    // If wallet_rpc_port is None, skip the wallet wait entirely (autonomous mining without wallet-rpc)
+    let wrapper_script = if let Some(wallet_port) = wallet_rpc_port {
+        format!(
+            r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
 export PATH="${{PATH}}:/usr/local/bin"
@@ -195,13 +193,43 @@ done
 echo "Wallet RPC not available after 30 attempts, starting mining agent anyway..."
 {} 2>&1
 "#,
-        current_dir,
-        current_dir,
-        ip_addr,
-        wallet_rpc_port.unwrap_or(agent_rpc_port),
-        python_cmd,
-        python_cmd
-    );
+            current_dir,
+            current_dir,
+            ip_addr,
+            wallet_port,
+            python_cmd,
+            python_cmd
+        )
+    } else {
+        // No wallet configured - wait for daemon RPC only (much faster startup)
+        format!(
+            r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+# Wait for daemon RPC to be ready (no wallet-rpc needed)
+for i in {{1..30}}; do
+    if curl -s --max-time 1 http://{}:{}/json_rpc >/dev/null 2>&1; then
+        echo "Daemon RPC ready, starting mining agent..."
+        {} 2>&1
+        exit $?
+    fi
+    echo "Waiting for daemon RPC... (attempt $i/30)"
+    sleep 3
+done
+
+echo "Daemon RPC not available after 30 attempts, starting mining agent anyway..."
+{} 2>&1
+"#,
+            current_dir,
+            current_dir,
+            ip_addr,
+            agent_rpc_port,
+            python_cmd,
+            python_cmd
+        )
+    };
     
     // Write wrapper script to a temporary file and execute it
     let script_path = format!("/tmp/mining_agent_{}_wrapper.sh", agent_id);
@@ -221,7 +249,7 @@ echo "Wallet RPC not available after 30 attempts, starting mining agent anyway..
     // Process 1: Create wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cat > {} << \\\\EOF\\n{}\\\\EOF'", script_path, wrapper_script),
+        args: format!("-c 'cat > {} << EOF\\n{}EOF'", script_path, wrapper_script),
         environment: environment.clone(),
         start_time: script_creation_time,
     });

@@ -48,13 +48,14 @@ class BaseAgent(ABC):
         self.logger = self._setup_logging()
         
         # Convert attributes list to a dictionary
+        # attributes_list is a list of [key, value] pairs from argparse action='append'
         self.attributes: Dict[str, Any] = {}
         if self.attributes_list:
-            if len(self.attributes_list) % 2 != 0:
-                self.logger.warning("Attributes list has an odd number of elements. Some attributes may be ignored.")
-            for i in range(0, len(self.attributes_list), 2):
-                if i + 1 < len(self.attributes_list):
-                    self.attributes[self.attributes_list[i]] = self.attributes_list[i+1]
+            for pair in self.attributes_list:
+                if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                    self.attributes[pair[0]] = pair[1]
+                else:
+                    self.logger.warning(f"Invalid attribute pair: {pair}")
         
         # Extract is_miner from attributes
         self._extract_is_miner()
@@ -287,6 +288,24 @@ class BaseAgent(ABC):
         lock_path = self.shared_dir / "agent_registry.lock"
         
         self.logger.info(f"Attempting to register in agent registry: {registry_path.resolve()}")
+        
+        # DIAGNOSTIC: Check if shared directory exists and is accessible
+        self.logger.info(f"Shared directory exists: {self.shared_dir.exists()}")
+        self.logger.info(f"Shared directory is directory: {self.shared_dir.is_dir()}")
+        self.logger.info(f"Registry file exists: {registry_path.exists()}")
+        
+        if registry_path.exists():
+            try:
+                file_size = registry_path.stat().st_size
+                self.logger.info(f"Registry file size: {file_size} bytes")
+                with open(registry_path, 'r') as f:
+                    content_preview = f.read(200)
+                    self.logger.info(f"Registry file preview: {content_preview[:200]}")
+            except Exception as e:
+                self.logger.error(f"Failed to read existing registry file: {e}")
+        else:
+            self.logger.warning(f"Registry file does NOT exist at {registry_path.resolve()}")
+            self.logger.info(f"Directory contents: {list(self.shared_dir.iterdir()) if self.shared_dir.exists() else 'N/A'}")
 
         # First, ensure the file exists using a separate lock file for creation
         try:
@@ -408,7 +427,7 @@ class BaseAgent(ABC):
         parser.add_argument('--p2p-port', type=int, help='P2P port of the agent\'s node')
         parser.add_argument('--log-level', default=default_log_level,
                           choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Logging level')
-        parser.add_argument('--attributes', nargs='*', default=[], help='List of agent attributes (key value pairs)')
+        parser.add_argument('--attributes', nargs=2, action='append', default=[], metavar=('KEY', 'VALUE'), help='Agent attribute as key-value pair (can be specified multiple times)')
         parser.add_argument('--hash-rate', type=int, help='Hash rate for mining agents')
         parser.add_argument('--tx-frequency', type=int, help='Transaction frequency in seconds for regular users')
         return parser

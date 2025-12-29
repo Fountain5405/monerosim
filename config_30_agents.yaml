@@ -10,7 +10,7 @@ agents:
   simulation_monitor:
     detailed_logging: false
     enable_alerts: true
-    poll_interval: 300
+    poll_interval: 10
     script: agents.simulation_monitor
     status_file: shadow.data/monerosim_monitor.log
   user_agents:
@@ -271,5 +271,5 @@ general:
   stop_time: 14400s
   simulation_seed: 22035
 network:
-  path: gml_processing/test_5000_nodes_caida_undirected_selfloops.gml
+  path: gml_processing/caida_connected_sparse_with_loops_fixed.gml
   peer_mode: Dynamic
