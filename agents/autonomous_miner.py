@@ -48,10 +48,8 @@ class AutonomousMinerAgent(BaseAgent):
         
         # Mining parameters
         self.hashrate_pct = 0.0  # This miner's hashrate weight
-        self.discovered_total_hashrate = 100.0  # Sum of all discovered miner hashrates
-        self.last_discovery_time = 0.0  # When we last scanned for miners
-        self.discovery_interval = 30.0  # Re-scan for new miners every 30 seconds
         self.current_difficulty = None
+        self.baseline_difficulty = 1  # Fixed baseline for consistent scaling across all miners
         self.last_block_height = 0
         
         # Deterministic seeding for reproducibility
@@ -91,6 +89,16 @@ class AutonomousMinerAgent(BaseAgent):
             self.agent_rpc.wait_until_ready(max_wait=120)
             info = self.agent_rpc.get_info()
             self.logger.info(f"Daemon ready at height {info.get('height', 0)}")
+
+            # Use fixed baseline difficulty of 1 for all miners
+            # This ensures consistent timing regardless of when miners join:
+            # - Initial miners (hashrates sum to 100): difficulty stays ~1, factor = 1.0
+            # - New miner joins (total > 100): blocks faster, difficulty rises, factor > 1.0
+            # - All miners use same baseline, so all scale proportionally
+            self.baseline_difficulty = 1
+            current_difficulty = info.get('difficulty', 1)
+            self.logger.info(f"Baseline difficulty: {self.baseline_difficulty}, "
+                           f"current difficulty: {current_difficulty}")
         except RPCError as e:
             self.logger.error(f"Failed to connect to daemon: {e}")
             raise
@@ -102,19 +110,13 @@ class AutonomousMinerAgent(BaseAgent):
             self.logger.error("Failed to obtain mining address")
             raise RuntimeError("Mining address required for block rewards")
 
-        # Discover total network hashrate from all miner info files
-        # This allows dynamic adjustment when miners join/leave
-        self.discovered_total_hashrate = self._discover_total_network_hashrate()
-        self.last_discovery_time = time.time()
-        actual_pct = (self.hashrate_pct / self.discovered_total_hashrate) * 100
-        self.logger.info(f"Discovered network hashrate: {self.discovered_total_hashrate} "
-                        f"(this miner: {self.hashrate_pct} = {actual_pct:.1f}%)")
-
         # Activate mining
         self.mining_active = True
         self.mining_start_time = time.time()
-        self.logger.info(f"✓ Mining activated with {actual_pct:.1f}% of network hashrate")
-        self.logger.info(f"Using Poisson distribution for block discovery timing")
+        self.logger.info(f"✓ Mining activated with hashrate weight {self.hashrate_pct}")
+        self.logger.info(f"Using difficulty-only mode: timing scales with LWMA difficulty adjustments")
+        self.logger.info(f"Base expected block time: {120.0 / (self.hashrate_pct / 100.0):.1f}s "
+                        f"(at baseline difficulty {self.baseline_difficulty})")
         
     def _get_mining_address(self) -> Optional[str]:
         """
@@ -218,72 +220,6 @@ class AutonomousMinerAgent(BaseAgent):
 
         self.logger.info(f"Parsed mining config: hashrate weight = {self.hashrate_pct}")
 
-    def _discover_total_network_hashrate(self) -> float:
-        """
-        Discover total network hashrate by scanning all miner info files.
-
-        Each miner writes its own {agent_id}_miner_info.json file containing
-        its hashrate. This method scans all such files and sums the hashrates
-        to get the total network hashrate.
-
-        This allows miners to join dynamically - existing miners will detect
-        the new total on their next discovery scan.
-
-        Returns:
-            Total hashrate sum of all discovered miners
-        """
-        import json
-        from pathlib import Path
-
-        if not self.shared_dir:
-            self.logger.warning("No shared directory, cannot discover miners")
-            return self.hashrate_pct  # Fall back to just this miner
-
-        shared_path = Path(self.shared_dir)
-        total_hashrate = 0.0
-        discovered_miners = []
-
-        # Scan for all *_miner_info.json files
-        try:
-            for miner_file in shared_path.glob("*_miner_info.json"):
-                try:
-                    with open(miner_file, 'r') as f:
-                        miner_info = json.load(f)
-
-                    agent_id = miner_info.get('agent_id', miner_file.stem.replace('_miner_info', ''))
-                    hashrate = miner_info.get('hash_rate', 0)
-
-                    # Handle string or numeric hashrate
-                    if isinstance(hashrate, str):
-                        hashrate = float(hashrate) if hashrate else 0
-
-                    if hashrate > 0:
-                        total_hashrate += hashrate
-                        discovered_miners.append((agent_id, hashrate))
-
-                except (json.JSONDecodeError, ValueError) as e:
-                    self.logger.debug(f"Could not parse {miner_file}: {e}")
-                except Exception as e:
-                    self.logger.debug(f"Error reading {miner_file}: {e}")
-
-        except Exception as e:
-            self.logger.warning(f"Error scanning for miner files: {e}")
-            return self.hashrate_pct
-
-        # If no miners found, use this miner's hashrate as total
-        if total_hashrate <= 0:
-            self.logger.warning("No miners discovered, using own hashrate as total")
-            return self.hashrate_pct
-
-        # Log discovery results if changed significantly
-        if abs(total_hashrate - self.discovered_total_hashrate) > 0.1:
-            self.logger.info(f"Discovered {len(discovered_miners)} miners, total hashrate: {total_hashrate}")
-            for agent_id, hr in discovered_miners:
-                pct = (hr / total_hashrate) * 100
-                self.logger.debug(f"  {agent_id}: {hr} ({pct:.1f}%)")
-
-        return total_hashrate
-        
     def _get_current_difficulty(self) -> int:
         """
         Query current network difficulty via RPC.
@@ -310,19 +246,29 @@ class AutonomousMinerAgent(BaseAgent):
         """
         Calculate time until next block discovery using Poisson distribution.
 
-        Uses the formula: T = -ln(1 - U) / λ
+        Uses difficulty-only mode for timing adjustment:
+        - Base timing assumes hashrate weights sum to 100 at simulation start
+        - Difficulty factor scales timing based on LWMA adjustments
+        - No hashrate discovery in timing (avoids double-counting)
+
+        Formula: T = -ln(1 - U) / λ
         Where:
             - U is a uniform random number [0, 1)
             - λ (lambda) = 1 / expected_agent_block_time
-            - expected_agent_block_time = TARGET_BLOCK_TIME / hashrate_fraction
+            - expected_agent_block_time = (TARGET_BLOCK_TIME / base_fraction) * difficulty_factor
+            - base_fraction = hashrate_pct / 100 (assumes weights sum to 100)
             - T is the time in seconds until next block
 
-        For Monero, TARGET_BLOCK_TIME = 120 seconds (2 minutes).
-        A miner with 25% of network hashrate expects to find blocks every 480 seconds on average.
+        This creates a proper LWMA feedback loop:
+        - If new miner joins, blocks arrive faster than 120s target
+        - LWMA increases difficulty proportionally
+        - All miners see higher difficulty, slow their generation rate
+        - Block times stabilize back toward 120s target
 
-        The hashrate fraction is calculated dynamically by discovering all miners
-        and computing this miner's share of the total. This allows new miners to
-        join mid-simulation and have the network adjust automatically.
+        This is more realistic for attack simulations because:
+        - Difficulty adjustment is gradual (over ~60 blocks)
+        - Network naturally "pushes back" against attackers
+        - No instant adjustment that would bypass LWMA dynamics
 
         Returns:
             Time in seconds until next block discovery attempt
@@ -330,22 +276,30 @@ class AutonomousMinerAgent(BaseAgent):
         # Monero target block time is 120 seconds
         TARGET_BLOCK_TIME = 120.0
 
-        # Periodically rediscover total network hashrate to detect new miners
-        current_time = time.time()
-        if current_time - self.last_discovery_time > self.discovery_interval:
-            self.discovered_total_hashrate = self._discover_total_network_hashrate()
-            self.last_discovery_time = current_time
+        # Use hashrate_pct as a fraction of 100 (baseline assumption)
+        # This means if weights sum to 100, blocks arrive at 120s average
+        # If weights sum to 140 (new miner joined), blocks arrive faster,
+        # and LWMA will increase difficulty to compensate
+        base_fraction = self.hashrate_pct / 100.0
 
-        # Calculate this miner's fraction of the total discovered hashrate
-        # e.g., if this miner has 30 and total is 140, fraction = 30/140 = 0.214
-        hashrate_fraction = self.hashrate_pct / self.discovered_total_hashrate
-
-        if hashrate_fraction <= 0:
+        if base_fraction <= 0:
             self.logger.warning("Invalid hashrate fraction, using 1%")
-            hashrate_fraction = 0.01
+            base_fraction = 0.01
 
-        # Calculate expected time for THIS agent to find a block
-        expected_agent_block_time = TARGET_BLOCK_TIME / hashrate_fraction
+        # Calculate base expected time (at baseline difficulty)
+        base_expected_time = TARGET_BLOCK_TIME / base_fraction
+
+        # Query current difficulty and calculate scaling factor
+        # This is the ONLY adjustment mechanism - lets LWMA do its job
+        current_difficulty = self._get_current_difficulty()
+        if self.baseline_difficulty and self.baseline_difficulty > 0:
+            difficulty_factor = current_difficulty / self.baseline_difficulty
+        else:
+            difficulty_factor = 1.0
+
+        # Scale expected time by difficulty factor
+        # If difficulty doubled (e.g., from new miners), blocks take 2x longer
+        expected_agent_block_time = base_expected_time * difficulty_factor
 
         # Lambda (rate parameter) = 1 / expected_time
         lambda_rate = 1.0 / expected_agent_block_time
@@ -365,12 +319,10 @@ class AutonomousMinerAgent(BaseAgent):
             # Fallback to expected agent block time
             time_seconds = expected_agent_block_time
 
-        # Log the calculation for debugging (only at DEBUG level to reduce log spam)
-        actual_pct = (self.hashrate_pct / self.discovered_total_hashrate) * 100
+        # Log the calculation for debugging
         self.logger.debug(f"Next block in {time_seconds:.1f}s "
-                         f"(hashrate: {self.hashrate_pct}/{self.discovered_total_hashrate} = {actual_pct:.1f}%, "
-                         f"expected avg: {expected_agent_block_time:.1f}s, "
-                         f"λ={lambda_rate:.6f})")
+                         f"(hashrate: {self.hashrate_pct}%, difficulty: {difficulty_factor:.2f}x, "
+                         f"expected avg: {expected_agent_block_time:.1f}s)")
 
         return time_seconds
         
@@ -436,13 +388,15 @@ class AutonomousMinerAgent(BaseAgent):
         elapsed_time = current_time - self.mining_start_time
 
         avg_block_time = elapsed_time / max(self.blocks_generated, 1)
-        actual_pct = (self.hashrate_pct / self.discovered_total_hashrate) * 100
+        current_difficulty = self._get_current_difficulty()
+        difficulty_factor = current_difficulty / self.baseline_difficulty if self.baseline_difficulty else 1.0
 
         stats = {
             "agent_id": self.agent_id,
             "hashrate_weight": self.hashrate_pct,
-            "discovered_total_hashrate": self.discovered_total_hashrate,
-            "actual_pct": actual_pct,
+            "baseline_difficulty": self.baseline_difficulty,
+            "current_difficulty": current_difficulty,
+            "difficulty_factor": difficulty_factor,
             "blocks_generated": self.blocks_generated,
             "avg_block_time": avg_block_time,
             "current_height": self.last_block_height,
@@ -452,7 +406,7 @@ class AutonomousMinerAgent(BaseAgent):
 
         self.logger.info(f"Mining stats: {self.blocks_generated} blocks, "
                         f"avg {avg_block_time:.1f}s/block, "
-                        f"hashrate {self.hashrate_pct}/{self.discovered_total_hashrate} ({actual_pct:.1f}%), "
+                        f"difficulty {difficulty_factor:.2f}x, "
                         f"height {self.last_block_height}")
         
     def run_iteration(self) -> float:
@@ -515,12 +469,14 @@ class AutonomousMinerAgent(BaseAgent):
         # Write final summary
         if self.mining_start_time > 0:
             total_runtime = time.time() - self.mining_start_time
-            actual_pct = (self.hashrate_pct / self.discovered_total_hashrate) * 100
+            final_difficulty = self._get_current_difficulty()
+            difficulty_factor = final_difficulty / self.baseline_difficulty if self.baseline_difficulty else 1.0
             summary = {
                 "agent_id": self.agent_id,
                 "hashrate_weight": self.hashrate_pct,
-                "discovered_total_hashrate": self.discovered_total_hashrate,
-                "actual_pct": actual_pct,
+                "baseline_difficulty": self.baseline_difficulty,
+                "final_difficulty": final_difficulty,
+                "difficulty_factor": difficulty_factor,
                 "total_blocks_generated": self.blocks_generated,
                 "total_runtime_seconds": total_runtime,
                 "avg_block_time": total_runtime / max(self.blocks_generated, 1),
@@ -531,7 +487,7 @@ class AutonomousMinerAgent(BaseAgent):
             try:
                 self.write_shared_state(f"{self.agent_id}_mining_summary.json", summary)
                 self.logger.info(f"Final summary: {self.blocks_generated} blocks in {total_runtime:.1f}s "
-                               f"({actual_pct:.1f}% of network)")
+                               f"(difficulty {difficulty_factor:.2f}x from baseline)")
             except Exception as e:
                 self.logger.error(f"Failed to write final summary: {e}")
         
