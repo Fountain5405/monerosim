@@ -2,9 +2,19 @@
 /target/
 Cargo.lock
 
-# Shadow simulation data
+# Shadow simulation data and output
 shadow.data/
 shadow_output/
+shadow_*_test/
+test_shadow_data/
+shadow_test_ld_preload/
+
+# Simulation reports (generated)
+success_analysis_report.json
+simulation_summary_report_*.txt
+
+# Backup config files
+*_main.yaml
 
 # Monero build artifacts
 builds/

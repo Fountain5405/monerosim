@@ -10,7 +10,7 @@ agents:
   simulation_monitor:
     detailed_logging: false
     enable_alerts: true
-    poll_interval: 10
+    poll_interval: 500
     script: agents.simulation_monitor
     status_file: shadow.data/monerosim_monitor.log
   user_agents:

@@ -59,6 +59,7 @@ class MinerDistributorAgent(BaseAgent):
         self.waiting_for_maturity = True
         self.last_balance_check = 0
         self.balance_check_attempts = 0
+        self.initial_funding_completed = False
     
     def _setup_agent(self):
         """Initialize the miner distributor agent"""
@@ -171,43 +172,89 @@ class MinerDistributorAgent(BaseAgent):
         """
         Discover available miners from agent and miner registries.
         Updates self.miners with discovered miner information.
+
+        Wallet addresses are looked up in this order:
+        1. miners.json (may be populated by block controller)
+        2. {agent_id}_miner_info.json (written by regular_user.py for miners)
+        3. Query wallet RPC directly if above sources don't have it
         """
         # Read agent registry
         agent_registry = self.read_shared_state("agent_registry.json")
         if not agent_registry:
             self.logger.warning("Agent registry not found")
             return
-        
+
         # Read miner registry
         miner_registry = self.read_shared_state("miners.json")
         if not miner_registry:
             self.logger.warning("Miner registry not found")
             return
-        
+
         # Combine information from both registries
         self.miners = []
         for agent in agent_registry.get("agents", []):
             # Check if this agent is a miner
             if agent.get("attributes", {}).get("is_miner") == "true":
+                agent_id = agent.get("id")
+
                 # Find corresponding miner in miner registry
                 miner_info = None
                 for miner in miner_registry.get("miners", []):
                     if miner.get("ip_addr") == agent.get("ip_addr"):
                         miner_info = miner
                         break
-                
+
                 if miner_info:
+                    # Try to get wallet address from multiple sources
+                    wallet_address = miner_info.get("wallet_address")
+
+                    # Source 2: Check {agent_id}_miner_info.json file
+                    if not wallet_address:
+                        miner_info_file = self.read_shared_state(f"{agent_id}_miner_info.json")
+                        if miner_info_file:
+                            wallet_address = miner_info_file.get("wallet_address")
+                            if wallet_address:
+                                self.logger.debug(f"Found wallet address for {agent_id} in miner_info.json")
+
+                    # Source 3: Query wallet RPC directly
+                    if not wallet_address and agent.get("wallet_rpc_port"):
+                        wallet_address = self._query_miner_wallet_address(agent)
+                        if wallet_address:
+                            self.logger.debug(f"Retrieved wallet address for {agent_id} via RPC")
+
                     # Combine agent and miner information
                     combined_miner = {
-                        "agent_id": agent.get("id"),
+                        "agent_id": agent_id,
                         "ip_addr": agent.get("ip_addr"),
                         "wallet_rpc_port": agent.get("wallet_rpc_port"),
-                        "wallet_address": miner_info.get("wallet_address"),
+                        "wallet_address": wallet_address,
                         "weight": miner_info.get("weight", 0)
                     }
                     self.miners.append(combined_miner)
-        
-        self.logger.info(f"Discovered {len(self.miners)} miners")
+
+        # Log discovery results
+        miners_with_wallets = sum(1 for m in self.miners if m.get("wallet_address"))
+        self.logger.info(f"Discovered {len(self.miners)} miners ({miners_with_wallets} with wallet addresses)")
+
+    def _query_miner_wallet_address(self, agent: Dict[str, Any]) -> Optional[str]:
+        """
+        Query a miner's wallet address directly via RPC.
+
+        Args:
+            agent: Agent information including ip_addr and wallet_rpc_port
+
+        Returns:
+            Wallet address string or None if query fails
+        """
+        try:
+            rpc = WalletRPC(host=agent['ip_addr'], port=agent['wallet_rpc_port'])
+            rpc.wait_until_ready(max_wait=30, check_interval=2)
+            address = rpc.get_address()
+            if address and address.startswith(('4', '8')):
+                return address
+        except Exception as e:
+            self.logger.debug(f"Failed to query wallet address for {agent.get('id')}: {e}")
+        return None
     
     def _register_as_miner_distributor_agent(self):
         """Register this agent as a miner distributor in the shared state"""
@@ -308,6 +355,11 @@ class MinerDistributorAgent(BaseAgent):
                 self.logger.warning(f"Failed to send initial funding to {recipient.get('id')}")
 
         self.logger.info(f"Initial funding completed: {funded_count}/{len(eligible_recipients)} agents funded")
+
+        # Mark initial funding as completed if we funded at least one agent
+        if funded_count > 0:
+            self.initial_funding_completed = True
+            self.logger.info("Initial funding phase completed successfully")
     
     def _fund_miners_first(self):
         """
@@ -405,8 +457,27 @@ class MinerDistributorAgent(BaseAgent):
         """Single iteration of Monero distribution behavior"""
         # Re-discover miners each iteration to get updated wallet addresses
         self._discover_miners()
-        
+
         current_time = time.time()
+
+        # Check if we need to perform or retry initial funding
+        if not self.initial_funding_completed:
+            # Check if we're still waiting for maturity
+            if self.waiting_for_maturity:
+                elapsed_time = current_time - self.startup_time
+                if elapsed_time >= self.initial_wait_time:
+                    self.logger.info("Initial wait period completed, proceeding with funding")
+                    self.waiting_for_maturity = False
+                elif current_time - self.last_balance_check >= self.balance_check_interval:
+                    # Periodically check if miners have unlocked balance
+                    self._check_miner_balance()
+                    self.last_balance_check = current_time
+
+            # If no longer waiting, attempt initial funding
+            if not self.waiting_for_maturity:
+                self._perform_initial_funding()
+                # Return early to give time for initial funds to propagate
+                return 30.0
         
         # Check if it's time to send a transaction
         if current_time - self.last_transaction_time >= self.transaction_frequency:

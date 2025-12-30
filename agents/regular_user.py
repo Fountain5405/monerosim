@@ -304,16 +304,41 @@ class RegularUserAgent(BaseAgent):
             self.logger.error(f"Failed to send transaction: {e}")
     
     def _get_other_agents(self) -> List[Dict[str, Any]]:
-        """Get list of other agents from shared state"""
+        """
+        Get list of other agents from shared state.
+
+        Wallet addresses are looked up from multiple sources:
+        1. agent_registry.json (updated by base_agent._register_self)
+        2. {agent_id}_user_info.json or {agent_id}_miner_info.json
+        """
         registry = self.read_shared_state("agent_registry.json")
         agents = registry.get('agents', []) if registry else []
-        
-        # Filter out self and agents without wallet addresses
-        other_agents = [
-            agent for agent in agents
-            if agent.get('id') != self.agent_id and agent.get('wallet_address')
-        ]
-        
+
+        other_agents = []
+        for agent in agents:
+            agent_id = agent.get('id')
+            if agent_id == self.agent_id:
+                continue
+
+            # Try to get wallet address from multiple sources
+            wallet_address = agent.get('wallet_address')
+
+            # Fallback to user_info.json or miner_info.json
+            if not wallet_address:
+                user_info = self.read_shared_state(f"{agent_id}_user_info.json")
+                if user_info:
+                    wallet_address = user_info.get('wallet_address')
+
+            if not wallet_address:
+                miner_info = self.read_shared_state(f"{agent_id}_miner_info.json")
+                if miner_info:
+                    wallet_address = miner_info.get('wallet_address')
+
+            if wallet_address:
+                agent_with_address = agent.copy()
+                agent_with_address['wallet_address'] = wallet_address
+                other_agents.append(agent_with_address)
+
         return other_agents
     
     def _record_transaction(self, tx_hash: str, recipient_id: str, amount: float):

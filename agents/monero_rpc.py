@@ -217,6 +217,61 @@ class MoneroRPC(BaseRPC):
         """Get alternate chains"""
         result = self._make_request("get_alternate_chains")
         return result.get("chains", [])
+
+    def get_block(self, height: Optional[int] = None, block_hash: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get block information by height or hash.
+
+        Args:
+            height: Block height (optional if hash provided)
+            block_hash: Block hash (optional if height provided)
+
+        Returns:
+            Dictionary with block info including:
+            - block_header: Header information
+            - tx_hashes: List of transaction hashes in the block
+            - miner_tx_hash: Hash of the miner (coinbase) transaction
+        """
+        params = {}
+        if height is not None:
+            params["height"] = height
+        if block_hash is not None:
+            params["hash"] = block_hash
+
+        if not params:
+            raise RPCError("Either height or hash must be provided")
+
+        return self._make_request("get_block", params)
+
+    def get_block_header_by_height(self, height: int) -> Dict[str, Any]:
+        """
+        Get block header by height.
+
+        Args:
+            height: Block height
+
+        Returns:
+            Dictionary with block header information
+        """
+        params = {"height": height}
+        result = self._make_request("get_block_header_by_height", params)
+        return result.get("block_header", {})
+
+    def get_transaction_pool(self) -> Dict[str, Any]:
+        """
+        Get information about the transaction pool (mempool).
+
+        Returns:
+            Dictionary with transactions in the pool
+        """
+        # This endpoint uses a different path, not json_rpc
+        try:
+            url = self.url.replace("/json_rpc", "/get_transaction_pool")
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            raise RPCError(f"Failed to get transaction pool: {e}")
         
     def generate_block(self, wallet_address: str, amount_of_blocks: int = 1) -> Dict[str, Any]:
         """

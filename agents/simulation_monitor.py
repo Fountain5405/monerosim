@@ -8,9 +8,11 @@ and writes continuously updating status reports to shadow.data/monerosim_monitor
 """
 
 import argparse
+import glob
 import json
 import logging
 import os
+import re
 import sys
 import time
 import atexit
@@ -78,16 +80,32 @@ class SimulationMonitorAgent(BaseAgent):
             "unique_tx_hashes": set(),
             "blocks_mined": 0,
             "last_block_height": 0,
+            "last_processed_height": 0,  # Track last block we've processed for tx extraction
             "node_tx_counts": {},  # Track transactions per node
-            "tx_to_block_mapping": {},  # Track which block contains which tx
+            "tx_to_block_mapping": {},  # Track which block contains which tx (height -> tx_hashes)
             "pending_txs": set(),  # Track transactions waiting to be included
             "included_txs": set()  # Track transactions already included in blocks
         }
-        
+
         # Block transaction tracking files
         self.blocks_with_tx_file = self.shared_dir / "blocks_with_transactions.json"
         self.tx_tracking_file = self.shared_dir / "transaction_tracking.json"
-        
+
+        # Reference daemon for block queries (will be set to first available daemon)
+        self.reference_daemon = None
+
+        # Mining tracking
+        self.miner_registry = {}  # agent_id -> miner info (weight, ip_addr, etc.)
+        self.miner_block_counts = {}  # agent_id -> blocks mined (from log parsing)
+        self.last_heights = {}  # agent_id -> last seen height
+        self.network_difficulty = 0
+
+        # Real-time log parsing for mining detection
+        self.log_file_positions = {}  # file_path -> last read position
+        self.daemon_log_files = {}  # agent_id -> log file path
+        self.recent_blocks_mined = {}  # agent_id -> list of (height, timestamp) tuples
+        self.total_blocks_mined_by_agent = {}  # agent_id -> total count
+
         # Register cleanup handler to ensure final report is generated
         atexit.register(self._cleanup_agent)
         
@@ -97,19 +115,241 @@ class SimulationMonitorAgent(BaseAgent):
     def _setup_agent(self):
         """Set up the monitor agent."""
         self.logger.info("Setting up Simulation Monitor Agent")
-        
+
         # Ensure the shadow.data directory exists
         os.makedirs(os.path.dirname(self.status_file), exist_ok=True)
-        
+
         # Initialize status file with header
         self._initialize_status_file()
-        
+
         # Create monitoring directory for historical data
         monitoring_dir = self.shared_dir / "monitoring"
         monitoring_dir.mkdir(exist_ok=True)
-        
+
+        # Load miner registry
+        self._load_miner_registry()
+
+        # Discover daemon log files for real-time mining detection
+        self._discover_daemon_log_files()
+
         self.logger.info("Simulation Monitor Agent setup complete")
-    
+
+    def _load_miner_registry(self):
+        """
+        Load miner configuration from miners.json and agent registry.
+        This identifies which nodes are miners and their hashrate weights.
+        """
+        try:
+            # Load miners.json for weight/hashrate distribution
+            miners_file = self.shared_dir / "miners.json"
+            if miners_file.exists():
+                with open(miners_file, 'r') as f:
+                    miners_data = json.load(f)
+
+                for miner in miners_data.get("miners", []):
+                    agent_id = miner.get("agent_id")
+                    if agent_id:
+                        self.miner_registry[agent_id] = {
+                            "ip_addr": miner.get("ip_addr"),
+                            "weight": miner.get("weight", 0),
+                            "is_miner": True,
+                            "blocks_produced": 0
+                        }
+
+                self.logger.info(f"Loaded {len(self.miner_registry)} miners from registry")
+
+            # Also check agent registry for is_miner attribute
+            agent_registry = self.discovery.get_agent_registry(force_refresh=True)
+            for agent in agent_registry.get("agents", []):
+                agent_id = agent.get("id")
+                is_miner = agent.get("attributes", {}).get("is_miner") == "true"
+
+                if is_miner and agent_id not in self.miner_registry:
+                    self.miner_registry[agent_id] = {
+                        "ip_addr": agent.get("ip_addr"),
+                        "weight": 0,  # Unknown weight
+                        "is_miner": True,
+                        "blocks_produced": 0
+                    }
+
+        except Exception as e:
+            self.logger.error(f"Error loading miner registry: {e}")
+
+    def _discover_daemon_log_files(self):
+        """
+        Discover daemon log files for all hosts in shadow.data/hosts/.
+        These are the bash.*.stdout files that contain monerod output.
+        """
+        try:
+            hosts_dir = Path("shadow.data/hosts")
+            if not hosts_dir.exists():
+                self.logger.warning("shadow.data/hosts directory not found")
+                return
+
+            for host_dir in hosts_dir.iterdir():
+                if not host_dir.is_dir():
+                    continue
+
+                host_name = host_dir.name
+
+                # Find bash.*.stdout files (daemon logs)
+                log_files = list(host_dir.glob("bash.*.stdout"))
+                if log_files:
+                    # Use the largest file (usually the daemon log)
+                    # or the first one - daemon is typically bash.1000.stdout
+                    daemon_log = None
+                    for log_file in sorted(log_files):
+                        # Check if this looks like a daemon log by reading first few lines
+                        try:
+                            with open(log_file, 'r', errors='ignore') as f:
+                                header = f.read(1000)
+                                if 'monerod' in header.lower() or 'monero' in header.lower() or 'blockchain' in header.lower():
+                                    daemon_log = log_file
+                                    break
+                        except Exception:
+                            continue
+
+                    if daemon_log is None and log_files:
+                        # Fallback to first/largest file
+                        daemon_log = max(log_files, key=lambda f: f.stat().st_size)
+
+                    if daemon_log:
+                        self.daemon_log_files[host_name] = str(daemon_log)
+                        # Initialize file position to current end (only read new content)
+                        if str(daemon_log) not in self.log_file_positions:
+                            self.log_file_positions[str(daemon_log)] = daemon_log.stat().st_size
+
+            self.logger.info(f"Discovered daemon logs for {len(self.daemon_log_files)} hosts")
+
+        except Exception as e:
+            self.logger.error(f"Error discovering daemon log files: {e}")
+
+    def _parse_daemon_logs_for_mining(self):
+        """
+        Parse daemon logs for mining events (blocks mined).
+        This reads new content since last check (like tail -f).
+        """
+        # Regex patterns for mining detection
+        # Pattern 1: "mined new block" with height
+        mined_pattern = re.compile(
+            r'mined new block.*height[=:\s]*(\d+)',
+            re.IGNORECASE
+        )
+
+        # Pattern 2: "BLOCK SUCCESSFULLY ADDED" followed by block details
+        block_added_pattern = re.compile(
+            r'\+{5,}\s*BLOCK SUCCESSFULLY ADDED',
+            re.IGNORECASE
+        )
+
+        # Pattern 3: Block ID/hash after successful add
+        block_id_pattern = re.compile(
+            r'id:\s*<([0-9a-f]{64})>',
+            re.IGNORECASE
+        )
+
+        # Pattern 4: Height from block info
+        height_pattern = re.compile(
+            r'HEIGHT\s+(\d+)',
+            re.IGNORECASE
+        )
+
+        # Pattern 5: PoW indicator (means this node mined the block)
+        pow_pattern = re.compile(
+            r'PoW:\s*<([0-9a-f]{64})>',
+            re.IGNORECASE
+        )
+
+        for agent_id, log_file in self.daemon_log_files.items():
+            try:
+                if not os.path.exists(log_file):
+                    continue
+
+                current_size = os.path.getsize(log_file)
+                last_position = self.log_file_positions.get(log_file, 0)
+
+                # Skip if no new content
+                if current_size <= last_position:
+                    continue
+
+                # Read new content
+                with open(log_file, 'r', errors='ignore') as f:
+                    f.seek(last_position)
+                    new_content = f.read()
+
+                # Update position
+                self.log_file_positions[log_file] = current_size
+
+                # Parse for mining events
+                lines = new_content.split('\n')
+                i = 0
+                while i < len(lines):
+                    line = lines[i]
+
+                    # Check for "mined new block" pattern
+                    mined_match = mined_pattern.search(line)
+                    if mined_match:
+                        height = int(mined_match.group(1))
+                        self._record_block_mined(agent_id, height)
+                        i += 1
+                        continue
+
+                    # Check for "BLOCK SUCCESSFULLY ADDED" pattern
+                    if block_added_pattern.search(line):
+                        # Look ahead for PoW indicator (means this node mined it)
+                        block_height = None
+                        is_mined = False
+
+                        for j in range(i, min(i + 10, len(lines))):
+                            check_line = lines[j]
+
+                            # Check for PoW (indicates mining)
+                            if pow_pattern.search(check_line):
+                                is_mined = True
+
+                            # Get height
+                            height_match = height_pattern.search(check_line)
+                            if height_match:
+                                block_height = int(height_match.group(1))
+
+                        if is_mined and block_height:
+                            self._record_block_mined(agent_id, block_height)
+
+                    i += 1
+
+            except Exception as e:
+                self.logger.warning(f"Error parsing log for {agent_id}: {e}")
+
+    def _record_block_mined(self, agent_id: str, height: int):
+        """
+        Record that an agent mined a block.
+
+        Args:
+            agent_id: The agent that mined the block
+            height: The block height
+        """
+        # Initialize tracking for this agent if needed
+        if agent_id not in self.recent_blocks_mined:
+            self.recent_blocks_mined[agent_id] = []
+        if agent_id not in self.total_blocks_mined_by_agent:
+            self.total_blocks_mined_by_agent[agent_id] = 0
+
+        # Record the block (with timestamp for rate calculation)
+        current_time = time.time()
+        self.recent_blocks_mined[agent_id].append((height, current_time))
+
+        # Keep only recent blocks (last 10 minutes worth)
+        cutoff_time = current_time - 600
+        self.recent_blocks_mined[agent_id] = [
+            (h, t) for h, t in self.recent_blocks_mined[agent_id]
+            if t > cutoff_time
+        ]
+
+        # Update total count
+        self.total_blocks_mined_by_agent[agent_id] += 1
+
+        self.logger.debug(f"Block mined by {agent_id} at height {height}")
+
     def _initialize_status_file(self):
         """Create and initialize the status file with header."""
         try:
@@ -134,14 +374,17 @@ class SimulationMonitorAgent(BaseAgent):
     def run_iteration(self) -> float:
         """
         Main monitoring loop iteration.
-        
+
         Returns:
             float: Time to sleep before next iteration (in seconds)
         """
         self.cycle_count += 1
         self.logger.debug(f"Starting monitoring cycle {self.cycle_count}")
-        
+
         try:
+            # Parse daemon logs for mining activity (real-time detection)
+            self._parse_daemon_logs_for_mining()
+
             # Collect data from all nodes
             node_data = self._collect_node_data()
             
@@ -267,10 +510,10 @@ class SimulationMonitorAgent(BaseAgent):
     def _collect_daemon_data(self, rpc_info: Dict[str, Any]) -> Dict[str, Any]:
         """
         Collect data from a Monero daemon via RPC.
-        
+
         Args:
             rpc_info: RPC connection information
-            
+
         Returns:
             Dictionary containing daemon data
         """
@@ -279,38 +522,69 @@ class SimulationMonitorAgent(BaseAgent):
             daemon_rpc = self._get_daemon_rpc(rpc_info)
             if not daemon_rpc:
                 return {"error": "Failed to create RPC connection"}
-            
+
+            agent_id = rpc_info.get("agent_id", "unknown")
+
             # Collect daemon information
             data = {}
-            
+
             try:
                 info = daemon_rpc.get_info()
+                current_height = info.get("height", 0)
+                difficulty = info.get("difficulty", 0)
+
                 data.update({
-                    "height": info.get("height", 0),
+                    "height": current_height,
                     "connections": daemon_rpc.get_connections(),
                     "synced": info.get("synchronized", False),
-                    "difficulty": info.get("difficulty", 0),
+                    "difficulty": difficulty,
                     "target_height": info.get("target_height", 0),
                     "incoming_connections": info.get("incoming_connections_count", 0),
                     "outgoing_connections": info.get("outgoing_connections_count", 0),
                     "network_height": info.get("height_without_bootstrap", 0)
                 })
+
+                # Update network difficulty
+                if difficulty > 0:
+                    self.network_difficulty = difficulty
+
             except Exception as e:
                 data["info_error"] = str(e)
-            
-            try:
-                # Get mining status
-                mining_status = daemon_rpc.mining_status()
-                data.update({
-                    "mining_active": mining_status.get("active", False),
-                    "mining_hashrate": mining_status.get("speed", 0),
-                    "mining_threads": mining_status.get("threads_count", 0)
-                })
-            except Exception as e:
-                data["mining_error"] = str(e)
-            
+
+            # Determine mining status from registry and actual log parsing
+            is_registered_miner = agent_id in self.miner_registry
+            miner_info = self.miner_registry.get(agent_id, {})
+            weight = miner_info.get("weight", 0)
+
+            # Get actual mining activity from log parsing
+            total_blocks_mined = self.total_blocks_mined_by_agent.get(agent_id, 0)
+            recent_blocks = self.recent_blocks_mined.get(agent_id, [])
+
+            # Calculate recent mining rate (blocks per 10 minutes)
+            recent_block_count = len(recent_blocks)
+
+            # A miner is "actively mining" if they've mined blocks recently or are registered
+            is_actively_mining = recent_block_count > 0 or is_registered_miner
+
+            # Calculate effective hashrate based on weight percentage
+            total_weight = sum(m.get("weight", 0) for m in self.miner_registry.values())
+            if total_weight > 0 and weight > 0:
+                effective_hashrate = weight
+            else:
+                effective_hashrate = 0
+
+            data.update({
+                "mining_active": is_actively_mining,
+                "mining_hashrate": effective_hashrate,
+                "mining_weight": weight,
+                "is_registered_miner": is_registered_miner,
+                "blocks_mined_total": total_blocks_mined,
+                "blocks_mined_recent": recent_block_count,
+                "is_actively_mining": recent_block_count > 0
+            })
+
             return data
-            
+
         except Exception as e:
             return {"error": str(e)}
     
@@ -424,31 +698,47 @@ class SimulationMonitorAgent(BaseAgent):
         Returns:
             Dictionary containing network health metrics
         """
+        # Calculate total blocks mined from log parsing
+        total_blocks_from_logs = sum(self.total_blocks_mined_by_agent.values())
+        actively_mining_count = sum(1 for blocks in self.recent_blocks_mined.values() if len(blocks) > 0)
+
         metrics = {
             "total_nodes": len(node_data),
             "synced_nodes": 0,
             "active_miners": 0,
+            "actively_mining": actively_mining_count,  # From log parsing
+            "registered_miners": len(self.miner_registry),
             "total_connections": 0,
             "heights": [],
             "mining_hashrates": [],
+            "mining_weights": [],
+            "total_mining_weight": 0,
+            "network_difficulty": self.network_difficulty,
+            "total_blocks_mined": total_blocks_from_logs,  # From log parsing
             "total_balance": 0,
             "total_unlocked_balance": 0,
             "total_pool_size": 0,
             "errors": []
         }
-        
+
         for node_id, data in node_data.items():
             daemon = data.get("daemon", {})
             wallet = data.get("wallet", {})
-            
+
             # Check synchronization status
             if daemon.get("synced", False):
                 metrics["synced_nodes"] += 1
-            
-            # Check mining status
-            if daemon.get("mining_active", False):
+
+            # Check mining status (from log parsing for actual activity)
+            is_actively_mining = daemon.get("is_actively_mining", False)
+            is_registered = daemon.get("is_registered_miner", False)
+
+            if is_actively_mining or is_registered:
                 metrics["active_miners"] += 1
+                weight = daemon.get("mining_weight", 0)
                 metrics["mining_hashrates"].append(daemon.get("mining_hashrate", 0))
+                metrics["mining_weights"].append(weight)
+                metrics["total_mining_weight"] += weight
             
             # Collect height information
             height = daemon.get("height", 0)
@@ -503,33 +793,36 @@ class SimulationMonitorAgent(BaseAgent):
     
     def _track_transactions_and_blocks(self, node_data: Dict[str, Any]):
         """
-        Track transactions and blocks across the network by reading the shared state files
-        and correlating transactions with blocks.
-        
+        Track transactions and blocks across the network by querying daemon RPC
+        and reading the shared state files.
+
         Args:
             node_data: Dictionary containing data from all nodes
         """
         try:
-            # Read actual transaction and block data from shared state files
+            # Read transaction data from shared state file
             self._read_transaction_data()
-            self._read_enhanced_block_data()
-            
-            # Correlate transactions with blocks
-            self._correlate_transactions_with_blocks()
-            
-            # Also track node-level metrics
+
+            # Find current max height and set up reference daemon
             current_max_height = 0
             total_nodes_with_txs = 0
-            
+
             for node_id, data in node_data.items():
                 daemon = data.get("daemon", {})
                 wallet = data.get("wallet", {})
-                
+
                 # Track block height
                 height = daemon.get("height", 0)
                 if height > current_max_height:
                     current_max_height = height
-                
+
+                    # Set reference daemon if not already set or if this is a better candidate
+                    if self.reference_daemon is None:
+                        agent_info = data.get("agent_info", {})
+                        rpc_info = self._get_agent_rpc_info(agent_info)
+                        if rpc_info:
+                            self.reference_daemon = self._get_daemon_rpc(rpc_info)
+
                 # Track transactions in wallet
                 if wallet.get("balance", 0) > 0 or wallet.get("unlocked_balance", 0) > 0:
                     # This node has received transactions
@@ -537,16 +830,67 @@ class SimulationMonitorAgent(BaseAgent):
                         self.transaction_stats["node_tx_counts"][node_id] = 0
                     self.transaction_stats["node_tx_counts"][node_id] += 1
                     total_nodes_with_txs += 1
-            
+
+            # Update block statistics
+            self.transaction_stats["last_block_height"] = current_max_height
+            self.transaction_stats["blocks_mined"] = max(0, current_max_height - 1)  # Subtract genesis block
+
+            # Query new blocks for transaction data via RPC
+            self._extract_transactions_from_blocks(current_max_height)
+
             # Update broadcast count (nodes that have received transactions)
             if total_nodes_with_txs > len(self.transaction_stats["node_tx_counts"]):
                 self.transaction_stats["total_broadcast"] = total_nodes_with_txs
-            
+
             # Save enhanced tracking data
             self._save_transaction_tracking_data()
-            
+
         except Exception as e:
             self.logger.error(f"Error tracking transactions and blocks: {e}")
+
+    def _extract_transactions_from_blocks(self, current_height: int):
+        """
+        Extract transaction hashes from blocks via daemon RPC.
+
+        Args:
+            current_height: Current blockchain height
+        """
+        if not self.reference_daemon:
+            self.logger.debug("No reference daemon available for block queries")
+            return
+
+        last_processed = self.transaction_stats["last_processed_height"]
+
+        # Process new blocks since last check
+        # Start from height 2 (skip genesis block) or last processed + 1
+        start_height = max(2, last_processed + 1)
+
+        if start_height > current_height:
+            return  # No new blocks to process
+
+        self.logger.debug(f"Processing blocks {start_height} to {current_height}")
+
+        for height in range(start_height, current_height + 1):
+            try:
+                block_info = self.reference_daemon.get_block(height=height)
+
+                # Extract transaction hashes from block
+                tx_hashes = block_info.get("tx_hashes", [])
+
+                if tx_hashes:
+                    self.transaction_stats["tx_to_block_mapping"][height] = tx_hashes
+                    self.transaction_stats["included_txs"].update(tx_hashes)
+                    self.logger.debug(f"Block {height}: {len(tx_hashes)} transactions")
+
+                self.transaction_stats["last_processed_height"] = height
+
+            except Exception as e:
+                self.logger.warning(f"Failed to get block {height}: {e}")
+                # Don't update last_processed_height so we retry this block next time
+                break
+
+        # Update total transactions in blocks count
+        self.transaction_stats["total_in_blocks"] = len(self.transaction_stats["included_txs"])
     
     def _read_transaction_data(self):
         """Read transaction data from the shared state file."""
@@ -572,147 +916,48 @@ class SimulationMonitorAgent(BaseAgent):
             self.logger.error(f"Error reading transaction data: {e}")
     
     def _read_enhanced_block_data(self):
-        """Read enhanced block data from the shared state file."""
-        try:
-            blocks_file = self.shared_dir / "blocks_found.json"
-            if blocks_file.exists():
-                with open(blocks_file, 'r') as f:
-                    blocks = json.load(f)
-                
-                # Update block count
-                self.transaction_stats["blocks_mined"] = len(blocks)
-                
-                # Try to read enhanced blocks with transaction data
-                if self.blocks_with_tx_file.exists():
-                    try:
-                        with open(self.blocks_with_tx_file, 'r') as f:
-                            enhanced_blocks = json.load(f)
-                        
-                        # Count actual transactions in blocks
-                        total_tx_in_blocks = sum(len(block.get("transactions", [])) for block in enhanced_blocks)
-                        self.transaction_stats["total_in_blocks"] = total_tx_in_blocks
-                        
-                        self.logger.debug(f"Read {len(enhanced_blocks)} enhanced blocks with {total_tx_in_blocks} transactions")
-                        return enhanced_blocks
-                        
-                    except Exception as e:
-                        self.logger.warning(f"Failed to read enhanced block data: {e}")
-                
-                # Fallback: estimate transactions in blocks (simplified - assumes at least 1 tx per block)
-                self.transaction_stats["total_in_blocks"] = len(blocks)
-                
-                self.logger.debug(f"Read {len(blocks)} basic blocks from shared state")
-                return blocks
-            
-        except Exception as e:
-            self.logger.error(f"Error reading block data: {e}")
-            return []
-    
-    def _correlate_transactions_with_blocks(self):
         """
-        Correlate transactions with blocks using timing and heuristic analysis.
-        This method attempts to determine which transactions are likely included in which blocks
-        when direct transaction data is not available in blocks_found.json.
+        Legacy method - block data is now read via RPC in _extract_transactions_from_blocks.
+        This method is kept for backwards compatibility but does nothing.
         """
-        try:
-            # Load existing tracking data if available
-            existing_tracking = {}
-            if self.tx_tracking_file.exists():
-                try:
-                    with open(self.tx_tracking_file, 'r') as f:
-                        existing_tracking = json.load(f)
-                except Exception as e:
-                    self.logger.warning(f"Failed to load existing tracking data: {e}")
-            
-            # Get transaction timestamps
-            tx_timestamps = {}
-            transactions_file = self.shared_dir / "transactions.json"
-            if transactions_file.exists():
-                with open(transactions_file, 'r') as f:
-                    transactions = json.load(f)
-                
-                for tx in transactions:
-                    tx_hash = None
-                    if isinstance(tx, dict) and "tx_hash" in tx:
-                        tx_hash_data = tx["tx_hash"]
-                        if isinstance(tx_hash_data, dict) and "tx_hash" in tx_hash_data:
-                            tx_hash = tx_hash_data["tx_hash"]
-                        elif isinstance(tx_hash_data, str):
-                            tx_hash = tx_hash_data
-                    
-                    if tx_hash and "timestamp" in tx:
-                        tx_timestamps[tx_hash] = tx["timestamp"]
-            
-            # Get block timestamps
-            blocks_file = self.shared_dir / "blocks_found.json"
-            if blocks_file.exists():
-                with open(blocks_file, 'r') as f:
-                    blocks = json.load(f)
-                
-                # Sort blocks by timestamp
-                blocks.sort(key=lambda x: x.get("timestamp", 0))
-                
-                # Correlate transactions with blocks based on timing
-                for i, block in enumerate(blocks):
-                    block_time = block.get("timestamp", 0)
-                    block_hash = block.get("block_hash", f"block_{i}")
-                    
-                    # Find transactions created before this block but after previous block
-                    prev_block_time = blocks[i-1].get("timestamp", 0) if i > 0 else 0
-                    
-                    # Transactions that could be in this block
-                    potential_txs = []
-                    for tx_hash, tx_time in tx_timestamps.items():
-                        if prev_block_time < tx_time <= block_time:
-                            potential_txs.append(tx_hash)
-                    
-                    # Update tracking data
-                    if potential_txs:
-                        self.transaction_stats["tx_to_block_mapping"][block_hash] = potential_txs
-                        self.transaction_stats["included_txs"].update(potential_txs)
-                
-                # Update the count
-                self.transaction_stats["total_in_blocks"] = len(self.transaction_stats["included_txs"])
-                
-                self.logger.debug(f"Correlated {len(self.transaction_stats['included_txs'])} transactions with {len(blocks)} blocks")
-            
-        except Exception as e:
-            self.logger.error(f"Error correlating transactions with blocks: {e}")
+        pass
     
     def _save_transaction_tracking_data(self):
         """Save enhanced transaction tracking data to shared files."""
         try:
+            # Convert tx_to_block_mapping keys to strings for JSON serialization
+            # (keys are block heights as integers)
+            tx_mapping_serializable = {
+                str(k): v for k, v in self.transaction_stats["tx_to_block_mapping"].items()
+            }
+
             # Save transaction tracking data
             tracking_data = {
-                "tx_to_block_mapping": dict(self.transaction_stats["tx_to_block_mapping"]),
+                "tx_to_block_mapping": tx_mapping_serializable,
                 "included_txs": list(self.transaction_stats["included_txs"]),
                 "pending_txs": list(self.transaction_stats["pending_txs"]),
                 "total_in_blocks": self.transaction_stats["total_in_blocks"],
+                "last_processed_height": self.transaction_stats["last_processed_height"],
+                "blocks_mined": self.transaction_stats["blocks_mined"],
                 "last_updated": time.time()
             }
-            
+
             with open(self.tx_tracking_file, 'w') as f:
                 json.dump(tracking_data, f, indent=2)
-            
-            # Always update the enhanced blocks file with current data
-            blocks_file = self.shared_dir / "blocks_found.json"
-            if blocks_file.exists():
-                with open(blocks_file, 'r') as f:
-                    blocks = json.load(f)
-                
-                # Enhance blocks with transaction data
-                enhanced_blocks = []
-                for i, block in enumerate(blocks):
-                    block_hash = block.get("block_hash", f"block_{i}")
-                    enhanced_block = block.copy()
-                    enhanced_block["transactions"] = self.transaction_stats["tx_to_block_mapping"].get(block_hash, [])
-                    enhanced_block["tx_count"] = len(enhanced_block["transactions"])
-                    enhanced_block["height"] = i + 1  # Estimate height
-                    enhanced_blocks.append(enhanced_block)
-                
+
+            # Generate enhanced blocks data from RPC-collected data
+            enhanced_blocks = []
+            for height, tx_hashes in sorted(self.transaction_stats["tx_to_block_mapping"].items()):
+                enhanced_block = {
+                    "height": height,
+                    "transactions": tx_hashes,
+                    "tx_count": len(tx_hashes)
+                }
+                enhanced_blocks.append(enhanced_block)
+
+            if enhanced_blocks:
                 with open(self.blocks_with_tx_file, 'w') as f:
                     json.dump(enhanced_blocks, f, indent=2)
-                
                 self.logger.debug(f"Updated enhanced blocks file with {len(enhanced_blocks)} blocks")
             
         except Exception as e:
@@ -742,7 +987,13 @@ class SimulationMonitorAgent(BaseAgent):
                        f"({network_metrics['sync_percentage']:.1f}%)\n")
                 f.write(f"- Average Height: {network_metrics['avg_height']:.0f}\n")
                 f.write(f"- Height Variance: {network_metrics['height_variance']:.2f}\n")
-                f.write(f"- Active Miners: {network_metrics['active_miners']}\n\n")
+
+                # Show mining status with both registered and actively mining counts
+                registered = network_metrics.get('registered_miners', 0)
+                actively_mining = network_metrics.get('actively_mining', 0)
+                total_blocks = network_metrics.get('total_blocks_mined', 0)
+                f.write(f"- Registered Miners: {registered}\n")
+                f.write(f"- Actively Mining: {actively_mining} (mined {total_blocks} blocks)\n\n")
                 
                 # Write node details table
                 self._write_node_table(f, node_data)
@@ -767,38 +1018,63 @@ class SimulationMonitorAgent(BaseAgent):
     def _write_node_table(self, f, node_data: Dict[str, Any]):
         """Write formatted node details table."""
         f.write("NODE DETAILS:\n")
-        
-        # Table header
-        f.write("┌─────────────┬───────┬───────┬──────────┬──────────┬─────────┐\n")
-        f.write("│ Node        │ Height│ Sync  │ Mining   │ Hashrate │ Conns   │\n")
-        f.write("├─────────────┼───────┼───────┼──────────┼──────────┼─────────┤\n")
-        
+
+        # Table header - showing Blocks mined and Weight for miners
+        f.write("┌─────────────┬───────┬───────┬──────────┬────────┬────────┬─────────┐\n")
+        f.write("│ Node        │ Height│ Sync  │ Mining   │ Blocks │ Weight │ Conns   │\n")
+        f.write("├─────────────┼───────┼───────┼──────────┼────────┼────────┼─────────┤\n")
+
         # Table rows
         for node_id, data in node_data.items():
             agent_info = data.get("agent_info", {})
             daemon = data.get("daemon", {})
-            
-            # Determine node type
-            node_type = "user"
-            if agent_info.get("attributes", {}).get("is_miner") == "true":
-                node_type = "miner"
-            
+
+            # Determine node type based on miner registry
+            is_miner = node_id in self.miner_registry
+            if not is_miner:
+                is_miner = agent_info.get("attributes", {}).get("is_miner") == "true"
+            node_type = "miner" if is_miner else "user"
+
             # Format values
             height = daemon.get("height", 0)
             sync_status = "✓" if daemon.get("synced", False) else "✗"
-            mining_status = "✓ Active" if daemon.get("mining_active", False) else "✗ Inactive"
-            hashrate = daemon.get("mining_hashrate", 0)
-            hashrate_str = f"{hashrate/1000:.1f} KH/s" if hashrate > 0 else "0 H/s"
+
+            # Mining status - show if actively mining (from log parsing)
+            is_actively_mining = daemon.get("is_actively_mining", False)
+            blocks_mined = daemon.get("blocks_mined_total", 0)
+
+            if is_actively_mining:
+                mining_status = "✓ Active"
+            elif is_miner:
+                mining_status = "◐ Idle"
+            else:
+                mining_status = "- N/A"
+
+            # Show blocks mined for miners
+            if is_miner:
+                blocks_str = str(blocks_mined)
+            else:
+                blocks_str = "-"
+
+            # Show weight for miners
+            weight = daemon.get("mining_weight", 0)
+            if is_miner and weight > 0:
+                weight_str = f"{weight}%"
+            elif is_miner:
+                weight_str = "-"
+            else:
+                weight_str = "-"
+
             connections = daemon.get("connections", 0)
-            
+
             # Truncate node ID if needed
             node_display = f"{node_id} ({node_type})"
             if len(node_display) > 11:
                 node_display = node_display[:11]
-            
-            f.write(f"│ {node_display:<11} │ {height:>5} │ {sync_status:<5} │ {mining_status:<8} │ {hashrate_str:>8} │ {connections:>7} │\n")
-        
-        f.write("└─────────────┴───────┴───────┴──────────┴──────────┴─────────┘\n\n")
+
+            f.write(f"│ {node_display:<11} │ {height:>5} │ {sync_status:<5} │ {mining_status:<8} │ {blocks_str:>6} │ {weight_str:>6} │ {connections:>7} │\n")
+
+        f.write("└─────────────┴───────┴───────┴──────────┴────────┴────────┴─────────┘\n\n")
     
     def _write_transaction_status(self, f, network_metrics: Dict[str, Any]):
         """Write transaction status information."""
@@ -832,10 +1108,17 @@ class SimulationMonitorAgent(BaseAgent):
         f.write("BLOCKCHAIN STATUS:\n")
         f.write(f"- Average Height: {network_metrics['avg_height']:.0f}\n")
         f.write(f"- Height Range: {network_metrics['min_height']:.0f} - {network_metrics['max_height']:.0f}\n")
-        
-        if network_metrics['total_hashrate'] > 0:
-            f.write(f"- Network Hashrate: {network_metrics['total_hashrate']/1000:.1f} KH/s\n")
-        
+
+        # Show difficulty
+        difficulty = network_metrics.get('network_difficulty', 0)
+        if difficulty > 0:
+            f.write(f"- Network Difficulty: {difficulty:,}\n")
+
+        # Show total mining weight instead of hashrate
+        total_weight = network_metrics.get('total_mining_weight', 0)
+        if total_weight > 0:
+            f.write(f"- Total Mining Weight: {total_weight}%\n")
+
         f.write(f"- Total Connections: {network_metrics['total_connections']}\n\n")
     
     def _check_alerts(self, network_metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -866,12 +1149,14 @@ class SimulationMonitorAgent(BaseAgent):
                 "message": f"High height variance: {network_metrics['height_variance']:.2f}"
             })
         
-        # Check for no miners
-        if network_metrics['active_miners'] == 0:
+        # Check for no miners - use registered_miners count
+        registered_miners = network_metrics.get('registered_miners', 0)
+        active_miners = network_metrics.get('active_miners', 0)
+        if registered_miners == 0 and active_miners == 0:
             alerts.append({
                 "type": "no_miners",
                 "severity": "critical",
-                "message": "No active miners detected"
+                "message": "No miners registered or detected"
             })
         
         # Check for large transaction pool
