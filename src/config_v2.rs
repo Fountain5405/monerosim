@@ -156,6 +156,11 @@ pub struct UserAgentConfig {
     pub is_miner: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<HashMap<String, String>>,
+    /// Optional start time offset (e.g., "2h", "7200s", "30m")
+    /// This offset is added to the normally calculated start time,
+    /// allowing agents to join mid-simulation while preserving staggered launches.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_time_offset: Option<String>,
 }
 
 impl UserAgentConfig {

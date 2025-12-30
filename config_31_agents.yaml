@@ -49,6 +49,16 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     mining_script: agents.autonomous_miner
+  # NEW MINER: Joins 2 hours into simulation with 40% hashrate weight
+  # This will test difficulty adjustment when total hashrate goes from 100 to 140
+  - attributes:
+      can_receive_distributions: true
+      hashrate: '40'
+      is_miner: 'true'
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    mining_script: agents.autonomous_miner
+    start_time_offset: '2h'
   - attributes:
       can_receive_distributions: true
       max_transaction_amount: '2.0'

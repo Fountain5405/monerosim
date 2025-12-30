@@ -191,30 +191,39 @@ pub fn process_user_agents(
                 .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
                 .unwrap_or(false);
 
-            let start_time_daemon = if matches!(peer_mode, PeerMode::Dynamic) {
+            // Parse start_time_offset if present (e.g., "2h", "7200s", "30m")
+            let start_time_offset_seconds: u64 = user_agent_config.start_time_offset
+                .as_ref()
+                .and_then(|offset| parse_duration_to_seconds(offset).ok())
+                .unwrap_or(0);
+
+            let base_start_time_seconds = if matches!(peer_mode, PeerMode::Dynamic) {
                 // Optimized Dynamic mode launch sequence - reduced staggered timing
                 if is_miner {
                     if i == 0 {
-                        "0s".to_string() // First miner (node 0) at t=0s
+                        0u64 // First miner (node 0) at t=0s
                     } else {
-                        format!("{}s", 1 + i) // Remaining miners every 1s starting t=1s
+                        1 + i as u64 // Remaining miners every 1s starting t=1s
                     }
                 } else {
                     // Regular users start after miners, with reduced stagger
-                    format!("{}s", 5 + (i.saturating_sub(miners.len())))
+                    5 + (i.saturating_sub(miners.len())) as u64
                 }
             } else {
                 // Optimized logic for other modes - reduced timing
                 if is_miner {
-                    format!("{}s", i) // Miners start early, staggered by 1s
+                    i as u64 // Miners start early, staggered by 1s
                 } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
-                    "3s".to_string() // Seeds start at 3s
+                    3u64 // Seeds start at 3s
                 } else {
                     // Regular agents start after seeds, with reduced stagger
                     let regular_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
-                    format!("{}s", 6 + regular_index) // Stagger by 1s
+                    6 + regular_index as u64 // Stagger by 1s
                 }
             };
+
+            // Apply start_time_offset if specified in config
+            let start_time_daemon = format!("{}s", base_start_time_seconds + start_time_offset_seconds);
 
             // Wallet start time: coordinate with daemon start time (reduced delay)
             let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
