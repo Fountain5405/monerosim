@@ -11,7 +11,7 @@ use crate::shadow::ShadowHost;
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::process::{add_wallet_process, add_user_agent_process, create_mining_agent_process};
+use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -33,6 +33,7 @@ pub fn process_user_agents(
     using_gml_topology: bool,
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
+    enable_dns_server: bool,
 ) -> color_eyre::eyre::Result<()> {
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
     let agent_node_assignments = if let Some(gml) = gml_graph {
@@ -282,13 +283,19 @@ pub fn process_user_agents(
 
             let mut processes = Vec::new();
 
-            // Add Monero daemon process with appropriate connections
+            // Determine agent type
+            let has_local_daemon = user_agent_config.has_local_daemon();
+            let has_remote_daemon = user_agent_config.has_remote_daemon();
+            let has_wallet = user_agent_config.has_wallet();
+            let _is_script_only = user_agent_config.is_script_only();
+
+            // Add Monero daemon process only if agent has local daemon
+            if has_local_daemon {
             let mut daemon_args_base = vec![
                 format!("--data-dir=/tmp/monero-{}", agent_id),
                 "--log-file=/dev/stdout".to_string(),
                 "--log-level=1".to_string(),
                 "--simulation".to_string(),
-                "--disable-dns-checkpoints".to_string(),
                 "--prep-blocks-threads=1".to_string(),
                 "--max-concurrency=1".to_string(),
                 "--no-zmq".to_string(),
@@ -310,8 +317,15 @@ pub fn process_user_agents(
                 "--allow-local-ip".to_string(),
             ];
 
-            // Only disable built-in seed nodes for miners
-            if is_miner {
+            // When DNS server is NOT enabled, disable DNS checkpoints
+            // When DNS server IS enabled, monerod will use DNS_PUBLIC for peer discovery
+            if !enable_dns_server {
+                daemon_args_base.push("--disable-dns-checkpoints".to_string());
+            }
+
+            // Only disable built-in seed nodes for miners when DNS server is not enabled
+            // When DNS server is enabled, miners can discover peers via DNS
+            if is_miner && !enable_dns_server {
                 daemon_args_base.push("--disable-seed-nodes".to_string());
             }
 
@@ -369,22 +383,39 @@ pub fn process_user_agents(
                     agent_id, monerod_path, daemon_args
                 ),
                 environment: monero_environment.clone(),
-                start_time: start_time_daemon,
+                start_time: start_time_daemon.clone(),
             });
+            } // End of if has_local_daemon
 
-            // Add wallet process if wallet is specified
-            if user_agent_config.wallet.is_some() {
-                add_wallet_process(
-                    &mut processes,
-                    &agent_id,
-                    &agent_ip,
-                    agent_rpc_port,
-                    wallet_rpc_port,
-                    wallet_path,
-                    environment,
-                    i,
-                    &wallet_start_time,
-                );
+            // Add wallet process based on agent type
+            if has_wallet {
+                if has_local_daemon {
+                    // Full agent: wallet connects to local daemon
+                    add_wallet_process(
+                        &mut processes,
+                        &agent_id,
+                        &agent_ip,
+                        agent_rpc_port,
+                        wallet_rpc_port,
+                        wallet_path,
+                        environment,
+                        i,
+                        &wallet_start_time,
+                    );
+                } else if has_remote_daemon {
+                    // Wallet-only agent: wallet connects to remote daemon
+                    let remote_addr = user_agent_config.remote_daemon_address();
+                    add_remote_wallet_process(
+                        &mut processes,
+                        &agent_id,
+                        &agent_ip,
+                        remote_addr,
+                        wallet_rpc_port,
+                        environment,
+                        i,
+                        &wallet_start_time,
+                    );
+                }
             }
 
             // Add agent scripts
@@ -402,9 +433,9 @@ pub fn process_user_agents(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
-                        agent_rpc_port,
-                        wallet_rpc_port,
-                        p2p_port,
+                        if has_local_daemon { Some(agent_rpc_port) } else { None },
+                        if has_wallet { Some(wallet_rpc_port) } else { None },
+                        if has_local_daemon { Some(p2p_port) } else { None },
                         &wallet_setup_script,
                         user_agent_config.attributes.as_ref(),
                         environment,
@@ -413,6 +444,8 @@ pub fn process_user_agents(
                         i,
                         environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
                         Some(&agent_start_time),
+                        user_agent_config.remote_daemon_address(),
+                        user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                     );
                 }
 
@@ -461,9 +494,9 @@ pub fn process_user_agents(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
-                        agent_rpc_port,
-                        wallet_rpc_port,
-                        p2p_port,
+                        if has_local_daemon { Some(agent_rpc_port) } else { None },
+                        if has_wallet { Some(wallet_rpc_port) } else { None },
+                        if has_local_daemon { Some(p2p_port) } else { None },
                         &user_script,
                         user_agent_config.attributes.as_ref(),
                         environment,
@@ -472,6 +505,8 @@ pub fn process_user_agents(
                         i,
                         environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
                         Some(&agent_start_time),
+                        user_agent_config.remote_daemon_address(),
+                        user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                     );
                 }
             }

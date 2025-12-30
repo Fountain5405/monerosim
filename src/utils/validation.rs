@@ -147,18 +147,20 @@ pub fn validate_topology_config(topology: &Topology, total_agents: usize) -> Res
 /// # Examples
 /// ```
 /// use monerosim::utils::validation::validate_mining_config;
-/// use monerosim::config_v2::UserAgentConfig;
+/// use monerosim::config_v2::{DaemonConfig, UserAgentConfig};
 /// use std::collections::HashMap;
 ///
 /// let mut attributes = HashMap::new();
 /// attributes.insert("hashrate".to_string(), "100".to_string());
 ///
 /// let agent = UserAgentConfig {
-///     daemon: Some("monerod".to_string()),
+///     daemon: Some(DaemonConfig::Local("monerod".to_string())),
 ///     wallet: Some("monero-wallet-rpc".to_string()),
 ///     mining_script: Some("agents.autonomous_miner".to_string()),
 ///     user_script: None,
+///     is_miner: None,
 ///     attributes: Some(attributes),
+///     start_time_offset: None,
 /// };
 ///
 /// assert!(validate_mining_config(&[agent]).is_ok());
@@ -216,7 +218,102 @@ pub fn validate_mining_config(agents: &[UserAgentConfig]) -> Result<(), String> 
             total_hashrate, mining_agent_count
         );
     }
-    
+
+    Ok(())
+}
+
+/// Validate agent daemon/wallet configuration
+///
+/// Validates agent configuration for the four supported agent types:
+/// - Full agents: local daemon + wallet
+/// - Daemon-only: local daemon without wallet
+/// - Wallet-only: remote daemon + wallet
+/// - Script-only: no daemon/wallet, just a script
+///
+/// # Validation Rules
+/// 1. Mining requires local daemon - `mining_script` and `is_miner` require local daemon
+/// 2. Must have daemon OR wallet OR script - At least one component required
+/// 3. Public node requires daemon - `is_public_node: true` requires local daemon
+/// 4. Wallet-only requires remote daemon - If wallet specified without local daemon, need remote config
+/// 5. Auto-discovery requires public nodes - `address: auto` needs at least one public node
+///
+/// # Arguments
+/// * `agents` - The list of user agents to validate
+///
+/// # Returns
+/// * `Ok(())` if validation succeeds
+/// * `Err(String)` with an error message if validation fails
+pub fn validate_agent_daemon_config(agents: &[UserAgentConfig]) -> Result<(), String> {
+    let mut has_public_node = false;
+    let mut has_auto_discovery = false;
+
+    for (idx, agent) in agents.iter().enumerate() {
+        let has_local_daemon = agent.has_local_daemon();
+        let has_remote_daemon = agent.has_remote_daemon();
+        let has_wallet = agent.has_wallet();
+        let has_script = agent.has_script();
+        let has_mining_script = agent.mining_script.is_some();
+        let is_miner = agent.is_miner_value();
+
+        // Track public nodes for auto-discovery validation
+        if agent.is_public_node() {
+            if !has_local_daemon {
+                return Err(format!(
+                    "Agent at index {}: is_public_node attribute requires a local daemon",
+                    idx
+                ));
+            }
+            has_public_node = true;
+        }
+
+        // Track if any agent uses auto-discovery
+        if let Some(addr) = agent.remote_daemon_address() {
+            if addr == "auto" {
+                has_auto_discovery = true;
+            }
+        }
+
+        // Rule 1: Mining requires local daemon
+        if has_mining_script && !has_local_daemon {
+            return Err(format!(
+                "Agent at index {}: mining_script requires a local daemon (cannot mine through remote node)",
+                idx
+            ));
+        }
+
+        if is_miner && !has_local_daemon {
+            return Err(format!(
+                "Agent at index {}: is_miner requires a local daemon",
+                idx
+            ));
+        }
+
+        // Rule 2: Must have daemon OR wallet OR script
+        if !has_local_daemon && !has_remote_daemon && !has_wallet && !has_script {
+            return Err(format!(
+                "Agent at index {}: must have at least one of: daemon, wallet, or user_script",
+                idx
+            ));
+        }
+
+        // Rule 4: Wallet-only requires remote daemon config
+        if has_wallet && !has_local_daemon && !has_remote_daemon {
+            return Err(format!(
+                "Agent at index {}: wallet without local daemon requires remote daemon configuration \
+                (use daemon: {{ address: \"auto\" }} or daemon: {{ address: \"ip:port\" }})",
+                idx
+            ));
+        }
+    }
+
+    // Rule 5: Auto-discovery requires at least one public node
+    if has_auto_discovery && !has_public_node {
+        return Err(
+            "Wallet-only agents with 'auto' daemon address require at least one public node. \
+            Add 'is_public_node: true' attribute to a daemon-enabled agent.".to_string()
+        );
+    }
+
     Ok(())
 }
 
@@ -332,38 +429,40 @@ mod tests {
     #[test]
     fn test_validate_mining_config_valid() {
         use std::collections::HashMap;
-        
+
         let mut attributes = HashMap::new();
         attributes.insert("hashrate".to_string(), "100".to_string());
-        
+
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
+            start_time_offset: None,
         };
-        
+
         assert!(validate_mining_config(&[agent]).is_ok());
     }
 
     #[test]
     fn test_validate_mining_config_missing_wallet() {
         use std::collections::HashMap;
-        
+
         let mut attributes = HashMap::new();
         attributes.insert("hashrate".to_string(), "50".to_string());
-        
+
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: None, // Missing wallet
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
+            start_time_offset: None,
         };
-        
+
         let result = validate_mining_config(&[agent]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("must have 'wallet' field"));
@@ -372,14 +471,15 @@ mod tests {
     #[test]
     fn test_validate_mining_config_missing_hashrate() {
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: None, // Missing hashrate attribute
+            start_time_offset: None,
         };
-        
+
         let result = validate_mining_config(&[agent]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("must have 'hashrate' attribute"));
@@ -388,19 +488,20 @@ mod tests {
     #[test]
     fn test_validate_mining_config_invalid_hashrate_format() {
         use std::collections::HashMap;
-        
+
         let mut attributes = HashMap::new();
         attributes.insert("hashrate".to_string(), "not_a_number".to_string());
-        
+
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
+            start_time_offset: None,
         };
-        
+
         let result = validate_mining_config(&[agent]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("invalid hashrate"));
@@ -409,19 +510,20 @@ mod tests {
     #[test]
     fn test_validate_mining_config_negative_hashrate() {
         use std::collections::HashMap;
-        
+
         let mut attributes = HashMap::new();
         attributes.insert("hashrate".to_string(), "-10".to_string());
-        
+
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
+            start_time_offset: None,
         };
-        
+
         let result = validate_mining_config(&[agent]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("out of valid range"));
@@ -430,19 +532,20 @@ mod tests {
     #[test]
     fn test_validate_mining_config_hashrate_over_100() {
         use std::collections::HashMap;
-        
+
         let mut attributes = HashMap::new();
         attributes.insert("hashrate".to_string(), "150".to_string());
-        
+
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
+            start_time_offset: None,
         };
-        
+
         let result = validate_mining_config(&[agent]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("out of valid range"));
@@ -451,18 +554,237 @@ mod tests {
     #[test]
     fn test_validate_mining_config_skips_non_miners() {
         use std::collections::HashMap;
-        
+
         // Non-mining agent without hashrate should be skipped
         let agent = UserAgentConfig {
-            daemon: "monerod".to_string(),
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             mining_script: None, // Not a mining agent
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
             attributes: Some(HashMap::new()),
+            start_time_offset: None,
         };
-        
+
         assert!(validate_mining_config(&[agent]).is_ok());
+    }
+
+    // Tests for validate_agent_daemon_config
+
+    #[test]
+    fn test_validate_agent_daemon_config_full_agent() {
+        // Full agent with local daemon and wallet
+        let agent = UserAgentConfig {
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            wallet: Some("monero-wallet-rpc".to_string()),
+            mining_script: None,
+            user_script: Some("agents.regular_user".to_string()),
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        assert!(validate_agent_daemon_config(&[agent]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_daemon_only() {
+        use std::collections::HashMap;
+
+        // Daemon-only agent (public node)
+        let mut attributes = HashMap::new();
+        attributes.insert("is_public_node".to_string(), "true".to_string());
+
+        let agent = UserAgentConfig {
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            wallet: None,
+            mining_script: None,
+            user_script: None,
+            is_miner: None,
+            attributes: Some(attributes),
+            start_time_offset: None,
+        };
+
+        assert!(validate_agent_daemon_config(&[agent]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_wallet_only_with_public_node() {
+        use std::collections::HashMap;
+        use crate::config_v2::DaemonSelectionStrategy;
+
+        // Public node (daemon-only)
+        let mut pub_attrs = HashMap::new();
+        pub_attrs.insert("is_public_node".to_string(), "true".to_string());
+
+        let public_node = UserAgentConfig {
+            daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            wallet: None,
+            mining_script: None,
+            user_script: None,
+            is_miner: None,
+            attributes: Some(pub_attrs),
+            start_time_offset: None,
+        };
+
+        // Wallet-only agent using auto-discovery
+        let wallet_only = UserAgentConfig {
+            daemon: Some(DaemonConfig::Remote {
+                address: "auto".to_string(),
+                strategy: Some(DaemonSelectionStrategy::Random),
+            }),
+            wallet: Some("monero-wallet-rpc".to_string()),
+            mining_script: None,
+            user_script: Some("agents.regular_user".to_string()),
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        assert!(validate_agent_daemon_config(&[public_node, wallet_only]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_wallet_only_specific_daemon() {
+        // Wallet-only agent connecting to specific daemon (no public node needed)
+        let agent = UserAgentConfig {
+            daemon: Some(DaemonConfig::Remote {
+                address: "192.168.1.10:28081".to_string(),
+                strategy: None,
+            }),
+            wallet: Some("monero-wallet-rpc".to_string()),
+            mining_script: None,
+            user_script: Some("agents.regular_user".to_string()),
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        assert!(validate_agent_daemon_config(&[agent]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_script_only() {
+        // Script-only agent (no daemon, no wallet)
+        let agent = UserAgentConfig {
+            daemon: None,
+            wallet: None,
+            mining_script: None,
+            user_script: Some("agents.dns_server".to_string()),
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        assert!(validate_agent_daemon_config(&[agent]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_mining_requires_local_daemon() {
+        use std::collections::HashMap;
+
+        let mut attributes = HashMap::new();
+        attributes.insert("hashrate".to_string(), "100".to_string());
+
+        // Mining agent with remote daemon (should fail)
+        let agent = UserAgentConfig {
+            daemon: Some(DaemonConfig::Remote {
+                address: "192.168.1.10:28081".to_string(),
+                strategy: None,
+            }),
+            wallet: Some("monero-wallet-rpc".to_string()),
+            mining_script: Some("agents.autonomous_miner".to_string()),
+            user_script: None,
+            is_miner: None,
+            attributes: Some(attributes),
+            start_time_offset: None,
+        };
+
+        let result = validate_agent_daemon_config(&[agent]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("mining_script requires a local daemon"));
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_public_node_requires_daemon() {
+        use std::collections::HashMap;
+
+        // Public node without daemon (should fail)
+        let mut attributes = HashMap::new();
+        attributes.insert("is_public_node".to_string(), "true".to_string());
+
+        let agent = UserAgentConfig {
+            daemon: None,
+            wallet: None,
+            mining_script: None,
+            user_script: Some("agents.monitor".to_string()),
+            is_miner: None,
+            attributes: Some(attributes),
+            start_time_offset: None,
+        };
+
+        let result = validate_agent_daemon_config(&[agent]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("is_public_node attribute requires a local daemon"));
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_auto_requires_public_node() {
+        use crate::config_v2::DaemonSelectionStrategy;
+
+        // Wallet-only with auto but no public node (should fail)
+        let agent = UserAgentConfig {
+            daemon: Some(DaemonConfig::Remote {
+                address: "auto".to_string(),
+                strategy: Some(DaemonSelectionStrategy::Random),
+            }),
+            wallet: Some("monero-wallet-rpc".to_string()),
+            mining_script: None,
+            user_script: Some("agents.regular_user".to_string()),
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        let result = validate_agent_daemon_config(&[agent]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("require at least one public node"));
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_empty_agent() {
+        // Agent with nothing (should fail)
+        let agent = UserAgentConfig {
+            daemon: None,
+            wallet: None,
+            mining_script: None,
+            user_script: None,
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        let result = validate_agent_daemon_config(&[agent]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must have at least one of"));
+    }
+
+    #[test]
+    fn test_validate_agent_daemon_config_wallet_without_daemon_ref() {
+        // Wallet without daemon config (should fail)
+        let agent = UserAgentConfig {
+            daemon: None,
+            wallet: Some("monero-wallet-rpc".to_string()),
+            mining_script: None,
+            user_script: Some("agents.regular_user".to_string()),
+            is_miner: None,
+            attributes: None,
+            start_time_offset: None,
+        };
+
+        let result = validate_agent_daemon_config(&[agent]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("wallet without local daemon requires remote daemon configuration"));
     }
 
     #[test]

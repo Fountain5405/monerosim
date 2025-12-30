@@ -16,11 +16,12 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
+from .public_node_discovery import PublicNodeDiscovery, DaemonSelectionStrategy, parse_selection_strategy
 
 
 class BaseAgent(ABC):
     """Abstract base class for all Monerosim agents"""
-    
+
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
                  agent_rpc_port: Optional[int] = None,
@@ -30,7 +31,9 @@ class BaseAgent(ABC):
                  log_level: str = "INFO",
                  attributes: Optional[List[str]] = None,
                  hash_rate: Optional[int] = None,
-                 tx_frequency: Optional[int] = None):
+                 tx_frequency: Optional[int] = None,
+                 remote_daemon: Optional[str] = None,
+                 daemon_selection_strategy: Optional[str] = None):
         self.agent_id = agent_id
         self._shared_dir = shared_dir
         self.agent_rpc_port = agent_rpc_port
@@ -41,8 +44,11 @@ class BaseAgent(ABC):
         self.attributes_list = attributes or []
         self.hash_rate = hash_rate
         self.tx_frequency = tx_frequency
+        self.remote_daemon = remote_daemon  # Remote daemon address or "auto"
+        self.daemon_selection_strategy = daemon_selection_strategy  # Strategy for auto-discovery
         self.running = True
         self._is_miner = False  # Default to False
+        self._is_wallet_only = False  # Will be set in setup if no local daemon
 
         # Set up logging first
         self.logger = self._setup_logging()
@@ -147,7 +153,10 @@ class BaseAgent(ABC):
         
     def setup(self):
         """Set up RPC connections and perform agent-specific initialization"""
-        # Connect to agent RPC if port provided
+        # Determine if this is a wallet-only agent
+        self._is_wallet_only = (self.remote_daemon is not None and self.agent_rpc_port is None)
+
+        # Connect to agent RPC if port provided (local daemon)
         if self.agent_rpc_port:
             self.logger.info(f"Connecting to agent RPC at {self.rpc_host}:{self.agent_rpc_port}")
             self.agent_rpc = MoneroRPC(self.rpc_host, self.agent_rpc_port)
@@ -158,7 +167,7 @@ class BaseAgent(ABC):
             except RPCError as e:
                 self.logger.error(f"Failed to connect to agent RPC: {e}")
                 raise
-                
+
         # Connect to wallet RPC if port provided
         if self.wallet_rpc_port:
             self.logger.info(f"Connecting to wallet RPC at {self.rpc_host}:{self.wallet_rpc_port}")
@@ -169,12 +178,20 @@ class BaseAgent(ABC):
             except RPCError as e:
                 self.logger.error(f"Failed to connect to wallet RPC: {e}")
                 raise
-        
+
+            # For wallet-only agents, set up remote daemon connection
+            if self._is_wallet_only:
+                self._setup_remote_daemon_connection()
+
         # Call agent-specific setup after RPC connections are established
         self._setup_agent()
-        
+
         # Register self in the node registry after wallet is set up
         self._register_self()
+
+        # If this agent is a public node, register in the public nodes registry
+        if self._is_public_node():
+            self._register_as_public_node()
         
     @abstractmethod
     def _setup_agent(self):
@@ -238,7 +255,79 @@ class BaseAgent(ABC):
     def _cleanup_agent(self):
         """Agent-specific cleanup logic (can be overridden by subclasses)"""
         pass
-        
+
+    def _is_public_node(self) -> bool:
+        """Check if this agent is configured as a public node"""
+        is_public = self.attributes.get('is_public_node', '')
+        if isinstance(is_public, str):
+            return is_public.lower() in ('true', '1', 'yes', 'on')
+        return bool(is_public)
+
+    def _setup_remote_daemon_connection(self):
+        """
+        Set up connection to a remote daemon for wallet-only agents.
+
+        This method handles both explicit daemon addresses and auto-discovery
+        from the public nodes registry.
+        """
+        if not self.wallet_rpc:
+            self.logger.warning("Cannot set up remote daemon: no wallet RPC connection")
+            return
+
+        daemon_address = None
+
+        if self.remote_daemon == "auto":
+            # Use public node discovery to find a daemon
+            self.logger.info("Auto-discovering remote daemon from public nodes registry")
+            discovery = PublicNodeDiscovery(self.shared_dir)
+            strategy = parse_selection_strategy(self.daemon_selection_strategy)
+
+            daemon_address = discovery.select_daemon(
+                strategy=strategy,
+                exclude_ids=[self.agent_id]  # Don't select ourselves
+            )
+
+            if not daemon_address:
+                self.logger.error("No public nodes available for auto-discovery")
+                raise RuntimeError("Failed to find a remote daemon via auto-discovery")
+
+            self.logger.info(f"Auto-discovered daemon: {daemon_address} (strategy: {strategy.value})")
+        elif self.remote_daemon:
+            # Use the explicitly provided daemon address
+            daemon_address = self.remote_daemon
+            self.logger.info(f"Using configured remote daemon: {daemon_address}")
+
+        if daemon_address:
+            # Connect wallet to the remote daemon via set_daemon RPC call
+            try:
+                self.logger.info(f"Setting wallet daemon to {daemon_address}")
+                self.wallet_rpc.set_daemon(daemon_address)
+                self.logger.info(f"Successfully connected wallet to remote daemon: {daemon_address}")
+            except RPCError as e:
+                self.logger.error(f"Failed to set remote daemon: {e}")
+                raise
+
+    def _register_as_public_node(self):
+        """
+        Register this agent as a public node in the public nodes registry.
+
+        This updates the status to 'available' for this agent in public_nodes.json.
+        """
+        if not self.agent_rpc_port:
+            self.logger.warning("Cannot register as public node: no local daemon")
+            return
+
+        discovery = PublicNodeDiscovery(self.shared_dir)
+        success = discovery.update_node_status(
+            agent_id=self.agent_id,
+            status="available"
+        )
+
+        if success:
+            self.logger.info(f"Registered {self.agent_id} as available public node")
+        else:
+            self.logger.warning(f"Failed to register {self.agent_id} as public node")
+
     # Shared state management methods
     
     def write_shared_state(self, filename: str, data: Dict[str, Any]):
@@ -430,4 +519,7 @@ class BaseAgent(ABC):
         parser.add_argument('--attributes', nargs=2, action='append', default=[], metavar=('KEY', 'VALUE'), help='Agent attribute as key-value pair (can be specified multiple times)')
         parser.add_argument('--hash-rate', type=int, help='Hash rate for mining agents')
         parser.add_argument('--tx-frequency', type=int, help='Transaction frequency in seconds for regular users')
+        parser.add_argument('--remote-daemon', type=str, help='Remote daemon address (ip:port) or "auto" for public node discovery')
+        parser.add_argument('--daemon-selection-strategy', type=str, choices=['random', 'first', 'round_robin'],
+                          default='random', help='Strategy for selecting a daemon when using auto-discovery')
         return parser

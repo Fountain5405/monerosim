@@ -52,7 +52,8 @@ class AgentDiscovery:
         self._caches = {
             'registry': {'data': None, 'time': 0, 'ttl': 5},
             'distribution_recipients': {'data': None, 'time': 0, 'ttl': 10},
-            'miner_agents': {'data': None, 'time': 0, 'ttl': 10}
+            'miner_agents': {'data': None, 'time': 0, 'ttl': 10},
+            'public_nodes': {'data': None, 'time': 0, 'ttl': 5}
         }
         
         # Ensure the shared state directory exists
@@ -843,9 +844,82 @@ class AgentDiscovery:
             self._caches['distribution_recipients']['time'] = time.time()
             
             return recipients_to_use
-            
+
         except Exception as e:
             error_msg = f"Failed to get distribution recipients: {e}"
+            self.logger.error(error_msg)
+            raise AgentDiscoveryError(error_msg)
+
+    def get_public_nodes(
+        self,
+        status_filter: Optional[str] = "available",
+        force_refresh: bool = False
+    ) -> List[Dict[str, Any]]:
+        """
+        Return all public nodes from the public nodes registry.
+
+        Public nodes are daemon agents that have opted in via the is_public_node
+        attribute and can be used by wallet-only agents to connect to the network.
+
+        Args:
+            status_filter: Filter nodes by status ("available", "busy", "offline").
+                          If None, returns all nodes regardless of status.
+            force_refresh: If True, bypass the cache and reload from disk.
+
+        Returns:
+            List of public node dictionaries with keys:
+            - agent_id: The ID of the agent running the public node
+            - ip_addr: IP address of the node
+            - rpc_port: RPC port for wallet connections
+            - p2p_port: P2P port (optional)
+            - status: Current status of the node
+            - registered_at: Timestamp when node was registered
+            - attributes: Additional node attributes (optional)
+
+        Raises:
+            AgentDiscoveryError: If the registry cannot be loaded.
+        """
+        self.logger.debug(f"Getting public nodes (status_filter={status_filter})")
+
+        # Return cached data if valid and not forcing refresh
+        if not force_refresh and self._caches['public_nodes']['data'] is not None and self._is_cache_valid('public_nodes'):
+            cached_data = self._caches['public_nodes']['data']
+            # Apply status filter to cached data
+            if status_filter:
+                return [n for n in cached_data if n.get("status") == status_filter]
+            return cached_data
+
+        try:
+            registry_path = self.shared_state_dir / "public_nodes.json"
+
+            if not registry_path.exists():
+                self.logger.warning(f"Public nodes registry not found at {registry_path}")
+                return []
+
+            with open(registry_path, 'r') as f:
+                registry = json.load(f)
+
+            nodes = registry.get("nodes", [])
+
+            # Update cache with all nodes (unfiltered)
+            self._caches['public_nodes']['data'] = nodes
+            self._caches['public_nodes']['time'] = time.time()
+
+            # Apply status filter if specified
+            if status_filter:
+                filtered_nodes = [n for n in nodes if n.get("status") == status_filter]
+                self.logger.info(f"Found {len(filtered_nodes)} public nodes with status '{status_filter}'")
+                return filtered_nodes
+
+            self.logger.info(f"Found {len(nodes)} public nodes (unfiltered)")
+            return nodes
+
+        except json.JSONDecodeError as e:
+            error_msg = f"Failed to parse public nodes registry: {e}"
+            self.logger.error(error_msg)
+            raise AgentDiscoveryError(error_msg)
+        except Exception as e:
+            error_msg = f"Failed to get public nodes: {e}"
             self.logger.error(error_msg)
             raise AgentDiscoveryError(error_msg)
 
@@ -934,15 +1008,34 @@ def get_wallet_agents(shared_state_dir: str = "/tmp/monerosim_shared") -> List[D
 def get_distribution_recipients(shared_state_dir: str = "/tmp/monerosim_shared") -> List[Dict[str, Any]]:
     """
     Convenience function to get distribution recipients.
-    
+
     Args:
         shared_state_dir: Path to the shared state directory.
-        
+
     Returns:
         List of agent dictionaries that can receive distributions.
     """
     discovery = AgentDiscovery(shared_state_dir)
     return discovery.get_distribution_recipients()
+
+
+def get_public_nodes(
+    status_filter: Optional[str] = "available",
+    shared_state_dir: str = "/tmp/monerosim_shared"
+) -> List[Dict[str, Any]]:
+    """
+    Convenience function to get public nodes.
+
+    Args:
+        status_filter: Filter nodes by status ("available", "busy", "offline").
+                      If None, returns all nodes regardless of status.
+        shared_state_dir: Path to the shared state directory.
+
+    Returns:
+        List of public node dictionaries.
+    """
+    discovery = AgentDiscovery(shared_state_dir)
+    return discovery.get_public_nodes(status_filter=status_filter)
 
 
 if __name__ == "__main__":

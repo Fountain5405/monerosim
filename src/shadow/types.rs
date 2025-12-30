@@ -42,13 +42,19 @@ pub struct MinerRegistry {
 ///
 /// This structure provides a comprehensive view of each agent's configuration,
 /// network location, and capabilities.
+///
+/// Supports four agent types:
+/// - Full agents: daemon=true, wallet=true
+/// - Daemon-only: daemon=true, wallet=false
+/// - Wallet-only: daemon=false, wallet=true, remote_daemon=Some(...)
+/// - Script-only: daemon=false, wallet=false
 #[derive(Serialize, Debug)]
 pub struct AgentInfo {
     /// Unique identifier for the agent
     pub id: String,
     /// IP address assigned to the agent
     pub ip_addr: String,
-    /// Whether this agent runs a Monero daemon
+    /// Whether this agent runs a local Monero daemon
     pub daemon: bool,
     /// Whether this agent has a wallet
     pub wallet: bool,
@@ -59,9 +65,18 @@ pub struct AgentInfo {
     /// RPC port for wallet service
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_rpc_port: Option<u16>,
-    /// RPC port for daemon service
+    /// RPC port for daemon service (None for wallet-only and script-only agents)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daemon_rpc_port: Option<u16>,
+    /// Whether this agent's daemon is available as a public node
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_public_node: Option<bool>,
+    /// Remote daemon address for wallet-only agents (e.g., "auto" or "192.168.1.10:28081")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote_daemon: Option<String>,
+    /// Daemon selection strategy for wallet-only agents using "auto" (e.g., "random", "first", "round_robin")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_selection_strategy: Option<String>,
 }
 
 /// Registry of all agents in the simulation.
@@ -72,6 +87,42 @@ pub struct AgentInfo {
 pub struct AgentRegistry {
     /// List of all agents in the simulation
     pub agents: Vec<AgentInfo>,
+}
+
+/// Information about a public node available for wallet-only agents.
+///
+/// Public nodes are daemon agents that have `is_public_node: true` attribute
+/// and can accept connections from wallet-only agents.
+#[derive(Serialize, Debug)]
+pub struct PublicNodeInfo {
+    /// Agent ID of the public node
+    pub agent_id: String,
+    /// IP address of the public node
+    pub ip_addr: String,
+    /// RPC port for daemon connections (typically 28081)
+    pub rpc_port: u16,
+    /// P2P port for network connections (typically 28080)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub p2p_port: Option<u16>,
+    /// Status of the node (e.g., "available", "busy", "offline")
+    pub status: String,
+    /// Timestamp when this node was registered (Unix timestamp)
+    pub registered_at: f64,
+    /// Custom attributes from the agent configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attributes: Option<HashMap<String, String>>,
+}
+
+/// Registry of public nodes available for wallet-only agents.
+///
+/// This is written to `/tmp/monerosim_shared/public_nodes.json` for use by
+/// wallet-only agents to discover daemons they can connect to.
+#[derive(Serialize, Debug)]
+pub struct PublicNodeRegistry {
+    /// List of all public nodes
+    pub nodes: Vec<PublicNodeInfo>,
+    /// Registry format version
+    pub version: u32,
 }
 
 // ============================================================================

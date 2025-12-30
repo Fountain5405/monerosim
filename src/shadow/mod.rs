@@ -98,6 +98,8 @@ pub use types::{
     MinerRegistry,
     AgentInfo,
     AgentRegistry,
+    PublicNodeInfo,
+    PublicNodeRegistry,
     // Shadow configuration types
     ShadowConfig,
     ShadowGeneral,

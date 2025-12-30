@@ -214,11 +214,19 @@ pub fn validate_agent_lifecycle(
 ) -> color_eyre::eyre::Result<()> {
     // Validate that miners have wallets if required
     if let Some(user_agents) = &agents.user_agents {
-        for agent in user_agents {
+        for (idx, agent) in user_agents.iter().enumerate() {
+            // Miners require a local daemon
+            if agent.is_miner_value() && !agent.has_local_daemon() {
+                return Err(color_eyre::eyre::eyre!(
+                    "Miner agent at index {} must have a local daemon",
+                    idx
+                ));
+            }
+            // Miners require a wallet for reward address
             if agent.is_miner_value() && agent.wallet.is_none() {
                 return Err(color_eyre::eyre::eyre!(
-                    "Miner agent '{}' must have a wallet configuration",
-                    agent.daemon
+                    "Miner agent at index {} must have a wallet configuration",
+                    idx
                 ));
             }
         }

@@ -7,12 +7,13 @@ use crate::config_v2::{Config, Network, PeerMode};
 use crate::gml_parser::{self, GmlGraph, validate_topology, get_autonomous_systems};
 use crate::shadow::{
     MinerInfo, MinerRegistry, AgentInfo, AgentRegistry,
+    PublicNodeInfo, PublicNodeRegistry,
     ShadowConfig, ShadowGeneral, ShadowExperimental, ShadowNetwork, ShadowGraph,
     ShadowFileSource, ShadowHost,
 };
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_simulation_seed};
+use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_agent_daemon_config, validate_simulation_seed};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
@@ -147,6 +148,10 @@ pub fn generate_agent_shadow_config(
     if let Some(user_agents) = &config.agents.user_agents {
         validate_mining_config(user_agents)
             .map_err(|e| color_eyre::eyre::eyre!("Mining configuration validation failed: {}", e))?;
+
+        // Validate agent daemon/wallet configuration (wallet-only, daemon-only, script-only)
+        validate_agent_daemon_config(user_agents)
+            .map_err(|e| color_eyre::eyre::eyre!("Agent daemon configuration validation failed: {}", e))?;
     }
 
     let current_dir = std::env::current_dir()
@@ -185,8 +190,25 @@ pub fn generate_agent_shadow_config(
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
-    monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), "20".to_string());
+
+    // DNS server configuration
+    let enable_dns_server = config.general.enable_dns_server.unwrap_or(false);
+    let dns_server_ip: Option<String> = if enable_dns_server {
+        // DNS server will get IP 10.0.0.2 (reserved for infrastructure)
+        Some("10.0.0.2".to_string())
+    } else {
+        None
+    };
+
+    // Set DNS configuration based on whether DNS server is enabled
+    if let Some(ref dns_ip) = dns_server_ip {
+        // Use our DNS server for peer discovery
+        monero_environment.insert("DNS_PUBLIC".to_string(), format!("tcp://{}", dns_ip));
+    } else {
+        // Disable DNS (legacy behavior)
+        monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
+    }
 
     // Create centralized IP registry for robust IP management
     let mut ip_registry = GlobalIpRegistry::new();
@@ -261,6 +283,68 @@ pub fn generate_agent_shadow_config(
         seed_node_list
     };
 
+    // Create DNS server host if enabled
+    if let Some(ref dns_ip) = dns_server_ip {
+        let dns_agent_id = "dnsserver";  // No underscore - Shadow requires RFC-compliant hostnames
+
+        // Create DNS server process
+        let dns_script = "agents.dns_server";
+        let dns_args = format!(
+            "--id {} --bind-ip {} --port 53 --shared-dir {} --log-level DEBUG",
+            dns_agent_id, dns_ip, shared_dir_path.to_str().unwrap()
+        );
+
+        let dns_python_cmd = format!("python3 -m {} {}", dns_script, dns_args);
+
+        // Path to virtual environment site-packages (for dnslib and other dependencies)
+        let venv_site_packages = format!("{}/sim_venv/lib/python3.12/site-packages", current_dir);
+
+        // Create wrapper script for DNS server
+        let dns_wrapper_script = format!(
+            r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+echo "Starting DNS server..."
+{} 2>&1
+"#,
+            current_dir,
+            current_dir,
+            venv_site_packages,
+            dns_python_cmd
+        );
+
+        let dns_script_path = format!("/tmp/dns_server_wrapper.sh");
+
+        let dns_processes = vec![
+            // Create wrapper script
+            crate::shadow::ShadowProcess {
+                path: "/bin/bash".to_string(),
+                args: format!("-c 'cat > {} << '\"'\"'EOF'\"'\"'\n{}EOF'", dns_script_path, dns_wrapper_script),
+                environment: environment.clone(),
+                start_time: "0s".to_string(), // Start immediately
+            },
+            // Execute wrapper script
+            crate::shadow::ShadowProcess {
+                path: "/bin/bash".to_string(),
+                args: dns_script_path.clone(),
+                environment: environment.clone(),
+                start_time: "1s".to_string(), // Start after script creation
+            },
+        ];
+
+        hosts.insert(dns_agent_id.to_string(), ShadowHost {
+            network_node_id: 0, // DNS server on first network node
+            ip_addr: Some(dns_ip.clone()),
+            processes: dns_processes,
+            bandwidth_down: Some("1000000000".to_string()),
+            bandwidth_up: Some("1000000000".to_string()),
+        });
+
+        log::info!("Created DNS server at {}", dns_ip);
+    }
+
     // Process all agent types from the configuration
     process_user_agents(
         &config.agents,
@@ -279,6 +363,7 @@ pub fn generate_agent_shadow_config(
         using_gml_topology,
         &peer_mode,
         topology.as_ref(),
+        enable_dns_server,
     )?;
 
 
@@ -376,15 +461,28 @@ pub fn generate_agent_shadow_config(
             // DEBUG: Log what attributes we have before adding to registry
             log::info!("Agent {}: attributes = {:?}", agent_id, attributes);
 
+            // Determine agent type characteristics
+            let has_local_daemon = user_agent_config.has_local_daemon();
+            let has_wallet = user_agent_config.has_wallet();
+            let is_public_node = user_agent_config.is_public_node();
+
+            // Get remote daemon info for wallet-only agents
+            let remote_daemon = user_agent_config.remote_daemon_address().map(|s| s.to_string());
+            let daemon_selection_strategy = user_agent_config.daemon_selection_strategy()
+                .map(|s| format!("{:?}", s).to_lowercase());
+
             let agent_info = AgentInfo {
                 id: agent_id,
                 ip_addr: agent_ip,
-                daemon: true,
-                wallet: user_agent_config.wallet.is_some(),
+                daemon: has_local_daemon,
+                wallet: has_wallet,
                 user_script: user_agent_config.user_script.clone(),
                 attributes,
-                wallet_rpc_port: if user_agent_config.wallet.is_some() { Some(28082) } else { None },
-                daemon_rpc_port: Some(28081),
+                wallet_rpc_port: if has_wallet { Some(28082) } else { None },
+                daemon_rpc_port: if has_local_daemon { Some(28081) } else { None },
+                is_public_node: if is_public_node { Some(true) } else { None },
+                remote_daemon,
+                daemon_selection_strategy,
             };
             agent_registry.agents.push(agent_info);
         }
@@ -411,6 +509,9 @@ pub fn generate_agent_shadow_config(
             attributes: HashMap::new(), // No specific attributes for block controller
             wallet_rpc_port: None,
             daemon_rpc_port: None,
+            is_public_node: None,
+            remote_daemon: None,
+            daemon_selection_strategy: None,
         };
         agent_registry.agents.push(agent_info);
     }
@@ -438,6 +539,9 @@ pub fn generate_agent_shadow_config(
                 .unwrap_or_default(),
             wallet_rpc_port: None,
             daemon_rpc_port: None,
+            is_public_node: None,
+            remote_daemon: None,
+            daemon_selection_strategy: None,
         };
         agent_registry.agents.push(agent_info);
     }
@@ -464,6 +568,9 @@ pub fn generate_agent_shadow_config(
                 attributes: HashMap::new(), // No specific attributes for pure script agents
                 wallet_rpc_port: None,
                 daemon_rpc_port: None,
+                is_public_node: None,
+                remote_daemon: None,
+                daemon_selection_strategy: None,
             };
             agent_registry.agents.push(agent_info);
         }
@@ -491,6 +598,9 @@ pub fn generate_agent_shadow_config(
             attributes: HashMap::new(), // No specific attributes for simulation monitor
             wallet_rpc_port: None,
             daemon_rpc_port: None,
+            is_public_node: None,
+            remote_daemon: None,
+            daemon_selection_strategy: None,
         };
         agent_registry.agents.push(agent_info);
     }
@@ -509,6 +619,35 @@ pub fn generate_agent_shadow_config(
     // DEBUG: Verify file was written
     let written_size = std::fs::metadata(&agent_registry_path)?.len();
     log::info!("Wrote agent registry to {:?}, size: {} bytes", agent_registry_path, written_size);
+
+    // Create public node registry for wallet-only agents
+    let mut public_node_registry = PublicNodeRegistry {
+        nodes: Vec::new(),
+        version: 1,
+    };
+
+    // Populate public node registry from agents with is_public_node attribute
+    for agent in &agent_registry.agents {
+        if agent.is_public_node == Some(true) && agent.daemon {
+            let public_node = PublicNodeInfo {
+                agent_id: agent.id.clone(),
+                ip_addr: agent.ip_addr.clone(),
+                rpc_port: agent.daemon_rpc_port.unwrap_or(28081),
+                p2p_port: Some(28080),
+                status: "available".to_string(),
+                registered_at: 0.0, // Will be updated at runtime
+                attributes: Some(agent.attributes.clone()),
+            };
+            public_node_registry.nodes.push(public_node);
+        }
+    }
+
+    // Write public node registry to file
+    let public_nodes_path = shared_dir_path.join("public_nodes.json");
+    let public_nodes_json = serde_json::to_string_pretty(&public_node_registry)?;
+    std::fs::write(&public_nodes_path, &public_nodes_json)?;
+    log::info!("Wrote public node registry to {:?} with {} nodes",
+               public_nodes_path, public_node_registry.nodes.len());
 
     // Create miner registry
     let mut miner_registry = MinerRegistry {

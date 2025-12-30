@@ -121,6 +121,10 @@ pub struct GeneralConfig {
     pub log_level: Option<String>,
     #[serde(default = "default_simulation_seed")]
     pub simulation_seed: u64,
+    /// Enable DNS server for monerod peer discovery
+    /// When enabled, a DNS server agent is created and monerod uses DNS_PUBLIC to connect to it
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_dns_server: Option<bool>,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -142,10 +146,103 @@ pub struct AgentDefinitions {
     pub simulation_monitor: Option<SimulationMonitorConfig>,
 }
 
+/// Daemon selection strategy for wallet-only agents connecting to remote public nodes
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DaemonSelectionStrategy {
+    /// Randomly select from available public nodes
+    Random,
+    /// Use the first available public node
+    First,
+    /// Round-robin through available public nodes
+    RoundRobin,
+}
+
+impl Default for DaemonSelectionStrategy {
+    fn default() -> Self {
+        DaemonSelectionStrategy::Random
+    }
+}
+
+impl DaemonSelectionStrategy {
+    /// Convert the strategy to its string representation for CLI arguments
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DaemonSelectionStrategy::Random => "random",
+            DaemonSelectionStrategy::First => "first",
+            DaemonSelectionStrategy::RoundRobin => "round_robin",
+        }
+    }
+}
+
+/// Daemon configuration supporting local daemon, remote daemon, or no daemon
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum DaemonConfig {
+    /// Local daemon - runs monerod on the agent (e.g., "monerod")
+    Local(String),
+    /// Remote daemon - connects to another daemon for wallet-only agents
+    Remote {
+        /// "auto" for automatic discovery from public nodes, or specific "ip:port"
+        address: String,
+        /// Selection strategy when address is "auto"
+        #[serde(skip_serializing_if = "Option::is_none")]
+        strategy: Option<DaemonSelectionStrategy>,
+    },
+}
+
+impl DaemonConfig {
+    /// Check if this is a local daemon configuration
+    pub fn is_local(&self) -> bool {
+        matches!(self, DaemonConfig::Local(_))
+    }
+
+    /// Check if this is a remote daemon configuration
+    pub fn is_remote(&self) -> bool {
+        matches!(self, DaemonConfig::Remote { .. })
+    }
+
+    /// Get the local daemon name if this is a local config
+    pub fn local_name(&self) -> Option<&str> {
+        match self {
+            DaemonConfig::Local(name) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// Get the remote address if this is a remote config
+    pub fn remote_address(&self) -> Option<&str> {
+        match self {
+            DaemonConfig::Remote { address, .. } => Some(address),
+            _ => None,
+        }
+    }
+
+    /// Get the selection strategy if this is a remote config with auto discovery
+    pub fn selection_strategy(&self) -> Option<&DaemonSelectionStrategy> {
+        match self {
+            DaemonConfig::Remote { strategy, .. } => strategy.as_ref(),
+            _ => None,
+        }
+    }
+}
+
 /// User agent configuration
+///
+/// Supports four agent types:
+/// - Full agents: daemon + wallet
+/// - Daemon-only: daemon without wallet (public nodes, infrastructure, miners)
+/// - Wallet-only: wallet connecting to a remote daemon
+/// - Script-only: no Monero processes, just a script (DNS servers, monitors, etc.)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserAgentConfig {
-    pub daemon: String,
+    /// Daemon configuration - local daemon, remote daemon reference, or None
+    /// - Local: "monerod" - runs a local daemon
+    /// - Remote: { address: "auto", strategy: "random" } - wallet-only connecting to public node
+    /// - Remote: { address: "192.168.1.10:28081" } - wallet-only connecting to specific daemon
+    /// - None: script-only agent with no Monero daemon
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon: Option<DaemonConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -190,6 +287,72 @@ impl UserAgentConfig {
             }
         }
         false
+    }
+
+    /// Check if this agent has a local daemon
+    pub fn has_local_daemon(&self) -> bool {
+        matches!(&self.daemon, Some(DaemonConfig::Local(_)))
+    }
+
+    /// Check if this agent has a remote daemon configuration (wallet-only)
+    pub fn has_remote_daemon(&self) -> bool {
+        matches!(&self.daemon, Some(DaemonConfig::Remote { .. }))
+    }
+
+    /// Check if this agent has a wallet
+    pub fn has_wallet(&self) -> bool {
+        self.wallet.is_some()
+    }
+
+    /// Check if this agent has any script (user_script or mining_script)
+    pub fn has_script(&self) -> bool {
+        self.user_script.is_some() || self.mining_script.is_some()
+    }
+
+    /// Check if this is a script-only agent (no daemon, no wallet)
+    pub fn is_script_only(&self) -> bool {
+        self.daemon.is_none() && self.wallet.is_none() && self.has_script()
+    }
+
+    /// Check if this is a daemon-only agent (daemon, no wallet)
+    pub fn is_daemon_only(&self) -> bool {
+        self.has_local_daemon() && !self.has_wallet()
+    }
+
+    /// Check if this is a wallet-only agent (remote daemon, wallet, no local daemon)
+    pub fn is_wallet_only(&self) -> bool {
+        self.has_remote_daemon() && self.has_wallet()
+    }
+
+    /// Check if this is a full agent (local daemon + wallet)
+    pub fn is_full_agent(&self) -> bool {
+        self.has_local_daemon() && self.has_wallet()
+    }
+
+    /// Check if this agent is configured as a public node
+    pub fn is_public_node(&self) -> bool {
+        if let Some(attrs) = &self.attributes {
+            if let Some(value) = attrs.get("is_public_node") {
+                return value.to_lowercase() == "true";
+            }
+        }
+        false
+    }
+
+    /// Get the remote daemon address if this is a wallet-only agent
+    pub fn remote_daemon_address(&self) -> Option<&str> {
+        match &self.daemon {
+            Some(DaemonConfig::Remote { address, .. }) => Some(address),
+            _ => None,
+        }
+    }
+
+    /// Get the daemon selection strategy if this is a wallet-only agent with auto discovery
+    pub fn daemon_selection_strategy(&self) -> Option<&DaemonSelectionStrategy> {
+        match &self.daemon {
+            Some(DaemonConfig::Remote { strategy, .. }) => strategy.as_ref(),
+            _ => None,
+        }
     }
 }
 
@@ -284,6 +447,7 @@ impl Default for GeneralConfig {
             python_venv: None,
             log_level: Some("info".to_string()),
             simulation_seed: default_simulation_seed(),
+            enable_dns_server: None,
         }
     }
 }

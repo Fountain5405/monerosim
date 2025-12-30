@@ -9,13 +9,16 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Add a user agent process to the processes list
+///
+/// Supports full agents (local daemon + wallet), wallet-only agents (remote daemon),
+/// and script-only agents (no daemon or wallet).
 pub fn add_user_agent_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
-    agent_rpc_port: u16,
-    wallet_rpc_port: u16,
-    p2p_port: u16,
+    agent_rpc_port: Option<u16>,
+    wallet_rpc_port: Option<u16>,
+    p2p_port: Option<u16>,
     script: &str,
     attributes: Option<&HashMap<String, String>>,
     environment: &HashMap<String, String>,
@@ -24,17 +27,41 @@ pub fn add_user_agent_process(
     index: usize,
     stop_time: &str,
     custom_start_time: Option<&str>,
+    remote_daemon: Option<&str>,
+    daemon_selection_strategy: Option<&str>,
 ) {
     let mut agent_args = vec![
         format!("--id {}", agent_id),
         format!("--shared-dir {}", shared_dir.to_str().unwrap()),
         format!("--rpc-host {}", agent_ip),
-        format!("--agent-rpc-port {}", agent_rpc_port),
-        format!("--wallet-rpc-port {}", wallet_rpc_port),
-        format!("--p2p-port {}", p2p_port),
         format!("--log-level DEBUG"),
         format!("--stop-time {}", stop_time),
     ];
+
+    // Add local daemon RPC port if available
+    if let Some(port) = agent_rpc_port {
+        agent_args.push(format!("--agent-rpc-port {}", port));
+    }
+
+    // Add wallet RPC port if available
+    if let Some(port) = wallet_rpc_port {
+        agent_args.push(format!("--wallet-rpc-port {}", port));
+    }
+
+    // Add P2P port if available
+    if let Some(port) = p2p_port {
+        agent_args.push(format!("--p2p-port {}", port));
+    }
+
+    // Add remote daemon configuration for wallet-only agents
+    if let Some(remote_addr) = remote_daemon {
+        agent_args.push(format!("--remote-daemon {}", remote_addr));
+    }
+
+    // Add daemon selection strategy if specified
+    if let Some(strategy) = daemon_selection_strategy {
+        agent_args.push(format!("--daemon-selection-strategy {}", strategy));
+    }
 
     // Add attributes from config as command-line arguments
     // This ensures attributes are available inside Shadow's isolated filesystem
@@ -60,9 +87,29 @@ pub fn add_user_agent_process(
         format!("python3 {} {}", script, agent_args.join(" "))
     };
 
-    // Create a simple wrapper script that handles retries internally
-    let wrapper_script = format!(
-        r#"#!/bin/bash
+    // Create wrapper script based on agent type
+    let wrapper_script = match (wallet_rpc_port, agent_rpc_port) {
+        // Script-only agent (no daemon, no wallet) - start immediately
+        (None, None) => {
+            format!(
+                r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+echo "Starting script-only agent..."
+{} 2>&1
+"#,
+                current_dir,
+                current_dir,
+                python_cmd
+            )
+        }
+
+        // Wallet-only agent (remote daemon) or full agent - wait for wallet RPC
+        (Some(wallet_port), _) => {
+            format!(
+                r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
 export PATH="${{PATH}}:/usr/local/bin"
@@ -81,13 +128,46 @@ done
 echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
 {} 2>&1
 "#,
-        current_dir,
-        current_dir,
-        agent_ip,
-        wallet_rpc_port,
-        python_cmd,
-        python_cmd
-    );
+                current_dir,
+                current_dir,
+                agent_ip,
+                wallet_port,
+                python_cmd,
+                python_cmd
+            )
+        }
+
+        // Daemon-only agent (no wallet) - wait for daemon RPC
+        (None, Some(daemon_port)) => {
+            format!(
+                r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:/usr/local/bin"
+
+# Wait for daemon RPC to be ready
+for i in {{1..30}}; do
+    if curl -s --max-time 1 http://{}:{}/json_rpc >/dev/null 2>&1; then
+        echo "Daemon RPC ready, starting agent..."
+        {} 2>&1
+        exit $?
+    fi
+    echo "Waiting for daemon RPC... (attempt $i/30)"
+    sleep 3
+done
+
+echo "Daemon RPC not available after 30 attempts, starting agent anyway..."
+{} 2>&1
+"#,
+                current_dir,
+                current_dir,
+                agent_ip,
+                daemon_port,
+                python_cmd,
+                python_cmd
+            )
+        }
+    };
 
     // Write wrapper script to a temporary file and execute it
     let script_path = format!("/tmp/agent_{}_wrapper.sh", agent_id);
