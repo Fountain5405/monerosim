@@ -67,6 +67,7 @@ __pycache__/
 *.pyo
 venv/
 .venv/
+sim_venv/
 
 # Backup files
 *.bak
