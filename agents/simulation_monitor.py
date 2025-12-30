@@ -105,6 +105,7 @@ class SimulationMonitorAgent(BaseAgent):
         self.daemon_log_files = {}  # agent_id -> log file path
         self.recent_blocks_mined = {}  # agent_id -> list of (height, timestamp) tuples
         self.total_blocks_mined_by_agent = {}  # agent_id -> total count
+        self.blocks_mined_by_height = {}  # height -> agent_id (first miner to log this height)
 
         # Register cleanup handler to ensure final report is generated
         atexit.register(self._cleanup_agent)
@@ -324,15 +325,30 @@ class SimulationMonitorAgent(BaseAgent):
         """
         Record that an agent mined a block.
 
+        De-duplicates by height - if multiple miners log the same block height,
+        only the first one is credited. This handles the case where multiple
+        autonomous miners might generate blocks at the same height, but only
+        one survives on the chain.
+
         Args:
             agent_id: The agent that mined the block
             height: The block height
         """
+        # Check if this height was already recorded (de-duplication)
+        if height in self.blocks_mined_by_height:
+            # Already recorded - skip to avoid double-counting
+            self.logger.debug(f"Block at height {height} already recorded by "
+                            f"{self.blocks_mined_by_height[height]}, skipping {agent_id}")
+            return
+
         # Initialize tracking for this agent if needed
         if agent_id not in self.recent_blocks_mined:
             self.recent_blocks_mined[agent_id] = []
         if agent_id not in self.total_blocks_mined_by_agent:
             self.total_blocks_mined_by_agent[agent_id] = 0
+
+        # Record this height as mined by this agent (first to log wins)
+        self.blocks_mined_by_height[height] = agent_id
 
         # Record the block (with timestamp for rate calculation)
         current_time = time.time()
@@ -993,7 +1009,7 @@ class SimulationMonitorAgent(BaseAgent):
                 actively_mining = network_metrics.get('actively_mining', 0)
                 total_blocks = network_metrics.get('total_blocks_mined', 0)
                 f.write(f"- Registered Miners: {registered}\n")
-                f.write(f"- Actively Mining: {actively_mining} (mined {total_blocks} blocks)\n\n")
+                f.write(f"- Actively Mining: {actively_mining} (detected {total_blocks} blocks from logs)\n\n")
                 
                 # Write node details table
                 self._write_node_table(f, node_data)
@@ -1084,7 +1100,7 @@ class SimulationMonitorAgent(BaseAgent):
         # Write comprehensive transaction statistics
         f.write(f"- Total Transactions Created: {self.transaction_stats['total_created']}\n")
         f.write(f"- Total Transactions in Blocks: {self.transaction_stats['total_in_blocks']}\n")
-        f.write(f"- Total Blocks Mined: {self.transaction_stats['blocks_mined']}\n")
+        f.write(f"- Blockchain Height: {self.transaction_stats['blocks_mined']} (excluding genesis)\n")
         f.write(f"- Nodes with Transactions: {len(self.transaction_stats['node_tx_counts'])}\n")
         
         # Calculate transaction metrics if we have historical data
