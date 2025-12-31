@@ -7,6 +7,7 @@ Currently a placeholder implementation that will be extended in future tasks.
 """
 
 import logging
+import os
 import time
 import random
 from typing import Optional, List, Dict, Any
@@ -30,7 +31,12 @@ class RegularUserAgent(BaseAgent):
         """
         # Call parent constructor
         super().__init__(agent_id=agent_id, tx_frequency=tx_frequency, hash_rate=hash_rate, **kwargs)
-        
+
+        # Deterministic seeding for reproducibility
+        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
+        self.agent_seed = self.global_seed + hash(agent_id)
+        random.seed(self.agent_seed)
+
     def _setup_agent(self):
         """Agent-specific setup logic"""
         if self.is_miner:

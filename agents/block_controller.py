@@ -15,6 +15,7 @@ import argparse
 import logging
 import random
 import json
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -43,11 +44,18 @@ class BlockControllerAgent(BaseAgent):
             agent_id=agent_id,
             **kwargs
         )
-        
+
+        # Deterministic seeding for reproducibility
+        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
+        self.agent_seed = self.global_seed + hash(agent_id)
+        random.seed(self.agent_seed)
+        if NUMPY_AVAILABLE:
+            np.random.seed(self.agent_seed % (2**32))  # numpy requires 32-bit seed
+
         # Configuration
         self.target_block_interval = target_block_interval
         self.blocks_per_generation = blocks_per_generation
-        
+
         # Timing
         self.last_block_time = 0
         self.start_time = time.time()

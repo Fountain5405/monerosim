@@ -12,6 +12,7 @@ Phase 1 Implementation: Core functionality for can_receive_distributions attribu
 import argparse
 import json
 import logging
+import os
 import random
 import time
 from typing import Dict, Any, Optional, List
@@ -34,6 +35,11 @@ class MinerDistributorAgent(BaseAgent):
     
     def __init__(self, agent_id: str, **kwargs):
         super().__init__(agent_id=agent_id, **kwargs)
+
+        # Deterministic seeding for reproducibility
+        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
+        self.agent_seed = self.global_seed + hash(agent_id)
+        random.seed(self.agent_seed)
 
         # Initialize transaction-specific parameters
         self.min_transaction_amount = 0.1

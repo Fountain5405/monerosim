@@ -30,7 +30,8 @@ pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str) -> col
     validate_gml_ip_consistency(gml_graph).map_err(|e| color_eyre::eyre::eyre!("GML IP validation failed: {}", e))?;
 
     // Create a temporary GML file with converted attributes (e.g., packet_loss percentages to floats)
-    let temp_gml_path = format!("/tmp/monerosim_gml_{}.gml", std::process::id());
+    // Use fixed path for determinism (process ID would vary between runs)
+    let temp_gml_path = "/tmp/monerosim_gml.gml".to_string();
 
     let mut gml_content = String::new();
     gml_content.push_str("graph [\n");
@@ -179,6 +180,7 @@ pub fn generate_agent_shadow_config(
         ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
         ("MALLOC_ARENA_MAX".to_string(), "1".to_string()),
         ("PYTHONUNBUFFERED".to_string(), "1".to_string()), // Ensure Python output is unbuffered
+        ("PYTHONHASHSEED".to_string(), "0".to_string()), // Deterministic Python hash() for reproducibility
         ("SIMULATION_SEED".to_string(), config.general.simulation_seed.to_string()), // Add simulation seed for all agents
     ].iter().cloned().collect();
 
