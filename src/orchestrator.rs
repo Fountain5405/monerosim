@@ -755,6 +755,7 @@ echo "Starting DNS server..."
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
             stop_time: stop_time_seconds,
+            seed: config.general.simulation_seed,  // Shadow uses this to seed all RNGs for determinism
             model_unblocked_syscall_latency: true,
             log_level: config.general.log_level.clone().unwrap_or("trace".to_string()),
         },

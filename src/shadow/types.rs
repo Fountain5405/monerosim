@@ -150,6 +150,9 @@ pub struct ShadowConfig {
 pub struct ShadowGeneral {
     /// Simulation stop time in seconds
     pub stop_time: u64,
+    /// Random seed for deterministic simulation
+    /// Shadow uses this to seed all random number generators
+    pub seed: u64,
     /// Whether to model unblocked syscall latency
     pub model_unblocked_syscall_latency: bool,
     /// Log level for Shadow (trace, debug, info, warn, error)
