@@ -275,11 +275,15 @@ class RegularUserAgent(BaseAgent):
         """Send a random transaction to a random recipient"""
         # Get list of other agents from shared state
         other_agents = self._get_other_agents()
-        
+
         if not other_agents:
             self.logger.warning("No other agents found for transaction")
             return
-            
+
+        # Sort by agent ID for deterministic random selection
+        # (registration order in agent_registry.json can vary between runs)
+        other_agents.sort(key=lambda a: a.get('id', ''))
+
         # Select random recipient
         recipient = random.choice(other_agents)
         recipient_address = recipient.get('wallet_address')

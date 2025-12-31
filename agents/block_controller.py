@@ -321,7 +321,11 @@ class BlockControllerAgent(BaseAgent):
         if not miners:
             self.logger.warning("No miners in registry, cannot select a winner.")
             return None
-        
+
+        # Sort miners by agent_id for deterministic random selection
+        # (list order from miners.json can vary between runs)
+        miners = sorted(miners, key=lambda m: m.get("agent_id", ""))
+
         # Extract weights for each miner (using 'weight' field from miners.json)
         weights = [miner.get("weight", 0) for miner in miners]
         total_weight = sum(weights)

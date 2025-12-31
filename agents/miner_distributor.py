@@ -531,7 +531,10 @@ class MinerDistributorAgent(BaseAgent):
         if not available_miners:
             self.logger.warning("No miners with wallet addresses available")
             return None
-        
+
+        # Sort miners by agent_id for deterministic random selection
+        available_miners.sort(key=lambda m: m.get("agent_id", ""))
+
         # Apply selection strategy
         if self.miner_selection_strategy == "weighted":
             return self._select_miner_by_weight(available_miners)
@@ -612,17 +615,20 @@ class MinerDistributorAgent(BaseAgent):
         
         # Use distribution-enabled recipients if available, otherwise fall back to all recipients
         recipients_to_use = distribution_enabled_recipients if distribution_enabled_recipients else potential_recipients
-        
+
         if not recipients_to_use:
             self.logger.warning("No potential recipients found")
             return None
-        
+
+        # Sort recipients by agent ID for deterministic selection
+        recipients_to_use.sort(key=lambda r: r.get("id", ""))
+
         # Log which recipient pool we're using
         if distribution_enabled_recipients:
             self.logger.info(f"Selecting from {len(distribution_enabled_recipients)} distribution-enabled recipients")
         else:
             self.logger.info("No distribution-enabled recipients found, falling back to all wallet agents")
-        
+
         # Apply recipient selection strategy
         if self.recipient_selection == "round_robin":
             # Round-robin selection
