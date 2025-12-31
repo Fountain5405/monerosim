@@ -20,6 +20,12 @@ simulation_summary_report_*.txt
 builds/
 monero/
 
+# Monero binaries (users should compile their own from official Monero repo)
+monerod
+monerod-*
+monero-wallet-rpc
+monero-wallet-rpc-*
+
 # Temporary files
 *.tmp
 *.log
