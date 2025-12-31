@@ -79,7 +79,7 @@ pub fn process_user_agents(
             };
 
             let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
-            let agent_port = 28080;
+            let agent_port = 18080;
 
             // Collect all agent IPs for topology connections
             all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
@@ -271,15 +271,15 @@ pub fn process_user_agents(
             };
 
             let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
-            let _agent_port = 28080;
+            let _agent_port = 18080;
 
-            // Use standard RPC ports for all agents
-            let agent_rpc_port = 28081;
+            // Use standard RPC ports for all agents (mainnet ports for FAKECHAIN/regtest)
+            let agent_rpc_port = 18081;
 
             // Use standard wallet RPC port for all agents
             // Since each agent has its own IP address, they can all use the same port
-            let wallet_rpc_port = 28082;
-            let p2p_port = 28080;
+            let wallet_rpc_port = 18082;
+            let p2p_port = 18080;
 
             let mut processes = Vec::new();
 
@@ -295,7 +295,7 @@ pub fn process_user_agents(
                 format!("--data-dir=/tmp/monero-{}", agent_id),
                 "--log-file=/dev/stdout".to_string(),
                 "--log-level=1".to_string(),
-                "--simulation".to_string(),
+                // "--simulation".to_string(), // TEST: Disabled to verify Shadow socket fixes
                 "--prep-blocks-threads=1".to_string(),
                 "--max-concurrency=1".to_string(),
                 "--no-zmq".to_string(),

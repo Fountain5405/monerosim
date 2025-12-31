@@ -192,11 +192,28 @@ pub fn generate_agent_shadow_config(
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
     monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), "20".to_string());
 
-    // DNS server configuration
+    // Create centralized IP registry for robust IP management
+    let mut ip_registry = GlobalIpRegistry::new();
+
+    // Create AS-aware subnet manager for GML topology compatibility
+    let mut subnet_manager = AsSubnetManager::new();
+
+    // DNS server configuration - allocate IP from node 0's subnet for proper routing
     let enable_dns_server = config.general.enable_dns_server.unwrap_or(false);
     let dns_server_ip: Option<String> = if enable_dns_server {
-        // DNS server will get IP 10.0.0.2 (reserved for infrastructure)
-        Some("10.0.0.2".to_string())
+        // Allocate DNS server IP from node 0's subnet (AS "0") for GML routing compatibility
+        // This ensures the DNS server is reachable from all other nodes via the GML topology
+        let dns_ip = get_agent_ip(
+            AgentType::Infrastructure,
+            "dnsserver",
+            0,  // agent index
+            0,  // network_node_id 0
+            gml_graph.as_ref(),
+            gml_graph.is_some(),  // using_gml_topology
+            &mut subnet_manager,
+            &mut ip_registry,
+        );
+        Some(dns_ip)
     } else {
         None
     };
@@ -210,14 +227,9 @@ pub fn generate_agent_shadow_config(
         monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     }
 
-    // Create centralized IP registry for robust IP management
-    let mut ip_registry = GlobalIpRegistry::new();
-
-    // Create AS-aware subnet manager for GML topology compatibility
-    let mut subnet_manager = AsSubnetManager::new();
-
     // Helper to get absolute path for binaries
-    let monerod_path = "/usr/local/bin/monerod".to_string();
+    // TEST: Use vanilla monerod to verify Shadow socket option fixes
+    let monerod_path = "/home/lever65/monerosim_dev/monero-shadow/build/Linux/vanilla-regtest-test/release/bin/monerod".to_string();
     let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
 
     // Store seed nodes for P2P connections
@@ -272,7 +284,7 @@ pub fn generate_agent_shadow_config(
                     // This ensures consistent IP assignment for miners
                     let network_node_id = 0;
                     let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry);
-                    miner_ips.push(format!("{}:28080", agent_ip));
+                    miner_ips.push(format!("{}:18080", agent_ip));
                 }
             }
         }
@@ -478,8 +490,8 @@ echo "Starting DNS server..."
                 wallet: has_wallet,
                 user_script: user_agent_config.user_script.clone(),
                 attributes,
-                wallet_rpc_port: if has_wallet { Some(28082) } else { None },
-                daemon_rpc_port: if has_local_daemon { Some(28081) } else { None },
+                wallet_rpc_port: if has_wallet { Some(18082) } else { None },
+                daemon_rpc_port: if has_local_daemon { Some(18081) } else { None },
                 is_public_node: if is_public_node { Some(true) } else { None },
                 remote_daemon,
                 daemon_selection_strategy,
@@ -632,8 +644,8 @@ echo "Starting DNS server..."
             let public_node = PublicNodeInfo {
                 agent_id: agent.id.clone(),
                 ip_addr: agent.ip_addr.clone(),
-                rpc_port: agent.daemon_rpc_port.unwrap_or(28081),
-                p2p_port: Some(28080),
+                rpc_port: agent.daemon_rpc_port.unwrap_or(18081),
+                p2p_port: Some(18080),
                 status: "available".to_string(),
                 registered_at: 0.0, // Will be updated at runtime
                 attributes: Some(agent.attributes.clone()),

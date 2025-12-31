@@ -71,7 +71,7 @@ pub struct AgentInfo {
     /// Whether this agent's daemon is available as a public node
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_public_node: Option<bool>,
-    /// Remote daemon address for wallet-only agents (e.g., "auto" or "192.168.1.10:28081")
+    /// Remote daemon address for wallet-only agents (e.g., "auto" or "192.168.1.10:18081")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_daemon: Option<String>,
     /// Daemon selection strategy for wallet-only agents using "auto" (e.g., "random", "first", "round_robin")
@@ -99,9 +99,9 @@ pub struct PublicNodeInfo {
     pub agent_id: String,
     /// IP address of the public node
     pub ip_addr: String,
-    /// RPC port for daemon connections (typically 28081)
+    /// RPC port for daemon connections (typically 18081 for mainnet/regtest)
     pub rpc_port: u16,
-    /// P2P port for network connections (typically 28080)
+    /// P2P port for network connections (typically 18080 for mainnet/regtest)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub p2p_port: Option<u16>,
     /// Status of the node (e.g., "available", "busy", "offline")

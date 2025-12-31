@@ -74,7 +74,7 @@ pub fn add_wallet_process(
 /// Add a wallet process for wallet-only agents that connect to a remote daemon
 ///
 /// For wallet-only agents, the daemon address can be either:
-/// - A specific address (e.g., "192.168.1.10:28081")
+/// - A specific address (e.g., "192.168.1.10:18081")
 /// - "auto" - wallet starts without initial daemon, Python agent calls set_daemon()
 pub fn add_remote_wallet_process(
     processes: &mut Vec<ShadowProcess>,

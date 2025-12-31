@@ -121,6 +121,20 @@ class MoneroResolver(BaseResolver):
 
         return self.checkpoints
 
+    def _normalize_domain(self, domain: str) -> str:
+        """Normalize domain name to have trailing dot (FQDN format)."""
+        return domain if domain.endswith('.') else domain + '.'
+
+    def _is_seed_domain(self, qname: str) -> bool:
+        """Check if query is for a seed domain (handles trailing dot variations)."""
+        normalized = self._normalize_domain(qname)
+        return normalized in self.SEED_DOMAINS
+
+    def _is_checkpoint_domain(self, qname: str) -> bool:
+        """Check if query is for a checkpoint domain."""
+        normalized = self._normalize_domain(qname)
+        return normalized in (self.CHECKPOINT_DOMAINS | self.TESTNET_CHECKPOINT_DOMAINS)
+
     def resolve(self, request: DNSRecord, handler) -> DNSRecord:
         """Resolve DNS queries."""
         reply = request.reply()
@@ -130,7 +144,7 @@ class MoneroResolver(BaseResolver):
         self.logger.debug(f"DNS query: {qname} ({qtype})")
 
         # Handle seed node queries (A records)
-        if qtype == "A" and qname in self.SEED_DOMAINS:
+        if qtype == "A" and self._is_seed_domain(qname):
             seed_ips = self._load_seed_ips()
             for ip in seed_ips:
                 reply.add_answer(RR(
@@ -143,11 +157,7 @@ class MoneroResolver(BaseResolver):
             return reply
 
         # Handle checkpoint queries (TXT records)
-        all_checkpoint_domains = (
-            self.CHECKPOINT_DOMAINS |
-            self.TESTNET_CHECKPOINT_DOMAINS
-        )
-        if qtype == "TXT" and qname in all_checkpoint_domains:
+        if qtype == "TXT" and self._is_checkpoint_domain(qname):
             checkpoints = self._load_checkpoints()
             for height, block_hash in checkpoints.items():
                 txt_data = f"{height}:{block_hash}"

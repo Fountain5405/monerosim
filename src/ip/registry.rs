@@ -12,6 +12,7 @@ pub enum AgentType {
     UserAgent,
     BlockController,
     PureScriptAgent,
+    Infrastructure,  // DNS servers, monitors, and other infrastructure agents
 }
 
 /// Subnet allocation configuration

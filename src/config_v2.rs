@@ -239,7 +239,7 @@ pub struct UserAgentConfig {
     /// Daemon configuration - local daemon, remote daemon reference, or None
     /// - Local: "monerod" - runs a local daemon
     /// - Remote: { address: "auto", strategy: "random" } - wallet-only connecting to public node
-    /// - Remote: { address: "192.168.1.10:28081" } - wallet-only connecting to specific daemon
+    /// - Remote: { address: "192.168.1.10:18081" } - wallet-only connecting to specific daemon
     /// - None: script-only agent with no Monero daemon
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daemon: Option<DaemonConfig>,

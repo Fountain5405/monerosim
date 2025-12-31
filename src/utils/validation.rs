@@ -649,7 +649,7 @@ mod tests {
         // Wallet-only agent connecting to specific daemon (no public node needed)
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Remote {
-                address: "192.168.1.10:28081".to_string(),
+                address: "192.168.1.10:18081".to_string(),
                 strategy: None,
             }),
             wallet: Some("monero-wallet-rpc".to_string()),
@@ -689,7 +689,7 @@ mod tests {
         // Mining agent with remote daemon (should fail)
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Remote {
-                address: "192.168.1.10:28081".to_string(),
+                address: "192.168.1.10:18081".to_string(),
                 strategy: None,
             }),
             wallet: Some("monero-wallet-rpc".to_string()),
