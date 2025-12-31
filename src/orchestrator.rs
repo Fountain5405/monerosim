@@ -14,6 +14,7 @@ use crate::shadow::{
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_agent_daemon_config, validate_simulation_seed};
+use crate::utils::seed_extractor::extract_mainnet_seed_ips;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
@@ -232,6 +233,21 @@ pub fn generate_agent_shadow_config(
     let monerod_path = "/home/lever65/monerosim_dev/monero-shadow/build/Linux/vanilla-regtest-test/release/bin/monerod".to_string();
     let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
 
+    // Extract mainnet seed IPs from monerod source
+    // These will be assigned to miner nodes so vanilla monerod can discover them
+    let mainnet_seed_ips: Vec<String> = match extract_mainnet_seed_ips(&monerod_path) {
+        Ok(seeds) => {
+            let ips: Vec<String> = seeds.iter().map(|s| s.ip.clone()).collect();
+            println!("Extracted {} mainnet seed IPs from monerod source: {:?}", ips.len(), ips);
+            ips
+        }
+        Err(e) => {
+            println!("Warning: Could not extract seed IPs from monerod source: {}", e);
+            println!("Using dynamic IP assignment instead.");
+            Vec::new()
+        }
+    };
+
     // Store seed nodes for P2P connections
     let mut seed_nodes: Vec<String> = Vec::new();
 
@@ -272,24 +288,62 @@ pub fn generate_agent_shadow_config(
         }
     }
 
-    // Use the configured seed nodes, or collect miner IPs if not provided
-    let effective_seed_nodes = if seed_node_list.is_empty() {
-        // Collect actual miner IPs for seed nodes
-        let mut miner_ips = Vec::new();
+    // Build a mapping of initial bootstrap miner agent IDs to their assigned mainnet seed IPs
+    // Only the first N miners (where N = number of mainnet seed IPs) become bootstrap nodes
+    // These miners receive the hardcoded mainnet seed IPs so vanilla monerod can discover them
+    let mut miner_seed_ip_map: HashMap<String, String> = HashMap::new();
+    let mut seed_ip_index = 0;
+
+    if !mainnet_seed_ips.is_empty() {
         if let Some(user_agents) = &config.agents.user_agents {
             for (i, user_agent_config) in user_agents.iter().enumerate() {
-                if user_agent_config.is_miner_value() {
+                if user_agent_config.is_miner_value() && seed_ip_index < mainnet_seed_ips.len() {
                     let agent_id = format!("user{:03}", i);
-                    // For seed node IP calculation, use node 0 (switch topology assumption)
-                    // This ensures consistent IP assignment for miners
-                    let network_node_id = 0;
-                    let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry);
-                    miner_ips.push(format!("{}:18080", agent_ip));
+                    let seed_ip = mainnet_seed_ips[seed_ip_index].clone();
+
+                    // Pre-register this IP in the registry to prevent conflicts
+                    if let Err(e) = ip_registry.register_pre_allocated_ip(&seed_ip, &agent_id) {
+                        println!("Warning: Could not reserve seed IP {} for {}: {}", seed_ip, agent_id, e);
+                    } else {
+                        miner_seed_ip_map.insert(agent_id.clone(), seed_ip.clone());
+                        println!("Reserved mainnet seed IP {} for initial bootstrap miner {}", seed_ip, agent_id);
+                    }
+                    seed_ip_index += 1;
                 }
             }
         }
-        println!("Using {} miner IPs as seed nodes: {:?}", miner_ips.len(), miner_ips);
-        miner_ips
+        if !miner_seed_ip_map.is_empty() {
+            println!("Assigned {} mainnet seed IPs to initial bootstrap miners", miner_seed_ip_map.len());
+        }
+    }
+
+    // Use the configured seed nodes, or use mainnet seed IPs if extracted
+    let effective_seed_nodes = if seed_node_list.is_empty() {
+        if !miner_seed_ip_map.is_empty() {
+            // Use the reserved mainnet seed IPs
+            let miner_ips: Vec<String> = miner_seed_ip_map.values()
+                .map(|ip| format!("{}:18080", ip))
+                .collect();
+            println!("Using {} mainnet seed IPs for miner nodes: {:?}", miner_ips.len(), miner_ips);
+            miner_ips
+        } else {
+            // Fallback: Collect actual miner IPs for seed nodes using dynamic assignment
+            let mut miner_ips = Vec::new();
+            if let Some(user_agents) = &config.agents.user_agents {
+                for (i, user_agent_config) in user_agents.iter().enumerate() {
+                    if user_agent_config.is_miner_value() {
+                        let agent_id = format!("user{:03}", i);
+                        // For seed node IP calculation, use node 0 (switch topology assumption)
+                        // This ensures consistent IP assignment for miners
+                        let network_node_id = 0;
+                        let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry);
+                        miner_ips.push(format!("{}:18080", agent_ip));
+                    }
+                }
+            }
+            println!("Using {} dynamically assigned miner IPs as seed nodes: {:?}", miner_ips.len(), miner_ips);
+            miner_ips
+        }
     } else {
         println!("Using configured seed nodes: {:?}", seed_node_list);
         seed_node_list
@@ -376,6 +430,7 @@ echo "Starting DNS server..."
         &peer_mode,
         topology.as_ref(),
         enable_dns_server,
+        &miner_seed_ip_map,
     )?;
 
 

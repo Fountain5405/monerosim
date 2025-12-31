@@ -34,6 +34,7 @@ pub fn process_user_agents(
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
     enable_dns_server: bool,
+    miner_seed_ip_map: &HashMap<String, String>,
 ) -> color_eyre::eyre::Result<()> {
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
     let agent_node_assignments = if let Some(gml) = gml_graph {
@@ -78,7 +79,16 @@ pub fn process_user_agents(
                 0 // Fallback to node 0 for switch-based networks
             };
 
-            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+            // Check if this miner has a pre-assigned mainnet seed IP (for bootstrap nodes)
+            // Only the first N miners get mainnet seed IPs to act as bootstrap nodes
+            let agent_ip = if let Some(seed_ip) = miner_seed_ip_map.get(&agent_id) {
+                // Use the pre-assigned mainnet seed IP for this bootstrap miner
+                log::info!("Using mainnet seed IP {} for bootstrap miner {}", seed_ip, agent_id);
+                seed_ip.clone()
+            } else {
+                // Use dynamic IP assignment for non-bootstrap nodes
+                get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry)
+            };
             let agent_port = 18080;
 
             // Collect all agent IPs for topology connections
@@ -270,7 +280,14 @@ pub fn process_user_agents(
                 0 // Fallback to node 0 for switch-based networks
             };
 
-            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+            // Check if this miner has a pre-assigned mainnet seed IP (for bootstrap nodes)
+            let agent_ip = if let Some(seed_ip) = miner_seed_ip_map.get(&agent_id) {
+                // Use the pre-assigned mainnet seed IP for this bootstrap miner
+                seed_ip.clone()
+            } else {
+                // Use dynamic IP assignment for non-bootstrap nodes
+                get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry)
+            };
             let _agent_port = 18080;
 
             // Use standard RPC ports for all agents (mainnet ports for FAKECHAIN/regtest)

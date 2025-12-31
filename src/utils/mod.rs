@@ -61,8 +61,10 @@
 
 pub mod duration;
 pub mod ip_utils;
+pub mod seed_extractor;
 pub mod validation;
 
 // Re-export commonly used utility functions
 pub use duration::parse_duration_to_seconds;
+pub use seed_extractor::{extract_mainnet_seed_ips, SeedNode};
 pub use validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_simulation_seed};
