@@ -34,7 +34,6 @@ pub fn process_user_agents(
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
     enable_dns_server: bool,
-    miner_seed_ip_map: &HashMap<String, String>,
 ) -> color_eyre::eyre::Result<()> {
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
     let agent_node_assignments = if let Some(gml) = gml_graph {
@@ -79,16 +78,8 @@ pub fn process_user_agents(
                 0 // Fallback to node 0 for switch-based networks
             };
 
-            // Check if this miner has a pre-assigned mainnet seed IP (for bootstrap nodes)
-            // Only the first N miners get mainnet seed IPs to act as bootstrap nodes
-            let agent_ip = if let Some(seed_ip) = miner_seed_ip_map.get(&agent_id) {
-                // Use the pre-assigned mainnet seed IP for this bootstrap miner
-                log::info!("Using mainnet seed IP {} for bootstrap miner {}", seed_ip, agent_id);
-                seed_ip.clone()
-            } else {
-                // Use dynamic IP assignment for non-bootstrap nodes
-                get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry)
-            };
+            // Get agent IP using dynamic assignment
+            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let agent_port = 18080;
 
             // Collect all agent IPs for topology connections
@@ -280,14 +271,8 @@ pub fn process_user_agents(
                 0 // Fallback to node 0 for switch-based networks
             };
 
-            // Check if this miner has a pre-assigned mainnet seed IP (for bootstrap nodes)
-            let agent_ip = if let Some(seed_ip) = miner_seed_ip_map.get(&agent_id) {
-                // Use the pre-assigned mainnet seed IP for this bootstrap miner
-                seed_ip.clone()
-            } else {
-                // Use dynamic IP assignment for non-bootstrap nodes
-                get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry)
-            };
+            // Get agent IP using dynamic assignment
+            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
             let _agent_port = 18080;
 
             // Use standard RPC ports for all agents (mainnet ports for FAKECHAIN/regtest)
@@ -312,7 +297,8 @@ pub fn process_user_agents(
                 format!("--data-dir=/tmp/monero-{}", agent_id),
                 "--log-file=/dev/stdout".to_string(),
                 "--log-level=1".to_string(),
-                // "--simulation".to_string(), // TEST: Disabled to verify Shadow socket fixes
+                "--regtest".to_string(),
+                "--keep-fakechain".to_string(),
                 "--prep-blocks-threads=1".to_string(),
                 "--max-concurrency=1".to_string(),
                 "--no-zmq".to_string(),
@@ -327,7 +313,6 @@ pub fn process_user_agents(
                 "--confirm-external-bind".to_string(),
                 "--disable-rpc-ban".to_string(),
                 "--rpc-access-control-origins=*".to_string(),
-                "--regtest".to_string(),
                 format!("--p2p-bind-ip={}", agent_ip),
                 format!("--p2p-bind-port={}", p2p_port),
                 //"--fixed-difficulty=200".to_string(),
