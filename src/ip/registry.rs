@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AgentType {
     UserAgent,
-    BlockController,
+    MinerDistributor,
     PureScriptAgent,
     Infrastructure,  // DNS servers, monitors, and other infrastructure agents
 }
@@ -58,9 +58,9 @@ impl GlobalIpRegistry {
         } else if let Some(num_str) = agent_id.strip_prefix("script") {
             100 + num_str.parse::<u32>().unwrap_or(0) // Offset script agents
         } else {
-            // For blockcontroller and other special cases
+            // For minerdistributor and other special cases
             match agent_id {
-                "blockcontroller" => 200,
+                "minerdistributor" => 200,
                 _ => 0,
             }
         };

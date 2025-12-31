@@ -101,7 +101,7 @@ pub fn get_agent_ip(
             // Fallback logic using geographic subnets
             let fallback_ip = match agent_type {
                 AgentType::UserAgent => format!("192.168.10.{}", 10 + (agent_index % 245)),
-                AgentType::BlockController => format!("192.168.20.{}", 10 + (agent_index % 245)),
+                AgentType::MinerDistributor => format!("192.168.20.{}", 10 + (agent_index % 245)),
                 AgentType::PureScriptAgent => format!("192.168.30.{}", 10 + (agent_index % 245)),
                 AgentType::Infrastructure => format!("192.168.40.{}", 10 + (agent_index % 245)),
             };

@@ -137,8 +137,6 @@ pub struct AgentDefinitions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_agents: Option<Vec<UserAgentConfig>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub block_controller: Option<BlockControllerConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub miner_distributor: Option<MinerDistributorConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pure_script_agents: Option<Vec<PureScriptAgentConfig>>,
@@ -354,14 +352,6 @@ impl UserAgentConfig {
             _ => None,
         }
     }
-}
-
-/// Block controller agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BlockControllerConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<String>>,
 }
 
 /// Miner distributor agent configuration

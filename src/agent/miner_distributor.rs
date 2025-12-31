@@ -31,7 +31,7 @@ pub fn process_miner_distributor(
         let miner_distributor_id = "minerdistributor";
         // Assign miner distributor to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
-        let miner_distributor_ip = get_agent_ip(AgentType::BlockController, miner_distributor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+        let miner_distributor_ip = get_agent_ip(AgentType::MinerDistributor, miner_distributor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
         let mut processes = Vec::new();
 
         let mut agent_args = vec![

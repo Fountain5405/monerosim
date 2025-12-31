@@ -117,14 +117,13 @@ monerosim/
 │   ├── agent_discovery.py   # Dynamic agent discovery system
 │   ├── base_agent.py        # Base agent class
 │   ├── regular_user.py      # User agent implementation
-│   ├── block_controller.py  # Mining orchestration
+│   ├── autonomous_miner.py  # Autonomous mining agent
 │   └── monero_rpc.py        # RPC client library
 ├── scripts/                  # Python test and utility scripts
 │   ├── simple_test.py       # Basic functionality test
 │   ├── sync_check.py        # Network synchronization test
 │   ├── transaction_script.py # Transaction testing
-│   ├── monitor.py           # Real-time monitoring
-│   └── block_controller.py  # Block generation control
+│   └── monitor.py           # Real-time monitoring
 ├── legacy_scripts/          # Deprecated bash scripts (historical reference)
 ├── docs/                    # Detailed documentation
 ├── config*.yaml             # Example configurations
@@ -156,13 +155,12 @@ Key scripts:
 - `transaction_script.py` - Tests transaction processing
 - `sync_check.py` - Monitors blockchain synchronization
 - `monitor.py` - Real-time simulation monitoring
-- `block_controller.py` - Controls block generation timing
 
 Key agents:
 - `agent_discovery.py` - Dynamic agent discovery system
 - `base_agent.py` - Base agent class
 - `regular_user.py` - User agent implementation
-- `block_controller.py` - Mining orchestration
+- `autonomous_miner.py` - Autonomous mining (decentralized block generation)
 
 ### Agent Discovery System
 

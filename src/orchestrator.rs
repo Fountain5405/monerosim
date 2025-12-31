@@ -15,7 +15,7 @@ use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_agent_daemon_config, validate_simulation_seed};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
+use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
 use serde_yaml;
 use std::collections::BTreeMap;
@@ -380,26 +380,11 @@ echo "Starting DNS server..."
     )?;
 
 
-    // Calculate offset for block controller and script agents to avoid IP collisions
+    // Calculate offset for script agents to avoid IP collisions
     // Use a larger offset to ensure clear separation between agent types
     let user_agent_count = config.agents.user_agents.as_ref().map(|ua| ua.len()).unwrap_or(0);
-    let block_controller_offset = user_agent_count + 100; // Reserve 100 IPs for user agents
-    let script_offset = user_agent_count + 200; // Reserve another 100 IPs for block controller and other uses
-
-    process_block_controller(
-        &config.agents,
-        &mut hosts,
-        &mut subnet_manager,
-        &mut ip_registry,
-        &environment,
-        shared_dir_path,
-        &current_dir,
-        &config.general.stop_time,
-        gml_graph.as_ref(),
-        using_gml_topology,
-        block_controller_offset,
-        &peer_mode,
-    )?;
+    let distributor_offset = user_agent_count + 100; // Reserve 100 IPs for user agents
+    let script_offset = user_agent_count + 200; // Reserve another 100 IPs for miner distributor and other uses
 
     process_miner_distributor(
         &config.agents,
@@ -412,7 +397,7 @@ echo "Starting DNS server..."
         &config.general.stop_time,
         gml_graph.as_ref(),
         using_gml_topology,
-        block_controller_offset + 10, // Offset from block controller
+        distributor_offset,
         &peer_mode,
     )?;
 
@@ -501,34 +486,6 @@ echo "Starting DNS server..."
         }
     }
 
-    // Add block controller to registry
-    if config.agents.block_controller.is_some() {
-        let block_controller_id = "blockcontroller".to_string();
-
-        // Get IP from the corresponding host that was already created
-        let block_controller_ip = hosts.get(&block_controller_id)
-            .and_then(|host| host.ip_addr.clone())
-            .unwrap_or_else(|| {
-                // Fallback to geographic IP assignment for block controller
-                format!("192.168.20.{}", 10 + block_controller_offset)
-            });
-
-        let agent_info = AgentInfo {
-            id: block_controller_id,
-            ip_addr: block_controller_ip,
-            daemon: false, // Block controller does not run a daemon
-            wallet: false, // Block controller does not have a wallet
-            user_script: config.agents.block_controller.as_ref().map(|c| c.script.clone()),
-            attributes: BTreeMap::new(), // No specific attributes for block controller
-            wallet_rpc_port: None,
-            daemon_rpc_port: None,
-            is_public_node: None,
-            remote_daemon: None,
-            daemon_selection_strategy: None,
-        };
-        agent_registry.agents.push(agent_info);
-    }
-
     // Add miner distributor to registry
     if config.agents.miner_distributor.is_some() {
         let miner_distributor_id = "minerdistributor".to_string();
@@ -538,7 +495,7 @@ echo "Starting DNS server..."
             .and_then(|host| host.ip_addr.clone())
             .unwrap_or_else(|| {
                 // Fallback to geographic IP assignment for miner distributor
-                format!("192.168.21.{}", 10 + block_controller_offset)
+                format!("192.168.21.{}", 10 + distributor_offset)
             });
 
         let agent_info = AgentInfo {

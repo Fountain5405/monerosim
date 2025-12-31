@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 pub enum AgentType {
     /// User agents that run Monero daemons and wallets
     UserAgent,
-    /// Block controller agent for mining coordination
-    BlockController,
     /// Pure script agents that run without daemons
     PureScriptAgent,
 }
@@ -20,7 +18,6 @@ impl AgentType {
     pub fn as_str(&self) -> &'static str {
         match self {
             AgentType::UserAgent => "user_agent",
-            AgentType::BlockController => "block_controller",
             AgentType::PureScriptAgent => "pure_script_agent",
         }
     }

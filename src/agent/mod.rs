@@ -11,11 +11,8 @@
 //!
 //! - **User Agents**: Regular Monero network participants that can mine, transact,
 //!   and interact with the blockchain. These include both miners (with wallets)
-//!   and regular users (with transaction behaviors).
-//!
-//! - **Block Controller**: A specialized agent that coordinates mining activities
-//!   across multiple miners, ensuring fair distribution and proper blockchain
-//!   progression.
+//!   and regular users (with transaction behaviors). Miners use autonomous mining
+//!   via the `mining_script` attribute.
 //!
 //! - **Miner Distributor**: Handles reward distribution logic for mining pools
 //!   and coordinated mining efforts.
@@ -29,7 +26,6 @@
 //! ## Key Components
 //!
 //! - `user_agents.rs`: Processing logic for user agents (miners and regular users)
-//! - `block_controller.rs`: Block controller agent implementation
 //! - `miner_distributor.rs`: Mining reward distribution logic
 //! - `pure_scripts.rs`: Pure script agent processing
 //! - `simulation_monitor.rs`: Simulation monitoring functionality
@@ -53,11 +49,10 @@
 //!   user_agents:
 //!     - daemon: "monerod"
 //!       wallet: "monero-wallet-rpc"
+//!       mining_script: "agents.autonomous_miner"
 //!       attributes:
 //!         is_miner: true
 //!         hashrate: "50"
-//!   block_controller:
-//!     script: "agents.block_controller"
 //! ```
 //!
 //! ## Processing Flow
@@ -71,14 +66,12 @@
 
 pub mod types;
 pub mod user_agents;
-pub mod block_controller;
 pub mod miner_distributor;
 pub mod pure_scripts;
 pub mod simulation_monitor;
 
 // Re-export the main processing functions for easy access
 pub use user_agents::process_user_agents;
-pub use block_controller::process_block_controller;
 pub use miner_distributor::process_miner_distributor;
 pub use pure_scripts::process_pure_script_agents;
 pub use simulation_monitor::process_simulation_monitor;
