@@ -186,7 +186,7 @@ let _launcher_path = std::env::current_dir()
 | 7 | time.time() usage | MEDIUM | Python timing | Multiple agents | Medium |
 | 8 | File system race conditions | MEDIUM | Concurrency | /tmp/monerosim_shared | Medium |
 | 9 | Monero internal PRNG | ARCHITECTURAL | External | monerod binary | Hard |
-| 10 | DNS server timing | MEDIUM | External | dns_server.py | Easy (disable) |
+| 10 | DNS server file access | MEDIUM | External | dns_server.py | Easy ✅ |
 | 11 | RPC retry jitter | LOW-MEDIUM | Timing | monero_rpc.py | Medium |
 | 12 | Current directory dependency | LOW | Environment | wallet.rs | Easy |
 
@@ -206,9 +206,14 @@ let _launcher_path = std::env::current_dir()
 5. ✅ Audit time.time() usage - Shadow intercepts time calls making them deterministic
 6. ✅ Implement file locking for shared state files (write_shared_state, append_shared_list)
 
-### Phase 4: Architectural Decisions - PENDING
-7. Decide whether to patch monerod for seedable PRNG or accept block-level non-determinism
-8. Determine if DNS server should be disabled by default for determinism
+### Phase 4: DNS Server Determinism - COMPLETED
+7. ✅ Add file locking to dns_server.py for agent_registry.json and dns_checkpoints.json reads
+8. ✅ Add file locking to block_controller.py for agent_registry.json access
+9. ✅ Add file locking to autonomous_miner.py for agent_registry.json access
+
+### Phase 5: Architectural Decisions - PENDING
+10. Decide whether to patch monerod for seedable PRNG or accept block-level non-determinism
+11. Determine if DNS server should be disabled by default for determinism
 
 ---
 
@@ -220,11 +225,13 @@ let _launcher_path = std::env::current_dir()
 - `src/process/wallet.rs` - Remove current_dir dependency
 
 **Python files:**
-- `agents/block_controller.py` - Add RNG seeding
+- `agents/block_controller.py` - Add RNG seeding, file locking for agent_registry.json
 - `agents/miner_distributor.py` - Add RNG seeding
 - `agents/regular_user.py` - Add RNG seeding
 - `agents/base_agent.py` - Add file locking utilities
 - `agents/monero_rpc.py` - Fixed retry intervals
+- `agents/dns_server.py` - Add file locking for agent_registry.json and dns_checkpoints.json
+- `agents/autonomous_miner.py` - Add file locking for agent_registry.json
 
 ---
 

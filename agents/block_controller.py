@@ -12,6 +12,7 @@ This stateless coordinator:
 import sys
 import time
 import argparse
+import fcntl
 import logging
 import random
 import json
@@ -152,48 +153,54 @@ class BlockControllerAgent(BaseAgent):
         """
         Update the agent registry with wallet addresses from miner info files.
         This replaces the centralized wallet initialization approach.
+        Uses atomic file locking for deterministic concurrent access.
         """
         self.logger.info(f"Updating agent registry with wallet addresses for {len(registered_miners)} registered miners")
-        
+
         agent_registry_path = self.shared_dir / "agent_registry.json"
+        lock_path = self.shared_dir / "agent_registry.lock"
         if not agent_registry_path.exists():
             self.logger.error(f"Agent registry not found at {agent_registry_path}")
             return
-            
+
         try:
-            with open(agent_registry_path, 'r') as f:
-                agent_data = json.load(f)
+            # Use exclusive lock for atomic read-modify-write
+            with open(lock_path, 'w') as lock_f:
+                fcntl.flock(lock_f, fcntl.LOCK_EX)
+                try:
+                    with open(agent_registry_path, 'r') as f:
+                        agent_data = json.load(f)
+
+                    # Update agents with wallet addresses from miner info files
+                    updated_agents = []
+                    for agent in agent_data.get("agents", []):
+                        agent_id = agent["id"]
+
+                        # If this is a registered miner, update their wallet address
+                        if agent_id in registered_miners:
+                            miner_info_file = self.shared_dir / f"{agent_id}_miner_info.json"
+                            if miner_info_file.exists():
+                                try:
+                                    with open(miner_info_file, 'r') as f:
+                                        miner_info = json.load(f)
+                                        if "wallet_address" in miner_info:
+                                            agent["wallet_address"] = miner_info["wallet_address"]
+                                            self.logger.info(f"Updated agent {agent_id} with wallet address from miner info file")
+                                except Exception as e:
+                                    self.logger.warning(f"Error reading miner info for {agent_id}: {e}")
+
+                        updated_agents.append(agent)
+
+                    # Write the updated agent data back to the registry (atomic write with temp file)
+                    temp_path = agent_registry_path.with_suffix('.tmp')
+                    with open(temp_path, 'w') as f:
+                        json.dump({"agents": updated_agents}, f, indent=2)
+                    temp_path.rename(agent_registry_path)
+                    self.logger.info("Successfully updated agent_registry.json with miner wallet addresses.")
+                finally:
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
         except Exception as e:
-            self.logger.error(f"Failed to load agent_registry.json: {e}")
-            return
-            
-        # Update agents with wallet addresses from miner info files
-        updated_agents = []
-        for agent in agent_data.get("agents", []):
-            agent_id = agent["id"]
-            
-            # If this is a registered miner, update their wallet address
-            if agent_id in registered_miners:
-                miner_info_file = self.shared_dir / f"{agent_id}_miner_info.json"
-                if miner_info_file.exists():
-                    try:
-                        with open(miner_info_file, 'r') as f:
-                            miner_info = json.load(f)
-                            if "wallet_address" in miner_info:
-                                agent["wallet_address"] = miner_info["wallet_address"]
-                                self.logger.info(f"Updated agent {agent_id} with wallet address from miner info file")
-                    except Exception as e:
-                        self.logger.warning(f"Error reading miner info for {agent_id}: {e}")
-            
-            updated_agents.append(agent)
-            
-        # Write the updated agent data back to the registry
-        try:
-            with open(agent_registry_path, 'w') as f:
-                json.dump({"agents": updated_agents}, f, indent=2)
-            self.logger.info("Successfully updated agent_registry.json with miner wallet addresses.")
-        except Exception as e:
-            self.logger.error(f"Failed to write updated agent_registry.json: {e}")
+            self.logger.error(f"Failed to update agent_registry.json: {e}")
 
     def _update_miner_wallet_address(self, agent_id: str, wallet_address: str):
         """
@@ -274,11 +281,18 @@ class BlockControllerAgent(BaseAgent):
             # Fallback to agent registry if miner info file doesn't exist or doesn't have wallet address
             if not wallet_address:
                 agent_registry_path = self.shared_dir / "agent_registry.json"
+                lock_path = self.shared_dir / "agent_registry.lock"
                 if agent_registry_path.exists():
                     try:
-                        with open(agent_registry_path, 'r') as f:
-                            agent_data = json.load(f)
-                        
+                        # Use shared lock for reading (deterministic concurrent access)
+                        with open(lock_path, 'w') as lock_f:
+                            fcntl.flock(lock_f, fcntl.LOCK_SH)
+                            try:
+                                with open(agent_registry_path, 'r') as f:
+                                    agent_data = json.load(f)
+                            finally:
+                                fcntl.flock(lock_f, fcntl.LOCK_UN)
+
                         for agent in agent_data.get("agents", []):
                             if agent["id"] == agent_id:
                                 wallet_address = agent.get("wallet_address")

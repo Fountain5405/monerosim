@@ -19,6 +19,7 @@ import math
 import random
 import os
 import argparse
+import fcntl
 import logging
 from typing import Optional, Dict, Any
 
@@ -163,17 +164,23 @@ class AutonomousMinerAgent(BaseAgent):
                 except Exception as e:
                     self.logger.debug(f"Error reading miner info file: {e}")
 
-            # Fallback to agent registry
+            # Fallback to agent registry (with file locking for determinism)
             if agent_registry_file.exists():
+                lock_path = Path(self.shared_dir) / "agent_registry.lock"
                 try:
-                    with open(agent_registry_file, 'r') as f:
-                        registry = json.load(f)
-                        for agent in registry.get("agents", []):
-                            if agent.get("id") == self.agent_id:
-                                if "wallet_address" in agent:
-                                    address = agent["wallet_address"]
-                                    self.logger.info(f"Found wallet address in agent registry: {address[:20]}...")
-                                    return address
+                    with open(lock_path, 'w') as lock_f:
+                        fcntl.flock(lock_f, fcntl.LOCK_SH)
+                        try:
+                            with open(agent_registry_file, 'r') as f:
+                                registry = json.load(f)
+                        finally:
+                            fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    for agent in registry.get("agents", []):
+                        if agent.get("id") == self.agent_id:
+                            if "wallet_address" in agent:
+                                address = agent["wallet_address"]
+                                self.logger.info(f"Found wallet address in agent registry: {address[:20]}...")
+                                return address
                 except Exception as e:
                     self.logger.debug(f"Error reading agent registry: {e}")
 

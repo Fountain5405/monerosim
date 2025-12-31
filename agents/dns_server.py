@@ -10,6 +10,7 @@ instead of requiring patched DNS-disabling code.
 """
 
 import argparse
+import fcntl
 import json
 import logging
 import signal
@@ -75,13 +76,20 @@ class MoneroResolver(BaseResolver):
             return self.seed_ips
 
         registry_path = self.shared_dir / "agent_registry.json"
+        lock_path = self.shared_dir / "agent_registry.lock"
         if not registry_path.exists():
             self.logger.warning(f"Agent registry not found: {registry_path}")
             return self.seed_ips
 
         try:
-            with open(registry_path, 'r') as f:
-                registry = json.load(f)
+            # Use file locking for deterministic reads (consistent with base_agent.py)
+            with open(lock_path, 'w') as lock_f:
+                fcntl.flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
+                try:
+                    with open(registry_path, 'r') as f:
+                        registry = json.load(f)
+                finally:
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
 
             # Get IPs of miners (seed nodes)
             seed_ips = []
@@ -108,12 +116,19 @@ class MoneroResolver(BaseResolver):
     def _load_checkpoints(self) -> Dict[int, str]:
         """Load checkpoints from shared file (future feature)."""
         checkpoint_path = self.shared_dir / "dns_checkpoints.json"
+        lock_path = self.shared_dir / "dns_checkpoints.lock"
         if not checkpoint_path.exists():
             return self.checkpoints
 
         try:
-            with open(checkpoint_path, 'r') as f:
-                data = json.load(f)
+            # Use file locking for deterministic reads
+            with open(lock_path, 'w') as lock_f:
+                fcntl.flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
+                try:
+                    with open(checkpoint_path, 'r') as f:
+                        data = json.load(f)
+                finally:
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
             self.checkpoints = {int(k): v for k, v in data.items()}
             self.logger.info(f"Loaded {len(self.checkpoints)} checkpoints")
         except Exception as e:
