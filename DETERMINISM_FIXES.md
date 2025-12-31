@@ -177,18 +177,19 @@ let _launcher_path = std::env::current_dir()
 
 | # | Issue | Severity | Category | File(s) | Fix Complexity |
 |---|-------|----------|----------|---------|----------------|
-| 1 | Unseeded RNG (block_controller) | CRITICAL | Python RNG | block_controller.py | Easy |
-| 2 | Unseeded RNG (miner_distributor) | CRITICAL | Python RNG | miner_distributor.py | Easy |
-| 3 | Unseeded RNG (regular_user) | CRITICAL | Python RNG | regular_user.py | Easy |
-| 4 | Process ID in temp path | CRITICAL | Rust runtime | orchestrator.rs:33 | Easy |
-| 5 | Python hash() randomization | HIGH | Environment | All Python agents | Easy |
-| 6 | HashMap iteration order | MEDIUM-HIGH | Rust collections | orchestrator.rs, distribution.rs | Medium |
-| 7 | time.time() usage | MEDIUM | Python timing | Multiple agents | Medium |
-| 8 | File system race conditions | MEDIUM | Concurrency | /tmp/monerosim_shared | Medium |
-| 9 | Monero internal PRNG | ARCHITECTURAL | External | monerod binary | Hard |
+| 1 | Unseeded RNG (block_controller) | CRITICAL | Python RNG | block_controller.py | Easy ✅ |
+| 2 | Unseeded RNG (miner_distributor) | CRITICAL | Python RNG | miner_distributor.py | Easy ✅ |
+| 3 | Unseeded RNG (regular_user) | CRITICAL | Python RNG | regular_user.py | Easy ✅ |
+| 4 | Process ID in temp path | CRITICAL | Rust runtime | orchestrator.rs:33 | Easy ✅ |
+| 5 | Python hash() randomization | HIGH | Environment | All Python agents | Easy ✅ |
+| 6 | HashMap iteration order | MEDIUM-HIGH | Rust collections | orchestrator.rs, distribution.rs | Medium ✅ |
+| 7 | time.time() usage | MEDIUM | Python timing | Multiple agents | N/A (Shadow intercepts) |
+| 8 | File system race conditions | MEDIUM | Concurrency | /tmp/monerosim_shared | Medium ✅ |
+| 9 | Monero internal PRNG | ARCHITECTURAL | External | monerod binary | Hard (pending) |
 | 10 | DNS server file access | MEDIUM | External | dns_server.py | Easy ✅ |
-| 11 | RPC retry jitter | LOW-MEDIUM | Timing | monero_rpc.py | Medium |
-| 12 | Current directory dependency | LOW | Environment | wallet.rs | Easy |
+| 11 | RPC retry jitter | LOW-MEDIUM | Timing | monero_rpc.py | N/A (Shadow intercepts) |
+| 12 | Current directory dependency | LOW | Environment | wallet.rs | Easy (low priority) |
+| 13 | Shadow seed not set | CRITICAL | Shadow config | orchestrator.rs, types.rs | Easy ✅ |
 
 ---
 
@@ -211,9 +212,15 @@ let _launcher_path = std::env::current_dir()
 8. ✅ Add file locking to block_controller.py for agent_registry.json access
 9. ✅ Add file locking to autonomous_miner.py for agent_registry.json access
 
-### Phase 5: Architectural Decisions - PENDING
-10. Decide whether to patch monerod for seedable PRNG or accept block-level non-determinism
-11. Determine if DNS server should be disabled by default for determinism
+### Phase 5: Shadow RNG Seeding - COMPLETED
+10. ✅ Pass simulation_seed to Shadow's `general.seed` config (CRITICAL)
+    - Shadow intercepts OpenSSL RNG via `use_preload_openssl_rng` (enabled by default)
+    - This controls randomness for Dandelion++, peer selection, and other Monero behaviors
+    - Previously Shadow was using default seed (1) instead of configured simulation_seed
+
+### Phase 6: Architectural Decisions - PENDING
+11. Decide whether to patch monerod for seedable PRNG or accept block-level non-determinism
+12. Determine if DNS server should be disabled by default for determinism
 
 ---
 
