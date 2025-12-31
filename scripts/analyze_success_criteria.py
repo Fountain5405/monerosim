@@ -267,6 +267,88 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
     return {'node_data': node_data, 'report': report}
 
 
+def generate_determinism_fingerprint(node_data: Dict, report: Dict) -> Dict:
+    """
+    Generate a determinism fingerprint that captures structural simulation behavior
+    while ignoring non-deterministic elements like block/transaction hashes.
+
+    This fingerprint can be compared across runs to verify determinism.
+    """
+    fingerprint = {
+        'version': 1,  # Fingerprint format version
+        'summary': {
+            'num_nodes': report['num_nodes'],
+            'total_blocks_mined': report['total_blocks_mined'],
+            'total_txs_created': report['total_txs_created'],
+            'total_txs_included': report['total_txs_included'],
+        },
+        'block_heights': {
+            'mined': [],      # List of heights where blocks were mined
+            'max_height': 0,  # Maximum block height achieved
+        },
+        'per_node_counts': {},  # Per-node event counts (sorted by node name)
+        'propagation': {
+            'blocks_propagated_to_all_users': report['criteria']['blocks_propagated']['success'],
+            'txs_propagated_to_all_users': report['criteria']['transactions_created_broadcast']['success'],
+        },
+        'success_criteria': {
+            criterion: data['success']
+            for criterion, data in report['criteria'].items()
+        },
+        'overall_success': report['overall_success'],
+    }
+
+    # Extract block heights (ignoring hashes)
+    all_heights_mined = set()
+    all_heights_received = set()
+
+    for node_name, events in sorted(node_data.items()):
+        # Count events per node
+        blocks_mined = events.get('blocks_mined', set())
+        blocks_received = events.get('blocks_received', set())
+        txs_created = events.get('tx_created', set())
+        txs_received = events.get('tx_received', set())
+        txs_included = events.get('tx_included', {})
+
+        # Extract heights from block tuples (height, hash)
+        mined_heights = [h for h, _ in blocks_mined] if blocks_mined else []
+        received_heights = [h for h, _ in blocks_received] if blocks_received else []
+
+        all_heights_mined.update(mined_heights)
+        all_heights_received.update(received_heights)
+
+        fingerprint['per_node_counts'][node_name] = {
+            'blocks_mined': len(blocks_mined),
+            'blocks_received': len(blocks_received),
+            'txs_created': len(txs_created),
+            'txs_received': len(txs_received),
+            'txs_included': len(txs_included),
+            'mined_heights': sorted(mined_heights),
+            'max_height_seen': max(mined_heights + received_heights) if (mined_heights or received_heights) else 0,
+        }
+
+    # Aggregate block height info
+    fingerprint['block_heights']['mined'] = sorted(all_heights_mined)
+    fingerprint['block_heights']['max_height'] = max(all_heights_mined | all_heights_received) if (all_heights_mined or all_heights_received) else 0
+
+    return fingerprint
+
+
+def save_determinism_fingerprint(fingerprint: Dict, filename: str = None) -> str:
+    """
+    Save the determinism fingerprint to a JSON file.
+    """
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"determinism_fingerprint_{timestamp}.json"
+
+    with open(filename, 'w') as f:
+        json.dump(fingerprint, f, indent=2, sort_keys=True)
+
+    print(f"Determinism fingerprint saved to: {filename}")
+    return filename
+
+
 def generate_summary_report(report: Dict) -> str:
     """
     Generate a clean summary report with less granular data.
@@ -332,10 +414,34 @@ def save_summary_report(report: Dict, filename: str = None):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Analyze Monerosim simulation results')
+    parser.add_argument('--fingerprint-only', action='store_true',
+                       help='Only generate determinism fingerprint (for comparison)')
+    parser.add_argument('--fingerprint-file', type=str, default=None,
+                       help='Output filename for determinism fingerprint')
+    parser.add_argument('--log-dir', type=str, default=None,
+                       help='Path to shadow.data/hosts directory')
+    args = parser.parse_args()
+
     try:
         print("Starting simulation analysis with multi-threading support...")
-        analysis = analyze_simulation(max_workers=DEFAULT_MAX_WORKERS)
+        analysis = analyze_simulation(log_dir=args.log_dir, max_workers=DEFAULT_MAX_WORKERS)
         report = analysis['report']
+        node_data = analysis['node_data']
+
+        # Always generate determinism fingerprint
+        fingerprint = generate_determinism_fingerprint(node_data, report)
+        fingerprint_file = save_determinism_fingerprint(fingerprint, args.fingerprint_file)
+
+        if args.fingerprint_only:
+            # Only output fingerprint for determinism comparison
+            return {
+                'success': True,
+                'fingerprint_file': fingerprint_file,
+                'overall_success': report['overall_success']
+            }
 
         # Print clean summary to console
         summary = generate_summary_report(report)
@@ -353,11 +459,14 @@ def main():
             'success': True,
             'summary_file': summary_file,
             'detailed_file': 'success_analysis_report.json',
+            'fingerprint_file': fingerprint_file,
             'overall_success': report['overall_success']
         }
 
     except Exception as e:
         print(f"Error during analysis: {e}")
+        import traceback
+        traceback.print_exc()
         return {'success': False, 'error': str(e)}
 
 
