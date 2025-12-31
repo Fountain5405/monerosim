@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -252,7 +252,7 @@ pub struct UserAgentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_miner: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub attributes: Option<HashMap<String, String>>,
+    pub attributes: Option<BTreeMap<String, String>>,
     /// Optional start time offset (e.g., "2h", "7200s", "30m")
     /// This offset is added to the normally calculated start time,
     /// allowing agents to join mid-simulation while preserving staggered launches.
@@ -369,7 +369,7 @@ pub struct BlockControllerConfig {
 pub struct MinerDistributorConfig {
     pub script: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub attributes: Option<HashMap<String, String>>,
+    pub attributes: Option<BTreeMap<String, String>>,
 }
 
 /// Pure script agent configuration

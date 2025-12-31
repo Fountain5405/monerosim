@@ -5,7 +5,7 @@
 
 use crate::shadow::ShadowProcess;
 use crate::utils::duration::parse_duration_to_seconds;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Add a wallet process to the processes list
 pub fn add_wallet_process(
@@ -15,7 +15,7 @@ pub fn add_wallet_process(
     agent_rpc_port: u16,
     wallet_rpc_port: u16,
     _wallet_path: &str,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
     index: usize,
     wallet_start_time: &str,
 ) {
@@ -82,7 +82,7 @@ pub fn add_remote_wallet_process(
     agent_ip: &str,
     remote_daemon_address: Option<&str>,
     wallet_rpc_port: u16,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
     index: usize,
     wallet_start_time: &str,
 ) {

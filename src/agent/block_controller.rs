@@ -8,16 +8,16 @@ use crate::config_v2::{AgentDefinitions, PeerMode};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Process block controller agent
 pub fn process_block_controller(
     agents: &AgentDefinitions,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
     _stop_time: &str,

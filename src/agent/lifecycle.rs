@@ -9,7 +9,7 @@ use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::shadow::ShadowHost;
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Manages the lifecycle of agent processes within the simulation.
 ///
@@ -35,15 +35,15 @@ use std::collections::HashMap;
 /// Result indicating success or failure of lifecycle management
 pub fn process_agent_lifecycle(
     config: &crate::config_v2::Config,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-    environment: &HashMap<String, String>,
-    monero_environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
+    monero_environment: &BTreeMap<String, String>,
     shared_dir: &std::path::Path,
     current_dir: &str,
     agent_offset: usize,
@@ -114,8 +114,8 @@ pub fn process_agent_lifecycle(
 fn calculate_agent_start_times(
     agents: &AgentDefinitions,
     peer_mode: &PeerMode,
-) -> HashMap<String, String> {
-    let mut start_times = HashMap::new();
+) -> BTreeMap<String, String> {
+    let mut start_times = BTreeMap::new();
 
     // Base timing calculations
     let (miner_start, user_start, controller_start, script_start) = match peer_mode {
@@ -137,19 +137,19 @@ fn calculate_agent_start_times(
 /// with appropriate timing dependencies.
 fn process_user_agents_with_lifecycle(
     agents: &AgentDefinitions,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-    environment: &HashMap<String, String>,
-    monero_environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
+    monero_environment: &BTreeMap<String, String>,
     shared_dir: &std::path::Path,
     current_dir: &str,
     agent_offset: usize,
-    start_times: &HashMap<String, String>,
+    start_times: &BTreeMap<String, String>,
 ) -> color_eyre::eyre::Result<()> {
     // Implementation would include the user agent processing logic
     // with proper lifecycle management, timing, and dependencies
@@ -165,17 +165,17 @@ fn process_user_agents_with_lifecycle(
 /// heavy transaction activity begins.
 fn process_block_controller_with_lifecycle(
     agents: &AgentDefinitions,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     peer_mode: &PeerMode,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
     shared_dir: &std::path::Path,
     current_dir: &str,
     agent_offset: usize,
-    start_times: &HashMap<String, String>,
+    start_times: &BTreeMap<String, String>,
 ) -> color_eyre::eyre::Result<()> {
     // Implementation would include block controller lifecycle logic
     // This is a placeholder - actual implementation from shadow_agents.rs
@@ -188,16 +188,16 @@ fn process_block_controller_with_lifecycle(
 /// typically for monitoring or analysis purposes.
 fn process_pure_script_agents_with_lifecycle(
     agents: &AgentDefinitions,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
     shared_dir: &std::path::Path,
     current_dir: &str,
     agent_offset: usize,
-    start_times: &HashMap<String, String>,
+    start_times: &BTreeMap<String, String>,
 ) -> color_eyre::eyre::Result<()> {
     // Implementation would include pure script agent lifecycle logic
     // This is a placeholder - actual implementation from shadow_agents.rs

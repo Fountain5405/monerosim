@@ -18,7 +18,7 @@ use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::agent::{process_user_agents, process_block_controller, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
 use serde_yaml;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Generate Shadow network configuration from GML graph
@@ -171,10 +171,10 @@ pub fn generate_agent_shadow_config(
         None
     };
 
-    let mut hosts: HashMap<String, ShadowHost> = HashMap::new();
+    let mut hosts: BTreeMap<String, ShadowHost> = BTreeMap::new();
 
     // Common environment variables
-    let mut environment: HashMap<String, String> = [
+    let mut environment: BTreeMap<String, String> = [
         ("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string()),
         ("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string()),
         ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
@@ -519,7 +519,7 @@ echo "Starting DNS server..."
             daemon: false, // Block controller does not run a daemon
             wallet: false, // Block controller does not have a wallet
             user_script: config.agents.block_controller.as_ref().map(|c| c.script.clone()),
-            attributes: HashMap::new(), // No specific attributes for block controller
+            attributes: BTreeMap::new(), // No specific attributes for block controller
             wallet_rpc_port: None,
             daemon_rpc_port: None,
             is_public_node: None,
@@ -578,7 +578,7 @@ echo "Starting DNS server..."
                 daemon: false, // Pure script agents do not run a daemon
                 wallet: false, // Pure script agents do not have a wallet
                 user_script: Some(pure_script_config.script.clone()),
-                attributes: HashMap::new(), // No specific attributes for pure script agents
+                attributes: BTreeMap::new(), // No specific attributes for pure script agents
                 wallet_rpc_port: None,
                 daemon_rpc_port: None,
                 is_public_node: None,
@@ -608,7 +608,7 @@ echo "Starting DNS server..."
             daemon: false, // Simulation monitor does not run a daemon
             wallet: false, // Simulation monitor does not have a wallet
             user_script: config.agents.simulation_monitor.as_ref().map(|c| c.script.clone()),
-            attributes: HashMap::new(), // No specific attributes for simulation monitor
+            attributes: BTreeMap::new(), // No specific attributes for simulation monitor
             wallet_rpc_port: None,
             daemon_rpc_port: None,
             is_public_node: None,
@@ -745,10 +745,7 @@ echo "Starting DNS server..."
         }
     }
 
-    // Sort hosts by key to ensure consistent ordering in the output file
-    let mut sorted_hosts: Vec<(String, ShadowHost)> = hosts.into_iter().collect();
-    sorted_hosts.sort_by(|(a, _), (b, _)| a.cmp(b));
-    let sorted_hosts_map: HashMap<String, ShadowHost> = sorted_hosts.into_iter().collect();
+    // BTreeMap is already sorted by key, ensuring consistent ordering in output
 
     // Parse stop_time to seconds
     let stop_time_seconds = parse_duration_to_seconds(&config.general.stop_time)
@@ -796,7 +793,7 @@ echo "Starting DNS server..."
                 },
             },
         },
-        hosts: sorted_hosts_map,
+        hosts,
     };
 
     // Write configuration

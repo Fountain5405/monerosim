@@ -12,21 +12,21 @@ use crate::topology::{distribute_agents_across_topology, Topology, generate_topo
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 /// Process user agents
 pub fn process_user_agents(
     agents: &AgentDefinitions,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     seed_agents: &mut Vec<String>,
     effective_seed_nodes: &[String],
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
     monerod_path: &str,
     wallet_path: &str,
-    environment: &HashMap<String, String>,
-    monero_environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
+    monero_environment: &BTreeMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
     gml_graph: Option<&GmlGraph>,

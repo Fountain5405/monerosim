@@ -5,7 +5,7 @@
 
 use crate::shadow::ShadowProcess;
 use crate::utils::duration::parse_duration_to_seconds;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Add a user agent process to the processes list
@@ -20,8 +20,8 @@ pub fn add_user_agent_process(
     wallet_rpc_port: Option<u16>,
     p2p_port: Option<u16>,
     script: &str,
-    attributes: Option<&HashMap<String, String>>,
-    environment: &HashMap<String, String>,
+    attributes: Option<&BTreeMap<String, String>>,
+    environment: &BTreeMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
     index: usize,
@@ -212,8 +212,8 @@ pub fn create_mining_agent_process(
     agent_rpc_port: u16,
     wallet_rpc_port: Option<u16>,
     mining_script: &str,
-    attributes: Option<&HashMap<String, String>>,
-    environment: &HashMap<String, String>,
+    attributes: Option<&BTreeMap<String, String>>,
+    environment: &BTreeMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
     index: usize,

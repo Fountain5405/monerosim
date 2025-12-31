@@ -6,17 +6,17 @@
 use crate::config_v2::AgentDefinitions;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 use crate::gml_parser::GmlGraph;
 
 /// Process pure script agents
 pub fn process_pure_script_agents(
     agents: &AgentDefinitions,
-    hosts: &mut HashMap<String, ShadowHost>,
+    hosts: &mut BTreeMap<String, ShadowHost>,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
     _stop_time: &str,

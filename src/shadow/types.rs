@@ -5,7 +5,7 @@
 //! network topology structures, and agent/miner registry types.
 
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // ============================================================================
 // Registry Types
@@ -61,7 +61,7 @@ pub struct AgentInfo {
     /// Python script module path for agent behavior (if applicable)
     pub user_script: Option<String>,
     /// Custom attributes for agent configuration
-    pub attributes: HashMap<String, String>,
+    pub attributes: BTreeMap<String, String>,
     /// RPC port for wallet service
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_rpc_port: Option<u16>,
@@ -110,7 +110,7 @@ pub struct PublicNodeInfo {
     pub registered_at: f64,
     /// Custom attributes from the agent configuration
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub attributes: Option<HashMap<String, String>>,
+    pub attributes: Option<BTreeMap<String, String>>,
 }
 
 /// Registry of public nodes available for wallet-only agents.
@@ -142,7 +142,7 @@ pub struct ShadowConfig {
     /// Experimental Shadow features
     pub experimental: ShadowExperimental,
     /// Map of hostname to host configuration
-    pub hosts: HashMap<String, ShadowHost>,
+    pub hosts: BTreeMap<String, ShadowHost>,
 }
 
 /// General Shadow simulation settings.
@@ -264,7 +264,7 @@ pub struct ShadowProcess {
     /// Command-line arguments
     pub args: String,
     /// Environment variables for the process
-    pub environment: HashMap<String, String>,
+    pub environment: BTreeMap<String, String>,
     /// Start time for the process (e.g., "0s", "10s", "1m")
     pub start_time: String,
 }
