@@ -330,41 +330,103 @@ class BaseAgent(ABC):
 
     # Shared state management methods
     
-    def write_shared_state(self, filename: str, data: Dict[str, Any]):
-        """Write data to shared state file"""
+    def write_shared_state(self, filename: str, data: Dict[str, Any], use_lock: bool = True):
+        """Write data to shared state file with optional locking for determinism.
+
+        Args:
+            filename: Name of the file to write
+            data: Dictionary data to write as JSON
+            use_lock: If True, use file locking to prevent race conditions
+        """
         filepath = self.shared_dir / filename
+        lock_path = filepath.with_suffix('.lock')
         temp_filepath = filepath.with_suffix('.tmp')
-        
+
         try:
-            with open(temp_filepath, 'w') as f:
-                json.dump(data, f, indent=2)
-            # Atomic rename
-            temp_filepath.rename(filepath)
+            if use_lock:
+                # Use lock file to prevent race conditions
+                with open(lock_path, 'w') as lock_f:
+                    fcntl.flock(lock_f, fcntl.LOCK_EX)
+                    try:
+                        with open(temp_filepath, 'w') as f:
+                            json.dump(data, f, indent=2)
+                        # Atomic rename
+                        temp_filepath.rename(filepath)
+                    finally:
+                        fcntl.flock(lock_f, fcntl.LOCK_UN)
+            else:
+                with open(temp_filepath, 'w') as f:
+                    json.dump(data, f, indent=2)
+                # Atomic rename
+                temp_filepath.rename(filepath)
             self.logger.debug(f"Wrote shared state to {filename}")
         except Exception as e:
             self.logger.error(f"Failed to write shared state {filename}: {e}")
             raise
             
-    def read_shared_state(self, filename: str) -> Optional[Dict[str, Any]]:
-        """Read data from shared state file"""
+    def read_shared_state(self, filename: str, use_lock: bool = False) -> Optional[Dict[str, Any]]:
+        """Read data from shared state file with optional locking.
+
+        Args:
+            filename: Name of the file to read
+            use_lock: If True, use shared lock while reading (for consistency)
+        """
         filepath = self.shared_dir / filename
-        
+        lock_path = filepath.with_suffix('.lock')
+
         try:
             if filepath.exists():
-                with open(filepath, 'r') as f:
-                    return json.load(f)
+                if use_lock:
+                    with open(lock_path, 'w') as lock_f:
+                        fcntl.flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
+                        try:
+                            with open(filepath, 'r') as f:
+                                return json.load(f)
+                        finally:
+                            fcntl.flock(lock_f, fcntl.LOCK_UN)
+                else:
+                    with open(filepath, 'r') as f:
+                        return json.load(f)
             return None
         except Exception as e:
             self.logger.error(f"Failed to read shared state {filename}: {e}")
             return None
-            
+
     def append_shared_list(self, filename: str, item: Any):
-        """Append item to a shared list file"""
-        data = self.read_shared_state(filename) or []
-        if not isinstance(data, list):
-            data = []
-        data.append(item)
-        self.write_shared_state(filename, data)
+        """Append item to a shared list file with locking to prevent race conditions.
+
+        Uses exclusive locking to ensure atomic read-modify-write operations.
+        """
+        filepath = self.shared_dir / filename
+        lock_path = filepath.with_suffix('.lock')
+        temp_filepath = filepath.with_suffix('.tmp')
+
+        try:
+            with open(lock_path, 'w') as lock_f:
+                fcntl.flock(lock_f, fcntl.LOCK_EX)
+                try:
+                    # Read current data
+                    if filepath.exists():
+                        with open(filepath, 'r') as f:
+                            data = json.load(f)
+                        if not isinstance(data, list):
+                            data = []
+                    else:
+                        data = []
+
+                    # Append new item
+                    data.append(item)
+
+                    # Write atomically
+                    with open(temp_filepath, 'w') as f:
+                        json.dump(data, f, indent=2)
+                    temp_filepath.rename(filepath)
+                finally:
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+            self.logger.debug(f"Appended item to {filename}")
+        except Exception as e:
+            self.logger.error(f"Failed to append to shared list {filename}: {e}")
+            raise
         
     def read_shared_list(self, filename: str) -> List[Any]:
         """Read a shared list file"""

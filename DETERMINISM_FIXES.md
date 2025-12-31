@@ -194,19 +194,19 @@ let _launcher_path = std::env::current_dir()
 
 ## Recommended Implementation Order
 
-### Phase 1: Quick Wins (High Impact, Low Effort)
-1. Add `PYTHONHASHSEED=0` to environment variables in orchestrator.rs
-2. Add RNG seeding to block_controller.py, miner_distributor.py, regular_user.py
-3. Replace `std::process::id()` with deterministic value in orchestrator.rs
+### Phase 1: Quick Wins (High Impact, Low Effort) - COMPLETED
+1. ✅ Add `PYTHONHASHSEED=0` to environment variables in orchestrator.rs
+2. ✅ Add RNG seeding to block_controller.py, miner_distributor.py, regular_user.py
+3. ✅ Replace `std::process::id()` with deterministic value in orchestrator.rs
 
-### Phase 2: Collection Ordering
-4. Audit HashMap usage and either replace with BTreeMap or add sorting before iteration
+### Phase 2: Collection Ordering - COMPLETED
+4. ✅ Audit HashMap usage and either replace with BTreeMap or add sorting before iteration
 
-### Phase 3: Timing and File I/O
-5. Audit time.time() usage and determine which are logging vs. logic
-6. Implement file locking for shared state files
+### Phase 3: Timing and File I/O - COMPLETED
+5. ✅ Audit time.time() usage - Shadow intercepts time calls making them deterministic
+6. ✅ Implement file locking for shared state files (write_shared_state, append_shared_list)
 
-### Phase 4: Architectural Decisions
+### Phase 4: Architectural Decisions - PENDING
 7. Decide whether to patch monerod for seedable PRNG or accept block-level non-determinism
 8. Determine if DNS server should be disabled by default for determinism
 
