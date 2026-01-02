@@ -95,7 +95,7 @@ pub fn add_user_agent_process(
                 r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 echo "Starting script-only agent..."
 {} 2>&1
@@ -112,7 +112,7 @@ echo "Starting script-only agent..."
                 r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 # Simple retry loop without nc dependency
 for i in {{1..30}}; do
@@ -143,7 +143,7 @@ echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
                 r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 # Wait for daemon RPC to be ready
 for i in {{1..30}}; do
@@ -257,7 +257,7 @@ pub fn create_mining_agent_process(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 # Simple retry loop without nc dependency
 for i in {{1..30}}; do
@@ -286,7 +286,7 @@ echo "Wallet RPC not available after 30 attempts, starting mining agent anyway..
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 # Wait for daemon RPC to be ready (no wallet-rpc needed)
 for i in {{1..30}}; do

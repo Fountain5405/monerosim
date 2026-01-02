@@ -53,7 +53,7 @@ pub fn add_wallet_process(
     });
 
     // Launch wallet RPC directly - it will create wallets on demand
-    let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
+    let wallet_path = "$HOME/.monerosim/bin/monero-wallet-rpc".to_string();
 
     let wallet_args = format!(
         "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert",
@@ -107,7 +107,7 @@ pub fn add_remote_wallet_process(
     });
 
     // Launch wallet RPC
-    let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
+    let wallet_path = "$HOME/.monerosim/bin/monero-wallet-rpc".to_string();
 
     // Determine daemon address
     let daemon_address_arg = match remote_daemon_address {

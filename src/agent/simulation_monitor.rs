@@ -92,7 +92,7 @@ pub fn process_simulation_monitor(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 echo "Starting simulation monitor agent..."
 {} 2>&1

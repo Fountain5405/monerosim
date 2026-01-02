@@ -229,9 +229,9 @@ pub fn generate_agent_shadow_config(
         monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     }
 
-    // Helper to get absolute path for binaries
-    let monerod_path = "/usr/local/bin/monerod".to_string();
-    let wallet_path = "/usr/local/bin/monero-wallet-rpc".to_string();
+    // Helper to get absolute path for binaries (installed to ~/.monerosim/bin by setup.sh)
+    let monerod_path = "$HOME/.monerosim/bin/monerod".to_string();
+    let wallet_path = "$HOME/.monerosim/bin/monero-wallet-rpc".to_string();
 
     // Store seed nodes for P2P connections
     let mut seed_nodes: Vec<String> = Vec::new();
@@ -317,7 +317,7 @@ pub fn generate_agent_shadow_config(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 echo "Starting DNS server..."
 {} 2>&1
@@ -713,6 +713,7 @@ echo "Starting DNS server..."
         general: ShadowGeneral {
             stop_time: stop_time_seconds,
             seed: config.general.simulation_seed,  // Shadow uses this to seed all RNGs for determinism
+            parallelism: config.general.parallelism,  // 0=auto, 1=deterministic, N=N threads
             model_unblocked_syscall_latency: true,
             log_level: config.general.log_level.clone().unwrap_or("trace".to_string()),
         },

@@ -59,7 +59,7 @@ pub fn process_miner_distributor(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:/usr/local/bin"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
 
 echo "Starting miner distributor..."
 {} 2>&1
