@@ -185,7 +185,7 @@ let _launcher_path = std::env::current_dir()
 | 6 | HashMap iteration order | MEDIUM-HIGH | Rust collections | orchestrator.rs, distribution.rs | Medium ✅ |
 | 7 | time.time() usage | MEDIUM | Python timing | Multiple agents | N/A (Shadow intercepts) |
 | 8 | File system race conditions | MEDIUM | Concurrency | /tmp/monerosim_shared | Medium ✅ |
-| 9 | Monero internal PRNG | ARCHITECTURAL | External | monerod binary | Hard (pending) |
+| 9 | Monero internal PRNG | PARTIAL | Shadow | shadowformonero/injector.c | RNG seeded ✅, threading causes ~4% variance |
 | 10 | DNS server file access | MEDIUM | External | dns_server.py | Easy ✅ |
 | 11 | RPC retry jitter | LOW-MEDIUM | Timing | monero_rpc.py | N/A (Shadow intercepts) |
 | 12 | Current directory dependency | LOW | Environment | wallet.rs | Easy (low priority) |
@@ -218,13 +218,28 @@ let _launcher_path = std::env::current_dir()
     - This controls randomness for Dandelion++, peer selection, and other Monero behaviors
     - Previously Shadow was using default seed (1) instead of configured simulation_seed
 
-### Phase 6: Architectural Decisions - PENDING
-11. Decide whether to patch monerod for seedable PRNG or accept block-level non-determinism
+### Phase 6: Shadow Constructor Priority Fix - COMPLETED
+11. ✅ Fix Shadow's injector constructor priority to run before monerod's RNG initialization
+    - **Root cause identified:** Shadow's `libshadow_injector.so` constructor had no priority
+    - Monerod's `init_random()` uses priority 101, running before Shadow's default-priority constructor
+    - This caused `/dev/urandom` reads during monerod startup to use real randomness, not Shadow's seeded PRNG
+    - **Fix applied:** Changed `shadowformonero/src/lib/preload-injector/injector.c` to use `__attribute__((constructor(101)))`
+    - **Important:** GCC reserves priorities 0-100, so priority 101 is the lowest valid user-settable priority
+    - When two constructors have the same priority (101), LD_PRELOAD order determines execution order
+    - Since Shadow's injector.so is first in LD_PRELOAD, it runs BEFORE monerod's init_random()
+    - Verified via: `readelf -r ~/.local/lib/libshadow_injector.so` shows _injector_load at offset 0x3e00 in .init_array
+    - Rebuild Shadow with: `cd shadowformonero/build && make -j4 shadow_injector && make install`
+
+### Phase 7: Architectural Decisions - PENDING
 12. Determine if DNS server should be disabled by default for determinism
+13. Verify full determinism with run comparisons after Phase 6 fix
 
 ---
 
 ## Files to Modify
+
+**Shadow files (shadowformonero):**
+- `src/lib/preload-injector/injector.c` - Set constructor priority to 101 for early RNG interception
 
 **Rust files:**
 - `src/orchestrator.rs` - Add PYTHONHASHSEED, fix temp file path, audit HashMaps
