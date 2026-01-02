@@ -81,7 +81,8 @@ class SimulationMonitorAgent(BaseAgent):
             "blocks_mined": 0,
             "last_block_height": 0,
             "last_processed_height": 0,  # Track last block we've processed for tx extraction
-            "node_tx_counts": {},  # Track transactions per node
+            "node_tx_counts": {},  # Track transactions per node (received)
+            "tx_created_by_node": {},  # Track transactions created per sender node
             "tx_to_block_mapping": {},  # Track which block contains which tx (height -> tx_hashes)
             "pending_txs": set(),  # Track transactions waiting to be included
             "included_txs": set()  # Track transactions already included in blocks
@@ -956,19 +957,33 @@ class SimulationMonitorAgent(BaseAgent):
             if transactions_file.exists():
                 with open(transactions_file, 'r') as f:
                     transactions = json.load(f)
-                
+
                 # Update transaction count
                 self.transaction_stats["total_created"] = len(transactions)
-                
-                # Track unique transaction hashes
+
+                # Reset per-node creation counts
+                self.transaction_stats["tx_created_by_node"] = {}
+
+                # Track unique transaction hashes and per-sender counts
                 for tx in transactions:
-                    if isinstance(tx, dict) and "tx_hash" in tx:
-                        tx_hash = tx["tx_hash"]
-                        if isinstance(tx_hash, dict) and "tx_hash" in tx_hash:
-                            self.transaction_stats["unique_tx_hashes"].add(tx_hash["tx_hash"])
-                
+                    if isinstance(tx, dict):
+                        # Track tx hash
+                        if "tx_hash" in tx:
+                            tx_hash = tx["tx_hash"]
+                            if isinstance(tx_hash, dict) and "tx_hash" in tx_hash:
+                                self.transaction_stats["unique_tx_hashes"].add(tx_hash["tx_hash"])
+                            elif isinstance(tx_hash, str):
+                                self.transaction_stats["unique_tx_hashes"].add(tx_hash)
+
+                        # Track transactions created per sender node
+                        if "sender_id" in tx:
+                            sender = tx["sender_id"]
+                            if sender not in self.transaction_stats["tx_created_by_node"]:
+                                self.transaction_stats["tx_created_by_node"][sender] = 0
+                            self.transaction_stats["tx_created_by_node"][sender] += 1
+
                 self.logger.debug(f"Read {len(transactions)} transactions from shared state")
-            
+
         except Exception as e:
             self.logger.error(f"Error reading transaction data: {e}")
     
@@ -1076,10 +1091,10 @@ class SimulationMonitorAgent(BaseAgent):
         """Write formatted node details table."""
         f.write("NODE DETAILS:\n")
 
-        # Table header - showing Blocks mined and Weight for miners
-        f.write("┌─────────────┬───────┬───────┬──────────┬────────┬────────┬─────────┐\n")
-        f.write("│ Node        │ Height│ Sync  │ Mining   │ Blocks │ Weight │ Conns   │\n")
-        f.write("├─────────────┼───────┼───────┼──────────┼────────┼────────┼─────────┤\n")
+        # Table header - showing Blocks mined, Weight, and TXs created
+        f.write("┌─────────────┬───────┬───────┬──────────┬────────┬────────┬─────────┬──────┐\n")
+        f.write("│ Node        │ Height│ Sync  │ Mining   │ Blocks │ Weight │ Conns   │ TXs  │\n")
+        f.write("├─────────────┼───────┼───────┼──────────┼────────┼────────┼─────────┼──────┤\n")
 
         # Table rows
         for node_id, data in node_data.items():
@@ -1124,14 +1139,18 @@ class SimulationMonitorAgent(BaseAgent):
 
             connections = daemon.get("connections", 0)
 
+            # Get transactions created by this node
+            tx_created = self.transaction_stats["tx_created_by_node"].get(node_id, 0)
+            tx_str = str(tx_created) if tx_created > 0 else "-"
+
             # Truncate node ID if needed
             node_display = f"{node_id} ({node_type})"
             if len(node_display) > 11:
                 node_display = node_display[:11]
 
-            f.write(f"│ {node_display:<11} │ {height:>5} │ {sync_status:<5} │ {mining_status:<8} │ {blocks_str:>6} │ {weight_str:>6} │ {connections:>7} │\n")
+            f.write(f"│ {node_display:<11} │ {height:>5} │ {sync_status:<5} │ {mining_status:<8} │ {blocks_str:>6} │ {weight_str:>6} │ {connections:>7} │ {tx_str:>4} │\n")
 
-        f.write("└─────────────┴───────┴───────┴──────────┴────────┴────────┴─────────┘\n\n")
+        f.write("└─────────────┴───────┴───────┴──────────┴────────┴────────┴─────────┴──────┘\n\n")
     
     def _write_transaction_status(self, f, network_metrics: Dict[str, Any]):
         """Write transaction status information."""

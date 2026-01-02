@@ -282,6 +282,7 @@ general:
   log_level: info
   stop_time: 14400s
   simulation_seed: 22035
+  parallelism: 0  # Single-threaded for determinism test (0 = auto for performance)
   enable_dns_server: true
 network:
   path: gml_processing/caida_connected_sparse_with_loops_fixed.gml

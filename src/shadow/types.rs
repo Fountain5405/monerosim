@@ -153,6 +153,8 @@ pub struct ShadowGeneral {
     /// Random seed for deterministic simulation
     /// Shadow uses this to seed all random number generators
     pub seed: u64,
+    /// Number of parallel worker threads (1 = single-threaded for determinism)
+    pub parallelism: u32,
     /// Whether to model unblocked syscall latency
     pub model_unblocked_syscall_latency: bool,
     /// Log level for Shadow (trace, debug, info, warn, error)

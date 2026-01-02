@@ -121,6 +121,12 @@ pub struct GeneralConfig {
     pub log_level: Option<String>,
     #[serde(default = "default_simulation_seed")]
     pub simulation_seed: u64,
+    /// Shadow parallelism: number of worker threads
+    /// - 0 = auto-detect CPU cores (default, fastest)
+    /// - 1 = single-threaded (required for deterministic runs)
+    /// - N = use N worker threads
+    #[serde(default = "default_parallelism")]
+    pub parallelism: u32,
     /// Enable DNS server for monerod peer discovery
     /// When enabled, a DNS server agent is created and monerod uses DNS_PUBLIC to connect to it
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -129,6 +135,10 @@ pub struct GeneralConfig {
 
 fn default_simulation_seed() -> u64 {
     12345
+}
+
+fn default_parallelism() -> u32 {
+    0  // Auto-detect CPU cores for best performance
 }
 
 /// Agent definitions
@@ -437,6 +447,7 @@ impl Default for GeneralConfig {
             python_venv: None,
             log_level: Some("info".to_string()),
             simulation_seed: default_simulation_seed(),
+            parallelism: default_parallelism(),
             enable_dns_server: None,
         }
     }

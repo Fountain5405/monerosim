@@ -27,7 +27,7 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
     """
     Parse a single log file for Monero events.
     Normalizes lines by stripping timestamp and normalizing spaces.
-    Returns dict with keys: 'blocks_received', 'blocks_mined', 'tx_created', 'tx_received', 'tx_included'
+    Returns dict with keys: 'blocks_received', 'blocks_mined', 'tx_created', 'tx_received', 'tx_included', 'tx_in_pool'
     Each value is a list of relevant tuples or dicts.
     """
     events = defaultdict(list)
@@ -95,11 +95,22 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
                     last_height = height
             continue
 
-        # Transaction added to pool (created/received/broadcast)
+        # Transaction created by this agent (from Python agent logs)
+        # Pattern 1: regular_user - "Sent transaction: {...'tx_hash': 'abc123'...} to None for X XMR"
+        # Pattern 2: miner_distributor - "Transaction sent successfully: abc123 from X to Y"
+        tx_sent_match = re.search(r"Sent transaction:.*'tx_hash':\s*'([0-9a-f]{64})'", line, re.IGNORECASE)
+        if not tx_sent_match:
+            tx_sent_match = re.search(r"Transaction sent successfully:\s*([0-9a-f]{64})", line, re.IGNORECASE)
+        if tx_sent_match:
+            tx_hash = tx_sent_match.group(1)
+            events['tx_created'].append(tx_hash)
+            continue
+
+        # Transaction added to pool (could be local or received - used for pool tracking)
         tx_pool_match = re.search(r'Transaction added to pool: txid <([0-9a-f]{64})>', line, re.IGNORECASE)
         if tx_pool_match:
             tx_hash = tx_pool_match.group(1)
-            events['tx_created'].append(tx_hash)
+            events['tx_in_pool'].append(tx_hash)
             continue
 
         # Transaction received (NOTIFY_NEW_TRANSACTIONS)
@@ -151,6 +162,9 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
             log_path = shadow_dirs[0][1]
     else:
         log_path = Path(log_dir)
+        # Handle case where user passes shadow.data instead of shadow.data/hosts
+        if log_path.name == 'shadow.data' and (log_path / 'hosts').exists():
+            log_path = log_path / 'hosts'
         if not log_path.exists():
             raise ValueError(f"Log directory {log_dir} not found.")
 
