@@ -72,6 +72,8 @@ echo "Starting pure script agent {}..."
                 args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
                 environment: environment.clone(),
                 start_time: script_creation_time,
+                shutdown_time: None,
+                expected_final_state: None,
             });
 
             // Process 2: Execute wrapper script
@@ -80,6 +82,8 @@ echo "Starting pure script agent {}..."
                 args: script_path.clone(),
                 environment: environment.clone(),
                 start_time: script_execution_time,
+                shutdown_time: None,
+                expected_final_state: None,
             });
 
             hosts.insert(script_id.clone(), ShadowHost {

@@ -93,6 +93,8 @@ echo "Starting miner distributor..."
             args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
             environment: environment.clone(),
             start_time: script_creation_time,
+            shutdown_time: None,
+            expected_final_state: None,
         });
 
         // Process 2: Execute wrapper script
@@ -101,6 +103,8 @@ echo "Starting miner distributor..."
             args: script_path.clone(),
             environment: environment.clone(),
             start_time: miner_distributor_start_time,
+            shutdown_time: None,
+            expected_final_state: None,
         });
 
         hosts.insert(miner_distributor_id.to_string(), ShadowHost {

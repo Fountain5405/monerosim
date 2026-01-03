@@ -8,32 +8,24 @@ use crate::utils::duration::parse_duration_to_seconds;
 use std::collections::BTreeMap;
 
 /// Add a wallet process to the processes list
+///
+/// # Parameters
+/// - `wallet_binary_path`: Path to wallet-rpc binary (already resolved for Shadow, e.g., "$HOME/.monerosim/bin/monero-wallet-rpc")
+/// - `custom_args`: Optional additional CLI arguments to append
+/// - `custom_env`: Optional additional environment variables to merge
 pub fn add_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
     agent_rpc_port: u16,
     wallet_rpc_port: u16,
-    _wallet_path: &str,
+    wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
     index: usize,
     wallet_start_time: &str,
+    custom_args: Option<&Vec<String>>,
+    custom_env: Option<&BTreeMap<String, String>>,
 ) {
-    let wallet_name = format!("{}_wallet", agent_id);
-
-    // Create wallet JSON content (currently unused but kept for potential future use)
-    let _wallet_json_content = format!(
-        r#"{{"version": 1,"filename": "{}","scan_from_height": 0,"password": "","viewkey": "","spendkey": "","seed": "","seed_passphrase": "","address": "","restore_height": 0,"autosave_current": true}}"#,
-        wallet_name
-    );
-
-    // Get the absolute path to the wallet launcher script
-    let _launcher_path = std::env::current_dir()
-        .unwrap()
-        .join("scripts/wallet_launcher.sh")
-        .to_string_lossy()
-        .to_string();
-
     // Calculate wallet cleanup start time (2 seconds before wallet start)
     let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
         format!("{}s", wallet_seconds.saturating_sub(2))
@@ -50,24 +42,53 @@ pub fn add_wallet_process(
         ),
         environment: environment.clone(),
         start_time: cleanup_start_time, // Start earlier to ensure cleanup completes
+        shutdown_time: None,
+        expected_final_state: None,
     });
 
-    // Launch wallet RPC directly - it will create wallets on demand
-    let wallet_path = "$HOME/.monerosim/bin/monero-wallet-rpc".to_string();
+    // Build wallet args
+    let mut wallet_args_parts = vec![
+        format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
+        format!("--rpc-bind-port={}", wallet_rpc_port),
+        format!("--rpc-bind-ip={}", agent_ip),
+        "--disable-rpc-login".to_string(),
+        "--trusted-daemon".to_string(),
+        "--log-level=1".to_string(),
+        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+        "--non-interactive".to_string(),
+        "--confirm-external-bind".to_string(),
+        "--allow-mismatched-daemon-version".to_string(),
+        "--max-concurrency=1".to_string(),
+        "--daemon-ssl-allow-any-cert".to_string(),
+    ];
 
-    let wallet_args = format!(
-        "--daemon-address=http://{}:{} --rpc-bind-port={} --rpc-bind-ip={} --disable-rpc-login --trusted-daemon --log-level=1 --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert",
-        agent_ip, agent_rpc_port, wallet_rpc_port, agent_ip, agent_id
-    );
+    // Append custom args if provided
+    if let Some(args) = custom_args {
+        for arg in args {
+            wallet_args_parts.push(arg.clone());
+        }
+    }
+
+    let wallet_args = wallet_args_parts.join(" ");
+
+    // Merge custom environment if provided
+    let mut wallet_env = environment.clone();
+    if let Some(env) = custom_env {
+        for (key, value) in env {
+            wallet_env.insert(key.clone(), value.clone());
+        }
+    }
 
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
             "-c '{} {}'",
-            wallet_path, wallet_args
+            wallet_binary_path, wallet_args
         ),
-        environment: environment.clone(),
-        start_time: wallet_start_time.to_string(), // Use the calculated wallet start time
+        environment: wallet_env,
+        start_time: wallet_start_time.to_string(),
+        shutdown_time: None,
+        expected_final_state: None,
     });
 }
 
@@ -76,18 +97,24 @@ pub fn add_wallet_process(
 /// For wallet-only agents, the daemon address can be either:
 /// - A specific address (e.g., "192.168.1.10:18081")
 /// - "auto" - wallet starts without initial daemon, Python agent calls set_daemon()
+///
+/// # Parameters
+/// - `wallet_binary_path`: Path to wallet-rpc binary (already resolved for Shadow)
+/// - `custom_args`: Optional additional CLI arguments to append
+/// - `custom_env`: Optional additional environment variables to merge
 pub fn add_remote_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
     remote_daemon_address: Option<&str>,
     wallet_rpc_port: u16,
+    wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
     index: usize,
     wallet_start_time: &str,
+    custom_args: Option<&Vec<String>>,
+    custom_env: Option<&BTreeMap<String, String>>,
 ) {
-    let _wallet_name = format!("{}_wallet", agent_id);
-
     // Calculate wallet cleanup start time (2 seconds before wallet start)
     let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
         format!("{}s", wallet_seconds.saturating_sub(2))
@@ -104,37 +131,62 @@ pub fn add_remote_wallet_process(
         ),
         environment: environment.clone(),
         start_time: cleanup_start_time,
+        shutdown_time: None,
+        expected_final_state: None,
     });
-
-    // Launch wallet RPC
-    let wallet_path = "$HOME/.monerosim/bin/monero-wallet-rpc".to_string();
 
     // Determine daemon address
     let daemon_address_arg = match remote_daemon_address {
         Some(addr) if addr != "auto" => {
-            // Specific remote daemon address
             format!("--daemon-address=http://{}", addr)
         }
         _ => {
-            // For "auto" mode, start without daemon - Python agent will set it via RPC
-            // Use a placeholder that won't connect (wallet will start but daemon calls will fail)
-            // The Python agent must call set_daemon() before making daemon-dependent calls
+            // For "auto" mode, use a placeholder - Python agent will set it via RPC
             "--daemon-address=http://127.0.0.1:18081".to_string()
         }
     };
 
-    let wallet_args = format!(
-        "{} --rpc-bind-port={} --rpc-bind-ip={} --disable-rpc-login --log-level=1 --wallet-dir=/tmp/monerosim_shared/{}_wallet --non-interactive --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --daemon-ssl-allow-any-cert",
-        daemon_address_arg, wallet_rpc_port, agent_ip, agent_id
-    );
+    // Build wallet args
+    let mut wallet_args_parts = vec![
+        daemon_address_arg,
+        format!("--rpc-bind-port={}", wallet_rpc_port),
+        format!("--rpc-bind-ip={}", agent_ip),
+        "--disable-rpc-login".to_string(),
+        "--log-level=1".to_string(),
+        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+        "--non-interactive".to_string(),
+        "--confirm-external-bind".to_string(),
+        "--allow-mismatched-daemon-version".to_string(),
+        "--max-concurrency=1".to_string(),
+        "--daemon-ssl-allow-any-cert".to_string(),
+    ];
+
+    // Append custom args if provided
+    if let Some(args) = custom_args {
+        for arg in args {
+            wallet_args_parts.push(arg.clone());
+        }
+    }
+
+    let wallet_args = wallet_args_parts.join(" ");
+
+    // Merge custom environment if provided
+    let mut wallet_env = environment.clone();
+    if let Some(env) = custom_env {
+        for (key, value) in env {
+            wallet_env.insert(key.clone(), value.clone());
+        }
+    }
 
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
             "-c '{} {}'",
-            wallet_path, wallet_args
+            wallet_binary_path, wallet_args
         ),
-        environment: environment.clone(),
+        environment: wallet_env,
         start_time: wallet_start_time.to_string(),
+        shutdown_time: None,
+        expected_final_state: None,
     });
 }

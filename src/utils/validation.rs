@@ -145,22 +145,28 @@ pub fn validate_topology_config(topology: &Topology, total_agents: usize) -> Res
 /// * `Err(String)` with an error message if validation fails
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// use monerosim::utils::validation::validate_mining_config;
 /// use monerosim::config_v2::{DaemonConfig, UserAgentConfig};
-/// use std::collections::HashMap;
+/// use std::collections::BTreeMap;
 ///
-/// let mut attributes = HashMap::new();
+/// let mut attributes = BTreeMap::new();
 /// attributes.insert("hashrate".to_string(), "100".to_string());
 ///
 /// let agent = UserAgentConfig {
 ///     daemon: Some(DaemonConfig::Local("monerod".to_string())),
+///     daemon_args: None,
+///     daemon_env: None,
 ///     wallet: Some("monero-wallet-rpc".to_string()),
+///     wallet_args: None,
+///     wallet_env: None,
 ///     mining_script: Some("agents.autonomous_miner".to_string()),
 ///     user_script: None,
 ///     is_miner: None,
 ///     attributes: Some(attributes),
 ///     start_time_offset: None,
+///     daemon_phases: None,
+///     wallet_phases: None,
 /// };
 ///
 /// assert!(validate_mining_config(&[agent]).is_ok());
@@ -347,8 +353,9 @@ pub fn validate_simulation_seed(simulation_seed: u64) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config_v2::DaemonConfig;
     use crate::gml_parser::{GmlGraph, GmlNode};
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap};
 
     #[test]
     fn test_validate_gml_ip_consistency() {
@@ -430,17 +437,23 @@ mod tests {
     fn test_validate_mining_config_valid() {
         use std::collections::HashMap;
 
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("hashrate".to_string(), "100".to_string());
 
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_mining_config(&[agent]).is_ok());
@@ -450,17 +463,23 @@ mod tests {
     fn test_validate_mining_config_missing_wallet() {
         use std::collections::HashMap;
 
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("hashrate".to_string(), "50".to_string());
 
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: None, // Missing wallet
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_mining_config(&[agent]);
@@ -472,12 +491,18 @@ mod tests {
     fn test_validate_mining_config_missing_hashrate() {
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: None, // Missing hashrate attribute
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_mining_config(&[agent]);
@@ -489,17 +514,23 @@ mod tests {
     fn test_validate_mining_config_invalid_hashrate_format() {
         use std::collections::HashMap;
 
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("hashrate".to_string(), "not_a_number".to_string());
 
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_mining_config(&[agent]);
@@ -511,17 +542,23 @@ mod tests {
     fn test_validate_mining_config_negative_hashrate() {
         use std::collections::HashMap;
 
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("hashrate".to_string(), "-10".to_string());
 
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_mining_config(&[agent]);
@@ -533,17 +570,23 @@ mod tests {
     fn test_validate_mining_config_hashrate_over_100() {
         use std::collections::HashMap;
 
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("hashrate".to_string(), "150".to_string());
 
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_mining_config(&[agent]);
@@ -558,12 +601,18 @@ mod tests {
         // Non-mining agent without hashrate should be skipped
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None, // Not a mining agent
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
-            attributes: Some(HashMap::new()),
+            attributes: Some(BTreeMap::new()),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_mining_config(&[agent]).is_ok());
@@ -576,12 +625,18 @@ mod tests {
         // Full agent with local daemon and wallet
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_agent_daemon_config(&[agent]).is_ok());
@@ -592,17 +647,23 @@ mod tests {
         use std::collections::HashMap;
 
         // Daemon-only agent (public node)
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("is_public_node".to_string(), "true".to_string());
 
         let agent = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: None,
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_agent_daemon_config(&[agent]).is_ok());
@@ -614,17 +675,23 @@ mod tests {
         use crate::config_v2::DaemonSelectionStrategy;
 
         // Public node (daemon-only)
-        let mut pub_attrs = HashMap::new();
+        let mut pub_attrs = BTreeMap::new();
         pub_attrs.insert("is_public_node".to_string(), "true".to_string());
 
         let public_node = UserAgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
+            daemon_args: None,
+            daemon_env: None,
             wallet: None,
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: None,
             is_miner: None,
             attributes: Some(pub_attrs),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         // Wallet-only agent using auto-discovery
@@ -633,12 +700,18 @@ mod tests {
                 address: "auto".to_string(),
                 strategy: Some(DaemonSelectionStrategy::Random),
             }),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_agent_daemon_config(&[public_node, wallet_only]).is_ok());
@@ -652,12 +725,18 @@ mod tests {
                 address: "192.168.1.10:18081".to_string(),
                 strategy: None,
             }),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_agent_daemon_config(&[agent]).is_ok());
@@ -668,12 +747,18 @@ mod tests {
         // Script-only agent (no daemon, no wallet)
         let agent = UserAgentConfig {
             daemon: None,
+            daemon_args: None,
+            daemon_env: None,
             wallet: None,
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.dns_server".to_string()),
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         assert!(validate_agent_daemon_config(&[agent]).is_ok());
@@ -683,7 +768,7 @@ mod tests {
     fn test_validate_agent_daemon_config_mining_requires_local_daemon() {
         use std::collections::HashMap;
 
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("hashrate".to_string(), "100".to_string());
 
         // Mining agent with remote daemon (should fail)
@@ -692,12 +777,18 @@ mod tests {
                 address: "192.168.1.10:18081".to_string(),
                 strategy: None,
             }),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: Some("agents.autonomous_miner".to_string()),
             user_script: None,
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_agent_daemon_config(&[agent]);
@@ -710,17 +801,23 @@ mod tests {
         use std::collections::HashMap;
 
         // Public node without daemon (should fail)
-        let mut attributes = HashMap::new();
+        let mut attributes = BTreeMap::new();
         attributes.insert("is_public_node".to_string(), "true".to_string());
 
         let agent = UserAgentConfig {
             daemon: None,
+            daemon_args: None,
+            daemon_env: None,
             wallet: None,
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.monitor".to_string()),
             is_miner: None,
             attributes: Some(attributes),
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_agent_daemon_config(&[agent]);
@@ -738,12 +835,18 @@ mod tests {
                 address: "auto".to_string(),
                 strategy: Some(DaemonSelectionStrategy::Random),
             }),
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_agent_daemon_config(&[agent]);
@@ -756,12 +859,18 @@ mod tests {
         // Agent with nothing (should fail)
         let agent = UserAgentConfig {
             daemon: None,
+            daemon_args: None,
+            daemon_env: None,
             wallet: None,
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: None,
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_agent_daemon_config(&[agent]);
@@ -774,12 +883,18 @@ mod tests {
         // Wallet without daemon config (should fail)
         let agent = UserAgentConfig {
             daemon: None,
+            daemon_args: None,
+            daemon_env: None,
             wallet: Some("monero-wallet-rpc".to_string()),
+            wallet_args: None,
+            wallet_env: None,
             mining_script: None,
             user_script: Some("agents.regular_user".to_string()),
             is_miner: None,
             attributes: None,
             start_time_offset: None,
+            daemon_phases: None,
+            wallet_phases: None,
         };
 
         let result = validate_agent_daemon_config(&[agent]);

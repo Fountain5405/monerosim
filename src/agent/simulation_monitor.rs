@@ -117,6 +117,8 @@ echo "Starting simulation monitor agent..."
             args: format!("-c 'cat > {} << \\EOF\n{}\\EOF'", script_path, wrapper_script),
             environment: environment.clone(),
             start_time: script_creation_time,
+            shutdown_time: None,
+            expected_final_state: None,
         });
 
         // Process 2: Execute wrapper script
@@ -125,6 +127,8 @@ echo "Starting simulation monitor agent..."
             args: script_path.clone(),
             environment: environment.clone(),
             start_time: simulation_monitor_start_time,
+            shutdown_time: None,
+            expected_final_state: None,
         });
 
         hosts.insert("simulation-monitor".to_string(), ShadowHost {
