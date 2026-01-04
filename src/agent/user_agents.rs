@@ -56,6 +56,18 @@ pub fn process_user_agents(
         Vec::new()
     };
 
+    // Validate phase configuration for all agents upfront
+    if let Some(user_agents) = &agents.user_agents {
+        for (i, user_agent_config) in user_agents.iter().enumerate() {
+            if let Err(e) = user_agent_config.validate_phases() {
+                return Err(color_eyre::eyre::eyre!(
+                    "Phase validation failed for user agent {}: {}",
+                    i, e
+                ));
+            }
+        }
+    }
+
     // First, collect all agent information to build connection graphs
     let mut agent_info = Vec::new();
     let mut all_agent_ips = Vec::new(); // Collect all agent IPs for topology connections
@@ -292,6 +304,7 @@ pub fn process_user_agents(
             let has_wallet = user_agent_config.has_wallet();
             let _is_script_only = user_agent_config.is_script_only();
             let has_daemon_phases = user_agent_config.has_daemon_phases();
+            let has_wallet_phases = user_agent_config.has_wallet_phases();
 
             // Build base daemon arguments (shared across all phases)
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
@@ -475,15 +488,116 @@ pub fn process_user_agents(
             } // End of daemon configuration
 
             // Add wallet process based on agent type
-            if has_wallet {
-                // Get wallet binary path from config, fall back to default
+            if has_wallet_phases {
+                // Phase-based wallet configuration (upgrade scenario)
+                let phases = user_agent_config.wallet_phases.as_ref().unwrap();
+                let phase_count = phases.len();
+
+                // Build base wallet args
+                let build_wallet_args = |phase_args: Option<&Vec<String>>| -> Vec<String> {
+                    let mut args = vec![
+                        format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
+                        format!("--rpc-bind-port={}", wallet_rpc_port),
+                        format!("--rpc-bind-ip={}", agent_ip),
+                        "--disable-rpc-login".to_string(),
+                        "--trusted-daemon".to_string(),
+                        "--log-level=1".to_string(),
+                        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+                        "--non-interactive".to_string(),
+                        "--confirm-external-bind".to_string(),
+                        "--allow-mismatched-daemon-version".to_string(),
+                        "--max-concurrency=1".to_string(),
+                        "--daemon-ssl-allow-any-cert".to_string(),
+                    ];
+
+                    // Add custom phase args
+                    if let Some(custom_args) = phase_args {
+                        for arg in custom_args {
+                            args.push(arg.clone());
+                        }
+                    }
+
+                    args
+                };
+
+                for (phase_num, phase) in phases {
+                    let wallet_args_vec = build_wallet_args(phase.args.as_ref());
+                    let wallet_args = wallet_args_vec.join(" ");
+
+                    // Resolve binary path for this phase
+                    let wallet_binary_path = resolve_binary_path_for_shadow(&phase.path)
+                        .unwrap_or_else(|_| wallet_path.to_string());
+
+                    // Build environment for this phase
+                    let mut wallet_env = environment.clone();
+                    if let Some(custom_env) = &phase.env {
+                        for (key, value) in custom_env {
+                            wallet_env.insert(key.clone(), value.clone());
+                        }
+                    }
+
+                    // Determine start time
+                    let start_time = if let Some(start) = &phase.start {
+                        start.clone()
+                    } else if *phase_num == 0 {
+                        wallet_start_time.clone()
+                    } else {
+                        // Should have been caught by validation
+                        wallet_start_time.clone()
+                    };
+
+                    // Determine shutdown time and expected final state
+                    let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
+                        // Not the last phase - needs shutdown
+                        (
+                            phase.stop.clone(),
+                            Some(ExpectedFinalState::Signaled("SIGTERM".to_string())),
+                        )
+                    } else {
+                        // Last phase - runs until simulation end
+                        (None, None)
+                    };
+
+                    // For phase 0, include the wallet directory cleanup
+                    let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(&start_time) {
+                        format!("{}s", wallet_seconds.saturating_sub(2))
+                    } else {
+                        format!("{}s", 48 + i * 2) // Fallback
+                    };
+
+                    if *phase_num == 0 {
+                        // Clean up wallet directory before phase 0
+                        processes.push(crate::shadow::ShadowProcess {
+                            path: "/bin/bash".to_string(),
+                            args: format!(
+                                "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet'",
+                                agent_id, agent_id
+                            ),
+                            environment: environment.clone(),
+                            start_time: cleanup_start_time,
+                            shutdown_time: None,
+                            expected_final_state: None,
+                        });
+                    }
+
+                    processes.push(crate::shadow::ShadowProcess {
+                        path: "/bin/bash".to_string(),
+                        args: format!("-c '{} {}'", wallet_binary_path, wallet_args),
+                        environment: wallet_env,
+                        start_time,
+                        shutdown_time,
+                        expected_final_state,
+                    });
+                }
+            } else if has_wallet {
+                // Simple wallet configuration (single binary)
                 let wallet_binary_path = if let Some(wallet_spec) = &user_agent_config.wallet {
                     resolve_binary_path_for_shadow(wallet_spec).unwrap_or_else(|_| wallet_path.to_string())
                 } else {
                     wallet_path.to_string()
                 };
 
-                if has_local_daemon {
+                if has_local_daemon || has_daemon_phases {
                     // Full agent: wallet connects to local daemon
                     add_wallet_process(
                         &mut processes,

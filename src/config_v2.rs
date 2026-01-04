@@ -1,6 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use regex::Regex;
+use crate::utils::duration::parse_duration_to_seconds;
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -688,38 +689,64 @@ impl UserAgentConfig {
             }
         }
 
-        // Check no time overlap (stop time of phase N < start time of phase N+1)
-        // This requires parsing duration strings, which we'll do in a simplified way
+        // Check timing for multi-phase configurations
         for i in 0..phase_nums.len().saturating_sub(1) {
             let current_phase = &phases[&phase_nums[i]];
             let next_phase = &phases[&phase_nums[i + 1]];
+            let current_num = phase_nums[i];
+            let next_num = phase_nums[i + 1];
 
-            if let (Some(stop), Some(start)) = (&current_phase.stop, &next_phase.start) {
-                // Simple validation: both should be non-empty
-                // Full time comparison would require parsing durations
-                if stop.is_empty() || start.is_empty() {
+            // Check stop time exists for non-last phases
+            let stop_time = match &current_phase.stop {
+                Some(s) if !s.is_empty() => s,
+                _ => {
                     return Err(PhaseValidationError::MissingTiming {
-                        phase_num: phase_nums[i],
+                        phase_num: current_num,
                         phase_type: "daemon".to_string(),
                         detail: "stop time required when followed by another phase".to_string(),
                     });
                 }
-            } else if i < phase_nums.len() - 1 {
-                // Not the last phase, needs stop time
-                if current_phase.stop.is_none() {
+            };
+
+            // Check start time exists for phases after phase 0
+            let start_time = match &next_phase.start {
+                Some(s) if !s.is_empty() => s,
+                _ => {
                     return Err(PhaseValidationError::MissingTiming {
-                        phase_num: phase_nums[i],
-                        phase_type: "daemon".to_string(),
-                        detail: "stop time required when followed by another phase".to_string(),
-                    });
-                }
-                if next_phase.start.is_none() {
-                    return Err(PhaseValidationError::MissingTiming {
-                        phase_num: phase_nums[i + 1],
+                        phase_num: next_num,
                         phase_type: "daemon".to_string(),
                         detail: "start time required for phases after phase 0".to_string(),
                     });
                 }
+            };
+
+            // Parse durations and check gap
+            let stop_secs = parse_duration_to_seconds(stop_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: "daemon".to_string(),
+                    phase_num: current_num,
+                    detail: format!("stop time '{}': {}", stop_time, e),
+                }
+            })?;
+
+            let start_secs = parse_duration_to_seconds(start_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: "daemon".to_string(),
+                    phase_num: next_num,
+                    detail: format!("start time '{}': {}", start_time, e),
+                }
+            })?;
+
+            // Check that there's adequate gap between stop and start
+            if start_secs < stop_secs + MIN_PHASE_GAP_SECONDS {
+                return Err(PhaseValidationError::GapTooSmall {
+                    phase_type: "daemon".to_string(),
+                    phase_num: current_num,
+                    next_phase_num: next_num,
+                    stop_time: stop_time.clone(),
+                    start_time: start_time.clone(),
+                    min_gap: MIN_PHASE_GAP_SECONDS,
+                });
             }
         }
 
@@ -755,23 +782,63 @@ impl UserAgentConfig {
             }
         }
 
-        // Check timing for multi-phase
+        // Check timing for multi-phase configurations
         for i in 0..phase_nums.len().saturating_sub(1) {
             let current_phase = &phases[&phase_nums[i]];
             let next_phase = &phases[&phase_nums[i + 1]];
+            let current_num = phase_nums[i];
+            let next_num = phase_nums[i + 1];
 
-            if current_phase.stop.is_none() {
-                return Err(PhaseValidationError::MissingTiming {
-                    phase_num: phase_nums[i],
+            // Check stop time exists for non-last phases
+            let stop_time = match &current_phase.stop {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: current_num,
+                        phase_type: "wallet".to_string(),
+                        detail: "stop time required when followed by another phase".to_string(),
+                    });
+                }
+            };
+
+            // Check start time exists for phases after phase 0
+            let start_time = match &next_phase.start {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: next_num,
+                        phase_type: "wallet".to_string(),
+                        detail: "start time required for phases after phase 0".to_string(),
+                    });
+                }
+            };
+
+            // Parse durations and check gap
+            let stop_secs = parse_duration_to_seconds(stop_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
                     phase_type: "wallet".to_string(),
-                    detail: "stop time required when followed by another phase".to_string(),
-                });
-            }
-            if next_phase.start.is_none() {
-                return Err(PhaseValidationError::MissingTiming {
-                    phase_num: phase_nums[i + 1],
+                    phase_num: current_num,
+                    detail: format!("stop time '{}': {}", stop_time, e),
+                }
+            })?;
+
+            let start_secs = parse_duration_to_seconds(start_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
                     phase_type: "wallet".to_string(),
-                    detail: "start time required for phases after phase 0".to_string(),
+                    phase_num: next_num,
+                    detail: format!("start time '{}': {}", start_time, e),
+                }
+            })?;
+
+            // Check that there's adequate gap between stop and start
+            if start_secs < stop_secs + MIN_PHASE_GAP_SECONDS {
+                return Err(PhaseValidationError::GapTooSmall {
+                    phase_type: "wallet".to_string(),
+                    phase_num: current_num,
+                    next_phase_num: next_num,
+                    stop_time: stop_time.clone(),
+                    start_time: start_time.clone(),
+                    min_gap: MIN_PHASE_GAP_SECONDS,
                 });
             }
         }
@@ -805,6 +872,10 @@ impl UserAgentConfig {
     }
 }
 
+/// Minimum gap between phase stop and next phase start (in seconds)
+/// This allows time for graceful shutdown and startup of the next binary
+pub const MIN_PHASE_GAP_SECONDS: u64 = 30;
+
 /// Errors from phase validation
 #[derive(Debug, thiserror::Error)]
 pub enum PhaseValidationError {
@@ -831,6 +902,23 @@ pub enum PhaseValidationError {
     #[error("Mixed configuration for {phase_type}: {detail}")]
     MixedConfig {
         phase_type: String,
+        detail: String,
+    },
+
+    #[error("Insufficient gap between {phase_type} phases {phase_num} and {next_phase_num}: stop={stop_time}, start={start_time}, need at least {min_gap}s gap")]
+    GapTooSmall {
+        phase_type: String,
+        phase_num: u32,
+        next_phase_num: u32,
+        stop_time: String,
+        start_time: String,
+        min_gap: u64,
+    },
+
+    #[error("Invalid duration format for {phase_type} phase {phase_num}: {detail}")]
+    InvalidDuration {
+        phase_type: String,
+        phase_num: u32,
         detail: String,
     },
 }
