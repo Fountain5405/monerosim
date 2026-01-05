@@ -1090,6 +1090,7 @@ class SimulationMonitorAgent(BaseAgent):
     def _write_node_table(self, f, node_data: Dict[str, Any]):
         """Write formatted node details table."""
         f.write("NODE DETAILS:\n")
+        f.write("(Heights polled serially - variance expected during active mining)\n\n")
 
         # Table header - showing Blocks mined, Weight, and TXs created
         f.write("┌─────────────┬───────┬───────┬──────────┬────────┬────────┬─────────┬──────┐\n")

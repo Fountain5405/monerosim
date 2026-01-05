@@ -1,0 +1,41 @@
+# Test configuration for multi-binary upgrade scenario
+# Tests daemon phase transition from v18 to v19 binaries
+
+general:
+  stop_time: "1h"
+  simulation_seed: 42
+  parallelism: 1
+
+network:
+  type: "1_gbit_switch"
+  peer_mode: Dynamic
+
+agents:
+  user_agents:
+    # Miner with upgrade phases - runs v18, then upgrades to v19 mid-simulation
+    - is_miner: true
+      daemon_0: monerod
+      daemon_0_stop: "30m"
+      daemon_0_args:
+        - "--prune-blockchain"
+      daemon_1: monerod
+      daemon_1_start: "1830s"
+      wallet: monero-wallet-rpc
+      user_script: "agents.regular_user"
+      mining_script: "agents.autonomous_miner"
+      attributes:
+        hashrate: "50"
+
+    # Regular user with simple config (no phases)
+    - daemon: monerod
+      wallet: monero-wallet-rpc
+      user_script: "agents.regular_user"
+
+    # Another miner to ensure network has blocks
+    - is_miner: true
+      daemon: monerod
+      wallet: monero-wallet-rpc
+      user_script: "agents.regular_user"
+      mining_script: "agents.autonomous_miner"
+      attributes:
+        hashrate: "50"

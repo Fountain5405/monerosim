@@ -190,6 +190,8 @@ echo "Daemon RPC not available after 30 attempts, starting agent anyway..."
         args: format!("-c 'cat > {} << '\"'\"'EOF'\"'\"'\n{}EOF'", script_path, wrapper_script),
         environment: environment.clone(),
         start_time: script_creation_time,
+        shutdown_time: None,
+        expected_final_state: None,
     });
 
     // Process 2: Execute wrapper script
@@ -198,6 +200,8 @@ echo "Daemon RPC not available after 30 attempts, starting agent anyway..."
         args: script_path.clone(),
         environment: environment.clone(),
         start_time: script_execution_time,
+        shutdown_time: None,
+        expected_final_state: None,
     });
 }
 
@@ -332,15 +336,19 @@ echo "Daemon RPC not available after 30 attempts, starting mining agent anyway..
         args: format!("-c 'cat > {} << EOF\\n{}EOF'", script_path, wrapper_script),
         environment: environment.clone(),
         start_time: script_creation_time,
+        shutdown_time: None,
+        expected_final_state: None,
     });
-    
+
     // Process 2: Execute wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: script_path.clone(),
         environment: environment.clone(),
         start_time: script_execution_time,
+        shutdown_time: None,
+        expected_final_state: None,
     });
-    
+
     processes
 }

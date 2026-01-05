@@ -173,8 +173,12 @@ pub fn generate_agent_shadow_config(
 
     let mut hosts: BTreeMap<String, ShadowHost> = BTreeMap::new();
 
+    // Get HOME from the current environment for use in simulated processes
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
+
     // Common environment variables
     let mut environment: BTreeMap<String, String> = [
+        ("HOME".to_string(), home_dir), // Required for $HOME expansion in binary paths
         ("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string()),
         ("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string()),
         ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
@@ -337,6 +341,8 @@ echo "Starting DNS server..."
                 args: format!("-c 'cat > {} << '\"'\"'EOF'\"'\"'\n{}EOF'", dns_script_path, dns_wrapper_script),
                 environment: environment.clone(),
                 start_time: "0s".to_string(), // Start immediately
+                shutdown_time: None,
+                expected_final_state: None,
             },
             // Execute wrapper script
             crate::shadow::ShadowProcess {
@@ -344,6 +350,8 @@ echo "Starting DNS server..."
                 args: dns_script_path.clone(),
                 environment: environment.clone(),
                 start_time: "1s".to_string(), // Start after script creation
+                shutdown_time: None,
+                expected_final_state: None,
             },
         ];
 

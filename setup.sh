@@ -212,13 +212,14 @@ install_shadowformonero() {
     if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
         print_status "Found local shadowformonero repository"
         cd "$SHADOWFORMONERO_DIR"
-        git pull origin main
+        git checkout optimize 2>/dev/null || true
+        git pull origin optimize
     else
         print_status "Cloning shadowformonero repository..."
         if [[ -d "$SHADOWFORMONERO_DIR" ]]; then
             rm -rf "$SHADOWFORMONERO_DIR"
         fi
-        git clone "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
+        git clone -b optimize "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
         cd "$SHADOWFORMONERO_DIR"
     fi
 
@@ -236,11 +237,11 @@ if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
     SHADOW_VERSION=$("$MONEROSIM_BIN/shadow" --version 2>&1 | head -n1)
     print_success "Shadow already installed: $SHADOW_VERSION"
 
-    # Check if it's the shadowformonero version
-    if "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -q "d24c0e587"; then
-        print_success "Using shadowformonero version with Monero optimizations"
+    # Check if it's a shadowformonero version (dirty build from optimize branch)
+    if "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -qE "dirty|shadowformonero"; then
+        print_success "Using shadowformonero version with Monero socket compatibility patches"
     else
-        print_warning "Standard Shadow detected - consider reinstalling shadowformonero"
+        print_warning "Standard Shadow detected - consider reinstalling shadowformonero for vanilla monerod support"
     fi
 elif command -v shadow &> /dev/null; then
     # Shadow exists elsewhere - check version and offer to install to our location

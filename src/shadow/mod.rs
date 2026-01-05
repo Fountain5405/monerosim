@@ -111,4 +111,5 @@ pub use types::{
     ShadowNetworkEdge,
     ShadowHost,
     ShadowProcess,
+    ExpectedFinalState,
 };

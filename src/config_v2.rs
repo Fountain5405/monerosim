@@ -1,5 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
+use regex::Regex;
+use crate::utils::duration::parse_duration_to_seconds;
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -242,17 +244,35 @@ impl DaemonConfig {
 /// - Daemon-only: daemon without wallet (public nodes, infrastructure, miners)
 /// - Wallet-only: wallet connecting to a remote daemon
 /// - Script-only: no Monero processes, just a script (DNS servers, monitors, etc.)
-#[derive(Debug, Serialize, Deserialize)]
+///
+/// Also supports phase-based configuration for upgrade scenarios using flat fields:
+/// - daemon_0, daemon_0_args, daemon_0_env, daemon_0_start, daemon_0_stop
+/// - daemon_1, daemon_1_args, daemon_1_env, daemon_1_start, daemon_1_stop
+/// - (same pattern for wallet_0, wallet_1, etc.)
+#[derive(Debug, Serialize)]
 pub struct UserAgentConfig {
     /// Daemon configuration - local daemon, remote daemon reference, or None
-    /// - Local: "monerod" - runs a local daemon
+    /// - Local: "monerod" - runs a local daemon (path or shorthand name)
     /// - Remote: { address: "auto", strategy: "random" } - wallet-only connecting to public node
     /// - Remote: { address: "192.168.1.10:18081" } - wallet-only connecting to specific daemon
     /// - None: script-only agent with no Monero daemon
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daemon: Option<DaemonConfig>,
+    /// Additional CLI arguments for the daemon (appended to generated args)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_args: Option<Vec<String>>,
+    /// Environment variables for the daemon process
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_env: Option<BTreeMap<String, String>>,
+    /// Wallet binary path or shorthand name (e.g., "monero-wallet-rpc" or "~/.monerosim/bin/wallet-v19")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet: Option<String>,
+    /// Additional CLI arguments for the wallet (appended to generated args)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_args: Option<Vec<String>>,
+    /// Environment variables for the wallet process
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_env: Option<BTreeMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_script: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -266,6 +286,266 @@ pub struct UserAgentConfig {
     /// allowing agents to join mid-simulation while preserving staggered launches.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_time_offset: Option<String>,
+
+    // Phase-based daemon configuration (daemon_0, daemon_1, etc.)
+    // These are collected from flat fields during deserialization
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_phases: Option<BTreeMap<u32, DaemonPhase>>,
+    // Phase-based wallet configuration (wallet_0, wallet_1, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_phases: Option<BTreeMap<u32, WalletPhase>>,
+}
+
+/// Intermediate struct for deserializing UserAgentConfig with flat phase fields
+#[derive(Deserialize)]
+struct UserAgentConfigRaw {
+    #[serde(default)]
+    daemon: Option<DaemonConfig>,
+    #[serde(default)]
+    daemon_args: Option<Vec<String>>,
+    #[serde(default)]
+    daemon_env: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    wallet: Option<String>,
+    #[serde(default)]
+    wallet_args: Option<Vec<String>>,
+    #[serde(default)]
+    wallet_env: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    user_script: Option<String>,
+    #[serde(default)]
+    mining_script: Option<String>,
+    #[serde(default)]
+    is_miner: Option<bool>,
+    #[serde(default)]
+    attributes: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    start_time_offset: Option<String>,
+    // Capture all extra fields for phase parsing
+    #[serde(flatten)]
+    extra: BTreeMap<String, serde_yaml::Value>,
+}
+
+impl<'de> Deserialize<'de> for UserAgentConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = UserAgentConfigRaw::deserialize(deserializer)?;
+
+        // Parse phase fields from extra
+        let (daemon_phases, wallet_phases) = parse_phase_fields(&raw.extra);
+
+        Ok(UserAgentConfig {
+            daemon: raw.daemon,
+            daemon_args: raw.daemon_args,
+            daemon_env: raw.daemon_env,
+            wallet: raw.wallet,
+            wallet_args: raw.wallet_args,
+            wallet_env: raw.wallet_env,
+            user_script: raw.user_script,
+            mining_script: raw.mining_script,
+            is_miner: raw.is_miner,
+            attributes: raw.attributes,
+            start_time_offset: raw.start_time_offset,
+            daemon_phases,
+            wallet_phases,
+        })
+    }
+}
+
+/// Parse flat phase fields (daemon_0, daemon_0_args, etc.) into structured phases
+fn parse_phase_fields(extra: &BTreeMap<String, serde_yaml::Value>) -> (Option<BTreeMap<u32, DaemonPhase>>, Option<BTreeMap<u32, WalletPhase>>) {
+    // Regex patterns for phase fields
+    let daemon_re = Regex::new(r"^daemon_(\d+)$").unwrap();
+    let daemon_args_re = Regex::new(r"^daemon_(\d+)_args$").unwrap();
+    let daemon_env_re = Regex::new(r"^daemon_(\d+)_env$").unwrap();
+    let daemon_start_re = Regex::new(r"^daemon_(\d+)_start$").unwrap();
+    let daemon_stop_re = Regex::new(r"^daemon_(\d+)_stop$").unwrap();
+
+    let wallet_re = Regex::new(r"^wallet_(\d+)$").unwrap();
+    let wallet_args_re = Regex::new(r"^wallet_(\d+)_args$").unwrap();
+    let wallet_env_re = Regex::new(r"^wallet_(\d+)_env$").unwrap();
+    let wallet_start_re = Regex::new(r"^wallet_(\d+)_start$").unwrap();
+    let wallet_stop_re = Regex::new(r"^wallet_(\d+)_stop$").unwrap();
+
+    let mut daemon_phases: BTreeMap<u32, DaemonPhase> = BTreeMap::new();
+    let mut wallet_phases: BTreeMap<u32, WalletPhase> = BTreeMap::new();
+
+    for (key, value) in extra {
+        // Parse daemon phase fields
+        if let Some(caps) = daemon_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            let path = value.as_str().unwrap_or("").to_string();
+            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
+                path: String::new(),
+                args: None,
+                env: None,
+                start: None,
+                stop: None,
+            }).path = path;
+        } else if let Some(caps) = daemon_args_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            if let Some(seq) = value.as_sequence() {
+                let args: Vec<String> = seq.iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
+                    path: String::new(),
+                    args: None,
+                    env: None,
+                    start: None,
+                    stop: None,
+                }).args = Some(args);
+            }
+        } else if let Some(caps) = daemon_env_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            if let Some(map) = value.as_mapping() {
+                let env: BTreeMap<String, String> = map.iter()
+                    .filter_map(|(k, v)| {
+                        let key = k.as_str()?.to_string();
+                        let val = v.as_str()?.to_string();
+                        Some((key, val))
+                    })
+                    .collect();
+                daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
+                    path: String::new(),
+                    args: None,
+                    env: None,
+                    start: None,
+                    stop: None,
+                }).env = Some(env);
+            }
+        } else if let Some(caps) = daemon_start_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            let start = value.as_str().unwrap_or("").to_string();
+            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
+                path: String::new(),
+                args: None,
+                env: None,
+                start: None,
+                stop: None,
+            }).start = Some(start);
+        } else if let Some(caps) = daemon_stop_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            let stop = value.as_str().unwrap_or("").to_string();
+            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
+                path: String::new(),
+                args: None,
+                env: None,
+                start: None,
+                stop: None,
+            }).stop = Some(stop);
+        }
+
+        // Parse wallet phase fields
+        if let Some(caps) = wallet_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            let path = value.as_str().unwrap_or("").to_string();
+            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
+                path: String::new(),
+                args: None,
+                env: None,
+                start: None,
+                stop: None,
+            }).path = path;
+        } else if let Some(caps) = wallet_args_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            if let Some(seq) = value.as_sequence() {
+                let args: Vec<String> = seq.iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
+                    path: String::new(),
+                    args: None,
+                    env: None,
+                    start: None,
+                    stop: None,
+                }).args = Some(args);
+            }
+        } else if let Some(caps) = wallet_env_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            if let Some(map) = value.as_mapping() {
+                let env: BTreeMap<String, String> = map.iter()
+                    .filter_map(|(k, v)| {
+                        let key = k.as_str()?.to_string();
+                        let val = v.as_str()?.to_string();
+                        Some((key, val))
+                    })
+                    .collect();
+                wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
+                    path: String::new(),
+                    args: None,
+                    env: None,
+                    start: None,
+                    stop: None,
+                }).env = Some(env);
+            }
+        } else if let Some(caps) = wallet_start_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            let start = value.as_str().unwrap_or("").to_string();
+            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
+                path: String::new(),
+                args: None,
+                env: None,
+                start: None,
+                stop: None,
+            }).start = Some(start);
+        } else if let Some(caps) = wallet_stop_re.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap_or(0);
+            let stop = value.as_str().unwrap_or("").to_string();
+            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
+                path: String::new(),
+                args: None,
+                env: None,
+                start: None,
+                stop: None,
+            }).stop = Some(stop);
+        }
+    }
+
+    let daemon_phases = if daemon_phases.is_empty() { None } else { Some(daemon_phases) };
+    let wallet_phases = if wallet_phases.is_empty() { None } else { Some(wallet_phases) };
+
+    (daemon_phases, wallet_phases)
+}
+
+/// Configuration for a single daemon phase in an upgrade scenario
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DaemonPhase {
+    /// Path to the daemon binary (or shorthand name)
+    pub path: String,
+    /// Additional CLI arguments for this phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
+    /// Environment variables for this phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub env: Option<BTreeMap<String, String>>,
+    /// Start time for this phase (default: "0s" for phase 0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<String>,
+    /// Stop time for this phase (when to send SIGTERM)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop: Option<String>,
+}
+
+/// Configuration for a single wallet phase in an upgrade scenario
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WalletPhase {
+    /// Path to the wallet binary (or shorthand name)
+    pub path: String,
+    /// Additional CLI arguments for this phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
+    /// Environment variables for this phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub env: Option<BTreeMap<String, String>>,
+    /// Start time for this phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<String>,
+    /// Stop time for this phase (when to send SIGTERM)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop: Option<String>,
 }
 
 impl UserAgentConfig {
@@ -298,8 +578,9 @@ impl UserAgentConfig {
     }
 
     /// Check if this agent has a local daemon
+    /// Includes both simple daemon config and phase-based configuration
     pub fn has_local_daemon(&self) -> bool {
-        matches!(&self.daemon, Some(DaemonConfig::Local(_)))
+        matches!(&self.daemon, Some(DaemonConfig::Local(_))) || self.has_daemon_phases()
     }
 
     /// Check if this agent has a remote daemon configuration (wallet-only)
@@ -308,8 +589,9 @@ impl UserAgentConfig {
     }
 
     /// Check if this agent has a wallet
+    /// Includes both simple wallet config and phase-based configuration
     pub fn has_wallet(&self) -> bool {
-        self.wallet.is_some()
+        self.wallet.is_some() || self.has_wallet_phases()
     }
 
     /// Check if this agent has any script (user_script or mining_script)
@@ -319,7 +601,7 @@ impl UserAgentConfig {
 
     /// Check if this is a script-only agent (no daemon, no wallet)
     pub fn is_script_only(&self) -> bool {
-        self.daemon.is_none() && self.wallet.is_none() && self.has_script()
+        !self.has_local_daemon() && !self.has_remote_daemon() && !self.has_wallet() && self.has_script()
     }
 
     /// Check if this is a daemon-only agent (daemon, no wallet)
@@ -362,6 +644,283 @@ impl UserAgentConfig {
             _ => None,
         }
     }
+
+    /// Check if this agent uses daemon phases (upgrade scenario)
+    pub fn has_daemon_phases(&self) -> bool {
+        self.daemon_phases.is_some() && !self.daemon_phases.as_ref().unwrap().is_empty()
+    }
+
+    /// Check if this agent uses wallet phases (upgrade scenario)
+    pub fn has_wallet_phases(&self) -> bool {
+        self.wallet_phases.is_some() && !self.wallet_phases.as_ref().unwrap().is_empty()
+    }
+
+    /// Validate daemon phase configuration
+    ///
+    /// Checks:
+    /// - Sequential numbering starting from 0
+    /// - Each phase has a non-empty path
+    /// - No time overlap between phases (stop < next start)
+    pub fn validate_daemon_phases(&self) -> Result<(), PhaseValidationError> {
+        let phases = match &self.daemon_phases {
+            Some(p) if !p.is_empty() => p,
+            _ => return Ok(()), // No phases to validate
+        };
+
+        // Check sequential numbering starting from 0
+        let phase_nums: Vec<u32> = phases.keys().copied().collect();
+        for (i, &num) in phase_nums.iter().enumerate() {
+            if num != i as u32 {
+                return Err(PhaseValidationError::NonSequentialPhases {
+                    expected: i as u32,
+                    found: num,
+                    phase_type: "daemon".to_string(),
+                });
+            }
+        }
+
+        // Check each phase has a path
+        for (num, phase) in phases {
+            if phase.path.is_empty() {
+                return Err(PhaseValidationError::MissingPath {
+                    phase_num: *num,
+                    phase_type: "daemon".to_string(),
+                });
+            }
+        }
+
+        // Check timing for multi-phase configurations
+        for i in 0..phase_nums.len().saturating_sub(1) {
+            let current_phase = &phases[&phase_nums[i]];
+            let next_phase = &phases[&phase_nums[i + 1]];
+            let current_num = phase_nums[i];
+            let next_num = phase_nums[i + 1];
+
+            // Check stop time exists for non-last phases
+            let stop_time = match &current_phase.stop {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: current_num,
+                        phase_type: "daemon".to_string(),
+                        detail: "stop time required when followed by another phase".to_string(),
+                    });
+                }
+            };
+
+            // Check start time exists for phases after phase 0
+            let start_time = match &next_phase.start {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: next_num,
+                        phase_type: "daemon".to_string(),
+                        detail: "start time required for phases after phase 0".to_string(),
+                    });
+                }
+            };
+
+            // Parse durations and check gap
+            let stop_secs = parse_duration_to_seconds(stop_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: "daemon".to_string(),
+                    phase_num: current_num,
+                    detail: format!("stop time '{}': {}", stop_time, e),
+                }
+            })?;
+
+            let start_secs = parse_duration_to_seconds(start_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: "daemon".to_string(),
+                    phase_num: next_num,
+                    detail: format!("start time '{}': {}", start_time, e),
+                }
+            })?;
+
+            // Check that there's adequate gap between stop and start
+            if start_secs < stop_secs + MIN_PHASE_GAP_SECONDS {
+                return Err(PhaseValidationError::GapTooSmall {
+                    phase_type: "daemon".to_string(),
+                    phase_num: current_num,
+                    next_phase_num: next_num,
+                    stop_time: stop_time.clone(),
+                    start_time: start_time.clone(),
+                    min_gap: MIN_PHASE_GAP_SECONDS,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate wallet phase configuration (same rules as daemon phases)
+    pub fn validate_wallet_phases(&self) -> Result<(), PhaseValidationError> {
+        let phases = match &self.wallet_phases {
+            Some(p) if !p.is_empty() => p,
+            _ => return Ok(()), // No phases to validate
+        };
+
+        // Check sequential numbering starting from 0
+        let phase_nums: Vec<u32> = phases.keys().copied().collect();
+        for (i, &num) in phase_nums.iter().enumerate() {
+            if num != i as u32 {
+                return Err(PhaseValidationError::NonSequentialPhases {
+                    expected: i as u32,
+                    found: num,
+                    phase_type: "wallet".to_string(),
+                });
+            }
+        }
+
+        // Check each phase has a path
+        for (num, phase) in phases {
+            if phase.path.is_empty() {
+                return Err(PhaseValidationError::MissingPath {
+                    phase_num: *num,
+                    phase_type: "wallet".to_string(),
+                });
+            }
+        }
+
+        // Check timing for multi-phase configurations
+        for i in 0..phase_nums.len().saturating_sub(1) {
+            let current_phase = &phases[&phase_nums[i]];
+            let next_phase = &phases[&phase_nums[i + 1]];
+            let current_num = phase_nums[i];
+            let next_num = phase_nums[i + 1];
+
+            // Check stop time exists for non-last phases
+            let stop_time = match &current_phase.stop {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: current_num,
+                        phase_type: "wallet".to_string(),
+                        detail: "stop time required when followed by another phase".to_string(),
+                    });
+                }
+            };
+
+            // Check start time exists for phases after phase 0
+            let start_time = match &next_phase.start {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: next_num,
+                        phase_type: "wallet".to_string(),
+                        detail: "start time required for phases after phase 0".to_string(),
+                    });
+                }
+            };
+
+            // Parse durations and check gap
+            let stop_secs = parse_duration_to_seconds(stop_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: "wallet".to_string(),
+                    phase_num: current_num,
+                    detail: format!("stop time '{}': {}", stop_time, e),
+                }
+            })?;
+
+            let start_secs = parse_duration_to_seconds(start_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: "wallet".to_string(),
+                    phase_num: next_num,
+                    detail: format!("start time '{}': {}", start_time, e),
+                }
+            })?;
+
+            // Check that there's adequate gap between stop and start
+            if start_secs < stop_secs + MIN_PHASE_GAP_SECONDS {
+                return Err(PhaseValidationError::GapTooSmall {
+                    phase_type: "wallet".to_string(),
+                    phase_num: current_num,
+                    next_phase_num: next_num,
+                    stop_time: stop_time.clone(),
+                    start_time: start_time.clone(),
+                    min_gap: MIN_PHASE_GAP_SECONDS,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate that simple config and phase config are not mixed
+    pub fn validate_no_mixed_config(&self) -> Result<(), PhaseValidationError> {
+        if self.daemon.is_some() && self.has_daemon_phases() {
+            return Err(PhaseValidationError::MixedConfig {
+                phase_type: "daemon".to_string(),
+                detail: "Cannot use both 'daemon' and 'daemon_N' fields".to_string(),
+            });
+        }
+        if self.wallet.is_some() && self.has_wallet_phases() {
+            return Err(PhaseValidationError::MixedConfig {
+                phase_type: "wallet".to_string(),
+                detail: "Cannot use both 'wallet' and 'wallet_N' fields".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Validate all phase configuration
+    pub fn validate_phases(&self) -> Result<(), PhaseValidationError> {
+        self.validate_no_mixed_config()?;
+        self.validate_daemon_phases()?;
+        self.validate_wallet_phases()?;
+        Ok(())
+    }
+}
+
+/// Minimum gap between phase stop and next phase start (in seconds)
+/// This allows time for graceful shutdown and startup of the next binary
+pub const MIN_PHASE_GAP_SECONDS: u64 = 30;
+
+/// Errors from phase validation
+#[derive(Debug, thiserror::Error)]
+pub enum PhaseValidationError {
+    #[error("Non-sequential phase numbering for {phase_type}: expected {expected}, found {found}")]
+    NonSequentialPhases {
+        expected: u32,
+        found: u32,
+        phase_type: String,
+    },
+
+    #[error("Missing path for {phase_type} phase {phase_num}")]
+    MissingPath {
+        phase_num: u32,
+        phase_type: String,
+    },
+
+    #[error("Missing timing for {phase_type} phase {phase_num}: {detail}")]
+    MissingTiming {
+        phase_num: u32,
+        phase_type: String,
+        detail: String,
+    },
+
+    #[error("Mixed configuration for {phase_type}: {detail}")]
+    MixedConfig {
+        phase_type: String,
+        detail: String,
+    },
+
+    #[error("Insufficient gap between {phase_type} phases {phase_num} and {next_phase_num}: stop={stop_time}, start={start_time}, need at least {min_gap}s gap")]
+    GapTooSmall {
+        phase_type: String,
+        phase_num: u32,
+        next_phase_num: u32,
+        stop_time: String,
+        start_time: String,
+        min_gap: u64,
+    },
+
+    #[error("Invalid duration format for {phase_type} phase {phase_num}: {detail}")]
+    InvalidDuration {
+        phase_type: String,
+        phase_num: u32,
+        detail: String,
+    },
 }
 
 /// Miner distributor agent configuration

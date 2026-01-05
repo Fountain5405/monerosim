@@ -259,6 +259,50 @@ pub struct ShadowHost {
     pub bandwidth_up: Option<String>,
 }
 
+/// Expected final state for a Shadow process.
+///
+/// Used to tell Shadow what state a process should be in when the simulation
+/// ends, to avoid spurious error reports for intentionally-killed processes.
+///
+/// Shadow expects format like:
+/// ```yaml
+/// expected_final_state:
+///   signaled: SIGTERM
+/// ```
+#[derive(Debug, Clone)]
+pub enum ExpectedFinalState {
+    /// Process exited with the given exit code
+    Exited(i32),
+    /// Process was terminated by the given signal
+    Signaled(String),
+    /// Process is still running when simulation ends
+    Running,
+}
+
+impl serde::Serialize for ExpectedFinalState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        match self {
+            ExpectedFinalState::Exited(code) => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("exited", code)?;
+                map.end()
+            }
+            ExpectedFinalState::Signaled(signal) => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("signaled", signal)?;
+                map.end()
+            }
+            ExpectedFinalState::Running => {
+                serializer.serialize_str("running")
+            }
+        }
+    }
+}
+
 /// Shadow process definition.
 ///
 /// Represents a single process to be executed within a Shadow host.
@@ -272,4 +316,10 @@ pub struct ShadowProcess {
     pub environment: BTreeMap<String, String>,
     /// Start time for the process (e.g., "0s", "10s", "1m")
     pub start_time: String,
+    /// Shutdown time - when to send shutdown_signal to the process
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shutdown_time: Option<String>,
+    /// Expected final state when simulation ends (to avoid spurious errors)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_final_state: Option<ExpectedFinalState>,
 }
