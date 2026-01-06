@@ -1324,9 +1324,11 @@ class SimulationMonitorAgent(BaseAgent):
             monitoring_dir = self.shared_dir / "monitoring"
             monitoring_dir.mkdir(exist_ok=True)
             
-            # Convert set to list for JSON serialization
+            # Convert sets to lists for JSON serialization
             tx_stats_copy = self.transaction_stats.copy()
             tx_stats_copy["unique_tx_hashes"] = list(self.transaction_stats["unique_tx_hashes"])
+            tx_stats_copy["pending_txs"] = list(self.transaction_stats["pending_txs"])
+            tx_stats_copy["included_txs"] = list(self.transaction_stats["included_txs"])
             
             final_report = {
                 "agent_id": self.agent_id,
@@ -1383,9 +1385,11 @@ class SimulationMonitorAgent(BaseAgent):
             monitoring_dir = self.shared_dir / "monitoring"
             monitoring_dir.mkdir(exist_ok=True)
             
-            # Convert set to list for JSON serialization
+            # Convert sets to lists for JSON serialization
             tx_stats_copy = self.transaction_stats.copy()
             tx_stats_copy["unique_tx_hashes"] = list(self.transaction_stats["unique_tx_hashes"])
+            tx_stats_copy["pending_txs"] = list(self.transaction_stats["pending_txs"])
+            tx_stats_copy["included_txs"] = list(self.transaction_stats["included_txs"])
             
             final_report = {
                 "agent_id": self.agent_id,

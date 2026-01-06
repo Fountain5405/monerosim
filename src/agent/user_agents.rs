@@ -317,7 +317,7 @@ pub fn process_user_agents(
                     "--prep-blocks-threads=1".to_string(),
                     "--max-concurrency=1".to_string(),
                     "--no-zmq".to_string(),
-                    "--db-sync-mode=fastest".to_string(),
+                    "--db-sync-mode=safe".to_string(),
                     "--non-interactive".to_string(),
                     "--max-connections-per-ip=50".to_string(),
                     "--limit-rate-up=1024".to_string(),
