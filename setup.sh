@@ -283,6 +283,45 @@ else
     exit 1
 fi
 
+# Ensure Shadow libraries are in the correct location
+# Shadow binary uses RPATH=$ORIGIN/../lib, so libraries must be in ~/.monerosim/lib/
+MONEROSIM_LIB="$MONEROSIM_HOME/lib"
+LOCAL_LIB="$HOME/.local/lib"
+
+if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
+    print_status "Verifying Shadow library configuration..."
+    mkdir -p "$MONEROSIM_LIB"
+
+    # List of required Shadow libraries
+    SHADOW_LIBS=(
+        "libshadow_injector.so"
+        "libshadow_libc.so"
+        "libshadow_shim.so"
+        "libshadow_openssl_crypto.so"
+        "libshadow_openssl_rng.so"
+    )
+
+    for lib in "${SHADOW_LIBS[@]}"; do
+        if [[ ! -e "$MONEROSIM_LIB/$lib" ]]; then
+            # Check if library exists in ~/.local/lib (common alternate location)
+            if [[ -e "$LOCAL_LIB/$lib" ]]; then
+                print_status "Symlinking $lib from $LOCAL_LIB to $MONEROSIM_LIB"
+                ln -sf "$LOCAL_LIB/$lib" "$MONEROSIM_LIB/$lib"
+            else
+                print_warning "Shadow library not found: $lib"
+            fi
+        fi
+    done
+
+    # Verify shadow can find its libraries
+    if "$MONEROSIM_BIN/shadow" --version &>/dev/null; then
+        print_success "Shadow libraries configured correctly"
+    else
+        print_error "Shadow cannot find required libraries"
+        print_error "Please check $MONEROSIM_LIB for missing .so files"
+    fi
+fi
+
 # Step 5: Clone Monero Source Code
 print_header "Step 5: Setting Up Monero Source Code"
 
