@@ -452,15 +452,9 @@ class SimulationMonitorAgent(BaseAgent):
             # Track transactions and blocks
             self._track_transactions_and_blocks(node_data)
             
-            # Write real-time status to file
+            # Write real-time status to file (includes alerts)
             self._write_status_update(node_data, network_metrics)
-            
-            # Check for alerts
-            if self.enable_alerts:
-                alerts = self._check_alerts(network_metrics)
-                if alerts:
-                    self._write_alerts(f, alerts)
-            
+
             # Store detailed data for final report
             self._store_historical_data(node_data, network_metrics)
             
