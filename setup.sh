@@ -79,19 +79,33 @@ check_command "g++"
 check_command "curl"
 check_command "pkg-config"
 
-# Check for Rust
+# Check for Rust (handled separately - doesn't need sudo)
+NEED_RUST=false
 if ! command -v rustc &> /dev/null || ! command -v cargo &> /dev/null; then
-    MISSING_DEPS+=("rust")
+    NEED_RUST=true
     print_warning "Rust toolchain is not installed"
 else
     RUST_VERSION=$(rustc --version)
     print_success "Rust is available: $RUST_VERSION"
 fi
 
-# Install missing dependencies
+# Install Rust first if needed (no sudo required)
+if [[ "$NEED_RUST" == "true" ]]; then
+    print_status "Installing Rust toolchain (no sudo required)..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source ~/.cargo/env
+    if command -v rustc &> /dev/null; then
+        print_success "Rust installed successfully: $(rustc --version)"
+    else
+        print_error "Failed to install Rust"
+        exit 1
+    fi
+fi
+
+# Install system dependencies if any are missing (requires sudo)
 if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
-    print_warning "Missing dependencies: ${MISSING_DEPS[*]}"
-    print_status "Attempting to install missing dependencies..."
+    print_warning "Missing system dependencies: ${MISSING_DEPS[*]}"
+    print_status "Attempting to install missing dependencies (requires sudo)..."
 
     # Detect package manager
     if command -v apt-get &> /dev/null; then
@@ -134,11 +148,6 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
                 elif [[ $PKG_MANAGER == "pacman" ]]; then
                     $INSTALL_CMD base-devel openssl zeromq unbound sodium libunwind xz readline expat openpgm qt5-tools hidapi libusb protobuf systemd boost python ccache
                 fi
-                ;;
-            "rust")
-                print_status "Installing Rust toolchain..."
-                curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-                source ~/.cargo/env
                 ;;
         esac
     done
