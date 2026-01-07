@@ -14,7 +14,12 @@ rm -rf shadow.data shadow.log
 ## Running Simulation (Background Mode)
 
 ```bash
-rm -rf shadow.data && nohup shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+rm -rf shadow.data && nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+```
+
+Or use the convenience script:
+```bash
+./run_sim.sh
 ```
 
 ## Monitoring
@@ -30,4 +35,9 @@ tail shadow.log
 
 Expect: "N managed processes in unexpected final state"
 - Means: Simulation reached time limit, killed processes
-- Status: **Normal behavior**, not an error 
+- Status: **Normal behavior**, not an error
+
+## Key Paths
+- Shadow binary: `~/.monerosim/bin/shadow`
+- Shadow libraries: `~/.monerosim/lib/`
+- Output: `shadow.data/hosts/[hostname]/`

@@ -7,12 +7,12 @@ Rust-based configuration generator for Shadow network simulator to run realistic
 Enables controlled, reproducible Monero network research and testing without deploying real infrastructure.
 
 ## Key Capabilities
-- **Scalable Simulations**: 2-40 Monero nodes on single machine
-- **Agent Framework**: Autonomous miners, users, and network participants
-- **Network Topologies**: Switch-based (simple) or GML-based (realistic internet-like)
+- **Scalable Simulations**: 2-1000+ agents on single machine (tested up to 1000)
+- **Agent Framework**: Autonomous miners (Poisson-based), users, distributors, monitors
+- **Network Topologies**: Switch-based (simple) or CAIDA GML-based (realistic internet)
 - **Geographic Distribution**: Automatic IP allocation across 6 continents
 - **Peer Discovery**: Dynamic, Hardcoded, or Hybrid connection modes
-- **Reproducible**: Deterministic simulations for scientific research
+- **Reproducible**: Deterministic simulations via `simulation_seed`
 
 ## Primary Use Cases
 1. Protocol modification testing in safe environment
@@ -20,6 +20,7 @@ Enables controlled, reproducible Monero network research and testing without dep
 3. Performance analysis under various conditions
 4. P2P networking behavior studies
 5. Academic cryptocurrency research
+6. Large-scale network topology analysis
 
 ## Target Users
 - Monero protocol researchers
@@ -28,4 +29,4 @@ Enables controlled, reproducible Monero network research and testing without dep
 - Academic distributed systems researchers
 
 ## Maturity Status
-**Production-ready** - 40+ agent simulations validated. Basic 2-node requirements achieved. Focus: large-scale stability and advanced features.
+**Production-ready** - Validated with configurations up to 1000 agents. CAIDA-based realistic internet topologies supported. Autonomous mining with full determinism.
