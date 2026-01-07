@@ -46,7 +46,7 @@ If you have old configurations using `block_controller`, use the migration utili
 python scripts/migrate_mining_config.py your_config.yaml
 ```
 
-See [`config_autonomous_mining.yaml`](config_autonomous_mining.yaml) for a complete example.
+See [`examples/config_large_scale.yaml`](examples/config_large_scale.yaml) or [`config_32_agents.yaml`](config_32_agents.yaml) for complete examples.
 
 ## Network Scaling and Large-Scale Topologies
 
@@ -98,7 +98,7 @@ For detailed information, see [NETWORK_SCALING_GUIDE.md](NETWORK_SCALING_GUIDE.m
 3. **Run an Agent-Based Simulation**
    ```bash
    # Generate agent-based configuration (small/medium/large)
-   ./target/release/monerosim --config config_47_agents.yaml --output shadow_agents_output
+   ./target/release/monerosim --config config_32_agents.yaml --output shadow_agents_output
    
    # Run the simulation
    shadow shadow_agents_output/shadow_agents.yaml
@@ -110,23 +110,27 @@ For detailed information, see [NETWORK_SCALING_GUIDE.md](NETWORK_SCALING_GUIDE.m
 monerosim/
 ├── src/                      # Rust source code
 │   ├── main.rs              # CLI entry point
-│   ├── config_v2.rs         # Configuration parsing
-│   ├── build.rs             # Monero build management
-│   └── shadow_agents.rs     # Agent-based Shadow config generation
+│   ├── config_v2.rs         # Configuration structures
+│   ├── config_loader.rs     # YAML configuration loading
+│   ├── orchestrator.rs      # Shadow config generation orchestration
+│   └── gml_parser.rs        # GML topology file parser
 ├── agents/                   # Python agent framework
 │   ├── agent_discovery.py   # Dynamic agent discovery system
 │   ├── base_agent.py        # Base agent class
+│   ├── autonomous_miner.py  # Autonomous mining agent (Poisson-based)
 │   ├── regular_user.py      # User agent implementation
-│   ├── autonomous_miner.py  # Autonomous mining agent
+│   ├── miner_distributor.py # Mining reward distribution
+│   ├── simulation_monitor.py # Real-time monitoring agent
 │   └── monero_rpc.py        # RPC client library
-├── scripts/                  # Python test and utility scripts
-│   ├── simple_test.py       # Basic functionality test
-│   ├── sync_check.py        # Network synchronization test
-│   ├── transaction_script.py # Transaction testing
-│   └── monitor.py           # Real-time monitoring
-├── legacy_scripts/          # Deprecated bash scripts (historical reference)
+├── scripts/                  # Python utility scripts
+│   ├── log_processor.py     # Log analysis and processing
+│   ├── sync_check.py        # Network synchronization monitoring
+│   └── migrate_mining_config.py # Config migration utility
+├── gml_processing/          # Network topology generation
+│   └── create_large_scale_caida_gml.py # CAIDA-based topology generator
+├── examples/                # Example configurations
 ├── docs/                    # Detailed documentation
-├── config*.yaml             # Example configurations
+├── config_32_agents.yaml    # Default configuration
 └── setup.sh                 # Environment setup script
 ```
 
@@ -138,7 +142,6 @@ monerosim/
 - [GML Integration](.kilocode/rules/memory-bank/architecture.md#gml-integration) - Complex network topologies
 - [Development Guide](.kilocode/rules/memory-bank/tech.md) - Technical stack and development setup
 - [Project Status](.kilocode/rules/memory-bank/status.md) - Current development status
-- [Agent Discovery System](agents/README_agent_discovery.md) - Dynamic agent discovery
 - [Brief Overview](.kilocode/rules/memory-bank/brief.md) - Project goals and requirements
 
 ## Python Scripts
@@ -182,7 +185,6 @@ wallets = ad.get_wallet_agents()
 agent = ad.get_agent_by_id('user001')
 ```
 
-For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ## Peer Discovery Modes
 
@@ -220,13 +222,15 @@ Pre-built network topology templates for structured peer connections:
 The agent-based simulation framework enables realistic cryptocurrency network modeling:
 
 ### Agent Types
+- **Autonomous Miners**: Independent miners using Poisson-distributed block generation
 - **Regular Users**: Autonomous wallet holders sending transactions
-- **Block Controller**: Orchestrates mining across pools
+- **Miner Distributor**: Distributes mining rewards to eligible wallets
+- **Simulation Monitor**: Real-time monitoring and status reporting
 
-### Simulation Scales
-- **Small** (`config_agents_small.yaml`): 2-10 participants for development
-- **Medium** (`config_agents_medium.yaml`): 10-50 participants for testing
-- **Large** (`config_agents_large.yaml`): 50-100+ participants for research
+### Example Configurations
+- **Standard** (`config_32_agents.yaml`): 32 agents with realistic network topology
+- **Large Scale** (`examples/config_large_scale.yaml`): Large network simulations
+- **CAIDA Topology** (`examples/config_caida_large_scale.yaml`): Realistic internet topology
 
 ### Features
 - Autonomous decision-making based on configurable parameters
@@ -240,11 +244,10 @@ The agent-based simulation framework enables realistic cryptocurrency network mo
 The Agent Discovery System provides a unified interface for discovering and interacting with agents:
 
 - **Dynamic Discovery**: Agents are discovered at runtime from shared state files
-- **Type-Based Queries**: Find agents by type (miners, wallets, block controllers)
+- **Type-Based Queries**: Find agents by type (miners, wallets, users)
 - **Attribute Filtering**: Filter agents based on their attributes
 - **Caching**: Performance-optimized with 5-second TTL cache
 
-For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ## Requirements
 
@@ -311,7 +314,6 @@ for miner in miners:
     pass
 ```
 
-For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ### Code Style
 - **Rust**: Follow standard Rust conventions (use `cargo fmt` and `cargo clippy`)

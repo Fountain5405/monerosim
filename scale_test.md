@@ -12,16 +12,27 @@ Config generator for scaling tests.
 **Usage:**
 ```bash
 python scripts/generate_config.py --agents 50 -o test_50.yaml
-python scripts/generate_config.py --agents 100 --duration 4h -o test_100.yaml
+python scripts/generate_config.py --agents 100 --duration 8h -o test_100.yaml
+python scripts/generate_config.py --agents 1000 -o test_1000.yaml
 ```
 
 **Features:**
 - Fixed 5 miners (core network) with hashrates: 25, 25, 30, 10, 10
-- Variable users (total - 5) starting at 1h mark, staggered 1s apart
-- Default duration: 4h
+- Variable users (total - 5) starting at 1h mark, staggered **5s apart** (default)
+- Default simulation duration: **6h**
 - Uses GML network topology (matches config_32_agents.yaml)
 - Users get `can_receive_distributions: true` for funding
 - Includes `enable_dns_server: true` (required for peer connectivity)
+
+**Stagger timing for different agent counts:**
+| Agents | Users | Last User Starts At |
+|--------|-------|---------------------|
+| 50     | 45    | 1h 3m 45s           |
+| 100    | 95    | 1h 7m 55s           |
+| 200    | 195   | 1h 16m 15s          |
+| 400    | 395   | 1h 32m 55s          |
+| 800    | 795   | 2h 6m 15s           |
+| 1000   | 995   | 2h 22m 55s          |
 
 ### 2. `scripts/scaling_test.sh`
 Automated test harness for scaling tests.
@@ -32,8 +43,8 @@ Automated test harness for scaling tests.
 ```
 
 **Features:**
-- Tests: 50, 100, 200, 400, 800 agents
-- 30-minute timeout per test (may need increase for 100+ agents)
+- Tests: 50, 100, 200, 400, 800, 1000 agents
+- **1-hour timeout** per test (detects early completion via "Finished simulation" in logs)
 - Captures peak RAM via `/usr/bin/time -v`
 - Outputs results to `scaling_results.txt`
 - Properly handles Shadow's "processes still running" exit condition
@@ -85,8 +96,8 @@ Automated test harness for scaling tests.
 
 ## Next Steps
 
-1. **Increase timeout** for 100+ agent tests (30 min -> 60 min?)
-2. **Re-run scaling tests** with fixed config generator
+1. ~~**Increase timeout** for 100+ agent tests~~ ✅ Done - 1h timeout, 6h sim, 5s stagger
+2. **Re-run scaling tests** with new settings
 3. **Goal:** Find maximum agent count on 32GB hardware
 
 ## Hardware

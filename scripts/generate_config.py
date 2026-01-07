@@ -244,15 +244,15 @@ Additional agents are regular users starting at the 1-hour mark.
     parser.add_argument(
         "--duration", "-d",
         type=str,
-        default="4h",
-        help="Simulation duration (default: 4h)"
+        default="6h",
+        help="Simulation duration (default: 6h)"
     )
 
     parser.add_argument(
         "--stagger-interval",
         type=int,
-        default=1,
-        help="Seconds between user starts (default: 1)"
+        default=5,
+        help="Seconds between user starts (default: 5)"
     )
 
     parser.add_argument(

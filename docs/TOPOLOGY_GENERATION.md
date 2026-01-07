@@ -183,7 +183,7 @@ The topology generation system integrates with Monerosim's GML parser (`src/gml_
 
 ### Shadow Configuration Generation
 
-Integration with `src/shadow_agents.rs`:
+Integration with `src/orchestrator.rs`:
 
 1. **IP Reuse**: Uses pre-allocated IPs from GML nodes instead of generating new ones
 2. **Geographic Awareness**: Places agents considering geographic distribution

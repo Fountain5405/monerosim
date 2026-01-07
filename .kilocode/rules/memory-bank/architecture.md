@@ -12,7 +12,7 @@ Rust tool generating Shadow simulator configs for Monero network simulations wit
 - `main.rs:112` - CLI entry point (clap argument parser)
 - `config_v2.rs:292` - Type-safe config structures (serde YAML/JSON)
 - `config_loader.rs:87` - Config file loading and migration
-- `shadow_orchestrator.rs` - Main orchestration logic (replaces shadow_agents.rs)
+- `orchestrator.rs` - Main orchestration logic
 - `gml_parser.rs:1004` - GML graph parser for complex topologies
 
 **Modular Architecture (Post-Refactoring)**:
@@ -103,7 +103,7 @@ network:
 ### IP Allocation Strategy
 Geographic distribution across 6 continents:
 ```rust
-// Example from shadow_agents.rs
+// IP allocation example
 region = agent_number % 6
 match region {
   0 => (10, subnet, "North America"),
@@ -131,7 +131,6 @@ Decentralized coordination via shared state:
 /tmp/monerosim_shared/
 ├── agent_registry.json      # All agents + attributes
 ├── miners.json               # Hashrate weights
-├── block_controller.json     # Mining status
 ├── transactions.json         # Transaction log
 └── [agent]_stats.json        # Per-agent stats
 ```
@@ -170,16 +169,16 @@ graph [
 ## File Paths
 
 **Source**:
-- `/src/main.rs`, `config_v2.rs`, `gml_parser.rs`, `shadow_agents.rs`
+- `/src/main.rs`, `config_v2.rs`, `config_loader.rs`, `gml_parser.rs`, `orchestrator.rs`
 
 **Agents**:
-- `/agents/base_agent.py`, `block_controller.py`, `regular_user.py`, `monero_rpc.py`, `agent_discovery.py`
+- `/agents/base_agent.py`, `autonomous_miner.py`, `regular_user.py`, `monero_rpc.py`, `agent_discovery.py`
 
 **Scripts**:
-- `/scripts/sync_check.py`, `log_processor.py`, `analyze_*.py`
+- `/scripts/sync_check.py`, `log_processor.py`, `migrate_mining_config.py`
 
 **Config**:
-- `/config_*.yaml` (examples), `/testnet.gml` (example topology)
+- `/config_32_agents.yaml` (default), `/examples/*.yaml` (examples)
 
 **Generated**:
 - `/shadow_output/shadow_agents.yaml`

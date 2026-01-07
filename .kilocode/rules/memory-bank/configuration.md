@@ -103,4 +103,9 @@ agents:
 
 ## Example Configurations
 
-The working configuation, scale (30 agents): `config_30_agents.yaml`
+The current default configuration: `config_32_agents.yaml`
+
+Additional examples in `examples/` directory:
+- `config_large_scale.yaml` - Large network simulations
+- `config_caida_large_scale.yaml` - CAIDA-based topology
+- `config_sparse_placement.yaml` - Sparse agent placement

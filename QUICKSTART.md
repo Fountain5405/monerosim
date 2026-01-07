@@ -31,9 +31,9 @@ The script will:
 - ✅ Clone and patch Monero source code for Shadow compatibility
 - ✅ Build MoneroSim
 - ✅ Build Monero binaries with Shadow patches
-- ✅ Install Monero binaries to system PATH
+- ✅ Install Monero binaries to `~/.monerosim/bin/`
 - ✅ Prompt you about Shadow installation (if existing Shadow detected)
-- ✅ Prompt you whether to run a test simulation (config_47_agents.yaml takes 6-7 hours)
+- ✅ Prompt you whether to run a test simulation (config_32_agents.yaml takes ~4 hours)
 - ✅ Show you the results if you choose to run the test
 
 ## What You'll See
@@ -57,10 +57,10 @@ source venv/bin/activate
 
 ```bash
 # Edit simulation parameters
-vim config_47_agents.yaml
+vim config_32_agents.yaml
 
 # Generate new configuration
-./target/release/monerosim --config config_47_agents.yaml --output shadow_agents_output
+./target/release/monerosim --config config_32_agents.yaml --output shadow_agents_output
 
 # Run simulation
 shadow shadow_agents_output/shadow_agents.yaml
@@ -100,24 +100,26 @@ MoneroSim uses a dynamic agent discovery system that automatically finds and tra
 - **Dynamic Discovery**: Agents are discovered at runtime, not hardcoded
 - **Type-Based Queries**: Find miners, wallets, and other agents by type
 
-For more details, see [Agent Discovery System](agents/README_agent_discovery.md).
 
 ### Change Simulation Duration
 
-Edit `config_47_agents.yaml`:
+Edit `config_32_agents.yaml`:
 ```yaml
 general:
-  stop_time: "30m"  # Run for 30 minutes instead of ~6.7 hours
+  stop_time: "30m"  # Run for 30 minutes instead of ~4 hours
+  simulation_seed: 12345  # For reproducibility
 
 agents:
   user_agents:
-    # Add more users to increase simulation size
+    # Miner agent
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      mining_script: "agents.autonomous_miner"
       attributes:
         is_miner: "true"
         hashrate: "50"
 
+    # User agent (sends transactions)
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
       user_script: "agents.regular_user"
@@ -140,6 +142,5 @@ agents:
 - Check the full README.md for detailed documentation
 - Look at Shadow logs: `shadow.data/shadow.log`
 - Check node logs: `shadow.data/hosts/*/monerod.*.stdout`
-- Review Agent Discovery documentation: [Agent Discovery System](agents/README_agent_discovery.md)
 
 **Happy simulating!** 🚀

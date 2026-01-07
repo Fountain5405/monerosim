@@ -9,9 +9,9 @@
 set -e
 
 # Configuration
-TIMEOUT=3600  # 60 minutes in seconds (increased for 100+ agents with GML topology)
+TIMEOUT=3600  # 1 hour - script detects early completion via "Finished simulation" in logs
 RESULTS="scaling_results.txt"
-AGENT_COUNTS=(50 100 200 400 800)
+AGENT_COUNTS=(50 100 200 400 800 1000)
 MONEROSIM_BIN="./target/release/monerosim"
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 TEMP_DIR="/tmp/monerosim_scaling_test"
@@ -61,8 +61,8 @@ get_system_info() {
     local cpu_count=$(nproc)
     echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')"
     echo "# Hardware: ${mem_total} RAM, ${cpu_count} CPUs"
-    echo "# Timeout: ${TIMEOUT}s ($(($TIMEOUT / 60)) minutes)"
-    echo "# Config: 5 fixed miners + variable users, 4h sim duration"
+    echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes)"
+    echo "# Config: 5 fixed miners + variable users, 6h sim duration, 5s stagger"
     echo ""
 }
 
@@ -77,7 +77,7 @@ run_test() {
 
     echo -e "${YELLOW}Testing $agent_count agents (5 miners + $user_count users)...${NC}"
 
-    # Generate monerosim config
+    # Generate monerosim config (6h duration, 5s stagger)
     echo "  Generating config..."
     python3 scripts/generate_config.py --agents "$agent_count" -o "$config_file" || {
         echo "  FAIL: Config generation failed"

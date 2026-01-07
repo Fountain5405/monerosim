@@ -70,13 +70,15 @@ network:
 
 agents:
   user_agents:
-    # 10 miners
+    # 10 miners using autonomous mining
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      mining_script: "agents.autonomous_miner"
       attributes:
         is_miner: true
         hashrate: "10"
         can_receive_distributions: true
+      count: 10
     # 90 regular users (sparse placement on 5000 nodes)
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
@@ -84,10 +86,7 @@ agents:
       attributes:
         transaction_interval: "300"
         can_receive_distributions: false
-      count: 90  # This will create 90 instances
-
-  block_controller:
-    script: "agents.block_controller"
+      count: 90
 ```
 
 ### Generate Shadow Configuration
@@ -277,18 +276,25 @@ network:
 ```yaml
 agents:
   user_agents:
+    # Miner agents (use mining_script for autonomous mining)
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"  # Optional script
+      mining_script: "agents.autonomous_miner"
       attributes:
-        is_miner: false                  # Boolean
-        hashrate: "10"                   # String percentage
-        can_receive_distributions: true  # Boolean
-        transaction_interval: "300"      # Seconds
-      count: 50                          # Number of instances
+        is_miner: true
+        hashrate: "10"                   # String percentage of total hashrate
+        can_receive_distributions: true
+      count: 10
 
-  block_controller:
-    script: "agents.block_controller"
+    # Regular user agents (use user_script for transactions)
+    - daemon: "monerod"
+      wallet: "monero-wallet-rpc"
+      user_script: "agents.regular_user"
+      attributes:
+        is_miner: false
+        can_receive_distributions: true
+        transaction_interval: "300"      # Seconds between transactions
+      count: 50
 ```
 
 ### Performance Tuning

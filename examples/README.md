@@ -52,6 +52,7 @@ agents:
   user_agents:
     - daemon: "monerod"
       wallet: "monero-wallet-rpc"
+      mining_script: "agents.autonomous_miner"  # Autonomous mining
       attributes:
         is_miner: true
         hashrate: "5"
