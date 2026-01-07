@@ -13,7 +13,7 @@ TIMEOUT=3600  # 60 minutes in seconds (increased for 100+ agents with GML topolo
 RESULTS="scaling_results.txt"
 AGENT_COUNTS=(50 100 200 400 800)
 MONEROSIM_BIN="./target/release/monerosim"
-SHADOW_BIN="$HOME/.local/bin/shadow"
+SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 TEMP_DIR="/tmp/monerosim_scaling_test"
 
 # Colors for output
