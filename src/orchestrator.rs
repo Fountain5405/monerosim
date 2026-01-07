@@ -20,6 +20,26 @@ use serde_json;
 use serde_yaml;
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::fs;
+
+/// Detect the Python site-packages path in the virtual environment.
+/// Looks for venv/lib/python*/site-packages and returns the path.
+fn detect_venv_site_packages(base_dir: &str) -> Option<String> {
+    let venv_lib = format!("{}/venv/lib", base_dir);
+    if let Ok(entries) = fs::read_dir(&venv_lib) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("python") {
+                let site_packages = format!("{}/{}/site-packages", venv_lib, name_str);
+                if Path::new(&site_packages).exists() {
+                    return Some(site_packages);
+                }
+            }
+        }
+    }
+    None
+}
 
 /// Generate Shadow network configuration from GML graph
 pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str) -> color_eyre::eyre::Result<ShadowGraph> {
@@ -314,7 +334,9 @@ pub fn generate_agent_shadow_config(
         let dns_python_cmd = format!("python3 -m {} {}", dns_script, dns_args);
 
         // Path to virtual environment site-packages (for dnslib and other dependencies)
-        let venv_site_packages = format!("{}/sim_venv/lib/python3.12/site-packages", current_dir);
+        // Dynamically detect Python version in venv, fallback to python3 if not found
+        let venv_site_packages = detect_venv_site_packages(&current_dir)
+            .unwrap_or_else(|| format!("{}/venv/lib/python3/site-packages", current_dir));
 
         // Create wrapper script for DNS server
         let dns_wrapper_script = format!(
