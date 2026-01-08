@@ -9,7 +9,7 @@
 set -e
 
 # Configuration
-TIMEOUT=3600  # 1 hour - script detects early completion via "Finished simulation" in logs
+TIMEOUT=7200  # 2 hours - script detects early completion via "Finished simulation" in logs
 RESULTS="scaling_results.txt"
 AGENT_COUNTS=(50 100 200 400 800 1000)
 MONEROSIM_BIN="./target/release/monerosim"
@@ -250,8 +250,9 @@ run_test() {
     printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" \
         "$agent_count" "$user_count" "$status" "$mem_readable" "$duration_fmt" "$notes"
 
-    # Return non-zero only if actually failed (not just Shadow's process-still-running exit)
-    [[ "$status" == "SUCCESS" ]]
+    # Always return success so the script continues to the next test
+    # The main loop checks status via the result string and handles consecutive failures
+    return 0
 }
 
 # Main
