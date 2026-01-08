@@ -213,20 +213,22 @@ class BaseAgent(ABC):
             self.setup()
             self.logger.info("Starting main agent loop")
 
-            next_run_time = time.time()
-
             while self.running:
-                if time.time() >= next_run_time:
-                    self.logger.debug("Starting agent iteration")
-                    try:
-                        sleep_duration = self.run_iteration()
-                        next_run_time = time.time() + (sleep_duration or 1.0)
-                    except Exception as e:
-                        self.logger.error(f"Error in agent iteration: {e}", exc_info=True)
-                        next_run_time = time.time() + 5  # Default sleep on error
+                self.logger.debug("Starting agent iteration")
+                try:
+                    sleep_duration = self.run_iteration()
+                    sleep_duration = sleep_duration or 1.0
+                except Exception as e:
+                    self.logger.error(f"Error in agent iteration: {e}", exc_info=True)
+                    sleep_duration = 5.0  # Default sleep on error
 
-                # Responsive sleep
-                time.sleep(0.1)
+                # Sleep for the requested duration, checking for shutdown every second
+                # This reduces wakeups from 10/sec (old 0.1s sleep) to 1/sec while
+                # still being responsive to shutdown signals
+                remaining = sleep_duration
+                while remaining > 0 and self.running:
+                    time.sleep(min(remaining, 1.0))
+                    remaining -= 1.0
 
             self.logger.info("Agent run loop finished")
                 

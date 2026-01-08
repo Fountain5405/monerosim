@@ -57,7 +57,12 @@ class AutonomousMinerAgent(BaseAgent):
         self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
         self.agent_seed = self.global_seed + hash(agent_id)
         random.seed(self.agent_seed)
-        
+
+        # Difficulty caching to reduce RPC calls
+        self._cached_difficulty = None
+        self._difficulty_cache_time = 0.0
+        self._difficulty_cache_ttl = float(os.getenv('DIFFICULTY_CACHE_TTL', '30'))
+
         # Mining control
         self.mining_active = False
         
@@ -227,26 +232,47 @@ class AutonomousMinerAgent(BaseAgent):
 
         self.logger.info(f"Parsed mining config: hashrate weight = {self.hashrate_pct}")
 
-    def _get_current_difficulty(self) -> int:
+    def _get_current_difficulty(self, force_refresh: bool = False) -> int:
         """
-        Query current network difficulty via RPC.
-        
+        Query current network difficulty via RPC with caching.
+
+        Uses cached value if available and TTL hasn't expired.
+        TTL is configured via DIFFICULTY_CACHE_TTL environment variable (default: 30s).
+
+        Args:
+            force_refresh: If True, bypass cache and fetch fresh value
+
         Returns:
             Current network difficulty, or 1 if query fails
         """
+        current_time = time.time()
+
+        # Return cached value if valid and not forcing refresh
+        if not force_refresh and self._cached_difficulty is not None:
+            cache_age = current_time - self._difficulty_cache_time
+            if cache_age < self._difficulty_cache_ttl:
+                return self._cached_difficulty
+
         try:
             info = self.agent_rpc.get_info()
             difficulty = info.get('difficulty', 1)
-            
+
             # Ensure difficulty is positive
             if difficulty <= 0:
                 self.logger.warning(f"Invalid difficulty {difficulty}, using minimum value 1")
-                return 1
-                
+                difficulty = 1
+
+            # Update cache
+            self._cached_difficulty = difficulty
+            self._difficulty_cache_time = current_time
+
             return difficulty
-            
+
         except Exception as e:
             self.logger.error(f"Failed to get difficulty: {e}")
+            # Return cached value if available, otherwise fallback
+            if self._cached_difficulty is not None:
+                return self._cached_difficulty
             return 1  # Fallback to minimum difficulty
             
     def _calculate_next_block_time(self) -> float:

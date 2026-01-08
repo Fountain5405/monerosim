@@ -133,6 +133,18 @@ pub struct GeneralConfig {
     /// When enabled, a DNS server agent is created and monerod uses DNS_PUBLIC to connect to it
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_dns_server: Option<bool>,
+    /// TTL in seconds for difficulty caching in autonomous miners
+    /// Reduces RPC calls by caching difficulty (default: 30 seconds)
+    #[serde(default = "default_difficulty_cache_ttl")]
+    pub difficulty_cache_ttl: u32,
+    /// Shadow log level (trace, debug, info, warn, error)
+    /// Lower levels reduce I/O overhead (default: "info")
+    #[serde(default = "default_shadow_log_level")]
+    pub shadow_log_level: String,
+    /// Shadow runahead duration (e.g., "1ms", "10ms")
+    /// Experimental: may improve simulation speed at cost of accuracy
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runahead: Option<String>,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -141,6 +153,14 @@ fn default_simulation_seed() -> u64 {
 
 fn default_parallelism() -> u32 {
     0  // Auto-detect CPU cores for best performance
+}
+
+fn default_difficulty_cache_ttl() -> u32 {
+    30  // 30 seconds - difficulty doesn't change frequently in simulation
+}
+
+fn default_shadow_log_level() -> String {
+    "info".to_string()  // Reduced from "trace" to lower I/O overhead
 }
 
 /// Agent definitions
@@ -1008,6 +1028,9 @@ impl Default for GeneralConfig {
             simulation_seed: default_simulation_seed(),
             parallelism: default_parallelism(),
             enable_dns_server: None,
+            difficulty_cache_ttl: default_difficulty_cache_ttl(),
+            shadow_log_level: default_shadow_log_level(),
+            runahead: None,
         }
     }
 }

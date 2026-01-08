@@ -206,6 +206,7 @@ pub fn generate_agent_shadow_config(
         ("PYTHONUNBUFFERED".to_string(), "1".to_string()), // Ensure Python output is unbuffered
         ("PYTHONHASHSEED".to_string(), "0".to_string()), // Deterministic Python hash() for reproducibility
         ("SIMULATION_SEED".to_string(), config.general.simulation_seed.to_string()), // Add simulation seed for all agents
+        ("DIFFICULTY_CACHE_TTL".to_string(), config.general.difficulty_cache_ttl.to_string()), // TTL for miner difficulty caching
     ].iter().cloned().collect();
 
     // Add MONEROSIM_LOG_LEVEL if specified in config
@@ -745,10 +746,10 @@ echo "Starting DNS server..."
             seed: config.general.simulation_seed,  // Shadow uses this to seed all RNGs for determinism
             parallelism: config.general.parallelism,  // 0=auto, 1=deterministic, N=N threads
             model_unblocked_syscall_latency: true,
-            log_level: config.general.log_level.clone().unwrap_or("trace".to_string()),
+            log_level: config.general.shadow_log_level.clone(),  // Use shadow_log_level (default: "info")
         },
         experimental: ShadowExperimental {
-            runahead: None,
+            runahead: config.general.runahead.clone(),  // Optional runahead for performance tuning
             use_dynamic_runahead: true,
         },
         network: ShadowNetwork {
