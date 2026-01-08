@@ -711,27 +711,11 @@ echo "Starting DNS server..."
     let miner_registry_json = serde_json::to_string_pretty(&miner_registry)?;
     std::fs::write(&miner_registry_path, &miner_registry_json)?;
 
-    // For GML topologies, ensure all nodes in the GML file have corresponding hosts in Shadow
-    // This is required because Shadow expects a 1:1 mapping between GML nodes and hosts
-    if let Some(gml) = &gml_graph {
-        if using_gml_topology {
-            for node in &gml.nodes {
-                let dummy_host_name = format!("gml-node-{}", node.id);
-                if !hosts.contains_key(&dummy_host_name) {
-                    // Create a dummy host for this GML node with no processes
-                    let dummy_host = ShadowHost {
-                        network_node_id: node.id,
-                        ip_addr: None, // No IP needed for dummy hosts
-                        processes: Vec::new(), // No processes to run
-                        bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
-                        bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
-                    };
-                    hosts.insert(dummy_host_name, dummy_host);
-                    log::debug!("Created dummy host for GML node {}", node.id);
-                }
-            }
-        }
-    }
+    // Note: GML topologies do NOT require a 1:1 mapping between nodes and Shadow hosts.
+    // Shadow only requires that each host's network_node_id references a valid GML node.
+    // Multiple hosts can share the same network_node_id, and GML nodes without hosts are fine.
+    // Previously, dummy hosts were created for every GML node, causing significant overhead
+    // in large-scale simulations (1200 empty hosts for a 1200-node GML file).
 
     // BTreeMap is already sorted by key, ensuring consistent ordering in output
 
