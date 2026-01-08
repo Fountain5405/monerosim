@@ -1,31 +1,9 @@
-# Scaling Test Results - 2026-01-06 01:14:27
+# Scaling Test Results - 2026-01-08 05:48:52
 # Hardware: 31Gi RAM, 24 CPUs
 # Timeout: 3600s (60 minutes)
-# Config: 5 fixed miners + variable users, 4h sim duration
+# Config: 5 fixed miners + variable users, 6h sim duration, 5s stagger
 
 Agents  | Users  | Status  | Peak RAM | Duration | Notes
 --------|--------|---------|----------|----------|------
-[1;33mTesting 50 agents (5 miners + 45 users)...[0m
-  Generating config...
-Generated config with 50 agents (45 users) -> /tmp/monerosim_scaling_test/config_50.yaml
-  Generating shadow config...
-    - 192.168: 8 IPs assigned
-  - Total IPs assigned: 54
-[2026-01-06T01:14:27Z INFO  monerosim] Generated Agent-based Shadow configuration: "/tmp/monerosim_scaling_test/shadow_50/shadow_agents.yaml"
-[2026-01-06T01:14:27Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/tmp/monerosim_scaling_test/shadow_50/shadow_agents.yaml"
-[2026-01-06T01:14:27Z INFO  monerosim] Configuration parsing completed successfully
-  Running shadow (timeout: 3600s)...
-  [0;32mSUCCESS[0m - Completed in 21:06, peak RAM: 315MB
-50      | 45     | SUCCESS | 315MB    | 21:06    | Sim completed (processes still running at end)
-[1;33mTesting 100 agents (5 miners + 95 users)...[0m
-  Generating config...
-Generated config with 100 agents (95 users) -> /tmp/monerosim_scaling_test/config_100.yaml
-  Generating shadow config...
-    - 192.168: 12 IPs assigned
-  - Total IPs assigned: 104
-[2026-01-06T01:35:46Z INFO  monerosim] Generated Agent-based Shadow configuration: "/tmp/monerosim_scaling_test/shadow_100/shadow_agents.yaml"
-[2026-01-06T01:35:46Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/tmp/monerosim_scaling_test/shadow_100/shadow_agents.yaml"
-[2026-01-06T01:35:46Z INFO  monerosim] Configuration parsing completed successfully
-  Running shadow (timeout: 3600s)...
-  [0;32mSUCCESS[0m - Completed in 40:48, peak RAM: 312MB
-100     | 95     | SUCCESS | 312MB    | 40:48    | Sim completed (processes still running at end)
+Generated config with 50 agents (45 users), GML: gml_processing/1200_nodes_caida_with_loops.gml -> /tmp/monerosim_scaling_test/config_50.yaml
+50      | 45     | SUCCESS | N/A      | 37:14    | Sim completed (processes still running at end)
