@@ -39,6 +39,31 @@ print_header() {
 # Store the script directory for reliable navigation
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Parse command line arguments
+FULL_MONERO_COMPILE=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --full-monero-compile)
+            FULL_MONERO_COMPILE=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: ./setup.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --full-monero-compile  Build all Monero binaries (slower)"
+            echo "                         Default: only build monerod and monero-wallet-rpc"
+            echo "  -h, --help             Show this help message"
+            exit 0
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 # Check if we're in the right directory
 if [[ ! -f "Cargo.toml" ]] || [[ ! -d "src" ]]; then
     print_error "Please run this script from the monerosim project directory"
@@ -414,8 +439,13 @@ print_success "Monero source ready"
 # Step 6: Build Monero Binaries
 print_header "Step 6: Building Monero Binaries"
 
-print_status "Building Monero binaries..."
-print_status "This will take several minutes (15-30 minutes depending on system)..."
+if [[ "$FULL_MONERO_COMPILE" == "true" ]]; then
+    print_status "Building ALL Monero binaries..."
+    print_status "This will take 15-30 minutes depending on system..."
+else
+    print_status "Building Monero binaries (monerod and monero-wallet-rpc only)..."
+    print_status "This will take 5-15 minutes depending on system..."
+fi
 
 # Navigate to monero directory
 cd "$MONERO_DIR"
@@ -433,9 +463,16 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-# Build with make using all available processors
-print_status "Compiling Monero (this takes a while)..."
-make -j$(nproc)
+# Build Monero binaries
+if [[ "$FULL_MONERO_COMPILE" == "true" ]]; then
+    print_status "Compiling ALL Monero binaries (--full-monero-compile enabled)..."
+    make -j$(nproc)
+else
+    # Build only the binaries we need (daemon and wallet_rpc_server)
+    # This is much faster than building everything
+    print_status "Compiling monerod and monero-wallet-rpc only (use --full-monero-compile for all)..."
+    make -j$(nproc) daemon wallet_rpc_server
+fi
 
 if [[ $? -ne 0 ]]; then
     print_error "Failed to build Monero binaries"
