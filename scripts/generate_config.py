@@ -87,25 +87,8 @@ def generate_user_agent(index: int, start_offset_s: int) -> Dict[str, Any]:
     }
 
 
-# GML files by size (nodes)
-GML_FILES = {
-    50: "gml_processing/caida_connected_sparse_with_loops_fixed.gml",
-    150: "gml_processing/150_nodes_caida_with_loops.gml",
-    5000: "gml_processing/test_5000_nodes_caida_undirected_selfloops.gml",
-}
-
-
-def select_gml_for_agents(agent_count: int) -> str:
-    """Select appropriate GML file based on agent count.
-
-    Need at least as many GML nodes as agents for sparse placement.
-    """
-    if agent_count <= 50:
-        return GML_FILES[50]
-    elif agent_count <= 150:
-        return GML_FILES[150]
-    else:
-        return GML_FILES[5000]
+# Single GML file for all tests (1200 nodes supports up to 1200 agents)
+DEFAULT_GML_PATH = "gml_processing/1200_nodes_caida_with_loops.gml"
 
 
 def generate_config(
@@ -113,16 +96,12 @@ def generate_config(
     duration: str,
     stagger_interval_s: int,
     simulation_seed: int = 12345,
-    gml_path: str = None,  # Auto-select if None
+    gml_path: str = DEFAULT_GML_PATH,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration."""
 
     num_miners = len(FIXED_MINERS)
     num_users = total_agents - num_miners
-
-    # Auto-select GML file if not specified
-    if gml_path is None:
-        gml_path = select_gml_for_agents(total_agents)
 
     if num_users < 0:
         raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
@@ -294,8 +273,8 @@ Additional agents are regular users starting at the 1-hour mark.
     parser.add_argument(
         "--gml",
         type=str,
-        default=None,
-        help="Path to GML topology file (default: auto-select based on agent count)"
+        default=DEFAULT_GML_PATH,
+        help=f"Path to GML topology file (default: {DEFAULT_GML_PATH})"
     )
 
     args = parser.parse_args()
