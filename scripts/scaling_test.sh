@@ -66,7 +66,66 @@ get_system_info() {
     echo ""
 }
 
+# Memory monitor - runs in background, samples every 5 seconds
+# Writes peak RSS (in KB) to the specified file
+# Args: $1 = PID to monitor, $2 = output file for peak, $3 = log file for samples
+monitor_memory() {
+    local pid=$1
+    local peak_file=$2
+    local sample_log=$3
+    local peak_kb=0
+    local sample_count=0
+    local low_mem_warned=false
+
+    echo "# Memory samples (time, shadow_rss_mb, system_free_mb, system_used_pct)" > "$sample_log"
+
+    while kill -0 "$pid" 2>/dev/null; do
+        # Get total RSS of Shadow and all children (in KB)
+        # Use ps to get all processes in the process group
+        local rss_kb=0
+        while read -r child_rss; do
+            rss_kb=$((rss_kb + child_rss))
+        done < <(pgrep -P "$pid" 2>/dev/null | xargs -I{} ps -o rss= -p {} 2>/dev/null | tr -d ' ' || echo 0)
+
+        # Also add the parent process RSS
+        local parent_rss=$(ps -o rss= -p "$pid" 2>/dev/null | tr -d ' ')
+        if [[ -n "$parent_rss" ]]; then
+            rss_kb=$((rss_kb + parent_rss))
+        fi
+
+        # Track peak
+        if [[ "$rss_kb" -gt "$peak_kb" ]]; then
+            peak_kb=$rss_kb
+        fi
+
+        # Get system memory info
+        local mem_info=$(free -m | awk '/^Mem:/{print $3, $2, $7}')
+        local used_mb=$(echo "$mem_info" | awk '{print $1}')
+        local total_mb=$(echo "$mem_info" | awk '{print $2}')
+        local avail_mb=$(echo "$mem_info" | awk '{print $3}')
+        local used_pct=$((used_mb * 100 / total_mb))
+
+        # Log sample
+        local rss_mb=$((rss_kb / 1024))
+        echo "$(date '+%H:%M:%S'), ${rss_mb}, ${avail_mb}, ${used_pct}%" >> "$sample_log"
+
+        # Warn if system memory is getting low (less than 10% available)
+        if [[ "$used_pct" -gt 90 ]] && [[ "$low_mem_warned" == "false" ]]; then
+            echo -e "  ${YELLOW}WARNING: System memory at ${used_pct}% (${avail_mb}MB free)${NC}" >&2
+            low_mem_warned=true
+        fi
+
+        ((sample_count++))
+        sleep 5
+    done
+
+    # Write peak to file
+    echo "$peak_kb" > "$peak_file"
+    echo "# Samples: $sample_count, Peak RSS: $((peak_kb / 1024))MB" >> "$sample_log"
+}
+
 # Run a single test
+# Status messages go to stderr (console), result line goes to stdout (captured)
 run_test() {
     local agent_count=$1
     local user_count=$((agent_count - 5))
@@ -75,32 +134,32 @@ run_test() {
     local log_file="$TEMP_DIR/run_${agent_count}.log"
     local time_file="$TEMP_DIR/time_${agent_count}.txt"
 
-    echo -e "${YELLOW}Testing $agent_count agents (5 miners + $user_count users)...${NC}"
+    echo -e "${YELLOW}Testing $agent_count agents (5 miners + $user_count users)...${NC}" >&2
 
     # Generate monerosim config (6h duration, 5s stagger)
-    echo "  Generating config..."
-    python3 scripts/generate_config.py --agents "$agent_count" -o "$config_file" || {
-        echo "  FAIL: Config generation failed"
-        echo "$agent_count | $user_count | FAIL | - | - | Config generation failed"
+    echo "  Generating config..." >&2
+    python3 scripts/generate_config.py --agents "$agent_count" -o "$config_file" 2>&2 || {
+        echo "  FAIL: Config generation failed" >&2
+        printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "Config generation failed"
         return 1
     }
 
     # Generate shadow config
-    echo "  Generating shadow config..."
+    echo "  Generating shadow config..." >&2
     rm -rf "$shadow_dir"
     mkdir -p "$shadow_dir"
     # Clean monerosim shared state from previous runs
     rm -rf /tmp/monerosim_shared
-    if ! "$MONEROSIM_BIN" --config "$config_file" --output "$shadow_dir" 2>&1 | tee "$TEMP_DIR/monerosim_${agent_count}.log" | tail -5; then
-        echo "  FAIL: Shadow config generation failed"
-        echo "$agent_count | $user_count | FAIL | - | - | Shadow config generation failed"
+    if ! "$MONEROSIM_BIN" --config "$config_file" --output "$shadow_dir" > "$TEMP_DIR/monerosim_${agent_count}.log" 2>&1; then
+        echo "  FAIL: Shadow config generation failed" >&2
+        printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "Shadow config generation failed"
         return 1
     fi
 
     # Verify shadow config was created
     if [[ ! -f "$shadow_dir/shadow_agents.yaml" ]]; then
-        echo "  FAIL: shadow_agents.yaml not created"
-        echo "$agent_count | $user_count | FAIL | - | - | shadow_agents.yaml not created"
+        echo "  FAIL: shadow_agents.yaml not created" >&2
+        printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "shadow_agents.yaml not created"
         return 1
     fi
 
@@ -108,24 +167,44 @@ run_test() {
     rm -rf shadow.data/
     rm -rf shadow.log
 
+    # Files for memory monitoring
+    local peak_file="$TEMP_DIR/peak_${agent_count}.txt"
+    local sample_log="$TEMP_DIR/memory_samples_${agent_count}.csv"
+
     # Run shadow with timeout and capture stats
-    echo "  Running shadow (timeout: ${TIMEOUT}s)..."
+    echo "  Running shadow (timeout: ${TIMEOUT}s)..." >&2
     local start_time=$(date +%s)
 
-    # Run with /usr/bin/time to capture memory stats
-    /usr/bin/time -v timeout "$TIMEOUT" "$SHADOW_BIN" "$shadow_dir/shadow_agents.yaml" \
-        > "$log_file" 2>&1
+    # Start Shadow in background
+    timeout "$TIMEOUT" "$SHADOW_BIN" "$shadow_dir/shadow_agents.yaml" \
+        > "$log_file" 2>&1 &
+    local shadow_pid=$!
+
+    # Start memory monitor in background
+    monitor_memory "$shadow_pid" "$peak_file" "$sample_log" &
+    local monitor_pid=$!
+
+    # Wait for Shadow to finish
+    wait "$shadow_pid" 2>/dev/null
     local exit_code=$?
+
+    # Give monitor a moment to finish, then kill if still running
+    sleep 1
+    kill "$monitor_pid" 2>/dev/null
+    wait "$monitor_pid" 2>/dev/null
 
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
     local duration_fmt=$(printf "%d:%02d" $((duration / 60)) $((duration % 60)))
 
-    # Extract memory from time output (in KB, convert to readable)
-    # Use -a to treat binary files as text (shadow logs may contain binary data)
-    local mem_kb=$(grep -a "Maximum resident set size" "$log_file" | awk '{print $NF}')
+    # Read peak memory from monitor
+    local mem_kb=0
+    if [[ -f "$peak_file" ]]; then
+        mem_kb=$(cat "$peak_file")
+    fi
+
     local mem_readable=""
-    if [[ -n "$mem_kb" ]]; then
+    if [[ -n "$mem_kb" && "$mem_kb" -gt 0 ]]; then
         local mem_mb=$((mem_kb / 1024))
         if [[ $mem_mb -gt 1024 ]]; then
             mem_readable="$(echo "scale=1; $mem_mb / 1024" | bc)GB"
@@ -147,24 +226,24 @@ run_test() {
 
     if [[ $exit_code -eq 0 ]]; then
         status="SUCCESS"
-        echo -e "  ${GREEN}SUCCESS${NC} - Completed in $duration_fmt, peak RAM: $mem_readable"
+        echo -e "  ${GREEN}SUCCESS${NC} - Completed in $duration_fmt, peak RAM: $mem_readable" >&2
     elif [[ $exit_code -eq 124 ]]; then
         status="TIMEOUT"
         notes="Exceeded ${TIMEOUT}s timeout"
-        echo -e "  ${YELLOW}TIMEOUT${NC} - Exceeded timeout after $duration_fmt"
+        echo -e "  ${YELLOW}TIMEOUT${NC} - Exceeded timeout after $duration_fmt" >&2
     elif [[ $exit_code -eq 137 ]]; then
         status="OOM"
         notes="Killed by OOM killer (SIGKILL)"
-        echo -e "  ${RED}OOM${NC} - Killed after $duration_fmt, peak RAM: $mem_readable"
+        echo -e "  ${RED}OOM${NC} - Killed after $duration_fmt, peak RAM: $mem_readable" >&2
     elif [[ -n "$sim_finished" ]]; then
         # Shadow completed but exited with error due to process states
         status="SUCCESS"
         notes="Sim completed (processes still running at end)"
-        echo -e "  ${GREEN}SUCCESS${NC} - Completed in $duration_fmt, peak RAM: $mem_readable"
+        echo -e "  ${GREEN}SUCCESS${NC} - Completed in $duration_fmt, peak RAM: $mem_readable" >&2
     else
         status="FAIL"
         notes="Exit code: $exit_code"
-        echo -e "  ${RED}FAIL${NC} - Exit code $exit_code after $duration_fmt"
+        echo -e "  ${RED}FAIL${NC} - Exit code $exit_code after $duration_fmt" >&2
     fi
 
     # Output result line
@@ -199,6 +278,7 @@ main() {
     for count in "${AGENT_COUNTS[@]}"; do
         result=$(run_test "$count")
         echo "$result" >> "$RESULTS"
+        echo "$result"  # Also print to console
 
         # Check if we should stop (consecutive failures might indicate we hit the limit)
         if [[ "$result" == *"OOM"* ]] || [[ "$result" == *"TIMEOUT"* ]]; then
@@ -218,9 +298,11 @@ main() {
     echo ""
     cat "$RESULTS"
 
-    # Cleanup
+    # Info about output files
     echo ""
-    echo "Temporary files in: $TEMP_DIR"
+    echo "Results saved to: $RESULTS"
+    echo "Memory samples in: $TEMP_DIR/memory_samples_*.csv"
+    echo "All temp files in: $TEMP_DIR"
 }
 
 main "$@"
