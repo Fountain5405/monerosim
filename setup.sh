@@ -79,6 +79,24 @@ check_command "g++"
 check_command "curl"
 check_command "pkg-config"
 
+# Minimum required Rust version
+MIN_RUST_VERSION="1.82.0"
+
+# Function to compare version strings (returns 0 if $1 >= $2)
+version_gte() {
+    # Extract just the version numbers and compare
+    local ver1=$(echo "$1" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    local ver2="$2"
+
+    if [[ -z "$ver1" ]]; then
+        return 1
+    fi
+
+    # Use sort -V for version comparison
+    local lowest=$(printf '%s\n%s' "$ver1" "$ver2" | sort -V | head -n1)
+    [[ "$lowest" == "$ver2" ]]
+}
+
 # Check for Rust (handled separately - doesn't need sudo)
 NEED_RUST=false
 if ! command -v rustc &> /dev/null || ! command -v cargo &> /dev/null; then
@@ -86,18 +104,31 @@ if ! command -v rustc &> /dev/null || ! command -v cargo &> /dev/null; then
     print_warning "Rust toolchain is not installed"
 else
     RUST_VERSION=$(rustc --version)
-    print_success "Rust is available: $RUST_VERSION"
+    if version_gte "$RUST_VERSION" "$MIN_RUST_VERSION"; then
+        print_success "Rust is available: $RUST_VERSION (>= $MIN_RUST_VERSION)"
+    else
+        NEED_RUST=true
+        print_warning "Rust version too old: $RUST_VERSION (need >= $MIN_RUST_VERSION)"
+    fi
 fi
 
-# Install Rust first if needed (no sudo required)
+# Install or update Rust if needed (no sudo required)
 if [[ "$NEED_RUST" == "true" ]]; then
-    print_status "Installing Rust toolchain (no sudo required)..."
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    source ~/.cargo/env
-    if command -v rustc &> /dev/null; then
-        print_success "Rust installed successfully: $(rustc --version)"
+    if command -v rustup &> /dev/null; then
+        print_status "Updating Rust toolchain via rustup..."
+        rustup update stable
     else
-        print_error "Failed to install Rust"
+        print_status "Installing Rust toolchain (no sudo required)..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    fi
+    source ~/.cargo/env
+
+    RUST_VERSION=$(rustc --version 2>/dev/null)
+    if [[ -n "$RUST_VERSION" ]] && version_gte "$RUST_VERSION" "$MIN_RUST_VERSION"; then
+        print_success "Rust ready: $RUST_VERSION"
+    else
+        print_error "Failed to install/update Rust to >= $MIN_RUST_VERSION"
+        print_error "Current version: $RUST_VERSION"
         exit 1
     fi
 fi
