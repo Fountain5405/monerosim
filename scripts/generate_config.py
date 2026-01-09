@@ -118,7 +118,7 @@ def generate_config(
 
     # Performance settings for fast mode
     tx_interval = "120" if fast_mode else "60"
-    poll_interval = 900 if fast_mode else 500
+    poll_interval = 300  # 5 minutes for reasonable monitoring updates
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
 
@@ -301,7 +301,7 @@ Additional agents are regular users starting at the 1-hour mark.
     parser.add_argument(
         "--fast",
         action="store_true",
-        help="Use performance-friendly settings: runahead=100ms, shadow_log_level=warning, poll_interval=900, tx_interval=120"
+        help="Use performance-friendly settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120"
     )
 
     args = parser.parse_args()
@@ -343,7 +343,7 @@ Additional agents are regular users starting at the 1-hour mark.
 # Users start at: 1h mark, staggered {args.stagger_interval}s apart
 """
     if args.fast:
-        header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=900, tx_interval=120
+        header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120
 """
     header += "\n"
 
