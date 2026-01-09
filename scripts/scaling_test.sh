@@ -3,15 +3,42 @@
 # Scaling test script for monerosim
 # Tests increasing agent counts to find the limit on current hardware
 #
-# Usage: ./scripts/scaling_test.sh
+# Usage: ./scripts/scaling_test.sh [--fast]
 #
 
 set -e
 
+# Parse arguments
+FAST_MODE=""
+CUSTOM_AGENTS=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --fast)
+            FAST_MODE="--fast"
+            shift
+            ;;
+        --agents)
+            CUSTOM_AGENTS="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--fast] [--agents N]"
+            echo "  --fast     Enable performance optimizations"
+            echo "  --agents N Test only N agents (can be comma-separated: 100,200,400)"
+            exit 1
+            ;;
+    esac
+done
+
 # Configuration
 TIMEOUT=7200  # 2 hours - script detects early completion via "Finished simulation" in logs
 RESULTS="scaling_results.txt"
-AGENT_COUNTS=(50 100 200 400 800 1000)
+if [[ -n "$CUSTOM_AGENTS" ]]; then
+    IFS=',' read -ra AGENT_COUNTS <<< "$CUSTOM_AGENTS"
+else
+    AGENT_COUNTS=(85 100 200 400 800 1000)
+fi
 MONEROSIM_BIN="./target/release/monerosim"
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 TEMP_DIR="/tmp/monerosim_scaling_test"
@@ -59,7 +86,11 @@ check_prerequisites() {
 get_system_info() {
     local mem_total=$(free -h | grep Mem | awk '{print $2}')
     local cpu_count=$(nproc)
-    echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')"
+    local fast_info=""
+    if [[ -n "$FAST_MODE" ]]; then
+        fast_info=" (FAST MODE: runahead=100ms, log=warning)"
+    fi
+    echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')${fast_info}"
     echo "# Hardware: ${mem_total} RAM, ${cpu_count} CPUs"
     echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes)"
     echo "# Config: 5 fixed miners + variable users, 6h sim duration, 5s stagger"
@@ -138,7 +169,7 @@ run_test() {
 
     # Generate monerosim config (6h duration, 5s stagger)
     echo "  Generating config..." >&2
-    python3 scripts/generate_config.py --agents "$agent_count" -o "$config_file" 2>&2 || {
+    python3 scripts/generate_config.py --agents "$agent_count" -o "$config_file" $FAST_MODE 2>&2 || {
         echo "  FAIL: Config generation failed" >&2
         printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "Config generation failed"
         return 1
