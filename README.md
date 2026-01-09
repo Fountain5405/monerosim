@@ -63,11 +63,11 @@ Monerosim now supports large-scale network simulations using authentic CAIDA AS-
 
 ### Quick Example
 ```bash
-# Generate 5000-node CAIDA-based topology
-python gml_processing/create_large_scale_caida_gml.py \
-  --caida-file gml_processing/caida_aslinks.txt \
-  --output topology_5k_caida.gml \
-  --nodes 5000
+# Generate CAIDA-based topology with self-loops
+python gml_processing/create_caida_connected_with_loops.py \
+  gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
+  topology_caida.gml \
+  --max_nodes 100
 
 # Create configuration with GML topology
 # (edit config.yaml to use network.path: "topology_5k_caida.gml")
@@ -127,7 +127,7 @@ monerosim/
 │   ├── sync_check.py        # Network synchronization monitoring
 │   └── migrate_mining_config.py # Config migration utility
 ├── gml_processing/          # Network topology generation
-│   └── create_large_scale_caida_gml.py # CAIDA-based topology generator
+│   └── create_caida_connected_with_loops.py # CAIDA-based topology generator
 ├── examples/                # Example configurations
 ├── docs/                    # Detailed documentation
 ├── config_32_agents.yaml    # Default configuration

@@ -85,7 +85,7 @@ See the main `examples/` directory for additional configuration examples:
 
 ### Common Issues
 
-1. **CAIDA data not found**: Ensure `gml_processing/caida_aslinks.txt` exists
+1. **CAIDA data not found**: Ensure `gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt` exists
 2. **Memory issues**: Large topologies (>2000 nodes) require 8GB+ RAM
 3. **Generation slow**: 5000-node topologies take ~5 minutes to generate
 

@@ -72,7 +72,7 @@ Shadow requires self-loops on all nodes for shortest path computation.
 **Note:** Use `gml_processing/create_caida_connected_with_loops.py` to generate GML files with self-loops:
 ```bash
 python3 gml_processing/create_caida_connected_with_loops.py \
-    gml_processing/caida_aslinks.txt \
+    gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
     output.gml \
     --max_nodes 150
 ```

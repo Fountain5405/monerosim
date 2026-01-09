@@ -4,13 +4,15 @@
 
 set -e
 
+CAIDA_FILE="gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt"
+
 echo "Monerosim CAIDA Topology Generation Examples"
 echo "============================================"
 echo ""
 
 # Check if CAIDA data exists
-if [ ! -f "gml_processing/caida_aslinks.txt" ]; then
-    echo "Error: CAIDA AS-links data not found at gml_processing/caida_aslinks.txt"
+if [ ! -f "$CAIDA_FILE" ]; then
+    echo "Error: CAIDA AS-links data not found at $CAIDA_FILE"
     echo "Please ensure the CAIDA dataset is available."
     exit 1
 fi
@@ -22,17 +24,17 @@ generate_topology() {
     local description=$3
 
     echo "Generating ${description} (${nodes} nodes)..."
-    echo "Command: python gml_processing/create_large_scale_caida_gml.py \\"
-    echo "  --caida-file gml_processing/caida_aslinks.txt \\"
-    echo "  --output ${output} \\"
-    echo "  --nodes ${nodes}"
+    echo "Command: python gml_processing/create_caida_connected_with_loops.py \\"
+    echo "  $CAIDA_FILE \\"
+    echo "  ${output} \\"
+    echo "  --max_nodes ${nodes}"
 
-    python gml_processing/create_large_scale_caida_gml.py \
-        --caida-file gml_processing/caida_aslinks.txt \
-        --output ${output} \
-        --nodes ${nodes}
+    python gml_processing/create_caida_connected_with_loops.py \
+        "$CAIDA_FILE" \
+        ${output} \
+        --max_nodes ${nodes}
 
-    echo "✓ Generated ${output}"
+    echo "Generated ${output}"
     echo ""
 }
 

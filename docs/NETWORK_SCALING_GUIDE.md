@@ -32,26 +32,24 @@ The network scaling feature allows you to create and simulate large-scale Monero
 
 This section provides a minimal example to get you started with network scaling.
 
-### Generate a Large-Scale Topology
+### Generate a Topology with Self-Loops
 
 ```bash
-# Generate a 5000-node topology using CAIDA AS-links data
-python gml_processing/create_large_scale_caida_gml.py \
-  --caida-file gml_processing/caida_aslinks.txt \
-  --output topology_5k_caida.gml \
-  --nodes 5000
+# Generate a topology using CAIDA AS-links data
+python gml_processing/create_caida_connected_with_loops.py \
+  gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
+  topology_caida.gml \
+  --max_nodes 100
 ```
 
 Expected output:
 ```
-Loading CAIDA AS-links data...
-Found 12345 AS relationships
-Selecting 5000 ASes using hierarchical sampling...
-Applying geographic IP allocation...
-Adding relationship-based edge attributes...
-Validating connectivity...
-Topology saved to topology_5k_caida.gml (5000 nodes, 18750 edges)
-Total time: 4.2s
+Loading CAIDA data...
+Connected subgraph: 100 nodes
+Adding self-loops and attributes...
+Renumbering nodes...
+GML saved to topology_caida.gml
+Generated GML: 100 nodes, 512 edges (including 100 self-loops)
 ```
 
 ### Create Agent Configuration
@@ -134,30 +132,24 @@ The CAIDA-based topology generation script creates authentic internet topologies
 
 **Command:**
 ```bash
-python gml_processing/create_large_scale_caida_gml.py \
-  --caida-file gml_processing/caida_aslinks.txt \
-  --output topology_5k_caida.gml \
-  --nodes 5000 \
-  --seed 42
+python gml_processing/create_caida_connected_with_loops.py \
+  gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
+  topology_caida.gml \
+  --max_nodes 100
 ```
 
 **Options:**
-- `--caida-file`: Path to CAIDA AS-links data file (required)
-- `--output`: Output GML file path (required)
-- `--nodes`: Number of ASes to select (50-5000, default: 1000)
-- `--seed`: Random seed for reproducible generation (optional)
-- `--add-loops`: Add self-loops to nodes for robustness (optional)
+- First argument: Path to CAIDA AS-links data file (required)
+- Second argument: Output GML file path (required)
+- `--max_nodes`: Number of nodes to include (default: 50)
 
 **What it does:**
 1. Loads CAIDA AS-links dataset with real internet relationships
-2. Applies three-tier scaling algorithm based on target node count:
-   - Small (50-500): BFS expansion from connected seed
-   - Medium (500-2000): High-degree node prioritization
-   - Large (2000+): Hierarchical sampling for efficiency
-3. Allocates geographic IP addresses based on AS location heuristics
+2. Uses BFS expansion to find a connected subgraph of the specified size
+3. Adds self-loops to all nodes (required for Shadow shortest-path routing)
 4. Preserves AS relationship semantics (customer-provider, peer-peer, sibling)
 5. Adds relationship-based latency and bandwidth attributes to edges
-6. Validates network connectivity and saves in GML format
+6. Renumbers nodes to 0-N for Shadow compatibility
 
 **Output File Structure:**
 ```gml
@@ -325,33 +317,25 @@ RELATIONSHIP_ATTRIBUTES = {
 }
 ```
 
-### Custom Geographic Distributions
+### Custom Topology Sizes
 
-Modify the topology generation script for custom distributions:
+Generate topologies of different sizes:
 
-```python
-# In create_large_scale_caida_gml.py
-# Customize region weights for AS selection
-region_weights = {
-    "North America": 0.3,
-    "Europe": 0.25,
-    "Asia": 0.25,
-    "South America": 0.1,
-    "Africa": 0.05,
-    "Oceania": 0.05
-}
+```bash
+# Small topology (50 nodes)
+python gml_processing/create_caida_connected_with_loops.py \
+  gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
+  small_topo.gml --max_nodes 50
+
+# Larger topology (500 nodes)
+python gml_processing/create_caida_connected_with_loops.py \
+  gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
+  large_topo.gml --max_nodes 500
 ```
 
 ### Reproducible Topologies
 
-Use seeds for reproducible results:
-
-```bash
-# Same seed produces identical topology
-python scripts/create_large_scale_gml.py --nodes 5000 --seed 12345 --output topo_v1.gml
-python scripts/create_large_scale_gml.py --nodes 5000 --seed 12345 --output topo_v2.gml
-# topo_v1.gml and topo_v2.gml will be identical
-```
+The CAIDA data source provides deterministic connectivity. Running the script with the same `--max_nodes` value will produce consistent topologies based on BFS expansion from the same starting point.
 
 ### Large Simulation Optimization
 

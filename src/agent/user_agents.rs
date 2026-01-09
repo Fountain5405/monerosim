@@ -212,28 +212,33 @@ pub fn process_user_agents(
                 .and_then(|offset| parse_duration_to_seconds(offset).ok())
                 .unwrap_or(0);
 
+            // Monero coinbase maturity = 60 blocks, block time = 120s (DIFFICULTY_TARGET_V2)
+            // Regular users must wait for block maturity before spending: 60 × 120s = 7200s
+            const BLOCK_MATURITY_SECONDS: u64 = 7200; // 60 blocks × 120s
+
             let base_start_time_seconds = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Optimized Dynamic mode launch sequence - reduced staggered timing
+                // Dynamic mode launch sequence
                 if is_miner {
+                    // Miners start immediately to mine blocks
                     if i == 0 {
                         0u64 // First miner (node 0) at t=0s
                     } else {
                         1 + i as u64 // Remaining miners every 1s starting t=1s
                     }
                 } else {
-                    // Regular users start after miners, with reduced stagger
-                    5 + (i.saturating_sub(miners.len())) as u64
+                    // Regular users wait for block maturity (60 blocks), then stagger
+                    BLOCK_MATURITY_SECONDS + (i.saturating_sub(miners.len())) as u64
                 }
             } else {
-                // Optimized logic for other modes - reduced timing
+                // Other modes
                 if is_miner {
                     i as u64 // Miners start early, staggered by 1s
                 } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
-                    3u64 // Seeds start at 3s
+                    BLOCK_MATURITY_SECONDS // Seeds start after block maturity
                 } else {
-                    // Regular agents start after seeds, with reduced stagger
+                    // Regular agents start after block maturity, with stagger
                     let regular_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
-                    6 + regular_index as u64 // Stagger by 1s
+                    BLOCK_MATURITY_SECONDS + regular_index as u64 // Stagger by 1s
                 }
             };
 

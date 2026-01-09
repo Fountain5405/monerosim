@@ -72,11 +72,13 @@ echo "Starting miner distributor..."
         // Write wrapper script to a temporary file and execute it
         let script_path = format!("/tmp/{}_wrapper.sh", miner_distributor_id);
 
-        // Determine execution start time (keeping original for block maturity)
+        // Determine execution start time for block maturity
+        // Monero coinbase maturity = 60 blocks, block time = 120s (DIFFICULTY_TARGET_V2)
+        // 60 blocks × 120s = 7200s (2 hours), plus 5 min buffer = 7500s
         let miner_distributor_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-            "3900s".to_string() // Dynamic mode: miner distributor starts at 65 minutes (block reward maturity)
+            "7500s".to_string() // Dynamic mode: start after 60 blocks maturity (2h + 5min buffer)
         } else {
-            "3900s".to_string() // Other modes: also start at 65 minutes (block reward maturity)
+            "7500s".to_string() // Other modes: also start after 60 blocks maturity
         };
 
         // Calculate script creation time (1 second before execution)
@@ -84,7 +86,7 @@ echo "Starting miner distributor..."
             format!("{}s", exec_seconds.saturating_sub(1))
         } else {
             // Fallback if parsing fails
-            "3899s".to_string()
+            "7499s".to_string()
         };
 
         // Process 1: Create wrapper script
