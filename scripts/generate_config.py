@@ -9,7 +9,9 @@ Usage:
 
 The generated config has:
 - Fixed 5 miners (core network) with hashrates: 25, 25, 30, 10, 10
-- Variable users (total - 5) starting at 1h mark, staggered 1s apart (seconds resolution)
+- Variable users (total - 5) spawning at 30m mark (all at once by default)
+- Bootstrap period until 2h with high bandwidth/no packet loss
+- Activity (transactions) starts at 2h when bootstrap ends
 """
 
 import argparse
@@ -26,11 +28,15 @@ FIXED_MINERS = [
     {"hashrate": 10, "start_offset_s": 4},
 ]
 
-# Users start at 1 hour (after block unlock time)
-USER_START_TIME_S = 3600  # 1 hour in seconds
+# Users spawn at 30 minutes mark (during bootstrap period)
+# This allows them to sync blockchain and establish P2P connections before activity starts
+USER_START_TIME_S = 1800  # 30 minutes in seconds
+
+# Activity starts at 2h mark (after blocks mature and bootstrap ends)
+ACTIVITY_START_TIME_S = 7200  # 2 hours in seconds
 
 # Note: monerosim only supports seconds resolution (no ms support in duration parser)
-# So we stagger users by 1 second intervals
+# Zero stagger is now the default to create an implicit synchronization barrier
 
 
 def parse_duration(duration_str: str) -> int:
@@ -73,8 +79,15 @@ def generate_miner_agent(index: int, hashrate: int, start_offset_s: int) -> Dict
     }
 
 
-def generate_user_agent(index: int, start_offset_s: int, tx_interval: str = "60") -> Dict[str, Any]:
-    """Generate a regular user agent configuration."""
+def generate_user_agent(index: int, start_offset_s: int, tx_interval: str = "60", activity_start_time: int = 0) -> Dict[str, Any]:
+    """Generate a regular user agent configuration.
+
+    Args:
+        index: Agent index
+        start_offset_s: When the agent process spawns (sim time)
+        tx_interval: Interval between transaction attempts
+        activity_start_time: Absolute sim time when transactions should start (0 = start immediately)
+    """
     return {
         "daemon": "monerod",
         "wallet": "monero-wallet-rpc",
@@ -82,6 +95,7 @@ def generate_user_agent(index: int, start_offset_s: int, tx_interval: str = "60"
         "start_time_offset": format_time_offset(start_offset_s),
         "attributes": {
             "transaction_interval": tx_interval,
+            "activity_start_time": str(activity_start_time),
             "can_receive_distributions": True,
         },
     }
@@ -122,6 +136,10 @@ def generate_config(
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
 
+    # Activity start time: absolute sim time when transaction activity begins
+    # Users spawning before this time will wait; users spawning after will start immediately
+    activity_start_time = ACTIVITY_START_TIME_S  # 7200s = 2h
+
     # Build user_agents list
     user_agents: List[Dict[str, Any]] = []
 
@@ -129,10 +147,11 @@ def generate_config(
     for i, miner in enumerate(FIXED_MINERS):
         user_agents.append(generate_miner_agent(i, miner["hashrate"], miner["start_offset_s"]))
 
-    # Add variable users starting at 1h mark
+    # Add variable users starting at 30m mark (during bootstrap period)
+    # Zero stagger creates implicit barrier - all users spawn at same sim time
     for i in range(num_users):
         start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-        user_agents.append(generate_user_agent(num_miners + i, start_offset_s, tx_interval))
+        user_agents.append(generate_user_agent(num_miners + i, start_offset_s, tx_interval, activity_start_time))
 
     # Build full config
     general_config = {
@@ -141,6 +160,10 @@ def generate_config(
         "simulation_seed": simulation_seed,
         "enable_dns_server": True,
         "shadow_log_level": shadow_log_level,
+        # Bootstrap period: high bandwidth, no packet loss until activity starts
+        "bootstrap_end_time": format_time_offset(ACTIVITY_START_TIME_S),
+        # Show simulation progress on stderr for visibility
+        "progress": True,
     }
     if runahead:
         general_config["runahead"] = runahead
@@ -159,7 +182,7 @@ def generate_config(
                     "max_transaction_amount": "2.0",
                     "min_transaction_amount": "0.5",
                     "transaction_frequency": "30",
-                    "wait_time": "3900",  # Wait ~1h5m for blocks to mature
+                    "wait_time": "7200",  # Wait 2h - aligns with bootstrap end and activity start
                 },
             },
             "simulation_monitor": {
@@ -249,10 +272,13 @@ def main():
 Examples:
     python scripts/generate_config.py --agents 50 -o test_50.yaml
     python scripts/generate_config.py --agents 100 --duration 4h -o test_100.yaml
-    python scripts/generate_config.py --agents 800 --stagger-interval 50 -o test_800.yaml
+    python scripts/generate_config.py --agents 800 --stagger-interval 1 -o test_800.yaml
 
-The config always includes 5 fixed miners (hashrates: 25, 25, 30, 10, 10).
-Additional agents are regular users starting at the 1-hour mark.
+The config includes 5 fixed miners (hashrates: 25, 25, 30, 10, 10).
+Timeline:
+  t=0:   Miners start
+  t=30m: Users spawn (all at once by default, creates implicit barrier)
+  t=2h:  Bootstrap ends, activity starts (miner_distributor + user transactions)
         """
     )
 
@@ -273,8 +299,8 @@ Additional agents are regular users starting at the 1-hour mark.
     parser.add_argument(
         "--stagger-interval",
         type=int,
-        default=5,
-        help="Seconds between user starts (default: 5)"
+        default=0,
+        help="Seconds between user starts (default: 0 for implicit barrier)"
     )
 
     parser.add_argument(
@@ -311,8 +337,8 @@ Additional agents are regular users starting at the 1-hour mark.
         print(f"Error: Need at least 5 agents (for fixed miners), got {args.agents}", file=sys.stderr)
         sys.exit(1)
 
-    if args.stagger_interval < 1:
-        print(f"Error: Stagger interval must be at least 1 second, got {args.stagger_interval}", file=sys.stderr)
+    if args.stagger_interval < 0:
+        print(f"Error: Stagger interval must be >= 0, got {args.stagger_interval}", file=sys.stderr)
         sys.exit(1)
 
     # Generate config
@@ -335,12 +361,16 @@ Additional agents are regular users starting at the 1-hour mark.
     # Add header comment
     num_users = args.agents - 5
     fast_note = " [FAST MODE]" if args.fast else ""
+    stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once (implicit barrier)"
     header = f"""# Monerosim scaling test configuration{fast_note}
 # Generated by generate_config.py
 # Total agents: {args.agents} (5 miners + {num_users} users)
 # Duration: {args.duration}
 # Network topology: {args.gml}
-# Users start at: 1h mark, staggered {args.stagger_interval}s apart
+# Timeline:
+#   t=0:   Miners start
+#   t=30m: Users spawn ({stagger_note})
+#   t=2h:  Bootstrap ends, activity starts (miner_distributor + user transactions)
 """
     if args.fast:
         header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120

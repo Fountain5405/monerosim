@@ -159,6 +159,12 @@ pub struct ShadowGeneral {
     pub model_unblocked_syscall_latency: bool,
     /// Log level for Shadow (trace, debug, info, warn, error)
     pub log_level: String,
+    /// Bootstrap end time - during bootstrap period, Shadow enables high bandwidth and no packet loss
+    /// This helps networks settle before applying realistic constraints
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bootstrap_end_time: Option<String>,
+    /// Show simulation progress on stderr
+    pub progress: bool,
 }
 
 /// Experimental Shadow features configuration.

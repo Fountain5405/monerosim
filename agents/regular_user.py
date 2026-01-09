@@ -183,8 +183,25 @@ class RegularUserAgent(BaseAgent):
         self.min_tx_amount = float(self.attributes.get('min_transaction_amount', '0.1'))
         self.max_tx_amount = float(self.attributes.get('max_transaction_amount', '1.0'))
         self.tx_interval = int(self.attributes.get('transaction_interval', '60'))
-        
-        self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval}")
+
+        # Activity start time: absolute sim time when transaction activity should begin
+        # This allows users to sync during bootstrap period before transacting
+        # If activity_start_time is set and current time is before it, wait
+        self.activity_start_time = int(self.attributes.get('activity_start_time', '0'))
+
+        if self.activity_start_time > 0:
+            current_time = time.time()
+            if current_time < self.activity_start_time:
+                self.waiting_for_activity_start = True
+                wait_remaining = self.activity_start_time - current_time
+                self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval}, activity_starts_at={self.activity_start_time}s (waiting {wait_remaining:.0f}s)")
+            else:
+                # Already past activity start time - start immediately
+                self.waiting_for_activity_start = False
+                self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval} (activity start time already passed)")
+        else:
+            self.waiting_for_activity_start = False
+            self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval}")
         
     def run_iteration(self) -> Optional[float]:
         """
@@ -234,18 +251,30 @@ class RegularUserAgent(BaseAgent):
     def _run_user_iteration(self) -> Optional[float]:
         """
         Single iteration for regular user behavior.
-        
+
         Returns:
             float: The recommended time to sleep (in seconds) before the next iteration.
         """
+        # Check if we're still waiting for activity start (bootstrap period)
+        if getattr(self, 'waiting_for_activity_start', False):
+            current_time = time.time()
+            if current_time < self.activity_start_time:
+                remaining = self.activity_start_time - current_time
+                self.logger.debug(f"Waiting {remaining:.0f}s before starting transactions (until t={self.activity_start_time}s)")
+                # Check every 5 minutes or when ready, whichever is sooner
+                return min(300.0, remaining)
+            else:
+                self.logger.info("Activity start time reached, starting transaction behavior")
+                self.waiting_for_activity_start = False
+
         # Regular users perform transactions
         self.logger.debug("Regular user running iteration - checking for transaction opportunities")
-        
+
         # Check if wallet is available
         if not self.wallet_rpc:
             self.logger.warning("Wallet RPC not available for regular user")
             return 30.0
-            
+
         try:
             # Get wallet balance
             balance_info = self.wallet_rpc.get_balance()

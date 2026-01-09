@@ -145,6 +145,14 @@ pub struct GeneralConfig {
     /// Experimental: may improve simulation speed at cost of accuracy
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runahead: Option<String>,
+    /// Bootstrap end time - Shadow provides high bandwidth/no packet loss until this time
+    /// Useful for allowing network to settle before applying realistic constraints
+    /// Format: e.g., "7200s" or "2h"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bootstrap_end_time: Option<String>,
+    /// Show simulation progress on stderr (default: true for visibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub progress: Option<bool>,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -1031,6 +1039,8 @@ impl Default for GeneralConfig {
             difficulty_cache_ttl: default_difficulty_cache_ttl(),
             shadow_log_level: default_shadow_log_level(),
             runahead: None,
+            bootstrap_end_time: None,
+            progress: Some(true),  // Default to showing progress
         }
     }
 }
