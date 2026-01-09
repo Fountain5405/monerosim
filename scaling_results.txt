@@ -1,9 +1,0 @@
-# Scaling Test Results - 2026-01-08 05:48:52
-# Hardware: 31Gi RAM, 24 CPUs
-# Timeout: 3600s (60 minutes)
-# Config: 5 fixed miners + variable users, 6h sim duration, 5s stagger
-
-Agents  | Users  | Status  | Peak RAM | Duration | Notes
---------|--------|---------|----------|----------|------
-Generated config with 50 agents (45 users), GML: gml_processing/1200_nodes_caida_with_loops.gml -> /tmp/monerosim_scaling_test/config_50.yaml
-50      | 45     | SUCCESS | N/A      | 37:14    | Sim completed (processes still running at end)

@@ -1,5 +1,5 @@
 cargo build --release
-target/release/monerosim --config config_32_agents.yaml 
+target/release/monerosim --config test_configs/config_32_agents.yaml 
 #target/release/monerosim --config test_configs/multi_bin_test.yaml
 rm -rf shadow.data/
 rm -rf shadow.log 
