@@ -465,38 +465,55 @@ class SimulationMonitorAgent(BaseAgent):
     def _collect_node_data(self) -> Dict[str, Any]:
         """
         Collect data from all discovered agents via RPC.
-        
+
+        Only polls agents that have daemon log files (meaning monerod has started).
+        This prevents wasting time on RPC timeouts for agents not yet running.
+
         Returns:
             Dictionary containing data from all nodes
         """
         node_data = {}
-        
+
         try:
             # Get all agents from the registry
             registry = self.discovery.get_agent_registry(force_refresh=True)
             agents = registry.get("agents", [])
-            
+
             if isinstance(agents, dict):
                 agents = list(agents.values())
-            
-            self.logger.info(f"Collecting data from {len(agents)} agents")
-            
+
+            # Filter to only agents that have daemon log files (i.e., monerod has started)
+            online_agents = []
+            pending_count = 0
             for agent in agents:
                 agent_id = agent.get("id", "unknown")
-                
+                # Check if this agent has a daemon log file
+                if agent_id in self.daemon_log_files:
+                    online_agents.append(agent)
+                else:
+                    pending_count += 1
+
+            if pending_count > 0:
+                self.logger.info(f"Collecting data from {len(online_agents)} online agents ({pending_count} pending startup)")
+            else:
+                self.logger.info(f"Collecting data from {len(online_agents)} agents")
+
+            for agent in online_agents:
+                agent_id = agent.get("id", "unknown")
+
                 try:
                     # Get RPC connection for this agent
                     rpc_info = self._get_agent_rpc_info(agent)
                     if not rpc_info:
                         self.logger.warning(f"No RPC information for agent {agent_id}")
                         continue
-                    
+
                     # Collect data from daemon
                     daemon_data = self._collect_daemon_data(rpc_info)
-                    
+
                     # Collect data from wallet if available
                     wallet_data = self._collect_wallet_data(rpc_info)
-                    
+
                     # Combine data
                     node_data[agent_id] = {
                         "agent_info": agent,
@@ -504,7 +521,7 @@ class SimulationMonitorAgent(BaseAgent):
                         "wallet": wallet_data,
                         "timestamp": time.time()
                     }
-                    
+
                 except Exception as e:
                     self.logger.warning(f"Failed to collect data from agent {agent_id}: {e}")
                     # Still store basic agent info
@@ -514,7 +531,10 @@ class SimulationMonitorAgent(BaseAgent):
                         "wallet": {"error": str(e)},
                         "timestamp": time.time()
                     }
-            
+
+            # Store pending count for status reporting
+            self._pending_agents_count = pending_count
+
             self.logger.info(f"Successfully collected data from {len(node_data)} nodes")
             return node_data
             
@@ -1045,7 +1065,13 @@ class SimulationMonitorAgent(BaseAgent):
                 
                 # Write network status
                 f.write("NETWORK STATUS:\n")
-                f.write(f"- Total Nodes: {network_metrics['total_nodes']}\n")
+                pending = getattr(self, '_pending_agents_count', 0)
+                total_registered = network_metrics['total_nodes'] + pending
+                f.write(f"- Online Nodes: {network_metrics['total_nodes']}/{total_registered}")
+                if pending > 0:
+                    f.write(f" ({pending} pending startup)\n")
+                else:
+                    f.write("\n")
                 f.write(f"- Synchronized: {network_metrics['synced_nodes']}/{network_metrics['total_nodes']} "
                        f"({network_metrics['sync_percentage']:.1f}%)\n")
                 f.write(f"- Average Height: {network_metrics['avg_height']:.0f}\n")
