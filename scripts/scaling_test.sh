@@ -328,6 +328,15 @@ run_test() {
 
 # Main
 main() {
+    # Rebuild monerosim to ensure latest changes are included
+    echo -e "${YELLOW}Rebuilding monerosim...${NC}"
+    cargo build --release || {
+        echo -e "${RED}Error: cargo build failed${NC}"
+        exit 1
+    }
+    echo -e "${GREEN}Build complete${NC}"
+    echo ""
+
     check_prerequisites
 
     # Create temp directory
