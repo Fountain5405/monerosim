@@ -242,8 +242,14 @@ pub fn process_user_agents(
                 }
             };
 
-            // Apply start_time_offset if specified in config
-            let start_time_daemon = format!("{}s", base_start_time_seconds + start_time_offset_seconds);
+            // Apply start_time_offset: if specified, use it directly (replaces base time)
+            // If not specified (0), use the calculated base time
+            let effective_start_time = if start_time_offset_seconds > 0 {
+                start_time_offset_seconds  // Use explicit offset as absolute start time
+            } else {
+                base_start_time_seconds  // Use calculated default
+            };
+            let start_time_daemon = format!("{}s", effective_start_time);
 
             // Wallet start time: coordinate with daemon start time (reduced delay)
             let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
