@@ -3,7 +3,7 @@
 # Scaling test script for monerosim
 # Tests increasing agent counts to find the limit on current hardware
 #
-# Usage: ./scripts/scaling_test.sh [--fast]
+# Usage: ./scripts/scaling_test.sh [--fast] [--agents N] [--duration D] [--timeout T]
 #
 
 set -e
@@ -11,6 +11,8 @@ set -e
 # Parse arguments
 FAST_MODE=""
 CUSTOM_AGENTS=""
+SIM_DURATION="6h"
+TIMEOUT=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         --fast)
@@ -21,23 +23,61 @@ while [[ $# -gt 0 ]]; do
             CUSTOM_AGENTS="$2"
             shift 2
             ;;
+        --duration)
+            SIM_DURATION="$2"
+            shift 2
+            ;;
+        --timeout)
+            TIMEOUT="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--fast] [--agents N]"
-            echo "  --fast     Enable performance optimizations"
-            echo "  --agents N Test only N agents (can be comma-separated: 100,200,400)"
+            echo "Usage: $0 [--fast] [--agents N] [--duration D] [--timeout T]"
+            echo "  --fast       Enable performance optimizations"
+            echo "  --agents N   Test only N agents (can be comma-separated: 100,200,400)"
+            echo "  --duration D Simulation duration (default: 6h, e.g., 2h, 30m, 1h30m)"
+            echo "  --timeout T  Test timeout (default: 2x sim duration, e.g., 4h, 90m)"
             exit 1
             ;;
     esac
 done
 
 # Configuration
-TIMEOUT=7200  # 2 hours - script detects early completion via "Finished simulation" in logs
 RESULTS="scaling_results.txt"
 if [[ -n "$CUSTOM_AGENTS" ]]; then
     IFS=',' read -ra AGENT_COUNTS <<< "$CUSTOM_AGENTS"
 else
     AGENT_COUNTS=(85 100 200 400 800 1000)
+fi
+
+# Parse duration and calculate default timeout if not specified
+# Convert duration like "6h", "2h30m", "90m" to seconds
+parse_duration_to_seconds() {
+    local dur="$1"
+    local total=0
+    # Extract hours if present
+    if [[ "$dur" =~ ([0-9]+)h ]]; then
+        total=$((total + ${BASH_REMATCH[1]} * 3600))
+    fi
+    # Extract minutes if present
+    if [[ "$dur" =~ ([0-9]+)m ]]; then
+        total=$((total + ${BASH_REMATCH[1]} * 60))
+    fi
+    # If just a number, assume seconds
+    if [[ "$dur" =~ ^[0-9]+$ ]]; then
+        total=$dur
+    fi
+    echo "$total"
+}
+
+SIM_DURATION_SECS=$(parse_duration_to_seconds "$SIM_DURATION")
+if [[ -z "$TIMEOUT" ]]; then
+    # Default timeout is 2x simulation duration
+    TIMEOUT=$((SIM_DURATION_SECS * 2))
+else
+    # Parse timeout if given in flexible format
+    TIMEOUT=$(parse_duration_to_seconds "$TIMEOUT")
 fi
 MONEROSIM_BIN="./target/release/monerosim"
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
@@ -88,12 +128,12 @@ get_system_info() {
     local cpu_count=$(nproc)
     local fast_info=""
     if [[ -n "$FAST_MODE" ]]; then
-        fast_info=" (FAST MODE: runahead=100ms, log=warning)"
+        fast_info=" (FAST MODE)"
     fi
     echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')${fast_info}"
     echo "# Hardware: ${mem_total} RAM, ${cpu_count} CPUs"
-    echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes)"
-    echo "# Config: 5 fixed miners + variable users, 6h sim duration, 5s stagger"
+    echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes), Sim duration: ${SIM_DURATION}"
+    echo "# Config: 5 fixed miners + variable users, 5s stagger"
     echo ""
 }
 
@@ -167,9 +207,9 @@ run_test() {
 
     echo -e "${YELLOW}Testing $agent_count agents (5 miners + $user_count users)...${NC}" >&2
 
-    # Generate monerosim config (6h duration, 5s stagger)
+    # Generate monerosim config
     echo "  Generating config..." >&2
-    python3 scripts/generate_config.py --agents "$agent_count" -o "$config_file" $FAST_MODE 2>&2 || {
+    python3 scripts/generate_config.py --agents "$agent_count" --duration "$SIM_DURATION" -o "$config_file" $FAST_MODE 2>&2 || {
         echo "  FAIL: Config generation failed" >&2
         printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "Config generation failed"
         return 1
