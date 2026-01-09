@@ -221,12 +221,9 @@ class SimulationMonitorAgent(BaseAgent):
                         self.daemon_log_files[host_name] = str(daemon_log)
                         # Initialize file position
                         if str(daemon_log) not in self.log_file_positions:
-                            if self.last_daemon_discovery_time == 0:
-                                # First discovery (startup): start at end to skip existing content
-                                self.log_file_positions[str(daemon_log)] = daemon_log.stat().st_size
-                            else:
-                                # Re-discovery (late joiner): start at beginning to catch all blocks
-                                self.log_file_positions[str(daemon_log)] = 0
+                            # Always start at beginning to catch all blocks from simulation start
+                            self.log_file_positions[str(daemon_log)] = 0
+                            if self.last_daemon_discovery_time != 0:
                                 self.logger.info(f"Discovered new daemon log for late-joining agent: {host_name}")
 
             self.logger.info(f"Discovered daemon logs for {len(self.daemon_log_files)} hosts")
