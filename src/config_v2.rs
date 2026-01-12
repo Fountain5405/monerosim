@@ -153,6 +153,13 @@ pub struct GeneralConfig {
     /// Show simulation progress on stderr (default: true for visibility)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<bool>,
+    /// Thread count for monerod and wallet-rpc processes
+    /// - None or 0: auto-detect (omits thread flags, lets processes decide)
+    /// - 1: single-threaded (default for determinism)
+    /// - 2+: use specified thread count
+    /// Affects --max-concurrency and --prep-blocks-threads flags
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub process_threads: Option<u32>,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -1041,6 +1048,7 @@ impl Default for GeneralConfig {
             runahead: None,
             bootstrap_end_time: None,
             progress: Some(true),  // Default to showing progress
+            process_threads: Some(1),  // Default to single-threaded for determinism
         }
     }
 }

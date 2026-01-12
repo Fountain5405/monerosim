@@ -16,6 +16,7 @@ general:
   shadow_log_level: info
   bootstrap_end_time: 2h
   progress: true
+  process_threads: 2
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
   peer_mode: Dynamic

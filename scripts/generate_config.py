@@ -112,6 +112,7 @@ def generate_config(
     simulation_seed: int = 12345,
     gml_path: str = DEFAULT_GML_PATH,
     fast_mode: bool = False,
+    process_threads: int = 1,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -122,6 +123,7 @@ def generate_config(
         simulation_seed: Random seed for reproducibility
         gml_path: Path to GML topology file
         fast_mode: If True, use performance-friendly settings
+        process_threads: Thread count for monerod/wallet-rpc (0=auto, 1=single, 2+=explicit)
     """
 
     num_miners = len(FIXED_MINERS)
@@ -167,6 +169,9 @@ def generate_config(
     }
     if runahead:
         general_config["runahead"] = runahead
+    # Add process_threads if not default (1)
+    if process_threads != 1:
+        general_config["process_threads"] = process_threads
 
     config = {
         "general": general_config,
@@ -330,6 +335,13 @@ Timeline:
         help="Use performance-friendly settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120"
     )
 
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="Thread count for monerod/wallet-rpc (0=auto, 1=single-threaded for determinism, 2+=explicit count)"
+    )
+
     args = parser.parse_args()
 
     # Validate
@@ -350,6 +362,7 @@ Timeline:
             simulation_seed=args.seed,
             gml_path=args.gml,
             fast_mode=args.fast,
+            process_threads=args.threads,
         )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -382,7 +395,8 @@ Timeline:
         f.write(header + yaml_content + "\n")
 
     fast_msg = " (fast mode)" if args.fast else ""
-    print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}, GML: {args.gml} -> {args.output}")
+    threads_msg = f", threads={args.threads}" if args.threads != 1 else ""
+    print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}, GML: {args.gml} -> {args.output}")
 
 
 if __name__ == "__main__":

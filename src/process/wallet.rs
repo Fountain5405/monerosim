@@ -46,6 +46,11 @@ pub fn add_wallet_process(
         expected_final_state: None,
     });
 
+    // Get thread count from environment (0=auto/omit flag, 1+=explicit count)
+    let process_threads: u32 = environment.get("PROCESS_THREADS")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1);
+
     // Build wallet args
     let mut wallet_args_parts = vec![
         format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
@@ -58,9 +63,14 @@ pub fn add_wallet_process(
         "--non-interactive".to_string(),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
-        "--max-concurrency=1".to_string(),
-        "--daemon-ssl-allow-any-cert".to_string(),
     ];
+
+    // Add thread flag only if process_threads > 0
+    if process_threads > 0 {
+        wallet_args_parts.push(format!("--max-concurrency={}", process_threads));
+    }
+
+    wallet_args_parts.push("--daemon-ssl-allow-any-cert".to_string());
 
     // Append custom args if provided
     if let Some(args) = custom_args {
@@ -146,6 +156,11 @@ pub fn add_remote_wallet_process(
         }
     };
 
+    // Get thread count from environment (0=auto/omit flag, 1+=explicit count)
+    let process_threads: u32 = environment.get("PROCESS_THREADS")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1);
+
     // Build wallet args
     let mut wallet_args_parts = vec![
         daemon_address_arg,
@@ -157,9 +172,14 @@ pub fn add_remote_wallet_process(
         "--non-interactive".to_string(),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
-        "--max-concurrency=1".to_string(),
-        "--daemon-ssl-allow-any-cert".to_string(),
     ];
+
+    // Add thread flag only if process_threads > 0
+    if process_threads > 0 {
+        wallet_args_parts.push(format!("--max-concurrency={}", process_threads));
+    }
+
+    wallet_args_parts.push("--daemon-ssl-allow-any-cert".to_string());
 
     // Append custom args if provided
     if let Some(args) = custom_args {

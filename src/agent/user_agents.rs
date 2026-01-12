@@ -318,6 +318,11 @@ pub fn process_user_agents(
             let has_wallet_phases = user_agent_config.has_wallet_phases();
 
             // Build base daemon arguments (shared across all phases)
+            // Get thread count from environment (0=auto/omit flags, 1+=explicit count)
+            let process_threads: u32 = monero_environment.get("PROCESS_THREADS")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1);
+
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                 let mut args = vec![
                     format!("--data-dir=/tmp/monero-{}", agent_id),
@@ -325,8 +330,15 @@ pub fn process_user_agents(
                     "--log-level=1".to_string(),
                     "--regtest".to_string(),
                     "--keep-fakechain".to_string(),
-                    "--prep-blocks-threads=1".to_string(),
-                    "--max-concurrency=1".to_string(),
+                ];
+
+                // Add thread flags only if process_threads > 0
+                if process_threads > 0 {
+                    args.push(format!("--prep-blocks-threads={}", process_threads));
+                    args.push(format!("--max-concurrency={}", process_threads));
+                }
+
+                args.extend(vec![
                     "--no-zmq".to_string(),
                     "--db-sync-mode=fastest".to_string(),
                     "--non-interactive".to_string(),
@@ -342,7 +354,7 @@ pub fn process_user_agents(
                     format!("--p2p-bind-ip={}", agent_ip),
                     format!("--p2p-bind-port={}", p2p_port),
                     "--allow-local-ip".to_string(),
-                ];
+                ]);
 
                 // Add DNS and seed node settings
                 if !enable_dns_server {
@@ -517,9 +529,14 @@ pub fn process_user_agents(
                         "--non-interactive".to_string(),
                         "--confirm-external-bind".to_string(),
                         "--allow-mismatched-daemon-version".to_string(),
-                        "--max-concurrency=1".to_string(),
-                        "--daemon-ssl-allow-any-cert".to_string(),
                     ];
+
+                    // Add thread flag only if process_threads > 0
+                    if process_threads > 0 {
+                        args.push(format!("--max-concurrency={}", process_threads));
+                    }
+
+                    args.push("--daemon-ssl-allow-any-cert".to_string());
 
                     // Add custom phase args
                     if let Some(custom_args) = phase_args {

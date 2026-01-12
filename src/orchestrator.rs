@@ -207,6 +207,7 @@ pub fn generate_agent_shadow_config(
         ("PYTHONHASHSEED".to_string(), "0".to_string()), // Deterministic Python hash() for reproducibility
         ("SIMULATION_SEED".to_string(), config.general.simulation_seed.to_string()), // Add simulation seed for all agents
         ("DIFFICULTY_CACHE_TTL".to_string(), config.general.difficulty_cache_ttl.to_string()), // TTL for miner difficulty caching
+        ("PROCESS_THREADS".to_string(), config.general.process_threads.unwrap_or(1).to_string()), // Thread count for monerod/wallet-rpc
     ].iter().cloned().collect();
 
     // Add MONEROSIM_LOG_LEVEL if specified in config
