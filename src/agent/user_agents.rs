@@ -61,7 +61,7 @@ pub fn process_user_agents(
     agents: &AgentDefinitions,
     hosts: &mut BTreeMap<String, ShadowHost>,
     seed_agents: &mut Vec<String>,
-    effective_seed_nodes: &[String],
+    _effective_seed_nodes: &[String],  // Now unused - seed nodes computed from actual miner IPs
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
     monerod_path: &str,
@@ -162,9 +162,15 @@ pub fn process_user_agents(
         }
     }
 
-    // Build seed_agents list - use effective_seed_nodes for Dynamic mode, seed_nodes for others
+    // Build seed_agents list from actual miner IPs (not pre-calculated effective_seed_nodes)
+    // For Dynamic mode, use miners as seed nodes since they have the longest-running daemons
+    // For other modes, use the promoted seed_nodes list
     if matches!(peer_mode, PeerMode::Dynamic) {
-        seed_agents.extend(effective_seed_nodes.iter().cloned());
+        // Use actual miner IPs collected above (correct IPs from actual agent processing)
+        for (_, _, _, _, agent_ip, agent_port) in &miners {
+            let seed_addr = format!("{}:{}", agent_ip, agent_port);
+            seed_agents.push(seed_addr);
+        }
     } else {
         for (_, _, _, _, agent_ip, agent_port) in &seed_nodes {
             let seed_addr = format!("{}:{}", agent_ip, agent_port);
@@ -317,15 +323,9 @@ pub fn process_user_agents(
                 }
             };
 
-            // Determine network node ID for this agent
-            let network_node_id = if i < agent_node_assignments.len() {
-                agent_node_assignments[i]
-            } else {
-                0 // Fallback to node 0 for switch-based networks
-            };
-
-            // Get agent IP using dynamic assignment
-            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+            // Reuse the agent IP from the first pass (stored in agent_info)
+            // This avoids calling get_agent_ip twice which would increment the host counter
+            let agent_ip = agent_info[i].4.clone();
             let _agent_port = 18080;
 
             // Use standard RPC ports for all agents (mainnet ports for FAKECHAIN/regtest)
