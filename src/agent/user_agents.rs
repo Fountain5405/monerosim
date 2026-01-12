@@ -540,6 +540,9 @@ pub fn process_user_agents(
             } // End of daemon configuration
 
             // Add wallet process based on agent type
+            // Merge wallet_defaults with per-agent wallet_options
+            let merged_wallet_options = merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
+
             if has_wallet_phases {
                 // Phase-based wallet configuration (upgrade scenario)
                 let phases = user_agent_config.wallet_phases.as_ref().unwrap();
@@ -553,17 +556,18 @@ pub fn process_user_agents(
                         format!("--rpc-bind-ip={}", agent_ip),
                         "--disable-rpc-login".to_string(),
                         "--trusted-daemon".to_string(),
-                        "--log-level=1".to_string(),
                         format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
-                        "--non-interactive".to_string(),
                         "--confirm-external-bind".to_string(),
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
 
-                    // Add process_threads flag if set
-                    if process_threads > 0 {
+                    // Add process_threads flag if set and not overridden in wallet_defaults
+                    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
                         args.push(format!("--max-concurrency={}", process_threads));
                     }
+
+                    // Add configurable options from merged wallet_defaults + wallet_options
+                    args.extend(options_to_args(&merged_wallet_options));
 
                     args.push("--daemon-ssl-allow-any-cert".to_string());
 
