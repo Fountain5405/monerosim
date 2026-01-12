@@ -123,7 +123,13 @@ class SimulationMonitorAgent(BaseAgent):
         """Set up the monitor agent."""
         self.logger.info("Setting up Simulation Monitor Agent")
 
-        # Ensure the shadow.data directory exists
+        # Discover daemon log files for real-time mining detection
+        self._discover_daemon_log_files()
+
+        # Try to relocate status file to shadow.data for convenience
+        self._relocate_status_file_to_shadow_data()
+
+        # Ensure the status file directory exists
         os.makedirs(os.path.dirname(self.status_file), exist_ok=True)
 
         # Initialize status file with header
@@ -136,10 +142,18 @@ class SimulationMonitorAgent(BaseAgent):
         # Load miner registry
         self._load_miner_registry()
 
-        # Discover daemon log files for real-time mining detection
-        self._discover_daemon_log_files()
-
         self.logger.info("Simulation Monitor Agent setup complete")
+
+    def _relocate_status_file_to_shadow_data(self):
+        """Move status file to shadow.data directory if found."""
+        hosts_dir = self._find_shadow_data_hosts()
+        if not hosts_dir:
+            return
+
+        # shadow.data is parent of hosts
+        shadow_data_dir = hosts_dir.parent
+        self.status_file = str(shadow_data_dir / "monerosim_monitor.log")
+        self.logger.info(f"Status file: {self.status_file}")
 
     def _load_miner_registry(self):
         """
