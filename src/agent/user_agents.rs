@@ -5,7 +5,7 @@
 //! It manages peer discovery, IP allocation, and process configuration for
 //! user agents within the Shadow network simulator environment.
 
-use crate::config_v2::{AgentDefinitions, DaemonConfig, PeerMode};
+use crate::config_v2::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
@@ -36,9 +36,14 @@ pub fn process_user_agents(
     topology: Option<&Topology>,
     enable_dns_server: bool,
 ) -> color_eyre::eyre::Result<()> {
+    // Filter agents that have daemon or wallet (user agents, not script-only)
+    let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
+        .filter(|(_, config)| config.has_local_daemon() || config.has_remote_daemon() || config.has_wallet())
+        .collect();
+
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
     let agent_node_assignments = if let Some(gml) = gml_graph {
-        if let Some(user_agents) = &agents.user_agents {
+        if !user_agents.is_empty() {
             if using_gml_topology {
                 let as_numbers = gml.nodes.iter().map(|node| node.get_ip().map(|ip| ip.to_string())).collect::<Vec<Option<String>>>();
                 distribute_agents_across_topology(Some(Path::new("")), user_agents.len(), &as_numbers)
@@ -56,17 +61,7 @@ pub fn process_user_agents(
         Vec::new()
     };
 
-    // Validate phase configuration for all agents upfront
-    if let Some(user_agents) = &agents.user_agents {
-        for (i, user_agent_config) in user_agents.iter().enumerate() {
-            if let Err(e) = user_agent_config.validate_phases() {
-                return Err(color_eyre::eyre::eyre!(
-                    "Phase validation failed for user agent {}: {}",
-                    i, e
-                ));
-            }
-        }
-    }
+    // No phase validation needed for new AgentConfig (simpler structure)
 
     // First, collect all agent information to build connection graphs
     let mut agent_info = Vec::new();
@@ -75,41 +70,37 @@ pub fn process_user_agents(
     let mut seed_nodes = Vec::new();
     let mut regular_agents = Vec::new();
 
-    if let Some(user_agents) = &agents.user_agents {
-        for (i, user_agent_config) in user_agents.iter().enumerate() {
-            let is_miner = user_agent_config.is_miner_value();
-            let is_seed_node = is_miner || user_agent_config.attributes.as_ref()
-                .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
-                .unwrap_or(false);
-            // Use consistent naming for all user agents
-            let agent_id = format!("user{:03}", i);
+    for (i, (agent_id, agent_config)) in user_agents.iter().enumerate() {
+        let is_miner = agent_config.is_miner();
+        let is_seed_node = is_miner || agent_config.attributes.as_ref()
+            .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
+            .unwrap_or(false);
 
-            // Determine network node ID for this agent
-            let network_node_id = if i < agent_node_assignments.len() {
-                agent_node_assignments[i]
-            } else {
-                0 // Fallback to node 0 for switch-based networks
-            };
+        // Determine network node ID for this agent
+        let network_node_id = if i < agent_node_assignments.len() {
+            agent_node_assignments[i]
+        } else {
+            0 // Fallback to node 0 for switch-based networks
+        };
 
-            // Get agent IP using dynamic assignment
-            let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
-            let agent_port = 18080;
+        // Get agent IP using dynamic assignment
+        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+        let agent_port = 18080;
 
-            // Collect all agent IPs for topology connections
-            all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
+        // Collect all agent IPs for topology connections
+        all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
 
-            let agent_entry = (i, is_miner, is_seed_node, agent_id.clone(), agent_ip.clone(), agent_port);
+        let agent_entry = (i, is_miner, is_seed_node, agent_id.to_string(), agent_ip.clone(), agent_port);
 
-            if is_miner {
-                miners.push(agent_entry);
-            } else if is_seed_node {
-                seed_nodes.push(agent_entry);
-            } else {
-                regular_agents.push(agent_entry);
-            }
-
-            agent_info.push((i, is_miner, is_seed_node, agent_id, agent_ip, agent_port));
+        if is_miner {
+            miners.push(agent_entry);
+        } else if is_seed_node {
+            seed_nodes.push(agent_entry);
+        } else {
+            regular_agents.push(agent_entry);
         }
+
+        agent_info.push((i, is_miner, is_seed_node, agent_id.to_string(), agent_ip, agent_port));
     }
 
     // Ensure we have exactly 5 seed nodes; if less, promote some regular agents (for Hardcoded/Hybrid modes)
@@ -198,19 +189,18 @@ pub fn process_user_agents(
     // Regular agents will use seed nodes for --seed-node
 
     // Now process all user agents with staggered start times
-    if let Some(user_agents) = &agents.user_agents {
-        for (i, user_agent_config) in user_agents.iter().enumerate() {
-            // Determine agent type and start time
-            let is_miner = user_agent_config.is_miner_value();
-            let is_seed_node = is_miner || user_agent_config.attributes.as_ref()
-                .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
-                .unwrap_or(false);
+    for (i, (agent_id, user_agent_config)) in user_agents.iter().enumerate() {
+        // Determine agent type and start time
+        let is_miner = user_agent_config.is_miner();
+        let is_seed_node = is_miner || user_agent_config.attributes.as_ref()
+            .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
+            .unwrap_or(false);
 
-            // Parse start_time_offset if present (e.g., "2h", "7200s", "30m")
-            let start_time_offset_seconds: u64 = user_agent_config.start_time_offset
-                .as_ref()
-                .and_then(|offset| parse_duration_to_seconds(offset).ok())
-                .unwrap_or(0);
+        // Parse start_time if present (e.g., "2h", "7200s", "30m")
+        let start_time_offset_seconds: u64 = user_agent_config.start_time
+            .as_ref()
+            .and_then(|offset| parse_duration_to_seconds(offset).ok())
+            .unwrap_or(0);
 
             // Monero coinbase maturity = 60 blocks, block time = 120s (DIFFICULTY_TARGET_V2)
             // Regular users must wait for block maturity before spending: 60 × 120s = 7200s
@@ -284,9 +274,6 @@ pub fn process_user_agents(
                     format!("{}s", 5 + i)
                 }
             };
-
-            // Use consistent naming for all user agents
-            let agent_id = format!("user{:03}", i);
 
             // Determine network node ID for this agent
             let network_node_id = if i < agent_node_assignments.len() {
@@ -366,13 +353,13 @@ pub fn process_user_agents(
 
                 // Add initial fixed connections
                 if is_miner {
-                    if let Some(conns) = miner_connections.get(&agent_id) {
+                    if let Some(conns) = miner_connections.get(*agent_id) {
                         for conn in conns {
                             args.push(conn.clone());
                         }
                     }
                 } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
-                    if let Some(conns) = seed_connections.get(&agent_id) {
+                    if let Some(conns) = seed_connections.get(*agent_id) {
                         for conn in conns {
                             args.push(conn.clone());
                         }
@@ -660,45 +647,39 @@ pub fn process_user_agents(
             }
 
             // Add agent scripts
-            // For hybrid mining approach: run regular_user first (wallet setup), then mining_script
-            if let Some(mining_script) = &user_agent_config.mining_script {
-                // HYBRID APPROACH: Run both regular_user (for wallet) AND mining_script
+            let script = user_agent_config.script.clone()
+                .unwrap_or_else(|| "agents.regular_user".to_string());
+
+            if is_miner && script.contains("autonomous_miner") {
+                // HYBRID APPROACH for miners: Run both regular_user (for wallet) AND mining_script
 
                 // Step 1: Run regular_user.py first for wallet creation and address registration
-                // This handles wallet creation and writes to {agent_id}_miner_info.json
-                let wallet_setup_script = user_agent_config.user_script.clone()
-                    .unwrap_or_else(|| "agents.regular_user".to_string());
+                add_user_agent_process(
+                    &mut processes,
+                    agent_id,
+                    &agent_ip,
+                    if has_local_daemon { Some(agent_rpc_port) } else { None },
+                    if has_wallet { Some(wallet_rpc_port) } else { None },
+                    if has_local_daemon { Some(p2p_port) } else { None },
+                    "agents.regular_user",
+                    user_agent_config.attributes.as_ref(),
+                    environment,
+                    shared_dir,
+                    current_dir,
+                    i,
+                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    Some(&agent_start_time),
+                    user_agent_config.remote_daemon_address(),
+                    user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                );
 
-                if !wallet_setup_script.is_empty() {
-                    add_user_agent_process(
-                        &mut processes,
-                        &agent_id,
-                        &agent_ip,
-                        if has_local_daemon { Some(agent_rpc_port) } else { None },
-                        if has_wallet { Some(wallet_rpc_port) } else { None },
-                        if has_local_daemon { Some(p2p_port) } else { None },
-                        &wallet_setup_script,
-                        user_agent_config.attributes.as_ref(),
-                        environment,
-                        shared_dir,
-                        current_dir,
-                        i,
-                        environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                        Some(&agent_start_time),
-                        user_agent_config.remote_daemon_address(),
-                        user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
-                    );
-                }
-
-                // Step 2: Run mining_script (autonomous_miner.py) which polls for the address
-                // Start mining script a bit later to give regular_user time to register address
+                // Step 2: Run mining_script (autonomous_miner.py)
                 let mining_start_time = if let Ok(agent_seconds) = parse_duration_to_seconds(&agent_start_time) {
-                    format!("{}s", agent_seconds + 10) // Start 10 seconds after regular_user
+                    format!("{}s", agent_seconds + 10)
                 } else {
-                    format!("{}s", 75 + i * 2) // Fallback timing
+                    format!("{}s", 75 + i * 2)
                 };
 
-                // Pass wallet_rpc_port if wallet is configured
                 let mining_wallet_port = if user_agent_config.wallet.is_some() {
                     Some(wallet_rpc_port)
                 } else {
@@ -706,11 +687,11 @@ pub fn process_user_agents(
                 };
 
                 let mining_processes = create_mining_agent_process(
-                    &agent_id,
+                    agent_id,
                     &agent_ip,
                     agent_rpc_port,
                     mining_wallet_port,
-                    mining_script,
+                    &script,
                     user_agent_config.attributes.as_ref(),
                     environment,
                     shared_dir,
@@ -720,36 +701,26 @@ pub fn process_user_agents(
                     Some(&mining_start_time),
                 );
                 processes.extend(mining_processes);
-            } else {
-                // Regular user agent script (no mining_script specified)
-                let user_script = user_agent_config.user_script.clone().unwrap_or_else(|| {
-                    if is_miner {
-                        "agents.regular_user".to_string()
-                    } else {
-                        "agents.regular_user".to_string()
-                    }
-                });
-
-                if !user_script.is_empty() {
-                    add_user_agent_process(
-                        &mut processes,
-                        &agent_id,
-                        &agent_ip,
-                        if has_local_daemon { Some(agent_rpc_port) } else { None },
-                        if has_wallet { Some(wallet_rpc_port) } else { None },
-                        if has_local_daemon { Some(p2p_port) } else { None },
-                        &user_script,
-                        user_agent_config.attributes.as_ref(),
-                        environment,
-                        shared_dir,
-                        current_dir,
-                        i,
-                        environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                        Some(&agent_start_time),
-                        user_agent_config.remote_daemon_address(),
-                        user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
-                    );
-                }
+            } else if !script.is_empty() {
+                // Regular user agent script
+                add_user_agent_process(
+                    &mut processes,
+                    agent_id,
+                    &agent_ip,
+                    if has_local_daemon { Some(agent_rpc_port) } else { None },
+                    if has_wallet { Some(wallet_rpc_port) } else { None },
+                    if has_local_daemon { Some(p2p_port) } else { None },
+                    &script,
+                    user_agent_config.attributes.as_ref(),
+                    environment,
+                    shared_dir,
+                    current_dir,
+                    i,
+                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    Some(&agent_start_time),
+                    user_agent_config.remote_daemon_address(),
+                    user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                );
             }
 
             // Only add the host if it has any processes
@@ -761,7 +732,7 @@ pub fn process_user_agents(
                     0 // Fallback to node 0 for switch-based networks
                 };
 
-                hosts.insert(agent_id.clone(), ShadowHost {
+                hosts.insert(agent_id.to_string(), ShadowHost {
                     network_node_id,
                     ip_addr: Some(agent_ip.clone()),
                     processes,
@@ -770,7 +741,6 @@ pub fn process_user_agents(
                 });
                 // Note: next_ip is already incremented in get_agent_ip function
             }
-        }
     }
 
     Ok(())

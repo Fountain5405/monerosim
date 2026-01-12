@@ -5,7 +5,7 @@
 //! across the network. Miner distributors typically start after block maturity
 //! to handle reward distribution.
 
-use crate::config_v2::{AgentDefinitions, PeerMode};
+use crate::config_v2::{AgentDefinitions, AgentConfig, PeerMode};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
@@ -27,8 +27,15 @@ pub fn process_miner_distributor(
     agent_offset: usize,
     peer_mode: &PeerMode,
 ) -> color_eyre::eyre::Result<()> {
-    if let Some(miner_distributor_config) = &agents.miner_distributor {
-        let miner_distributor_id = "minerdistributor";
+    // Find miner_distributor agent in the named agents map
+    let miner_distributor: Option<(&String, &AgentConfig)> = agents.agents.iter()
+        .find(|(id, config)| {
+            id.contains("miner_distributor") ||
+            config.script.as_ref().map_or(false, |s| s.contains("miner_distributor"))
+        });
+
+    if let Some((agent_id, miner_distributor_config)) = miner_distributor {
+        let miner_distributor_id = agent_id.as_str();
         // Assign miner distributor to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
         let miner_distributor_ip = get_agent_ip(AgentType::MinerDistributor, miner_distributor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
@@ -48,10 +55,12 @@ pub fn process_miner_distributor(
         }
 
         // Simplified command for miner distributor
-        let python_cmd = if miner_distributor_config.script.contains('.') && !miner_distributor_config.script.contains('/') && !miner_distributor_config.script.contains('\\') {
-            format!("python3 -m {} {}", miner_distributor_config.script, agent_args.join(" "))
+        let script = miner_distributor_config.script.clone()
+            .unwrap_or_else(|| "agents.miner_distributor".to_string());
+        let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
+            format!("python3 -m {} {}", script, agent_args.join(" "))
         } else {
-            format!("python3 {} {}", miner_distributor_config.script, agent_args.join(" "))
+            format!("python3 {} {}", script, agent_args.join(" "))
         };
 
         // Create a simple wrapper script for miner distributor

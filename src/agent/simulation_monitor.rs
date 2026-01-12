@@ -5,7 +5,7 @@
 //! track simulation state, performance metrics, and can trigger alerts based on
 //! configurable conditions.
 
-use crate::config_v2::AgentDefinitions;
+use crate::config_v2::{AgentDefinitions, AgentConfig};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
@@ -45,20 +45,27 @@ pub fn process_simulation_monitor(
     using_gml_topology: bool,
     agent_offset: usize,
 ) -> color_eyre::eyre::Result<()> {
-    if let Some(simulation_monitor_config) = &agents.simulation_monitor {
-        let simulation_monitor_id = "simulation-monitor";
+    // Find simulation_monitor agent in the named agents map
+    let simulation_monitor: Option<(&String, &AgentConfig)> = agents.agents.iter()
+        .find(|(id, config)| {
+            id.contains("simulation_monitor") ||
+            config.script.as_ref().map_or(false, |s| s.contains("simulation_monitor"))
+        });
+
+    if let Some((agent_id, simulation_monitor_config)) = simulation_monitor {
+        let simulation_monitor_id = agent_id.as_str();
         // Assign simulation monitor to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
         let simulation_monitor_ip = get_agent_ip(AgentType::PureScriptAgent, simulation_monitor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
         let mut processes = Vec::new();
 
         let mut agent_args = vec![
-            format!("--id simulation_monitor"),  // Keep original ID for agent consistency
+            format!("--id {}", simulation_monitor_id),
             format!("--shared-dir {}", shared_dir.to_str().unwrap()),
             format!("--log-level DEBUG"),
         ];
 
-        // Add configuration-specific arguments
+        // Add configuration-specific arguments from AgentConfig fields
         if let Some(poll_interval) = simulation_monitor_config.poll_interval {
             agent_args.push(format!("--poll-interval {}", poll_interval));
         }
@@ -75,16 +82,22 @@ pub fn process_simulation_monitor(
             agent_args.push("--detailed-logging".to_string());
         }
 
-        // Add any additional arguments from the configuration
-        if let Some(args) = &simulation_monitor_config.arguments {
-            agent_args.extend(args.iter().cloned());
+        // Add any additional arguments from attributes
+        if let Some(attrs) = &simulation_monitor_config.attributes {
+            for (key, value) in attrs {
+                agent_args.push(format!("--{} {}", key, value));
+            }
         }
 
+        // Get script path
+        let script = simulation_monitor_config.script.clone()
+            .unwrap_or_else(|| "agents.simulation_monitor".to_string());
+
         // Simplified command for simulation monitor agent
-        let python_cmd = if simulation_monitor_config.script.contains('.') && !simulation_monitor_config.script.contains('/') && !simulation_monitor_config.script.contains('\\') {
-            format!("python3 -m {} {}", simulation_monitor_config.script, agent_args.join(" "))
+        let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
+            format!("python3 -m {} {}", script, agent_args.join(" "))
         } else {
-            format!("python3 {} {}", simulation_monitor_config.script, agent_args.join(" "))
+            format!("python3 {} {}", script, agent_args.join(" "))
         };
 
         // Create a wrapper script for simulation monitor agent
@@ -103,7 +116,7 @@ echo "Starting simulation monitor agent..."
         );
 
         // Write wrapper script to a temporary file and execute it
-        let script_path = "/tmp/simulation_monitor_wrapper.sh".to_string();
+        let script_path = format!("/tmp/{}_wrapper.sh", simulation_monitor_id);
 
         // Determine execution start time (start early to monitor from beginning)
         let simulation_monitor_start_time = "5s".to_string();
@@ -131,7 +144,7 @@ echo "Starting simulation monitor agent..."
             expected_final_state: None,
         });
 
-        hosts.insert("simulation-monitor".to_string(), ShadowHost {
+        hosts.insert(simulation_monitor_id.to_string(), ShadowHost {
             network_node_id, // Use the assigned GML node with bandwidth info
             ip_addr: Some(simulation_monitor_ip),
             processes,

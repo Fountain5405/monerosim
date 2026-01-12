@@ -27,6 +27,198 @@ pub enum Topology {
     Dag,
 }
 
+/// Flexible option value for daemon/wallet flags
+/// Supports bool, string, and number types for YAML flexibility
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum OptionValue {
+    /// Boolean flag (true -> --flag, false -> omit)
+    Bool(bool),
+    /// String value (--flag=value)
+    String(String),
+    /// Numeric value (--flag=123)
+    Number(i64),
+}
+
+/// Unified agent configuration for all agent types
+/// Replaces separate UserAgentConfig, MinerDistributorConfig, etc.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfig {
+    /// Daemon binary (e.g., "monerod") or remote daemon config
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon: Option<DaemonConfig>,
+
+    /// Wallet binary (e.g., "monero-wallet-rpc")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet: Option<String>,
+
+    /// Script to run (e.g., "agents.autonomous_miner", "agents.regular_user")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script: Option<String>,
+
+    /// Per-agent daemon options (override global defaults)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_options: Option<BTreeMap<String, OptionValue>>,
+
+    /// Per-agent wallet options (override global defaults)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_options: Option<BTreeMap<String, OptionValue>>,
+
+    /// Start time for this agent (e.g., "0s", "30m", "2h")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_time: Option<String>,
+
+    // === Miner-specific fields ===
+    /// Hashrate for autonomous miners
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hashrate: Option<u32>,
+
+    // === User-specific fields ===
+    /// Transaction interval in seconds for regular users
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_interval: Option<u32>,
+
+    /// Time when activity starts (seconds from sim start)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub activity_start_time: Option<u32>,
+
+    /// Whether this agent can receive distributions from miner_distributor
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub can_receive_distributions: Option<bool>,
+
+    // === Miner distributor fields ===
+    /// Wait time before starting distributions (seconds)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wait_time: Option<u32>,
+
+    /// Initial fund amount for distributions
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_fund_amount: Option<String>,
+
+    /// Maximum transaction amount
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_transaction_amount: Option<String>,
+
+    /// Minimum transaction amount
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_transaction_amount: Option<String>,
+
+    /// Transaction frequency in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_frequency: Option<u32>,
+
+    // === Simulation monitor fields ===
+    /// Poll interval in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poll_interval: Option<u32>,
+
+    /// Status file path
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_file: Option<String>,
+
+    /// Enable alerts
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_alerts: Option<bool>,
+
+    /// Enable detailed logging
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detailed_logging: Option<bool>,
+
+    // === Phase support (for upgrade scenarios) ===
+    /// Daemon phases for upgrade scenarios
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_phases: Option<BTreeMap<u32, DaemonPhase>>,
+
+    /// Wallet phases for upgrade scenarios
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_phases: Option<BTreeMap<u32, WalletPhase>>,
+
+    // === Legacy support ===
+    /// Additional daemon arguments (legacy, prefer daemon_options)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_args: Option<Vec<String>>,
+
+    /// Additional wallet arguments (legacy, prefer wallet_options)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_args: Option<Vec<String>>,
+
+    /// Environment variables for daemon
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_env: Option<BTreeMap<String, String>>,
+
+    /// Environment variables for wallet
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_env: Option<BTreeMap<String, String>>,
+
+    /// Generic attributes (for custom script parameters)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attributes: Option<BTreeMap<String, String>>,
+}
+
+impl AgentConfig {
+    /// Check if this agent has a local daemon
+    pub fn has_local_daemon(&self) -> bool {
+        matches!(&self.daemon, Some(DaemonConfig::Local(_))) || self.has_daemon_phases()
+    }
+
+    /// Check if this agent has a remote daemon (wallet-only)
+    pub fn has_remote_daemon(&self) -> bool {
+        matches!(&self.daemon, Some(DaemonConfig::Remote { .. }))
+    }
+
+    /// Check if this agent has a wallet
+    pub fn has_wallet(&self) -> bool {
+        self.wallet.is_some() || self.has_wallet_phases()
+    }
+
+    /// Check if this agent has a script
+    pub fn has_script(&self) -> bool {
+        self.script.is_some()
+    }
+
+    /// Check if this is a script-only agent
+    pub fn is_script_only(&self) -> bool {
+        !self.has_local_daemon() && !self.has_remote_daemon() && !self.has_wallet() && self.has_script()
+    }
+
+    /// Check if this agent has daemon phases
+    pub fn has_daemon_phases(&self) -> bool {
+        self.daemon_phases.is_some() && !self.daemon_phases.as_ref().unwrap().is_empty()
+    }
+
+    /// Check if this agent has wallet phases
+    pub fn has_wallet_phases(&self) -> bool {
+        self.wallet_phases.is_some() && !self.wallet_phases.as_ref().unwrap().is_empty()
+    }
+
+    /// Check if this is a miner based on hashrate or script name
+    pub fn is_miner(&self) -> bool {
+        self.hashrate.is_some() ||
+        self.script.as_ref().map_or(false, |s| s.contains("miner"))
+    }
+
+    /// Check if this agent can receive distributions
+    pub fn can_receive_distributions(&self) -> bool {
+        self.can_receive_distributions.unwrap_or(false)
+    }
+
+    /// Get the remote daemon address if this is a wallet-only agent
+    pub fn remote_daemon_address(&self) -> Option<&str> {
+        match &self.daemon {
+            Some(DaemonConfig::Remote { address, .. }) => Some(address),
+            _ => None,
+        }
+    }
+
+    /// Get the daemon selection strategy if this is a wallet-only agent with auto discovery
+    pub fn daemon_selection_strategy(&self) -> Option<&DaemonSelectionStrategy> {
+        match &self.daemon {
+            Some(DaemonConfig::Remote { strategy, .. }) => strategy.as_ref(),
+            _ => None,
+        }
+    }
+}
+
 /// Unified configuration that supports only agent mode
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -160,6 +352,16 @@ pub struct GeneralConfig {
     /// Affects --max-concurrency and --prep-blocks-threads flags
     #[serde(skip_serializing_if = "Option::is_none")]
     pub process_threads: Option<u32>,
+
+    /// Default daemon options applied to all agents (can be overridden per-agent)
+    /// Example: { "log-level": 1, "no-zmq": true, "db-sync-mode": "fastest" }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daemon_defaults: Option<BTreeMap<String, OptionValue>>,
+
+    /// Default wallet options applied to all agents (can be overridden per-agent)
+    /// Example: { "log-level": 1 }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_defaults: Option<BTreeMap<String, OptionValue>>,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -178,17 +380,13 @@ fn default_shadow_log_level() -> String {
     "info".to_string()  // Reduced from "trace" to lower I/O overhead
 }
 
-/// Agent definitions
+/// Agent definitions - named map of agents
+/// Each key is the agent ID (e.g., "miner_001", "user_001")
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentDefinitions {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_agents: Option<Vec<UserAgentConfig>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub miner_distributor: Option<MinerDistributorConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pure_script_agents: Option<Vec<PureScriptAgentConfig>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub simulation_monitor: Option<SimulationMonitorConfig>,
+    /// Named agents map - agent_id -> AgentConfig
+    #[serde(flatten)]
+    pub agents: BTreeMap<String, AgentConfig>,
 }
 
 /// Daemon selection strategy for wallet-only agents connecting to remote public nodes
@@ -1049,6 +1247,8 @@ impl Default for GeneralConfig {
             bootstrap_end_time: None,
             progress: Some(true),  // Default to showing progress
             process_threads: Some(1),  // Default to single-threaded for determinism
+            daemon_defaults: None,  // No daemon defaults by default
+            wallet_defaults: None,  // No wallet defaults by default
         }
     }
 }

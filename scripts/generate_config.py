@@ -16,7 +16,8 @@ The generated config has:
 
 import argparse
 import sys
-from typing import List, Dict, Any
+from typing import Dict, Any
+from collections import OrderedDict
 
 
 # Fixed miner configuration (same as config_32_agents.yaml)
@@ -64,41 +65,35 @@ def format_time_offset(seconds: int) -> str:
         return f"{seconds}s"
 
 
-def generate_miner_agent(index: int, hashrate: int, start_offset_s: int) -> Dict[str, Any]:
-    """Generate a miner agent configuration."""
-    return {
-        "daemon": "monerod",
-        "wallet": "monero-wallet-rpc",
-        "mining_script": "agents.autonomous_miner",
-        "start_time_offset": format_time_offset(start_offset_s),
-        "attributes": {
-            "is_miner": "true",
-            "hashrate": str(hashrate),
-            "can_receive_distributions": True,
-        },
-    }
+def generate_miner_agent(hashrate: int, start_offset_s: int) -> Dict[str, Any]:
+    """Generate a miner agent configuration (new format)."""
+    return OrderedDict([
+        ("daemon", "monerod"),
+        ("wallet", "monero-wallet-rpc"),
+        ("script", "agents.autonomous_miner"),
+        ("start_time", format_time_offset(start_offset_s)),
+        ("hashrate", hashrate),
+        ("can_receive_distributions", True),
+    ])
 
 
-def generate_user_agent(index: int, start_offset_s: int, tx_interval: str = "60", activity_start_time: int = 0) -> Dict[str, Any]:
-    """Generate a regular user agent configuration.
+def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0) -> Dict[str, Any]:
+    """Generate a regular user agent configuration (new format).
 
     Args:
-        index: Agent index
         start_offset_s: When the agent process spawns (sim time)
         tx_interval: Interval between transaction attempts
         activity_start_time: Absolute sim time when transactions should start (0 = start immediately)
     """
-    return {
-        "daemon": "monerod",
-        "wallet": "monero-wallet-rpc",
-        "user_script": "agents.regular_user",
-        "start_time_offset": format_time_offset(start_offset_s),
-        "attributes": {
-            "transaction_interval": tx_interval,
-            "activity_start_time": str(activity_start_time),
-            "can_receive_distributions": True,
-        },
-    }
+    return OrderedDict([
+        ("daemon", "monerod"),
+        ("wallet", "monero-wallet-rpc"),
+        ("script", "agents.regular_user"),
+        ("start_time", format_time_offset(start_offset_s)),
+        ("transaction_interval", tx_interval),
+        ("activity_start_time", activity_start_time),
+        ("can_receive_distributions", True),
+    ])
 
 
 # Single GML file for all tests (1200 nodes supports up to 1200 agents)
@@ -133,7 +128,7 @@ def generate_config(
         raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
 
     # Performance settings for fast mode
-    tx_interval = "120" if fast_mode else "60"
+    tx_interval = 120 if fast_mode else 60
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
@@ -142,64 +137,87 @@ def generate_config(
     # Users spawning before this time will wait; users spawning after will start immediately
     activity_start_time = ACTIVITY_START_TIME_S  # 7200s = 2h
 
-    # Build user_agents list
-    user_agents: List[Dict[str, Any]] = []
+    # Build named agents map (OrderedDict to preserve order)
+    agents = OrderedDict()
 
-    # Add fixed miners
+    # Add fixed miners with explicit IDs
     for i, miner in enumerate(FIXED_MINERS):
-        user_agents.append(generate_miner_agent(i, miner["hashrate"], miner["start_offset_s"]))
+        agent_id = f"miner_{i+1:03}"
+        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"])
 
     # Add variable users starting at 30m mark (during bootstrap period)
     # Zero stagger creates implicit barrier - all users spawn at same sim time
     for i in range(num_users):
+        agent_id = f"user_{i+1:03}"
         start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-        user_agents.append(generate_user_agent(num_miners + i, start_offset_s, tx_interval, activity_start_time))
+        agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time)
 
-    # Build full config
-    general_config = {
-        "stop_time": duration,
-        "parallelism": 0,
-        "simulation_seed": simulation_seed,
-        "enable_dns_server": True,
-        "shadow_log_level": shadow_log_level,
+    # Add miner_distributor
+    agents["miner_distributor"] = OrderedDict([
+        ("script", "agents.miner_distributor"),
+        ("wait_time", 7200),  # Wait 2h - aligns with bootstrap end and activity start
+        ("initial_fund_amount", "1.0"),
+        ("max_transaction_amount", "2.0"),
+        ("min_transaction_amount", "0.5"),
+        ("transaction_frequency", 30),
+    ])
+
+    # Add simulation_monitor
+    agents["simulation_monitor"] = OrderedDict([
+        ("script", "agents.simulation_monitor"),
+        ("poll_interval", poll_interval),
+        ("detailed_logging", False),
+        ("enable_alerts", True),
+        ("status_file", "shadow.data/monerosim_monitor.log"),
+    ])
+
+    # Build general config with daemon_defaults
+    general_config = OrderedDict([
+        ("stop_time", duration),
+        ("parallelism", 0),
+        ("simulation_seed", simulation_seed),
+        ("enable_dns_server", True),
+        ("shadow_log_level", shadow_log_level),
         # Bootstrap period: high bandwidth, no packet loss until activity starts
-        "bootstrap_end_time": format_time_offset(ACTIVITY_START_TIME_S),
+        ("bootstrap_end_time", format_time_offset(ACTIVITY_START_TIME_S)),
         # Show simulation progress on stderr for visibility
-        "progress": True,
-    }
+        ("progress", True),
+    ])
+
+    # Add runahead for fast mode
     if runahead:
         general_config["runahead"] = runahead
+
     # Add process_threads if not default (1)
     if process_threads != 1:
         general_config["process_threads"] = process_threads
 
-    config = {
-        "general": general_config,
-        "network": {
-            "path": gml_path,
-            "peer_mode": "Dynamic",
-        },
-        "agents": {
-            "miner_distributor": {
-                "script": "agents.miner_distributor",
-                "attributes": {
-                    "initial_fund_amount": "1.0",
-                    "max_transaction_amount": "2.0",
-                    "min_transaction_amount": "0.5",
-                    "transaction_frequency": "30",
-                    "wait_time": "7200",  # Wait 2h - aligns with bootstrap end and activity start
-                },
-            },
-            "simulation_monitor": {
-                "script": "agents.simulation_monitor",
-                "poll_interval": poll_interval,
-                "detailed_logging": False,
-                "enable_alerts": True,
-                "status_file": "shadow.data/monerosim_monitor.log",
-            },
-            "user_agents": user_agents,
-        },
-    }
+    # Add daemon_defaults - these were previously hardcoded
+    general_config["daemon_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+        ("db-sync-mode", "fastest"),
+        ("no-zmq", True),
+        ("non-interactive", True),
+        ("disable-rpc-ban", True),
+        ("allow-local-ip", True),
+    ])
+
+    # Add wallet_defaults
+    general_config["wallet_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+    ])
+
+    # Build full config
+    config = OrderedDict([
+        ("general", general_config),
+        ("network", OrderedDict([
+            ("path", gml_path),
+            ("peer_mode", "Dynamic"),
+        ])),
+        ("agents", agents),
+    ])
 
     return config
 

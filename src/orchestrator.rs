@@ -13,7 +13,7 @@ use crate::shadow::{
 };
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_mining_config, validate_agent_daemon_config, validate_simulation_seed};
+use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_simulation_seed};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
@@ -165,15 +165,7 @@ pub fn generate_agent_shadow_config(
     validate_simulation_seed(config.general.simulation_seed)
         .map_err(|e| color_eyre::eyre::eyre!("Simulation seed validation failed: {}", e))?;
 
-    // Validate mining configuration
-    if let Some(user_agents) = &config.agents.user_agents {
-        validate_mining_config(user_agents)
-            .map_err(|e| color_eyre::eyre::eyre!("Mining configuration validation failed: {}", e))?;
-
-        // Validate agent daemon/wallet configuration (wallet-only, daemon-only, script-only)
-        validate_agent_daemon_config(user_agents)
-            .map_err(|e| color_eyre::eyre::eyre!("Agent daemon configuration validation failed: {}", e))?;
-    }
+    // Mining and agent configuration validation is handled by AgentConfig methods
 
     let current_dir = std::env::current_dir()
         .map_err(|e| color_eyre::eyre::eyre!("Failed to get current directory: {}", e))?
@@ -290,12 +282,15 @@ pub fn generate_agent_shadow_config(
     };
 
     // Validate topology configuration
+    // Count user agents (agents with daemon or wallet)
+    let user_agent_count = config.agents.agents.iter()
+        .filter(|(_, cfg)| cfg.has_local_daemon() || cfg.has_remote_daemon() || cfg.has_wallet())
+        .count();
+
     if let Some(topo) = &topology {
-        if let Some(user_agents) = &config.agents.user_agents {
-            if let Err(e) = validate_topology_config(topo, user_agents.len()) {
-                println!("Warning: Topology validation failed: {}", e);
-                // Continue with default DAG topology
-            }
+        if let Err(e) = validate_topology_config(topo, user_agent_count) {
+            println!("Warning: Topology validation failed: {}", e);
+            // Continue with default DAG topology
         }
     }
 
@@ -303,16 +298,15 @@ pub fn generate_agent_shadow_config(
     let effective_seed_nodes = if seed_node_list.is_empty() {
         // Collect actual miner IPs for seed nodes
         let mut miner_ips = Vec::new();
-        if let Some(user_agents) = &config.agents.user_agents {
-            for (i, user_agent_config) in user_agents.iter().enumerate() {
-                if user_agent_config.is_miner_value() {
-                    let agent_id = format!("user{:03}", i);
-                    // For seed node IP calculation, use node 0 (switch topology assumption)
-                    // This ensures consistent IP assignment for miners
-                    let network_node_id = 0;
-                    let agent_ip = get_agent_ip(AgentType::UserAgent, &agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry);
-                    miner_ips.push(format!("{}:18080", agent_ip));
-                }
+        for (i, (agent_id, agent_config)) in config.agents.agents.iter()
+            .filter(|(_, cfg)| cfg.has_local_daemon() || cfg.has_remote_daemon() || cfg.has_wallet())
+            .enumerate()
+        {
+            if agent_config.is_miner() {
+                // For seed node IP calculation, use node 0 (switch topology assumption)
+                let network_node_id = 0;
+                let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry);
+                miner_ips.push(format!("{}:18080", agent_ip));
             }
         }
         println!("Using {} miner IPs as seed nodes: {:?}", miner_ips.len(), miner_ips);
@@ -414,9 +408,10 @@ echo "Starting DNS server..."
 
     // Calculate offset for script agents to avoid IP collisions
     // Use a larger offset to ensure clear separation between agent types
-    let user_agent_count = config.agents.user_agents.as_ref().map(|ua| ua.len()).unwrap_or(0);
-    let distributor_offset = user_agent_count + 100; // Reserve 100 IPs for user agents
-    let script_offset = user_agent_count + 200; // Reserve another 100 IPs for miner distributor and other uses
+    // Count all agents in the map for offset calculation
+    let total_agent_count = config.agents.agents.len();
+    let distributor_offset = total_agent_count + 100; // Reserve 100 IPs for user agents
+    let script_offset = total_agent_count + 200; // Reserve another 100 IPs for miner distributor and other uses
 
     process_miner_distributor(
         &config.agents,
@@ -469,143 +464,62 @@ echo "Starting DNS server..."
     // Populate agent registry from all agent types
     // Extract IPs from the already created hosts instead of generating new ones
 
-    // Add user agents to registry
-    if let Some(user_agents) = &config.agents.user_agents {
-        for (i, user_agent_config) in user_agents.iter().enumerate() {
-            let agent_id = format!("user{:03}", i);
-
-            // Get IP from the corresponding host that was already created
-            let agent_ip = hosts.get(&agent_id)
-                .and_then(|host| host.ip_addr.clone())
-                .unwrap_or_else(|| {
-                    // Fallback to geographic IP assignment
-                    format!("192.168.10.{}", 10 + i)
-                });
-
-            let mut attributes = user_agent_config.attributes.clone().unwrap_or_default();
-
-            // Add computed is_miner attribute to the agent registry
-            let is_miner = user_agent_config.is_miner_value();
-            attributes.insert("is_miner".to_string(), is_miner.to_string());
-
-            // DEBUG: Log what attributes we have before adding to registry
-            log::info!("Agent {}: attributes = {:?}", agent_id, attributes);
-
-            // Determine agent type characteristics
-            let has_local_daemon = user_agent_config.has_local_daemon();
-            let has_wallet = user_agent_config.has_wallet();
-            let is_public_node = user_agent_config.is_public_node();
-
-            // Get remote daemon info for wallet-only agents
-            let remote_daemon = user_agent_config.remote_daemon_address().map(|s| s.to_string());
-            let daemon_selection_strategy = user_agent_config.daemon_selection_strategy()
-                .map(|s| format!("{:?}", s).to_lowercase());
-
-            let agent_info = AgentInfo {
-                id: agent_id,
-                ip_addr: agent_ip,
-                daemon: has_local_daemon,
-                wallet: has_wallet,
-                user_script: user_agent_config.user_script.clone(),
-                attributes,
-                wallet_rpc_port: if has_wallet { Some(18082) } else { None },
-                daemon_rpc_port: if has_local_daemon { Some(18081) } else { None },
-                is_public_node: if is_public_node { Some(true) } else { None },
-                remote_daemon,
-                daemon_selection_strategy,
-            };
-            agent_registry.agents.push(agent_info);
-        }
-    }
-
-    // Add miner distributor to registry
-    if config.agents.miner_distributor.is_some() {
-        let miner_distributor_id = "minerdistributor".to_string();
-
+    // Add all agents to registry from the named agents map
+    for (agent_id, agent_config) in config.agents.agents.iter() {
         // Get IP from the corresponding host that was already created
-        let miner_distributor_ip = hosts.get(&miner_distributor_id)
+        let agent_ip = hosts.get(agent_id)
             .and_then(|host| host.ip_addr.clone())
             .unwrap_or_else(|| {
-                // Fallback to geographic IP assignment for miner distributor
-                format!("192.168.21.{}", 10 + distributor_offset)
+                // Fallback - should rarely happen
+                format!("192.168.10.10")
             });
 
+        let mut attributes = agent_config.attributes.clone().unwrap_or_default();
+
+        // Add computed is_miner attribute to the agent registry
+        let is_miner = agent_config.is_miner();
+        attributes.insert("is_miner".to_string(), is_miner.to_string());
+
+        // Add hashrate if present
+        if let Some(hashrate) = agent_config.hashrate {
+            attributes.insert("hashrate".to_string(), hashrate.to_string());
+        }
+
+        // Add can_receive_distributions if true
+        if agent_config.can_receive_distributions() {
+            attributes.insert("can_receive_distributions".to_string(), "true".to_string());
+        }
+
+        // Determine agent type characteristics
+        let has_local_daemon = agent_config.has_local_daemon();
+        let has_wallet = agent_config.has_wallet();
+        let is_public_node = attributes.get("is_public_node")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false);
+
+        // Get remote daemon info for wallet-only agents
+        let remote_daemon = agent_config.remote_daemon_address().map(|s| s.to_string());
+        let daemon_selection_strategy = agent_config.daemon_selection_strategy()
+            .map(|s| format!("{:?}", s).to_lowercase());
+
         let agent_info = AgentInfo {
-            id: miner_distributor_id,
-            ip_addr: miner_distributor_ip,
-            daemon: false, // Miner distributor does not run a daemon
-            wallet: false, // Miner distributor does not have a wallet
-            user_script: config.agents.miner_distributor.as_ref().map(|c| c.script.clone()),
-            attributes: config.agents.miner_distributor.as_ref()
-                .and_then(|c| c.attributes.clone())
-                .unwrap_or_default(),
-            wallet_rpc_port: None,
-            daemon_rpc_port: None,
-            is_public_node: None,
-            remote_daemon: None,
-            daemon_selection_strategy: None,
+            id: agent_id.clone(),
+            ip_addr: agent_ip,
+            daemon: has_local_daemon,
+            wallet: has_wallet,
+            user_script: agent_config.script.clone(),
+            attributes,
+            wallet_rpc_port: if has_wallet { Some(18082) } else { None },
+            daemon_rpc_port: if has_local_daemon { Some(18081) } else { None },
+            is_public_node: if is_public_node { Some(true) } else { None },
+            remote_daemon,
+            daemon_selection_strategy,
         };
         agent_registry.agents.push(agent_info);
     }
 
-    // Add pure script agents to registry
-    if let Some(pure_script_agents) = &config.agents.pure_script_agents {
-        for (i, pure_script_config) in pure_script_agents.iter().enumerate() {
-            let script_id = format!("script{:03}", i);
-
-            // Get IP from the corresponding host that was already created
-            let script_ip = hosts.get(&script_id)
-                .and_then(|host| host.ip_addr.clone())
-                .unwrap_or_else(|| {
-                    // Fallback to geographic IP assignment for script agents
-                    format!("192.168.30.{}", 10 + (i % 245))
-                });
-
-            let agent_info = AgentInfo {
-                id: script_id,
-                ip_addr: script_ip,
-                daemon: false, // Pure script agents do not run a daemon
-                wallet: false, // Pure script agents do not have a wallet
-                user_script: Some(pure_script_config.script.clone()),
-                attributes: BTreeMap::new(), // No specific attributes for pure script agents
-                wallet_rpc_port: None,
-                daemon_rpc_port: None,
-                is_public_node: None,
-                remote_daemon: None,
-                daemon_selection_strategy: None,
-            };
-            agent_registry.agents.push(agent_info);
-        }
-    }
-
-    // Add simulation monitor agent to registry
-    if config.agents.simulation_monitor.is_some() {
-        let simulation_monitor_id = "simulation_monitor".to_string();
-        let simulation_monitor_hostname = "simulation-monitor".to_string();
-
-        // Get IP from the corresponding host that was already created
-        let simulation_monitor_ip = hosts.get(&simulation_monitor_hostname)
-            .and_then(|host| host.ip_addr.clone())
-            .unwrap_or_else(|| {
-                // Fallback to geographic IP assignment for simulation monitor
-                format!("192.168.31.{}", 10 + ((script_offset + 50) % 245))
-            });
-
-        let agent_info = AgentInfo {
-            id: simulation_monitor_id,
-            ip_addr: simulation_monitor_ip,
-            daemon: false, // Simulation monitor does not run a daemon
-            wallet: false, // Simulation monitor does not have a wallet
-            user_script: config.agents.simulation_monitor.as_ref().map(|c| c.script.clone()),
-            attributes: BTreeMap::new(), // No specific attributes for simulation monitor
-            wallet_rpc_port: None,
-            daemon_rpc_port: None,
-            is_public_node: None,
-            remote_daemon: None,
-            daemon_selection_strategy: None,
-        };
-        agent_registry.agents.push(agent_info);
-    }
+    // Note: miner_distributor, simulation_monitor, and pure_script agents are now
+    // part of the unified agents map and are handled above
 
     // Write agent registry to file
     let agent_registry_path = shared_dir_path.join("agent_registry.json");
@@ -656,36 +570,35 @@ echo "Starting DNS server..."
         miners: Vec::new(),
     };
 
-    // Populate miner registry from user_agents that are miners
-    if let Some(user_agents) = &config.agents.user_agents {
-        for (i, user_agent_config) in user_agents.iter().enumerate() {
-            if user_agent_config.is_miner_value() {
-                let agent_id = format!("user{:03}", i);
-                // Find the IP address from the already populated agent_registry
-                let agent_ip = agent_registry.agents.iter()
-                    .find(|a| a.id == agent_id)
-                    .map(|a| a.ip_addr.clone())
-                    .unwrap_or_else(|| {
-                        // Geographic IP assignment for miners
-                        format!("192.168.10.{}", 10 + i)
-                    }); // Fallback
+    // Populate miner registry from agents that are miners
+    for (agent_id, agent_config) in config.agents.agents.iter() {
+        if agent_config.is_miner() {
+            // Find the IP address from the already populated agent_registry
+            let agent_ip = agent_registry.agents.iter()
+                .find(|a| a.id == *agent_id)
+                .map(|a| a.ip_addr.clone())
+                .unwrap_or_else(|| {
+                    // Fallback IP
+                    format!("192.168.10.10")
+                });
 
-                // Determine miner weight (hashrate)
-                // If no valid hashrate is specified, default to 10 (for even distribution)
-                let weight = user_agent_config.attributes
-                    .as_ref()
-                    .and_then(|attrs| attrs.get("hashrate"))
-                    .and_then(|h| h.parse::<u32>().ok())
-                    .unwrap_or(10); // Default to 10 instead of 0 for better distribution
+            // Determine miner weight (hashrate)
+            // Use hashrate field if available, otherwise check attributes, default to 10
+            let weight = agent_config.hashrate
+                .or_else(|| {
+                    agent_config.attributes.as_ref()
+                        .and_then(|attrs| attrs.get("hashrate"))
+                        .and_then(|h| h.parse::<u32>().ok())
+                })
+                .unwrap_or(10); // Default to 10 for better distribution
 
-                let miner_info = MinerInfo {
-                    agent_id: agent_id.clone(),
-                    ip_addr: agent_ip,
-                    wallet_address: None, // Will be populated by the block controller
-                    weight,
-                };
-                miner_registry.miners.push(miner_info);
-            }
+            let miner_info = MinerInfo {
+                agent_id: agent_id.clone(),
+                ip_addr: agent_ip,
+                wallet_address: None, // Will be populated by the block controller
+                weight,
+            };
+            miner_registry.miners.push(miner_info);
         }
     }
 
