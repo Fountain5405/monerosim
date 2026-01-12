@@ -444,6 +444,10 @@ echo "Starting DNS server..."
         script_offset,
     )?;
 
+    // Get output directory from output_path (parent of output file)
+    let output_dir = output_path.parent()
+        .ok_or_else(|| color_eyre::eyre::eyre!("Output path has no parent directory"))?;
+
     process_simulation_monitor(
         &config.agents,
         &mut hosts,
@@ -452,6 +456,7 @@ echo "Starting DNS server..."
         &environment,
         shared_dir_path,
         &current_dir,
+        output_dir,
         &config.general.stop_time,
         gml_graph.as_ref(),
         using_gml_topology,

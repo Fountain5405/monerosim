@@ -36,6 +36,7 @@ class SimulationMonitorAgent(BaseAgent):
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
                  poll_interval: int = 300,
+                 output_dir: Optional[str] = None,
                  status_file: str = "shadow.data/monerosim_monitor.log",
                  enable_alerts: bool = True,
                  detailed_logging: bool = False,
@@ -43,11 +44,12 @@ class SimulationMonitorAgent(BaseAgent):
                  **kwargs):
         """
         Initialize the Simulation Monitor Agent.
-        
+
         Args:
             agent_id: Unique identifier for this agent
             shared_dir: Directory for shared state files
             poll_interval: Polling interval in seconds (default: 300)
+            output_dir: Shadow output directory for daemon log discovery
             status_file: Path to the real-time status file
             enable_alerts: Whether to enable alert generation
             detailed_logging: Whether to enable detailed logging
@@ -55,8 +57,9 @@ class SimulationMonitorAgent(BaseAgent):
             **kwargs: Additional arguments passed to BaseAgent
         """
         super().__init__(agent_id=agent_id, log_level=log_level, **kwargs)
-        
+
         self.poll_interval = poll_interval
+        self.output_dir = Path(output_dir) if output_dir else None
         self.status_file = status_file
         self.enable_alerts = enable_alerts
         self.detailed_logging = detailed_logging
@@ -185,9 +188,14 @@ class SimulationMonitorAgent(BaseAgent):
         These are the bash.*.stdout files that contain monerod output.
         """
         try:
-            hosts_dir = Path("shadow.data/hosts")
+            # Use output_dir if set, otherwise fall back to relative path
+            if self.output_dir:
+                hosts_dir = self.output_dir / "shadow.data" / "hosts"
+            else:
+                hosts_dir = Path("shadow.data/hosts")
+
             if not hosts_dir.exists():
-                self.logger.warning("shadow.data/hosts directory not found")
+                self.logger.warning(f"Hosts directory not found: {hosts_dir}")
                 return
 
             for host_dir in hosts_dir.iterdir():
@@ -1494,7 +1502,9 @@ class SimulationMonitorAgent(BaseAgent):
         
         parser.add_argument('--poll-interval', type=int, default=300,
                           help='Polling interval in seconds (default: 300)')
-        parser.add_argument('--status-file', type=str, 
+        parser.add_argument('--output-dir', type=str, default=None,
+                          help='Shadow output directory for daemon log discovery')
+        parser.add_argument('--status-file', type=str,
                           default='shadow.data/monerosim_monitor.log',
                           help='Path to the real-time status file')
         parser.add_argument('--enable-alerts', action='store_true', default=True,
@@ -1522,6 +1532,7 @@ def main():
             log_level=args.log_level,
             attributes=args.attributes,
             poll_interval=args.poll_interval,
+            output_dir=args.output_dir,
             status_file=args.status_file,
             enable_alerts=args.enable_alerts,
             detailed_logging=args.detailed_logging

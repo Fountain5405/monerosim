@@ -25,6 +25,7 @@ use std::path::Path;
 /// - `environment`: Environment variables for the process
 /// - `shared_dir`: Shared directory for inter-agent communication
 /// - `current_dir`: Current working directory
+/// - `output_dir`: Shadow output directory for daemon logs and status file
 /// - `_stop_time`: Simulation stop time (unused)
 /// - `gml_graph`: Optional GML topology graph
 /// - `using_gml_topology`: Whether GML topology is being used
@@ -40,6 +41,7 @@ pub fn process_simulation_monitor(
     environment: &BTreeMap<String, String>,
     shared_dir: &Path,
     current_dir: &str,
+    output_dir: &Path,
     _stop_time: &str,
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
@@ -59,9 +61,13 @@ pub fn process_simulation_monitor(
         let simulation_monitor_ip = get_agent_ip(AgentType::PureScriptAgent, simulation_monitor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
         let mut processes = Vec::new();
 
+        // Convert output_dir to absolute path string
+        let output_dir_str = output_dir.to_str().unwrap();
+
         let mut agent_args = vec![
             format!("--id {}", simulation_monitor_id),
             format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+            format!("--output-dir {}", output_dir_str),
             format!("--log-level DEBUG"),
         ];
 
@@ -70,8 +76,17 @@ pub fn process_simulation_monitor(
             agent_args.push(format!("--poll-interval {}", poll_interval));
         }
 
+        // Status file - if relative path, prepend output directory
         if let Some(status_file) = &simulation_monitor_config.status_file {
-            agent_args.push(format!("--status-file {}", status_file));
+            let status_path = if status_file.starts_with('/') {
+                status_file.clone()
+            } else {
+                format!("{}/{}", output_dir_str, status_file)
+            };
+            agent_args.push(format!("--status-file {}", status_path));
+        } else {
+            // Default status file in output directory
+            agent_args.push(format!("--status-file {}/shadow.data/monerosim_monitor.log", output_dir_str));
         }
 
         if simulation_monitor_config.enable_alerts.unwrap_or(false) {
