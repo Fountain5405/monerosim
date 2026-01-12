@@ -697,6 +697,16 @@ pub fn process_user_agents(
             if is_miner && script.contains("autonomous_miner") {
                 // HYBRID APPROACH for miners: Run both regular_user (for wallet) AND mining_script
 
+                // Build merged attributes that include typed fields (hashrate, is_miner, can_receive_distributions)
+                let mut merged_attributes = user_agent_config.attributes.clone().unwrap_or_default();
+                merged_attributes.insert("is_miner".to_string(), "true".to_string());
+                if let Some(hashrate) = user_agent_config.hashrate {
+                    merged_attributes.insert("hashrate".to_string(), hashrate.to_string());
+                }
+                if user_agent_config.can_receive_distributions() {
+                    merged_attributes.insert("can_receive_distributions".to_string(), "true".to_string());
+                }
+
                 // Step 1: Run regular_user.py first for wallet creation and address registration
                 add_user_agent_process(
                     &mut processes,
@@ -706,7 +716,7 @@ pub fn process_user_agents(
                     if has_wallet { Some(wallet_rpc_port) } else { None },
                     if has_local_daemon { Some(p2p_port) } else { None },
                     "agents.regular_user",
-                    user_agent_config.attributes.as_ref(),
+                    Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
@@ -736,7 +746,7 @@ pub fn process_user_agents(
                     agent_rpc_port,
                     mining_wallet_port,
                     &script,
-                    user_agent_config.attributes.as_ref(),
+                    Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
