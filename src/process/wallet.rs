@@ -3,9 +3,50 @@
 //! This file handles generation of Shadow process configurations
 //! for monero-wallet-rpc instances.
 
+use crate::config_v2::OptionValue;
 use crate::shadow::ShadowProcess;
 use crate::utils::duration::parse_duration_to_seconds;
 use std::collections::BTreeMap;
+
+/// Convert OptionValue map to command-line arguments
+/// - Bool(true) -> --flag
+/// - Bool(false) -> (omitted)
+/// - String(s) -> --flag=s
+/// - Number(n) -> --flag=n
+fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
+    options.iter().filter_map(|(key, value)| {
+        match value {
+            OptionValue::Bool(true) => Some(format!("--{}", key)),
+            OptionValue::Bool(false) => None,
+            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
+            OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
+        }
+    }).collect()
+}
+
+/// Merge two option maps, with overrides taking precedence over defaults
+fn merge_options(
+    defaults: Option<&BTreeMap<String, OptionValue>>,
+    overrides: Option<&BTreeMap<String, OptionValue>>,
+) -> BTreeMap<String, OptionValue> {
+    let mut merged = BTreeMap::new();
+
+    // Apply defaults first
+    if let Some(defs) = defaults {
+        for (k, v) in defs {
+            merged.insert(k.clone(), v.clone());
+        }
+    }
+
+    // Apply overrides (these take precedence)
+    if let Some(ovrs) = overrides {
+        for (k, v) in ovrs {
+            merged.insert(k.clone(), v.clone());
+        }
+    }
+
+    merged
+}
 
 /// Add a wallet process to the processes list
 ///
@@ -13,6 +54,8 @@ use std::collections::BTreeMap;
 /// - `wallet_binary_path`: Path to wallet-rpc binary (already resolved for Shadow, e.g., "$HOME/.monerosim/bin/monero-wallet-rpc")
 /// - `custom_args`: Optional additional CLI arguments to append
 /// - `custom_env`: Optional additional environment variables to merge
+/// - `wallet_defaults`: Global wallet defaults from config
+/// - `wallet_options`: Per-agent wallet options (overrides defaults)
 pub fn add_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
@@ -25,6 +68,8 @@ pub fn add_wallet_process(
     wallet_start_time: &str,
     custom_args: Option<&Vec<String>>,
     custom_env: Option<&BTreeMap<String, String>>,
+    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
+    wallet_options: Option<&BTreeMap<String, OptionValue>>,
 ) {
     // Calculate wallet cleanup start time (2 seconds before wallet start)
     let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
@@ -51,19 +96,23 @@ pub fn add_wallet_process(
         .and_then(|s| s.parse().ok())
         .unwrap_or(1);
 
-    // Build wallet args
+    // Merge wallet_defaults with wallet_options
+    let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
+
+    // Build wallet args - start with required flags
     let mut wallet_args_parts = vec![
         format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
         format!("--rpc-bind-port={}", wallet_rpc_port),
         format!("--rpc-bind-ip={}", agent_ip),
         "--disable-rpc-login".to_string(),
         "--trusted-daemon".to_string(),
-        "--log-level=1".to_string(),
         format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
-        "--non-interactive".to_string(),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
     ];
+
+    // Add configurable options from merged wallet_defaults + wallet_options
+    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
 
     // Add thread flag only if process_threads > 0
     if process_threads > 0 {
@@ -112,6 +161,8 @@ pub fn add_wallet_process(
 /// - `wallet_binary_path`: Path to wallet-rpc binary (already resolved for Shadow)
 /// - `custom_args`: Optional additional CLI arguments to append
 /// - `custom_env`: Optional additional environment variables to merge
+/// - `wallet_defaults`: Global wallet defaults from config
+/// - `wallet_options`: Per-agent wallet options (overrides defaults)
 pub fn add_remote_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
@@ -124,6 +175,8 @@ pub fn add_remote_wallet_process(
     wallet_start_time: &str,
     custom_args: Option<&Vec<String>>,
     custom_env: Option<&BTreeMap<String, String>>,
+    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
+    wallet_options: Option<&BTreeMap<String, OptionValue>>,
 ) {
     // Calculate wallet cleanup start time (2 seconds before wallet start)
     let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
@@ -161,18 +214,22 @@ pub fn add_remote_wallet_process(
         .and_then(|s| s.parse().ok())
         .unwrap_or(1);
 
-    // Build wallet args
+    // Merge wallet_defaults with wallet_options
+    let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
+
+    // Build wallet args - start with required flags
     let mut wallet_args_parts = vec![
         daemon_address_arg,
         format!("--rpc-bind-port={}", wallet_rpc_port),
         format!("--rpc-bind-ip={}", agent_ip),
         "--disable-rpc-login".to_string(),
-        "--log-level=1".to_string(),
         format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
-        "--non-interactive".to_string(),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
     ];
+
+    // Add configurable options from merged wallet_defaults + wallet_options
+    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
 
     // Add thread flag only if process_threads > 0
     if process_threads > 0 {

@@ -403,6 +403,8 @@ echo "Starting DNS server..."
         &peer_mode,
         topology.as_ref(),
         enable_dns_server,
+        config.general.daemon_defaults.as_ref(),
+        config.general.wallet_defaults.as_ref(),
     )?;
 
 

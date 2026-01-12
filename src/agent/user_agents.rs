@@ -5,11 +5,51 @@
 //! It manages peer discovery, IP allocation, and process configuration for
 //! user agents within the Shadow network simulator environment.
 
-use crate::config_v2::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode};
+use crate::config_v2::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
+
+/// Convert OptionValue map to command-line arguments
+/// - Bool(true) -> --flag
+/// - Bool(false) -> (omitted)
+/// - String(s) -> --flag=s
+/// - Number(n) -> --flag=n
+fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
+    options.iter().filter_map(|(key, value)| {
+        match value {
+            OptionValue::Bool(true) => Some(format!("--{}", key)),
+            OptionValue::Bool(false) => None,
+            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
+            OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
+        }
+    }).collect()
+}
+
+/// Merge two option maps, with overrides taking precedence over defaults
+fn merge_options(
+    defaults: Option<&BTreeMap<String, OptionValue>>,
+    overrides: Option<&BTreeMap<String, OptionValue>>,
+) -> BTreeMap<String, OptionValue> {
+    let mut merged = BTreeMap::new();
+
+    // Apply defaults first
+    if let Some(defs) = defaults {
+        for (k, v) in defs {
+            merged.insert(k.clone(), v.clone());
+        }
+    }
+
+    // Apply overrides (these take precedence)
+    if let Some(ovrs) = overrides {
+        for (k, v) in ovrs {
+            merged.insert(k.clone(), v.clone());
+        }
+    }
+
+    merged
+}
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
@@ -35,6 +75,8 @@ pub fn process_user_agents(
     peer_mode: &PeerMode,
     topology: Option<&Topology>,
     enable_dns_server: bool,
+    daemon_defaults: Option<&BTreeMap<String, OptionValue>>,
+    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
 ) -> color_eyre::eyre::Result<()> {
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
@@ -310,11 +352,13 @@ pub fn process_user_agents(
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1);
 
+            // Merge daemon_defaults with per-agent daemon_options
+            let merged_daemon_options = merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
+
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
+                // Start with required/injected flags that cannot be overridden
                 let mut args = vec![
                     format!("--data-dir=/tmp/monero-{}", agent_id),
-                    "--log-file=/dev/stdout".to_string(),
-                    "--log-level=1".to_string(),
                     "--regtest".to_string(),
                     "--keep-fakechain".to_string(),
                 ];
@@ -325,22 +369,18 @@ pub fn process_user_agents(
                     args.push(format!("--max-concurrency={}", process_threads));
                 }
 
+                // Add configurable options from merged daemon_defaults + daemon_options
+                // These can be overridden by config
+                args.extend(options_to_args(&merged_daemon_options));
+
+                // Add required network binding flags (always injected, use agent-specific values)
                 args.extend(vec![
-                    "--no-zmq".to_string(),
-                    "--db-sync-mode=fastest".to_string(),
-                    "--non-interactive".to_string(),
-                    "--max-connections-per-ip=50".to_string(),
-                    "--limit-rate-up=1024".to_string(),
-                    "--limit-rate-down=1024".to_string(),
-                    "--block-sync-size=1".to_string(),
                     format!("--rpc-bind-ip={}", agent_ip),
                     format!("--rpc-bind-port={}", agent_rpc_port),
                     "--confirm-external-bind".to_string(),
-                    "--disable-rpc-ban".to_string(),
                     "--rpc-access-control-origins=*".to_string(),
                     format!("--p2p-bind-ip={}", agent_ip),
                     format!("--p2p-bind-port={}", p2p_port),
-                    "--allow-local-ip".to_string(),
                 ]);
 
                 // Add DNS and seed node settings
@@ -626,6 +666,8 @@ pub fn process_user_agents(
                         &wallet_start_time,
                         user_agent_config.wallet_args.as_ref(),
                         user_agent_config.wallet_env.as_ref(),
+                        wallet_defaults,
+                        user_agent_config.wallet_options.as_ref(),
                     );
                 } else if has_remote_daemon {
                     // Wallet-only agent: wallet connects to remote daemon
@@ -642,6 +684,8 @@ pub fn process_user_agents(
                         &wallet_start_time,
                         user_agent_config.wallet_args.as_ref(),
                         user_agent_config.wallet_env.as_ref(),
+                        wallet_defaults,
+                        user_agent_config.wallet_options.as_ref(),
                     );
                 }
             }
