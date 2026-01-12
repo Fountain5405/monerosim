@@ -420,29 +420,31 @@ class MinerDistributorAgent(BaseAgent):
         """
         self.balance_check_attempts += 1
         self.logger.info(f"Checking miner balances (attempt {self.balance_check_attempts})")
-        
+
         for miner in self.miners:
             try:
                 miner_rpc = WalletRPC(host=miner['ip_addr'], port=miner['wallet_rpc_port'])
-                
-                # Get wallet information
-                wallet_info = miner_rpc.get_wallet_info()
-                if not wallet_info:
-                    self.logger.warning(f"Could not get wallet info for miner {miner.get('agent_id')}")
+
+                # Get wallet balance (returns values in atomic units / piconero)
+                balance_info = miner_rpc.get_balance()
+                if not balance_info:
+                    self.logger.warning(f"Could not get balance for miner {miner.get('agent_id')}")
                     continue
-                
-                # Check balance
-                balance = wallet_info.get('balance', 0)
-                unlocked_balance = wallet_info.get('unlocked_balance', 0)
-                
-                self.logger.info(f"Miner {miner.get('agent_id')} - Balance: {balance} XMR, Unlocked: {unlocked_balance} XMR")
-                
+
+                # Convert from atomic units to XMR (1 XMR = 10^12 piconero)
+                balance_atomic = balance_info.get('balance', 0)
+                unlocked_atomic = balance_info.get('unlocked_balance', 0)
+                balance_xmr = balance_atomic / 1e12
+                unlocked_xmr = unlocked_atomic / 1e12
+
+                self.logger.info(f"Miner {miner.get('agent_id')} - Balance: {balance_xmr:.6f} XMR, Unlocked: {unlocked_xmr:.6f} XMR")
+
                 # If we find a miner with sufficient unlocked balance, we can proceed
-                if unlocked_balance >= self.initial_fund_amount:
-                    self.logger.info(f"Miner {miner.get('agent_id')} has sufficient unlocked balance ({unlocked_balance} XMR)")
+                if unlocked_xmr >= self.initial_fund_amount:
+                    self.logger.info(f"Miner {miner.get('agent_id')} has sufficient unlocked balance ({unlocked_xmr:.6f} XMR)")
                     self.waiting_for_maturity = False
                     return True
-                
+
             except Exception as e:
                 self.logger.warning(f"Error checking balance for miner {miner.get('agent_id')}: {e}")
                 continue
