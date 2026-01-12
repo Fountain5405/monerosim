@@ -76,17 +76,18 @@ pub fn process_simulation_monitor(
             agent_args.push(format!("--poll-interval {}", poll_interval));
         }
 
-        // Status file - if relative path, prepend output directory
+        // Status file - use shared directory for portability
         if let Some(status_file) = &simulation_monitor_config.status_file {
-            let status_path = if status_file.starts_with('/') {
-                status_file.clone()
+            if status_file.starts_with('/') {
+                // Absolute path - use as-is
+                agent_args.push(format!("--status-file {}", status_file));
             } else {
-                format!("{}/{}", output_dir_str, status_file)
-            };
-            agent_args.push(format!("--status-file {}", status_path));
+                // Relative path - put in shared directory
+                agent_args.push(format!("--status-file {}/{}", shared_dir.to_str().unwrap(), status_file));
+            }
         } else {
-            // Default status file in output directory
-            agent_args.push(format!("--status-file {}/shadow.data/monerosim_monitor.log", output_dir_str));
+            // Default status file in shared directory
+            agent_args.push(format!("--status-file {}/monerosim_monitor.log", shared_dir.to_str().unwrap()));
         }
 
         if simulation_monitor_config.enable_alerts.unwrap_or(false) {

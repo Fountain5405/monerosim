@@ -182,20 +182,45 @@ class SimulationMonitorAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error loading miner registry: {e}")
 
+    def _find_shadow_data_hosts(self) -> Optional[Path]:
+        """
+        Find the shadow.data/hosts directory by searching common locations.
+        Returns the path if found, None otherwise.
+        """
+        # List of candidate paths to check
+        candidates = []
+
+        # If output_dir specified, check there first
+        if self.output_dir:
+            candidates.append(self.output_dir / "shadow.data" / "hosts")
+
+        # Check relative to current working directory
+        candidates.append(Path("shadow.data/hosts"))
+        candidates.append(Path("shadow_output/shadow.data/hosts"))
+
+        # Check parent directories (shadow might run from a subdirectory)
+        cwd = Path.cwd()
+        for parent in [cwd.parent, cwd.parent.parent]:
+            candidates.append(parent / "shadow.data" / "hosts")
+            candidates.append(parent / "shadow_output" / "shadow.data" / "hosts")
+
+        for candidate in candidates:
+            if candidate.exists():
+                self.logger.debug(f"Found shadow.data/hosts at: {candidate}")
+                return candidate
+
+        return None
+
     def _discover_daemon_log_files(self):
         """
         Discover daemon log files for all hosts in shadow.data/hosts/.
         These are the bash.*.stdout files that contain monerod output.
         """
         try:
-            # Use output_dir if set, otherwise fall back to relative path
-            if self.output_dir:
-                hosts_dir = self.output_dir / "shadow.data" / "hosts"
-            else:
-                hosts_dir = Path("shadow.data/hosts")
+            hosts_dir = self._find_shadow_data_hosts()
 
-            if not hosts_dir.exists():
-                self.logger.warning(f"Hosts directory not found: {hosts_dir}")
+            if not hosts_dir:
+                self.logger.warning("Could not find shadow.data/hosts directory")
                 return
 
             for host_dir in hosts_dir.iterdir():

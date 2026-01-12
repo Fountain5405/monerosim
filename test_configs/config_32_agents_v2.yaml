@@ -353,4 +353,4 @@ agents:
     poll_interval: 300
     detailed_logging: false
     enable_alerts: true
-    status_file: shadow.data/monerosim_monitor.log
+    status_file: monerosim_monitor.log
