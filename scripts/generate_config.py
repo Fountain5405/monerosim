@@ -5,13 +5,25 @@ Generate monerosim configuration files with varying agent counts for scaling tes
 Usage:
     python scripts/generate_config.py --agents 50 -o test_50.yaml
     python scripts/generate_config.py --agents 100 -o test_100.yaml
-    python scripts/generate_config.py --agents 800 --duration 4h -o test_800.yaml
+    python scripts/generate_config.py --agents 800 --duration 8h -o test_800.yaml
 
 The generated config has:
 - Fixed 5 miners (core network) with hashrates: 25, 25, 30, 10, 10
-- Variable users (total - 5) spawning at 30m mark (all at once by default)
-- Bootstrap period until 2h with high bandwidth/no packet loss
-- Activity (transactions) starts at 2h when bootstrap ends
+- Variable users spawning at 3h mark (sync during last hour of bootstrap)
+- Bootstrap period until 4h with high bandwidth/no packet loss
+- Miner distributor starts at 4h (funds users from miner wallets)
+- User activity (transactions) starts at 5h
+
+Timeline (verified bootstrap approach for Monero regtest):
+  t=0:  Miners start mining
+  t=3h: Users spawn (sync blockchain during bootstrap)
+  t=4h: Bootstrap ends, miner distributor starts distributing funds
+  t=5h: Users start sending transactions
+
+This timing ensures:
+- ~120 blocks mined before distributor starts (60 needed for unlock)
+- Sufficient outputs on chain for ring signatures (ring size 16)
+- Users fully synced before activity begins
 """
 
 import argparse
@@ -29,12 +41,19 @@ FIXED_MINERS = [
     {"hashrate": 10, "start_offset_s": 4},
 ]
 
-# Users spawn at 30 minutes mark (during bootstrap period)
-# This allows them to sync blockchain and establish P2P connections before activity starts
-USER_START_TIME_S = 1800  # 30 minutes in seconds
+# Bootstrap timing constants (verified for Monero regtest with ring size 16)
+# This ensures sufficient blocks for unlock (60) and outputs for ring signatures
 
-# Activity starts at 2h mark (after blocks mature and bootstrap ends)
-ACTIVITY_START_TIME_S = 7200  # 2 hours in seconds
+# Users spawn at 3h mark (sync during last hour of bootstrap)
+USER_START_TIME_S = 10800  # 3 hours in seconds
+
+# Bootstrap ends at 4h (high bandwidth/no packet loss period)
+# ~120 blocks should exist by this point (enough for 60-block unlock requirement)
+BOOTSTRAP_END_TIME_S = 14400  # 4 hours in seconds
+
+# Activity starts at 5h mark (users start sending transactions)
+# Gives 1 hour for miner distributor to fund users after bootstrap ends
+ACTIVITY_START_TIME_S = 18000  # 5 hours in seconds
 
 # Note: monerosim only supports seconds resolution (no ms support in duration parser)
 # Zero stagger is now the default to create an implicit synchronization barrier
@@ -152,10 +171,10 @@ def generate_config(
         start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
         agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time)
 
-    # Add miner-distributor
+    # Add miner-distributor (starts at bootstrap end to fund users)
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
-        ("wait_time", 7200),  # Wait 2h - aligns with bootstrap end and activity start
+        ("wait_time", BOOTSTRAP_END_TIME_S),  # Wait 4h - starts when bootstrap ends
         ("initial_fund_amount", "1.0"),
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
@@ -178,8 +197,8 @@ def generate_config(
         ("simulation_seed", simulation_seed),
         ("enable_dns_server", True),
         ("shadow_log_level", shadow_log_level),
-        # Bootstrap period: high bandwidth, no packet loss until activity starts
-        ("bootstrap_end_time", format_time_offset(ACTIVITY_START_TIME_S)),
+        # Bootstrap period: high bandwidth, no packet loss until 4h
+        ("bootstrap_end_time", format_time_offset(BOOTSTRAP_END_TIME_S)),
         # Show simulation progress on stderr for visibility
         ("progress", True),
     ])
@@ -294,14 +313,15 @@ def main():
         epilog="""
 Examples:
     python scripts/generate_config.py --agents 50 -o test_50.yaml
-    python scripts/generate_config.py --agents 100 --duration 4h -o test_100.yaml
+    python scripts/generate_config.py --agents 100 --duration 8h -o test_100.yaml
     python scripts/generate_config.py --agents 800 --stagger-interval 1 -o test_800.yaml
 
 The config includes 5 fixed miners (hashrates: 25, 25, 30, 10, 10).
-Timeline:
-  t=0:   Miners start
-  t=30m: Users spawn (all at once by default, creates implicit barrier)
-  t=2h:  Bootstrap ends, activity starts (miner_distributor + user transactions)
+Timeline (verified bootstrap for Monero regtest):
+  t=0:  Miners start
+  t=3h: Users spawn (sync during last hour of bootstrap)
+  t=4h: Bootstrap ends, miner distributor starts funding users
+  t=5h: Users start sending transactions
         """
     )
 
@@ -315,8 +335,8 @@ Timeline:
     parser.add_argument(
         "--duration", "-d",
         type=str,
-        default="6h",
-        help="Simulation duration (default: 6h)"
+        default="8h",
+        help="Simulation duration (default: 8h, activity starts at 5h)"
     )
 
     parser.add_argument(
@@ -398,10 +418,11 @@ Timeline:
 # Total agents: {args.agents} (5 miners + {num_users} users)
 # Duration: {args.duration}
 # Network topology: {args.gml}
-# Timeline:
-#   t=0:   Miners start
-#   t=30m: Users spawn ({stagger_note})
-#   t=2h:  Bootstrap ends, activity starts (miner_distributor + user transactions)
+# Timeline (verified bootstrap for Monero regtest):
+#   t=0:  Miners start
+#   t=3h: Users spawn ({stagger_note})
+#   t=4h: Bootstrap ends, miner distributor starts funding users
+#   t=5h: Users start sending transactions
 """
     if args.fast:
         header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120
