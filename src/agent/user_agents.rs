@@ -346,11 +346,10 @@ pub fn process_user_agents(
             let has_daemon_phases = user_agent_config.has_daemon_phases();
             let has_wallet_phases = user_agent_config.has_wallet_phases();
 
-            // Build base daemon arguments (shared across all phases)
-            // Get thread count from environment (0=auto/omit flags, 1+=explicit count)
+            // Get process_threads from environment (convenience setting)
             let process_threads: u32 = monero_environment.get("PROCESS_THREADS")
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(1);
+                .unwrap_or(0);
 
             // Merge daemon_defaults with per-agent daemon_options
             let merged_daemon_options = merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
@@ -363,14 +362,17 @@ pub fn process_user_agents(
                     "--keep-fakechain".to_string(),
                 ];
 
-                // Add thread flags only if process_threads > 0
+                // Add process_threads flags if set and not overridden in daemon_defaults
                 if process_threads > 0 {
-                    args.push(format!("--prep-blocks-threads={}", process_threads));
-                    args.push(format!("--max-concurrency={}", process_threads));
+                    if !merged_daemon_options.contains_key("prep-blocks-threads") {
+                        args.push(format!("--prep-blocks-threads={}", process_threads));
+                    }
+                    if !merged_daemon_options.contains_key("max-concurrency") {
+                        args.push(format!("--max-concurrency={}", process_threads));
+                    }
                 }
 
                 // Add configurable options from merged daemon_defaults + daemon_options
-                // These can be overridden by config
                 args.extend(options_to_args(&merged_daemon_options));
 
                 // Add required network binding flags (always injected, use agent-specific values)
@@ -558,7 +560,7 @@ pub fn process_user_agents(
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
 
-                    // Add thread flag only if process_threads > 0
+                    // Add process_threads flag if set
                     if process_threads > 0 {
                         args.push(format!("--max-concurrency={}", process_threads));
                     }

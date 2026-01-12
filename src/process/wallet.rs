@@ -91,10 +91,10 @@ pub fn add_wallet_process(
         expected_final_state: None,
     });
 
-    // Get thread count from environment (0=auto/omit flag, 1+=explicit count)
+    // Get process_threads from environment (convenience setting)
     let process_threads: u32 = environment.get("PROCESS_THREADS")
         .and_then(|s| s.parse().ok())
-        .unwrap_or(1);
+        .unwrap_or(0);
 
     // Merge wallet_defaults with wallet_options
     let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
@@ -111,13 +111,13 @@ pub fn add_wallet_process(
         "--allow-mismatched-daemon-version".to_string(),
     ];
 
-    // Add configurable options from merged wallet_defaults + wallet_options
-    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
-
-    // Add thread flag only if process_threads > 0
-    if process_threads > 0 {
+    // Add process_threads flag if set and not overridden in wallet_defaults
+    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
         wallet_args_parts.push(format!("--max-concurrency={}", process_threads));
     }
+
+    // Add configurable options from merged wallet_defaults + wallet_options
+    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
 
     wallet_args_parts.push("--daemon-ssl-allow-any-cert".to_string());
 
@@ -209,10 +209,10 @@ pub fn add_remote_wallet_process(
         }
     };
 
-    // Get thread count from environment (0=auto/omit flag, 1+=explicit count)
+    // Get process_threads from environment (convenience setting)
     let process_threads: u32 = environment.get("PROCESS_THREADS")
         .and_then(|s| s.parse().ok())
-        .unwrap_or(1);
+        .unwrap_or(0);
 
     // Merge wallet_defaults with wallet_options
     let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
@@ -228,13 +228,13 @@ pub fn add_remote_wallet_process(
         "--allow-mismatched-daemon-version".to_string(),
     ];
 
-    // Add configurable options from merged wallet_defaults + wallet_options
-    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
-
-    // Add thread flag only if process_threads > 0
-    if process_threads > 0 {
+    // Add process_threads flag if set and not overridden in wallet_defaults
+    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
         wallet_args_parts.push(format!("--max-concurrency={}", process_threads));
     }
+
+    // Add configurable options from merged wallet_defaults + wallet_options
+    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
 
     wallet_args_parts.push("--daemon-ssl-allow-any-cert".to_string());
 
