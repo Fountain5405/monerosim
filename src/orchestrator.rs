@@ -445,8 +445,14 @@ echo "Starting DNS server..."
     )?;
 
     // Get output directory from output_path (parent of output file)
+    // Ensure it's an absolute path so the monitor can find it regardless of working directory
     let output_dir = output_path.parent()
         .ok_or_else(|| color_eyre::eyre::eyre!("Output path has no parent directory"))?;
+    let output_dir = if output_dir.is_absolute() {
+        output_dir.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(output_dir)
+    };
 
     process_simulation_monitor(
         &config.agents,
@@ -456,7 +462,7 @@ echo "Starting DNS server..."
         &environment,
         shared_dir_path,
         &current_dir,
-        output_dir,
+        &output_dir,
         &config.general.stop_time,
         gml_graph.as_ref(),
         using_gml_topology,

@@ -31,7 +31,7 @@ general:
   shadow_log_level: warning    # Reduce Shadow's own logging
   bootstrap_end_time: 2h
   progress: true
-  process_threads: 1           # 1 for determinism, 2+ for speed
+  process_threads: 4           # 1 for determinism, 2+ for speed
   runahead: 100ms              # Faster simulation with slight timing variance
 
   # Daemon defaults - applied to all monerod instances
