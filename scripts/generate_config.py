@@ -5,25 +5,27 @@ Generate monerosim configuration files with varying agent counts for scaling tes
 Usage:
     python scripts/generate_config.py --agents 50 -o test_50.yaml
     python scripts/generate_config.py --agents 100 -o test_100.yaml
-    python scripts/generate_config.py --agents 800 --duration 8h -o test_800.yaml
+    python scripts/generate_config.py --agents 1000 --duration 8h -o test_1000.yaml
 
 The generated config has:
 - Fixed 5 miners (core network) with hashrates: 25, 25, 30, 10, 10
-- Variable users spawning at 3h mark (sync during last hour of bootstrap)
-- Bootstrap period until 4h with high bandwidth/no packet loss
-- Miner distributor starts at 4h (funds users from miner wallets)
-- User activity (transactions) starts at 5h
+- Variable users spawning at 3h mark with configurable stagger (default 5s)
+- Dynamic bootstrap period that extends based on agent count + 20% buffer
+- Miner distributor starts when bootstrap ends (funds users from miner wallets)
+- User activity starts 1 hour after bootstrap ends
 
-Timeline (verified bootstrap approach for Monero regtest):
-  t=0:  Miners start mining
-  t=3h: Users spawn (sync blockchain during bootstrap)
-  t=4h: Bootstrap ends, miner distributor starts distributing funds
-  t=5h: Users start sending transactions
+Timeline (dynamic based on agent count and stagger):
+  t=0:            Miners start mining
+  t=3h:           Users start spawning (staggered to avoid Shadow overload)
+  t=3h+stagger:   Last user spawns
+  t=bootstrap:    Bootstrap ends (last_spawn * 1.2, min 4h), distributor starts
+  t=activity:     Users start sending transactions (bootstrap + 1h)
 
 This timing ensures:
-- ~120 blocks mined before distributor starts (60 needed for unlock)
-- Sufficient outputs on chain for ring signatures (ring size 16)
-- Users fully synced before activity begins
+- All users spawn during bootstrap (high bandwidth, no packet loss)
+- 20% buffer for hardware variance in sync time
+- Minimum 4h bootstrap for sufficient blocks (60 needed for unlock)
+- 1 hour funding period before activity starts
 """
 
 import argparse
@@ -44,19 +46,48 @@ FIXED_MINERS = [
 # Bootstrap timing constants (verified for Monero regtest with ring size 16)
 # This ensures sufficient blocks for unlock (60) and outputs for ring signatures
 
-# Users spawn at 3h mark (sync during last hour of bootstrap)
+# Users spawn at 3h mark (sync during bootstrap period)
 USER_START_TIME_S = 10800  # 3 hours in seconds
 
-# Bootstrap ends at 4h (high bandwidth/no packet loss period)
-# ~120 blocks should exist by this point (enough for 60-block unlock requirement)
-BOOTSTRAP_END_TIME_S = 14400  # 4 hours in seconds
+# Minimum bootstrap time - ensures enough blocks for coinbase unlock (60 blocks)
+# At ~2 min/block, 4h gives ~120 blocks which is sufficient
+MIN_BOOTSTRAP_END_TIME_S = 14400  # 4 hours minimum
 
-# Activity starts at 5h mark (users start sending transactions)
-# Gives 1 hour for miner distributor to fund users after bootstrap ends
-ACTIVITY_START_TIME_S = 18000  # 5 hours in seconds
+# Buffer percentage added after last user spawn to account for hardware variance
+BOOTSTRAP_BUFFER_PERCENT = 0.20  # 20% buffer
+
+# Time after bootstrap ends for miner distributor to fund users before activity starts
+FUNDING_PERIOD_S = 3600  # 1 hour for funding
+
+# Minimum activity period (time after activity_start before simulation ends)
+MIN_ACTIVITY_PERIOD_S = 7200  # 2 hours minimum for meaningful transaction activity
 
 # Note: monerosim only supports seconds resolution (no ms support in duration parser)
 # Default 5s stagger spreads user spawns to reduce simultaneous load on Shadow
+
+
+def calculate_bootstrap_timing(num_users: int, stagger_interval_s: int) -> tuple:
+    """Calculate dynamic bootstrap timing based on user count and stagger.
+
+    Returns:
+        (bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s)
+    """
+    # Calculate when the last user spawns
+    if num_users > 0:
+        last_user_spawn_s = USER_START_TIME_S + ((num_users - 1) * stagger_interval_s)
+    else:
+        last_user_spawn_s = USER_START_TIME_S
+
+    # Add buffer for hardware variance (users need time to actually sync after spawning)
+    spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
+
+    # Bootstrap must be at least MIN_BOOTSTRAP_END_TIME_S to ensure enough blocks
+    bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
+
+    # Activity starts after funding period
+    activity_start_time_s = bootstrap_end_time_s + FUNDING_PERIOD_S
+
+    return (bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s)
 
 
 def parse_duration(duration_str: str) -> int:
@@ -74,14 +105,35 @@ def parse_duration(duration_str: str) -> int:
         return int(duration_str)
 
 
-def format_time_offset(seconds: int) -> str:
-    """Format time offset in the most readable way (seconds resolution only)."""
-    if seconds % 3600 == 0 and seconds >= 3600:
-        return f"{seconds // 3600}h"
-    elif seconds % 60 == 0 and seconds >= 60:
-        return f"{seconds // 60}m"
+def format_time_offset(seconds: int, for_config: bool = True) -> str:
+    """Format time offset in the most readable way.
+
+    Args:
+        seconds: Time in seconds
+        for_config: If True, use simple format for YAML config (e.g., "4h", "90m", "30s")
+                   If False, use human-readable format (e.g., "4h 22m")
+    """
+    if for_config:
+        # Simple format for YAML config values
+        if seconds % 3600 == 0 and seconds >= 3600:
+            return f"{seconds // 3600}h"
+        elif seconds % 60 == 0 and seconds >= 60:
+            return f"{seconds // 60}m"
+        else:
+            return f"{seconds}s"
     else:
-        return f"{seconds}s"
+        # Human-readable format for comments
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        parts = []
+        if hours > 0:
+            parts.append(f"{hours}h")
+        if minutes > 0:
+            parts.append(f"{minutes}m")
+        if secs > 0 and hours == 0:  # Only show seconds if less than an hour
+            parts.append(f"{secs}s")
+        return " ".join(parts) if parts else "0s"
 
 
 def generate_miner_agent(hashrate: int, start_offset_s: int) -> Dict[str, Any]:
@@ -146,15 +198,22 @@ def generate_config(
     if num_users < 0:
         raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
 
+    # Calculate dynamic bootstrap timing based on user count and stagger
+    bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s = calculate_bootstrap_timing(
+        num_users, stagger_interval_s
+    )
+
+    # Parse and potentially extend duration to ensure minimum activity period
+    requested_duration_s = parse_duration(duration)
+    min_duration_s = activity_start_time_s + MIN_ACTIVITY_PERIOD_S
+    duration_s = max(requested_duration_s, min_duration_s)
+    duration = format_time_offset(duration_s)  # Update duration string if extended
+
     # Performance settings for fast mode
     tx_interval = 120 if fast_mode else 60
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
-
-    # Activity start time: absolute sim time when transaction activity begins
-    # Users spawning before this time will wait; users spawning after will start immediately
-    activity_start_time = ACTIVITY_START_TIME_S  # 7200s = 2h
 
     # Build named agents map (OrderedDict to preserve order)
     agents = OrderedDict()
@@ -169,12 +228,12 @@ def generate_config(
     for i in range(num_users):
         agent_id = f"user-{i+1:03}"
         start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-        agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time)
+        agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s)
 
     # Add miner-distributor (starts at bootstrap end to fund users)
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
-        ("wait_time", BOOTSTRAP_END_TIME_S),  # Wait 4h - starts when bootstrap ends
+        ("wait_time", bootstrap_end_time_s),  # Starts when bootstrap ends
         ("initial_fund_amount", "1.0"),
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
@@ -197,8 +256,8 @@ def generate_config(
         ("simulation_seed", simulation_seed),
         ("enable_dns_server", True),
         ("shadow_log_level", shadow_log_level),
-        # Bootstrap period: high bandwidth, no packet loss until 4h
-        ("bootstrap_end_time", format_time_offset(BOOTSTRAP_END_TIME_S)),
+        # Bootstrap period: high bandwidth, no packet loss until all users spawned + buffer
+        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
         # Show simulation progress on stderr for visibility
         ("progress", True),
     ])
@@ -238,7 +297,16 @@ def generate_config(
         ("agents", agents),
     ])
 
-    return config
+    # Return config and timing info for header generation
+    timing_info = {
+        'bootstrap_end_time_s': bootstrap_end_time_s,
+        'activity_start_time_s': activity_start_time_s,
+        'last_user_spawn_s': last_user_spawn_s,
+        'duration_s': duration_s,
+        'requested_duration_s': requested_duration_s,
+    }
+
+    return config, timing_info
 
 
 def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:
@@ -393,7 +461,7 @@ Timeline (verified bootstrap for Monero regtest):
 
     # Generate config
     try:
-        config = generate_config(
+        config, timing_info = generate_config(
             total_agents=args.agents,
             duration=args.duration,
             stagger_interval_s=args.stagger_interval,
@@ -409,20 +477,32 @@ Timeline (verified bootstrap for Monero regtest):
     # Convert to YAML
     yaml_content = config_to_yaml(config)
 
-    # Add header comment
+    # Add header comment with dynamic timing
     num_users = args.agents - 5
     fast_note = " [FAST MODE]" if args.fast else ""
     stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once"
+
+    # Format timing values (human-readable for header comments)
+    bootstrap_end = format_time_offset(timing_info['bootstrap_end_time_s'], for_config=False)
+    activity_start = format_time_offset(timing_info['activity_start_time_s'], for_config=False)
+    last_spawn = format_time_offset(timing_info['last_user_spawn_s'], for_config=False)
+    actual_duration = format_time_offset(timing_info['duration_s'], for_config=False)
+
+    # Check if duration was extended
+    duration_extended = timing_info['duration_s'] > timing_info['requested_duration_s']
+    duration_note = f" (extended from {args.duration})" if duration_extended else ""
+
     header = f"""# Monerosim scaling test configuration{fast_note}
 # Generated by generate_config.py
 # Total agents: {args.agents} (5 miners + {num_users} users)
-# Duration: {args.duration}
+# Duration: {actual_duration}{duration_note}
 # Network topology: {args.gml}
-# Timeline (verified bootstrap for Monero regtest):
-#   t=0:  Miners start
-#   t=3h: Users spawn ({stagger_note})
-#   t=4h: Bootstrap ends, miner distributor starts funding users
-#   t=5h: Users start sending transactions
+# Timeline (dynamic bootstrap based on agent count):
+#   t=0:       Miners start
+#   t=3h:      Users spawn ({stagger_note})
+#   t={last_spawn}:  Last user spawns
+#   t={bootstrap_end}:  Bootstrap ends (+20% buffer), distributor starts funding
+#   t={activity_start}:  Users start sending transactions
 """
     if args.fast:
         header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120
@@ -435,7 +515,8 @@ Timeline (verified bootstrap for Monero regtest):
 
     fast_msg = " (fast mode)" if args.fast else ""
     threads_msg = f", threads={args.threads}" if args.threads != 1 else ""
-    print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}, GML: {args.gml} -> {args.output}")
+    duration_msg = f", duration extended to {actual_duration}" if duration_extended else ""
+    print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
 
 
 if __name__ == "__main__":
