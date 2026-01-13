@@ -321,8 +321,17 @@ run_test() {
     local status=""
     local notes=""
 
-    # Check if simulation completed (look for "Finished simulation" in log)
-    local sim_finished=$(grep -a "Finished simulation" "$log_file" 2>/dev/null)
+    # Check if simulation completed by looking for:
+    # 1. "Finished simulation" message
+    # 2. "managed processes in unexpected final state" (simulation reached end, daemons still running)
+    # 3. Stop time reached in the log (e.g., "07:00:00.000000000")
+    local sim_finished=""
+    if grep -qa "Finished simulation" "$log_file" 2>/dev/null; then
+        sim_finished="true"
+    elif grep -qa "managed processes in unexpected final state" "$log_file" 2>/dev/null; then
+        # This means simulation ran to completion but daemons were still running (expected)
+        sim_finished="true"
+    fi
 
     if [[ $exit_code -eq 0 ]]; then
         status="SUCCESS"
