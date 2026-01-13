@@ -13,6 +13,7 @@ FAST_MODE=""
 CUSTOM_AGENTS=""
 SIM_DURATION="6h"
 TIMEOUT=""
+THREADS=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         --fast)
@@ -31,13 +32,18 @@ while [[ $# -gt 0 ]]; do
             TIMEOUT="$2"
             shift 2
             ;;
+        --threads)
+            THREADS="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--fast] [--agents N] [--duration D] [--timeout T]"
+            echo "Usage: $0 [--fast] [--agents N] [--duration D] [--timeout T] [--threads T]"
             echo "  --fast       Enable performance optimizations"
             echo "  --agents N   Test only N agents (can be comma-separated: 100,200,400)"
             echo "  --duration D Simulation duration (default: 6h, e.g., 2h, 30m, 1h30m)"
             echo "  --timeout T  Test timeout (default: 2x sim duration, e.g., 4h, 90m)"
+            echo "  --threads T  Thread count for monerod/wallet (default: 1, use 2 for larger sims)"
             exit 1
             ;;
     esac
@@ -126,13 +132,17 @@ check_prerequisites() {
 get_system_info() {
     local mem_total=$(free -h | grep Mem | awk '{print $2}')
     local cpu_count=$(nproc)
-    local fast_info=""
+    local mode_info=""
     if [[ -n "$FAST_MODE" ]]; then
-        fast_info=" (FAST MODE)"
+        mode_info=" (FAST MODE)"
     fi
-    echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')${fast_info}"
+    local threads_info=""
+    if [[ -n "$THREADS" ]]; then
+        threads_info=", threads=$THREADS"
+    fi
+    echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')${mode_info}"
     echo "# Hardware: ${mem_total} RAM, ${cpu_count} CPUs"
-    echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes), Sim duration: ${SIM_DURATION}"
+    echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes), Sim duration: ${SIM_DURATION}${threads_info}"
     echo "# Config: 5 fixed miners + variable users, 5s stagger"
     echo ""
 }
@@ -207,9 +217,15 @@ run_test() {
 
     echo -e "${YELLOW}Testing $agent_count agents (5 miners + $user_count users)...${NC}" >&2
 
+    # Build config generation args
+    local config_args="--agents $agent_count --duration $SIM_DURATION -o $config_file $FAST_MODE"
+    if [[ -n "$THREADS" ]]; then
+        config_args="$config_args --threads $THREADS"
+    fi
+
     # Generate monerosim config
     echo "  Generating config..." >&2
-    python3 scripts/generate_config.py --agents "$agent_count" --duration "$SIM_DURATION" -o "$config_file" $FAST_MODE 2>&2 || {
+    python3 scripts/generate_config.py $config_args 2>&2 || {
         echo "  FAIL: Config generation failed" >&2
         printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "Config generation failed"
         return 1
