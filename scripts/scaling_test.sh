@@ -14,6 +14,7 @@ CUSTOM_AGENTS=""
 SIM_DURATION="6h"
 TIMEOUT=""
 THREADS=""
+STAGGER=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         --fast)
@@ -36,14 +37,19 @@ while [[ $# -gt 0 ]]; do
             THREADS="$2"
             shift 2
             ;;
+        --stagger)
+            STAGGER="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--fast] [--agents N] [--duration D] [--timeout T] [--threads T]"
+            echo "Usage: $0 [--fast] [--agents N] [--duration D] [--timeout T] [--threads T] [--stagger S]"
             echo "  --fast       Enable performance optimizations"
             echo "  --agents N   Test only N agents (can be comma-separated: 100,200,400)"
             echo "  --duration D Simulation duration (default: 6h, e.g., 2h, 30m, 1h30m)"
             echo "  --timeout T  Test timeout (default: 2x sim duration, e.g., 4h, 90m)"
             echo "  --threads T  Thread count for monerod/wallet (default: 1, use 2 for larger sims)"
+            echo "  --stagger S  Seconds between user spawns (default: 5, use 0 for all-at-once)"
             exit 1
             ;;
     esac
@@ -140,10 +146,14 @@ get_system_info() {
     if [[ -n "$THREADS" ]]; then
         threads_info=", threads=$THREADS"
     fi
+    local stagger_info="5s"  # default
+    if [[ -n "$STAGGER" ]]; then
+        stagger_info="${STAGGER}s"
+    fi
     echo "# Scaling Test Results - $(date '+%Y-%m-%d %H:%M:%S')${mode_info}"
     echo "# Hardware: ${mem_total} RAM, ${cpu_count} CPUs"
     echo "# Timeout: ${TIMEOUT}s ($((TIMEOUT / 60)) minutes), Sim duration: ${SIM_DURATION}${threads_info}"
-    echo "# Config: 5 fixed miners + variable users, 5s stagger"
+    echo "# Config: 5 fixed miners + variable users, ${stagger_info} stagger"
     echo ""
 }
 
@@ -221,6 +231,9 @@ run_test() {
     local config_args="--agents $agent_count --duration $SIM_DURATION -o $config_file $FAST_MODE"
     if [[ -n "$THREADS" ]]; then
         config_args="$config_args --threads $THREADS"
+    fi
+    if [[ -n "$STAGGER" ]]; then
+        config_args="$config_args --stagger-interval $STAGGER"
     fi
 
     # Generate monerosim config
