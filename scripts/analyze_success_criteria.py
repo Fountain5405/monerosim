@@ -136,6 +136,52 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
     return dict(events)
 
 
+def get_wall_clock_time(shadow_data_dir: Path) -> Dict:
+    """
+    Calculate wall clock time for the simulation by comparing file timestamps.
+    Returns dict with start_time, end_time, elapsed_seconds, and formatted duration.
+    """
+    result = {
+        'start_time': None,
+        'end_time': None,
+        'elapsed_seconds': None,
+        'formatted_duration': None
+    }
+
+    # Start time: processed-config.yaml creation (written at simulation start)
+    processed_config = shadow_data_dir / 'processed-config.yaml'
+    # End time: sim-stats.json modification (written at simulation end)
+    sim_stats = shadow_data_dir / 'sim-stats.json'
+
+    try:
+        if processed_config.exists() and sim_stats.exists():
+            start_stat = processed_config.stat()
+            end_stat = sim_stats.stat()
+
+            # Use birth time if available, otherwise modify time
+            start_time = start_stat.st_birthtime if hasattr(start_stat, 'st_birthtime') else start_stat.st_mtime
+            end_time = end_stat.st_mtime
+
+            result['start_time'] = datetime.fromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S")
+            result['end_time'] = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
+            result['elapsed_seconds'] = end_time - start_time
+
+            # Format duration as HH:MM:SS
+            elapsed = int(result['elapsed_seconds'])
+            hours, remainder = divmod(elapsed, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours > 0:
+                result['formatted_duration'] = f"{hours}h {minutes}m {seconds}s"
+            elif minutes > 0:
+                result['formatted_duration'] = f"{minutes}m {seconds}s"
+            else:
+                result['formatted_duration'] = f"{seconds}s"
+    except Exception as e:
+        log_info("get_wall_clock_time", f"Error getting wall clock time: {e}")
+
+    return result
+
+
 def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKERS) -> Dict:
     """
     Analyze all host logs in the directory using multi-threading.
@@ -147,6 +193,7 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
         current_shadow_path = workspace / 'shadow.data' / 'hosts'
         if current_shadow_path.exists():
             log_path = current_shadow_path
+            shadow_data_dir = workspace / 'shadow.data'
         else:
             # Find the most recent dated shadow.data directory
             shadow_dirs = []
@@ -160,11 +207,15 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
             # Sort by modification time, take the most recent
             shadow_dirs.sort(reverse=True)
             log_path = shadow_dirs[0][1]
+            shadow_data_dir = log_path.parent
     else:
         log_path = Path(log_dir)
         # Handle case where user passes shadow.data instead of shadow.data/hosts
         if log_path.name == 'shadow.data' and (log_path / 'hosts').exists():
+            shadow_data_dir = log_path
             log_path = log_path / 'hosts'
+        else:
+            shadow_data_dir = log_path.parent
         if not log_path.exists():
             raise ValueError(f"Log directory {log_dir} not found.")
 
@@ -230,12 +281,16 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
 
         node_data[host_name] = events
 
+    # Get wall clock time
+    wall_clock = get_wall_clock_time(shadow_data_dir)
+
     # Verify success criteria
     report = {
         'num_nodes': len(node_data),
         'total_blocks_mined': len(all_blocks_mined),
         'total_txs_created': len(all_txs_created),
         'total_txs_included': len(all_txs_included),
+        'wall_clock_time': wall_clock,
         'criteria': {}
     }
 
@@ -288,6 +343,9 @@ def generate_determinism_fingerprint(node_data: Dict, report: Dict) -> Dict:
 
     This fingerprint can be compared across runs to verify determinism.
     """
+    # Extract wall clock time info
+    wall_clock = report.get('wall_clock_time', {})
+
     fingerprint = {
         'version': 1,  # Fingerprint format version
         'summary': {
@@ -295,6 +353,8 @@ def generate_determinism_fingerprint(node_data: Dict, report: Dict) -> Dict:
             'total_blocks_mined': report['total_blocks_mined'],
             'total_txs_created': report['total_txs_created'],
             'total_txs_included': report['total_txs_included'],
+            'wall_clock_seconds': wall_clock.get('elapsed_seconds'),
+            'wall_clock_formatted': wall_clock.get('formatted_duration'),
         },
         'block_heights': {
             'mined': [],      # List of heights where blocks were mined
@@ -381,6 +441,14 @@ def generate_summary_report(report: Dict) -> str:
     summary.append(f"  Total blocks mined: {report['total_blocks_mined']}")
     summary.append(f"  Total unique transactions created: {report['total_txs_created']}")
     summary.append(f"  Total transactions included in blocks: {report['total_txs_included']}")
+
+    # Wall clock time
+    wall_clock = report.get('wall_clock_time', {})
+    if wall_clock.get('formatted_duration'):
+        summary.append(f"  Wall clock time: {wall_clock['formatted_duration']}")
+        if wall_clock.get('start_time') and wall_clock.get('end_time'):
+            summary.append(f"    Started: {wall_clock['start_time']}")
+            summary.append(f"    Ended:   {wall_clock['end_time']}")
     summary.append("")
 
     # Success criteria
