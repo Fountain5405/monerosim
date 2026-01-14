@@ -284,8 +284,9 @@ pub fn process_user_agents(
                         1 + i as u64 // Remaining miners every 1s starting t=1s
                     }
                 } else {
-                    // Regular users wait for block maturity (60 blocks), then stagger
-                    BLOCK_MATURITY_SECONDS + (i.saturating_sub(miners.len())) as u64
+                    // Regular users: wait for block maturity, then stagger by 1s
+                    let user_index = i.saturating_sub(miners.len());
+                    BLOCK_MATURITY_SECONDS + user_index as u64
                 }
             } else {
                 // Other modes
@@ -294,9 +295,9 @@ pub fn process_user_agents(
                 } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
                     BLOCK_MATURITY_SECONDS // Seeds start after block maturity
                 } else {
-                    // Regular agents start after block maturity, with stagger
-                    let regular_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
-                    BLOCK_MATURITY_SECONDS + regular_index as u64 // Stagger by 1s
+                    // Regular agents: start after block maturity, with stagger
+                    let user_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
+                    BLOCK_MATURITY_SECONDS + user_index as u64
                 }
             };
 

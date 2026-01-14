@@ -65,6 +65,86 @@ MIN_ACTIVITY_PERIOD_S = 7200  # 2 hours minimum for meaningful transaction activ
 # Note: monerosim only supports seconds resolution (no ms support in duration parser)
 # Default 5s stagger spreads user spawns to reduce simultaneous load on Shadow
 
+# Batched bootstrap defaults
+DEFAULT_AUTO_THRESHOLD = 50  # Enable batching when > 50 users
+DEFAULT_INITIAL_DELAY_S = 1200  # 20 minutes after miners
+DEFAULT_BATCH_INTERVAL_S = 1200  # 20 minutes between batches
+DEFAULT_INITIAL_BATCH_SIZE = 5
+DEFAULT_GROWTH_FACTOR = 2.0
+DEFAULT_MAX_BATCH_SIZE = 200
+DEFAULT_INTRA_BATCH_STAGGER_S = 5  # 5 seconds between users in same batch
+
+
+def calculate_batch_sizes(num_users: int, initial_size: int, growth_factor: float, max_size: int) -> list:
+    """Calculate batch sizes using exponential growth strategy.
+
+    Args:
+        num_users: Total number of users to distribute
+        initial_size: Size of first batch
+        growth_factor: Multiplier for each subsequent batch
+        max_size: Maximum batch size cap
+
+    Returns:
+        List of batch sizes
+    """
+    if num_users == 0:
+        return []
+
+    batches = []
+    remaining = num_users
+    current_size = initial_size
+
+    while remaining > 0:
+        # Cap at max_size and remaining
+        batch_size = min(current_size, max_size, remaining)
+        batches.append(batch_size)
+        remaining -= batch_size
+
+        # Calculate next batch size (exponential growth)
+        current_size = int(current_size * growth_factor + 0.5)  # Round
+        current_size = max(current_size, 1)  # Ensure at least 1
+
+    return batches
+
+
+def calculate_batch_schedule(
+    num_users: int,
+    initial_delay_s: int,
+    batch_interval_s: int,
+    initial_batch_size: int,
+    growth_factor: float,
+    max_batch_size: int,
+    intra_batch_stagger_s: int,
+) -> list:
+    """Calculate complete batch schedule with user start times.
+
+    Returns:
+        List of (user_index, start_time_seconds) tuples
+    """
+    batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, growth_factor, max_batch_size)
+
+    schedule = []
+    user_index = 0
+
+    for batch_num, batch_size in enumerate(batch_sizes):
+        batch_start_time = initial_delay_s + (batch_num * batch_interval_s)
+
+        for i in range(batch_size):
+            user_start_time = batch_start_time + (i * intra_batch_stagger_s)
+            schedule.append((user_index, user_start_time))
+            user_index += 1
+
+    return schedule
+
+
+def format_batch_summary(batch_sizes: list, initial_delay_s: int, batch_interval_s: int) -> str:
+    """Format batch schedule for display (with # comment prefixes)."""
+    lines = [f"Batched bootstrap: {sum(batch_sizes)} users in {len(batch_sizes)} batches"]
+    for i, size in enumerate(batch_sizes):
+        start_time = initial_delay_s + (i * batch_interval_s)
+        lines.append(f"#   Batch {i+1}: {size} users starting at {format_time_offset(start_time, for_config=False)}")
+    return "\n".join(lines)
+
 
 def calculate_bootstrap_timing(num_users: int, stagger_interval_s: int) -> tuple:
     """Calculate dynamic bootstrap timing based on user count and stagger.
@@ -179,6 +259,10 @@ def generate_config(
     gml_path: str = DEFAULT_GML_PATH,
     fast_mode: bool = False,
     process_threads: int = 1,
+    batched_bootstrap: str = "auto",
+    batch_interval: str = "20m",
+    initial_batch_size: int = 5,
+    max_batch_size: int = 200,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -190,6 +274,10 @@ def generate_config(
         gml_path: Path to GML topology file
         fast_mode: If True, use performance-friendly settings
         process_threads: Thread count for monerod/wallet-rpc (0=auto, 1=single, 2+=explicit)
+        batched_bootstrap: "auto", "true", or "false" for batched user startup
+        batch_interval: Time between batches (e.g., "20m")
+        initial_batch_size: Size of first user batch
+        max_batch_size: Maximum users per batch
     """
 
     num_miners = len(FIXED_MINERS)
@@ -198,10 +286,44 @@ def generate_config(
     if num_users < 0:
         raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
 
-    # Calculate dynamic bootstrap timing based on user count and stagger
-    bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s = calculate_bootstrap_timing(
-        num_users, stagger_interval_s
+    # Determine if batched bootstrap should be enabled
+    use_batched = (
+        batched_bootstrap == "true" or
+        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
     )
+
+    # Parse batch interval
+    batch_interval_s = parse_duration(batch_interval)
+
+    # Calculate user start times based on batching mode
+    batch_sizes = []
+    batch_schedule = []
+
+    if use_batched and num_users > 0:
+        # Batched bootstrap: users start in waves
+        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
+        batch_schedule = calculate_batch_schedule(
+            num_users,
+            DEFAULT_INITIAL_DELAY_S,
+            batch_interval_s,
+            initial_batch_size,
+            2.0,  # growth_factor
+            max_batch_size,
+            DEFAULT_INTRA_BATCH_STAGGER_S,
+        )
+        # Last user spawn time from batch schedule
+        last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
+    else:
+        # Non-batched: users start at USER_START_TIME_S with stagger
+        if num_users > 0:
+            last_user_spawn_s = USER_START_TIME_S + ((num_users - 1) * stagger_interval_s)
+        else:
+            last_user_spawn_s = USER_START_TIME_S
+
+    # Calculate dynamic bootstrap timing
+    spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
+    bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
+    activity_start_time_s = bootstrap_end_time_s + FUNDING_PERIOD_S
 
     # Parse and potentially extend duration to ensure minimum activity period
     requested_duration_s = parse_duration(duration)
@@ -223,12 +345,18 @@ def generate_config(
         agent_id = f"miner-{i+1:03}"
         agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"])
 
-    # Add variable users starting at 3h mark (during bootstrap period)
-    # Default 5s stagger spreads spawns; use 0 for all-at-once
-    for i in range(num_users):
-        agent_id = f"user-{i+1:03}"
-        start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-        agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s)
+    # Add variable users with appropriate start times
+    if use_batched and batch_schedule:
+        # Batched: use calculated batch schedule
+        for user_index, start_time_s in batch_schedule:
+            agent_id = f"user-{user_index+1:03}"
+            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, activity_start_time_s)
+    else:
+        # Non-batched: start at USER_START_TIME_S with stagger
+        for i in range(num_users):
+            agent_id = f"user-{i+1:03}"
+            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
+            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s)
 
     # Add miner-distributor (starts at bootstrap end to fund users)
     agents["miner-distributor"] = OrderedDict([
@@ -304,6 +432,9 @@ def generate_config(
         'last_user_spawn_s': last_user_spawn_s,
         'duration_s': duration_s,
         'requested_duration_s': requested_duration_s,
+        'use_batched': use_batched,
+        'batch_sizes': batch_sizes,
+        'batch_interval_s': batch_interval_s,
     }
 
     return config, timing_info
@@ -448,6 +579,35 @@ Timeline (verified bootstrap for Monero regtest):
         help="Thread count for monerod/wallet-rpc (0=auto, 1=single-threaded for determinism, 2+=explicit count)"
     )
 
+    # Batched bootstrap options for large-scale simulations
+    parser.add_argument(
+        "--batched-bootstrap",
+        choices=["auto", "true", "false"],
+        default="auto",
+        help="Enable batched user startup for large sims (auto=enable if >50 users, true=always, false=never)"
+    )
+
+    parser.add_argument(
+        "--batch-interval",
+        type=str,
+        default="20m",
+        help="Time between batches (default: 20m)"
+    )
+
+    parser.add_argument(
+        "--initial-batch-size",
+        type=int,
+        default=5,
+        help="Size of first user batch (default: 5)"
+    )
+
+    parser.add_argument(
+        "--max-batch-size",
+        type=int,
+        default=200,
+        help="Maximum users per batch (default: 200)"
+    )
+
     args = parser.parse_args()
 
     # Validate
@@ -469,6 +629,10 @@ Timeline (verified bootstrap for Monero regtest):
             gml_path=args.gml,
             fast_mode=args.fast,
             process_threads=args.threads,
+            batched_bootstrap=args.batched_bootstrap,
+            batch_interval=args.batch_interval,
+            initial_batch_size=args.initial_batch_size,
+            max_batch_size=args.max_batch_size,
         )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -492,17 +656,30 @@ Timeline (verified bootstrap for Monero regtest):
     duration_extended = timing_info['duration_s'] > timing_info['requested_duration_s']
     duration_note = f" (extended from {args.duration})" if duration_extended else ""
 
+    # Batched bootstrap info
+    use_batched = timing_info['use_batched']
+    batch_sizes = timing_info['batch_sizes']
+    batch_interval_s = timing_info['batch_interval_s']
+
+    if use_batched and batch_sizes:
+        batch_summary = format_batch_summary(batch_sizes, DEFAULT_INITIAL_DELAY_S, batch_interval_s)
+        batched_note = f"\n# {batch_summary}"
+        spawn_note = "Users spawn in batches (see below)"
+    else:
+        batched_note = ""
+        spawn_note = f"Users spawn ({stagger_note})"
+
     header = f"""# Monerosim scaling test configuration{fast_note}
 # Generated by generate_config.py
 # Total agents: {args.agents} (5 miners + {num_users} users)
 # Duration: {actual_duration}{duration_note}
 # Network topology: {args.gml}
-# Timeline (dynamic bootstrap based on agent count):
+# Timeline:
 #   t=0:       Miners start
-#   t=3h:      Users spawn ({stagger_note})
+#   t={format_time_offset(DEFAULT_INITIAL_DELAY_S, for_config=False) if use_batched else "3h"}:      {spawn_note}
 #   t={last_spawn}:  Last user spawns
 #   t={bootstrap_end}:  Bootstrap ends (+20% buffer), distributor starts funding
-#   t={activity_start}:  Users start sending transactions
+#   t={activity_start}:  Users start sending transactions{batched_note}
 """
     if args.fast:
         header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120
