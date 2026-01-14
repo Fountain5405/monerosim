@@ -231,40 +231,83 @@ impl AsSubnetManager {
             AsRegion::Unknown => as_num,
         };
 
-        // Map to region-appropriate IP ranges
+        // Map to region-appropriate IP ranges based on real RIR allocations
+        // Each region cycles through multiple first octets for diversity
+        let offset = region_offset as usize;  // Convert to usize for array indexing
         let subnet = match region {
             AsRegion::NorthAmerica => {
-                // Alternate between 10.x.x and 192.168.x for variety
-                if region_offset % 2 == 0 {
-                    format!("10.{}.{}", region_offset / 256, region_offset % 256)
-                } else {
-                    format!("192.168.{}", region_offset % 256)
-                }
+                // ARIN allocations per IANA registry
+                // Source: https://www.iana.org/assignments/ipv4-address-space
+                const NA_OCTETS: [u8; 20] = [
+                    3, 4, 6, 7, 8, 9, 13, 15, 16, 18,
+                    20, 23, 24, 50, 63, 64, 65, 66, 67, 68
+                ];
+                let first = NA_OCTETS[offset % NA_OCTETS.len()];
+                let second = (offset / NA_OCTETS.len()) % 256;
+                let third = (offset / (NA_OCTETS.len() * 256)) % 256;
+                format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Europe => {
-                // 172.16.x.x through 172.31.x.x (private range)
-                let subnet_group = 16 + (region_offset / 256) % 16;
-                format!("172.{}.{}", subnet_group, region_offset % 256)
+                // RIPE NCC allocations per IANA registry
+                // Source: https://www.iana.org/assignments/ipv4-address-space
+                const EU_OCTETS: [u8; 20] = [
+                    2, 5, 25, 31, 37, 46, 51, 62, 77, 78,
+                    79, 80, 81, 82, 83, 84, 85, 86, 87, 88
+                ];
+                let first = EU_OCTETS[offset % EU_OCTETS.len()];
+                let second = (offset / EU_OCTETS.len()) % 256;
+                let third = (offset / (EU_OCTETS.len() * 256)) % 256;
+                format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Asia => {
-                // 203.x.x.x (APNIC range)
-                format!("203.{}.{}", region_offset / 256, region_offset % 256)
+                // APNIC allocations per IANA registry
+                // Source: https://www.iana.org/assignments/ipv4-address-space
+                const ASIA_OCTETS: [u8; 20] = [
+                    1, 14, 27, 36, 39, 42, 43, 49, 58, 59,
+                    60, 61, 101, 103, 110, 111, 112, 113, 114, 115
+                ];
+                let first = ASIA_OCTETS[offset % ASIA_OCTETS.len()];
+                let second = (offset / ASIA_OCTETS.len()) % 256;
+                let third = (offset / (ASIA_OCTETS.len() * 256)) % 256;
+                format!("{}.{}.{}", first, second, third)
             }
             AsRegion::SouthAmerica => {
-                // 200.x.x.x (LACNIC range)
-                format!("200.{}.{}", region_offset / 256, region_offset % 256)
+                // LACNIC allocations per IANA registry
+                // Source: https://www.iana.org/assignments/ipv4-address-space
+                const SA_OCTETS: [u8; 10] = [
+                    177, 179, 181, 186, 187, 189, 190, 191, 200, 201
+                ];
+                let first = SA_OCTETS[offset % SA_OCTETS.len()];
+                let second = (offset / SA_OCTETS.len()) % 256;
+                let third = (offset / (SA_OCTETS.len() * 256)) % 256;
+                format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Africa => {
-                // 197.x.x.x (AFRINIC range)
-                format!("197.{}.{}", region_offset / 256, region_offset % 256)
+                // AFRINIC allocations per IANA registry
+                // Source: https://www.iana.org/assignments/ipv4-address-space
+                const AF_OCTETS: [u8; 6] = [41, 102, 105, 154, 196, 197];
+                let first = AF_OCTETS[offset % AF_OCTETS.len()];
+                let second = (offset / AF_OCTETS.len()) % 256;
+                let third = (offset / (AF_OCTETS.len() * 256)) % 256;
+                format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Oceania => {
-                // 202.x.x.x (APNIC/Oceania range)
-                format!("202.{}.{}", region_offset / 256, region_offset % 256)
+                // APNIC/Oceania allocations per IANA registry
+                // Source: https://www.iana.org/assignments/ipv4-address-space
+                const OC_OCTETS: [u8; 8] = [101, 103, 121, 122, 139, 144, 202, 203];
+                let first = OC_OCTETS[offset % OC_OCTETS.len()];
+                let second = (offset / OC_OCTETS.len()) % 256;
+                let third = (offset / (OC_OCTETS.len() * 256)) % 256;
+                format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Unknown => {
-                // Fallback to 10.x.x.x
-                format!("10.{}.{}", as_num / 256, as_num % 256)
+                // Fallback to diverse range
+                let as_usize = as_num as usize;
+                format!("{}.{}.{}",
+                    100 + (as_usize % 50),
+                    (as_usize / 50) % 256,
+                    (as_usize / (50 * 256)) % 256
+                )
             }
         };
 

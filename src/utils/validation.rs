@@ -350,6 +350,91 @@ pub fn validate_simulation_seed(simulation_seed: u64) -> Result<(), String> {
     Ok(())
 }
 
+/// Validate IP address diversity for Monero P2P compatibility.
+///
+/// Monero's P2P layer has anti-Sybil protections that limit connections:
+/// 1. max_connections_per_ip: Only 1 connection per IP address (default)
+/// 2. /24 subnet deduplication: Prefers peers from different /24 subnets
+///
+/// This function warns if the simulation has insufficient IP diversity,
+/// which could cause connection issues or unrealistic P2P behavior.
+///
+/// # Arguments
+/// * `ip_addresses` - List of IP addresses assigned to agents
+/// * `agent_count` - Total number of agents in simulation
+///
+/// # Returns
+/// * `Ok(())` if diversity is sufficient
+/// * Logs warnings if diversity is low but still usable
+pub fn validate_ip_subnet_diversity(ip_addresses: &[String], agent_count: usize) -> Result<(), String> {
+    use std::collections::HashSet;
+
+    if ip_addresses.is_empty() || agent_count == 0 {
+        return Ok(());
+    }
+
+    // Extract unique /24 subnets (first 3 octets)
+    let mut subnets_24: HashSet<String> = HashSet::new();
+    // Extract unique first octets for diversity check
+    let mut first_octets: HashSet<u8> = HashSet::new();
+
+    for ip in ip_addresses {
+        let parts: Vec<&str> = ip.split('.').collect();
+        if parts.len() >= 4 {
+            // /24 subnet
+            let subnet = format!("{}.{}.{}", parts[0], parts[1], parts[2]);
+            subnets_24.insert(subnet);
+
+            // First octet
+            if let Ok(first) = parts[0].parse::<u8>() {
+                first_octets.insert(first);
+            }
+        }
+    }
+
+    let unique_subnets = subnets_24.len();
+    let unique_octets = first_octets.len();
+    let subnet_ratio = unique_subnets as f64 / agent_count as f64;
+
+    log::info!("IP Diversity Analysis:");
+    log::info!("  Total agents: {}", agent_count);
+    log::info!("  Unique /24 subnets: {} ({:.1}% of agents)",
+              unique_subnets, subnet_ratio * 100.0);
+    log::info!("  Unique first octets: {}", unique_octets);
+
+    // Monero's /24 deduplication means low subnet diversity can cause issues
+    // Warn if less than 50% of agents have unique /24 subnets
+    if subnet_ratio < 0.5 {
+        log::warn!(
+            "LOW IP DIVERSITY: Only {:.1}% of agents have unique /24 subnets. \
+             Monero's P2P layer deduplicates by /24 subnet, which may cause \
+             connection issues or unrealistic network behavior.",
+            subnet_ratio * 100.0
+        );
+    }
+
+    // Warn if very few first octets (unrealistic Internet distribution)
+    if unique_octets < 5 && agent_count > 50 {
+        log::warn!(
+            "LIMITED IP RANGE: Only {} unique first octets for {} agents. \
+             Real Internet traffic comes from diverse IP ranges.",
+            unique_octets, agent_count
+        );
+    }
+
+    // Critical warning if subnet count is very low
+    if unique_subnets < agent_count / 4 && agent_count > 20 {
+        log::error!(
+            "CRITICAL: Only {} unique /24 subnets for {} agents ({:.1}%). \
+             This will severely impact Monero P2P connectivity simulation. \
+             Consider increasing topology node count or reducing agent count.",
+            unique_subnets, agent_count, subnet_ratio * 100.0
+        );
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

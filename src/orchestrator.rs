@@ -746,7 +746,13 @@ echo "Starting DNS server..."
     for (subnet, count) in ip_stats {
         println!("    - {}: {} IPs assigned", subnet, count);
     }
-    println!("  - Total IPs assigned: {}", ip_registry.get_all_assigned_ips().len());
+    let all_ips_map = ip_registry.get_all_assigned_ips();
+    let all_ips: Vec<String> = all_ips_map.keys().cloned().collect();
+    println!("  - Total IPs assigned: {}", all_ips.len());
+
+    // Validate IP subnet diversity for Monero P2P compatibility
+    crate::utils::validate_ip_subnet_diversity(&all_ips, shadow_config.hosts.len())
+        .map_err(|e| color_eyre::eyre::eyre!("IP diversity validation failed: {}", e))?;
 
     Ok(())
 }
