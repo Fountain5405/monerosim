@@ -6,18 +6,109 @@ Steps:
 2. Find largest connected component, limit to max_nodes.
 3. Add self-loops to all nodes in component.
 4. Renumber nodes to 0-N for Shadow.
-5. Generate GML with realistic latency/bandwidth based on relationship types.
+5. Generate GML with realistic latency/bandwidth based on geographic regions.
+
+Region-based latencies are derived from well-known Internet measurement studies
+and approximate real-world RTT between continents. For more accurate AS-to-AS
+latencies, see TODO/ripe-atlas-as-latency.md.
 """
 
 import argparse
 from collections import defaultdict, deque
 
-RELATIONSHIP_ATTRIBUTES = {
-    '-1': {'latency': '50ms', 'bandwidth': '100Mbit'},  # Customer-provider
-    '0': {'latency': '10ms', 'bandwidth': '1Gbit'},     # Peer-peer
-    '-2': {'latency': '5ms', 'bandwidth': '10Gbit'},    # Sibling
-    'default': {'latency': '20ms', 'bandwidth': '500Mbit'}
+# Region proportions (must match src/ip/as_manager.rs)
+REGION_PROPORTIONS = [
+    ("north_america", 16.67),
+    ("europe", 25.0),
+    ("asia", 25.0),
+    ("south_america", 16.67),
+    ("africa", 8.33),
+    ("oceania", 8.33),
+]
+
+# Realistic inter-region latencies in milliseconds (one-way, half of RTT)
+# Based on submarine cable distances and speed of light in fiber (~200km/ms)
+# Sources: WonderNetwork, Verizon latency maps, submarine cable maps
+REGION_LATENCY_MS = {
+    # Intra-region (within same continent)
+    ("north_america", "north_america"): 25,   # US coast-to-coast ~50ms RTT
+    ("europe", "europe"): 15,                  # EU is geographically smaller
+    ("asia", "asia"): 40,                      # Asia spans huge distances
+    ("south_america", "south_america"): 30,
+    ("africa", "africa"): 40,
+    ("oceania", "oceania"): 25,
+
+    # Inter-region (between continents) - approximate one-way latency
+    ("north_america", "europe"): 45,           # ~90ms RTT transatlantic
+    ("north_america", "asia"): 90,             # ~180ms RTT transpacific
+    ("north_america", "south_america"): 60,    # ~120ms RTT
+    ("north_america", "africa"): 100,          # ~200ms RTT (via EU usually)
+    ("north_america", "oceania"): 95,          # ~190ms RTT transpacific
+
+    ("europe", "asia"): 75,                    # ~150ms RTT
+    ("europe", "south_america"): 95,           # ~190ms RTT
+    ("europe", "africa"): 45,                  # ~90ms RTT (close via Med)
+    ("europe", "oceania"): 140,                # ~280ms RTT (longest route)
+
+    ("asia", "south_america"): 150,            # ~300ms RTT (longest)
+    ("asia", "africa"): 85,                    # ~170ms RTT
+    ("asia", "oceania"): 55,                   # ~110ms RTT (relatively close)
+
+    ("south_america", "africa"): 130,          # ~260ms RTT
+    ("south_america", "oceania"): 120,         # ~240ms RTT
+
+    ("africa", "oceania"): 120,                # ~240ms RTT
 }
+
+# Bandwidth based on relationship type
+RELATIONSHIP_BANDWIDTH = {
+    '-1': '100Mbit',   # Customer-provider
+    '0': '1Gbit',      # Peer-peer
+    '-2': '10Gbit',    # Sibling
+    'default': '500Mbit'
+}
+
+def get_region_for_node(node_id: int, total_nodes: int) -> str:
+    """Map a node ID to its geographic region based on proportional boundaries."""
+    if total_nodes == 0:
+        return "north_america"
+
+    start = 0
+    for region, proportion in REGION_PROPORTIONS:
+        count = round(total_nodes * proportion / 100.0)
+        end = start + count - 1
+        if node_id <= end:
+            return region
+        start = end + 1
+
+    # Last region gets any remaining nodes
+    return REGION_PROPORTIONS[-1][0]
+
+
+def get_latency_between_nodes(source: int, target: int, total_nodes: int) -> int:
+    """Get realistic latency in ms between two nodes based on their regions."""
+    if source == target:
+        return 1  # Self-loop
+
+    src_region = get_region_for_node(source, total_nodes)
+    tgt_region = get_region_for_node(target, total_nodes)
+
+    # Look up latency (order-independent)
+    key = (src_region, tgt_region)
+    if key in REGION_LATENCY_MS:
+        return REGION_LATENCY_MS[key]
+
+    key_rev = (tgt_region, src_region)
+    if key_rev in REGION_LATENCY_MS:
+        return REGION_LATENCY_MS[key_rev]
+
+    # Fallback for same region
+    if src_region == tgt_region:
+        return 20
+
+    # Fallback for cross-region
+    return 100
+
 
 def load_caida_graph(aslinks_file):
     """Load CAIDA AS-links into undirected graph with relationship info."""
@@ -94,20 +185,24 @@ def find_connected_subgraph(graph, as_list, max_nodes=50):
     return sorted(list(subgraph))
 
 def add_self_loops_and_attributes(graph, component):
-    """Add self-loops and prepare attributes for GML."""
+    """Add self-loops and prepare attributes for GML.
+
+    Note: Latency will be calculated later based on renumbered node regions.
+    Here we just store the relationship type for bandwidth calculation.
+    """
     gml_graph = defaultdict(dict)
-    
-    # Add original edges with attributes
+
+    # Add original edges with relationship type (latency calculated after renumbering)
     for source in component:
         for target, rel_type in graph[source].items():
             if target in component:  # Only within component
-                attrs = RELATIONSHIP_ATTRIBUTES.get(rel_type, RELATIONSHIP_ATTRIBUTES['default'])
-                gml_graph[source][target] = attrs
-    
+                bandwidth = RELATIONSHIP_BANDWIDTH.get(rel_type, RELATIONSHIP_BANDWIDTH['default'])
+                gml_graph[source][target] = {'rel_type': rel_type, 'bandwidth': bandwidth}
+
     # Add self-loops for all nodes
     for node in component:
-        gml_graph[node][node] = {'latency': '1ms', 'bandwidth': '10Gbit'}  # Local loop
-    
+        gml_graph[node][node] = {'rel_type': 'self', 'bandwidth': '10Gbit'}
+
     return gml_graph
 
 def renumber_nodes(gml_graph, component):
@@ -125,32 +220,55 @@ def renumber_nodes(gml_graph, component):
     return new_graph, sorted(old_to_new.values())
 
 def write_gml(new_graph, new_nodes, output_file):
-    """Write renumbered graph to GML."""
+    """Write renumbered graph to GML with region-based latencies."""
+    total_nodes = len(new_nodes)
+
+    # Track latency statistics for reporting
+    latency_stats = defaultdict(list)
+
     with open(output_file, 'w') as f:
         f.write("graph [\n")
         f.write("  directed 1\n\n")
-        
+
         # Nodes
         for new_id in new_nodes:
+            region = get_region_for_node(new_id, total_nodes)
             f.write(f"  node [\n")
             f.write(f"    id {new_id}\n")
-            f.write(f'    AS "{new_id}"\n')  # Use ID as AS for simplicity
+            f.write(f'    AS "{new_id}"\n')
+            f.write(f'    region "{region}"\n')
             f.write('    bandwidth "1Gbit"\n')
             f.write("  ]\n\n")
-        
-        # Edges
+
+        # Edges with region-based latency
         for source in new_graph:
             for target, attrs in new_graph[source].items():
+                latency = get_latency_between_nodes(source, target, total_nodes)
+                bandwidth = attrs["bandwidth"]
+
                 f.write("  edge [\n")
                 f.write(f"    source {source}\n")
                 f.write(f"    target {target}\n")
-                f.write(f'    latency "{attrs["latency"]}"\n')
-                f.write(f'    bandwidth "{attrs["bandwidth"]}"\n')
+                f.write(f'    latency "{latency}ms"\n')
+                f.write(f'    bandwidth "{bandwidth}"\n')
                 f.write("  ]\n")
-        
+
+                # Track stats
+                src_region = get_region_for_node(source, total_nodes)
+                tgt_region = get_region_for_node(target, total_nodes)
+                if source != target:
+                    key = tuple(sorted([src_region, tgt_region]))
+                    latency_stats[key].append(latency)
+
         f.write("]\n")
-    
+
     print(f"GML saved to {output_file}")
+
+    # Print latency summary
+    print("\nRegion-to-Region Latency Summary:")
+    for (r1, r2), latencies in sorted(latency_stats.items()):
+        avg = sum(latencies) / len(latencies)
+        print(f"  {r1} <-> {r2}: {avg:.0f}ms ({len(latencies)} edges)")
 
 def main():
     parser = argparse.ArgumentParser(description="Create connected CAIDA GML with self-loops")
