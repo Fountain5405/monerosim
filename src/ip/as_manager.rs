@@ -4,19 +4,39 @@
 //! ensuring agents are distributed appropriately across autonomous systems
 //! according to the network topology.
 //!
-//! IP Allocation Scheme:
+//! ## Why AS Numbers Are Remapped
+//!
+//! The GML topology uses synthetic AS numbers (0 to N-1) remapped from real Internet
+//! AS numbers. Real AS numbers (e.g., Google AS 15169, Cloudflare AS 13335) range
+//! from small values to 400,000+ with large gaps between them. We remap because:
+//!
+//! 1. **Shadow requires contiguous node IDs** - The network simulator needs sequential
+//!    node IDs for efficient graph traversal and memory management.
+//! 2. **Real AS numbers are sparse** - There are huge gaps between AS numbers
+//!    (e.g., 3, 4, 12, 16, 24... 397695), making array indexing impractical.
+//! 3. **Simplifies region mapping** - We can divide the 0-N range proportionally
+//!    across geographic regions without needing external AS-to-country databases.
+//!
+//! ## IP Allocation Scheme
+//!
 //! - Uses the 10.0.0.0/8 private range (16 million IPs)
 //! - Each AS gets its own /24 subnet with up to 254 hosts
 //! - AS number maps deterministically to subnet: 10.{AS/256}.{AS%256}.{host}
 //! - This supports up to 65,536 ASes with 254 hosts each
 //!
-//! Geographic Distribution (simulated via AS ranges):
-//! - AS 0-199:     "North America"  -> 10.0-0.0-199.x
-//! - AS 200-499:   "Europe"         -> 10.0-1.200-255, 10.1.0-243.x
-//! - AS 500-799:   "Asia"           -> 10.1.244-255, 10.2-3.x.x
-//! - AS 800-999:   "South America"  -> 10.3.32-231.x
-//! - AS 1000-1099: "Africa"         -> 10.3.232-255, 10.4.0-75.x
-//! - AS 1100-1199: "Oceania"        -> 10.4.76-175.x
+//! ## Geographic Distribution
+//!
+//! Synthetic AS numbers are divided proportionally into 6 regions. The default
+//! proportions roughly match real Internet AS distribution:
+//!
+//! | Region         | Proportion | Example (1200 nodes) |
+//! |----------------|------------|----------------------|
+//! | North America  | 16.67%     | AS 0-199             |
+//! | Europe         | 25.00%     | AS 200-499           |
+//! | Asia           | 25.00%     | AS 500-799           |
+//! | South America  | 16.67%     | AS 800-999           |
+//! | Africa         | 8.33%      | AS 1000-1099         |
+//! | Oceania        | 8.33%      | AS 1100-1199         |
 
 use std::collections::HashMap;
 
@@ -57,6 +77,106 @@ impl AsRegion {
             AsRegion::Unknown => "Unknown",
         }
     }
+
+    /// Get the index of this region (0-5) for array indexing
+    pub fn index(&self) -> usize {
+        match self {
+            AsRegion::NorthAmerica => 0,
+            AsRegion::Europe => 1,
+            AsRegion::Asia => 2,
+            AsRegion::SouthAmerica => 3,
+            AsRegion::Africa => 4,
+            AsRegion::Oceania => 5,
+            AsRegion::Unknown => 6,
+        }
+    }
+
+    /// Get all regions in order (excluding Unknown)
+    pub fn all() -> [AsRegion; 6] {
+        [
+            AsRegion::NorthAmerica,
+            AsRegion::Europe,
+            AsRegion::Asia,
+            AsRegion::SouthAmerica,
+            AsRegion::Africa,
+            AsRegion::Oceania,
+        ]
+    }
+}
+
+/// Region boundary information: (region, start_node, end_node)
+pub type RegionBoundary = (AsRegion, usize, usize);
+
+/// Default proportions for each region (sum to 100.0)
+/// These roughly match real Internet AS geographic distribution
+pub const DEFAULT_REGION_PROPORTIONS: [(AsRegion, f64); 6] = [
+    (AsRegion::NorthAmerica, 16.67),
+    (AsRegion::Europe, 25.0),
+    (AsRegion::Asia, 25.0),
+    (AsRegion::SouthAmerica, 16.67),
+    (AsRegion::Africa, 8.33),
+    (AsRegion::Oceania, 8.33),
+];
+
+/// Calculate region boundaries proportionally for any topology size.
+///
+/// This function divides the node range 0..total_nodes into 6 geographic
+/// regions based on the default proportions. This allows the same distribution
+/// logic to work with GML topologies of any size (30, 150, 1200, etc.).
+///
+/// # Arguments
+/// * `total_nodes` - Total number of nodes in the GML topology
+///
+/// # Returns
+/// Array of 6 region boundaries, each containing (region, start_node, end_node)
+///
+/// # Example
+/// ```
+/// let boundaries = calculate_region_boundaries(1200);
+/// // boundaries[0] = (NorthAmerica, 0, 199)    // ~16.67% of 1200
+/// // boundaries[1] = (Europe, 200, 499)        // ~25% of 1200
+/// // etc.
+/// ```
+pub fn calculate_region_boundaries(total_nodes: usize) -> [RegionBoundary; 6] {
+    let mut boundaries: [RegionBoundary; 6] = [
+        (AsRegion::NorthAmerica, 0, 0),
+        (AsRegion::Europe, 0, 0),
+        (AsRegion::Asia, 0, 0),
+        (AsRegion::SouthAmerica, 0, 0),
+        (AsRegion::Africa, 0, 0),
+        (AsRegion::Oceania, 0, 0),
+    ];
+
+    if total_nodes == 0 {
+        return boundaries;
+    }
+
+    let mut start = 0;
+    for (i, (region, proportion)) in DEFAULT_REGION_PROPORTIONS.iter().enumerate() {
+        let count = ((total_nodes as f64) * proportion / 100.0).round() as usize;
+        let end = if i == 5 {
+            // Last region gets all remaining nodes to avoid rounding errors
+            total_nodes.saturating_sub(1)
+        } else {
+            (start + count).saturating_sub(1).min(total_nodes.saturating_sub(1))
+        };
+        boundaries[i] = (*region, start, end);
+        start = end + 1;
+    }
+
+    boundaries
+}
+
+/// Get the region for a node ID given the total topology size.
+/// This is the dynamic version that works with any topology size.
+pub fn get_region_for_node(node_id: usize, total_nodes: usize) -> AsRegion {
+    let boundaries = calculate_region_boundaries(total_nodes);
+    for (region, start, end) in boundaries {
+        if node_id >= start && node_id <= end {
+            return region;
+        }
+    }
+    AsRegion::Unknown
 }
 
 /// Dynamic AS-aware subnet manager for GML topologies.
@@ -85,19 +205,70 @@ impl AsSubnetManager {
 
     /// Get the /24 subnet base for an AS number.
     ///
-    /// Maps AS number to 10.{high_byte}.{low_byte} where:
-    /// - high_byte = AS / 256 (0-255)
-    /// - low_byte = AS % 256 (0-255)
+    /// Maps AS numbers to region-appropriate IP ranges to simulate a realistic
+    /// global Internet with diverse IP addresses:
     ///
-    /// This gives each AS its own /24 subnet (up to 254 hosts).
+    /// - North America (AS 0-199):     10.x.x.x or 192.168.x.x
+    /// - Europe (AS 200-499):          172.16-31.x.x
+    /// - Asia (AS 500-799):            203.x.x.x
+    /// - South America (AS 800-999):   200.x.x.x
+    /// - Africa (AS 1000-1099):        197.x.x.x
+    /// - Oceania (AS 1100-1199):       202.x.x.x
+    ///
+    /// Each AS gets its own /24 subnet within its region's IP range.
     pub fn get_subnet_base(as_number: &str) -> Option<String> {
         let as_num = Self::parse_as_number(as_number)?;
+        let region = AsRegion::from_as_number(as_num);
 
-        // Map AS number to subnet: 10.{AS/256}.{AS%256}
-        let high_byte = (as_num / 256) as u8;
-        let low_byte = (as_num % 256) as u8;
+        // Calculate offset within the region for subnet variation
+        let region_offset = match region {
+            AsRegion::NorthAmerica => as_num,                    // 0-199
+            AsRegion::Europe => as_num.saturating_sub(200),       // 0-299
+            AsRegion::Asia => as_num.saturating_sub(500),         // 0-299
+            AsRegion::SouthAmerica => as_num.saturating_sub(800), // 0-199
+            AsRegion::Africa => as_num.saturating_sub(1000),      // 0-99
+            AsRegion::Oceania => as_num.saturating_sub(1100),     // 0-99
+            AsRegion::Unknown => as_num,
+        };
 
-        Some(format!("10.{}.{}", high_byte, low_byte))
+        // Map to region-appropriate IP ranges
+        let subnet = match region {
+            AsRegion::NorthAmerica => {
+                // Alternate between 10.x.x and 192.168.x for variety
+                if region_offset % 2 == 0 {
+                    format!("10.{}.{}", region_offset / 256, region_offset % 256)
+                } else {
+                    format!("192.168.{}", region_offset % 256)
+                }
+            }
+            AsRegion::Europe => {
+                // 172.16.x.x through 172.31.x.x (private range)
+                let subnet_group = 16 + (region_offset / 256) % 16;
+                format!("172.{}.{}", subnet_group, region_offset % 256)
+            }
+            AsRegion::Asia => {
+                // 203.x.x.x (APNIC range)
+                format!("203.{}.{}", region_offset / 256, region_offset % 256)
+            }
+            AsRegion::SouthAmerica => {
+                // 200.x.x.x (LACNIC range)
+                format!("200.{}.{}", region_offset / 256, region_offset % 256)
+            }
+            AsRegion::Africa => {
+                // 197.x.x.x (AFRINIC range)
+                format!("197.{}.{}", region_offset / 256, region_offset % 256)
+            }
+            AsRegion::Oceania => {
+                // 202.x.x.x (APNIC/Oceania range)
+                format!("202.{}.{}", region_offset / 256, region_offset % 256)
+            }
+            AsRegion::Unknown => {
+                // Fallback to 10.x.x.x
+                format!("10.{}.{}", as_num / 256, as_num % 256)
+            }
+        };
+
+        Some(subnet)
     }
 
     /// Assign an IP address based on AS number.

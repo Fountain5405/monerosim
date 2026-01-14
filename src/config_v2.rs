@@ -27,6 +27,71 @@ pub enum Topology {
     Dag,
 }
 
+/// Strategy for distributing agents across network topology nodes.
+///
+/// The GML topology represents a synthetic Internet with nodes numbered 0 to N-1.
+/// These are remapped from real AS numbers (which can range from small values to 400,000+)
+/// to contiguous IDs because Shadow requires sequential node IDs and real AS numbers
+/// have large gaps. The region mapping divides these synthetic AS numbers proportionally
+/// across 6 geographic regions.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub enum DistributionStrategy {
+    /// Distribute agents proportionally across all 6 geographic regions (default).
+    /// Agents are spread across North America, Europe, Asia, South America, Africa,
+    /// and Oceania based on their proportion of the total topology.
+    #[default]
+    Global,
+    /// Sequential assignment to nodes 0, 1, 2, ... (legacy behavior).
+    /// All agents end up in the first region (typically North America).
+    Sequential,
+    /// Custom weights per region. Use with `weights` field to specify
+    /// how many agents should go to each region.
+    Weighted,
+}
+
+/// Region weight configuration for weighted distribution strategy.
+/// Values are relative weights (not percentages). If not specified,
+/// regions use their default proportions from the topology.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct RegionWeights {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub north_america: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub europe: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asia: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub south_america: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub africa: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub oceania: Option<u32>,
+}
+
+/// Distribution configuration for GML network topologies.
+///
+/// Controls how simulation agents are placed across the network topology nodes.
+/// By default, agents are distributed globally across all geographic regions
+/// to simulate a realistic Internet deployment.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Distribution {
+    /// The distribution strategy to use
+    #[serde(default)]
+    pub strategy: DistributionStrategy,
+    /// Custom region weights (only used with Weighted strategy)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weights: Option<RegionWeights>,
+}
+
+impl Default for Distribution {
+    fn default() -> Self {
+        Self {
+            strategy: DistributionStrategy::Global,
+            weights: None,
+        }
+    }
+}
+
 /// Flexible option value for daemon/wallet flags
 /// Supports bool, string, and number types for YAML flexibility
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -1215,6 +1280,10 @@ pub enum Network {
         seed_nodes: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         topology: Option<Topology>,
+        /// Agent distribution strategy across the GML topology.
+        /// Defaults to Global (distribute across all regions).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        distribution: Option<Distribution>,
     },
 }
 

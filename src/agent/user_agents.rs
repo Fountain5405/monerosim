@@ -77,6 +77,8 @@ pub fn process_user_agents(
     enable_dns_server: bool,
     daemon_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
+    distribution_strategy: Option<&crate::config_v2::DistributionStrategy>,
+    distribution_weights: Option<&crate::config_v2::RegionWeights>,
 ) -> color_eyre::eyre::Result<()> {
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
@@ -84,11 +86,29 @@ pub fn process_user_agents(
         .collect();
 
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
+    //
+    // Note on AS numbers: The GML topology uses synthetic AS numbers (0 to N-1) that are
+    // remapped from real Internet AS numbers. Real AS numbers (e.g., Google AS 15169,
+    // Cloudflare AS 13335) range from small values to 400,000+ with large gaps.
+    // We remap them to contiguous 0-N because:
+    // 1. Shadow requires sequential node IDs for efficient graph traversal
+    // 2. Real AS numbers are sparse with huge gaps
+    // 3. Simplifies region mapping without external AS-to-country databases
     let agent_node_assignments = if let Some(gml) = gml_graph {
         if !user_agents.is_empty() {
             if using_gml_topology {
-                let as_numbers = gml.nodes.iter().map(|node| node.get_ip().map(|ip| ip.to_string())).collect::<Vec<Option<String>>>();
-                distribute_agents_across_topology(Some(Path::new("")), user_agents.len(), &as_numbers)
+                // Extract AS numbers from GML node attributes for distribution
+                // The AS attribute contains the synthetic AS number (0 to N-1)
+                let as_numbers = gml.nodes.iter()
+                    .map(|node| node.attributes.get("AS").or_else(|| node.attributes.get("as")).cloned())
+                    .collect::<Vec<Option<String>>>();
+                distribute_agents_across_topology(
+                    Some(Path::new("")),
+                    user_agents.len(),
+                    &as_numbers,
+                    distribution_strategy,
+                    distribution_weights,
+                )
                     .into_iter()
                     .map(|opt_idx| opt_idx.map_or(0, |idx| idx as u32))
                     .collect()

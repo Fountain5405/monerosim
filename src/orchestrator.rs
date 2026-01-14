@@ -261,23 +261,29 @@ pub fn generate_agent_shadow_config(
         false // We're using switch topology
     };
 
-    // Extract peer mode, seed nodes, and topology from configuration
-    let (peer_mode, seed_node_list, topology) = match &config.network {
-        Some(Network::Gml { peer_mode, seed_nodes, topology, .. }) => {
+    // Extract peer mode, seed nodes, topology, and distribution config from configuration
+    let (peer_mode, seed_node_list, topology, distribution_strategy, distribution_weights) = match &config.network {
+        Some(Network::Gml { peer_mode, seed_nodes, topology, distribution, .. }) => {
             let mode = peer_mode.as_ref().unwrap_or(&PeerMode::Dynamic).clone();
             let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
             let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
-            (mode, seeds, Some(topo))
+            // Extract distribution config (defaults to Global strategy)
+            let (strategy, weights) = match distribution {
+                Some(dist) => (Some(dist.strategy.clone()), dist.weights.clone()),
+                None => (None, None), // Will default to Global in distribution.rs
+            };
+            (mode, seeds, Some(topo), strategy, weights)
         }
         Some(Network::Switch { peer_mode, seed_nodes, topology, .. }) => {
             let mode = peer_mode.as_ref().unwrap_or(&PeerMode::Dynamic).clone();
             let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
             let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
-            (mode, seeds, Some(topo))
+            // Switch topology doesn't use distribution config
+            (mode, seeds, Some(topo), None, None)
         }
         None => {
             // Default to Dynamic mode with no seed nodes and DAG topology
-            (PeerMode::Dynamic, Vec::new(), Some(Topology::Dag))
+            (PeerMode::Dynamic, Vec::new(), Some(Topology::Dag), None, None)
         }
     };
 
@@ -405,6 +411,8 @@ echo "Starting DNS server..."
         enable_dns_server,
         config.general.daemon_defaults.as_ref(),
         config.general.wallet_defaults.as_ref(),
+        distribution_strategy.as_ref(),
+        distribution_weights.as_ref(),
     )?;
 
 
