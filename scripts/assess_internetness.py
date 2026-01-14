@@ -6,7 +6,8 @@ This script analyzes:
 1. IP address distribution across geographic regions
 2. Network topology latency characteristics
 3. Agent placement and inter-agent latencies
-4. Comparison to ideal global distribution
+4. Bandwidth distribution by region
+5. Comparison to ideal global distribution
 
 Usage:
     python scripts/assess_internetness.py [--config CONFIG] [--gml GML_FILE] [--shadow-data DIR]
@@ -101,6 +102,19 @@ REAL_WORLD_LATENCIES = {
     ("Oceania", "Oceania"): (20, 60),
 }
 
+# Real-world bandwidth benchmarks (Mbps) by region
+# Source: Ookla Speedtest Global Index (2025) via World Population Review
+# https://worldpopulationreview.com/country-rankings/internet-speeds-by-country
+REAL_WORLD_BANDWIDTH = {
+    # (min, median, max) in Mbps - represents typical range for the region
+    "North America": (50, 250, 400),   # US 303, Canada 256, Mexico 92
+    "Europe": (30, 170, 350),          # France 346, Germany 102, UK 163
+    "Asia": (15, 130, 410),            # Singapore 407, Japan 230, India 62
+    "South America": (20, 160, 360),   # Chile 357, Brazil 220, Argentina 110
+    "Africa": (5, 28, 100),            # Egypt 92, South Africa 48, Nigeria 31
+    "Oceania": (10, 70, 220),          # NZ 216, Australia 164, Fiji 13
+}
+
 
 def get_region_for_node(node_id: int, total_nodes: int = 1200) -> str:
     """Map a node/AS number to its geographic region."""
@@ -111,38 +125,82 @@ def get_region_for_node(node_id: int, total_nodes: int = 1200) -> str:
     return "Unknown"
 
 
-def parse_gml_topology(gml_path: Path) -> Tuple[Dict[int, str], Dict[int, List[Tuple[int, int]]]]:
+def parse_gml_topology(gml_path: Path) -> Tuple[Dict[int, dict], Dict[int, List[Tuple[int, int, int]]]]:
     """
     Parse GML topology file.
 
     Returns:
-        nodes: Dict mapping node_id -> AS number string
-        edges: Dict mapping node_id -> [(neighbor, latency_ms), ...]
+        nodes: Dict mapping node_id -> {as: str, region: str, bandwidth_mbps: int}
+        edges: Dict mapping node_id -> [(neighbor, latency_ms, bandwidth_mbps), ...]
     """
     with open(gml_path) as f:
         content = f.read()
 
-    # Parse nodes
+    # Parse nodes with all attributes
     nodes = {}
-    node_pattern = r'node \[\s*id (\d+)\s*AS "(\d+)"'
+    # Match node blocks more flexibly
+    node_pattern = r'node \[\s*id (\d+)\s*AS "(\d+)"\s*region "([^"]+)"\s*bandwidth "([^"]+)"'
     for match in re.finditer(node_pattern, content):
         node_id = int(match.group(1))
         as_num = match.group(2)
-        nodes[node_id] = as_num
+        region = match.group(3)
+        bandwidth_str = match.group(4)
+        bandwidth_mbps = parse_bandwidth(bandwidth_str)
+        nodes[node_id] = {
+            'as': as_num,
+            'region': region,
+            'bandwidth_mbps': bandwidth_mbps
+        }
 
-    # Parse edges with latency
+    # Fallback: if no nodes found with new pattern, try old pattern
+    if not nodes:
+        old_pattern = r'node \[\s*id (\d+)\s*AS "(\d+)"'
+        for match in re.finditer(old_pattern, content):
+            node_id = int(match.group(1))
+            as_num = match.group(2)
+            nodes[node_id] = {'as': as_num, 'region': 'unknown', 'bandwidth_mbps': 1000}
+
+    # Parse edges with latency and bandwidth
     edges = defaultdict(list)
-    edge_pattern = r'edge \[\s*source (\d+)\s*target (\d+)\s*latency "(\d+)ms"'
+    edge_pattern = r'edge \[\s*source (\d+)\s*target (\d+)\s*latency "(\d+)ms"\s*bandwidth "([^"]+)"'
     for match in re.finditer(edge_pattern, content):
         src = int(match.group(1))
         tgt = int(match.group(2))
         lat = int(match.group(3))
-        edges[src].append((tgt, lat))
+        bw_str = match.group(4)
+        bw_mbps = parse_bandwidth(bw_str)
+        edges[src].append((tgt, lat, bw_mbps))
+
+    # Fallback: if no edges found with new pattern, try old pattern
+    if not edges:
+        old_edge_pattern = r'edge \[\s*source (\d+)\s*target (\d+)\s*latency "(\d+)ms"'
+        for match in re.finditer(old_edge_pattern, content):
+            src = int(match.group(1))
+            tgt = int(match.group(2))
+            lat = int(match.group(3))
+            edges[src].append((tgt, lat, 1000))  # Default 1Gbit
 
     return nodes, edges
 
 
-def dijkstra(edges: Dict[int, List[Tuple[int, int]]], start: int, num_nodes: int) -> Dict[int, float]:
+def parse_bandwidth(bw_str: str) -> int:
+    """Parse bandwidth string like '100Mbit' or '1Gbit' to Mbps."""
+    bw_str = bw_str.strip().upper()
+    if 'GBIT' in bw_str:
+        return int(bw_str.replace('GBIT', '')) * 1000
+    elif 'MBIT' in bw_str:
+        return int(bw_str.replace('MBIT', ''))
+    elif 'KBIT' in bw_str:
+        return max(1, int(bw_str.replace('KBIT', '')) // 1000)
+    else:
+        # Try to parse as plain number (assume Mbit)
+        try:
+            return int(bw_str)
+        except ValueError:
+            return 1000  # Default 1Gbit
+
+
+def dijkstra(edges: Dict[int, List[Tuple[int, int, int]]], start: int, num_nodes: int) -> Dict[int, float]:
     """Compute shortest path distances from start to all nodes."""
     dist = {i: float('inf') for i in range(num_nodes)}
     dist[start] = 0
@@ -152,7 +210,8 @@ def dijkstra(edges: Dict[int, List[Tuple[int, int]]], start: int, num_nodes: int
         d, u = heapq.heappop(pq)
         if d > dist[u]:
             continue
-        for v, w in edges.get(u, []):
+        for edge in edges.get(u, []):
+            v, w = edge[0], edge[1]  # neighbor, latency (ignore bandwidth for dijkstra)
             if dist[u] + w < dist[v]:
                 dist[v] = dist[u] + w
                 heapq.heappush(pq, (dist[v], v))
@@ -180,8 +239,8 @@ def analyze_gml_topology(gml_path: Path) -> Dict:
     # Edge latency distribution
     latencies = []
     for src_edges in edges.values():
-        for _, lat in src_edges:
-            latencies.append(lat)
+        for edge in src_edges:
+            latencies.append(edge[1])  # latency is second element
 
     lat_counter = Counter(latencies)
     print(f"\nEdge Latency Distribution:")
@@ -192,7 +251,7 @@ def analyze_gml_topology(gml_path: Path) -> Dict:
 
     # Regional distribution of nodes
     print(f"\nNode Distribution by Region:")
-    region_counts = Counter(get_region_for_node(int(as_num), num_nodes) for as_num in nodes.values())
+    region_counts = Counter(get_region_for_node(int(node_data['as']), num_nodes) for node_data in nodes.values())
     for region, count in sorted(region_counts.items(), key=lambda x: -x[1]):
         pct = count / num_nodes * 100
         print(f"  {region}: {count} nodes ({pct:.1f}%)")
@@ -259,6 +318,144 @@ def analyze_gml_topology(gml_path: Path) -> Dict:
         "latency_distribution": dict(lat_counter),
         "region_distribution": dict(region_counts),
         "latency_realism_score": avg_score,
+        "nodes": nodes,  # Pass along for bandwidth analysis
+        "edges": edges,
+    }
+
+
+def analyze_gml_bandwidth(gml_path: Path, topology_results: Optional[Dict] = None) -> Dict:
+    """Analyze bandwidth distribution in the GML topology."""
+    print(f"\n{'='*70}")
+    print("BANDWIDTH ANALYSIS")
+    print(f"{'='*70}")
+
+    # Use pre-parsed data if available, otherwise parse
+    if topology_results and 'nodes' in topology_results:
+        nodes = topology_results['nodes']
+        edges = topology_results['edges']
+    else:
+        nodes, edges = parse_gml_topology(gml_path)
+
+    num_nodes = len(nodes)
+    if num_nodes == 0:
+        print("  ERROR: No nodes found in GML file")
+        return {"bandwidth_score": 0}
+
+    # Collect node bandwidths by region
+    region_bandwidths = defaultdict(list)
+    all_node_bw = []
+
+    for node_id, node_data in nodes.items():
+        bw = node_data.get('bandwidth_mbps', 1000)
+        region = node_data.get('region', 'unknown')
+        # Normalize region name for comparison
+        region_normalized = region.replace('_', ' ').title()
+        region_bandwidths[region_normalized].append(bw)
+        all_node_bw.append(bw)
+
+    # Collect edge bandwidths
+    all_edge_bw = []
+    for src_edges in edges.values():
+        for edge in src_edges:
+            if len(edge) >= 3:
+                all_edge_bw.append(edge[2])  # bandwidth is third element
+
+    # Print node bandwidth statistics
+    print(f"\nNode Bandwidth Statistics:")
+    if all_node_bw:
+        sorted_bw = sorted(all_node_bw)
+        print(f"  Total nodes: {len(all_node_bw)}")
+        print(f"  Min: {min(all_node_bw)} Mbit")
+        print(f"  Max: {max(all_node_bw)} Mbit")
+        print(f"  Median: {sorted_bw[len(sorted_bw)//2]} Mbit")
+        print(f"  Mean: {sum(all_node_bw)//len(all_node_bw)} Mbit")
+
+    # Print edge bandwidth statistics
+    print(f"\nEdge Bandwidth Statistics:")
+    if all_edge_bw:
+        sorted_edge_bw = sorted(all_edge_bw)
+        non_selfloop = [b for b in all_edge_bw if b < 10000]  # Exclude self-loops
+        print(f"  Total edges: {len(all_edge_bw)}")
+        if non_selfloop:
+            print(f"  Non-self-loop edges: {len(non_selfloop)}")
+            print(f"  Min: {min(non_selfloop)} Mbit")
+            print(f"  Max: {max(non_selfloop)} Mbit")
+            print(f"  Median: {sorted(non_selfloop)[len(non_selfloop)//2]} Mbit")
+
+    # Compare per-region bandwidth to real-world data
+    print(f"\nPer-Region Bandwidth Comparison:")
+    print(f"  {'Region':<20} {'Sim Median':>12} {'Real-World':>20} {'Assessment':>12}")
+    print(f"  {'-'*20} {'-'*12} {'-'*20} {'-'*12}")
+
+    bandwidth_scores = []
+
+    for region in ["North America", "Europe", "Asia", "South America", "Africa", "Oceania"]:
+        bw_list = region_bandwidths.get(region, [])
+        if not bw_list:
+            print(f"  {region:<20} {'N/A':>12} {'N/A':>20} {'NO DATA':>12}")
+            continue
+
+        sim_median = sorted(bw_list)[len(bw_list) // 2]
+        real_min, real_median, real_max = REAL_WORLD_BANDWIDTH.get(region, (0, 100, 200))
+        real_range = f"{real_min}-{real_max} Mbit"
+
+        # Score based on how close to real median, with tolerance
+        tolerance = 0.5  # Allow 50% deviation
+        deviation = abs(sim_median - real_median) / real_median if real_median > 0 else 1.0
+
+        if deviation <= tolerance * 0.5:
+            assessment = "EXCELLENT"
+            score = 100
+        elif deviation <= tolerance:
+            assessment = "GOOD"
+            score = 80
+        elif real_min <= sim_median <= real_max:
+            assessment = "ACCEPTABLE"
+            score = 60
+        elif sim_median < real_min:
+            assessment = "TOO LOW"
+            score = max(0, 40 - (real_min - sim_median) / real_min * 40)
+        else:
+            assessment = "TOO HIGH"
+            score = max(0, 40 - (sim_median - real_max) / real_max * 40)
+
+        bandwidth_scores.append(score)
+        print(f"  {region:<20} {sim_median:>10} Mbit {real_range:>20} {assessment:>12}")
+
+    # Check bandwidth diversity
+    print(f"\nBandwidth Diversity Check:")
+    unique_bw = len(set(all_node_bw))
+    diversity_pct = unique_bw / len(all_node_bw) * 100 if all_node_bw else 0
+
+    if unique_bw == 1:
+        print(f"  WARNING: All nodes have identical bandwidth ({all_node_bw[0]} Mbit)")
+        print(f"           This is NOT realistic - real Internet has high variance")
+        diversity_score = 0
+    elif diversity_pct < 5:
+        print(f"  NOTICE: Low bandwidth diversity ({unique_bw} unique values, {diversity_pct:.1f}%)")
+        diversity_score = 30
+    elif diversity_pct < 20:
+        print(f"  OK: Moderate bandwidth diversity ({unique_bw} unique values, {diversity_pct:.1f}%)")
+        diversity_score = 60
+    else:
+        print(f"  GOOD: High bandwidth diversity ({unique_bw} unique values, {diversity_pct:.1f}%)")
+        diversity_score = 100
+
+    # Calculate overall bandwidth score
+    region_score = sum(bandwidth_scores) / len(bandwidth_scores) if bandwidth_scores else 0
+    overall_score = (region_score * 0.7 + diversity_score * 0.3)  # 70% region accuracy, 30% diversity
+
+    print(f"\n  Regional Accuracy Score: {region_score:.1f}/100")
+    print(f"  Diversity Score: {diversity_score:.1f}/100")
+    print(f"  Overall Bandwidth Score: {overall_score:.1f}/100")
+
+    return {
+        "node_bandwidth_min": min(all_node_bw) if all_node_bw else 0,
+        "node_bandwidth_max": max(all_node_bw) if all_node_bw else 0,
+        "node_bandwidth_median": sorted(all_node_bw)[len(all_node_bw)//2] if all_node_bw else 0,
+        "unique_bandwidths": unique_bw,
+        "region_bandwidths": {k: sorted(v)[len(v)//2] if v else 0 for k, v in region_bandwidths.items()},
+        "bandwidth_score": overall_score,
     }
 
 
@@ -474,7 +671,8 @@ def analyze_agent_latencies(gml_path: Path, config_path: Path) -> Dict:
     }
 
 
-def print_overall_assessment(topology_results: Dict, placement_results: Dict, latency_results: Dict):
+def print_overall_assessment(topology_results: Dict, placement_results: Dict,
+                             latency_results: Dict, bandwidth_results: Dict):
     """Print overall internetness assessment."""
     print(f"\n{'='*70}")
     print("OVERALL INTERNETNESS ASSESSMENT")
@@ -496,6 +694,11 @@ def print_overall_assessment(topology_results: Dict, placement_results: Dict, la
         score = latency_results.get('latency_score', 0)
         scores.append(('Inter-Agent Latency', score))
         print(f"  Inter-Agent Latency Diversity: {score:.1f}/100")
+
+    if bandwidth_results:
+        score = bandwidth_results.get('bandwidth_score', 0)
+        scores.append(('Bandwidth Realism', score))
+        print(f"  Bandwidth Realism: {score:.1f}/100")
 
     if scores:
         overall = sum(s for _, s in scores) / len(scores)
@@ -583,11 +786,15 @@ def main():
         'topology': {},
         'placement': {},
         'latency': {},
+        'bandwidth': {},
     }
 
     # Analyze GML topology
     if gml_path and gml_path.exists():
         results['topology'] = analyze_gml_topology(gml_path)
+
+        # Analyze bandwidth (uses parsed topology data)
+        results['bandwidth'] = analyze_gml_bandwidth(gml_path, results['topology'])
     else:
         print(f"\nWARNING: No GML topology file found")
         if args.gml:
@@ -609,12 +816,19 @@ def main():
     overall_score = print_overall_assessment(
         results['topology'],
         results['placement'],
-        results['latency']
+        results['latency'],
+        results['bandwidth']
     )
     results['overall_score'] = overall_score
 
-    # JSON output
+    # JSON output (clean up internal data before serializing)
     if args.json:
+        # Remove internal data not meant for JSON output
+        if 'nodes' in results.get('topology', {}):
+            del results['topology']['nodes']
+        if 'edges' in results.get('topology', {}):
+            del results['topology']['edges']
+
         print(f"\n{'='*70}")
         print("JSON OUTPUT")
         print("=" * 70)

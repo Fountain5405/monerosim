@@ -81,6 +81,40 @@ This document lists the external data sources used in MoneroSim for network topo
 
 ---
 
+## Regional Bandwidth
+
+### Ookla Speedtest Global Index
+
+**Source:** https://worldpopulationreview.com/country-rankings/internet-speeds-by-country
+
+**Primary Data:** Ookla Speedtest Global Index (2025) via World Population Review
+
+**Used in:** `gml_processing/create_caida_connected_with_loops.py`
+
+**Purpose:** Assign realistic bandwidth values to simulated nodes based on their geographic region.
+
+**Regional median download speeds (Mbps):**
+
+| Region | Median | Std Dev | Min | Max | Key Countries |
+|--------|--------|---------|-----|-----|---------------|
+| North America | 250 | 80 | 50 | 1000 | US 303, Canada 256, Mexico 92 |
+| Europe | 170 | 60 | 30 | 500 | France 346, Germany 102, UK 163 |
+| Asia | 130 | 90 | 15 | 500 | Singapore 407, Japan 230, India 62 |
+| South America | 160 | 70 | 20 | 400 | Chile 357, Brazil 220, Argentina 110 |
+| Africa | 28 | 20 | 5 | 100 | Egypt 92, South Africa 48, Nigeria 31 |
+| Oceania | 70 | 50 | 10 | 300 | New Zealand 216, Australia 164, Fiji 13 |
+
+**Bandwidth model:**
+- Node bandwidth sampled from truncated normal distribution per region
+- Upload/download asymmetry modeled (typical ratio 20-80%)
+- Edge bandwidth based on CAIDA relationship type with 5x aggregation multiplier
+
+**Additional references:**
+- Carrier Bid asymmetric bandwidth analysis: https://www.carrierbid.com/different-upload-download-speeds/
+- Typical upload:download ratio is 1:10 for cable/DSL, 1:1 for fiber
+
+---
+
 ## Monero P2P Network
 
 ### Connection Limiting Mechanisms
