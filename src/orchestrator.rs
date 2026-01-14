@@ -705,6 +705,8 @@ echo "Starting DNS server..."
                     edges: None,
                 },
             },
+            // Pass DNS server IP to Shadow for getaddrinfo() UDP query support
+            dns_server: dns_server_ip.clone(),
         },
         hosts,
     };

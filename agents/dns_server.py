@@ -253,15 +253,16 @@ class MoneroDNSServer:
         self.logger.info(f"Starting DNS server on {self.bind_ip}:{self.port}")
 
         try:
-            # Use TCP - Shadow has limited UDP support, and monerod's DNS_PUBLIC uses TCP
+            # Use UDP - standard DNS protocol. Shadow now supports UDP DNS queries
+            # via the dns_server configuration option in shadow.yaml.
             self.server = DNSServer(
                 self.resolver,
                 port=self.port,
                 address=self.bind_ip,
-                tcp=True  # TCP mode - required for Shadow simulation
+                tcp=False  # UDP mode - standard DNS protocol
             )
             self.server.start_thread()
-            self.logger.info("DNS server started successfully")
+            self.logger.info("DNS server started successfully (UDP mode)")
 
             # Keep running until signaled to stop
             while self.running and self.server.isAlive():

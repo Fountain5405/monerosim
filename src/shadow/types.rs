@@ -182,6 +182,10 @@ pub struct ShadowExperimental {
 pub struct ShadowNetwork {
     /// Network graph/topology definition
     pub graph: ShadowGraph,
+    /// DNS server IP address for resolving unknown hostnames.
+    /// When set, Shadow's getaddrinfo() will send UDP DNS queries to this address.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_server: Option<String>,
 }
 
 /// Shadow network graph definition.
