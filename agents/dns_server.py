@@ -253,16 +253,16 @@ class MoneroDNSServer:
         self.logger.info(f"Starting DNS server on {self.bind_ip}:{self.port}")
 
         try:
-            # Use UDP - standard DNS protocol. Shadow now supports UDP DNS queries
-            # via the dns_server configuration option in shadow.yaml.
+            # Use TCP - Monero's libunbound uses TCP for DNS queries
+            # (as seen in logs: "Using public DNS server(s): X.X.X.X (TCP)")
             self.server = DNSServer(
                 self.resolver,
                 port=self.port,
                 address=self.bind_ip,
-                tcp=False  # UDP mode - standard DNS protocol
+                tcp=True  # TCP mode - what Monero uses
             )
             self.server.start_thread()
-            self.logger.info("DNS server started successfully (UDP mode)")
+            self.logger.info("DNS server started successfully (TCP mode)")
 
             # Keep running until signaled to stop
             while self.running and self.server.isAlive():
