@@ -88,11 +88,11 @@ check_command() {
     if ! command -v "$1" &> /dev/null; then
         MISSING_DEPS+=("$1")
         print_warning "$1 is not installed"
-        return 1
     else
         print_success "$1 is available"
-        return 0
     fi
+    # Always return 0 - we track missing deps in MISSING_DEPS array
+    return 0
 }
 
 print_status "Checking required system tools..."
