@@ -333,7 +333,7 @@ echo "Daemon RPC not available after 30 attempts, starting mining agent anyway..
     // Process 1: Create wrapper script
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c 'cat > {} << EOF\\n{}EOF'", script_path, wrapper_script),
+        args: format!("-c 'cat > {} << '\"'\"'EOF'\"'\"'\n{}EOF'", script_path, wrapper_script),
         environment: environment.clone(),
         start_time: script_creation_time,
         shutdown_time: None,

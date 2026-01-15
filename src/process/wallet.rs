@@ -79,11 +79,12 @@ pub fn add_wallet_process(
     };
 
     // First, clean up any existing wallet files and create the wallet directory
+    // Note: explicit chmod 755 ensures correct permissions even if something else modifies them
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet'",
-            agent_id, agent_id
+            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet && chmod 755 /tmp/monerosim_shared/{}_wallet'",
+            agent_id, agent_id, agent_id
         ),
         environment: environment.clone(),
         start_time: cleanup_start_time, // Start earlier to ensure cleanup completes
@@ -186,11 +187,12 @@ pub fn add_remote_wallet_process(
     };
 
     // First, clean up any existing wallet files and create the wallet directory
+    // Note: explicit chmod 755 ensures correct permissions even if something else modifies them
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
         args: format!(
-            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet'",
-            agent_id, agent_id
+            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet && chmod 755 /tmp/monerosim_shared/{}_wallet'",
+            agent_id, agent_id, agent_id
         ),
         environment: environment.clone(),
         start_time: cleanup_start_time,
