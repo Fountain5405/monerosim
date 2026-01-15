@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 use color_eyre::eyre::{Result, eyre};
 
 /// Errors that can occur during GML parsing
@@ -98,18 +97,6 @@ pub struct GmlGraph {
     pub nodes: Vec<GmlNode>,
     pub edges: Vec<GmlEdge>,
     pub attributes: HashMap<String, String>,
-}
-
-/// Legacy Graph structure for backward compatibility
-#[derive(Debug, Default)]
-pub struct Graph {
-    pub nodes: Vec<Node>,
-}
-
-/// Legacy Node structure for backward compatibility
-#[derive(Debug)]
-pub struct Node {
-    pub id: i32,
 }
 
 /// Token types for GML parsing
@@ -474,19 +461,6 @@ pub fn parse_gml_file(path: &str) -> Result<GmlGraph> {
     parser.parse_graph()
 }
 
-/// Legacy function for backward compatibility with shadow_agents.rs
-pub fn parse_gml(file_path: &Path) -> Result<Graph> {
-    let gml_graph = parse_gml_file(file_path.to_str()
-        .ok_or_else(|| eyre!("Invalid file path: {:?}", file_path))?)?;
-    
-    // Convert GmlGraph to legacy Graph format
-    let nodes = gml_graph.nodes.into_iter()
-        .map(|gml_node| Node { id: gml_node.id as i32 })
-        .collect();
-    
-    Ok(Graph { nodes })
-}
-
 /// Group nodes by autonomous system if AS attributes exist
 pub fn get_autonomous_systems(graph: &GmlGraph) -> Vec<Vec<u32>> {
     let mut as_groups: HashMap<String, Vec<u32>> = HashMap::new();
@@ -614,11 +588,7 @@ use crate::utils::ip_utils;
             // Test autonomous systems
             let as_groups = get_autonomous_systems(&graph);
             println!("Autonomous systems: {} groups", as_groups.len());
-            
-            // Test backward compatibility
-            let legacy_graph = parse_gml(std::path::Path::new("testnet.gml")).unwrap();
-            assert_eq!(legacy_graph.nodes.len(), graph.nodes.len());
-            
+
             // Verify the expected structure from testnet.gml
             assert_eq!(graph.nodes.len(), 2);
             assert_eq!(graph.edges.len(), 4);
@@ -692,26 +662,6 @@ use crate::utils::ip_utils;
         };
 
         assert!(validate_topology(&invalid_graph2).is_err());
-    }
-
-    #[test]
-    fn test_backward_compatibility() {
-        let gml_content = r#"
-            graph [
-                node [ id 0 ]
-                node [ id 1 ]
-                edge [ source 0 target 1 ]
-            ]
-        "#;
-
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", gml_content).unwrap();
-
-        let legacy_graph = parse_gml(temp_file.path()).unwrap();
-
-        assert_eq!(legacy_graph.nodes.len(), 2);
-        assert_eq!(legacy_graph.nodes[0].id, 0);
-        assert_eq!(legacy_graph.nodes[1].id, 1);
     }
 
     #[test]

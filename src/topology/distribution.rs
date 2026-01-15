@@ -233,23 +233,6 @@ fn distribute_weighted(
     assignments
 }
 
-// Keep the old function signature for backward compatibility
-// This will be removed once all callers are updated
-#[deprecated(note = "Use distribute_agents_across_topology with strategy parameter")]
-pub fn distribute_agents_across_topology_legacy(
-    topology_path: Option<&Path>,
-    node_count: usize,
-    as_numbers: &[Option<String>]
-) -> Vec<Option<usize>> {
-    distribute_agents_across_topology(
-        topology_path,
-        node_count,
-        as_numbers,
-        Some(&DistributionStrategy::Global),
-        None,
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
