@@ -540,6 +540,54 @@ print_success "Monero source ready"
 # Step 6: Build Monero Binaries
 print_header "Step 6: Building Monero Binaries"
 
+# Check for Monero build dependencies
+print_status "Checking Monero build dependencies..."
+MONERO_DEPS_MISSING=false
+
+# Check key libraries using pkg-config
+check_pkg() {
+    if ! pkg-config --exists "$1" 2>/dev/null; then
+        print_warning "Missing: $1"
+        MONERO_DEPS_MISSING=true
+    fi
+}
+
+check_pkg "libunbound"
+check_pkg "libsodium"
+check_pkg "libzmq"
+check_pkg "openssl"
+
+# Install if needed
+if [[ "$MONERO_DEPS_MISSING" == "true" ]]; then
+    print_status "Installing Monero build dependencies..."
+
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update && sudo apt-get install -y \
+            libssl-dev libzmq3-dev libunbound-dev libsodium-dev \
+            libunwind8-dev liblzma-dev libreadline-dev libexpat1-dev \
+            libpgm-dev libhidapi-dev libusb-1.0-0-dev \
+            libprotobuf-dev protobuf-compiler libudev-dev \
+            libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev \
+            libboost-locale-dev libboost-program-options-dev libboost-regex-dev \
+            libboost-serialization-dev libboost-system-dev libboost-thread-dev
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y \
+            openssl-devel zeromq-devel unbound-devel libsodium-devel \
+            libunwind-devel xz-devel readline-devel expat-devel \
+            hidapi-devel libusbx-devel protobuf-devel protobuf-compiler \
+            systemd-devel boost-devel
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --noconfirm \
+            openssl zeromq unbound libsodium libunwind xz readline expat \
+            hidapi libusb protobuf systemd boost
+    else
+        print_error "Could not install Monero dependencies automatically"
+        print_error "Please install libunbound-dev, libsodium-dev, libzmq3-dev, libboost-all-dev"
+        exit 1
+    fi
+    print_success "Monero build dependencies installed"
+fi
+
 if [[ "$FULL_MONERO_COMPILE" == "true" ]]; then
     print_status "Building ALL Monero binaries..."
     print_status "This will take 15-30 minutes depending on system..."
