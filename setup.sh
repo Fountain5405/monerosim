@@ -250,12 +250,17 @@ if ! python3 -m venv --help &>/dev/null; then
     print_success "python3-venv installed successfully"
 fi
 
-# Check if we have a virtual environment
+# Check if we have a valid virtual environment
 VENV_DIR="$SCRIPT_DIR/venv"
-if [[ ! -d "$VENV_DIR" ]]; then
+if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
+    # Remove incomplete venv if it exists
+    if [[ -d "$VENV_DIR" ]]; then
+        print_warning "Found incomplete virtual environment, recreating..."
+        rm -rf "$VENV_DIR"
+    fi
     print_status "Creating Python virtual environment..."
     python3 -m venv "$VENV_DIR"
-    if [[ ! -d "$VENV_DIR" ]]; then
+    if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
         print_error "Failed to create Python virtual environment"
         print_error "Please ensure python3-venv is installed and try again"
         exit 1
