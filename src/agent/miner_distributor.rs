@@ -25,7 +25,7 @@ pub fn process_miner_distributor(
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     agent_offset: usize,
-    peer_mode: &PeerMode,
+    _peer_mode: &PeerMode,
 ) -> color_eyre::eyre::Result<()> {
     // Find miner_distributor agent in the named agents map
     let miner_distributor: Option<(&String, &AgentConfig)> = agents.agents.iter()

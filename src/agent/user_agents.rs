@@ -61,7 +61,6 @@ pub fn process_user_agents(
     agents: &AgentDefinitions,
     hosts: &mut BTreeMap<String, ShadowHost>,
     seed_agents: &mut Vec<String>,
-    _effective_seed_nodes: &[String],  // Now unused - seed nodes computed from actual miner IPs
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
     monerod_path: &str,

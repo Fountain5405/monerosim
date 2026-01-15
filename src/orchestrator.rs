@@ -301,7 +301,8 @@ pub fn generate_agent_shadow_config(
     }
 
     // Use the configured seed nodes, or collect miner IPs if not provided
-    let effective_seed_nodes = if seed_node_list.is_empty() {
+    // Note: This is computed for the informative print statement below
+    let _effective_seed_nodes = if seed_node_list.is_empty() {
         // Collect actual miner IPs for seed nodes
         let mut miner_ips = Vec::new();
         for (i, (agent_id, agent_config)) in config.agents.agents.iter()
@@ -395,7 +396,6 @@ echo "Starting DNS server..."
         &config.agents,
         &mut hosts,
         &mut seed_nodes,
-        &effective_seed_nodes,
         &mut subnet_manager,
         &mut ip_registry,
         &monerod_path,
