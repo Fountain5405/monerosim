@@ -4,11 +4,44 @@ use color_eyre::Result;
 use env_logger::Env;
 use log::info;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 // Use modules from the library instead of redeclaring them
 use monerosim::orchestrator::generate_agent_shadow_config;
 use monerosim::config_loader;
+
+/// Recursively fix permissions on a directory tree to allow deletion.
+/// This handles cases where monero-wallet-rpc creates directories with
+/// restrictive permissions (d---------) that prevent normal rm -rf.
+fn fix_permissions_recursive(path: &Path) -> std::io::Result<()> {
+    if path.is_dir() {
+        // First, ensure we can read and traverse this directory
+        let mut perms = fs::metadata(path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(path, perms)?;
+
+        // Then recursively fix children
+        for entry in fs::read_dir(path)? {
+            let entry = entry?;
+            fix_permissions_recursive(&entry.path())?;
+        }
+    }
+    Ok(())
+}
+
+/// Remove a directory tree, first fixing permissions if needed.
+fn remove_dir_with_permissions(path: &Path) -> std::io::Result<()> {
+    if path.exists() {
+        // Try normal removal first
+        if fs::remove_dir_all(path).is_err() {
+            // If it fails, fix permissions and try again
+            fix_permissions_recursive(path)?;
+            fs::remove_dir_all(path)?;
+        }
+    }
+    Ok(())
+}
 
 /// Configuration utility for Monero network simulations in Shadow
 #[derive(Parser, Debug)]
@@ -82,14 +115,12 @@ fn main() -> Result<()> {
     if output_dir.exists() {
         // Only clean if it's not the current directory
         if output_dir != Path::new(".") {
-            fs::remove_dir_all(&output_dir)
+            remove_dir_with_permissions(&output_dir)
                 .wrap_err_with(|| format!("Failed to remove output directory '{}'", output_dir.display()))?;
         }
     }
     let shared_dir = Path::new("/tmp/monerosim_shared");
-    if shared_dir.exists() {
-        fs::remove_dir_all(shared_dir).wrap_err("Failed to remove shared directory")?;
-    }
+    remove_dir_with_permissions(shared_dir).wrap_err("Failed to remove shared directory")?;
 
     // Create fresh directories
     fs::create_dir_all(&output_dir)
