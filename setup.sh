@@ -325,25 +325,44 @@ fi
 # Step 4: Install Shadow Simulator
 print_header "Step 4: Installing Shadow Simulator"
 
-# Check for Shadow's library dependencies (glib-2.0)
+# Check for Shadow's build dependencies
+SHADOW_DEPS_NEEDED=false
+
+# Check glib-2.0
 if ! pkg-config --exists "glib-2.0 >= 2.58" 2>/dev/null; then
-    print_warning "glib-2.0 development library not found (required for Shadow)"
+    print_warning "glib-2.0 development library not found"
+    SHADOW_DEPS_NEEDED=true
+fi
+
+# Check clang (required for bindgen)
+if ! command -v clang &>/dev/null; then
+    print_warning "clang not found (required for Shadow's bindgen)"
+    SHADOW_DEPS_NEEDED=true
+fi
+
+# Install Shadow dependencies if needed
+if [[ "$SHADOW_DEPS_NEEDED" == "true" ]]; then
     print_status "Installing Shadow build dependencies..."
 
     if command -v apt-get &> /dev/null; then
-        sudo apt-get update && sudo apt-get install -y libglib2.0-dev
+        sudo apt-get update && sudo apt-get install -y libglib2.0-dev clang libclang-dev
     elif command -v yum &> /dev/null; then
-        sudo yum install -y glib2-devel
+        sudo yum install -y glib2-devel clang clang-devel
     elif command -v pacman &> /dev/null; then
-        sudo pacman -S --noconfirm glib2
+        sudo pacman -S --noconfirm glib2 clang
     else
-        print_error "Could not install glib-2.0 automatically"
-        print_error "Please install libglib2.0-dev (or equivalent) and re-run setup.sh"
+        print_error "Could not install Shadow dependencies automatically"
+        print_error "Please install libglib2.0-dev, clang, libclang-dev and re-run setup.sh"
         exit 1
     fi
 
+    # Verify
     if ! pkg-config --exists "glib-2.0 >= 2.58" 2>/dev/null; then
         print_error "Failed to install glib-2.0 development library"
+        exit 1
+    fi
+    if ! command -v clang &>/dev/null; then
+        print_error "Failed to install clang"
         exit 1
     fi
     print_success "Shadow build dependencies installed"
