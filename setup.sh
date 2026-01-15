@@ -222,6 +222,34 @@ print_header "Step 2: Installing Python Dependencies"
 
 check_command "python3"
 
+# Check if python3-venv module is available
+if ! python3 -m venv --help &>/dev/null; then
+    print_warning "python3-venv module is not available"
+    print_status "Attempting to install python3-venv (requires sudo)..."
+
+    if command -v apt-get &> /dev/null; then
+        # Get the Python version to install the correct venv package
+        PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        print_status "Installing python${PYTHON_VERSION}-venv..."
+        sudo apt-get update && sudo apt-get install -y "python${PYTHON_VERSION}-venv"
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y python3-virtualenv
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --noconfirm python-virtualenv
+    else
+        print_error "Could not install python3-venv automatically"
+        print_error "Please install it manually and re-run setup.sh"
+        exit 1
+    fi
+
+    # Verify it worked
+    if ! python3 -m venv --help &>/dev/null; then
+        print_error "Failed to install python3-venv"
+        exit 1
+    fi
+    print_success "python3-venv installed successfully"
+fi
+
 # Check if we have a virtual environment
 VENV_DIR="$SCRIPT_DIR/venv"
 if [[ ! -d "$VENV_DIR" ]]; then
