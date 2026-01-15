@@ -235,10 +235,12 @@ After each priority is completed:
    - Updated validation functions to use `AgentConfig` directly
    - Rewrote all validation tests
    - Integrated validation into `config_loader.rs`
-2. [ ] **Priority 2**: N/A - phase parsing retained in `AgentConfig`
-3. [ ] **Priority 3**: Deduplicate validation functions
-4. [ ] **Priority 4**: Create `ProcessingContext` struct
-5. [ ] **Priority 5**: Clean up dead code
+2. [x] **Priority 2**: N/A - phase parsing retained in `AgentConfig`
+3. [x] **Priority 3**: Deduplicate validation functions (done in P1)
+4. [x] **Priority 4**: SKIPPED - would add complexity without removing code
+5. [x] **Priority 5**: Clean up dead code ✅ COMPLETED 2026-01-15
+   - Removed unused `_effective_seed_nodes` parameter from `process_user_agents`
+   - Fixed unused variable warnings with `_` prefix
 
 ---
 
