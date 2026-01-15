@@ -247,9 +247,9 @@ print_header "Step 2: Installing Python Dependencies"
 
 check_command "python3"
 
-# Check if python3-venv module is available
-if ! python3 -m venv --help &>/dev/null; then
-    print_warning "python3-venv module is not available"
+# Check if python3-venv/ensurepip is available (venv module exists but ensurepip may not)
+if ! python3 -c "import ensurepip" &>/dev/null; then
+    print_warning "python3-venv (ensurepip) is not available"
     print_status "Attempting to install python3-venv (requires sudo)..."
 
     if command -v apt-get &> /dev/null; then
@@ -268,7 +268,7 @@ if ! python3 -m venv --help &>/dev/null; then
     fi
 
     # Verify it worked
-    if ! python3 -m venv --help &>/dev/null; then
+    if ! python3 -c "import ensurepip" &>/dev/null; then
         print_error "Failed to install python3-venv"
         exit 1
     fi
