@@ -325,6 +325,30 @@ fi
 # Step 4: Install Shadow Simulator
 print_header "Step 4: Installing Shadow Simulator"
 
+# Check for Shadow's library dependencies (glib-2.0)
+if ! pkg-config --exists "glib-2.0 >= 2.58" 2>/dev/null; then
+    print_warning "glib-2.0 development library not found (required for Shadow)"
+    print_status "Installing Shadow build dependencies..."
+
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update && sudo apt-get install -y libglib2.0-dev
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y glib2-devel
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --noconfirm glib2
+    else
+        print_error "Could not install glib-2.0 automatically"
+        print_error "Please install libglib2.0-dev (or equivalent) and re-run setup.sh"
+        exit 1
+    fi
+
+    if ! pkg-config --exists "glib-2.0 >= 2.58" 2>/dev/null; then
+        print_error "Failed to install glib-2.0 development library"
+        exit 1
+    fi
+    print_success "Shadow build dependencies installed"
+fi
+
 # Helper function to install shadowformonero
 install_shadowformonero() {
     # Setup directory for shadowformonero
