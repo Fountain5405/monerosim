@@ -33,6 +33,12 @@ rand = "0.8"
 # Regular expressions for parsing
 regex = "1.10"
 
+# Parallel processing for log analysis
+rayon = "1.10"
+
+# Date/time handling for log timestamps
+chrono = { version = "0.4", features = ["serde"] }
+
 [dev-dependencies]
 # Temporary files for testing
 tempfile = "3.8"
@@ -40,6 +46,10 @@ tempfile = "3.8"
 [[bin]]
 name = "monerosim"
 path = "src/main.rs"
+
+[[bin]]
+name = "tx-analyzer"
+path = "src/bin/tx_analyzer.rs"
 
 [profile.release]
 lto = "fat"

@@ -112,3 +112,6 @@ pub mod process;
 pub mod registry;
 pub mod utils;
 pub mod orchestrator;
+
+// Transaction routing analysis
+pub mod analysis;
