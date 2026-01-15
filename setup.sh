@@ -731,7 +731,7 @@ fi
 # Step 9: Generate Shadow configuration
 print_header "Step 9: Generating Shadow Configuration"
 
-print_status "Generating Shadow configuration from test_configs/config_32_agents.yaml..."
+print_status "Generating Shadow configuration from test_configs/20260112_config.yaml..."
 
 # Ensure we're in the right directory and the binary exists
 cd "$SCRIPT_DIR"
@@ -742,7 +742,7 @@ if [[ ! -f "./target/release/monerosim" ]]; then
     exit 1
 fi
 
-./target/release/monerosim --config test_configs/config_32_agents.yaml --output shadow_output
+./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output
 
 if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow_agents.yaml" ]]; then
     print_success "Shadow configuration generated successfully"
@@ -755,7 +755,7 @@ fi
 print_header "Step 10: Optional Test Simulation"
 
 print_status "Setup is complete! You can now run a test simulation to verify everything works."
-print_warning "The test simulation (test_configs/config_32_agents.yaml) runs for approximately 4 hours"
+print_warning "The test simulation (test_configs/20260112_config.yaml) runs for approximately 8 hours"
 print_warning "This is a comprehensive test with 32 agents and complex network topology"
 print_status ""
 print_status "Choose an option:"
@@ -825,8 +825,8 @@ print_header "Setup Complete!"
 print_success "MoneroSim is now ready to use!"
 echo ""
 print_status "Quick usage guide:"
-echo "  1. Edit test_configs/config_32_agents.yaml to adjust simulation parameters"
-echo "  2. Generate configuration: ./target/release/monerosim --config test_configs/config_32_agents.yaml --output shadow_output"
+echo "  1. Edit test_configs/20260112_config.yaml to adjust simulation parameters"
+echo "  2. Generate configuration: ./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output"
 echo "  3. Run simulation: shadow shadow_output/shadow_agents.yaml"
 echo "  4. Analyze results in shadow.data/ directory"
 echo ""
@@ -835,7 +835,7 @@ echo "  - shadow"
 echo "  - monerod"
 echo "  - monero-wallet-rpc"
 echo ""
-print_status "Configuration: test_configs/config_32_agents.yaml"
+print_status "Configuration: test_configs/20260112_config.yaml"
 print_status "Simulation logs: shadow.data/hosts/*/monerod.*.stdout"
 print_status "Shadow log: shadow.data/shadow.log"
 echo ""
