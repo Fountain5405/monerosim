@@ -41,16 +41,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Parse command line arguments
 FULL_MONERO_COMPILE=false
+CLEAN_START=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --full-monero-compile)
             FULL_MONERO_COMPILE=true
             shift
             ;;
+        --clean)
+            CLEAN_START=true
+            shift
+            ;;
         -h|--help)
             echo "Usage: ./setup.sh [OPTIONS]"
             echo ""
             echo "Options:"
+            echo "  --clean                Remove venv, shadow_output, and target/ before setup"
+            echo "                         Use this for a fresh start after failed setup"
             echo "  --full-monero-compile  Build all Monero binaries (slower)"
             echo "                         Default: only build monerod and monero-wallet-rpc"
             echo "  -h, --help             Show this help message"
@@ -69,6 +76,24 @@ if [[ ! -f "Cargo.toml" ]] || [[ ! -d "src" ]]; then
     print_error "Please run this script from the monerosim project directory"
     print_error "Expected files: Cargo.toml, src/ directory"
     exit 1
+fi
+
+# Clean up previous artifacts if requested
+if [[ "$CLEAN_START" == "true" ]]; then
+    print_header "Cleaning Previous Setup"
+    if [[ -d "$SCRIPT_DIR/venv" ]]; then
+        print_status "Removing venv/..."
+        rm -rf "$SCRIPT_DIR/venv"
+    fi
+    if [[ -d "$SCRIPT_DIR/shadow_output" ]]; then
+        print_status "Removing shadow_output/..."
+        rm -rf "$SCRIPT_DIR/shadow_output"
+    fi
+    if [[ -d "$SCRIPT_DIR/target" ]]; then
+        print_status "Removing target/..."
+        rm -rf "$SCRIPT_DIR/target"
+    fi
+    print_success "Cleanup complete"
 fi
 
 print_header "MoneroSim Setup Script"
