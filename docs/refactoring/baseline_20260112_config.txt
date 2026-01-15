@@ -1,0 +1,37 @@
+[0;32m2026-01-15 20:30:37 [INFO] [analyze_simulation] Using log directory: shadow.data/hosts[0m
+Starting simulation analysis with multi-threading support...
+Determinism fingerprint saved to: determinism_fingerprint_20260115_203044.json
+
+Monerosim Simulation Success Analysis Report
+==================================================
+Generated: 2026-01-15 20:30:44
+
+Simulation Overview:
+  Number of nodes analyzed: 33
+  Total blocks mined: 157
+  Total unique transactions created: 89
+  Total transactions included in blocks: 89
+  Wall clock time: 3m 10s
+    Started: 2026-01-15 12:22:35
+    Ended:   2026-01-15 12:25:46
+
+Success Criteria Results:
+
+  • Blocks Created: PASS
+    157 blocks mined
+
+  • Blocks Propagated: PASS
+    25 user nodes received blocks
+
+  • Transactions Created Broadcast: PASS
+    89 transactions created and propagated to 25 user nodes
+
+  • Transactions In Blocks: PASS
+    89/89 transactions included in blocks
+
+Overall Result:
+  SUCCESS
+
+Summary report saved to: simulation_summary_report_20260115_203044.txt
+
+Detailed report saved to success_analysis_report.json
