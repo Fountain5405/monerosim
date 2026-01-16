@@ -29,8 +29,9 @@ This timing ensures:
 """
 
 import argparse
+import random
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 from collections import OrderedDict
 
 
@@ -73,6 +74,55 @@ DEFAULT_INITIAL_BATCH_SIZE = 5
 DEFAULT_GROWTH_FACTOR = 2.0
 DEFAULT_MAX_BATCH_SIZE = 200
 DEFAULT_INTRA_BATCH_STAGGER_S = 5  # 5 seconds between users in same batch
+
+# Upgrade scenario defaults
+DEFAULT_STEADY_STATE_DURATION_S = 7200  # 2 hours of observation before upgrade
+DEFAULT_POST_UPGRADE_DURATION_S = 7200  # 2 hours of observation after upgrade
+DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
+DEFAULT_DAEMON_RESTART_GAP_S = 30  # Gap between stopping old daemon and starting new one
+
+
+def calculate_upgrade_schedule(
+    agents: List[str],
+    upgrade_start_s: int,
+    upgrade_stagger_s: int,
+    upgrade_order: str,
+    miner_ids: List[str],
+    seed: int,
+) -> Dict[str, Tuple[int, int]]:
+    """Calculate when each agent's daemon phases switch.
+
+    Args:
+        agents: List of agent IDs to upgrade
+        upgrade_start_s: When upgrades begin (sim time in seconds)
+        upgrade_stagger_s: Time between consecutive node upgrades
+        upgrade_order: "sequential" | "random" | "miners-first"
+        miner_ids: List of miner agent IDs (used for miners-first ordering)
+        seed: Random seed for reproducible ordering
+
+    Returns:
+        Dict mapping agent_id to (phase0_stop_s, phase1_start_s)
+    """
+    # Determine upgrade order
+    if upgrade_order == "random":
+        rng = random.Random(seed)
+        ordered_agents = list(agents)
+        rng.shuffle(ordered_agents)
+    elif upgrade_order == "miners-first":
+        miners = [a for a in agents if a in miner_ids]
+        users = [a for a in agents if a not in miner_ids]
+        ordered_agents = miners + users
+    else:  # sequential (default)
+        ordered_agents = list(agents)
+
+    # Calculate upgrade times for each agent
+    schedule = {}
+    for i, agent_id in enumerate(ordered_agents):
+        phase0_stop = upgrade_start_s + (i * upgrade_stagger_s)
+        phase1_start = phase0_stop + DEFAULT_DAEMON_RESTART_GAP_S
+        schedule[agent_id] = (phase0_stop, phase1_start)
+
+    return schedule
 
 
 def calculate_batch_sizes(num_users: int, initial_size: int, growth_factor: float, max_size: int) -> list:
@@ -228,6 +278,29 @@ def generate_miner_agent(hashrate: int, start_offset_s: int, daemon_binary: str 
     ])
 
 
+def generate_miner_agent_phased(
+    hashrate: int,
+    start_offset_s: int,
+    daemon_v1: str,
+    daemon_v2: str,
+    phase0_stop_s: int,
+    phase1_start_s: int,
+) -> Dict[str, Any]:
+    """Generate a miner agent with daemon phase switching for upgrade scenario."""
+    return OrderedDict([
+        ("wallet", "monero-wallet-rpc"),
+        ("script", "agents.autonomous_miner"),
+        ("start_time", format_time_offset(start_offset_s)),
+        ("hashrate", hashrate),
+        ("can_receive_distributions", True),
+        ("daemon_0", daemon_v1),
+        ("daemon_0_start", format_time_offset(start_offset_s)),
+        ("daemon_0_stop", format_time_offset(phase0_stop_s)),
+        ("daemon_1", daemon_v2),
+        ("daemon_1_start", format_time_offset(phase1_start_s)),
+    ])
+
+
 def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0, daemon_binary: str = "monerod") -> Dict[str, Any]:
     """Generate a regular user agent configuration (new format).
 
@@ -245,6 +318,31 @@ def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_sta
         ("transaction_interval", tx_interval),
         ("activity_start_time", activity_start_time),
         ("can_receive_distributions", True),
+    ])
+
+
+def generate_user_agent_phased(
+    start_offset_s: int,
+    tx_interval: int,
+    activity_start_time: int,
+    daemon_v1: str,
+    daemon_v2: str,
+    phase0_stop_s: int,
+    phase1_start_s: int,
+) -> Dict[str, Any]:
+    """Generate a user agent with daemon phase switching for upgrade scenario."""
+    return OrderedDict([
+        ("wallet", "monero-wallet-rpc"),
+        ("script", "agents.regular_user"),
+        ("start_time", format_time_offset(start_offset_s)),
+        ("transaction_interval", tx_interval),
+        ("activity_start_time", activity_start_time),
+        ("can_receive_distributions", True),
+        ("daemon_0", daemon_v1),
+        ("daemon_0_start", format_time_offset(start_offset_s)),
+        ("daemon_0_stop", format_time_offset(phase0_stop_s)),
+        ("daemon_1", daemon_v2),
+        ("daemon_1_start", format_time_offset(phase1_start_s)),
     ])
 
 
@@ -449,6 +547,258 @@ def generate_config(
     return config, timing_info
 
 
+def generate_upgrade_config(
+    total_agents: int,
+    duration: str,
+    stagger_interval_s: int,
+    simulation_seed: int = 12345,
+    gml_path: str = DEFAULT_GML_PATH,
+    fast_mode: bool = False,
+    process_threads: int = 1,
+    batched_bootstrap: str = "auto",
+    batch_interval: str = "20m",
+    initial_batch_size: int = 5,
+    max_batch_size: int = 200,
+    outputs_per_transaction: int = 10,
+    output_amount: float = 100.0,
+    # Upgrade-specific parameters
+    upgrade_binary_v1: str = "monerod",
+    upgrade_binary_v2: str = "monerod",
+    upgrade_start: str = None,  # None = auto-calculate
+    upgrade_stagger_s: int = DEFAULT_UPGRADE_STAGGER_S,
+    upgrade_order: str = "sequential",
+    steady_state_duration_s: int = DEFAULT_STEADY_STATE_DURATION_S,
+    post_upgrade_duration_s: int = DEFAULT_POST_UPGRADE_DURATION_S,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Generate monerosim configuration for upgrade scenario.
+
+    This creates a config where all nodes run daemon_v1 initially, then switch
+    to daemon_v2 in a staggered fashion after a steady-state observation period.
+
+    Timeline:
+      t=0:           Miners start
+      t=bootstrap:   Bootstrap ends, funding begins
+      t=activity:    Users start transacting (steady state)
+      t=upgrade:     Nodes begin switching to v2 (staggered)
+      t=end:         Simulation ends after post-upgrade observation
+
+    Args:
+        upgrade_binary_v1: Phase 0 binary (e.g., "monerod-v1")
+        upgrade_binary_v2: Phase 1 binary (e.g., "monerod-v2")
+        upgrade_start: When upgrades begin (None = activity_start + steady_state_duration)
+        upgrade_stagger_s: Time between consecutive node upgrades
+        upgrade_order: "sequential" | "random" | "miners-first"
+        steady_state_duration_s: How long to observe before upgrade
+        post_upgrade_duration_s: How long to observe after upgrade
+    """
+    num_miners = len(FIXED_MINERS)
+    num_users = total_agents - num_miners
+
+    if num_users < 0:
+        raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
+
+    # Determine if batched bootstrap should be enabled
+    use_batched = (
+        batched_bootstrap == "true" or
+        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
+    )
+
+    # Parse batch interval
+    batch_interval_s = parse_duration(batch_interval)
+
+    # Calculate user start times based on batching mode
+    batch_sizes = []
+    batch_schedule = []
+
+    if use_batched and num_users > 0:
+        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
+        batch_schedule = calculate_batch_schedule(
+            num_users,
+            DEFAULT_INITIAL_DELAY_S,
+            batch_interval_s,
+            initial_batch_size,
+            2.0,
+            max_batch_size,
+            DEFAULT_INTRA_BATCH_STAGGER_S,
+        )
+        last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
+    else:
+        if num_users > 0:
+            last_user_spawn_s = USER_START_TIME_S + ((num_users - 1) * stagger_interval_s)
+        else:
+            last_user_spawn_s = USER_START_TIME_S
+
+    # Calculate dynamic bootstrap timing
+    spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
+    bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
+    activity_start_time_s = bootstrap_end_time_s + FUNDING_PERIOD_S
+
+    # Calculate upgrade timing
+    if upgrade_start is not None:
+        upgrade_start_time_s = parse_duration(upgrade_start)
+    else:
+        # Auto: upgrade starts after steady state observation period
+        upgrade_start_time_s = activity_start_time_s + steady_state_duration_s
+
+    # Performance settings
+    tx_interval = 120 if fast_mode else 60
+    poll_interval = 300
+    shadow_log_level = "warning" if fast_mode else "info"
+    runahead = "100ms" if fast_mode else None
+
+    # Build list of all agent IDs for upgrade scheduling
+    miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
+    user_ids = [f"user-{i+1:03}" for i in range(num_users)]
+    all_agent_ids = miner_ids + user_ids
+
+    # Calculate upgrade schedule for all agents
+    upgrade_schedule = calculate_upgrade_schedule(
+        all_agent_ids,
+        upgrade_start_time_s,
+        upgrade_stagger_s,
+        upgrade_order,
+        miner_ids,
+        simulation_seed,
+    )
+
+    # Calculate when the last upgrade completes
+    last_upgrade_complete_s = max(p1_start for _, (_, p1_start) in upgrade_schedule.items())
+
+    # Calculate total simulation duration
+    requested_duration_s = parse_duration(duration) if duration else 0
+    min_duration_s = last_upgrade_complete_s + post_upgrade_duration_s
+    duration_s = max(requested_duration_s, min_duration_s)
+    duration = format_time_offset(duration_s)
+
+    # Build agents with phased daemons
+    agents = OrderedDict()
+
+    # Add miners with phased daemons
+    for i, miner in enumerate(FIXED_MINERS):
+        agent_id = f"miner-{i+1:03}"
+        phase0_stop, phase1_start = upgrade_schedule[agent_id]
+        agents[agent_id] = generate_miner_agent_phased(
+            miner["hashrate"],
+            miner["start_offset_s"],
+            upgrade_binary_v1,
+            upgrade_binary_v2,
+            phase0_stop,
+            phase1_start,
+        )
+
+    # Add users with phased daemons
+    if use_batched and batch_schedule:
+        for user_index, start_time_s in batch_schedule:
+            agent_id = f"user-{user_index+1:03}"
+            phase0_stop, phase1_start = upgrade_schedule[agent_id]
+            agents[agent_id] = generate_user_agent_phased(
+                start_time_s,
+                tx_interval,
+                activity_start_time_s,
+                upgrade_binary_v1,
+                upgrade_binary_v2,
+                phase0_stop,
+                phase1_start,
+            )
+    else:
+        for i in range(num_users):
+            agent_id = f"user-{i+1:03}"
+            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
+            phase0_stop, phase1_start = upgrade_schedule[agent_id]
+            agents[agent_id] = generate_user_agent_phased(
+                start_offset_s,
+                tx_interval,
+                activity_start_time_s,
+                upgrade_binary_v1,
+                upgrade_binary_v2,
+                phase0_stop,
+                phase1_start,
+            )
+
+    # Add miner-distributor (starts at bootstrap end)
+    agents["miner-distributor"] = OrderedDict([
+        ("script", "agents.miner_distributor"),
+        ("wait_time", bootstrap_end_time_s),
+        ("initial_fund_amount", "1.0"),
+        ("max_transaction_amount", "2.0"),
+        ("min_transaction_amount", "0.5"),
+        ("transaction_frequency", 30),
+        ("outputs_per_transaction", outputs_per_transaction),
+        ("output_amount", output_amount),
+    ])
+
+    # Add simulation-monitor
+    agents["simulation-monitor"] = OrderedDict([
+        ("script", "agents.simulation_monitor"),
+        ("poll_interval", poll_interval),
+        ("detailed_logging", False),
+        ("enable_alerts", True),
+        ("status_file", "monerosim_monitor.log"),
+    ])
+
+    # Build general config
+    general_config = OrderedDict([
+        ("stop_time", duration),
+        ("parallelism", 0),
+        ("simulation_seed", simulation_seed),
+        ("enable_dns_server", True),
+        ("shadow_log_level", shadow_log_level),
+        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
+        ("progress", True),
+    ])
+
+    if runahead:
+        general_config["runahead"] = runahead
+
+    if process_threads != 1:
+        general_config["process_threads"] = process_threads
+
+    general_config["daemon_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+        ("db-sync-mode", "fastest"),
+        ("no-zmq", True),
+        ("non-interactive", True),
+        ("disable-rpc-ban", True),
+        ("allow-local-ip", True),
+    ])
+
+    general_config["wallet_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+    ])
+
+    config = OrderedDict([
+        ("general", general_config),
+        ("network", OrderedDict([
+            ("path", gml_path),
+            ("peer_mode", "Dynamic"),
+        ])),
+        ("agents", agents),
+    ])
+
+    timing_info = {
+        'bootstrap_end_time_s': bootstrap_end_time_s,
+        'activity_start_time_s': activity_start_time_s,
+        'last_user_spawn_s': last_user_spawn_s,
+        'duration_s': duration_s,
+        'requested_duration_s': requested_duration_s,
+        'use_batched': use_batched,
+        'batch_sizes': batch_sizes,
+        'batch_interval_s': batch_interval_s,
+        # Upgrade-specific timing info
+        'upgrade_start_time_s': upgrade_start_time_s,
+        'last_upgrade_complete_s': last_upgrade_complete_s,
+        'upgrade_binary_v1': upgrade_binary_v1,
+        'upgrade_binary_v2': upgrade_binary_v2,
+        'upgrade_order': upgrade_order,
+        'steady_state_duration_s': steady_state_duration_s,
+        'post_upgrade_duration_s': post_upgrade_duration_s,
+    }
+
+    return config, timing_info
+
+
 def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:
     """Convert config dict to YAML string manually for clean output."""
     lines = []
@@ -639,6 +989,65 @@ Timeline (verified bootstrap for Monero regtest):
         help="Miner distributor: XMR amount per output (default: 100)"
     )
 
+    # Upgrade scenario options
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        choices=["default", "upgrade"],
+        default="default",
+        help="Scenario type: 'default' for standard scaling test, 'upgrade' for network upgrade simulation"
+    )
+
+    parser.add_argument(
+        "--upgrade-binary-v1",
+        type=str,
+        default="monerod",
+        help="Phase 0 daemon binary for upgrade scenario (default: monerod)"
+    )
+
+    parser.add_argument(
+        "--upgrade-binary-v2",
+        type=str,
+        default="monerod",
+        help="Phase 1 daemon binary for upgrade scenario (default: monerod)"
+    )
+
+    parser.add_argument(
+        "--upgrade-start",
+        type=str,
+        default=None,
+        help="When upgrades begin in upgrade scenario (default: auto = activity_start + steady_state_duration)"
+    )
+
+    parser.add_argument(
+        "--upgrade-stagger",
+        type=str,
+        default="30s",
+        help="Time between node upgrades (default: 30s)"
+    )
+
+    parser.add_argument(
+        "--upgrade-order",
+        type=str,
+        choices=["sequential", "random", "miners-first"],
+        default="sequential",
+        help="Order in which nodes upgrade: sequential, random, or miners-first (default: sequential)"
+    )
+
+    parser.add_argument(
+        "--steady-state-duration",
+        type=str,
+        default="2h",
+        help="How long to observe before upgrade (default: 2h)"
+    )
+
+    parser.add_argument(
+        "--post-upgrade-duration",
+        type=str,
+        default="2h",
+        help="How long to observe after upgrade completes (default: 2h)"
+    )
+
     args = parser.parse_args()
 
     # Validate
@@ -650,35 +1059,56 @@ Timeline (verified bootstrap for Monero regtest):
         print(f"Error: Stagger interval must be >= 0, got {args.stagger_interval}", file=sys.stderr)
         sys.exit(1)
 
-    # Generate config
+    # Generate config based on scenario
+    num_users = args.agents - 5
+
     try:
-        config, timing_info = generate_config(
-            total_agents=args.agents,
-            duration=args.duration,
-            stagger_interval_s=args.stagger_interval,
-            simulation_seed=args.seed,
-            gml_path=args.gml,
-            fast_mode=args.fast,
-            process_threads=args.threads,
-            batched_bootstrap=args.batched_bootstrap,
-            batch_interval=args.batch_interval,
-            initial_batch_size=args.initial_batch_size,
-            max_batch_size=args.max_batch_size,
-            daemon_binary=args.daemon_binary,
-            outputs_per_transaction=args.md_outputs_per_tx,
-            output_amount=args.md_output_amount,
-        )
+        if args.scenario == "upgrade":
+            config, timing_info = generate_upgrade_config(
+                total_agents=args.agents,
+                duration=args.duration,
+                stagger_interval_s=args.stagger_interval,
+                simulation_seed=args.seed,
+                gml_path=args.gml,
+                fast_mode=args.fast,
+                process_threads=args.threads,
+                batched_bootstrap=args.batched_bootstrap,
+                batch_interval=args.batch_interval,
+                initial_batch_size=args.initial_batch_size,
+                max_batch_size=args.max_batch_size,
+                outputs_per_transaction=args.md_outputs_per_tx,
+                output_amount=args.md_output_amount,
+                upgrade_binary_v1=args.upgrade_binary_v1,
+                upgrade_binary_v2=args.upgrade_binary_v2,
+                upgrade_start=args.upgrade_start,
+                upgrade_stagger_s=parse_duration(args.upgrade_stagger),
+                upgrade_order=args.upgrade_order,
+                steady_state_duration_s=parse_duration(args.steady_state_duration),
+                post_upgrade_duration_s=parse_duration(args.post_upgrade_duration),
+            )
+        else:
+            config, timing_info = generate_config(
+                total_agents=args.agents,
+                duration=args.duration,
+                stagger_interval_s=args.stagger_interval,
+                simulation_seed=args.seed,
+                gml_path=args.gml,
+                fast_mode=args.fast,
+                process_threads=args.threads,
+                batched_bootstrap=args.batched_bootstrap,
+                batch_interval=args.batch_interval,
+                initial_batch_size=args.initial_batch_size,
+                max_batch_size=args.max_batch_size,
+                daemon_binary=args.daemon_binary,
+                outputs_per_transaction=args.md_outputs_per_tx,
+                output_amount=args.md_output_amount,
+            )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Convert to YAML
     yaml_content = config_to_yaml(config)
-
-    # Add header comment with dynamic timing
-    num_users = args.agents - 5
-    fast_note = " [FAST MODE]" if args.fast else ""
-    stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once"
 
     # Format timing values (human-readable for header comments)
     bootstrap_end = format_time_offset(timing_info['bootstrap_end_time_s'], for_config=False)
@@ -695,6 +1125,9 @@ Timeline (verified bootstrap for Monero regtest):
     batch_sizes = timing_info['batch_sizes']
     batch_interval_s = timing_info['batch_interval_s']
 
+    fast_note = " [FAST MODE]" if args.fast else ""
+    stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once"
+
     if use_batched and batch_sizes:
         batch_summary = format_batch_summary(batch_sizes, DEFAULT_INITIAL_DELAY_S, batch_interval_s)
         batched_note = f"\n# {batch_summary}"
@@ -703,7 +1136,34 @@ Timeline (verified bootstrap for Monero regtest):
         batched_note = ""
         spawn_note = f"Users spawn ({stagger_note})"
 
-    header = f"""# Monerosim scaling test configuration{fast_note}
+    # Generate header based on scenario
+    if args.scenario == "upgrade":
+        upgrade_start = format_time_offset(timing_info['upgrade_start_time_s'], for_config=False)
+        upgrade_end = format_time_offset(timing_info['last_upgrade_complete_s'], for_config=False)
+        header = f"""# Monerosim upgrade scenario configuration{fast_note}
+# Generated by generate_config.py --scenario upgrade
+# Total agents: {args.agents} (5 miners + {num_users} users)
+# Duration: {actual_duration}{duration_note}
+# Network topology: {args.gml}
+#
+# Upgrade configuration:
+#   Binary v1: {timing_info['upgrade_binary_v1']}
+#   Binary v2: {timing_info['upgrade_binary_v2']}
+#   Upgrade order: {timing_info['upgrade_order']}
+#   Upgrade stagger: {args.upgrade_stagger}
+#
+# Timeline:
+#   t=0:           Miners start
+#   t={format_time_offset(DEFAULT_INITIAL_DELAY_S, for_config=False) if use_batched else "3h"}:         {spawn_note}
+#   t={last_spawn}:     Last user spawns
+#   t={bootstrap_end}:     Bootstrap ends (+20% buffer), distributor starts funding
+#   t={activity_start}:     Users start sending transactions (steady state begins)
+#   t={upgrade_start}:     Network upgrade begins (nodes switch v1 -> v2)
+#   t={upgrade_end}:    Last node completes upgrade
+#   t={actual_duration}:    Simulation ends (post-upgrade observation){batched_note}
+"""
+    else:
+        header = f"""# Monerosim scaling test configuration{fast_note}
 # Generated by generate_config.py
 # Total agents: {args.agents} (5 miners + {num_users} users)
 # Duration: {actual_duration}{duration_note}
@@ -715,6 +1175,7 @@ Timeline (verified bootstrap for Monero regtest):
 #   t={bootstrap_end}:  Bootstrap ends (+20% buffer), distributor starts funding
 #   t={activity_start}:  Users start sending transactions{batched_note}
 """
+
     if args.fast:
         header += """# Fast mode settings: runahead=100ms, shadow_log_level=warning, poll_interval=300, tx_interval=120
 """
@@ -724,10 +1185,18 @@ Timeline (verified bootstrap for Monero regtest):
     with open(args.output, 'w') as f:
         f.write(header + yaml_content + "\n")
 
+    # Print summary
     fast_msg = " (fast mode)" if args.fast else ""
     threads_msg = f", threads={args.threads}" if args.threads != 1 else ""
     duration_msg = f", duration extended to {actual_duration}" if duration_extended else ""
-    print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
+
+    if args.scenario == "upgrade":
+        print(f"Generated upgrade scenario config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{duration_msg}")
+        print(f"  Binary v1: {args.upgrade_binary_v1} -> v2: {args.upgrade_binary_v2}")
+        print(f"  Upgrade order: {args.upgrade_order}, stagger: {args.upgrade_stagger}")
+        print(f"  Output: {args.output}")
+    else:
+        print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
 
 
 if __name__ == "__main__":
