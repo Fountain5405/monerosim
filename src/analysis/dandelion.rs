@@ -174,6 +174,10 @@ pub fn analyze_dandelion(
 }
 
 /// Reconstruct the stem path for a single transaction
+///
+/// The stem path is a chain: originator -> A -> B -> C -> fluff
+/// Each node in the chain receives from the previous node, then relays to exactly one next node.
+/// The fluff point is where a node broadcasts to multiple peers simultaneously.
 fn reconstruct_path(
     tx: &Transaction,
     observations: &[TxObservation],
@@ -196,64 +200,117 @@ fn reconstruct_path(
     let originator = tx.sender_id.clone();
     let originator_ip = node_to_ip.get(&originator).cloned();
 
-    // Find the fluff point: where multiple nodes receive from same source in short window
-    let fluff_index = find_fluff_point(&sorted_obs, ip_to_node);
-
-    // Build stem path (observations before fluff point)
-    let stem_end = fluff_index.unwrap_or(sorted_obs.len());
-    let stem_observations = &sorted_obs[..stem_end];
+    // Build the stem path by following the chain of relays
+    // Key insight: in stem phase, each receiver becomes the sender to exactly one next node
+    // In fluff phase, one sender broadcasts to many nodes simultaneously
 
     let mut stem_path: Vec<StemHop> = Vec::new();
-    let mut prev_timestamp = sorted_obs.first().map(|o| o.timestamp).unwrap_or(0.0);
+    let mut current_sender_ip = originator_ip.clone();
+    let mut used_observations: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    let mut fluff_node: Option<String> = None;
+    let mut fluff_recipients = 0usize;
 
-    for (i, obs) in stem_observations.iter().enumerate() {
-        let from_node_id = ip_to_node.get(&obs.source_ip).cloned();
-        let delta_ms = if i == 0 {
-            0.0
-        } else {
-            (obs.timestamp - prev_timestamp) * 1000.0
-        };
+    // First, find the first observation that came from the originator
+    let first_hop_idx = sorted_obs.iter().position(|obs| {
+        originator_ip.as_ref().map(|ip| &obs.source_ip == ip).unwrap_or(false)
+    });
 
+    if let Some(idx) = first_hop_idx {
+        // Start building chain from first hop
+        let first_obs = &sorted_obs[idx];
         stem_path.push(StemHop {
-            node_id: obs.node_id.clone(),
-            from_node_id,
-            from_ip: obs.source_ip.clone(),
-            timestamp: obs.timestamp,
-            delta_ms,
+            node_id: first_obs.node_id.clone(),
+            from_node_id: Some(originator.clone()),
+            from_ip: first_obs.source_ip.clone(),
+            timestamp: first_obs.timestamp,
+            delta_ms: 0.0,
         });
-
-        prev_timestamp = obs.timestamp;
+        used_observations.insert(idx);
+        current_sender_ip = node_to_ip.get(&first_obs.node_id).cloned();
+    } else {
+        // Originator not found in observations, start from first observation
+        let first_obs = &sorted_obs[0];
+        let from_node = ip_to_node.get(&first_obs.source_ip).cloned();
+        stem_path.push(StemHop {
+            node_id: first_obs.node_id.clone(),
+            from_node_id: from_node,
+            from_ip: first_obs.source_ip.clone(),
+            timestamp: first_obs.timestamp,
+            delta_ms: 0.0,
+        });
+        used_observations.insert(0);
+        current_sender_ip = node_to_ip.get(&first_obs.node_id).cloned();
     }
 
-    // Determine fluff node (last node in stem that broadcast)
-    let fluff_node = if let Some(idx) = fluff_index {
-        if idx > 0 {
-            Some(sorted_obs[idx - 1].node_id.clone())
-        } else {
-            None
+    // Follow the chain: find next observation where source_ip matches current node's IP
+    let mut max_iterations = 100; // Prevent infinite loops
+    while max_iterations > 0 {
+        max_iterations -= 1;
+
+        if current_sender_ip.is_none() {
+            break;
         }
-    } else {
-        // No clear fluff detected, last stem node is likely the fluff point
-        stem_path.last().map(|h| h.node_id.clone())
-    };
 
-    // Count fluff recipients
-    let fluff_recipients = if let Some(idx) = fluff_index {
-        sorted_obs.len() - idx
-    } else {
-        0
-    };
+        let sender_ip = current_sender_ip.as_ref().unwrap();
 
-    // Check if originator is confirmed (first hop's source matches originator IP)
+        // Find all observations from the current sender that we haven't used
+        let from_current: Vec<(usize, &TxObservation)> = sorted_obs
+            .iter()
+            .enumerate()
+            .filter(|(i, obs)| !used_observations.contains(i) && &obs.source_ip == sender_ip)
+            .collect();
+
+        if from_current.is_empty() {
+            // No more observations from this sender - end of traceable path
+            break;
+        }
+
+        // Check if this is a fluff point: multiple nodes received from same sender
+        if from_current.len() >= FLUFF_MIN_RECIPIENTS {
+            // Check if they're within the time window (simultaneous broadcast)
+            let first_time = from_current.first().unwrap().1.timestamp;
+            let recipients_in_window = from_current
+                .iter()
+                .filter(|(_, obs)| (obs.timestamp - first_time) * 1000.0 <= FLUFF_TIME_WINDOW_MS)
+                .count();
+
+            if recipients_in_window >= FLUFF_MIN_RECIPIENTS {
+                // This is the fluff point!
+                fluff_node = stem_path.last().map(|h| h.node_id.clone());
+                fluff_recipients = from_current.len();
+                break;
+            }
+        }
+
+        // Single relay (stem phase) - take the first/earliest one
+        let (next_idx, next_obs) = from_current[0];
+        let prev_timestamp = stem_path.last().map(|h| h.timestamp).unwrap_or(next_obs.timestamp);
+
+        stem_path.push(StemHop {
+            node_id: next_obs.node_id.clone(),
+            from_node_id: ip_to_node.get(sender_ip).cloned(),
+            from_ip: next_obs.source_ip.clone(),
+            timestamp: next_obs.timestamp,
+            delta_ms: (next_obs.timestamp - prev_timestamp) * 1000.0,
+        });
+
+        used_observations.insert(next_idx);
+        current_sender_ip = node_to_ip.get(&next_obs.node_id).cloned();
+    }
+
+    // If no fluff detected, the last node in stem is likely the fluff point
+    if fluff_node.is_none() {
+        fluff_node = stem_path.last().map(|h| h.node_id.clone());
+        // Count remaining observations as fluff recipients
+        fluff_recipients = sorted_obs.len().saturating_sub(used_observations.len());
+    }
+
+    // Check if originator is confirmed (first hop came from originator)
     let originator_confirmed = stem_path
         .first()
         .and_then(|hop| hop.from_node_id.as_ref())
         .map(|from| from == &originator)
-        .unwrap_or(false)
-        || stem_path
-            .first()
-            .map(|hop| Some(&hop.from_ip) == originator_ip.as_ref())
-            .unwrap_or(false);
+        .unwrap_or(false);
 
     let stem_length = stem_path.len();
     let stem_duration_ms = if stem_path.len() >= 2 {
