@@ -266,6 +266,88 @@ def format_time_offset(seconds: int, for_config: bool = True) -> str:
         return " ".join(parts) if parts else "0s"
 
 
+def generate_metadata(
+    scenario: str,
+    num_miners: int,
+    num_users: int,
+    timing_info: Dict[str, Any],
+    simulation_seed: int,
+    gml_path: str,
+    fast_mode: bool,
+    stagger_interval_s: int,
+) -> OrderedDict:
+    """Generate machine-parseable metadata section for analysis tools.
+
+    Args:
+        scenario: "default" or "upgrade"
+        num_miners: Number of miner agents
+        num_users: Number of user agents
+        timing_info: Dictionary with timing calculations
+        simulation_seed: Random seed used
+        gml_path: Path to GML topology file
+        fast_mode: Whether fast mode is enabled
+        stagger_interval_s: User stagger interval
+
+    Returns:
+        OrderedDict with metadata structure
+    """
+    metadata = OrderedDict([
+        ("scenario", scenario),
+        ("generator", "generate_config.py"),
+        ("version", "1.0"),
+    ])
+
+    # Agent counts
+    metadata["agents"] = OrderedDict([
+        ("total", num_miners + num_users),
+        ("miners", num_miners),
+        ("users", num_users),
+    ])
+
+    # Core timing (all in seconds for easy parsing)
+    metadata["timing"] = OrderedDict([
+        ("duration_s", timing_info['duration_s']),
+        ("bootstrap_end_s", timing_info['bootstrap_end_time_s']),
+        ("activity_start_s", timing_info['activity_start_time_s']),
+        ("last_user_spawn_s", timing_info['last_user_spawn_s']),
+    ])
+
+    # Upgrade-specific metadata
+    if scenario == "upgrade":
+        metadata["upgrade"] = OrderedDict([
+            ("binary_v1", timing_info.get('upgrade_binary_v1', 'monerod')),
+            ("binary_v2", timing_info.get('upgrade_binary_v2', 'monerod')),
+            ("order", timing_info.get('upgrade_order', 'sequential')),
+            ("start_s", timing_info.get('upgrade_start_time_s', 0)),
+            ("complete_s", timing_info.get('last_upgrade_complete_s', 0)),
+            ("stagger_s", timing_info.get('upgrade_stagger_s', 30)),
+            ("steady_state_duration_s", timing_info.get('steady_state_duration_s', 7200)),
+            ("post_upgrade_duration_s", timing_info.get('post_upgrade_duration_s', 7200)),
+        ])
+
+    # Batching configuration
+    if timing_info.get('use_batched', False):
+        metadata["batching"] = OrderedDict([
+            ("enabled", True),
+            ("batch_sizes", timing_info.get('batch_sizes', [])),
+            ("batch_interval_s", timing_info.get('batch_interval_s', 1200)),
+        ])
+    else:
+        metadata["batching"] = OrderedDict([
+            ("enabled", False),
+            ("stagger_interval_s", stagger_interval_s),
+        ])
+
+    # Simulation settings
+    metadata["settings"] = OrderedDict([
+        ("seed", simulation_seed),
+        ("gml_topology", gml_path),
+        ("fast_mode", fast_mode),
+    ])
+
+    return metadata
+
+
 def generate_miner_agent(hashrate: int, start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
     """Generate a miner agent configuration (new format)."""
     return OrderedDict([
@@ -522,16 +604,6 @@ def generate_config(
         ("log-file", "/dev/stdout"),
     ])
 
-    # Build full config
-    config = OrderedDict([
-        ("general", general_config),
-        ("network", OrderedDict([
-            ("path", gml_path),
-            ("peer_mode", "Dynamic"),
-        ])),
-        ("agents", agents),
-    ])
-
     # Return config and timing info for header generation
     timing_info = {
         'bootstrap_end_time_s': bootstrap_end_time_s,
@@ -543,6 +615,29 @@ def generate_config(
         'batch_sizes': batch_sizes,
         'batch_interval_s': batch_interval_s,
     }
+
+    # Generate metadata section
+    metadata = generate_metadata(
+        scenario="default",
+        num_miners=num_miners,
+        num_users=num_users,
+        timing_info=timing_info,
+        simulation_seed=simulation_seed,
+        gml_path=gml_path,
+        fast_mode=fast_mode,
+        stagger_interval_s=stagger_interval_s,
+    )
+
+    # Build full config with metadata first
+    config = OrderedDict([
+        ("metadata", metadata),
+        ("general", general_config),
+        ("network", OrderedDict([
+            ("path", gml_path),
+            ("peer_mode", "Dynamic"),
+        ])),
+        ("agents", agents),
+    ])
 
     return config, timing_info
 
@@ -768,15 +863,6 @@ def generate_upgrade_config(
         ("log-file", "/dev/stdout"),
     ])
 
-    config = OrderedDict([
-        ("general", general_config),
-        ("network", OrderedDict([
-            ("path", gml_path),
-            ("peer_mode", "Dynamic"),
-        ])),
-        ("agents", agents),
-    ])
-
     timing_info = {
         'bootstrap_end_time_s': bootstrap_end_time_s,
         'activity_start_time_s': activity_start_time_s,
@@ -792,9 +878,33 @@ def generate_upgrade_config(
         'upgrade_binary_v1': upgrade_binary_v1,
         'upgrade_binary_v2': upgrade_binary_v2,
         'upgrade_order': upgrade_order,
+        'upgrade_stagger_s': upgrade_stagger_s,
         'steady_state_duration_s': steady_state_duration_s,
         'post_upgrade_duration_s': post_upgrade_duration_s,
     }
+
+    # Generate metadata section
+    metadata = generate_metadata(
+        scenario="upgrade",
+        num_miners=num_miners,
+        num_users=num_users,
+        timing_info=timing_info,
+        simulation_seed=simulation_seed,
+        gml_path=gml_path,
+        fast_mode=fast_mode,
+        stagger_interval_s=stagger_interval_s,
+    )
+
+    # Build full config with metadata first
+    config = OrderedDict([
+        ("metadata", metadata),
+        ("general", general_config),
+        ("network", OrderedDict([
+            ("path", gml_path),
+            ("peer_mode", "Dynamic"),
+        ])),
+        ("agents", agents),
+    ])
 
     return config, timing_info
 

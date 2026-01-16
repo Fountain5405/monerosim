@@ -22,6 +22,131 @@ import urllib.error
 
 from .validator import ConfigValidator, ValidationReport
 from .prompts import GENERATOR_SYSTEM_PROMPT, FEEDBACK_PROMPT_TEMPLATE, VALIDATION_CHECK_PROMPT
+import yaml as yaml_lib
+
+
+def build_metadata_from_report(report: 'ValidationReport', user_request: str) -> Dict[str, Any]:
+    """Build machine-parseable metadata from validation report.
+
+    This creates the same metadata structure as generate_config.py for consistency,
+    allowing analysis tools to parse configs from either generator.
+
+    Args:
+        report: ValidationReport from the validator
+        user_request: Original user request string
+
+    Returns:
+        Metadata dictionary matching generate_config.py format
+    """
+    from collections import OrderedDict
+
+    # Determine scenario type
+    scenario = "upgrade" if report.upgrade.enabled else "default"
+
+    metadata = OrderedDict([
+        ("scenario", scenario),
+        ("generator", "ai_config"),
+        ("version", "1.0"),
+        ("user_request", user_request[:200]),  # Truncate long requests
+    ])
+
+    # Agent counts
+    metadata["agents"] = OrderedDict([
+        ("total", report.miner_count + report.user_count + report.spy_count),
+        ("miners", report.miner_count),
+        ("users", report.user_count),
+        ("spy_nodes", report.spy_count),
+    ])
+
+    # Core timing (all in seconds for easy parsing)
+    metadata["timing"] = OrderedDict([
+        ("duration_s", report.stop_time_s),
+        ("bootstrap_end_s", report.bootstrap_end_time_s),
+    ])
+
+    # Add user timing if available
+    if report.user_count > 0:
+        start_min, start_max = report.user_start_time_range
+        act_min, act_max = report.activity_start_time_range
+        metadata["timing"]["user_spawn_start_s"] = start_min
+        metadata["timing"]["user_spawn_end_s"] = start_max
+        if act_min > 0:
+            metadata["timing"]["activity_start_s"] = act_min
+
+    # Upgrade-specific metadata
+    if report.upgrade.enabled:
+        upgrade_meta = OrderedDict([
+            ("binary_v1", report.upgrade.v1_binary or "monerod"),
+            ("binary_v2", report.upgrade.v2_binary or "monerod"),
+        ])
+        if report.upgrade.upgrade_start_s is not None:
+            upgrade_meta["start_s"] = report.upgrade.upgrade_start_s
+        if report.upgrade.upgrade_end_s is not None:
+            upgrade_meta["complete_s"] = report.upgrade.upgrade_end_s
+        if report.upgrade.avg_stagger_s is not None:
+            upgrade_meta["stagger_s"] = int(report.upgrade.avg_stagger_s)
+        if report.upgrade.min_gap_s is not None:
+            upgrade_meta["phase_gap_s"] = report.upgrade.min_gap_s
+        upgrade_meta["agents_with_phases"] = report.upgrade.agents_with_phases
+        metadata["upgrade"] = upgrade_meta
+
+    # Spy node info
+    if report.spy_count > 0 and report.spy_connections:
+        spy_meta = OrderedDict()
+        for agent_id, (out_p, in_p) in report.spy_connections.items():
+            spy_meta[agent_id] = OrderedDict([
+                ("out_peers", out_p),
+                ("in_peers", in_p),
+            ])
+        metadata["spy_nodes"] = spy_meta
+
+    # Settings
+    settings = OrderedDict([
+        ("network", report.network_type or "default"),
+        ("peer_mode", report.peer_mode or "Dynamic"),
+    ])
+    if report.simulation_seed:
+        settings["seed"] = report.simulation_seed
+    metadata["settings"] = settings
+
+    return metadata
+
+
+def _convert_ordered_dict(obj: Any) -> Any:
+    """Recursively convert OrderedDict to regular dict for clean YAML output."""
+    from collections import OrderedDict
+    if isinstance(obj, OrderedDict):
+        return {k: _convert_ordered_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, dict):
+        return {k: _convert_ordered_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_ordered_dict(item) for item in obj]
+    return obj
+
+
+def inject_metadata_into_yaml(yaml_content: str, metadata: Dict[str, Any]) -> str:
+    """Inject metadata section at the beginning of YAML content.
+
+    Args:
+        yaml_content: Original YAML string
+        metadata: Metadata dictionary to inject
+
+    Returns:
+        YAML string with metadata section prepended
+    """
+    # Convert OrderedDict to regular dict for clean YAML output
+    clean_metadata = _convert_ordered_dict(metadata)
+
+    # Convert metadata to YAML
+    metadata_yaml = yaml_lib.dump(
+        {"metadata": clean_metadata},
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True
+    )
+
+    # Combine metadata with original content
+    return metadata_yaml + "\n" + yaml_content
 
 
 @dataclass
@@ -194,10 +319,19 @@ class ConfigGenerator:
 
         # Save outputs
         if result.yaml_content and output_file:
+            # Build and inject metadata if we have a validation report
+            final_yaml = result.yaml_content
+            if result.validation_report:
+                try:
+                    metadata = build_metadata_from_report(result.validation_report, user_request)
+                    final_yaml = inject_metadata_into_yaml(result.yaml_content, metadata)
+                except Exception as e:
+                    self.log(f"  Warning: Could not inject metadata: {e}")
+
             with open(output_file, 'w') as f:
                 f.write(f"# Generated by ai_config for: {user_request[:60]}...\n")
                 f.write(f"# Attempts: {result.attempts}, Success: {result.success}\n\n")
-                f.write(result.yaml_content)
+                f.write(final_yaml)
             self.log(f"\nYAML saved to: {output_file}")
 
         if result.script_content and save_script:
