@@ -312,7 +312,7 @@ impl serde::Serialize for ExpectedFinalState {
 /// Shadow process definition.
 ///
 /// Represents a single process to be executed within a Shadow host.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Default)]
 pub struct ShadowProcess {
     /// Path to the executable
     pub path: String,
@@ -322,7 +322,7 @@ pub struct ShadowProcess {
     pub environment: BTreeMap<String, String>,
     /// Start time for the process (e.g., "0s", "10s", "1m")
     pub start_time: String,
-    /// Shutdown time - when to send shutdown_signal to the process
+    /// Shutdown time - when to send SIGTERM to the process
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shutdown_time: Option<String>,
     /// Expected final state when simulation ends (to avoid spurious errors)

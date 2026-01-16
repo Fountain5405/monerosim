@@ -496,6 +496,7 @@ pub fn process_user_agents(
                     // Determine shutdown time and expected final state
                     let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
                         // Not the last phase - needs shutdown
+                        // Shadow will send SIGTERM at shutdown_time (default behavior)
                         (
                             phase.stop.clone(),
                             Some(ExpectedFinalState::Signaled("SIGTERM".to_string())),
@@ -506,14 +507,16 @@ pub fn process_user_agents(
                     };
 
                     // For phase 0, include the data directory cleanup
+                    // Use `exec` so bash replaces itself with monerod - this ensures SIGKILL
+                    // goes directly to monerod rather than to bash (which would leave monerod orphaned)
                     let args = if *phase_num == 0 {
                         format!(
-                            "-c 'rm -rf /tmp/monero-{} && {} {}'",
+                            "-c 'rm -rf /tmp/monero-{} && exec {} {}'",
                             agent_id, daemon_binary_path, daemon_args
                         )
                     } else {
                         // Later phases reuse the existing data directory
-                        format!("-c '{} {}'", daemon_binary_path, daemon_args)
+                        format!("-c 'exec {} {}'", daemon_binary_path, daemon_args)
                     };
 
                     processes.push(crate::shadow::ShadowProcess {
@@ -546,10 +549,12 @@ pub fn process_user_agents(
                     }
                 }
 
+                // Use `exec` so bash replaces itself with monerod - this ensures signals
+                // go directly to monerod rather than to bash
                 processes.push(crate::shadow::ShadowProcess {
                     path: "/bin/bash".to_string(),
                     args: format!(
-                        "-c 'rm -rf /tmp/monero-{} && {} {}'",
+                        "-c 'rm -rf /tmp/monero-{} && exec {} {}'",
                         agent_id, daemon_binary_path, daemon_args
                     ),
                     environment: daemon_env,
@@ -657,7 +662,7 @@ pub fn process_user_agents(
                             environment: environment.clone(),
                             start_time: cleanup_start_time,
                             shutdown_time: None,
-                            expected_final_state: None,
+                    expected_final_state: None,
                         });
                     }
 

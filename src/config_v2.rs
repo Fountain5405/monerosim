@@ -1,6 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use regex::Regex;
+use crate::utils::duration::parse_duration_to_seconds;
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -107,9 +108,8 @@ pub enum OptionValue {
 /// Unified agent configuration for all agent types
 /// Replaces separate UserAgentConfig, MinerDistributorConfig, etc.
 ///
-/// Supports two YAML formats for phases:
-/// 1. Structured: `daemon_phases: { 0: { path: "monerod", start: "0s" } }`
-/// 2. Flat: `daemon_0: "monerod"`, `daemon_0_start: "0s"`
+/// Uses flat format for daemon/wallet phases:
+/// `daemon_0: "monerod"`, `daemon_0_start: "0s"`, `daemon_0_stop: "30m"`
 #[derive(Debug, Clone, Serialize)]
 pub struct AgentConfig {
     /// Daemon binary (e.g., "monerod") or remote daemon config
@@ -193,11 +193,11 @@ pub struct AgentConfig {
     pub detailed_logging: Option<bool>,
 
     // === Phase support (for upgrade scenarios) ===
-    /// Daemon phases for upgrade scenarios
+    // Daemon phases are parsed from flat fields (daemon_0, daemon_0_start, daemon_0_stop, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daemon_phases: Option<BTreeMap<u32, DaemonPhase>>,
 
-    /// Wallet phases for upgrade scenarios
+    // Wallet phases are parsed from flat fields (wallet_0, wallet_0_start, wallet_0_stop, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_phases: Option<BTreeMap<u32, WalletPhase>>,
 
@@ -336,10 +336,8 @@ struct AgentConfigRaw {
     pub enable_alerts: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detailed_logging: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub daemon_phases: Option<BTreeMap<u32, DaemonPhase>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wallet_phases: Option<BTreeMap<u32, WalletPhase>>,
+    // Note: daemon_phases and wallet_phases are NOT parsed from YAML directly
+    // They are populated from flat fields (daemon_0, daemon_0_start, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daemon_args: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -365,18 +363,14 @@ impl<'de> Deserialize<'de> for AgentConfig {
         // Parse flat phase fields from extra (e.g., daemon_0, daemon_0_args, daemon_0_start)
         let (parsed_daemon_phases, parsed_wallet_phases) = parse_phase_fields(&raw.extra);
 
-        // Merge: structured phases take precedence over flat fields
-        let daemon_phases = if raw.daemon_phases.is_some() {
-            raw.daemon_phases
-        } else if !parsed_daemon_phases.is_empty() {
+        // Convert parsed phases to Option (None if empty)
+        let daemon_phases = if !parsed_daemon_phases.is_empty() {
             Some(parsed_daemon_phases)
         } else {
             None
         };
 
-        let wallet_phases = if raw.wallet_phases.is_some() {
-            raw.wallet_phases
-        } else if !parsed_wallet_phases.is_empty() {
+        let wallet_phases = if !parsed_wallet_phases.is_empty() {
             Some(parsed_wallet_phases)
         } else {
             None
@@ -902,6 +896,107 @@ pub enum PhaseValidationError {
         phase_num: u32,
         detail: String,
     },
+}
+
+/// Validate daemon phases for an agent, ensuring sufficient gaps between phases.
+/// Returns Ok(()) if valid, or an error describing the validation failure.
+pub fn validate_daemon_phases(
+    agent_id: &str,
+    phases: &BTreeMap<u32, DaemonPhase>,
+) -> Result<(), PhaseValidationError> {
+    let phase_nums: Vec<u32> = phases.keys().copied().collect();
+
+    // Check sequential numbering
+    for (i, &phase_num) in phase_nums.iter().enumerate() {
+        if phase_num != i as u32 {
+            return Err(PhaseValidationError::NonSequentialPhases {
+                expected: i as u32,
+                found: phase_num,
+                phase_type: format!("daemon (agent {})", agent_id),
+            });
+        }
+    }
+
+    // Check each phase has required fields and validate gaps
+    for (i, (&phase_num, phase)) in phases.iter().enumerate() {
+        // Check path is not empty
+        if phase.path.is_empty() {
+            return Err(PhaseValidationError::MissingPath {
+                phase_num,
+                phase_type: format!("daemon (agent {})", agent_id),
+            });
+        }
+
+        // Check start time exists
+        if phase.start.is_none() {
+            return Err(PhaseValidationError::MissingTiming {
+                phase_num,
+                phase_type: format!("daemon (agent {})", agent_id),
+                detail: "missing start time".to_string(),
+            });
+        }
+
+        // For non-final phases, check stop time and gap to next phase
+        if i < phases.len() - 1 {
+            let next_phase_num = phase_nums[i + 1];
+            let next_phase = &phases[&next_phase_num];
+
+            // Current phase needs stop time
+            let stop_time = match &phase.stop {
+                Some(t) => t,
+                None => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num,
+                        phase_type: format!("daemon (agent {})", agent_id),
+                        detail: "non-final phase must have stop time".to_string(),
+                    });
+                }
+            };
+
+            // Next phase needs start time
+            let next_start_time = match &next_phase.start {
+                Some(t) => t,
+                None => {
+                    return Err(PhaseValidationError::MissingTiming {
+                        phase_num: next_phase_num,
+                        phase_type: format!("daemon (agent {})", agent_id),
+                        detail: "missing start time".to_string(),
+                    });
+                }
+            };
+
+            // Parse and compare times
+            let stop_seconds = parse_duration_to_seconds(stop_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: format!("daemon (agent {})", agent_id),
+                    phase_num,
+                    detail: format!("stop time: {}", e),
+                }
+            })?;
+
+            let start_seconds = parse_duration_to_seconds(next_start_time).map_err(|e| {
+                PhaseValidationError::InvalidDuration {
+                    phase_type: format!("daemon (agent {})", agent_id),
+                    phase_num: next_phase_num,
+                    detail: format!("start time: {}", e),
+                }
+            })?;
+
+            // Check gap is sufficient
+            if start_seconds < stop_seconds + MIN_PHASE_GAP_SECONDS {
+                return Err(PhaseValidationError::GapTooSmall {
+                    phase_type: format!("daemon (agent {})", agent_id),
+                    phase_num,
+                    next_phase_num,
+                    stop_time: stop_time.clone(),
+                    start_time: next_start_time.clone(),
+                    min_gap: MIN_PHASE_GAP_SECONDS,
+                });
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Miner distributor agent configuration
