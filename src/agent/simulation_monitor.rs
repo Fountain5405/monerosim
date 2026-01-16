@@ -58,7 +58,7 @@ pub fn process_simulation_monitor(
         let simulation_monitor_id = agent_id.as_str();
         // Assign simulation monitor to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
-        let simulation_monitor_ip = get_agent_ip(AgentType::PureScriptAgent, simulation_monitor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+        let simulation_monitor_ip = get_agent_ip(AgentType::PureScriptAgent, simulation_monitor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, None);
         let mut processes = Vec::new();
 
         // Convert output_dir to absolute path string

@@ -3,14 +3,24 @@
 CLI entry point for AI-powered monerosim config generator.
 
 Usage:
+    # Interactive mode (recommended)
+    python -m scripts.ai_config
+
+    # Direct mode with description
     python -m scripts.ai_config "50 miners and 200 users for 8 hours"
+
+    # With options
     python -m scripts.ai_config --output my_config.yaml "upgrade scenario with 100 nodes"
     python -m scripts.ai_config --save-script gen.py "spy nodes monitoring network"
 
-Environment variables:
-    OPENAI_API_KEY      API key for LLM provider
-    OPENAI_BASE_URL     Base URL for OpenAI-compatible API (default: https://api.openai.com/v1)
-    AI_CONFIG_MODEL     Model name (default: gpt-4o-mini)
+Configuration:
+    On first run, you'll be prompted for LLM settings (API URL, key, model).
+    Settings are saved to ~/.monerosim/ai_config.yaml for future use.
+
+    Or set environment variables:
+        OPENAI_API_KEY      API key for LLM provider
+        OPENAI_BASE_URL     Base URL for OpenAI-compatible API
+        AI_CONFIG_MODEL     Model name
 """
 
 import argparse
@@ -26,27 +36,24 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    # Basic usage with local LLM
-    OPENAI_API_KEY=x OPENAI_BASE_URL=http://localhost:8082/v1 \\
-        python -m scripts.ai_config "50 miners and 200 users"
+    # Interactive mode (recommended for first-time users)
+    python -m scripts.ai_config
+
+    # Direct generation
+    python -m scripts.ai_config "5 miners and 50 users"
 
     # Save both YAML and generator script
     python -m scripts.ai_config -o config.yaml -s generator.py "upgrade scenario"
 
-    # Use specific model
-    python -m scripts.ai_config --model gpt-4o "complex scenario..."
-
-Environment variables:
-    OPENAI_API_KEY      API key (use 'x' for local servers that don't need auth)
-    OPENAI_BASE_URL     API base URL (e.g., http://localhost:8082/v1)
-    AI_CONFIG_MODEL     Default model name
+    # Validate an existing config
+    python -m scripts.ai_config --validate existing_config.yaml
         """
     )
 
     parser.add_argument(
         "request",
         nargs="?",
-        help="Natural language description of the simulation scenario"
+        help="Natural language description of the simulation scenario (omit for interactive mode)"
     )
 
     parser.add_argument(
@@ -62,12 +69,12 @@ Environment variables:
 
     parser.add_argument(
         "--model", "-m",
-        help="Model name (overrides AI_CONFIG_MODEL env var)"
+        help="Model name (overrides config/env)"
     )
 
     parser.add_argument(
         "--base-url", "-u",
-        help="API base URL (overrides OPENAI_BASE_URL env var)"
+        help="API base URL (overrides config/env)"
     )
 
     parser.add_argument(
@@ -88,6 +95,12 @@ Environment variables:
         help="Validate an existing YAML config file (no generation)"
     )
 
+    parser.add_argument(
+        "--no-interactive",
+        action="store_true",
+        help="Disable interactive mode even when no request is provided"
+    )
+
     args = parser.parse_args()
 
     # Validation-only mode
@@ -102,22 +115,125 @@ Environment variables:
             print(f"Error validating {args.validate}: {e}", file=sys.stderr)
             return 1
 
-    # Generation mode
+    # Determine if we should use interactive mode
+    use_interactive = (
+        not args.request and
+        not args.no_interactive and
+        sys.stdin.isatty() and
+        sys.stdout.isatty()
+    )
+
+    if use_interactive:
+        return run_interactive_mode(args)
+    else:
+        return run_direct_mode(args)
+
+
+def get_llm_config(args):
+    """Get LLM configuration from args, env vars, or config file."""
+    # Priority: CLI args > env vars > config file
+
+    # Check CLI args and env vars first
+    api_key = os.environ.get('OPENAI_API_KEY')
+    base_url = args.base_url or os.environ.get('OPENAI_BASE_URL')
+    model = args.model or os.environ.get('AI_CONFIG_MODEL')
+
+    if api_key and base_url:
+        return {
+            'api_key': api_key,
+            'base_url': base_url,
+            'model': model or 'qwen2.5:7b'
+        }
+
+    # Try config file
+    from pathlib import Path
+    config_path = Path.home() / '.monerosim' / 'ai_config.yaml'
+
+    if config_path.exists():
+        try:
+            import yaml
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+                if config:
+                    # CLI args override config file
+                    return {
+                        'api_key': config.get('api_key', ''),
+                        'base_url': args.base_url or config.get('base_url', ''),
+                        'model': args.model or config.get('model', 'qwen2.5:7b')
+                    }
+        except Exception:
+            pass
+
+    return None
+
+
+def run_interactive_mode(args):
+    """Run in interactive mode with prompts and menus."""
+    from .interactive import run_interactive, check_llm_config, Colors
+
+    # Check/prompt for LLM config
+    config = get_llm_config(args)
+
+    if not config or not config.get('base_url'):
+        config = check_llm_config()
+        if not config:
+            print("LLM configuration required. Exiting.", file=sys.stderr)
+            return 1
+
+    # Set env vars for the provider
+    os.environ['OPENAI_API_KEY'] = config['api_key']
+    os.environ['OPENAI_BASE_URL'] = config['base_url']
+    if config.get('model'):
+        os.environ['AI_CONFIG_MODEL'] = config['model']
+
+    # Create provider and generator
+    provider = LLMProvider(
+        model=config.get('model'),
+        base_url=config.get('base_url'),
+    )
+
+    generator = ConfigGenerator(
+        provider=provider,
+        max_attempts=args.max_attempts,
+        verbose=False  # Interactive mode handles its own output
+    )
+
+    # Run interactive loop
+    try:
+        success = run_interactive(
+            generator=generator,
+            output_file=args.output,
+            save_script=args.save_script
+        )
+        return 0 if success else 1
+    except KeyboardInterrupt:
+        print(f"\n{Colors.YELLOW}Interrupted.{Colors.RESET}")
+        return 130
+
+
+def run_direct_mode(args):
+    """Run in direct mode (non-interactive)."""
     if not args.request:
-        parser.print_help()
+        print("Error: Please provide a scenario description or run without arguments for interactive mode.",
+              file=sys.stderr)
         return 1
 
-    # Check for API key
-    api_key = os.environ.get('OPENAI_API_KEY')
-    if not api_key:
-        print("Error: OPENAI_API_KEY environment variable not set.", file=sys.stderr)
-        print("For local LLM servers, use: OPENAI_API_KEY=x", file=sys.stderr)
+    # Get config
+    config = get_llm_config(args)
+
+    if not config or not config.get('api_key'):
+        print("Error: LLM configuration not found.", file=sys.stderr)
+        print("Either:", file=sys.stderr)
+        print("  1. Run interactively: python -m scripts.ai_config", file=sys.stderr)
+        print("  2. Set environment variables: OPENAI_API_KEY, OPENAI_BASE_URL", file=sys.stderr)
+        print("  3. Create config file: ~/.monerosim/ai_config.yaml", file=sys.stderr)
         return 1
 
     # Create provider
     provider = LLMProvider(
-        model=args.model,
-        base_url=args.base_url,
+        model=config.get('model'),
+        base_url=config.get('base_url'),
+        api_key=config.get('api_key'),
     )
 
     # Create generator

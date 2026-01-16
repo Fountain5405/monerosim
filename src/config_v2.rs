@@ -221,6 +221,12 @@ pub struct AgentConfig {
     /// Generic attributes (for custom script parameters)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<BTreeMap<String, String>>,
+
+    /// Subnet group for IP clustering
+    /// Agents with the same subnet_group will be assigned IPs in the same /24 subnet.
+    /// Useful for simulating Sybil attacks where an attacker's nodes share infrastructure.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subnet_group: Option<String>,
 }
 
 impl AgentConfig {
@@ -348,6 +354,8 @@ struct AgentConfigRaw {
     pub wallet_env: Option<BTreeMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subnet_group: Option<String>,
     /// Capture any extra fields for flat phase parsing
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_yaml::Value>,
@@ -403,6 +411,7 @@ impl<'de> Deserialize<'de> for AgentConfig {
             daemon_env: raw.daemon_env,
             wallet_env: raw.wallet_env,
             attributes: raw.attributes,
+            subnet_group: raw.subnet_group,
         })
     }
 }

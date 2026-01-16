@@ -33,6 +33,11 @@ pub struct GlobalIpRegistry {
     used_ips: HashSet<String>,
     /// Next available IP counters for each subnet
     subnet_counters: HashMap<String, u8>,
+    /// Subnet group allocations: group_name -> (subnet_prefix, next_host)
+    /// Each subnet group gets a unique /24 subnet in the 10.100.x.0 range
+    subnet_groups: HashMap<String, (String, u8)>,
+    /// Next available subnet ID for new groups
+    next_subnet_group_id: u8,
 }
 
 impl GlobalIpRegistry {
@@ -46,6 +51,8 @@ impl GlobalIpRegistry {
             assigned_ips: HashMap::new(),
             used_ips: HashSet::new(),
             subnet_counters,
+            subnet_groups: HashMap::new(),
+            next_subnet_group_id: 0,
         }
     }
 
@@ -163,5 +170,71 @@ impl GlobalIpRegistry {
             stats.insert(subnet.clone(), count);
         }
         stats
+    }
+
+    /// Assign an IP address for an agent within a specific subnet group.
+    /// All agents in the same subnet group will receive IPs from the same /24 subnet.
+    /// This is useful for simulating Sybil attacks where an attacker's nodes share infrastructure.
+    ///
+    /// Subnet groups use the 10.100.x.0/24 range, where x is assigned sequentially.
+    pub fn assign_subnet_group_ip(&mut self, subnet_group: &str, agent_id: &str) -> Result<String, String> {
+        // Get or create subnet allocation for this group
+        let (subnet_prefix, next_host) = self.subnet_groups
+            .entry(subnet_group.to_string())
+            .or_insert_with(|| {
+                let subnet_id = self.next_subnet_group_id;
+                self.next_subnet_group_id = self.next_subnet_group_id.wrapping_add(1);
+                // Use 10.100.x.0/24 range for subnet groups
+                let prefix = format!("10.100.{}", subnet_id);
+                log::info!("Created new subnet group '{}' with prefix {}.0/24", subnet_group, prefix);
+                (prefix, 10) // Start host IPs at .10
+            });
+
+        // Allocate the next available IP in this subnet
+        let host = *next_host;
+        if host > 254 {
+            return Err(format!(
+                "Subnet group '{}' exhausted (max 245 hosts per /24)",
+                subnet_group
+            ));
+        }
+
+        let ip = format!("{}.{}", subnet_prefix, host);
+
+        // Check for conflicts
+        if self.used_ips.contains(&ip) {
+            // Try to find next available
+            for try_host in (host + 1)..=254 {
+                let try_ip = format!("{}.{}", subnet_prefix, try_host);
+                if !self.used_ips.contains(&try_ip) {
+                    self.used_ips.insert(try_ip.clone());
+                    self.assigned_ips.insert(try_ip.clone(), agent_id.to_string());
+                    // Update next_host for future allocations
+                    if let Some((_, next)) = self.subnet_groups.get_mut(subnet_group) {
+                        *next = try_host + 1;
+                    }
+                    return Ok(try_ip);
+                }
+            }
+            return Err(format!(
+                "No available IPs in subnet group '{}'",
+                subnet_group
+            ));
+        }
+
+        self.used_ips.insert(ip.clone());
+        self.assigned_ips.insert(ip.clone(), agent_id.to_string());
+
+        // Increment next_host for this group
+        if let Some((_, next)) = self.subnet_groups.get_mut(subnet_group) {
+            *next = host + 1;
+        }
+
+        Ok(ip)
+    }
+
+    /// Get the subnet prefix for a given subnet group (if it exists)
+    pub fn get_subnet_group_prefix(&self, subnet_group: &str) -> Option<&str> {
+        self.subnet_groups.get(subnet_group).map(|(prefix, _)| prefix.as_str())
     }
 }

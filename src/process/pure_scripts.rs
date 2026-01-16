@@ -41,7 +41,7 @@ pub fn process_pure_script_agents(
         let script_id = agent_id.as_str();
         // Assign pure scripts to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
-        let script_ip = crate::ip::get_agent_ip(AgentType::PureScriptAgent, script_id, agent_offset + i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+        let script_ip = crate::ip::get_agent_ip(AgentType::PureScriptAgent, script_id, agent_offset + i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, None);
         let mut processes = Vec::new();
 
         let mut script_args = vec![

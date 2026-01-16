@@ -232,6 +232,7 @@ pub fn generate_agent_shadow_config(
             gml_graph.is_some(),  // using_gml_topology
             &mut subnet_manager,
             &mut ip_registry,
+            None,  // No subnet_group for infrastructure
         );
         Some(dns_ip)
     } else {
@@ -312,7 +313,8 @@ pub fn generate_agent_shadow_config(
             if agent_config.is_miner() {
                 // For seed node IP calculation, use node 0 (switch topology assumption)
                 let network_node_id = 0;
-                let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry);
+                let subnet_group = agent_config.subnet_group.as_deref();
+                let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry, subnet_group);
                 miner_ips.push(format!("{}:18080", agent_ip));
             }
         }

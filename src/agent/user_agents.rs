@@ -145,7 +145,11 @@ pub fn process_user_agents(
         };
 
         // Get agent IP using dynamic assignment
-        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry);
+        // If agent has a subnet_group, use that for IP allocation (Sybil simulation)
+        let subnet_group = user_agents.iter()
+            .find(|(id, _)| id.as_str() == *agent_id)
+            .and_then(|(_, config)| config.subnet_group.as_deref());
+        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group);
         let agent_port = 18080;
 
         // Collect all agent IPs for topology connections

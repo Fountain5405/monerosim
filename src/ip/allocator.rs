@@ -14,7 +14,11 @@ fn get_node_as_number(gml_node: &GmlNode) -> Option<String> {
 }
 
 /// Get IP address for an agent using the centralized Global IP Registry
-/// Priority order: 1) Pre-allocated GML IP, 2) AS-aware IP, 3) Dynamic IP assignment
+/// Priority order:
+/// 1) Subnet group (if specified) - agents with the same group share a /24 subnet
+/// 2) Pre-allocated GML IP
+/// 3) AS-aware IP
+/// 4) Dynamic IP assignment
 pub fn get_agent_ip(
     agent_type: AgentType,
     agent_id: &str,
@@ -24,7 +28,21 @@ pub fn get_agent_ip(
     using_gml_topology: bool,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
+    subnet_group: Option<&str>,
 ) -> String {
+    // Priority 0: If subnet_group is specified, use subnet group allocation
+    if let Some(group) = subnet_group {
+        match ip_registry.assign_subnet_group_ip(group, agent_id) {
+            Ok(ip) => {
+                log::info!("Assigned subnet group IP {} to agent {} (group: {})", ip, agent_id, group);
+                return ip;
+            }
+            Err(e) => {
+                log::warn!("Failed to assign subnet group IP for agent {}: {}. Falling back to default allocation.", agent_id, e);
+                // Fall through to default allocation
+            }
+        }
+    }
     // For GML topologies, try pre-allocated and AS-aware assignment first
     if using_gml_topology {
         if let Some(gml) = gml_graph {

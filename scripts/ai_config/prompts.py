@@ -22,15 +22,24 @@ general:
   simulation_seed: 12345       # For reproducibility
   bootstrap_end_time: "4h"     # High bandwidth sync period
   enable_dns_server: true
+  shadow_log_level: warning    # REQUIRED for Shadow
+  progress: true               # Show progress bar
+  runahead: 100ms              # Shadow performance setting
+  process_threads: 2           # Shadow threads
   daemon_defaults:
     log-level: 1
+    log-file: /dev/stdout
     db-sync-mode: fastest
     no-zmq: true
+    non-interactive: true      # REQUIRED for headless
+    disable-rpc-ban: true      # REQUIRED for simulation
+    allow-local-ip: true       # REQUIRED for local IPs
   wallet_defaults:
     log-level: 1
+    log-file: /dev/stdout
 
 network:
-  type: 1_gbit_switch          # Or path to GML file
+  path: gml_processing/1200_nodes_caida_with_loops.gml  # USE THIS for realistic IPs
   peer_mode: Dynamic
 
 agents:
@@ -106,36 +115,53 @@ config = {
         'simulation_seed': 12345,
         'bootstrap_end_time': '4h',
         'enable_dns_server': True,
-        'daemon_defaults': {'log-level': 1, 'db-sync-mode': 'fastest', 'no-zmq': True},
-        'wallet_defaults': {'log-level': 1},
+        'shadow_log_level': 'warning',
+        'progress': True,
+        'runahead': '100ms',
+        'process_threads': 2,
+        'daemon_defaults': {
+            'log-level': 1,
+            'log-file': '/dev/stdout',
+            'db-sync-mode': 'fastest',
+            'no-zmq': True,
+            'non-interactive': True,
+            'disable-rpc-ban': True,
+            'allow-local-ip': True,
+        },
+        'wallet_defaults': {'log-level': 1, 'log-file': '/dev/stdout'},
     },
     'network': {
-        'type': '1_gbit_switch',
+        'path': 'gml_processing/1200_nodes_caida_with_loops.gml',  # Use GML topology for realistic IPs
         'peer_mode': 'Dynamic',
     },
     'agents': {}
 }
 
 # Generate miners (hashrates should sum to 100)
+# IMPORTANT: Stagger miner start times by 1s each to avoid memory spikes from simultaneous RandomX cache allocation
 num_miners = 5
 for i in range(num_miners):
     config['agents'][f'miner-{i+1:03d}'] = {
         'daemon': 'monerod',
         'wallet': 'monero-wallet-rpc',
         'script': 'agents.autonomous_miner',
-        'start_time': '0s',
+        'start_time': f'{i}s',  # Stagger by 1 second each
         'hashrate': 100 // num_miners,
         'can_receive_distributions': True,
     }
 
 # Generate users
+# IMPORTANT: Stagger user start times by 5s each to avoid overwhelming Shadow with simultaneous spawns
 num_users = 50
+user_start_base = 10800  # 3 hours in seconds
+user_stagger = 5  # seconds between user starts
 for i in range(num_users):
+    start_time_s = user_start_base + (i * user_stagger)
     config['agents'][f'user-{i+1:03d}'] = {
         'daemon': 'monerod',
         'wallet': 'monero-wallet-rpc',
         'script': 'agents.regular_user',
-        'start_time': '3h',
+        'start_time': f'{start_time_s}s',  # Staggered start times
         'transaction_interval': 60,
         'activity_start_time': 18000,
         'can_receive_distributions': True,
@@ -167,6 +193,52 @@ print(yaml.dump(config, default_flow_style=False, sort_keys=False))
 5. **Users start at 3h** with activity_start_time ~18000s (5h)
 6. **Phase gaps must be 30s+** between daemon_0_stop and daemon_1_start
 7. **Agent IDs**: Use patterns like miner-001, user-001, spy-001
+8. **Stagger miner start times** by 1 second each (0s, 1s, 2s...) to avoid memory spikes from simultaneous RandomX initialization
+9. **Stagger user start times** by 5 seconds each for small sims (<50 users)
+10. **Batch staggering for large sims (50+ users)** - spawn users in exponentially growing batches
+
+## Batched Bootstrap for Large Simulations
+
+For 50+ users, use batched spawning to prevent Shadow overload:
+- Initial delay: 20 minutes (1200s) after miners
+- Batch interval: 20 minutes between batches
+- Batch sizes: grow exponentially (5, 10, 20, 40, 80...) up to max 200
+- Intra-batch stagger: 5s between users in same batch
+
+```python
+# For 50+ users, use batched bootstrap
+def calculate_batched_user_starts(num_users, initial_delay=1200, batch_interval=1200,
+                                   initial_batch=5, growth_factor=2.0, max_batch=200, intra_stagger=5):
+    """Calculate staggered start times using exponential batch growth."""
+    schedule = []  # (user_index, start_time_s)
+    user_idx = 0
+    batch_start = initial_delay
+    current_batch_size = initial_batch
+
+    while user_idx < num_users:
+        batch_size = min(current_batch_size, max_batch, num_users - user_idx)
+        for i in range(batch_size):
+            schedule.append((user_idx, batch_start + i * intra_stagger))
+            user_idx += 1
+        batch_start += batch_interval
+        current_batch_size = int(current_batch_size * growth_factor)
+
+    return schedule
+
+# Use for 50+ users
+if num_users >= 50:
+    schedule = calculate_batched_user_starts(num_users)
+    for user_idx, start_time_s in schedule:
+        config['agents'][f'user-{user_idx+1:03d}'] = {
+            'daemon': 'monerod',
+            'wallet': 'monero-wallet-rpc',
+            'script': 'agents.regular_user',
+            'start_time': f'{start_time_s}s',
+            'transaction_interval': 60,
+            'activity_start_time': activity_start_time_s,  # Calculate based on bootstrap
+            'can_receive_distributions': True,
+        }
+```
 
 ## Timing Calculations
 
