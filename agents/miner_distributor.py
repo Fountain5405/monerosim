@@ -50,6 +50,12 @@ class MinerDistributorAgent(BaseAgent):
         self.max_retries = 5
         self.recipient_selection = "random"
         self.initial_fund_amount = 1.0
+
+        # Multi-output transaction parameters
+        # When outputs_per_transaction > 1, sends multiple outputs to the same recipient
+        # This allows recipient to spend outputs independently after unlock period
+        self.outputs_per_transaction = 1
+        self.output_amount = None  # Fixed amount per output (None = use min/max range)
         
         # Wait time parameters for mining reward maturation
         self.initial_wait_time = 3600  # 1 hour in seconds (default)
@@ -91,7 +97,9 @@ class MinerDistributorAgent(BaseAgent):
             'initial_fund_amount': ('float_min', 'initial_fund_amount', 1.0, 0),
             'initial_wait_time': ('time_duration', 'initial_wait_time', 3600),
             'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
-            'max_wait_time': ('time_duration', 'max_wait_time', 7200)
+            'max_wait_time': ('time_duration', 'max_wait_time', 7200),
+            'outputs_per_transaction': ('int_min', 'outputs_per_transaction', 1, 1),
+            'output_amount': ('float_min', 'output_amount', None, 0)
         }
 
         for attr_name, (type_name, field_name, *args) in config_mappings.items():
@@ -779,6 +787,7 @@ class MinerDistributorAgent(BaseAgent):
         Args:
             miner: Miner information including wallet details
             recipient: Recipient information including address
+            amount: Optional total amount to send (overrides output_amount * outputs_per_transaction)
 
         Returns:
             True if transaction was sent successfully, False otherwise
@@ -789,40 +798,54 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.error(f"Failed to get recipient address for {recipient.get('id')}")
             return False
 
-        # Validate and set transaction amount
-        if amount is None:
-            amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
-        
-        # Validate transaction parameters
-        if not self._validate_transaction_params(recipient_address, amount):
+        # Build destinations list (multiple outputs to same recipient)
+        num_outputs = self.outputs_per_transaction
+
+        # Determine amount per output
+        if self.output_amount is not None:
+            # Fixed amount per output (e.g., 100 XMR each)
+            per_output_amount = self.output_amount
+        elif amount is not None:
+            # Total amount specified, divide among outputs
+            per_output_amount = amount / num_outputs
+        else:
+            # Use random amount per output
+            per_output_amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
+
+        # Validate transaction parameters for each output
+        if not self._validate_transaction_params(recipient_address, per_output_amount):
             return False
 
         # Convert XMR to atomic units (picomonero) for the RPC call
         # 1 XMR = 10^12 picomonero (atomic units)
         try:
-            amount_atomic = int(amount * 10**12)
+            amount_atomic = int(per_output_amount * 10**12)
             if amount_atomic <= 0:
-                self.logger.error(f"Invalid atomic unit conversion: {amount} XMR -> {amount_atomic} atomic units")
+                self.logger.error(f"Invalid atomic unit conversion: {per_output_amount} XMR -> {amount_atomic} atomic units")
                 return False
         except (ValueError, OverflowError) as e:
-            self.logger.error(f"Failed to convert amount {amount} to atomic units: {e}")
+            self.logger.error(f"Failed to convert amount {per_output_amount} to atomic units: {e}")
             return False
+
+        # Build destinations - multiple outputs to same address
+        destinations = [{'address': recipient_address, 'amount': amount_atomic} for _ in range(num_outputs)]
+        total_amount = per_output_amount * num_outputs
 
         # Connect to miner's wallet RPC with retries
         for attempt in range(self.max_retries):
             try:
                 miner_rpc = WalletRPC(host=miner['ip_addr'], port=miner['wallet_rpc_port'])
-                
+
                 # Prepare transaction parameters with detailed logging
                 tx_params = {
-                    'destinations': [{'address': recipient_address, 'amount': amount_atomic}],
+                    'destinations': destinations,
                     'priority': self.transaction_priority,
                     'get_tx_key': True,
                     'do_not_relay': False
                 }
-                
+
                 self.logger.debug(f"Transaction parameters: {json.dumps(tx_params, indent=2)}")
-                self.logger.info(f"Preparing transaction: {amount} XMR ({amount_atomic} atomic units) to {recipient_address}")
+                self.logger.info(f"Preparing transaction: {num_outputs} outputs x {per_output_amount} XMR = {total_amount} XMR ({amount_atomic} atomic units each) to {recipient_address}")
                 
                 # Send transaction
                 tx = miner_rpc.transfer(**tx_params)
@@ -832,17 +855,19 @@ class MinerDistributorAgent(BaseAgent):
                     self.logger.error(f"Transaction response missing tx_hash: {tx}")
                     return False
 
-                # Record transaction in shared state (store original XMR amount)
+                # Record transaction in shared state (store total XMR amount)
                 self._record_transaction(
                     tx_hash=tx_hash,
                     sender_id=miner.get("agent_id"),
                     recipient_id=recipient.get("id"),
-                    amount=amount
+                    amount=total_amount,
+                    num_outputs=num_outputs,
+                    amount_per_output=per_output_amount
                 )
 
                 self.logger.info(f"Transaction sent successfully: {tx_hash} "
                               f"from {miner.get('agent_id')} to {recipient.get('id')} "
-                              f"for {amount} XMR ({amount_atomic} atomic units)")
+                              f"for {total_amount} XMR ({num_outputs} outputs x {per_output_amount} XMR)")
                 return True
 
             except Exception as e:
@@ -870,7 +895,7 @@ class MinerDistributorAgent(BaseAgent):
                         
                 elif "invalid params" in error_msg:
                     self.logger.error(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Invalid parameters")
-                    self.logger.error(f"Invalid parameters detected - Amount: {amount} XMR ({amount_atomic} atomic units), Address: {recipient_address}")
+                    self.logger.error(f"Invalid parameters detected - {num_outputs} outputs x {per_output_amount} XMR ({amount_atomic} atomic units each), Address: {recipient_address}")
                     self.logger.error(f"Transaction parameters that caused error: {json.dumps(tx_params, indent=2)}")
                     # Invalid params are usually not recoverable, so don't retry
                     return False
@@ -894,16 +919,19 @@ class MinerDistributorAgent(BaseAgent):
                         self.logger.error(f"Failed to send transaction after {self.max_retries} attempts due to: {e}")
                         return False
     
-    def _record_transaction(self, tx_hash: str, sender_id: str, recipient_id: str, amount: float):
+    def _record_transaction(self, tx_hash: str, sender_id: str, recipient_id: str, amount: float,
+                            num_outputs: int = 1, amount_per_output: Optional[float] = None):
         """Record transaction in shared state"""
         tx_record = {
             "tx_hash": tx_hash,
             "sender_id": sender_id,
             "recipient_id": recipient_id,
             "amount": amount,
+            "num_outputs": num_outputs,
+            "amount_per_output": amount_per_output if amount_per_output is not None else amount,
             "timestamp": time.time()
         }
-        
+
         self.append_shared_list("transactions.json", tx_record)
     
     def _cleanup_agent(self):
