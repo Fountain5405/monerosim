@@ -467,13 +467,15 @@ def analyze_spy_node(
     """
     Spy Node Analysis: Determine if a spy node could infer transaction originators.
 
-    For each TX, we simulate what each observing node would infer as the sender
-    based on who relayed the TX to them. A spy would guess that the source_ip
-    of their observation is the originator. We count how often this inference
-    would be correct across all observations.
+    Methodology (matching Rust implementation):
+    1. For each TX, sort observations by timestamp
+    2. Look at early observations (first 5)
+    3. Find the most common source_ip among early observations
+    4. That's the inferred originator
+    5. Compare against true sender IP
+    6. Count correct inferences per TX (not per observation)
 
-    This models a realistic spy scenario where the attacker doesn't know they're
-    the first observer - they just see who sent them the TX and guess that's the origin.
+    This models a spy node that analyzes first-seen patterns to guess origins.
     """
     # Group observations by TX hash
     tx_obs_map = defaultdict(list)
@@ -484,31 +486,24 @@ def analyze_spy_node(
     for tx_hash in tx_obs_map:
         tx_obs_map[tx_hash].sort(key=lambda x: x['timestamp'])
 
-    # Filter to only transactions from nodes with daemons (like Rust does)
-    daemon_nodes = set()
-    if agents:
-        daemon_nodes = {a.id for a in agents.values() if a.daemon}
-
     results = {
         'inference_accuracy': 0.0,
         'total_transactions': len(transactions),
         'analyzable_transactions': 0,
         'correct_inferences': 0,
-        'total_inferences': 0,
         'timing_distribution': {
             'high_vulnerability_count': 0,
             'moderate_vulnerability_count': 0,
             'low_vulnerability_count': 0
         },
-        'vulnerable_senders': defaultdict(lambda: {'total': 0, 'correct': 0}),
+        'vulnerable_senders': [],
         'tx_details': []
     }
 
-    for tx_hash, tx in transactions.items():
-        # Filter: only analyze TXs from daemon nodes (matching Rust behavior)
-        if agents and tx.sender_id not in daemon_nodes:
-            continue
+    # Track per-sender stats
+    sender_stats = defaultdict(lambda: {'total': 0, 'correct': 0})
 
+    for tx_hash, tx in transactions.items():
         observations = tx_obs_map.get(tx_hash, [])
         if not observations:
             continue
@@ -533,73 +528,70 @@ def analyze_spy_node(
             results['timing_distribution']['low_vulnerability_count'] += 1
             vulnerability = 'low'
 
-        # For each observer, determine what they would infer as the sender
-        tx_correct = 0
-        tx_total = 0
-        first_seen_by = []
+        # Infer originator: most common source_ip in early observations (first 5)
+        early_count = min(5, len(observations))
+        early_obs = observations[:early_count]
 
-        for obs in observations:
+        source_ip_counts = defaultdict(int)
+        for obs in early_obs:
             source_ip = obs.get('source_ip')
-            if not source_ip:
-                continue
+            if source_ip:
+                source_ip_counts[source_ip] += 1
 
-            # The spy would infer that source_ip is the originator
-            inferred_sender = ip_to_node.get(source_ip)
+        # Find most common source_ip
+        inferred_originator_ip = None
+        if source_ip_counts:
+            inferred_originator_ip = max(source_ip_counts.keys(), key=lambda ip: source_ip_counts[ip])
 
-            # Is this inference correct?
-            is_correct = (inferred_sender == actual_sender)
+        # Check if inference is correct
+        inference_correct = (inferred_originator_ip == actual_sender_ip) if (inferred_originator_ip and actual_sender_ip) else False
 
-            tx_total += 1
-            if is_correct:
-                tx_correct += 1
+        if inference_correct:
+            results['correct_inferences'] += 1
 
-            # Track first few observations for detailed output
-            if len(first_seen_by) < 10:
-                first_seen_by.append({
-                    'node_id': obs['node_id'],
-                    'source_ip': source_ip,
-                    'inferred_sender': inferred_sender,
-                    'correct': is_correct,
-                    'delta_ms': round((obs['timestamp'] - first_obs['timestamp']) * 1000, 1)
-                })
+        # Track per-sender stats
+        sender_stats[actual_sender]['total'] += 1
+        if inference_correct:
+            sender_stats[actual_sender]['correct'] += 1
 
-        results['total_inferences'] += tx_total
-        results['correct_inferences'] += tx_correct
-
-        # Track per-sender vulnerability
-        results['vulnerable_senders'][actual_sender]['total'] += tx_total
-        results['vulnerable_senders'][actual_sender]['correct'] += tx_correct
+        # Build first_seen_by for detailed output
+        first_seen_by = []
+        for obs in observations[:10]:
+            first_seen_by.append({
+                'node_id': obs['node_id'],
+                'source_ip': obs.get('source_ip'),
+                'delta_ms': round((obs['timestamp'] - first_obs['timestamp']) * 1000, 1)
+            })
 
         results['tx_details'].append({
             'tx_hash': tx_hash[:16] + '...',
             'actual_sender': actual_sender,
             'actual_sender_ip': actual_sender_ip,
+            'inferred_originator_ip': inferred_originator_ip,
+            'inference_correct': inference_correct,
             'timing_spread_ms': round(timing_spread_ms, 1),
             'vulnerability': vulnerability,
-            'observations': tx_total,
-            'correct_inferences': tx_correct,
-            'inference_rate': round(tx_correct / tx_total, 3) if tx_total > 0 else 0,
             'first_seen_by': first_seen_by
         })
 
-    # Calculate overall accuracy
-    if results['total_inferences'] > 0:
+    # Calculate overall accuracy (per-TX, not per-observation)
+    if results['analyzable_transactions'] > 0:
         results['inference_accuracy'] = round(
-            results['correct_inferences'] / results['total_inferences'], 3
+            results['correct_inferences'] / results['analyzable_transactions'], 3
         )
 
-    # Convert vulnerable_senders to list with accuracy
-    sender_stats = []
-    for sender_id, stats in results['vulnerable_senders'].items():
+    # Convert sender_stats to list
+    vulnerable_list = []
+    for sender_id, stats in sender_stats.items():
         if stats['total'] > 0:
-            sender_stats.append({
+            vulnerable_list.append({
                 'sender_id': sender_id,
-                'total_observations': stats['total'],
+                'total_txs': stats['total'],
                 'correct_inferences': stats['correct'],
                 'accuracy': round(stats['correct'] / stats['total'], 3)
             })
-    sender_stats.sort(key=lambda x: x['correct_inferences'], reverse=True)
-    results['vulnerable_senders'] = sender_stats
+    vulnerable_list.sort(key=lambda x: x['accuracy'], reverse=True)
+    results['vulnerable_senders'] = vulnerable_list
 
     return results
 
@@ -714,32 +706,35 @@ def analyze_network_resilience(
     """
     Network Resilience Analysis: Analyze connectivity and centralization.
 
-    This analysis examines:
-    1. Peer connectivity (from connection events)
-    2. TX first-seen distribution (which nodes see TXs first - indicates centrality)
-    3. Relay path criticality (which nodes appear frequently in relay paths)
+    Methodology (matching Rust implementation):
+    1. Track connection state by connection_id (add on NEW, remove on CLOSE)
+    2. Only count currently-active connections at end of simulation
+    3. Calculate first-seen distribution for Gini coefficient
     """
-    # Build current peer connections per node
-    node_peers = defaultdict(set)
-    connection_state = {}  # (node_id, peer_ip, peer_port) -> bool
+    # Track active connections by (node_id, connection_id) -> peer_ip
+    active_connections = {}  # (node_id, connection_id) -> peer_ip
 
     # Sort events by timestamp
     sorted_events = sorted(connection_events, key=lambda x: x['timestamp'])
 
     for event in sorted_events:
         node_id = event['node_id']
-        peer_key = (node_id, event['peer_ip'], event['peer_port'])
+        conn_id = event.get('connection_id', f"{event['peer_ip']}:{event['peer_port']}")
+        conn_key = (node_id, conn_id)
 
         if event['event_type'] == 'NEW':
-            connection_state[peer_key] = True
-            peer_node = ip_to_node.get(event['peer_ip'])
-            if peer_node:
-                node_peers[node_id].add(peer_node)
-                node_peers[peer_node].add(node_id)
+            active_connections[conn_key] = event['peer_ip']
         elif event['event_type'] == 'CLOSE':
-            connection_state[peer_key] = False
+            active_connections.pop(conn_key, None)
 
-    # Calculate peer counts
+    # Build peer sets from ACTIVE connections only
+    node_peers = defaultdict(set)
+    for (node_id, conn_id), peer_ip in active_connections.items():
+        peer_node = ip_to_node.get(peer_ip)
+        if peer_node:
+            node_peers[node_id].add(peer_node)
+
+    # Calculate peer counts from active connections
     peer_counts = {node_id: len(peers) for node_id, peers in node_peers.items()}
 
     # Find isolated nodes (no peers)
@@ -919,15 +914,12 @@ def analyze_dandelion_paths(
     """
     Dandelion++ Stem Path Reconstruction.
 
-    Reconstructs the stem path for each transaction by following the chain
-    of observations. For each hop, we track:
-    - Which node received the TX
-    - From which node (source_ip mapped to node)
-    - The timestamp
-
-    The stem phase continues until we detect a "fluff" event where multiple
-    nodes receive from the same source nearly simultaneously, indicating
-    the transition from stem to fluff phase.
+    Methodology (matching Rust implementation):
+    1. Find first observation that came from the originator
+    2. Follow chain: next = observation where source_ip matches current node's IP
+    3. Fluff detection: if ≥3 nodes received from same sender within 100ms window
+    4. Stop when fluff detected or no more observations
+    5. Track used observations by index (not by node)
     """
     # Group observations by TX hash
     tx_obs_map = defaultdict(list)
@@ -938,13 +930,9 @@ def analyze_dandelion_paths(
     for tx_hash in tx_obs_map:
         tx_obs_map[tx_hash].sort(key=lambda x: x['timestamp'])
 
-    # Filter to daemon nodes if available
-    daemon_nodes = set()
-    if agents:
-        daemon_nodes = {a.id for a in agents.values() if a.daemon}
-
     results = {
         'paths_reconstructed': 0,
+        'originator_confirmed_count': 0,
         'avg_stem_length': 0.0,
         'min_stem_length': 0,
         'max_stem_length': 0,
@@ -962,123 +950,45 @@ def analyze_dandelion_paths(
 
     stem_lengths = []
     stem_durations = []
-    hop_delays = []
     fluff_point_counts = defaultdict(int)
 
     for tx_hash, tx in transactions.items():
-        # Filter to only TXs from daemon nodes
-        if agents and tx.sender_id not in daemon_nodes:
-            continue
-
         observations = tx_obs_map.get(tx_hash, [])
         if not observations:
             continue
 
-        originator_ip = node_to_ip.get(tx.sender_id)
-        if not originator_ip:
-            continue
+        originator = tx.sender_id
+        originator_ip = node_to_ip.get(originator)
 
-        # Build detailed stem path with from_node tracking
-        stem_path = []
-        fluff_node = None
+        # Reconstruct path using Rust methodology
+        path_result = reconstruct_single_path(
+            tx, observations, ip_to_node, node_to_ip, originator, originator_ip
+        )
 
-        # Create observation lookup structures
-        obs_by_source = defaultdict(list)
-        obs_by_receiver = {}
-        for obs in observations:
-            if obs.get('source_ip'):
-                obs_by_source[obs['source_ip']].append(obs)
-            obs_by_receiver[obs['node_id']] = obs
+        if path_result:
+            results['paths_reconstructed'] += 1
+            stem_lengths.append(path_result['stem_length'])
+            if path_result['stem_duration_ms'] > 0:
+                stem_durations.append(path_result['stem_duration_ms'])
 
-        # Track which nodes we've processed to follow the longest path
-        processed = set()
-        current_ip = originator_ip
-        current_node = tx.sender_id
-        first_timestamp = None
-        last_timestamp = None
-
-        # Follow the relay chain
-        max_iterations = 200
-        iteration = 0
-
-        while iteration < max_iterations:
-            iteration += 1
-
-            # Find all observations where source_ip == current_ip
-            matching_obs = [o for o in obs_by_source.get(current_ip, [])
-                          if o['node_id'] not in processed]
-
-            if not matching_obs:
-                break
-
-            # Check for fluff: multiple nodes receiving from same source within threshold
-            if len(matching_obs) >= FLUFF_MIN_RECEIVERS:
-                times = [o['timestamp'] for o in matching_obs]
-                time_spread = (max(times) - min(times)) * 1000
-                if time_spread <= FLUFF_DETECTION_THRESHOLD_MS:
-                    fluff_node = ip_to_node.get(current_ip)
-                    fluff_point_counts[fluff_node] += 1
-                    break
-
-            # Sort by timestamp and take the earliest (most likely stem relay)
-            matching_obs.sort(key=lambda x: x['timestamp'])
-            next_obs = matching_obs[0]
-            next_node = next_obs['node_id']
-
-            # Track timing
-            if first_timestamp is None:
-                first_timestamp = next_obs['timestamp']
-            if last_timestamp is not None:
-                hop_delays.append((next_obs['timestamp'] - last_timestamp) * 1000)
-            last_timestamp = next_obs['timestamp']
-
-            # Record this hop
-            from_node = ip_to_node.get(current_ip, current_ip)
-            stem_path.append({
-                'node_id': next_node,
-                'from_node_id': from_node,
-                'from_ip': current_ip,
-                'timestamp': next_obs['timestamp'],
-                'delta_ms': round((next_obs['timestamp'] - first_timestamp) * 1000, 1) if first_timestamp else 0
-            })
+            if path_result.get('originator_confirmed'):
+                results['originator_confirmed_count'] += 1
 
             # Update node stats
-            results['node_stats'][next_node]['stem_relay_count'] += 1
-            results['node_stats'][next_node]['positions'].append(len(stem_path))
+            results['node_stats'][originator]['originator_count'] += 1
 
-            processed.add(next_node)
+            for i, hop in enumerate(path_result['stem_path']):
+                node_id = hop['node_id'] if isinstance(hop, dict) else hop
+                if i > 0:  # Not the first hop (which is from originator)
+                    results['node_stats'][node_id]['stem_relay_count'] += 1
+                    results['node_stats'][node_id]['positions'].append(i)
 
-            # Move to next hop
-            current_node = next_node
-            current_ip = node_to_ip.get(next_node)
-            if not current_ip:
-                break
-
-        # Calculate stem duration
-        stem_duration_ms = 0.0
-        if first_timestamp and last_timestamp:
-            stem_duration_ms = (last_timestamp - first_timestamp) * 1000
-            stem_durations.append(stem_duration_ms)
-
-        if stem_path:
-            results['paths_reconstructed'] += 1
-            stem_lengths.append(len(stem_path))
-
-            # Update originator stats
-            results['node_stats'][tx.sender_id]['originator_count'] += 1
-
-            # Update fluff point stats
-            if fluff_node:
+            if path_result.get('fluff_node'):
+                fluff_node = path_result['fluff_node']
                 results['node_stats'][fluff_node]['fluff_point_count'] += 1
+                fluff_point_counts[fluff_node] += 1
 
-            results['paths'].append({
-                'tx_hash': tx_hash,
-                'originator': tx.sender_id,
-                'stem_path': stem_path,
-                'fluff_node': fluff_node,
-                'stem_length': len(stem_path),
-                'stem_duration_ms': round(stem_duration_ms, 1)
-            })
+            results['paths'].append(path_result)
 
     # Calculate aggregate statistics
     if stem_lengths:
@@ -1088,36 +998,160 @@ def analyze_dandelion_paths(
 
     if stem_durations:
         results['avg_stem_duration_ms'] = round(statistics.mean(stem_durations), 1)
+        # Calculate average hop delay
+        total_hops = sum(max(0, l - 1) for l in stem_lengths)
+        if total_hops > 0:
+            results['avg_hop_delay_ms'] = round(sum(stem_durations) / total_hops, 1)
 
-    if hop_delays:
-        results['avg_hop_delay_ms'] = round(statistics.mean(hop_delays), 1)
+    # Frequent fluff points
+    results['frequent_fluff_points'] = dict(sorted(
+        [(k, v) for k, v in fluff_point_counts.items() if v >= 2],
+        key=lambda x: x[1], reverse=True
+    )[:10])
 
-    # Convert node_stats to sorted list
-    node_stats_list = []
-    for node_id, stats in results['node_stats'].items():
-        avg_pos = statistics.mean(stats['positions']) if stats['positions'] else 0
-        node_stats_list.append({
-            'node_id': node_id,
-            'stem_relay_count': stats['stem_relay_count'],
-            'fluff_point_count': stats['fluff_point_count'],
-            'originator_count': stats['originator_count'],
-            'avg_stem_position': round(avg_pos, 1)
-        })
-    node_stats_list.sort(key=lambda x: x['stem_relay_count'], reverse=True)
-    results['node_stats'] = node_stats_list
-
-    # Top fluff points
-    results['frequent_fluff_points'] = dict(
-        sorted(fluff_point_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-    )
-
-    # Privacy score based on average stem length
-    if stem_lengths:
-        results['privacy_score'] = round(min(1.0, results['avg_stem_length'] / 10), 2)
+    # Privacy score (based on avg stem length)
+    if results['avg_stem_length'] >= 10:
+        results['privacy_score'] = 1.0
+    elif results['avg_stem_length'] >= 5:
+        results['privacy_score'] = round(results['avg_stem_length'] / 10, 2)
     else:
-        results['privacy_score'] = 0.0
+        results['privacy_score'] = round(results['avg_stem_length'] / 10, 2)
 
     return results
+
+
+def reconstruct_single_path(
+    tx: Transaction,
+    observations: List[Dict],
+    ip_to_node: Dict[str, str],
+    node_to_ip: Dict[str, str],
+    originator: str,
+    originator_ip: Optional[str]
+) -> Optional[Dict]:
+    """
+    Reconstruct stem path for a single transaction (matching Rust methodology).
+
+    The stem path is a chain: originator -> A -> B -> C -> fluff
+    Each node receives from the previous, then relays to exactly one next node.
+    Fluff point is where a node broadcasts to multiple peers simultaneously.
+    """
+    if not observations:
+        return None
+
+    # Sorted observations (already sorted by caller, but ensure)
+    sorted_obs = sorted(observations, key=lambda x: x['timestamp'])
+
+    stem_path = []
+    used_observations = set()  # Track by index like Rust
+    fluff_node = None
+    fluff_recipients = 0
+    current_sender_ip = originator_ip
+
+    # Find first observation that came from the originator
+    first_hop_idx = None
+    for i, obs in enumerate(sorted_obs):
+        if originator_ip and obs.get('source_ip') == originator_ip:
+            first_hop_idx = i
+            break
+
+    if first_hop_idx is not None:
+        # Start from first hop (received from originator)
+        first_obs = sorted_obs[first_hop_idx]
+        stem_path.append({
+            'node_id': first_obs['node_id'],
+            'from_node_id': originator,
+            'from_ip': first_obs.get('source_ip'),
+            'timestamp': first_obs['timestamp'],
+            'delta_ms': 0.0
+        })
+        used_observations.add(first_hop_idx)
+        current_sender_ip = node_to_ip.get(first_obs['node_id'])
+    else:
+        # Originator not found, start from first observation
+        first_obs = sorted_obs[0]
+        from_node = ip_to_node.get(first_obs.get('source_ip', ''))
+        stem_path.append({
+            'node_id': first_obs['node_id'],
+            'from_node_id': from_node,
+            'from_ip': first_obs.get('source_ip'),
+            'timestamp': first_obs['timestamp'],
+            'delta_ms': 0.0
+        })
+        used_observations.add(0)
+        current_sender_ip = node_to_ip.get(first_obs['node_id'])
+
+    first_timestamp = stem_path[0]['timestamp']
+
+    # Follow the chain
+    max_iterations = 100
+    for _ in range(max_iterations):
+        if not current_sender_ip:
+            break
+
+        # Find all observations from current sender that haven't been used
+        from_current = [
+            (i, obs) for i, obs in enumerate(sorted_obs)
+            if i not in used_observations and obs.get('source_ip') == current_sender_ip
+        ]
+
+        if not from_current:
+            break
+
+        # Check for fluff: multiple nodes received from same sender within time window
+        if len(from_current) >= FLUFF_MIN_RECEIVERS:
+            first_time = from_current[0][1]['timestamp']
+            recipients_in_window = sum(
+                1 for (_, obs) in from_current
+                if (obs['timestamp'] - first_time) * 1000 <= FLUFF_DETECTION_THRESHOLD_MS
+            )
+
+            if recipients_in_window >= FLUFF_MIN_RECEIVERS:
+                # This is the fluff point
+                fluff_node = stem_path[-1]['node_id'] if stem_path else None
+                fluff_recipients = len(from_current)
+                break
+
+        # Single relay (stem phase) - take the earliest
+        next_idx, next_obs = from_current[0]
+        prev_timestamp = stem_path[-1]['timestamp'] if stem_path else next_obs['timestamp']
+
+        stem_path.append({
+            'node_id': next_obs['node_id'],
+            'from_node_id': ip_to_node.get(current_sender_ip),
+            'from_ip': current_sender_ip,
+            'timestamp': next_obs['timestamp'],
+            'delta_ms': round((next_obs['timestamp'] - first_timestamp) * 1000, 1)
+        })
+
+        used_observations.add(next_idx)
+        current_sender_ip = node_to_ip.get(next_obs['node_id'])
+
+    # If no fluff detected, last node in stem is likely the fluff point
+    if fluff_node is None and stem_path:
+        fluff_node = stem_path[-1]['node_id']
+        fluff_recipients = len(sorted_obs) - len(used_observations)
+
+    # Check if originator is confirmed
+    originator_confirmed = False
+    if stem_path and stem_path[0].get('from_node_id') == originator:
+        originator_confirmed = True
+
+    stem_length = len(stem_path)
+    stem_duration_ms = 0.0
+    if len(stem_path) >= 2:
+        stem_duration_ms = (stem_path[-1]['timestamp'] - stem_path[0]['timestamp']) * 1000
+
+    return {
+        'tx_hash': tx.tx_hash,
+        'originator': originator,
+        'originator_ip': originator_ip,
+        'stem_path': stem_path,
+        'fluff_node': fluff_node,
+        'stem_length': stem_length,
+        'stem_duration_ms': round(stem_duration_ms, 1),
+        'fluff_recipients': fluff_recipients,
+        'originator_confirmed': originator_confirmed
+    }
 
 
 # ============================================================================
