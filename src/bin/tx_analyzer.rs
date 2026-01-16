@@ -105,6 +105,17 @@ enum Commands {
         #[arg(long)]
         short_stems: Option<usize>,
     },
+
+    /// Analyze network P2P topology and connection patterns
+    NetworkGraph {
+        /// Export GraphViz DOT file for visualization
+        #[arg(long)]
+        dot: bool,
+
+        /// Expected max outbound connections (default: 8 for Monero)
+        #[arg(long, default_value = "8")]
+        expected_outbound: usize,
+    },
 }
 
 fn main() -> Result<()> {
@@ -332,6 +343,27 @@ fn main() -> Result<()> {
             fs::write(cli.output.join("dandelion_report.json"), &json)?;
             log::info!("Dandelion report written to {}", cli.output.join("dandelion_report.json").display());
         }
+        Commands::NetworkGraph { dot, expected_outbound } => {
+            log::info!("Analyzing network P2P topology...");
+
+            let graph_report = analysis::analyze_network_graph(&log_data, &agents, None);
+
+            // Print report
+            print_network_graph_report(&graph_report);
+
+            // Save JSON report
+            let json = serde_json::to_string_pretty(&graph_report)?;
+            fs::write(cli.output.join("network_graph_report.json"), &json)?;
+            log::info!("Network graph report written to {}", cli.output.join("network_graph_report.json").display());
+
+            // Export DOT if requested
+            if dot {
+                let dot_content = analysis::network_graph::generate_dot(&graph_report.final_state, &agents);
+                fs::write(cli.output.join("network_graph.dot"), &dot_content)?;
+                log::info!("GraphViz DOT file written to {}", cli.output.join("network_graph.dot").display());
+                println!("\nTo visualize: dot -Tpng network_graph.dot -o network_graph.png");
+            }
+        }
     }
 
     Ok(())
@@ -495,6 +527,96 @@ fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: b
             }
         }
     }
+}
+
+/// Print network graph analysis report to stdout
+fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
+    println!("\n================================================================================");
+    println!("                    NETWORK P2P TOPOLOGY ANALYSIS");
+    println!("================================================================================\n");
+
+    println!("Overview:");
+    println!("  Daemon nodes: {}", report.total_daemon_nodes);
+    println!("  Unique connections observed: {}", report.total_unique_connections);
+    println!("  Analysis duration: {:.1}s ({:.1}h)",
+        report.analysis_duration_sec,
+        report.analysis_duration_sec / 3600.0);
+    println!();
+
+    println!("Final Network State ({}):", report.final_state.time_label);
+    println!("  Active connections: {}", report.final_state.total_connections);
+    println!("  Avg outbound: {:.1}", report.final_state.avg_outbound);
+    println!("  Avg inbound: {:.1}", report.final_state.avg_inbound);
+    if !report.final_state.isolated_nodes.is_empty() {
+        println!("  Isolated nodes: {:?}", report.final_state.isolated_nodes);
+    }
+    println!();
+
+    println!("Degree Distribution (final state):");
+    println!("  Outbound: min={}, max={}, mean={:.1}, median={:.1}",
+        report.degree_distribution.outbound_stats.min,
+        report.degree_distribution.outbound_stats.max,
+        report.degree_distribution.outbound_stats.mean,
+        report.degree_distribution.outbound_stats.median);
+    println!("  Inbound:  min={}, max={}, mean={:.1}, median={:.1}",
+        report.degree_distribution.inbound_stats.min,
+        report.degree_distribution.inbound_stats.max,
+        report.degree_distribution.inbound_stats.mean,
+        report.degree_distribution.inbound_stats.median);
+    println!();
+
+    println!("Connection Churn:");
+    println!("  Total opens: {}", report.churn_stats.total_opens);
+    println!("  Total closes: {}", report.churn_stats.total_closes);
+    println!("  Avg connection duration: {:.1}s", report.churn_stats.avg_duration_sec);
+    println!("  Median duration: {:.1}s", report.churn_stats.median_duration_sec);
+    println!("  Long-lived (still active): {}", report.churn_stats.long_lived_connections);
+    println!("  Short-lived (<60s): {}", report.churn_stats.short_lived_connections);
+    println!();
+
+    println!("Validation (expected max outbound: {}):", report.validation.expected_max_outbound);
+    println!("  Actual max outbound: {}", report.validation.actual_max_outbound);
+    println!("  Within limits: {}", if report.validation.outbound_valid { "YES" } else { "NO" });
+    if !report.validation.nodes_exceeding_outbound.is_empty() {
+        println!("  Nodes exceeding limit: {:?}", report.validation.nodes_exceeding_outbound);
+    }
+    println!();
+
+    println!("Findings:");
+    for finding in &report.validation.findings {
+        println!("  - {}", finding);
+    }
+    println!();
+
+    // Show snapshots over time
+    if report.snapshots.len() > 1 {
+        println!("Network Evolution:");
+        for snapshot in &report.snapshots {
+            println!("  {}: {} connections, {:.1} out / {:.1} in avg",
+                snapshot.time_label,
+                snapshot.total_connections,
+                snapshot.avg_outbound,
+                snapshot.avg_inbound);
+        }
+        println!();
+    }
+
+    // Show per-node details for top nodes
+    println!("Per-Node Degrees (sorted by total):");
+    let mut node_degrees: Vec<_> = report.final_state.node_degrees.values().collect();
+    node_degrees.sort_by(|a, b| b.total.cmp(&a.total));
+    for (i, degree) in node_degrees.iter().take(10).enumerate() {
+        println!("  {}. {}: {} out, {} in ({} total)",
+            i + 1,
+            degree.node_id,
+            degree.outbound,
+            degree.inbound,
+            degree.total);
+    }
+    if node_degrees.len() > 10 {
+        println!("  ... and {} more nodes", node_degrees.len() - 10);
+    }
+    println!();
 }
 
 fn run_full_analysis(
