@@ -461,12 +461,19 @@ def analyze_spy_node(
     tx_observations: List[Dict],
     transactions: Dict[str, Transaction],
     ip_to_node: Dict[str, str],
-    node_to_ip: Dict[str, str]
+    node_to_ip: Dict[str, str],
+    agents: Dict[str, Agent] = None
 ) -> Dict:
     """
-    Spy Node Analysis: For each TX, determine if the originator can be inferred.
+    Spy Node Analysis: Determine if a spy node could infer transaction originators.
 
-    Returns analysis results including inference accuracy and vulnerability distribution.
+    For each TX, we simulate what each observing node would infer as the sender
+    based on who relayed the TX to them. A spy would guess that the source_ip
+    of their observation is the originator. We count how often this inference
+    would be correct across all observations.
+
+    This models a realistic spy scenario where the attacker doesn't know they're
+    the first observer - they just see who sent them the TX and guess that's the origin.
     """
     # Group observations by TX hash
     tx_obs_map = defaultdict(list)
@@ -477,35 +484,45 @@ def analyze_spy_node(
     for tx_hash in tx_obs_map:
         tx_obs_map[tx_hash].sort(key=lambda x: x['timestamp'])
 
+    # Filter to only transactions from nodes with daemons (like Rust does)
+    daemon_nodes = set()
+    if agents:
+        daemon_nodes = {a.id for a in agents.values() if a.daemon}
+
     results = {
         'inference_accuracy': 0.0,
         'total_transactions': len(transactions),
         'analyzable_transactions': 0,
         'correct_inferences': 0,
+        'total_inferences': 0,
         'timing_distribution': {
             'high_vulnerability_count': 0,
             'moderate_vulnerability_count': 0,
             'low_vulnerability_count': 0
         },
-        'vulnerable_senders': [],
+        'vulnerable_senders': defaultdict(lambda: {'total': 0, 'correct': 0}),
         'tx_details': []
     }
 
     for tx_hash, tx in transactions.items():
+        # Filter: only analyze TXs from daemon nodes (matching Rust behavior)
+        if agents and tx.sender_id not in daemon_nodes:
+            continue
+
         observations = tx_obs_map.get(tx_hash, [])
         if not observations:
             continue
 
         results['analyzable_transactions'] += 1
-
-        # Find first observation
-        first_obs = observations[0]
-        last_obs = observations[-1]
+        actual_sender = tx.sender_id
+        actual_sender_ip = node_to_ip.get(actual_sender)
 
         # Calculate timing spread
+        first_obs = observations[0]
+        last_obs = observations[-1]
         timing_spread_ms = (last_obs['timestamp'] - first_obs['timestamp']) * 1000
 
-        # Classify vulnerability
+        # Classify vulnerability based on timing spread
         if timing_spread_ms < HIGH_VULNERABILITY_THRESHOLD_MS:
             results['timing_distribution']['high_vulnerability_count'] += 1
             vulnerability = 'high'
@@ -516,38 +533,73 @@ def analyze_spy_node(
             results['timing_distribution']['low_vulnerability_count'] += 1
             vulnerability = 'low'
 
-        # Infer originator from first-seen source IP
-        inferred_originator = None
-        if first_obs.get('source_ip'):
-            inferred_originator = ip_to_node.get(first_obs['source_ip'])
+        # For each observer, determine what they would infer as the sender
+        tx_correct = 0
+        tx_total = 0
+        first_seen_by = []
 
-        # Compare with actual sender
-        actual_sender = tx.sender_id
-        correct = inferred_originator == actual_sender
+        for obs in observations:
+            source_ip = obs.get('source_ip')
+            if not source_ip:
+                continue
 
-        if correct:
-            results['correct_inferences'] += 1
+            # The spy would infer that source_ip is the originator
+            inferred_sender = ip_to_node.get(source_ip)
 
-        # Track vulnerable senders
-        if vulnerability in ('high', 'moderate') and actual_sender not in results['vulnerable_senders']:
-            results['vulnerable_senders'].append(actual_sender)
+            # Is this inference correct?
+            is_correct = (inferred_sender == actual_sender)
+
+            tx_total += 1
+            if is_correct:
+                tx_correct += 1
+
+            # Track first few observations for detailed output
+            if len(first_seen_by) < 10:
+                first_seen_by.append({
+                    'node_id': obs['node_id'],
+                    'source_ip': source_ip,
+                    'inferred_sender': inferred_sender,
+                    'correct': is_correct,
+                    'delta_ms': round((obs['timestamp'] - first_obs['timestamp']) * 1000, 1)
+                })
+
+        results['total_inferences'] += tx_total
+        results['correct_inferences'] += tx_correct
+
+        # Track per-sender vulnerability
+        results['vulnerable_senders'][actual_sender]['total'] += tx_total
+        results['vulnerable_senders'][actual_sender]['correct'] += tx_correct
 
         results['tx_details'].append({
             'tx_hash': tx_hash[:16] + '...',
             'actual_sender': actual_sender,
-            'inferred_originator': inferred_originator,
-            'correct': correct,
+            'actual_sender_ip': actual_sender_ip,
             'timing_spread_ms': round(timing_spread_ms, 1),
             'vulnerability': vulnerability,
-            'first_observer': first_obs['node_id'],
-            'observation_count': len(observations)
+            'observations': tx_total,
+            'correct_inferences': tx_correct,
+            'inference_rate': round(tx_correct / tx_total, 3) if tx_total > 0 else 0,
+            'first_seen_by': first_seen_by
         })
 
-    # Calculate accuracy
-    if results['analyzable_transactions'] > 0:
+    # Calculate overall accuracy
+    if results['total_inferences'] > 0:
         results['inference_accuracy'] = round(
-            results['correct_inferences'] / results['analyzable_transactions'], 3
+            results['correct_inferences'] / results['total_inferences'], 3
         )
+
+    # Convert vulnerable_senders to list with accuracy
+    sender_stats = []
+    for sender_id, stats in results['vulnerable_senders'].items():
+        if stats['total'] > 0:
+            sender_stats.append({
+                'sender_id': sender_id,
+                'total_observations': stats['total'],
+                'correct_inferences': stats['correct'],
+                'accuracy': round(stats['correct'] / stats['total'], 3)
+            })
+    sender_stats.sort(key=lambda x: x['correct_inferences'], reverse=True)
+    results['vulnerable_senders'] = sender_stats
 
     return results
 
@@ -655,10 +707,17 @@ def analyze_propagation(
 def analyze_network_resilience(
     connection_events: List[Dict],
     agents: Dict[str, Agent],
-    ip_to_node: Dict[str, str]
+    ip_to_node: Dict[str, str],
+    tx_observations: List[Dict] = None,
+    transactions: Dict[str, Transaction] = None
 ) -> Dict:
     """
     Network Resilience Analysis: Analyze connectivity and centralization.
+
+    This analysis examines:
+    1. Peer connectivity (from connection events)
+    2. TX first-seen distribution (which nodes see TXs first - indicates centrality)
+    3. Relay path criticality (which nodes appear frequently in relay paths)
     """
     # Build current peer connections per node
     node_peers = defaultdict(set)
@@ -691,21 +750,92 @@ def analyze_network_resilience(
     # Calculate Gini coefficient of peer counts
     if peer_counts:
         counts = list(peer_counts.values())
-        gini = calculate_gini(counts)
+        peer_gini = calculate_gini(counts)
     else:
-        gini = 0.0
+        peer_gini = 0.0
 
-    # Identify critical nodes (high betweenness - simplified)
-    # Nodes whose removal would most affect connectivity
+    # ===== TX First-Seen Distribution Analysis =====
+    # Count how often each node is the first to see a TX (excluding originators)
+    first_seen_counts = defaultdict(int)
+    relay_counts = defaultdict(int)
+
+    if tx_observations and transactions:
+        # Group observations by TX hash
+        tx_obs_map = defaultdict(list)
+        for obs in tx_observations:
+            tx_obs_map[obs['tx_hash']].append(obs)
+
+        for tx_hash, obs_list in tx_obs_map.items():
+            if not obs_list:
+                continue
+
+            # Sort by timestamp
+            obs_list.sort(key=lambda x: x['timestamp'])
+
+            # Get originator if known
+            originator = None
+            if tx_hash in transactions:
+                originator = transactions[tx_hash].sender_id
+
+            # First observer (non-originator) that sees this TX
+            for obs in obs_list:
+                node_id = obs['node_id']
+                if node_id != originator:
+                    first_seen_counts[node_id] += 1
+                    break
+
+            # Count relay participation for each node
+            seen_nodes = set()
+            for obs in obs_list:
+                node_id = obs['node_id']
+                if node_id not in seen_nodes:
+                    relay_counts[node_id] += 1
+                    seen_nodes.add(node_id)
+
+    # Calculate Gini coefficient on first-seen distribution
+    if first_seen_counts:
+        first_seen_values = list(first_seen_counts.values())
+        first_seen_gini = calculate_gini(first_seen_values)
+    else:
+        first_seen_gini = 0.0
+
+    # Identify critical nodes based on multiple factors
     critical_nodes = []
-    for node_id in peer_counts:
-        # Simple heuristic: nodes with many peers are more critical
-        if peer_counts[node_id] > statistics.mean(peer_counts.values()) * 1.5:
+    for node_id in daemon_nodes:
+        peer_count = peer_counts.get(node_id, 0)
+        first_seen = first_seen_counts.get(node_id, 0)
+        relay_count = relay_counts.get(node_id, 0)
+
+        # Score based on multiple factors
+        # Higher score = more critical to network
+        score = (
+            peer_count * 0.3 +  # More peers = more critical
+            first_seen * 2.0 +  # Frequently first to see = well-positioned
+            relay_count * 0.5   # High relay participation
+        )
+
+        if score > 0:
             critical_nodes.append({
                 'node_id': node_id,
-                'peer_count': peer_counts[node_id]
+                'peer_count': peer_count,
+                'first_seen_count': first_seen,
+                'relay_count': relay_count,
+                'criticality_score': round(score, 1)
             })
-    critical_nodes.sort(key=lambda x: x['peer_count'], reverse=True)
+
+    critical_nodes.sort(key=lambda x: x['criticality_score'], reverse=True)
+
+    # First-seen distribution stats
+    first_seen_stats = {}
+    if first_seen_counts:
+        values = list(first_seen_counts.values())
+        first_seen_stats = {
+            'total_first_seen_events': sum(values),
+            'nodes_with_first_seen': len(values),
+            'max_first_seen': max(values),
+            'avg_first_seen': round(statistics.mean(values), 1),
+            'gini_coefficient': round(first_seen_gini, 3)
+        }
 
     results = {
         'total_daemon_nodes': len(daemon_nodes),
@@ -715,7 +845,9 @@ def analyze_network_resilience(
         'median_peer_count': round(statistics.median(peer_counts.values()), 1) if peer_counts else 0,
         'max_peer_count': max(peer_counts.values()) if peer_counts else 0,
         'min_peer_count': min(peer_counts.values()) if peer_counts else 0,
-        'gini_coefficient': round(gini, 3),
+        'peer_gini_coefficient': round(peer_gini, 3),
+        'gini_coefficient': round(first_seen_gini, 3) if first_seen_counts else round(peer_gini, 3),
+        'first_seen_distribution': first_seen_stats,
         'critical_nodes': critical_nodes[:5],
         'peer_distribution': dict(sorted(peer_counts.items(), key=lambda x: x[1], reverse=True)[:10])
     }
@@ -781,13 +913,21 @@ def analyze_dandelion_paths(
     tx_observations: List[Dict],
     transactions: Dict[str, Transaction],
     ip_to_node: Dict[str, str],
-    node_to_ip: Dict[str, str]
+    node_to_ip: Dict[str, str],
+    agents: Dict[str, Agent] = None
 ) -> Dict:
     """
     Dandelion++ Stem Path Reconstruction.
 
     Reconstructs the stem path for each transaction by following the chain
-    of observations where each receiver's IP becomes the next sender.
+    of observations. For each hop, we track:
+    - Which node received the TX
+    - From which node (source_ip mapped to node)
+    - The timestamp
+
+    The stem phase continues until we detect a "fluff" event where multiple
+    nodes receive from the same source nearly simultaneously, indicating
+    the transition from stem to fluff phase.
     """
     # Group observations by TX hash
     tx_obs_map = defaultdict(list)
@@ -798,20 +938,38 @@ def analyze_dandelion_paths(
     for tx_hash in tx_obs_map:
         tx_obs_map[tx_hash].sort(key=lambda x: x['timestamp'])
 
+    # Filter to daemon nodes if available
+    daemon_nodes = set()
+    if agents:
+        daemon_nodes = {a.id for a in agents.values() if a.daemon}
+
     results = {
         'paths_reconstructed': 0,
         'avg_stem_length': 0.0,
         'min_stem_length': 0,
         'max_stem_length': 0,
+        'avg_stem_duration_ms': 0.0,
+        'avg_hop_delay_ms': 0.0,
         'frequent_fluff_points': {},
-        'privacy_score': 0.0,
+        'node_stats': defaultdict(lambda: {
+            'stem_relay_count': 0,
+            'fluff_point_count': 0,
+            'originator_count': 0,
+            'positions': []
+        }),
         'paths': []
     }
 
     stem_lengths = []
+    stem_durations = []
+    hop_delays = []
     fluff_point_counts = defaultdict(int)
 
     for tx_hash, tx in transactions.items():
+        # Filter to only TXs from daemon nodes
+        if agents and tx.sender_id not in daemon_nodes:
+            continue
+
         observations = tx_obs_map.get(tx_hash, [])
         if not observations:
             continue
@@ -820,82 +978,101 @@ def analyze_dandelion_paths(
         if not originator_ip:
             continue
 
-        # Reconstruct stem path
+        # Build detailed stem path with from_node tracking
         stem_path = []
-        current_ip = originator_ip
-        used_nodes = {tx.sender_id}
         fluff_node = None
-        stem_start_time = None
-        stem_end_time = None
 
-        # Build a map of observations by source IP
+        # Create observation lookup structures
         obs_by_source = defaultdict(list)
+        obs_by_receiver = {}
         for obs in observations:
             if obs.get('source_ip'):
                 obs_by_source[obs['source_ip']].append(obs)
+            obs_by_receiver[obs['node_id']] = obs
 
-        # Follow the chain
+        # Track which nodes we've processed to follow the longest path
+        processed = set()
+        current_ip = originator_ip
+        current_node = tx.sender_id
+        first_timestamp = None
+        last_timestamp = None
+
+        # Follow the relay chain
+        max_iterations = 200
         iteration = 0
-        max_iterations = 100  # Prevent infinite loops
 
         while iteration < max_iterations:
             iteration += 1
 
-            # Find observations where source_ip == current_ip
-            matching_obs = obs_by_source.get(current_ip, [])
+            # Find all observations where source_ip == current_ip
+            matching_obs = [o for o in obs_by_source.get(current_ip, [])
+                          if o['node_id'] not in processed]
 
             if not matching_obs:
                 break
 
-            # Check for fluff point: multiple nodes receiving from same source within threshold
+            # Check for fluff: multiple nodes receiving from same source within threshold
             if len(matching_obs) >= FLUFF_MIN_RECEIVERS:
-                # Check timing spread
                 times = [o['timestamp'] for o in matching_obs]
                 time_spread = (max(times) - min(times)) * 1000
-
                 if time_spread <= FLUFF_DETECTION_THRESHOLD_MS:
-                    # Fluff detected
                     fluff_node = ip_to_node.get(current_ip)
-                    if stem_start_time is None and matching_obs:
-                        stem_start_time = matching_obs[0]['timestamp']
-                    stem_end_time = max(times)
+                    fluff_point_counts[fluff_node] += 1
                     break
 
-            # Take the first observation as the next hop
+            # Sort by timestamp and take the earliest (most likely stem relay)
+            matching_obs.sort(key=lambda x: x['timestamp'])
             next_obs = matching_obs[0]
             next_node = next_obs['node_id']
 
-            if next_node in used_nodes:
-                # Cycle detected, stop
-                break
+            # Track timing
+            if first_timestamp is None:
+                first_timestamp = next_obs['timestamp']
+            if last_timestamp is not None:
+                hop_delays.append((next_obs['timestamp'] - last_timestamp) * 1000)
+            last_timestamp = next_obs['timestamp']
 
-            stem_path.append(next_node)
-            used_nodes.add(next_node)
+            # Record this hop
+            from_node = ip_to_node.get(current_ip, current_ip)
+            stem_path.append({
+                'node_id': next_node,
+                'from_node_id': from_node,
+                'from_ip': current_ip,
+                'timestamp': next_obs['timestamp'],
+                'delta_ms': round((next_obs['timestamp'] - first_timestamp) * 1000, 1) if first_timestamp else 0
+            })
 
-            if stem_start_time is None:
-                stem_start_time = next_obs['timestamp']
-            stem_end_time = next_obs['timestamp']
+            # Update node stats
+            results['node_stats'][next_node]['stem_relay_count'] += 1
+            results['node_stats'][next_node]['positions'].append(len(stem_path))
+
+            processed.add(next_node)
 
             # Move to next hop
-            next_node_ip = node_to_ip.get(next_node)
-            if not next_node_ip:
+            current_node = next_node
+            current_ip = node_to_ip.get(next_node)
+            if not current_ip:
                 break
-            current_ip = next_node_ip
 
         # Calculate stem duration
         stem_duration_ms = 0.0
-        if stem_start_time and stem_end_time:
-            stem_duration_ms = (stem_end_time - stem_start_time) * 1000
+        if first_timestamp and last_timestamp:
+            stem_duration_ms = (last_timestamp - first_timestamp) * 1000
+            stem_durations.append(stem_duration_ms)
 
         if stem_path:
             results['paths_reconstructed'] += 1
             stem_lengths.append(len(stem_path))
 
+            # Update originator stats
+            results['node_stats'][tx.sender_id]['originator_count'] += 1
+
+            # Update fluff point stats
             if fluff_node:
-                fluff_point_counts[fluff_node] += 1
+                results['node_stats'][fluff_node]['fluff_point_count'] += 1
 
             results['paths'].append({
-                'tx_hash': tx_hash[:16] + '...',
+                'tx_hash': tx_hash,
                 'originator': tx.sender_id,
                 'stem_path': stem_path,
                 'fluff_node': fluff_node,
@@ -903,19 +1080,42 @@ def analyze_dandelion_paths(
                 'stem_duration_ms': round(stem_duration_ms, 1)
             })
 
+    # Calculate aggregate statistics
     if stem_lengths:
         results['avg_stem_length'] = round(statistics.mean(stem_lengths), 1)
         results['min_stem_length'] = min(stem_lengths)
         results['max_stem_length'] = max(stem_lengths)
 
-        # Privacy score: higher stem lengths = better privacy
-        # Score from 0-1, based on average stem length (target: 10+ hops)
-        results['privacy_score'] = round(min(1.0, results['avg_stem_length'] / 10), 2)
+    if stem_durations:
+        results['avg_stem_duration_ms'] = round(statistics.mean(stem_durations), 1)
+
+    if hop_delays:
+        results['avg_hop_delay_ms'] = round(statistics.mean(hop_delays), 1)
+
+    # Convert node_stats to sorted list
+    node_stats_list = []
+    for node_id, stats in results['node_stats'].items():
+        avg_pos = statistics.mean(stats['positions']) if stats['positions'] else 0
+        node_stats_list.append({
+            'node_id': node_id,
+            'stem_relay_count': stats['stem_relay_count'],
+            'fluff_point_count': stats['fluff_point_count'],
+            'originator_count': stats['originator_count'],
+            'avg_stem_position': round(avg_pos, 1)
+        })
+    node_stats_list.sort(key=lambda x: x['stem_relay_count'], reverse=True)
+    results['node_stats'] = node_stats_list
 
     # Top fluff points
     results['frequent_fluff_points'] = dict(
         sorted(fluff_point_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     )
+
+    # Privacy score based on average stem length
+    if stem_lengths:
+        results['privacy_score'] = round(min(1.0, results['avg_stem_length'] / 10), 2)
+    else:
+        results['privacy_score'] = 0.0
 
     return results
 
@@ -1134,7 +1334,7 @@ Examples:
 
     if args.command in ('full', 'spy-node', 'summary'):
         print("Running spy node analysis...")
-        spy_analysis = analyze_spy_node(tx_observations, transactions, ip_to_node, node_to_ip)
+        spy_analysis = analyze_spy_node(tx_observations, transactions, ip_to_node, node_to_ip, agents)
         if not args.detailed:
             spy_analysis.pop('tx_details', None)
 
@@ -1146,7 +1346,9 @@ Examples:
 
     if args.command in ('full', 'resilience', 'summary'):
         print("Running network resilience analysis...")
-        resilience_analysis = analyze_network_resilience(connection_events, agents, ip_to_node)
+        resilience_analysis = analyze_network_resilience(
+            connection_events, agents, ip_to_node, tx_observations, transactions
+        )
 
     if args.command in ('full', 'relay-v2', 'summary'):
         print("Running TX Relay V2 analysis...")
@@ -1154,9 +1356,20 @@ Examples:
 
     if args.command in ('full', 'dandelion', 'summary'):
         print("Running Dandelion++ analysis...")
-        dandelion_analysis = analyze_dandelion_paths(tx_observations, transactions, ip_to_node, node_to_ip)
+        dandelion_analysis = analyze_dandelion_paths(tx_observations, transactions, ip_to_node, node_to_ip, agents)
         if not args.detailed:
-            dandelion_analysis['paths'] = dandelion_analysis.get('paths', [])[:5]  # Only show first 5
+            # Simplify paths for non-detailed output
+            simplified_paths = []
+            for path in dandelion_analysis.get('paths', [])[:5]:  # Only show first 5
+                simplified_paths.append({
+                    'tx_hash': path['tx_hash'][:16] + '...',
+                    'originator': path['originator'],
+                    'stem_path': [hop['node_id'] if isinstance(hop, dict) else hop for hop in path.get('stem_path', [])],
+                    'fluff_node': path.get('fluff_node'),
+                    'stem_length': path['stem_length'],
+                    'stem_duration_ms': path['stem_duration_ms']
+                })
+            dandelion_analysis['paths'] = simplified_paths
 
     # Generate report
     report = generate_report(
