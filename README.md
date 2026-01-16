@@ -113,7 +113,14 @@ monerosim/
 │   ├── config_v2.rs         # Configuration structures
 │   ├── config_loader.rs     # YAML configuration loading
 │   ├── orchestrator.rs      # Shadow config generation orchestration
-│   └── gml_parser.rs        # GML topology file parser
+│   ├── gml_parser.rs        # GML topology file parser
+│   ├── analysis/            # Transaction routing analysis (Rust)
+│   │   ├── spy_node.rs      # Spy node vulnerability analysis
+│   │   ├── propagation.rs   # Propagation timing analysis
+│   │   ├── dandelion.rs     # Dandelion++ stem path reconstruction
+│   │   └── ...              # Additional analysis modules
+│   └── bin/
+│       └── tx_analyzer.rs   # Analysis CLI tool
 ├── agents/                   # Python agent framework
 │   ├── agent_discovery.py   # Dynamic agent discovery system
 │   ├── base_agent.py        # Base agent class
@@ -123,6 +130,7 @@ monerosim/
 │   ├── simulation_monitor.py # Real-time monitoring agent
 │   └── monero_rpc.py        # RPC client library
 ├── scripts/                  # Python utility scripts
+│   ├── tx_analyzer.py       # Transaction routing analysis (Python)
 │   ├── log_processor.py     # Log analysis and processing
 │   ├── sync_check.py        # Network synchronization monitoring
 │   └── migrate_mining_config.py # Config migration utility
@@ -130,6 +138,7 @@ monerosim/
 │   └── create_caida_connected_with_loops.py # CAIDA-based topology generator
 ├── examples/                # Example configurations
 ├── docs/                    # Detailed documentation
+│   └── ANALYSIS_TOOLS.md    # Analysis tools documentation
 ├── config_32_agents.yaml    # Default configuration
 └── setup.sh                 # Environment setup script
 ```
@@ -143,6 +152,46 @@ monerosim/
 - [Development Guide](.kilocode/rules/memory-bank/tech.md) - Technical stack and development setup
 - [Project Status](.kilocode/rules/memory-bank/status.md) - Current development status
 - [Brief Overview](.kilocode/rules/memory-bank/brief.md) - Project goals and requirements
+
+## Post-Simulation Analysis
+
+After running a simulation, use the analysis tools to examine transaction routing, network topology, and privacy characteristics.
+
+### Quick Analysis
+```bash
+# Build the Rust analyzer
+cargo build --release --bin tx-analyzer
+
+# Run full analysis (spy node, propagation, resilience)
+./target/release/tx-analyzer full
+
+# Or use Python
+python3 scripts/tx_analyzer.py full
+```
+
+### Available Analyses
+- **Spy Node Vulnerability**: How effectively could an attacker deanonymize transaction origins?
+- **Propagation Timing**: How quickly do transactions spread through the network?
+- **Network Resilience**: Connectivity, centralization (Gini coefficient), partition risk
+- **Dandelion++ Paths**: Stem path reconstruction and privacy scoring
+- **TX Relay V2**: Protocol usage statistics (hash announcements vs full broadcasts)
+
+### Example Output
+```
+Spy Node Vulnerability:
+  Inference accuracy: 52.6%
+  High vulnerability TXs: 0
+
+Propagation Timing:
+  Average: 89965.4ms
+  Median: 13245.5ms
+
+Network Resilience:
+  Avg peers: 22.0
+  Gini coefficient: 0.37
+```
+
+For detailed documentation, see [docs/ANALYSIS_TOOLS.md](docs/ANALYSIS_TOOLS.md).
 
 ## Python Scripts
 
