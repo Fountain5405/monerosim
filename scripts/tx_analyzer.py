@@ -1155,6 +1155,644 @@ def reconstruct_single_path(
 
 
 # ============================================================================
+# Time Windowing and Upgrade Analysis
+# ============================================================================
+
+@dataclass
+class TimeWindow:
+    """A time window for segmented analysis."""
+    start: float
+    end: float
+    label: Optional[str] = None
+
+    def contains(self, timestamp: float) -> bool:
+        """Check if timestamp falls within this window."""
+        return self.start <= timestamp < self.end
+
+    def duration(self) -> float:
+        """Return duration of window in seconds."""
+        return self.end - self.start
+
+
+@dataclass
+class WindowedMetrics:
+    """Metrics calculated for a single time window."""
+    window: TimeWindow
+    tx_count: int = 0
+    observation_count: int = 0
+    spy_accuracy: Optional[float] = None
+    avg_propagation_ms: Optional[float] = None
+    median_propagation_ms: Optional[float] = None
+    avg_peer_count: Optional[float] = None
+    gini_coefficient: Optional[float] = None
+    avg_stem_length: Optional[float] = None
+
+
+def create_time_windows(start: float, end: float, window_size_sec: float) -> List[TimeWindow]:
+    """Create time windows spanning the simulation duration."""
+    windows = []
+    current = start
+    index = 0
+
+    while current < end:
+        window_end = min(current + window_size_sec, end)
+        windows.append(TimeWindow(
+            start=current,
+            end=window_end,
+            label=f"window_{index}"
+        ))
+        current = window_end
+        index += 1
+
+    return windows
+
+
+def find_simulation_time_range(tx_observations: List[Dict], connection_events: List[Dict]) -> Tuple[float, float]:
+    """Find the time range of all observations."""
+    all_timestamps = []
+
+    for obs in tx_observations:
+        all_timestamps.append(obs['timestamp'])
+
+    for event in connection_events:
+        all_timestamps.append(event['timestamp'])
+
+    if not all_timestamps:
+        return (0.0, 0.0)
+
+    return (min(all_timestamps), max(all_timestamps))
+
+
+def filter_observations_by_window(observations: List[Dict], window: TimeWindow) -> List[Dict]:
+    """Filter observations to those within a time window."""
+    return [obs for obs in observations if window.contains(obs['timestamp'])]
+
+
+def filter_transactions_by_window(transactions: Dict[str, Transaction], window: TimeWindow) -> Dict[str, Transaction]:
+    """Filter transactions to those created within a time window."""
+    return {
+        tx_hash: tx for tx_hash, tx in transactions.items()
+        if window.contains(tx.timestamp)
+    }
+
+
+def load_upgrade_manifest(manifest_path: str) -> Optional[Dict]:
+    """Load upgrade manifest from JSON file."""
+    try:
+        with open(manifest_path, 'r') as f:
+            data = json.load(f)
+
+        manifest = {
+            'pre_upgrade_version': data.get('pre_upgrade_version'),
+            'post_upgrade_version': data.get('post_upgrade_version'),
+            'node_upgrades': [],
+            'upgrade_start': None,
+            'upgrade_end': None,
+        }
+
+        for upgrade in data.get('upgrades', []):
+            manifest['node_upgrades'].append({
+                'node_id': upgrade.get('node_id'),
+                'timestamp': upgrade.get('timestamp'),
+                'version': upgrade.get('version', 'unknown'),
+            })
+
+        if manifest['node_upgrades']:
+            timestamps = [u['timestamp'] for u in manifest['node_upgrades']]
+            manifest['upgrade_start'] = min(timestamps)
+            manifest['upgrade_end'] = max(timestamps)
+
+        return manifest
+    except Exception as e:
+        print(f"Warning: Could not load upgrade manifest: {e}", file=sys.stderr)
+        return None
+
+
+def label_windows_by_upgrade(windows: List[TimeWindow], manifest: Optional[Dict]) -> None:
+    """Label windows based on upgrade manifest timing."""
+    if not manifest:
+        return
+
+    upgrade_start = manifest.get('upgrade_start', float('inf'))
+    upgrade_end = manifest.get('upgrade_end', float('inf'))
+
+    for window in windows:
+        if window.end <= upgrade_start:
+            window.label = 'pre-upgrade'
+        elif window.start >= upgrade_end:
+            window.label = 'post-upgrade'
+        else:
+            window.label = 'transition'
+
+
+def calculate_window_metrics(
+    window: TimeWindow,
+    tx_observations: List[Dict],
+    transactions: Dict[str, Transaction],
+    connection_events: List[Dict],
+    agents: Dict[str, Agent],
+    ip_to_node: Dict[str, str],
+    node_to_ip: Dict[str, str]
+) -> WindowedMetrics:
+    """Calculate all metrics for a single time window."""
+    # Filter data to window
+    window_obs = filter_observations_by_window(tx_observations, window)
+    window_txs = filter_transactions_by_window(transactions, window)
+    window_connections = filter_observations_by_window(connection_events, window)
+
+    metrics = WindowedMetrics(
+        window=window,
+        tx_count=len(window_txs),
+        observation_count=len(window_obs)
+    )
+
+    if not window_txs or not window_obs:
+        return metrics
+
+    # Spy accuracy
+    spy_result = analyze_spy_node(window_obs, window_txs, ip_to_node, node_to_ip, agents)
+    if spy_result.get('analyzable_transactions', 0) > 0:
+        metrics.spy_accuracy = spy_result.get('inference_accuracy')
+
+    # Propagation
+    prop_result = analyze_propagation(window_obs, window_txs, [])
+    if prop_result.get('average_propagation_ms', 0) > 0:
+        metrics.avg_propagation_ms = prop_result.get('average_propagation_ms')
+        metrics.median_propagation_ms = prop_result.get('median_propagation_ms')
+
+    # Resilience (peer count and Gini)
+    if connection_events:
+        resilience_result = analyze_network_resilience(
+            connection_events, agents, ip_to_node, window_obs, window_txs
+        )
+        metrics.avg_peer_count = resilience_result.get('average_peer_count')
+        metrics.gini_coefficient = resilience_result.get('gini_coefficient')
+
+    # Dandelion stem length
+    dandelion_result = analyze_dandelion_paths(window_obs, window_txs, ip_to_node, node_to_ip, agents)
+    if dandelion_result.get('paths_reconstructed', 0) > 0:
+        metrics.avg_stem_length = dandelion_result.get('avg_stem_length')
+
+    return metrics
+
+
+def welch_t_test(sample1: List[float], sample2: List[float]) -> Optional[float]:
+    """
+    Perform Welch's t-test to compare two samples.
+    Returns approximate p-value (using normal approximation for large samples).
+    """
+    if len(sample1) < 2 or len(sample2) < 2:
+        return None
+
+    n1 = len(sample1)
+    n2 = len(sample2)
+
+    mean1 = statistics.mean(sample1)
+    mean2 = statistics.mean(sample2)
+
+    var1 = statistics.variance(sample1)
+    var2 = statistics.variance(sample2)
+
+    se = (var1 / n1 + var2 / n2) ** 0.5
+    if se == 0:
+        return None
+
+    t = abs(mean1 - mean2) / se
+
+    # Welch-Satterthwaite degrees of freedom
+    df_num = (var1 / n1 + var2 / n2) ** 2
+    df_denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
+    if df_denom == 0:
+        return None
+    df = df_num / df_denom
+
+    # Use normal approximation for p-value (conservative for small df)
+    import math
+    p = 2.0 * (1.0 - standard_normal_cdf(t * (0.9 if df <= 30 else 1.0)))
+
+    return p
+
+
+def standard_normal_cdf(x: float) -> float:
+    """Approximate standard normal CDF (Abramowitz and Stegun)."""
+    import math
+    a1 = 0.254829592
+    a2 = -0.284496736
+    a3 = 1.421413741
+    a4 = -1.453152027
+    a5 = 1.061405429
+    p = 0.3275911
+
+    sign = -1.0 if x < 0 else 1.0
+    x = abs(x) / math.sqrt(2)
+
+    t = 1.0 / (1.0 + p * x)
+    y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * math.exp(-x * x)
+
+    return 0.5 * (1.0 + sign * y)
+
+
+def create_period_summary(windows: List[WindowedMetrics], label: str) -> Dict:
+    """Create aggregated summary for a period."""
+    filtered = [w for w in windows if w.window.label == label]
+
+    if not filtered:
+        return None
+
+    def extract_values(attr: str) -> List[float]:
+        return [getattr(w, attr) for w in filtered if getattr(w, attr) is not None]
+
+    spy_values = extract_values('spy_accuracy')
+    prop_values = extract_values('avg_propagation_ms')
+    peer_values = extract_values('avg_peer_count')
+    gini_values = extract_values('gini_coefficient')
+    stem_values = extract_values('avg_stem_length')
+
+    return {
+        'period_label': label,
+        'start': min(w.window.start for w in filtered),
+        'end': max(w.window.end for w in filtered),
+        'window_count': len(filtered),
+        'total_txs': sum(w.tx_count for w in filtered),
+        'mean_spy_accuracy': statistics.mean(spy_values) if spy_values else None,
+        'mean_propagation_ms': statistics.mean(prop_values) if prop_values else None,
+        'mean_peer_count': statistics.mean(peer_values) if peer_values else None,
+        'mean_gini': statistics.mean(gini_values) if gini_values else None,
+        'mean_stem_length': statistics.mean(stem_values) if stem_values else None,
+    }
+
+
+def compare_periods(pre_summary: Dict, post_summary: Dict, windowed_metrics: List[WindowedMetrics]) -> List[Dict]:
+    """Compare pre-upgrade and post-upgrade metrics."""
+    if not pre_summary or not post_summary:
+        return []
+
+    changes = []
+
+    metric_pairs = [
+        ('mean_spy_accuracy', 'Spy Node Accuracy'),
+        ('mean_propagation_ms', 'Avg Propagation (ms)'),
+        ('mean_peer_count', 'Avg Peer Count'),
+        ('mean_gini', 'Gini Coefficient'),
+        ('mean_stem_length', 'Avg Stem Length'),
+    ]
+
+    for attr, name in metric_pairs:
+        pre_val = pre_summary.get(attr)
+        post_val = post_summary.get(attr)
+
+        if pre_val is None or post_val is None:
+            continue
+
+        # Calculate percent change
+        if pre_val != 0:
+            pct_change = ((post_val - pre_val) / abs(pre_val)) * 100
+        else:
+            pct_change = 0 if post_val == 0 else 100
+
+        # Get samples for statistical test
+        pre_windows = [w for w in windowed_metrics if w.window.label == 'pre-upgrade']
+        post_windows = [w for w in windowed_metrics if w.window.label == 'post-upgrade']
+
+        pre_samples = [getattr(w, attr.replace('mean_', '')) for w in pre_windows
+                       if getattr(w, attr.replace('mean_', ''), None) is not None]
+        post_samples = [getattr(w, attr.replace('mean_', '')) for w in post_windows
+                        if getattr(w, attr.replace('mean_', ''), None) is not None]
+
+        p_value = welch_t_test(pre_samples, post_samples)
+        significant = p_value is not None and p_value < 0.05
+
+        # Generate interpretation
+        interpretation = generate_interpretation(name, pct_change, significant)
+
+        changes.append({
+            'metric_name': name,
+            'pre_value': round(pre_val, 4),
+            'post_value': round(post_val, 4),
+            'percent_change': round(pct_change, 2),
+            'p_value': round(p_value, 4) if p_value else None,
+            'statistically_significant': significant,
+            'interpretation': interpretation,
+        })
+
+    return changes
+
+
+def generate_interpretation(metric_name: str, pct_change: float, significant: bool) -> str:
+    """Generate human-readable interpretation of a metric change."""
+    if not significant:
+        return f"No significant change in {metric_name.lower()}"
+
+    direction = "increased" if pct_change > 0 else "decreased"
+    magnitude = abs(pct_change)
+
+    if 'propagation' in metric_name.lower():
+        if pct_change < 0:
+            return f"Transaction propagation improved by {magnitude:.1f}% (faster)"
+        else:
+            return f"Transaction propagation degraded by {magnitude:.1f}% (slower)"
+
+    elif 'spy' in metric_name.lower() or 'accuracy' in metric_name.lower():
+        if pct_change < 0:
+            return f"Privacy improved: spy accuracy decreased by {magnitude:.1f}%"
+        else:
+            return f"Privacy concern: spy accuracy increased by {magnitude:.1f}%"
+
+    elif 'peer' in metric_name.lower():
+        return f"Network connectivity {direction} by {magnitude:.1f}%"
+
+    elif 'gini' in metric_name.lower():
+        if pct_change < 0:
+            return f"Network decentralization improved (Gini decreased by {magnitude:.1f}%)"
+        else:
+            return f"Network more centralized (Gini increased by {magnitude:.1f}%)"
+
+    elif 'stem' in metric_name.lower():
+        return f"Average stem length {direction} by {magnitude:.1f}%"
+
+    return f"{metric_name} {direction} by {magnitude:.1f}%"
+
+
+def generate_assessment(changes: List[Dict], pre_summary: Dict, post_summary: Dict) -> Dict:
+    """Generate overall assessment of upgrade impact."""
+    improved = sum(1 for c in changes if c['statistically_significant'] and
+                   (('propagation' in c['metric_name'].lower() and c['percent_change'] < 0) or
+                    ('spy' in c['metric_name'].lower() and c['percent_change'] < 0) or
+                    ('peer' in c['metric_name'].lower() and c['percent_change'] > 0) or
+                    ('gini' in c['metric_name'].lower() and c['percent_change'] < 0)))
+
+    degraded = sum(1 for c in changes if c['statistically_significant'] and
+                   (('propagation' in c['metric_name'].lower() and c['percent_change'] > 0) or
+                    ('spy' in c['metric_name'].lower() and c['percent_change'] > 0) or
+                    ('gini' in c['metric_name'].lower() and c['percent_change'] > 0)))
+
+    unchanged = len(changes) - improved - degraded
+
+    # Determine verdict
+    if improved > 0 and degraded == 0:
+        verdict = 'Positive'
+    elif degraded > 0 and improved == 0:
+        verdict = 'Negative'
+    elif improved > 0 and degraded > 0:
+        verdict = 'Mixed'
+    elif not pre_summary or not post_summary:
+        verdict = 'Inconclusive'
+    else:
+        verdict = 'Neutral'
+
+    # Generate findings
+    findings = []
+    for c in changes:
+        if c['statistically_significant']:
+            findings.append(c['interpretation'])
+
+    # Identify concerns
+    concerns = []
+    for c in changes:
+        if c['statistically_significant']:
+            if 'spy' in c['metric_name'].lower() and c['percent_change'] > 0:
+                concerns.append(f"Spy node accuracy increased by {abs(c['percent_change']):.1f}%")
+            if 'propagation' in c['metric_name'].lower() and c['percent_change'] > 20:
+                concerns.append(f"Propagation time increased significantly")
+            if 'gini' in c['metric_name'].lower() and c['percent_change'] > 10:
+                concerns.append(f"Network centralization increased")
+
+    # Generate recommendations
+    recommendations = []
+    if degraded > 0:
+        recommendations.append("Review upgrade changes that may have caused degradation")
+    if not findings:
+        recommendations.append("Consider longer simulation for more data points")
+    if verdict == 'Positive':
+        recommendations.append("Upgrade appears safe to deploy")
+
+    return {
+        'verdict': verdict,
+        'metrics_improved': improved,
+        'metrics_degraded': degraded,
+        'metrics_unchanged': unchanged,
+        'findings': findings,
+        'concerns': concerns,
+        'recommendations': recommendations,
+    }
+
+
+def analyze_upgrade_impact(
+    tx_observations: List[Dict],
+    transactions: Dict[str, Transaction],
+    connection_events: List[Dict],
+    agents: Dict[str, Agent],
+    ip_to_node: Dict[str, str],
+    node_to_ip: Dict[str, str],
+    window_size_sec: float = 60.0,
+    manifest_path: Optional[str] = None,
+    pre_upgrade_end: Optional[float] = None,
+    post_upgrade_start: Optional[float] = None
+) -> Dict:
+    """
+    Analyze upgrade impact by comparing metrics across time windows.
+
+    This divides the simulation into time windows, calculates metrics for each,
+    and compares pre-upgrade vs post-upgrade periods.
+    """
+    # Find simulation time range
+    sim_start, sim_end = find_simulation_time_range(tx_observations, connection_events)
+
+    if sim_start == sim_end:
+        return {'error': 'No data found'}
+
+    # Create time windows
+    windows = create_time_windows(sim_start, sim_end, window_size_sec)
+
+    # Load upgrade manifest if provided
+    manifest = None
+    if manifest_path:
+        manifest = load_upgrade_manifest(manifest_path)
+
+    # Apply manual overrides
+    if manifest is None and (pre_upgrade_end or post_upgrade_start):
+        manifest = {
+            'upgrade_start': pre_upgrade_end,
+            'upgrade_end': post_upgrade_start,
+            'node_upgrades': [],
+        }
+    elif manifest:
+        if pre_upgrade_end:
+            manifest['upgrade_start'] = pre_upgrade_end
+        if post_upgrade_start:
+            manifest['upgrade_end'] = post_upgrade_start
+
+    # Label windows if manifest exists
+    if manifest:
+        label_windows_by_upgrade(windows, manifest)
+    else:
+        # Without manifest, use simple time-based split
+        mid_point = (sim_start + sim_end) / 2
+        for window in windows:
+            if window.end <= mid_point:
+                window.label = 'pre-upgrade'
+            else:
+                window.label = 'post-upgrade'
+
+    # Calculate metrics for each window
+    print(f"Calculating metrics for {len(windows)} time windows...")
+    windowed_metrics = []
+    for i, window in enumerate(windows):
+        metrics = calculate_window_metrics(
+            window, tx_observations, transactions, connection_events,
+            agents, ip_to_node, node_to_ip
+        )
+        windowed_metrics.append(metrics)
+        if (i + 1) % 10 == 0:
+            print(f"  Processed {i + 1}/{len(windows)} windows")
+
+    # Create period summaries
+    pre_summary = create_period_summary(windowed_metrics, 'pre-upgrade')
+    post_summary = create_period_summary(windowed_metrics, 'post-upgrade')
+    transition_summary = create_period_summary(windowed_metrics, 'transition')
+
+    # Compare periods
+    changes = compare_periods(pre_summary, post_summary, windowed_metrics)
+
+    # Generate assessment
+    assessment = generate_assessment(changes, pre_summary, post_summary)
+
+    # Build time series for output
+    time_series = []
+    for m in windowed_metrics:
+        time_series.append({
+            'window': {
+                'start': m.window.start,
+                'end': m.window.end,
+                'label': m.window.label,
+            },
+            'tx_count': m.tx_count,
+            'observation_count': m.observation_count,
+            'spy_accuracy': m.spy_accuracy,
+            'avg_propagation_ms': m.avg_propagation_ms,
+            'median_propagation_ms': m.median_propagation_ms,
+            'avg_peer_count': m.avg_peer_count,
+            'gini_coefficient': m.gini_coefficient,
+            'avg_stem_length': m.avg_stem_length,
+        })
+
+    return {
+        'metadata': {
+            'analysis_timestamp': datetime.now().isoformat(),
+            'simulation_start': sim_start,
+            'simulation_end': sim_end,
+            'window_size_sec': window_size_sec,
+            'total_windows': len(windows),
+            'total_transactions': len(transactions),
+        },
+        'upgrade_info': manifest,
+        'time_series': time_series,
+        'pre_upgrade_summary': pre_summary,
+        'transition_summary': transition_summary,
+        'post_upgrade_summary': post_summary,
+        'changes': changes,
+        'assessment': assessment,
+    }
+
+
+def print_upgrade_report(report: Dict):
+    """Print upgrade analysis report to stdout."""
+    print("\n" + "=" * 70)
+    print("UPGRADE IMPACT ANALYSIS")
+    print("=" * 70 + "\n")
+
+    meta = report.get('metadata', {})
+    print(f"Simulation Duration: {meta.get('simulation_start', 0):.1f}s - {meta.get('simulation_end', 0):.1f}s")
+    print(f"Window Size: {meta.get('window_size_sec', 0):.0f}s ({meta.get('total_windows', 0)} windows)")
+    print()
+
+    # Upgrade info
+    upgrade_info = report.get('upgrade_info')
+    if upgrade_info:
+        if upgrade_info.get('upgrade_start') and upgrade_info.get('upgrade_end'):
+            print(f"Upgrade Period: {upgrade_info['upgrade_start']:.1f}s - {upgrade_info['upgrade_end']:.1f}s")
+            print(f"Nodes Upgraded: {len(upgrade_info.get('node_upgrades', []))}")
+
+    # Period summaries
+    pre = report.get('pre_upgrade_summary')
+    post = report.get('post_upgrade_summary')
+    if pre and post:
+        print()
+        print(f"Pre-Upgrade Period: {pre['start']:.1f}s - {pre['end']:.1f}s ({pre['window_count']} windows)")
+        print(f"Post-Upgrade Period: {post['start']:.1f}s - {post['end']:.1f}s ({post['window_count']} windows)")
+
+    # Metric comparison
+    changes = report.get('changes', [])
+    if changes:
+        print("\n" + "-" * 70)
+        print("METRIC COMPARISON")
+        print("-" * 70 + "\n")
+
+        print(f"{'Metric':<25} | {'Pre-Upgrade':>12} | {'Post-Upgrade':>12} | {'Change':>10} | {'Sig?':>6}")
+        print("-" * 25 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 10 + "-+-" + "-" * 6)
+
+        for change in changes:
+            sig = "YES *" if change['statistically_significant'] else "NO"
+
+            if 'accuracy' in change['metric_name'].lower():
+                pre_str = f"{change['pre_value'] * 100:.1f}%"
+                post_str = f"{change['post_value'] * 100:.1f}%"
+            elif 'propagation' in change['metric_name'].lower() or 'ms' in change['metric_name'].lower():
+                pre_str = f"{change['pre_value']:.0f}ms"
+                post_str = f"{change['post_value']:.0f}ms"
+            elif 'gini' in change['metric_name'].lower():
+                pre_str = f"{change['pre_value']:.3f}"
+                post_str = f"{change['post_value']:.3f}"
+            else:
+                pre_str = f"{change['pre_value']:.1f}"
+                post_str = f"{change['post_value']:.1f}"
+
+            change_str = f"{change['percent_change']:+.1f}%"
+
+            print(f"{change['metric_name']:<25} | {pre_str:>12} | {post_str:>12} | {change_str:>10} | {sig:>6}")
+
+        print()
+        print("* Statistically significant at p < 0.05")
+
+    # Assessment
+    assessment = report.get('assessment', {})
+    print("\n" + "-" * 70)
+    print("ASSESSMENT")
+    print("-" * 70 + "\n")
+
+    verdict_labels = {
+        'Positive': 'POSITIVE - Upgrade improved network behavior',
+        'Negative': 'NEGATIVE - Upgrade degraded network behavior',
+        'Mixed': 'MIXED - Upgrade had mixed effects',
+        'Neutral': 'NEUTRAL - No significant changes detected',
+        'Inconclusive': 'INCONCLUSIVE - Insufficient data for assessment',
+    }
+    print(f"Verdict: {verdict_labels.get(assessment.get('verdict'), assessment.get('verdict', 'Unknown'))}")
+    print()
+
+    if assessment.get('findings'):
+        print("Findings:")
+        for finding in assessment['findings']:
+            print(f"  - {finding}")
+        print()
+
+    if assessment.get('concerns'):
+        print("Concerns:")
+        for concern in assessment['concerns']:
+            print(f"  - {concern}")
+        print()
+
+    if assessment.get('recommendations'):
+        print("Recommendations:")
+        for rec in assessment['recommendations']:
+            print(f"  - {rec}")
+        print()
+
+    print("(See upgrade_analysis.json for full time-series data)")
+    print()
+
+
+# ============================================================================
 # Report Generation
 # ============================================================================
 
@@ -1278,12 +1916,15 @@ Examples:
   python tx_analyzer.py propagation            # Propagation timing only
   python tx_analyzer.py dandelion --detailed   # Dandelion++ with all paths
   python tx_analyzer.py summary                # Quick summary stats
+  python tx_analyzer.py upgrade-analysis       # Compare pre/post upgrade metrics
+  python tx_analyzer.py upgrade-analysis --window-size 30 --manifest upgrade.json
+  python tx_analyzer.py upgrade-analysis --pre-upgrade-end 300 --post-upgrade-start 600
         """
     )
 
     parser.add_argument(
         'command',
-        choices=['full', 'spy-node', 'propagation', 'resilience', 'relay-v2', 'dandelion', 'summary'],
+        choices=['full', 'spy-node', 'propagation', 'resilience', 'relay-v2', 'dandelion', 'summary', 'upgrade-analysis'],
         help="Analysis command to run"
     )
 
@@ -1328,6 +1969,35 @@ Examples:
         '--json',
         action='store_true',
         help="Output results as JSON only (no summary)"
+    )
+
+    # Upgrade analysis specific options
+    parser.add_argument(
+        '--window-size',
+        type=int,
+        default=60,
+        help="Size of each time window in seconds (default: 60)"
+    )
+
+    parser.add_argument(
+        '--manifest',
+        type=str,
+        default=None,
+        help="Path to upgrade manifest JSON file"
+    )
+
+    parser.add_argument(
+        '--pre-upgrade-end',
+        type=float,
+        default=None,
+        help="Manual override: end of pre-upgrade period (simulation time in seconds)"
+    )
+
+    parser.add_argument(
+        '--post-upgrade-start',
+        type=float,
+        default=None,
+        help="Manual override: start of post-upgrade period (simulation time in seconds)"
     )
 
     args = parser.parse_args()
@@ -1404,6 +2074,39 @@ Examples:
                     'stem_duration_ms': path['stem_duration_ms']
                 })
             dandelion_analysis['paths'] = simplified_paths
+
+    # Handle upgrade-analysis command separately
+    if args.command == 'upgrade-analysis':
+        print("Running upgrade impact analysis...")
+        upgrade_report = analyze_upgrade_impact(
+            tx_observations,
+            transactions,
+            connection_events,
+            agents,
+            ip_to_node,
+            node_to_ip,
+            window_size_sec=float(args.window_size),
+            manifest_path=args.manifest,
+            pre_upgrade_end=args.pre_upgrade_end,
+            post_upgrade_start=args.post_upgrade_start
+        )
+
+        if args.json:
+            print(json.dumps(upgrade_report, indent=2))
+        else:
+            print_upgrade_report(upgrade_report)
+
+            # Save JSON report
+            output_path = args.output
+            if not output_path:
+                os.makedirs(args.output_dir, exist_ok=True)
+                output_path = os.path.join(args.output_dir, "upgrade_analysis.json")
+
+            with open(output_path, 'w') as f:
+                json.dump(upgrade_report, f, indent=2)
+            print(f"Full report saved to: {output_path}")
+
+        return  # Exit after upgrade analysis
 
     # Generate report
     report = generate_report(

@@ -45,6 +45,7 @@ cargo build --release --bin tx-analyzer
 ./target/release/tx-analyzer tx-relay-v2   # TX Relay V2 protocol analysis
 ./target/release/tx-analyzer network-graph # P2P topology analysis
 ./target/release/tx-analyzer summary       # Quick summary stats
+./target/release/tx-analyzer upgrade-analysis  # Compare pre/post upgrade metrics
 ```
 
 ### Options
@@ -65,6 +66,12 @@ cargo build --release --bin tx-analyzer
 
 # Network graph options
 --dot                     Export GraphViz DOT file
+
+# Upgrade analysis options
+--window-size <N>         Time window size in seconds [default: 60]
+--manifest <PATH>         Path to upgrade manifest JSON file
+--pre-upgrade-end <T>     Manual override: end of pre-upgrade period (seconds)
+--post-upgrade-start <T>  Manual override: start of post-upgrade period (seconds)
 ```
 
 ### Example
@@ -75,6 +82,12 @@ cargo build --release --bin tx-analyzer
 
 # Network graph with DOT export for visualization
 ./target/release/tx-analyzer network-graph --dot
+
+# Upgrade impact analysis with manifest
+./target/release/tx-analyzer upgrade-analysis --manifest upgrade_manifest.json
+
+# Upgrade analysis with manual time boundaries
+./target/release/tx-analyzer upgrade-analysis --pre-upgrade-end 300 --post-upgrade-start 600
 ```
 
 ## Python Analyzer (`tx_analyzer.py`)
@@ -101,6 +114,7 @@ python3 scripts/tx_analyzer.py resilience
 python3 scripts/tx_analyzer.py dandelion
 python3 scripts/tx_analyzer.py relay-v2
 python3 scripts/tx_analyzer.py summary
+python3 scripts/tx_analyzer.py upgrade-analysis
 ```
 
 ### Options
@@ -112,6 +126,12 @@ python3 scripts/tx_analyzer.py summary
 --max-workers <N>         Parallel workers [default: CPU count]
 --detailed                Include per-TX details in output
 --json                    Output JSON only (no text summary)
+
+# Upgrade analysis options
+--window-size <N>         Time window size in seconds [default: 60]
+--manifest <PATH>         Path to upgrade manifest JSON file
+--pre-upgrade-end <T>     Manual override: end of pre-upgrade period (seconds)
+--post-upgrade-start <T>  Manual override: start of post-upgrade period (seconds)
 ```
 
 ## Analysis Types
@@ -204,7 +224,78 @@ Analyzes usage of the new TX relay protocol (Monero PR #9933).
 - Mixed v1/v2 usage indicates network transition period
 - 100% v1 is expected for older Monero versions
 
-### 6. Network Graph (Rust only)
+### 6. Upgrade Impact Analysis
+
+Compares network behavior before and after a software upgrade to detect changes in privacy, performance, and connectivity.
+
+**Use Case:**
+When testing a new Monero version, run a simulation that:
+1. Establishes steady-state with old software
+2. Performs rolling upgrades to new software
+3. Runs in steady-state with new software
+
+Then use upgrade-analysis to compare pre vs post upgrade metrics.
+
+**Methodology:**
+1. Divide simulation into time windows (default 60 seconds each)
+2. Calculate all metrics (spy accuracy, propagation, peer count, Gini, stem length) per window
+3. Label windows as "pre-upgrade", "transition", or "post-upgrade"
+4. Compare pre vs post upgrade using Welch's t-test for statistical significance
+5. Generate overall verdict and recommendations
+
+**Input Options:**
+- `--manifest <PATH>`: JSON file specifying when each node upgraded
+- `--pre-upgrade-end <T>`: Manual override for end of pre-upgrade period
+- `--post-upgrade-start <T>`: Manual override for start of post-upgrade period
+- `--window-size <N>`: Size of each analysis window in seconds
+
+**Upgrade Manifest Format:**
+```json
+{
+  "pre_upgrade_version": "v0.18.3.3",
+  "post_upgrade_version": "v0.19.0.0",
+  "upgrades": [
+    {"node_id": "miner-001", "timestamp": 300.0, "version": "v0.19"},
+    {"node_id": "user-001", "timestamp": 305.0, "version": "v0.19"}
+  ]
+}
+```
+
+**Output:**
+- Time series of all metrics per window
+- Pre/post upgrade summaries with mean values
+- Statistical comparison with p-values
+- Overall verdict: Positive, Negative, Mixed, Neutral, or Inconclusive
+- Identified concerns and recommendations
+
+**Interpretation:**
+- Significant decrease in propagation time = improvement
+- Significant increase in spy accuracy = privacy concern
+- Significant increase in Gini coefficient = centralization concern
+- Mixed results warrant careful review of specific metrics
+
+**Example Output:**
+```
+METRIC COMPARISON
+
+Metric                    | Pre-Upgrade | Post-Upgrade |   Change | Significant
+------------------------- | ----------- | ------------ | -------- | -----------
+Spy Node Accuracy         |      52.6%  |       48.2%  |   -8.4%  |         NO
+Avg Propagation (ms)      |      89965  |       72340  |  -19.6%  |      YES *
+Avg Peer Count            |       22.0  |        24.5  |  +11.4%  |      YES *
+
+ASSESSMENT
+Verdict: POSITIVE - Upgrade improved network behavior
+
+Findings:
+  - Transaction propagation improved by 19.6% (faster)
+  - Network connectivity increased by 11.4%
+
+Recommendations:
+  - Upgrade appears safe to deploy
+```
+
+### 7. Network Graph (Rust only)
 
 Analyzes P2P connection topology.
 
@@ -225,6 +316,7 @@ All output is written to the `analysis_output/` directory:
 | `spy_node_report.json` | Spy node analysis details |
 | `propagation_report.json` | Propagation timing details |
 | `dandelion_report.json` | Stem path reconstructions |
+| `upgrade_analysis.json` | Upgrade impact analysis with time series |
 | `network_graph.dot` | GraphViz visualization (if `--dot`) |
 
 ## Cross-Validation
@@ -237,10 +329,13 @@ Both Rust and Python implementations use identical methodologies and produce mat
 | Propagation Timing | Exact match |
 | Gini Coefficient | < 1% difference |
 | Dandelion Stem Range | Exact match |
+| Upgrade Analysis | Same methodology |
 
 This cross-validation ensures the analysis is correct and reproducible.
 
 ## Example Workflow
+
+### Standard Analysis
 
 ```bash
 # 1. Run simulation
@@ -257,6 +352,38 @@ cat analysis_output/report.txt
 
 # 5. For detailed data
 python3 -c "import json; print(json.dumps(json.load(open('analysis_output/full_report.json')), indent=2))"
+```
+
+### Upgrade Impact Analysis
+
+```bash
+# 1. Run simulation with upgrade scenario
+# (configure nodes to upgrade at specific times)
+./run_sim.sh
+
+# 2. Create upgrade manifest (or use manual time boundaries)
+cat > upgrade_manifest.json << 'EOF'
+{
+  "pre_upgrade_version": "v0.18.3.3",
+  "post_upgrade_version": "v0.19.0.0",
+  "upgrades": [
+    {"node_id": "miner-001", "timestamp": 300.0, "version": "v0.19"},
+    {"node_id": "user-001", "timestamp": 310.0, "version": "v0.19"}
+  ]
+}
+EOF
+
+# 3. Run upgrade analysis
+./target/release/tx-analyzer upgrade-analysis --manifest upgrade_manifest.json
+
+# Or with manual boundaries (if upgrade times are known):
+./target/release/tx-analyzer upgrade-analysis \
+  --pre-upgrade-end 300 \
+  --post-upgrade-start 600 \
+  --window-size 30
+
+# 4. View results
+cat analysis_output/upgrade_analysis.json | python3 -m json.tool
 ```
 
 ## Troubleshooting

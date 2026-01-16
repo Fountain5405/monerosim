@@ -116,6 +116,25 @@ enum Commands {
         #[arg(long, default_value = "8")]
         expected_outbound: usize,
     },
+
+    /// Analyze upgrade impact by comparing metrics across time windows
+    UpgradeAnalysis {
+        /// Size of each time window in seconds
+        #[arg(long, default_value = "60")]
+        window_size: u64,
+
+        /// Path to upgrade manifest JSON (optional)
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+
+        /// Manual override: end of pre-upgrade period (simulation time in seconds)
+        #[arg(long)]
+        pre_upgrade_end: Option<f64>,
+
+        /// Manual override: start of post-upgrade period (simulation time in seconds)
+        #[arg(long)]
+        post_upgrade_start: Option<f64>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -363,6 +382,38 @@ fn main() -> Result<()> {
                 log::info!("GraphViz DOT file written to {}", cli.output.join("network_graph.dot").display());
                 println!("\nTo visualize: dot -Tpng network_graph.dot -o network_graph.png");
             }
+        }
+        Commands::UpgradeAnalysis {
+            window_size,
+            manifest,
+            pre_upgrade_end,
+            post_upgrade_start,
+        } => {
+            log::info!("Analyzing upgrade impact with {}s time windows...", window_size);
+
+            let config = analysis::upgrade_analysis::UpgradeAnalysisConfig {
+                window_size_sec: window_size as f64,
+                manifest_path: manifest.map(|p| p.to_string_lossy().to_string()),
+                pre_upgrade_end,
+                post_upgrade_start,
+            };
+
+            let upgrade_report = analysis::analyze_upgrade_impact(
+                &transactions,
+                &log_data,
+                &agents,
+                &blocks,
+                &config,
+                &cli.data_dir.to_string_lossy(),
+            )?;
+
+            // Print report
+            print_upgrade_report(&upgrade_report);
+
+            // Save JSON report
+            let json = serde_json::to_string_pretty(&upgrade_report)?;
+            fs::write(cli.output.join("upgrade_analysis.json"), &json)?;
+            log::info!("Upgrade analysis written to {}", cli.output.join("upgrade_analysis.json").display());
         }
     }
 
@@ -616,6 +667,231 @@ fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
     if node_degrees.len() > 10 {
         println!("  ... and {} more nodes", node_degrees.len() - 10);
     }
+    println!();
+}
+
+/// Print upgrade analysis report to stdout
+fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
+    println!("\n================================================================================");
+    println!("                      UPGRADE IMPACT ANALYSIS");
+    println!("================================================================================\n");
+
+    // Metadata
+    println!("Simulation Duration: {:.1}s - {:.1}s ({:.1}s total)",
+        report.metadata.simulation_start,
+        report.metadata.simulation_end,
+        report.metadata.simulation_end - report.metadata.simulation_start);
+    println!("Window Size: {}s ({} windows)",
+        report.metadata.window_size_sec as u64,
+        report.metadata.total_windows);
+    println!();
+
+    // Upgrade info
+    if let Some(ref upgrade_info) = report.upgrade_info {
+        if let (Some(start), Some(end)) = (upgrade_info.upgrade_start, upgrade_info.upgrade_end) {
+            println!("Upgrade Period: {:.1}s - {:.1}s", start, end);
+            println!("Nodes Upgraded: {}", upgrade_info.node_upgrades.len());
+            if let Some(ref pre) = upgrade_info.pre_upgrade_version {
+                print!("  {} ", pre);
+            }
+            print!("->");
+            if let Some(ref post) = upgrade_info.post_upgrade_version {
+                print!(" {}", post);
+            }
+            println!();
+        }
+    }
+
+    // Period summaries
+    if let (Some(ref pre), Some(ref post)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
+        println!();
+        println!("Pre-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
+            pre.start, pre.end, pre.window_count);
+        println!("Post-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
+            post.start, post.end, post.window_count);
+    }
+    println!();
+
+    // Metric comparison table
+    if !report.changes.is_empty() {
+        println!("================================================================================");
+        println!("                         METRIC COMPARISON");
+        println!("================================================================================\n");
+
+        println!("{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
+            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant");
+        println!("{:-<25}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
+            "", "", "", "", "");
+
+        for change in &report.changes {
+            let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
+
+            let (pre_str, post_str, change_str) = if change.metric_name.contains("accuracy")
+                || change.metric_name.contains("coverage")
+                || change.metric_name.contains("ratio") {
+                // Display as percentage
+                (format!("{:.1}%", change.pre_value * 100.0),
+                 format!("{:.1}%", change.post_value * 100.0),
+                 format!("{:+.1}%", change.percent_change))
+            } else if change.metric_name.contains("propagation") || change.metric_name.contains("ms") {
+                // Display as time
+                (format!("{:.0}ms", change.pre_value),
+                 format!("{:.0}ms", change.post_value),
+                 format!("{:+.1}%", change.percent_change))
+            } else if change.metric_name.contains("gini") || change.metric_name.contains("coefficient") {
+                // Display as decimal
+                (format!("{:.3}", change.pre_value),
+                 format!("{:.3}", change.post_value),
+                 format!("{:+.1}%", change.percent_change))
+            } else {
+                // Generic numeric
+                (format!("{:.1}", change.pre_value),
+                 format!("{:.1}", change.post_value),
+                 format!("{:+.1}%", change.percent_change))
+            };
+
+            println!("{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
+                change.metric_name, pre_str, post_str, change_str, sig_marker);
+        }
+        println!();
+        println!("* Statistically significant at p < 0.05");
+        println!();
+    }
+
+    // Interpretation
+    if !report.changes.is_empty() {
+        println!("================================================================================");
+        println!("                          INTERPRETATION");
+        println!("================================================================================\n");
+
+        let positive: Vec<_> = report.changes.iter()
+            .filter(|c| c.statistically_significant && !c.interpretation.is_empty())
+            .filter(|c| c.interpretation.to_lowercase().contains("improved")
+                || c.interpretation.to_lowercase().contains("increased")
+                || c.interpretation.to_lowercase().contains("better"))
+            .collect();
+
+        let negative: Vec<_> = report.changes.iter()
+            .filter(|c| c.statistically_significant && !c.interpretation.is_empty())
+            .filter(|c| c.interpretation.to_lowercase().contains("degraded")
+                || c.interpretation.to_lowercase().contains("decreased")
+                || c.interpretation.to_lowercase().contains("worse")
+                || c.interpretation.to_lowercase().contains("concern"))
+            .collect();
+
+        let neutral: Vec<_> = report.changes.iter()
+            .filter(|c| !c.statistically_significant ||
+                (!positive.iter().any(|p| p.metric_name == c.metric_name) &&
+                 !negative.iter().any(|n| n.metric_name == c.metric_name)))
+            .collect();
+
+        if !positive.is_empty() {
+            println!("POSITIVE CHANGES:");
+            for change in &positive {
+                println!("  - {}: {}", change.metric_name, change.interpretation);
+            }
+            println!();
+        }
+
+        if !negative.is_empty() {
+            println!("CONCERNS:");
+            for change in &negative {
+                println!("  - {}: {}", change.metric_name, change.interpretation);
+            }
+            println!();
+        }
+
+        if !neutral.is_empty() && neutral.len() < 10 {
+            println!("NEUTRAL/NO CHANGE:");
+            for change in &neutral {
+                if !change.interpretation.is_empty() {
+                    println!("  - {}: {}", change.metric_name, change.interpretation);
+                } else {
+                    println!("  - {}: No significant change detected", change.metric_name);
+                }
+            }
+            println!();
+        }
+    }
+
+    // Assessment
+    println!("================================================================================");
+    println!("                            ASSESSMENT");
+    println!("================================================================================\n");
+
+    let verdict_str = match report.assessment.verdict {
+        analysis::types::UpgradeVerdict::Positive => "POSITIVE - Upgrade improved network behavior",
+        analysis::types::UpgradeVerdict::Negative => "NEGATIVE - Upgrade degraded network behavior",
+        analysis::types::UpgradeVerdict::Mixed => "MIXED - Upgrade had mixed effects",
+        analysis::types::UpgradeVerdict::Neutral => "NEUTRAL - No significant changes detected",
+        analysis::types::UpgradeVerdict::Inconclusive => "INCONCLUSIVE - Insufficient data for assessment",
+    };
+    println!("Verdict: {}", verdict_str);
+    println!();
+
+    if !report.assessment.findings.is_empty() {
+        println!("Findings:");
+        for line in &report.assessment.findings {
+            println!("  - {}", line);
+        }
+        println!();
+    }
+
+    if !report.assessment.concerns.is_empty() {
+        println!("Concerns:");
+        for concern in &report.assessment.concerns {
+            println!("  - {}", concern);
+        }
+        println!();
+    }
+
+    if !report.assessment.recommendations.is_empty() {
+        println!("Recommendations:");
+        for rec in &report.assessment.recommendations {
+            println!("  - {}", rec);
+        }
+        println!();
+    }
+
+    // Time series summary
+    if !report.time_series.is_empty() {
+        println!("================================================================================");
+        println!("                       TIME SERIES SUMMARY");
+        println!("================================================================================\n");
+
+        println!("{:<20} | {:>8} | {:>12} | {:>12} | {:>10}",
+            "Window", "TXs", "Spy Acc", "Avg Prop", "Peer Cnt");
+        println!("{:-<20}-+-{:-^8}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
+            "", "", "", "", "");
+
+        for window in &report.time_series {
+            let label = window.window.label.as_deref().unwrap_or("");
+            let label_display = format!("{:.0}s-{:.0}s {}",
+                window.window.start,
+                window.window.end,
+                if !label.is_empty() { format!("({})", label) } else { String::new() });
+
+            let spy_str = window.spy_accuracy
+                .map(|v| format!("{:.1}%", v * 100.0))
+                .unwrap_or_else(|| "-".to_string());
+            let prop_str = window.avg_propagation_ms
+                .map(|v| format!("{:.0}ms", v))
+                .unwrap_or_else(|| "-".to_string());
+            let peer_str = window.avg_peer_count
+                .map(|v| format!("{:.1}", v))
+                .unwrap_or_else(|| "-".to_string());
+
+            println!("{:<20} | {:>8} | {:>12} | {:>12} | {:>10}",
+                &label_display[..label_display.len().min(20)],
+                window.tx_count,
+                spy_str,
+                prop_str,
+                peer_str);
+        }
+        println!();
+    }
+
+    println!("(See upgrade_analysis.json for full time-series data)");
     println!();
 }
 

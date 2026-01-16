@@ -12,6 +12,8 @@ pub mod network_graph;
 pub mod report;
 pub mod tx_relay_v2;
 pub mod dandelion;
+pub mod time_window;
+pub mod upgrade_analysis;
 
 pub use types::*;
 pub use log_parser::parse_all_logs;
@@ -22,3 +24,5 @@ pub use network_graph::{analyze_network_graph, NetworkGraphReport};
 pub use report::{generate_json_report, generate_text_report};
 pub use tx_relay_v2::analyze_tx_relay_v2;
 pub use dandelion::analyze_dandelion;
+pub use time_window::*;
+pub use upgrade_analysis::analyze_upgrade_impact;
