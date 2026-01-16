@@ -418,6 +418,19 @@ class ConfigGenerator:
             if report.upgrade.agents_with_invalid_gap:
                 issues.append(f"Agents with phase gap < 30s: {', '.join(report.upgrade.agents_with_invalid_gap[:5])}")
 
+            # Check that simulation doesn't end before upgrade starts/completes
+            if report.upgrade.upgrade_start_s is not None:
+                if report.stop_time_s < report.upgrade.upgrade_start_s:
+                    issues.append(
+                        f"CRITICAL: stop_time ({report.stop_time_s}s) is before upgrade starts ({report.upgrade.upgrade_start_s}s). "
+                        f"Simulation would end before any upgrades happen! Increase stop_time to at least {report.upgrade.upgrade_start_s + 7200}s"
+                    )
+                elif report.upgrade.upgrade_end_s and report.stop_time_s < report.upgrade.upgrade_end_s:
+                    issues.append(
+                        f"stop_time ({report.stop_time_s}s) is before upgrade completes ({report.upgrade.upgrade_end_s}s). "
+                        f"Increase stop_time to at least {report.upgrade.upgrade_end_s + 7200}s for post-upgrade observation"
+                    )
+
         # Log warnings but don't fail on them
         if warnings and self.verbose:
             for w in warnings:

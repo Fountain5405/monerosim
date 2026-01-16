@@ -78,6 +78,31 @@ agents:
     poll_interval: 300
 ```
 
+## CRITICAL: Timing Constraints
+
+Monero simulations require significant bootstrap time before any meaningful activity:
+
+1. **Minimum 5 hours before activity can start:**
+   - t=0 to t=4h: Bootstrap period (blockchain sync, network formation)
+   - t=4h: bootstrap_end_time (miner-distributor starts funding users)
+   - t=5h: activity_start_time (users can start transacting)
+
+2. **Why 5 hours minimum?**
+   - Monero coinbase outputs require 60 block confirmations before spending
+   - At ~2 min/block, that's ~2 hours just for unlock
+   - Plus time for initial sync, wallet setup, and funding distribution
+
+3. **Calculating total simulation duration:**
+   - If user wants "2h steady state, then upgrade, then 2h observation"
+   - That means: 5h bootstrap + 2h steady + upgrade_window + 2h post = ~10-11h total
+   - NEVER just add the user's requested times (2+2+2≠6h total!)
+
+4. **For large simulations (50+ agents):**
+   - Add more bootstrap buffer time
+   - Use batched user spawning to avoid overwhelming Shadow
+
+5. **Upgrade scenarios must have stop_time > last upgrade completion + observation period**
+
 ## Daemon Phase Switching (for upgrades)
 
 Agents can switch binaries mid-simulation:

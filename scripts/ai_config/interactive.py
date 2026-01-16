@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Optional, Callable
 
+from .validator import seconds_to_human
+
 # Try to import readline for better input handling
 try:
     import readline
@@ -107,7 +109,7 @@ def get_multiline_input(prompt: str) -> str:
     lines = []
     try:
         while True:
-            line = input(f"  {c.CYAN}>{c.RESET} ")
+            line = input("  > ")
             if not line and lines:  # Empty line after content = done
                 break
             if line:
@@ -180,8 +182,8 @@ def print_result_summary(report):
 
     # Timing
     print(f"  {c.BOLD}Timing:{c.RESET}")
-    print(f"    • Duration: {report.duration}")
-    print(f"    • Bootstrap ends: {report.bootstrap_end_time}")
+    print(f"    • Duration: {seconds_to_human(report.stop_time_s)}")
+    print(f"    • Bootstrap ends: {seconds_to_human(report.bootstrap_end_time_s)}")
 
     # Network
     if report.network_type:
