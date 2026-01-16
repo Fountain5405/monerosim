@@ -48,7 +48,7 @@ agents:
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
-    hashrate: 20               # Sum all hashrates to ~100
+    hashrate: 20               # INITIAL miners must sum to 100 (for difficulty calibration)
     can_receive_distributions: true
 
   user-001:
@@ -162,7 +162,8 @@ config = {
     'agents': {}
 }
 
-# Generate miners (hashrates should sum to 100)
+# Generate INITIAL miners (hashrates must sum to 100 for proper difficulty calibration)
+# Late-joining miners can add extra hashrate - LWMA difficulty will adjust
 # IMPORTANT: Stagger miner start times by 1s each to avoid memory spikes from simultaneous RandomX cache allocation
 num_miners = 5
 for i in range(num_miners):

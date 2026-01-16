@@ -406,12 +406,18 @@ class ConfigGenerator:
         if report.user_count > 0 and not report.has_distributor:
             issues.append("Missing miner-distributor (required when users exist)")
 
-        # Check hashrate (warning only - close enough is fine)
-        if report.miner_count > 0 and report.total_hashrate != 100:
-            if abs(report.total_hashrate - 100) > 10:  # Only fail if way off
-                issues.append(f"Total hashrate is {report.total_hashrate}, should be ~100")
-            else:
-                warnings.append(f"Total hashrate is {report.total_hashrate} (close to 100)")
+        # Check hashrate for initial miners only (those starting in first 60s)
+        # Late-joining miners are valid and can add more hashrate
+        if report.miner_count > 0:
+            initial_hashrate = sum(
+                a.hashrate for a in report.agents
+                if a.agent_type == "miner" and a.hashrate and a.start_time_s < 60
+            )
+            if initial_hashrate > 0 and initial_hashrate != 100:
+                if abs(initial_hashrate - 100) > 10:  # Only flag if way off
+                    issues.append(f"Initial miners hashrate is {initial_hashrate}, should be ~100")
+                else:
+                    warnings.append(f"Initial miners hashrate is {initial_hashrate} (close to 100)")
 
         # Check upgrade scenario timing (hard failure for gap violations)
         if report.upgrade.enabled:
