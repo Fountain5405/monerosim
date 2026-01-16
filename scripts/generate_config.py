@@ -216,10 +216,10 @@ def format_time_offset(seconds: int, for_config: bool = True) -> str:
         return " ".join(parts) if parts else "0s"
 
 
-def generate_miner_agent(hashrate: int, start_offset_s: int) -> Dict[str, Any]:
+def generate_miner_agent(hashrate: int, start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
     """Generate a miner agent configuration (new format)."""
     return OrderedDict([
-        ("daemon", "monerod"),
+        ("daemon", daemon_binary),
         ("wallet", "monero-wallet-rpc"),
         ("script", "agents.autonomous_miner"),
         ("start_time", format_time_offset(start_offset_s)),
@@ -228,16 +228,17 @@ def generate_miner_agent(hashrate: int, start_offset_s: int) -> Dict[str, Any]:
     ])
 
 
-def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0) -> Dict[str, Any]:
+def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0, daemon_binary: str = "monerod") -> Dict[str, Any]:
     """Generate a regular user agent configuration (new format).
 
     Args:
         start_offset_s: When the agent process spawns (sim time)
         tx_interval: Interval between transaction attempts
         activity_start_time: Absolute sim time when transactions should start (0 = start immediately)
+        daemon_binary: Path to monerod binary (default: "monerod")
     """
     return OrderedDict([
-        ("daemon", "monerod"),
+        ("daemon", daemon_binary),
         ("wallet", "monero-wallet-rpc"),
         ("script", "agents.regular_user"),
         ("start_time", format_time_offset(start_offset_s)),
@@ -263,6 +264,7 @@ def generate_config(
     batch_interval: str = "20m",
     initial_batch_size: int = 5,
     max_batch_size: int = 200,
+    daemon_binary: str = "monerod",
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -278,6 +280,7 @@ def generate_config(
         batch_interval: Time between batches (e.g., "20m")
         initial_batch_size: Size of first user batch
         max_batch_size: Maximum users per batch
+        daemon_binary: Path to monerod binary (default: "monerod")
     """
 
     num_miners = len(FIXED_MINERS)
@@ -343,20 +346,20 @@ def generate_config(
     # Add fixed miners with explicit IDs
     for i, miner in enumerate(FIXED_MINERS):
         agent_id = f"miner-{i+1:03}"
-        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"])
+        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
     # Add variable users with appropriate start times
     if use_batched and batch_schedule:
         # Batched: use calculated batch schedule
         for user_index, start_time_s in batch_schedule:
             agent_id = f"user-{user_index+1:03}"
-            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, activity_start_time_s)
+            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, activity_start_time_s, daemon_binary)
     else:
         # Non-batched: start at USER_START_TIME_S with stagger
         for i in range(num_users):
             agent_id = f"user-{i+1:03}"
             start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s)
+            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s, daemon_binary)
 
     # Add miner-distributor (starts at bootstrap end to fund users)
     agents["miner-distributor"] = OrderedDict([
@@ -608,6 +611,13 @@ Timeline (verified bootstrap for Monero regtest):
         help="Maximum users per batch (default: 200)"
     )
 
+    parser.add_argument(
+        "--daemon-binary",
+        type=str,
+        default="monerod",
+        help="Daemon binary path or name (default: monerod, resolves to ~/.monerosim/bin/monerod)"
+    )
+
     args = parser.parse_args()
 
     # Validate
@@ -633,6 +643,7 @@ Timeline (verified bootstrap for Monero regtest):
             batch_interval=args.batch_interval,
             initial_batch_size=args.initial_batch_size,
             max_batch_size=args.max_batch_size,
+            daemon_binary=args.daemon_binary,
         )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
