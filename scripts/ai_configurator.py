@@ -33,169 +33,94 @@ import urllib.error
 
 # Schema context for the LLM - describes what monerosim can do
 MONEROSIM_SCHEMA = """
-# Monerosim Configuration Schema
+# Monerosim YAML Config Schema (Monero network simulator)
 
-Monerosim simulates Monero cryptocurrency networks using Shadow network simulator.
-Configs are YAML files with these main sections:
-
-## 1. general - Simulation settings
+## Structure:
 ```yaml
 general:
-  stop_time: "8h"              # Simulation duration (e.g., "30m", "2h", "1d")
-  simulation_seed: 12345       # Random seed for reproducibility
-  parallelism: 0               # 0=auto, 1=deterministic single-thread
-  bootstrap_end_time: "4h"     # High bandwidth period (for sync)
-  progress: true               # Show progress
-  enable_dns_server: true      # Enable peer discovery
-  shadow_log_level: info       # trace/debug/info/warning/error
-  daemon_defaults:             # Default flags for all monerod instances
-    log-level: 1
-    db-sync-mode: fastest
-    no-zmq: true
-  wallet_defaults:
-    log-level: 1
-```
-
-## 2. network - Topology configuration
-```yaml
-# Option A: Simple switch (all nodes same LAN)
-network:
-  type: 1_gbit_switch
-  peer_mode: Dynamic           # Dynamic/Hardcoded/Hybrid
-
-# Option B: GML topology (realistic Internet)
-network:
-  path: gml_processing/1200_nodes_caida_with_loops.gml
-  peer_mode: Dynamic
-```
-
-## 3. agents - Network participants
-Each agent needs a unique ID (e.g., miner-001, user-001, spy-001).
-
-### Agent Types:
-
-#### Miners (produce blocks)
-```yaml
-miner-001:
-  daemon: monerod
-  wallet: monero-wallet-rpc
-  script: agents.autonomous_miner
-  start_time: 0s
-  hashrate: 25                 # Mining power (relative)
-  can_receive_distributions: true
-```
-
-#### Regular Users (send transactions)
-```yaml
-user-001:
-  daemon: monerod
-  wallet: monero-wallet-rpc
-  script: agents.regular_user
-  start_time: 3h               # Start after bootstrap
-  transaction_interval: 60     # Seconds between transactions
-  activity_start_time: 18000   # When to start sending (seconds)
-  can_receive_distributions: true
-```
-
-#### Miner Distributor (funds users from mining rewards)
-```yaml
-miner-distributor:
-  script: agents.miner_distributor
-  wait_time: 14400             # Start after bootstrap (seconds)
-  initial_fund_amount: "1.0"
-  transaction_frequency: 30
-```
-
-#### Simulation Monitor (logging/alerts)
-```yaml
-simulation-monitor:
-  script: agents.simulation_monitor
-  poll_interval: 300
-  enable_alerts: true
-```
-
-### Daemon Phase Switching (for upgrades)
-Agents can switch daemon binaries during simulation:
-```yaml
-user-001:
-  wallet: monero-wallet-rpc
-  script: agents.regular_user
-  start_time: 3h
-  daemon_0: monerod-v1         # Phase 0 binary
-  daemon_0_start: "3h"         # When phase 0 starts
-  daemon_0_stop: "7h"          # When phase 0 stops
-  daemon_1: monerod-v2         # Phase 1 binary
-  daemon_1_start: "7h30s"      # Must be 30s+ after phase 0 stop
-```
-
-### Custom Daemon Options (per-agent)
-```yaml
-spy-node:
-  daemon: monerod
-  daemon_options:
-    out-peers: 500             # Many outbound connections
-    in-peers: 500              # Many inbound connections
-    log-level: 2               # More verbose
-```
-
-## Key Timing Considerations:
-- Bootstrap period (~4h): High bandwidth, no packet loss, nodes sync blockchain
-- Coinbase unlock: Mining rewards unlock after 60 blocks (~2h at 2min/block)
-- Activity start: Users should wait for funding (bootstrap_end + 1h typically)
-- Phase gaps: At least 30s between daemon phases for graceful restart
-
-## Common Scenarios:
-
-1. **Basic Network**: 5 miners + N users, steady state transaction activity
-2. **Upgrade Scenario**: Network upgrades binaries during simulation
-3. **Spy Nodes**: Nodes with many connections monitoring the network
-4. **Attack Scenarios**: Miners with majority hashrate, delayed relays, etc.
-5. **Geographic Distribution**: Using GML topology with regional weights
-"""
-
-EXAMPLE_SCENARIOS = """
-## Example Scenario Descriptions → Configs
-
-### Example 1: "I want a simple 30 node network"
-```yaml
-general:
-  stop_time: 8h
+  stop_time: "6h"           # Duration
   simulation_seed: 12345
-  bootstrap_end_time: 4h
+  bootstrap_end_time: "4h"  # Sync period
   enable_dns_server: true
+  daemon_defaults: {log-level: 1, db-sync-mode: fastest, no-zmq: true}
+  wallet_defaults: {log-level: 1}
+
 network:
   type: 1_gbit_switch
   peer_mode: Dynamic
+
 agents:
-  miner-001:
+  miner-001:                # Miners produce blocks
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
-    hashrate: 20
-  # ... (5 miners total, 25 users)
-  user-001:
+    hashrate: 20            # Sum to ~100 for easy %
+    can_receive_distributions: true
+
+  user-001:                 # Users send transactions
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3h
     transaction_interval: 60
     activity_start_time: 18000
-  # ...
-  miner-distributor:
+    can_receive_distributions: true
+
+  miner-distributor:        # Funds users
     script: agents.miner_distributor
     wait_time: 14400
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
 ```
 
-### Example 2: "5 spy nodes with 500 connections monitoring 50 regular nodes"
-- Create 5 agents with high out-peers/in-peers daemon options
-- Create 50 regular user agents
-- Spy nodes don't need wallets (observation only)
+## Agent naming: miner-001, user-001, spy-001, etc.
 
-### Example 3: "Upgrade scenario where nodes switch from v1 to v2"
-- Use daemon_0/daemon_1 phase fields
-- Stagger upgrade times across nodes
-- Ensure 30s+ gap between stop and start times
+## Upgrade scenario (phase switching):
+```yaml
+user-001:
+  wallet: monero-wallet-rpc
+  script: agents.regular_user
+  daemon_0: monerod-v1
+  daemon_0_start: "3h"
+  daemon_0_stop: "7h"
+  daemon_1: monerod-v2
+  daemon_1_start: "7h30s"   # 30s+ gap required
+```
+
+## Spy nodes (many connections):
+```yaml
+spy-001:
+  daemon: monerod
+  daemon_options: {out-peers: 500, in-peers: 500}
+```
+
+## Timing: bootstrap ~4h for sync, users start at 3h, activity at 5h (18000s)
+"""
+
+EXAMPLE_SCENARIOS = """
+## Example: 30 nodes for 8 hours
+```yaml
+general:
+  stop_time: 8h
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  daemon_defaults: {log-level: 1, db-sync-mode: fastest, no-zmq: true}
+network:
+  type: 1_gbit_switch
+  peer_mode: Dynamic
+agents:
+  miner-001: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.autonomous_miner, start_time: 0s, hashrate: 20}
+  miner-002: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.autonomous_miner, start_time: 0s, hashrate: 20}
+  # ... more miners (hashrates sum to 100)
+  user-001: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.regular_user, start_time: 3h, activity_start_time: 18000}
+  # ... more users
+  miner-distributor: {script: agents.miner_distributor, wait_time: 14400}
+  simulation-monitor: {script: agents.simulation_monitor, poll_interval: 300}
+```
 """
 
 
@@ -340,7 +265,8 @@ class OpenAICompatibleProvider(LLMProvider):
         data = json.dumps({
             "model": self.model,
             "messages": messages,
-            "temperature": temperature
+            "temperature": temperature,
+            "max_tokens": 4096,  # Ensure enough tokens for full config generation
         }).encode()
 
         req = urllib.request.Request(
@@ -352,7 +278,7 @@ class OpenAICompatibleProvider(LLMProvider):
             }
         )
 
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=600) as resp:  # 10 min timeout for large responses
             result = json.loads(resp.read().decode())
             return LLMResponse(
                 content=result["choices"][0]["message"]["content"],
@@ -395,30 +321,13 @@ def auto_detect_provider() -> Optional[LLMProvider]:
 
 def build_system_prompt() -> str:
     """Build the system prompt with schema context."""
-    return f"""You are a monerosim configuration generator. Your job is to convert natural language descriptions of Monero network simulation scenarios into valid YAML configuration files.
+    return f"""You generate monerosim YAML configs. Output ONLY valid YAML in ```yaml blocks.
 
 {MONEROSIM_SCHEMA}
 
 {EXAMPLE_SCENARIOS}
 
-## Your Task:
-1. Understand the user's scenario description
-2. Ask clarifying questions if critical details are missing
-3. Generate a complete, valid YAML configuration
-
-## Response Format:
-- If you need clarification, ask specific questions
-- When generating config, output ONLY the YAML inside ```yaml ... ``` code blocks
-- Include helpful comments in the YAML explaining the configuration
-- Ensure all timing values are consistent (bootstrap, activity start, phases, etc.)
-
-## Important Rules:
-- Always include miner-distributor if there are users (they need funding)
-- Always include simulation-monitor for observability
-- Use realistic timing: 4h bootstrap, 5h activity start for standard scenarios
-- Hashrates should sum to ~100 for easy percentage reasoning
-- Phase gaps must be at least 30 seconds
-- Agent IDs must be unique (use patterns like miner-001, user-001, spy-001)
+Rules: Include miner-distributor (funds users) and simulation-monitor. Hashrates sum to 100. Agent IDs: miner-001, user-001, etc.
 """
 
 
