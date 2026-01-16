@@ -135,17 +135,27 @@ fn infer_originator(observations: &[&TxObservation]) -> Option<String> {
     }
 
     // Strategy: Most common source_ip in early observations
+    // Tie-breaker: Earlier observation wins (observations are pre-sorted by timestamp)
     let early_count = observations.len().min(5);
     let early_obs = &observations[..early_count];
 
-    let mut source_counts: HashMap<&str, usize> = HashMap::new();
-    for obs in early_obs {
-        *source_counts.entry(&obs.source_ip).or_insert(0) += 1;
+    // Count occurrences and track first appearance index for deterministic tie-breaking
+    let mut source_counts: HashMap<&str, (usize, usize)> = HashMap::new(); // ip -> (count, first_index)
+    for (idx, obs) in early_obs.iter().enumerate() {
+        source_counts
+            .entry(&obs.source_ip)
+            .and_modify(|(count, _)| *count += 1)
+            .or_insert((1, idx));
     }
 
+    // Find max count, then among ties pick the one with smallest first_index
     source_counts
         .into_iter()
-        .max_by_key(|(_, count)| *count)
+        .max_by(|(_, (count_a, idx_a)), (_, (count_b, idx_b))| {
+            // First compare by count (higher is better)
+            // Then by index (lower is better for tie-breaking)
+            count_a.cmp(count_b).then_with(|| idx_b.cmp(idx_a))
+        })
         .map(|(ip, _)| ip.to_string())
 }
 
