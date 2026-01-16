@@ -94,6 +94,17 @@ enum Commands {
         #[arg(long)]
         compare_shared: Option<PathBuf>,
     },
+
+    /// Analyze Dandelion++ stem paths and privacy
+    Dandelion {
+        /// Show full path details for each transaction
+        #[arg(long)]
+        detailed: bool,
+
+        /// Only show transactions with stem length <= N (privacy concerns)
+        #[arg(long)]
+        short_stems: Option<usize>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -308,6 +319,19 @@ fn main() -> Result<()> {
                 log::info!("Comparison written to {}", cli.output.join("tx_relay_comparison.txt").display());
             }
         }
+        Commands::Dandelion { detailed, short_stems } => {
+            log::info!("Analyzing Dandelion++ stem paths...");
+
+            let dandelion_report = analysis::analyze_dandelion(&transactions, &log_data, &agents);
+
+            // Print report
+            print_dandelion_report(&dandelion_report, detailed, short_stems);
+
+            // Save JSON report
+            let json = serde_json::to_string_pretty(&dandelion_report)?;
+            fs::write(cli.output.join("dandelion_report.json"), &json)?;
+            log::info!("Dandelion report written to {}", cli.output.join("dandelion_report.json").display());
+        }
     }
 
     Ok(())
@@ -377,6 +401,100 @@ fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
         }
     }
     println!();
+}
+
+/// Print Dandelion++ analysis report to stdout
+fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: bool, short_stems: Option<usize>) {
+    println!("\n================================================================================");
+    println!("                    DANDELION++ STEM PATH ANALYSIS");
+    println!("================================================================================\n");
+
+    println!("Overview:");
+    println!("  Total transactions: {}", report.total_transactions);
+    println!("  Paths reconstructed: {}", report.paths_reconstructed);
+    println!("  Originator confirmed: {} ({:.1}%)",
+        report.originator_confirmed_count,
+        if report.paths_reconstructed > 0 {
+            (report.originator_confirmed_count as f64 / report.paths_reconstructed as f64) * 100.0
+        } else { 0.0 }
+    );
+    println!();
+
+    println!("Stem Length Statistics:");
+    println!("  Average: {:.1} hops", report.avg_stem_length);
+    println!("  Min: {} hops", report.min_stem_length);
+    println!("  Max: {} hops", report.max_stem_length);
+    println!("  Distribution:");
+    let mut lengths: Vec<_> = report.stem_length_distribution.iter().collect();
+    lengths.sort_by_key(|(k, _)| *k);
+    for (len, count) in lengths {
+        let pct = (*count as f64 / report.paths_reconstructed.max(1) as f64) * 100.0;
+        println!("    {} hops: {} ({:.1}%)", len, count, pct);
+    }
+    println!();
+
+    println!("Timing:");
+    println!("  Avg stem duration: {:.1}ms", report.avg_stem_duration_ms);
+    println!("  Avg hop delay: {:.1}ms", report.avg_hop_delay_ms);
+    println!();
+
+    if !report.frequent_fluff_nodes.is_empty() {
+        println!("Frequent Fluff Points (potential privacy concern):");
+        for (node, count) in &report.frequent_fluff_nodes {
+            let pct = (*count as f64 / report.paths_reconstructed.max(1) as f64) * 100.0;
+            println!("  {}: {} times ({:.1}%)", node, count, pct);
+        }
+        println!();
+    }
+
+    println!("Privacy Assessment:");
+    println!("  Score: {}/100", report.privacy_assessment.privacy_score);
+    println!("  Effective anonymity: {}", if report.privacy_assessment.effective_anonymity { "YES" } else { "NO" });
+    println!("  Trivially deanonymizable: {:.1}%", report.privacy_assessment.trivially_deanonymizable_pct);
+    println!();
+    println!("Findings:");
+    for finding in &report.privacy_assessment.findings {
+        println!("  - {}", finding);
+    }
+    if !report.privacy_assessment.recommendations.is_empty() {
+        println!();
+        println!("Recommendations:");
+        for rec in &report.privacy_assessment.recommendations {
+            println!("  - {}", rec);
+        }
+    }
+    println!();
+
+    // Show detailed paths if requested
+    if detailed || short_stems.is_some() {
+        println!("================================================================================");
+        println!("                         TRANSACTION PATHS");
+        println!("================================================================================\n");
+
+        let paths_to_show: Vec<_> = if let Some(max_len) = short_stems {
+            report.paths.iter().filter(|p| p.stem_length <= max_len).collect()
+        } else {
+            report.paths.iter().collect()
+        };
+
+        if paths_to_show.is_empty() {
+            println!("  No paths match the filter criteria.");
+        } else {
+            for path in paths_to_show.iter().take(50) {
+                println!("TX: {}...", &path.tx_hash[..16.min(path.tx_hash.len())]);
+                println!("  Originator: {}", path.originator);
+                println!("  Stem length: {} hops", path.stem_length);
+                println!("  Stem duration: {:.1}ms", path.stem_duration_ms);
+                println!("  Fluff node: {}", path.fluff_node.as_deref().unwrap_or("unknown"));
+                println!("  Fluff recipients: {}", path.fluff_recipients);
+                println!("  Path: {}", analysis::dandelion::format_stem_path(path));
+                println!();
+            }
+            if paths_to_show.len() > 50 {
+                println!("  ... and {} more paths (see JSON report for full details)", paths_to_show.len() - 50);
+            }
+        }
+    }
 }
 
 fn run_full_analysis(
