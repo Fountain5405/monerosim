@@ -35,6 +35,19 @@ pub struct LogPatterns {
     pub block_height_line: Regex,
     /// Match timestamp at start of line
     pub timestamp: Regex,
+    // TX Relay V2 patterns
+    /// Match: "[IP:PORT INC/OUT] Received NOTIFY_TX_POOL_HASH (N txes)"
+    pub tx_pool_hash: Regex,
+    /// Match: "[IP:PORT INC/OUT] Received NOTIFY_REQUEST_TX_POOL_TXS (N txes)"
+    pub tx_pool_request_received: Regex,
+    /// Match: "Requesting N transactions via NOTIFY_REQUEST_TX_POOL_TXS"
+    pub tx_pool_request_sent: Regex,
+    /// Match: "Tx verification failed, dropping connection"
+    pub drop_tx_verification: Regex,
+    /// Match: "Duplicate transaction in notification, dropping connection"
+    pub drop_duplicate_tx: Regex,
+    /// Match generic "dropping connection" with context
+    pub drop_connection: Regex,
 }
 
 impl LogPatterns {
@@ -67,6 +80,25 @@ impl LogPatterns {
             timestamp: Regex::new(
                 r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)"
             ).expect("Invalid timestamp regex"),
+            // TX Relay V2 patterns
+            tx_pool_hash: Regex::new(
+                r"\[(\d+\.\d+\.\d+\.\d+):(\d+)\s+(INC|OUT)\]\s+Received NOTIFY_TX_POOL_HASH \((\d+) txes\)"
+            ).expect("Invalid tx_pool_hash regex"),
+            tx_pool_request_received: Regex::new(
+                r"\[(\d+\.\d+\.\d+\.\d+):(\d+)\s+(INC|OUT)\]\s+Received NOTIFY_REQUEST_TX_POOL_TXS \((\d+) txes\)"
+            ).expect("Invalid tx_pool_request_received regex"),
+            tx_pool_request_sent: Regex::new(
+                r"Requesting (\d+) transactions via NOTIFY_REQUEST_TX_POOL_TXS"
+            ).expect("Invalid tx_pool_request_sent regex"),
+            drop_tx_verification: Regex::new(
+                r"Tx verification failed, dropping connection"
+            ).expect("Invalid drop_tx_verification regex"),
+            drop_duplicate_tx: Regex::new(
+                r"Duplicate transaction.*dropping connection"
+            ).expect("Invalid drop_duplicate_tx regex"),
+            drop_connection: Regex::new(
+                r"\[(\d+\.\d+\.\d+\.\d+):\d+.*\].*dropping connection"
+            ).expect("Invalid drop_connection regex"),
         }
     }
 }
@@ -255,6 +287,100 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
                 });
                 state.pending_block_mined = false;
             }
+        }
+
+        // ================================================================
+        // TX Relay V2 Protocol Parsing
+        // ================================================================
+
+        // Check for TX pool hash announcement (v2)
+        if let Some(caps) = PATTERNS.tx_pool_hash.captures(&line) {
+            let source_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let direction = parse_direction(caps.get(3).map(|m| m.as_str()).unwrap_or(""));
+            let tx_count: usize = caps.get(4)
+                .and_then(|m| m.as_str().parse().ok())
+                .unwrap_or(0);
+
+            data.tx_hash_announcements.push(TxHashAnnouncement {
+                timestamp: state.last_timestamp,
+                node_id: node_id.to_string(),
+                source_ip,
+                direction,
+                tx_count,
+                tx_hashes: Vec::new(), // Not logged individually at this level
+            });
+            continue;
+        }
+
+        // Check for TX pool request received (v2)
+        if let Some(caps) = PATTERNS.tx_pool_request_received.captures(&line) {
+            let source_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let tx_count: usize = caps.get(4)
+                .and_then(|m| m.as_str().parse().ok())
+                .unwrap_or(0);
+
+            data.tx_requests.push(TxRequest {
+                timestamp: state.last_timestamp,
+                node_id: node_id.to_string(),
+                target_ip: source_ip,
+                tx_count,
+                is_outgoing: false,
+            });
+            continue;
+        }
+
+        // Check for TX pool request sent (v2)
+        if let Some(caps) = PATTERNS.tx_pool_request_sent.captures(&line) {
+            let tx_count: usize = caps.get(1)
+                .and_then(|m| m.as_str().parse().ok())
+                .unwrap_or(0);
+
+            data.tx_requests.push(TxRequest {
+                timestamp: state.last_timestamp,
+                node_id: node_id.to_string(),
+                target_ip: String::new(), // Not captured in this log line
+                tx_count,
+                is_outgoing: true,
+            });
+            continue;
+        }
+
+        // Check for connection drops with reasons
+        if PATTERNS.drop_tx_verification.is_match(&line) {
+            if let Some(caps) = PATTERNS.drop_connection.captures(&line) {
+                let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+                data.connection_drops.push(ConnectionDrop {
+                    timestamp: state.last_timestamp,
+                    node_id: node_id.to_string(),
+                    peer_ip,
+                    reason: "tx_verification_failed".to_string(),
+                });
+            }
+            continue;
+        }
+
+        if PATTERNS.drop_duplicate_tx.is_match(&line) {
+            if let Some(caps) = PATTERNS.drop_connection.captures(&line) {
+                let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+                data.connection_drops.push(ConnectionDrop {
+                    timestamp: state.last_timestamp,
+                    node_id: node_id.to_string(),
+                    peer_ip,
+                    reason: "duplicate_tx".to_string(),
+                });
+            }
+            continue;
+        }
+
+        // Generic dropping connection
+        if let Some(caps) = PATTERNS.drop_connection.captures(&line) {
+            let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            data.connection_drops.push(ConnectionDrop {
+                timestamp: state.last_timestamp,
+                node_id: node_id.to_string(),
+                peer_ip,
+                reason: "other".to_string(),
+            });
         }
     }
 

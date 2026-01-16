@@ -83,6 +83,17 @@ enum Commands {
 
     /// Show summary statistics
     Summary,
+
+    /// Analyze TX relay v2 protocol behavior (PR #9933)
+    TxRelayV2 {
+        /// Path to second simulation data directory for comparison
+        #[arg(long)]
+        compare_with: Option<PathBuf>,
+
+        /// Path to second shared data directory for comparison
+        #[arg(long)]
+        compare_shared: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -244,13 +255,128 @@ fn main() -> Result<()> {
             );
             let total_tx_obs: usize = log_data.values().map(|d| d.tx_observations.len()).sum();
             let total_conn_events: usize = log_data.values().map(|d| d.connection_events.len()).sum();
-            println!("  TX observations: {}", total_tx_obs);
+            let total_v2_announcements: usize = log_data.values().map(|d| d.tx_hash_announcements.len()).sum();
+            let total_v2_requests: usize = log_data.values().map(|d| d.tx_requests.len()).sum();
+            let total_drops: usize = log_data.values().map(|d| d.connection_drops.len()).sum();
+            println!("  TX observations (v1): {}", total_tx_obs);
+            println!("  TX hash announcements (v2): {}", total_v2_announcements);
+            println!("  TX requests (v2): {}", total_v2_requests);
             println!("  Connection events: {}", total_conn_events);
+            println!("  Connection drops: {}", total_drops);
             println!();
+        }
+        Commands::TxRelayV2 { compare_with, compare_shared } => {
+            log::info!("Analyzing TX relay v2 protocol behavior...");
+
+            // Run v2 analysis on primary data
+            let v2_report = analysis::analyze_tx_relay_v2(&transactions, &log_data, &agents);
+
+            // Print primary report
+            print_v2_report(&v2_report);
+
+            // Save primary report
+            let json = serde_json::to_string_pretty(&v2_report)?;
+            fs::write(cli.output.join("tx_relay_v2_report.json"), &json)?;
+            log::info!("V2 report written to {}", cli.output.join("tx_relay_v2_report.json").display());
+
+            // If comparison requested, load and analyze second dataset
+            if let (Some(compare_dir), Some(compare_shared_dir)) = (compare_with, compare_shared) {
+                log::info!("Loading comparison data from {}...", compare_shared_dir.display());
+
+                let compare_agents = load_agent_registry(&compare_shared_dir)?;
+                let compare_transactions = load_transactions(&compare_shared_dir)?;
+
+                let compare_hosts_dir = compare_dir.join("hosts");
+                let compare_log_data = analysis::parse_all_logs(&compare_hosts_dir, &compare_agents)?;
+
+                let compare_report = analysis::analyze_tx_relay_v2(&compare_transactions, &compare_log_data, &compare_agents);
+
+                // Print comparison
+                println!("\n");
+                let comparison = analysis::tx_relay_v2::compare_runs(&v2_report, &compare_report);
+                for line in &comparison {
+                    println!("{}", line);
+                }
+
+                // Save comparison report
+                let compare_json = serde_json::to_string_pretty(&compare_report)?;
+                fs::write(cli.output.join("tx_relay_v2_comparison_report.json"), &compare_json)?;
+
+                // Save comparison summary
+                let comparison_text = comparison.join("\n");
+                fs::write(cli.output.join("tx_relay_comparison.txt"), &comparison_text)?;
+                log::info!("Comparison written to {}", cli.output.join("tx_relay_comparison.txt").display());
+            }
         }
     }
 
     Ok(())
+}
+
+/// Print TX relay v2 report to stdout
+fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
+    println!("\n================================================================================");
+    println!("                      TX RELAY V2 PROTOCOL ANALYSIS");
+    println!("================================================================================\n");
+
+    println!("Protocol Usage:");
+    println!("  V1 broadcasts (NOTIFY_NEW_TRANSACTIONS): {}", report.protocol_usage.v1_tx_broadcasts);
+    println!("  V2 hash announcements (NOTIFY_TX_POOL_HASH): {}", report.protocol_usage.v2_hash_announcements);
+    println!("  V2 requests (NOTIFY_REQUEST_TX_POOL_TXS): {}", report.protocol_usage.v2_tx_requests);
+    println!("  V2 usage ratio: {:.1}%", report.protocol_usage.v2_usage_ratio * 100.0);
+    println!();
+
+    println!("TX Delivery:");
+    println!("  Transactions created: {}", report.delivery_analysis.total_txs_created);
+    println!("  Fully propagated: {}", report.delivery_analysis.txs_fully_propagated);
+    println!("  Potentially lost: {}", report.delivery_analysis.txs_potentially_lost.len());
+    println!("  Average propagation coverage: {:.1}%", report.delivery_analysis.average_propagation_coverage * 100.0);
+    if !report.delivery_analysis.txs_potentially_lost.is_empty() {
+        println!("  Lost TX hashes:");
+        for (i, tx) in report.delivery_analysis.txs_potentially_lost.iter().take(5).enumerate() {
+            println!("    {}. {}...", i + 1, &tx[..16.min(tx.len())]);
+        }
+        if report.delivery_analysis.txs_potentially_lost.len() > 5 {
+            println!("    ... and {} more", report.delivery_analysis.txs_potentially_lost.len() - 5);
+        }
+    }
+    println!();
+
+    println!("Connection Stability:");
+    println!("  Total drops: {}", report.connection_stability.total_drops);
+    println!("    TX verification failures: {}", report.connection_stability.drops_tx_verification);
+    println!("    Duplicate TX: {}", report.connection_stability.drops_duplicate_tx);
+    println!("    Protocol violations: {}", report.connection_stability.drops_protocol_violation);
+    println!("    Other: {}", report.connection_stability.drops_other);
+    println!("  Avg connection duration: {:.1}s", report.connection_stability.average_connection_duration_sec);
+    println!();
+
+    if report.protocol_usage.v2_tx_requests > 0 {
+        println!("V2 Request/Response:");
+        println!("  Requests sent: {}", report.request_response.requests_sent);
+        println!("  Requests received: {}", report.request_response.requests_received);
+        println!("  Fulfillment ratio: {:.1}%", report.request_response.fulfillment_ratio * 100.0);
+        println!();
+    }
+
+    println!("Assessment:");
+    println!("  Health score: {}/100", report.assessment.health_score);
+    println!("  V2 active: {}", if report.assessment.v2_active { "YES" } else { "NO" });
+    println!("  Lost TXs: {}", if report.assessment.has_lost_txs { "YES" } else { "NO" });
+    println!("  Stability issues: {}", if report.assessment.has_stability_issues { "YES" } else { "NO" });
+    println!();
+    println!("Findings:");
+    for finding in &report.assessment.findings {
+        println!("  - {}", finding);
+    }
+    if !report.assessment.recommendations.is_empty() {
+        println!();
+        println!("Recommendations:");
+        for rec in &report.assessment.recommendations {
+            println!("  - {}", rec);
+        }
+    }
+    println!();
 }
 
 fn run_full_analysis(
