@@ -194,7 +194,8 @@ class LLMProvider:
             data=data,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
+                "Authorization": f"Bearer {self.api_key}",
+                "User-Agent": "monerosim-ai-config/1.0"
             }
         )
 
