@@ -326,14 +326,19 @@ class RegularUserAgent(BaseAgent):
         
         try:
             # Send transaction
-            tx_hash = self.wallet_rpc.transfer(
+            response = self.wallet_rpc.transfer(
                 destinations=[{
                     'address': recipient_address,
                     'amount': int(amount * 1e12)  # Convert to atomic units
                 }],
                 priority=1
             )
-            
+            tx_hash = response.get('tx_hash', '')
+
+            if not tx_hash:
+                self.logger.error(f"Transaction response missing tx_hash: {response}")
+                return
+
             self.logger.info(f"Sent transaction: {tx_hash} to {recipient.get('agent_id')} for {amount} XMR")
             
             # Record transaction in shared state
