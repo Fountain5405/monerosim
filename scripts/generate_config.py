@@ -265,6 +265,8 @@ def generate_config(
     initial_batch_size: int = 5,
     max_batch_size: int = 200,
     daemon_binary: str = "monerod",
+    outputs_per_transaction: int = 10,
+    output_amount: float = 100.0,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -281,6 +283,8 @@ def generate_config(
         initial_batch_size: Size of first user batch
         max_batch_size: Maximum users per batch
         daemon_binary: Path to monerod binary (default: "monerod")
+        outputs_per_transaction: Number of outputs per transaction (multiple to same recipient)
+        output_amount: Fixed XMR amount per output
     """
 
     num_miners = len(FIXED_MINERS)
@@ -369,6 +373,8 @@ def generate_config(
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
         ("transaction_frequency", 30),
+        ("outputs_per_transaction", outputs_per_transaction),
+        ("output_amount", output_amount),
     ])
 
     # Add simulation-monitor
@@ -618,6 +624,21 @@ Timeline (verified bootstrap for Monero regtest):
         help="Daemon binary path or name (default: monerod, resolves to ~/.monerosim/bin/monerod)"
     )
 
+    # Multi-output transaction options for miner distributor
+    parser.add_argument(
+        "--md-outputs-per-tx",
+        type=int,
+        default=10,
+        help="Miner distributor: outputs per transaction to same recipient (default: 10)"
+    )
+
+    parser.add_argument(
+        "--md-output-amount",
+        type=float,
+        default=100.0,
+        help="Miner distributor: XMR amount per output (default: 100)"
+    )
+
     args = parser.parse_args()
 
     # Validate
@@ -644,6 +665,8 @@ Timeline (verified bootstrap for Monero regtest):
             initial_batch_size=args.initial_batch_size,
             max_batch_size=args.max_batch_size,
             daemon_binary=args.daemon_binary,
+            outputs_per_transaction=args.md_outputs_per_tx,
+            output_amount=args.md_output_amount,
         )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
