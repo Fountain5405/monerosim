@@ -1,0 +1,3951 @@
+{
+  "metadata": {
+    "analysis_timestamp": "2026-01-15T22:42:09.504975557+00:00",
+    "simulation_data_dir": "shadow.data",
+    "total_nodes": 32,
+    "total_transactions": 45,
+    "total_blocks": 28
+  },
+  "spy_node_analysis": {
+    "total_transactions": 45,
+    "analyzable_transactions": 45,
+    "inference_accuracy": 0.2222222222222222,
+    "timing_spread_distribution": {
+      "high_vulnerability_count": 0,
+      "moderate_vulnerability_count": 0,
+      "low_vulnerability_count": 45
+    },
+    "vulnerable_senders": [
+      {
+        "sender_id": "miner-001",
+        "high_confidence_inferences": 5,
+        "accuracy": 0.6
+      },
+      {
+        "sender_id": "miner-002",
+        "high_confidence_inferences": 3,
+        "accuracy": 0.0
+      },
+      {
+        "sender_id": "miner-005",
+        "high_confidence_inferences": 3,
+        "accuracy": 0.0
+      },
+      {
+        "sender_id": "miner-003",
+        "high_confidence_inferences": 1,
+        "accuracy": 0.0
+      },
+      {
+        "sender_id": "miner-004",
+        "high_confidence_inferences": 1,
+        "accuracy": 0.0
+      }
+    ],
+    "per_tx_analysis": [
+      {
+        "tx_hash": "9effc6a5a5fa0f07e1f5b540ed604804471f4fb7d7e7d7e57f0c0010ed67c8b7",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699201.189,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946699202.324,
+            "delta_from_first_ms": 1134.9999904632568,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946699203.074,
+            "delta_from_first_ms": 1884.9999904632568,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946699203.289,
+            "delta_from_first_ms": 2100.000023841858,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946699203.329,
+            "delta_from_first_ms": 2139.9999856948853,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946699203.574,
+            "delta_from_first_ms": 2384.999990463257,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946699203.574,
+            "delta_from_first_ms": 2384.999990463257,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946699203.709,
+            "delta_from_first_ms": 2519.9999809265137,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946699203.829,
+            "delta_from_first_ms": 2639.9999856948853,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946699203.964,
+            "delta_from_first_ms": 2774.999976158142,
+            "source_ip": "37.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12950.000047683716,
+        "inferred_originator_ip": "41.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "8db2bedabb8bc7204f41e7d056f1148febfcf66f931d681c7927a6ac072cb996",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699262.49,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946699264.125,
+            "delta_from_first_ms": 1634.9999904632568,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946699264.33,
+            "delta_from_first_ms": 1840.000033378601,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946699264.38,
+            "delta_from_first_ms": 1889.9999856948853,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946699264.915,
+            "delta_from_first_ms": 2424.999952316284,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946699265.105,
+            "delta_from_first_ms": 2615.000009536743,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946699265.375,
+            "delta_from_first_ms": 2884.999990463257,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946699265.38,
+            "delta_from_first_ms": 2889.9999856948853,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946699265.491,
+            "delta_from_first_ms": 3001.0000467300415,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946699265.625,
+            "delta_from_first_ms": 3134.999990463257,
+            "source_ip": "41.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12751.000046730042,
+        "inferred_originator_ip": "41.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "101419cd4e14f46e1b2091fc717f666d432313f74b4b07970f63cc53130fa625",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699564.896,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946699564.996,
+            "delta_from_first_ms": 100.00002384185791,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946699566.597,
+            "delta_from_first_ms": 1700.9999752044678,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946699566.682,
+            "delta_from_first_ms": 1786.0000133514404,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946699566.892,
+            "delta_from_first_ms": 1995.9999322891235,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946699567.547,
+            "delta_from_first_ms": 2651.0000228881836,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946699567.617,
+            "delta_from_first_ms": 2720.9999561309814,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946699567.822,
+            "delta_from_first_ms": 2925.9999990463257,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946699567.892,
+            "delta_from_first_ms": 2995.9999322891235,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946699567.937,
+            "delta_from_first_ms": 3041.000008583069,
+            "source_ip": "5.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 13450.999975204468,
+        "inferred_originator_ip": "3.0.0.16",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "2ddce0b73868589b783ff73b1522714fbd2a0dc0cbda74e20bd58c5909827927",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699625.598,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946699625.698,
+            "delta_from_first_ms": 99.99990463256836,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946699627.518,
+            "delta_from_first_ms": 1919.9999570846558,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946699627.523,
+            "delta_from_first_ms": 1924.9999523162842,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946699627.593,
+            "delta_from_first_ms": 1995.0000047683716,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946699627.633,
+            "delta_from_first_ms": 2034.999966621399,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946699627.818,
+            "delta_from_first_ms": 2219.99990940094,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946699628.343,
+            "delta_from_first_ms": 2745.0000047683716,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946699628.518,
+            "delta_from_first_ms": 2919.9999570846558,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946699628.563,
+            "delta_from_first_ms": 2964.9999141693115,
+            "source_ip": "3.0.0.16"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12354.999899864197,
+        "inferred_originator_ip": "3.0.0.16",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "ecbf56131d022d76e202df9aec78d17bab732d9551f0d192cf2648fcc1b1e051",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699764.0,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946699764.1,
+            "delta_from_first_ms": 100.00002384185791,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946699765.721,
+            "delta_from_first_ms": 1720.9999561309814,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946699765.996,
+            "delta_from_first_ms": 1996.000051498413,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946699765.996,
+            "delta_from_first_ms": 1996.000051498413,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946699766.171,
+            "delta_from_first_ms": 2171.0000038146973,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699766.201,
+            "delta_from_first_ms": 2200.999975204468,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946699766.241,
+            "delta_from_first_ms": 2241.0000562667847,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946699766.676,
+            "delta_from_first_ms": 2675.9999990463257,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946699766.921,
+            "delta_from_first_ms": 2921.0000038146973,
+            "source_ip": "121.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 405016.9999599457,
+        "inferred_originator_ip": "3.0.0.16",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "0ed778257872958a983db90e04d83fd8bd50818e99d3540e5336345cc3d516ce",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-018",
+            "timestamp": 946699825.188,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946699825.363,
+            "delta_from_first_ms": 175.00007152557373,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946699825.483,
+            "delta_from_first_ms": 295.0000762939453,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946699825.633,
+            "delta_from_first_ms": 445.0000524520874,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946699825.778,
+            "delta_from_first_ms": 590.0000333786011,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946699825.928,
+            "delta_from_first_ms": 740.0000095367432,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946699827.548,
+            "delta_from_first_ms": 2360.0000143051147,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946699828.048,
+            "delta_from_first_ms": 2860.0000143051147,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946699828.088,
+            "delta_from_first_ms": 2900.0000953674316,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946699828.098,
+            "delta_from_first_ms": 2910.0000858306885,
+            "source_ip": "39.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 416585.000038147,
+        "inferred_originator_ip": "1.0.0.10",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "be83054ff2686ddc6a0d50fc4dbd7d5546f1b32d5f9cc4f280fea08ac8b72e5f",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-010",
+            "timestamp": 946700040.313,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946700040.478,
+            "delta_from_first_ms": 165.0000810623169,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946700040.598,
+            "delta_from_first_ms": 285.0000858306885,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946700040.718,
+            "delta_from_first_ms": 405.00009059906006,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946700040.868,
+            "delta_from_first_ms": 555.0000667572021,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946700040.988,
+            "delta_from_first_ms": 675.0000715255737,
+            "source_ip": "36.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700041.078,
+            "delta_from_first_ms": 764.9999856948853,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946700042.906,
+            "delta_from_first_ms": 2593.000054359436,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946700042.948,
+            "delta_from_first_ms": 2634.999990463257,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946700043.128,
+            "delta_from_first_ms": 2815.000057220459,
+            "source_ip": "3.0.0.16"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12201.000094413757,
+        "inferred_originator_ip": "14.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "c92b1b25279fbe6df90128e9981d4c8175ca8bba5f33ee6f2c441afd1b40c7e6",
+        "true_sender": "miner-004",
+        "true_sender_ip": "177.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-008",
+            "timestamp": 946700255.951,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946700256.022,
+            "delta_from_first_ms": 70.99997997283936,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946700257.627,
+            "delta_from_first_ms": 1675.9999990463257,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700257.842,
+            "delta_from_first_ms": 1891.0000324249268,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946700258.112,
+            "delta_from_first_ms": 2161.0000133514404,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946700258.127,
+            "delta_from_first_ms": 2175.9999990463257,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946700258.142,
+            "delta_from_first_ms": 2190.999984741211,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946700258.342,
+            "delta_from_first_ms": 2391.0000324249268,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946700258.507,
+            "delta_from_first_ms": 2555.999994277954,
+            "source_ip": "187.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946700258.662,
+            "delta_from_first_ms": 2710.9999656677246,
+            "source_ip": "5.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12481.000065803528,
+        "inferred_originator_ip": "5.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "22564bd6394ffe3542884d1615f03b21dc2b62f38ebde0f55e2ee25ac26b83d4",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-021",
+            "timestamp": 946700316.912,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946700317.072,
+            "delta_from_first_ms": 160.00008583068848,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700317.192,
+            "delta_from_first_ms": 280.00009059906006,
+            "source_ip": "36.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946700318.242,
+            "delta_from_first_ms": 1330.0000429153442,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946700318.552,
+            "delta_from_first_ms": 1640.0001049041748,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946700319.012,
+            "delta_from_first_ms": 2100.000023841858,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946700319.102,
+            "delta_from_first_ms": 2190.000057220459,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946700319.337,
+            "delta_from_first_ms": 2425.0000715255737,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946700319.337,
+            "delta_from_first_ms": 2425.0000715255737,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946700319.512,
+            "delta_from_first_ms": 2600.000023841858,
+            "source_ip": "3.0.0.16"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 12585.000038146973,
+        "inferred_originator_ip": "3.0.0.16",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "746ad60209cec84a3e97b6c4b846621d472d9468833410830e94fbdcc19da77a",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-002",
+            "timestamp": 946700377.813,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946700378.958,
+            "delta_from_first_ms": 1144.9999809265137,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946700379.658,
+            "delta_from_first_ms": 1845.0000286102295,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946700379.658,
+            "delta_from_first_ms": 1845.0000286102295,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946700379.708,
+            "delta_from_first_ms": 1894.9999809265137,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946700379.903,
+            "delta_from_first_ms": 2090.000033378601,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946700380.153,
+            "delta_from_first_ms": 2340.000033378601,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946700380.433,
+            "delta_from_first_ms": 2620.0000047683716,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700380.478,
+            "delta_from_first_ms": 2665.000081062317,
+            "source_ip": "25.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946700380.613,
+            "delta_from_first_ms": 2800.0000715255737,
+            "source_ip": "103.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12220.00002861023,
+        "inferred_originator_ip": "4.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "376a0486cfdd822243fa926dbc880a69adae12268e59eee3b17b6f20c8ab938c",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946700439.0,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946700439.14,
+            "delta_from_first_ms": 139.99998569488525,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946700440.27,
+            "delta_from_first_ms": 1269.9999809265137,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946700440.77,
+            "delta_from_first_ms": 1769.9999809265137,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946700440.79,
+            "delta_from_first_ms": 1789.9999618530273,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946700441.285,
+            "delta_from_first_ms": 2284.999966621399,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946700441.84,
+            "delta_from_first_ms": 2840.000033378601,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946700441.86,
+            "delta_from_first_ms": 2860.0000143051147,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946700442.03,
+            "delta_from_first_ms": 3029.9999713897705,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946700442.04,
+            "delta_from_first_ms": 3039.9999618530273,
+            "source_ip": "177.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 426309.99994277954,
+        "inferred_originator_ip": "177.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "ed16414e997d31ec5eef0e0f2a666de2a642bf01a0334390b303f1bae0c85664",
+        "true_sender": "miner-004",
+        "true_sender_ip": "177.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-008",
+            "timestamp": 946700500.277,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946700500.347,
+            "delta_from_first_ms": 70.0000524520874,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946700500.437,
+            "delta_from_first_ms": 160.00008583068848,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946700500.577,
+            "delta_from_first_ms": 300.00007152557373,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946700500.697,
+            "delta_from_first_ms": 420.0000762939453,
+            "source_ip": "187.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946700500.802,
+            "delta_from_first_ms": 525.0000953674316,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946700500.967,
+            "delta_from_first_ms": 690.000057220459,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946700501.117,
+            "delta_from_first_ms": 840.0000333786011,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946700502.977,
+            "delta_from_first_ms": 2700.000047683716,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700503.227,
+            "delta_from_first_ms": 2950.000047683716,
+            "source_ip": "177.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 430540.0000810623,
+        "inferred_originator_ip": "177.0.0.10",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "fd01b07e9f7a36cbb6d8a27337fc85f5be762c7c44f95ed995f69d8c13234555",
+        "true_sender": "miner-005",
+        "true_sender_ip": "41.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "miner-004",
+            "timestamp": 946700561.558,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700563.418,
+            "delta_from_first_ms": 1860.0000143051147,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946700563.698,
+            "delta_from_first_ms": 2139.9999856948853,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946700563.913,
+            "delta_from_first_ms": 2355.0000190734863,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946700563.918,
+            "delta_from_first_ms": 2360.0000143051147,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946700564.168,
+            "delta_from_first_ms": 2610.0000143051147,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946700564.188,
+            "delta_from_first_ms": 2629.9999952316284,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946700564.198,
+            "delta_from_first_ms": 2639.9999856948853,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946700564.203,
+            "delta_from_first_ms": 2644.9999809265137,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946700564.458,
+            "delta_from_first_ms": 2899.999976158142,
+            "source_ip": "177.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 423967.0000076294,
+        "inferred_originator_ip": "177.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "53d1f1c35069b1550d14d8066641986b6827369908eaa90cee7a7ca38df4ec53",
+        "true_sender": "miner-004",
+        "true_sender_ip": "177.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-015",
+            "timestamp": 946700854.083,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946700854.153,
+            "delta_from_first_ms": 70.0000524520874,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946700855.722,
+            "delta_from_first_ms": 1639.0000581741333,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700855.722,
+            "delta_from_first_ms": 1639.0000581741333,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946700855.773,
+            "delta_from_first_ms": 1690.000057220459,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946700856.223,
+            "delta_from_first_ms": 2140.000104904175,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946700856.488,
+            "delta_from_first_ms": 2405.00009059906,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946700856.544,
+            "delta_from_first_ms": 2461.000084877014,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946700856.603,
+            "delta_from_first_ms": 2520.000100135803,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946700856.822,
+            "delta_from_first_ms": 2739.000082015991,
+            "source_ip": "2.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12171.000003814697,
+        "inferred_originator_ip": "7.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "8d980fcf0b45c7851513088a18dac3d0aea21c814d4ba06400d23b4c438c696e",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-004",
+            "timestamp": 946700915.12,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946700915.33,
+            "delta_from_first_ms": 210.00003814697266,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946700915.515,
+            "delta_from_first_ms": 394.9999809265137,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946700916.87,
+            "delta_from_first_ms": 1750.0,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946700916.885,
+            "delta_from_first_ms": 1764.9999856948853,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946700917.355,
+            "delta_from_first_ms": 2235.0000143051147,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946700917.405,
+            "delta_from_first_ms": 2284.999966621399,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946700917.605,
+            "delta_from_first_ms": 2485.0000143051147,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946700917.9,
+            "delta_from_first_ms": 2779.9999713897705,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946700917.94,
+            "delta_from_first_ms": 2820.0000524520874,
+            "source_ip": "105.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 12039.999961853027,
+        "inferred_originator_ip": "105.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "30c3a24747fa5bfcbe0126d64b96ea7ba72ba6e76533e1b1f7122a4b1f1a3664",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-002",
+            "timestamp": 946700976.125,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946700978.015,
+            "delta_from_first_ms": 1889.9999856948853,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946700978.045,
+            "delta_from_first_ms": 1919.9999570846558,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946700978.24,
+            "delta_from_first_ms": 2115.000009536743,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946700978.45,
+            "delta_from_first_ms": 2325.000047683716,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946700978.46,
+            "delta_from_first_ms": 2335.0000381469727,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946700978.47,
+            "delta_from_first_ms": 2345.0000286102295,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946700978.52,
+            "delta_from_first_ms": 2394.9999809265137,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946700978.765,
+            "delta_from_first_ms": 2639.9999856948853,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946700978.905,
+            "delta_from_first_ms": 2779.9999713897705,
+            "source_ip": "179.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12524.999976158142,
+        "inferred_originator_ip": "4.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "8145adec4f5c9cadac5643a5123dcf31c401c7bfa257a6be34ce8957577b2361",
+        "true_sender": "miner-005",
+        "true_sender_ip": "41.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-005",
+            "timestamp": 946701037.076,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946701037.231,
+            "delta_from_first_ms": 154.9999713897705,
+            "source_ip": "179.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946701038.586,
+            "delta_from_first_ms": 1509.9999904632568,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946701039.181,
+            "delta_from_first_ms": 2105.0000190734863,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946701039.366,
+            "delta_from_first_ms": 2290.000081062317,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946701039.761,
+            "delta_from_first_ms": 2685.0000619888306,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946701039.836,
+            "delta_from_first_ms": 2759.999990463257,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946701039.851,
+            "delta_from_first_ms": 2774.999976158142,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946701039.886,
+            "delta_from_first_ms": 2810.0000619888306,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946701040.051,
+            "delta_from_first_ms": 2975.000023841858,
+            "source_ip": "7.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 429958.99999141693,
+        "inferred_originator_ip": "7.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "deb7371a734d07be33950c9f5a4b3b643c58694803cc75aed56dd4479eb19a24",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-004",
+            "timestamp": 946701098.182,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946701098.392,
+            "delta_from_first_ms": 209.9999189376831,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946701098.577,
+            "delta_from_first_ms": 394.9999809265137,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946701098.668,
+            "delta_from_first_ms": 485.9999418258667,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946701098.783,
+            "delta_from_first_ms": 600.9999513626099,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946701098.898,
+            "delta_from_first_ms": 715.999960899353,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946701100.038,
+            "delta_from_first_ms": 1855.9999465942383,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946701100.738,
+            "delta_from_first_ms": 2555.999994277954,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946701101.283,
+            "delta_from_first_ms": 3100.99995136261,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946701101.283,
+            "delta_from_first_ms": 3100.99995136261,
+            "source_ip": "105.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 368852.9999256134,
+        "inferred_originator_ip": "14.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "d9df56022aa4bcd0e3e9ddf96589619a881ae49ffc9373da52f2c98dd0022ed0",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-004",
+            "timestamp": 946701159.224,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946701159.385,
+            "delta_from_first_ms": 161.00001335144043,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946701159.545,
+            "delta_from_first_ms": 320.99997997283936,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946701159.665,
+            "delta_from_first_ms": 440.99998474121094,
+            "source_ip": "36.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946701159.8,
+            "delta_from_first_ms": 575.9999752044678,
+            "source_ip": "196.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946701161.435,
+            "delta_from_first_ms": 2210.9999656677246,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946701161.68,
+            "delta_from_first_ms": 2455.999970436096,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946701161.96,
+            "delta_from_first_ms": 2736.0000610351562,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946701162.39,
+            "delta_from_first_ms": 3166.000008583069,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946701162.39,
+            "delta_from_first_ms": 3166.000008583069,
+            "source_ip": "37.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 13205.000042915344,
+        "inferred_originator_ip": "196.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "84aa862f2dfabab02a8d1c323c1ce1c152a94a7f0cbeaf8d9b967118ea4fe7b0",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-004",
+            "timestamp": 946701220.226,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946701220.386,
+            "delta_from_first_ms": 160.00008583068848,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946701220.551,
+            "delta_from_first_ms": 325.0000476837158,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946701220.696,
+            "delta_from_first_ms": 470.0000286102295,
+            "source_ip": "121.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946701220.746,
+            "delta_from_first_ms": 520.0001001358032,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946701220.831,
+            "delta_from_first_ms": 605.0000190734863,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946701220.961,
+            "delta_from_first_ms": 735.0000143051147,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946701221.121,
+            "delta_from_first_ms": 895.0001001358032,
+            "source_ip": "25.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946701221.331,
+            "delta_from_first_ms": 1105.0000190734863,
+            "source_ip": "36.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946701221.486,
+            "delta_from_first_ms": 1259.9999904632568,
+            "source_ip": "103.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 14254.999995231628,
+        "inferred_originator_ip": "1.0.0.10",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "147614b35f17e974d32e14c4a39abbc021bb7fca608a74692fa78861ccd56cfa",
+        "true_sender": "miner-004",
+        "true_sender_ip": "177.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-015",
+            "timestamp": 946701358.612,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946701358.682,
+            "delta_from_first_ms": 70.0000524520874,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946701358.798,
+            "delta_from_first_ms": 185.99998950958252,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946701358.983,
+            "delta_from_first_ms": 371.0000514984131,
+            "source_ip": "196.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946701359.198,
+            "delta_from_first_ms": 585.9999656677246,
+            "source_ip": "139.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946701359.318,
+            "delta_from_first_ms": 705.9999704360962,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946701361.138,
+            "delta_from_first_ms": 2526.0000228881836,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946701361.408,
+            "delta_from_first_ms": 2796.0000038146973,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946701361.458,
+            "delta_from_first_ms": 2845.9999561309814,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946701361.923,
+            "delta_from_first_ms": 3310.9999895095825,
+            "source_ip": "5.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 13363.00003528595,
+        "inferred_originator_ip": "31.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "bdd029fa869bc4e2f58a40300e242f819ab16e7c2e988976f6313adb76a48e43",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-012",
+            "timestamp": 946701419.6,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946701419.69,
+            "delta_from_first_ms": 90.00003337860107,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946701419.805,
+            "delta_from_first_ms": 204.9999237060547,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946701421.4,
+            "delta_from_first_ms": 1799.9999523162842,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946701421.645,
+            "delta_from_first_ms": 2044.9999570846558,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946701421.675,
+            "delta_from_first_ms": 2074.9999284744263,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946701421.69,
+            "delta_from_first_ms": 2090.000033378601,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946701421.94,
+            "delta_from_first_ms": 2340.000033378601,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946701422.4,
+            "delta_from_first_ms": 2799.999952316284,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946701422.42,
+            "delta_from_first_ms": 2819.999933242798,
+            "source_ip": "1.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12149.999976158142,
+        "inferred_originator_ip": "1.0.0.10",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "cdb2c083535ebedfa72e91b95f9b748ecb60b49a19c0507ed8155bb5b9ffc435",
+        "true_sender": "miner-005",
+        "true_sender_ip": "41.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-018",
+            "timestamp": 946701480.676,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946701482.016,
+            "delta_from_first_ms": 1340.000033378601,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946701482.266,
+            "delta_from_first_ms": 1590.000033378601,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946701482.516,
+            "delta_from_first_ms": 1840.000033378601,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946701482.566,
+            "delta_from_first_ms": 1889.9999856948853,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946701483.066,
+            "delta_from_first_ms": 2389.9999856948853,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946701483.086,
+            "delta_from_first_ms": 2409.999966621399,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946701483.101,
+            "delta_from_first_ms": 2424.999952316284,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946701483.516,
+            "delta_from_first_ms": 2840.000033378601,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946701483.516,
+            "delta_from_first_ms": 2840.000033378601,
+            "source_ip": "154.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 402171.0000038147,
+        "inferred_originator_ip": "154.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "96cd64c2f59e45643d0aa05437b7393d5eba770afd53fabae633a4fff8b7bc70",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-002",
+            "timestamp": 946701696.839,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946701696.959,
+            "delta_from_first_ms": 120.00000476837158,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946701697.079,
+            "delta_from_first_ms": 240.00000953674316,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946701697.214,
+            "delta_from_first_ms": 375.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946701697.304,
+            "delta_from_first_ms": 465.0000333786011,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946701697.659,
+            "delta_from_first_ms": 820.0000524520874,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946701699.139,
+            "delta_from_first_ms": 2300.0000715255737,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946701699.174,
+            "delta_from_first_ms": 2335.0000381469727,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946701699.194,
+            "delta_from_first_ms": 2355.0000190734863,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946701699.194,
+            "delta_from_first_ms": 2355.0000190734863,
+            "source_ip": "5.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 427414.0000343323,
+        "inferred_originator_ip": "2.0.0.10",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "e43c5c30adacdc21ae713cb3cb458edc508bc234366cf81b9e7bca63f1e8f782",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-013",
+            "timestamp": 946702454.734,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946702454.909,
+            "delta_from_first_ms": 175.00007152557373,
+            "source_ip": "121.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946702455.094,
+            "delta_from_first_ms": 360.00001430511475,
+            "source_ip": "196.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946702455.375,
+            "delta_from_first_ms": 641.0000324249268,
+            "source_ip": "139.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946702455.56,
+            "delta_from_first_ms": 825.9999752044678,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946702455.654,
+            "delta_from_first_ms": 920.0000762939453,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946702457.254,
+            "delta_from_first_ms": 2519.9999809265137,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946702457.489,
+            "delta_from_first_ms": 2754.9999952316284,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946702457.524,
+            "delta_from_first_ms": 2790.000081062317,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946702457.799,
+            "delta_from_first_ms": 3065.000057220459,
+            "source_ip": "4.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 426394.00005340576,
+        "inferred_originator_ip": "139.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "9e639ca137a441cc25c32e18a1300af8b19c0ee7dff74d89ba7379a0211a9002",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-022",
+            "timestamp": 946702516.277,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946702516.392,
+            "delta_from_first_ms": 115.00000953674316,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946702516.512,
+            "delta_from_first_ms": 235.00001430511475,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946702516.662,
+            "delta_from_first_ms": 384.99999046325684,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946702516.797,
+            "delta_from_first_ms": 520.0001001358032,
+            "source_ip": "122.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946702516.932,
+            "delta_from_first_ms": 655.0000905990601,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946702517.097,
+            "delta_from_first_ms": 820.0000524520874,
+            "source_ip": "121.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946702517.232,
+            "delta_from_first_ms": 955.0000429153442,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946702518.597,
+            "delta_from_first_ms": 2320.0000524520874,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946702518.917,
+            "delta_from_first_ms": 2640.000104904175,
+            "source_ip": "27.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 421481.0000658035,
+        "inferred_originator_ip": "122.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "a4d8266db205dacf9a9dcefcb99e70ec27c8f1cd5e7f3723261b4e522816e617",
+        "true_sender": "miner-005",
+        "true_sender_ip": "41.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-023",
+            "timestamp": 946702577.207,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946702577.347,
+            "delta_from_first_ms": 139.99998569488525,
+            "source_ip": "187.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946702577.467,
+            "delta_from_first_ms": 259.99999046325684,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946702577.617,
+            "delta_from_first_ms": 409.9999666213989,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946702577.747,
+            "delta_from_first_ms": 539.9999618530273,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946702577.837,
+            "delta_from_first_ms": 629.9999952316284,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946702578.002,
+            "delta_from_first_ms": 794.9999570846558,
+            "source_ip": "25.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946702578.167,
+            "delta_from_first_ms": 960.0000381469727,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946702579.487,
+            "delta_from_first_ms": 2279.9999713897705,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946702579.757,
+            "delta_from_first_ms": 2549.999952316284,
+            "source_ip": "31.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 424075.99997520447,
+        "inferred_originator_ip": "1.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "0d707ae57b1f72c5157254bde8ae03fc3611bae8df8b92071eda7eae9308631e",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-012",
+            "timestamp": 946703185.17,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946703185.345,
+            "delta_from_first_ms": 175.00007152557373,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946703186.785,
+            "delta_from_first_ms": 1615.0000095367432,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946703187.115,
+            "delta_from_first_ms": 1945.0000524520874,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946703187.245,
+            "delta_from_first_ms": 2075.000047683716,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946703187.735,
+            "delta_from_first_ms": 2565.000057220459,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946703187.735,
+            "delta_from_first_ms": 2565.000057220459,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946703187.78,
+            "delta_from_first_ms": 2610.0000143051147,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946703187.965,
+            "delta_from_first_ms": 2795.0000762939453,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946703187.985,
+            "delta_from_first_ms": 2815.000057220459,
+            "source_ip": "101.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12915.000081062317,
+        "inferred_originator_ip": "101.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "964ad44cb3bea6313d055237f88d2eb5625018e8aeb7c818fb4230ee26eb9e06",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-018",
+            "timestamp": 946703401.408,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946703401.583,
+            "delta_from_first_ms": 174.99995231628418,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946703401.758,
+            "delta_from_first_ms": 350.0000238418579,
+            "source_ip": "121.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946703401.893,
+            "delta_from_first_ms": 485.00001430511475,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946703402.028,
+            "delta_from_first_ms": 620.0000047683716,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946703403.679,
+            "delta_from_first_ms": 2271.000027656555,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946703403.873,
+            "delta_from_first_ms": 2465.000033378601,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946703404.399,
+            "delta_from_first_ms": 2991.0000562667847,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946703404.399,
+            "delta_from_first_ms": 2991.0000562667847,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946703404.399,
+            "delta_from_first_ms": 2991.0000562667847,
+            "source_ip": "1.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 13791.000008583069,
+        "inferred_originator_ip": "1.0.0.10",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "08a31ee7741b14be0307a26679567dad65723628861df01c3986d92d52125d30",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "miner-005",
+            "timestamp": 946703618.078,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946703618.218,
+            "delta_from_first_ms": 140.0001049041748,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946703618.358,
+            "delta_from_first_ms": 280.00009059906006,
+            "source_ip": "187.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946703618.448,
+            "delta_from_first_ms": 370.0000047683716,
+            "source_ip": "196.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946703620.318,
+            "delta_from_first_ms": 2240.000009536743,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946703620.778,
+            "delta_from_first_ms": 2700.000047683716,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946703620.788,
+            "delta_from_first_ms": 2710.0000381469727,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946703620.843,
+            "delta_from_first_ms": 2765.000104904175,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946703620.843,
+            "delta_from_first_ms": 2765.000104904175,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946703620.893,
+            "delta_from_first_ms": 2815.000057220459,
+            "source_ip": "6.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12810.00006198883,
+        "inferred_originator_ip": "3.0.0.16",
+        "inference_correct": true
+      },
+      {
+        "tx_hash": "a726c72114791d44ac5df2acb48ff7d32b96c73256066e057b6447cd1b09bd02",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-012",
+            "timestamp": 946703679.079,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946703680.219,
+            "delta_from_first_ms": 1139.9999856948853,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946703680.419,
+            "delta_from_first_ms": 1340.000033378601,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946703681.399,
+            "delta_from_first_ms": 2320.0000524520874,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946703681.419,
+            "delta_from_first_ms": 2340.000033378601,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946703681.419,
+            "delta_from_first_ms": 2340.000033378601,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946703681.804,
+            "delta_from_first_ms": 2725.000023841858,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946703681.869,
+            "delta_from_first_ms": 2789.9999618530273,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946703681.919,
+            "delta_from_first_ms": 2840.000033378601,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946703681.969,
+            "delta_from_first_ms": 2889.9999856948853,
+            "source_ip": "105.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 11879.999995231628,
+        "inferred_originator_ip": "105.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "6d3b34b554c3dcdd0bf1c2c108f638df4e6ddb6d7e7a21ebbc0961cc4a71dc47",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-018",
+            "timestamp": 946703740.046,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946703740.916,
+            "delta_from_first_ms": 870.0000047683716,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946703741.436,
+            "delta_from_first_ms": 1389.9999856948853,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946703741.886,
+            "delta_from_first_ms": 1840.000033378601,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946703741.971,
+            "delta_from_first_ms": 1924.9999523162842,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946703742.326,
+            "delta_from_first_ms": 2279.9999713897705,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946703742.436,
+            "delta_from_first_ms": 2389.9999856948853,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946703742.436,
+            "delta_from_first_ms": 2389.9999856948853,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946703742.536,
+            "delta_from_first_ms": 2490.000009536743,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946703742.636,
+            "delta_from_first_ms": 2590.000033378601,
+            "source_ip": "154.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 13049.999952316284,
+        "inferred_originator_ip": "154.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "2cce374407ade97075a39af00994bc17ea4d30e31a4421b7448fd40bbab26a36",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "user-025",
+            "timestamp": 946703957.47,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946703957.7,
+            "delta_from_first_ms": 230.00001907348633,
+            "source_ip": "139.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946703959.366,
+            "delta_from_first_ms": 1896.0000276565552,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946703959.541,
+            "delta_from_first_ms": 2070.9999799728394,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946703959.836,
+            "delta_from_first_ms": 2365.999937057495,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946703960.266,
+            "delta_from_first_ms": 2796.0000038146973,
+            "source_ip": "121.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946703960.284,
+            "delta_from_first_ms": 2814.0000104904175,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946703960.336,
+            "delta_from_first_ms": 2865.999937057495,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946703960.586,
+            "delta_from_first_ms": 3115.999937057495,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946703960.586,
+            "delta_from_first_ms": 3115.999937057495,
+            "source_ip": "31.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 12970.999956130981,
+        "inferred_originator_ip": "31.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "6715ab8f4ac6ab2170aec7b8cebe9546c75ef9239281ed9d8a18f31202b49ab0",
+        "true_sender": "miner-004",
+        "true_sender_ip": "177.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-021",
+            "timestamp": 946704018.348,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946704019.418,
+            "delta_from_first_ms": 1069.9999332427979,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946704019.488,
+            "delta_from_first_ms": 1139.9999856948853,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946704020.186,
+            "delta_from_first_ms": 1837.999939918518,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946704020.233,
+            "delta_from_first_ms": 1884.9999904632568,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946704020.733,
+            "delta_from_first_ms": 2384.999990463257,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946704020.763,
+            "delta_from_first_ms": 2414.9999618530273,
+            "source_ip": "37.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946704021.033,
+            "delta_from_first_ms": 2684.999942779541,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946704021.173,
+            "delta_from_first_ms": 2824.9999284744263,
+            "source_ip": "122.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946704021.188,
+            "delta_from_first_ms": 2839.9999141693115,
+            "source_ip": "37.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12797.99997806549,
+        "inferred_originator_ip": "37.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "24587e75009899c8b04cb772b86fb0935140339813f961ddc66bf6e1eeb86deb",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "user-025",
+            "timestamp": 946704164.475,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946704164.705,
+            "delta_from_first_ms": 230.00001907348633,
+            "source_ip": "139.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946704164.795,
+            "delta_from_first_ms": 319.99993324279785,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946704164.915,
+            "delta_from_first_ms": 439.99993801116943,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "miner-001",
+            "timestamp": 946704165.035,
+            "delta_from_first_ms": 559.999942779541,
+            "source_ip": "14.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946704166.97,
+            "delta_from_first_ms": 2495.0000047683716,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946704167.105,
+            "delta_from_first_ms": 2629.9999952316284,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946704167.145,
+            "delta_from_first_ms": 2669.9999570846558,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946704167.175,
+            "delta_from_first_ms": 2699.9999284744263,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946704167.4,
+            "delta_from_first_ms": 2924.999952316284,
+            "source_ip": "3.0.0.16"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 13579.999923706055,
+        "inferred_originator_ip": "139.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "c74517232164d09f93aae4b3f053a42ca50aabfe01687af252e19117cea00d94",
+        "true_sender": "miner-003",
+        "true_sender_ip": "1.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-020",
+            "timestamp": 946704388.955,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "1.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946704388.993,
+            "delta_from_first_ms": 37.99998760223389,
+            "source_ip": "8.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946704389.098,
+            "delta_from_first_ms": 143.00000667572021,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946704389.193,
+            "delta_from_first_ms": 237.99991607666016,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946704389.293,
+            "delta_from_first_ms": 337.99993991851807,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946704389.393,
+            "delta_from_first_ms": 437.999963760376,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946704389.498,
+            "delta_from_first_ms": 542.9999828338623,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946704390.883,
+            "delta_from_first_ms": 1927.9999732971191,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-005",
+            "timestamp": 946704390.933,
+            "delta_from_first_ms": 1977.9999256134033,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946704391.228,
+            "delta_from_first_ms": 2273.0000019073486,
+            "source_ip": "27.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 11977.999925613403,
+        "inferred_originator_ip": "7.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "323caf82d9b21ea9b9a2bcdf1957baa729eedd161f1d58c2a65ed2be8034601a",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-011",
+            "timestamp": 946705606.465,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946705606.635,
+            "delta_from_first_ms": 169.99995708465576,
+            "source_ip": "181.0.0.10"
+          },
+          {
+            "node_id": "user-025",
+            "timestamp": 946705606.85,
+            "delta_from_first_ms": 384.99999046325684,
+            "source_ip": "36.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946705607.08,
+            "delta_from_first_ms": 615.0000095367432,
+            "source_ip": "139.0.0.10"
+          },
+          {
+            "node_id": "user-022",
+            "timestamp": 946705607.24,
+            "delta_from_first_ms": 774.9999761581421,
+            "source_ip": "25.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946705607.39,
+            "delta_from_first_ms": 924.9999523162842,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946705607.57,
+            "delta_from_first_ms": 1105.0000190734863,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946705607.71,
+            "delta_from_first_ms": 1245.0000047683716,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946705607.85,
+            "delta_from_first_ms": 1384.9999904632568,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946705609.24,
+            "delta_from_first_ms": 2774.999976158142,
+            "source_ip": "101.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 13579.999923706055,
+        "inferred_originator_ip": "25.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "8bcb15c438970c650894e17459199a6a04e9962af7510fd5c864034e3afb3e84",
+        "true_sender": "miner-005",
+        "true_sender_ip": "41.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-008",
+            "timestamp": 946705667.336,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946705667.446,
+            "delta_from_first_ms": 110.00001430511475,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946705667.626,
+            "delta_from_first_ms": 290.0000810623169,
+            "source_ip": "187.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946705667.811,
+            "delta_from_first_ms": 475.0000238418579,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946705667.926,
+            "delta_from_first_ms": 590.0000333786011,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946705669.519,
+            "delta_from_first_ms": 2183.000087738037,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946705669.726,
+            "delta_from_first_ms": 2389.9999856948853,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946705669.791,
+            "delta_from_first_ms": 2455.0000429153442,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946705670.019,
+            "delta_from_first_ms": 2683.000087738037,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946705670.036,
+            "delta_from_first_ms": 2700.000047683716,
+            "source_ip": "6.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 12500.0,
+        "inferred_originator_ip": "102.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "ae8edbd9d2d7be9154039c7a8b9fe1f310ef420ab52c18ccb325cbe0ca7dc43b",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-022",
+            "timestamp": 946706806.164,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946706806.334,
+            "delta_from_first_ms": 169.99995708465576,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946706806.474,
+            "delta_from_first_ms": 309.999942779541,
+            "source_ip": "187.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946706806.564,
+            "delta_from_first_ms": 399.9999761581421,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946706806.704,
+            "delta_from_first_ms": 539.9999618530273,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946706806.859,
+            "delta_from_first_ms": 694.9999332427979,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946706807.699,
+            "delta_from_first_ms": 1534.999966621399,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946706808.694,
+            "delta_from_first_ms": 2529.9999713897705,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946706808.699,
+            "delta_from_first_ms": 2534.999966621399,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946706809.069,
+            "delta_from_first_ms": 2904.9999713897705,
+            "source_ip": "1.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 13439.99993801117,
+        "inferred_originator_ip": "187.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "2619f8b565e8acc918aba1f56e35a34b0456bae9ce3495b64a798516bdb92037",
+        "true_sender": "miner-001",
+        "true_sender_ip": "3.0.0.16",
+        "first_seen_by": [
+          {
+            "node_id": "user-003",
+            "timestamp": 946709021.586,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946709021.686,
+            "delta_from_first_ms": 100.00002384185791,
+            "source_ip": "5.0.0.10"
+          },
+          {
+            "node_id": "user-012",
+            "timestamp": 946709021.791,
+            "delta_from_first_ms": 205.00004291534424,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-020",
+            "timestamp": 946709023.646,
+            "delta_from_first_ms": 2060.0000619888306,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946709023.911,
+            "delta_from_first_ms": 2325.000047683716,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946709024.176,
+            "delta_from_first_ms": 2590.000033378601,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-003",
+            "timestamp": 946709024.386,
+            "delta_from_first_ms": 2800.0000715255737,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946709024.431,
+            "delta_from_first_ms": 2845.0000286102295,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946709024.631,
+            "delta_from_first_ms": 3045.0000762939453,
+            "source_ip": "105.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946709024.811,
+            "delta_from_first_ms": 3225.000023841858,
+            "source_ip": "1.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 13160.000085830688,
+        "inferred_originator_ip": "105.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "01eb6c1f9ff9404199d18e171cb5dc17091e1cf5c148dc478cf4261eeb0e0ba1",
+        "true_sender": "miner-005",
+        "true_sender_ip": "41.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-022",
+            "timestamp": 946709082.509,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "41.0.0.10"
+          },
+          {
+            "node_id": "miner-003",
+            "timestamp": 946709084.589,
+            "delta_from_first_ms": 2080.0000429153442,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946709084.879,
+            "delta_from_first_ms": 2370.0000047683716,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946709084.909,
+            "delta_from_first_ms": 2400.0000953674316,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946709084.919,
+            "delta_from_first_ms": 2410.0000858306885,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-021",
+            "timestamp": 946709085.144,
+            "delta_from_first_ms": 2635.0001096725464,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946709085.159,
+            "delta_from_first_ms": 2650.0000953674316,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-013",
+            "timestamp": 946709085.434,
+            "delta_from_first_ms": 2925.0000715255737,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946709085.629,
+            "delta_from_first_ms": 3120.0000047683716,
+            "source_ip": "39.0.0.10"
+          },
+          {
+            "node_id": "user-023",
+            "timestamp": 946709085.679,
+            "delta_from_first_ms": 3170.0000762939453,
+            "source_ip": "39.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.5666666666666667,
+        "timing_spread_ms": 12695.000052452087,
+        "inferred_originator_ip": "39.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "2c463ea8efc25314072150b0eba840a04a5ec28cbff389ce31bfaf96fb6fbf27",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-010",
+            "timestamp": 946709143.395,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946709143.545,
+            "delta_from_first_ms": 149.9999761581421,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946709143.69,
+            "delta_from_first_ms": 295.0000762939453,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-024",
+            "timestamp": 946709145.331,
+            "delta_from_first_ms": 1935.9999895095825,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946709145.831,
+            "delta_from_first_ms": 2435.9999895095825,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946709145.871,
+            "delta_from_first_ms": 2476.0000705718994,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946709145.871,
+            "delta_from_first_ms": 2476.0000705718994,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "miner-002",
+            "timestamp": 946709146.046,
+            "delta_from_first_ms": 2651.0000228881836,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-010",
+            "timestamp": 946709146.341,
+            "delta_from_first_ms": 2945.9999799728394,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-004",
+            "timestamp": 946709146.341,
+            "delta_from_first_ms": 2945.9999799728394,
+            "source_ip": "186.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 13106.000065803528,
+        "inferred_originator_ip": "186.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "50c88fafeabd91a04347cb73dbfbf46639138818d561089c81b3b83a306bb7bf",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-010",
+            "timestamp": 946709204.297,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946709204.447,
+            "delta_from_first_ms": 149.9999761581421,
+            "source_ip": "27.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946709204.592,
+            "delta_from_first_ms": 294.99995708465576,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-007",
+            "timestamp": 946709204.772,
+            "delta_from_first_ms": 474.99990463256836,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946709204.957,
+            "delta_from_first_ms": 659.9999666213989,
+            "source_ip": "103.0.0.10"
+          },
+          {
+            "node_id": "miner-004",
+            "timestamp": 946709205.097,
+            "delta_from_first_ms": 799.9999523162842,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946709206.502,
+            "delta_from_first_ms": 2204.9999237060547,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "miner-005",
+            "timestamp": 946709206.737,
+            "delta_from_first_ms": 2439.9999380111694,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946709206.997,
+            "delta_from_first_ms": 2699.9999284744263,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-002",
+            "timestamp": 946709207.457,
+            "delta_from_first_ms": 3159.999966621399,
+            "source_ip": "177.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 13984.999895095825,
+        "inferred_originator_ip": "27.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "d18cf202b46c6452096138dbc0457ab2f1a49533d945918965ee76edd9c12715",
+        "true_sender": "miner-002",
+        "true_sender_ip": "2.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "user-002",
+            "timestamp": 946709421.194,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "2.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946709421.294,
+            "delta_from_first_ms": 100.00002384185791,
+            "source_ip": "4.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946709421.394,
+            "delta_from_first_ms": 200.00004768371582,
+            "source_ip": "25.0.0.10"
+          },
+          {
+            "node_id": "user-008",
+            "timestamp": 946709421.494,
+            "delta_from_first_ms": 299.9999523162842,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-001",
+            "timestamp": 946709421.614,
+            "delta_from_first_ms": 419.99995708465576,
+            "source_ip": "6.0.0.10"
+          },
+          {
+            "node_id": "user-019",
+            "timestamp": 946709421.764,
+            "delta_from_first_ms": 570.0000524520874,
+            "source_ip": "101.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946709421.939,
+            "delta_from_first_ms": 745.0000047683716,
+            "source_ip": "122.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946709422.029,
+            "delta_from_first_ms": 835.0000381469727,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946709422.164,
+            "delta_from_first_ms": 970.0000286102295,
+            "source_ip": "154.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946709423.549,
+            "delta_from_first_ms": 2355.0000190734863,
+            "source_ip": "31.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.3,
+        "timing_spread_ms": 13725.000023841858,
+        "inferred_originator_ip": "31.0.0.10",
+        "inference_correct": false
+      },
+      {
+        "tx_hash": "eddef974745bd9b2535d9f8f797ec922f323e7a87eec10c88990a5676807538e",
+        "true_sender": "miner-004",
+        "true_sender_ip": "177.0.0.10",
+        "first_seen_by": [
+          {
+            "node_id": "miner-001",
+            "timestamp": 946709482.506,
+            "delta_from_first_ms": 0.0,
+            "source_ip": "177.0.0.10"
+          },
+          {
+            "node_id": "user-016",
+            "timestamp": 946709482.626,
+            "delta_from_first_ms": 120.00000476837158,
+            "source_ip": "3.0.0.16"
+          },
+          {
+            "node_id": "user-015",
+            "timestamp": 946709482.786,
+            "delta_from_first_ms": 279.9999713897705,
+            "source_ip": "36.0.0.10"
+          },
+          {
+            "node_id": "user-017",
+            "timestamp": 946709482.916,
+            "delta_from_first_ms": 409.9999666213989,
+            "source_ip": "31.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946709483.056,
+            "delta_from_first_ms": 549.9999523162842,
+            "source_ip": "186.0.0.10"
+          },
+          {
+            "node_id": "user-014",
+            "timestamp": 946709483.161,
+            "delta_from_first_ms": 654.9999713897705,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-009",
+            "timestamp": 946709483.231,
+            "delta_from_first_ms": 724.9999046325684,
+            "source_ip": "7.0.0.10"
+          },
+          {
+            "node_id": "user-006",
+            "timestamp": 946709483.366,
+            "delta_from_first_ms": 860.0000143051147,
+            "source_ip": "25.0.0.10"
+          },
+          {
+            "node_id": "user-011",
+            "timestamp": 946709485.007,
+            "delta_from_first_ms": 2500.999927520752,
+            "source_ip": "102.0.0.10"
+          },
+          {
+            "node_id": "user-018",
+            "timestamp": 946709485.207,
+            "delta_from_first_ms": 2700.999975204468,
+            "source_ip": "102.0.0.10"
+          }
+        ],
+        "correlation_confidence": 0.43333333333333335,
+        "timing_spread_ms": 13380.99992275238,
+        "inferred_originator_ip": "36.0.0.10",
+        "inference_correct": false
+      }
+    ]
+  },
+  "propagation_analysis": {
+    "total_transactions": 45,
+    "analyzed_transactions": 45,
+    "average_propagation_ms": 120640.3333346049,
+    "median_propagation_ms": 13205.000042915344,
+    "p95_propagation_ms": 427414.0000343323,
+    "average_confirmation_delay_sec": -158.9960702472263,
+    "bottleneck_nodes": [
+      {
+        "node_id": "user-002",
+        "average_delay_ms": 67789.26134109497,
+        "observations": 1963
+      },
+      {
+        "node_id": "user-018",
+        "average_delay_ms": 66933.2768329998,
+        "observations": 1929
+      },
+      {
+        "node_id": "miner-001",
+        "average_delay_ms": 66459.35939710513,
+        "observations": 1906
+      },
+      {
+        "node_id": "user-012",
+        "average_delay_ms": 65461.93806294884,
+        "observations": 1792
+      },
+      {
+        "node_id": "user-014",
+        "average_delay_ms": 64875.406563561264,
+        "observations": 1921
+      },
+      {
+        "node_id": "user-008",
+        "average_delay_ms": 64799.53965682936,
+        "observations": 2005
+      },
+      {
+        "node_id": "miner-003",
+        "average_delay_ms": 64787.02712482249,
+        "observations": 2028
+      },
+      {
+        "node_id": "user-024",
+        "average_delay_ms": 64173.6341378811,
+        "observations": 1834
+      },
+      {
+        "node_id": "user-005",
+        "average_delay_ms": 64085.441721302355,
+        "observations": 1956
+      },
+      {
+        "node_id": "user-004",
+        "average_delay_ms": 64071.60093455691,
+        "observations": 1937
+      }
+    ],
+    "per_tx_analysis": [
+      {
+        "tx_hash": "9effc6a5a5fa0f07e1f5b540ed604804471f4fb7d7e7d7e57f0c0010ed67c8b7",
+        "creation_time": 946699201.189695,
+        "first_seen_time": 946699201.189,
+        "block_inclusion_time": 946698909.617,
+        "confirmation_delay_sec": -291.57269501686096,
+        "network_propagation_time_ms": 12950.000047683716,
+        "median_propagation_ms": 6980.999946594238,
+        "p95_propagation_ms": 10694.999933242798,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "8db2bedabb8bc7204f41e7d056f1148febfcf66f931d681c7927a6ac072cb996",
+        "creation_time": 946699262.490901,
+        "first_seen_time": 946699262.49,
+        "block_inclusion_time": 946698909.617,
+        "confirmation_delay_sec": -352.87390100955963,
+        "network_propagation_time_ms": 12751.000046730042,
+        "median_propagation_ms": 7266.000032424927,
+        "p95_propagation_ms": 10761.000037193298,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "101419cd4e14f46e1b2091fc717f666d432313f74b4b07970f63cc53130fa625",
+        "creation_time": 946699564.896971,
+        "first_seen_time": 946699564.896,
+        "block_inclusion_time": 946699554.796,
+        "confirmation_delay_sec": -10.100970983505249,
+        "network_propagation_time_ms": 13450.999975204468,
+        "median_propagation_ms": 7413.500010967255,
+        "p95_propagation_ms": 11130.99992275238,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "2ddce0b73868589b783ff73b1522714fbd2a0dc0cbda74e20bd58c5909827927",
+        "creation_time": 946699625.598185,
+        "first_seen_time": 946699625.598,
+        "block_inclusion_time": 946699619.431,
+        "confirmation_delay_sec": -6.167184948921204,
+        "network_propagation_time_ms": 12354.999899864197,
+        "median_propagation_ms": 7197.499930858612,
+        "p95_propagation_ms": 10514.999985694885,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "ecbf56131d022d76e202df9aec78d17bab732d9551f0d192cf2648fcc1b1e051",
+        "creation_time": 946699764.000953,
+        "first_seen_time": 946699764.0,
+        "block_inclusion_time": 946699749.2,
+        "confirmation_delay_sec": -14.800952911376953,
+        "network_propagation_time_ms": 405016.9999599457,
+        "median_propagation_ms": 308528.9999842644,
+        "p95_propagation_ms": 402521.9999551773,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "0ed778257872958a983db90e04d83fd8bd50818e99d3540e5336345cc3d516ce",
+        "creation_time": 946699825.1832632,
+        "first_seen_time": 946699825.188,
+        "block_inclusion_time": 946699749.2,
+        "confirmation_delay_sec": -75.98326313495636,
+        "network_propagation_time_ms": 416585.000038147,
+        "median_propagation_ms": 318723.00004959106,
+        "p95_propagation_ms": 401358.0000400543,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "be83054ff2686ddc6a0d50fc4dbd7d5546f1b32d5f9cc4f280fea08ac8b72e5f",
+        "creation_time": 946700040.306479,
+        "first_seen_time": 946700040.313,
+        "block_inclusion_time": 946699749.2,
+        "confirmation_delay_sec": -291.10647892951965,
+        "network_propagation_time_ms": 12201.000094413757,
+        "median_propagation_ms": 7680.999994277954,
+        "p95_propagation_ms": 10721.000075340271,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "c92b1b25279fbe6df90128e9981d4c8175ca8bba5f33ee6f2c441afd1b40c7e6",
+        "creation_time": 946700255.9519778,
+        "first_seen_time": 946700255.951,
+        "block_inclusion_time": 946699749.2,
+        "confirmation_delay_sec": -506.75197780132294,
+        "network_propagation_time_ms": 12481.000065803528,
+        "median_propagation_ms": 7075.999975204468,
+        "p95_propagation_ms": 10430.999994277954,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "22564bd6394ffe3542884d1615f03b21dc2b62f38ebde0f55e2ee25ac26b83d4",
+        "creation_time": 946700316.912005,
+        "first_seen_time": 946700316.912,
+        "block_inclusion_time": 946700279.841,
+        "confirmation_delay_sec": -37.071004986763,
+        "network_propagation_time_ms": 12585.000038146973,
+        "median_propagation_ms": 7035.0000858306885,
+        "p95_propagation_ms": 10530.00009059906,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "746ad60209cec84a3e97b6c4b846621d472d9468833410830e94fbdcc19da77a",
+        "creation_time": 946700377.813211,
+        "first_seen_time": 946700377.813,
+        "block_inclusion_time": 946700279.841,
+        "confirmation_delay_sec": -97.97221100330353,
+        "network_propagation_time_ms": 12220.00002861023,
+        "median_propagation_ms": 6810.000061988831,
+        "p95_propagation_ms": 10125.0,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "376a0486cfdd822243fa926dbc880a69adae12268e59eee3b17b6f20c8ab938c",
+        "creation_time": 946700438.9957188,
+        "first_seen_time": 946700439.0,
+        "block_inclusion_time": 946700408.913,
+        "confirmation_delay_sec": -30.08271884918213,
+        "network_propagation_time_ms": 426309.99994277954,
+        "median_propagation_ms": 323766.0000324249,
+        "p95_propagation_ms": 402325.0000476837,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "ed16414e997d31ec5eef0e0f2a666de2a642bf01a0334390b303f1bae0c85664",
+        "creation_time": 946700500.2770708,
+        "first_seen_time": 946700500.277,
+        "block_inclusion_time": 946700408.913,
+        "confirmation_delay_sec": -91.3640707731247,
+        "network_propagation_time_ms": 430540.0000810623,
+        "median_propagation_ms": 325001.50007009506,
+        "p95_propagation_ms": 416995.0000047684,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "fd01b07e9f7a36cbb6d8a27337fc85f5be762c7c44f95ed995f69d8c13234555",
+        "creation_time": 946700561.516901,
+        "first_seen_time": 946700561.558,
+        "block_inclusion_time": 946700408.913,
+        "confirmation_delay_sec": -152.60390102863312,
+        "network_propagation_time_ms": 423967.0000076294,
+        "median_propagation_ms": 321047.9999780655,
+        "p95_propagation_ms": 399773.00000190735,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "53d1f1c35069b1550d14d8066641986b6827369908eaa90cee7a7ca38df4ec53",
+        "creation_time": 946700854.0638742,
+        "first_seen_time": 946700854.083,
+        "block_inclusion_time": 946700408.913,
+        "confirmation_delay_sec": -445.1508742570877,
+        "network_propagation_time_ms": 12171.000003814697,
+        "median_propagation_ms": 7196.000099182129,
+        "p95_propagation_ms": 10529.000043869019,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "8d980fcf0b45c7851513088a18dac3d0aea21c814d4ba06400d23b4c438c696e",
+        "creation_time": 946700915.0850904,
+        "first_seen_time": 946700915.12,
+        "block_inclusion_time": 946700408.913,
+        "confirmation_delay_sec": -506.1720904111862,
+        "network_propagation_time_ms": 12039.999961853027,
+        "median_propagation_ms": 7325.000047683716,
+        "p95_propagation_ms": 10465.000033378601,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "30c3a24747fa5bfcbe0126d64b96ea7ba72ba6e76533e1b1f7122a4b1f1a3664",
+        "creation_time": 946700976.1251912,
+        "first_seen_time": 946700976.125,
+        "block_inclusion_time": 946700408.913,
+        "confirmation_delay_sec": -567.2121912240982,
+        "network_propagation_time_ms": 12524.999976158142,
+        "median_propagation_ms": 6990.000009536743,
+        "p95_propagation_ms": 10174.999952316284,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "8145adec4f5c9cadac5643a5123dcf31c401c7bfa257a6be34ce8957577b2361",
+        "creation_time": 946701037.0265431,
+        "first_seen_time": 946701037.076,
+        "block_inclusion_time": 946700994.068,
+        "confirmation_delay_sec": -42.95854318141937,
+        "network_propagation_time_ms": 429958.99999141693,
+        "median_propagation_ms": 325312.0000362396,
+        "p95_propagation_ms": 400699.0000009537,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "deb7371a734d07be33950c9f5a4b3b643c58694803cc75aed56dd4479eb19a24",
+        "creation_time": 946701098.1478864,
+        "first_seen_time": 946701098.182,
+        "block_inclusion_time": 946700994.068,
+        "confirmation_delay_sec": -104.0798864364624,
+        "network_propagation_time_ms": 368852.9999256134,
+        "median_propagation_ms": 8275.999963283539,
+        "p95_propagation_ms": 360817.999958992,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "d9df56022aa4bcd0e3e9ddf96589619a881ae49ffc9373da52f2c98dd0022ed0",
+        "creation_time": 946701159.1899704,
+        "first_seen_time": 946701159.224,
+        "block_inclusion_time": 946700994.068,
+        "confirmation_delay_sec": -165.12197041511536,
+        "network_propagation_time_ms": 13205.000042915344,
+        "median_propagation_ms": 7730.000019073486,
+        "p95_propagation_ms": 10825.999975204468,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "84aa862f2dfabab02a8d1c323c1ce1c152a94a7f0cbeaf8d9b967118ea4fe7b0",
+        "creation_time": 946701220.1911885,
+        "first_seen_time": 946701220.226,
+        "block_inclusion_time": 946700994.068,
+        "confirmation_delay_sec": -226.123188495636,
+        "network_propagation_time_ms": 14254.999995231628,
+        "median_propagation_ms": 8725.000023841858,
+        "p95_propagation_ms": 12000.0,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "147614b35f17e974d32e14c4a39abbc021bb7fca608a74692fa78861ccd56cfa",
+        "creation_time": 946701358.5929538,
+        "first_seen_time": 946701358.612,
+        "block_inclusion_time": 946700994.068,
+        "confirmation_delay_sec": -364.5249538421631,
+        "network_propagation_time_ms": 13363.00003528595,
+        "median_propagation_ms": 7332.000017166138,
+        "p95_propagation_ms": 10652.000069618225,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "bdd029fa869bc4e2f58a40300e242f819ab16e7c2e988976f6313adb76a48e43",
+        "creation_time": 946701419.5951804,
+        "first_seen_time": 946701419.6,
+        "block_inclusion_time": 946700994.068,
+        "confirmation_delay_sec": -425.5271804332733,
+        "network_propagation_time_ms": 12149.999976158142,
+        "median_propagation_ms": 7215.000033378601,
+        "p95_propagation_ms": 10500.0,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "cdb2c083535ebedfa72e91b95f9b748ecb60b49a19c0507ed8155bb5b9ffc435",
+        "creation_time": 946701480.6765034,
+        "first_seen_time": 946701480.676,
+        "block_inclusion_time": 946701469.357,
+        "confirmation_delay_sec": -11.319503426551819,
+        "network_propagation_time_ms": 402171.0000038147,
+        "median_propagation_ms": 317386.0000371933,
+        "p95_propagation_ms": 396730.99994659424,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "96cd64c2f59e45643d0aa05437b7393d5eba770afd53fabae633a4fff8b7bc70",
+        "creation_time": 946701696.839611,
+        "first_seen_time": 946701696.839,
+        "block_inclusion_time": 946701469.357,
+        "confirmation_delay_sec": -227.48261106014252,
+        "network_propagation_time_ms": 427414.0000343323,
+        "median_propagation_ms": 340718.9999818802,
+        "p95_propagation_ms": 420475.00002384186,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "e43c5c30adacdc21ae713cb3cb458edc508bc234366cf81b9e7bca63f1e8f782",
+        "creation_time": 946702454.75487,
+        "first_seen_time": 946702454.734,
+        "block_inclusion_time": 946702381.377,
+        "confirmation_delay_sec": -73.37787008285522,
+        "network_propagation_time_ms": 426394.00005340576,
+        "median_propagation_ms": 326047.9999780655,
+        "p95_propagation_ms": 410294.0000295639,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "9e639ca137a441cc25c32e18a1300af8b19c0ee7dff74d89ba7379a0211a9002",
+        "creation_time": 946702516.255995,
+        "first_seen_time": 946702516.277,
+        "block_inclusion_time": 946702381.377,
+        "confirmation_delay_sec": -134.87899506092072,
+        "network_propagation_time_ms": 421481.0000658035,
+        "median_propagation_ms": 307986.00006103516,
+        "p95_propagation_ms": 414041.00000858307,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "a4d8266db205dacf9a9dcefcb99e70ec27c8f1cd5e7f3723261b4e522816e617",
+        "creation_time": 946702577.1573484,
+        "first_seen_time": 946702577.207,
+        "block_inclusion_time": 946702381.377,
+        "confirmation_delay_sec": -195.78034842014313,
+        "network_propagation_time_ms": 424075.99997520447,
+        "median_propagation_ms": 323416.00000858307,
+        "p95_propagation_ms": 407296.0000038147,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "0d707ae57b1f72c5157254bde8ae03fc3611bae8df8b92071eda7eae9308631e",
+        "creation_time": 946703185.169377,
+        "first_seen_time": 946703185.17,
+        "block_inclusion_time": 946703172.169,
+        "confirmation_delay_sec": -13.00037693977356,
+        "network_propagation_time_ms": 12915.000081062317,
+        "median_propagation_ms": 6907.500088214874,
+        "p95_propagation_ms": 10139.999985694885,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "964ad44cb3bea6313d055237f88d2eb5625018e8aeb7c818fb4230ee26eb9e06",
+        "creation_time": 946703401.403796,
+        "first_seen_time": 946703401.408,
+        "block_inclusion_time": 946703367.673,
+        "confirmation_delay_sec": -33.73079597949982,
+        "network_propagation_time_ms": 13791.000008583069,
+        "median_propagation_ms": 7796.000003814697,
+        "p95_propagation_ms": 10909.999966621399,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "08a31ee7741b14be0307a26679567dad65723628861df01c3986d92d52125d30",
+        "creation_time": 946703618.078015,
+        "first_seen_time": 946703618.078,
+        "block_inclusion_time": 946703602.777,
+        "confirmation_delay_sec": -15.301015019416809,
+        "network_propagation_time_ms": 12810.00006198883,
+        "median_propagation_ms": 7450.000047683716,
+        "p95_propagation_ms": 10835.000038146973,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "a726c72114791d44ac5df2acb48ff7d32b96c73256066e057b6447cd1b09bd02",
+        "creation_time": 946703679.079253,
+        "first_seen_time": 946703679.079,
+        "block_inclusion_time": 946703602.777,
+        "confirmation_delay_sec": -76.3022530078888,
+        "network_propagation_time_ms": 11879.999995231628,
+        "median_propagation_ms": 7067.500054836273,
+        "p95_propagation_ms": 10404.99997138977,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "6d3b34b554c3dcdd0bf1c2c108f638df4e6ddb6d7e7a21ebbc0961cc4a71dc47",
+        "creation_time": 946703740.0416176,
+        "first_seen_time": 946703740.046,
+        "block_inclusion_time": 946703602.777,
+        "confirmation_delay_sec": -137.2646176815033,
+        "network_propagation_time_ms": 13049.999952316284,
+        "median_propagation_ms": 6590.000033378601,
+        "p95_propagation_ms": 9919.999957084656,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "2cce374407ade97075a39af00994bc17ea4d30e31a4421b7448fd40bbab26a36",
+        "creation_time": 946703957.384817,
+        "first_seen_time": 946703957.47,
+        "block_inclusion_time": 946703952.66,
+        "confirmation_delay_sec": -4.7248170375823975,
+        "network_propagation_time_ms": 12970.999956130981,
+        "median_propagation_ms": 7473.499953746796,
+        "p95_propagation_ms": 10733.999967575073,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "6715ab8f4ac6ab2170aec7b8cebe9546c75ef9239281ed9d8a18f31202b49ab0",
+        "creation_time": 946704018.3283482,
+        "first_seen_time": 946704018.348,
+        "block_inclusion_time": 946704008.172,
+        "confirmation_delay_sec": -10.1563481092453,
+        "network_propagation_time_ms": 12797.99997806549,
+        "median_propagation_ms": 6784.999966621399,
+        "p95_propagation_ms": 10237.99991607666,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "24587e75009899c8b04cb772b86fb0935140339813f961ddc66bf6e1eeb86deb",
+        "creation_time": 946704164.3889588,
+        "first_seen_time": 946704164.475,
+        "block_inclusion_time": 946704146.797,
+        "confirmation_delay_sec": -17.59195876121521,
+        "network_propagation_time_ms": 13579.999923706055,
+        "median_propagation_ms": 7674.999952316284,
+        "p95_propagation_ms": 10863.999962806702,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "c74517232164d09f93aae4b3f053a42ca50aabfe01687af252e19117cea00d94",
+        "creation_time": 946704388.9554592,
+        "first_seen_time": 946704388.955,
+        "block_inclusion_time": 946704377.993,
+        "confirmation_delay_sec": -10.962459206581116,
+        "network_propagation_time_ms": 11977.999925613403,
+        "median_propagation_ms": 7462.999939918518,
+        "p95_propagation_ms": 10657.999992370605,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "323caf82d9b21ea9b9a2bcdf1957baa729eedd161f1d58c2a65ed2be8034601a",
+        "creation_time": 946705606.417803,
+        "first_seen_time": 946705606.465,
+        "block_inclusion_time": 946705592.017,
+        "confirmation_delay_sec": -14.400803089141846,
+        "network_propagation_time_ms": 13579.999923706055,
+        "median_propagation_ms": 8389.999985694885,
+        "p95_propagation_ms": 11949.999928474426,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "8bcb15c438970c650894e17459199a6a04e9962af7510fd5c864034e3afb3e84",
+        "creation_time": 946705667.319003,
+        "first_seen_time": 946705667.336,
+        "block_inclusion_time": 946705592.017,
+        "confirmation_delay_sec": -75.3020030260086,
+        "network_propagation_time_ms": 12500.0,
+        "median_propagation_ms": 7384.999990463257,
+        "p95_propagation_ms": 10550.000071525574,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "ae8edbd9d2d7be9154039c7a8b9fe1f310ef420ab52c18ccb325cbe0ca7dc43b",
+        "creation_time": 946706806.141791,
+        "first_seen_time": 946706806.164,
+        "block_inclusion_time": 946706504.374,
+        "confirmation_delay_sec": -301.76779103279114,
+        "network_propagation_time_ms": 13439.99993801117,
+        "median_propagation_ms": 7544.999957084656,
+        "p95_propagation_ms": 11214.999914169312,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "2619f8b565e8acc918aba1f56e35a34b0456bae9ce3495b64a798516bdb92037",
+        "creation_time": 946709021.5860988,
+        "first_seen_time": 946709021.586,
+        "block_inclusion_time": 946708961.029,
+        "confirmation_delay_sec": -60.557098746299744,
+        "network_propagation_time_ms": 13160.000085830688,
+        "median_propagation_ms": 7485.000014305115,
+        "p95_propagation_ms": 10670.000076293945,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "01eb6c1f9ff9404199d18e171cb5dc17091e1cf5c148dc478cf4261eeb0e0ba1",
+        "creation_time": 946709082.487311,
+        "first_seen_time": 946709082.509,
+        "block_inclusion_time": 946708961.029,
+        "confirmation_delay_sec": -121.45831096172333,
+        "network_propagation_time_ms": 12695.000052452087,
+        "median_propagation_ms": 7460.000038146973,
+        "p95_propagation_ms": 10645.000100135803,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "2c463ea8efc25314072150b0eba840a04a5ec28cbff389ce31bfaf96fb6fbf27",
+        "creation_time": 946709143.3885292,
+        "first_seen_time": 946709143.395,
+        "block_inclusion_time": 946708961.029,
+        "confirmation_delay_sec": -182.3595291376114,
+        "network_propagation_time_ms": 13106.000065803528,
+        "median_propagation_ms": 7276.000022888184,
+        "p95_propagation_ms": 10700.999975204468,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "50c88fafeabd91a04347cb73dbfbf46639138818d561089c81b3b83a306bb7bf",
+        "creation_time": 946709204.289745,
+        "first_seen_time": 946709204.297,
+        "block_inclusion_time": 946708961.029,
+        "confirmation_delay_sec": -243.26074492931366,
+        "network_propagation_time_ms": 13984.999895095825,
+        "median_propagation_ms": 7802.499949932098,
+        "p95_propagation_ms": 11054.999947547913,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "d18cf202b46c6452096138dbc0457ab2f1a49533d945918965ee76edd9c12715",
+        "creation_time": 946709421.1940888,
+        "first_seen_time": 946709421.194,
+        "block_inclusion_time": 946709257.59,
+        "confirmation_delay_sec": -163.60408878326416,
+        "network_propagation_time_ms": 13725.000023841858,
+        "median_propagation_ms": 7835.000038146973,
+        "p95_propagation_ms": 10965.000033378601,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      },
+      {
+        "tx_hash": "eddef974745bd9b2535d9f8f797ec922f323e7a87eec10c88990a5676807538e",
+        "creation_time": 946709482.5066116,
+        "first_seen_time": 946709482.506,
+        "block_inclusion_time": 946709257.59,
+        "confirmation_delay_sec": -224.91661155223846,
+        "network_propagation_time_ms": 13380.99992275238,
+        "median_propagation_ms": 7848.499953746796,
+        "p95_propagation_ms": 10930.999994277954,
+        "nodes_observed": 30,
+        "total_nodes": 32,
+        "propagation_coverage": 0.9375
+      }
+    ]
+  },
+  "resilience_analysis": {
+    "connectivity": {
+      "total_nodes": 32,
+      "average_peer_count": 22.125,
+      "min_peer_count": 0,
+      "max_peer_count": 28,
+      "isolated_nodes": [
+        "miner-distributor",
+        "simulation-monitor"
+      ],
+      "peer_count_distribution": {
+        "user-023": 23,
+        "miner-002": 25,
+        "user-009": 28,
+        "user-005": 26,
+        "user-022": 26,
+        "user-019": 20,
+        "user-017": 23,
+        "user-024": 25,
+        "miner-distributor": 0,
+        "miner-004": 23,
+        "user-006": 23,
+        "user-014": 20,
+        "user-003": 20,
+        "user-015": 24,
+        "user-025": 26,
+        "user-018": 25,
+        "user-004": 22,
+        "user-020": 23,
+        "user-008": 24,
+        "miner-005": 24,
+        "miner-003": 22,
+        "user-002": 25,
+        "user-016": 23,
+        "user-001": 24,
+        "simulation-monitor": 0,
+        "user-013": 23,
+        "user-011": 25,
+        "user-007": 22,
+        "user-010": 25,
+        "miner-001": 21,
+        "user-012": 22,
+        "user-021": 26
+      }
+    },
+    "centralization": {
+      "first_seen_gini": 0.3609062170706006,
+      "dominant_observers": [],
+      "miner_first_seen_ratio": 0.2054794520547945
+    },
+    "partition_risk": {
+      "bridge_nodes": [
+        "user-009",
+        "user-021",
+        "user-025",
+        "miner-002",
+        "user-010"
+      ],
+      "connected_components": 3
+    }
+  }
+}

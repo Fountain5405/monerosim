@@ -1,0 +1,5730 @@
+{
+  "total_transactions": 45,
+  "paths_reconstructed": 45,
+  "originator_confirmed_count": 45,
+  "avg_stem_length": 15.511111111111111,
+  "min_stem_length": 2,
+  "max_stem_length": 48,
+  "stem_length_distribution": {
+    "43": 1,
+    "6": 2,
+    "48": 1,
+    "8": 3,
+    "21": 2,
+    "12": 3,
+    "4": 2,
+    "26": 1,
+    "16": 2,
+    "18": 1,
+    "32": 1,
+    "20": 1,
+    "25": 1,
+    "31": 1,
+    "10": 4,
+    "22": 4,
+    "14": 1,
+    "23": 1,
+    "7": 2,
+    "5": 2,
+    "24": 1,
+    "9": 2,
+    "17": 1,
+    "2": 2,
+    "11": 2,
+    "27": 1
+  },
+  "avg_stem_duration_ms": 4647.244448131985,
+  "avg_hop_delay_ms": 320.2542115864308,
+  "node_stats": [
+    {
+      "node_id": "user-004",
+      "stem_relay_count": 16,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 12.3125
+    },
+    {
+      "node_id": "miner-003",
+      "stem_relay_count": 26,
+      "fluff_point_count": 2,
+      "originator_count": 11,
+      "avg_stem_position": 9.538461538461538
+    },
+    {
+      "node_id": "user-011",
+      "stem_relay_count": 14,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 16.714285714285715
+    },
+    {
+      "node_id": "user-023",
+      "stem_relay_count": 25,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 14.0
+    },
+    {
+      "node_id": "user-007",
+      "stem_relay_count": 25,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 11.16
+    },
+    {
+      "node_id": "user-024",
+      "stem_relay_count": 23,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 11.26086956521739
+    },
+    {
+      "node_id": "user-016",
+      "stem_relay_count": 18,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 7.777777777777778
+    },
+    {
+      "node_id": "user-017",
+      "stem_relay_count": 19,
+      "fluff_point_count": 1,
+      "originator_count": 0,
+      "avg_stem_position": 11.842105263157896
+    },
+    {
+      "node_id": "user-005",
+      "stem_relay_count": 22,
+      "fluff_point_count": 1,
+      "originator_count": 0,
+      "avg_stem_position": 14.181818181818182
+    },
+    {
+      "node_id": "miner-001",
+      "stem_relay_count": 23,
+      "fluff_point_count": 2,
+      "originator_count": 9,
+      "avg_stem_position": 10.956521739130435
+    },
+    {
+      "node_id": "miner-002",
+      "stem_relay_count": 27,
+      "fluff_point_count": 4,
+      "originator_count": 13,
+      "avg_stem_position": 9.37037037037037
+    },
+    {
+      "node_id": "user-001",
+      "stem_relay_count": 14,
+      "fluff_point_count": 1,
+      "originator_count": 0,
+      "avg_stem_position": 10.142857142857142
+    },
+    {
+      "node_id": "user-002",
+      "stem_relay_count": 27,
+      "fluff_point_count": 4,
+      "originator_count": 0,
+      "avg_stem_position": 11.222222222222221
+    },
+    {
+      "node_id": "miner-005",
+      "stem_relay_count": 20,
+      "fluff_point_count": 1,
+      "originator_count": 6,
+      "avg_stem_position": 15.8
+    },
+    {
+      "node_id": "user-003",
+      "stem_relay_count": 26,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 11.961538461538462
+    },
+    {
+      "node_id": "user-021",
+      "stem_relay_count": 33,
+      "fluff_point_count": 3,
+      "originator_count": 0,
+      "avg_stem_position": 12.545454545454545
+    },
+    {
+      "node_id": "user-020",
+      "stem_relay_count": 23,
+      "fluff_point_count": 1,
+      "originator_count": 0,
+      "avg_stem_position": 12.73913043478261
+    },
+    {
+      "node_id": "user-019",
+      "stem_relay_count": 11,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 13.818181818181818
+    },
+    {
+      "node_id": "user-008",
+      "stem_relay_count": 25,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 10.36
+    },
+    {
+      "node_id": "user-013",
+      "stem_relay_count": 16,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 11.9375
+    },
+    {
+      "node_id": "user-014",
+      "stem_relay_count": 26,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 11.038461538461538
+    },
+    {
+      "node_id": "user-006",
+      "stem_relay_count": 21,
+      "fluff_point_count": 1,
+      "originator_count": 0,
+      "avg_stem_position": 9.238095238095237
+    },
+    {
+      "node_id": "user-010",
+      "stem_relay_count": 22,
+      "fluff_point_count": 5,
+      "originator_count": 0,
+      "avg_stem_position": 12.318181818181818
+    },
+    {
+      "node_id": "user-009",
+      "stem_relay_count": 18,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 8.555555555555555
+    },
+    {
+      "node_id": "user-022",
+      "stem_relay_count": 17,
+      "fluff_point_count": 1,
+      "originator_count": 0,
+      "avg_stem_position": 10.588235294117647
+    },
+    {
+      "node_id": "user-012",
+      "stem_relay_count": 26,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 11.192307692307692
+    },
+    {
+      "node_id": "miner-004",
+      "stem_relay_count": 24,
+      "fluff_point_count": 0,
+      "originator_count": 6,
+      "avg_stem_position": 9.5
+    },
+    {
+      "node_id": "user-015",
+      "stem_relay_count": 28,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 9.571428571428571
+    },
+    {
+      "node_id": "user-025",
+      "stem_relay_count": 16,
+      "fluff_point_count": 2,
+      "originator_count": 0,
+      "avg_stem_position": 9.25
+    },
+    {
+      "node_id": "user-018",
+      "stem_relay_count": 22,
+      "fluff_point_count": 0,
+      "originator_count": 0,
+      "avg_stem_position": 11.363636363636363
+    }
+  ],
+  "frequent_fluff_nodes": [
+    [
+      "user-010",
+      5
+    ],
+    [
+      "user-002",
+      4
+    ],
+    [
+      "miner-002",
+      4
+    ],
+    [
+      "user-021",
+      3
+    ],
+    [
+      "user-025",
+      2
+    ],
+    [
+      "user-003",
+      2
+    ],
+    [
+      "user-012",
+      2
+    ],
+    [
+      "user-024",
+      2
+    ],
+    [
+      "user-011",
+      2
+    ],
+    [
+      "user-014",
+      2
+    ]
+  ],
+  "paths": [
+    {
+      "tx_hash": "9effc6a5a5fa0f07e1f5b540ed604804471f4fb7d7e7d7e57f0c0010ed67c8b7",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699201.189,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946699202.324,
+          "delta_ms": 1134.9999904632568
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946699203.709,
+          "delta_ms": 1384.9999904632568
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946699204.884,
+          "delta_ms": 1174.9999523162842
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946699206.545,
+          "delta_ms": 1661.0000133514404
+        }
+      ],
+      "fluff_node": "miner-002",
+      "stem_length": 5,
+      "stem_duration_ms": 5355.999946594238,
+      "fluff_recipients": 26,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "8db2bedabb8bc7204f41e7d056f1148febfcf66f931d681c7927a6ac072cb996",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699262.49,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946699264.125,
+          "delta_ms": 1634.9999904632568
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946699265.491,
+          "delta_ms": 1366.0000562667847
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946699266.691,
+          "delta_ms": 1199.9999284744263
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946699268.041,
+          "delta_ms": 1350.000023841858
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946699269.156,
+          "delta_ms": 1115.0000095367432
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946699265.776,
+          "delta_ms": -3379.9999952316284
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946699267.136,
+          "delta_ms": 1360.0000143051147
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946699267.191,
+          "delta_ms": 54.9999475479126
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946699266.791,
+          "delta_ms": -399.9999761581421
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946699268.391,
+          "delta_ms": 1600.000023841858
+        }
+      ],
+      "fluff_node": "user-002",
+      "stem_length": 11,
+      "stem_duration_ms": 5901.000022888184,
+      "fluff_recipients": 20,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "101419cd4e14f46e1b2091fc717f666d432313f74b4b07970f63cc53130fa625",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699564.896,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946699564.996,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699566.597,
+          "delta_ms": 1600.9999513626099
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946699567.937,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946699569.257,
+          "delta_ms": 1319.9999332427979
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946699571.097,
+          "delta_ms": 1840.000033378601
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946699570.947,
+          "delta_ms": -149.9999761581421
+        }
+      ],
+      "fluff_node": "user-017",
+      "stem_length": 7,
+      "stem_duration_ms": 6050.999999046326,
+      "fluff_recipients": 22,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "2ddce0b73868589b783ff73b1522714fbd2a0dc0cbda74e20bd58c5909827927",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699625.598,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946699625.698,
+          "delta_ms": 99.99990463256836
+        }
+      ],
+      "fluff_node": "miner-001",
+      "stem_length": 2,
+      "stem_duration_ms": 99.99990463256836,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "ecbf56131d022d76e202df9aec78d17bab732d9551f0d192cf2648fcc1b1e051",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699764.0,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946699764.1,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946699765.721,
+          "delta_ms": 1620.9999322891235
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946699767.091,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946699768.956,
+          "delta_ms": 1865.0000095367432
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946699769.251,
+          "delta_ms": 295.0000762939453
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946699768.446,
+          "delta_ms": -805.0000667572021
+        }
+      ],
+      "fluff_node": "user-025",
+      "stem_length": 7,
+      "stem_duration_ms": 4445.999979972839,
+      "fluff_recipients": 43,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "0ed778257872958a983db90e04d83fd8bd50818e99d3540e5336345cc3d516ce",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-018",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946699825.188,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946699825.363,
+          "delta_ms": 175.00007152557373
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946699825.483,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946699825.633,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946699825.778,
+          "delta_ms": 144.99998092651367
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946699825.928,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946699827.548,
+          "delta_ms": 1620.0000047683716
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946699828.918,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946699829.803,
+          "delta_ms": 884.9999904632568
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946699831.002,
+          "delta_ms": 1199.0000009536743
+        }
+      ],
+      "fluff_node": "miner-001",
+      "stem_length": 10,
+      "stem_duration_ms": 5814.0000104904175,
+      "fluff_recipients": 49,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "be83054ff2686ddc6a0d50fc4dbd7d5546f1b32d5f9cc4f280fea08ac8b72e5f",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700040.313,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946700040.478,
+          "delta_ms": 165.0000810623169
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946700040.598,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946700040.718,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700040.868,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946700040.988,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946700041.078,
+          "delta_ms": 89.99991416931152
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700042.906,
+          "delta_ms": 1828.0000686645508
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700043.511,
+          "delta_ms": 605.0000190734863
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946700045.401,
+          "delta_ms": 1889.9999856948853
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946700046.859,
+          "delta_ms": 1457.9999446868896
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946700047.064,
+          "delta_ms": 205.00004291534424
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700046.609,
+          "delta_ms": -455.00004291534424
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700044.716,
+          "delta_ms": -1893.0000066757202
+        }
+      ],
+      "fluff_node": "miner-002",
+      "stem_length": 14,
+      "stem_duration_ms": 4402.999997138977,
+      "fluff_recipients": 22,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "c92b1b25279fbe6df90128e9981d4c8175ca8bba5f33ee6f2c441afd1b40c7e6",
+      "originator": "miner-004",
+      "originator_ip": "177.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700255.951,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946700256.022,
+          "delta_ms": 70.99997997283936
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700257.627,
+          "delta_ms": 1605.0000190734863
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700258.507,
+          "delta_ms": 879.9999952316284
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700259.422,
+          "delta_ms": 915.0000810623169
+        }
+      ],
+      "fluff_node": "user-013",
+      "stem_length": 5,
+      "stem_duration_ms": 3471.000075340271,
+      "fluff_recipients": 26,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "22564bd6394ffe3542884d1615f03b21dc2b62f38ebde0f55e2ee25ac26b83d4",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700316.912,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700317.072,
+          "delta_ms": 160.00008583068848
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946700317.192,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700318.242,
+          "delta_ms": 1049.9999523162842
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946700319.102,
+          "delta_ms": 860.0000143051147
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700320.662,
+          "delta_ms": 1559.999942779541
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700321.117,
+          "delta_ms": 455.00004291534424
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946700322.447,
+          "delta_ms": 1330.0000429153442
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700318.552,
+          "delta_ms": -3894.9999809265137
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700320.672,
+          "delta_ms": 2120.0000047683716
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700321.132,
+          "delta_ms": 459.9999189376831
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946700320.722,
+          "delta_ms": -409.9999666213989
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700322.107,
+          "delta_ms": 1384.9999904632568
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946700323.407,
+          "delta_ms": 1299.9999523162842
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946700322.512,
+          "delta_ms": -894.9999809265137
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700319.012,
+          "delta_ms": -3500.0
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700320.367,
+          "delta_ms": 1355.0000190734863
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700321.757,
+          "delta_ms": 1389.9999856948853
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946700323.417,
+          "delta_ms": 1660.0000858306885
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946700321.207,
+          "delta_ms": -2210.0000381469727
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700321.162,
+          "delta_ms": -45.00007629394531
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946700322.312,
+          "delta_ms": 1150.0000953674316
+        }
+      ],
+      "fluff_node": "miner-002",
+      "stem_length": 22,
+      "stem_duration_ms": 5400.000095367432,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "746ad60209cec84a3e97b6c4b846621d472d9468833410830e94fbdcc19da77a",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700377.813,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946700378.958,
+          "delta_ms": 1144.9999809265137
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946700380.613,
+          "delta_ms": 1655.00009059906
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700382.213,
+          "delta_ms": 1600.000023841858
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700382.578,
+          "delta_ms": 364.9998903274536
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700382.443,
+          "delta_ms": -134.99999046325684
+        }
+      ],
+      "fluff_node": "user-002",
+      "stem_length": 6,
+      "stem_duration_ms": 4629.999995231628,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "376a0486cfdd822243fa926dbc880a69adae12268e59eee3b17b6f20c8ab938c",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700439.0,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700439.14,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700440.27,
+          "delta_ms": 1129.9999952316284
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700441.84,
+          "delta_ms": 1570.0000524520874
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946700442.16,
+          "delta_ms": 319.99993324279785
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946700443.546,
+          "delta_ms": 1386.0000371932983
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946700442.87,
+          "delta_ms": -675.9999990463257
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700443.865,
+          "delta_ms": 995.0000047683716
+        }
+      ],
+      "fluff_node": "user-010",
+      "stem_length": 8,
+      "stem_duration_ms": 4865.000009536743,
+      "fluff_recipients": 47,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "ed16414e997d31ec5eef0e0f2a666de2a642bf01a0334390b303f1bae0c85664",
+      "originator": "miner-004",
+      "originator_ip": "177.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700500.277,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946700500.347,
+          "delta_ms": 70.0000524520874
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700500.437,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700500.577,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700500.697,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700500.802,
+          "delta_ms": 105.00001907348633
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946700500.967,
+          "delta_ms": 164.99996185302734
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946700501.117,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700502.977,
+          "delta_ms": 1860.0000143051147
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946700504.342,
+          "delta_ms": 1365.0000095367432
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700504.387,
+          "delta_ms": 44.99995708465576
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946700505.757,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946700506.287,
+          "delta_ms": 529.9999713897705
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700505.937,
+          "delta_ms": -349.99990463256836
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700505.127,
+          "delta_ms": -810.0000619888306
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946700506.152,
+          "delta_ms": 1024.999976158142
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700505.837,
+          "delta_ms": -314.99993801116943
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700506.417,
+          "delta_ms": 580.0000429153442
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946700504.817,
+          "delta_ms": -1600.000023841858
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946700504.847,
+          "delta_ms": 29.999971389770508
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700506.717,
+          "delta_ms": 1870.0000047683716
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946700507.997,
+          "delta_ms": 1279.9999713897705
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700505.397,
+          "delta_ms": -2600.000023841858
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700506.517,
+          "delta_ms": 1120.0000047683716
+        }
+      ],
+      "fluff_node": "user-007",
+      "stem_length": 24,
+      "stem_duration_ms": 6240.000009536743,
+      "fluff_recipients": 54,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "fd01b07e9f7a36cbb6d8a27337fc85f5be762c7c44f95ed995f69d8c13234555",
+      "originator": "miner-005",
+      "originator_ip": "41.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "miner-004",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700561.558,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700563.418,
+          "delta_ms": 1860.0000143051147
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700564.853,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946700566.538,
+          "delta_ms": 1684.999942779541
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946700567.428,
+          "delta_ms": 889.9999856948853
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700563.698,
+          "delta_ms": -3730.0000190734863
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700564.833,
+          "delta_ms": 1134.9999904632568
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946700566.268,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946700567.908,
+          "delta_ms": 1639.9999856948853
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946700565.583,
+          "delta_ms": -2325.000047683716
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700565.818,
+          "delta_ms": 235.00001430511475
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700566.658,
+          "delta_ms": 840.0000333786011
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700566.758,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700566.553,
+          "delta_ms": -205.00004291534424
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946700567.993,
+          "delta_ms": 1440.000057220459
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700565.018,
+          "delta_ms": -2975.000023841858
+        }
+      ],
+      "fluff_node": "user-010",
+      "stem_length": 16,
+      "stem_duration_ms": 3460.0000381469727,
+      "fluff_recipients": 47,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "53d1f1c35069b1550d14d8066641986b6827369908eaa90cee7a7ca38df4ec53",
+      "originator": "miner-004",
+      "originator_ip": "177.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700854.083,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700854.153,
+          "delta_ms": 70.0000524520874
+        }
+      ],
+      "fluff_node": "user-014",
+      "stem_length": 2,
+      "stem_duration_ms": 70.0000524520874,
+      "fluff_recipients": 22,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "8d980fcf0b45c7851513088a18dac3d0aea21c814d4ba06400d23b4c438c696e",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700915.12,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946700915.33,
+          "delta_ms": 210.00003814697266
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946700915.515,
+          "delta_ms": 184.99994277954102
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946700916.87,
+          "delta_ms": 1355.0000190734863
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700918.424,
+          "delta_ms": 1554.0000200271606
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946700919.524,
+          "delta_ms": 1100.000023841858
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700920.3,
+          "delta_ms": 775.999903678894
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946700920.985,
+          "delta_ms": 685.0000619888306
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700919.67,
+          "delta_ms": -1315.000057220459
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946700919.724,
+          "delta_ms": 54.000020027160645
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700921.524,
+          "delta_ms": 1800.0000715255737
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700918.445,
+          "delta_ms": -3078.9999961853027
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946700918.975,
+          "delta_ms": 529.9999713897705
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946700920.125,
+          "delta_ms": 1149.999976158142
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946700919.335,
+          "delta_ms": -789.9999618530273
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946700920.225,
+          "delta_ms": 889.9999856948853
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700920.355,
+          "delta_ms": 129.99999523162842
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946700919.779,
+          "delta_ms": -575.9999752044678
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946700920.002,
+          "delta_ms": 222.9999303817749
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946700921.225,
+          "delta_ms": 1223.0000495910645
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946700918.535,
+          "delta_ms": -2690.000057220459
+        }
+      ],
+      "fluff_node": "user-015",
+      "stem_length": 21,
+      "stem_duration_ms": 3414.9999618530273,
+      "fluff_recipients": 23,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "30c3a24747fa5bfcbe0126d64b96ea7ba72ba6e76533e1b1f7122a4b1f1a3664",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946700976.125,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946700978.015,
+          "delta_ms": 1889.9999856948853
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946700978.905,
+          "delta_ms": 889.9999856948853
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946700980.09,
+          "delta_ms": 1185.0000619888306
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946700982.05,
+          "delta_ms": 1959.999918937683
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946700983.055,
+          "delta_ms": 1004.9999952316284
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700979.375,
+          "delta_ms": -3679.9999475479126
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700980.56,
+          "delta_ms": 1184.999942779541
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946700980.355,
+          "delta_ms": -204.9999237060547
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946700981.695,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946700981.01,
+          "delta_ms": -685.0000619888306
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700980.63,
+          "delta_ms": -379.9999952316284
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946700981.22,
+          "delta_ms": 590.0000333786011
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700980.085,
+          "delta_ms": -1134.9999904632568
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946700980.02,
+          "delta_ms": -65.00005722045898
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946700979.67,
+          "delta_ms": -350.0000238418579
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946700981.49,
+          "delta_ms": 1820.0000524520874
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700981.1,
+          "delta_ms": -389.99998569488525
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700979.6,
+          "delta_ms": -1500.0
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946700981.285,
+          "delta_ms": 1684.999942779541
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946700980.455,
+          "delta_ms": -829.9999237060547
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946700980.79,
+          "delta_ms": 334.9999189376831
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946700980.56,
+          "delta_ms": -230.00001907348633
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946700982.045,
+          "delta_ms": 1485.0000143051147
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700981.745,
+          "delta_ms": -299.9999523162842
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700981.635,
+          "delta_ms": -110.00001430511475
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946700980.64,
+          "delta_ms": -995.0000047683716
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946700981.725,
+          "delta_ms": 1085.0000381469727
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700979.525,
+          "delta_ms": -2200.000047683716
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946700980.68,
+          "delta_ms": 1154.9999713897705
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946700979.935,
+          "delta_ms": -745.0000047683716
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946700980.11,
+          "delta_ms": 175.00007152557373
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700981.75,
+          "delta_ms": 1639.9999856948853
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946700980.155,
+          "delta_ms": -1595.0000286102295
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946700981.545,
+          "delta_ms": 1389.9999856948853
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946700982.405,
+          "delta_ms": 860.0000143051147
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946700980.695,
+          "delta_ms": -1709.999918937683
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946700981.995,
+          "delta_ms": 1299.9999523162842
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946700980.81,
+          "delta_ms": -1185.0000619888306
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946700981.79,
+          "delta_ms": 980.0000190734863
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946700983.3,
+          "delta_ms": 1509.9999904632568
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700980.4,
+          "delta_ms": -2899.999976158142
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946700980.405,
+          "delta_ms": 4.999995231628418
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946700980.315,
+          "delta_ms": -89.99991416931152
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946700981.73,
+          "delta_ms": 1414.9999618530273
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946700981.665,
+          "delta_ms": -65.00005722045898
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946700980.455,
+          "delta_ms": -1209.999918937683
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946700980.415,
+          "delta_ms": -40.000081062316895
+        }
+      ],
+      "fluff_node": "user-013",
+      "stem_length": 48,
+      "stem_duration_ms": 4289.999961853027,
+      "fluff_recipients": 23,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "8145adec4f5c9cadac5643a5123dcf31c401c7bfa257a6be34ce8957577b2361",
+      "originator": "miner-005",
+      "originator_ip": "41.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-005",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946701037.076,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946701037.231,
+          "delta_ms": 154.9999713897705
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946701038.586,
+          "delta_ms": 1355.0000190734863
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946701039.761,
+          "delta_ms": 1175.0000715255737
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946701042.031,
+          "delta_ms": 2269.9999809265137
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946701040.411,
+          "delta_ms": -1620.0000047683716
+        }
+      ],
+      "fluff_node": "user-015",
+      "stem_length": 6,
+      "stem_duration_ms": 3335.0000381469727,
+      "fluff_recipients": 50,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "deb7371a734d07be33950c9f5a4b3b643c58694803cc75aed56dd4479eb19a24",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946701098.182,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946701098.392,
+          "delta_ms": 209.9999189376831
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946701098.577,
+          "delta_ms": 185.00006198883057
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946701098.668,
+          "delta_ms": 90.99996089935303
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946701098.783,
+          "delta_ms": 115.00000953674316
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946701098.898,
+          "delta_ms": 115.00000953674316
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946701100.038,
+          "delta_ms": 1139.9999856948853
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946701101.473,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946701102.418,
+          "delta_ms": 944.9999332427979
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946701102.858,
+          "delta_ms": 440.000057220459
+        }
+      ],
+      "fluff_node": "miner-003",
+      "stem_length": 10,
+      "stem_duration_ms": 4675.999999046326,
+      "fluff_recipients": 51,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "d9df56022aa4bcd0e3e9ddf96589619a881ae49ffc9373da52f2c98dd0022ed0",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946701159.224,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946701159.385,
+          "delta_ms": 161.00001335144043
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946701159.545,
+          "delta_ms": 159.99996662139893
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946701159.665,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946701159.8,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946701161.435,
+          "delta_ms": 1634.9999904632568
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946701163.12,
+          "delta_ms": 1685.0000619888306
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946701164.855,
+          "delta_ms": 1735.0000143051147
+        }
+      ],
+      "fluff_node": "user-007",
+      "stem_length": 8,
+      "stem_duration_ms": 5631.00004196167,
+      "fluff_recipients": 27,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "84aa862f2dfabab02a8d1c323c1ce1c152a94a7f0cbeaf8d9b967118ea4fe7b0",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946701220.226,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946701220.386,
+          "delta_ms": 160.00008583068848
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946701220.551,
+          "delta_ms": 164.99996185302734
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946701220.696,
+          "delta_ms": 144.99998092651367
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946701220.746,
+          "delta_ms": 50.00007152557373
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946701220.831,
+          "delta_ms": 84.9999189376831
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946701220.961,
+          "delta_ms": 129.99999523162842
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946701221.121,
+          "delta_ms": 160.00008583068848
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946701221.331,
+          "delta_ms": 209.9999189376831
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946701221.486,
+          "delta_ms": 154.9999713897705
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701221.576,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946701221.666,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946701221.781,
+          "delta_ms": 115.00000953674316
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946701223.371,
+          "delta_ms": 1590.000033378601
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701225.191,
+          "delta_ms": 1819.9999332427979
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946701226.261,
+          "delta_ms": 1070.0000524520874
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701225.43,
+          "delta_ms": -831.0000896453857
+        }
+      ],
+      "fluff_node": "user-003",
+      "stem_length": 17,
+      "stem_duration_ms": 5203.999996185303,
+      "fluff_recipients": 25,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "147614b35f17e974d32e14c4a39abbc021bb7fca608a74692fa78861ccd56cfa",
+      "originator": "miner-004",
+      "originator_ip": "177.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946701358.612,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946701358.682,
+          "delta_ms": 70.0000524520874
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946701358.798,
+          "delta_ms": 115.99993705749512
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946701358.983,
+          "delta_ms": 185.00006198883057
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946701359.198,
+          "delta_ms": 214.99991416931152
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946701359.318,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946701361.138,
+          "delta_ms": 1820.0000524520874
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946701362.274,
+          "delta_ms": 1136.0000371932983
+        }
+      ],
+      "fluff_node": "user-005",
+      "stem_length": 8,
+      "stem_duration_ms": 3662.000060081482,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "bdd029fa869bc4e2f58a40300e242f819ab16e7c2e988976f6313adb76a48e43",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946701419.6,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946701419.69,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946701419.805,
+          "delta_ms": 114.99989032745361
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946701421.4,
+          "delta_ms": 1595.0000286102295
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946701422.81,
+          "delta_ms": 1409.999966621399
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701422.785,
+          "delta_ms": -24.99997615814209
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946701424.22,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946701424.65,
+          "delta_ms": 429.9999475479126
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701423.515,
+          "delta_ms": -1134.9999904632568
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946701424.635,
+          "delta_ms": 1120.0000047683716
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946701425.35,
+          "delta_ms": 715.0000333786011
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946701424.815,
+          "delta_ms": -534.9999666213989
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946701426.175,
+          "delta_ms": 1359.9998950958252
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946701423.734,
+          "delta_ms": -2440.999984741211
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701423.535,
+          "delta_ms": -199.00000095367432
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946701424.375,
+          "delta_ms": 840.0000333786011
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946701425.015,
+          "delta_ms": 639.9999856948853
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946701425.625,
+          "delta_ms": 610.0000143051147
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946701426.505,
+          "delta_ms": 879.9999952316284
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946701425.28,
+          "delta_ms": -1225.000023841858
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946701423.87,
+          "delta_ms": -1409.999966621399
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946701425.335,
+          "delta_ms": 1465.000033378601
+        }
+      ],
+      "fluff_node": "miner-003",
+      "stem_length": 22,
+      "stem_duration_ms": 5735.000014305115,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "cdb2c083535ebedfa72e91b95f9b748ecb60b49a19c0507ed8155bb5b9ffc435",
+      "originator": "miner-005",
+      "originator_ip": "41.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-018",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946701480.676,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946701482.016,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701483.086,
+          "delta_ms": 1069.9999332427979
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946701483.566,
+          "delta_ms": 480.0000190734863
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946701484.931,
+          "delta_ms": 1365.0000095367432
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946701484.946,
+          "delta_ms": 14.999985694885254
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946701484.156,
+          "delta_ms": -789.9999618530273
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946701485.096,
+          "delta_ms": 939.9999380111694
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946701484.011,
+          "delta_ms": -1084.999918937683
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946701484.336,
+          "delta_ms": 324.99992847442627
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946701483.861,
+          "delta_ms": -475.0000238418579
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946701484.696,
+          "delta_ms": 835.0000381469727
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946701484.406,
+          "delta_ms": -289.99996185302734
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946701484.206,
+          "delta_ms": -200.00004768371582
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946701485.576,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946701485.096,
+          "delta_ms": -480.0000190734863
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946701485.621,
+          "delta_ms": 525.0000953674316
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946701485.751,
+          "delta_ms": 129.99999523162842
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946701486.246,
+          "delta_ms": 495.0000047683716
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946701485.236,
+          "delta_ms": -1010.0001096725464
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946701485.676,
+          "delta_ms": 440.000057220459
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946701486.201,
+          "delta_ms": 524.9999761581421
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946701486.506,
+          "delta_ms": 305.00006675720215
+        }
+      ],
+      "fluff_node": "user-024",
+      "stem_length": 23,
+      "stem_duration_ms": 5830.000042915344,
+      "fluff_recipients": 43,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "96cd64c2f59e45643d0aa05437b7393d5eba770afd53fabae633a4fff8b7bc70",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701696.839,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946701696.959,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946701697.079,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946701697.214,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946701697.304,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946701697.659,
+          "delta_ms": 355.0000190734863
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946701699.299,
+          "delta_ms": 1639.9999856948853
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946701700.639,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946701702.475,
+          "delta_ms": 1835.9999656677246
+        }
+      ],
+      "fluff_node": "user-002",
+      "stem_length": 9,
+      "stem_duration_ms": 5636.000037193298,
+      "fluff_recipients": 50,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "e43c5c30adacdc21ae713cb3cb458edc508bc234366cf81b9e7bca63f1e8f782",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-013",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946702454.734,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946702454.909,
+          "delta_ms": 175.00007152557373
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946702455.094,
+          "delta_ms": 184.99994277954102
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946702455.375,
+          "delta_ms": 281.000018119812
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946702455.56,
+          "delta_ms": 184.99994277954102
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946702455.654,
+          "delta_ms": 94.00010108947754
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946702457.254,
+          "delta_ms": 1599.9999046325684
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946702458.889,
+          "delta_ms": 1635.0001096725464
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946702460.479,
+          "delta_ms": 1589.9999141693115
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946702461.769,
+          "delta_ms": 1290.000081062317
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946702459.214,
+          "delta_ms": -2555.000066757202
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946702460.084,
+          "delta_ms": 870.0000047683716
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946702457.489,
+          "delta_ms": -2595.0000286102295
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946702458.919,
+          "delta_ms": 1430.0000667572021
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946702459.464,
+          "delta_ms": 544.9999570846558
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946702459.074,
+          "delta_ms": -389.99998569488525
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946702460.689,
+          "delta_ms": 1615.0000095367432
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946702460.284,
+          "delta_ms": -404.9999713897705
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946702461.925,
+          "delta_ms": 1640.9999132156372
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946702457.524,
+          "delta_ms": -4400.999903678894
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946702458.644,
+          "delta_ms": 1120.0000047683716
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946702460.194,
+          "delta_ms": 1549.9999523162842
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946702460.694,
+          "delta_ms": 500.0
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946702459.489,
+          "delta_ms": -1205.0000429153442
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946702460.884,
+          "delta_ms": 1394.9999809265137
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946702461.054,
+          "delta_ms": 170.0000762939453
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946702460.884,
+          "delta_ms": -170.0000762939453
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946702459.099,
+          "delta_ms": -1784.999966621399
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946702460.424,
+          "delta_ms": 1325.0000476837158
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946702457.799,
+          "delta_ms": -2625.0
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946702459.689,
+          "delta_ms": 1889.9999856948853
+        }
+      ],
+      "fluff_node": "miner-002",
+      "stem_length": 31,
+      "stem_duration_ms": 4955.000042915344,
+      "fluff_recipients": 50,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "9e639ca137a441cc25c32e18a1300af8b19c0ee7dff74d89ba7379a0211a9002",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946702516.277,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946702516.392,
+          "delta_ms": 115.00000953674316
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946702516.512,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946702516.662,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946702516.797,
+          "delta_ms": 135.0001096725464
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946702516.932,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946702517.097,
+          "delta_ms": 164.99996185302734
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946702517.232,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946702518.597,
+          "delta_ms": 1365.0000095367432
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946702520.442,
+          "delta_ms": 1845.0000286102295
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946702520.802,
+          "delta_ms": 360.00001430511475
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946702522.942,
+          "delta_ms": 2139.9999856948853
+        }
+      ],
+      "fluff_node": "user-012",
+      "stem_length": 12,
+      "stem_duration_ms": 6665.000081062317,
+      "fluff_recipients": 44,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "a4d8266db205dacf9a9dcefcb99e70ec27c8f1cd5e7f3723261b4e522816e617",
+      "originator": "miner-005",
+      "originator_ip": "41.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-023",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946702577.207,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946702577.347,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946702577.467,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946702577.617,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946702577.747,
+          "delta_ms": 129.99999523162842
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946702577.837,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946702578.002,
+          "delta_ms": 164.99996185302734
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946702578.167,
+          "delta_ms": 165.0000810623169
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946702579.487,
+          "delta_ms": 1319.9999332427979
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946702581.342,
+          "delta_ms": 1855.0000190734863
+        }
+      ],
+      "fluff_node": "user-024",
+      "stem_length": 10,
+      "stem_duration_ms": 4134.999990463257,
+      "fluff_recipients": 43,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "0d707ae57b1f72c5157254bde8ae03fc3611bae8df8b92071eda7eae9308631e",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946703185.17,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946703185.345,
+          "delta_ms": 175.00007152557373
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946703186.785,
+          "delta_ms": 1439.9999380111694
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946703188.22,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946703189.59,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946703189.94,
+          "delta_ms": 350.0000238418579
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946703189.83,
+          "delta_ms": -110.00001430511475
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703189.305,
+          "delta_ms": -525.0000953674316
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946703189.72,
+          "delta_ms": 415.0000810623169
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946703190.39,
+          "delta_ms": 669.9999570846558
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946703189.07,
+          "delta_ms": -1319.9999332427979
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946703189.195,
+          "delta_ms": 125.0
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946703187.115,
+          "delta_ms": -2080.0000429153442
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946703188.05,
+          "delta_ms": 934.999942779541
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946703189.625,
+          "delta_ms": 1575.0000476837158
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946703189.269,
+          "delta_ms": -355.9999465942383
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946703190.569,
+          "delta_ms": 1299.9999523162842
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946703190.92,
+          "delta_ms": 350.99995136260986
+        }
+      ],
+      "fluff_node": "miner-005",
+      "stem_length": 18,
+      "stem_duration_ms": 5750.0,
+      "fluff_recipients": 22,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "964ad44cb3bea6313d055237f88d2eb5625018e8aeb7c818fb4230ee26eb9e06",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-018",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946703401.408,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946703401.583,
+          "delta_ms": 174.99995231628418
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946703401.758,
+          "delta_ms": 175.00007152557373
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946703401.893,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703402.028,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946703403.679,
+          "delta_ms": 1651.0000228881836
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946703405.549,
+          "delta_ms": 1870.0000047683716
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946703406.689,
+          "delta_ms": 1139.9999856948853
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946703407.549,
+          "delta_ms": 860.0000143051147
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946703407.604,
+          "delta_ms": 54.9999475479126
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946703407.029,
+          "delta_ms": -574.9999284744263
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946703408.729,
+          "delta_ms": 1699.9999284744263
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946703406.074,
+          "delta_ms": -2654.9999713897705
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946703407.954,
+          "delta_ms": 1879.9999952316284
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946703406.299,
+          "delta_ms": -1654.9999713897705
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946703406.034,
+          "delta_ms": -264.99998569488525
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946703406.799,
+          "delta_ms": 764.9999856948853
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946703405.238,
+          "delta_ms": -1560.9999895095825
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946703406.878,
+          "delta_ms": 1639.9999856948853
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946703405.549,
+          "delta_ms": -1328.9999961853027
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946703406.239,
+          "delta_ms": 689.9999380111694
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946703405.784,
+          "delta_ms": -454.9999237060547
+        }
+      ],
+      "fluff_node": "user-010",
+      "stem_length": 22,
+      "stem_duration_ms": 4376.0000467300415,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "08a31ee7741b14be0307a26679567dad65723628861df01c3986d92d52125d30",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946703618.078,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946703618.218,
+          "delta_ms": 140.0001049041748
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946703618.358,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946703618.448,
+          "delta_ms": 89.99991416931152
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946703620.318,
+          "delta_ms": 1870.0000047683716
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946703621.753,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946703622.333,
+          "delta_ms": 579.9999237060547
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946703624.203,
+          "delta_ms": 1870.0000047683716
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946703624.413,
+          "delta_ms": 210.00003814697266
+        }
+      ],
+      "fluff_node": "user-012",
+      "stem_length": 9,
+      "stem_duration_ms": 6335.000038146973,
+      "fluff_recipients": 20,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "a726c72114791d44ac5df2acb48ff7d32b96c73256066e057b6447cd1b09bd02",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946703679.079,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946703680.219,
+          "delta_ms": 1139.9999856948853
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946703681.399,
+          "delta_ms": 1180.0000667572021
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946703682.614,
+          "delta_ms": 1214.9999141693115
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946703683.824,
+          "delta_ms": 1210.0000381469727
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946703684.154,
+          "delta_ms": 330.00004291534424
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946703685.179,
+          "delta_ms": 1024.999976158142
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946703683.409,
+          "delta_ms": -1769.9999809265137
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946703684.109,
+          "delta_ms": 699.9999284744263
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703684.939,
+          "delta_ms": 830.0000429153442
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946703684.894,
+          "delta_ms": -44.99995708465576
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946703681.869,
+          "delta_ms": -3025.0000953674316
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946703683.209,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946703685.064,
+          "delta_ms": 1855.0000190734863
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946703683.899,
+          "delta_ms": -1164.9999618530273
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946703683.964,
+          "delta_ms": 64.99993801116943
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946703683.889,
+          "delta_ms": -74.99992847442627
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946703684.714,
+          "delta_ms": 824.9999284744263
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946703683.034,
+          "delta_ms": -1679.9999475479126
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946703684.399,
+          "delta_ms": 1365.0000095367432
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946703684.254,
+          "delta_ms": -145.00010013580322
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946703682.274,
+          "delta_ms": -1979.9998998641968
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946703683.754,
+          "delta_ms": 1479.9998998641968
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946703684.959,
+          "delta_ms": 1205.0000429153442
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946703685.179,
+          "delta_ms": 220.0000286102295
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946703684.509,
+          "delta_ms": -670.0000762939453
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946703685.244,
+          "delta_ms": 735.0000143051147
+        }
+      ],
+      "fluff_node": "user-011",
+      "stem_length": 27,
+      "stem_duration_ms": 6164.999961853027,
+      "fluff_recipients": 23,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "6d3b34b554c3dcdd0bf1c2c108f638df4e6ddb6d7e7a21ebbc0961cc4a71dc47",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-018",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946703740.046,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946703740.916,
+          "delta_ms": 870.0000047683716
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946703742.326,
+          "delta_ms": 1409.999966621399
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703743.666,
+          "delta_ms": 1340.000033378601
+        }
+      ],
+      "fluff_node": "user-021",
+      "stem_length": 4,
+      "stem_duration_ms": 3620.0000047683716,
+      "fluff_recipients": 25,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "2cce374407ade97075a39af00994bc17ea4d30e31a4421b7448fd40bbab26a36",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "user-025",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946703957.47,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946703957.7,
+          "delta_ms": 230.00001907348633
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703959.366,
+          "delta_ms": 1666.0000085830688
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946703960.266,
+          "delta_ms": 899.9999761581421
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946703961.671,
+          "delta_ms": 1404.9999713897705
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946703962.756,
+          "delta_ms": 1085.0000381469727
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946703963.176,
+          "delta_ms": 419.99995708465576
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946703962.556,
+          "delta_ms": -620.0000047683716
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946703962.431,
+          "delta_ms": -125.0
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946703961.511,
+          "delta_ms": -919.9999570846558
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946703961.639,
+          "delta_ms": 128.00002098083496
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946703961.984,
+          "delta_ms": 344.99990940093994
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946703963.169,
+          "delta_ms": 1185.0000619888306
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946703963.721,
+          "delta_ms": 551.9999265670776
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946703961.644,
+          "delta_ms": -2076.9999027252197
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946703963.024,
+          "delta_ms": 1379.9999952316284
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946703963.351,
+          "delta_ms": 326.9999027252197
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946703963.151,
+          "delta_ms": -199.99992847442627
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946703962.626,
+          "delta_ms": -524.9999761581421
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946703963.884,
+          "delta_ms": 1257.9998970031738
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703959.541,
+          "delta_ms": -4342.9999351501465
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946703960.884,
+          "delta_ms": 1342.9999351501465
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946703962.524,
+          "delta_ms": 1640.0001049041748
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946703962.666,
+          "delta_ms": 141.9999599456787
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946703963.186,
+          "delta_ms": 519.9999809265137
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946703962.724,
+          "delta_ms": -462.0000123977661
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946703963.865,
+          "delta_ms": 1141.0000324249268
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946703963.726,
+          "delta_ms": -139.0000581741333
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946703963.346,
+          "delta_ms": -379.9999952316284
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946703961.146,
+          "delta_ms": -2199.9999284744263
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946703962.776,
+          "delta_ms": 1629.9999952316284
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946703959.836,
+          "delta_ms": -2940.000057220459
+        }
+      ],
+      "fluff_node": "user-006",
+      "stem_length": 32,
+      "stem_duration_ms": 2365.999937057495,
+      "fluff_recipients": 21,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "6715ab8f4ac6ab2170aec7b8cebe9546c75ef9239281ed9d8a18f31202b49ab0",
+      "originator": "miner-004",
+      "originator_ip": "177.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946704018.348,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946704019.418,
+          "delta_ms": 1069.9999332427979
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946704021.033,
+          "delta_ms": 1615.0000095367432
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946704022.323,
+          "delta_ms": 1289.9999618530273
+        }
+      ],
+      "fluff_node": "user-010",
+      "stem_length": 4,
+      "stem_duration_ms": 3974.9999046325684,
+      "fluff_recipients": 23,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "24587e75009899c8b04cb772b86fb0935140339813f961ddc66bf6e1eeb86deb",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "user-025",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946704164.475,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946704164.705,
+          "delta_ms": 230.00001907348633
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946704164.795,
+          "delta_ms": 89.99991416931152
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946704164.915,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946704165.035,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946704166.97,
+          "delta_ms": 1935.0000619888306
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946704168.5,
+          "delta_ms": 1529.9999713897705
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946704170.095,
+          "delta_ms": 1595.0000286102295
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946704170.74,
+          "delta_ms": 644.9999809265137
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946704168.685,
+          "delta_ms": -2055.000066757202
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946704170.345,
+          "delta_ms": 1660.0000858306885
+        }
+      ],
+      "fluff_node": "user-021",
+      "stem_length": 11,
+      "stem_duration_ms": 5870.000004768372,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "c74517232164d09f93aae4b3f053a42ca50aabfe01687af252e19117cea00d94",
+      "originator": "miner-003",
+      "originator_ip": "1.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-020",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946704388.955,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946704388.993,
+          "delta_ms": 37.99998760223389
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946704389.098,
+          "delta_ms": 105.00001907348633
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946704389.193,
+          "delta_ms": 94.99990940093994
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946704389.293,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946704389.393,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946704389.498,
+          "delta_ms": 105.00001907348633
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946704390.883,
+          "delta_ms": 1384.9999904632568
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946704392.528,
+          "delta_ms": 1644.9999809265137
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946704393.978,
+          "delta_ms": 1450.0000476837158
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946704394.843,
+          "delta_ms": 865.0000095367432
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946704392.788,
+          "delta_ms": -2055.000066757202
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946704393.148,
+          "delta_ms": 360.00001430511475
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946704395.268,
+          "delta_ms": 2120.0000047683716
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946704395.663,
+          "delta_ms": 394.9999809265137
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946704394.623,
+          "delta_ms": -1039.9999618530273
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946704392.698,
+          "delta_ms": -1925.0000715255737
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946704393.838,
+          "delta_ms": 1140.0001049041748
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946704393.898,
+          "delta_ms": 59.999942779541016
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946704394.908,
+          "delta_ms": 1009.9999904632568
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946704394.843,
+          "delta_ms": -64.99993801116943
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946704394.098,
+          "delta_ms": -745.0000047683716
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946704395.668,
+          "delta_ms": 1569.9999332427979
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946704394.818,
+          "delta_ms": -850.0000238418579
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946704394.723,
+          "delta_ms": -94.99990940093994
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946704395.283,
+          "delta_ms": 559.999942779541
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946704394.868,
+          "delta_ms": -414.99996185302734
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946704394.913,
+          "delta_ms": 44.99995708465576
+        },
+        {
+          "node_id": "miner-001",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946704394.973,
+          "delta_ms": 60.000061988830566
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946704394.718,
+          "delta_ms": -254.99999523162842
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946704392.863,
+          "delta_ms": -1855.0000190734863
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946704393.038,
+          "delta_ms": 174.99995231628418
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946704394.923,
+          "delta_ms": 1884.9999904632568
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946704395.163,
+          "delta_ms": 240.00000953674316
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946704395.058,
+          "delta_ms": -105.00001907348633
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946704393.493,
+          "delta_ms": -1564.9999380111694
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946704394.433,
+          "delta_ms": 939.9999380111694
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946704392.558,
+          "delta_ms": -1875.0
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946704394.193,
+          "delta_ms": 1634.9999904632568
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946704395.348,
+          "delta_ms": 1155.00009059906
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946704394.433,
+          "delta_ms": -915.0000810623169
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946704395.093,
+          "delta_ms": 660.0000858306885
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946704392.693,
+          "delta_ms": -2400.0000953674316
+        }
+      ],
+      "fluff_node": "user-022",
+      "stem_length": 43,
+      "stem_duration_ms": 3737.99991607666,
+      "fluff_recipients": 22,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "323caf82d9b21ea9b9a2bcdf1957baa729eedd161f1d58c2a65ed2be8034601a",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-011",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946705606.465,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946705606.635,
+          "delta_ms": 169.99995708465576
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946705606.85,
+          "delta_ms": 215.00003337860107
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946705607.08,
+          "delta_ms": 230.00001907348633
+        },
+        {
+          "node_id": "user-022",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946705607.24,
+          "delta_ms": 159.99996662139893
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946705607.39,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946705607.57,
+          "delta_ms": 180.00006675720215
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946705607.71,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946705607.85,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946705609.24,
+          "delta_ms": 1389.9999856948853
+        }
+      ],
+      "fluff_node": "user-021",
+      "stem_length": 10,
+      "stem_duration_ms": 2774.999976158142,
+      "fluff_recipients": 25,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "8bcb15c438970c650894e17459199a6a04e9962af7510fd5c864034e3afb3e84",
+      "originator": "miner-005",
+      "originator_ip": "41.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946705667.336,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946705667.446,
+          "delta_ms": 110.00001430511475
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946705667.626,
+          "delta_ms": 180.00006675720215
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946705667.811,
+          "delta_ms": 184.99994277954102
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946705667.926,
+          "delta_ms": 115.00000953674316
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946705669.519,
+          "delta_ms": 1593.000054359436
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946705670.629,
+          "delta_ms": 1109.9998950958252
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946705671.489,
+          "delta_ms": 860.0000143051147
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946705669.726,
+          "delta_ms": -1763.0000114440918
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946705671.091,
+          "delta_ms": 1365.0000095367432
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946705672.001,
+          "delta_ms": 910.0000858306885
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946705672.989,
+          "delta_ms": 987.9999160766602
+        }
+      ],
+      "fluff_node": "user-025",
+      "stem_length": 12,
+      "stem_duration_ms": 5652.999997138977,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "ae8edbd9d2d7be9154039c7a8b9fe1f310ef420ab52c18ccb325cbe0ca7dc43b",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946706806.164,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946706806.334,
+          "delta_ms": 169.99995708465576
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946706806.474,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946706806.564,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946706806.704,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946706806.859,
+          "delta_ms": 154.9999713897705
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946706807.699,
+          "delta_ms": 840.0000333786011
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946706809.069,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946706810.459,
+          "delta_ms": 1389.9999856948853
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946706811.819,
+          "delta_ms": 1360.0000143051147
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946706809.589,
+          "delta_ms": -2230.0000190734863
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946706811.274,
+          "delta_ms": 1685.0000619888306
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946706810.334,
+          "delta_ms": -940.000057220459
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946706810.969,
+          "delta_ms": 634.9999904632568
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946706812.189,
+          "delta_ms": 1220.0000286102295
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946706811.419,
+          "delta_ms": -769.9999809265137
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946706810.789,
+          "delta_ms": -629.9999952316284
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946706812.159,
+          "delta_ms": 1370.0000047683716
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946706809.541,
+          "delta_ms": -2618.000030517578
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946706808.694,
+          "delta_ms": -847.000002861023
+        }
+      ],
+      "fluff_node": "user-002",
+      "stem_length": 20,
+      "stem_duration_ms": 2529.9999713897705,
+      "fluff_recipients": 20,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "2619f8b565e8acc918aba1f56e35a34b0456bae9ce3495b64a798516bdb92037",
+      "originator": "miner-001",
+      "originator_ip": "3.0.0.16",
+      "stem_path": [
+        {
+          "node_id": "user-003",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946709021.586,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946709021.686,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946709021.791,
+          "delta_ms": 105.00001907348633
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709023.646,
+          "delta_ms": 1855.0000190734863
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946709025.001,
+          "delta_ms": 1355.0000190734863
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946709025.591,
+          "delta_ms": 589.9999141693115
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709023.911,
+          "delta_ms": -1679.9999475479126
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946709024.811,
+          "delta_ms": 899.9999761581421
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946709026.471,
+          "delta_ms": 1659.999966621399
+        },
+        {
+          "node_id": "user-025",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709026.716,
+          "delta_ms": 245.00000476837158
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-025",
+          "from_ip": "139.0.0.10",
+          "timestamp": 946709027.561,
+          "delta_ms": 845.0000286102295
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946709026.951,
+          "delta_ms": -610.0000143051147
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946709026.571,
+          "delta_ms": -379.9999952316284
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946709024.986,
+          "delta_ms": -1585.0000381469727
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946709025.051,
+          "delta_ms": 65.00005722045898
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946709026.691,
+          "delta_ms": 1639.9999856948853
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709024.176,
+          "delta_ms": -2514.9999856948853
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946709025.611,
+          "delta_ms": 1434.999942779541
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946709026.716,
+          "delta_ms": 1105.0000190734863
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946709027.706,
+          "delta_ms": 990.0000095367432
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946709025.281,
+          "delta_ms": -2424.999952316284
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946709027.466,
+          "delta_ms": 2184.999942779541
+        }
+      ],
+      "fluff_node": "user-001",
+      "stem_length": 22,
+      "stem_duration_ms": 5879.999995231628,
+      "fluff_recipients": 26,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "01eb6c1f9ff9404199d18e171cb5dc17091e1cf5c148dc478cf4261eeb0e0ba1",
+      "originator": "miner-005",
+      "originator_ip": "41.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-022",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946709082.509,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-022",
+          "from_ip": "39.0.0.10",
+          "timestamp": 946709084.589,
+          "delta_ms": 2080.0000429153442
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946709085.989,
+          "delta_ms": 1399.999976158142
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946709087.899,
+          "delta_ms": 1910.0000858306885
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709087.279,
+          "delta_ms": -620.0000047683716
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946709086.279,
+          "delta_ms": -1000.0
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709086.064,
+          "delta_ms": -215.00003337860107
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946709087.954,
+          "delta_ms": 1889.9999856948853
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709087.524,
+          "delta_ms": -429.9999475479126
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946709087.549,
+          "delta_ms": 24.99997615814209
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946709088.299,
+          "delta_ms": 750.0
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709088.484,
+          "delta_ms": 184.99994277954102
+        }
+      ],
+      "fluff_node": "user-020",
+      "stem_length": 12,
+      "stem_duration_ms": 5975.000023841858,
+      "fluff_recipients": 26,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "2c463ea8efc25314072150b0eba840a04a5ec28cbff389ce31bfaf96fb6fbf27",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946709143.395,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946709143.545,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709143.69,
+          "delta_ms": 145.00010013580322
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946709145.331,
+          "delta_ms": 1640.9999132156372
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946709146.921,
+          "delta_ms": 1590.000033378601
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946709146.936,
+          "delta_ms": 14.999985694885254
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946709148.876,
+          "delta_ms": 1940.000057220459
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946709149.046,
+          "delta_ms": 169.99995708465576
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946709149.841,
+          "delta_ms": 794.9999570846558
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946709148.636,
+          "delta_ms": -1204.9999237060547
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946709148.046,
+          "delta_ms": -590.0000333786011
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946709148.851,
+          "delta_ms": 804.9999475479126
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946709148.721,
+          "delta_ms": -129.99999523162842
+        },
+        {
+          "node_id": "user-020",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946709149.091,
+          "delta_ms": 370.0000047683716
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-020",
+          "from_ip": "8.0.0.10",
+          "timestamp": 946709148.456,
+          "delta_ms": -634.9999904632568
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946709149.786,
+          "delta_ms": 1330.0000429153442
+        }
+      ],
+      "fluff_node": "user-014",
+      "stem_length": 16,
+      "stem_duration_ms": 6391.000032424927,
+      "fluff_recipients": 22,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "50c88fafeabd91a04347cb73dbfbf46639138818d561089c81b3b83a306bb7bf",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-010",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946709204.297,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-010",
+          "from_ip": "27.0.0.10",
+          "timestamp": 946709204.447,
+          "delta_ms": 149.9999761581421
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709204.592,
+          "delta_ms": 144.99998092651367
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946709204.772,
+          "delta_ms": 179.9999475479126
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946709204.957,
+          "delta_ms": 185.00006198883057
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946709205.097,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709206.502,
+          "delta_ms": 1404.9999713897705
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946709208.187,
+          "delta_ms": 1685.0000619888306
+        },
+        {
+          "node_id": "miner-002",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946709207.617,
+          "delta_ms": -570.0000524520874
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946709209.207,
+          "delta_ms": 1590.000033378601
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709210.027,
+          "delta_ms": 819.9999332427979
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946709210.577,
+          "delta_ms": 550.0000715255737
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946709210.972,
+          "delta_ms": 394.9999809265137
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946709212.357,
+          "delta_ms": 1384.9999904632568
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946709209.112,
+          "delta_ms": -3245.0000047683716
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946709208.397,
+          "delta_ms": -715.0000333786011
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946709207.907,
+          "delta_ms": -490.00000953674316
+        },
+        {
+          "node_id": "user-013",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946709209.142,
+          "delta_ms": 1235.0000143051147
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-013",
+          "from_ip": "121.0.0.10",
+          "timestamp": 946709209.687,
+          "delta_ms": 545.0000762939453
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-003",
+          "from_ip": "5.0.0.10",
+          "timestamp": 946709211.237,
+          "delta_ms": 1549.9999523162842
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946709208.852,
+          "delta_ms": -2384.999990463257
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946709209.052,
+          "delta_ms": 200.00004768371582
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709210.522,
+          "delta_ms": 1469.99990940094
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946709210.737,
+          "delta_ms": 215.00003337860107
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946709209.612,
+          "delta_ms": -1125.0
+        }
+      ],
+      "fluff_node": "user-011",
+      "stem_length": 25,
+      "stem_duration_ms": 5314.999938011169,
+      "fluff_recipients": 24,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "d18cf202b46c6452096138dbc0457ab2f1a49533d945918965ee76edd9c12715",
+      "originator": "miner-002",
+      "originator_ip": "2.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "user-002",
+          "from_node_id": "miner-002",
+          "from_ip": "2.0.0.10",
+          "timestamp": 946709421.194,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946709421.294,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946709421.394,
+          "delta_ms": 100.00002384185791
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946709421.494,
+          "delta_ms": 99.99990463256836
+        },
+        {
+          "node_id": "user-001",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946709421.614,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-019",
+          "from_node_id": "user-001",
+          "from_ip": "101.0.0.10",
+          "timestamp": 946709421.764,
+          "delta_ms": 150.00009536743164
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-019",
+          "from_ip": "122.0.0.10",
+          "timestamp": 946709421.939,
+          "delta_ms": 174.99995231628418
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946709422.029,
+          "delta_ms": 90.00003337860107
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946709422.164,
+          "delta_ms": 134.99999046325684
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946709423.549,
+          "delta_ms": 1384.9999904632568
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946709425.184,
+          "delta_ms": 1634.9999904632568
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709425.389,
+          "delta_ms": 205.00004291534424
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946709426.654,
+          "delta_ms": 1264.9999856948853
+        },
+        {
+          "node_id": "user-004",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946709425.359,
+          "delta_ms": -1295.0000762939453
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "user-004",
+          "from_ip": "14.0.0.10",
+          "timestamp": 946709425.744,
+          "delta_ms": 384.99999046325684
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946709427.429,
+          "delta_ms": 1685.0000619888306
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946709428.194,
+          "delta_ms": 764.9999856948853
+        },
+        {
+          "node_id": "miner-005",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709427.829,
+          "delta_ms": -365.00000953674316
+        },
+        {
+          "node_id": "user-005",
+          "from_node_id": "miner-005",
+          "from_ip": "41.0.0.10",
+          "timestamp": 946709426.894,
+          "delta_ms": -934.999942779541
+        },
+        {
+          "node_id": "user-021",
+          "from_node_id": "user-005",
+          "from_ip": "179.0.0.10",
+          "timestamp": 946709427.929,
+          "delta_ms": 1034.999966621399
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-021",
+          "from_ip": "37.0.0.10",
+          "timestamp": 946709425.639,
+          "delta_ms": -2289.9999618530273
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709425.639,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-007",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946709427.324,
+          "delta_ms": 1684.999942779541
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "user-007",
+          "from_ip": "103.0.0.10",
+          "timestamp": 946709428.369,
+          "delta_ms": 1044.9999570846558
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946709426.589,
+          "delta_ms": -1779.9999713897705
+        },
+        {
+          "node_id": "user-010",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709426.184,
+          "delta_ms": -404.9999713897705
+        }
+      ],
+      "fluff_node": "user-010",
+      "stem_length": 26,
+      "stem_duration_ms": 4990.000009536743,
+      "fluff_recipients": 23,
+      "originator_confirmed": true
+    },
+    {
+      "tx_hash": "eddef974745bd9b2535d9f8f797ec922f323e7a87eec10c88990a5676807538e",
+      "originator": "miner-004",
+      "originator_ip": "177.0.0.10",
+      "stem_path": [
+        {
+          "node_id": "miner-001",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709482.506,
+          "delta_ms": 0.0
+        },
+        {
+          "node_id": "user-016",
+          "from_node_id": "miner-001",
+          "from_ip": "3.0.0.16",
+          "timestamp": 946709482.626,
+          "delta_ms": 120.00000476837158
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-016",
+          "from_ip": "36.0.0.10",
+          "timestamp": 946709482.786,
+          "delta_ms": 159.99996662139893
+        },
+        {
+          "node_id": "user-017",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946709482.916,
+          "delta_ms": 129.99999523162842
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-017",
+          "from_ip": "186.0.0.10",
+          "timestamp": 946709483.056,
+          "delta_ms": 139.99998569488525
+        },
+        {
+          "node_id": "user-014",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946709483.161,
+          "delta_ms": 105.00001907348633
+        },
+        {
+          "node_id": "user-009",
+          "from_node_id": "user-014",
+          "from_ip": "7.0.0.10",
+          "timestamp": 946709483.231,
+          "delta_ms": 69.99993324279785
+        },
+        {
+          "node_id": "user-006",
+          "from_node_id": "user-009",
+          "from_ip": "25.0.0.10",
+          "timestamp": 946709483.366,
+          "delta_ms": 135.0001096725464
+        },
+        {
+          "node_id": "user-011",
+          "from_node_id": "user-006",
+          "from_ip": "102.0.0.10",
+          "timestamp": 946709485.007,
+          "delta_ms": 1640.9999132156372
+        },
+        {
+          "node_id": "user-015",
+          "from_node_id": "user-011",
+          "from_ip": "181.0.0.10",
+          "timestamp": 946709486.442,
+          "delta_ms": 1435.0000619888306
+        },
+        {
+          "node_id": "user-012",
+          "from_node_id": "user-015",
+          "from_ip": "31.0.0.10",
+          "timestamp": 946709487.577,
+          "delta_ms": 1134.9999904632568
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-012",
+          "from_ip": "105.0.0.10",
+          "timestamp": 946709488.197,
+          "delta_ms": 620.0000047683716
+        },
+        {
+          "node_id": "user-024",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946709487.637,
+          "delta_ms": -560.0000619888306
+        },
+        {
+          "node_id": "user-018",
+          "from_node_id": "user-024",
+          "from_ip": "196.0.0.10",
+          "timestamp": 946709488.977,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "user-002",
+          "from_node_id": "user-018",
+          "from_ip": "154.0.0.10",
+          "timestamp": 946709486.297,
+          "delta_ms": -2679.9999475479126
+        },
+        {
+          "node_id": "user-023",
+          "from_node_id": "user-002",
+          "from_ip": "4.0.0.10",
+          "timestamp": 946709487.895,
+          "delta_ms": 1597.999930381775
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "user-023",
+          "from_ip": "187.0.0.10",
+          "timestamp": 946709488.027,
+          "delta_ms": 131.99996948242188
+        },
+        {
+          "node_id": "miner-003",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709488.407,
+          "delta_ms": 379.9999952316284
+        },
+        {
+          "node_id": "miner-004",
+          "from_node_id": "miner-003",
+          "from_ip": "1.0.0.10",
+          "timestamp": 946709489.747,
+          "delta_ms": 1340.000033378601
+        },
+        {
+          "node_id": "user-008",
+          "from_node_id": "miner-004",
+          "from_ip": "177.0.0.10",
+          "timestamp": 946709488.867,
+          "delta_ms": -879.9999952316284
+        },
+        {
+          "node_id": "user-003",
+          "from_node_id": "user-008",
+          "from_ip": "6.0.0.10",
+          "timestamp": 946709486.552,
+          "delta_ms": -2314.9999380111694
+        }
+      ],
+      "fluff_node": "user-003",
+      "stem_length": 21,
+      "stem_duration_ms": 4046.0000038146973,
+      "fluff_recipients": 23,
+      "originator_confirmed": true
+    }
+  ],
+  "privacy_assessment": {
+    "privacy_score": 100,
+    "effective_anonymity": true,
+    "trivially_deanonymizable_pct": 0.0,
+    "findings": [
+      "Dandelion++ is providing EFFECTIVE anonymity",
+      "Good stem length (avg 15.5 hops) - provides reasonable anonymity"
+    ],
+    "recommendations": []
+  }
+}

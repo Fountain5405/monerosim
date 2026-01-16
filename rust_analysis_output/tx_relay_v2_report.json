@@ -1,0 +1,76 @@
+{
+  "protocol_usage": {
+    "v1_tx_broadcasts": 59886,
+    "v2_hash_announcements": 0,
+    "v2_tx_requests": 0,
+    "v2_usage_ratio": 0.0
+  },
+  "delivery_analysis": {
+    "total_txs_created": 45,
+    "txs_fully_propagated": 73,
+    "txs_in_blocks": 0,
+    "txs_potentially_lost": [],
+    "per_node_delivery_rate": {
+      "miner-004": 1.6222222222222222,
+      "user-023": 1.6222222222222222,
+      "simulation-monitor": 0.0,
+      "user-002": 1.6222222222222222,
+      "user-019": 1.6222222222222222,
+      "miner-003": 1.6222222222222222,
+      "user-012": 1.6222222222222222,
+      "miner-002": 1.6222222222222222,
+      "user-003": 1.6222222222222222,
+      "miner-001": 1.6222222222222222,
+      "user-013": 1.6222222222222222,
+      "user-005": 1.6222222222222222,
+      "user-015": 1.6222222222222222,
+      "user-024": 1.6222222222222222,
+      "user-011": 1.6222222222222222,
+      "user-016": 1.6222222222222222,
+      "miner-distributor": 0.0,
+      "user-022": 1.6222222222222222,
+      "user-017": 1.6222222222222222,
+      "user-020": 1.6222222222222222,
+      "user-010": 1.6222222222222222,
+      "user-014": 1.6222222222222222,
+      "user-018": 1.6222222222222222,
+      "user-021": 1.6222222222222222,
+      "user-006": 1.6222222222222222,
+      "miner-005": 1.6222222222222222,
+      "user-008": 1.6222222222222222,
+      "user-007": 1.6222222222222222,
+      "user-004": 1.6222222222222222,
+      "user-025": 1.6222222222222222,
+      "user-001": 1.6222222222222222,
+      "user-009": 1.6222222222222222
+    },
+    "average_propagation_coverage": 0.9375
+  },
+  "connection_stability": {
+    "total_drops": 0,
+    "drops_tx_verification": 0,
+    "drops_duplicate_tx": 0,
+    "drops_protocol_violation": 0,
+    "drops_other": 0,
+    "drops_by_node": {},
+    "average_connection_duration_sec": 348.8804023196977
+  },
+  "request_response": {
+    "requests_sent": 0,
+    "requests_received": 0,
+    "requests_fulfilled": 0,
+    "fulfillment_ratio": 0.0
+  },
+  "assessment": {
+    "health_score": 100,
+    "v2_active": false,
+    "has_lost_txs": false,
+    "has_stability_issues": false,
+    "findings": [
+      "TX relay is functioning NORMALLY",
+      "TX Relay V2 protocol is NOT active - using V1 only",
+      "Good propagation coverage: 93.8% average"
+    ],
+    "recommendations": []
+  }
+}

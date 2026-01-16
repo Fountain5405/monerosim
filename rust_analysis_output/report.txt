@@ -1,0 +1,73 @@
+================================================================================
+                   MONEROSIM TRANSACTION ROUTING ANALYSIS
+================================================================================
+
+Analysis Date: 2026-01-15T22:42:09.504975557+00:00
+Data Directory: shadow.data
+Nodes Analyzed: 32
+Transactions: 45
+Blocks: 28
+
+================================================================================
+                          SPY NODE VULNERABILITY
+================================================================================
+
+Overall Inference Accuracy: 22.2%
+  A spy node observing first-seen timing could correctly identify the sender
+  for 10 out of 45 transactions.
+
+Timing Distribution:
+  < 100ms spread:  0 transactions (high vulnerability)
+  100-500ms:       0 transactions (moderate vulnerability)
+  > 500ms:         45 transactions (low vulnerability)
+
+Most Observable Senders:
+  1. miner-001: 5 high-confidence inferences (60% accurate)
+  2. miner-002: 3 high-confidence inferences (0% accurate)
+  3. miner-005: 3 high-confidence inferences (0% accurate)
+  4. miner-003: 1 high-confidence inferences (0% accurate)
+  5. miner-004: 1 high-confidence inferences (0% accurate)
+
+RECOMMENDATION: Transaction timing correlation is viable in this topology.
+Consider implementing Dandelion++ or similar origin-hiding protocols.
+
+================================================================================
+                         PROPAGATION TIMING
+================================================================================
+
+Transaction Propagation:
+  Average time to reach all nodes: 120640.3ms
+  Median: 13205.0ms
+  95th percentile: 427414.0ms
+
+Block Confirmation Delays:
+  Average time from TX creation to block inclusion: -159.0 seconds
+
+Bottleneck Nodes (consistently slow to receive):
+  1. user-002 (avg delay: 67789ms) - 1963 observations
+  2. user-018 (avg delay: 66933ms) - 1929 observations
+  3. miner-001 (avg delay: 66459ms) - 1906 observations
+  4. user-012 (avg delay: 65462ms) - 1792 observations
+  5. user-014 (avg delay: 64875ms) - 1921 observations
+
+================================================================================
+                        NETWORK RESILIENCE
+================================================================================
+
+Connectivity:
+  Total nodes: 32
+  Average peer count: 22.1
+  Min: 0, Max: 28
+  Isolated nodes: miner-distributor, simulation-monitor
+
+Centralization Metrics:
+  First-seen Gini coefficient: 0.36 (0=equal, 1=centralized)
+  Miner first-seen ratio: 20.5%
+
+Partition Risk:
+  Connected components: 3
+  Bridge nodes (removal may partition): user-009, user-021, user-025, miner-002, user-010
+
+RECOMMENDATION: Network has moderate centralization around some nodes.
+
+================================================================================
