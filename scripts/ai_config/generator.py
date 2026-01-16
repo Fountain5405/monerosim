@@ -343,13 +343,19 @@ class ConfigGenerator:
 
     def _extract_python(self, response: str) -> Optional[str]:
         """Extract Python code from LLM response."""
-        # Try ```python ... ``` blocks
+        # Try ```python ... ``` blocks (most common)
         pattern = r"```python\s*(.*?)```"
         matches = re.findall(pattern, response, re.DOTALL)
         if matches:
             return matches[-1].strip()
 
-        # Try ``` ... ``` blocks that look like Python
+        # Try ```py ... ``` blocks
+        pattern = r"```py\s*(.*?)```"
+        matches = re.findall(pattern, response, re.DOTALL)
+        if matches:
+            return matches[-1].strip()
+
+        # Try ``` ... ``` blocks that look like Python (shebang)
         pattern = r"```\s*(#!/usr/bin/env python.*?)```"
         matches = re.findall(pattern, response, re.DOTALL)
         if matches:
@@ -360,6 +366,36 @@ class ConfigGenerator:
         matches = re.findall(pattern, response, re.DOTALL)
         if matches:
             return matches[-1].strip()
+
+        # Try any ``` ... ``` block that contains 'config' and 'agents'
+        pattern = r"```\s*(.*?)```"
+        matches = re.findall(pattern, response, re.DOTALL)
+        for match in reversed(matches):  # Check from last to first
+            if 'config' in match and 'agents' in match and ('import' in match or 'print' in match):
+                return match.strip()
+
+        # Last resort: look for raw Python without fencing
+        # Find code that starts with import/from and contains config dict
+        lines = response.split('\n')
+        code_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith(('import ', 'from ', '#!/')):
+                code_start = i
+                break
+
+        if code_start is not None:
+            # Extract from code_start to end or until non-code line
+            code_lines = []
+            for line in lines[code_start:]:
+                # Stop if we hit obvious non-code (markdown headers, etc)
+                if line.startswith('#') and not line.startswith('#!/'):
+                    if len(line) > 2 and line[1] == ' ':
+                        break  # Markdown header like "# Heading"
+                code_lines.append(line)
+
+            code = '\n'.join(code_lines).strip()
+            if 'config' in code and ('yaml' in code or 'print' in code):
+                return code
 
         return None
 
