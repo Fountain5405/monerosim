@@ -204,6 +204,7 @@ def print_scenario_menu():
     print(f"  {c.BOLD}[V]{c.RESET} View scenario")
     print(f"  {c.BOLD}[E]{c.RESET} Edit scenario (opens in editor)")
     print(f"  {c.BOLD}[A]{c.RESET} Approve and expand to full config")
+    print(f"  {c.BOLD}[S]{c.RESET} Save scenario only (without expanding)")
     print(f"  {c.BOLD}[R]{c.RESET} Regenerate scenario")
     print(f"  {c.BOLD}[Q]{c.RESET} Quit")
     print()
@@ -363,6 +364,44 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
             elif choice == 'Q':
                 print(f"{c.YELLOW}Exiting without saving.{c.RESET}")
                 return False
+
+            elif choice == 'S':
+                # Save scenario only (without expanding)
+                if output_file.endswith('.yaml'):
+                    scenario_file = output_file[:-5] + '.scenario.yaml'
+                elif output_file.endswith('.yml'):
+                    scenario_file = output_file[:-4] + '.scenario.yaml'
+                else:
+                    scenario_file = output_file + '.scenario.yaml'
+
+                # Use custom path if specified
+                if save_scenario:
+                    scenario_file = save_scenario
+
+                # Add header indicating this needs expansion
+                header = (
+                    "# =============================================================\n"
+                    "# COMPACT SCENARIO FILE - REQUIRES EXPANSION\n"
+                    "# =============================================================\n"
+                    "# This file uses compact syntax (e.g., {001..010}) that must be\n"
+                    "# expanded before use with monerosim.\n"
+                    "#\n"
+                    "# To expand this file into a full config:\n"
+                    "#   python -m scripts.scenario_parser " + scenario_file + " -o config.yaml\n"
+                    "#\n"
+                    "# Or use the AI config tool to re-import and expand:\n"
+                    "#   python -m scripts.ai_config\n"
+                    "# =============================================================\n\n"
+                )
+
+                with open(scenario_file, 'w') as f:
+                    f.write(header)
+                    f.write(scenario_content)
+
+                print(f"{c.GREEN}Scenario saved to: {scenario_file}{c.RESET}")
+                print(f"{c.DIM}Note: This file needs expansion before use.{c.RESET}")
+                print(f"{c.DIM}Run: python -m scripts.scenario_parser {scenario_file} -o config.yaml{c.RESET}")
+                return True
 
             elif choice == 'A':
                 # Approve and expand

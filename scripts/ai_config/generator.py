@@ -24,6 +24,85 @@ from ..scenario_parser import parse_scenario, expand_scenario
 import yaml as yaml_lib
 
 
+@dataclass
+class ParsedRequest:
+    """Parsed expectations from user request."""
+    miners: Optional[int] = None
+    users: Optional[int] = None
+    spy_nodes: Optional[int] = None
+    duration_hours: Optional[float] = None
+    is_upgrade: bool = False
+    has_late_joiners: bool = False
+
+
+def parse_user_request(request: str) -> ParsedRequest:
+    """
+    Extract expected parameters from natural language request.
+
+    Examples:
+        "5 miners and 20 users" -> miners=5, users=20
+        "10 miners, 100 users for 24 hours" -> miners=10, users=100, duration=24
+        "3 spy nodes watching 5 miners" -> spy_nodes=3, miners=5
+    """
+    request_lower = request.lower()
+    parsed = ParsedRequest()
+
+    # Extract miner count - look for patterns like "5 miners", "10 initial miners"
+    miner_patterns = [
+        r'(\d+)\s+(?:initial\s+)?miners?',
+        r'(\d+)\s+miner',
+    ]
+    for pattern in miner_patterns:
+        match = re.search(pattern, request_lower)
+        if match:
+            parsed.miners = int(match.group(1))
+            break
+
+    # Extract user count
+    user_patterns = [
+        r'(\d+)\s+users?',
+        r'(\d+)\s+(?:regular\s+)?users?',
+    ]
+    for pattern in user_patterns:
+        match = re.search(pattern, request_lower)
+        if match:
+            parsed.users = int(match.group(1))
+            break
+
+    # Extract spy node count
+    spy_patterns = [
+        r'(\d+)\s+spy\s*(?:nodes?)?',
+        r'(\d+)\s+spies',
+    ]
+    for pattern in spy_patterns:
+        match = re.search(pattern, request_lower)
+        if match:
+            parsed.spy_nodes = int(match.group(1))
+            break
+
+    # Extract duration - "for X hours", "X hour simulation", "Xh"
+    duration_patterns = [
+        r'(?:for\s+)?(\d+)\s*(?:hours?|h)\b',
+        r'(\d+)\s*hour\s+(?:simulation|test|run)',
+        r'run\s+(?:for\s+)?(\d+)\s*h',
+    ]
+    for pattern in duration_patterns:
+        match = re.search(pattern, request_lower)
+        if match:
+            parsed.duration_hours = float(match.group(1))
+            break
+
+    # Check for upgrade scenario
+    upgrade_keywords = ['upgrade', 'v1', 'v2', 'transition', 'migrate']
+    parsed.is_upgrade = any(kw in request_lower for kw in upgrade_keywords)
+
+    # Check for late-joining nodes
+    late_keywords = ['join', 'later', 'halfway', 'after', 'new.*come', 'additional']
+    parsed.has_late_joiners = any(re.search(kw, request_lower) for kw in late_keywords)
+
+    return parsed
+
+
 def build_metadata_from_report(report: 'ValidationReport', user_request: str) -> Dict[str, Any]:
     """Build machine-parseable metadata from validation report.
 
@@ -484,16 +563,23 @@ class ConfigGenerator:
         issues = []
         warnings = []
 
+        # Parse expected values from user request
+        expected = parse_user_request(user_request)
+
         # Check for validation errors (hard failures)
         if report.errors:
             issues.extend(report.errors)
+
+        # MINIMUM 5 miners required for network stability
+        initial_miners = sum(1 for a in report.agents if a.agent_type == "miner" and a.start_time_s < 60)
+        if initial_miners < 5:
+            issues.append(f"Only {initial_miners} initial miners, but minimum 5 required for network stability. Add more miners.")
 
         # Check required components (hard failure)
         if report.user_count > 0 and not report.has_distributor:
             issues.append("Missing miner-distributor (required when users exist)")
 
         # Check hashrate for initial miners only (those starting in first 60s)
-        # Late-joining miners are valid and can add more hashrate
         if report.miner_count > 0:
             initial_hashrate = sum(
                 a.hashrate for a in report.agents
@@ -501,9 +587,42 @@ class ConfigGenerator:
             )
             if initial_hashrate > 0 and initial_hashrate != 100:
                 if abs(initial_hashrate - 100) > 10:  # Only flag if way off
-                    issues.append(f"Initial miners hashrate is {initial_hashrate}, should be ~100")
+                    issues.append(f"Initial miners hashrate is {initial_hashrate}, should be exactly 100")
                 else:
                     warnings.append(f"Initial miners hashrate is {initial_hashrate} (close to 100)")
+
+        # === SEMANTIC VALIDATION ===
+        # Check if generated config matches what user requested
+
+        # Check miner count (allow >= requested since we enforce minimum 5)
+        if expected.miners is not None:
+            min_expected = max(expected.miners, 5)  # Enforce minimum 5
+            if report.miner_count < min_expected:
+                issues.append(f"Generated {report.miner_count} miners but expected at least {min_expected}")
+
+        # Check user count (should be exact or close)
+        if expected.users is not None:
+            if report.user_count == 0 and expected.users > 0:
+                issues.append(f"Generated 0 users but expected {expected.users}")
+            elif report.user_count < expected.users * 0.8:  # Allow 20% tolerance
+                issues.append(f"Generated {report.user_count} users but expected ~{expected.users}")
+
+        # Check spy node count
+        if expected.spy_nodes is not None:
+            if report.spy_count == 0 and expected.spy_nodes > 0:
+                issues.append(f"Generated 0 spy nodes but expected {expected.spy_nodes}")
+            elif report.spy_count < expected.spy_nodes * 0.8:
+                issues.append(f"Generated {report.spy_count} spy nodes but expected ~{expected.spy_nodes}")
+
+        # Check duration (convert to seconds for comparison)
+        if expected.duration_hours is not None:
+            expected_seconds = expected.duration_hours * 3600
+            if report.stop_time_s < expected_seconds * 0.9:  # Allow 10% tolerance
+                issues.append(f"Duration is {report.stop_time_s/3600:.1f}h but expected ~{expected.duration_hours}h")
+
+        # Check upgrade scenario
+        if expected.is_upgrade and not report.upgrade.enabled:
+            issues.append("Request mentions upgrade but config has no daemon phases (v1->v2 transition)")
 
         # Check upgrade scenario timing (hard failure for gap violations)
         if report.upgrade.enabled:
@@ -528,5 +647,4 @@ class ConfigGenerator:
             for w in warnings:
                 self.log(f"  Warning: {w}")
 
-        # Only return hard issues, skip semantic LLM check (too noisy)
         return "\n".join(issues) if issues else None

@@ -94,11 +94,14 @@ agents:
    - `activity_start_time: auto` - bootstrap_end + 1 hour
    - `wait_time: auto` - for miner-distributor, equals bootstrap_end
 
-5. **Initial miners**: Hashrates MUST sum to exactly 100 (difficulty calibration)
-   - 3 miners: [34, 33, 33] or [40, 35, 25]
-   - 4 miners: [25, 25, 25, 25]
+5. **Initial miners**: MINIMUM 5 miners required, hashrates MUST sum to exactly 100
+   - Every simulation MUST have at least 5 initial miners (for network stability)
+   - If user asks for fewer miners (e.g., "2 miners"), use 5 miners instead
    - 5 miners: [20, 20, 20, 20, 20]
+   - 6 miners: [17, 17, 17, 17, 16, 16]
+   - 7 miners: [15, 15, 14, 14, 14, 14, 14]
    - 10 miners: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+   - 15 miners: [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6]
    - Late-joining miners can add extra hashrate (not bound by 100)
 
 6. **Daemon binaries**: Use `monerod` for standard, `monerod-v2` etc for upgrades
@@ -109,7 +112,8 @@ agents:
 
 **Miners** (agents.autonomous_miner):
 - Mine blocks, need hashrate field
-- Initial miners: hashrates sum to 100
+- MINIMUM 5 initial miners required for every simulation
+- Initial miners: hashrates sum to exactly 100
 - Late-joining miners: can add extra hashrate
 
 **Users** (agents.regular_user):
@@ -408,6 +412,7 @@ agents:
 
 ---
 USER: "3 miners and 15 users, 6 hour test"
+NOTE: User asked for 3 miners but minimum is 5, so we use 5 miners instead.
 
 SCENARIO:
 ```yaml
@@ -437,13 +442,14 @@ network:
   peer_mode: Dynamic
 
 agents:
-  miner-{001..003}:
+  # User asked for 3 miners, but minimum is 5 for network stability
+  miner-{001..005}:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
     start_time_stagger: 1s
-    hashrate: [34, 33, 33]
+    hashrate: [20, 20, 20, 20, 20]
     can_receive_distributions: true
 
   user-{001..015}:
