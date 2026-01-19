@@ -495,24 +495,82 @@ def check_llm_config():
     print(f"{c.YELLOW}LLM configuration not found.{c.RESET}")
     print()
     print("The AI config generator needs access to an LLM.")
-    print("You can use a local server (llama.cpp, ollama) or a cloud API.")
     print()
 
-    print(f"{c.BOLD}Common setups:{c.RESET}")
-    print(f"  1. Local llama.cpp server (http://localhost:8080/v1)")
-    print(f"  2. Local Ollama (http://localhost:11434/v1)")
-    print(f"  3. OpenAI API (https://api.openai.com/v1)")
+    print(f"{c.BOLD}Select a backend:{c.RESET}")
+    print(f"  {c.GREEN}1. MoneroWorld test server (recommended){c.RESET}")
+    print(f"  2. Local llama.cpp server (http://localhost:8080/v1)")
+    print(f"  3. Local Ollama (http://localhost:11434/v1)")
+    print(f"  4. Groq API (https://api.groq.com/openai/v1)")
+    print(f"  5. OpenAI API (https://api.openai.com/v1)")
+    print(f"  6. Custom URL")
     print()
 
-    base_url = get_user_input("API Base URL", "http://localhost:8080/v1")
-    if not base_url:
-        return None
+    choice = get_user_input("Choice [1-6]", "1")
 
-    api_key = get_user_input("API Key (use 'x' for local servers)", "x")
-    if not api_key:
-        return None
+    # Preset configurations
+    presets = {
+        '1': {
+            'base_url': 'http://test.moneroworld.com:49767/v1',
+            'api_key': 'x',
+            'model': 'qwen2.5:7b',
+            'name': 'MoneroWorld'
+        },
+        '2': {
+            'base_url': 'http://localhost:8080/v1',
+            'api_key': 'x',
+            'model': 'qwen2.5:7b',
+            'name': 'llama.cpp'
+        },
+        '3': {
+            'base_url': 'http://localhost:11434/v1',
+            'api_key': 'x',
+            'model': 'qwen2.5:7b',
+            'name': 'Ollama'
+        },
+        '4': {
+            'base_url': 'https://api.groq.com/openai/v1',
+            'api_key': '',  # User must provide
+            'model': 'llama-3.3-70b-versatile',
+            'name': 'Groq'
+        },
+        '5': {
+            'base_url': 'https://api.openai.com/v1',
+            'api_key': '',  # User must provide
+            'model': 'gpt-4o-mini',
+            'name': 'OpenAI'
+        },
+    }
 
-    model = get_user_input("Model name", "qwen2.5:7b")
+    if choice in presets:
+        preset = presets[choice]
+        base_url = preset['base_url']
+        api_key = preset['api_key']
+        model = preset['model']
+
+        print(f"{c.DIM}Using {preset['name']}: {base_url}{c.RESET}")
+
+        # Prompt for API key if needed
+        if not api_key:
+            api_key = get_user_input(f"{preset['name']} API Key")
+            if not api_key:
+                return None
+
+        # Allow model override
+        model_input = get_user_input(f"Model name", model)
+        if model_input:
+            model = model_input
+    else:
+        # Custom URL
+        base_url = get_user_input("API Base URL", "http://localhost:8080/v1")
+        if not base_url:
+            return None
+
+        api_key = get_user_input("API Key (use 'x' for local servers)", "x")
+        if not api_key:
+            return None
+
+        model = get_user_input("Model name", "qwen2.5:7b")
 
     config = {
         'api_key': api_key,
