@@ -232,7 +232,7 @@ def view_config(yaml_content: str):
     print()
 
 
-def run_interactive(generator, output_file: str, save_script: Optional[str] = None):
+def run_interactive(generator, output_file: str, save_scenario: Optional[str] = None):
     """Run the interactive generation loop."""
     c = Colors
 
@@ -260,9 +260,9 @@ def run_interactive(generator, output_file: str, save_script: Optional[str] = No
         print()
 
         progress = ProgressIndicator()
-        progress.add_step("Script")
+        progress.add_step("Scenario")
+        progress.add_step("Expand")
         progress.add_step("Validate")
-        progress.add_step("Check")
 
         # Hook into generator progress (simplified - just show steps)
         progress.start_step(0)
@@ -270,14 +270,14 @@ def run_interactive(generator, output_file: str, save_script: Optional[str] = No
         result = generator.generate(
             user_request=description,
             output_file=None,  # Don't save yet
-            save_script=None
+            save_scenario=None
         )
 
-        if result.script_content:
+        if result.scenario_content:
             progress.complete_step(0, True)
             progress.start_step(1)
 
-            if result.validation_report:
+            if result.yaml_content:
                 progress.complete_step(1, True)
                 progress.start_step(2)
                 progress.complete_step(2, result.success)
@@ -332,11 +332,11 @@ def run_interactive(generator, output_file: str, save_script: Optional[str] = No
                         f.write(yaml_content)
                     print(f"{c.GREEN}Config saved to: {output_file}{c.RESET}")
 
-                    # Save script if requested
-                    if save_script and result and result.script_content:
-                        with open(save_script, 'w') as f:
-                            f.write(result.script_content)
-                        print(f"{c.GREEN}Generator script saved to: {save_script}{c.RESET}")
+                    # Save scenario if requested
+                    if save_scenario and result and result.scenario_content:
+                        with open(save_scenario, 'w') as f:
+                            f.write(result.scenario_content)
+                        print(f"{c.GREEN}Scenario saved to: {save_scenario}{c.RESET}")
 
                     return True
                 else:

@@ -11,7 +11,7 @@ Usage:
 
     # With options
     python -m scripts.ai_config --output my_config.yaml "upgrade scenario with 100 nodes"
-    python -m scripts.ai_config --save-script gen.py "spy nodes monitoring network"
+    python -m scripts.ai_config --save-scenario scenario.yaml "spy nodes monitoring network"
 
 Configuration:
     On first run, you'll be prompted for LLM settings (API URL, key, model).
@@ -42,8 +42,8 @@ Examples:
     # Direct generation
     python -m scripts.ai_config "5 miners and 50 users"
 
-    # Save both YAML and generator script
-    python -m scripts.ai_config -o config.yaml -s generator.py "upgrade scenario"
+    # Save both expanded YAML and compact scenario
+    python -m scripts.ai_config -o config.yaml -s scenario.yaml "upgrade scenario"
 
     # Validate an existing config
     python -m scripts.ai_config --validate existing_config.yaml
@@ -63,8 +63,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--save-script", "-s",
-        help="Save the generator Python script to this path"
+        "--save-scenario", "-s",
+        help="Save the compact scenario.yaml (before expansion) to this path"
     )
 
     parser.add_argument(
@@ -203,7 +203,7 @@ def run_interactive_mode(args):
         success = run_interactive(
             generator=generator,
             output_file=args.output,
-            save_script=args.save_script
+            save_scenario=args.save_scenario
         )
         return 0 if success else 1
     except KeyboardInterrupt:
@@ -247,14 +247,14 @@ def run_direct_mode(args):
     result = generator.generate(
         user_request=args.request,
         output_file=args.output,
-        save_script=args.save_script
+        save_scenario=args.save_scenario
     )
 
     # Report result
     if result.success:
         print(f"\nSuccess! Config saved to: {args.output}")
-        if args.save_script:
-            print(f"Generator script saved to: {args.save_script}")
+        if args.save_scenario:
+            print(f"Scenario saved to: {args.save_scenario}")
         if result.validation_report:
             print(f"\nSummary: {result.validation_report.miner_count} miners, "
                   f"{result.validation_report.user_count} users, "

@@ -2,26 +2,25 @@
 Main orchestrator for AI-powered config generation.
 
 Uses an agentic feedback loop:
-1. LLM generates Python script
-2. Script executes to produce YAML
-3. Validator checks YAML against user intent
-4. If issues, LLM corrects the script
+1. LLM generates scenario.yaml (compact format)
+2. Scenario parser expands to full monerosim.yaml
+3. Validator checks expanded YAML against user intent
+4. If issues, LLM corrects the scenario
 5. Repeat until valid or max attempts
 """
 
 import json
 import os
 import re
-import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 import urllib.request
 import urllib.error
 
 from .validator import ConfigValidator, ValidationReport
-from .prompts import GENERATOR_SYSTEM_PROMPT, FEEDBACK_PROMPT_TEMPLATE, VALIDATION_CHECK_PROMPT
+from .scenario_prompts import SCENARIO_SYSTEM_PROMPT, SCENARIO_FEEDBACK_TEMPLATE
+from ..scenario_parser import parse_scenario, expand_scenario
 import yaml as yaml_lib
 
 
@@ -162,7 +161,7 @@ class GenerationResult:
     """Result of the config generation process."""
     success: bool
     yaml_content: Optional[str] = None
-    script_content: Optional[str] = None
+    scenario_content: Optional[str] = None  # Compact scenario.yaml
     validation_report: Optional[ValidationReport] = None
     attempts: int = 0
     errors: List[str] = None
@@ -222,14 +221,18 @@ class ConfigGenerator:
         if self.verbose:
             print(msg, file=sys.stderr)
 
-    def generate(self, user_request: str, output_file: str = None, save_script: str = None) -> GenerationResult:
+    def generate(self, user_request: str, output_file: str = None, save_scenario: str = None) -> GenerationResult:
         """
         Generate a monerosim config from natural language request.
 
+        Uses a two-stage process:
+        1. LLM generates compact scenario.yaml
+        2. Scenario parser expands to full monerosim.yaml
+
         Args:
             user_request: Natural language description of the scenario
-            output_file: Path to save the YAML config (optional)
-            save_script: Path to save the generator script (optional)
+            output_file: Path to save the expanded YAML config (optional)
+            save_scenario: Path to save the compact scenario.yaml (optional)
 
         Returns:
             GenerationResult with success status, YAML content, and validation report
@@ -240,52 +243,52 @@ class ConfigGenerator:
         self.log(f"Generating config for: {user_request[:80]}{'...' if len(user_request) > 80 else ''}")
         self.log(f"{'='*60}\n")
 
-        # Initial generation
+        # Initial generation - ask for scenario.yaml directly
         messages = [
-            {"role": "system", "content": GENERATOR_SYSTEM_PROMPT},
-            {"role": "user", "content": f"Generate a Python script to create a monerosim config for:\n\n{user_request}"}
+            {"role": "system", "content": SCENARIO_SYSTEM_PROMPT},
+            {"role": "user", "content": user_request}
         ]
 
-        current_script = None
+        current_scenario = None
 
         for attempt in range(1, self.max_attempts + 1):
             result.attempts = attempt
             self.log(f"Attempt {attempt}/{self.max_attempts}...")
 
-            # Get script from LLM
+            # Get scenario from LLM
             try:
                 response = self.provider.chat(messages)
-                current_script = self._extract_python(response.content)
+                current_scenario = self._extract_yaml(response.content)
 
-                if not current_script:
-                    result.errors.append(f"Attempt {attempt}: Could not extract Python script from response")
-                    self.log("  ERROR: No Python script in response")
+                if not current_scenario:
+                    result.errors.append(f"Attempt {attempt}: Could not extract YAML from response")
+                    self.log("  ERROR: No YAML in response")
                     continue
 
-                result.script_content = current_script
+                result.scenario_content = current_scenario
 
             except Exception as e:
                 result.errors.append(f"Attempt {attempt}: LLM error - {e}")
                 self.log(f"  ERROR: LLM request failed - {e}")
                 continue
 
-            # Execute script
-            self.log("  Executing script...")
-            yaml_content, exec_error = self._execute_script(current_script)
+            # Parse and expand scenario
+            self.log("  Expanding scenario...")
+            yaml_content, parse_error = self._expand_scenario(current_scenario)
 
-            if exec_error:
-                result.errors.append(f"Attempt {attempt}: Script execution error - {exec_error}")
-                self.log(f"  ERROR: Script failed - {exec_error[:100]}")
+            if parse_error:
+                result.errors.append(f"Attempt {attempt}: Scenario parse error - {parse_error}")
+                self.log(f"  ERROR: Parse failed - {parse_error[:100]}")
 
-                # Feed back execution error
-                messages.append({"role": "assistant", "content": f"```python\n{current_script}\n```"})
-                messages.append({"role": "user", "content": f"The script failed with error:\n{exec_error}\n\nPlease fix it."})
+                # Feed back parse error
+                messages.append({"role": "assistant", "content": current_scenario})
+                messages.append({"role": "user", "content": f"The scenario has syntax errors:\n{parse_error}\n\nPlease fix it and output only the corrected YAML."})
                 continue
 
             result.yaml_content = yaml_content
-            self.log(f"  Generated {len(yaml_content)} bytes of YAML")
+            self.log(f"  Expanded to {len(yaml_content)} bytes of YAML")
 
-            # Validate
+            # Validate expanded config
             self.log("  Validating...")
             try:
                 report = self.validator.validate_yaml(yaml_content)
@@ -306,14 +309,13 @@ class ConfigGenerator:
             self.log(f"  Issues found: {len(issues.splitlines())} problems")
 
             if attempt < self.max_attempts:
-                # Feed back for correction
-                feedback = FEEDBACK_PROMPT_TEMPLATE.format(
+                # Feed back for correction using scenario feedback template
+                feedback = SCENARIO_FEEDBACK_TEMPLATE.format(
                     user_request=user_request,
-                    validation_report=report.to_summary(),
                     issues=issues,
-                    current_script=current_script
+                    current_scenario=current_scenario
                 )
-                messages.append({"role": "assistant", "content": f"```python\n{current_script}\n```"})
+                messages.append({"role": "assistant", "content": current_scenario})
                 messages.append({"role": "user", "content": feedback})
             else:
                 result.errors.append(f"Max attempts reached. Remaining issues:\n{issues}")
@@ -335,100 +337,97 @@ class ConfigGenerator:
                 f.write(final_yaml)
             self.log(f"\nYAML saved to: {output_file}")
 
-        if result.script_content and save_script:
-            with open(save_script, 'w') as f:
-                f.write(result.script_content)
-            self.log(f"Script saved to: {save_script}")
+        if result.scenario_content and save_scenario:
+            with open(save_scenario, 'w') as f:
+                f.write(f"# Scenario generated for: {user_request[:60]}...\n\n")
+                f.write(result.scenario_content)
+            self.log(f"Scenario saved to: {save_scenario}")
 
         return result
 
-    def _extract_python(self, response: str) -> Optional[str]:
-        """Extract Python code from LLM response."""
-        # Try ```python ... ``` blocks (most common)
-        pattern = r"```python\s*(.*?)```"
+    def _extract_yaml(self, response: str) -> Optional[str]:
+        """Extract YAML content from LLM response."""
+        # Try ```yaml ... ``` blocks (most common)
+        pattern = r"```yaml\s*(.*?)```"
         matches = re.findall(pattern, response, re.DOTALL)
         if matches:
             return matches[-1].strip()
 
-        # Try ```py ... ``` blocks
-        pattern = r"```py\s*(.*?)```"
+        # Try ```yml ... ``` blocks
+        pattern = r"```yml\s*(.*?)```"
         matches = re.findall(pattern, response, re.DOTALL)
         if matches:
             return matches[-1].strip()
 
-        # Try ``` ... ``` blocks that look like Python (shebang)
-        pattern = r"```\s*(#!/usr/bin/env python.*?)```"
-        matches = re.findall(pattern, response, re.DOTALL)
-        if matches:
-            return matches[-1].strip()
-
-        # Try ``` ... ``` with import yaml
-        pattern = r"```\s*(import yaml.*?)```"
-        matches = re.findall(pattern, response, re.DOTALL)
-        if matches:
-            return matches[-1].strip()
-
-        # Try any ``` ... ``` block that contains 'config' and 'agents'
+        # Try any ``` ... ``` block that contains 'general:' and 'agents:'
         pattern = r"```\s*(.*?)```"
         matches = re.findall(pattern, response, re.DOTALL)
         for match in reversed(matches):  # Check from last to first
-            if 'config' in match and 'agents' in match and ('import' in match or 'print' in match):
+            if 'general:' in match and 'agents:' in match:
                 return match.strip()
 
-        # Last resort: look for raw Python without fencing
-        # Find code that starts with import/from and contains config dict
-        lines = response.split('\n')
-        code_start = None
+        # If no code blocks, check if the response itself looks like YAML
+        # (starts with 'general:' after any leading whitespace/comments)
+        lines = response.strip().split('\n')
+        yaml_start = None
         for i, line in enumerate(lines):
-            if line.strip().startswith(('import ', 'from ', '#!/')):
-                code_start = i
+            stripped = line.strip()
+            if stripped.startswith('general:'):
+                yaml_start = i
+                break
+            # Skip comment lines and empty lines at the start
+            if stripped and not stripped.startswith('#'):
                 break
 
-        if code_start is not None:
-            # Extract from code_start to end or until non-code line
-            code_lines = []
-            for line in lines[code_start:]:
-                # Stop if we hit obvious non-code (markdown headers, etc)
-                if line.startswith('#') and not line.startswith('#!/'):
-                    if len(line) > 2 and line[1] == ' ':
-                        break  # Markdown header like "# Heading"
-                code_lines.append(line)
-
-            code = '\n'.join(code_lines).strip()
-            if 'config' in code and ('yaml' in code or 'print' in code):
-                return code
+        if yaml_start is not None:
+            yaml_content = '\n'.join(lines[yaml_start:]).strip()
+            if 'agents:' in yaml_content:
+                return yaml_content
 
         return None
 
-    def _execute_script(self, script: str) -> tuple[Optional[str], Optional[str]]:
-        """Execute Python script and capture YAML output."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write(script)
-            script_path = f.name
+    def _expand_scenario(self, scenario_yaml: str) -> tuple[Optional[str], Optional[str]]:
+        """Parse and expand scenario.yaml to full monerosim.yaml."""
+        from collections import OrderedDict
 
         try:
-            result = subprocess.run(
-                [sys.executable, script_path],
-                capture_output=True,
-                text=True,
-                timeout=30
+            # Parse the scenario
+            scenario = parse_scenario(scenario_yaml)
+
+            # Extract seed from general settings
+            seed = scenario.general.get('simulation_seed', 12345)
+
+            # Expand to full config
+            config = expand_scenario(scenario, seed=seed)
+
+            # Convert OrderedDicts to regular dicts for clean YAML output
+            def to_plain_dict(obj):
+                if isinstance(obj, OrderedDict):
+                    return {k: to_plain_dict(v) for k, v in obj.items()}
+                elif isinstance(obj, dict):
+                    return {k: to_plain_dict(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [to_plain_dict(i) for i in obj]
+                return obj
+
+            plain_config = to_plain_dict(config)
+
+            # Serialize to YAML
+            yaml_output = yaml_lib.dump(
+                plain_config,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True
             )
-
-            if result.returncode != 0:
-                return None, result.stderr or "Script returned non-zero exit code"
-
-            yaml_output = result.stdout.strip()
-            if not yaml_output:
-                return None, "Script produced no output"
 
             return yaml_output, None
 
-        except subprocess.TimeoutExpired:
-            return None, "Script execution timed out (30s)"
+        except yaml_lib.YAMLError as e:
+            return None, f"YAML syntax error: {e}"
+        except ValueError as e:
+            return None, f"Scenario validation error: {e}"
         except Exception as e:
-            return None, str(e)
-        finally:
-            os.unlink(script_path)
+            return None, f"Expansion error: {e}"
 
     def _check_against_request(self, user_request: str, report: ValidationReport) -> Optional[str]:
         """Check if validation report matches user request. Returns issues or None if valid."""
