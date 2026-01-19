@@ -87,8 +87,12 @@ agents:
    - `activity_start_time: auto` - bootstrap_end + 1 hour
    - `wait_time: auto` - for miner-distributor, equals bootstrap_end
 
-5. **Initial miners**: Hashrates MUST sum to 100 (difficulty calibration)
-   - Late-joining miners can add extra hashrate
+5. **Initial miners**: Hashrates MUST sum to exactly 100 (difficulty calibration)
+   - 3 miners: [34, 33, 33] or [40, 35, 25]
+   - 4 miners: [25, 25, 25, 25]
+   - 5 miners: [20, 20, 20, 20, 20]
+   - 10 miners: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+   - Late-joining miners can add extra hashrate (not bound by 100)
 
 6. **Daemon binaries**: Use `monerod` for standard, `monerod-v2` etc for upgrades
 
@@ -107,7 +111,7 @@ agents:
 
 **Spy nodes**: Users with high peer counts
 - Use daemon_options: {out-peers: 100, in-peers: 100}
-- Can use subnet_group for same-subnet clustering
+- Use subnet_group at agent level (not inside daemon_options) for same-subnet clustering
 
 ## Example Scenarios
 
@@ -299,9 +303,130 @@ agents:
     transaction_interval: 300
     activity_start_time: auto
     can_receive_distributions: false
+    subnet_group: spy-cluster
     daemon_options:
       out-peers: 100
       in-peers: 100
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
+```
+
+---
+USER: "10 miners and 100 users for 12 hours"
+
+SCENARIO:
+```yaml
+general:
+  stop_time: 12h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..010}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+    can_receive_distributions: true
+
+  user-{001..100}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
+```
+
+---
+USER: "3 miners and 15 users, 6 hour test"
+
+SCENARIO:
+```yaml
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [34, 33, 33]
+    can_receive_distributions: true
+
+  user-{001..015}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
 
   miner-distributor:
     script: agents.miner_distributor
