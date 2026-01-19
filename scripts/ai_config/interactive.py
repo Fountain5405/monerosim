@@ -198,24 +198,36 @@ def print_result_summary(report):
     print()
 
 
-def print_menu():
-    """Print the post-generation menu."""
+def print_scenario_menu():
+    """Print the scenario review menu."""
     c = Colors
-    print(f"  {c.BOLD}[R]{c.RESET} Regenerate with same description")
-    print(f"  {c.BOLD}[E]{c.RESET} Edit description and regenerate")
-    print(f"  {c.BOLD}[V]{c.RESET} View full config")
+    print(f"  {c.BOLD}[V]{c.RESET} View scenario")
+    print(f"  {c.BOLD}[E]{c.RESET} Edit scenario (opens in editor)")
+    print(f"  {c.BOLD}[A]{c.RESET} Approve and expand to full config")
+    print(f"  {c.BOLD}[R]{c.RESET} Regenerate scenario")
+    print(f"  {c.BOLD}[Q]{c.RESET} Quit")
+    print()
+
+
+def print_final_menu():
+    """Print the final config menu."""
+    c = Colors
+    print(f"  {c.BOLD}[V]{c.RESET} View expanded config")
+    print(f"  {c.BOLD}[C]{c.RESET} View scenario (compact)")
+    print(f"  {c.BOLD}[B]{c.RESET} Back to scenario editing")
     print(f"  {c.BOLD}[S]{c.RESET} Save and exit")
     print(f"  {c.BOLD}[Q]{c.RESET} Quit without saving")
     print()
 
 
-def view_config(yaml_content: str):
+def view_config(yaml_content: str, max_lines: int = 60):
     """Display the YAML config with syntax highlighting."""
     c = Colors
     print()
     print(f"{c.CYAN}{'─' * 60}{c.RESET}")
 
-    for line in yaml_content.split('\n')[:50]:  # First 50 lines
+    lines = yaml_content.split('\n')
+    for line in lines[:max_lines]:
         # Simple syntax highlighting
         if line.startswith('#'):
             print(f"{c.DIM}{line}{c.RESET}")
@@ -225,16 +237,61 @@ def view_config(yaml_content: str):
         else:
             print(line)
 
-    if yaml_content.count('\n') > 50:
-        print(f"{c.DIM}... ({yaml_content.count(chr(10)) - 50} more lines){c.RESET}")
+    if len(lines) > max_lines:
+        print(f"{c.DIM}... ({len(lines) - max_lines} more lines){c.RESET}")
 
     print(f"{c.CYAN}{'─' * 60}{c.RESET}")
     print()
 
 
-def run_interactive(generator, output_file: str, save_scenario: Optional[str] = None):
-    """Run the interactive generation loop."""
+def edit_scenario_in_editor(scenario_content: str) -> Optional[str]:
+    """Open scenario in user's editor and return edited content."""
+    import tempfile
+    import subprocess
+
     c = Colors
+
+    # Get editor from environment
+    editor = os.environ.get('EDITOR', os.environ.get('VISUAL', 'nano'))
+
+    # Write to temp file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.scenario.yaml', delete=False) as f:
+        f.write(scenario_content)
+        temp_path = f.name
+
+    try:
+        # Open editor
+        print(f"{c.DIM}Opening {editor}... Save and close when done.{c.RESET}")
+        result = subprocess.run([editor, temp_path])
+
+        if result.returncode != 0:
+            print(f"{c.YELLOW}Editor exited with error.{c.RESET}")
+            return None
+
+        # Read back
+        with open(temp_path, 'r') as f:
+            edited = f.read()
+
+        return edited
+
+    except Exception as e:
+        print(f"{c.RED}Failed to open editor: {e}{c.RESET}")
+        return None
+    finally:
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+
+
+def run_interactive(generator, output_file: str, save_scenario: Optional[str] = None):
+    """Run the interactive generation loop with scenario review."""
+    c = Colors
+
+    # Import here to avoid circular imports
+    from ..scenario_parser import parse_scenario, expand_scenario
+    import yaml as yaml_lib
+    from collections import OrderedDict
 
     print_header()
 
@@ -250,109 +307,160 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
         print(f"{c.YELLOW}No description provided. Exiting.{c.RESET}")
         return False
 
+    scenario_content = None
     yaml_content = None
-    result = None
+    validation_report = None
 
     while True:
-        # Generate
+        # === PHASE 1: Generate scenario ===
         print()
-        print(f"{c.BOLD}Generating configuration...{c.RESET}")
+        print(f"{c.BOLD}Generating scenario...{c.RESET}")
+
+        # Use generator's LLM to get scenario
+        from .scenario_prompts import SCENARIO_SYSTEM_PROMPT
+        messages = [
+            {"role": "system", "content": SCENARIO_SYSTEM_PROMPT},
+            {"role": "user", "content": description}
+        ]
+
+        try:
+            response = generator.provider.chat(messages)
+            scenario_content = generator._extract_yaml(response.content)
+
+            if not scenario_content:
+                print(f"{c.RED}Failed to generate scenario. Try again.{c.RESET}")
+                continue
+
+        except Exception as e:
+            print(f"{c.RED}LLM error: {e}{c.RESET}")
+            continue
+
+        print(f"{c.GREEN}Scenario generated!{c.RESET}")
         print()
 
-        progress = ProgressIndicator()
-        progress.add_step("Scenario")
-        progress.add_step("Expand")
-        progress.add_step("Validate")
-
-        # Hook into generator progress (simplified - just show steps)
-        progress.start_step(0)
-
-        result = generator.generate(
-            user_request=description,
-            output_file=None,  # Don't save yet
-            save_scenario=None
-        )
-
-        if result.scenario_content:
-            progress.complete_step(0, True)
-            progress.start_step(1)
-
-            if result.yaml_content:
-                progress.complete_step(1, True)
-                progress.start_step(2)
-                progress.complete_step(2, result.success)
-            else:
-                progress.complete_step(1, False)
-        else:
-            progress.complete_step(0, False)
-
-        progress.finish()
-
-        if result.success and result.yaml_content:
-            yaml_content = result.yaml_content
-            print_result_summary(result.validation_report)
-        else:
-            print()
-            print(f"{c.RED}Generation failed after {result.attempts} attempt(s).{c.RESET}")
-            if result.errors:
-                print(f"{c.DIM}Last error: {result.errors[-1][:200]}{c.RESET}")
-            print()
-
-        # Menu loop
+        # === PHASE 2: Scenario review loop ===
         while True:
-            print_menu()
+            print(f"{c.BOLD}Review your scenario before expanding:{c.RESET}")
+            print()
+            print_scenario_menu()
             choice = get_user_input("Choice").upper()
 
-            if choice == 'R':
-                # Regenerate with same description
-                break
+            if choice == 'V':
+                view_config(scenario_content, max_lines=100)
+                continue
 
             elif choice == 'E':
-                # Edit description
-                print()
-                print(f"{c.DIM}Current: {description[:100]}{'...' if len(description) > 100 else ''}{c.RESET}")
-                new_desc = get_multiline_input("New scenario (or press Enter to keep current)")
-                if new_desc:
-                    description = new_desc
+                edited = edit_scenario_in_editor(scenario_content)
+                if edited:
+                    scenario_content = edited
+                    print(f"{c.GREEN}Scenario updated.{c.RESET}")
+                continue
+
+            elif choice == 'R':
+                # Regenerate - go back to outer loop
                 break
 
-            elif choice == 'V':
-                # View config
-                if yaml_content:
-                    view_config(yaml_content)
-                else:
-                    print(f"{c.YELLOW}No config generated yet.{c.RESET}")
-                continue
-
-            elif choice == 'S':
-                # Save and exit
-                if yaml_content:
-                    # Save YAML
-                    with open(output_file, 'w') as f:
-                        f.write(yaml_content)
-                    print(f"{c.GREEN}Config saved to: {output_file}{c.RESET}")
-
-                    # Save scenario if requested
-                    if save_scenario and result and result.scenario_content:
-                        with open(save_scenario, 'w') as f:
-                            f.write(result.scenario_content)
-                        print(f"{c.GREEN}Scenario saved to: {save_scenario}{c.RESET}")
-
-                    return True
-                else:
-                    print(f"{c.YELLOW}No config to save. Generate first.{c.RESET}")
-                continue
-
             elif choice == 'Q':
-                # Quit without saving
                 print(f"{c.YELLOW}Exiting without saving.{c.RESET}")
                 return False
 
-            else:
-                print(f"{c.YELLOW}Invalid choice. Please enter R, E, V, S, or Q.{c.RESET}")
+            elif choice == 'A':
+                # Approve and expand
+                print()
+                print(f"{c.BOLD}Expanding scenario...{c.RESET}")
+
+                try:
+                    # Parse and expand
+                    scenario = parse_scenario(scenario_content)
+                    seed = scenario.general.get('simulation_seed', 12345)
+                    config = expand_scenario(scenario, seed=seed)
+
+                    # Convert to plain dict
+                    def to_plain_dict(obj):
+                        if isinstance(obj, OrderedDict):
+                            return {k: to_plain_dict(v) for k, v in obj.items()}
+                        elif isinstance(obj, dict):
+                            return {k: to_plain_dict(v) for k, v in obj.items()}
+                        elif isinstance(obj, list):
+                            return [to_plain_dict(i) for i in obj]
+                        return obj
+
+                    plain_config = to_plain_dict(config)
+                    yaml_content = yaml_lib.dump(plain_config, default_flow_style=False, sort_keys=False)
+
+                    # Validate
+                    validation_report = generator.validator.validate_yaml(yaml_content)
+
+                    print(f"{c.GREEN}Expansion successful!{c.RESET}")
+                    print_result_summary(validation_report)
+
+                except Exception as e:
+                    print(f"{c.RED}Expansion failed: {e}{c.RESET}")
+                    print(f"{c.DIM}Edit the scenario to fix issues, or regenerate.{c.RESET}")
+                    continue
+
+                # === PHASE 3: Final config review ===
+                while True:
+                    print_final_menu()
+                    choice2 = get_user_input("Choice").upper()
+
+                    if choice2 == 'V':
+                        view_config(yaml_content, max_lines=80)
+                        continue
+
+                    elif choice2 == 'C':
+                        view_config(scenario_content, max_lines=100)
+                        continue
+
+                    elif choice2 == 'B':
+                        # Back to scenario editing
+                        break
+
+                    elif choice2 == 'S':
+                        # Save and exit
+                        # Save expanded config
+                        with open(output_file, 'w') as f:
+                            f.write(f"# Generated by ai_config for: {description[:60]}...\n\n")
+                            f.write(yaml_content)
+                        print(f"{c.GREEN}Config saved to: {output_file}{c.RESET}")
+
+                        # Always save scenario alongside
+                        if output_file.endswith('.yaml'):
+                            scenario_file = output_file[:-5] + '.scenario.yaml'
+                        elif output_file.endswith('.yml'):
+                            scenario_file = output_file[:-4] + '.scenario.yaml'
+                        else:
+                            scenario_file = output_file + '.scenario.yaml'
+
+                        # Use custom path if specified
+                        if save_scenario:
+                            scenario_file = save_scenario
+
+                        with open(scenario_file, 'w') as f:
+                            f.write(scenario_content)
+                        print(f"{c.GREEN}Scenario saved to: {scenario_file}{c.RESET}")
+
+                        return True
+
+                    elif choice2 == 'Q':
+                        print(f"{c.YELLOW}Exiting without saving.{c.RESET}")
+                        return False
+
+                    else:
+                        print(f"{c.YELLOW}Invalid choice.{c.RESET}")
+                        continue
+
+                # If we got here from 'B', continue scenario review loop
                 continue
 
-    return False  # Should not reach here
+            else:
+                print(f"{c.YELLOW}Invalid choice.{c.RESET}")
+                continue
+
+        # If we got here from 'R', regenerate
+        continue
+
+    return False
 
 
 def check_llm_config():
