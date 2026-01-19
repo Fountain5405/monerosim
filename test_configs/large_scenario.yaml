@@ -1,0 +1,56 @@
+# Large scenario.yaml - tests auto-batching for 100+ users
+
+general:
+  stop_time: 24h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [30, 25, 25, 10, 10]
+    can_receive_distributions: true
+
+  # 100 users - should auto-batch since count >= 50
+  user-{001..100}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto      # Should trigger batched spawning
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

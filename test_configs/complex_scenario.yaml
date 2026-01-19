@@ -1,0 +1,114 @@
+# Complex scenario - tests multiple features:
+# - Initial network reaching steady state
+# - Late-joining v2 nodes and miners
+# - Spy node joining later
+# - Different daemon binaries
+#
+# Timeline:
+#   t=0:     5 miners start (monerod, hashrate=100)
+#   t=20m:   15 users start spawning (monerod)
+#   t=~4h:   Bootstrap ends
+#   t=~5h:   Activity starts, steady state begins
+#   t=7h:    After 2h steady state: 20 v2 users + 3 v2 miners join
+#   t=11h:   4h after v2 nodes: spy node joins
+#   t=15h:   4h after spy: simulation ends
+
+general:
+  stop_time: 15h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # === INITIAL NETWORK (20 nodes) ===
+
+  # 5 initial miners - hashrate sums to 100
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [30, 25, 20, 15, 10]
+    can_receive_distributions: true
+
+  # 15 initial users
+  user-{001..015}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # === V2 NODES JOIN AT 7h (after 2h steady state) ===
+
+  # 20 new v2 users
+  user-{016..035}:
+    daemon: monerod-v2
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 25200s            # 7h = 25200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: 25200    # Can transact immediately (network already funded)
+    can_receive_distributions: true
+
+  # 3 new v2 miners with extra hashrate
+  miner-{006..008}:
+    daemon: monerod-v2
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 25200s            # 7h
+    start_time_stagger: 1s
+    hashrate: [30, 30, 30]        # Extra hashrate - LWMA will adjust
+    can_receive_distributions: true
+
+  # === SPY NODES JOIN AT 11h (4h after v2 nodes) ===
+  # 5 spy nodes, all in the same subnet (simulating a sybil cluster)
+
+  spy-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 39600s            # 11h = 39600s
+    start_time_stagger: 10s       # Stagger spy node starts
+    transaction_interval: 300     # Less frequent transactions
+    activity_start_time: 39600
+    can_receive_distributions: false
+    subnet_group: spy-cluster     # All 5 spies share the same /16 subnet
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+
+  # === SUPPORT AGENTS ===
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

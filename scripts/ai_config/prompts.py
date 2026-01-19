@@ -17,6 +17,24 @@ Your task: Generate a Python script that creates a monerosim YAML configuration 
 The YAML config has these sections:
 
 ```yaml
+metadata:                        # ALWAYS include metadata section
+  scenario: default              # or "upgrade" for upgrade scenarios
+  generator: ai_config
+  version: '1.0'
+  agents:
+    total: 25
+    miners: 5
+    users: 20
+  timing:
+    duration_s: 28800
+    bootstrap_end_s: 14400
+    activity_start_s: 18000
+  upgrade:                       # Include if upgrade scenario
+    binary_v1: monerod-v1
+    binary_v2: monerod-v2
+    start_s: 32400
+    stagger_s: 30
+
 general:
   stop_time: "8h"              # Simulation duration
   simulation_seed: 12345       # For reproducibility
@@ -80,44 +98,70 @@ agents:
 
 ## CRITICAL: Timing Constraints
 
-Monero simulations require significant bootstrap time before any meaningful activity:
+Monero simulations require significant bootstrap time. **Calculate timing dynamically, never use fixed values!**
 
-1. **Minimum 5 hours before activity can start:**
-   - t=0 to t=4h: Bootstrap period (blockchain sync, network formation)
-   - t=4h: bootstrap_end_time (miner-distributor starts funding users)
-   - t=5h: activity_start_time (users can start transacting)
+1. **Dynamic bootstrap calculation:**
+   ```python
+   bootstrap_end_s = max(14400, int(last_user_spawn_s * 1.20))  # 20% buffer, min 4h
+   activity_start_s = bootstrap_end_s + 3600  # +1h funding period
+   ```
 
-2. **Why 5 hours minimum?**
-   - Monero coinbase outputs require 60 block confirmations before spending
-   - At ~2 min/block, that's ~2 hours just for unlock
-   - Plus time for initial sync, wallet setup, and funding distribution
+2. **Why this formula?**
+   - Monero coinbase outputs require 60 block confirmations (~2h)
+   - All users must spawn before bootstrap ends
+   - 20% buffer ensures stragglers sync properly
+   - 1 hour funding period for miner-distributor to fund all users
 
 3. **Calculating total simulation duration:**
-   - If user wants "2h steady state, then upgrade, then 2h observation"
-   - That means: 5h bootstrap + 2h steady + upgrade_window + 2h post = ~10-11h total
-   - NEVER just add the user's requested times (2+2+2≠6h total!)
+   - Non-upgrade: `stop_time = activity_start + requested_runtime`
+   - Upgrade: `stop_time = activity_start + steady_state + upgrade_duration + post_upgrade`
+   - NEVER just add user's requested times without the bootstrap calculation!
 
-4. **For large simulations (50+ agents):**
-   - Add more bootstrap buffer time
-   - Use batched user spawning to avoid overwhelming Shadow
+4. **For large simulations (50+ users):**
+   - Use batched user spawning (exponential growth: 5, 10, 20, 40, 80, 160, 200...)
+   - This extends last_user_spawn_s, which extends bootstrap_end_s automatically
 
 5. **Upgrade scenarios must have stop_time > last upgrade completion + observation period**
 
 ## Daemon Phase Switching (for upgrades)
 
-Agents can switch binaries mid-simulation:
+When an upgrade scenario is requested, ALL agents (miners AND users) must use daemon phases.
+Do NOT use simple `daemon: monerod` - use `daemon_0`/`daemon_1` for upgrade scenarios.
 
 ```yaml
+# MINER with upgrade phases:
+miner-001:
+  wallet: monero-wallet-rpc
+  script: agents.autonomous_miner
+  start_time: 0s
+  hashrate: 20
+  can_receive_distributions: true
+  daemon_0: monerod-v1         # First binary
+  daemon_0_start: 0s           # When agent spawns
+  daemon_0_stop: 36000s        # When to stop v1 (10h)
+  daemon_1: monerod-v2         # Second binary
+  daemon_1_start: 36030s       # Must be 30s+ after stop
+
+# USER with upgrade phases:
 user-001:
   wallet: monero-wallet-rpc
   script: agents.regular_user
-  start_time: 3h
+  start_time: 1200s
+  transaction_interval: 60
+  activity_start_time: 18000
+  can_receive_distributions: true
   daemon_0: monerod-v1         # First binary
-  daemon_0_start: "3h"
-  daemon_0_stop: "7h"
+  daemon_0_start: 1200s        # When agent spawns
+  daemon_0_stop: 36000s        # When to stop v1
   daemon_1: monerod-v2         # Second binary
-  daemon_1_start: "7h30s"      # Must be 30s+ after stop
+  daemon_1_start: 36030s       # Must be 30s+ after stop
 ```
+
+**CRITICAL for upgrades:**
+- Do NOT include `daemon:` key when using phases - only use `daemon_0`/`daemon_1`
+- `daemon_0_start` should equal the agent's `start_time`
+- ALL agents upgrade, staggered by 30s each
+- Upgrade should start AFTER steady state (not at bootstrap_end!)
 
 ## Your Output Format
 
@@ -134,11 +178,54 @@ Example script structure:
 """Generate monerosim config for: <scenario description>"""
 import yaml
 
+# Configuration parameters
+num_miners = 5
+num_users = 50
+is_upgrade = False  # Set True for upgrade scenarios
+
+# Dynamic timing calculation (DO NOT use fixed values!)
+user_start_base_s = 1200  # 20 minutes - when first user spawns
+user_stagger_s = 5  # seconds between users (or use batched spawning for 50+)
+last_user_spawn_s = user_start_base_s + (num_users - 1) * user_stagger_s
+
+# Bootstrap ends after all users spawn + 20% buffer, minimum 4 hours
+bootstrap_end_s = max(14400, int(last_user_spawn_s * 1.20))
+# Activity starts 1 hour after bootstrap (funding period)
+activity_start_s = bootstrap_end_s + 3600
+
+# For upgrade scenarios, calculate upgrade timing
+if is_upgrade:
+    steady_state_duration_s = 4 * 3600  # 4 hours of normal operation
+    upgrade_stagger_s = 30  # 30s between each agent upgrade
+    post_upgrade_duration_s = 4 * 3600  # 4 hours observation
+
+    upgrade_start_s = activity_start_s + steady_state_duration_s
+    upgrade_duration_s = (num_miners + num_users) * upgrade_stagger_s
+    stop_time_s = upgrade_start_s + upgrade_duration_s + post_upgrade_duration_s
+else:
+    # Non-upgrade: just run for requested duration after activity starts
+    stop_time_s = activity_start_s + 3 * 3600  # e.g., 3 hours of activity
+
 config = {
+    'metadata': {
+        'scenario': 'upgrade' if is_upgrade else 'default',
+        'generator': 'ai_config',
+        'version': '1.0',
+        'agents': {
+            'total': num_miners + num_users,
+            'miners': num_miners,
+            'users': num_users,
+        },
+        'timing': {
+            'duration_s': stop_time_s,
+            'bootstrap_end_s': bootstrap_end_s,
+            'activity_start_s': activity_start_s,
+        },
+    },
     'general': {
-        'stop_time': '8h',
+        'stop_time': f'{stop_time_s // 3600}h',
         'simulation_seed': 12345,
-        'bootstrap_end_time': '4h',
+        'bootstrap_end_time': f'{bootstrap_end_s // 3600}h',
         'enable_dns_server': True,
         'shadow_log_level': 'warning',
         'progress': True,
@@ -156,7 +243,7 @@ config = {
         'wallet_defaults': {'log-level': 1, 'log-file': '/dev/stdout'},
     },
     'network': {
-        'path': 'gml_processing/1200_nodes_caida_with_loops.gml',  # Use GML topology for realistic IPs
+        'path': 'gml_processing/1200_nodes_caida_with_loops.gml',
         'peer_mode': 'Dynamic',
     },
     'agents': {}
@@ -212,16 +299,19 @@ print(yaml.dump(config, default_flow_style=False, sort_keys=False))
 
 ## Important Rules
 
-1. **Hashrates must sum to 100** - divide evenly or use weighted distribution
-2. **Include miner-distributor** if there are users (they need funding)
-3. **Include simulation-monitor** for observability
-4. **Bootstrap period ~4h** - nodes need time to sync
-5. **Users start at 3h** with activity_start_time ~18000s (5h)
-6. **Phase gaps must be 30s+** between daemon_0_stop and daemon_1_start
-7. **Agent IDs**: Use patterns like miner-001, user-001, spy-001
-8. **Stagger miner start times** by 1 second each (0s, 1s, 2s...) to avoid memory spikes from simultaneous RandomX initialization
-9. **Stagger user start times** by 5 seconds each for small sims (<50 users)
-10. **Batch staggering for large sims (50+ users)** - spawn users in exponentially growing batches
+1. **ALWAYS include metadata section** - with scenario, agents, and timing info
+2. **Hashrates must sum to 100** - divide evenly or use weighted distribution
+3. **Include miner-distributor** if there are users (they need funding)
+4. **Include simulation-monitor** for observability
+5. **Bootstrap period ~4h** - nodes need time to sync
+6. **Users start at 3h** with activity_start_time ~18000s (5h)
+7. **Phase gaps must be 30s+** between daemon_0_stop and daemon_1_start
+8. **Agent IDs**: Use patterns like miner-001, user-001, spy-001
+9. **Stagger miner start times** by 1 second each (0s, 1s, 2s...) to avoid memory spikes from simultaneous RandomX initialization
+10. **Stagger user start times** by 5 seconds each for small sims (<50 users)
+11. **Batch staggering for large sims (50+ users)** - spawn users in exponentially growing batches
+12. **Upgrade scenarios**: ALL agents (miners AND users) must use daemon_0/daemon_1 phases
+13. **Upgrade timing**: Start upgrades AFTER steady state period, not at bootstrap_end
 
 ## Batched Bootstrap for Large Simulations
 
@@ -266,25 +356,72 @@ if num_users >= 50:
         }
 ```
 
+## Upgrade Scenario Timeline
+
+For upgrade scenarios, calculate timing DYNAMICALLY based on agent count:
+
+```
+|---User Spawning---|--Bootstrap Buffer--|--Funding--|--Steady State--|--Upgrade--|--Post--|
+0                   last_spawn          bootstrap    activity        upgrade     END
+```
+
+**Dynamic timing formulas (MUST use these, not fixed values!):**
+```python
+last_user_spawn_s = user_start_base + (num_users - 1) * user_stagger
+bootstrap_end_s = max(14400, int(last_user_spawn_s * 1.20))  # 20% buffer, min 4h
+activity_start_s = bootstrap_end_s + 3600  # +1h funding period
+upgrade_start_s = activity_start_s + steady_state_duration  # AFTER steady state!
+upgrade_duration_s = num_agents * 30  # 30s stagger per agent
+stop_time_s = upgrade_start_s + upgrade_duration_s + post_upgrade_duration
+```
+
+**Example for 1000 agents (batched spawning, 4h steady state, 4h post-upgrade):**
+- last_user_spawn: ~3h 26m (12395s with batched spawning)
+- bootstrap_end: 12395 * 1.2 = 14874s (~4h 7m)
+- activity_start: 14874 + 3600 = 18474s (~5h 7m)
+- upgrade_start: 18474 + 14400 = 32874s (~9h 8m)
+- upgrade_duration: 1000 * 30 = 30000s (~8h 20m)
+- stop_time: 32874 + 30000 + 14400 = 77274s (~21h 28m)
+
 ## Timing Calculations
 
 For upgrade scenarios, calculate times in seconds. CRITICAL: daemon_1_start must be at least 30 seconds AFTER daemon_0_stop!
 
 ```python
-upgrade_start = 7 * 3600  # 7 hours in seconds
-stagger = 30  # seconds between each agent's upgrade
-gap = 30  # REQUIRED: minimum 30s gap between daemon_0_stop and daemon_1_start
+# Calculate upgrade timeline
+num_agents = num_miners + num_users
+steady_state_duration = 4 * 3600  # 4 hours of normal operation before upgrade
+post_upgrade_duration = 4 * 3600  # 4 hours observation after upgrade
+upgrade_stagger = 30  # seconds between each agent's upgrade
+gap = 30  # REQUIRED: minimum 30s gap between stop and start
 
-for i, agent_id in enumerate(agents_to_upgrade):
-    stop_time = upgrade_start + i * stagger
-    start_time = stop_time + gap  # MUST add gap here!
+activity_start_time_s = 18000  # 5 hours
+upgrade_start = activity_start_time_s + steady_state_duration  # Start AFTER steady state!
+upgrade_duration = num_agents * upgrade_stagger
+stop_time_s = upgrade_start + upgrade_duration + post_upgrade_duration
+
+# Apply phases to ALL agents (miners AND users)
+all_agents = list(config['agents'].keys())
+for i, agent_id in enumerate(all_agents):
+    if agent_id in ['miner-distributor', 'simulation-monitor']:
+        continue  # Skip non-daemon agents
+
+    agent = config['agents'][agent_id]
+    agent_start = agent.get('start_time', '0s')
+    # Parse start_time to seconds if needed
+
+    stop_time = upgrade_start + i * upgrade_stagger
+    start_time = stop_time + gap  # MUST add gap!
 
     agent['daemon_0'] = 'monerod-v1'
-    agent['daemon_0_start'] = agent.get('start_time', '0s')  # When agent spawns
+    agent['daemon_0_start'] = agent_start
     agent['daemon_0_stop'] = f'{stop_time}s'
     agent['daemon_1'] = 'monerod-v2'
-    agent['daemon_1_start'] = f'{start_time}s'  # stop_time + 30s gap
-    del agent['daemon']  # Remove 'daemon' key when using phases
+    agent['daemon_1_start'] = f'{start_time}s'
+
+    # Remove simple daemon key if present
+    if 'daemon' in agent:
+        del agent['daemon']
 ```
 
 Output ONLY the Python script, no explanations. The script must be complete and runnable.

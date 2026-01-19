@@ -1,0 +1,59 @@
+# Sample scenario.yaml - compact monerosim configuration
+# Expand with: python3 scripts/scenario_parser.py test_configs/sample_scenario.yaml -o monerosim.yaml
+
+general:
+  stop_time: 24h
+  simulation_seed: 12345
+  bootstrap_end_time: auto        # Calculated from last user spawn + 20%
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # 5 miners with specific hashrates, staggered 1s apart
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [30, 25, 25, 10, 10]
+    can_receive_distributions: true
+
+  # 50 users with auto-stagger (will use batched for large counts)
+  user-{001..050}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # Singleton agents (no expansion needed)
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

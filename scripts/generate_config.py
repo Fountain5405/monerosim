@@ -996,8 +996,8 @@ Timeline (verified bootstrap for Monero regtest):
     parser.add_argument(
         "--agents", "-n",
         type=int,
-        required=True,
-        help="Total agent count (5 miners + N-5 users)"
+        default=None,
+        help="Total agent count (5 miners + N-5 users). Required unless using --from."
     )
 
     parser.add_argument(
@@ -1026,6 +1026,14 @@ Timeline (verified bootstrap for Monero regtest):
         type=str,
         required=True,
         help="Output filename"
+    )
+
+    parser.add_argument(
+        "--from", "-f",
+        dest="from_scenario",
+        type=str,
+        default=None,
+        help="Expand a scenario.yaml file instead of generating from CLI args"
     )
 
     parser.add_argument(
@@ -1160,7 +1168,52 @@ Timeline (verified bootstrap for Monero regtest):
 
     args = parser.parse_args()
 
-    # Validate
+    # Handle --from scenario.yaml mode
+    if args.from_scenario:
+        from scenario_parser import (
+            parse_scenario, expand_scenario, format_time,
+            DEFAULT_AUTO_THRESHOLD, calculate_batched_schedule
+        )
+
+        print(f"Expanding scenario: {args.from_scenario}", file=sys.stderr)
+
+        with open(args.from_scenario) as f:
+            scenario = parse_scenario(f.read())
+
+        # Expand with seed from args (or scenario if specified)
+        seed = scenario.general.get('simulation_seed', args.seed)
+        config = expand_scenario(scenario, seed=seed)
+
+        # Convert to YAML
+        def to_plain_dict(obj):
+            if hasattr(obj, 'items'):
+                return {k: to_plain_dict(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [to_plain_dict(i) for i in obj]
+            return obj
+
+        plain_config = to_plain_dict(config)
+
+        # Count agents for summary
+        agent_count = len([k for k in config['agents'].keys()
+                          if k not in ['miner-distributor', 'simulation-monitor']])
+
+        # Write output
+        import yaml as yaml_module
+        with open(args.output, 'w') as f:
+            yaml_module.dump(plain_config, f, default_flow_style=False, sort_keys=False)
+
+        print(f"Expanded {args.from_scenario} -> {args.output}", file=sys.stderr)
+        print(f"  Agents: {agent_count}", file=sys.stderr)
+        print(f"  Bootstrap ends: {format_time(scenario.timing['bootstrap_end_s'])}", file=sys.stderr)
+        print(f"  Activity starts: {format_time(scenario.timing['activity_start_s'])}", file=sys.stderr)
+        sys.exit(0)
+
+    # Validate CLI args (only if not using --from)
+    if args.agents is None:
+        print("Error: --agents is required when not using --from", file=sys.stderr)
+        sys.exit(1)
+
     if args.agents < 5:
         print(f"Error: Need at least 5 agents (for fixed miners), got {args.agents}", file=sys.stderr)
         sys.exit(1)
