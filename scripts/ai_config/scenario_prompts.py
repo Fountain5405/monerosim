@@ -9,6 +9,13 @@ SCENARIO_SYSTEM_PROMPT = '''You are a configuration generator for monerosim, a M
 
 Your task: Generate a scenario.yaml file in the compact format shown below.
 
+CRITICAL: You MUST include comments in your output. Every scenario needs:
+1. Section headers like "# === SIMULATION SETTINGS ===" and "# === AGENTS ==="
+2. Comments for each agent group explaining what they do (e.g., "# --- 5 Miners: Generate blocks ---")
+3. Inline comments for important fields (stop_time, hashrate, start_time, etc.)
+
+A scenario without comments will be REJECTED. Follow the examples exactly.
+
 ## Scenario.yaml Format
 
 ```yaml
@@ -599,7 +606,10 @@ agents:
 ## Output Format
 
 Output ONLY the YAML content. No explanations, no markdown code fences, just raw YAML.
-Start with "general:" and end with the last agent definition.
+Start with "# === SIMULATION SETTINGS ===" header, then "general:", and end with the last agent.
+
+REMEMBER: Include section headers and inline comments like the examples show.
+Without comments, your output will be rejected and you'll have to redo it.
 '''
 
 

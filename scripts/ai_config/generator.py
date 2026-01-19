@@ -210,7 +210,7 @@ class LLMProvider:
 class ConfigGenerator:
     """Generates monerosim configs using LLM with feedback loop."""
 
-    def __init__(self, provider: LLMProvider = None, max_attempts: int = 3, verbose: bool = True):
+    def __init__(self, provider: LLMProvider = None, max_attempts: int = 5, verbose: bool = True):
         self.provider = provider or LLMProvider()
         self.validator = ConfigValidator()
         self.max_attempts = max_attempts
@@ -270,6 +270,16 @@ class ConfigGenerator:
             except Exception as e:
                 result.errors.append(f"Attempt {attempt}: LLM error - {e}")
                 self.log(f"  ERROR: LLM request failed - {e}")
+                continue
+
+            # Check for required comments
+            comment_issues = self._check_scenario_comments(current_scenario)
+            if comment_issues:
+                result.errors.append(f"Attempt {attempt}: Missing comments")
+                self.log(f"  Missing comments - requesting fix...")
+
+                messages.append({"role": "assistant", "content": current_scenario})
+                messages.append({"role": "user", "content": f"Your scenario is missing required comments:\n{comment_issues}\n\nPlease add the missing comments. Include:\n- Section headers like '# === SIMULATION SETTINGS ===' and '# === AGENTS ==='\n- Agent group comments like '# --- 5 Miners: Generate blocks ---'\n- Inline comments explaining key fields\n\nOutput the complete scenario with comments added."})
                 continue
 
             # Parse and expand scenario
@@ -442,6 +452,32 @@ class ConfigGenerator:
             return None, f"Scenario validation error: {e}"
         except Exception as e:
             return None, f"Expansion error: {e}"
+
+    def _check_scenario_comments(self, scenario: str) -> Optional[str]:
+        """Check if scenario has required comments. Returns issues or None if OK."""
+        lines = scenario.split('\n')
+
+        # Count different types of comments
+        section_headers = sum(1 for l in lines if l.strip().startswith('# ===') or l.strip().startswith('#==='))
+        agent_comments = sum(1 for l in lines if l.strip().startswith('# ---') or l.strip().startswith('#---'))
+        inline_comments = sum(1 for l in lines if ':' in l and '#' in l and not l.strip().startswith('#'))
+        standalone_comments = sum(1 for l in lines if l.strip().startswith('#'))
+
+        # Require at least 3 comments total (relaxed check)
+        total_comments = standalone_comments + inline_comments
+        if total_comments < 3:
+            issues = []
+            issues.append(f"Found only {total_comments} comments, need at least 3")
+            issues.append("Add section headers like '# === SIMULATION SETTINGS ==='")
+            issues.append("Add agent comments like '# --- 5 Miners ---'")
+            issues.append("Add inline comments like 'stop_time: 8h  # duration'")
+            return '\n'.join(issues)
+
+        # If we have some comments, check for minimal structure
+        if section_headers == 0 and agent_comments == 0:
+            return "Add at least one section header (# === ...) or agent comment (# --- ...)"
+
+        return None  # OK
 
     def _check_against_request(self, user_request: str, report: ValidationReport) -> Optional[str]:
         """Check if validation report matches user request. Returns issues or None if valid."""

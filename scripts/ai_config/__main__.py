@@ -80,8 +80,8 @@ Examples:
     parser.add_argument(
         "--max-attempts", "-a",
         type=int,
-        default=3,
-        help="Maximum correction attempts (default: 3)"
+        default=5,
+        help="Maximum correction attempts (default: 5)"
     )
 
     parser.add_argument(
