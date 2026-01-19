@@ -556,10 +556,11 @@ def check_llm_config():
             if not api_key:
                 return None
 
-        # Allow model override
-        model_input = get_user_input(f"Model name", model)
-        if model_input:
-            model = model_input
+        # Allow model override (except for MoneroWorld which has a fixed model)
+        if choice != '1':
+            model_input = get_user_input(f"Model name", model)
+            if model_input:
+                model = model_input
     else:
         # Custom URL
         base_url = get_user_input("API Base URL", "http://localhost:8080/v1")
