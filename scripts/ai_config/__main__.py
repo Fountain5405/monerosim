@@ -198,12 +198,16 @@ def run_interactive_mode(args):
         verbose=False  # Interactive mode handles its own output
     )
 
+    # Determine if using a small context model (MoneroWorld uses 7B models)
+    is_small_model = 'moneroworld' in config.get('base_url', '').lower()
+
     # Run interactive loop
     try:
         success = run_interactive(
             generator=generator,
             output_file=args.output,
-            save_scenario=args.save_scenario
+            save_scenario=args.save_scenario,
+            is_small_model=is_small_model
         )
         return 0 if success else 1
     except KeyboardInterrupt:

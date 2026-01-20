@@ -285,7 +285,34 @@ def edit_scenario_in_editor(scenario_content: str) -> Optional[str]:
             pass
 
 
-def run_interactive(generator, output_file: str, save_scenario: Optional[str] = None):
+def print_tips(is_small_model: bool = False):
+    """Print tips for writing good prompts."""
+    c = Colors
+
+    print(f"{c.BOLD}Tips for good results:{c.RESET}")
+    print()
+
+    if is_small_model:
+        print(f"  {c.YELLOW}You are using the MoneroWorld LLM (smaller model).{c.RESET}")
+        print(f"  {c.YELLOW}Be specific in your prompts for best results.{c.RESET}")
+        print()
+    else:
+        print(f"  {c.GREEN}You are using a larger LLM backend.{c.RESET}")
+        print(f"  {c.GREEN}You can be as specific or vague as you like.{c.RESET}")
+        print()
+
+    print(f"  {c.DIM}• Minimum 5 initial miners required (hashrates must sum to 100){c.RESET}")
+    print(f"  {c.DIM}• Miners start at time 0 with staggered starts (1s apart){c.RESET}")
+    print(f"  {c.DIM}• Bootstrap period (min 4h, scales with users) relaxes network{c.RESET}")
+    print(f"  {c.DIM}  limits so miners can accumulate XMR for distribution{c.RESET}")
+    print(f"  {c.DIM}• Users begin transacting after bootstrap, once they have funds{c.RESET}")
+    print(f"  {c.DIM}• Upgrade scenarios use daemon phases (v1 -> v2 transitions){c.RESET}")
+    print(f"  {c.DIM}• Spy nodes have high peer counts (100+) for network monitoring{c.RESET}")
+    print()
+
+
+def run_interactive(generator, output_file: str, save_scenario: Optional[str] = None,
+                    is_small_model: bool = False):
     """Run the interactive generation loop with scenario review."""
     c = Colors
 
@@ -295,9 +322,9 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
     from collections import OrderedDict
 
     print_header()
+    print_tips(is_small_model)
 
     print("Describe your simulation scenario.")
-    print("Be as exact or as vague as you'd like.")
     print()
     print_examples()
 
