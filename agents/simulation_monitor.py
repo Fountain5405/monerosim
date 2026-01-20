@@ -446,23 +446,129 @@ class SimulationMonitorAgent(BaseAgent):
 
         self.logger.debug(f"Block mined by {agent_id} at height {height}")
 
+    def _get_git_commit_hash(self) -> str:
+        """Get the current git commit hash of the monerosim codebase."""
+        try:
+            import subprocess
+            # Try to get git commit from the monerosim directory
+            result = subprocess.run(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
+        return "unknown"
+
+    def _get_config_metadata(self) -> Dict[str, Any]:
+        """Read metadata from the monerosim config file."""
+        import yaml
+
+        # Try common config file locations
+        config_candidates = [
+            Path("monerosim.yaml"),
+            Path("config.yaml"),
+            self.shared_dir / "config_metadata.json",
+        ]
+
+        # Also check parent directories
+        cwd = Path.cwd()
+        for parent in [cwd, cwd.parent, cwd.parent.parent]:
+            config_candidates.append(parent / "monerosim.yaml")
+            config_candidates.append(parent / "config.yaml")
+
+        for config_path in config_candidates:
+            try:
+                if config_path.exists():
+                    if config_path.suffix == '.json':
+                        with open(config_path, 'r') as f:
+                            return json.load(f)
+                    else:
+                        with open(config_path, 'r') as f:
+                            config = yaml.safe_load(f)
+                            if config and 'metadata' in config:
+                                return config['metadata']
+            except Exception as e:
+                self.logger.debug(f"Could not read config from {config_path}: {e}")
+                continue
+
+        return {}
+
     def _initialize_status_file(self):
         """Create and initialize the status file with header."""
         try:
             # Ensure directory exists
             os.makedirs(os.path.dirname(self.status_file), exist_ok=True)
-            
+
+            # Get config metadata and git commit
+            metadata = self._get_config_metadata()
+            git_commit = self._get_git_commit_hash()
+
             # Write initial header
             with open(self.status_file, 'w') as f:
-                f.write("=== MoneroSim Simulation Monitor Started ===\n")
+                f.write("=" * 70 + "\n")
+                f.write("  MoneroSim Simulation Monitor\n")
+                f.write("=" * 70 + "\n\n")
+
+                # Git commit info
+                f.write(f"Monerosim Version: git commit {git_commit}\n")
                 f.write(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-                f.write(f"Agent ID: {self.agent_id}\n")
-                f.write(f"Poll Interval: {self.poll_interval} seconds\n")
-                f.write("=== Waiting for first status update ===\n\n")
+                f.write(f"Poll Interval: {self.poll_interval} seconds\n\n")
+
+                # Config metadata if available
+                if metadata:
+                    f.write("-" * 70 + "\n")
+                    f.write("Configuration Metadata:\n")
+                    f.write("-" * 70 + "\n")
+
+                    # Basic info
+                    if 'user_request' in metadata:
+                        f.write(f"  Request: {metadata.get('user_request', 'N/A')}\n")
+                    if 'scenario' in metadata:
+                        f.write(f"  Scenario Type: {metadata.get('scenario', 'N/A')}\n")
+                    if 'generator' in metadata:
+                        f.write(f"  Generator: {metadata.get('generator', 'N/A')} v{metadata.get('version', '?')}\n")
+
+                    # Agent counts
+                    agents = metadata.get('agents', {})
+                    if agents:
+                        f.write(f"  Agents: {agents.get('total', 'N/A')} total\n")
+                        f.write(f"    - Miners: {agents.get('miners', 0)}\n")
+                        f.write(f"    - Users: {agents.get('users', 0)}\n")
+                        f.write(f"    - Spy Nodes: {agents.get('spy_nodes', 0)}\n")
+
+                    # Timing info
+                    timing = metadata.get('timing', {})
+                    if timing:
+                        f.write("  Timing:\n")
+                        duration_h = timing.get('duration_s', 0) / 3600
+                        bootstrap_h = timing.get('bootstrap_end_s', 0) / 3600
+                        f.write(f"    - Duration: {duration_h:.1f}h ({timing.get('duration_s', 0)}s)\n")
+                        f.write(f"    - Bootstrap End: {bootstrap_h:.1f}h ({timing.get('bootstrap_end_s', 0)}s)\n")
+                        if 'user_spawn_start_s' in timing:
+                            spawn_start = timing.get('user_spawn_start_s', 0)
+                            spawn_end = timing.get('user_spawn_end_s', spawn_start)
+                            f.write(f"    - User Spawn: {spawn_start}s - {spawn_end}s\n")
+                        if 'activity_start_s' in timing:
+                            f.write(f"    - Activity Start: {timing.get('activity_start_s', 0)}s\n")
+
+                    # Settings
+                    settings = metadata.get('settings', {})
+                    if settings:
+                        f.write("  Settings:\n")
+                        f.write(f"    - Network: {settings.get('network', 'N/A')}\n")
+                        f.write(f"    - Peer Mode: {settings.get('peer_mode', 'N/A')}\n")
+                        f.write(f"    - Seed: {settings.get('seed', 'N/A')}\n")
+
+                    f.write("\n")
+
+                f.write("=" * 70 + "\n")
+                f.write("Waiting for first status update...\n\n")
                 f.flush()
-                
+
             self.logger.info(f"Initialized status file: {self.status_file}")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to initialize status file: {e}")
             raise
