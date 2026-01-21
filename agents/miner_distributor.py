@@ -56,6 +56,10 @@ class MinerDistributorAgent(BaseAgent):
         # This allows recipient to spend outputs independently after unlock period
         self.outputs_per_transaction = 1
         self.output_amount = None  # Fixed amount per output (None = use min/max range)
+
+        # Batch funding parameters
+        # md_n_recipients controls how many recipients per batch transaction during initial funding
+        self.recipients_per_batch = 10  # Default: 10 recipients per batch transaction
         
         # Wait time parameters for mining reward maturation
         self.initial_wait_time = 3600  # 1 hour in seconds (default)
@@ -99,7 +103,8 @@ class MinerDistributorAgent(BaseAgent):
             'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
             'max_wait_time': ('time_duration', 'max_wait_time', 7200),
             'outputs_per_transaction': ('int_min', 'outputs_per_transaction', 1, 1),
-            'output_amount': ('float_min', 'output_amount', None, 0)
+            'output_amount': ('float_min', 'output_amount', None, 0),
+            'md_n_recipients': ('int_min', 'recipients_per_batch', 10, 1)
         }
 
         for attr_name, (type_name, field_name, *args) in config_mappings.items():
@@ -313,20 +318,15 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.warning("No miners available for initial funding")
             return
 
-        # Select a miner for initial funding (use the first available miner with wallet)
-        selected_miner = None
-        for miner in self.miners:
-            if miner.get("wallet_address"):
-                selected_miner = miner
-                break
-
-        if not selected_miner:
+        # Check if any miners have wallet addresses
+        miners_with_wallets = [m for m in self.miners if m.get("wallet_address")]
+        if not miners_with_wallets:
             self.logger.warning("No miner with wallet address available for initial funding")
             self.logger.info("Will attempt to fund miners first to create wallet addresses")
             self._fund_miners_first()
             return
 
-        self.logger.info(f"Selected miner {selected_miner.get('agent_id')} for initial funding")
+        self.logger.info(f"Found {len(miners_with_wallets)} miners with wallet addresses for initial funding")
 
         # Find all eligible recipients (agents with can_receive_distributions=true and wallets)
         agent_registry = self.read_shared_state("agent_registry.json")
@@ -334,10 +334,13 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.warning("Agent registry not found, cannot perform initial funding")
             return
 
+        # Get miner IDs to exclude from recipients
+        miner_ids = {m.get("agent_id") for m in self.miners}
+
         eligible_recipients = []
         for agent in agent_registry.get("agents", []):
-            # Skip the selected miner
-            if agent.get("id") == selected_miner.get("agent_id"):
+            # Skip miners
+            if agent.get("id") in miner_ids:
                 continue
 
             # Check if agent has wallet
@@ -358,17 +361,84 @@ class MinerDistributorAgent(BaseAgent):
 
         self.logger.info(f"Found {len(eligible_recipients)} eligible recipients for initial funding")
 
-        # Send initial funding to each eligible recipient
+        # Batch recipients for efficient multi-output transactions
+        # Use md_n_recipients (recipients_per_batch) as batch size
+        batch_size = max(1, self.recipients_per_batch)
+        recipient_batches = [
+            eligible_recipients[i:i + batch_size]
+            for i in range(0, len(eligible_recipients), batch_size)
+        ]
+
+        self.logger.info(f"Batching {len(eligible_recipients)} recipients into {len(recipient_batches)} batches of up to {batch_size}")
+
+        # Track funding progress
         funded_count = 0
-        for recipient in eligible_recipients:
-            success = self._send_transaction(selected_miner, recipient, self.initial_fund_amount)
+        failed_recipients = []
+        exhausted_miners = set()  # Track miners that ran out of funds
+        total_miners = len([m for m in self.miners if m.get("wallet_address")])
+
+        for batch_idx, batch in enumerate(recipient_batches):
+            # Select a miner for this batch using configured strategy
+            # Exclude exhausted miners from selection
+            selected_miner = self._select_miner_excluding(exhausted_miners)
+
+            # If all miners exhausted, reset and give them another chance
+            # (miners may have received more mining rewards)
+            if not selected_miner and len(exhausted_miners) >= total_miners:
+                self.logger.info("All miners exhausted, resetting exhausted list to retry")
+                exhausted_miners.clear()
+                selected_miner = self._select_miner_excluding(exhausted_miners)
+
+            if not selected_miner:
+                self.logger.warning(f"No miners with sufficient funds available for batch {batch_idx + 1}")
+                failed_recipients.extend([r.get('id') for r in batch])
+                continue
+
+            self.logger.info(f"Processing batch {batch_idx + 1}/{len(recipient_batches)} "
+                           f"({len(batch)} recipients) using miner {selected_miner.get('agent_id')}")
+
+            # Send batch transaction
+            success, funded_ids, batch_failed = self._send_batch_transaction(
+                selected_miner, batch, self.initial_fund_amount
+            )
+
             if success:
-                funded_count += 1
-                self.logger.info(f"Initial funding sent to {recipient.get('id')}: {self.initial_fund_amount} XMR")
+                funded_count += len(funded_ids)
+                if batch_failed:
+                    failed_recipients.extend(batch_failed)
+                self.logger.info(f"Batch {batch_idx + 1} completed: {len(funded_ids)} funded")
             else:
-                self.logger.warning(f"Failed to send initial funding to {recipient.get('id')}")
+                # If batch failed due to insufficient funds, mark miner as exhausted and retry
+                self.logger.warning(f"Batch {batch_idx + 1} failed with miner {selected_miner.get('agent_id')}")
+                exhausted_miners.add(selected_miner.get('agent_id'))
+
+                # Retry this batch with a different miner
+                retry_miner = self._select_miner_excluding(exhausted_miners)
+
+                # If all miners exhausted after this failure, reset and retry
+                if not retry_miner and len(exhausted_miners) >= total_miners:
+                    self.logger.info("All miners exhausted after failure, resetting for retry")
+                    exhausted_miners.clear()
+                    retry_miner = self._select_miner_excluding(exhausted_miners)
+
+                if retry_miner:
+                    self.logger.info(f"Retrying batch {batch_idx + 1} with miner {retry_miner.get('agent_id')}")
+                    success, funded_ids, batch_failed = self._send_batch_transaction(
+                        retry_miner, batch, self.initial_fund_amount
+                    )
+                    if success:
+                        funded_count += len(funded_ids)
+                        if batch_failed:
+                            failed_recipients.extend(batch_failed)
+                    else:
+                        exhausted_miners.add(retry_miner.get('agent_id'))
+                        failed_recipients.extend([r.get('id') for r in batch])
+                else:
+                    failed_recipients.extend([r.get('id') for r in batch])
 
         self.logger.info(f"Initial funding completed: {funded_count}/{len(eligible_recipients)} agents funded")
+        if failed_recipients:
+            self.logger.warning(f"Failed to fund {len(failed_recipients)} recipients: {failed_recipients[:10]}...")
 
         # Mark initial funding as completed if we funded at least one agent
         if funded_count > 0:
@@ -528,18 +598,33 @@ class MinerDistributorAgent(BaseAgent):
     def _select_miner(self) -> Optional[Dict[str, Any]]:
         """
         Select a miner based on the configured strategy.
-        
+
+        Returns:
+            Selected miner information or None if no suitable miner found
+        """
+        return self._select_miner_excluding(set())
+
+    def _select_miner_excluding(self, excluded_miner_ids: set) -> Optional[Dict[str, Any]]:
+        """
+        Select a miner based on the configured strategy, excluding specified miners.
+
+        Args:
+            excluded_miner_ids: Set of miner agent IDs to exclude from selection
+
         Returns:
             Selected miner information or None if no suitable miner found
         """
         if not self.miners:
             self.logger.warning("No miners available for selection")
             return None
-        
-        # Filter miners that have wallet addresses
-        available_miners = [m for m in self.miners if m.get("wallet_address")]
+
+        # Filter miners that have wallet addresses and are not excluded
+        available_miners = [
+            m for m in self.miners
+            if m.get("wallet_address") and m.get("agent_id") not in excluded_miner_ids
+        ]
         if not available_miners:
-            self.logger.warning("No miners with wallet addresses available")
+            self.logger.warning(f"No miners with wallet addresses available (excluded: {len(excluded_miner_ids)})")
             return None
 
         # Sort miners by agent_id for deterministic random selection
@@ -782,61 +867,103 @@ class MinerDistributorAgent(BaseAgent):
     
     def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any], amount: Optional[float] = None) -> bool:
         """
-        Send a transaction from the selected miner to the recipient.
+        Send a transaction from the selected miner to a single recipient.
 
         Args:
             miner: Miner information including wallet details
             recipient: Recipient information including address
-            amount: Optional total amount to send (overrides output_amount * outputs_per_transaction)
+            amount: Optional amount to send (overrides random amount selection)
 
         Returns:
             True if transaction was sent successfully, False otherwise
         """
-        # Get recipient's wallet address
-        recipient_address = self._get_recipient_address(recipient)
-        if not recipient_address:
-            self.logger.error(f"Failed to get recipient address for {recipient.get('id')}")
-            return False
+        # Delegate to batch transaction with single recipient
+        success, _, _ = self._send_batch_transaction(miner, [recipient], amount)
+        return success
 
-        # Build destinations list (multiple outputs to same recipient)
-        num_outputs = self.outputs_per_transaction
+    def _send_batch_transaction(
+        self,
+        miner: Dict[str, Any],
+        recipients: List[Dict[str, Any]],
+        amount_per_recipient: Optional[float] = None
+    ) -> tuple[bool, List[str], List[str]]:
+        """
+        Send a transaction from the selected miner to multiple recipients.
 
-        # Determine amount per output
-        if self.output_amount is not None:
-            # Fixed amount per output (e.g., 100 XMR each)
-            per_output_amount = self.output_amount
-        elif amount is not None:
-            # Total amount specified, divide among outputs
-            per_output_amount = amount / num_outputs
+        Args:
+            miner: Miner information including wallet details
+            recipients: List of recipient information dicts
+            amount_per_recipient: Optional amount per recipient (overrides random/configured amount)
+
+        Returns:
+            Tuple of (success, list of funded recipient IDs, list of failed recipient IDs)
+        """
+        if not recipients:
+            self.logger.warning("No recipients provided for batch transaction")
+            return False, [], []
+
+        # Build destinations for all recipients
+        destinations = []
+        recipient_addresses = {}  # Map address -> recipient for logging
+        failed_recipients = []
+        valid_recipients = []
+
+        for recipient in recipients:
+            recipient_address = self._get_recipient_address(recipient)
+            if not recipient_address:
+                self.logger.warning(f"Failed to get address for recipient {recipient.get('id')}, skipping")
+                failed_recipients.append(recipient.get('id'))
+                continue
+
+            recipient_addresses[recipient_address] = recipient
+            valid_recipients.append(recipient)
+
+        if not valid_recipients:
+            self.logger.error("No valid recipients with addresses for batch transaction")
+            return False, [], [r.get('id') for r in recipients]
+
+        # Determine amount per recipient
+        if amount_per_recipient is not None:
+            per_recipient_amount = amount_per_recipient
+        elif self.output_amount is not None:
+            per_recipient_amount = self.output_amount
         else:
-            # Use random amount per output
-            per_output_amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
+            per_recipient_amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
 
-        # Validate transaction parameters for each output
-        if not self._validate_transaction_params(recipient_address, per_output_amount):
-            return False
-
-        # Convert XMR to atomic units (picomonero) for the RPC call
-        # 1 XMR = 10^12 picomonero (atomic units)
+        # Convert XMR to atomic units
         try:
-            amount_atomic = int(per_output_amount * 10**12)
+            amount_atomic = int(per_recipient_amount * 10**12)
             if amount_atomic <= 0:
-                self.logger.error(f"Invalid atomic unit conversion: {per_output_amount} XMR -> {amount_atomic} atomic units")
-                return False
+                self.logger.error(f"Invalid atomic unit conversion: {per_recipient_amount} XMR -> {amount_atomic} atomic units")
+                return False, [], [r.get('id') for r in recipients]
         except (ValueError, OverflowError) as e:
-            self.logger.error(f"Failed to convert amount {per_output_amount} to atomic units: {e}")
-            return False
+            self.logger.error(f"Failed to convert amount {per_recipient_amount} to atomic units: {e}")
+            return False, [], [r.get('id') for r in recipients]
 
-        # Build destinations - multiple outputs to same address
-        destinations = [{'address': recipient_address, 'amount': amount_atomic} for _ in range(num_outputs)]
-        total_amount = per_output_amount * num_outputs
+        # Build destinations list with all valid recipients
+        for recipient in valid_recipients:
+            recipient_address = self._get_recipient_address(recipient)
+            if recipient_address:
+                # Validate each destination
+                if not self._validate_transaction_params(recipient_address, per_recipient_amount):
+                    self.logger.warning(f"Invalid params for recipient {recipient.get('id')}, skipping")
+                    failed_recipients.append(recipient.get('id'))
+                    continue
+                destinations.append({'address': recipient_address, 'amount': amount_atomic})
+
+        if not destinations:
+            self.logger.error("No valid destinations after validation")
+            return False, [], [r.get('id') for r in recipients]
+
+        num_outputs = len(destinations)
+        total_amount = per_recipient_amount * num_outputs
 
         # Connect to miner's wallet RPC with retries
         for attempt in range(self.max_retries):
             try:
                 miner_rpc = WalletRPC(host=miner['ip_addr'], port=miner['wallet_rpc_port'])
 
-                # Prepare transaction parameters with detailed logging
+                # Prepare transaction parameters
                 tx_params = {
                     'destinations': destinations,
                     'priority': self.transaction_priority,
@@ -844,80 +971,72 @@ class MinerDistributorAgent(BaseAgent):
                     'do_not_relay': False
                 }
 
-                self.logger.debug(f"Transaction parameters: {json.dumps(tx_params, indent=2)}")
-                self.logger.info(f"Preparing transaction: {num_outputs} outputs x {per_output_amount} XMR = {total_amount} XMR ({amount_atomic} atomic units each) to {recipient_address}")
-                
+                self.logger.debug(f"Batch transaction parameters: {json.dumps(tx_params, indent=2)}")
+                self.logger.info(f"Preparing batch transaction: {num_outputs} recipients x {per_recipient_amount} XMR = {total_amount} XMR total")
+
                 # Send transaction
                 tx = miner_rpc.transfer(**tx_params)
                 tx_hash = tx.get('tx_hash', '')
-                
+
                 if not tx_hash:
                     self.logger.error(f"Transaction response missing tx_hash: {tx}")
-                    return False
+                    return False, [], [r.get('id') for r in recipients]
 
-                # Record transaction in shared state (store total XMR amount)
-                self._record_transaction(
-                    tx_hash=tx_hash,
-                    sender_id=miner.get("agent_id"),
-                    recipient_id=recipient.get("id"),
-                    amount=total_amount,
-                    num_outputs=num_outputs,
-                    amount_per_output=per_output_amount
-                )
+                # Record transaction for each recipient
+                funded_recipient_ids = []
+                for dest in destinations:
+                    recipient = recipient_addresses.get(dest['address'])
+                    if recipient:
+                        recipient_id = recipient.get('id')
+                        funded_recipient_ids.append(recipient_id)
+                        self._record_transaction(
+                            tx_hash=tx_hash,
+                            sender_id=miner.get("agent_id"),
+                            recipient_id=recipient_id,
+                            amount=per_recipient_amount,
+                            num_outputs=1,
+                            amount_per_output=per_recipient_amount
+                        )
 
-                self.logger.info(f"Transaction sent successfully: {tx_hash} "
-                              f"from {miner.get('agent_id')} to {recipient.get('id')} "
-                              f"for {total_amount} XMR ({num_outputs} outputs x {per_output_amount} XMR)")
-                return True
+                self.logger.info(f"Batch transaction sent successfully: {tx_hash} "
+                              f"from {miner.get('agent_id')} to {num_outputs} recipients "
+                              f"for {total_amount} XMR ({per_recipient_amount} XMR each)")
+                return True, funded_recipient_ids, failed_recipients
 
             except Exception as e:
                 error_msg = str(e).lower()
-                
+
                 # Check for specific error types to determine retry strategy
                 if "not enough money" in error_msg or "insufficient funds" in error_msg:
-                    self.logger.warning(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Insufficient funds in miner wallet")
-                    
-                    # If this is a permanent failure (no money at all), don't retry
-                    if attempt == 0:
-                        # Check if this might be a "money not yet unlocked" issue
-                        self.logger.info("Checking if this is a 'money not yet unlocked' issue...")
-                        if self._check_miner_balance():
-                            self.logger.info("Miner has balance but it's not yet unlocked, will wait and retry")
-                            if attempt < self.max_retries - 1:
-                                time.sleep(60)  # Wait longer for unlock
-                                continue
-                        else:
-                            self.logger.error("Miner has insufficient funds, cannot complete transaction")
-                            return False
-                    else:
-                        self.logger.error(f"Miner still has insufficient funds after {attempt + 1} attempts")
-                        return False
-                        
+                    self.logger.warning(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: Insufficient funds in miner wallet")
+                    # Don't retry insufficient funds - caller should try different miner
+                    return False, [], [r.get('id') for r in recipients]
+
                 elif "invalid params" in error_msg:
-                    self.logger.error(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Invalid parameters")
-                    self.logger.error(f"Invalid parameters detected - {num_outputs} outputs x {per_output_amount} XMR ({amount_atomic} atomic units each), Address: {recipient_address}")
-                    self.logger.error(f"Transaction parameters that caused error: {json.dumps(tx_params, indent=2)}")
-                    # Invalid params are usually not recoverable, so don't retry
-                    return False
-                    
+                    self.logger.error(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: Invalid parameters")
+                    self.logger.error(f"Invalid parameters detected - {num_outputs} outputs x {per_recipient_amount} XMR ({amount_atomic} atomic units each)")
+                    return False, [], [r.get('id') for r in recipients]
+
                 elif "wallet is not ready" in error_msg or "wallet not ready" in error_msg:
-                    self.logger.warning(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: Wallet not ready")
+                    self.logger.warning(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: Wallet not ready")
                     if attempt < self.max_retries - 1:
-                        time.sleep(5 * (attempt + 1))  # Progressive wait for wallet to be ready
+                        time.sleep(5 * (attempt + 1))
                         continue
                     else:
                         self.logger.error(f"Wallet still not ready after {self.max_retries} attempts")
-                        return False
-                        
+                        return False, [], [r.get('id') for r in recipients]
+
                 else:
-                    # Generic error - could be network issue, temporary failure, etc.
-                    self.logger.warning(f"Transaction attempt {attempt + 1}/{self.max_retries} failed: {e}")
+                    self.logger.warning(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: {e}")
                     if attempt < self.max_retries - 1:
-                        time.sleep(2 ** attempt)  # Exponential backoff
+                        time.sleep(2 ** attempt)
                         continue
                     else:
-                        self.logger.error(f"Failed to send transaction after {self.max_retries} attempts due to: {e}")
-                        return False
+                        self.logger.error(f"Failed to send batch transaction after {self.max_retries} attempts: {e}")
+                        return False, [], [r.get('id') for r in recipients]
+
+        # Should not reach here, but return failure if we do
+        return False, [], [r.get('id') for r in recipients]
     
     def _record_transaction(self, tx_hash: str, sender_id: str, recipient_id: str, amount: float,
                             num_outputs: int = 1, amount_per_output: Optional[float] = None):
