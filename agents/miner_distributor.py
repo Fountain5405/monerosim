@@ -278,36 +278,71 @@ class MinerDistributorAgent(BaseAgent):
             "type": "miner_distributor",
             "timestamp": time.time()
         }
-        
+
         self.write_shared_state(f"{self.agent_id}_distributor_info.json", distributor_info)
         self.logger.info(f"Registered miner distributor info for {self.agent_id}")
+
+    def _read_funding_status(self) -> Dict[str, Any]:
+        """Read initial funding status from shared state"""
+        status = self.read_shared_state("initial_funding_status.json")
+        if not status:
+            return {
+                "funded_recipients": [],
+                "failed_recipients": [],
+                "completed": False,
+                "last_updated": None
+            }
+        return status
+
+    def _write_funding_status(self, funded: List[str], failed: List[str], completed: bool):
+        """Write initial funding status to shared state"""
+        status = {
+            "funded_recipients": funded,
+            "failed_recipients": failed,
+            "completed": completed,
+            "last_updated": time.time()
+        }
+        self.write_shared_state("initial_funding_status.json", status)
+        self.logger.debug(f"Updated funding status: {len(funded)} funded, {len(failed)} failed, completed={completed}")
 
     def _perform_initial_funding(self):
         """
         Perform initial funding of eligible agents before the main mining cycle begins.
         Sends md_out_per_tx outputs of md_output_amount XMR to each eligible recipient.
+        Tracks progress in initial_funding_status.json to support resumption.
         """
-        self.logger.info("Starting initial funding of eligible agents")
+        # Check existing funding status
+        funding_status = self._read_funding_status()
+        if funding_status.get("completed"):
+            self.logger.info("Initial funding already completed (from status file)")
+            self.initial_funding_completed = True
+            return
+
+        already_funded = set(funding_status.get("funded_recipients", []))
+        previously_failed = set(funding_status.get("failed_recipients", []))
+
+        if already_funded:
+            self.logger.info(f"Resuming initial funding: {len(already_funded)} already funded, {len(previously_failed)} previously failed")
 
         # Check if we should wait for mining rewards to mature
         current_time = time.time()
         elapsed_time = current_time - self.startup_time
-        
+
         if self.waiting_for_maturity:
             if elapsed_time < self.initial_wait_time:
                 remaining_wait = self.initial_wait_time - elapsed_time
                 self.logger.info(f"Waiting for mining rewards to mature... {remaining_wait:.0f} seconds remaining")
-                
+
                 # Check if it's time to check balance
                 if current_time - self.last_balance_check >= self.balance_check_interval:
                     self._check_miner_balance()
                     self.last_balance_check = current_time
-                
+
                 return
             else:
                 self.logger.info("Initial wait period completed, proceeding with funding")
                 self.waiting_for_maturity = False
-        
+
         # Discover available miners
         self._discover_miners()
         if not self.miners:
@@ -333,7 +368,9 @@ class MinerDistributorAgent(BaseAgent):
         # Get miner IDs to exclude from recipients
         miner_ids = {m.get("agent_id") for m in self.miners}
 
-        eligible_recipients = []
+        # Build list of eligible recipients, excluding already funded ones
+        all_eligible = []
+        unfunded_recipients = []
         for agent in agent_registry.get("agents", []):
             # Skip miners
             if agent.get("id") in miner_ids:
@@ -349,36 +386,45 @@ class MinerDistributorAgent(BaseAgent):
             )
 
             if can_receive:
-                eligible_recipients.append(agent)
+                all_eligible.append(agent)
+                # Only add to unfunded if not already funded
+                if agent.get("id") not in already_funded:
+                    unfunded_recipients.append(agent)
 
-        if not eligible_recipients:
+        if not all_eligible:
             self.logger.info("No eligible recipients found for initial funding")
+            self._write_funding_status(list(already_funded), list(previously_failed), True)
+            self.initial_funding_completed = True
             return
 
-        self.logger.info(f"Found {len(eligible_recipients)} eligible recipients for initial funding")
+        if not unfunded_recipients:
+            self.logger.info(f"All {len(all_eligible)} eligible recipients already funded!")
+            self._write_funding_status(list(already_funded), list(previously_failed), True)
+            self.initial_funding_completed = True
+            return
+
+        self.logger.info(f"Found {len(unfunded_recipients)} unfunded recipients (of {len(all_eligible)} total eligible)")
 
         # Batch recipients for efficient multi-output transactions
         batch_size = max(1, self.md_n_recipients)
         recipient_batches = [
-            eligible_recipients[i:i + batch_size]
-            for i in range(0, len(eligible_recipients), batch_size)
+            unfunded_recipients[i:i + batch_size]
+            for i in range(0, len(unfunded_recipients), batch_size)
         ]
 
-        self.logger.info(f"Batching {len(eligible_recipients)} recipients into {len(recipient_batches)} batches of up to {batch_size}")
+        self.logger.info(f"Batching {len(unfunded_recipients)} recipients into {len(recipient_batches)} batches of up to {batch_size}")
 
-        # Track funding progress
-        funded_count = 0
-        failed_recipients = []
-        exhausted_miners = set()  # Track miners that ran out of funds
-        total_miners = len([m for m in self.miners if m.get("wallet_address")])
+        # Track funding progress (start with existing data)
+        funded_recipients = set(already_funded)
+        failed_recipients = set(previously_failed)
+        exhausted_miners = set()
+        total_miners = len(miners_with_wallets)
 
         for batch_idx, batch in enumerate(recipient_batches):
             # Select a miner for this batch using configured strategy
-            # Exclude exhausted miners from selection
             selected_miner = self._select_miner_excluding(exhausted_miners)
 
             # If all miners exhausted, reset and give them another chance
-            # (miners may have received more mining rewards)
             if not selected_miner and len(exhausted_miners) >= total_miners:
                 self.logger.info("All miners exhausted, resetting exhausted list to retry")
                 exhausted_miners.clear()
@@ -386,31 +432,37 @@ class MinerDistributorAgent(BaseAgent):
 
             if not selected_miner:
                 self.logger.warning(f"No miners with sufficient funds available for batch {batch_idx + 1}")
-                failed_recipients.extend([r.get('id') for r in batch])
-                continue
+                for r in batch:
+                    failed_recipients.add(r.get('id'))
+                # Persist progress and return - will retry on next iteration
+                self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
+                self.logger.info(f"Pausing initial funding: {len(funded_recipients)} funded so far, will retry later")
+                return
 
             self.logger.info(f"Processing batch {batch_idx + 1}/{len(recipient_batches)} "
                            f"({len(batch)} recipients) using miner {selected_miner.get('agent_id')}")
 
-            # Send batch transaction (uses md_out_per_tx and md_output_amount defaults)
+            # Send batch transaction
             success, funded_ids, batch_failed = self._send_batch_transaction(
                 selected_miner, batch
             )
 
             if success:
-                funded_count += len(funded_ids)
-                if batch_failed:
-                    failed_recipients.extend(batch_failed)
+                for rid in funded_ids:
+                    funded_recipients.add(rid)
+                    failed_recipients.discard(rid)  # Remove from failed if previously failed
+                for rid in batch_failed:
+                    failed_recipients.add(rid)
                 self.logger.info(f"Batch {batch_idx + 1} completed: {len(funded_ids)} funded")
+                # Persist progress after each successful batch
+                self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
             else:
-                # If batch failed due to insufficient funds, mark miner as exhausted and retry
+                # Mark miner as exhausted and retry with different miner
                 self.logger.warning(f"Batch {batch_idx + 1} failed with miner {selected_miner.get('agent_id')}")
                 exhausted_miners.add(selected_miner.get('agent_id'))
 
-                # Retry this batch with a different miner
                 retry_miner = self._select_miner_excluding(exhausted_miners)
 
-                # If all miners exhausted after this failure, reset and retry
                 if not retry_miner and len(exhausted_miners) >= total_miners:
                     self.logger.info("All miners exhausted after failure, resetting for retry")
                     exhausted_miners.clear()
@@ -422,23 +474,38 @@ class MinerDistributorAgent(BaseAgent):
                         retry_miner, batch
                     )
                     if success:
-                        funded_count += len(funded_ids)
-                        if batch_failed:
-                            failed_recipients.extend(batch_failed)
+                        for rid in funded_ids:
+                            funded_recipients.add(rid)
+                            failed_recipients.discard(rid)
+                        for rid in batch_failed:
+                            failed_recipients.add(rid)
+                        self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
                     else:
                         exhausted_miners.add(retry_miner.get('agent_id'))
-                        failed_recipients.extend([r.get('id') for r in batch])
+                        for r in batch:
+                            failed_recipients.add(r.get('id'))
+                        # Persist and return - will retry later
+                        self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
+                        self.logger.info(f"Pausing initial funding: {len(funded_recipients)} funded, will retry later")
+                        return
                 else:
-                    failed_recipients.extend([r.get('id') for r in batch])
+                    for r in batch:
+                        failed_recipients.add(r.get('id'))
+                    self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
+                    self.logger.info(f"Pausing initial funding: {len(funded_recipients)} funded, will retry later")
+                    return
 
-        self.logger.info(f"Initial funding completed: {funded_count}/{len(eligible_recipients)} agents funded")
+        # Check if all eligible recipients are now funded
+        all_funded = len(funded_recipients) >= len(all_eligible)
+        self._write_funding_status(list(funded_recipients), list(failed_recipients), all_funded)
+
+        self.logger.info(f"Initial funding progress: {len(funded_recipients)}/{len(all_eligible)} agents funded")
         if failed_recipients:
-            self.logger.warning(f"Failed to fund {len(failed_recipients)} recipients: {failed_recipients[:10]}...")
+            self.logger.warning(f"Failed recipients: {len(failed_recipients)}")
 
-        # Mark initial funding as completed if we funded at least one agent
-        if funded_count > 0:
+        if all_funded:
             self.initial_funding_completed = True
-            self.logger.info("Initial funding phase completed successfully")
+            self.logger.info("Initial funding phase completed - ALL recipients funded!")
     
     def _fund_miners_first(self):
         """
