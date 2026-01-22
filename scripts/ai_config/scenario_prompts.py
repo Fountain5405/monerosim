@@ -92,9 +92,22 @@ agents:
 4. **Auto values**: Use `auto` for calculated fields
    - `bootstrap_end_time: auto` - calculated from spawn times
    - `activity_start_time: auto` - bootstrap_end + 1 hour
-   - `wait_time: auto` - for miner-distributor, equals bootstrap_end
+   - `wait_time: auto` - for miner-distributor, equals md_start_time
 
-5. **Initial miners**: MINIMUM 5 miners required, hashrates MUST sum to exactly 100
+5. **Timing overrides** (optional section for advanced control):
+   ```yaml
+   timing:
+     user_spawn_start: 14h       # When users start spawning (default: 20m batched)
+     bootstrap_end_time: 20h     # When bootstrap ends (default: auto-calc)
+     md_start_time: 18h          # When miner distributor starts funding (default: bootstrap_end)
+     activity_start_time: 20h    # When users start transacting (default: md_start + 1h)
+   ```
+   Use timing overrides when:
+   - Large simulations need delayed user spawning to let miners accumulate first
+   - Miner distributor should start early (before bootstrap ends) for funding buffer
+   - Users should start transacting at the same time bootstrap ends (no funding gap)
+
+6. **Initial miners**: MINIMUM 5 miners required, hashrates MUST sum to exactly 100
    - Every simulation MUST have at least 5 initial miners (for network stability)
    - If user asks for fewer miners (e.g., "2 miners"), use 5 miners instead
    - 5 miners: [20, 20, 20, 20, 20]
@@ -104,9 +117,9 @@ agents:
    - 15 miners: [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6]
    - Late-joining miners can add extra hashrate (not bound by 100)
 
-6. **Daemon binaries**: Use `monerod` for standard, `monerod-v2` etc for upgrades
+7. **Daemon binaries**: Use `monerod` for standard, `monerod-v2` etc for upgrades
 
-7. **Always include**: miner-distributor (funds users) and simulation-monitor
+8. **Always include**: miner-distributor (funds users) and simulation-monitor
 
 ## Agent Types
 
@@ -554,10 +567,11 @@ USER: "1000 nodes for a large scale test, 24 hour simulation"
 
 SCENARIO:
 ```yaml
+# === SIMULATION SETTINGS ===
 general:
-  stop_time: 24h
+  stop_time: 36h                        # Extended for timing buffer
   simulation_seed: 12345
-  bootstrap_end_time: auto
+  bootstrap_end_time: auto              # Calculated from timing section
   enable_dns_server: true
   shadow_log_level: warning
   progress: true
@@ -575,11 +589,23 @@ general:
     log-level: 1
     log-file: /dev/stdout
 
+# === NETWORK TOPOLOGY ===
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
   peer_mode: Dynamic
 
+# === TIMING OVERRIDES ===
+# For large simulations: delay user spawning so miners accumulate blocks quickly
+# before the simulation slows down with user processes
+timing:
+  user_spawn_start: 10h                 # Delay user spawning (miners run alone first)
+  bootstrap_end_time: 14h               # Bootstrap ends after users sync
+  md_start_time: 12h                    # Start funding 2h before bootstrap ends
+  activity_start_time: 14h              # Users start transacting when bootstrap ends
+
+# === AGENTS ===
 agents:
+  # --- 5 Miners: Generate blocks ---
   miner-{001..005}:
     daemon: monerod
     wallet: monero-wallet-rpc
@@ -589,21 +615,24 @@ agents:
     hashrate: [20, 20, 20, 20, 20]
     can_receive_distributions: true
 
+  # --- 995 Users: Send transactions periodically ---
   user-{001..995}:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 1200s
-    start_time_stagger: auto
+    start_time: 0s                      # Base time (overridden by timing section)
+    start_time_stagger: auto            # Batched spawning for large groups
     transaction_interval: 60
-    activity_start_time: auto
+    activity_start_time: auto           # Uses timing.activity_start_time
     can_receive_distributions: true
 
+  # --- Support: Distributes mined funds to users ---
   miner-distributor:
     script: agents.miner_distributor
-    wait_time: auto
+    wait_time: auto                     # Uses timing.md_start_time
     transaction_frequency: 30
 
+  # --- Support: Monitors simulation health ---
   simulation-monitor:
     script: agents.simulation_monitor
     poll_interval: 300

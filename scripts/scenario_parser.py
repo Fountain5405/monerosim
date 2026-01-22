@@ -16,6 +16,13 @@ network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
   peer_mode: Dynamic
 
+# Optional: explicit timing overrides (all fields optional)
+timing:
+  user_spawn_start: 14h       # When users start spawning (default: 20m batched)
+  bootstrap_end_time: 20h     # When bootstrap ends (default: auto-calc)
+  md_start_time: 18h          # When miner distributor starts (default: bootstrap_end)
+  activity_start_time: 20h    # When users start transacting (default: md_start + 1h)
+
 agents:
   miner-{001..005}:
     daemon: monerod
@@ -30,7 +37,7 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 1200s
+    start_time: 0s
     start_time_stagger: auto  # Uses batched for large counts
     transaction_interval: 60
     activity_start_time: auto
@@ -87,12 +94,22 @@ class AgentGroup:
 
 
 @dataclass
+class TimingOverrides:
+    """Explicit timing overrides from scenario file."""
+    user_spawn_start: Optional[str] = None      # When users start spawning (e.g., "14h")
+    bootstrap_end_time: Optional[str] = None    # When bootstrap ends (e.g., "20h")
+    md_start_time: Optional[str] = None         # When miner distributor starts (e.g., "18h")
+    activity_start_time: Optional[str] = None   # When users start transacting (e.g., "20h")
+
+
+@dataclass
 class ScenarioConfig:
     """Parsed scenario configuration."""
     general: Dict[str, Any]
     network: Dict[str, Any]
     agent_groups: List[AgentGroup]
     singleton_agents: Dict[str, Dict[str, Any]]
+    timing_overrides: TimingOverrides = field(default_factory=TimingOverrides)
 
     # Calculated during expansion
     timing: Dict[str, int] = field(default_factory=dict)
@@ -201,6 +218,15 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
     general = data.get('general', {})
     network = data.get('network', {})
     agents_raw = data.get('agents', {})
+    timing_raw = data.get('timing', {})
+
+    # Parse timing overrides
+    timing_overrides = TimingOverrides(
+        user_spawn_start=timing_raw.get('user_spawn_start'),
+        bootstrap_end_time=timing_raw.get('bootstrap_end_time'),
+        md_start_time=timing_raw.get('md_start_time'),
+        activity_start_time=timing_raw.get('activity_start_time'),
+    )
 
     agent_groups = []
     singleton_agents = {}
@@ -230,6 +256,7 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
         network=network,
         agent_groups=agent_groups,
         singleton_agents=singleton_agents,
+        timing_overrides=timing_overrides,
     )
 
 
@@ -312,18 +339,17 @@ def expand_stagger(
         return [base_seconds + (global_offset + i) * interval for i in range(count)]
 
     if stagger_type == "batched":
-        if stagger_config.get("auto"):
-            schedule = calculate_batched_schedule(count)
-        else:
-            schedule = calculate_batched_schedule(
-                count,
-                initial_delay_s=stagger_config.get("initial_delay", DEFAULT_INITIAL_DELAY_S),
-                batch_interval_s=stagger_config.get("batch_interval", DEFAULT_BATCH_INTERVAL_S),
-                initial_batch_size=stagger_config.get("initial_batch", DEFAULT_INITIAL_BATCH_SIZE),
-                growth_factor=stagger_config.get("growth_factor", DEFAULT_GROWTH_FACTOR),
-                max_batch_size=stagger_config.get("max_batch", DEFAULT_MAX_BATCH_SIZE),
-                intra_stagger_s=stagger_config.get("intra_stagger", DEFAULT_INTRA_BATCH_STAGGER_S),
-            )
+        # Always use explicit parameters - they have sensible defaults
+        # This allows overrides (like user_spawn_start) to take effect
+        schedule = calculate_batched_schedule(
+            count,
+            initial_delay_s=stagger_config.get("initial_delay", DEFAULT_INITIAL_DELAY_S),
+            batch_interval_s=stagger_config.get("batch_interval", DEFAULT_BATCH_INTERVAL_S),
+            initial_batch_size=stagger_config.get("initial_batch", DEFAULT_INITIAL_BATCH_SIZE),
+            growth_factor=stagger_config.get("growth_factor", DEFAULT_GROWTH_FACTOR),
+            max_batch_size=stagger_config.get("max_batch", DEFAULT_MAX_BATCH_SIZE),
+            intra_stagger_s=stagger_config.get("intra_stagger", DEFAULT_INTRA_BATCH_STAGGER_S),
+        )
         # Add base offset
         return [base_seconds + t for t in schedule]
 
@@ -338,6 +364,10 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
         Full configuration dict ready for YAML output
     """
     config = OrderedDict()
+
+    # Extract timing overrides
+    overrides = scenario.timing_overrides
+    user_spawn_start_s = parse_duration(overrides.user_spawn_start) if overrides.user_spawn_start else None
 
     # Track global stagger offsets for upgrade phases (continue across groups)
     upgrade_stagger_offset = 0
@@ -367,12 +397,26 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
 
         # Expand each field
         expanded_values = {}
+        is_user_agent = 'regular_user' in str(props.get('script', ''))
+
         for key, value in base_fields.items():
             if key in stagger_fields:
                 stagger_value = stagger_fields[key]
                 stagger_type, stagger_config = parse_stagger_value(
                     stagger_value, group.count, seed
                 )
+
+                # Apply user_spawn_start override for user agent start_time
+                if (key == 'start_time' and is_user_agent and user_spawn_start_s is not None):
+                    if stagger_type == 'batched':
+                        # Override initial_delay for batched schedule
+                        if isinstance(stagger_config, dict):
+                            stagger_config['initial_delay'] = user_spawn_start_s
+                        else:
+                            stagger_config = {'initial_delay': user_spawn_start_s}
+                    elif stagger_type == 'linear':
+                        # For linear stagger, set base value to user_spawn_start
+                        value = f"{user_spawn_start_s}s"
 
                 # Determine if this stagger continues across groups
                 # daemon_* fields continue, others reset
@@ -435,15 +479,35 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     for agent_id, props in scenario.singleton_agents.items():
         agents[agent_id] = props.copy()
 
-    # Calculate timing based on bootstrap participants only
+    # Calculate timing with override support
+    # Priority: explicit override > auto-calculated
     last_bootstrap_spawn_s = max(bootstrap_participant_start_times) if bootstrap_participant_start_times else 0
-    bootstrap_end_s = max(MIN_BOOTSTRAP_END_TIME_S, int(last_bootstrap_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT)))
-    activity_start_s = bootstrap_end_s + FUNDING_PERIOD_S
+    auto_bootstrap_end_s = max(MIN_BOOTSTRAP_END_TIME_S, int(last_bootstrap_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT)))
+
+    # 1. Bootstrap end time: use override or auto-calc
+    if overrides.bootstrap_end_time:
+        bootstrap_end_s = parse_duration(overrides.bootstrap_end_time)
+    else:
+        bootstrap_end_s = auto_bootstrap_end_s
+
+    # 2. Miner distributor start time: use override or default to bootstrap_end
+    if overrides.md_start_time:
+        md_start_s = parse_duration(overrides.md_start_time)
+    else:
+        md_start_s = bootstrap_end_s
+
+    # 3. Activity start time: use override or default to md_start + funding period
+    if overrides.activity_start_time:
+        activity_start_s = parse_duration(overrides.activity_start_time)
+    else:
+        activity_start_s = md_start_s + FUNDING_PERIOD_S
 
     scenario.timing = {
         'last_bootstrap_spawn_s': last_bootstrap_spawn_s,
         'bootstrap_end_s': bootstrap_end_s,
+        'md_start_s': md_start_s,
         'activity_start_s': activity_start_s,
+        'user_spawn_start_s': user_spawn_start_s,
     }
 
     # Resolve 'auto' values in general section
@@ -456,7 +520,8 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
         if agent_config.get('activity_start_time') == 'auto':
             agent_config['activity_start_time'] = activity_start_s
         if agent_config.get('wait_time') == 'auto':
-            agent_config['wait_time'] = bootstrap_end_s
+            # Miner distributor uses md_start_s, not bootstrap_end_s
+            agent_config['wait_time'] = md_start_s
         if agent_config.get('daemon_0_start') == 'auto':
             agent_config['daemon_0_start'] = agent_config.get('start_time', '0s')
         if agent_config.get('daemon_1_start') == 'auto':
