@@ -6,7 +6,7 @@
 //! - Time-based topology snapshots
 //! - GraphViz DOT output for visualization
 
-use std::collections::{HashMap, HashSet, BTreeMap};
+use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use super::types::*;
@@ -49,6 +49,7 @@ pub struct Edge {
 /// Active connection with metadata
 #[derive(Debug, Clone)]
 struct ActiveConnection {
+    #[allow(dead_code)]
     peer_ip: String,
     peer_node: Option<String>,
     direction: ConnectionDirection,
@@ -295,7 +296,7 @@ pub fn analyze_network_graph(
 fn create_snapshot(
     timestamp: SimTime,
     connection_state: &HashMap<String, HashMap<String, ActiveConnection>>,
-    ip_to_node: &HashMap<&str, &str>,
+    _ip_to_node: &HashMap<&str, &str>,
     daemon_nodes: &HashSet<&str>,
 ) -> NetworkSnapshot {
     let mut node_degrees: HashMap<String, NodeDegree> = HashMap::new();
@@ -459,7 +460,7 @@ fn calculate_churn_stats(
     total_closes: usize,
     durations: &[f64],
     final_state: &HashMap<String, HashMap<String, ActiveConnection>>,
-    sim_duration: f64,
+    _sim_duration: f64,
 ) -> ConnectionChurnStats {
     let avg_duration_sec = if durations.is_empty() {
         0.0
@@ -551,7 +552,7 @@ fn validate_network(snapshot: &NetworkSnapshot, expected_max_outbound: usize) ->
 }
 
 /// Generate GraphViz DOT format for visualization
-pub fn generate_dot(snapshot: &NetworkSnapshot, agents: &[AgentInfo]) -> String {
+pub fn generate_dot(snapshot: &NetworkSnapshot, _agents: &[AgentInfo]) -> String {
     let mut dot = String::new();
     dot.push_str("digraph MoneroNetwork {\n");
     dot.push_str("    rankdir=LR;\n");

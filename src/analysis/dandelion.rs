@@ -205,6 +205,7 @@ fn reconstruct_path(
     // In fluff phase, one sender broadcasts to many nodes simultaneously
 
     let mut stem_path: Vec<StemHop> = Vec::new();
+    #[allow(unused_assignments)]
     let mut current_sender_ip = originator_ip.clone();
     let mut used_observations: std::collections::HashSet<usize> = std::collections::HashSet::new();
     let mut fluff_node: Option<String> = None;
@@ -334,9 +335,10 @@ fn reconstruct_path(
 
 /// Find the index where fluff (broadcast) begins
 /// Returns the index of the first observation that's part of the fluff
+#[allow(dead_code)]
 fn find_fluff_point(
     sorted_obs: &[TxObservation],
-    ip_to_node: &HashMap<String, String>,
+    _ip_to_node: &HashMap<String, String>,
 ) -> Option<usize> {
     if sorted_obs.len() < FLUFF_MIN_RECIPIENTS + 1 {
         return None;
@@ -368,7 +370,7 @@ fn find_fluff_point(
 }
 
 /// Assess privacy based on Dandelion++ behavior
-fn assess_privacy(paths: &[DandelionPath], total_txs: usize) -> DandelionPrivacyAssessment {
+fn assess_privacy(paths: &[DandelionPath], _total_txs: usize) -> DandelionPrivacyAssessment {
     let mut findings: Vec<String> = Vec::new();
     let mut recommendations: Vec<String> = Vec::new();
     let mut privacy_score: u32 = 100;
@@ -409,7 +411,7 @@ fn assess_privacy(paths: &[DandelionPath], total_txs: usize) -> DandelionPrivacy
 
     // Check originator confirmation rate
     let confirmed_count = paths.iter().filter(|p| p.originator_confirmed).count();
-    let confirmed_pct = (confirmed_count as f64 / paths.len() as f64) * 100.0;
+    let _confirmed_pct = (confirmed_count as f64 / paths.len() as f64) * 100.0;
 
     // Count trivially deanonymizable (stem length 1 = first hop reveals originator)
     let trivial_count = paths.iter().filter(|p| p.stem_length <= 1).count();

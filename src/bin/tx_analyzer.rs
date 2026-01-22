@@ -362,7 +362,7 @@ fn main() -> Result<()> {
             fs::write(cli.output.join("dandelion_report.json"), &json)?;
             log::info!("Dandelion report written to {}", cli.output.join("dandelion_report.json").display());
         }
-        Commands::NetworkGraph { dot, expected_outbound } => {
+        Commands::NetworkGraph { dot, expected_outbound: _ } => {
             log::info!("Analyzing network P2P topology...");
 
             let graph_report = analysis::analyze_network_graph(&log_data, &agents, None);

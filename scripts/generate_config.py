@@ -445,8 +445,12 @@ def generate_config(
     initial_batch_size: int = 5,
     max_batch_size: int = 200,
     daemon_binary: str = "monerod",
-    outputs_per_transaction: int = 10,
-    output_amount: float = 100.0,
+    bootstrap_end_time: str = None,
+    regular_user_start: str = None,
+    md_start_time: str = None,
+    md_n_recipients: int = 10,
+    md_out_per_tx: int = 10,
+    md_output_amount: float = 1.0,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -463,8 +467,12 @@ def generate_config(
         initial_batch_size: Size of first user batch
         max_batch_size: Maximum users per batch
         daemon_binary: Path to monerod binary (default: "monerod")
-        outputs_per_transaction: Number of outputs per transaction (multiple to same recipient)
-        output_amount: Fixed XMR amount per output
+        bootstrap_end_time: When bootstrap ends (default: auto-calc from user spawns)
+        regular_user_start: When users start transacting (default: md_start_time + 1h)
+        md_start_time: When miner distributor starts (default: bootstrap_end_time)
+        md_n_recipients: Recipients per batch transaction (default: 10)
+        md_out_per_tx: Outputs per recipient per transaction (default: 10)
+        md_output_amount: XMR amount per output (default: 1.0)
     """
 
     num_miners = len(FIXED_MINERS)
@@ -507,10 +515,38 @@ def generate_config(
         else:
             last_user_spawn_s = USER_START_TIME_S
 
-    # Calculate dynamic bootstrap timing
-    spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
-    bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
-    activity_start_time_s = bootstrap_end_time_s + FUNDING_PERIOD_S
+    # Calculate timing with dependency chain:
+    # 1. bootstrap_end_time_s: explicit or auto-calc
+    # 2. md_start_time_s: explicit or defaults to bootstrap_end_time_s
+    # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
+
+    # Step 1: Bootstrap end time
+    if bootstrap_end_time is not None:
+        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
+    else:
+        # Auto-calculate: max of minimum time and last spawn + buffer
+        spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
+        bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
+
+    # Step 2: Miner distributor start time
+    if md_start_time is not None:
+        md_start_time_s = parse_duration(md_start_time)
+        if md_start_time_s < bootstrap_end_time_s:
+            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
+                  f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
+                  file=sys.stderr)
+    else:
+        md_start_time_s = bootstrap_end_time_s
+
+    # Step 3: Regular user activity start time
+    if regular_user_start is not None:
+        activity_start_time_s = parse_duration(regular_user_start)
+        if activity_start_time_s < md_start_time_s:
+            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
+                  f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
+                  file=sys.stderr)
+    else:
+        activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
 
     # Parse and potentially extend duration to ensure minimum activity period
     requested_duration_s = parse_duration(duration)
@@ -545,16 +581,17 @@ def generate_config(
             start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
             agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s, daemon_binary)
 
-    # Add miner-distributor (starts at bootstrap end to fund users)
+    # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
-        ("wait_time", bootstrap_end_time_s),  # Starts when bootstrap ends
-        ("initial_fund_amount", "1.0"),
+        ("wait_time", md_start_time_s),  # When Shadow starts the process
+        ("initial_wait_time", 0),  # No additional Python wait (Shadow handles timing)
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
         ("transaction_frequency", 30),
-        ("outputs_per_transaction", outputs_per_transaction),
-        ("output_amount", output_amount),
+        ("md_n_recipients", md_n_recipients),
+        ("md_out_per_tx", md_out_per_tx),
+        ("md_output_amount", md_output_amount),
     ])
 
     # Add simulation-monitor
@@ -607,6 +644,7 @@ def generate_config(
     # Return config and timing info for header generation
     timing_info = {
         'bootstrap_end_time_s': bootstrap_end_time_s,
+        'md_start_time_s': md_start_time_s,
         'activity_start_time_s': activity_start_time_s,
         'last_user_spawn_s': last_user_spawn_s,
         'duration_s': duration_s,
@@ -654,8 +692,12 @@ def generate_upgrade_config(
     batch_interval: str = "20m",
     initial_batch_size: int = 5,
     max_batch_size: int = 200,
-    outputs_per_transaction: int = 10,
-    output_amount: float = 100.0,
+    bootstrap_end_time: str = None,
+    regular_user_start: str = None,
+    md_start_time: str = None,
+    md_n_recipients: int = 10,
+    md_out_per_tx: int = 10,
+    md_output_amount: float = 1.0,
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -723,10 +765,38 @@ def generate_upgrade_config(
         else:
             last_user_spawn_s = USER_START_TIME_S
 
-    # Calculate dynamic bootstrap timing
-    spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
-    bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
-    activity_start_time_s = bootstrap_end_time_s + FUNDING_PERIOD_S
+    # Calculate timing with dependency chain:
+    # 1. bootstrap_end_time_s: explicit or auto-calc
+    # 2. md_start_time_s: explicit or defaults to bootstrap_end_time_s
+    # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
+
+    # Step 1: Bootstrap end time
+    if bootstrap_end_time is not None:
+        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
+    else:
+        # Auto-calculate: max of minimum time and last spawn + buffer
+        spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
+        bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
+
+    # Step 2: Miner distributor start time
+    if md_start_time is not None:
+        md_start_time_s = parse_duration(md_start_time)
+        if md_start_time_s < bootstrap_end_time_s:
+            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
+                  f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
+                  file=sys.stderr)
+    else:
+        md_start_time_s = bootstrap_end_time_s
+
+    # Step 3: Regular user activity start time
+    if regular_user_start is not None:
+        activity_start_time_s = parse_duration(regular_user_start)
+        if activity_start_time_s < md_start_time_s:
+            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
+                  f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
+                  file=sys.stderr)
+    else:
+        activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
 
     # Calculate upgrade timing
     if upgrade_start is not None:
@@ -810,16 +880,17 @@ def generate_upgrade_config(
                 phase1_start,
             )
 
-    # Add miner-distributor (starts at bootstrap end)
+    # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
-        ("wait_time", bootstrap_end_time_s),
-        ("initial_fund_amount", "1.0"),
+        ("wait_time", md_start_time_s),  # When Shadow starts the process
+        ("initial_wait_time", 0),  # No additional Python wait (Shadow handles timing)
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
         ("transaction_frequency", 30),
-        ("outputs_per_transaction", outputs_per_transaction),
-        ("output_amount", output_amount),
+        ("md_n_recipients", md_n_recipients),
+        ("md_out_per_tx", md_out_per_tx),
+        ("md_output_amount", md_output_amount),
     ])
 
     # Add simulation-monitor
@@ -865,6 +936,7 @@ def generate_upgrade_config(
 
     timing_info = {
         'bootstrap_end_time_s': bootstrap_end_time_s,
+        'md_start_time_s': md_start_time_s,
         'activity_start_time_s': activity_start_time_s,
         'last_user_spawn_s': last_user_spawn_s,
         'duration_s': duration_s,
@@ -1092,19 +1164,48 @@ Timeline (verified bootstrap for Monero regtest):
         help="Daemon binary path or name (default: monerod, resolves to ~/.monerosim/bin/monerod)"
     )
 
-    # Multi-output transaction options for miner distributor
+    # Timing control flags
     parser.add_argument(
-        "--md-outputs-per-tx",
+        "--bootstrap-end-time",
+        type=str,
+        default=None,
+        help="When bootstrap ends and network transitions to normal mode (default: auto-calc from user spawns)"
+    )
+
+    parser.add_argument(
+        "--regular-user-start",
+        type=str,
+        default=None,
+        help="When regular users start transacting (default: md_start_time + 1h)"
+    )
+
+    # Miner distributor options (all prefixed with md_)
+    parser.add_argument(
+        "--md-start-time",
+        type=str,
+        default=None,
+        help="Miner distributor: when to start (default: bootstrap_end_time)"
+    )
+
+    parser.add_argument(
+        "--md-n-recipients",
         type=int,
         default=10,
-        help="Miner distributor: outputs per transaction to same recipient (default: 10)"
+        help="Miner distributor: recipients per batch transaction (default: 10)"
+    )
+
+    parser.add_argument(
+        "--md-out-per-tx",
+        type=int,
+        default=10,
+        help="Miner distributor: outputs per recipient per transaction (default: 10)"
     )
 
     parser.add_argument(
         "--md-output-amount",
         type=float,
-        default=100.0,
-        help="Miner distributor: XMR amount per output (default: 100)"
+        default=1.0,
+        help="Miner distributor: XMR amount per output (default: 1.0)"
     )
 
     # Upgrade scenario options
@@ -1239,8 +1340,12 @@ Timeline (verified bootstrap for Monero regtest):
                 batch_interval=args.batch_interval,
                 initial_batch_size=args.initial_batch_size,
                 max_batch_size=args.max_batch_size,
-                outputs_per_transaction=args.md_outputs_per_tx,
-                output_amount=args.md_output_amount,
+                bootstrap_end_time=args.bootstrap_end_time,
+                regular_user_start=args.regular_user_start,
+                md_start_time=args.md_start_time,
+                md_n_recipients=args.md_n_recipients,
+                md_out_per_tx=args.md_out_per_tx,
+                md_output_amount=args.md_output_amount,
                 upgrade_binary_v1=args.upgrade_binary_v1,
                 upgrade_binary_v2=args.upgrade_binary_v2,
                 upgrade_start=args.upgrade_start,
@@ -1263,8 +1368,12 @@ Timeline (verified bootstrap for Monero regtest):
                 initial_batch_size=args.initial_batch_size,
                 max_batch_size=args.max_batch_size,
                 daemon_binary=args.daemon_binary,
-                outputs_per_transaction=args.md_outputs_per_tx,
-                output_amount=args.md_output_amount,
+                bootstrap_end_time=args.bootstrap_end_time,
+                regular_user_start=args.regular_user_start,
+                md_start_time=args.md_start_time,
+                md_n_recipients=args.md_n_recipients,
+                md_out_per_tx=args.md_out_per_tx,
+                md_output_amount=args.md_output_amount,
             )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
