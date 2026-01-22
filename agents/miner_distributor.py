@@ -49,17 +49,14 @@ class MinerDistributorAgent(BaseAgent):
         self.transaction_priority = 1
         self.max_retries = 5
         self.recipient_selection = "random"
-        self.initial_fund_amount = 1.0
 
-        # Multi-output transaction parameters
-        # When outputs_per_transaction > 1, sends multiple outputs to the same recipient
-        # This allows recipient to spend outputs independently after unlock period
-        self.outputs_per_transaction = 1
-        self.output_amount = None  # Fixed amount per output (None = use min/max range)
-
-        # Batch funding parameters
-        # md_n_recipients controls how many recipients per batch transaction during initial funding
-        self.recipients_per_batch = 10  # Default: 10 recipients per batch transaction
+        # Miner distributor transaction parameters (all prefixed with md_)
+        # md_n_recipients: How many different recipients per batch transaction
+        self.md_n_recipients = 10
+        # md_out_per_tx: How many outputs (UTXOs) each recipient gets per transaction
+        self.md_out_per_tx = 10
+        # md_output_amount: XMR amount per output
+        self.md_output_amount = 1.0
         
         # Wait time parameters for mining reward maturation
         self.initial_wait_time = 3600  # 1 hour in seconds (default)
@@ -98,13 +95,12 @@ class MinerDistributorAgent(BaseAgent):
             'transaction_priority': ('int_range', 'transaction_priority', 1, 0, 3),
             'max_retries': ('int_min', 'max_retries', 5, 1),
             'recipient_selection': ('choice', 'recipient_selection', 'random', ['random', 'round_robin']),
-            'initial_fund_amount': ('float_min', 'initial_fund_amount', 1.0, 0),
             'initial_wait_time': ('time_duration', 'initial_wait_time', 3600),
             'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
             'max_wait_time': ('time_duration', 'max_wait_time', 7200),
-            'outputs_per_transaction': ('int_min', 'outputs_per_transaction', 1, 1),
-            'output_amount': ('float_min', 'output_amount', None, 0),
-            'md_n_recipients': ('int_min', 'recipients_per_batch', 10, 1)
+            'md_n_recipients': ('int_min', 'md_n_recipients', 10, 1),
+            'md_out_per_tx': ('int_min', 'md_out_per_tx', 10, 1),
+            'md_output_amount': ('float_min', 'md_output_amount', 1.0, 0.001)
         }
 
         for attr_name, (type_name, field_name, *args) in config_mappings.items():
@@ -289,7 +285,7 @@ class MinerDistributorAgent(BaseAgent):
     def _perform_initial_funding(self):
         """
         Perform initial funding of eligible agents before the main mining cycle begins.
-        Sends initial_fund_amount to all agents with can_receive_distributions=true.
+        Sends md_out_per_tx outputs of md_output_amount XMR to each eligible recipient.
         """
         self.logger.info("Starting initial funding of eligible agents")
 
@@ -362,8 +358,7 @@ class MinerDistributorAgent(BaseAgent):
         self.logger.info(f"Found {len(eligible_recipients)} eligible recipients for initial funding")
 
         # Batch recipients for efficient multi-output transactions
-        # Use md_n_recipients (recipients_per_batch) as batch size
-        batch_size = max(1, self.recipients_per_batch)
+        batch_size = max(1, self.md_n_recipients)
         recipient_batches = [
             eligible_recipients[i:i + batch_size]
             for i in range(0, len(eligible_recipients), batch_size)
@@ -397,9 +392,9 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.info(f"Processing batch {batch_idx + 1}/{len(recipient_batches)} "
                            f"({len(batch)} recipients) using miner {selected_miner.get('agent_id')}")
 
-            # Send batch transaction
+            # Send batch transaction (uses md_out_per_tx and md_output_amount defaults)
             success, funded_ids, batch_failed = self._send_batch_transaction(
-                selected_miner, batch, self.initial_fund_amount
+                selected_miner, batch
             )
 
             if success:
@@ -424,7 +419,7 @@ class MinerDistributorAgent(BaseAgent):
                 if retry_miner:
                     self.logger.info(f"Retrying batch {batch_idx + 1} with miner {retry_miner.get('agent_id')}")
                     success, funded_ids, batch_failed = self._send_batch_transaction(
-                        retry_miner, batch, self.initial_fund_amount
+                        retry_miner, batch
                     )
                     if success:
                         funded_count += len(funded_ids)
@@ -518,7 +513,9 @@ class MinerDistributorAgent(BaseAgent):
                 self.logger.info(f"Miner {miner.get('agent_id')} - Balance: {balance_xmr:.6f} XMR, Unlocked: {unlocked_xmr:.6f} XMR")
 
                 # If we find a miner with sufficient unlocked balance, we can proceed
-                if unlocked_xmr >= self.initial_fund_amount:
+                # Check if miner has enough for at least one batch (n_recipients * out_per_tx * output_amount)
+                min_required = self.md_n_recipients * self.md_out_per_tx * self.md_output_amount
+                if unlocked_xmr >= min_required:
                     self.logger.info(f"Miner {miner.get('agent_id')} has sufficient unlocked balance ({unlocked_xmr:.6f} XMR)")
                     self.waiting_for_maturity = False
                     return True
@@ -865,35 +862,38 @@ class MinerDistributorAgent(BaseAgent):
                     self.logger.error(f"Failed to get address for recipient {recipient['id']} after {max_retries} attempts: {e}")
                     return None
     
-    def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any], amount: Optional[float] = None) -> bool:
+    def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any]) -> bool:
         """
         Send a transaction from the selected miner to a single recipient.
+        Uses md_out_per_tx outputs of md_output_amount each.
 
         Args:
             miner: Miner information including wallet details
             recipient: Recipient information including address
-            amount: Optional amount to send (overrides random amount selection)
 
         Returns:
             True if transaction was sent successfully, False otherwise
         """
-        # Delegate to batch transaction with single recipient
-        success, _, _ = self._send_batch_transaction(miner, [recipient], amount)
+        # Delegate to batch transaction with single recipient (uses md_ defaults)
+        success, _, _ = self._send_batch_transaction(miner, [recipient])
         return success
 
     def _send_batch_transaction(
         self,
         miner: Dict[str, Any],
         recipients: List[Dict[str, Any]],
-        amount_per_recipient: Optional[float] = None
+        outputs_per_recipient: Optional[int] = None,
+        amount_per_output: Optional[float] = None
     ) -> tuple[bool, List[str], List[str]]:
         """
         Send a transaction from the selected miner to multiple recipients.
+        Each recipient receives multiple outputs (UTXOs) for independent spending.
 
         Args:
             miner: Miner information including wallet details
             recipients: List of recipient information dicts
-            amount_per_recipient: Optional amount per recipient (overrides random/configured amount)
+            outputs_per_recipient: Outputs per recipient (default: md_out_per_tx)
+            amount_per_output: XMR per output (default: md_output_amount)
 
         Returns:
             Tuple of (success, list of funded recipient IDs, list of failed recipient IDs)
@@ -901,6 +901,10 @@ class MinerDistributorAgent(BaseAgent):
         if not recipients:
             self.logger.warning("No recipients provided for batch transaction")
             return False, [], []
+
+        # Use configured defaults if not specified
+        num_outputs_per_recipient = outputs_per_recipient if outputs_per_recipient is not None else self.md_out_per_tx
+        per_output_amount = amount_per_output if amount_per_output is not None else self.md_output_amount
 
         # Build destinations for all recipients
         destinations = []
@@ -916,47 +920,42 @@ class MinerDistributorAgent(BaseAgent):
                 continue
 
             recipient_addresses[recipient_address] = recipient
-            valid_recipients.append(recipient)
+            valid_recipients.append((recipient, recipient_address))
 
         if not valid_recipients:
             self.logger.error("No valid recipients with addresses for batch transaction")
             return False, [], [r.get('id') for r in recipients]
 
-        # Determine amount per recipient
-        if amount_per_recipient is not None:
-            per_recipient_amount = amount_per_recipient
-        elif self.output_amount is not None:
-            per_recipient_amount = self.output_amount
-        else:
-            per_recipient_amount = random.uniform(self.min_transaction_amount, self.max_transaction_amount)
-
         # Convert XMR to atomic units
         try:
-            amount_atomic = int(per_recipient_amount * 10**12)
+            amount_atomic = int(per_output_amount * 10**12)
             if amount_atomic <= 0:
-                self.logger.error(f"Invalid atomic unit conversion: {per_recipient_amount} XMR -> {amount_atomic} atomic units")
+                self.logger.error(f"Invalid atomic unit conversion: {per_output_amount} XMR -> {amount_atomic} atomic units")
                 return False, [], [r.get('id') for r in recipients]
         except (ValueError, OverflowError) as e:
-            self.logger.error(f"Failed to convert amount {per_recipient_amount} to atomic units: {e}")
+            self.logger.error(f"Failed to convert amount {per_output_amount} to atomic units: {e}")
             return False, [], [r.get('id') for r in recipients]
 
-        # Build destinations list with all valid recipients
-        for recipient in valid_recipients:
-            recipient_address = self._get_recipient_address(recipient)
-            if recipient_address:
-                # Validate each destination
-                if not self._validate_transaction_params(recipient_address, per_recipient_amount):
-                    self.logger.warning(f"Invalid params for recipient {recipient.get('id')}, skipping")
-                    failed_recipients.append(recipient.get('id'))
-                    continue
+        # Build destinations: md_out_per_tx outputs for EACH recipient
+        for recipient, recipient_address in valid_recipients:
+            # Validate params for this recipient
+            if not self._validate_transaction_params(recipient_address, per_output_amount):
+                self.logger.warning(f"Invalid params for recipient {recipient.get('id')}, skipping")
+                failed_recipients.append(recipient.get('id'))
+                continue
+
+            # Add multiple outputs to same recipient address
+            for _ in range(num_outputs_per_recipient):
                 destinations.append({'address': recipient_address, 'amount': amount_atomic})
 
         if not destinations:
             self.logger.error("No valid destinations after validation")
             return False, [], [r.get('id') for r in recipients]
 
+        num_recipients = len(valid_recipients) - len([r for r in failed_recipients if r in [v[0].get('id') for v in valid_recipients]])
         num_outputs = len(destinations)
-        total_amount = per_recipient_amount * num_outputs
+        total_amount = per_output_amount * num_outputs
+        per_recipient_total = per_output_amount * num_outputs_per_recipient
 
         # Connect to miner's wallet RPC with retries
         for attempt in range(self.max_retries):
@@ -972,7 +971,7 @@ class MinerDistributorAgent(BaseAgent):
                 }
 
                 self.logger.debug(f"Batch transaction parameters: {json.dumps(tx_params, indent=2)}")
-                self.logger.info(f"Preparing batch transaction: {num_outputs} recipients x {per_recipient_amount} XMR = {total_amount} XMR total")
+                self.logger.info(f"Preparing batch transaction: {num_recipients} recipients x {num_outputs_per_recipient} outputs x {per_output_amount} XMR = {total_amount} XMR total")
 
                 # Send transaction
                 tx = miner_rpc.transfer(**tx_params)
@@ -982,25 +981,27 @@ class MinerDistributorAgent(BaseAgent):
                     self.logger.error(f"Transaction response missing tx_hash: {tx}")
                     return False, [], [r.get('id') for r in recipients]
 
-                # Record transaction for each recipient
+                # Record transaction for each recipient (once per recipient, with total outputs)
                 funded_recipient_ids = []
-                for dest in destinations:
-                    recipient = recipient_addresses.get(dest['address'])
-                    if recipient:
-                        recipient_id = recipient.get('id')
-                        funded_recipient_ids.append(recipient_id)
-                        self._record_transaction(
-                            tx_hash=tx_hash,
-                            sender_id=miner.get("agent_id"),
-                            recipient_id=recipient_id,
-                            amount=per_recipient_amount,
-                            num_outputs=1,
-                            amount_per_output=per_recipient_amount
-                        )
+                seen_recipients = set()
+                for recipient, recipient_address in valid_recipients:
+                    recipient_id = recipient.get('id')
+                    if recipient_id in seen_recipients or recipient_id in failed_recipients:
+                        continue
+                    seen_recipients.add(recipient_id)
+                    funded_recipient_ids.append(recipient_id)
+                    self._record_transaction(
+                        tx_hash=tx_hash,
+                        sender_id=miner.get("agent_id"),
+                        recipient_id=recipient_id,
+                        amount=per_recipient_total,
+                        num_outputs=num_outputs_per_recipient,
+                        amount_per_output=per_output_amount
+                    )
 
                 self.logger.info(f"Batch transaction sent successfully: {tx_hash} "
-                              f"from {miner.get('agent_id')} to {num_outputs} recipients "
-                              f"for {total_amount} XMR ({per_recipient_amount} XMR each)")
+                              f"from {miner.get('agent_id')} to {len(funded_recipient_ids)} recipients "
+                              f"for {total_amount} XMR ({per_recipient_total} XMR each = {num_outputs_per_recipient} x {per_output_amount})")
                 return True, funded_recipient_ids, failed_recipients
 
             except Exception as e:
@@ -1014,7 +1015,7 @@ class MinerDistributorAgent(BaseAgent):
 
                 elif "invalid params" in error_msg:
                     self.logger.error(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: Invalid parameters")
-                    self.logger.error(f"Invalid parameters detected - {num_outputs} outputs x {per_recipient_amount} XMR ({amount_atomic} atomic units each)")
+                    self.logger.error(f"Invalid parameters detected - {num_outputs} outputs x {per_output_amount} XMR ({amount_atomic} atomic units each)")
                     return False, [], [r.get('id') for r in recipients]
 
                 elif "wallet is not ready" in error_msg or "wallet not ready" in error_msg:
