@@ -445,6 +445,7 @@ def generate_config(
     initial_batch_size: int = 5,
     max_batch_size: int = 200,
     daemon_binary: str = "monerod",
+    user_spawn_start: str = None,
     bootstrap_end_time: str = None,
     regular_user_start: str = None,
     md_start_time: str = None,
@@ -467,6 +468,7 @@ def generate_config(
         initial_batch_size: Size of first user batch
         max_batch_size: Maximum users per batch
         daemon_binary: Path to monerod binary (default: "monerod")
+        user_spawn_start: When users start spawning (default: 20m batched, 3h non-batched)
         bootstrap_end_time: When bootstrap ends (default: auto-calc from user spawns)
         regular_user_start: When users start transacting (default: md_start_time + 1h)
         md_start_time: When miner distributor starts (default: bootstrap_end_time)
@@ -490,6 +492,13 @@ def generate_config(
     # Parse batch interval
     batch_interval_s = parse_duration(batch_interval)
 
+    # Calculate user spawn start time
+    if user_spawn_start is not None:
+        user_spawn_start_s = parse_duration(user_spawn_start)
+    else:
+        # Default: 20m for batched, 3h for non-batched
+        user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
+
     # Calculate user start times based on batching mode
     batch_sizes = []
     batch_schedule = []
@@ -499,7 +508,7 @@ def generate_config(
         batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
         batch_schedule = calculate_batch_schedule(
             num_users,
-            DEFAULT_INITIAL_DELAY_S,
+            user_spawn_start_s,
             batch_interval_s,
             initial_batch_size,
             2.0,  # growth_factor
@@ -509,11 +518,11 @@ def generate_config(
         # Last user spawn time from batch schedule
         last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
     else:
-        # Non-batched: users start at USER_START_TIME_S with stagger
+        # Non-batched: users start at user_spawn_start_s with stagger
         if num_users > 0:
-            last_user_spawn_s = USER_START_TIME_S + ((num_users - 1) * stagger_interval_s)
+            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
         else:
-            last_user_spawn_s = USER_START_TIME_S
+            last_user_spawn_s = user_spawn_start_s
 
     # Calculate timing with dependency chain:
     # 1. bootstrap_end_time_s: explicit or auto-calc
@@ -647,6 +656,7 @@ def generate_config(
         'md_start_time_s': md_start_time_s,
         'activity_start_time_s': activity_start_time_s,
         'last_user_spawn_s': last_user_spawn_s,
+        'user_spawn_start_s': user_spawn_start_s,
         'duration_s': duration_s,
         'requested_duration_s': requested_duration_s,
         'use_batched': use_batched,
@@ -692,6 +702,7 @@ def generate_upgrade_config(
     batch_interval: str = "20m",
     initial_batch_size: int = 5,
     max_batch_size: int = 200,
+    user_spawn_start: str = None,
     bootstrap_end_time: str = None,
     regular_user_start: str = None,
     md_start_time: str = None,
@@ -743,6 +754,13 @@ def generate_upgrade_config(
     # Parse batch interval
     batch_interval_s = parse_duration(batch_interval)
 
+    # Calculate user spawn start time
+    if user_spawn_start is not None:
+        user_spawn_start_s = parse_duration(user_spawn_start)
+    else:
+        # Default: 20m for batched, 3h for non-batched
+        user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
+
     # Calculate user start times based on batching mode
     batch_sizes = []
     batch_schedule = []
@@ -751,7 +769,7 @@ def generate_upgrade_config(
         batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
         batch_schedule = calculate_batch_schedule(
             num_users,
-            DEFAULT_INITIAL_DELAY_S,
+            user_spawn_start_s,
             batch_interval_s,
             initial_batch_size,
             2.0,
@@ -761,9 +779,9 @@ def generate_upgrade_config(
         last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
     else:
         if num_users > 0:
-            last_user_spawn_s = USER_START_TIME_S + ((num_users - 1) * stagger_interval_s)
+            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
         else:
-            last_user_spawn_s = USER_START_TIME_S
+            last_user_spawn_s = user_spawn_start_s
 
     # Calculate timing with dependency chain:
     # 1. bootstrap_end_time_s: explicit or auto-calc
@@ -939,6 +957,7 @@ def generate_upgrade_config(
         'md_start_time_s': md_start_time_s,
         'activity_start_time_s': activity_start_time_s,
         'last_user_spawn_s': last_user_spawn_s,
+        'user_spawn_start_s': user_spawn_start_s,
         'duration_s': duration_s,
         'requested_duration_s': requested_duration_s,
         'use_batched': use_batched,
@@ -1166,6 +1185,13 @@ Timeline (verified bootstrap for Monero regtest):
 
     # Timing control flags
     parser.add_argument(
+        "--user-spawn-start",
+        type=str,
+        default=None,
+        help="When users start spawning (default: 20m for batched, 3h for non-batched)"
+    )
+
+    parser.add_argument(
         "--bootstrap-end-time",
         type=str,
         default=None,
@@ -1340,6 +1366,7 @@ Timeline (verified bootstrap for Monero regtest):
                 batch_interval=args.batch_interval,
                 initial_batch_size=args.initial_batch_size,
                 max_batch_size=args.max_batch_size,
+                user_spawn_start=args.user_spawn_start,
                 bootstrap_end_time=args.bootstrap_end_time,
                 regular_user_start=args.regular_user_start,
                 md_start_time=args.md_start_time,
@@ -1368,6 +1395,7 @@ Timeline (verified bootstrap for Monero regtest):
                 initial_batch_size=args.initial_batch_size,
                 max_batch_size=args.max_batch_size,
                 daemon_binary=args.daemon_binary,
+                user_spawn_start=args.user_spawn_start,
                 bootstrap_end_time=args.bootstrap_end_time,
                 regular_user_start=args.regular_user_start,
                 md_start_time=args.md_start_time,
@@ -1400,8 +1428,9 @@ Timeline (verified bootstrap for Monero regtest):
     fast_note = " [FAST MODE]" if args.fast else ""
     stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once"
 
+    user_spawn_start_s = timing_info['user_spawn_start_s']
     if use_batched and batch_sizes:
-        batch_summary = format_batch_summary(batch_sizes, DEFAULT_INITIAL_DELAY_S, batch_interval_s)
+        batch_summary = format_batch_summary(batch_sizes, user_spawn_start_s, batch_interval_s)
         batched_note = f"\n# {batch_summary}"
         spawn_note = "Users spawn in batches (see below)"
     else:
@@ -1426,7 +1455,7 @@ Timeline (verified bootstrap for Monero regtest):
 #
 # Timeline:
 #   t=0:           Miners start
-#   t={format_time_offset(DEFAULT_INITIAL_DELAY_S, for_config=False) if use_batched else "3h"}:         {spawn_note}
+#   t={format_time_offset(user_spawn_start_s, for_config=False)}:         {spawn_note}
 #   t={last_spawn}:     Last user spawns
 #   t={bootstrap_end}:     Bootstrap ends (+20% buffer), distributor starts funding
 #   t={activity_start}:     Users start sending transactions (steady state begins)
@@ -1442,7 +1471,7 @@ Timeline (verified bootstrap for Monero regtest):
 # Network topology: {args.gml}
 # Timeline:
 #   t=0:       Miners start
-#   t={format_time_offset(DEFAULT_INITIAL_DELAY_S, for_config=False) if use_batched else "3h"}:      {spawn_note}
+#   t={format_time_offset(user_spawn_start_s, for_config=False)}:      {spawn_note}
 #   t={last_spawn}:  Last user spawns
 #   t={bootstrap_end}:  Bootstrap ends (+20% buffer), distributor starts funding
 #   t={activity_start}:  Users start sending transactions{batched_note}
