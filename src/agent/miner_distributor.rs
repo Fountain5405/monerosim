@@ -47,7 +47,35 @@ pub fn process_miner_distributor(
             format!("--log-level DEBUG"),
         ];
 
-        // Add attributes from config
+        // Pass all known miner distributor config fields as attributes
+        // These are read by the Python agent via --attributes key value
+        if let Some(v) = miner_distributor_config.transaction_frequency {
+            agent_args.push(format!("--attributes transaction_frequency {}", v));
+        }
+        if let Some(v) = &miner_distributor_config.min_transaction_amount {
+            agent_args.push(format!("--attributes min_transaction_amount {}", v));
+        }
+        if let Some(v) = &miner_distributor_config.max_transaction_amount {
+            agent_args.push(format!("--attributes max_transaction_amount {}", v));
+        }
+        if let Some(v) = &miner_distributor_config.initial_fund_amount {
+            agent_args.push(format!("--attributes initial_fund_amount {}", v));
+        }
+        if let Some(v) = miner_distributor_config.initial_wait_time {
+            agent_args.push(format!("--attributes initial_wait_time {}", v));
+        }
+        // md_* parameters for batch transaction sizing (max 16 outputs per tx in Monero)
+        if let Some(v) = miner_distributor_config.md_n_recipients {
+            agent_args.push(format!("--attributes md_n_recipients {}", v));
+        }
+        if let Some(v) = miner_distributor_config.md_out_per_tx {
+            agent_args.push(format!("--attributes md_out_per_tx {}", v));
+        }
+        if let Some(v) = miner_distributor_config.md_output_amount {
+            agent_args.push(format!("--attributes md_output_amount {}", v));
+        }
+
+        // Add any custom attributes from config
         if let Some(attrs) = &miner_distributor_config.attributes {
             for (key, value) in attrs {
                 agent_args.push(format!("--attributes {} {}", key, value));

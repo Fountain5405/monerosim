@@ -449,9 +449,9 @@ def generate_config(
     bootstrap_end_time: str = None,
     regular_user_start: str = None,
     md_start_time: str = None,
-    md_n_recipients: int = 10,
-    md_out_per_tx: int = 10,
-    md_output_amount: float = 1.0,
+    md_n_recipients: int = 8,
+    md_out_per_tx: int = 2,
+    md_output_amount: float = 5.0,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -706,9 +706,9 @@ def generate_upgrade_config(
     bootstrap_end_time: str = None,
     regular_user_start: str = None,
     md_start_time: str = None,
-    md_n_recipients: int = 10,
-    md_out_per_tx: int = 10,
-    md_output_amount: float = 1.0,
+    md_n_recipients: int = 8,
+    md_out_per_tx: int = 2,
+    md_output_amount: float = 5.0,
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -1216,22 +1216,24 @@ Timeline (verified bootstrap for Monero regtest):
     parser.add_argument(
         "--md-n-recipients",
         type=int,
-        default=10,
-        help="Miner distributor: recipients per batch transaction (default: 10)"
+        default=8,
+        help="Miner distributor: recipients per batch transaction (default: 8). "
+             "NOTE: recipients * outputs_per_tx must be <= 16 (Monero tx size limit)"
     )
 
     parser.add_argument(
         "--md-out-per-tx",
         type=int,
-        default=10,
-        help="Miner distributor: outputs per recipient per transaction (default: 10)"
+        default=2,
+        help="Miner distributor: outputs per recipient per transaction (default: 2). "
+             "NOTE: recipients * outputs_per_tx must be <= 16 (Monero tx size limit)"
     )
 
     parser.add_argument(
         "--md-output-amount",
         type=float,
-        default=1.0,
-        help="Miner distributor: XMR amount per output (default: 1.0)"
+        default=5.0,
+        help="Miner distributor: XMR amount per output (default: 5.0)"
     )
 
     # Upgrade scenario options

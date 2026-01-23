@@ -51,12 +51,14 @@ class MinerDistributorAgent(BaseAgent):
         self.recipient_selection = "random"
 
         # Miner distributor transaction parameters (all prefixed with md_)
+        # NOTE: Monero has a limit of ~16 outputs per transaction.
+        # Ensure md_n_recipients * md_out_per_tx <= 16 to avoid "tx too large" errors.
         # md_n_recipients: How many different recipients per batch transaction
-        self.md_n_recipients = 10
+        self.md_n_recipients = 8
         # md_out_per_tx: How many outputs (UTXOs) each recipient gets per transaction
-        self.md_out_per_tx = 10
+        self.md_out_per_tx = 2
         # md_output_amount: XMR amount per output
-        self.md_output_amount = 1.0
+        self.md_output_amount = 5.0
         
         # Wait time parameters for mining reward maturation
         self.initial_wait_time = 3600  # 1 hour in seconds (default)
@@ -98,9 +100,9 @@ class MinerDistributorAgent(BaseAgent):
             'initial_wait_time': ('time_duration', 'initial_wait_time', 3600),
             'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
             'max_wait_time': ('time_duration', 'max_wait_time', 7200),
-            'md_n_recipients': ('int_min', 'md_n_recipients', 10, 1),
-            'md_out_per_tx': ('int_min', 'md_out_per_tx', 10, 1),
-            'md_output_amount': ('float_min', 'md_output_amount', 1.0, 0.001)
+            'md_n_recipients': ('int_min', 'md_n_recipients', 8, 1),
+            'md_out_per_tx': ('int_min', 'md_out_per_tx', 2, 1),
+            'md_output_amount': ('float_min', 'md_output_amount', 5.0, 0.001)
         }
 
         for attr_name, (type_name, field_name, *args) in config_mappings.items():
