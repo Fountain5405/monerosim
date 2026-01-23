@@ -827,14 +827,16 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.warning(f"Invalid boolean attribute value: '{value}', defaulting to False")
             return False
     
-    def _validate_transaction_params(self, address: str, amount: float) -> bool:
+    def _validate_transaction_params(self, address: str, amount: float, skip_max_check: bool = False) -> bool:
         """
         Validate transaction parameters before sending.
-        
+
         Args:
             address: Recipient wallet address
             amount: Transaction amount in XMR
-            
+            skip_max_check: If True, skip max_transaction_amount validation (used for
+                           batch funding where md_output_amount is explicitly configured)
+
         Returns:
             True if parameters are valid, False otherwise
         """
@@ -858,8 +860,8 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.error(f"Amount {amount} is below minimum {self.min_transaction_amount}")
             return False
         
-        # Check maximum transaction amount
-        if amount > self.max_transaction_amount:
+        # Check maximum transaction amount (skip for batch funding with explicit md_output_amount)
+        if not skip_max_check and amount > self.max_transaction_amount:
             self.logger.error(f"Amount {amount} exceeds maximum {self.max_transaction_amount}")
             return False
         
@@ -1007,8 +1009,8 @@ class MinerDistributorAgent(BaseAgent):
 
         # Build destinations: md_out_per_tx outputs for EACH recipient
         for recipient, recipient_address in valid_recipients:
-            # Validate params for this recipient
-            if not self._validate_transaction_params(recipient_address, per_output_amount):
+            # Validate params for this recipient (skip max check since md_output_amount is explicit)
+            if not self._validate_transaction_params(recipient_address, per_output_amount, skip_max_check=True):
                 self.logger.warning(f"Invalid params for recipient {recipient.get('id')}, skipping")
                 failed_recipients.append(recipient.get('id'))
                 continue
