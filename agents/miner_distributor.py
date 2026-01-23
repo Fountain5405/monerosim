@@ -1044,13 +1044,24 @@ class MinerDistributorAgent(BaseAgent):
                 self.logger.debug(f"Batch transaction parameters: {json.dumps(tx_params, indent=2)}")
                 self.logger.info(f"Preparing batch transaction: {num_recipients} recipients x {num_outputs_per_recipient} outputs x {per_output_amount} XMR = {total_amount} XMR total")
 
-                # Send transaction
-                tx = miner_rpc.transfer(**tx_params)
-                tx_hash = tx.get('tx_hash', '')
+                # Send transaction using transfer_split to automatically handle large transactions
+                tx = miner_rpc.transfer_split(**tx_params)
 
-                if not tx_hash:
-                    self.logger.error(f"Transaction response missing tx_hash: {tx}")
-                    return False, [], [r.get('id') for r in recipients]
+                # transfer_split returns tx_hash_list instead of tx_hash
+                tx_hash_list = tx.get('tx_hash_list', [])
+                if not tx_hash_list:
+                    # Fallback to single tx_hash if present
+                    single_hash = tx.get('tx_hash', '')
+                    if single_hash:
+                        tx_hash_list = [single_hash]
+                    else:
+                        self.logger.error(f"Transaction response missing tx_hash_list: {tx}")
+                        return False, [], [r.get('id') for r in recipients]
+
+                tx_hash = tx_hash_list[0]  # Use first hash for recording
+                num_splits = len(tx_hash_list)
+                if num_splits > 1:
+                    self.logger.info(f"Transaction was split into {num_splits} parts: {tx_hash_list}")
 
                 # Record transaction for each recipient (once per recipient, with total outputs)
                 funded_recipient_ids = []
@@ -1071,7 +1082,7 @@ class MinerDistributorAgent(BaseAgent):
                     )
 
                 self.logger.info(f"Batch transaction sent successfully: {tx_hash} "
-                              f"from {miner.get('agent_id')} to {len(funded_recipient_ids)} recipients "
+                              f"({num_splits} split(s)) from {miner.get('agent_id')} to {len(funded_recipient_ids)} recipients "
                               f"for {total_amount} XMR ({per_recipient_total} XMR each = {num_outputs_per_recipient} x {per_output_amount})")
                 return True, funded_recipient_ids, failed_recipients
 

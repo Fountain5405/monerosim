@@ -484,7 +484,7 @@ class WalletRPC(BaseRPC):
         result = self._make_request("get_height")
         return result.get("height", 0)
         
-    def transfer(self, destinations: List[Dict[str, Any]], priority: int = 0, 
+    def transfer(self, destinations: List[Dict[str, Any]], priority: int = 0,
                  get_tx_key: bool = True, do_not_relay: bool = False) -> Dict[str, Any]:
         """Send a transaction"""
         params = {
@@ -494,7 +494,35 @@ class WalletRPC(BaseRPC):
             "do_not_relay": do_not_relay
         }
         return self._make_request("transfer", params)
-        
+
+    def transfer_split(self, destinations: List[Dict[str, Any]], priority: int = 0,
+                       get_tx_key: bool = True, do_not_relay: bool = False,
+                       new_algorithm: bool = True) -> Dict[str, Any]:
+        """
+        Send a transaction, automatically splitting if too large.
+
+        Unlike transfer(), this method will split the transaction into multiple
+        smaller transactions if necessary to fit within Monero's size limits.
+
+        Args:
+            destinations: List of {address, amount} dicts
+            priority: Transaction priority (0-3)
+            get_tx_key: Whether to return tx keys
+            do_not_relay: If True, don't relay to network
+            new_algorithm: Use new transaction splitting algorithm
+
+        Returns:
+            Dict with tx_hash_list, tx_key_list, fee_list, amount_list
+        """
+        params = {
+            "destinations": destinations,
+            "priority": priority,
+            "get_tx_key": get_tx_key,
+            "do_not_relay": do_not_relay,
+            "new_algorithm": new_algorithm
+        }
+        return self._make_request("transfer_split", params)
+
     def get_transfers(self, in_: bool = True, out: bool = True, pending: bool = True,
                      failed: bool = True, pool: bool = True) -> Dict[str, Any]:
         """Get list of transfers"""
