@@ -419,6 +419,57 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
     Ok(data)
 }
 
+/// Find all daemon log files for a node (handles upgrade scenarios with multiple daemon processes)
+fn find_daemon_log_files(host_dir: &Path) -> Vec<std::path::PathBuf> {
+    let mut daemon_logs = Vec::new();
+
+    // Read directory and find all .stdout files
+    if let Ok(entries) = std::fs::read_dir(host_dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                // Look for bash.*.stdout files
+                if name.starts_with("bash.") && name.ends_with(".stdout") {
+                    // Check if file is non-empty and contains daemon output
+                    if let Ok(metadata) = path.metadata() {
+                        if metadata.len() > 1000 {
+                            // Quick check: read first few KB to see if it looks like daemon output
+                            if let Ok(file) = std::fs::File::open(&path) {
+                                let mut reader = std::io::BufReader::new(file);
+                                let mut buffer = String::new();
+                                use std::io::BufRead;
+                                // Read first few lines
+                                for _ in 0..20 {
+                                    buffer.clear();
+                                    if reader.read_line(&mut buffer).unwrap_or(0) == 0 {
+                                        break;
+                                    }
+                                    // Daemon logs have characteristic patterns
+                                    if buffer.contains("[P2P]") ||
+                                       buffer.contains("[net.p2p]") ||
+                                       buffer.contains("Cryptonote protocol") ||
+                                       buffer.contains("[INC]") ||
+                                       buffer.contains("[OUT]") ||
+                                       buffer.contains("NOTIFY_NEW_TRANSACTIONS") ||
+                                       buffer.contains("bytes sent for category") ||
+                                       buffer.contains("bytes received for category") {
+                                        daemon_logs.push(path);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by filename to ensure consistent ordering
+    daemon_logs.sort();
+    daemon_logs
+}
+
 /// Parse all log files in parallel
 pub fn parse_all_logs(
     hosts_dir: &Path,
@@ -429,28 +480,61 @@ pub fn parse_all_logs(
     let results: Vec<(String, NodeLogData)> = agents
         .par_iter()
         .filter_map(|agent| {
-            // Find the monerod log file (bash.1000.stdout is typically the daemon)
-            let log_path = hosts_dir.join(&agent.id).join("bash.1000.stdout");
+            let host_dir = hosts_dir.join(&agent.id);
 
-            if !log_path.exists() {
-                log::debug!("No log file found for {}", agent.id);
-                return None;
-            }
+            // Find all daemon log files (handles upgrade scenarios with v1 and v2 daemons)
+            let log_files = find_daemon_log_files(&host_dir);
 
-            match parse_log_file(&log_path, &agent.id) {
-                Ok(data) => {
-                    log::debug!(
-                        "Parsed {}: {} TX observations, {} connection events",
-                        agent.id,
-                        data.tx_observations.len(),
-                        data.connection_events.len()
-                    );
-                    Some((agent.id.clone(), data))
+            if log_files.is_empty() {
+                // Fallback to old behavior for backward compatibility
+                let log_path = host_dir.join("bash.1000.stdout");
+                if !log_path.exists() {
+                    log::debug!("No log file found for {}", agent.id);
+                    return None;
                 }
-                Err(e) => {
-                    log::warn!("Failed to parse {}: {}", log_path.display(), e);
-                    None
+
+                match parse_log_file(&log_path, &agent.id) {
+                    Ok(data) => Some((agent.id.clone(), data)),
+                    Err(e) => {
+                        log::warn!("Failed to parse {}: {}", log_path.display(), e);
+                        None
+                    }
                 }
+            } else {
+                // Parse all daemon log files and merge results
+                let mut merged_data = NodeLogData::new(agent.id.clone());
+
+                for log_path in &log_files {
+                    match parse_log_file(log_path, &agent.id) {
+                        Ok(data) => {
+                            merged_data.tx_observations.extend(data.tx_observations);
+                            merged_data.tx_hash_announcements.extend(data.tx_hash_announcements);
+                            merged_data.tx_requests.extend(data.tx_requests);
+                            merged_data.connection_events.extend(data.connection_events);
+                            merged_data.block_observations.extend(data.block_observations);
+                            merged_data.connection_drops.extend(data.connection_drops);
+                            merged_data.bandwidth_events.extend(data.bandwidth_events);
+                        }
+                        Err(e) => {
+                            log::debug!("Failed to parse {}: {}", log_path.display(), e);
+                        }
+                    }
+                }
+
+                // Sort by timestamp after merging
+                merged_data.tx_observations.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
+                merged_data.connection_events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
+                merged_data.bandwidth_events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
+
+                log::debug!(
+                    "Parsed {} ({} log files): {} TX observations, {} connection events",
+                    agent.id,
+                    log_files.len(),
+                    merged_data.tx_observations.len(),
+                    merged_data.connection_events.len()
+                );
+
+                Some((agent.id.clone(), merged_data))
             }
         })
         .collect();
