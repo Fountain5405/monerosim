@@ -209,7 +209,41 @@ fn calculate_window_metrics(
     metrics.avg_stem_length = avg_stem;
     metrics.paths_reconstructed = paths_count;
 
+    // Bandwidth analysis
+    let (bytes_sent, bytes_received, msg_count) = calculate_bandwidth_for_window(log_data, window);
+    if bytes_sent > 0 || bytes_received > 0 {
+        metrics.bytes_sent = Some(bytes_sent);
+        metrics.bytes_received = Some(bytes_received);
+        metrics.total_bandwidth = Some(bytes_sent + bytes_received);
+        metrics.bandwidth_message_count = Some(msg_count);
+    }
+
     metrics
+}
+
+/// Calculate bandwidth metrics for a window.
+fn calculate_bandwidth_for_window(
+    log_data: &HashMap<String, NodeLogData>,
+    window: &TimeWindow,
+) -> (u64, u64, u64) {
+    let mut bytes_sent: u64 = 0;
+    let mut bytes_received: u64 = 0;
+    let mut message_count: u64 = 0;
+
+    for node_data in log_data.values() {
+        for event in &node_data.bandwidth_events {
+            if window.contains(event.timestamp) {
+                if event.is_sent {
+                    bytes_sent += event.bytes;
+                } else {
+                    bytes_received += event.bytes;
+                }
+                message_count += 1;
+            }
+        }
+    }
+
+    (bytes_sent, bytes_received, message_count)
 }
 
 /// Calculate spy node accuracy for a window.
@@ -510,6 +544,17 @@ fn create_period_summary(
     let stem_values: Vec<Option<f64>> = windows.iter().map(|w| w.avg_stem_length).collect();
     let (mean_stem, std_stem) = calculate_stats(&stem_values);
 
+    // Bandwidth aggregation
+    let total_bytes_sent: u64 = windows.iter().filter_map(|w| w.bytes_sent).sum();
+    let total_bytes_received: u64 = windows.iter().filter_map(|w| w.bytes_received).sum();
+    let total_bandwidth: u64 = windows.iter().filter_map(|w| w.total_bandwidth).sum();
+
+    let bandwidth_values: Vec<Option<f64>> = windows
+        .iter()
+        .map(|w| w.total_bandwidth.map(|b| b as f64))
+        .collect();
+    let (mean_bw, std_bw) = calculate_stats(&bandwidth_values);
+
     Some(AggregatedMetrics {
         period_label: label.to_string(),
         start,
@@ -526,6 +571,11 @@ fn create_period_summary(
         std_peer_count: std_peer,
         std_gini: std_gini,
         std_stem_length: std_stem,
+        total_bytes_sent: if total_bytes_sent > 0 { Some(total_bytes_sent) } else { None },
+        total_bytes_received: if total_bytes_received > 0 { Some(total_bytes_received) } else { None },
+        total_bandwidth: if total_bandwidth > 0 { Some(total_bandwidth) } else { None },
+        mean_bandwidth_per_window: mean_bw,
+        std_bandwidth_per_window: std_bw,
         windows: windows.iter().map(|w| (*w).clone()).collect(),
     })
 }
@@ -560,6 +610,7 @@ fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics) -> Vec<Met
                 "Avg Peer Count" => w.avg_peer_count,
                 "Gini Coefficient" => w.gini_coefficient,
                 "Avg Stem Length" => w.avg_stem_length,
+                "Bandwidth per Window" => w.total_bandwidth.map(|b| b as f64),
                 _ => None,
             })
             .collect();
@@ -572,6 +623,7 @@ fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics) -> Vec<Met
                 "Avg Peer Count" => w.avg_peer_count,
                 "Gini Coefficient" => w.gini_coefficient,
                 "Avg Stem Length" => w.avg_stem_length,
+                "Bandwidth per Window" => w.total_bandwidth.map(|b| b as f64),
                 _ => None,
             })
             .collect();
@@ -674,6 +726,18 @@ fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics) -> Vec<Met
         changes.push(change);
     }
 
+    // Bandwidth: Lower is better (more efficient)
+    if let Some(change) = add_change(
+        "Bandwidth per Window",
+        pre.mean_bandwidth_per_window,
+        post.mean_bandwidth_per_window,
+        &pre.windows,
+        &post.windows,
+        false,
+    ) {
+        changes.push(change);
+    }
+
     changes
 }
 
@@ -719,6 +783,10 @@ fn generate_interpretation(
         ),
         "Avg Stem Length" => format!(
             "Dandelion++ privacy {} - stem length {} by {:.1}%",
+            impact_word, direction, percent_change.abs()
+        ),
+        "Bandwidth per Window" => format!(
+            "Bandwidth efficiency {} - data usage {} by {:.1}%",
             impact_word, direction, percent_change.abs()
         ),
         _ => format!("{} {} by {:.1}%", metric_name, direction, percent_change.abs()),

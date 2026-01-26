@@ -46,6 +46,7 @@ cargo build --release --bin tx-analyzer
 ./target/release/tx-analyzer network-graph # P2P topology analysis
 ./target/release/tx-analyzer summary       # Quick summary stats
 ./target/release/tx-analyzer upgrade-analysis  # Compare pre/post upgrade metrics
+./target/release/tx-analyzer bandwidth     # Network bandwidth usage analysis
 ```
 
 ### Options
@@ -72,6 +73,12 @@ cargo build --release --bin tx-analyzer
 --manifest <PATH>         Path to upgrade manifest JSON file
 --pre-upgrade-end <T>     Manual override: end of pre-upgrade period (seconds)
 --post-upgrade-start <T>  Manual override: start of post-upgrade period (seconds)
+
+# Bandwidth analysis options
+--per-node                Show per-node bandwidth breakdown
+--by-category             Show bandwidth by message category
+--time-series <N>         Show bandwidth over time (window size in seconds)
+--top <N>                 Show top N nodes by bandwidth [default: 10]
 ```
 
 ### Example
@@ -88,6 +95,9 @@ cargo build --release --bin tx-analyzer
 
 # Upgrade analysis with manual time boundaries
 ./target/release/tx-analyzer upgrade-analysis --pre-upgrade-end 300 --post-upgrade-start 600
+
+# Bandwidth analysis with category breakdown
+./target/release/tx-analyzer bandwidth --by-category --per-node --top 20
 ```
 
 ## Python Analyzer (`tx_analyzer.py`)
@@ -115,6 +125,7 @@ python3 scripts/tx_analyzer.py dandelion
 python3 scripts/tx_analyzer.py relay-v2
 python3 scripts/tx_analyzer.py summary
 python3 scripts/tx_analyzer.py upgrade-analysis
+python3 scripts/tx_analyzer.py bandwidth
 ```
 
 ### Options
@@ -132,6 +143,12 @@ python3 scripts/tx_analyzer.py upgrade-analysis
 --manifest <PATH>         Path to upgrade manifest JSON file
 --pre-upgrade-end <T>     Manual override: end of pre-upgrade period (seconds)
 --post-upgrade-start <T>  Manual override: start of post-upgrade period (seconds)
+
+# Bandwidth analysis options
+--per-node                Show per-node bandwidth breakdown
+--by-category             Show bandwidth by message category
+--time-series <N>         Show bandwidth over time (window size in seconds)
+--top <N>                 Show top N nodes by bandwidth [default: 10]
 ```
 
 ## Analysis Types
@@ -238,7 +255,7 @@ Then use upgrade-analysis to compare pre vs post upgrade metrics.
 
 **Methodology:**
 1. Divide simulation into time windows (default 60 seconds each)
-2. Calculate all metrics (spy accuracy, propagation, peer count, Gini, stem length) per window
+2. Calculate all metrics (spy accuracy, propagation, peer count, Gini, stem length, bandwidth) per window
 3. Label windows as "pre-upgrade", "transition", or "post-upgrade"
 4. Compare pre vs post upgrade using Welch's t-test for statistical significance
 5. Generate overall verdict and recommendations
@@ -272,6 +289,7 @@ Then use upgrade-analysis to compare pre vs post upgrade metrics.
 - Significant decrease in propagation time = improvement
 - Significant increase in spy accuracy = privacy concern
 - Significant increase in Gini coefficient = centralization concern
+- Significant decrease in bandwidth = improved efficiency
 - Mixed results warrant careful review of specific metrics
 
 **Example Output:**
@@ -283,6 +301,7 @@ Metric                    | Pre-Upgrade | Post-Upgrade |   Change | Significant
 Spy Node Accuracy         |      52.6%  |       48.2%  |   -8.4%  |         NO
 Avg Propagation (ms)      |      89965  |       72340  |  -19.6%  |      YES *
 Avg Peer Count            |       22.0  |        24.5  |  +11.4%  |      YES *
+Bandwidth per Window      |    125.3 MB |     112.8 MB |   -9.9%  |      YES *
 
 ASSESSMENT
 Verdict: POSITIVE - Upgrade improved network behavior
@@ -290,6 +309,7 @@ Verdict: POSITIVE - Upgrade improved network behavior
 Findings:
   - Transaction propagation improved by 19.6% (faster)
   - Network connectivity increased by 11.4%
+  - Bandwidth efficiency improved: data usage decreased by 9.9%
 
 Recommendations:
   - Upgrade appears safe to deploy
@@ -305,6 +325,82 @@ Analyzes P2P connection topology.
 - Time-series snapshots of network state
 - GraphViz DOT file for visualization (with `--dot` flag)
 
+### 8. Bandwidth Analysis
+
+Analyzes network bandwidth and data usage per node and across the network.
+
+**Data Source:**
+Shadow logs bandwidth data in daemon stdout files with this format:
+```
+2000-01-01 00:00:16.302    I [41.0.0.10:18080 OUT] 262 bytes sent for category command-1001 initiated by us
+```
+
+**Metrics:**
+- `total_bytes`: Total bytes transferred across all nodes
+- `total_bytes_sent`: Total bytes sent
+- `total_bytes_received`: Total bytes received
+- `total_messages`: Total message count
+- `avg_bytes_per_node`: Average bytes per node
+- `median_bytes_per_node`: Median bytes per node
+- `max_bytes_node`: Node with highest bandwidth usage
+- `min_bytes_node`: Node with lowest bandwidth usage
+- `bytes_by_category`: Breakdown by message type (handshake, blocks, transactions, etc.)
+- `per_node_stats`: Detailed per-node statistics including top peers
+
+**Message Categories:**
+| Command | Purpose |
+|---------|---------|
+| command-1001 | Handshake/peer info |
+| command-1002 | Block query |
+| command-1003 | Ping/keepalive |
+| command-2002 | Chain sync request |
+| command-2003 | Block request |
+| command-2004 | Block response |
+| command-2006 | Chain info request |
+| command-2007 | Chain response |
+| command-2008 | Transaction broadcast |
+| command-2010 | Keepalive response |
+
+**Interpretation:**
+- High bandwidth on specific categories reveals protocol overhead
+- Uneven distribution across nodes may indicate topology issues
+- TX broadcast bandwidth helps estimate real-world network requirements
+- Per-peer breakdown identifies chatty connections
+
+**Example Output:**
+```
+================================================================================
+                      BANDWIDTH ANALYSIS
+================================================================================
+
+Network Totals:
+  Total Data:     2.34 GB (1.18 GB sent, 1.16 GB received)
+  Total Messages: 847,293
+  Nodes:          30
+
+Per-Node Statistics:
+  Average:  79.8 MB/node
+  Median:   72.4 MB/node
+  Max:      245.6 MB (miner-001)
+  Min:      12.3 MB (user-025)
+
+Bandwidth by Message Type:
+Category             |         Sent |     Received |      Total |   Msgs
+---------------------|--------------|--------------|------------|-------
+Block Response       |     892.4 MB |     876.2 MB |    1.73 GB | 23,451
+TX Broadcast         |     234.5 MB |     228.9 MB |   463.4 MB | 156,234
+Block Request        |      12.3 MB |      11.8 MB |    24.1 MB | 23,451
+Handshake            |       8.2 MB |       8.1 MB |    16.3 MB |  1,234
+Ping/Keepalive       |       2.1 MB |       2.0 MB |     4.1 MB | 642,923
+
+Top 10 Nodes by Bandwidth:
+Rank | Node         |     Total |      Sent |  Received |   Msgs
+-----|--------------|-----------|-----------|-----------|-------
+   1 | miner-001    |  245.6 MB |  124.2 MB |  121.4 MB | 45,234
+   2 | miner-002    |  198.3 MB |   99.8 MB |   98.5 MB | 38,123
+...
+```
+
 ## Output Files
 
 All output is written to the `analysis_output/` directory:
@@ -317,6 +413,7 @@ All output is written to the `analysis_output/` directory:
 | `propagation_report.json` | Propagation timing details |
 | `dandelion_report.json` | Stem path reconstructions |
 | `upgrade_analysis.json` | Upgrade impact analysis with time series |
+| `bandwidth_analysis.json` | Bandwidth usage per node and category |
 | `network_graph.dot` | GraphViz visualization (if `--dot`) |
 
 ## Cross-Validation
@@ -330,6 +427,7 @@ Both Rust and Python implementations use identical methodologies and produce mat
 | Gini Coefficient | < 1% difference |
 | Dandelion Stem Range | Exact match |
 | Upgrade Analysis | Same methodology |
+| Bandwidth Analysis | Same methodology |
 
 This cross-validation ensures the analysis is correct and reproducible.
 

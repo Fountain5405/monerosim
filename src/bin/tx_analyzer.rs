@@ -135,6 +135,25 @@ enum Commands {
         #[arg(long)]
         post_upgrade_start: Option<f64>,
     },
+
+    /// Analyze bandwidth and data usage
+    Bandwidth {
+        /// Show per-node breakdown
+        #[arg(long)]
+        per_node: bool,
+
+        /// Show per-category breakdown
+        #[arg(long)]
+        by_category: bool,
+
+        /// Show bandwidth over time (window size in seconds)
+        #[arg(long)]
+        time_series: Option<u64>,
+
+        /// Show top N nodes by bandwidth
+        #[arg(long, default_value = "10")]
+        top: usize,
+    },
 }
 
 fn main() -> Result<()> {
@@ -414,6 +433,31 @@ fn main() -> Result<()> {
             let json = serde_json::to_string_pretty(&upgrade_report)?;
             fs::write(cli.output.join("upgrade_analysis.json"), &json)?;
             log::info!("Upgrade analysis written to {}", cli.output.join("upgrade_analysis.json").display());
+        }
+
+        Commands::Bandwidth {
+            per_node,
+            by_category,
+            time_series,
+            top,
+        } => {
+            log::info!("Analyzing bandwidth usage...");
+
+            // Analyze bandwidth
+            let mut report = analysis::analyze_bandwidth(&log_data, 10);
+
+            // Calculate time series if requested
+            if let Some(window_size) = time_series {
+                report.bandwidth_over_time = analysis::bandwidth_time_series(&log_data, window_size as f64);
+            }
+
+            // Print report
+            print_bandwidth_report(&report, per_node, by_category, top);
+
+            // Save JSON report
+            let json = serde_json::to_string_pretty(&report)?;
+            fs::write(cli.output.join("bandwidth_report.json"), &json)?;
+            log::info!("Bandwidth report written to {}", cli.output.join("bandwidth_report.json").display());
         }
     }
 
@@ -743,6 +787,11 @@ fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
                 (format!("{:.3}", change.pre_value),
                  format!("{:.3}", change.post_value),
                  format!("{:+.1}%", change.percent_change))
+            } else if change.metric_name.contains("Bandwidth") || change.metric_name.contains("bandwidth") {
+                // Display as bytes
+                (analysis::bandwidth::format_bytes(change.pre_value as u64),
+                 analysis::bandwidth::format_bytes(change.post_value as u64),
+                 format!("{:+.1}%", change.percent_change))
             } else {
                 // Generic numeric
                 (format!("{:.1}", change.pre_value),
@@ -892,6 +941,126 @@ fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
     }
 
     println!("(See upgrade_analysis.json for full time-series data)");
+    println!();
+}
+
+/// Print bandwidth analysis report to stdout
+fn print_bandwidth_report(
+    report: &analysis::types::BandwidthReport,
+    show_per_node: bool,
+    show_by_category: bool,
+    top_n: usize,
+) {
+    println!("\n================================================================================");
+    println!("                      BANDWIDTH ANALYSIS");
+    println!("================================================================================\n");
+
+    // Network totals
+    println!("Network Totals:");
+    println!("  Total Data:     {} ({} sent, {} received)",
+        analysis::format_bytes(report.total_bytes),
+        analysis::format_bytes(report.total_bytes_sent),
+        analysis::format_bytes(report.total_bytes_received));
+    println!("  Total Messages: {}", report.total_messages);
+    println!("  Nodes:          {}", report.per_node_stats.len());
+    println!();
+
+    // Per-node summary
+    println!("Per-Node Statistics:");
+    println!("  Average:  {}/node", analysis::format_bytes(report.avg_bytes_per_node as u64));
+    println!("  Median:   {}/node", analysis::format_bytes(report.median_bytes_per_node as u64));
+    println!("  Max:      {} ({})", analysis::format_bytes(report.max_bytes_node.1), report.max_bytes_node.0);
+    println!("  Min:      {} ({})", analysis::format_bytes(report.min_bytes_node.1), report.min_bytes_node.0);
+    println!();
+
+    // By category table
+    if show_by_category && !report.bytes_by_category.is_empty() {
+        println!("Bandwidth by Message Type:");
+        println!("{:<20} | {:>12} | {:>12} | {:>12} | {:>10}",
+            "Category", "Sent", "Received", "Total", "Messages");
+        println!("{:-<20}-+-{:-^12}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
+            "", "", "", "", "");
+
+        // Sort categories by total bytes
+        let mut categories: Vec<_> = report.bytes_by_category.values().collect();
+        categories.sort_by(|a, b| {
+            let a_total = a.bytes_sent + a.bytes_received;
+            let b_total = b.bytes_sent + b.bytes_received;
+            b_total.cmp(&a_total)
+        });
+
+        for cat in categories {
+            let total = cat.bytes_sent + cat.bytes_received;
+            println!("{:<20} | {:>12} | {:>12} | {:>12} | {:>10}",
+                cat.category_name,
+                analysis::format_bytes(cat.bytes_sent),
+                analysis::format_bytes(cat.bytes_received),
+                analysis::format_bytes(total),
+                cat.message_count);
+        }
+        println!();
+    }
+
+    // Top nodes table
+    let nodes_to_show = top_n.min(report.per_node_stats.len());
+    if nodes_to_show > 0 {
+        println!("Top {} Nodes by Bandwidth:", nodes_to_show);
+        println!("{:>4} | {:<15} | {:>12} | {:>12} | {:>12} | {:>10}",
+            "Rank", "Node", "Total", "Sent", "Received", "Messages");
+        println!("{:-^4}-+-{:-^15}-+-{:-^12}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
+            "", "", "", "", "", "");
+
+        for (i, stats) in report.per_node_stats.iter().take(nodes_to_show).enumerate() {
+            let total_msgs = stats.message_count_sent + stats.message_count_received;
+            println!("{:>4} | {:<15} | {:>12} | {:>12} | {:>12} | {:>10}",
+                i + 1,
+                &stats.node_id[..stats.node_id.len().min(15)],
+                analysis::format_bytes(stats.total_bytes),
+                analysis::format_bytes(stats.total_bytes_sent),
+                analysis::format_bytes(stats.total_bytes_received),
+                total_msgs);
+        }
+        println!();
+    }
+
+    // Per-node detailed breakdown
+    if show_per_node && !report.per_node_stats.is_empty() {
+        println!("All Nodes:");
+        println!("{:<20} | {:>12} | {:>12} | {:>12}",
+            "Node", "Total", "Sent", "Received");
+        println!("{:-<20}-+-{:-^12}-+-{:-^12}-+-{:-^12}",
+            "", "", "", "");
+
+        for stats in &report.per_node_stats {
+            println!("{:<20} | {:>12} | {:>12} | {:>12}",
+                &stats.node_id[..stats.node_id.len().min(20)],
+                analysis::format_bytes(stats.total_bytes),
+                analysis::format_bytes(stats.total_bytes_sent),
+                analysis::format_bytes(stats.total_bytes_received));
+        }
+        println!();
+    }
+
+    // Time series (if available)
+    if !report.bandwidth_over_time.is_empty() {
+        println!("Bandwidth Over Time:");
+        println!("{:<15} | {:>12} | {:>12} | {:>10}",
+            "Time Range", "Sent", "Received", "Messages");
+        println!("{:-<15}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
+            "", "", "", "");
+
+        for window in &report.bandwidth_over_time {
+            let time_range = format!("{:.0}s-{:.0}s", window.start - 946684800.0, window.end - 946684800.0);
+            println!("{:<15} | {:>12} | {:>12} | {:>10}",
+                time_range,
+                analysis::format_bytes(window.bytes_sent),
+                analysis::format_bytes(window.bytes_received),
+                window.message_count);
+        }
+        println!();
+    }
+
+    println!("(See bandwidth_report.json for full data)");
     println!();
 }
 

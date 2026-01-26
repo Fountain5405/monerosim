@@ -14,6 +14,7 @@ pub mod tx_relay_v2;
 pub mod dandelion;
 pub mod time_window;
 pub mod upgrade_analysis;
+pub mod bandwidth;
 
 pub use types::*;
 pub use log_parser::parse_all_logs;
@@ -26,3 +27,4 @@ pub use tx_relay_v2::analyze_tx_relay_v2;
 pub use dandelion::analyze_dandelion;
 pub use time_window::*;
 pub use upgrade_analysis::analyze_upgrade_impact;
+pub use bandwidth::{analyze_bandwidth, bandwidth_time_series, format_bytes};

@@ -48,6 +48,8 @@ pub struct LogPatterns {
     pub drop_duplicate_tx: Regex,
     /// Match generic "dropping connection" with context
     pub drop_connection: Regex,
+    /// Match: "[IP:PORT DIR] N bytes (sent|received) for category command-XXXX initiated by (us|peer)"
+    pub bandwidth: Regex,
 }
 
 impl LogPatterns {
@@ -99,6 +101,9 @@ impl LogPatterns {
             drop_connection: Regex::new(
                 r"\[(\d+\.\d+\.\d+\.\d+):\d+.*\].*dropping connection"
             ).expect("Invalid drop_connection regex"),
+            bandwidth: Regex::new(
+                r"\[(\d+\.\d+\.\d+\.\d+):(\d+)\s+(INC|OUT)\]\s+(\d+)\s+bytes\s+(sent|received)\s+for\s+category\s+(command-\d+)\s+initiated\s+by\s+(us|peer)"
+            ).expect("Invalid bandwidth regex"),
         }
     }
 }
@@ -380,6 +385,33 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
                 node_id: node_id.to_string(),
                 peer_ip,
                 reason: "other".to_string(),
+            });
+            continue;
+        }
+
+        // Check for bandwidth log entry
+        if let Some(caps) = PATTERNS.bandwidth.captures(&line) {
+            let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let peer_port: u16 = caps.get(2)
+                .and_then(|m| m.as_str().parse().ok())
+                .unwrap_or(0);
+            let direction = parse_direction(caps.get(3).map(|m| m.as_str()).unwrap_or(""));
+            let bytes: u64 = caps.get(4)
+                .and_then(|m| m.as_str().parse().ok())
+                .unwrap_or(0);
+            let is_sent = caps.get(5).map(|m| m.as_str() == "sent").unwrap_or(false);
+            let command_category = caps.get(6).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let initiated_by_us = caps.get(7).map(|m| m.as_str() == "us").unwrap_or(false);
+
+            data.bandwidth_events.push(BandwidthEvent {
+                timestamp: state.last_timestamp,
+                peer_ip,
+                peer_port,
+                direction,
+                bytes,
+                is_sent,
+                command_category,
+                initiated_by_us,
             });
         }
     }

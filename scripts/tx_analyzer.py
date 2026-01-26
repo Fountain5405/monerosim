@@ -132,6 +132,11 @@ BLOCK_HEIGHT_PATTERN = re.compile(
     TIMESTAMP_PATTERN + r'\s+I\s+HEIGHT\s+(\d+),\s+difficulty:\s+(\d+)'
 )
 
+# Bandwidth pattern: [IP:PORT DIR] N bytes (sent|received) for category command-XXXX initiated by (us|peer)
+BANDWIDTH_PATTERN = re.compile(
+    TIMESTAMP_PATTERN + r'\s+I\s+\[(\d+\.\d+\.\d+\.\d+):(\d+)\s+(INC|OUT)\]\s+(\d+)\s+bytes\s+(sent|received)\s+for\s+category\s+(command-\d+)\s+initiated\s+by\s+(us|peer)'
+)
+
 
 def parse_timestamp(ts_str: str) -> float:
     """Parse timestamp string to Unix timestamp with milliseconds."""
@@ -159,7 +164,8 @@ def parse_log_file(log_path: str, node_id: str) -> Dict:
         'v2_requests': 0,
         'connection_events': [],
         'blocks_received': [],
-        'blocks_mined': []
+        'blocks_mined': [],
+        'bandwidth_events': []
     }
 
     try:
@@ -281,6 +287,23 @@ def parse_log_file(log_path: str, node_id: str) -> Dict:
                     'node_id': node_id
                 })
                 pending_block_mined = None
+                continue
+
+        # Check for bandwidth log entry
+        match = BANDWIDTH_PATTERN.match(line)
+        if match:
+            ts_str, peer_ip, peer_port, direction, bytes_count, sent_or_recv, category, initiator = match.groups()
+            result['bandwidth_events'].append({
+                'timestamp': parse_timestamp(ts_str),
+                'peer_ip': peer_ip,
+                'peer_port': int(peer_port),
+                'direction': direction,
+                'bytes': int(bytes_count),
+                'is_sent': sent_or_recv == 'sent',
+                'command_category': category,
+                'initiated_by_us': initiator == 'us',
+                'node_id': node_id
+            })
 
     return result
 
@@ -1186,6 +1209,11 @@ class WindowedMetrics:
     avg_peer_count: Optional[float] = None
     gini_coefficient: Optional[float] = None
     avg_stem_length: Optional[float] = None
+    # Bandwidth metrics
+    bytes_sent: Optional[int] = None
+    bytes_received: Optional[int] = None
+    total_bandwidth: Optional[int] = None
+    bandwidth_message_count: Optional[int] = None
 
 
 def create_time_windows(start: float, end: float, window_size_sec: float) -> List[TimeWindow]:
@@ -1292,7 +1320,8 @@ def calculate_window_metrics(
     connection_events: List[Dict],
     agents: Dict[str, Agent],
     ip_to_node: Dict[str, str],
-    node_to_ip: Dict[str, str]
+    node_to_ip: Dict[str, str],
+    bandwidth_events: Optional[List[Dict]] = None
 ) -> WindowedMetrics:
     """Calculate all metrics for a single time window."""
     # Filter data to window
@@ -1332,6 +1361,25 @@ def calculate_window_metrics(
     dandelion_result = analyze_dandelion_paths(window_obs, window_txs, ip_to_node, node_to_ip, agents)
     if dandelion_result.get('paths_reconstructed', 0) > 0:
         metrics.avg_stem_length = dandelion_result.get('avg_stem_length')
+
+    # Bandwidth metrics
+    if bandwidth_events:
+        bytes_sent = 0
+        bytes_received = 0
+        msg_count = 0
+        for event in bandwidth_events:
+            ts = event.get('timestamp', 0)
+            if window.start <= ts < window.end:
+                if event.get('is_sent', False):
+                    bytes_sent += event.get('bytes', 0)
+                else:
+                    bytes_received += event.get('bytes', 0)
+                msg_count += 1
+        if bytes_sent > 0 or bytes_received > 0:
+            metrics.bytes_sent = bytes_sent
+            metrics.bytes_received = bytes_received
+            metrics.total_bandwidth = bytes_sent + bytes_received
+            metrics.bandwidth_message_count = msg_count
 
     return metrics
 
@@ -1407,6 +1455,12 @@ def create_period_summary(windows: List[WindowedMetrics], label: str) -> Dict:
     peer_values = extract_values('avg_peer_count')
     gini_values = extract_values('gini_coefficient')
     stem_values = extract_values('avg_stem_length')
+    bandwidth_values = extract_values('total_bandwidth')
+
+    # Bandwidth totals
+    total_bytes_sent = sum(w.bytes_sent or 0 for w in filtered)
+    total_bytes_received = sum(w.bytes_received or 0 for w in filtered)
+    total_bandwidth = sum(w.total_bandwidth or 0 for w in filtered)
 
     return {
         'period_label': label,
@@ -1419,6 +1473,10 @@ def create_period_summary(windows: List[WindowedMetrics], label: str) -> Dict:
         'mean_peer_count': statistics.mean(peer_values) if peer_values else None,
         'mean_gini': statistics.mean(gini_values) if gini_values else None,
         'mean_stem_length': statistics.mean(stem_values) if stem_values else None,
+        'mean_bandwidth_per_window': statistics.mean(bandwidth_values) if bandwidth_values else None,
+        'total_bytes_sent': total_bytes_sent if total_bytes_sent > 0 else None,
+        'total_bytes_received': total_bytes_received if total_bytes_received > 0 else None,
+        'total_bandwidth': total_bandwidth if total_bandwidth > 0 else None,
     }
 
 
@@ -1435,6 +1493,7 @@ def compare_periods(pre_summary: Dict, post_summary: Dict, windowed_metrics: Lis
         ('mean_peer_count', 'Avg Peer Count'),
         ('mean_gini', 'Gini Coefficient'),
         ('mean_stem_length', 'Avg Stem Length'),
+        ('mean_bandwidth_per_window', 'Bandwidth per Window'),
     ]
 
     for attr, name in metric_pairs:
@@ -1509,6 +1568,12 @@ def generate_interpretation(metric_name: str, pct_change: float, significant: bo
 
     elif 'stem' in metric_name.lower():
         return f"Average stem length {direction} by {magnitude:.1f}%"
+
+    elif 'bandwidth' in metric_name.lower():
+        if pct_change < 0:
+            return f"Bandwidth efficiency improved: data usage decreased by {magnitude:.1f}%"
+        else:
+            return f"Bandwidth increased by {magnitude:.1f}%"
 
     return f"{metric_name} {direction} by {magnitude:.1f}%"
 
@@ -1587,7 +1652,8 @@ def analyze_upgrade_impact(
     window_size_sec: float = 60.0,
     manifest_path: Optional[str] = None,
     pre_upgrade_end: Optional[float] = None,
-    post_upgrade_start: Optional[float] = None
+    post_upgrade_start: Optional[float] = None,
+    bandwidth_events: Optional[List[Dict]] = None
 ) -> Dict:
     """
     Analyze upgrade impact by comparing metrics across time windows.
@@ -1640,7 +1706,8 @@ def analyze_upgrade_impact(
     for i, window in enumerate(windows):
         metrics = calculate_window_metrics(
             window, tx_observations, transactions, connection_events,
-            agents, ip_to_node, node_to_ip
+            agents, ip_to_node, node_to_ip,
+            bandwidth_events=bandwidth_events or []
         )
         windowed_metrics.append(metrics)
         if (i + 1) % 10 == 0:
@@ -1674,6 +1741,10 @@ def analyze_upgrade_impact(
             'avg_peer_count': m.avg_peer_count,
             'gini_coefficient': m.gini_coefficient,
             'avg_stem_length': m.avg_stem_length,
+            'bytes_sent': m.bytes_sent,
+            'bytes_received': m.bytes_received,
+            'total_bandwidth': m.total_bandwidth,
+            'bandwidth_message_count': m.bandwidth_message_count,
         })
 
     return {
@@ -1743,6 +1814,9 @@ def print_upgrade_report(report: Dict):
             elif 'gini' in change['metric_name'].lower():
                 pre_str = f"{change['pre_value']:.3f}"
                 post_str = f"{change['post_value']:.3f}"
+            elif 'bandwidth' in change['metric_name'].lower():
+                pre_str = format_bytes(int(change['pre_value']))
+                post_str = format_bytes(int(change['post_value']))
             else:
                 pre_str = f"{change['pre_value']:.1f}"
                 post_str = f"{change['post_value']:.1f}"
@@ -1789,6 +1863,297 @@ def print_upgrade_report(report: Dict):
         print()
 
     print("(See upgrade_analysis.json for full time-series data)")
+    print()
+
+
+# ============================================================================
+# Bandwidth Analysis
+# ============================================================================
+
+COMMAND_NAMES = {
+    "command-1001": "Handshake",
+    "command-1002": "Block Query",
+    "command-1003": "Ping",
+    "command-2002": "Chain Sync Request",
+    "command-2003": "Block Request",
+    "command-2004": "Block Response",
+    "command-2006": "Chain Info Request",
+    "command-2007": "Chain Response",
+    "command-2008": "TX Broadcast",
+    "command-2010": "Keepalive",
+}
+
+
+def format_bytes(bytes_val: int) -> str:
+    """Format bytes as human-readable string."""
+    if bytes_val >= 1_000_000_000:
+        return f"{bytes_val / 1_000_000_000:.2f} GB"
+    elif bytes_val >= 1_000_000:
+        return f"{bytes_val / 1_000_000:.2f} MB"
+    elif bytes_val >= 1_000:
+        return f"{bytes_val / 1_000:.2f} KB"
+    else:
+        return f"{bytes_val} B"
+
+
+def analyze_bandwidth(log_stats: Dict, top_peers_per_node: int = 10) -> Dict:
+    """
+    Analyze bandwidth usage from parsed log data.
+
+    Args:
+        log_stats: Dict from parse_all_logs with per-node data
+        top_peers_per_node: Number of top peers to include per node
+
+    Returns:
+        Bandwidth analysis report
+    """
+    per_node_stats = []
+    network_by_category = defaultdict(lambda: {
+        'category': '',
+        'category_name': '',
+        'bytes_sent': 0,
+        'bytes_received': 0,
+        'message_count': 0
+    })
+
+    for node_id, node_data in log_stats.items():
+        bandwidth_events = node_data.get('bandwidth_events', [])
+        if not bandwidth_events:
+            continue
+
+        # Per-node aggregation
+        total_sent = 0
+        total_received = 0
+        msg_sent = 0
+        msg_received = 0
+        by_category = defaultdict(lambda: {
+            'bytes_sent': 0, 'bytes_received': 0, 'message_count': 0
+        })
+        by_peer = defaultdict(lambda: {
+            'bytes_sent': 0, 'bytes_received': 0, 'message_count': 0
+        })
+
+        for event in bandwidth_events:
+            if event['is_sent']:
+                total_sent += event['bytes']
+                msg_sent += 1
+            else:
+                total_received += event['bytes']
+                msg_received += 1
+
+            cat = event['command_category']
+            if event['is_sent']:
+                by_category[cat]['bytes_sent'] += event['bytes']
+            else:
+                by_category[cat]['bytes_received'] += event['bytes']
+            by_category[cat]['message_count'] += 1
+
+            peer = event['peer_ip']
+            if event['is_sent']:
+                by_peer[peer]['bytes_sent'] += event['bytes']
+            else:
+                by_peer[peer]['bytes_received'] += event['bytes']
+            by_peer[peer]['message_count'] += 1
+
+        # Get top peers
+        top_peers = sorted(
+            [{'peer_ip': k, **v} for k, v in by_peer.items()],
+            key=lambda x: x['bytes_sent'] + x['bytes_received'],
+            reverse=True
+        )[:top_peers_per_node]
+
+        # Build category stats with names
+        cat_stats = {}
+        for cat, stats in by_category.items():
+            cat_stats[cat] = {
+                'category': cat,
+                'category_name': COMMAND_NAMES.get(cat, 'Unknown'),
+                'bytes_sent': stats['bytes_sent'],
+                'bytes_received': stats['bytes_received'],
+                'message_count': stats['message_count']
+            }
+            # Add to network totals
+            network_by_category[cat]['category'] = cat
+            network_by_category[cat]['category_name'] = COMMAND_NAMES.get(cat, 'Unknown')
+            network_by_category[cat]['bytes_sent'] += stats['bytes_sent']
+            network_by_category[cat]['bytes_received'] += stats['bytes_received']
+            network_by_category[cat]['message_count'] += stats['message_count']
+
+        per_node_stats.append({
+            'node_id': node_id,
+            'total_bytes_sent': total_sent,
+            'total_bytes_received': total_received,
+            'total_bytes': total_sent + total_received,
+            'bytes_by_category': cat_stats,
+            'top_peers': top_peers,
+            'message_count_sent': msg_sent,
+            'message_count_received': msg_received
+        })
+
+    # Sort by total bytes descending
+    per_node_stats.sort(key=lambda x: x['total_bytes'], reverse=True)
+
+    # Calculate network totals
+    total_bytes_sent = sum(s['total_bytes_sent'] for s in per_node_stats)
+    total_bytes_received = sum(s['total_bytes_received'] for s in per_node_stats)
+    total_bytes = total_bytes_sent + total_bytes_received
+    total_messages = sum(s['message_count_sent'] + s['message_count_received'] for s in per_node_stats)
+
+    # Per-node statistics
+    node_count = len(per_node_stats)
+    avg_bytes = total_bytes / node_count if node_count > 0 else 0
+
+    # Median
+    if node_count > 0:
+        bytes_list = sorted([s['total_bytes'] for s in per_node_stats])
+        if node_count % 2 == 0:
+            median_bytes = (bytes_list[node_count // 2 - 1] + bytes_list[node_count // 2]) / 2
+        else:
+            median_bytes = bytes_list[node_count // 2]
+    else:
+        median_bytes = 0
+
+    # Max/min nodes
+    max_node = (per_node_stats[0]['node_id'], per_node_stats[0]['total_bytes']) if per_node_stats else ('', 0)
+    min_node = (per_node_stats[-1]['node_id'], per_node_stats[-1]['total_bytes']) if per_node_stats else ('', 0)
+
+    return {
+        'total_bytes': total_bytes,
+        'total_bytes_sent': total_bytes_sent,
+        'total_bytes_received': total_bytes_received,
+        'total_messages': total_messages,
+        'avg_bytes_per_node': avg_bytes,
+        'median_bytes_per_node': median_bytes,
+        'max_bytes_node': max_node,
+        'min_bytes_node': min_node,
+        'bytes_by_category': dict(network_by_category),
+        'per_node_stats': per_node_stats,
+        'bandwidth_over_time': []
+    }
+
+
+def bandwidth_time_series(log_stats: Dict, window_size_sec: float) -> List[Dict]:
+    """Calculate bandwidth over time windows."""
+    # Collect all bandwidth events
+    all_events = []
+    for node_data in log_stats.values():
+        all_events.extend(node_data.get('bandwidth_events', []))
+
+    if not all_events:
+        return []
+
+    min_time = min(e['timestamp'] for e in all_events)
+    max_time = max(e['timestamp'] for e in all_events)
+
+    if min_time >= max_time:
+        return []
+
+    # Create windows
+    windows = []
+    current = min_time
+    while current < max_time:
+        window_end = min(current + window_size_sec, max_time)
+        windows.append({
+            'start': current,
+            'end': window_end,
+            'bytes_sent': 0,
+            'bytes_received': 0,
+            'message_count': 0
+        })
+        current = window_end
+
+    # Aggregate events
+    for event in all_events:
+        idx = int((event['timestamp'] - min_time) / window_size_sec)
+        if 0 <= idx < len(windows):
+            if event['is_sent']:
+                windows[idx]['bytes_sent'] += event['bytes']
+            else:
+                windows[idx]['bytes_received'] += event['bytes']
+            windows[idx]['message_count'] += 1
+
+    return windows
+
+
+def print_bandwidth_report(report: Dict, show_per_node: bool = False, show_by_category: bool = False, top_n: int = 10):
+    """Print bandwidth report to stdout."""
+    print("\n" + "=" * 70)
+    print("BANDWIDTH ANALYSIS")
+    print("=" * 70 + "\n")
+
+    print("Network Totals:")
+    print(f"  Total Data:     {format_bytes(report['total_bytes'])} "
+          f"({format_bytes(report['total_bytes_sent'])} sent, "
+          f"{format_bytes(report['total_bytes_received'])} received)")
+    print(f"  Total Messages: {report['total_messages']}")
+    print(f"  Nodes:          {len(report['per_node_stats'])}")
+    print()
+
+    print("Per-Node Statistics:")
+    print(f"  Average:  {format_bytes(int(report['avg_bytes_per_node']))}/node")
+    print(f"  Median:   {format_bytes(int(report['median_bytes_per_node']))}/node")
+    print(f"  Max:      {format_bytes(report['max_bytes_node'][1])} ({report['max_bytes_node'][0]})")
+    print(f"  Min:      {format_bytes(report['min_bytes_node'][1])} ({report['min_bytes_node'][0]})")
+    print()
+
+    if show_by_category and report['bytes_by_category']:
+        print("Bandwidth by Message Type:")
+        print(f"{'Category':<20} | {'Sent':>12} | {'Received':>12} | {'Total':>12} | {'Messages':>10}")
+        print("-" * 20 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 10)
+
+        cats = sorted(
+            report['bytes_by_category'].values(),
+            key=lambda x: x['bytes_sent'] + x['bytes_received'],
+            reverse=True
+        )
+        for cat in cats:
+            total = cat['bytes_sent'] + cat['bytes_received']
+            print(f"{cat['category_name']:<20} | {format_bytes(cat['bytes_sent']):>12} | "
+                  f"{format_bytes(cat['bytes_received']):>12} | {format_bytes(total):>12} | "
+                  f"{cat['message_count']:>10}")
+        print()
+
+    # Top nodes
+    nodes_to_show = min(top_n, len(report['per_node_stats']))
+    if nodes_to_show > 0:
+        print(f"Top {nodes_to_show} Nodes by Bandwidth:")
+        print(f"{'Rank':>4} | {'Node':<15} | {'Total':>12} | {'Sent':>12} | {'Received':>12} | {'Messages':>10}")
+        print("-" * 4 + "-+-" + "-" * 15 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 10)
+
+        for i, stats in enumerate(report['per_node_stats'][:nodes_to_show]):
+            total_msgs = stats['message_count_sent'] + stats['message_count_received']
+            print(f"{i + 1:>4} | {stats['node_id'][:15]:<15} | "
+                  f"{format_bytes(stats['total_bytes']):>12} | "
+                  f"{format_bytes(stats['total_bytes_sent']):>12} | "
+                  f"{format_bytes(stats['total_bytes_received']):>12} | "
+                  f"{total_msgs:>10}")
+        print()
+
+    if show_per_node and report['per_node_stats']:
+        print("All Nodes:")
+        print(f"{'Node':<20} | {'Total':>12} | {'Sent':>12} | {'Received':>12}")
+        print("-" * 20 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 12)
+
+        for stats in report['per_node_stats']:
+            print(f"{stats['node_id'][:20]:<20} | "
+                  f"{format_bytes(stats['total_bytes']):>12} | "
+                  f"{format_bytes(stats['total_bytes_sent']):>12} | "
+                  f"{format_bytes(stats['total_bytes_received']):>12}")
+        print()
+
+    if report.get('bandwidth_over_time'):
+        print("Bandwidth Over Time:")
+        print(f"{'Time Range':<15} | {'Sent':>12} | {'Received':>12} | {'Messages':>10}")
+        print("-" * 15 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 10)
+
+        base_time = 946684800  # 2000-01-01 00:00:00 UTC
+        for window in report['bandwidth_over_time']:
+            time_range = f"{window['start'] - base_time:.0f}s-{window['end'] - base_time:.0f}s"
+            print(f"{time_range:<15} | {format_bytes(window['bytes_sent']):>12} | "
+                  f"{format_bytes(window['bytes_received']):>12} | {window['message_count']:>10}")
+        print()
+
+    print("(See bandwidth_report.json for full data)")
     print()
 
 
@@ -1919,12 +2284,14 @@ Examples:
   python tx_analyzer.py upgrade-analysis       # Compare pre/post upgrade metrics
   python tx_analyzer.py upgrade-analysis --window-size 30 --manifest upgrade.json
   python tx_analyzer.py upgrade-analysis --pre-upgrade-end 300 --post-upgrade-start 600
+  python tx_analyzer.py bandwidth              # Bandwidth usage analysis
+  python tx_analyzer.py bandwidth --by-category --per-node --top 20
         """
     )
 
     parser.add_argument(
         'command',
-        choices=['full', 'spy-node', 'propagation', 'resilience', 'relay-v2', 'dandelion', 'summary', 'upgrade-analysis'],
+        choices=['full', 'spy-node', 'propagation', 'resilience', 'relay-v2', 'dandelion', 'summary', 'upgrade-analysis', 'bandwidth'],
         help="Analysis command to run"
     )
 
@@ -1998,6 +2365,33 @@ Examples:
         type=float,
         default=None,
         help="Manual override: start of post-upgrade period (simulation time in seconds)"
+    )
+
+    # Bandwidth analysis specific options
+    parser.add_argument(
+        '--per-node',
+        action='store_true',
+        help="Show per-node bandwidth breakdown"
+    )
+
+    parser.add_argument(
+        '--by-category',
+        action='store_true',
+        help="Show bandwidth breakdown by message category"
+    )
+
+    parser.add_argument(
+        '--time-series',
+        type=int,
+        default=None,
+        help="Show bandwidth over time (window size in seconds)"
+    )
+
+    parser.add_argument(
+        '--top',
+        type=int,
+        default=10,
+        help="Show top N nodes by bandwidth (default: 10)"
     )
 
     args = parser.parse_args()
@@ -2075,9 +2469,37 @@ Examples:
                 })
             dandelion_analysis['paths'] = simplified_paths
 
+    # Handle bandwidth command separately
+    if args.command == 'bandwidth':
+        print("Running bandwidth analysis...")
+        bandwidth_report = analyze_bandwidth(log_stats, top_peers_per_node=args.top)
+
+        if args.json:
+            print(json.dumps(bandwidth_report, indent=2))
+        else:
+            print_bandwidth_report(
+                bandwidth_report,
+                show_per_node=args.per_node,
+                show_by_category=args.by_category,
+                top_n=args.top
+            )
+
+            # Save JSON report
+            output_path = args.output
+            if not output_path:
+                os.makedirs(args.output_dir, exist_ok=True)
+                output_path = os.path.join(args.output_dir, "bandwidth_analysis.json")
+
+            with open(output_path, 'w') as f:
+                json.dump(bandwidth_report, f, indent=2)
+            print(f"\nFull report saved to: {output_path}")
+
+        return  # Exit after bandwidth analysis
+
     # Handle upgrade-analysis command separately
     if args.command == 'upgrade-analysis':
         print("Running upgrade impact analysis...")
+        bandwidth_events = log_stats.get('bandwidth_events', [])
         upgrade_report = analyze_upgrade_impact(
             tx_observations,
             transactions,
@@ -2088,7 +2510,8 @@ Examples:
             window_size_sec=float(args.window_size),
             manifest_path=args.manifest,
             pre_upgrade_end=args.pre_upgrade_end,
-            post_upgrade_start=args.post_upgrade_start
+            post_upgrade_start=args.post_upgrade_start,
+            bandwidth_events=bandwidth_events
         )
 
         if args.json:
