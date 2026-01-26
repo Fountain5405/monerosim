@@ -159,6 +159,22 @@ def verify_simulation(shared_dir: str) -> dict:
             "block_range": f"{min(heights)}-{max(heights)}" if heights else "N/A"
         }
 
+    # 6. Transactions.json Check (for analysis tools)
+    tx_json_path = os.path.join(shared_dir, "transactions.json")
+    if os.path.exists(tx_json_path):
+        with open(tx_json_path) as f:
+            tx_data = json.load(f)
+
+        evidence["checks"]["transactions_json"] = {
+            "exists": True,
+            "count": len(tx_data) if isinstance(tx_data, list) else len(tx_data.get('transactions', [])),
+        }
+    else:
+        evidence["checks"]["transactions_json"] = {
+            "exists": False,
+            "note": "Required for spy-node and propagation analysis"
+        }
+
     # Generate Summary
     reg = evidence["checks"].get("agent_registry", {})
     mon = evidence["checks"].get("monitoring", {})
@@ -253,6 +269,17 @@ def print_report(evidence: dict):
         print(f"   Blocks with transactions: {tx.get('blocks_with_transactions', 0)}")
         print(f"   Total transactions: {tx.get('total_transactions', 0)}")
         print(f"   Block range: {tx.get('block_range', 'N/A')}")
+
+    # Transactions.json (for analysis)
+    print("\n6. TRANSACTIONS.JSON (for analysis)")
+    print("-" * 50)
+    tx_json = evidence["checks"].get("transactions_json", {})
+    if tx_json.get("exists"):
+        print(f"   File exists: Yes")
+        print(f"   Transaction records: {tx_json.get('count', 0)}")
+    else:
+        print(f"   File exists: No")
+        print(f"   Note: {tx_json.get('note', 'N/A')}")
 
     # Summary
     print("\n" + "=" * 70)
