@@ -72,6 +72,11 @@ DEFAULT_INTRA_BATCH_STAGGER_S = 5
 DEFAULT_UPGRADE_STAGGER_S = 30
 DEFAULT_DAEMON_RESTART_GAP_S = 30
 
+# User activity batching defaults (prevents thundering herd when all users try to transact at once)
+DEFAULT_ACTIVITY_BATCH_SIZE = 10  # Users per batch
+DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 25  # Target seconds between batches
+DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
+
 
 @dataclass
 class AgentGroup:
@@ -100,6 +105,10 @@ class TimingOverrides:
     bootstrap_end_time: Optional[str] = None    # When bootstrap ends (e.g., "20h")
     md_start_time: Optional[str] = None         # When miner distributor starts (e.g., "18h")
     activity_start_time: Optional[str] = None   # When users start transacting (e.g., "20h")
+    # Activity batching (prevents thundering herd)
+    activity_batch_size: Optional[int] = None   # Users per activity batch (default: 10)
+    activity_batch_interval: Optional[str] = None  # Time between batches (default: 25s)
+    activity_batch_jitter: Optional[float] = None  # Jitter fraction +/- (default: 0.30)
 
 
 @dataclass
@@ -226,6 +235,9 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
         bootstrap_end_time=timing_raw.get('bootstrap_end_time'),
         md_start_time=timing_raw.get('md_start_time'),
         activity_start_time=timing_raw.get('activity_start_time'),
+        activity_batch_size=timing_raw.get('activity_batch_size'),
+        activity_batch_interval=timing_raw.get('activity_batch_interval'),
+        activity_batch_jitter=timing_raw.get('activity_batch_jitter'),
     )
 
     agent_groups = []
@@ -258,6 +270,56 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
         singleton_agents=singleton_agents,
         timing_overrides=timing_overrides,
     )
+
+
+def calculate_activity_start_times(
+    num_users: int,
+    base_activity_start_s: int,
+    batch_size: int,
+    batch_interval_s: int,
+    jitter_fraction: float,
+    seed: int,
+) -> List[int]:
+    """Calculate staggered activity start times to prevent thundering herd.
+
+    Instead of all users starting transactions at the same time, this staggers
+    their start times in batches with randomization to spread the load.
+
+    Args:
+        num_users: Total number of users
+        base_activity_start_s: When the first batch should start (sim time seconds)
+        batch_size: Number of users per batch
+        batch_interval_s: Target time between batch starts
+        jitter_fraction: Random jitter as fraction of batch_interval (e.g., 0.3 = +/-30%)
+        seed: Random seed for reproducible jitter
+
+    Returns:
+        List of activity_start_time values for each user (in order)
+    """
+    if num_users == 0:
+        return []
+
+    rng = random.Random(seed)
+    activity_times = []
+
+    # Calculate jitter range in seconds
+    jitter_range_s = int(batch_interval_s * jitter_fraction)
+
+    for user_idx in range(num_users):
+        batch_num = user_idx // batch_size
+        batch_start_s = base_activity_start_s + (batch_num * batch_interval_s)
+
+        # Add random jitter: +/- jitter_range_s
+        if jitter_range_s > 0:
+            jitter_s = rng.randint(-jitter_range_s, jitter_range_s)
+        else:
+            jitter_s = 0
+
+        # Ensure we don't go before base_activity_start_s
+        activity_time = max(base_activity_start_s, batch_start_s + jitter_s)
+        activity_times.append(activity_time)
+
+    return activity_times
 
 
 def calculate_batched_schedule(
@@ -502,12 +564,24 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     else:
         activity_start_s = md_start_s + FUNDING_PERIOD_S
 
+    # 4. Activity batching settings
+    activity_batch_size = overrides.activity_batch_size or DEFAULT_ACTIVITY_BATCH_SIZE
+    activity_batch_interval_s = (
+        parse_duration(overrides.activity_batch_interval)
+        if overrides.activity_batch_interval
+        else DEFAULT_ACTIVITY_BATCH_INTERVAL_S
+    )
+    activity_batch_jitter = overrides.activity_batch_jitter or DEFAULT_ACTIVITY_BATCH_JITTER
+
     scenario.timing = {
         'last_bootstrap_spawn_s': last_bootstrap_spawn_s,
         'bootstrap_end_s': bootstrap_end_s,
         'md_start_s': md_start_s,
         'activity_start_s': activity_start_s,
         'user_spawn_start_s': user_spawn_start_s,
+        'activity_batch_size': activity_batch_size,
+        'activity_batch_interval_s': activity_batch_interval_s,
+        'activity_batch_jitter': activity_batch_jitter,
     }
 
     # Resolve 'auto' values in general section
@@ -515,10 +589,35 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     if general.get('bootstrap_end_time') == 'auto':
         general['bootstrap_end_time'] = f"{bootstrap_end_s // 3600}h" if bootstrap_end_s % 3600 == 0 else f"{bootstrap_end_s}s"
 
+    # Collect user agents with auto activity_start_time for batching
+    user_agents_with_auto_activity = []
+    for agent_id, agent_config in agents.items():
+        if agent_config.get('activity_start_time') == 'auto':
+            is_user = 'regular_user' in str(agent_config.get('script', ''))
+            if is_user:
+                user_agents_with_auto_activity.append(agent_id)
+
+    # Calculate staggered activity start times for users
+    user_activity_times = calculate_activity_start_times(
+        num_users=len(user_agents_with_auto_activity),
+        base_activity_start_s=activity_start_s,
+        batch_size=activity_batch_size,
+        batch_interval_s=activity_batch_interval_s,
+        jitter_fraction=activity_batch_jitter,
+        seed=seed,
+    )
+
+    # Map user agent IDs to their staggered activity times
+    user_activity_map = dict(zip(user_agents_with_auto_activity, user_activity_times))
+
     # Resolve 'auto' in agents
     for agent_id, agent_config in agents.items():
         if agent_config.get('activity_start_time') == 'auto':
-            agent_config['activity_start_time'] = activity_start_s
+            # Use staggered time for users, base time for miners/others
+            if agent_id in user_activity_map:
+                agent_config['activity_start_time'] = user_activity_map[agent_id]
+            else:
+                agent_config['activity_start_time'] = activity_start_s
         if agent_config.get('wait_time') == 'auto':
             # Miner distributor uses md_start_s, not bootstrap_end_s
             agent_config['wait_time'] = md_start_s

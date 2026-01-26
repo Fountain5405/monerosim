@@ -81,6 +81,61 @@ DEFAULT_POST_UPGRADE_DURATION_S = 7200  # 2 hours of observation after upgrade
 DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
 DEFAULT_DAEMON_RESTART_GAP_S = 30  # Gap between stopping old daemon and starting new one
 
+# User activity batching defaults (prevents thundering herd when all users try to transact at once)
+DEFAULT_ACTIVITY_BATCH_SIZE = 10  # Users per batch
+DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 25  # Target seconds between batches
+DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
+
+
+def calculate_activity_start_times(
+    num_users: int,
+    base_activity_start_s: int,
+    batch_size: int,
+    batch_interval_s: int,
+    jitter_fraction: float,
+    seed: int,
+) -> List[int]:
+    """Calculate staggered activity start times to prevent thundering herd.
+
+    Instead of all users starting transactions at the same time, this staggers
+    their start times in batches with randomization to spread the load.
+
+    Args:
+        num_users: Total number of users
+        base_activity_start_s: When the first batch should start (sim time seconds)
+        batch_size: Number of users per batch
+        batch_interval_s: Target time between batch starts
+        jitter_fraction: Random jitter as fraction of batch_interval (e.g., 0.3 = +/-30%)
+        seed: Random seed for reproducible jitter
+
+    Returns:
+        List of activity_start_time values for each user (in order)
+    """
+    if num_users == 0:
+        return []
+
+    rng = random.Random(seed)
+    activity_times = []
+
+    # Calculate jitter range in seconds
+    jitter_range_s = int(batch_interval_s * jitter_fraction)
+
+    for user_idx in range(num_users):
+        batch_num = user_idx // batch_size
+        batch_start_s = base_activity_start_s + (batch_num * batch_interval_s)
+
+        # Add random jitter: +/- jitter_range_s
+        if jitter_range_s > 0:
+            jitter_s = rng.randint(-jitter_range_s, jitter_range_s)
+        else:
+            jitter_s = 0
+
+        # Ensure we don't go before base_activity_start_s
+        activity_time = max(base_activity_start_s, batch_start_s + jitter_s)
+        activity_times.append(activity_time)
+
+    return activity_times
+
 
 def calculate_upgrade_schedule(
     agents: List[str],
@@ -325,7 +380,7 @@ def generate_metadata(
             ("post_upgrade_duration_s", timing_info.get('post_upgrade_duration_s', 7200)),
         ])
 
-    # Batching configuration
+    # Bootstrap batching configuration (user spawning)
     if timing_info.get('use_batched', False):
         metadata["batching"] = OrderedDict([
             ("enabled", True),
@@ -337,6 +392,15 @@ def generate_metadata(
             ("enabled", False),
             ("stagger_interval_s", stagger_interval_s),
         ])
+
+    # Activity batching configuration (transaction start staggering)
+    metadata["activity_batching"] = OrderedDict([
+        ("enabled", timing_info.get('activity_batching_enabled', True)),
+        ("batch_size", timing_info.get('activity_batch_size', DEFAULT_ACTIVITY_BATCH_SIZE)),
+        ("batch_interval_s", timing_info.get('activity_batch_interval_s', DEFAULT_ACTIVITY_BATCH_INTERVAL_S)),
+        ("jitter_fraction", timing_info.get('activity_batch_jitter', DEFAULT_ACTIVITY_BATCH_JITTER)),
+        ("total_rollout_s", timing_info.get('activity_rollout_duration_s', 0)),
+    ])
 
     # Simulation settings
     metadata["settings"] = OrderedDict([
@@ -452,6 +516,10 @@ def generate_config(
     md_n_recipients: int = 8,
     md_out_per_tx: int = 2,
     md_output_amount: float = 5.0,
+    # User activity batching (prevents thundering herd)
+    activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
+    activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
+    activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -475,6 +543,9 @@ def generate_config(
         md_n_recipients: Recipients per batch transaction (default: 10)
         md_out_per_tx: Outputs per recipient per transaction (default: 10)
         md_output_amount: XMR amount per output (default: 1.0)
+        activity_batch_size: Users per activity batch (default: 10)
+        activity_batch_interval_s: Target seconds between activity batches (default: 25)
+        activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)
     """
 
     num_miners = len(FIXED_MINERS)
@@ -577,18 +648,38 @@ def generate_config(
         agent_id = f"miner-{i+1:03}"
         agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
+    # Calculate staggered activity start times to prevent thundering herd
+    # Each user gets a slightly different activity_start_time based on batching
+    user_activity_times = calculate_activity_start_times(
+        num_users=num_users,
+        base_activity_start_s=activity_start_time_s,
+        batch_size=activity_batch_size,
+        batch_interval_s=activity_batch_interval_s,
+        jitter_fraction=activity_batch_jitter,
+        seed=simulation_seed,
+    )
+
+    # Calculate activity rollout duration for metadata
+    if num_users > 0:
+        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
+        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
+    else:
+        activity_rollout_duration_s = 0
+
     # Add variable users with appropriate start times
     if use_batched and batch_schedule:
-        # Batched: use calculated batch schedule
+        # Batched bootstrap: use calculated batch schedule for spawning
         for user_index, start_time_s in batch_schedule:
             agent_id = f"user-{user_index+1:03}"
-            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, activity_start_time_s, daemon_binary)
+            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
+            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, daemon_binary)
     else:
-        # Non-batched: start at USER_START_TIME_S with stagger
+        # Non-batched bootstrap: start at USER_START_TIME_S with stagger
         for i in range(num_users):
             agent_id = f"user-{i+1:03}"
             start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, activity_start_time_s, daemon_binary)
+            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
+            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary)
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
@@ -662,6 +753,12 @@ def generate_config(
         'use_batched': use_batched,
         'batch_sizes': batch_sizes,
         'batch_interval_s': batch_interval_s,
+        # Activity batching info
+        'activity_batching_enabled': True,
+        'activity_batch_size': activity_batch_size,
+        'activity_batch_interval_s': activity_batch_interval_s,
+        'activity_batch_jitter': activity_batch_jitter,
+        'activity_rollout_duration_s': activity_rollout_duration_s,
     }
 
     # Generate metadata section
@@ -709,6 +806,10 @@ def generate_upgrade_config(
     md_n_recipients: int = 8,
     md_out_per_tx: int = 2,
     md_output_amount: float = 5.0,
+    # User activity batching (prevents thundering herd)
+    activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
+    activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
+    activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -869,15 +970,33 @@ def generate_upgrade_config(
             phase1_start,
         )
 
+    # Calculate staggered activity start times to prevent thundering herd
+    user_activity_times = calculate_activity_start_times(
+        num_users=num_users,
+        base_activity_start_s=activity_start_time_s,
+        batch_size=activity_batch_size,
+        batch_interval_s=activity_batch_interval_s,
+        jitter_fraction=activity_batch_jitter,
+        seed=simulation_seed,
+    )
+
+    # Calculate activity rollout duration for metadata
+    if num_users > 0:
+        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
+        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
+    else:
+        activity_rollout_duration_s = 0
+
     # Add users with phased daemons
     if use_batched and batch_schedule:
         for user_index, start_time_s in batch_schedule:
             agent_id = f"user-{user_index+1:03}"
             phase0_stop, phase1_start = upgrade_schedule[agent_id]
+            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
             agents[agent_id] = generate_user_agent_phased(
                 start_time_s,
                 tx_interval,
-                activity_start_time_s,
+                user_activity_time,
                 upgrade_binary_v1,
                 upgrade_binary_v2,
                 phase0_stop,
@@ -888,10 +1007,11 @@ def generate_upgrade_config(
             agent_id = f"user-{i+1:03}"
             start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
             phase0_stop, phase1_start = upgrade_schedule[agent_id]
+            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
             agents[agent_id] = generate_user_agent_phased(
                 start_offset_s,
                 tx_interval,
-                activity_start_time_s,
+                user_activity_time,
                 upgrade_binary_v1,
                 upgrade_binary_v2,
                 phase0_stop,
@@ -963,6 +1083,12 @@ def generate_upgrade_config(
         'use_batched': use_batched,
         'batch_sizes': batch_sizes,
         'batch_interval_s': batch_interval_s,
+        # Activity batching info
+        'activity_batching_enabled': True,
+        'activity_batch_size': activity_batch_size,
+        'activity_batch_interval_s': activity_batch_interval_s,
+        'activity_batch_jitter': activity_batch_jitter,
+        'activity_rollout_duration_s': activity_rollout_duration_s,
         # Upgrade-specific timing info
         'upgrade_start_time_s': upgrade_start_time_s,
         'last_upgrade_complete_s': last_upgrade_complete_s,
@@ -1236,6 +1362,31 @@ Timeline (verified bootstrap for Monero regtest):
         help="Miner distributor: XMR amount per output (default: 5.0)"
     )
 
+    # User activity batching options (prevents thundering herd when all users try to transact at once)
+    parser.add_argument(
+        "--activity-batch-size",
+        type=int,
+        default=DEFAULT_ACTIVITY_BATCH_SIZE,
+        help=f"Users per activity batch (default: {DEFAULT_ACTIVITY_BATCH_SIZE}). "
+             "Staggers when users start sending transactions to prevent overwhelming the network."
+    )
+
+    parser.add_argument(
+        "--activity-batch-interval",
+        type=str,
+        default=f"{DEFAULT_ACTIVITY_BATCH_INTERVAL_S}s",
+        help=f"Target seconds between activity batches (default: {DEFAULT_ACTIVITY_BATCH_INTERVAL_S}s). "
+             "Each batch of users starts transacting this many seconds after the previous batch."
+    )
+
+    parser.add_argument(
+        "--activity-batch-jitter",
+        type=float,
+        default=DEFAULT_ACTIVITY_BATCH_JITTER,
+        help=f"Random jitter fraction +/- for activity start times (default: {DEFAULT_ACTIVITY_BATCH_JITTER}). "
+             "E.g., 0.3 means each user's start time varies +/-30%% of the batch interval."
+    )
+
     # Upgrade scenario options
     parser.add_argument(
         "--scenario",
@@ -1375,6 +1526,9 @@ Timeline (verified bootstrap for Monero regtest):
                 md_n_recipients=args.md_n_recipients,
                 md_out_per_tx=args.md_out_per_tx,
                 md_output_amount=args.md_output_amount,
+                activity_batch_size=args.activity_batch_size,
+                activity_batch_interval_s=parse_duration(args.activity_batch_interval),
+                activity_batch_jitter=args.activity_batch_jitter,
                 upgrade_binary_v1=args.upgrade_binary_v1,
                 upgrade_binary_v2=args.upgrade_binary_v2,
                 upgrade_start=args.upgrade_start,
@@ -1404,6 +1558,9 @@ Timeline (verified bootstrap for Monero regtest):
                 md_n_recipients=args.md_n_recipients,
                 md_out_per_tx=args.md_out_per_tx,
                 md_output_amount=args.md_output_amount,
+                activity_batch_size=args.activity_batch_size,
+                activity_batch_interval_s=parse_duration(args.activity_batch_interval),
+                activity_batch_jitter=args.activity_batch_jitter,
             )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -1427,6 +1584,12 @@ Timeline (verified bootstrap for Monero regtest):
     batch_sizes = timing_info['batch_sizes']
     batch_interval_s = timing_info['batch_interval_s']
 
+    # Activity batching info
+    activity_batch_size = timing_info.get('activity_batch_size', DEFAULT_ACTIVITY_BATCH_SIZE)
+    activity_batch_interval_s = timing_info.get('activity_batch_interval_s', DEFAULT_ACTIVITY_BATCH_INTERVAL_S)
+    activity_batch_jitter = timing_info.get('activity_batch_jitter', DEFAULT_ACTIVITY_BATCH_JITTER)
+    activity_rollout_s = timing_info.get('activity_rollout_duration_s', 0)
+
     fast_note = " [FAST MODE]" if args.fast else ""
     stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once"
 
@@ -1438,6 +1601,14 @@ Timeline (verified bootstrap for Monero regtest):
     else:
         batched_note = ""
         spawn_note = f"Users spawn ({stagger_note})"
+
+    # Activity batching note
+    activity_rollout_str = format_time_offset(activity_rollout_s, for_config=False)
+    activity_batching_note = f"""#
+# Activity batching (prevents thundering herd):
+#   Batch size: {activity_batch_size} users
+#   Batch interval: {activity_batch_interval_s}s (+/-{int(activity_batch_jitter*100)}% jitter)
+#   Total rollout: ~{activity_rollout_str}"""
 
     # Generate header based on scenario
     if args.scenario == "upgrade":
@@ -1454,13 +1625,14 @@ Timeline (verified bootstrap for Monero regtest):
 #   Binary v2: {timing_info['upgrade_binary_v2']}
 #   Upgrade order: {timing_info['upgrade_order']}
 #   Upgrade stagger: {args.upgrade_stagger}
+{activity_batching_note}
 #
 # Timeline:
 #   t=0:           Miners start
 #   t={format_time_offset(user_spawn_start_s, for_config=False)}:         {spawn_note}
 #   t={last_spawn}:     Last user spawns
 #   t={bootstrap_end}:     Bootstrap ends (+20% buffer), distributor starts funding
-#   t={activity_start}:     Users start sending transactions (steady state begins)
+#   t={activity_start}:     Users start sending transactions (staggered over ~{activity_rollout_str})
 #   t={upgrade_start}:     Network upgrade begins (nodes switch v1 -> v2)
 #   t={upgrade_end}:    Last node completes upgrade
 #   t={actual_duration}:    Simulation ends (post-upgrade observation){batched_note}
@@ -1471,12 +1643,14 @@ Timeline (verified bootstrap for Monero regtest):
 # Total agents: {args.agents} (5 miners + {num_users} users)
 # Duration: {actual_duration}{duration_note}
 # Network topology: {args.gml}
+{activity_batching_note}
+#
 # Timeline:
 #   t=0:       Miners start
 #   t={format_time_offset(user_spawn_start_s, for_config=False)}:      {spawn_note}
 #   t={last_spawn}:  Last user spawns
 #   t={bootstrap_end}:  Bootstrap ends (+20% buffer), distributor starts funding
-#   t={activity_start}:  Users start sending transactions{batched_note}
+#   t={activity_start}:  Users start sending transactions (staggered over ~{activity_rollout_str}){batched_note}
 """
 
     if args.fast:
