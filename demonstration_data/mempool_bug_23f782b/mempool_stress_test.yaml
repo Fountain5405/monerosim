@@ -1,0 +1,294 @@
+# Monerosim Mempool Pruning Bug STRESS TEST v2
+#
+# Bug: Invalid iterator use after remove_tx_from_transient_lists() + txCompare not strictly weak ordered
+# Introduced: 23f782b21 (Nov 21, 2021)
+# Fixed: a01d7ccbf (Mar 8, 2024)
+#
+# STRESS TEST CONFIGURATION:
+#   - 256KB mempool to trigger pruning quickly
+#   - All nodes start at t=0 (buggy nodes use buggy binary from start)
+#   - 3.5h bootstrap for coin generation
+#   - 4h activity start - aggressive tx sending
+#   - 8h total simulation
+#   - 30 nodes all sending transactions every 5-10 seconds
+#
+# Timeline:
+#   t=0:      All nodes start (miners, pre-bug, buggy)
+#   t=3.5h:   Bootstrap ends (enough coins mined)
+#   t=4h:     All nodes start sending transactions aggressively
+#   t=8h:     Simulation ends
+
+general:
+  stop_time: 480m
+  parallelism: 0
+  simulation_seed: 42
+  enable_dns_server: true
+  shadow_log_level: info
+  bootstrap_end_time: 210m
+  progress: true
+  daemon_defaults:
+    log-level: 2
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+    max-txpool-weight: 262144  # 256KB - small to trigger pruning
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # === MINERS (3 miners with pre-bug code) ===
+  miner-001:
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 40
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 0s
+
+  miner-002:
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 35
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 1s
+
+  miner-003:
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 25
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 2s
+
+  # === PRE-BUG NODES (10 nodes) - High tx rate ===
+  node-001:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3s
+    transaction_interval: 8
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 3s
+
+  node-002:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4s
+    transaction_interval: 7
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 4s
+
+  node-003:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 5s
+    transaction_interval: 9
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 5s
+
+  node-004:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6s
+    transaction_interval: 6
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 6s
+
+  node-005:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 7s
+    transaction_interval: 10
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 7s
+
+  node-006:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 8s
+    transaction_interval: 5
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 8s
+
+  node-007:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 9s
+    transaction_interval: 8
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 9s
+
+  node-008:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 10s
+    transaction_interval: 7
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 10s
+
+  node-009:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 11s
+    transaction_interval: 6
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 11s
+
+  node-010:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 12s
+    transaction_interval: 9
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-bb1-mempool
+    daemon_0_start: 12s
+
+  # === BUGGY NODES (10 nodes with buggy code from start) ===
+  buggy-node-001:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 13s
+    transaction_interval: 5
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 13s
+
+  buggy-node-002:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 14s
+    transaction_interval: 6
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 14s
+
+  buggy-node-003:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 15s
+    transaction_interval: 5
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 15s
+
+  buggy-node-004:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 16s
+    transaction_interval: 7
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 16s
+
+  buggy-node-005:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 17s
+    transaction_interval: 5
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 17s
+
+  buggy-node-006:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 18s
+    transaction_interval: 6
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 18s
+
+  buggy-node-007:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 19s
+    transaction_interval: 5
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 19s
+
+  buggy-node-008:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 20s
+    transaction_interval: 8
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 20s
+
+  buggy-node-009:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 21s
+    transaction_interval: 5
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 21s
+
+  buggy-node-010:
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 22s
+    transaction_interval: 6
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_0: monerod-ab1-mempool
+    daemon_0_start: 22s
+
+  # Distributor - starts at 3.5h, aggressive funding
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 12600
+    initial_fund_amount: '1.0'
+    max_transaction_amount: '2.0'
+    min_transaction_amount: '0.5'
+    transaction_frequency: 10
+    outputs_per_transaction: 15
+    output_amount: 100.0
+
+  # Monitor
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 60
+    detailed_logging: true
+    enable_alerts: true
+    status_file: mempool_stress_monitor.log
