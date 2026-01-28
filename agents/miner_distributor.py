@@ -75,6 +75,11 @@ class MinerDistributorAgent(BaseAgent):
         self.last_balance_check = 0
         self.balance_check_attempts = 0
         self.initial_funding_completed = False
+
+        # Continuous funding cycle state
+        self._funding_cycle_index = 0  # Current position in funding cycle
+        self._last_funding_cycle_time = 0  # Last time we ran a funding cycle
+        self._funding_cycle_interval = 300  # Run funding cycle every 5 minutes
     
     def _setup_agent(self):
         """Initialize the miner distributor agent"""
@@ -605,6 +610,88 @@ class MinerDistributorAgent(BaseAgent):
         self.logger.info("No miners have sufficient unlocked balance yet, continuing to wait")
         return False
 
+    def _run_funding_cycle(self):
+        """
+        Continuously cycle through funded users and send them more funds.
+        This ensures users always have funds to transact with.
+        """
+        self.logger.info("Running continuous funding cycle")
+
+        # Read the funding status to get previously funded recipients
+        funding_status = self._read_funding_status()
+        funded_recipients = funding_status.get("funded_recipients", [])
+
+        if not funded_recipients:
+            self.logger.debug("No funded recipients to cycle through")
+            return
+
+        # Read agent registry to get wallet info for funded recipients
+        agent_registry = self.read_shared_state("agent_registry.json")
+        if not agent_registry:
+            self.logger.warning("Agent registry not found, cannot run funding cycle")
+            return
+
+        # Build lookup of agents by ID
+        agents_by_id = {agent.get("id"): agent for agent in agent_registry.get("agents", [])}
+
+        # Sort recipients for deterministic ordering
+        sorted_recipients = sorted(funded_recipients)
+
+        # Get the next batch of recipients to fund (cycling through the list)
+        batch_size = max(1, self.md_n_recipients)
+        start_idx = self._funding_cycle_index % len(sorted_recipients)
+
+        # Build the batch, wrapping around if necessary
+        batch_ids = []
+        for i in range(batch_size):
+            idx = (start_idx + i) % len(sorted_recipients)
+            batch_ids.append(sorted_recipients[idx])
+
+        # Update cycle index for next iteration
+        self._funding_cycle_index = (start_idx + batch_size) % len(sorted_recipients)
+
+        self.logger.info(f"Funding cycle: batch of {len(batch_ids)} recipients starting at index {start_idx}")
+
+        # Build list of agent objects for the batch
+        batch_agents = []
+        for recipient_id in batch_ids:
+            agent = agents_by_id.get(recipient_id)
+            if agent and agent.get("wallet_rpc_port"):
+                batch_agents.append(agent)
+            else:
+                self.logger.debug(f"Skipping {recipient_id}: not found or no wallet RPC port")
+
+        if not batch_agents:
+            self.logger.warning("No valid agents in this funding batch")
+            return
+
+        # Select a miner for funding
+        selected_miner = self._select_miner()
+        if not selected_miner:
+            self.logger.warning("No miner available for funding cycle, will retry later")
+            return
+
+        # Refresh miner's wallet before sending (handles post-upgrade daemon state)
+        try:
+            miner_rpc = WalletRPC(host=selected_miner['ip_addr'], port=selected_miner['wallet_rpc_port'])
+            miner_rpc.wait_until_ready(max_wait=30, check_interval=2)
+            miner_rpc.refresh()
+            self.logger.debug(f"Refreshed miner {selected_miner.get('agent_id')} wallet before funding cycle")
+        except Exception as e:
+            self.logger.warning(f"Failed to refresh miner wallet: {e}")
+
+        # Send batch transaction to fund the recipients
+        self.logger.info(f"Funding {len(batch_agents)} agents: {[a.get('id') for a in batch_agents]}")
+
+        success, funded_ids, failed_ids = self._send_batch_transaction(
+            selected_miner, batch_agents
+        )
+
+        if success:
+            self.logger.info(f"Funding cycle complete: funded {len(funded_ids)} agents")
+        else:
+            self.logger.warning(f"Funding cycle failed for batch, will retry next cycle")
+
     def run_iteration(self) -> float:
         """Single iteration of Monero distribution behavior"""
         # Re-discover miners each iteration to get updated wallet addresses
@@ -630,36 +717,17 @@ class MinerDistributorAgent(BaseAgent):
                 self._perform_initial_funding()
                 # Return early to give time for initial funds to propagate
                 return 30.0
-        
-        # Check if it's time to send a transaction
-        if current_time - self.last_transaction_time >= self.transaction_frequency:
-            try:
-                # Select a miner wallet
-                miner = self._select_miner()
-                if not miner:
-                    self.logger.warning("No suitable miner found, will retry later")
-                    return 30.0
-                
-                # Select a recipient
-                recipient = self._select_recipient()
-                if not recipient:
-                    self.logger.warning("No suitable recipient found, will retry later")
-                    return 30.0
-                
-                # Send transaction
-                success = self._send_transaction(miner, recipient)
-                if success:
-                    self.last_transaction_time = current_time
-                
-                # Return time until next transaction
-                return self.transaction_frequency
-                
-            except Exception as e:
-                self.logger.error(f"Error in transaction iteration: {e}")
-                return 30.0
-        
-        # Calculate time until next transaction
-        return self.transaction_frequency - (current_time - self.last_transaction_time)
+
+        # After initial funding is complete, continuously cycle through funded users
+        if self.initial_funding_completed:
+            if current_time - self._last_funding_cycle_time >= self._funding_cycle_interval:
+                self._run_funding_cycle()
+                self._last_funding_cycle_time = current_time
+                return self._funding_cycle_interval
+
+        # Fallback: if not time for funding cycle yet, wait
+        time_until_next = self._funding_cycle_interval - (current_time - self._last_funding_cycle_time)
+        return max(30.0, time_until_next)
     
     def _select_miner(self) -> Optional[Dict[str, Any]]:
         """
@@ -891,7 +959,12 @@ class MinerDistributorAgent(BaseAgent):
     
     def _get_recipient_address(self, recipient: Dict[str, Any]) -> Optional[str]:
         """
-        Get the wallet address for a recipient with improved error handling and retries.
+        Get the wallet address for a recipient, checking cached sources first.
+
+        Lookup order:
+        1. Check if recipient dict already has wallet_address
+        2. Check {agent_id}_user_info.json file
+        3. Fall back to wallet RPC connection (with retries)
 
         Args:
             recipient: Recipient agent information
@@ -899,38 +972,55 @@ class MinerDistributorAgent(BaseAgent):
         Returns:
             Wallet address or None if unable to retrieve
         """
+        recipient_id = recipient.get('id')
+
+        # 1. Check if recipient dict already has wallet_address
+        if recipient.get('wallet_address'):
+            address = recipient['wallet_address']
+            self.logger.debug(f"Using cached address from recipient dict for {recipient_id}")
+            return address
+
+        # 2. Check user_info.json file
+        user_info = self.read_shared_state(f"{recipient_id}_user_info.json")
+        if user_info and user_info.get('wallet_address'):
+            address = user_info['wallet_address']
+            self.logger.debug(f"Using cached address from user_info.json for {recipient_id}")
+            return address
+
+        # 3. Fall back to wallet RPC connection
+        self.logger.debug(f"No cached address for {recipient_id}, connecting to wallet RPC")
         max_retries = 5
         retry_delay = 3
-        
+
         for attempt in range(max_retries):
             try:
                 rpc = WalletRPC(host=recipient['ip_addr'], port=recipient['wallet_rpc_port'])
-                
+
                 # Wait for wallet to be ready
                 rpc.wait_until_ready(max_wait=180, check_interval=2)
-                
+
                 # Get address with error handling
                 address = rpc.get_address()
-                
+
                 if not address:
-                    self.logger.warning(f"Empty address returned for recipient {recipient['id']}")
+                    self.logger.warning(f"Empty address returned for recipient {recipient_id}")
                     return None
-                
+
                 # Validate address format
                 if not (address.startswith(('4', '8')) and 4 <= len(address) <= 95):
-                    self.logger.error(f"Invalid address format for recipient {recipient['id']}: {address}")
+                    self.logger.error(f"Invalid address format for recipient {recipient_id}: {address}")
                     return None
-                
-                self.logger.debug(f"Retrieved address for recipient {recipient['id']}: {address}")
+
+                self.logger.debug(f"Retrieved address via RPC for recipient {recipient_id}: {address}")
                 return address
-                
+
             except Exception as e:
-                self.logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to get address for recipient {recipient['id']}: {e}")
+                self.logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to get address for recipient {recipient_id}: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
-                    self.logger.error(f"Failed to get address for recipient {recipient['id']} after {max_retries} attempts: {e}")
+                    self.logger.error(f"Failed to get address for recipient {recipient_id} after {max_retries} attempts: {e}")
                     return None
     
     def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any]) -> bool:

@@ -37,6 +37,11 @@ class RegularUserAgent(BaseAgent):
         self.agent_seed = self.global_seed + hash(agent_id)
         random.seed(self.agent_seed)
 
+        # Wallet refresh and error recovery state
+        self._last_refresh_time = 0
+        self._refresh_interval = 300  # Refresh wallet every 5 minutes
+        self._consecutive_errors = 0
+
     def _setup_agent(self):
         """Agent-specific setup logic"""
         if self.is_miner:
@@ -275,24 +280,53 @@ class RegularUserAgent(BaseAgent):
             self.logger.warning("Wallet RPC not available for regular user")
             return 30.0
 
+        current_time = time.time()
+
+        # Periodic wallet refresh to stay synced with daemon (important during/after upgrades)
+        if current_time - self._last_refresh_time >= self._refresh_interval:
+            try:
+                self.logger.debug("Performing periodic wallet refresh")
+                self.wallet_rpc.refresh()
+                self._last_refresh_time = current_time
+                self.logger.debug("Wallet refresh completed")
+            except Exception as e:
+                self.logger.warning(f"Periodic wallet refresh failed: {e}")
+
         try:
             # Get wallet balance
             balance_info = self.wallet_rpc.get_balance()
             unlocked_balance = balance_info.get('unlocked_balance', 0)
-            
+
             # Only send transactions if we have sufficient balance
             if unlocked_balance > 0:
                 self.logger.debug(f"User has unlocked balance: {unlocked_balance}")
-                
+
                 # Randomly decide whether to send a transaction
                 if self._should_send_transaction():
                     self._send_random_transaction()
-            
+
+            # Success - reset consecutive error counter
+            if self._consecutive_errors > 0:
+                self.logger.info(f"Recovered after {self._consecutive_errors} consecutive errors")
+            self._consecutive_errors = 0
+
             # Use configured transaction interval
             return getattr(self, 'tx_interval', 60.0)
-            
+
         except Exception as e:
-            self.logger.error(f"Error in user iteration: {e}")
+            self._consecutive_errors += 1
+            self.logger.error(f"Error in user iteration (consecutive: {self._consecutive_errors}): {e}")
+
+            # After consecutive errors, try refreshing wallet to resync with daemon
+            if self._consecutive_errors >= 2:
+                try:
+                    self.logger.info(f"Attempting wallet refresh after {self._consecutive_errors} consecutive errors")
+                    self.wallet_rpc.refresh()
+                    self._last_refresh_time = current_time
+                    self.logger.info("Wallet refresh completed - will retry operation next iteration")
+                except Exception as refresh_err:
+                    self.logger.warning(f"Wallet refresh failed during error recovery: {refresh_err}")
+
             return 30.0
     
     def _should_send_transaction(self) -> bool:
