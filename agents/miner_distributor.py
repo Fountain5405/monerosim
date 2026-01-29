@@ -51,8 +51,8 @@ class MinerDistributorAgent(BaseAgent):
         self.recipient_selection = "random"
 
         # Miner distributor transaction parameters (all prefixed with md_)
-        # NOTE: Monero has a limit of ~16 outputs per transaction.
-        # Ensure md_n_recipients * md_out_per_tx <= 16 to avoid "tx too large" errors.
+        # NOTE: transfer_split is used to automatically split large transactions,
+        # so md_n_recipients can be set higher than the per-tx output limit.
         # md_n_recipients: How many different recipients per batch transaction
         self.md_n_recipients = 8
         # md_out_per_tx: How many outputs (UTXOs) each recipient gets per transaction
@@ -79,7 +79,7 @@ class MinerDistributorAgent(BaseAgent):
         # Continuous funding cycle state
         self._funding_cycle_index = 0  # Current position in funding cycle
         self._last_funding_cycle_time = 0  # Last time we ran a funding cycle
-        self._funding_cycle_interval = 300  # Run funding cycle every 5 minutes
+        self.md_funding_cycle_interval = 300  # Run funding cycle every 5 minutes (configurable)
     
     def _setup_agent(self):
         """Initialize the miner distributor agent"""
@@ -107,7 +107,8 @@ class MinerDistributorAgent(BaseAgent):
             'max_wait_time': ('time_duration', 'max_wait_time', 7200),
             'md_n_recipients': ('int_min', 'md_n_recipients', 8, 1),
             'md_out_per_tx': ('int_min', 'md_out_per_tx', 2, 1),
-            'md_output_amount': ('float_min', 'md_output_amount', 5.0, 0.001)
+            'md_output_amount': ('float_min', 'md_output_amount', 5.0, 0.001),
+            'md_funding_cycle_interval': ('time_duration', 'md_funding_cycle_interval', 300)
         }
 
         for attr_name, (type_name, field_name, *args) in config_mappings.items():
@@ -720,13 +721,13 @@ class MinerDistributorAgent(BaseAgent):
 
         # After initial funding is complete, continuously cycle through funded users
         if self.initial_funding_completed:
-            if current_time - self._last_funding_cycle_time >= self._funding_cycle_interval:
+            if current_time - self._last_funding_cycle_time >= self.md_funding_cycle_interval:
                 self._run_funding_cycle()
                 self._last_funding_cycle_time = current_time
-                return self._funding_cycle_interval
+                return self.md_funding_cycle_interval
 
         # Fallback: if not time for funding cycle yet, wait
-        time_until_next = self._funding_cycle_interval - (current_time - self._last_funding_cycle_time)
+        time_until_next = self.md_funding_cycle_interval - (current_time - self._last_funding_cycle_time)
         return max(30.0, time_until_next)
     
     def _select_miner(self) -> Optional[Dict[str, Any]]:
