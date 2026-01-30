@@ -419,16 +419,16 @@ pub fn process_user_agents(
                     args.push("--disable-seed-nodes".to_string());
                 }
 
-                // Add simulation mode flags for mining hooks
+                // Add mining hook flags for monerod
                 if matches!(mining_mode, MiningMode::Mininghooks) {
-                    args.push("--simulation-mode".to_string());
+                    args.push("--mininghook".to_string());
 
                     // Only miners need the TCP connection flags
                     if is_miner {
-                        let simulation_tcp_port = 19000 + i as u16;
-                        args.push("--simulation-tcp".to_string());
-                        args.push(format!("--simulation-host={}", agent_ip));
-                        args.push(format!("--simulation-port={}", simulation_tcp_port));
+                        let mininghook_tcp_port = 19000 + i as u16;
+                        args.push("--mininghook-tcp".to_string());
+                        args.push(format!("--mininghook-host={}", agent_ip));
+                        args.push(format!("--mininghook-port={}", mininghook_tcp_port));
                     }
                 }
 
@@ -814,12 +814,12 @@ pub fn process_user_agents(
                         processes.extend(mining_processes);
                     }
                     MiningMode::Mininghooks => {
-                        let simulation_tcp_port = 19000 + i as u16;
+                        let mininghook_tcp_port = 19000 + i as u16;
                         let hashrate = user_agent_config.hashrate.unwrap_or(1000) as f64;
                         let mining_processes = create_tcp_mining_agent_process(
                             agent_id,
                             &agent_ip,
-                            simulation_tcp_port,
+                            mininghook_tcp_port,
                             hashrate,
                             environment,
                             current_dir,

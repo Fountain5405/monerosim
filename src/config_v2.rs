@@ -11,7 +11,7 @@ pub enum MiningMode {
     /// Works with vanilla monerod.
     #[default]
     Rpcblockgen,
-    /// Mining hooks: monerod with --simulation-mode --simulation-tcp sends mining
+    /// Mining hooks: monerod with --mininghook --mininghook-tcp sends mining
     /// requests to external TCP agent. Requires monero-shadow build.
     Mininghooks,
 }
@@ -754,7 +754,7 @@ pub struct GeneralConfig {
 
     /// Mining mode: rpcblockgen (default) or mininghooks
     /// - rpcblockgen: Python agents call generateblocks RPC with Poisson timing
-    /// - mininghooks: monerod with --simulation-mode sends requests to TCP mining agent
+    /// - mininghooks: monerod with --mininghook sends requests to TCP mining agent
     #[serde(default)]
     pub mining_mode: MiningMode,
 
