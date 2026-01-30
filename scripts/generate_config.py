@@ -516,6 +516,7 @@ def generate_config(
     md_n_recipients: int = 8,
     md_out_per_tx: int = 2,
     md_output_amount: float = 5.0,
+    md_funding_cycle_interval: str = "5m",
     # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
@@ -540,9 +541,10 @@ def generate_config(
         bootstrap_end_time: When bootstrap ends (default: auto-calc from user spawns)
         regular_user_start: When users start transacting (default: md_start_time + 1h)
         md_start_time: When miner distributor starts (default: bootstrap_end_time)
-        md_n_recipients: Recipients per batch transaction (default: 10)
-        md_out_per_tx: Outputs per recipient per transaction (default: 10)
-        md_output_amount: XMR amount per output (default: 1.0)
+        md_n_recipients: Recipients per batch transaction (default: 8)
+        md_out_per_tx: Outputs per recipient per transaction (default: 2)
+        md_output_amount: XMR amount per output (default: 5.0)
+        md_funding_cycle_interval: Interval between continuous funding cycles (default: 5m)
         activity_batch_size: Users per activity batch (default: 10)
         activity_batch_interval_s: Target seconds between activity batches (default: 25)
         activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)
@@ -692,6 +694,7 @@ def generate_config(
         ("md_n_recipients", md_n_recipients),
         ("md_out_per_tx", md_out_per_tx),
         ("md_output_amount", md_output_amount),
+        ("md_funding_cycle_interval", md_funding_cycle_interval),
     ])
 
     # Add simulation-monitor
@@ -806,6 +809,7 @@ def generate_upgrade_config(
     md_n_recipients: int = 8,
     md_out_per_tx: int = 2,
     md_output_amount: float = 5.0,
+    md_funding_cycle_interval: str = "5m",
     # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
@@ -1029,6 +1033,7 @@ def generate_upgrade_config(
         ("md_n_recipients", md_n_recipients),
         ("md_out_per_tx", md_out_per_tx),
         ("md_output_amount", md_output_amount),
+        ("md_funding_cycle_interval", md_funding_cycle_interval),
     ])
 
     # Add simulation-monitor
@@ -1362,6 +1367,14 @@ Timeline (verified bootstrap for Monero regtest):
         help="Miner distributor: XMR amount per output (default: 5.0)"
     )
 
+    parser.add_argument(
+        "--md-funding-cycle-interval",
+        type=str,
+        default="5m",
+        help="Miner distributor: interval between continuous funding cycles (default: 5m). "
+             "Accepts time durations like '2m', '300s', '5m'."
+    )
+
     # User activity batching options (prevents thundering herd when all users try to transact at once)
     parser.add_argument(
         "--activity-batch-size",
@@ -1526,6 +1539,7 @@ Timeline (verified bootstrap for Monero regtest):
                 md_n_recipients=args.md_n_recipients,
                 md_out_per_tx=args.md_out_per_tx,
                 md_output_amount=args.md_output_amount,
+                md_funding_cycle_interval=args.md_funding_cycle_interval,
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
@@ -1558,6 +1572,7 @@ Timeline (verified bootstrap for Monero regtest):
                 md_n_recipients=args.md_n_recipients,
                 md_out_per_tx=args.md_out_per_tx,
                 md_output_amount=args.md_output_amount,
+                md_funding_cycle_interval=args.md_funding_cycle_interval,
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
