@@ -517,6 +517,7 @@ def generate_config(
     md_out_per_tx: int = 2,
     md_output_amount: float = 5.0,
     md_funding_cycle_interval: str = "5m",
+    tx_interval: int = None,
     # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
@@ -537,6 +538,7 @@ def generate_config(
         initial_batch_size: Size of first user batch
         max_batch_size: Maximum users per batch
         daemon_binary: Path to monerod binary (default: "monerod")
+        tx_interval: Seconds between user transaction attempts (default: 120 in fast mode, 60 otherwise)
         user_spawn_start: When users start spawning (default: 20m batched, 3h non-batched)
         bootstrap_end_time: When bootstrap ends (default: auto-calc from user spawns)
         regular_user_start: When users start transacting (default: md_start_time + 1h)
@@ -545,6 +547,7 @@ def generate_config(
         md_out_per_tx: Outputs per recipient per transaction (default: 2)
         md_output_amount: XMR amount per output (default: 5.0)
         md_funding_cycle_interval: Interval between continuous funding cycles (default: 5m)
+        tx_interval: Seconds between user transaction attempts (default: 120 fast, 60 normal)
         activity_batch_size: Users per activity batch (default: 10)
         activity_batch_interval_s: Target seconds between activity batches (default: 25)
         activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)
@@ -637,7 +640,8 @@ def generate_config(
     duration = format_time_offset(duration_s)  # Update duration string if extended
 
     # Performance settings for fast mode
-    tx_interval = 120 if fast_mode else 60
+    if tx_interval is None:
+        tx_interval = 120 if fast_mode else 60
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
@@ -810,6 +814,7 @@ def generate_upgrade_config(
     md_out_per_tx: int = 2,
     md_output_amount: float = 5.0,
     md_funding_cycle_interval: str = "5m",
+    tx_interval: int = None,
     # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
@@ -929,7 +934,8 @@ def generate_upgrade_config(
         upgrade_start_time_s = activity_start_time_s + steady_state_duration_s
 
     # Performance settings
-    tx_interval = 120 if fast_mode else 60
+    if tx_interval is None:
+        tx_interval = 120 if fast_mode else 60
     poll_interval = 300
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
@@ -1272,6 +1278,14 @@ Timeline (verified bootstrap for Monero regtest):
     )
 
     parser.add_argument(
+        "--tx-interval",
+        type=int,
+        default=None,
+        help="Seconds between user transaction attempts (default: 120 in fast mode, 60 otherwise). "
+             "Overrides the fast-mode default when specified."
+    )
+
+    parser.add_argument(
         "--threads",
         type=int,
         default=1,
@@ -1540,6 +1554,7 @@ Timeline (verified bootstrap for Monero regtest):
                 md_out_per_tx=args.md_out_per_tx,
                 md_output_amount=args.md_output_amount,
                 md_funding_cycle_interval=args.md_funding_cycle_interval,
+                tx_interval=args.tx_interval,
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
@@ -1573,6 +1588,7 @@ Timeline (verified bootstrap for Monero regtest):
                 md_out_per_tx=args.md_out_per_tx,
                 md_output_amount=args.md_output_amount,
                 md_funding_cycle_interval=args.md_funding_cycle_interval,
+                tx_interval=args.tx_interval,
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
