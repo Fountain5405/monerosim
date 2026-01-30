@@ -415,6 +415,8 @@ echo "Starting DNS server..."
         config.general.wallet_defaults.as_ref(),
         distribution_strategy.as_ref(),
         distribution_weights.as_ref(),
+        &config.general.mining_mode,
+        config.general.fixed_difficulty,
     )?;
 
 

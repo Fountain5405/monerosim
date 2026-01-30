@@ -3,6 +3,19 @@ use std::collections::BTreeMap;
 use regex::Regex;
 use crate::utils::duration::parse_duration_to_seconds;
 
+/// Mining mode for block generation
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum MiningMode {
+    /// RPC block generation: Python agents call generateblocks RPC with Poisson timing.
+    /// Works with vanilla monerod.
+    #[default]
+    Rpcblockgen,
+    /// Mining hooks: monerod with --simulation-mode --simulation-tcp sends mining
+    /// requests to external TCP agent. Requires monero-shadow build.
+    Mininghooks,
+}
+
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PeerMode {
@@ -738,6 +751,18 @@ pub struct GeneralConfig {
     /// Example: { "log-level": 1 }
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_defaults: Option<BTreeMap<String, OptionValue>>,
+
+    /// Mining mode: rpcblockgen (default) or mininghooks
+    /// - rpcblockgen: Python agents call generateblocks RPC with Poisson timing
+    /// - mininghooks: monerod with --simulation-mode sends requests to TCP mining agent
+    #[serde(default)]
+    pub mining_mode: MiningMode,
+
+    /// Fixed difficulty for testing/simulation - bypasses LWMA adjustment
+    /// When set, monerod uses --fixed-difficulty to keep difficulty constant.
+    /// Useful with mininghooks mode to avoid difficulty spikes from fast initial blocks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fixed_difficulty: Option<u64>,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -1133,6 +1158,8 @@ impl Default for GeneralConfig {
             process_threads: Some(1),  // Default to single-threaded for determinism
             daemon_defaults: None,  // No daemon defaults by default
             wallet_defaults: None,  // No wallet defaults by default
+            mining_mode: MiningMode::default(),
+            fixed_difficulty: None,
         }
     }
 }

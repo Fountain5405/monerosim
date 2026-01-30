@@ -5,7 +5,7 @@
 //! It manages peer discovery, IP allocation, and process configuration for
 //! user agents within the Shadow network simulator environment.
 
-use crate::config_v2::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue};
+use crate::config_v2::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue, MiningMode};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
@@ -52,7 +52,7 @@ fn merge_options(
 }
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
+use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process, create_tcp_mining_agent_process};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
@@ -78,6 +78,8 @@ pub fn process_user_agents(
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     distribution_strategy: Option<&crate::config_v2::DistributionStrategy>,
     distribution_weights: Option<&crate::config_v2::RegionWeights>,
+    mining_mode: &MiningMode,
+    fixed_difficulty: Option<u64>,
 ) -> color_eyre::eyre::Result<()> {
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
@@ -415,6 +417,24 @@ pub fn process_user_agents(
                 }
                 if is_miner && !enable_dns_server {
                     args.push("--disable-seed-nodes".to_string());
+                }
+
+                // Add simulation mode flags for mining hooks
+                if matches!(mining_mode, MiningMode::Mininghooks) {
+                    args.push("--simulation-mode".to_string());
+
+                    // Only miners need the TCP connection flags
+                    if is_miner {
+                        let simulation_tcp_port = 19000 + i as u16;
+                        args.push("--simulation-tcp".to_string());
+                        args.push(format!("--simulation-host={}", agent_ip));
+                        args.push(format!("--simulation-port={}", simulation_tcp_port));
+                    }
+                }
+
+                // Add fixed difficulty if set
+                if let Some(diff) = fixed_difficulty {
+                    args.push(format!("--fixed-difficulty={}", diff));
                 }
 
                 // Add initial fixed connections
@@ -762,7 +782,7 @@ pub fn process_user_agents(
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                 );
 
-                // Step 2: Run mining_script (autonomous_miner.py)
+                // Step 2: Run mining agent (mode-dependent)
                 let mining_start_time = if let Ok(agent_seconds) = parse_duration_to_seconds(&agent_start_time) {
                     format!("{}s", agent_seconds + 10)
                 } else {
@@ -775,21 +795,40 @@ pub fn process_user_agents(
                     None
                 };
 
-                let mining_processes = create_mining_agent_process(
-                    agent_id,
-                    &agent_ip,
-                    agent_rpc_port,
-                    mining_wallet_port,
-                    &script,
-                    Some(&merged_attributes),
-                    environment,
-                    shared_dir,
-                    current_dir,
-                    i,
-                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                    Some(&mining_start_time),
-                );
-                processes.extend(mining_processes);
+                match mining_mode {
+                    MiningMode::Rpcblockgen => {
+                        let mining_processes = create_mining_agent_process(
+                            agent_id,
+                            &agent_ip,
+                            agent_rpc_port,
+                            mining_wallet_port,
+                            &script,
+                            Some(&merged_attributes),
+                            environment,
+                            shared_dir,
+                            current_dir,
+                            i,
+                            environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                            Some(&mining_start_time),
+                        );
+                        processes.extend(mining_processes);
+                    }
+                    MiningMode::Mininghooks => {
+                        let simulation_tcp_port = 19000 + i as u16;
+                        let hashrate = user_agent_config.hashrate.unwrap_or(1000) as f64;
+                        let mining_processes = create_tcp_mining_agent_process(
+                            agent_id,
+                            &agent_ip,
+                            simulation_tcp_port,
+                            hashrate,
+                            environment,
+                            current_dir,
+                            i,
+                            Some(&mining_start_time),
+                        );
+                        processes.extend(mining_processes);
+                    }
+                }
             } else if !script.is_empty() {
                 // Regular user agent script
                 add_user_agent_process(

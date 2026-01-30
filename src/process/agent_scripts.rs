@@ -352,3 +352,80 @@ echo "Daemon RPC not available after 30 attempts, starting mining agent anyway..
 
     processes
 }
+
+/// Create TCP mining agent processes for mininghooks mode.
+///
+/// In mininghooks mode, monerod sends mining requests via TCP socket to an external
+/// Python agent that computes Poisson-distributed delays and returns fake nonces.
+/// This function generates the Shadow process configuration for that TCP agent.
+pub fn create_tcp_mining_agent_process(
+    agent_id: &str,
+    ip_addr: &str,
+    tcp_port: u16,
+    hashrate: f64,
+    environment: &BTreeMap<String, String>,
+    current_dir: &str,
+    index: usize,
+    custom_start_time: Option<&str>,
+) -> Vec<ShadowProcess> {
+    let mut processes = Vec::new();
+
+    let python_cmd = format!(
+        "python3 -m agents.tcp_mining_agent --host {} --port {} --hashrate {} --id {} --rpc-port 18081",
+        ip_addr, tcp_port, hashrate, agent_id
+    );
+
+    let wrapper_script = format!(
+        r#"#!/bin/bash
+cd {}
+export PYTHONPATH="${{PYTHONPATH}}:{}"
+export PATH="${{PATH}}:$HOME/.monerosim/bin"
+
+echo "Starting TCP mining agent for {} on {}:{}..."
+{} 2>&1
+"#,
+        current_dir,
+        current_dir,
+        agent_id,
+        ip_addr,
+        tcp_port,
+        python_cmd
+    );
+
+    let script_path = format!("/tmp/tcp_mining_agent_{}_wrapper.sh", agent_id);
+
+    // TCP mining agent starts 5 seconds BEFORE the mining start time
+    // so it's ready when monerod initiates mining
+    let (script_creation_time, script_execution_time) = if let Some(custom_time) = custom_start_time {
+        if let Ok(seconds) = parse_duration_to_seconds(custom_time) {
+            let early_start = if seconds > 5 { seconds - 5 } else { 1 };
+            (format!("{}s", early_start - 1), format!("{}s", early_start))
+        } else {
+            (format!("{}s", 60 + index * 2), format!("{}s", 61 + index * 2))
+        }
+    } else {
+        (format!("{}s", 60 + index * 2), format!("{}s", 61 + index * 2))
+    };
+
+    // Process 1: Create wrapper script
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: format!("-c 'cat > {} << '\"'\"'EOF'\"'\"'\n{}EOF'", script_path, wrapper_script),
+        environment: environment.clone(),
+        start_time: script_creation_time,
+        shutdown_time: None,
+        expected_final_state: None,
+    });
+
+    // Process 2: Execute wrapper script
+    processes.push(ShadowProcess {
+        path: "/bin/bash".to_string(),
+        args: script_path.clone(),
+        environment: environment.clone(),
+        start_time: script_execution_time,
+        shutdown_time: None,
+        expected_final_state: None,
+    });
+
+    processes
+}
