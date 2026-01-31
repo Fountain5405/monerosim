@@ -355,7 +355,7 @@ class RegularUserAgent(BaseAgent):
         recipient_address = recipient.get('wallet_address')
         
         if not recipient_address:
-            self.logger.warning(f"No wallet address for recipient {recipient.get('agent_id')}")
+            self.logger.warning(f"No wallet address for recipient {recipient.get('id')}")
             return
             
         # Generate random amount within configured range
@@ -376,10 +376,10 @@ class RegularUserAgent(BaseAgent):
                 self.logger.error(f"Transaction response missing tx_hash: {response}")
                 return
 
-            self.logger.info(f"Sent transaction: {tx_hash} to {recipient.get('agent_id')} for {amount} XMR")
-            
+            self.logger.info(f"Sent transaction: {tx_hash} to {recipient.get('id')} for {amount} XMR")
+
             # Record transaction in shared state
-            self._record_transaction(tx_hash, recipient.get('agent_id'), amount)
+            self._record_transaction(tx_hash, recipient.get('id'), amount)
             
         except Exception as e:
             self.logger.error(f"Failed to send transaction: {e}")
