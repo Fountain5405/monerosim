@@ -188,23 +188,27 @@ class RegularUserAgent(BaseAgent):
         self.min_tx_amount = float(self.attributes.get('min_transaction_amount', '0.1'))
         self.max_tx_amount = float(self.attributes.get('max_transaction_amount', '1.0'))
         self.tx_interval = int(self.attributes.get('transaction_interval', '60'))
+        self.tx_send_probability = float(self.attributes.get('tx_send_probability', '0.75'))
 
-        # Activity start time: absolute sim time when transaction activity should begin
-        # This allows users to sync during bootstrap period before transacting
-        # If activity_start_time is set and current time is before it, wait
-        self.activity_start_time = int(self.attributes.get('activity_start_time', '0'))
+        # Activity start time: config value is in simulation seconds (e.g. 108000 for 30h).
+        # Shadow's time.time() returns Unix timestamps starting from 2000-01-01 00:00:00 UTC
+        # (epoch 946684800), so we must convert simulation seconds to a Unix timestamp.
+        SHADOW_EPOCH = 946684800  # 2000-01-01 00:00:00 UTC
+        activity_start_sim_s = int(self.attributes.get('activity_start_time', '0'))
 
-        if self.activity_start_time > 0:
+        if activity_start_sim_s > 0:
+            self.activity_start_time = SHADOW_EPOCH + activity_start_sim_s
             current_time = time.time()
             if current_time < self.activity_start_time:
                 self.waiting_for_activity_start = True
                 wait_remaining = self.activity_start_time - current_time
-                self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval}, activity_starts_at={self.activity_start_time}s (waiting {wait_remaining:.0f}s)")
+                self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval}, activity_starts_at={activity_start_sim_s}s (waiting {wait_remaining:.0f}s)")
             else:
                 # Already past activity start time - start immediately
                 self.waiting_for_activity_start = False
                 self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval} (activity start time already passed)")
         else:
+            self.activity_start_time = 0
             self.waiting_for_activity_start = False
             self.logger.info(f"Transaction parameters: min={self.min_tx_amount}, max={self.max_tx_amount}, interval={self.tx_interval}")
         
@@ -265,7 +269,7 @@ class RegularUserAgent(BaseAgent):
             current_time = time.time()
             if current_time < self.activity_start_time:
                 remaining = self.activity_start_time - current_time
-                self.logger.debug(f"Waiting {remaining:.0f}s before starting transactions (until t={self.activity_start_time}s)")
+                self.logger.debug(f"Waiting {remaining:.0f}s before starting transactions")
                 # Check every 5 minutes or when ready, whichever is sooner
                 return min(300.0, remaining)
             else:
@@ -331,8 +335,7 @@ class RegularUserAgent(BaseAgent):
     
     def _should_send_transaction(self) -> bool:
         """Determine if a transaction should be sent in this iteration"""
-        # Simple random decision - can be enhanced with more sophisticated logic
-        return random.random() < 0.3  # 30% chance to send transaction
+        return random.random() < self.tx_send_probability
     
     def _send_random_transaction(self):
         """Send a random transaction to a random recipient"""

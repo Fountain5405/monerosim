@@ -447,7 +447,7 @@ def generate_miner_agent_phased(
     ])
 
 
-def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0, daemon_binary: str = "monerod") -> Dict[str, Any]:
+def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0, daemon_binary: str = "monerod", tx_send_probability: float = 0.75) -> Dict[str, Any]:
     """Generate a regular user agent configuration (new format).
 
     Args:
@@ -455,6 +455,7 @@ def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_sta
         tx_interval: Interval between transaction attempts
         activity_start_time: Absolute sim time when transactions should start (0 = start immediately)
         daemon_binary: Path to monerod binary (default: "monerod")
+        tx_send_probability: Probability of sending a transaction each iteration (default: 0.75)
     """
     return OrderedDict([
         ("daemon", daemon_binary),
@@ -463,6 +464,7 @@ def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_sta
         ("start_time", format_time_offset(start_offset_s)),
         ("transaction_interval", tx_interval),
         ("activity_start_time", activity_start_time),
+        ("tx_send_probability", tx_send_probability),
         ("can_receive_distributions", True),
     ])
 
@@ -475,6 +477,7 @@ def generate_user_agent_phased(
     daemon_v2: str,
     phase0_stop_s: int,
     phase1_start_s: int,
+    tx_send_probability: float = 0.75,
 ) -> Dict[str, Any]:
     """Generate a user agent with daemon phase switching for upgrade scenario."""
     return OrderedDict([
@@ -483,6 +486,7 @@ def generate_user_agent_phased(
         ("start_time", format_time_offset(start_offset_s)),
         ("transaction_interval", tx_interval),
         ("activity_start_time", activity_start_time),
+        ("tx_send_probability", tx_send_probability),
         ("can_receive_distributions", True),
         ("daemon_0", daemon_v1),
         ("daemon_0_start", format_time_offset(start_offset_s)),
@@ -518,6 +522,7 @@ def generate_config(
     md_output_amount: float = 5.0,
     md_funding_cycle_interval: str = "5m",
     tx_interval: int = None,
+    tx_send_probability: float = 0.75,
     # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
@@ -539,6 +544,7 @@ def generate_config(
         max_batch_size: Maximum users per batch
         daemon_binary: Path to monerod binary (default: "monerod")
         tx_interval: Seconds between user transaction attempts (default: 120 in fast mode, 60 otherwise)
+        tx_send_probability: Probability of sending a TX each iteration (default: 0.75)
         user_spawn_start: When users start spawning (default: 20m batched, 3h non-batched)
         bootstrap_end_time: When bootstrap ends (default: auto-calc from user spawns)
         regular_user_start: When users start transacting (default: md_start_time + 1h)
@@ -678,14 +684,14 @@ def generate_config(
         for user_index, start_time_s in batch_schedule:
             agent_id = f"user-{user_index+1:03}"
             user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, daemon_binary)
+            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
     else:
         # Non-batched bootstrap: start at USER_START_TIME_S with stagger
         for i in range(num_users):
             agent_id = f"user-{i+1:03}"
             start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
             user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary)
+            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
@@ -815,6 +821,7 @@ def generate_upgrade_config(
     md_output_amount: float = 5.0,
     md_funding_cycle_interval: str = "5m",
     tx_interval: int = None,
+    tx_send_probability: float = 0.75,
     # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
@@ -1011,6 +1018,7 @@ def generate_upgrade_config(
                 upgrade_binary_v2,
                 phase0_stop,
                 phase1_start,
+                tx_send_probability,
             )
     else:
         for i in range(num_users):
@@ -1026,6 +1034,7 @@ def generate_upgrade_config(
                 upgrade_binary_v2,
                 phase0_stop,
                 phase1_start,
+                tx_send_probability,
             )
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
@@ -1283,6 +1292,13 @@ Timeline (verified bootstrap for Monero regtest):
         default=None,
         help="Seconds between user transaction attempts (default: 120 in fast mode, 60 otherwise). "
              "Overrides the fast-mode default when specified."
+    )
+
+    parser.add_argument(
+        "--tx-send-probability",
+        type=float,
+        default=0.75,
+        help="Probability (0.0-1.0) that a user sends a transaction each iteration (default: 0.75)"
     )
 
     parser.add_argument(
@@ -1555,6 +1571,7 @@ Timeline (verified bootstrap for Monero regtest):
                 md_output_amount=args.md_output_amount,
                 md_funding_cycle_interval=args.md_funding_cycle_interval,
                 tx_interval=args.tx_interval,
+                tx_send_probability=args.tx_send_probability,
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
@@ -1589,6 +1606,7 @@ Timeline (verified bootstrap for Monero regtest):
                 md_output_amount=args.md_output_amount,
                 md_funding_cycle_interval=args.md_funding_cycle_interval,
                 tx_interval=args.tx_interval,
+                tx_send_probability=args.tx_send_probability,
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
