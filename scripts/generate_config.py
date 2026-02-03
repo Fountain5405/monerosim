@@ -527,6 +527,9 @@ def generate_config(
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
     activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
+    # Shadow parallelism and preemption
+    parallelism: int = 0,
+    native_preemption: bool = None,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -719,7 +722,7 @@ def generate_config(
     # Build general config with daemon_defaults
     general_config = OrderedDict([
         ("stop_time", duration),
-        ("parallelism", 0),
+        ("parallelism", parallelism),
         ("simulation_seed", simulation_seed),
         ("enable_dns_server", True),
         ("shadow_log_level", shadow_log_level),
@@ -736,6 +739,10 @@ def generate_config(
     # Add process_threads if not default (1)
     if process_threads != 1:
         general_config["process_threads"] = process_threads
+
+    # Add native_preemption only when explicitly set
+    if native_preemption is not None:
+        general_config["native_preemption"] = native_preemption
 
     # Add daemon_defaults - these were previously hardcoded
     general_config["daemon_defaults"] = OrderedDict([
@@ -826,6 +833,9 @@ def generate_upgrade_config(
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
     activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
+    # Shadow parallelism and preemption
+    parallelism: int = 0,
+    native_preemption: bool = None,
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -1063,7 +1073,7 @@ def generate_upgrade_config(
     # Build general config
     general_config = OrderedDict([
         ("stop_time", duration),
-        ("parallelism", 0),
+        ("parallelism", parallelism),
         ("simulation_seed", simulation_seed),
         ("enable_dns_server", True),
         ("shadow_log_level", shadow_log_level),
@@ -1076,6 +1086,10 @@ def generate_upgrade_config(
 
     if process_threads != 1:
         general_config["process_threads"] = process_threads
+
+    # Add native_preemption only when explicitly set
+    if native_preemption is not None:
+        general_config["native_preemption"] = native_preemption
 
     general_config["daemon_defaults"] = OrderedDict([
         ("log-level", 1),
@@ -1306,6 +1320,30 @@ Timeline (verified bootstrap for Monero regtest):
         type=int,
         default=1,
         help="Thread count for monerod/wallet-rpc (0=auto, 1=single-threaded for determinism, 2+=explicit count)"
+    )
+
+    parser.add_argument(
+        "--native-preemption",
+        action="store_true",
+        default=False,
+        help="Enable Shadow native preemption (timer-based thread preemption). "
+             "Prevents thread starvation but breaks simulation determinism."
+    )
+
+    parser.add_argument(
+        "--parallelism",
+        type=int,
+        default=0,
+        help="Shadow worker thread count (0=auto-detect CPU cores, default). "
+             "Shadow parallelism is deterministic — it doesn't affect simulation results, just wall-clock speed."
+    )
+
+    parser.add_argument(
+        "--close-to-deterministic",
+        action="store_true",
+        default=False,
+        help="Meta-flag for maximum reproducibility. Forces native_preemption=false and process_threads=1. "
+             "Overrides --native-preemption and --threads if specified."
     )
 
     # Batched bootstrap options for large-scale simulations
@@ -1545,6 +1583,22 @@ Timeline (verified bootstrap for Monero regtest):
         print(f"Error: Stagger interval must be >= 0, got {args.stagger_interval}", file=sys.stderr)
         sys.exit(1)
 
+    # Apply --close-to-deterministic overrides
+    native_preemption = None  # Default: don't set (Shadow default false applies)
+    parallelism = args.parallelism
+    process_threads = args.threads
+
+    if args.close_to_deterministic:
+        # Force deterministic settings, overriding --native-preemption and --threads
+        native_preemption = False  # Explicitly disable timer-based preemption
+        process_threads = 1  # Single-threaded Monero processes
+        if args.native_preemption:
+            print("Note: --close-to-deterministic overrides --native-preemption (forcing off)", file=sys.stderr)
+        if args.threads != 1:
+            print(f"Note: --close-to-deterministic overrides --threads {args.threads} (forcing 1)", file=sys.stderr)
+    elif args.native_preemption:
+        native_preemption = True  # Explicitly enable
+
     # Generate config based on scenario
     num_users = args.agents - 5
 
@@ -1557,7 +1611,7 @@ Timeline (verified bootstrap for Monero regtest):
                 simulation_seed=args.seed,
                 gml_path=args.gml,
                 fast_mode=args.fast,
-                process_threads=args.threads,
+                process_threads=process_threads,
                 batched_bootstrap=args.batched_bootstrap,
                 batch_interval=args.batch_interval,
                 initial_batch_size=args.initial_batch_size,
@@ -1575,6 +1629,8 @@ Timeline (verified bootstrap for Monero regtest):
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
+                parallelism=parallelism,
+                native_preemption=native_preemption,
                 upgrade_binary_v1=args.upgrade_binary_v1,
                 upgrade_binary_v2=args.upgrade_binary_v2,
                 upgrade_start=args.upgrade_start,
@@ -1591,7 +1647,7 @@ Timeline (verified bootstrap for Monero regtest):
                 simulation_seed=args.seed,
                 gml_path=args.gml,
                 fast_mode=args.fast,
-                process_threads=args.threads,
+                process_threads=process_threads,
                 batched_bootstrap=args.batched_bootstrap,
                 batch_interval=args.batch_interval,
                 initial_batch_size=args.initial_batch_size,
@@ -1610,6 +1666,8 @@ Timeline (verified bootstrap for Monero regtest):
                 activity_batch_size=args.activity_batch_size,
                 activity_batch_interval_s=parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
+                parallelism=parallelism,
+                native_preemption=native_preemption,
             )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -1713,16 +1771,18 @@ Timeline (verified bootstrap for Monero regtest):
 
     # Print summary
     fast_msg = " (fast mode)" if args.fast else ""
-    threads_msg = f", threads={args.threads}" if args.threads != 1 else ""
+    threads_msg = f", threads={process_threads}" if process_threads != 1 else ""
+    deterministic_msg = " [close-to-deterministic]" if args.close_to_deterministic else ""
+    preemption_msg = ", native_preemption=true" if native_preemption is True else ""
     duration_msg = f", duration extended to {actual_duration}" if duration_extended else ""
 
     if args.scenario == "upgrade":
-        print(f"Generated upgrade scenario config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{duration_msg}")
+        print(f"Generated upgrade scenario config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{preemption_msg}{deterministic_msg}{duration_msg}")
         print(f"  Binary v1: {args.upgrade_binary_v1} -> v2: {args.upgrade_binary_v2}")
         print(f"  Upgrade order: {args.upgrade_order}, stagger: {args.upgrade_stagger}")
         print(f"  Output: {args.output}")
     else:
-        print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
+        print(f"Generated config with {args.agents} agents ({num_users} users){fast_msg}{threads_msg}{preemption_msg}{deterministic_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
 
 
 if __name__ == "__main__":

@@ -729,6 +729,11 @@ pub struct GeneralConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub process_threads: Option<u32>,
 
+    /// Enable Shadow native preemption for CPU-bound threads.
+    /// Helps prevent thread starvation but breaks determinism.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_preemption: Option<bool>,
+
     /// Default daemon options applied to all agents (can be overridden per-agent)
     /// Example: { "log-level": 1, "no-zmq": true, "db-sync-mode": "fastest" }
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1131,6 +1136,7 @@ impl Default for GeneralConfig {
             bootstrap_end_time: None,
             progress: Some(true),  // Default to showing progress
             process_threads: Some(1),  // Default to single-threaded for determinism
+            native_preemption: None,  // Shadow default (false) applies when unset
             daemon_defaults: None,  // No daemon defaults by default
             wallet_defaults: None,  // No wallet defaults by default
         }

@@ -674,6 +674,7 @@ echo "Starting DNS server..."
         experimental: ShadowExperimental {
             runahead: config.general.runahead.clone(),  // Optional runahead for performance tuning
             use_dynamic_runahead: true,
+            native_preemption_enabled: config.general.native_preemption,  // Pass through config (Shadow default false when unset)
         },
         network: ShadowNetwork {
             graph: match &config.network {

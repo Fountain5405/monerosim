@@ -175,6 +175,11 @@ pub struct ShadowExperimental {
     pub runahead: Option<String>,
     /// Whether to use dynamic runahead
     pub use_dynamic_runahead: bool,
+    /// Enable native preemption so CPU-bound threads don't starve other threads.
+    /// Without this, monero-wallet-rpc's ring signature computation can monopolize
+    /// the host and prevent the RPC handler thread from responding.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_preemption_enabled: Option<bool>,
 }
 
 /// Shadow network configuration.
