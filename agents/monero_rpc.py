@@ -40,6 +40,19 @@ class BaseRPC:
         session = requests.Session()
         return session
         
+    def reset_session(self):
+        """Reset the HTTP session to recover from stale/broken connections.
+
+        This is needed after daemon restarts (e.g., during upgrades) where
+        the persistent HTTP connection becomes stale and all requests timeout.
+        """
+        try:
+            self.session.close()
+        except Exception:
+            pass
+        self.session = self._create_session()
+        self.logger.info("HTTP session reset - new connection will be established")
+
     def _make_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make an RPC request"""
         payload = {

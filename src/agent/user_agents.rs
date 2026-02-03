@@ -792,6 +792,18 @@ pub fn process_user_agents(
                 processes.extend(mining_processes);
             } else if !script.is_empty() {
                 // Regular user agent script
+                // Build merged attributes that include typed config fields
+                let mut merged_attributes = user_agent_config.attributes.clone().unwrap_or_default();
+                if let Some(activity_start_time) = user_agent_config.activity_start_time {
+                    merged_attributes.insert("activity_start_time".to_string(), activity_start_time.to_string());
+                }
+                if let Some(transaction_interval) = user_agent_config.transaction_interval {
+                    merged_attributes.insert("transaction_interval".to_string(), transaction_interval.to_string());
+                }
+                if user_agent_config.can_receive_distributions() {
+                    merged_attributes.insert("can_receive_distributions".to_string(), "true".to_string());
+                }
+
                 add_user_agent_process(
                     &mut processes,
                     agent_id,
@@ -800,7 +812,7 @@ pub fn process_user_agents(
                     if has_wallet { Some(wallet_rpc_port) } else { None },
                     if has_local_daemon { Some(p2p_port) } else { None },
                     &script,
-                    user_agent_config.attributes.as_ref(),
+                    Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,

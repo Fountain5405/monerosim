@@ -321,9 +321,24 @@ class RegularUserAgent(BaseAgent):
             self._consecutive_errors += 1
             self.logger.error(f"Error in user iteration (consecutive: {self._consecutive_errors}): {e}")
 
-            # After consecutive errors, try refreshing wallet to resync with daemon
+            # After consecutive errors, try recovery strategies
             if self._consecutive_errors >= 2:
                 try:
+                    # After 5+ errors, the connection is likely stale (e.g., daemon
+                    # restarted during upgrade). Reset HTTP session and tell wallet-rpc
+                    # to reconnect to the daemon.
+                    if self._consecutive_errors >= 5 and self._consecutive_errors % 5 == 0:
+                        self.logger.warning(
+                            f"Persistent errors ({self._consecutive_errors}), "
+                            "resetting wallet connection and reconnecting to daemon"
+                        )
+                        self.wallet_rpc.reset_session()
+                        # Re-point wallet-rpc at the daemon to force reconnection
+                        if self.agent_rpc_port:
+                            daemon_address = f"http://{self.rpc_host}:{self.agent_rpc_port}"
+                            self.wallet_rpc.set_daemon(daemon_address, trusted=True)
+                            self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
+
                     self.logger.info(f"Attempting wallet refresh after {self._consecutive_errors} consecutive errors")
                     self.wallet_rpc.refresh()
                     self._last_refresh_time = current_time
