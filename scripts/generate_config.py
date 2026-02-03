@@ -29,6 +29,7 @@ This timing ensures:
 """
 
 import argparse
+import os
 import random
 import sys
 from typing import Dict, Any, List, Tuple
@@ -82,9 +83,35 @@ DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
 DEFAULT_DAEMON_RESTART_GAP_S = 30  # Gap between stopping old daemon and starting new one
 
 # User activity batching defaults (prevents thundering herd when all users try to transact at once)
-DEFAULT_ACTIVITY_BATCH_SIZE = 10  # Users per batch
-DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 25  # Target seconds between batches
+# Batch size 0 = auto-detect from CPU count: max(5, cpu_count // 8)
+# On 256-thread systems this gives 32, on 64-thread gives 8
+DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect from CPU count
+DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 300  # 5 minutes between batches
 DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
+
+
+def auto_detect_activity_batch_size() -> int:
+    """Auto-detect activity batch size based on system CPU count.
+
+    Formula: max(5, cpu_count // 8)
+    This keeps concurrent wallet thread load (2 threads/wallet) within
+    a fraction of available cores during activity ramp-up.
+
+    Examples:
+        256 threads → 32 per batch (64 wallet threads)
+        128 threads → 16 per batch (32 wallet threads)
+         64 threads → 8 per batch  (16 wallet threads)
+         16 threads → 5 per batch  (minimum)
+    """
+    cpu_count = os.cpu_count() or 64  # fallback if detection fails
+    return max(5, cpu_count // 8)
+
+
+def resolve_activity_batch_size(batch_size: int) -> int:
+    """Resolve batch size, auto-detecting if 0."""
+    if batch_size <= 0:
+        return auto_detect_activity_batch_size()
+    return batch_size
 
 
 def calculate_activity_start_times(
@@ -663,6 +690,9 @@ def generate_config(
         agent_id = f"miner-{i+1:03}"
         agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
+    # Resolve auto-detected activity batch size (0 = auto from CPU count)
+    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
+
     # Calculate staggered activity start times to prevent thundering herd
     # Each user gets a slightly different activity_start_time based on batching
     user_activity_times = calculate_activity_start_times(
@@ -996,6 +1026,9 @@ def generate_upgrade_config(
             phase0_stop,
             phase1_start,
         )
+
+    # Resolve auto-detected activity batch size (0 = auto from CPU count)
+    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
 
     # Calculate staggered activity start times to prevent thundering herd
     user_activity_times = calculate_activity_start_times(
@@ -1448,16 +1481,17 @@ Timeline (verified bootstrap for Monero regtest):
         "--activity-batch-size",
         type=int,
         default=DEFAULT_ACTIVITY_BATCH_SIZE,
-        help=f"Users per activity batch (default: {DEFAULT_ACTIVITY_BATCH_SIZE}). "
+        help="Users per activity batch (0=auto-detect from CPU count, default). "
+             "Auto-detection: max(5, cpu_count/8). E.g., 256 threads → 32, 64 threads → 8. "
              "Staggers when users start sending transactions to prevent overwhelming the network."
     )
 
     parser.add_argument(
         "--activity-batch-interval",
         type=str,
-        default=f"{DEFAULT_ACTIVITY_BATCH_INTERVAL_S}s",
-        help=f"Target seconds between activity batches (default: {DEFAULT_ACTIVITY_BATCH_INTERVAL_S}s). "
-             "Each batch of users starts transacting this many seconds after the previous batch."
+        default="5m",
+        help="Target time between activity batches (default: 5m). "
+             "Each batch of users starts transacting this long after the previous batch."
     )
 
     parser.add_argument(
@@ -1711,10 +1745,11 @@ Timeline (verified bootstrap for Monero regtest):
 
     # Activity batching note
     activity_rollout_str = format_time_offset(activity_rollout_s, for_config=False)
+    activity_interval_str = format_time_offset(activity_batch_interval_s, for_config=False)
     activity_batching_note = f"""#
 # Activity batching (prevents thundering herd):
 #   Batch size: {activity_batch_size} users
-#   Batch interval: {activity_batch_interval_s}s (+/-{int(activity_batch_jitter*100)}% jitter)
+#   Batch interval: {activity_interval_str} (+/-{int(activity_batch_jitter*100)}% jitter)
 #   Total rollout: ~{activity_rollout_str}"""
 
     # Generate header based on scenario
