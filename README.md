@@ -178,8 +178,8 @@ monerosim/
 - [Architecture](docs/ARCHITECTURE.md) - System design and component details
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
 - [Network Scaling Guide](docs/NETWORK_SCALING_GUIDE.md) - CAIDA topologies and large-scale simulations
+- [How It Works](docs/FLOW.md) - Detailed mechanics of how monerosim interfaces with Shadow
 - [Determinism Fixes](docs/DETERMINISM_FIXES.md) - Sources of non-determinism and fixes
-- [Migration Guide](docs/MIGRATION_AUTONOMOUS_MINING.md) - Migrating from legacy block controller
 - [AI Config Generator](docs/AI_CONFIG_GENERATOR.md) - LLM-based configuration generation
 
 ## Requirements
