@@ -5,10 +5,10 @@ This guide covers the end-to-end workflow for running Monerosim simulations.
 ## Prerequisites
 
 - Monerosim built (`cargo build --release`)
-- Shadow and Monero binaries installed (`~/.monerosim/bin/`)
+- shadowformonero and Monero binaries installed to `~/.monerosim/bin/`
 - Python virtual environment set up (`source venv/bin/activate`)
 
-If you haven't set up the environment yet, run `./setup.sh` first.
+If you haven't set up the environment yet, run `./setup.sh` first. It will install shadowformonero (a Shadow fork with Monero socket compatibility), build official Monero from source, and set up all dependencies.
 
 ## Step 1: Generate Shadow Configuration
 
@@ -92,28 +92,9 @@ grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
 cat /tmp/monerosim_shared/agent_registry.json
 ```
 
-### Run analysis tools
+### Analysis tools (LLM-generated, unverified)
 
-```bash
-# Build the Rust analyzer
-cargo build --release --bin tx-analyzer
-
-# Full analysis suite
-./target/release/tx-analyzer full
-
-# Or individual analyses
-./target/release/tx-analyzer spy-node
-./target/release/tx-analyzer propagation
-./target/release/tx-analyzer resilience
-./target/release/tx-analyzer dandelion
-
-# Python alternative
-python3 scripts/tx_analyzer.py full
-```
-
-Analysis output is written to `analysis_output/`.
-
-For detailed analysis tool documentation, see [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md).
+There are also LLM-generated analysis tools (`tx-analyzer`, `scripts/tx_analyzer.py`) in the repository for examining transaction routing and network behavior. These have **not been human-verified** and their results should not be trusted without independent validation. See [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md) for details.
 
 ## Log File Locations
 

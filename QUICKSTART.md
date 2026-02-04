@@ -13,15 +13,18 @@
 git clone <repository-url>
 cd monerosim
 
-# Run the automated setup (builds Shadow and Monero from source)
+# Run the automated setup
 ./setup.sh
 ```
 
 The setup script will:
-- Install system dependencies (Rust, build tools)
-- Build Shadow with Monero compatibility patches
-- Build Monero binaries (monerod, monero-wallet-rpc)
-- Install binaries to `~/.monerosim/bin/`
+- Install system dependencies (Rust, build tools, clang, glib)
+- Set up a Python virtual environment and install dependencies
+- Build Monerosim (`cargo build --release`)
+- Clone and build [shadowformonero](https://github.com/Fountain5405/shadowformonero) (a Shadow fork with Monero socket compatibility)
+- Clone and build official Monero from source (monerod, monero-wallet-rpc)
+- Install all binaries to `~/.monerosim/bin/`
+- Generate a test Shadow configuration
 - Optionally run a test simulation
 
 ## Running Your First Simulation

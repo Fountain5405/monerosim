@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Monerosim is a Rust-based configuration generator that produces Shadow network simulator configurations for running Monero cryptocurrency network simulations. It pairs a Rust core for config generation with a Python agent framework for autonomous network behaviors.
+Monerosim is a Rust-based configuration generator that produces configurations for [shadowformonero](https://github.com/Fountain5405/shadowformonero) (a Shadow network simulator fork with Monero socket compatibility) to run Monero cryptocurrency network simulations. It pairs a Rust core for config generation with a Python agent framework for autonomous network behaviors. Monero binaries are built from the official `monero-project/monero` repository and run unmodified inside the simulator.
 
 ## Simulation Flow
 
@@ -30,8 +30,8 @@ Monerosim is a Rust-based configuration generator that produces Shadow network s
                                     |
                                     v
                     +-------------------------------+
-                    | Shadow Network Simulator      |
-                    |  (shadowformonero)             |
+                    | shadowformonero               |
+                    |  (Shadow fork for Monero)      |
                     |                               |
                     |  Per host:                    |
                     |   - monerod daemon            |
@@ -87,7 +87,7 @@ The Rust core parses a user-written YAML configuration and generates the Shadow 
 | `src/topology/` | Network topology logic and agent distribution |
 | `src/utils/` | Shared utilities (validation, duration parsing, logging) |
 | `src/mining_shim/` | Mining strategy implementations |
-| `src/analysis/` | Transaction routing analysis modules |
+| `src/analysis/` | Transaction routing analysis modules (LLM-generated, unverified) |
 
 ### 2. Python Agent Framework (`agents/`)
 
@@ -115,7 +115,9 @@ Agents are autonomous participants that run inside Shadow alongside monerod and 
   [agent]_stats.json       # Per-agent statistics
 ```
 
-### 3. Shadow Network Simulator Integration
+### 3. shadowformonero Integration
+
+Monerosim uses [shadowformonero](https://github.com/Fountain5405/shadowformonero), a fork of the Shadow network simulator with Monero socket compatibility patches. Standard Monero binaries (built from the official `monero-project/monero` repository) run unmodified inside the simulator.
 
 Monerosim generates a Shadow configuration that defines:
 
@@ -125,16 +127,14 @@ Monerosim generates a Shadow configuration that defines:
 - **Peer connections** based on the chosen discovery mode
 - **Startup scheduling** with staggered times to prevent thundering herd
 
-Shadow then executes the entire simulation deterministically within a single process, using its virtual network to connect all hosts.
+shadowformonero then executes the entire simulation deterministically within a single process, using its virtual network to connect all hosts.
 
-### 4. Analysis Tools
+### 4. Analysis Tools (LLM-generated, unverified)
 
-Post-simulation analysis is available in both Rust and Python:
+Post-simulation analysis tools exist in both Rust and Python, but these were LLM-generated and have not been human-verified for correctness. See [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md) for details.
 
-- **Rust**: `src/bin/tx_analyzer.rs` - high-performance analysis CLI
-- **Python**: `scripts/tx_analyzer.py` - flexible analysis scripting
-
-Analysis capabilities: spy node vulnerability, propagation timing, network resilience, Dandelion++ path reconstruction, TX Relay V2 statistics, bandwidth usage.
+- **Rust**: `src/bin/tx_analyzer.rs`
+- **Python**: `scripts/tx_analyzer.py`
 
 ## Network Architecture
 
@@ -188,7 +188,7 @@ Monerosim uses **autonomous mining** where each miner agent independently genera
 
 1. **Rust core** for memory safety, performance, and strong typing in config generation
 2. **Python agents** for rapid development, accessible RPC libraries, and research flexibility
-3. **Shadow integration** to run actual Monero binaries (high fidelity vs simplified models)
+3. **shadowformonero** to run unmodified official Monero binaries in a virtual network (high fidelity vs simplified models)
 4. **Custom GML parser** optimized for Shadow's requirements
 5. **Decentralized agent coordination** via shared state files rather than direct communication
 6. **Geographic IP distribution** for realistic internet structure modeling

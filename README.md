@@ -4,29 +4,27 @@ A tool for running Monero cryptocurrency network simulations inside the [Shadow]
 
 ## How It Works
 
-Monerosim simulations proceed in three stages:
+Monerosim simulations proceed in two stages:
 
 ```
- 1. CONFIGURE             2. SIMULATE                  3. ANALYZE
- +--------------+        +----------------------+      +------------------+
- | YAML config  | -----> | Shadow runs:         | ---> | Process logs     |
- | (your input) |  rust  |  - monerod daemons   |      | Run tx-analyzer  |
- |              |  gen   |  - wallet-rpc         |      | Spy node, prop,  |
- +--------------+        |  - Python agents      |      | resilience, etc. |
-                         |  on virtual network   |      +------------------+
+ 1. CONFIGURE             2. SIMULATE
+ +--------------+        +----------------------+
+ | YAML config  | -----> | shadowformonero runs:|
+ | (your input) |  rust  |  - monerod daemons   |
+ |              |  gen   |  - wallet-rpc         |
+ +--------------+        |  - Python agents      |
+                         |  on virtual network   |
                          +----------------------+
 ```
 
 **Stage 1** - You write a YAML config describing the network: how many miners, users, what topology, how long to run. Monerosim's Rust engine parses this and generates Shadow configuration files.
 
-**Stage 2** - Shadow runs the simulation. Each agent gets its own monerod daemon, wallet-rpc, and Python script running on a virtual host. Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files.
-
-**Stage 3** - After the simulation ends, you analyze the logs. Built-in tools measure transaction propagation, spy node vulnerability, network resilience, and Dandelion++ privacy characteristics.
+**Stage 2** - shadowformonero runs the simulation. Each agent gets its own monerod daemon, wallet-rpc, and Python script running on a virtual host. Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output (logs, shared state) is written to `shadow.data/` and `/tmp/monerosim_shared/`.
 
 ## Quick Start
 
 ```bash
-# 1. Clone and set up (installs Shadow, builds Monero with Shadow patches)
+# 1. Clone and set up (installs shadowformonero, builds Monero from source)
 git clone <repository-url>
 cd monerosim
 ./setup.sh
@@ -43,11 +41,6 @@ nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1
 
 # 5. Monitor progress
 tail shadow.log
-
-# 6. Analyze results (after simulation completes)
-source venv/bin/activate
-python scripts/log_processor.py
-./target/release/tx-analyzer full
 ```
 
 ## Configuration
@@ -108,8 +101,7 @@ For the complete configuration reference, see [docs/CONFIGURATION.md](docs/CONFI
 |-----------|----------|---------|
 | Config engine | Rust | Parse YAML, generate Shadow config, allocate IPs, set up topology |
 | Agent framework | Python | Autonomous miners, users, monitors running inside Shadow |
-| Shadow | C/C++ | Network simulator executing real Monero binaries |
-| Analysis tools | Rust + Python | Post-simulation transaction and network analysis |
+| shadowformonero | C/C++ | Shadow fork with Monero socket compatibility, runs real Monero binaries |
 
 ### What runs inside Shadow
 
@@ -118,7 +110,7 @@ For each agent in your config, Shadow launches:
 - A **monero-wallet-rpc** instance (for wallet operations)
 - A **Python agent script** (autonomous behavior: mining, transactions, monitoring)
 
-These all run on a virtual host with a geographically-distributed IP address. Shadow's virtual network connects all hosts and simulates realistic network conditions.
+These all run on a virtual host with a geographically-distributed IP address. The virtual network (provided by shadowformonero, a Shadow fork with Monero socket compatibility) connects all hosts and simulates realistic network conditions.
 
 ### Agent types
 
@@ -143,29 +135,6 @@ These all run on a virtual host with a geographically-distributed IP address. Sh
 | Hardcoded | Explicit seed nodes with topology templates (Star/Mesh/Ring/Dag) |
 | Hybrid | Combines topology structure with dynamic discovery |
 
-## Post-Simulation Analysis
-
-```bash
-# Build and run the analysis tool
-cargo build --release --bin tx-analyzer
-./target/release/tx-analyzer full
-```
-
-Available analyses:
-
-| Command | What it measures |
-|---------|-----------------|
-| `spy-node` | How effectively an attacker could deanonymize transaction origins |
-| `propagation` | Transaction spread speed through the network |
-| `resilience` | Network connectivity, centralization (Gini coefficient), partition risk |
-| `dandelion` | Dandelion++ stem path reconstruction and privacy scoring |
-| `tx-relay-v2` | Protocol usage statistics |
-| `network-graph` | P2P topology analysis |
-| `bandwidth` | Network bandwidth usage |
-| `full` | Run all analyses |
-
-Output is written to `analysis_output/`. See [docs/ANALYSIS_TOOLS.md](docs/ANALYSIS_TOOLS.md) for details.
-
 ## Project Structure
 
 ```
@@ -182,8 +151,6 @@ monerosim/
     topology/                # Network topology logic
     registry/                # Agent/miner registries
     shadow/                  # Shadow YAML output
-    analysis/                # Transaction analysis modules
-    bin/tx_analyzer.rs       # Analysis CLI
   agents/                    # Python agent framework
     autonomous_miner.py      # Autonomous mining agent
     regular_user.py          # Transaction-sending user agent
@@ -193,7 +160,6 @@ monerosim/
     base_agent.py            # Base agent class
     monero_rpc.py            # RPC client library
   scripts/                   # Utility scripts
-    tx_analyzer.py           # Python analysis tool
     log_processor.py         # Log processing
     sync_check.py            # Blockchain sync monitoring
     migrate_mining_config.py # Config migration
@@ -211,7 +177,6 @@ monerosim/
 - [Configuration Guide](docs/CONFIGURATION.md) - Complete configuration reference
 - [Architecture](docs/ARCHITECTURE.md) - System design and component details
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
-- [Analysis Tools](docs/ANALYSIS_TOOLS.md) - Post-simulation analysis documentation
 - [Network Scaling Guide](docs/NETWORK_SCALING_GUIDE.md) - CAIDA topologies and large-scale simulations
 - [Determinism Fixes](docs/DETERMINISM_FIXES.md) - Sources of non-determinism and fixes
 - [Migration Guide](docs/MIGRATION_AUTONOMOUS_MINING.md) - Migrating from legacy block controller
@@ -233,9 +198,9 @@ monerosim/
 ```bash
 # Install system dependencies (Ubuntu/Debian)
 sudo apt-get update
-sudo apt-get install build-essential cmake libglib2.0-dev libevent-dev libigraph-dev
+sudo apt-get install build-essential cmake libglib2.0-dev libclang-dev clang
 
-# Run the setup script (builds Shadow and Monero from source)
+# Run the setup script (builds shadowformonero and Monero from source)
 ./setup.sh
 
 # Set up Python environment
@@ -244,7 +209,7 @@ source venv/bin/activate
 pip install -r scripts/requirements.txt
 ```
 
-Binaries are installed to `~/.monerosim/bin/` (shadow, monerod, monero-wallet-rpc).
+Binaries are installed to `~/.monerosim/bin/` (shadow from shadowformonero, monerod and monero-wallet-rpc from official Monero).
 
 ## Contributing
 

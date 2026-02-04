@@ -1,6 +1,8 @@
 # Transaction Routing Analysis Tools
 
-Monerosim includes two cross-validated analysis implementations (Rust and Python) for examining transaction routing behavior, network topology, and privacy characteristics after running a simulation.
+> **Disclaimer**: These analysis tools were LLM-generated and have **0% human-verified validity**. The methodologies for spy node detection, Dandelion++ path reconstruction, propagation timing analysis, and other measurements have not been independently validated. Use at your own risk and verify results before drawing any conclusions.
+
+Monerosim includes two analysis implementations (Rust and Python) for examining transaction routing behavior, network topology, and privacy characteristics after running a simulation.
 
 ## Prerequisites
 
