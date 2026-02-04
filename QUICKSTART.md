@@ -1,146 +1,138 @@
-# MoneroSim Quick Start Guide
-
-**Get MoneroSim running in 5 minutes!**
-
-## 🎉 P2P Connectivity Working!
-
-MoneroSim now successfully establishes P2P connections between Monero nodes! The setup script will verify that nodes can connect and communicate with each other.
+# Monerosim Quick Start
 
 ## Prerequisites
 
-You need:
-- Linux system (Ubuntu, Debian, CentOS, Arch, etc.)
-- Internet connection
+- Linux system (Ubuntu 20.04+, Debian, etc.)
 - Sudo access
+- Internet connection
 
 ## Installation
 
 ```bash
-# 1. Clone the repository
-git clone <repository_url>
+# Clone the repository
+git clone <repository-url>
 cd monerosim
 
-# 2. Run the automated setup script (takes 20-40 minutes)
+# Run the automated setup (builds Shadow and Monero from source)
 ./setup.sh
 ```
 
-**Note**: The setup process includes building Monero from source with Shadow compatibility patches, which can take 20-40 minutes depending on your system.
+The setup script will:
+- Install system dependencies (Rust, build tools)
+- Build Shadow with Monero compatibility patches
+- Build Monero binaries (monerod, monero-wallet-rpc)
+- Install binaries to `~/.monerosim/bin/`
+- Optionally run a test simulation
 
-The script will:
-- ✅ Install all dependencies (Rust, Shadow, build tools)
-- ✅ Clone and patch Monero source code for Shadow compatibility
-- ✅ Build MoneroSim
-- ✅ Build Monero binaries with Shadow patches
-- ✅ Install Monero binaries to `~/.monerosim/bin/`
-- ✅ Prompt you about Shadow installation (if existing Shadow detected)
-- ✅ Prompt you whether to run a test simulation (config_32_agents.yaml takes ~4 hours)
-- ✅ Show you the results if you choose to run the test
+## Running Your First Simulation
 
-## What You'll See
-
-The script will output colored progress messages:
-- 🔵 **[INFO]** - General information
-- 🟢 **[SUCCESS]** - Something worked correctly
-- 🟡 **[WARNING]** - Non-critical issues
-- 🔴 **[ERROR]** - Something failed
-
-## After Setup
-
-Once setup completes, you can:
-
-**Note**: For analysis scripts and agent operations, activate the Python virtual environment:
 ```bash
-source venv/bin/activate
+# Build Monerosim
+cargo build --release
+
+# Generate Shadow configuration
+./target/release/monerosim --config monerosim.yaml
+
+# Run the simulation
+rm -rf shadow.data shadow.log
+nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+
+# Check progress
+tail shadow.log
 ```
 
-### Run Custom Simulations
+The default configuration (`monerosim.yaml`) runs 25 agents (5 miners + 20 users) for 8 hours of simulated time.
 
-```bash
-# Edit simulation parameters
-vim config_32_agents.yaml
+## Customizing
 
-# Generate new configuration
-./target/release/monerosim --config config_32_agents.yaml --output shadow_agents_output
+Edit the configuration to change simulation parameters:
 
-# Run simulation
-shadow shadow_agents_output/shadow_agents.yaml
+```yaml
+general:
+  stop_time: "30m"          # Shorter simulation for testing
+  simulation_seed: 12345
+
+network:
+  path: "gml_processing/1200_nodes_caida_with_loops.gml"
+  peer_mode: Dynamic
+
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: "monero-wallet-rpc"
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 50
+
+  miner-002:
+    daemon: monerod
+    wallet: "monero-wallet-rpc"
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 50
+
+  user-001:
+    daemon: monerod
+    wallet: "monero-wallet-rpc"
+    script: agents.regular_user
+    start_time: 20m
+    transaction_interval: 60
+    activity_start_time: 1200
+    can_receive_distributions: true
 ```
 
-### Analyze Results
-
-First, process the logs for summarized analysis:
+Then regenerate and run:
 
 ```bash
+./target/release/monerosim --config your_config.yaml
+rm -rf shadow.data shadow.log
+nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+```
+
+## Analyzing Results
+
+After the simulation completes:
+
+```bash
+# Activate Python environment
 source venv/bin/activate
+
+# Process logs
 python scripts/log_processor.py
+
+# Run analysis
+cargo build --release --bin tx-analyzer
+./target/release/tx-analyzer full
 ```
 
-This creates `.processed_log` files with summarized information. Check these files first for a quick overview, or use grep commands for specific patterns:
+Check processed logs in `shadow.data/hosts/*/` and analysis output in `analysis_output/`.
+
+## Verification
 
 ```bash
-# Check if nodes started
+# Check daemons started
 grep "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout
 
-# Check P2P connections (should show successful connections!)
+# Check P2P connections
 grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
 
-# Look for TCP connection establishment
-grep "handle_accept" shadow.data/hosts/*/monerod.*.stdout
-
-# Check agent discovery files
-ls -la /tmp/monerosim_shared/
+# Check agent registry
 cat /tmp/monerosim_shared/agent_registry.json
 ```
 
-### Agent Discovery System
+## Troubleshooting
 
-MoneroSim uses a dynamic agent discovery system that automatically finds and tracks agents during simulation:
+**"Shadow not found"**: Ensure `~/.monerosim/bin/` is in your PATH. Run `source ~/.bashrc`.
 
-- **Agent Registry**: `/tmp/monerosim_shared/agent_registry.json` contains all agent information
-- **Dynamic Discovery**: Agents are discovered at runtime, not hardcoded
-- **Type-Based Queries**: Find miners, wallets, and other agents by type
+**Permission denied**: Make sure you can run `sudo` commands.
 
+**Simulation seems stuck**: Check `tail shadow.log`. Large simulations run slower than real time.
 
-### Change Simulation Duration
+**"N managed processes in unexpected final state"**: This is normal. Shadow terminates all processes when simulation time expires.
 
-Edit `config_32_agents.yaml`:
-```yaml
-general:
-  stop_time: "30m"  # Run for 30 minutes instead of ~4 hours
-  simulation_seed: 12345  # For reproducibility
+## Next Steps
 
-agents:
-  user_agents:
-    # Miner agent
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      mining_script: "agents.autonomous_miner"
-      attributes:
-        is_miner: "true"
-        hashrate: "50"
-
-    # User agent (sends transactions)
-    - daemon: "monerod"
-      wallet: "monero-wallet-rpc"
-      user_script: "agents.regular_user"
-      attributes:
-        transaction_interval: "60"
-        min_transaction_amount: "0.5"
-        max_transaction_amount: "2.0"
-```
-
-## Common Issues
-
-**"Shadow not found"**: Install Shadow manually from https://shadow.github.io/docs/guide/install/
-
-**Permission denied**: Make sure you can run `sudo` commands
-
-**Script fails**: Check the error message - most issues are dependency-related
-
-## Need Help?
-
-- Check the full README.md for detailed documentation
-- Look at Shadow logs: `shadow.data/shadow.log`
-- Check node logs: `shadow.data/hosts/*/monerod.*.stdout`
-
-**Happy simulating!** 🚀
+- Read the full [README](README.md) for architecture overview
+- See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all configuration options
+- See [docs/RUNNING_SIMULATIONS.md](docs/RUNNING_SIMULATIONS.md) for detailed workflow
+- Check [examples/](examples/) for more configuration examples
