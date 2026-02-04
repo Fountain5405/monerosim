@@ -87,87 +87,27 @@ pub fn add_user_agent_process(
         format!("python3 {} {}", script, agent_args.join(" "))
     };
 
-    // Create wrapper script based on agent type
-    let wrapper_script = match (wallet_rpc_port, agent_rpc_port) {
-        // Script-only agent (no daemon, no wallet) - start immediately
-        (None, None) => {
-            format!(
-                r#"#!/bin/bash
-cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+    // Resolve HOME for fully-qualified paths (no shell expansion needed)
+    let home_dir = environment.get("HOME").cloned()
+        .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
-echo "Starting script-only agent..."
+    // Create wrapper script with fully-resolved paths.
+    // No shell variable expansion needed - all paths are absolute.
+    // Python agents handle their own RPC readiness retries via
+    // wait_until_ready() with exponential backoff in base_agent.py.
+    let wrapper_script = format!(
+        r#"#!/bin/bash
+cd {}
+export PYTHONPATH={}
+export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
+
 {} 2>&1
 "#,
-                current_dir,
-                current_dir,
-                python_cmd
-            )
-        }
-
-        // Wallet-only agent (remote daemon) or full agent - wait for wallet RPC
-        (Some(wallet_port), _) => {
-            format!(
-                r#"#!/bin/bash
-cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
-
-# Simple retry loop without nc dependency
-for i in {{1..30}}; do
-    if curl -s --max-time 1 http://{}:{} >/dev/null 2>&1; then
-        echo "Wallet RPC ready, starting agent..."
-        {} 2>&1
-        exit $?
-    fi
-    echo "Waiting for wallet RPC... (attempt $i/30)"
-    sleep 3
-done
-
-echo "Wallet RPC not available after 30 attempts, starting agent anyway..."
-{} 2>&1
-"#,
-                current_dir,
-                current_dir,
-                agent_ip,
-                wallet_port,
-                python_cmd,
-                python_cmd
-            )
-        }
-
-        // Daemon-only agent (no wallet) - wait for daemon RPC
-        (None, Some(daemon_port)) => {
-            format!(
-                r#"#!/bin/bash
-cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
-
-# Wait for daemon RPC to be ready
-for i in {{1..30}}; do
-    if curl -s --max-time 1 http://{}:{}/json_rpc >/dev/null 2>&1; then
-        echo "Daemon RPC ready, starting agent..."
-        {} 2>&1
-        exit $?
-    fi
-    echo "Waiting for daemon RPC... (attempt $i/30)"
-    sleep 3
-done
-
-echo "Daemon RPC not available after 30 attempts, starting agent anyway..."
-{} 2>&1
-"#,
-                current_dir,
-                current_dir,
-                agent_ip,
-                daemon_port,
-                python_cmd,
-                python_cmd
-            )
-        }
-    };
+        current_dir,
+        current_dir,
+        home_dir,
+        python_cmd
+    );
 
     // Write wrapper script to a temporary file and execute it
     let script_path = format!("/tmp/agent_{}_wrapper.sh", agent_id);
@@ -254,67 +194,25 @@ pub fn create_mining_agent_process(
         format!("python3 {} {}", mining_script, args.join(" "))
     };
     
-    // Create a simple wrapper script that handles retries internally
-    // If wallet_rpc_port is None, skip the wallet wait entirely (autonomous mining without wallet-rpc)
-    let wrapper_script = if let Some(wallet_port) = wallet_rpc_port {
-        format!(
-            r#"#!/bin/bash
+    // Resolve HOME for fully-qualified paths (no shell expansion needed)
+    let home_dir = environment.get("HOME").cloned()
+        .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
+
+    // Create wrapper script with fully-resolved paths.
+    let wrapper_script = format!(
+        r#"#!/bin/bash
 cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+export PYTHONPATH={}
+export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
-# Simple retry loop without nc dependency
-for i in {{1..30}}; do
-    if curl -s --max-time 1 http://{}:{} >/dev/null 2>&1; then
-        echo "Wallet RPC ready, starting mining agent..."
-        {} 2>&1
-        exit $?
-    fi
-    echo "Waiting for wallet RPC... (attempt $i/30)"
-    sleep 3
-done
-
-echo "Wallet RPC not available after 30 attempts, starting mining agent anyway..."
 {} 2>&1
 "#,
-            current_dir,
-            current_dir,
-            ip_addr,
-            wallet_port,
-            python_cmd,
-            python_cmd
-        )
-    } else {
-        // No wallet configured - wait for daemon RPC only (much faster startup)
-        format!(
-            r#"#!/bin/bash
-cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+        current_dir,
+        current_dir,
+        home_dir,
+        python_cmd
+    );
 
-# Wait for daemon RPC to be ready (no wallet-rpc needed)
-for i in {{1..30}}; do
-    if curl -s --max-time 1 http://{}:{}/json_rpc >/dev/null 2>&1; then
-        echo "Daemon RPC ready, starting mining agent..."
-        {} 2>&1
-        exit $?
-    fi
-    echo "Waiting for daemon RPC... (attempt $i/30)"
-    sleep 3
-done
-
-echo "Daemon RPC not available after 30 attempts, starting mining agent anyway..."
-{} 2>&1
-"#,
-            current_dir,
-            current_dir,
-            ip_addr,
-            agent_rpc_port,
-            python_cmd,
-            python_cmd
-        )
-    };
-    
     // Write wrapper script to a temporary file and execute it
     let script_path = format!("/tmp/mining_agent_{}_wrapper.sh", agent_id);
     

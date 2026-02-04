@@ -9,7 +9,7 @@ use crate::shadow::{
     MinerInfo, MinerRegistry, AgentInfo, AgentRegistry,
     PublicNodeInfo, PublicNodeRegistry,
     ShadowConfig, ShadowGeneral, ShadowExperimental, ShadowNetwork, ShadowGraph,
-    ShadowFileSource, ShadowHost,
+    ShadowFileSource, ShadowHost, ShadowProcess,
 };
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
@@ -39,6 +39,44 @@ fn detect_venv_site_packages(base_dir: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Extract the target path and script content from a heredoc-style bash command.
+///
+/// Handles two heredoc formats used in the codebase:
+/// 1. `-c 'cat > /path << \EOF\n...EOF'` (backslash-escaped)
+/// 2. `-c 'cat > /path << '"'"'EOF'"'"'\n...EOF'` (single-quote-escaped)
+///
+/// Returns (target_path, script_content) if parsing succeeds.
+fn extract_heredoc_script(args: &str) -> Option<(String, String)> {
+    // Strip the "-c '" prefix and trailing "'"
+    let inner = args.strip_prefix("-c '")?;
+    let inner = inner.strip_suffix("'")?;
+
+    // Find "cat > " to get the target path
+    let after_cat = inner.strip_prefix("cat > ")?;
+
+    // Find the path (ends at " << ")
+    let sep_idx = after_cat.find(" << ")?;
+    let target_path = after_cat[..sep_idx].to_string();
+    let rest = &after_cat[sep_idx + 4..]; // skip " << "
+
+    // Skip past the EOF delimiter marker (various quoting styles)
+    // Look for the first newline which marks the end of the delimiter
+    let newline_idx = rest.find('\n')?;
+    let content_start = newline_idx + 1;
+
+    // The content ends at "EOF" (possibly with a trailing single quote from outer wrapping)
+    let content = &rest[content_start..];
+
+    // Strip trailing EOF marker
+    let content = if content.ends_with("EOF") {
+        &content[..content.len() - 3]
+    } else {
+        content
+    };
+
+    Some((target_path, content.to_string()))
 }
 
 /// Generate Shadow network configuration from GML graph
@@ -190,7 +228,7 @@ pub fn generate_agent_shadow_config(
 
     // Common environment variables
     let mut environment: BTreeMap<String, String> = [
-        ("HOME".to_string(), home_dir), // Required for $HOME expansion in binary paths
+        ("HOME".to_string(), home_dir.clone()), // Required for $HOME expansion in binary paths
         ("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string()),
         ("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string()),
         ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
@@ -248,9 +286,9 @@ pub fn generate_agent_shadow_config(
         monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     }
 
-    // Helper to get absolute path for binaries (installed to ~/.monerosim/bin by setup.sh)
-    let monerod_path = "$HOME/.monerosim/bin/monerod".to_string();
-    let wallet_path = "$HOME/.monerosim/bin/monero-wallet-rpc".to_string();
+    // Fully-resolved binary paths (installed to ~/.monerosim/bin by setup.sh)
+    let monerod_path = format!("{}/.monerosim/bin/monerod", home_dir);
+    let wallet_path = format!("{}/.monerosim/bin/monero-wallet-rpc", home_dir);
 
     // Store seed nodes for P2P connections
     let mut seed_nodes: Vec<String> = Vec::new();
@@ -343,19 +381,19 @@ pub fn generate_agent_shadow_config(
         let venv_site_packages = detect_venv_site_packages(&current_dir)
             .unwrap_or_else(|| format!("{}/venv/lib/python3/site-packages", current_dir));
 
-        // Create wrapper script for DNS server
+        // Create wrapper script for DNS server with fully-resolved paths
         let dns_wrapper_script = format!(
             r#"#!/bin/bash
 cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+export PYTHONPATH={}:{}
+export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
-echo "Starting DNS server..."
 {} 2>&1
 "#,
             current_dir,
             current_dir,
             venv_site_packages,
+            home_dir,
             dns_python_cmd
         );
 
@@ -648,6 +686,24 @@ echo "Starting DNS server..."
     let miner_registry_json = serde_json::to_string_pretty(&miner_registry)?;
     std::fs::write(&miner_registry_path, &miner_registry_json)?;
 
+    // Pre-create wallet directories for all agents that have wallets.
+    // This replaces the per-agent bash cleanup processes that previously ran
+    // inside the simulation to `rm -rf && mkdir -p && chmod 755` wallet dirs.
+    // Since main.rs already cleans /tmp/monerosim_shared/ before generation,
+    // we just need to create fresh directories with correct permissions.
+    for (agent_id, agent_config) in config.agents.agents.iter() {
+        if agent_config.has_wallet() || agent_config.has_wallet_phases() {
+            let wallet_dir = shared_dir_path.join(format!("{}_wallet", agent_id));
+            fs::create_dir_all(&wallet_dir)
+                .map_err(|e| color_eyre::eyre::eyre!("Failed to create wallet dir {:?}: {}", wallet_dir, e))?;
+            // Set permissions explicitly (monero-wallet-rpc can create files with restrictive perms)
+            let mut perms = fs::metadata(&wallet_dir)?.permissions();
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o755);
+            fs::set_permissions(&wallet_dir, perms)?;
+        }
+    }
+
     // Note: GML topologies do NOT require a 1:1 mapping between nodes and Shadow hosts.
     // Shadow only requires that each host's network_node_id references a valid GML node.
     // Multiple hosts can share the same network_node_id, and GML nodes without hosts are fine.
@@ -710,6 +766,113 @@ echo "Starting DNS server..."
             dns_server: dns_server_ip.clone(),
         },
         hosts,
+    };
+
+    // Write all pre-generated wrapper scripts to disk.
+    // This replaces the two-process pattern (create script + execute script 1s later)
+    // with a single process that executes a pre-written script.
+    let scripts_dir = output_path.parent()
+        .ok_or_else(|| color_eyre::eyre::eyre!("Output path has no parent directory"))?
+        .join("scripts");
+    fs::create_dir_all(&scripts_dir)
+        .map_err(|e| color_eyre::eyre::eyre!("Failed to create scripts directory: {}", e))?;
+    let scripts_dir = fs::canonicalize(&scripts_dir)
+        .map_err(|e| color_eyre::eyre::eyre!("Failed to canonicalize scripts directory: {}", e))?;
+
+    // Collect scripts from all hosts and write them to disk
+    for (host_id, host) in shadow_config.hosts.iter() {
+        for process in &host.processes {
+            // Detect wrapper script creation processes: they write to /tmp/*_wrapper.sh
+            // These will be replaced with pre-written scripts
+            if process.path == "/bin/bash" && process.args.starts_with("-c 'cat >") {
+                // Extract the target path and script content from the heredoc
+                if let Some((target_path, content)) = extract_heredoc_script(&process.args) {
+                    // Write the script to our scripts directory instead
+                    let script_filename = Path::new(&target_path)
+                        .file_name()
+                        .map(|f| f.to_string_lossy().to_string())
+                        .unwrap_or_else(|| format!("{}_wrapper.sh", host_id));
+                    let script_path = scripts_dir.join(&script_filename);
+                    fs::write(&script_path, &content)
+                        .map_err(|e| color_eyre::eyre::eyre!("Failed to write script {:?}: {}", script_path, e))?;
+                    // Make executable
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        let mut perms = fs::metadata(&script_path)?.permissions();
+                        perms.set_mode(0o755);
+                        fs::set_permissions(&script_path, perms)?;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now rewrite the hosts to eliminate script-creation processes.
+    // Replace two-process pairs (create + execute) with single execution processes
+    // pointing to the pre-written scripts.
+    let mut rewritten_hosts: BTreeMap<String, ShadowHost> = BTreeMap::new();
+    for (host_id, host) in shadow_config.hosts.iter() {
+        let mut new_processes = Vec::new();
+        let mut skip_next = false;
+
+        for (idx, process) in host.processes.iter().enumerate() {
+            if skip_next {
+                skip_next = false;
+                continue;
+            }
+
+            // Detect script creation process
+            if process.path == "/bin/bash" && process.args.starts_with("-c 'cat >") {
+                if let Some((target_path, _)) = extract_heredoc_script(&process.args) {
+                    // Map /tmp path to our pre-written script in scripts dir
+                    let script_filename = Path::new(&target_path)
+                        .file_name()
+                        .map(|f| f.to_string_lossy().to_string())
+                        .unwrap_or_else(|| format!("{}_wrapper.sh", host_id));
+                    let new_script_path = scripts_dir.join(&script_filename);
+
+                    // Look at the next process - it should be the execution process
+                    if idx + 1 < host.processes.len() {
+                        let next_process = &host.processes[idx + 1];
+                        // The next process executes the script at the /tmp path
+                        if next_process.path == "/bin/bash" && next_process.args.contains(&target_path) {
+                            // Replace with single process using pre-written script path
+                            new_processes.push(ShadowProcess {
+                                path: "/bin/bash".to_string(),
+                                args: new_script_path.to_string_lossy().to_string(),
+                                environment: next_process.environment.clone(),
+                                start_time: next_process.start_time.clone(),
+                                shutdown_time: next_process.shutdown_time.clone(),
+                                expected_final_state: next_process.expected_final_state.clone(),
+                            });
+                            skip_next = true;
+                            continue;
+                        }
+                    }
+                }
+                // If we couldn't match the pair, keep the original process
+                new_processes.push(process.clone());
+            } else {
+                new_processes.push(process.clone());
+            }
+        }
+
+        rewritten_hosts.insert(host_id.clone(), ShadowHost {
+            network_node_id: host.network_node_id,
+            ip_addr: host.ip_addr.clone(),
+            processes: new_processes,
+            bandwidth_down: host.bandwidth_down.clone(),
+            bandwidth_up: host.bandwidth_up.clone(),
+        });
+    }
+
+    // Use the rewritten hosts for the final config
+    let shadow_config = ShadowConfig {
+        general: shadow_config.general,
+        experimental: shadow_config.experimental,
+        network: shadow_config.network,
+        hosts: rewritten_hosts,
     };
 
     // Write configuration

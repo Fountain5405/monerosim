@@ -27,9 +27,9 @@ agents:
     hashrate: 50
 ```
 
-### Step 2: Monerosim generates Shadow YAML
+### Step 2: Monerosim generates Shadow YAML and pre-written scripts
 
-The Rust orchestrator (`src/orchestrator.rs`) transforms this into a Shadow host with five processes:
+The Rust orchestrator (`src/orchestrator.rs`) transforms this into a Shadow host with three processes:
 
 ```yaml
 hosts:
@@ -39,103 +39,90 @@ hosts:
     processes:
       # 1. monerod daemon (via bash exec wrapper)
       - path: "/bin/bash"
-        args: "-c 'rm -rf /tmp/monero-miner-001 && exec monerod --data-dir=/tmp/monero-miner-001 --regtest ...'"
+        args: "-c 'exec /home/user/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-001 --regtest ...'"
         start_time: "0s"
 
-      # 2. Wallet directory cleanup
+      # 2. monero-wallet-rpc
       - path: "/bin/bash"
-        args: "-c 'rm -rf /tmp/monerosim_shared/miner-001_wallet && mkdir -p ...'"
-        start_time: "46s"
+        args: "-c '/home/user/.monerosim/bin/monero-wallet-rpc --daemon-address=http://10.0.0.10:18081 ...'"
+        start_time: "2s"
 
-      # 3. monero-wallet-rpc
+      # 3. Execute pre-written agent wrapper script
       - path: "/bin/bash"
-        args: "-c 'monero-wallet-rpc --daemon-address=http://10.0.0.10:18081 ...'"
-        start_time: "48s"
-
-      # 4. Create agent wrapper script
-      - path: "/bin/bash"
-        args: "-c 'cat > /tmp/agent_miner-001_wrapper.sh << EOF\n#!/bin/bash\n...EOF'"
-        start_time: "64s"
-
-      # 5. Execute agent wrapper script
-      - path: "/bin/bash"
-        args: "/tmp/agent_miner-001_wrapper.sh"
-        start_time: "65s"
+        args: "shadow_output/scripts/agent_miner-001_wrapper.sh"
+        start_time: "5s"
 ```
+
+Additionally, the orchestrator writes pre-generated wrapper scripts to `shadow_output/scripts/`:
+
+```bash
+#!/bin/bash
+cd /home/user/monerosim
+export PYTHONPATH=/home/user/monerosim
+export PATH=/usr/local/bin:/usr/bin:/bin:/home/user/.monerosim/bin
+
+python3 -m agents.autonomous_miner --id miner-001 \
+    --rpc-host 10.0.0.10 --agent-rpc-port 18081 \
+    --wallet-rpc-port 18082 --shared-dir /tmp/monerosim_shared \
+    --attributes is_miner true --attributes hashrate 50 2>&1
+```
+
+All paths in the generated YAML and scripts are fully resolved at generation time -- no shell variable expansion (`$HOME`, `${PYTHONPATH}`, etc.) is needed at runtime.
 
 ### Step 3: shadowformonero runs it
 
 Shadow creates a virtual network, assigns each host its IP, and launches processes according to their start times. From monerod's perspective, it's running on a real machine with a real network.
 
-## Why Everything Goes Through Bash
+## Pre-Simulation Cleanup
 
-Every process in the generated Shadow YAML currently uses `/bin/bash` as the executable. Some of this is architecturally necessary, some is legacy convenience. See `TODO/simplify-bash-wrappers.md` for a plan to reduce bash usage.
+Before generating the Shadow configuration, `main.rs` cleans up all state from previous runs:
 
-### Hard requirement: Shadow doesn't support compound commands or file creation
+1. **Output directory** (`shadow_output/`) -- removed and recreated
+2. **Shared state** (`/tmp/monerosim_shared/`) -- removed and recreated
+3. **Daemon data directories** (`/tmp/monero-*`) -- glob-matched and removed
+4. **Wallet directories** -- recreated fresh with correct permissions (755) by the orchestrator
 
-Shadow's `ShadowProcess` has `path`, `args`, `environment`, and `start_time`. There is no `working_directory` field, no support for shell operators (`&&`, `|`, `>`), and no way to create files. Any process that needs to do more than "run binary with args" must go through bash.
+This centralized cleanup replaces the per-agent bash cleanup processes that previously ran inside the simulation. The benefit is fewer Shadow processes and simpler generated YAML.
 
-### Currently necessary: Pre-launch cleanup
+## Why Bash Is Still Used
 
-```bash
-rm -rf /tmp/monero-miner-001 && exec monerod --data-dir=/tmp/monero-miner-001 ...
-```
+Bash usage has been minimized but not fully eliminated. Here's what remains and why.
 
-The `rm -rf` clears stale data from previous runs. This could be moved to a pre-simulation cleanup step in `main.rs` (which already cleans `/tmp/monerosim_shared/`). The `exec` replaces the bash process with monerod for correct signal handling -- without it, SIGTERM from Shadow goes to bash instead of monerod.
-
-If the cleanup were moved pre-simulation and Shadow sends SIGTERM correctly to directly-launched binaries, daemon processes could potentially skip bash entirely.
-
-### Currently necessary: Python agent wrapper scripts
-
-Shadow's process model is `path + args`, which works for simple binaries but not for Python modules that need environment setup. The agent launch is split into two Shadow processes:
-
-1. **Process 4** (creation): Writes a wrapper script to `/tmp/agent_[id]_wrapper.sh` using a bash heredoc. This script sets up `PYTHONPATH`, `PATH`, and includes a retry loop that waits for wallet-rpc to be ready.
-2. **Process 5** (execution): Runs the wrapper script 1 second later.
-
-The wrapper scripts could be pre-written at generation time (alongside `shadow_agents.yaml`) instead of created inside the simulation, which would eliminate the creation process entirely. The retry loop is also redundant with the Python-side retry in `base_agent.py`.
-
-The 1-second gap ensures the file is fully written before execution. The wrapper script contains:
+### Daemon exec pattern
 
 ```bash
-#!/bin/bash
-cd /home/user/monerosim
-export PYTHONPATH="${PYTHONPATH}:/home/user/monerosim"
-export PATH="${PATH}:$HOME/.monerosim/bin"
-
-# Wait for wallet RPC to be ready
-for i in {1..30}; do
-    if curl -s --max-time 1 http://10.0.0.10:18082 >/dev/null 2>&1; then
-        python3 -m agents.autonomous_miner --id miner-001 \
-            --rpc-host 10.0.0.10 --agent-rpc-port 18081 \
-            --wallet-rpc-port 18082 --shared-dir /tmp/monerosim_shared \
-            --attributes is_miner true --attributes hashrate 50
-        exit $?
-    fi
-    sleep 3
-done
-# Fallback: start anyway after 90 seconds
-python3 -m agents.autonomous_miner ...
+bash -c 'exec /home/user/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-001 ...'
 ```
 
-The retry loop is necessary because wallet-rpc takes time to initialize and connect to its daemon. Without it, the Python agent would fail immediately on its first RPC call.
+The `exec` replaces the bash process with monerod, ensuring SIGTERM from Shadow goes directly to monerod rather than to a parent bash process. Without `exec`, bash would receive SIGTERM and monerod would be orphaned.
 
-### Reason 3: Wallet directory cleanup
+If Shadow sends SIGTERM correctly to directly-launched binaries (without bash), this could be eliminated entirely. This hasn't been verified with shadowformonero yet.
 
-Monero wallet-rpc creates directories with restrictive permissions (`d---------`). A separate bash process runs 2 seconds before wallet-rpc to `rm -rf` and recreate the wallet directory with proper permissions. This prevents failures when re-running simulations.
+### Wallet-rpc launch
+
+```bash
+bash -c '/home/user/.monerosim/bin/monero-wallet-rpc --daemon-address=...'
+```
+
+Wallet-rpc is launched through bash but without `exec`. This is a candidate for direct binary launch once the SIGTERM behavior is verified.
+
+### Python agent wrapper scripts
+
+Shadow's `ShadowProcess` has no `working_directory` field, so `cd` requires bash. The wrapper scripts set the working directory and environment before launching the Python agent. These scripts are pre-written at generation time (in `shadow_output/scripts/`) and executed as a single Shadow process.
+
+Python agents handle their own RPC readiness retries via `wait_until_ready()` with exponential backoff in `base_agent.py`, so no bash retry loop is needed in the wrapper.
 
 ## The Startup Sequence
 
-Each agent host runs a carefully timed sequence:
+Each agent host runs a timed sequence:
 
 | Time offset | Process | Purpose |
 |-------------|---------|---------|
 | +0s | monerod | Start the daemon, begin P2P connections |
-| +46s | bash cleanup | Clean wallet directory |
-| +48s | wallet-rpc | Connect to local daemon |
-| +64s | bash create | Write agent wrapper script |
-| +65s | bash execute | Run agent (with wallet-rpc retry loop) |
+| +2s | wallet-rpc | Connect to local daemon |
+| +5s | agent script | Run pre-written Python agent wrapper |
 
-The 48-second gap between daemon and wallet gives monerod time to initialize its RPC server. The agent starts at +65s but the retry loop adds up to 90 more seconds of tolerance.
+The gap between daemon and wallet gives monerod time to initialize its RPC server. The Python agent includes its own retry logic (120-180 seconds with exponential backoff) to wait for wallet-rpc readiness.
 
 ### Staggered start times across agents
 
@@ -189,9 +176,9 @@ Shadow isolates each host's network, but `/tmp` is shared across all hosts. Mone
 | `agent_registry.json` | Rust orchestrator (pre-simulation) | All Python agents | Agent IDs, IPs, ports, capabilities, attributes |
 | `miners.json` | Rust orchestrator (pre-simulation) | Autonomous miners, DNS server | Miner IDs, IPs, hashrate weights |
 | `public_nodes.json` | Rust orchestrator (pre-simulation) | Wallet-only agents | Daemon nodes available for remote connection |
-| `[agent]_wallet/` | wallet-rpc (runtime) | wallet-rpc | Wallet data directories |
+| `[agent]_wallet/` | Rust orchestrator (pre-simulation), wallet-rpc (runtime) | wallet-rpc | Wallet data directories |
 
-The registries are written **before the simulation starts** by the Rust orchestrator. Python agents read them at runtime to discover peers. The `AgentDiscovery` class caches registry reads with a 5-second TTL to avoid excessive filesystem I/O.
+The registries and wallet directories are created **before the simulation starts** by the Rust orchestrator. Python agents read registries at runtime to discover peers. The `AgentDiscovery` class caches registry reads with a 5-second TTL to avoid excessive filesystem I/O.
 
 This design was chosen over network-based discovery because:
 - No discovery protocol overhead during simulation startup
@@ -245,11 +232,12 @@ The full generation pipeline in `src/orchestrator.rs`:
    - Allocate IP address
    - Generate daemon arguments (P2P connections, RPC binding, data directory)
    - Generate wallet arguments (daemon address, wallet directory)
-   - Generate agent wrapper script (retry loop, environment, module arguments)
-   - Create the ShadowHost with all 5 processes
+   - Generate agent wrapper script content
+   - Create the ShadowHost with 3 processes (daemon, wallet, agent)
 6. **Generate registries** (agent, miner, public node) as JSON to `/tmp/monerosim_shared/`
-7. **Serialize** the complete ShadowConfig to `shadow_output/shadow_agents.yaml`
-8. **Clean up** previous output directory and shared state
+7. **Pre-create wallet directories** with correct permissions (755)
+8. **Write wrapper scripts** to `shadow_output/scripts/` and rewrite Shadow host processes to reference them
+9. **Serialize** the complete ShadowConfig to `shadow_output/shadow_agents.yaml`
 
 Offset management prevents IP collisions between different agent categories:
 ```
@@ -257,6 +245,29 @@ User agents:         index 0, 1, 2, ...
 Miner distributor:   offset = total_agents + 100
 Pure script agents:  offset = total_agents + 200
 Simulation monitor:  offset = total_agents + 250
+```
+
+## Generated Output
+
+```
+shadow_output/
+  shadow_agents.yaml      # Main Shadow configuration
+  scripts/                # Pre-written wrapper scripts for all Python agents
+    agent_miner-001_wrapper.sh
+    mining_agent_miner-001_wrapper.sh
+    agent_user-001_wrapper.sh
+    dns_server_wrapper.sh
+    miner-distributor_wrapper.sh
+    simulation-monitor_wrapper.sh
+    ...
+
+/tmp/monerosim_shared/
+  agent_registry.json     # Agent metadata for discovery
+  miners.json             # Miner hashrate distribution
+  public_nodes.json       # Public node registry
+  miner-001_wallet/       # Pre-created wallet directories
+  user-001_wallet/
+  ...
 ```
 
 ## Monero-Specific Configuration
@@ -275,7 +286,7 @@ Other key daemon flags:
 
 ## What Happens at Simulation End
 
-When the simulation reaches `stop_time`, Shadow sends SIGTERM to all processes. Because of the `exec` pattern, SIGTERM goes directly to monerod/wallet-rpc/Python (not to a wrapping bash process).
+When the simulation reaches `stop_time`, Shadow sends SIGTERM to all processes. Because of the `exec` pattern, SIGTERM goes directly to monerod (not to a wrapping bash process). Wallet-rpc and Python agents receive SIGTERM directly from Shadow.
 
 Python agents register `SIGTERM` handlers in `base_agent.py` for graceful shutdown (flushing stats, closing RPC connections). Monerod handles SIGTERM natively.
 

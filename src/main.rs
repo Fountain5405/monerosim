@@ -2,7 +2,7 @@ use clap::Parser;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
 use env_logger::Env;
-use log::info;
+use log::{info, warn};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -121,6 +121,21 @@ fn main() -> Result<()> {
     }
     let shared_dir = Path::new("/tmp/monerosim_shared");
     remove_dir_with_permissions(shared_dir).wrap_err("Failed to remove shared directory")?;
+
+    // Clean up per-agent data directories from previous runs (/tmp/monero-*)
+    // This replaces the per-agent `rm -rf /tmp/monero-{id}` that was previously
+    // done inside each daemon's bash wrapper at simulation startup.
+    if let Ok(entries) = fs::read_dir("/tmp") {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("monero-") {
+                info!("Removing stale daemon data directory: /tmp/{}", name_str);
+                remove_dir_with_permissions(&entry.path())
+                    .unwrap_or_else(|e| warn!("Failed to remove /tmp/{}: {}", name_str, e));
+            }
+        }
+    }
 
     // Create fresh directories
     fs::create_dir_all(&output_dir)

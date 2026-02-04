@@ -510,18 +510,10 @@ pub fn process_user_agents(
                         (None, None)
                     };
 
-                    // For phase 0, include the data directory cleanup
                     // Use `exec` so bash replaces itself with monerod - this ensures SIGKILL
                     // goes directly to monerod rather than to bash (which would leave monerod orphaned)
-                    let args = if *phase_num == 0 {
-                        format!(
-                            "-c 'rm -rf /tmp/monero-{} && exec {} {}'",
-                            agent_id, daemon_binary_path, daemon_args
-                        )
-                    } else {
-                        // Later phases reuse the existing data directory
-                        format!("-c 'exec {} {}'", daemon_binary_path, daemon_args)
-                    };
+                    // Note: data directory cleanup is handled pre-simulation by main.rs
+                    let args = format!("-c 'exec {} {}'", daemon_binary_path, daemon_args);
 
                     processes.push(crate::shadow::ShadowProcess {
                         path: "/bin/bash".to_string(),
@@ -555,11 +547,12 @@ pub fn process_user_agents(
 
                 // Use `exec` so bash replaces itself with monerod - this ensures signals
                 // go directly to monerod rather than to bash
+                // Note: data directory cleanup is handled pre-simulation by main.rs
                 processes.push(crate::shadow::ShadowProcess {
                     path: "/bin/bash".to_string(),
                     args: format!(
-                        "-c 'rm -rf /tmp/monero-{} && exec {} {}'",
-                        agent_id, daemon_binary_path, daemon_args
+                        "-c 'exec {} {}'",
+                        daemon_binary_path, daemon_args
                     ),
                     environment: daemon_env,
                     start_time: start_time_daemon.clone(),
@@ -648,27 +641,7 @@ pub fn process_user_agents(
                         (None, None)
                     };
 
-                    // For phase 0, include the wallet directory cleanup
-                    let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(&start_time) {
-                        format!("{}s", wallet_seconds.saturating_sub(2))
-                    } else {
-                        format!("{}s", 48 + i * 2) // Fallback
-                    };
-
-                    if *phase_num == 0 {
-                        // Clean up wallet directory before phase 0
-                        processes.push(crate::shadow::ShadowProcess {
-                            path: "/bin/bash".to_string(),
-                            args: format!(
-                                "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet'",
-                                agent_id, agent_id
-                            ),
-                            environment: environment.clone(),
-                            start_time: cleanup_start_time,
-                            shutdown_time: None,
-                    expected_final_state: None,
-                        });
-                    }
+                    // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
 
                     processes.push(crate::shadow::ShadowProcess {
                         path: "/bin/bash".to_string(),

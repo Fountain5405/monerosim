@@ -213,10 +213,13 @@ monerosim/
 ```
 shadow_output/
   shadow_agents.yaml      # Main Shadow configuration
+  scripts/                # Pre-written wrapper scripts for all Python agents
 
 /tmp/monerosim_shared/
   agent_registry.json     # Agent metadata for discovery
   miners.json             # Miner hashrate distribution
+  public_nodes.json       # Public node registry
+  [agent]_wallet/         # Pre-created wallet directories
 
 shadow.data/              # Created by Shadow during simulation
   hosts/

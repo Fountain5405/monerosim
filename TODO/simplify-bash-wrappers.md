@@ -1,134 +1,71 @@
 # Simplify Bash Wrapper Usage in Shadow Process Generation
 
-## Problem
+## Status: Implemented
 
-Every process in the generated Shadow YAML uses `/bin/bash` as the executable. There are 22 bash wrapper instances across the codebase. Most of the complexity exists to handle cleanup of old simulation runs, which could be done once before the simulation starts.
+The changes described below have been implemented on the `debash` branch.
 
-## Current State
+## What Changed
 
-Each agent host generates ~5 processes, all through bash:
+### 1. Pre-simulation cleanup (main.rs)
 
-1. `bash -c 'rm -rf /tmp/monero-X && exec monerod ...'` (cleanup + daemon)
-2. `bash -c 'rm -rf .../X_wallet && mkdir -p ... && chmod 755 ...'` (wallet dir cleanup)
-3. `bash -c 'monero-wallet-rpc ...'` (wallet)
-4. `bash -c 'cat > /tmp/wrapper.sh << EOF...EOF'` (create agent script)
-5. `bash /tmp/wrapper.sh` (execute agent script)
+`main.rs` now cleans `/tmp/monero-*` directories in addition to `/tmp/monerosim_shared/` before generating the Shadow config. This eliminated the per-agent `rm -rf /tmp/monero-{id}` from every daemon process.
 
-For a 25-agent simulation, that's ~125 processes, many of which exist solely for cleanup or file creation.
+### 2. Wallet directory pre-creation (orchestrator.rs)
 
-## What Can Change
+The orchestrator pre-creates all `{agent}_wallet` directories under `/tmp/monerosim_shared/` with correct permissions (755). This eliminated the per-agent wallet cleanup Shadow processes that previously ran inside the simulation.
 
-### 1. Move cleanup to pre-simulation (main.rs)
+### 3. Removed curl retry loop from wrapper scripts (agent_scripts.rs)
 
-**Current**: Each agent cleans its own `/tmp/monero-{id}` directory at daemon start time via bash.
+The bash curl retry loop (30 attempts × 3s = 90s) was redundant with the Python-side retry in `base_agent.py` (`wait_until_ready()` with 120-180s exponential backoff). Removed from all wrapper script variants.
 
-**Proposed**: `main.rs` already cleans `/tmp/monerosim_shared/`. Extend it to also glob and remove `/tmp/monero-*` directories. This eliminates the `rm -rf` from every daemon process.
+### 4. Pre-written wrapper scripts (orchestrator.rs)
 
-**Impact**: Daemon processes become `exec monerod ...` instead of `rm -rf ... && exec monerod ...`. Still needs bash for `exec` (signal handling), but simpler.
+Instead of two Shadow processes per Python agent (create script via heredoc + execute 1s later), wrapper scripts are now written to `shadow_output/scripts/` at generation time. Each agent only needs one Shadow process to execute the pre-written script. The orchestrator detects heredoc creation processes, extracts the script content, writes it to disk, and rewrites the Shadow host to use a single execution process.
 
-**Exception**: Daemon phase 0 must still clean (phase 1+ must NOT clean, they reuse the data dir). But if main.rs cleans everything pre-simulation, phase 0 doesn't need its own cleanup either -- the directory is already gone.
+### 5. Fully-resolved environment variables (agent_scripts.rs, pure_scripts.rs, orchestrator.rs, miner_distributor.rs, simulation_monitor.rs)
 
-**Files**: `main.rs` (add cleanup), `user_agents.rs` (remove rm -rf from phase 0 args)
+All shell variable expansion (`$HOME`, `${PYTHONPATH}`, `${PATH}`) has been replaced with fully-resolved absolute paths at generation time. Wrapper scripts now set `PYTHONPATH` and `PATH` to literal paths. Binary paths for monerod and monero-wallet-rpc are also fully resolved.
 
-### 2. Pre-write wrapper scripts at generation time
+### 6. Fully-resolved binary paths (binary.rs, orchestrator.rs)
 
-**Current**: Two Shadow processes per Python agent -- one creates a wrapper script via `cat > file << EOF`, another executes it 1 second later.
+`resolve_binary_path_for_shadow()` now returns actual absolute paths instead of `$HOME/...` paths that required bash expansion. The orchestrator resolves `home_dir` and builds binary paths directly.
 
-**Proposed**: Write all wrapper scripts to disk in the Rust orchestrator (at the same time it writes `shadow_agents.yaml`). Then Shadow only needs one process per agent to execute the pre-written script.
+## Process Count Reduction
 
-**Impact**: Eliminates 12 "file creation" processes (DNS server, agents, distributor, monitor). Reduces total process count by ~30%.
+For a 25-agent simulation (5 miners, 20 users, 1 DNS server, 1 distributor, 1 monitor = 28 hosts):
 
-**Files**: `agent_scripts.rs`, `pure_scripts.rs`, `orchestrator.rs` (DNS), `src/agent/miner_distributor.rs`, `src/agent/simulation_monitor.rs`
+| Host type | Processes before | Processes after |
+|-----------|-----------------|-----------------|
+| Miner (5) | 7 each (daemon+cleanup, wallet cleanup, wallet, 2×agent create+exec, 2×mining create+exec) | 4 each (daemon, wallet, agent, mining) |
+| User (20) | 5 each (daemon+cleanup, wallet cleanup, wallet, agent create, agent exec) | 3 each (daemon, wallet, agent) |
+| DNS server | 2 (create + exec) | 1 (exec) |
+| Distributor | 2 (create + exec) | 1 (exec) |
+| Monitor | 2 (create + exec) | 1 (exec) |
+| **Total** | **~141** | **83** |
 
-**Location for scripts**: Write to `shadow_output/scripts/` alongside `shadow_agents.yaml`. Shadow processes reference these paths.
+41% reduction in total Shadow processes.
 
-### 3. Remove redundant curl retry loop from wrapper scripts
+## What Still Uses Bash
 
-**Current**: Wrapper scripts contain a bash retry loop that curls wallet-rpc 30 times (90 seconds total) before starting the Python agent. The Python agent (`base_agent.py` / `monero_rpc.py`) ALSO has its own retry with exponential backoff (120-180 seconds).
-
-**Proposed**: Remove the bash curl loop. The Python-side retry is sufficient and more robust (exponential backoff vs fixed 3-second interval).
-
-**Risk**: Low. The Python retry has a longer timeout (120-180s vs 90s) and better backoff behavior.
-
-**Files**: `agent_scripts.rs` (remove curl loop from wrapper template)
-
-### 4. Pre-resolve environment variables in Rust
-
-**Current**: Wrapper scripts use bash to expand `${PYTHONPATH}`, `${PATH}`, `$HOME` at runtime. This requires bash.
-
-**Proposed**: Resolve these at generation time in Rust:
-- `$HOME` is known (Rust reads it from env)
-- `PYTHONPATH` can be built as an absolute path (project dir + venv site-packages)
-- `PATH` can be built with the monerosim bin dir prepended
-
-Then pass the fully-resolved values through Shadow's `environment` map. No shell expansion needed.
-
-**Impact**: Wrapper scripts become just `cd /path && python3 -m agents.foo args`. Or possibly eliminate the wrapper entirely and use Shadow's process definition directly.
-
-**Complication**: `cd` still requires bash. Shadow's `ShadowProcess` has no `working_directory` field. Either:
-- (a) Add `working_directory` support to shadowformonero (upstream change)
-- (b) Keep a minimal bash wrapper: `bash -c 'cd /path && exec python3 -m ...'`
-- (c) Set PYTHONPATH to include the project root so `cd` isn't needed (Python module resolution would handle it)
-
-Option (c) is the cleanest -- if PYTHONPATH includes the project root, `python3 -m agents.autonomous_miner` will find the module regardless of cwd. Need to verify this works for all agent scripts.
-
-**Files**: `agent_scripts.rs`, `pure_scripts.rs`, `orchestrator.rs`
-
-## What Cannot Change
-
-### Daemon exec pattern still needs bash
-
-Even after removing cleanup, we still want:
+### Daemon exec pattern
 ```bash
-bash -c 'exec monerod --data-dir=/tmp/monero-X ...'
+bash -c 'exec /home/user/.monerosim/bin/monerod ...'
 ```
+`exec` ensures SIGTERM goes to monerod, not bash. Could be eliminated if Shadow sends SIGTERM correctly to directly-launched binaries.
 
-The `exec` ensures SIGTERM from Shadow goes directly to monerod, not to a parent bash process. Without bash, we'd need to launch monerod directly:
-```yaml
-path: "/home/user/.monerosim/bin/monerod"
-args: "--data-dir=/tmp/monero-X ..."
+### Wallet-rpc launch
+```bash
+bash -c '/home/user/.monerosim/bin/monero-wallet-rpc ...'
 ```
+Launched through bash but without `exec`. Candidate for direct binary launch.
 
-This would work for signal handling (Shadow sends SIGTERM to the process it launched). But it requires the binary path to be fully resolved at generation time (no `$HOME` expansion). This is feasible since Rust knows `$HOME`, but is a behavioral change to validate.
+### Python agent wrappers
+```bash
+bash shadow_output/scripts/agent_miner-001_wrapper.sh
+```
+Needed because Shadow has no `working_directory` field. The wrapper does `cd` and sets environment before running Python.
 
-**Decision needed**: Is `exec` actually necessary when Shadow launches the binary directly? If Shadow's SIGTERM goes to the launched process regardless, we can skip bash entirely for daemon/wallet launches.
+## Remaining Opportunities
 
-### Wallet directory permissions mid-simulation
-
-monero-wallet-rpc occasionally creates files/directories with restrictive permissions (`d---------`) during error recovery. The pre-wallet cleanup process (`rm -rf && mkdir -p && chmod 755`) handles this. If we move cleanup to pre-simulation only, a wallet-rpc crash mid-simulation could leave bad permissions that prevent re-access.
-
-**Mitigation**: This is an edge case. Wallet-rpc doesn't restart mid-simulation in normal operation (no process restart mechanism in Shadow). Daemon phases are the only restart scenario, and wallet phase 0 cleanup would still run at the correct time.
-
-### Daemon phases need per-phase cleanup logic
-
-Phase 0: clean data directory (fresh blockchain)
-Phase 1+: do NOT clean (continue from previous phase's blockchain)
-
-Pre-simulation cleanup handles phase 0. Phase transitions still need bash for the `exec` pattern (stop old binary, start new one). The cleanup itself is handled by timing -- phase 0 starts from a clean `/tmp/monero-*` because main.rs cleaned it.
-
-## Implementation Order
-
-1. **Pre-simulation cleanup** (main.rs) -- lowest risk, highest impact
-2. **Remove curl retry loop** -- simple deletion, Python retry is sufficient
-3. **Pre-write wrapper scripts** -- moderate refactor, eliminates 12 processes
-4. **Pre-resolve environment variables** -- enables further simplification
-5. **Investigate direct binary launch** -- may eliminate bash for daemon/wallet entirely
-
-## Estimated Process Count Reduction
-
-| Change | Processes eliminated per agent |
-|--------|-------------------------------|
-| Pre-simulation cleanup | -1 (wallet dir cleanup) |
-| Pre-write wrapper scripts | -1 (script creation process) |
-| Direct daemon launch (if feasible) | -0 (still 1 process, just simpler) |
-| Direct wallet launch (if feasible) | -0 (still 1 process, just simpler) |
-| **Total** | **-2 per agent** |
-
-For 25 agents: ~125 processes reduced to ~75. Simpler Shadow YAML. Faster simulation startup.
-
-## Open Questions
-
-- Does Shadow send SIGTERM correctly to directly-launched binaries (no bash wrapper)? Need to test with shadowformonero.
-- Does `python3 -m agents.autonomous_miner` work correctly when cwd is not the project root, if PYTHONPATH is set? Need to test.
-- Are there any agents that depend on the bash retry loop timing (starting exactly when wallet-rpc is ready, not with a backoff delay)?
-- Should wrapper scripts live in `shadow_output/scripts/` or `/tmp/monerosim_scripts/`?
+- **Direct binary launch for daemon/wallet**: Test if Shadow sends SIGTERM correctly to directly-launched binaries (no bash wrapper). If so, daemon and wallet processes can skip bash entirely.
+- **Eliminate `cd` from wrapper scripts**: If `PYTHONPATH` is sufficient for Python module resolution (no files loaded relative to cwd), the `cd` can be removed. This would make the wrapper just `export` + `python3`, which could potentially be done through Shadow's environment map + direct python3 launch.

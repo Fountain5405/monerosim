@@ -133,7 +133,7 @@ pub struct PublicNodeRegistry {
 ///
 /// This is the root structure that gets serialized to YAML and consumed
 /// by the Shadow network simulator.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowConfig {
     /// General simulation settings
     pub general: ShadowGeneral,
@@ -146,7 +146,7 @@ pub struct ShadowConfig {
 }
 
 /// General Shadow simulation settings.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowGeneral {
     /// Simulation stop time in seconds
     pub stop_time: u64,
@@ -168,7 +168,7 @@ pub struct ShadowGeneral {
 }
 
 /// Experimental Shadow features configuration.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowExperimental {
     /// Runahead duration (optional, e.g., "1ms")
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -183,7 +183,7 @@ pub struct ShadowExperimental {
 }
 
 /// Shadow network configuration.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowNetwork {
     /// Network graph/topology definition
     pub graph: ShadowGraph,
@@ -196,7 +196,7 @@ pub struct ShadowNetwork {
 /// Shadow network graph definition.
 ///
 /// Can represent either a simple switch network or a complex GML-based topology.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowGraph {
     /// Type of network graph (e.g., "1_gbit_switch" or "gml")
     #[serde(rename = "type")]
@@ -213,14 +213,14 @@ pub struct ShadowGraph {
 }
 
 /// Reference to an external GML topology file.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowFileSource {
     /// Path to the GML file
     pub path: String,
 }
 
 /// Network node definition for inline topologies.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowNetworkNode {
     /// Unique node ID
     pub id: u32,
@@ -236,7 +236,7 @@ pub struct ShadowNetworkNode {
 }
 
 /// Network edge (link) definition for inline topologies.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowNetworkEdge {
     /// Source node ID
     pub source: u32,
@@ -257,7 +257,7 @@ pub struct ShadowNetworkEdge {
 ///
 /// Represents a simulated host in the Shadow network, which can run multiple
 /// processes (e.g., monerod, monero-wallet-rpc, agent scripts).
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ShadowHost {
     /// ID of the network node this host is attached to
     pub network_node_id: u32,
@@ -321,7 +321,7 @@ impl serde::Serialize for ExpectedFinalState {
 /// Shadow process definition.
 ///
 /// Represents a single process to be executed within a Shadow host.
-#[derive(Serialize, Debug, Default)]
+#[derive(Serialize, Debug, Default, Clone)]
 pub struct ShadowProcess {
     /// Path to the executable
     pub path: String,

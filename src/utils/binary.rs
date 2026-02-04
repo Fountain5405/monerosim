@@ -69,20 +69,23 @@ pub fn resolve_binary_path(name_or_path: &str) -> Result<PathBuf, BinaryError> {
     }
 }
 
-/// Resolve a binary path and return it as a string suitable for Shadow config.
+/// Resolve a binary path and return it as a fully-resolved absolute path string.
 ///
-/// Returns the path with `$HOME` for home directory (Shadow expands this at runtime).
+/// All paths are resolved at generation time - no shell variable expansion needed.
 pub fn resolve_binary_path_for_shadow(name_or_path: &str) -> Result<String, BinaryError> {
+    let home_dir = get_home_dir()?;
+    let home_str = home_dir.to_string_lossy();
+
     if name_or_path.contains('/') || name_or_path.starts_with('~') {
-        // Explicit path - convert ~ to $HOME for Shadow
+        // Explicit path - resolve ~ to actual home directory
         if name_or_path.starts_with('~') {
-            Ok(format!("$HOME{}", &name_or_path[1..]))
+            Ok(format!("{}{}", home_str, &name_or_path[1..]))
         } else {
             Ok(name_or_path.to_string())
         }
     } else {
-        // Shorthand name - expand to default bin directory with $HOME
-        Ok(format!("$HOME/{}/{}", DEFAULT_BIN_DIR, name_or_path))
+        // Shorthand name - expand to default bin directory with resolved home
+        Ok(format!("{}/{}/{}", home_str, DEFAULT_BIN_DIR, name_or_path))
     }
 }
 
@@ -153,13 +156,17 @@ mod tests {
     #[test]
     fn test_shadow_path_shorthand() {
         let result = resolve_binary_path_for_shadow("monerod").unwrap();
-        assert_eq!(result, "$HOME/.monerosim/bin/monerod");
+        // Should resolve to actual home directory, not $HOME
+        assert!(result.ends_with("/.monerosim/bin/monerod"));
+        assert!(!result.contains("$HOME"));
     }
 
     #[test]
     fn test_shadow_path_tilde() {
         let result = resolve_binary_path_for_shadow("~/.local/bin/monerod").unwrap();
-        assert_eq!(result, "$HOME/.local/bin/monerod");
+        assert!(result.ends_with("/.local/bin/monerod"));
+        assert!(!result.contains("$HOME"));
+        assert!(!result.starts_with('~'));
     }
 
     #[test]

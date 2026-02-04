@@ -116,18 +116,22 @@ pub fn process_simulation_monitor(
             format!("python3 {} {}", script, agent_args.join(" "))
         };
 
-        // Create a wrapper script for simulation monitor agent
+        // Resolve HOME for fully-qualified paths (no shell expansion needed)
+        let home_dir = environment.get("HOME").cloned()
+            .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
+
+        // Create wrapper script with fully-resolved paths
         let wrapper_script = format!(
             r#"#!/bin/bash
 cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+export PYTHONPATH={}
+export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
-echo "Starting simulation monitor agent..."
 {} 2>&1
 "#,
             current_dir,
             current_dir,
+            home_dir,
             python_cmd
         );
 

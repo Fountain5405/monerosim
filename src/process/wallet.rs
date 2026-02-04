@@ -5,7 +5,6 @@
 
 use crate::config_v2::OptionValue;
 use crate::shadow::ShadowProcess;
-use crate::utils::duration::parse_duration_to_seconds;
 use std::collections::BTreeMap;
 
 /// Convert OptionValue map to command-line arguments
@@ -64,33 +63,16 @@ pub fn add_wallet_process(
     wallet_rpc_port: u16,
     wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
-    index: usize,
+    _index: usize,
     wallet_start_time: &str,
     custom_args: Option<&Vec<String>>,
     custom_env: Option<&BTreeMap<String, String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
 ) {
-    // Calculate wallet cleanup start time (2 seconds before wallet start)
-    let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
-        format!("{}s", wallet_seconds.saturating_sub(2))
-    } else {
-        format!("{}s", 48 + index * 2) // Fallback
-    };
-
-    // First, clean up any existing wallet files and create the wallet directory
-    // Note: explicit chmod 755 ensures correct permissions even if something else modifies them
-    processes.push(ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!(
-            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet && chmod 755 /tmp/monerosim_shared/{}_wallet'",
-            agent_id, agent_id, agent_id
-        ),
-        environment: environment.clone(),
-        start_time: cleanup_start_time, // Start earlier to ensure cleanup completes
-        shutdown_time: None,
-        expected_final_state: None,
-    });
+    // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
+    // It creates /tmp/monerosim_shared/{agent_id}_wallet with chmod 755 before
+    // the Shadow config is even written.
 
     // Get process_threads from environment (convenience setting)
     let process_threads: u32 = environment.get("PROCESS_THREADS")
@@ -172,33 +154,14 @@ pub fn add_remote_wallet_process(
     wallet_rpc_port: u16,
     wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
-    index: usize,
+    _index: usize,
     wallet_start_time: &str,
     custom_args: Option<&Vec<String>>,
     custom_env: Option<&BTreeMap<String, String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
 ) {
-    // Calculate wallet cleanup start time (2 seconds before wallet start)
-    let cleanup_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(wallet_start_time) {
-        format!("{}s", wallet_seconds.saturating_sub(2))
-    } else {
-        format!("{}s", 48 + index * 2) // Fallback
-    };
-
-    // First, clean up any existing wallet files and create the wallet directory
-    // Note: explicit chmod 755 ensures correct permissions even if something else modifies them
-    processes.push(ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!(
-            "-c 'rm -rf /tmp/monerosim_shared/{}_wallet && mkdir -p /tmp/monerosim_shared/{}_wallet && chmod 755 /tmp/monerosim_shared/{}_wallet'",
-            agent_id, agent_id, agent_id
-        ),
-        environment: environment.clone(),
-        start_time: cleanup_start_time,
-        shutdown_time: None,
-        expected_final_state: None,
-    });
+    // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
 
     // Determine daemon address
     let daemon_address_arg = match remote_daemon_address {

@@ -68,19 +68,22 @@ pub fn process_pure_script_agents(
             format!("python3 {} {}", script, script_args.join(" "))
         };
 
-        // Create a simple wrapper script for pure script agents
+        // Resolve HOME for fully-qualified paths (no shell expansion needed)
+        let home_dir = environment.get("HOME").cloned()
+            .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
+
+        // Create wrapper script with fully-resolved paths
         let wrapper_script = format!(
             r#"#!/bin/bash
 cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+export PYTHONPATH={}
+export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
-echo "Starting pure script agent {}..."
 {} 2>&1
 "#,
             current_dir,
             current_dir,
-            script_id,
+            home_dir,
             python_cmd
         );
 
