@@ -69,22 +69,30 @@ Shadow creates a virtual network, assigns each host its IP, and launches process
 
 ## Why Everything Goes Through Bash
 
-Every process in the generated Shadow YAML uses `/bin/bash` as the executable. This is not optional -- it's required for three reasons.
+Every process in the generated Shadow YAML currently uses `/bin/bash` as the executable. Some of this is architecturally necessary, some is legacy convenience. See `TODO/simplify-bash-wrappers.md` for a plan to reduce bash usage.
 
-### Reason 1: Pre-launch cleanup with exec
+### Hard requirement: Shadow doesn't support compound commands or file creation
+
+Shadow's `ShadowProcess` has `path`, `args`, `environment`, and `start_time`. There is no `working_directory` field, no support for shell operators (`&&`, `|`, `>`), and no way to create files. Any process that needs to do more than "run binary with args" must go through bash.
+
+### Currently necessary: Pre-launch cleanup
 
 ```bash
 rm -rf /tmp/monero-miner-001 && exec monerod --data-dir=/tmp/monero-miner-001 ...
 ```
 
-The `rm -rf` clears stale data from previous runs. The `exec` replaces the bash process with monerod, so monerod becomes the actual process that Shadow tracks. Without `exec`, Shadow would send SIGTERM to bash at simulation end, and bash might not forward it to monerod, leaving orphaned processes.
+The `rm -rf` clears stale data from previous runs. This could be moved to a pre-simulation cleanup step in `main.rs` (which already cleans `/tmp/monerosim_shared/`). The `exec` replaces the bash process with monerod for correct signal handling -- without it, SIGTERM from Shadow goes to bash instead of monerod.
 
-### Reason 2: Python agents need a wrapper script
+If the cleanup were moved pre-simulation and Shadow sends SIGTERM correctly to directly-launched binaries, daemon processes could potentially skip bash entirely.
+
+### Currently necessary: Python agent wrapper scripts
 
 Shadow's process model is `path + args`, which works for simple binaries but not for Python modules that need environment setup. The agent launch is split into two Shadow processes:
 
 1. **Process 4** (creation): Writes a wrapper script to `/tmp/agent_[id]_wrapper.sh` using a bash heredoc. This script sets up `PYTHONPATH`, `PATH`, and includes a retry loop that waits for wallet-rpc to be ready.
 2. **Process 5** (execution): Runs the wrapper script 1 second later.
+
+The wrapper scripts could be pre-written at generation time (alongside `shadow_agents.yaml`) instead of created inside the simulation, which would eliminate the creation process entirely. The retry loop is also redundant with the Python-side retry in `base_agent.py`.
 
 The 1-second gap ensures the file is fully written before execution. The wrapper script contains:
 
