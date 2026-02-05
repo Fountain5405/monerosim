@@ -73,8 +73,10 @@ DEFAULT_UPGRADE_STAGGER_S = 30
 DEFAULT_DAEMON_RESTART_GAP_S = 30
 
 # User activity batching defaults (prevents thundering herd when all users try to transact at once)
+# Ring signature / Bulletproof construction is CPU-intensive in simulated time, so batches
+# need wide spacing to let each batch complete before the next starts.
 DEFAULT_ACTIVITY_BATCH_SIZE = 10  # Users per batch
-DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 25  # Target seconds between batches
+DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 300  # Target seconds between batches (matches generate_config.py)
 DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
 
 
