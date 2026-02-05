@@ -205,7 +205,9 @@ def print_scenario_menu():
     print(f"  {c.BOLD}[E]{c.RESET} Edit scenario (opens in editor)")
     print(f"  {c.BOLD}[A]{c.RESET} Approve and expand to full config")
     print(f"  {c.BOLD}[S]{c.RESET} Save scenario only (without expanding)")
-    print(f"  {c.BOLD}[R]{c.RESET} Regenerate scenario")
+    print(f"  {c.BOLD}[R]{c.RESET} Regenerate scenario (same prompt)")
+    print(f"  {c.BOLD}[M]{c.RESET} Modify scenario (give new instructions)")
+    print(f"  {c.BOLD}[N]{c.RESET} New prompt (start over)")
     print(f"  {c.BOLD}[Q]{c.RESET} Quit")
     print()
 
@@ -217,6 +219,8 @@ def print_final_menu():
     print(f"  {c.BOLD}[C]{c.RESET} View scenario (compact)")
     print(f"  {c.BOLD}[B]{c.RESET} Back to scenario editing")
     print(f"  {c.BOLD}[S]{c.RESET} Save and exit")
+    print(f"  {c.BOLD}[M]{c.RESET} Modify scenario (give new instructions)")
+    print(f"  {c.BOLD}[N]{c.RESET} New prompt (start over)")
     print(f"  {c.BOLD}[Q]{c.RESET} Quit without saving")
     print()
 
@@ -385,8 +389,44 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
                 continue
 
             elif choice == 'R':
-                # Regenerate - go back to outer loop
+                # Regenerate with same prompt - go back to outer loop
                 break
+
+            elif choice == 'N':
+                # New prompt - get fresh description and regenerate
+                print()
+                new_desc = get_multiline_input("New scenario description")
+                if new_desc:
+                    description = new_desc
+                break  # Go back to outer generation loop with new description
+
+            elif choice == 'M':
+                # Modify scenario with additional instructions
+                print()
+                instructions = get_multiline_input("Modification instructions")
+                if not instructions:
+                    print(f"{c.YELLOW}No instructions provided.{c.RESET}")
+                    continue
+
+                print()
+                print(f"{c.BOLD}Modifying scenario...{c.RESET}")
+                try:
+                    modify_messages = [
+                        {"role": "system", "content": SCENARIO_SYSTEM_PROMPT},
+                        {"role": "user", "content": description},
+                        {"role": "assistant", "content": scenario_content},
+                        {"role": "user", "content": f"Please modify the scenario as follows:\n{instructions}\n\nOutput the complete updated scenario YAML."}
+                    ]
+                    response = generator.provider.chat(modify_messages)
+                    modified = generator._extract_yaml(response.content)
+                    if modified:
+                        scenario_content = modified
+                        print(f"{c.GREEN}Scenario modified!{c.RESET}")
+                    else:
+                        print(f"{c.RED}Failed to extract scenario from LLM response.{c.RESET}")
+                except Exception as e:
+                    print(f"{c.RED}LLM error: {e}{c.RESET}")
+                continue
 
             elif choice == 'Q':
                 print(f"{c.YELLOW}Exiting without saving.{c.RESET}")
@@ -466,6 +506,7 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
                     continue
 
                 # === PHASE 3: Final config review ===
+                needs_regenerate = False
                 while True:
                     print_final_menu()
                     choice2 = get_user_input("Choice").upper()
@@ -508,6 +549,45 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
 
                         return True
 
+                    elif choice2 == 'N':
+                        # New prompt from final menu - get fresh description
+                        print()
+                        new_desc = get_multiline_input("New scenario description")
+                        if new_desc:
+                            description = new_desc
+                        needs_regenerate = True
+                        break  # Break to scenario loop, then outer loop will regenerate
+
+                    elif choice2 == 'M':
+                        # Modify scenario from final menu
+                        print()
+                        instructions = get_multiline_input("Modification instructions")
+                        if not instructions:
+                            print(f"{c.YELLOW}No instructions provided.{c.RESET}")
+                            continue
+
+                        print()
+                        print(f"{c.BOLD}Modifying scenario...{c.RESET}")
+                        try:
+                            modify_messages = [
+                                {"role": "system", "content": SCENARIO_SYSTEM_PROMPT},
+                                {"role": "user", "content": description},
+                                {"role": "assistant", "content": scenario_content},
+                                {"role": "user", "content": f"Please modify the scenario as follows:\n{instructions}\n\nOutput the complete updated scenario YAML."}
+                            ]
+                            response = generator.provider.chat(modify_messages)
+                            modified = generator._extract_yaml(response.content)
+                            if modified:
+                                scenario_content = modified
+                                print(f"{c.GREEN}Scenario modified!{c.RESET}")
+                            else:
+                                print(f"{c.RED}Failed to extract scenario from LLM response.{c.RESET}")
+                                continue
+                        except Exception as e:
+                            print(f"{c.RED}LLM error: {e}{c.RESET}")
+                            continue
+                        break  # Break to scenario review loop to view/approve modified scenario
+
                     elif choice2 == 'Q':
                         print(f"{c.YELLOW}Exiting without saving.{c.RESET}")
                         return False
@@ -516,7 +596,10 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
                         print(f"{c.YELLOW}Invalid choice.{c.RESET}")
                         continue
 
-                # If we got here from 'B', continue scenario review loop
+                # If 'N' was selected, break out of scenario loop to regenerate
+                if needs_regenerate:
+                    break
+                # If we got here from 'B' or 'M', continue scenario review loop
                 continue
 
             else:
