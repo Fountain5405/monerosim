@@ -315,6 +315,11 @@ impl AgentConfig {
             .and_then(|attrs| attrs.get("is_public_node"))
             .map_or(false, |v| v.to_lowercase() == "true")
     }
+
+    /// Check if this is a daemon-only (relay) agent: has daemon but no wallet or script
+    pub fn is_daemon_only(&self) -> bool {
+        (self.has_local_daemon() || self.has_daemon_phases()) && !self.has_wallet() && !self.has_script()
+    }
 }
 
 /// Raw struct for deserializing AgentConfig with flat phase fields support

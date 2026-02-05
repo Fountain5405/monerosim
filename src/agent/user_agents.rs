@@ -698,7 +698,8 @@ pub fn process_user_agents(
                 }
             }
 
-            // Add agent scripts
+            // Add agent scripts (skip entirely for daemon-only relay agents)
+            if !user_agent_config.is_daemon_only() {
             let script = user_agent_config.script.clone()
                 .unwrap_or_else(|| "agents.regular_user".to_string());
 
@@ -796,6 +797,7 @@ pub fn process_user_agents(
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                 );
             }
+            } // end daemon-only guard
 
             // Only add the host if it has any processes
             if !processes.is_empty() {

@@ -137,6 +137,13 @@ agents:
 - Use daemon_options: {out-peers: 100, in-peers: 100}
 - Use subnet_group at agent level (not inside daemon_options) for same-subnet clustering
 
+**Relay nodes** (daemon-only, no script):
+- Run monerod only, no wallet or script
+- Participate in P2P block/transaction relay
+- Increase network size and realism without transacting
+- Config: only daemon and start_time fields (NO wallet, script, hashrate, etc.)
+- Example: `relay-{001..020}:` with `daemon: monerod` and `start_time: 0s`
+
 ## Example Scenarios
 
 IMPORTANT: Always include helpful comments explaining what each section does.
@@ -352,6 +359,77 @@ agents:
     daemon_options:
       out-peers: 100                   # Connect to many peers
       in-peers: 100                    # Accept many connections
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
+```
+
+---
+USER: "5 miners, 20 users, and 10 relay nodes for block propagation study. 8 hours."
+
+SCENARIO:
+```yaml
+# === SIMULATION SETTINGS ===
+general:
+  stop_time: 8h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+# === AGENTS ===
+agents:
+  # --- 5 Miners ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # --- 20 Users ---
+  user-{001..020}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 10 Relay Nodes: Daemon-only for P2P block/tx relay ---
+  # No wallet or script — just monerod for network realism
+  relay-{001..010}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 5s
 
   miner-distributor:
     script: agents.miner_distributor

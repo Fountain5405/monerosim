@@ -357,6 +357,7 @@ def generate_metadata(
     gml_path: str,
     fast_mode: bool,
     stagger_interval_s: int,
+    relay_nodes: int = 0,
 ) -> OrderedDict:
     """Generate machine-parseable metadata section for analysis tools.
 
@@ -369,6 +370,7 @@ def generate_metadata(
         gml_path: Path to GML topology file
         fast_mode: Whether fast mode is enabled
         stagger_interval_s: User stagger interval
+        relay_nodes: Number of daemon-only relay nodes
 
     Returns:
         OrderedDict with metadata structure
@@ -380,11 +382,14 @@ def generate_metadata(
     ])
 
     # Agent counts
-    metadata["agents"] = OrderedDict([
-        ("total", num_miners + num_users),
+    agents_meta = OrderedDict([
+        ("total", num_miners + num_users + relay_nodes),
         ("miners", num_miners),
         ("users", num_users),
     ])
+    if relay_nodes > 0:
+        agents_meta["relay_nodes"] = relay_nodes
+    metadata["agents"] = agents_meta
 
     # Core timing (all in seconds for easy parsing)
     metadata["timing"] = OrderedDict([
@@ -523,6 +528,36 @@ def generate_user_agent_phased(
     ])
 
 
+def generate_relay_agent(start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
+    """Generate a daemon-only relay node configuration (no wallet, no script).
+
+    Relay nodes run monerod for P2P block/transaction relay only.
+    They increase network size and realism without transacting.
+    """
+    return OrderedDict([
+        ("daemon", daemon_binary),
+        ("start_time", format_time_offset(start_offset_s)),
+    ])
+
+
+def generate_relay_agent_phased(
+    start_offset_s: int,
+    daemon_v1: str,
+    daemon_v2: str,
+    phase0_stop_s: int,
+    phase1_start_s: int,
+) -> Dict[str, Any]:
+    """Generate a relay node with daemon phase switching for upgrade scenario."""
+    return OrderedDict([
+        ("start_time", format_time_offset(start_offset_s)),
+        ("daemon_0", daemon_v1),
+        ("daemon_0_start", format_time_offset(start_offset_s)),
+        ("daemon_0_stop", format_time_offset(phase0_stop_s)),
+        ("daemon_1", daemon_v2),
+        ("daemon_1_start", format_time_offset(phase1_start_s)),
+    ])
+
+
 # Single GML file for all tests (1200 nodes supports up to 1200 agents)
 DEFAULT_GML_PATH = "gml_processing/1200_nodes_caida_with_loops.gml"
 
@@ -557,6 +592,8 @@ def generate_config(
     # Shadow parallelism and preemption
     parallelism: int = 0,
     native_preemption: bool = None,
+    # Relay nodes (daemon-only)
+    relay_nodes: int = 0,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -585,7 +622,7 @@ def generate_config(
         md_funding_cycle_interval: Interval between continuous funding cycles (default: 5m)
         tx_interval: Seconds between user transaction attempts (default: 120 fast, 60 normal)
         activity_batch_size: Users per activity batch (default: 10)
-        activity_batch_interval_s: Target seconds between activity batches (default: 25)
+        activity_batch_interval_s: Target seconds between activity batches (default: 300)
         activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)
     """
 
@@ -726,6 +763,12 @@ def generate_config(
             user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
             agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
 
+    # Add relay nodes (daemon-only, no wallet or script)
+    for i in range(relay_nodes):
+        agent_id = f"relay-{i+1:03}"
+        relay_start_s = 5 + i  # 1s apart, starting at 5s (after miners)
+        agents[agent_id] = generate_relay_agent(relay_start_s, daemon_binary)
+
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
@@ -821,6 +864,7 @@ def generate_config(
         gml_path=gml_path,
         fast_mode=fast_mode,
         stagger_interval_s=stagger_interval_s,
+        relay_nodes=relay_nodes,
     )
 
     # Build full config with metadata first
@@ -866,6 +910,8 @@ def generate_upgrade_config(
     # Shadow parallelism and preemption
     parallelism: int = 0,
     native_preemption: bool = None,
+    # Relay nodes (daemon-only)
+    relay_nodes: int = 0,
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -990,7 +1036,8 @@ def generate_upgrade_config(
     # Build list of all agent IDs for upgrade scheduling
     miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
     user_ids = [f"user-{i+1:03}" for i in range(num_users)]
-    all_agent_ids = miner_ids + user_ids
+    relay_ids = [f"relay-{i+1:03}" for i in range(relay_nodes)]
+    all_agent_ids = miner_ids + user_ids + relay_ids
 
     # Calculate upgrade schedule for all agents
     upgrade_schedule = calculate_upgrade_schedule(
@@ -1079,6 +1126,19 @@ def generate_upgrade_config(
                 phase1_start,
                 tx_send_probability,
             )
+
+    # Add relay nodes with phased daemons (daemon-only, no wallet or script)
+    for i in range(relay_nodes):
+        agent_id = f"relay-{i+1:03}"
+        relay_start_s = 5 + i  # 1s apart, starting at 5s (after miners)
+        phase0_stop, phase1_start = upgrade_schedule[agent_id]
+        agents[agent_id] = generate_relay_agent_phased(
+            relay_start_s,
+            upgrade_binary_v1,
+            upgrade_binary_v2,
+            phase0_stop,
+            phase1_start,
+        )
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
@@ -1177,6 +1237,7 @@ def generate_upgrade_config(
         gml_path=gml_path,
         fast_mode=fast_mode,
         stagger_interval_s=stagger_interval_s,
+        relay_nodes=relay_nodes,
     )
 
     # Build full config with metadata first
@@ -1413,6 +1474,13 @@ Timeline (verified bootstrap for Monero regtest):
         type=str,
         default="monerod",
         help="Daemon binary path or name (default: monerod, resolves to ~/.monerosim/bin/monerod)"
+    )
+
+    parser.add_argument(
+        "--relay-nodes",
+        type=int,
+        default=0,
+        help="Number of daemon-only relay nodes (no wallet/script, P2P relay only). Default: 0"
     )
 
     # Timing control flags
@@ -1665,6 +1733,7 @@ Timeline (verified bootstrap for Monero regtest):
                 activity_batch_jitter=args.activity_batch_jitter,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
+                relay_nodes=args.relay_nodes,
                 upgrade_binary_v1=args.upgrade_binary_v1,
                 upgrade_binary_v2=args.upgrade_binary_v2,
                 upgrade_start=args.upgrade_start,
@@ -1702,6 +1771,7 @@ Timeline (verified bootstrap for Monero regtest):
                 activity_batch_jitter=args.activity_batch_jitter,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
+                relay_nodes=args.relay_nodes,
             )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)

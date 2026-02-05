@@ -125,6 +125,7 @@ class ValidationReport:
     miner_count: int = 0
     user_count: int = 0
     spy_count: int = 0
+    relay_count: int = 0
     has_distributor: bool = False
     has_monitor: bool = False
 
@@ -168,6 +169,8 @@ class ValidationReport:
         lines.append(f"  - Users: {self.user_count}")
         if self.spy_count:
             lines.append(f"  - Spy nodes: {self.spy_count}")
+        if self.relay_count:
+            lines.append(f"  - Relay nodes: {self.relay_count}")
         lines.append(f"  - Distributor: {'Yes' if self.has_distributor else 'NO (missing!)'}")
         lines.append(f"  - Monitor: {'Yes' if self.has_monitor else 'No'}")
         lines.append("")
@@ -235,6 +238,8 @@ class ValidationReport:
         lines.append(f"  - {self.miner_count} miners")
         lines.append(f"  - {self.user_count} users")
         lines.append(f"  - {self.spy_count} spy nodes")
+        if self.relay_count:
+            lines.append(f"  - {self.relay_count} relay nodes")
         lines.append(f"  - Duration: {seconds_to_human(self.stop_time_s)}")
         lines.append(f"  - Total hashrate: {self.total_hashrate}")
         lines.append(f"  - Has distributor: {self.has_distributor}")
@@ -330,6 +335,8 @@ class ConfigValidator:
                 report.spy_count += 1
                 if info.out_peers or info.in_peers:
                     report.spy_connections[agent_id] = (info.out_peers or 0, info.in_peers or 0)
+            elif info.agent_type == 'relay':
+                report.relay_count += 1
             elif info.agent_type == 'distributor':
                 report.has_distributor = True
             elif info.agent_type == 'monitor':
@@ -392,6 +399,14 @@ class ConfigValidator:
             info.agent_type = 'miner'
         elif 'user' in agent_id.lower():
             info.agent_type = 'user'
+
+        # Detect daemon-only relay nodes (has daemon but no wallet or script)
+        has_daemon = bool(config.get('daemon') or config.get('daemon_0'))
+        has_wallet = bool(config.get('wallet'))
+        if has_daemon and not has_wallet and not script:
+            info.agent_type = 'relay'
+        elif 'relay' in agent_id.lower() and info.agent_type == 'unknown':
+            info.agent_type = 'relay'
 
         # Basic fields
         info.daemon = config.get('daemon')

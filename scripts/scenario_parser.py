@@ -109,7 +109,7 @@ class TimingOverrides:
     activity_start_time: Optional[str] = None   # When users start transacting (e.g., "20h")
     # Activity batching (prevents thundering herd)
     activity_batch_size: Optional[int] = None   # Users per activity batch (default: 10)
-    activity_batch_interval: Optional[str] = None  # Time between batches (default: 25s)
+    activity_batch_interval: Optional[str] = None  # Time between batches (default: 300s)
     activity_batch_jitter: Optional[float] = None  # Jitter fraction +/- (default: 0.30)
 
 
@@ -459,9 +459,33 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
             else:
                 base_fields[key] = value
 
+        # Add default staggers for multi-agent groups when not explicitly specified.
+        # This prevents thundering herd issues (all agents spawning/upgrading simultaneously)
+        # when the scenario omits _stagger fields.
+        is_user_agent = 'regular_user' in str(props.get('script', ''))
+        is_miner_agent = 'autonomous_miner' in str(props.get('script', ''))
+        is_daemon_only = (
+            ('daemon' in base_fields or 'daemon_0' in base_fields) and
+            'wallet' not in base_fields and
+            'script' not in base_fields
+        )
+
+        if group.count > 1:
+            # Default start_time stagger: users get auto (batched/5s), miners get 1s, relay nodes get 5s
+            if 'start_time' in base_fields and 'start_time' not in stagger_fields:
+                if is_user_agent:
+                    stagger_fields['start_time'] = 'auto'
+                elif is_miner_agent:
+                    stagger_fields['start_time'] = '1s'
+                elif is_daemon_only:
+                    stagger_fields['start_time'] = '5s'
+
+            # Default upgrade stagger: 30s between each node's daemon_0_stop
+            if 'daemon_0_stop' in base_fields and 'daemon_0_stop' not in stagger_fields:
+                stagger_fields['daemon_0_stop'] = f'{DEFAULT_UPGRADE_STAGGER_S}s'
+
         # Expand each field
         expanded_values = {}
-        is_user_agent = 'regular_user' in str(props.get('script', ''))
 
         for key, value in base_fields.items():
             if key in stagger_fields:
@@ -529,12 +553,20 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                 activity_st = agent_config.get('activity_start_time')
                 # Bootstrap participants: start early (< 1h) AND have auto activity_start
                 # OR are miners that start early (need to mine during bootstrap)
+                # OR are daemon-only agents (relay nodes sync blockchain during bootstrap)
                 is_early_start = start_time_s < 3600  # Within first hour
                 has_auto_activity = activity_st == 'auto'
                 is_early_miner = (is_early_start and
                                  agent_config.get('script') == 'agents.autonomous_miner')
+                is_daemon_only_agent = (
+                    ('daemon' in agent_config or 'daemon_0' in agent_config) and
+                    'wallet' not in agent_config and
+                    'script' not in agent_config
+                )
 
-                is_bootstrap_participant = is_early_start and (has_auto_activity or is_early_miner)
+                is_bootstrap_participant = is_early_start and (
+                    has_auto_activity or is_early_miner or is_daemon_only_agent
+                )
 
                 if is_bootstrap_participant:
                     bootstrap_participant_start_times.append(start_time_s)
