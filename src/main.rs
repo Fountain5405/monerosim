@@ -137,6 +137,19 @@ fn main() -> Result<()> {
         }
     }
 
+    // Clean up Monero's shared ring database to prevent cross-run contamination.
+    // All wallet-rpc instances share ~/.shared-ringdb/ on the host filesystem.
+    // With a fixed Shadow seed, wallet keys are identical across runs, so stale
+    // ring entries from previous runs cause "ring size 17" errors when the
+    // blockchain's global_output_indices differ between runs.
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/lever65".to_string());
+    let ringdb_dir = Path::new(&home).join(".shared-ringdb");
+    if ringdb_dir.exists() {
+        info!("Removing stale shared ring database: {:?}", ringdb_dir);
+        remove_dir_with_permissions(&ringdb_dir)
+            .wrap_err("Failed to remove shared ring database")?;
+    }
+
     // Create fresh directories
     fs::create_dir_all(&output_dir)
         .wrap_err_with(|| format!("Failed to create output directory '{}'", output_dir.display()))?;
