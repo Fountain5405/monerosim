@@ -89,6 +89,11 @@ DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect from CPU count
 DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 300  # 5 minutes between batches
 DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
 
+# Relay node spawn staggering defaults
+# Relays are daemon-only (1 process each) so simple linear stagger suffices
+DEFAULT_RELAY_SPAWN_START_S = 5   # Start after miners (t=5s)
+DEFAULT_RELAY_STAGGER_S = 20      # 20s apart; sim-time moves fast so need wider spacing
+
 
 def auto_detect_activity_batch_size() -> int:
     """Auto-detect activity batch size based on system CPU count.
@@ -389,6 +394,9 @@ def generate_metadata(
     ])
     if relay_nodes > 0:
         agents_meta["relay_nodes"] = relay_nodes
+        agents_meta["relay_spawn_start_s"] = timing_info.get('relay_spawn_start_s', DEFAULT_RELAY_SPAWN_START_S)
+        agents_meta["relay_stagger_s"] = timing_info.get('relay_stagger_s', DEFAULT_RELAY_STAGGER_S)
+        agents_meta["last_relay_spawn_s"] = timing_info.get('last_relay_spawn_s', 0)
     metadata["agents"] = agents_meta
 
     # Core timing (all in seconds for easy parsing)
@@ -594,6 +602,8 @@ def generate_config(
     native_preemption: bool = None,
     # Relay nodes (daemon-only)
     relay_nodes: int = 0,
+    relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
+    relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -624,6 +634,8 @@ def generate_config(
         activity_batch_size: Users per activity batch (default: 10)
         activity_batch_interval_s: Target seconds between activity batches (default: 300)
         activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)
+        relay_spawn_start_s: When relay nodes start spawning (default: 5s)
+        relay_stagger_s: Interval between relay node spawns (default: 5s)
     """
 
     num_miners = len(FIXED_MINERS)
@@ -764,10 +776,22 @@ def generate_config(
             agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
 
     # Add relay nodes (daemon-only, no wallet or script)
+    # Simple linear stagger: start + i * stagger
     for i in range(relay_nodes):
         agent_id = f"relay-{i+1:03}"
-        relay_start_s = 5 + i  # 1s apart, starting at 5s (after miners)
+        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
         agents[agent_id] = generate_relay_agent(relay_start_s, daemon_binary)
+
+    # Calculate last relay spawn time for metadata/warnings
+    if relay_nodes > 0:
+        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
+        if last_relay_spawn_s > bootstrap_end_time_s:
+            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
+                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
+                  f"Late relays may experience packet loss during sync.",
+                  file=sys.stderr)
+    else:
+        last_relay_spawn_s = 0
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
@@ -852,6 +876,10 @@ def generate_config(
         'activity_batch_interval_s': activity_batch_interval_s,
         'activity_batch_jitter': activity_batch_jitter,
         'activity_rollout_duration_s': activity_rollout_duration_s,
+        # Relay timing info
+        'relay_spawn_start_s': relay_spawn_start_s,
+        'relay_stagger_s': relay_stagger_s,
+        'last_relay_spawn_s': last_relay_spawn_s,
     }
 
     # Generate metadata section
@@ -912,6 +940,8 @@ def generate_upgrade_config(
     native_preemption: bool = None,
     # Relay nodes (daemon-only)
     relay_nodes: int = 0,
+    relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
+    relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -1128,9 +1158,10 @@ def generate_upgrade_config(
             )
 
     # Add relay nodes with phased daemons (daemon-only, no wallet or script)
+    # Simple linear stagger: start + i * stagger
     for i in range(relay_nodes):
         agent_id = f"relay-{i+1:03}"
-        relay_start_s = 5 + i  # 1s apart, starting at 5s (after miners)
+        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
         phase0_stop, phase1_start = upgrade_schedule[agent_id]
         agents[agent_id] = generate_relay_agent_phased(
             relay_start_s,
@@ -1139,6 +1170,17 @@ def generate_upgrade_config(
             phase0_stop,
             phase1_start,
         )
+
+    # Calculate last relay spawn time for metadata/warnings
+    if relay_nodes > 0:
+        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
+        if last_relay_spawn_s > bootstrap_end_time_s:
+            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
+                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
+                  f"Late relays may experience packet loss during sync.",
+                  file=sys.stderr)
+    else:
+        last_relay_spawn_s = 0
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
@@ -1216,6 +1258,10 @@ def generate_upgrade_config(
         'activity_batch_interval_s': activity_batch_interval_s,
         'activity_batch_jitter': activity_batch_jitter,
         'activity_rollout_duration_s': activity_rollout_duration_s,
+        # Relay timing info
+        'relay_spawn_start_s': relay_spawn_start_s,
+        'relay_stagger_s': relay_stagger_s,
+        'last_relay_spawn_s': last_relay_spawn_s,
         # Upgrade-specific timing info
         'upgrade_start_time_s': upgrade_start_time_s,
         'last_upgrade_complete_s': last_upgrade_complete_s,
@@ -1483,6 +1529,21 @@ Timeline (verified bootstrap for Monero regtest):
         help="Number of daemon-only relay nodes (no wallet/script, P2P relay only). Default: 0"
     )
 
+    parser.add_argument(
+        "--relay-spawn-start",
+        type=str,
+        default="5s",
+        help="When relay nodes start spawning (default: 5s, after miners)"
+    )
+
+    parser.add_argument(
+        "--relay-stagger",
+        type=str,
+        default="20s",
+        help="Interval between relay node spawns (default: 20s). "
+             "With 895 relays at 20s stagger, all online in ~5h."
+    )
+
     # Timing control flags
     parser.add_argument(
         "--user-spawn-start",
@@ -1734,6 +1795,8 @@ Timeline (verified bootstrap for Monero regtest):
                 parallelism=parallelism,
                 native_preemption=native_preemption,
                 relay_nodes=args.relay_nodes,
+                relay_spawn_start_s=parse_duration(args.relay_spawn_start),
+                relay_stagger_s=parse_duration(args.relay_stagger),
                 upgrade_binary_v1=args.upgrade_binary_v1,
                 upgrade_binary_v2=args.upgrade_binary_v2,
                 upgrade_start=args.upgrade_start,
@@ -1772,6 +1835,8 @@ Timeline (verified bootstrap for Monero regtest):
                 parallelism=parallelism,
                 native_preemption=native_preemption,
                 relay_nodes=args.relay_nodes,
+                relay_spawn_start_s=parse_duration(args.relay_spawn_start),
+                relay_stagger_s=parse_duration(args.relay_stagger),
             )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -1804,6 +1869,18 @@ Timeline (verified bootstrap for Monero regtest):
     fast_note = " [FAST MODE]" if args.fast else ""
     stagger_note = f"staggered {args.stagger_interval}s apart" if args.stagger_interval > 0 else "all at once"
 
+    # Relay node info for header
+    relay_nodes = args.relay_nodes
+    relay_agent_note = f" + {relay_nodes} relays" if relay_nodes > 0 else ""
+    if relay_nodes > 0:
+        last_relay_spawn_s = timing_info['last_relay_spawn_s']
+        relay_spawn_start_s_val = timing_info['relay_spawn_start_s']
+        relay_stagger_s_val = timing_info['relay_stagger_s']
+        last_relay_str = format_time_offset(last_relay_spawn_s, for_config=False)
+        relay_timeline_note = f"\n#   t={format_time_offset(relay_spawn_start_s_val, for_config=False)}:      Relay nodes start spawning ({relay_nodes} nodes, {relay_stagger_s_val}s apart)\n#   t={last_relay_str}:  Last relay spawns"
+    else:
+        relay_timeline_note = ""
+
     user_spawn_start_s = timing_info['user_spawn_start_s']
     if use_batched and batch_sizes:
         batch_summary = format_batch_summary(batch_sizes, user_spawn_start_s, batch_interval_s)
@@ -1828,7 +1905,7 @@ Timeline (verified bootstrap for Monero regtest):
         upgrade_end = format_time_offset(timing_info['last_upgrade_complete_s'], for_config=False)
         header = f"""# Monerosim upgrade scenario configuration{fast_note}
 # Generated by generate_config.py --scenario upgrade
-# Total agents: {args.agents} (5 miners + {num_users} users)
+# Total agents: {args.agents} (5 miners + {num_users} users{relay_agent_note})
 # Duration: {actual_duration}{duration_note}
 # Network topology: {args.gml}
 #
@@ -1840,7 +1917,7 @@ Timeline (verified bootstrap for Monero regtest):
 {activity_batching_note}
 #
 # Timeline:
-#   t=0:           Miners start
+#   t=0:           Miners start{relay_timeline_note}
 #   t={format_time_offset(user_spawn_start_s, for_config=False)}:         {spawn_note}
 #   t={last_spawn}:     Last user spawns
 #   t={bootstrap_end}:     Bootstrap ends (+20% buffer), distributor starts funding
@@ -1852,13 +1929,13 @@ Timeline (verified bootstrap for Monero regtest):
     else:
         header = f"""# Monerosim scaling test configuration{fast_note}
 # Generated by generate_config.py
-# Total agents: {args.agents} (5 miners + {num_users} users)
+# Total agents: {args.agents} (5 miners + {num_users} users{relay_agent_note})
 # Duration: {actual_duration}{duration_note}
 # Network topology: {args.gml}
 {activity_batching_note}
 #
 # Timeline:
-#   t=0:       Miners start
+#   t=0:       Miners start{relay_timeline_note}
 #   t={format_time_offset(user_spawn_start_s, for_config=False)}:      {spawn_note}
 #   t={last_spawn}:  Last user spawns
 #   t={bootstrap_end}:  Bootstrap ends (+20% buffer), distributor starts funding
