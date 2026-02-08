@@ -95,7 +95,7 @@ echo "Starting pure script agent {}..."
             environment,
             start_time,
             None,
-            None,
+            Some(crate::shadow::ExpectedFinalState::Running),
         )?;
 
         hosts.insert(script_id.to_string(), ShadowHost {

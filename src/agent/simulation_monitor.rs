@@ -144,7 +144,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
             environment,
             "5s".to_string(), // Start early to monitor from beginning
             None,
-            None,
+            Some(crate::shadow::ExpectedFinalState::Running),
         )?;
         processes.push(process);
 

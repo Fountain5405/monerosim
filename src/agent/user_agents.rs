@@ -465,7 +465,7 @@ pub fn process_user_agents(
                         )
                     } else {
                         // Last phase - runs until simulation end
-                        (None, None)
+                        (None, Some(ExpectedFinalState::Running))
                     };
 
                     // Use `exec` so bash replaces itself with monerod - this ensures SIGKILL
@@ -515,7 +515,7 @@ pub fn process_user_agents(
                     environment: daemon_env,
                     start_time: start_time_daemon.clone(),
                     shutdown_time: None,
-                    expected_final_state: None,
+                    expected_final_state: Some(ExpectedFinalState::Running),
                 });
             } // End of daemon configuration
 
@@ -596,7 +596,7 @@ pub fn process_user_agents(
                         )
                     } else {
                         // Last phase - runs until simulation end
-                        (None, None)
+                        (None, Some(ExpectedFinalState::Running))
                     };
 
                     // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.

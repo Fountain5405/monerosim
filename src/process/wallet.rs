@@ -91,7 +91,7 @@ pub fn add_wallet_process(
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
-        expected_final_state: None,
+        expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
     });
 }
 
@@ -190,6 +190,6 @@ pub fn add_remote_wallet_process(
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
-        expected_final_state: None,
+        expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
     });
 }

@@ -374,7 +374,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
             &environment,
             "1s".to_string(),
             None,
-            None,
+            Some(crate::shadow::ExpectedFinalState::Running),
         )?;
         let dns_processes = vec![dns_process];
 

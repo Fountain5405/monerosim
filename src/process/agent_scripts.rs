@@ -129,7 +129,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
         environment,
         start_time,
         None,
-        None,
+        Some(crate::shadow::ExpectedFinalState::Running),
     ) {
         Ok(process) => processes.push(process),
         Err(e) => log::error!("Failed to write wrapper script for agent {}: {}", agent_id, e),
@@ -221,7 +221,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
         environment,
         start_time,
         None,
-        None,
+        Some(crate::shadow::ExpectedFinalState::Running),
     ) {
         Ok(process) => vec![process],
         Err(e) => {
