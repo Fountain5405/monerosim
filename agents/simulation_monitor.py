@@ -1209,12 +1209,11 @@ class SimulationMonitorAgent(BaseAgent):
         """
         try:
             with open(self.status_file, 'a') as f:
-                # Write header with timestamps
-                real_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+                # Write header with timestamp
                 sim_time = self._get_simulation_time()
                 f.write(f"\n{'='*60}\n")
                 f.write(f"=== MoneroSim Simulation Monitor ===\n")
-                f.write(f"Real Time: {real_time} | Sim Time: {sim_time} | Cycle: {self.cycle_count}\n\n")
+                f.write(f"Sim Time: {sim_time} | Cycle: {self.cycle_count}\n\n")
                 
                 # Write network status
                 f.write("NETWORK STATUS:\n")
