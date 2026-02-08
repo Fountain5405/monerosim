@@ -9,6 +9,7 @@ use crate::config_v2::AgentDefinitions;
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
+use crate::utils::script::write_wrapper_script;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -26,6 +27,7 @@ pub fn process_pure_script_agents(
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     agent_offset: usize,
+    scripts_dir: &Path,
 ) -> color_eyre::eyre::Result<()> {
     // Find pure script agents (script-only, no daemon/wallet)
     // Exclude miner_distributor and simulation_monitor which have their own processing
@@ -44,7 +46,6 @@ pub fn process_pure_script_agents(
         // Assign pure scripts to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
         let script_ip = get_agent_ip(AgentType::PureScriptAgent, script_id, agent_offset + i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, None);
-        let mut processes = Vec::new();
 
         let mut script_args = vec![
             format!("--id {}", script_id),
@@ -71,7 +72,7 @@ pub fn process_pure_script_agents(
         };
 
         // Create a simple wrapper script for pure script agents
-        let wrapper_script = format!(
+        let wrapper_content = format!(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH="${{PYTHONPATH}}:{}"
@@ -86,39 +87,24 @@ echo "Starting pure script agent {}..."
             python_cmd
         );
 
-        // Write wrapper script to a temporary file and execute it
-        let script_path = format!("/tmp/{}_wrapper.sh", script_id);
-        let script_creation_time = format!("{}s", 5 + i * 2);
-        let script_execution_time = format!("{}s", 6 + i * 2);
-
-        // Process 1: Create wrapper script
-        processes.push(crate::shadow::ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!("-c 'cat > {} << \\EOF\n{}EOF'", script_path, wrapper_script),
-            environment: environment.clone(),
-            start_time: script_creation_time,
-            shutdown_time: None,
-            expected_final_state: None,
-        });
-
-        // Process 2: Execute wrapper script
-        processes.push(crate::shadow::ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: script_path.clone(),
-            environment: environment.clone(),
-            start_time: script_execution_time,
-            shutdown_time: None,
-            expected_final_state: None,
-        });
+        let start_time = format!("{}s", 6 + i * 2);
+        let process = write_wrapper_script(
+            scripts_dir,
+            &format!("{}_wrapper.sh", script_id),
+            &wrapper_content,
+            environment,
+            start_time,
+            None,
+            None,
+        )?;
 
         hosts.insert(script_id.to_string(), ShadowHost {
             network_node_id, // Use the assigned GML node with bandwidth info
             ip_addr: Some(script_ip),
-            processes,
+            processes: vec![process],
             bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
             bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
         });
-        // Note: next_ip is already incremented in get_agent_ip function
     }
 
     Ok(())

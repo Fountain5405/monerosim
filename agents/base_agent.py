@@ -18,6 +18,13 @@ from typing import Dict, Any, Optional, List
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 from .public_node_discovery import PublicNodeDiscovery, DaemonSelectionStrategy, parse_selection_strategy
 
+# Shared constants
+DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+MONERO_P2P_PORT = 18080
+MONERO_RPC_PORT = 18081
+MONERO_WALLET_RPC_PORT = 18082
+SHADOW_EPOCH = 946684800  # 2000-01-01T00:00:00 UTC
+
 
 class BaseAgent(ABC):
     """Abstract base class for all Monerosim agents"""
@@ -68,7 +75,7 @@ class BaseAgent(ABC):
         
         # Shared state directory
         if shared_dir is None:
-            shared_dir = Path("/tmp/monerosim_shared")
+            shared_dir = Path(DEFAULT_SHARED_DIR)
         self._shared_dir = shared_dir
         self._shared_dir.mkdir(mode=0o700, exist_ok=True)
         
@@ -96,34 +103,29 @@ class BaseAgent(ABC):
         """Return whether this agent is a miner"""
         return self._is_miner
         
+    @staticmethod
+    def parse_bool(value, default: bool = False) -> bool:
+        """Parse a boolean from various types (str, bool, int, float).
+
+        Accepts 'true'/'1'/'yes'/'on' as True and 'false'/'0'/'no'/'off' as False
+        (case-insensitive). Returns *default* for unrecognized values.
+        """
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            lower = value.lower()
+            if lower in ('true', '1', 'yes', 'on'):
+                return True
+            if lower in ('false', '0', 'no', 'off'):
+                return False
+        return default
+
     def _extract_is_miner(self):
         """Extract is_miner from attributes and handle both string and boolean values"""
         if 'is_miner' in self.attributes:
-            is_miner_value = self.attributes['is_miner']
-            
-            # Handle string representations
-            if isinstance(is_miner_value, str):
-                if is_miner_value.lower() in ('true', '1', 'yes', 'on'):
-                    self._is_miner = True
-                elif is_miner_value.lower() in ('false', '0', 'no', 'off'):
-                    self._is_miner = False
-                else:
-                    self.logger.warning(f"Invalid string value for is_miner: '{is_miner_value}'. Defaulting to False.")
-                    self._is_miner = False
-            
-            # Handle boolean values
-            elif isinstance(is_miner_value, bool):
-                self._is_miner = is_miner_value
-            
-            # Handle numeric values
-            elif isinstance(is_miner_value, (int, float)):
-                self._is_miner = bool(is_miner_value)
-            
-            # Handle other types
-            else:
-                self.logger.warning(f"Unsupported type for is_miner: {type(is_miner_value)}. Defaulting to False.")
-                self._is_miner = False
-                
+            self._is_miner = self.parse_bool(self.attributes['is_miner'])
             self.logger.debug(f"Extracted is_miner={self._is_miner} from attributes")
         else:
             self.logger.debug("No is_miner attribute found, defaulting to False")
@@ -246,8 +248,8 @@ class BaseAgent(ABC):
         if self.wallet_rpc:
             try:
                 self.wallet_rpc.close_wallet()
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Error closing wallet during cleanup: {e}")
                 
         # Call agent-specific cleanup
         self._cleanup_agent()
@@ -440,25 +442,7 @@ class BaseAgent(ABC):
         registry_path = self.shared_dir / "agent_registry.json"
         lock_path = self.shared_dir / "agent_registry.lock"
         
-        self.logger.info(f"Attempting to register in agent registry: {registry_path.resolve()}")
-        
-        # DIAGNOSTIC: Check if shared directory exists and is accessible
-        self.logger.info(f"Shared directory exists: {self.shared_dir.exists()}")
-        self.logger.info(f"Shared directory is directory: {self.shared_dir.is_dir()}")
-        self.logger.info(f"Registry file exists: {registry_path.exists()}")
-        
-        if registry_path.exists():
-            try:
-                file_size = registry_path.stat().st_size
-                self.logger.info(f"Registry file size: {file_size} bytes")
-                with open(registry_path, 'r') as f:
-                    content_preview = f.read(200)
-                    self.logger.info(f"Registry file preview: {content_preview[:200]}")
-            except Exception as e:
-                self.logger.error(f"Failed to read existing registry file: {e}")
-        else:
-            self.logger.warning(f"Registry file does NOT exist at {registry_path.resolve()}")
-            self.logger.info(f"Directory contents: {list(self.shared_dir.iterdir()) if self.shared_dir.exists() else 'N/A'}")
+        self.logger.debug(f"Registering in agent registry: {registry_path}")
 
         # First, ensure the file exists using a separate lock file for creation
         try:
@@ -567,7 +551,7 @@ class BaseAgent(ABC):
         return False
         
     @staticmethod
-    def create_argument_parser(description: str, default_shared_dir: str = '/tmp/monerosim_shared',
+    def create_argument_parser(description: str, default_shared_dir: str = DEFAULT_SHARED_DIR,
                              default_rpc_host: str = '127.0.0.1', default_log_level: str = 'INFO') -> argparse.ArgumentParser:
         """Create standard argument parser for agents"""
         parser = argparse.ArgumentParser(description=description)

@@ -13,12 +13,12 @@ Key Features:
 - Self-contained mining loop with automatic timing recalculation
 """
 
+import hashlib
 import sys
 import time
 import math
 import random
 import os
-import argparse
 import fcntl
 import logging
 from typing import Optional, Dict, Any
@@ -55,7 +55,7 @@ class AutonomousMinerAgent(BaseAgent):
         
         # Deterministic seeding for reproducibility
         self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + hash(agent_id)
+        self.agent_seed = self.global_seed + int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % (2**31)
         random.seed(self.agent_seed)
 
         # Difficulty caching to reduce RPC calls
@@ -462,9 +462,14 @@ class AutonomousMinerAgent(BaseAgent):
         # Calculate time until next block attempt
         next_block_time = self._calculate_next_block_time()
         
-        # Sleep for calculated duration
+        # Sleep for calculated duration, checking for shutdown every second
         self.logger.debug(f"Waiting {next_block_time:.1f}s before next block attempt")
-        time.sleep(next_block_time)
+        remaining = next_block_time
+        while remaining > 0 and self.running:
+            time.sleep(min(remaining, 1.0))
+            remaining -= 1.0
+        if not self.running:
+            return 0.0
         
         # Attempt to generate block
         success = self._generate_block()

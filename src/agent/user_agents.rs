@@ -10,46 +10,7 @@ use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
-
-/// Convert OptionValue map to command-line arguments
-/// - Bool(true) -> --flag
-/// - Bool(false) -> (omitted)
-/// - String(s) -> --flag=s
-/// - Number(n) -> --flag=n
-fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
-    options.iter().filter_map(|(key, value)| {
-        match value {
-            OptionValue::Bool(true) => Some(format!("--{}", key)),
-            OptionValue::Bool(false) => None,
-            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
-            OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
-        }
-    }).collect()
-}
-
-/// Merge two option maps, with overrides taking precedence over defaults
-fn merge_options(
-    defaults: Option<&BTreeMap<String, OptionValue>>,
-    overrides: Option<&BTreeMap<String, OptionValue>>,
-) -> BTreeMap<String, OptionValue> {
-    let mut merged = BTreeMap::new();
-
-    // Apply defaults first
-    if let Some(defs) = defaults {
-        for (k, v) in defs {
-            merged.insert(k.clone(), v.clone());
-        }
-    }
-
-    // Apply overrides (these take precedence)
-    if let Some(ovrs) = overrides {
-        for (k, v) in ovrs {
-            merged.insert(k.clone(), v.clone());
-        }
-    }
-
-    merged
-}
+use crate::utils::options::{options_to_args, merge_options};
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
@@ -78,6 +39,7 @@ pub fn process_user_agents(
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     distribution_strategy: Option<&crate::config_v2::DistributionStrategy>,
     distribution_weights: Option<&crate::config_v2::RegionWeights>,
+    scripts_dir: &Path,
 ) -> color_eyre::eyre::Result<()> {
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
@@ -150,7 +112,7 @@ pub fn process_user_agents(
             .find(|(id, _)| id.as_str() == *agent_id)
             .and_then(|(_, config)| config.subnet_group.as_deref());
         let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group);
-        let agent_port = 18080;
+        let agent_port = crate::MONERO_P2P_PORT;
 
         // Collect all agent IPs for topology connections
         all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
@@ -350,15 +312,11 @@ pub fn process_user_agents(
             // Reuse the agent IP from the first pass (stored in agent_info)
             // This avoids calling get_agent_ip twice which would increment the host counter
             let agent_ip = agent_info[i].4.clone();
-            let _agent_port = 18080;
-
-            // Use standard RPC ports for all agents (mainnet ports for FAKECHAIN/regtest)
-            let agent_rpc_port = 18081;
-
-            // Use standard wallet RPC port for all agents
-            // Since each agent has its own IP address, they can all use the same port
-            let wallet_rpc_port = 18082;
-            let p2p_port = 18080;
+            // Use standard Monero ports (mainnet ports for FAKECHAIN/regtest)
+            // Since each agent has its own IP address, they can all use the same ports
+            let agent_rpc_port = crate::MONERO_RPC_PORT;
+            let wallet_rpc_port = crate::MONERO_WALLET_RPC_PORT;
+            let p2p_port = crate::MONERO_P2P_PORT;
 
             let mut processes = Vec::new();
 
@@ -578,7 +536,7 @@ pub fn process_user_agents(
                         format!("--rpc-bind-ip={}", agent_ip),
                         "--disable-rpc-login".to_string(),
                         "--trusted-daemon".to_string(),
-                        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+                        format!("--wallet-dir={}/{}_wallet", crate::SHARED_DIR, agent_id),
                         "--confirm-external-bind".to_string(),
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
@@ -734,6 +692,7 @@ pub fn process_user_agents(
                     Some(&agent_start_time),
                     user_agent_config.remote_daemon_address(),
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    scripts_dir,
                 );
 
                 // Step 2: Run mining_script (autonomous_miner.py)
@@ -762,6 +721,7 @@ pub fn process_user_agents(
                     i,
                     environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
                     Some(&mining_start_time),
+                    scripts_dir,
                 );
                 processes.extend(mining_processes);
             } else if !script.is_empty() {
@@ -795,6 +755,7 @@ pub fn process_user_agents(
                     Some(&agent_start_time),
                     user_agent_config.remote_daemon_address(),
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    scripts_dir,
                 );
             }
             } // end daemon-only guard

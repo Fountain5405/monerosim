@@ -307,16 +307,23 @@ def calculate_bootstrap_timing(num_users: int, stagger_interval_s: int) -> tuple
     return (bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s)
 
 
-def parse_duration(duration_str: str) -> int:
-    """Parse duration string like '4h', '30m', '45s' to seconds."""
-    duration_str = duration_str.strip().lower()
+def parse_duration(duration_str) -> int:
+    """Parse duration string like '4h', '30m', '45s' to seconds.
+
+    Also accepts numeric (int/float) values directly as seconds.
+    Supports fractional values like '1.5h' or '2.5m'.
+    """
+    if isinstance(duration_str, (int, float)):
+        return int(duration_str)
+
+    duration_str = str(duration_str).strip().lower()
 
     if duration_str.endswith('h'):
-        return int(duration_str[:-1]) * 3600
+        return int(float(duration_str[:-1]) * 3600)
     elif duration_str.endswith('m'):
-        return int(duration_str[:-1]) * 60
+        return int(float(duration_str[:-1]) * 60)
     elif duration_str.endswith('s'):
-        return int(duration_str[:-1])
+        return int(float(duration_str[:-1]))
     else:
         # Assume seconds if no unit
         return int(duration_str)
@@ -351,6 +358,148 @@ def format_time_offset(seconds: int, for_config: bool = True) -> str:
         if secs > 0 and hours == 0:  # Only show seconds if less than an hour
             parts.append(f"{secs}s")
         return " ".join(parts) if parts else "0s"
+
+
+def _calculate_spawn_timing(
+    num_users: int,
+    stagger_interval_s: int,
+    batched_bootstrap: str,
+    batch_interval: str,
+    initial_batch_size: int,
+    max_batch_size: int,
+    user_spawn_start: str = None,
+) -> Tuple[bool, List[int], List[Tuple[int, int]], int, int]:
+    """Calculate user spawn timing and batching parameters.
+
+    Returns:
+        (use_batched, batch_sizes, batch_schedule, user_spawn_start_s, last_user_spawn_s)
+    """
+    use_batched = (
+        batched_bootstrap == "true" or
+        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
+    )
+
+    batch_interval_s = parse_duration(batch_interval)
+
+    if user_spawn_start is not None:
+        user_spawn_start_s = parse_duration(user_spawn_start)
+    else:
+        user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
+
+    batch_sizes = []
+    batch_schedule = []
+
+    if use_batched and num_users > 0:
+        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
+        batch_schedule = calculate_batch_schedule(
+            num_users,
+            user_spawn_start_s,
+            batch_interval_s,
+            initial_batch_size,
+            2.0,
+            max_batch_size,
+            DEFAULT_INTRA_BATCH_STAGGER_S,
+        )
+        last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
+    else:
+        if num_users > 0:
+            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
+        else:
+            last_user_spawn_s = user_spawn_start_s
+
+    return (use_batched, batch_sizes, batch_schedule, user_spawn_start_s,
+            last_user_spawn_s, batch_interval_s)
+
+
+def _calculate_timing_chain(
+    last_user_spawn_s: int,
+    bootstrap_end_time: str = None,
+    md_start_time: str = None,
+    regular_user_start: str = None,
+) -> Tuple[int, int, int]:
+    """Calculate the bootstrap → md_start → activity_start timing chain.
+
+    Returns:
+        (bootstrap_end_time_s, md_start_time_s, activity_start_time_s)
+    """
+    # Step 1: Bootstrap end time
+    if bootstrap_end_time is not None:
+        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
+    else:
+        spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
+        bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
+
+    # Step 2: Miner distributor start time
+    if md_start_time is not None:
+        md_start_time_s = parse_duration(md_start_time)
+        if md_start_time_s < bootstrap_end_time_s:
+            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
+                  f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
+                  file=sys.stderr)
+    else:
+        md_start_time_s = bootstrap_end_time_s
+
+    # Step 3: Regular user activity start time
+    if regular_user_start is not None:
+        activity_start_time_s = parse_duration(regular_user_start)
+        if activity_start_time_s < md_start_time_s:
+            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
+                  f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
+                  file=sys.stderr)
+    else:
+        activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
+
+    return (bootstrap_end_time_s, md_start_time_s, activity_start_time_s)
+
+
+def _build_general_config(
+    duration: str,
+    parallelism: int,
+    simulation_seed: int,
+    bootstrap_end_time_s: int,
+    fast_mode: bool,
+    process_threads: int,
+    native_preemption: bool = None,
+) -> OrderedDict:
+    """Build the shared general config section."""
+    shadow_log_level = "warning" if fast_mode else "info"
+    runahead = "100ms" if fast_mode else None
+
+    general_config = OrderedDict([
+        ("stop_time", duration),
+        ("parallelism", parallelism),
+        ("simulation_seed", simulation_seed),
+        ("enable_dns_server", True),
+        ("shadow_log_level", shadow_log_level),
+        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
+        ("progress", True),
+    ])
+
+    if runahead:
+        general_config["runahead"] = runahead
+
+    if process_threads != 1:
+        general_config["process_threads"] = process_threads
+
+    if native_preemption is not None:
+        general_config["native_preemption"] = native_preemption
+
+    general_config["daemon_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+        ("db-sync-mode", "fastest"),
+        ("no-zmq", True),
+        ("non-interactive", True),
+        ("disable-rpc-ban", True),
+        ("allow-local-ip", True),
+    ])
+
+    general_config["wallet_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+    ])
+
+    return general_config
 
 
 def generate_metadata(
@@ -644,79 +793,17 @@ def generate_config(
     if num_users < 0:
         raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
 
-    # Determine if batched bootstrap should be enabled
-    use_batched = (
-        batched_bootstrap == "true" or
-        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
+    # Calculate spawn timing and batching
+    (use_batched, batch_sizes, batch_schedule, user_spawn_start_s,
+     last_user_spawn_s, batch_interval_s) = _calculate_spawn_timing(
+        num_users, stagger_interval_s, batched_bootstrap, batch_interval,
+        initial_batch_size, max_batch_size, user_spawn_start,
     )
 
-    # Parse batch interval
-    batch_interval_s = parse_duration(batch_interval)
-
-    # Calculate user spawn start time
-    if user_spawn_start is not None:
-        user_spawn_start_s = parse_duration(user_spawn_start)
-    else:
-        # Default: 20m for batched, 3h for non-batched
-        user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
-
-    # Calculate user start times based on batching mode
-    batch_sizes = []
-    batch_schedule = []
-
-    if use_batched and num_users > 0:
-        # Batched bootstrap: users start in waves
-        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
-        batch_schedule = calculate_batch_schedule(
-            num_users,
-            user_spawn_start_s,
-            batch_interval_s,
-            initial_batch_size,
-            2.0,  # growth_factor
-            max_batch_size,
-            DEFAULT_INTRA_BATCH_STAGGER_S,
-        )
-        # Last user spawn time from batch schedule
-        last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
-    else:
-        # Non-batched: users start at user_spawn_start_s with stagger
-        if num_users > 0:
-            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
-        else:
-            last_user_spawn_s = user_spawn_start_s
-
-    # Calculate timing with dependency chain:
-    # 1. bootstrap_end_time_s: explicit or auto-calc
-    # 2. md_start_time_s: explicit or defaults to bootstrap_end_time_s
-    # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
-
-    # Step 1: Bootstrap end time
-    if bootstrap_end_time is not None:
-        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
-    else:
-        # Auto-calculate: max of minimum time and last spawn + buffer
-        spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
-        bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
-
-    # Step 2: Miner distributor start time
-    if md_start_time is not None:
-        md_start_time_s = parse_duration(md_start_time)
-        if md_start_time_s < bootstrap_end_time_s:
-            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
-                  f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
-                  file=sys.stderr)
-    else:
-        md_start_time_s = bootstrap_end_time_s
-
-    # Step 3: Regular user activity start time
-    if regular_user_start is not None:
-        activity_start_time_s = parse_duration(regular_user_start)
-        if activity_start_time_s < md_start_time_s:
-            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
-                  f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
-                  file=sys.stderr)
-    else:
-        activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
+    # Calculate timing chain: bootstrap → md_start → activity_start
+    (bootstrap_end_time_s, md_start_time_s, activity_start_time_s) = _calculate_timing_chain(
+        last_user_spawn_s, bootstrap_end_time, md_start_time, regular_user_start,
+    )
 
     # Parse and potentially extend duration to ensure minimum activity period
     requested_duration_s = parse_duration(duration)
@@ -728,8 +815,6 @@ def generate_config(
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
-    shadow_log_level = "warning" if fast_mode else "info"
-    runahead = "100ms" if fast_mode else None
 
     # Build named agents map (OrderedDict to preserve order)
     agents = OrderedDict()
@@ -816,47 +901,11 @@ def generate_config(
         ("status_file", "monerosim_monitor.log"),
     ])
 
-    # Build general config with daemon_defaults
-    general_config = OrderedDict([
-        ("stop_time", duration),
-        ("parallelism", parallelism),
-        ("simulation_seed", simulation_seed),
-        ("enable_dns_server", True),
-        ("shadow_log_level", shadow_log_level),
-        # Bootstrap period: high bandwidth, no packet loss until all users spawned + buffer
-        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
-        # Show simulation progress on stderr for visibility
-        ("progress", True),
-    ])
-
-    # Add runahead for fast mode
-    if runahead:
-        general_config["runahead"] = runahead
-
-    # Add process_threads if not default (1)
-    if process_threads != 1:
-        general_config["process_threads"] = process_threads
-
-    # Add native_preemption only when explicitly set
-    if native_preemption is not None:
-        general_config["native_preemption"] = native_preemption
-
-    # Add daemon_defaults - these were previously hardcoded
-    general_config["daemon_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-        ("db-sync-mode", "fastest"),
-        ("no-zmq", True),
-        ("non-interactive", True),
-        ("disable-rpc-ban", True),
-        ("allow-local-ip", True),
-    ])
-
-    # Add wallet_defaults
-    general_config["wallet_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-    ])
+    # Build general config with daemon_defaults and wallet_defaults
+    general_config = _build_general_config(
+        duration, parallelism, simulation_seed, bootstrap_end_time_s,
+        fast_mode, process_threads, native_preemption,
+    )
 
     # Return config and timing info for header generation
     timing_info = {
@@ -978,76 +1027,17 @@ def generate_upgrade_config(
     if num_users < 0:
         raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
 
-    # Determine if batched bootstrap should be enabled
-    use_batched = (
-        batched_bootstrap == "true" or
-        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
+    # Calculate spawn timing and batching
+    (use_batched, batch_sizes, batch_schedule, user_spawn_start_s,
+     last_user_spawn_s, batch_interval_s) = _calculate_spawn_timing(
+        num_users, stagger_interval_s, batched_bootstrap, batch_interval,
+        initial_batch_size, max_batch_size, user_spawn_start,
     )
 
-    # Parse batch interval
-    batch_interval_s = parse_duration(batch_interval)
-
-    # Calculate user spawn start time
-    if user_spawn_start is not None:
-        user_spawn_start_s = parse_duration(user_spawn_start)
-    else:
-        # Default: 20m for batched, 3h for non-batched
-        user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
-
-    # Calculate user start times based on batching mode
-    batch_sizes = []
-    batch_schedule = []
-
-    if use_batched and num_users > 0:
-        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
-        batch_schedule = calculate_batch_schedule(
-            num_users,
-            user_spawn_start_s,
-            batch_interval_s,
-            initial_batch_size,
-            2.0,
-            max_batch_size,
-            DEFAULT_INTRA_BATCH_STAGGER_S,
-        )
-        last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
-    else:
-        if num_users > 0:
-            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
-        else:
-            last_user_spawn_s = user_spawn_start_s
-
-    # Calculate timing with dependency chain:
-    # 1. bootstrap_end_time_s: explicit or auto-calc
-    # 2. md_start_time_s: explicit or defaults to bootstrap_end_time_s
-    # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
-
-    # Step 1: Bootstrap end time
-    if bootstrap_end_time is not None:
-        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
-    else:
-        # Auto-calculate: max of minimum time and last spawn + buffer
-        spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
-        bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
-
-    # Step 2: Miner distributor start time
-    if md_start_time is not None:
-        md_start_time_s = parse_duration(md_start_time)
-        if md_start_time_s < bootstrap_end_time_s:
-            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
-                  f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
-                  file=sys.stderr)
-    else:
-        md_start_time_s = bootstrap_end_time_s
-
-    # Step 3: Regular user activity start time
-    if regular_user_start is not None:
-        activity_start_time_s = parse_duration(regular_user_start)
-        if activity_start_time_s < md_start_time_s:
-            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
-                  f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
-                  file=sys.stderr)
-    else:
-        activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
+    # Calculate timing chain: bootstrap → md_start → activity_start
+    (bootstrap_end_time_s, md_start_time_s, activity_start_time_s) = _calculate_timing_chain(
+        last_user_spawn_s, bootstrap_end_time, md_start_time, regular_user_start,
+    )
 
     # Calculate upgrade timing
     if upgrade_start is not None:
@@ -1060,8 +1050,6 @@ def generate_upgrade_config(
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
     poll_interval = 300
-    shadow_log_level = "warning" if fast_mode else "info"
-    runahead = "100ms" if fast_mode else None
 
     # Build list of all agent IDs for upgrade scheduling
     miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
@@ -1205,41 +1193,11 @@ def generate_upgrade_config(
         ("status_file", "monerosim_monitor.log"),
     ])
 
-    # Build general config
-    general_config = OrderedDict([
-        ("stop_time", duration),
-        ("parallelism", parallelism),
-        ("simulation_seed", simulation_seed),
-        ("enable_dns_server", True),
-        ("shadow_log_level", shadow_log_level),
-        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
-        ("progress", True),
-    ])
-
-    if runahead:
-        general_config["runahead"] = runahead
-
-    if process_threads != 1:
-        general_config["process_threads"] = process_threads
-
-    # Add native_preemption only when explicitly set
-    if native_preemption is not None:
-        general_config["native_preemption"] = native_preemption
-
-    general_config["daemon_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-        ("db-sync-mode", "fastest"),
-        ("no-zmq", True),
-        ("non-interactive", True),
-        ("disable-rpc-ban", True),
-        ("allow-local-ip", True),
-    ])
-
-    general_config["wallet_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-    ])
+    # Build general config with daemon_defaults and wallet_defaults
+    general_config = _build_general_config(
+        duration, parallelism, simulation_seed, bootstrap_end_time_s,
+        fast_mode, process_threads, native_preemption,
+    )
 
     timing_info = {
         'bootstrap_end_time_s': bootstrap_end_time_s,

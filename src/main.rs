@@ -119,7 +119,7 @@ fn main() -> Result<()> {
                 .wrap_err_with(|| format!("Failed to remove output directory '{}'", output_dir.display()))?;
         }
     }
-    let shared_dir = Path::new("/tmp/monerosim_shared");
+    let shared_dir = Path::new(monerosim::SHARED_DIR);
     remove_dir_with_permissions(shared_dir).wrap_err("Failed to remove shared directory")?;
 
     // Clean up per-agent data directories from previous runs (/tmp/monero-*)
@@ -142,7 +142,7 @@ fn main() -> Result<()> {
     // With a fixed Shadow seed, wallet keys are identical across runs, so stale
     // ring entries from previous runs cause "ring size 17" errors when the
     // blockchain's global_output_indices differ between runs.
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/lever65".to_string());
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
     let ringdb_dir = Path::new(&home).join(".shared-ringdb");
     if ringdb_dir.exists() {
         info!("Removing stale shared ring database: {:?}", ringdb_dir);

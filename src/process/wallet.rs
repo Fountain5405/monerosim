@@ -5,47 +5,8 @@
 
 use crate::config_v2::OptionValue;
 use crate::shadow::ShadowProcess;
+use crate::utils::options::{options_to_args, merge_options};
 use std::collections::BTreeMap;
-
-/// Convert OptionValue map to command-line arguments
-/// - Bool(true) -> --flag
-/// - Bool(false) -> (omitted)
-/// - String(s) -> --flag=s
-/// - Number(n) -> --flag=n
-fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
-    options.iter().filter_map(|(key, value)| {
-        match value {
-            OptionValue::Bool(true) => Some(format!("--{}", key)),
-            OptionValue::Bool(false) => None,
-            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
-            OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
-        }
-    }).collect()
-}
-
-/// Merge two option maps, with overrides taking precedence over defaults
-fn merge_options(
-    defaults: Option<&BTreeMap<String, OptionValue>>,
-    overrides: Option<&BTreeMap<String, OptionValue>>,
-) -> BTreeMap<String, OptionValue> {
-    let mut merged = BTreeMap::new();
-
-    // Apply defaults first
-    if let Some(defs) = defaults {
-        for (k, v) in defs {
-            merged.insert(k.clone(), v.clone());
-        }
-    }
-
-    // Apply overrides (these take precedence)
-    if let Some(ovrs) = overrides {
-        for (k, v) in ovrs {
-            merged.insert(k.clone(), v.clone());
-        }
-    }
-
-    merged
-}
 
 /// Add a wallet process to the processes list
 ///
@@ -89,7 +50,7 @@ pub fn add_wallet_process(
         format!("--rpc-bind-ip={}", agent_ip),
         "--disable-rpc-login".to_string(),
         "--trusted-daemon".to_string(),
-        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+        format!("--wallet-dir={}/{}_wallet", crate::SHARED_DIR, agent_id),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
     ];
@@ -170,7 +131,7 @@ pub fn add_remote_wallet_process(
         }
         _ => {
             // For "auto" mode, use a placeholder - Python agent will set it via RPC
-            "--daemon-address=http://127.0.0.1:18081".to_string()
+            format!("--daemon-address=http://127.0.0.1:{}", crate::MONERO_RPC_PORT)
         }
     };
 
@@ -188,7 +149,7 @@ pub fn add_remote_wallet_process(
         format!("--rpc-bind-port={}", wallet_rpc_port),
         format!("--rpc-bind-ip={}", agent_ip),
         "--disable-rpc-login".to_string(),
-        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+        format!("--wallet-dir={}/{}_wallet", crate::SHARED_DIR, agent_id),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
     ];

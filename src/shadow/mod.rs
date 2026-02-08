@@ -88,8 +88,6 @@
 //! - Shadow compatibility issues
 
 pub mod types;
-pub mod network;
-pub mod process;
 
 // Re-export commonly used types for convenience
 pub use types::{

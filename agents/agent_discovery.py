@@ -756,33 +756,9 @@ class AgentDiscovery:
             raise AgentDiscoveryError(error_msg)
     
     def _parse_boolean_attribute(self, value: str) -> bool:
-        """
-        Parse a boolean attribute value, supporting multiple formats.
-        
-        This method is consistent with the implementation in MinerDistributorAgent.
-        
-        Args:
-            value: String value to parse
-            
-        Returns:
-            Boolean interpretation of the value
-        """
-        if not value:
-            return False
-            
-        # Handle string representations
-        value_lower = value.lower()
-        if value_lower in ("true", "1", "yes", "on"):
-            return True
-        elif value_lower in ("false", "0", "no", "off"):
-            return False
-        
-        # Try to parse as boolean directly
-        try:
-            return value.lower() == "true"
-        except:
-            self.logger.warning(f"Invalid boolean attribute value: '{value}', defaulting to False")
-            return False
+        """Parse a boolean attribute value. Delegates to BaseAgent.parse_bool."""
+        from .base_agent import BaseAgent
+        return BaseAgent.parse_bool(value)
     
     
     def get_distribution_recipients(self, force_refresh: bool = False) -> List[Dict[str, Any]]:

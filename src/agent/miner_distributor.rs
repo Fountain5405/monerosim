@@ -9,6 +9,7 @@ use crate::config_v2::{AgentDefinitions, AgentConfig, PeerMode};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
+use crate::utils::script::write_wrapper_script;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -26,6 +27,7 @@ pub fn process_miner_distributor(
     using_gml_topology: bool,
     agent_offset: usize,
     _peer_mode: &PeerMode,
+    scripts_dir: &Path,
 ) -> color_eyre::eyre::Result<()> {
     // Find miner_distributor agent in the named agents map
     let miner_distributor: Option<(&String, &AgentConfig)> = agents.agents.iter()
@@ -110,41 +112,21 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
             python_cmd
         );
 
-        // Write wrapper script to a temporary file and execute it
-        let script_path = format!("/tmp/{}_wrapper.sh", miner_distributor_id);
-
         // Determine execution start time from config's wait_time field
         // Default: 14400s (4h) to ensure sufficient blocks for unlock and ring signatures
         let wait_time_seconds = miner_distributor_config.wait_time.unwrap_or(14400);
-        let miner_distributor_start_time = format!("{}s", wait_time_seconds);
+        let start_time = format!("{}s", wait_time_seconds);
 
-        // Calculate script creation time (1 second before execution)
-        let script_creation_time = if let Ok(exec_seconds) = crate::utils::duration::parse_duration_to_seconds(&miner_distributor_start_time) {
-            format!("{}s", exec_seconds.saturating_sub(1))
-        } else {
-            // Fallback if parsing fails
-            "7499s".to_string()
-        };
-
-        // Process 1: Create wrapper script
-        processes.push(crate::shadow::ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!("-c 'cat > {} << \\EOF\n{}EOF'", script_path, wrapper_script),
-            environment: environment.clone(),
-            start_time: script_creation_time,
-            shutdown_time: None,
-            expected_final_state: None,
-        });
-
-        // Process 2: Execute wrapper script
-        processes.push(crate::shadow::ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: script_path.clone(),
-            environment: environment.clone(),
-            start_time: miner_distributor_start_time,
-            shutdown_time: None,
-            expected_final_state: None,
-        });
+        let process = write_wrapper_script(
+            scripts_dir,
+            &format!("{}_wrapper.sh", miner_distributor_id),
+            &wrapper_script,
+            environment,
+            start_time,
+            None,
+            None,
+        )?;
+        processes.push(process);
 
         hosts.insert(miner_distributor_id.to_string(), ShadowHost {
             network_node_id, // Use the assigned GML node with bandwidth info

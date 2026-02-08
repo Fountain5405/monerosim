@@ -106,7 +106,6 @@ pub enum OptionValue {
 }
 
 /// Unified agent configuration for all agent types
-/// Replaces separate UserAgentConfig, MinerDistributorConfig, etc.
 ///
 /// Uses flat format for daemon/wallet phases:
 /// `daemon_0: "monerod"`, `daemon_0_start: "0s"`, `daemon_0_stop: "30m"`
@@ -1045,39 +1044,6 @@ pub fn validate_daemon_phases(
 
     Ok(())
 }
-
-/// Miner distributor agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MinerDistributorConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub attributes: Option<BTreeMap<String, String>>,
-}
-
-/// Pure script agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PureScriptAgentConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<String>>,
-}
-
-/// Simulation monitor agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SimulationMonitorConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub poll_interval: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status_file: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enable_alerts: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub detailed_logging: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<String>>,
-}
-
 
 /// Network configuration, supporting different topology types
 #[derive(Debug, Serialize, Deserialize, Clone)]

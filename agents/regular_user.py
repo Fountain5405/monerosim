@@ -6,6 +6,7 @@ This agent simulates regular users in the Monero network who perform transaction
 Currently a placeholder implementation that will be extended in future tasks.
 """
 
+import hashlib
 import logging
 import os
 import time
@@ -13,7 +14,7 @@ import random
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
-from .base_agent import BaseAgent
+from .base_agent import BaseAgent, SHADOW_EPOCH
 
 
 class RegularUserAgent(BaseAgent):
@@ -34,7 +35,7 @@ class RegularUserAgent(BaseAgent):
 
         # Deterministic seeding for reproducibility
         self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + hash(agent_id)
+        self.agent_seed = self.global_seed + int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % (2**31)
         random.seed(self.agent_seed)
 
         # Wallet refresh and error recovery state
@@ -192,8 +193,7 @@ class RegularUserAgent(BaseAgent):
 
         # Activity start time: config value is in simulation seconds (e.g. 108000 for 30h).
         # Shadow's time.time() returns Unix timestamps starting from 2000-01-01 00:00:00 UTC
-        # (epoch 946684800), so we must convert simulation seconds to a Unix timestamp.
-        SHADOW_EPOCH = 946684800  # 2000-01-01 00:00:00 UTC
+        # (SHADOW_EPOCH), so we must convert simulation seconds to a Unix timestamp.
         activity_start_sim_s = int(self.attributes.get('activity_start_time', '0'))
 
         if activity_start_sim_s > 0:

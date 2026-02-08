@@ -524,8 +524,8 @@ fn create_period_summary(
         return None;
     }
 
-    let start = windows.iter().map(|w| w.window.start).min_by(|a, b| a.partial_cmp(b).unwrap())?;
-    let end = windows.iter().map(|w| w.window.end).max_by(|a, b| a.partial_cmp(b).unwrap())?;
+    let start = windows.iter().map(|w| w.window.start).min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))?;
+    let end = windows.iter().map(|w| w.window.end).max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))?;
     let total_txs: usize = windows.iter().map(|w| w.tx_count).sum();
 
     // Calculate means and stds

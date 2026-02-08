@@ -29,8 +29,6 @@
 //! - `miner_distributor.rs`: Mining reward distribution logic
 //! - `pure_scripts.rs`: Pure script agent processing
 //! - `simulation_monitor.rs`: Simulation monitoring functionality
-//! - `types.rs`: Common type definitions and data structures
-//! - `lifecycle.rs`: Agent lifecycle management and state transitions
 //!
 //! ## Configuration Integration
 //!
@@ -64,7 +62,6 @@
 //! 5. Shadow YAML structure creation
 //! 6. Registry generation for inter-agent coordination
 
-pub mod types;
 pub mod user_agents;
 pub mod miner_distributor;
 pub mod pure_scripts;

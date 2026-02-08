@@ -98,6 +98,16 @@
 //! All public functions return `Result<T, color_eyre::eyre::Error>` for consistent
 //! error handling throughout the application.
 
+/// Shared directory for inter-agent communication and registry files.
+pub const SHARED_DIR: &str = "/tmp/monerosim_shared";
+
+/// Monero P2P port (mainnet/regtest default).
+pub const MONERO_P2P_PORT: u16 = 18080;
+/// Monero daemon RPC port (mainnet/regtest default).
+pub const MONERO_RPC_PORT: u16 = 18081;
+/// Monero wallet RPC port (mainnet/regtest default).
+pub const MONERO_WALLET_RPC_PORT: u16 = 18082;
+
 // Existing modules
 pub mod config_v2;
 pub mod config_loader;

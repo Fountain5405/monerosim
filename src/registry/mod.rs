@@ -90,7 +90,3 @@
 //! - Data consistency validation
 //! - Concurrent access coordination
 
-// Module implementation will be added in subsequent phases
-
-pub mod agent_registry;
-pub mod miner_registry;

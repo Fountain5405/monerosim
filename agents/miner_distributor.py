@@ -9,7 +9,7 @@ its wallet to send transactions to other agents.
 Phase 1 Implementation: Core functionality for can_receive_distributions attribute
 """
 
-import argparse
+import hashlib
 import json
 import logging
 import os
@@ -38,7 +38,7 @@ class MinerDistributorAgent(BaseAgent):
 
         # Deterministic seeding for reproducibility
         self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + hash(agent_id)
+        self.agent_seed = self.global_seed + int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % (2**31)
         random.seed(self.agent_seed)
 
         # Initialize transaction-specific parameters
@@ -870,31 +870,8 @@ class MinerDistributorAgent(BaseAgent):
             return random.choice(recipients_to_use)
     
     def _parse_boolean_attribute(self, value: str) -> bool:
-        """
-        Parse a boolean attribute value, supporting multiple formats.
-        
-        Args:
-            value: String value to parse
-            
-        Returns:
-            Boolean interpretation of the value
-        """
-        if not value:
-            return False
-            
-        # Handle string representations
-        value_lower = value.lower()
-        if value_lower in ("true", "1", "yes", "on"):
-            return True
-        elif value_lower in ("false", "0", "no", "off"):
-            return False
-        
-        # Try to parse as boolean directly
-        try:
-            return value.lower() == "true"
-        except:
-            self.logger.warning(f"Invalid boolean attribute value: '{value}', defaulting to False")
-            return False
+        """Parse a boolean attribute value. Delegates to BaseAgent.parse_bool."""
+        return self.parse_bool(value)
     
     def _validate_transaction_params(self, address: str, amount: float, skip_max_check: bool = False) -> bool:
         """

@@ -24,11 +24,8 @@
 //!
 //! ## Key Components
 //!
-//! - `types.rs`: Common type definitions and process-related data structures
-//! - `daemon.rs`: Monero daemon process configuration and generation
 //! - `wallet.rs`: Wallet RPC process configuration and generation
 //! - `agent_scripts.rs`: User agent script process configuration
-//! - `pure_scripts.rs`: Pure script process configuration
 //!
 //! ## Process Scheduling
 //!
@@ -81,13 +78,8 @@
 //! - Configuration consistency
 //! - Path and permission validation
 
-pub mod types;
-pub mod daemon;
 pub mod wallet;
 pub mod agent_scripts;
-pub mod pure_scripts;
 
-// Re-export commonly used functions for convenience
-pub use types::ProcessType;
 pub use wallet::{add_wallet_process, add_remote_wallet_process};
 pub use agent_scripts::{add_user_agent_process, create_mining_agent_process};

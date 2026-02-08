@@ -57,6 +57,8 @@ from typing import Dict, Any, List, Tuple, Optional
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
+from generate_config import parse_duration, calculate_activity_start_times
+
 
 # Reuse constants from generate_config
 MIN_BOOTSTRAP_END_TIME_S = 14400
@@ -205,23 +207,6 @@ def parse_stagger_value(value: Any, count: int, seed: int) -> Tuple[str, Any]:
     return ("none", value)
 
 
-def parse_duration(duration_str: str) -> int:
-    """Parse duration string like '4h', '30m', '45s' to seconds."""
-    if isinstance(duration_str, (int, float)):
-        return int(duration_str)
-
-    duration_str = str(duration_str).strip().lower()
-
-    if duration_str.endswith('h'):
-        return int(float(duration_str[:-1]) * 3600)
-    elif duration_str.endswith('m'):
-        return int(float(duration_str[:-1]) * 60)
-    elif duration_str.endswith('s'):
-        return int(float(duration_str[:-1]))
-    else:
-        return int(duration_str)
-
-
 def parse_scenario(yaml_content: str) -> ScenarioConfig:
     """Parse scenario.yaml content into ScenarioConfig."""
     data = yaml.safe_load(yaml_content)
@@ -272,56 +257,6 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
         singleton_agents=singleton_agents,
         timing_overrides=timing_overrides,
     )
-
-
-def calculate_activity_start_times(
-    num_users: int,
-    base_activity_start_s: int,
-    batch_size: int,
-    batch_interval_s: int,
-    jitter_fraction: float,
-    seed: int,
-) -> List[int]:
-    """Calculate staggered activity start times to prevent thundering herd.
-
-    Instead of all users starting transactions at the same time, this staggers
-    their start times in batches with randomization to spread the load.
-
-    Args:
-        num_users: Total number of users
-        base_activity_start_s: When the first batch should start (sim time seconds)
-        batch_size: Number of users per batch
-        batch_interval_s: Target time between batch starts
-        jitter_fraction: Random jitter as fraction of batch_interval (e.g., 0.3 = +/-30%)
-        seed: Random seed for reproducible jitter
-
-    Returns:
-        List of activity_start_time values for each user (in order)
-    """
-    if num_users == 0:
-        return []
-
-    rng = random.Random(seed)
-    activity_times = []
-
-    # Calculate jitter range in seconds
-    jitter_range_s = int(batch_interval_s * jitter_fraction)
-
-    for user_idx in range(num_users):
-        batch_num = user_idx // batch_size
-        batch_start_s = base_activity_start_s + (batch_num * batch_interval_s)
-
-        # Add random jitter: +/- jitter_range_s
-        if jitter_range_s > 0:
-            jitter_s = rng.randint(-jitter_range_s, jitter_range_s)
-        else:
-            jitter_s = 0
-
-        # Ensure we don't go before base_activity_start_s
-        activity_time = max(base_activity_start_s, batch_start_s + jitter_s)
-        activity_times.append(activity_time)
-
-    return activity_times
 
 
 def calculate_batched_schedule(
