@@ -16,6 +16,7 @@ from typing import List, Dict, Tuple, Set
 from pathlib import Path
 import hashlib
 import random
+import zlib
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
@@ -28,12 +29,12 @@ from error_handling import log_info, log_warning, log_error, log_critical
 def rolling_hash(s: str, window_size: int = 10) -> Set[int]:
     """Calculate rolling hash values for string."""
     if len(s) < window_size:
-        return {hash(s)}
+        return {zlib.adler32(s.encode())}
 
     hashes = set()
     for i in range(len(s) - window_size + 1):
         window = s[i:i + window_size]
-        hashes.add(hash(window))
+        hashes.add(zlib.adler32(window.encode()))
     return hashes
 
 # Cache for normalized line patterns to avoid repeated work

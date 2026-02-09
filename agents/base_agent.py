@@ -26,6 +26,39 @@ MONERO_WALLET_RPC_PORT = 18082
 SHADOW_EPOCH = 946684800  # 2000-01-01T00:00:00 UTC
 
 
+def retry_with_backoff(fn, *, max_retries: int = 3, initial_delay: float = 1.0,
+                       backoff_factor: float = 2.0, logger: Optional[logging.Logger] = None):
+    """Call *fn* with exponential-backoff retries.
+
+    Args:
+        fn: Zero-argument callable to execute.
+        max_retries: Maximum number of attempts.
+        initial_delay: Seconds to wait after the first failure.
+        backoff_factor: Multiplier applied to the delay after each failure.
+        logger: Optional logger for warning/error messages.
+
+    Returns:
+        The return value of *fn* on success.
+
+    Raises:
+        The exception from the last failed attempt if all retries are exhausted.
+    """
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except Exception as exc:
+            if logger:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {exc}")
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+                delay *= backoff_factor
+            else:
+                if logger:
+                    logger.error(f"All {max_retries} attempts failed")
+                raise
+
+
 class BaseAgent(ABC):
     """Abstract base class for all Monerosim agents"""
 
@@ -227,10 +260,7 @@ class BaseAgent(ABC):
                 # Sleep for the requested duration, checking for shutdown every second
                 # This reduces wakeups from 10/sec (old 0.1s sleep) to 1/sec while
                 # still being responsive to shutdown signals
-                remaining = sleep_duration
-                while remaining > 0 and self.running:
-                    time.sleep(min(remaining, 1.0))
-                    remaining -= 1.0
+                self.interruptible_sleep(sleep_duration)
 
             self.logger.info("Agent run loop finished")
                 
@@ -260,12 +290,19 @@ class BaseAgent(ABC):
         """Agent-specific cleanup logic (can be overridden by subclasses)"""
         pass
 
+    def interruptible_sleep(self, duration: float) -> None:
+        """Sleep for *duration* seconds, checking ``self.running`` every second.
+
+        Returns early if ``self.running`` becomes ``False``.
+        """
+        remaining = duration
+        while remaining > 0 and self.running:
+            time.sleep(min(remaining, 1.0))
+            remaining -= 1.0
+
     def _is_public_node(self) -> bool:
         """Check if this agent is configured as a public node"""
-        is_public = self.attributes.get('is_public_node', '')
-        if isinstance(is_public, str):
-            return is_public.lower() in ('true', '1', 'yes', 'on')
-        return bool(is_public)
+        return self.parse_bool(self.attributes.get('is_public_node', ''))
 
     def _setup_remote_daemon_connection(self):
         """

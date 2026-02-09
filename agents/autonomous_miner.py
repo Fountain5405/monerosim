@@ -464,10 +464,7 @@ class AutonomousMinerAgent(BaseAgent):
         
         # Sleep for calculated duration, checking for shutdown every second
         self.logger.debug(f"Waiting {next_block_time:.1f}s before next block attempt")
-        remaining = next_block_time
-        while remaining > 0 and self.running:
-            time.sleep(min(remaining, 1.0))
-            remaining -= 1.0
+        self.interruptible_sleep(next_block_time)
         if not self.running:
             return 0.0
         

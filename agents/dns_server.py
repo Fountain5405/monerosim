@@ -20,6 +20,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+from agents.base_agent import BaseAgent
+
 try:
     from dnslib import DNSRecord, DNSHeader, RR, QTYPE, A, TXT, RCODE
     from dnslib.server import DNSServer, BaseResolver
@@ -96,7 +98,7 @@ class MoneroResolver(BaseResolver):
             for agent in registry.get("agents", []):
                 # Miners are seed nodes
                 attrs = agent.get("attributes", {})
-                is_miner = str(attrs.get("is_miner", "")).lower() in ("true", "1", "yes")
+                is_miner = BaseAgent.parse_bool(attrs.get("is_miner", ""))
 
                 if is_miner and agent.get("ip_addr"):
                     seed_ips.append(agent["ip_addr"])

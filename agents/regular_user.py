@@ -14,7 +14,7 @@ import random
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
-from .base_agent import BaseAgent, SHADOW_EPOCH
+from .base_agent import BaseAgent, SHADOW_EPOCH, retry_with_backoff
 
 
 class RegularUserAgent(BaseAgent):
@@ -122,7 +122,7 @@ class RegularUserAgent(BaseAgent):
         if not self.wallet_address:
             self.logger.warning(f"No wallet address available for miner {self.agent_id}, skipping registration")
             return
-            
+
         miner_info = {
             "agent_id": self.agent_id,
             "wallet_address": self.wallet_address,
@@ -130,31 +130,22 @@ class RegularUserAgent(BaseAgent):
             "timestamp": time.time(),
             "agent_type": "miner"
         }
-        
-        # Use atomic file operations with retry logic
-        max_retries = 3
-        retry_delay = 1  # seconds
-        
-        for attempt in range(max_retries):
-            try:
-                # Write miner info to shared state
-                self.write_shared_state(f"{self.agent_id}_miner_info.json", miner_info)
-                self.logger.info(f"Successfully registered miner info for {self.agent_id}")
-                return
-            except Exception as e:
-                self.logger.warning(f"Failed to register miner info (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    self.logger.error(f"Failed to register miner info after {max_retries} attempts")
+
+        try:
+            retry_with_backoff(
+                lambda: self.write_shared_state(f"{self.agent_id}_miner_info.json", miner_info),
+                max_retries=3, logger=self.logger,
+            )
+            self.logger.info(f"Successfully registered miner info for {self.agent_id}")
+        except Exception:
+            pass  # retry_with_backoff already logged the error
     
     def _register_user_info(self):
         """Register user information for the agent discovery system with atomic file operations"""
         if not self.wallet_address:
             self.logger.warning(f"No wallet address available for user {self.agent_id}, skipping registration")
             return
-            
+
         user_info = {
             "agent_id": self.agent_id,
             "wallet_address": self.wallet_address,
@@ -164,24 +155,15 @@ class RegularUserAgent(BaseAgent):
             "min_tx_amount": getattr(self, 'min_tx_amount', None),
             "max_tx_amount": getattr(self, 'max_tx_amount', None)
         }
-        
-        # Use atomic file operations with retry logic
-        max_retries = 3
-        retry_delay = 1  # seconds
-        
-        for attempt in range(max_retries):
-            try:
-                # Write user info to shared state
-                self.write_shared_state(f"{self.agent_id}_user_info.json", user_info)
-                self.logger.info(f"Successfully registered user info for {self.agent_id}")
-                return
-            except Exception as e:
-                self.logger.warning(f"Failed to register user info (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    self.logger.error(f"Failed to register user info after {max_retries} attempts")
+
+        try:
+            retry_with_backoff(
+                lambda: self.write_shared_state(f"{self.agent_id}_user_info.json", user_info),
+                max_retries=3, logger=self.logger,
+            )
+            self.logger.info(f"Successfully registered user info for {self.agent_id}")
+        except Exception:
+            pass  # retry_with_backoff already logged the error
     
     def _setup_transaction_parameters(self):
         """Setup transaction parameters for regular users"""

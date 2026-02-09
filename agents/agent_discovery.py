@@ -17,6 +17,7 @@ from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
 import time
 
+from agents.base_agent import BaseAgent
 from scripts.error_handling import ErrorHandler, LogLevel
 
 
@@ -430,7 +431,7 @@ class AgentDiscovery:
                 if isinstance(agents, list):
                     for agent_data in agents:
                         attributes = agent_data.get("attributes", {})
-                        if str(attributes.get("is_miner", "")).lower() == "true":
+                        if BaseAgent.parse_bool(attributes.get("is_miner", "")):
                             miner_copy = agent_data.copy()
                             # Ensure ID is present
                             if "id" not in miner_copy and "agent_id" in miner_copy:
