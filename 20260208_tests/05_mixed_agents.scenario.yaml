@@ -1,0 +1,73 @@
+# Test 5: Mixed agent types — miners, users, relays, spy nodes
+# Verifies: all agent types coexist, each gets correct processes,
+# spy nodes get daemon_options, relays don't get wallet/script
+general:
+  stop_time: 2h
+  simulation_seed: 555
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 1
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  type: 1_gbit_switch
+
+agents:
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [40, 35, 25]
+    can_receive_distributions: true
+
+  user-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  spy-{001..002}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 0s
+    start_time_stagger: 2s
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+    subnet_group: spy_cluster
+    transaction_interval: 120
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  relay-{001..005}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 5s
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
