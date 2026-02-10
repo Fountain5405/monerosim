@@ -458,18 +458,19 @@ pub fn process_user_agents(
                     // Determine shutdown time and expected final state
                     let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
                         // Not the last phase - needs shutdown
-                        // Shadow will send SIGTERM at shutdown_time (default behavior)
+                        // Shadow sends SIGTERM at shutdown_time; monerod handles it gracefully
+                        // and exits with code 0 (not killed by signal)
                         (
                             phase.stop.clone(),
-                            Some(ExpectedFinalState::Signaled("SIGTERM".to_string())),
+                            Some(ExpectedFinalState::Exited(0)),
                         )
                     } else {
                         // Last phase - runs until simulation end
                         (None, Some(ExpectedFinalState::Running))
                     };
 
-                    // Use `exec` so bash replaces itself with monerod - this ensures SIGKILL
-                    // goes directly to monerod rather than to bash (which would leave monerod orphaned)
+                    // Use `exec` so bash replaces itself with monerod - this ensures signals
+                    // go directly to monerod rather than to bash (which would leave monerod orphaned)
                     // Note: data directory cleanup is handled pre-simulation by main.rs
                     let args = format!("-c 'exec {} {}'", daemon_binary_path, daemon_args);
 
@@ -590,9 +591,11 @@ pub fn process_user_agents(
                     // Determine shutdown time and expected final state
                     let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
                         // Not the last phase - needs shutdown
+                        // Shadow sends SIGTERM at shutdown_time; wallet-rpc handles it gracefully
+                        // and exits with code 0 (not killed by signal)
                         (
                             phase.stop.clone(),
-                            Some(ExpectedFinalState::Signaled("SIGTERM".to_string())),
+                            Some(ExpectedFinalState::Exited(0)),
                         )
                     } else {
                         // Last phase - runs until simulation end
