@@ -6,6 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::types::*;
+use super::calculate_gini;
 
 /// Analyze network resilience based on connection topology
 pub fn analyze_resilience(
@@ -193,29 +194,6 @@ fn analyze_partition_risk(graph: &HashMap<String, HashSet<String>>) -> Partition
         bridge_nodes,
         connected_components: components.len(),
     }
-}
-
-/// Calculate Gini coefficient
-fn calculate_gini(values: &[f64]) -> f64 {
-    if values.is_empty() {
-        return 0.0;
-    }
-
-    let n = values.len() as f64;
-    let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let sum: f64 = sorted.iter().sum();
-    if sum == 0.0 {
-        return 0.0;
-    }
-
-    let mut gini_sum = 0.0;
-    for (i, &val) in sorted.iter().enumerate() {
-        gini_sum += val * (2.0 * (i as f64 + 1.0) - n - 1.0);
-    }
-
-    gini_sum / (n * sum)
 }
 
 /// Find connected components using BFS

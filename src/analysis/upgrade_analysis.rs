@@ -9,6 +9,7 @@ use std::path::Path;
 use chrono::Utc;
 use color_eyre::eyre::Result;
 
+use super::calculate_gini;
 use super::time_window::*;
 use super::types::*;
 
@@ -380,23 +381,8 @@ fn calculate_gini_for_window(
         return None;
     }
 
-    // Calculate Gini coefficient
-    let mut values: Vec<f64> = first_seen_counts.values().map(|&v| v as f64).collect();
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let n = values.len() as f64;
-    let sum: f64 = values.iter().sum();
-
-    if sum == 0.0 {
-        return Some(0.0);
-    }
-
-    let mut gini_sum = 0.0;
-    for (i, v) in values.iter().enumerate() {
-        gini_sum += (2.0 * (i + 1) as f64 - n - 1.0) * v;
-    }
-
-    Some(gini_sum / (n * sum))
+    let values: Vec<f64> = first_seen_counts.values().map(|&v| v as f64).collect();
+    Some(calculate_gini(&values))
 }
 
 /// Calculate simplified Dandelion metrics for a window.
