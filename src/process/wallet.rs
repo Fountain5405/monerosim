@@ -20,7 +20,7 @@ pub fn add_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
-    agent_rpc_port: u16,
+    daemon_rpc_port: u16,
     wallet_rpc_port: u16,
     wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
@@ -45,7 +45,7 @@ pub fn add_wallet_process(
 
     // Build wallet args - start with required flags
     let mut wallet_args_parts = vec![
-        format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
+        format!("--daemon-address=http://{}:{}", agent_ip, daemon_rpc_port),
         format!("--rpc-bind-port={}", wallet_rpc_port),
         format!("--rpc-bind-ip={}", agent_ip),
         "--disable-rpc-login".to_string(),

@@ -52,10 +52,18 @@ def parse_log_file(file_path: str) -> Dict[str, List]:
 
     last_height = 0
     for i, line in enumerate(normalized_lines):
-        # Block mined
+        # Block mined (native mining)
         mined_match = re.search(r'mined new block.*height=(\d+).*hash=([0-9a-f]{64})', line, re.IGNORECASE)
         if mined_match:
             height, block_hash = int(mined_match.group(1)), mined_match.group(2)
+            events['blocks_mined'].append((height, block_hash))
+            last_height = height
+            continue
+
+        # Block generated via generateblocks RPC
+        gen_match = re.search(r'Block generated successfully via generateblocks height=(\d+) hash=([0-9a-f]{64})', line)
+        if gen_match:
+            height, block_hash = int(gen_match.group(1)), gen_match.group(2)
             events['blocks_mined'].append((height, block_hash))
             last_height = height
             continue
@@ -312,10 +320,19 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
     # 3. Transactions created and broadcast: Transactions are created and broadcast to all user nodes
     txs_created_broadcast = len(all_txs_created) > 0
     user_txs_received = {node: received for node, received in all_txs_received.items() if node.startswith('user')}
+    has_user_nodes = len(user_txs_received) > 0
     txs_propagated = txs_created_broadcast and all(len(received) > 0 for received in user_txs_received.values())
+    if has_user_nodes:
+        tx_broadcast_success = txs_created_broadcast and txs_propagated
+        tx_broadcast_details = (f"{len(all_txs_created)} transactions created and propagated to {len(user_txs_received)} user nodes"
+                                if tx_broadcast_success else "Transactions not properly created or propagated")
+    else:
+        # No user nodes — no transactions expected
+        tx_broadcast_success = True
+        tx_broadcast_details = "No user nodes — transaction check skipped"
     report['criteria']['transactions_created_broadcast'] = {
-        'success': txs_created_broadcast and txs_propagated,
-        'details': f"{len(all_txs_created)} transactions created and propagated to {len(user_txs_received)} user nodes" if txs_created_broadcast and txs_propagated else "Transactions not properly created or propagated"
+        'success': tx_broadcast_success,
+        'details': tx_broadcast_details
     }
 
     # 4. Transactions in blocks: All created txs are included in some block
@@ -553,4 +570,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    result = main()
+    if not result or not result.get('success') or not result.get('overall_success'):
+        sys.exit(1)

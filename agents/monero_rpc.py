@@ -166,8 +166,8 @@ class MoneroRPC(BaseRPC):
         info = self.get_info()
         return info.get("height", 0)
         
-    def get_connections(self) -> int:
-        """Get number of peer connections"""
+    def get_connection_count(self) -> int:
+        """Get total number of peer connections (incoming + outgoing)."""
         info = self.get_info()
         return info.get("incoming_connections_count", 0) + info.get("outgoing_connections_count", 0)
         
@@ -343,7 +343,10 @@ class MoneroRPC(BaseRPC):
             try:
                 self.logger.info(f"Attempting to generate blocks using generateblocks method")
                 result = self.generate_block(wallet_address, 1)
-                self.logger.info(f"Block generated successfully with generateblocks")
+                height = result.get("height", 0)
+                blocks = result.get("blocks", [])
+                block_hash = blocks[0] if blocks else "unknown"
+                self.logger.info(f"Block generated successfully via generateblocks height={height} hash={block_hash}")
                 return {"status": "OK", "method": "generateblocks", "result": result}
             except MethodNotAvailableError:
                 self.logger.warning("generateblocks method not available")
@@ -361,8 +364,6 @@ class WalletRPC(BaseRPC):
     
     def __init__(self, host: str, port: int, timeout: int = 60):
         super().__init__(host, port, timeout)
-        # Wallet RPC uses a different endpoint
-        self.url = f"http://{host}:{port}/json_rpc"
         self.current_wallet = None
         
     def create_wallet(self, filename: str, password: str = "", language: str = "English") -> Dict[str, Any]:

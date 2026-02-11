@@ -146,6 +146,9 @@ def calculate_activity_start_times(
     if num_users == 0:
         return []
 
+    # Resolve auto-detect (0 = derive from CPU count)
+    batch_size = resolve_activity_batch_size(batch_size)
+
     rng = random.Random(seed)
     activity_times = []
 
@@ -779,7 +782,6 @@ def generate_config(
         md_out_per_tx: Outputs per recipient per transaction (default: 2)
         md_output_amount: XMR amount per output (default: 5.0)
         md_funding_cycle_interval: Interval between continuous funding cycles (default: 5m)
-        tx_interval: Seconds between user transaction attempts (default: 120 fast, 60 normal)
         activity_batch_size: Users per activity batch (default: 10)
         activity_batch_interval_s: Target seconds between activity batches (default: 300)
         activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)

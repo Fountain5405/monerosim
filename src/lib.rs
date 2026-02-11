@@ -101,6 +101,11 @@
 /// Shared directory for inter-agent communication and registry files.
 pub const SHARED_DIR: &str = "/tmp/monerosim_shared";
 
+/// Shadow simulation epoch: 2000-01-01 00:00:00 UTC as Unix timestamp.
+/// Shadow's simulated clock starts from this point; subtract it from
+/// `time.time()` (Python) or log timestamps to get simulation-relative seconds.
+pub const SHADOW_EPOCH: f64 = 946_684_800.0;
+
 /// Monero P2P port (mainnet/regtest default).
 pub const MONERO_P2P_PORT: u16 = 18080;
 /// Monero daemon RPC port (mainnet/regtest default).

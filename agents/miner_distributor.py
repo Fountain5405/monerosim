@@ -1220,7 +1220,7 @@ def main():
         agent_id=args.id,
         shared_dir=args.shared_dir,
         rpc_host=args.rpc_host,
-        agent_rpc_port=args.agent_rpc_port,
+        daemon_rpc_port=args.daemon_rpc_port,
         wallet_rpc_port=args.wallet_rpc_port,
         p2p_port=args.p2p_port,
         log_level=args.log_level,

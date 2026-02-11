@@ -701,21 +701,16 @@ class SimulationMonitorAgent(BaseAgent):
             Dictionary with RPC connection info or None if not available
         """
         try:
-            # Try different port field names
-            agent_rpc_port = (
-                agent.get("agent_rpc_port") or 
-                agent.get("daemon_rpc_port") or
-                agent.get("rpc_port")
-            )
+            daemon_rpc_port = agent.get("daemon_rpc_port") or agent.get("rpc_port")
             
             wallet_rpc_port = agent.get("wallet_rpc_port")
             
-            if not agent_rpc_port:
+            if not daemon_rpc_port:
                 return None
-            
+
             return {
                 "host": agent.get("ip_addr", "127.0.0.1"),
-                "agent_rpc_port": agent_rpc_port,
+                "daemon_rpc_port": daemon_rpc_port,
                 "wallet_rpc_port": wallet_rpc_port,
                 "agent_id": agent.get("id", "unknown")
             }
@@ -752,7 +747,7 @@ class SimulationMonitorAgent(BaseAgent):
 
                 data.update({
                     "height": current_height,
-                    "connections": daemon_rpc.get_connections(),
+                    "connections": daemon_rpc.get_connection_count(),
                     "synced": info.get("synchronized", False),
                     "difficulty": difficulty,
                     "target_height": info.get("target_height", 0),
@@ -861,13 +856,13 @@ class SimulationMonitorAgent(BaseAgent):
         Returns:
             MoneroRPC instance or None if connection fails
         """
-        cache_key = f"{rpc_info['host']}:{rpc_info['agent_rpc_port']}"
+        cache_key = f"{rpc_info['host']}:{rpc_info['daemon_rpc_port']}"
         
         if cache_key in self.rpc_cache:
             return self.rpc_cache[cache_key]
         
         try:
-            daemon_rpc = MoneroRPC(rpc_info["host"], rpc_info["agent_rpc_port"])
+            daemon_rpc = MoneroRPC(rpc_info["host"], rpc_info["daemon_rpc_port"])
             if daemon_rpc.is_ready():
                 self.rpc_cache[cache_key] = daemon_rpc
                 return daemon_rpc
@@ -1648,7 +1643,7 @@ def main():
         agent = SimulationMonitorAgent(
             agent_id=args.id,
             shared_dir=args.shared_dir,
-            agent_rpc_port=args.agent_rpc_port,
+            daemon_rpc_port=args.daemon_rpc_port,
             wallet_rpc_port=args.wallet_rpc_port,
             p2p_port=args.p2p_port,
             rpc_host=args.rpc_host,

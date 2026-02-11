@@ -1,0 +1,127 @@
+general:
+  stop_time: 6h
+  simulation_seed: 777
+  bootstrap_end_time: 9000s
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 1
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon_0: monerod
+    daemon_0_start: 0s
+    daemon_0_stop: 7200s
+    daemon_1: monerod
+    daemon_1_start: 7230s
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 40
+    can_receive_distributions: true
+  miner-002:
+    daemon_0: monerod
+    daemon_0_start: 1s
+    daemon_0_stop: 7230s
+    daemon_1: monerod
+    daemon_1_start: 7260s
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 35
+    can_receive_distributions: true
+  miner-003:
+    daemon_0: monerod
+    daemon_0_start: 2s
+    daemon_0_stop: 7260s
+    daemon_1: monerod
+    daemon_1_start: 7290s
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 25
+    can_receive_distributions: true
+  relay-001:
+    daemon_0: monerod
+    daemon_0_start: 5s
+    daemon_0_stop: 7290s
+    daemon_1: monerod
+    daemon_1_start: 7320s
+    start_time: 5s
+  relay-002:
+    daemon_0: monerod
+    daemon_0_start: 10s
+    daemon_0_stop: 7320s
+    daemon_1: monerod
+    daemon_1_start: 7350s
+    start_time: 10s
+  relay-003:
+    daemon_0: monerod
+    daemon_0_start: 15s
+    daemon_0_stop: 7350s
+    daemon_1: monerod
+    daemon_1_start: 7380s
+    start_time: 15s
+  relay-004:
+    daemon_0: monerod
+    daemon_0_start: 20s
+    daemon_0_stop: 7380s
+    daemon_1: monerod
+    daemon_1_start: 7410s
+    start_time: 20s
+  user-001:
+    daemon_0: monerod
+    daemon_0_start: 1200s
+    daemon_0_stop: 7410s
+    daemon_1: monerod
+    daemon_1_start: 7440s
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    transaction_interval: 60
+    activity_start_time: 10800
+    can_receive_distributions: true
+  user-002:
+    daemon_0: monerod
+    daemon_0_start: 1205s
+    daemon_0_stop: 7440s
+    daemon_1: monerod
+    daemon_1_start: 7470s
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1205s
+    transaction_interval: 60
+    activity_start_time: 10800
+    can_receive_distributions: true
+  user-003:
+    daemon_0: monerod
+    daemon_0_start: 1210s
+    daemon_0_stop: 7470s
+    daemon_1: monerod
+    daemon_1_start: 7500s
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1210s
+    transaction_interval: 60
+    activity_start_time: 10800
+    can_receive_distributions: true
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 9000
+    transaction_frequency: 30
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

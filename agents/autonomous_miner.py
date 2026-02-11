@@ -86,14 +86,14 @@ class AutonomousMinerAgent(BaseAgent):
         self.logger.info(f"Configured hashrate weight: {self.hashrate_pct}")
 
         # Wait for daemon to be ready
-        if not self.agent_rpc:
-            self.logger.error("Agent RPC not initialized")
-            raise RuntimeError("Agent RPC connection required for mining")
+        if not self.daemon_rpc:
+            self.logger.error("Daemon RPC not initialized")
+            raise RuntimeError("Daemon RPC connection required for mining")
 
         self.logger.info("Waiting for daemon to be ready...")
         try:
-            self.agent_rpc.wait_until_ready(max_wait=120)
-            info = self.agent_rpc.get_info()
+            self.daemon_rpc.wait_until_ready(max_wait=120)
+            info = self.daemon_rpc.get_info()
             self.logger.info(f"Daemon ready at height {info.get('height', 0)}")
 
             # Use fixed baseline difficulty of 1 for all miners
@@ -194,13 +194,9 @@ class AutonomousMinerAgent(BaseAgent):
             self.logger.debug(f"Waiting for wallet address... (elapsed: {elapsed:.1f}s)")
             time.sleep(poll_interval)
 
-        # Timeout - use fallback address for simulation
-        self.logger.warning(f"Timeout waiting for wallet address after {max_wait_time}s")
-        self.logger.warning(f"Using fallback simulation address (rewards won't be tracked)")
-
-        # Fallback to a known valid address for simulation purposes
-        fallback_address = "44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
-        return fallback_address
+        # Timeout - no valid address available
+        self.logger.error(f"Timeout waiting for wallet address after {max_wait_time}s")
+        return None
 
     def _parse_mining_config(self):
         """
@@ -254,7 +250,7 @@ class AutonomousMinerAgent(BaseAgent):
                 return self._cached_difficulty
 
         try:
-            info = self.agent_rpc.get_info()
+            info = self.daemon_rpc.get_info()
             difficulty = info.get('difficulty', 1)
 
             # Ensure difficulty is positive
@@ -372,7 +368,7 @@ class AutonomousMinerAgent(BaseAgent):
             
         try:
             # Generate block using ensure_mining (tries available methods)
-            result = self.agent_rpc.ensure_mining(wallet_address=self.wallet_address)
+            result = self.daemon_rpc.ensure_mining(wallet_address=self.wallet_address)
             
             if result and result.get('status') == 'OK':
                 # Extract block information based on method used
@@ -477,7 +473,7 @@ class AutonomousMinerAgent(BaseAgent):
             
             # Get current blockchain height
             try:
-                info = self.agent_rpc.get_info()
+                info = self.daemon_rpc.get_info()
                 self.last_block_height = info.get('height', 0)
                 current_difficulty = info.get('difficulty', 0)
                 
@@ -547,7 +543,7 @@ def main():
     agent = AutonomousMinerAgent(
         agent_id=args.id,
         shared_dir=args.shared_dir,
-        agent_rpc_port=args.agent_rpc_port,
+        daemon_rpc_port=args.daemon_rpc_port,
         wallet_rpc_port=args.wallet_rpc_port,
         p2p_port=args.p2p_port,
         rpc_host=args.rpc_host,

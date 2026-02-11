@@ -7,6 +7,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import signal
 import sys
 import time
@@ -64,7 +65,7 @@ class BaseAgent(ABC):
 
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
-                 agent_rpc_port: Optional[int] = None,
+                 daemon_rpc_port: Optional[int] = None,
                  wallet_rpc_port: Optional[int] = None,
                  p2p_port: Optional[int] = None,
                  rpc_host: str = "127.0.0.1",
@@ -76,7 +77,7 @@ class BaseAgent(ABC):
                  daemon_selection_strategy: Optional[str] = None):
         self.agent_id = agent_id
         self._shared_dir = shared_dir
-        self.agent_rpc_port = agent_rpc_port
+        self.daemon_rpc_port = daemon_rpc_port
         self.wallet_rpc_port = wallet_rpc_port
         self.p2p_port = p2p_port
         self.rpc_host = rpc_host
@@ -113,7 +114,7 @@ class BaseAgent(ABC):
         self._shared_dir.mkdir(mode=0o700, exist_ok=True)
         
         # Initialize RPC connections first (required for logging context)
-        self.agent_rpc: Optional[MoneroRPC] = None
+        self.daemon_rpc: Optional[MoneroRPC] = None
         self.wallet_rpc: Optional[WalletRPC] = None
         
         # Register signal handlers
@@ -189,18 +190,18 @@ class BaseAgent(ABC):
     def setup(self):
         """Set up RPC connections and perform agent-specific initialization"""
         # Determine if this is a wallet-only agent
-        self._is_wallet_only = (self.remote_daemon is not None and self.agent_rpc_port is None)
+        self._is_wallet_only = (self.remote_daemon is not None and self.daemon_rpc_port is None)
 
-        # Connect to agent RPC if port provided (local daemon)
-        if self.agent_rpc_port:
-            self.logger.info(f"Connecting to agent RPC at {self.rpc_host}:{self.agent_rpc_port}")
-            self.agent_rpc = MoneroRPC(self.rpc_host, self.agent_rpc_port)
+        # Connect to daemon RPC if port provided (local daemon)
+        if self.daemon_rpc_port:
+            self.logger.info(f"Connecting to daemon RPC at {self.rpc_host}:{self.daemon_rpc_port}")
+            self.daemon_rpc = MoneroRPC(self.rpc_host, self.daemon_rpc_port)
             try:
-                self.agent_rpc.wait_until_ready(max_wait=120)
-                info = self.agent_rpc.get_info()
-                self.logger.info(f"Connected to agent: height={info.get('height', 0)}")
+                self.daemon_rpc.wait_until_ready(max_wait=120)
+                info = self.daemon_rpc.get_info()
+                self.logger.info(f"Connected to daemon: height={info.get('height', 0)}")
             except RPCError as e:
-                self.logger.error(f"Failed to connect to agent RPC: {e}")
+                self.logger.error(f"Failed to connect to daemon RPC: {e}")
                 raise
 
         # Connect to wallet RPC if port provided
@@ -354,7 +355,7 @@ class BaseAgent(ABC):
 
         This updates the status to 'available' for this agent in public_nodes.json.
         """
-        if not self.agent_rpc_port:
+        if not self.daemon_rpc_port:
             self.logger.warning("Cannot register as public node: no local daemon")
             return
 
@@ -526,12 +527,12 @@ class BaseAgent(ABC):
                     if not agent_found:
                         new_agent_entry = {
                             "id": self.agent_id,
-                            "type": self.__class__.__name__.lower().replace('agent', ''),
+                            "type": re.sub(r'(?<=[a-z])(?=[A-Z])', '_', self.__class__.__name__).lower().removesuffix('_agent'),
                             "attributes": self.attributes,
                             "hash_rate": getattr(self, 'hash_rate', None),
                             "ip_addr": self.rpc_host,
                             "p2p_port": self.p2p_port,
-                            "agent_rpc_port": self.agent_rpc_port,
+                            "daemon_rpc_port": self.daemon_rpc_port,
                             "wallet_rpc_port": self.wallet_rpc_port,
                             "wallet_address": getattr(self, 'wallet_address', None),
                             "timestamp": time.time()
@@ -554,12 +555,12 @@ class BaseAgent(ABC):
     
     def wait_for_height(self, target_height: int, timeout: int = 300):
         """Wait for blockchain to reach target height"""
-        if not self.agent_rpc:
+        if not self.daemon_rpc:
             raise RuntimeError("No agent RPC connection")
             
         start_time = time.time()
         while time.time() - start_time < timeout:
-            current_height = self.agent_rpc.get_height()
+            current_height = self.daemon_rpc.get_height()
             if current_height >= target_height:
                 return True
             self.logger.debug(f"Waiting for height {target_height}, current: {current_height}")
@@ -569,13 +570,13 @@ class BaseAgent(ABC):
         
     def wait_for_wallet_sync(self, timeout: int = 300):
         """Wait for wallet to sync with daemon"""
-        if not self.wallet_rpc or not self.agent_rpc:
+        if not self.wallet_rpc or not self.daemon_rpc:
             raise RuntimeError("Missing RPC connections")
             
         start_time = time.time()
         while time.time() - start_time < timeout:
             wallet_height = self.wallet_rpc.get_height()
-            daemon_height = self.agent_rpc.get_height()
+            daemon_height = self.daemon_rpc.get_height()
             
             if wallet_height >= daemon_height - 1:  # Allow 1 block difference
                 self.logger.info(f"Wallet synced at height {wallet_height}")
@@ -596,7 +597,9 @@ class BaseAgent(ABC):
         parser.add_argument('--shared-dir', type=Path, default=Path(default_shared_dir),
                           help='Shared directory for simulation state')
         parser.add_argument('--rpc-host', default=default_rpc_host, help='RPC host address')
-        parser.add_argument('--agent-rpc-port', type=int, help='Agent RPC port')
+        parser.add_argument('--daemon-rpc-port', type=int, help='Daemon RPC port')
+        parser.add_argument('--agent-rpc-port', type=int, dest='daemon_rpc_port',
+                          help='(Deprecated: use --daemon-rpc-port) Daemon RPC port')
         parser.add_argument('--wallet-rpc-port', type=int, help='Wallet RPC port')
         parser.add_argument('--p2p-port', type=int, help='P2P port of the agent\'s node')
         parser.add_argument('--log-level', default=default_log_level,

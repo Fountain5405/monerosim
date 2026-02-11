@@ -316,8 +316,8 @@ class RegularUserAgent(BaseAgent):
                         )
                         self.wallet_rpc.reset_session()
                         # Re-point wallet-rpc at the daemon to force reconnection
-                        if self.agent_rpc_port:
-                            daemon_address = f"http://{self.rpc_host}:{self.agent_rpc_port}"
+                        if self.daemon_rpc_port:
+                            daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
                             self.wallet_rpc.set_daemon(daemon_address, trusted=True)
                             self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
 
@@ -451,7 +451,7 @@ def main():
         agent_id=args.id,
         shared_dir=args.shared_dir,
         rpc_host=args.rpc_host,
-        agent_rpc_port=args.agent_rpc_port,
+        daemon_rpc_port=args.daemon_rpc_port,
         wallet_rpc_port=args.wallet_rpc_port,
         p2p_port=args.p2p_port,
         log_level=args.log_level,

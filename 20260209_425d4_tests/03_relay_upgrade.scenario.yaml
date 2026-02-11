@@ -31,7 +31,8 @@ general:
     log-file: /dev/stdout
 
 network:
-  type: 1_gbit_switch
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
 
 agents:
   miner-{001..003}:

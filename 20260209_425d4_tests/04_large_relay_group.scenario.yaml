@@ -1,0 +1,59 @@
+# Test 4: Large relay group — tests auto stagger with 15 relays (above threshold)
+# Verifies: auto stagger on relay nodes uses default 5s,
+# large group expansion works, bootstrap_end_time adjusts
+general:
+  stop_time: 6h
+  simulation_seed: 2024
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 1
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [40, 35, 25]
+    can_receive_distributions: true
+
+  relay-{001..015}:
+    daemon: monerod
+    start_time: 10s
+
+  user-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

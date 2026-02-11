@@ -17,7 +17,7 @@ pub fn add_user_agent_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
-    agent_rpc_port: Option<u16>,
+    daemon_rpc_port: Option<u16>,
     wallet_rpc_port: Option<u16>,
     p2p_port: Option<u16>,
     script: &str,
@@ -41,8 +41,8 @@ pub fn add_user_agent_process(
     ];
 
     // Add local daemon RPC port if available
-    if let Some(port) = agent_rpc_port {
-        agent_args.push(format!("--agent-rpc-port {}", port));
+    if let Some(port) = daemon_rpc_port {
+        agent_args.push(format!("--daemon-rpc-port {}", port));
     }
 
     // Add wallet RPC port if available
@@ -144,7 +144,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 pub fn create_mining_agent_process(
     agent_id: &str,
     ip_addr: &str,
-    agent_rpc_port: u16,
+    daemon_rpc_port: u16,
     wallet_rpc_port: Option<u16>,
     mining_script: &str,
     attributes: Option<&BTreeMap<String, String>>,
@@ -160,7 +160,7 @@ pub fn create_mining_agent_process(
     let mut args = vec![
         format!("--id {}", agent_id),
         format!("--rpc-host {}", ip_addr),
-        format!("--agent-rpc-port {}", agent_rpc_port),
+        format!("--daemon-rpc-port {}", daemon_rpc_port),
         format!("--shared-dir {}", shared_dir.to_str().unwrap()),
         format!("--log-level DEBUG"),
     ];

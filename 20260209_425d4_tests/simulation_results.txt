@@ -1,52 +1,88 @@
-=== Shadow Simulation Test Suite — Mon Feb  9 17:57:49 UTC 2026 ===
+=== Shadow Simulation Test Suite — Tue Feb 10 20:11:06 UTC 2026 ===
 Shadow binary: /home/lever65/.local/bin/shadow
-Commit: 425d43c1
+Commit: 3e95a2e5
+
 
 --- 01_basic_relay ---
-  sim_time=7200s, hosts=16
-PASS (205s)
-  result: PASS in 205s
-  Progress: 87% — simulated: 01:44:18.825/02:00:00, realtime: 00:03:00, processes failed: 0
+  sim_time=21600s, hosts=16
+PASS (435s)
+  result: PASS in 435s
+  Progress: 98% — simulated: 05:51:14.120/06:00:00, realtime: 00:07:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 02_relay_only ---
-  sim_time=3600s, hosts=13
-PASS (101s)
-  result: PASS in 101s
-  Progress: 54% — simulated: 00:32:15.170/01:00:00, realtime: 00:01:00, processes failed: 0
+  sim_time=21600s, hosts=13
+PASS (291s)
+  result: PASS in 291s
+  Progress: 83% — simulated: 05:00:06.523/06:00:00, realtime: 00:04:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 03_relay_upgrade ---
   sim_time=21600s, hosts=13
-PASS (362s)
-  result: PASS in 362s
-  Progress: 99% — simulated: 05:58:01.885/06:00:00, realtime: 00:06:00, processes failed: 0
+PASS (379s)
+  result: PASS in 379s
+  Progress: 96% — simulated: 05:46:02.921/06:00:00, realtime: 00:06:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 04_large_relay_group ---
-  sim_time=7200s, hosts=71
-PASS (1766s)
-  result: PASS in 1766s
-  Progress: 99% — simulated: 01:58:13.383/02:00:00, realtime: 00:29:00, processes failed: 0
+  sim_time=21600s, hosts=26
+PASS (771s)
+  result: PASS in 771s
+  Progress: 95% — simulated: 05:42:30.872/06:00:00, realtime: 00:12:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 05_mixed_agents ---
-  sim_time=7200s, hosts=18
-PASS (267s)
-  result: PASS in 267s
-  Progress: 89% — simulated: 01:47:07.337/02:00:00, realtime: 00:04:00, processes failed: 0
+  sim_time=21600s, hosts=18
+PASS (670s)
+  result: PASS in 670s
+  Progress: 99% — simulated: 05:56:45.909/06:00:00, realtime: 00:11:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 06_relay_daemon_options ---
-  sim_time=3600s, hosts=11
-PASS (91s)
-  result: PASS in 91s
-  Progress: 60% — simulated: 00:35:58.374/01:00:00, realtime: 00:01:00, processes failed: 0
+  sim_time=21600s, hosts=11
+PASS (215s)
+  result: PASS in 215s
+  Progress: 85% — simulated: 05:07:16.203/06:00:00, realtime: 00:03:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 07_cli_relay_nodes ---
   sim_time=25200s, hosts=18
-PASS (406s)
-  result: PASS in 406s (re-run after transient segfault in suite run)
+PASS (761s)
+  result: PASS in 761s
+  Progress: 97% — simulated: 06:47:31.997/07:00:00, realtime: 00:12:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 --- 08_singleton_relay ---
-  sim_time=3600s, hosts=5
-PASS (28s)
-  result: PASS in 28s
+  sim_time=21600s, hosts=6
+PASS (74s)
+  result: PASS in 74s
+  Progress: 80% — simulated: 04:46:40.006/06:00:00, realtime: 00:01:00, processes failed: 0
+  • Blocks Created: PASS
+  • Blocks Propagated: PASS
+  • Transactions Created Broadcast: PASS
+  • Transactions In Blocks: PASS
 
 ========================================
 TOTAL: 8 simulations, 8 passed, 0 failed
+Total wall time: 3680s

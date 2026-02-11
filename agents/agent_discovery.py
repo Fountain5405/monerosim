@@ -488,9 +488,9 @@ class AgentDiscovery:
                         if "daemon_rpc_port" not in miner and "daemon_rpc_port" in agent_data:
                             miner["daemon_rpc_port"] = agent_data["daemon_rpc_port"]
                             self.logger.debug(f"Added daemon_rpc_port: {agent_data['daemon_rpc_port']}")
-                        if "agent_rpc_port" not in miner and "agent_rpc_port" in agent_data:
-                            miner["agent_rpc_port"] = agent_data["agent_rpc_port"]
-                            self.logger.debug(f"Added agent_rpc_port: {agent_data['agent_rpc_port']}")
+                        if "daemon_rpc_port" not in miner and "agent_rpc_port" in agent_data:
+                            miner["daemon_rpc_port"] = agent_data["agent_rpc_port"]
+                            self.logger.debug(f"Added daemon_rpc_port from agent_rpc_port: {agent_data['agent_rpc_port']}")
                         if "wallet_rpc_port" not in miner and "wallet_rpc_port" in agent_data:
                             miner["wallet_rpc_port"] = agent_data["wallet_rpc_port"]
                             self.logger.debug(f"Added wallet_rpc_port: {agent_data['wallet_rpc_port']}")

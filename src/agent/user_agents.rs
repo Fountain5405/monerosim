@@ -314,7 +314,7 @@ pub fn process_user_agents(
             let agent_ip = agent_info[i].4.clone();
             // Use standard Monero ports (mainnet ports for FAKECHAIN/regtest)
             // Since each agent has its own IP address, they can all use the same ports
-            let agent_rpc_port = crate::MONERO_RPC_PORT;
+            let daemon_rpc_port = crate::MONERO_RPC_PORT;
             let wallet_rpc_port = crate::MONERO_WALLET_RPC_PORT;
             let p2p_port = crate::MONERO_P2P_PORT;
 
@@ -360,7 +360,7 @@ pub fn process_user_agents(
                 // Add required network binding flags (always injected, use agent-specific values)
                 args.extend(vec![
                     format!("--rpc-bind-ip={}", agent_ip),
-                    format!("--rpc-bind-port={}", agent_rpc_port),
+                    format!("--rpc-bind-port={}", daemon_rpc_port),
                     "--confirm-external-bind".to_string(),
                     "--rpc-access-control-origins=*".to_string(),
                     format!("--p2p-bind-ip={}", agent_ip),
@@ -532,7 +532,7 @@ pub fn process_user_agents(
                 // Build base wallet args
                 let build_wallet_args = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                     let mut args = vec![
-                        format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
+                        format!("--daemon-address=http://{}:{}", agent_ip, daemon_rpc_port),
                         format!("--rpc-bind-port={}", wallet_rpc_port),
                         format!("--rpc-bind-ip={}", agent_ip),
                         "--disable-rpc-login".to_string(),
@@ -627,7 +627,7 @@ pub fn process_user_agents(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
-                        agent_rpc_port,
+                        daemon_rpc_port,
                         wallet_rpc_port,
                         &wallet_binary_path,
                         environment,
@@ -682,7 +682,7 @@ pub fn process_user_agents(
                     &mut processes,
                     agent_id,
                     &agent_ip,
-                    if has_local_daemon { Some(agent_rpc_port) } else { None },
+                    if has_local_daemon { Some(daemon_rpc_port) } else { None },
                     if has_wallet { Some(wallet_rpc_port) } else { None },
                     if has_local_daemon { Some(p2p_port) } else { None },
                     "agents.regular_user",
@@ -714,7 +714,7 @@ pub fn process_user_agents(
                 let mining_processes = create_mining_agent_process(
                     agent_id,
                     &agent_ip,
-                    agent_rpc_port,
+                    daemon_rpc_port,
                     mining_wallet_port,
                     &script,
                     Some(&merged_attributes),
@@ -745,7 +745,7 @@ pub fn process_user_agents(
                     &mut processes,
                     agent_id,
                     &agent_ip,
-                    if has_local_daemon { Some(agent_rpc_port) } else { None },
+                    if has_local_daemon { Some(daemon_rpc_port) } else { None },
                     if has_wallet { Some(wallet_rpc_port) } else { None },
                     if has_local_daemon { Some(p2p_port) } else { None },
                     &script,

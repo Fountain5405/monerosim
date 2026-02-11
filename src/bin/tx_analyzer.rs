@@ -1050,7 +1050,7 @@ fn print_bandwidth_report(
             "", "", "", "");
 
         for window in &report.bandwidth_over_time {
-            let time_range = format!("{:.0}s-{:.0}s", window.start - 946684800.0, window.end - 946684800.0);
+            let time_range = format!("{:.0}s-{:.0}s", window.start - monerosim::SHADOW_EPOCH, window.end - monerosim::SHADOW_EPOCH);
             println!("{:<15} | {:>12} | {:>12} | {:>10}",
                 time_range,
                 analysis::format_bytes(window.bytes_sent),
