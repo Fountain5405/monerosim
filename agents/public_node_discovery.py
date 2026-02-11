@@ -16,6 +16,10 @@ from typing import Dict, List, Any, Optional
 from enum import Enum
 
 
+# Shared constant (canonical source: base_agent.DEFAULT_SHARED_DIR)
+_DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+
+
 class DaemonSelectionStrategy(Enum):
     """Strategies for selecting a daemon from available public nodes."""
     RANDOM = "random"
@@ -26,7 +30,7 @@ class DaemonSelectionStrategy(Enum):
 class PublicNodeDiscovery:
     """Discover and select public nodes for wallet-only agents."""
 
-    def __init__(self, shared_dir: Path = Path("/tmp/monerosim_shared")):
+    def __init__(self, shared_dir: Path = Path(_DEFAULT_SHARED_DIR)):
         """
         Initialize the public node discovery service.
 
@@ -213,7 +217,7 @@ class PublicNodeDiscovery:
 
 def get_daemon_address(
     strategy: str = "random",
-    shared_dir: str = "/tmp/monerosim_shared",
+    shared_dir: str = _DEFAULT_SHARED_DIR,
     exclude_self: Optional[str] = None
 ) -> Optional[str]:
     """

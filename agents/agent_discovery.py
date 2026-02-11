@@ -17,7 +17,7 @@ from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
 import time
 
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, DEFAULT_SHARED_DIR
 from scripts.error_handling import ErrorHandler, LogLevel
 
 
@@ -35,7 +35,7 @@ class AgentDiscovery:
     criteria such as type, attributes, and capabilities.
     """
     
-    def __init__(self, shared_state_dir: str = "/tmp/monerosim_shared"):
+    def __init__(self, shared_state_dir: str = DEFAULT_SHARED_DIR):
         """
         Initialize the AgentDiscovery with the shared state directory.
         
@@ -902,7 +902,7 @@ class AgentDiscovery:
 
 
 # Convenience functions for direct usage
-def get_agent_registry(shared_state_dir: str = "/tmp/monerosim_shared") -> Dict[str, Any]:
+def get_agent_registry(shared_state_dir: str = DEFAULT_SHARED_DIR) -> Dict[str, Any]:
     """
     Convenience function to get the agent registry.
     
@@ -917,8 +917,8 @@ def get_agent_registry(shared_state_dir: str = "/tmp/monerosim_shared") -> Dict[
 
 
 def find_agents_by_type(
-    agent_type: str, 
-    shared_state_dir: str = "/tmp/monerosim_shared"
+    agent_type: str,
+    shared_state_dir: str = DEFAULT_SHARED_DIR
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to find agents by type.
@@ -935,9 +935,9 @@ def find_agents_by_type(
 
 
 def find_agents_by_attribute(
-    attribute_name: str, 
-    attribute_value: Any, 
-    shared_state_dir: str = "/tmp/monerosim_shared"
+    attribute_name: str,
+    attribute_value: Any,
+    shared_state_dir: str = DEFAULT_SHARED_DIR
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to find agents by attribute.
@@ -954,7 +954,7 @@ def find_agents_by_attribute(
     return discovery.find_agents_by_attribute(attribute_name, attribute_value)
 
 
-def get_miner_agents(shared_state_dir: str = "/tmp/monerosim_shared") -> List[Dict[str, Any]]:
+def get_miner_agents(shared_state_dir: str = DEFAULT_SHARED_DIR) -> List[Dict[str, Any]]:
     """
     Convenience function to get miner agents.
     
@@ -968,7 +968,7 @@ def get_miner_agents(shared_state_dir: str = "/tmp/monerosim_shared") -> List[Di
     return discovery.get_miner_agents()
 
 
-def get_wallet_agents(shared_state_dir: str = "/tmp/monerosim_shared") -> List[Dict[str, Any]]:
+def get_wallet_agents(shared_state_dir: str = DEFAULT_SHARED_DIR) -> List[Dict[str, Any]]:
     """
     Convenience function to get wallet agents.
     
@@ -982,7 +982,7 @@ def get_wallet_agents(shared_state_dir: str = "/tmp/monerosim_shared") -> List[D
     return discovery.get_wallet_agents()
 
 
-def get_distribution_recipients(shared_state_dir: str = "/tmp/monerosim_shared") -> List[Dict[str, Any]]:
+def get_distribution_recipients(shared_state_dir: str = DEFAULT_SHARED_DIR) -> List[Dict[str, Any]]:
     """
     Convenience function to get distribution recipients.
 
@@ -998,7 +998,7 @@ def get_distribution_recipients(shared_state_dir: str = "/tmp/monerosim_shared")
 
 def get_public_nodes(
     status_filter: Optional[str] = "available",
-    shared_state_dir: str = "/tmp/monerosim_shared"
+    shared_state_dir: str = DEFAULT_SHARED_DIR
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to get public nodes.

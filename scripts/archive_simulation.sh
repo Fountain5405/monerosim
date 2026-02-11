@@ -14,6 +14,9 @@
 
 set -e
 
+# Shared directory (single source of truth)
+SHARED_DIR="/tmp/monerosim_shared"
+
 # Parse arguments
 ARCHIVE_NAME=""
 KEEP_WALLETS=false
@@ -63,8 +66,8 @@ if [[ ! -d "shadow.data" ]]; then
     exit 1
 fi
 
-if [[ ! -d "/tmp/monerosim_shared" ]]; then
-    echo -e "${RED}Error: /tmp/monerosim_shared/ not found.${NC}"
+if [[ ! -d "${SHARED_DIR}" ]]; then
+    echo -e "${RED}Error: ${SHARED_DIR}/ not found.${NC}"
     exit 1
 fi
 
@@ -106,41 +109,41 @@ echo "Copying shadow.data/ ..."
 cp -r shadow.data "$ARCHIVE_DIR/"
 
 # Archive shared state from /tmp
-echo "Copying /tmp/monerosim_shared/ ..."
+echo "Copying ${SHARED_DIR}/ ..."
 mkdir -p "$ARCHIVE_DIR/shared_data"
 
 # Copy essential files
 for file in agent_registry.json transactions.json blocks_with_transactions.json \
             initial_funding_status.json miners.json; do
-    if [[ -f "/tmp/monerosim_shared/$file" ]]; then
-        cp "/tmp/monerosim_shared/$file" "$ARCHIVE_DIR/shared_data/"
+    if [[ -f "${SHARED_DIR}/$file" ]]; then
+        cp "${SHARED_DIR}/$file" "$ARCHIVE_DIR/shared_data/"
         echo "  - $file"
     fi
 done
 
 # Copy monitoring data
-if [[ -d "/tmp/monerosim_shared/monitoring" ]]; then
-    cp -r "/tmp/monerosim_shared/monitoring" "$ARCHIVE_DIR/shared_data/"
+if [[ -d "${SHARED_DIR}/monitoring" ]]; then
+    cp -r "${SHARED_DIR}/monitoring" "$ARCHIVE_DIR/shared_data/"
     echo "  - monitoring/"
 fi
 
 # Copy miner info files
-for f in /tmp/monerosim_shared/miner-*_miner_info.json; do
+for f in "${SHARED_DIR}"/miner-*_miner_info.json; do
     if [[ -f "$f" ]]; then
         cp "$f" "$ARCHIVE_DIR/shared_data/"
     fi
 done
 
 # Copy distributor info
-if [[ -f "/tmp/monerosim_shared/miner-distributor_distributor_info.json" ]]; then
-    cp "/tmp/monerosim_shared/miner-distributor_distributor_info.json" "$ARCHIVE_DIR/shared_data/"
+if [[ -f "${SHARED_DIR}/miner-distributor_distributor_info.json" ]]; then
+    cp "${SHARED_DIR}/miner-distributor_distributor_info.json" "$ARCHIVE_DIR/shared_data/"
 fi
 
 # Optionally copy wallets (can be large)
 if [[ "$KEEP_WALLETS" == "true" ]]; then
     echo "Copying wallet directories..."
     mkdir -p "$ARCHIVE_DIR/shared_data/wallets"
-    for wallet in /tmp/monerosim_shared/*_wallet; do
+    for wallet in "${SHARED_DIR}"/*_wallet; do
         if [[ -d "$wallet" ]]; then
             cp -r "$wallet" "$ARCHIVE_DIR/shared_data/wallets/"
         fi

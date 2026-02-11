@@ -722,6 +722,216 @@ def generate_relay_agent_phased(
 DEFAULT_GML_PATH = "gml_processing/1200_nodes_caida_with_loops.gml"
 
 
+def _generate_config_core(
+    total_agents: int,
+    duration: str,
+    stagger_interval_s: int,
+    simulation_seed: int,
+    gml_path: str,
+    fast_mode: bool,
+    process_threads: int,
+    batched_bootstrap: str,
+    batch_interval: str,
+    initial_batch_size: int,
+    max_batch_size: int,
+    user_spawn_start: str,
+    bootstrap_end_time: str,
+    regular_user_start: str,
+    md_start_time: str,
+    md_n_recipients: int,
+    md_out_per_tx: int,
+    md_output_amount: float,
+    md_funding_cycle_interval: str,
+    tx_interval: int,
+    tx_send_probability: float,
+    activity_batch_size: int,
+    activity_batch_interval_s: int,
+    activity_batch_jitter: float,
+    parallelism: int,
+    native_preemption: bool,
+    relay_nodes: int,
+    relay_spawn_start_s: int,
+    relay_stagger_s: int,
+    # Callbacks for agent creation (differ between default and upgrade scenarios)
+    build_miner_fn,       # (agent_id, miner_dict) -> agent dict
+    build_user_fn,        # (agent_id, start_s, tx_interval, activity_time, tx_send_probability) -> agent dict
+    build_relay_fn,       # (agent_id, relay_start_s) -> agent dict
+    min_duration_s_fn,    # (activity_start_time_s, requested_duration_s) -> min_duration_s
+    extra_timing_info,    # dict of additional timing_info keys
+    scenario_name: str,   # "default" or "upgrade"
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Core config generation shared by generate_config() and generate_upgrade_config().
+
+    This contains all logic common to both scenarios. The agent-building callables
+    and min_duration function are injected by each public wrapper to handle
+    scenario-specific differences (single binary vs phased upgrade).
+    """
+    num_miners = len(FIXED_MINERS)
+    num_users = total_agents - num_miners
+
+    if num_users < 0:
+        raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
+
+    # Calculate spawn timing and batching
+    (use_batched, batch_sizes, batch_schedule, user_spawn_start_s,
+     last_user_spawn_s, batch_interval_s) = _calculate_spawn_timing(
+        num_users, stagger_interval_s, batched_bootstrap, batch_interval,
+        initial_batch_size, max_batch_size, user_spawn_start,
+    )
+
+    # Calculate timing chain: bootstrap → md_start → activity_start
+    (bootstrap_end_time_s, md_start_time_s, activity_start_time_s) = _calculate_timing_chain(
+        last_user_spawn_s, bootstrap_end_time, md_start_time, regular_user_start,
+    )
+
+    # Parse and potentially extend duration to ensure minimum activity/observation period
+    requested_duration_s = parse_duration(duration) if duration else 0
+    min_duration_s = min_duration_s_fn(activity_start_time_s, requested_duration_s)
+    duration_s = max(requested_duration_s, min_duration_s)
+    duration = format_time_offset(duration_s)
+
+    # Performance settings for fast mode
+    if tx_interval is None:
+        tx_interval = 120 if fast_mode else 60
+    poll_interval = 300  # 5 minutes for reasonable monitoring updates
+
+    # Build named agents map (OrderedDict to preserve order)
+    agents = OrderedDict()
+
+    # Add fixed miners with explicit IDs
+    for i, miner in enumerate(FIXED_MINERS):
+        agent_id = f"miner-{i+1:03}"
+        agents[agent_id] = build_miner_fn(agent_id, miner)
+
+    # Resolve auto-detected activity batch size (0 = auto from CPU count)
+    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
+
+    # Calculate staggered activity start times to prevent thundering herd
+    user_activity_times = calculate_activity_start_times(
+        num_users=num_users,
+        base_activity_start_s=activity_start_time_s,
+        batch_size=activity_batch_size,
+        batch_interval_s=activity_batch_interval_s,
+        jitter_fraction=activity_batch_jitter,
+        seed=simulation_seed,
+    )
+
+    # Calculate activity rollout duration for metadata
+    if num_users > 0:
+        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
+        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
+    else:
+        activity_rollout_duration_s = 0
+
+    # Add variable users with appropriate start times
+    if use_batched and batch_schedule:
+        for user_index, start_time_s in batch_schedule:
+            agent_id = f"user-{user_index+1:03}"
+            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
+            agents[agent_id] = build_user_fn(agent_id, start_time_s, tx_interval, user_activity_time, tx_send_probability)
+    else:
+        for i in range(num_users):
+            agent_id = f"user-{i+1:03}"
+            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
+            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
+            agents[agent_id] = build_user_fn(agent_id, start_offset_s, tx_interval, user_activity_time, tx_send_probability)
+
+    # Add relay nodes (daemon-only, no wallet or script)
+    for i in range(relay_nodes):
+        agent_id = f"relay-{i+1:03}"
+        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
+        agents[agent_id] = build_relay_fn(agent_id, relay_start_s)
+
+    # Calculate last relay spawn time for metadata/warnings
+    if relay_nodes > 0:
+        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
+        if last_relay_spawn_s > bootstrap_end_time_s:
+            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
+                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
+                  f"Late relays may experience packet loss during sync.",
+                  file=sys.stderr)
+    else:
+        last_relay_spawn_s = 0
+
+    # Add miner-distributor
+    agents["miner-distributor"] = OrderedDict([
+        ("script", "agents.miner_distributor"),
+        ("wait_time", md_start_time_s),
+        ("initial_wait_time", 0),
+        ("max_transaction_amount", "2.0"),
+        ("min_transaction_amount", "0.5"),
+        ("transaction_frequency", 30),
+        ("md_n_recipients", md_n_recipients),
+        ("md_out_per_tx", md_out_per_tx),
+        ("md_output_amount", md_output_amount),
+        ("md_funding_cycle_interval", md_funding_cycle_interval),
+    ])
+
+    # Add simulation-monitor
+    agents["simulation-monitor"] = OrderedDict([
+        ("script", "agents.simulation_monitor"),
+        ("poll_interval", poll_interval),
+        ("detailed_logging", False),
+        ("enable_alerts", True),
+        ("status_file", "monerosim_monitor.log"),
+    ])
+
+    # Build general config
+    general_config = _build_general_config(
+        duration, parallelism, simulation_seed, bootstrap_end_time_s,
+        fast_mode, process_threads, native_preemption,
+    )
+
+    # Build timing info (base keys shared by both scenarios)
+    timing_info = {
+        'bootstrap_end_time_s': bootstrap_end_time_s,
+        'md_start_time_s': md_start_time_s,
+        'activity_start_time_s': activity_start_time_s,
+        'last_user_spawn_s': last_user_spawn_s,
+        'user_spawn_start_s': user_spawn_start_s,
+        'duration_s': duration_s,
+        'requested_duration_s': requested_duration_s,
+        'use_batched': use_batched,
+        'batch_sizes': batch_sizes,
+        'batch_interval_s': batch_interval_s,
+        'activity_batching_enabled': True,
+        'activity_batch_size': activity_batch_size,
+        'activity_batch_interval_s': activity_batch_interval_s,
+        'activity_batch_jitter': activity_batch_jitter,
+        'activity_rollout_duration_s': activity_rollout_duration_s,
+        'relay_spawn_start_s': relay_spawn_start_s,
+        'relay_stagger_s': relay_stagger_s,
+        'last_relay_spawn_s': last_relay_spawn_s,
+    }
+    timing_info.update(extra_timing_info)
+
+    # Generate metadata section
+    metadata = generate_metadata(
+        scenario=scenario_name,
+        num_miners=num_miners,
+        num_users=num_users,
+        timing_info=timing_info,
+        simulation_seed=simulation_seed,
+        gml_path=gml_path,
+        fast_mode=fast_mode,
+        stagger_interval_s=stagger_interval_s,
+        relay_nodes=relay_nodes,
+    )
+
+    # Build full config
+    config = OrderedDict([
+        ("metadata", metadata),
+        ("general", general_config),
+        ("network", OrderedDict([
+            ("path", gml_path),
+            ("peer_mode", "Dynamic"),
+        ])),
+        ("agents", agents),
+    ])
+
+    return config, timing_info
+
+
 def generate_config(
     total_agents: int,
     duration: str,
@@ -745,18 +955,15 @@ def generate_config(
     md_funding_cycle_interval: str = "5m",
     tx_interval: int = None,
     tx_send_probability: float = 0.75,
-    # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
     activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
-    # Shadow parallelism and preemption
     parallelism: int = 0,
     native_preemption: bool = None,
-    # Relay nodes (daemon-only)
     relay_nodes: int = 0,
     relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
     relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Generate the complete monerosim configuration.
 
     Args:
@@ -788,176 +995,41 @@ def generate_config(
         relay_spawn_start_s: When relay nodes start spawning (default: 5s)
         relay_stagger_s: Interval between relay node spawns (default: 5s)
     """
+    # Default scenario callbacks: single daemon binary, simple agents
+    def build_miner(agent_id, miner):
+        return generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
-    num_miners = len(FIXED_MINERS)
-    num_users = total_agents - num_miners
+    def build_user(agent_id, start_s, tx_int, activity_time, tx_prob):
+        return generate_user_agent(start_s, tx_int, activity_time, daemon_binary, tx_prob)
 
-    if num_users < 0:
-        raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
+    def build_relay(agent_id, relay_start_s):
+        return generate_relay_agent(relay_start_s, daemon_binary)
 
-    # Calculate spawn timing and batching
-    (use_batched, batch_sizes, batch_schedule, user_spawn_start_s,
-     last_user_spawn_s, batch_interval_s) = _calculate_spawn_timing(
-        num_users, stagger_interval_s, batched_bootstrap, batch_interval,
-        initial_batch_size, max_batch_size, user_spawn_start,
+    def min_dur(activity_start_time_s, _requested):
+        return activity_start_time_s + MIN_ACTIVITY_PERIOD_S
+
+    return _generate_config_core(
+        total_agents=total_agents, duration=duration,
+        stagger_interval_s=stagger_interval_s, simulation_seed=simulation_seed,
+        gml_path=gml_path, fast_mode=fast_mode, process_threads=process_threads,
+        batched_bootstrap=batched_bootstrap, batch_interval=batch_interval,
+        initial_batch_size=initial_batch_size, max_batch_size=max_batch_size,
+        user_spawn_start=user_spawn_start, bootstrap_end_time=bootstrap_end_time,
+        regular_user_start=regular_user_start, md_start_time=md_start_time,
+        md_n_recipients=md_n_recipients, md_out_per_tx=md_out_per_tx,
+        md_output_amount=md_output_amount,
+        md_funding_cycle_interval=md_funding_cycle_interval,
+        tx_interval=tx_interval, tx_send_probability=tx_send_probability,
+        activity_batch_size=activity_batch_size,
+        activity_batch_interval_s=activity_batch_interval_s,
+        activity_batch_jitter=activity_batch_jitter,
+        parallelism=parallelism, native_preemption=native_preemption,
+        relay_nodes=relay_nodes, relay_spawn_start_s=relay_spawn_start_s,
+        relay_stagger_s=relay_stagger_s,
+        build_miner_fn=build_miner, build_user_fn=build_user,
+        build_relay_fn=build_relay, min_duration_s_fn=min_dur,
+        extra_timing_info={}, scenario_name="default",
     )
-
-    # Calculate timing chain: bootstrap → md_start → activity_start
-    (bootstrap_end_time_s, md_start_time_s, activity_start_time_s) = _calculate_timing_chain(
-        last_user_spawn_s, bootstrap_end_time, md_start_time, regular_user_start,
-    )
-
-    # Parse and potentially extend duration to ensure minimum activity period
-    requested_duration_s = parse_duration(duration)
-    min_duration_s = activity_start_time_s + MIN_ACTIVITY_PERIOD_S
-    duration_s = max(requested_duration_s, min_duration_s)
-    duration = format_time_offset(duration_s)  # Update duration string if extended
-
-    # Performance settings for fast mode
-    if tx_interval is None:
-        tx_interval = 120 if fast_mode else 60
-    poll_interval = 300  # 5 minutes for reasonable monitoring updates
-
-    # Build named agents map (OrderedDict to preserve order)
-    agents = OrderedDict()
-
-    # Add fixed miners with explicit IDs
-    for i, miner in enumerate(FIXED_MINERS):
-        agent_id = f"miner-{i+1:03}"
-        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
-
-    # Resolve auto-detected activity batch size (0 = auto from CPU count)
-    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
-
-    # Calculate staggered activity start times to prevent thundering herd
-    # Each user gets a slightly different activity_start_time based on batching
-    user_activity_times = calculate_activity_start_times(
-        num_users=num_users,
-        base_activity_start_s=activity_start_time_s,
-        batch_size=activity_batch_size,
-        batch_interval_s=activity_batch_interval_s,
-        jitter_fraction=activity_batch_jitter,
-        seed=simulation_seed,
-    )
-
-    # Calculate activity rollout duration for metadata
-    if num_users > 0:
-        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
-        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
-    else:
-        activity_rollout_duration_s = 0
-
-    # Add variable users with appropriate start times
-    if use_batched and batch_schedule:
-        # Batched bootstrap: use calculated batch schedule for spawning
-        for user_index, start_time_s in batch_schedule:
-            agent_id = f"user-{user_index+1:03}"
-            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
-    else:
-        # Non-batched bootstrap: start at USER_START_TIME_S with stagger
-        for i in range(num_users):
-            agent_id = f"user-{i+1:03}"
-            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
-
-    # Add relay nodes (daemon-only, no wallet or script)
-    # Simple linear stagger: start + i * stagger
-    for i in range(relay_nodes):
-        agent_id = f"relay-{i+1:03}"
-        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
-        agents[agent_id] = generate_relay_agent(relay_start_s, daemon_binary)
-
-    # Calculate last relay spawn time for metadata/warnings
-    if relay_nodes > 0:
-        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
-        if last_relay_spawn_s > bootstrap_end_time_s:
-            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
-                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
-                  f"Late relays may experience packet loss during sync.",
-                  file=sys.stderr)
-    else:
-        last_relay_spawn_s = 0
-
-    # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
-    agents["miner-distributor"] = OrderedDict([
-        ("script", "agents.miner_distributor"),
-        ("wait_time", md_start_time_s),  # When Shadow starts the process
-        ("initial_wait_time", 0),  # No additional Python wait (Shadow handles timing)
-        ("max_transaction_amount", "2.0"),
-        ("min_transaction_amount", "0.5"),
-        ("transaction_frequency", 30),
-        ("md_n_recipients", md_n_recipients),
-        ("md_out_per_tx", md_out_per_tx),
-        ("md_output_amount", md_output_amount),
-        ("md_funding_cycle_interval", md_funding_cycle_interval),
-    ])
-
-    # Add simulation-monitor
-    agents["simulation-monitor"] = OrderedDict([
-        ("script", "agents.simulation_monitor"),
-        ("poll_interval", poll_interval),
-        ("detailed_logging", False),
-        ("enable_alerts", True),
-        ("status_file", "monerosim_monitor.log"),
-    ])
-
-    # Build general config with daemon_defaults and wallet_defaults
-    general_config = _build_general_config(
-        duration, parallelism, simulation_seed, bootstrap_end_time_s,
-        fast_mode, process_threads, native_preemption,
-    )
-
-    # Return config and timing info for header generation
-    timing_info = {
-        'bootstrap_end_time_s': bootstrap_end_time_s,
-        'md_start_time_s': md_start_time_s,
-        'activity_start_time_s': activity_start_time_s,
-        'last_user_spawn_s': last_user_spawn_s,
-        'user_spawn_start_s': user_spawn_start_s,
-        'duration_s': duration_s,
-        'requested_duration_s': requested_duration_s,
-        'use_batched': use_batched,
-        'batch_sizes': batch_sizes,
-        'batch_interval_s': batch_interval_s,
-        # Activity batching info
-        'activity_batching_enabled': True,
-        'activity_batch_size': activity_batch_size,
-        'activity_batch_interval_s': activity_batch_interval_s,
-        'activity_batch_jitter': activity_batch_jitter,
-        'activity_rollout_duration_s': activity_rollout_duration_s,
-        # Relay timing info
-        'relay_spawn_start_s': relay_spawn_start_s,
-        'relay_stagger_s': relay_stagger_s,
-        'last_relay_spawn_s': last_relay_spawn_s,
-    }
-
-    # Generate metadata section
-    metadata = generate_metadata(
-        scenario="default",
-        num_miners=num_miners,
-        num_users=num_users,
-        timing_info=timing_info,
-        simulation_seed=simulation_seed,
-        gml_path=gml_path,
-        fast_mode=fast_mode,
-        stagger_interval_s=stagger_interval_s,
-        relay_nodes=relay_nodes,
-    )
-
-    # Build full config with metadata first
-    config = OrderedDict([
-        ("metadata", metadata),
-        ("general", general_config),
-        ("network", OrderedDict([
-            ("path", gml_path),
-            ("peer_mode", "Dynamic"),
-        ])),
-        ("agents", agents),
-    ])
-
-    return config, timing_info
 
 
 def generate_upgrade_config(
@@ -982,14 +1054,11 @@ def generate_upgrade_config(
     md_funding_cycle_interval: str = "5m",
     tx_interval: int = None,
     tx_send_probability: float = 0.75,
-    # User activity batching (prevents thundering herd)
     activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
     activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
     activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
-    # Shadow parallelism and preemption
     parallelism: int = 0,
     native_preemption: bool = None,
-    # Relay nodes (daemon-only)
     relay_nodes: int = 0,
     relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
     relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
@@ -1026,203 +1095,61 @@ def generate_upgrade_config(
     num_miners = len(FIXED_MINERS)
     num_users = total_agents - num_miners
 
-    if num_users < 0:
-        raise ValueError(f"Total agents ({total_agents}) must be at least {num_miners} (fixed miners)")
-
-    # Calculate spawn timing and batching
-    (use_batched, batch_sizes, batch_schedule, user_spawn_start_s,
-     last_user_spawn_s, batch_interval_s) = _calculate_spawn_timing(
+    # Pre-calculate upgrade schedule so callbacks can capture it via closure.
+    # We need spawn timing to determine activity_start for upgrade_start calc,
+    # but _generate_config_core handles that internally. The upgrade schedule
+    # depends on activity_start_time_s, so we must compute it here first.
+    (use_batched_pre, _, _, _,
+     last_user_spawn_pre, _) = _calculate_spawn_timing(
         num_users, stagger_interval_s, batched_bootstrap, batch_interval,
         initial_batch_size, max_batch_size, user_spawn_start,
     )
-
-    # Calculate timing chain: bootstrap → md_start → activity_start
-    (bootstrap_end_time_s, md_start_time_s, activity_start_time_s) = _calculate_timing_chain(
-        last_user_spawn_s, bootstrap_end_time, md_start_time, regular_user_start,
+    (_, _, activity_start_pre) = _calculate_timing_chain(
+        last_user_spawn_pre, bootstrap_end_time, md_start_time, regular_user_start,
     )
 
-    # Calculate upgrade timing
     if upgrade_start is not None:
         upgrade_start_time_s = parse_duration(upgrade_start)
     else:
-        # Auto: upgrade starts after steady state observation period
-        upgrade_start_time_s = activity_start_time_s + steady_state_duration_s
+        upgrade_start_time_s = activity_start_pre + steady_state_duration_s
 
-    # Performance settings
-    if tx_interval is None:
-        tx_interval = 120 if fast_mode else 60
-    poll_interval = 300
-
-    # Build list of all agent IDs for upgrade scheduling
     miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
     user_ids = [f"user-{i+1:03}" for i in range(num_users)]
     relay_ids = [f"relay-{i+1:03}" for i in range(relay_nodes)]
     all_agent_ids = miner_ids + user_ids + relay_ids
 
-    # Calculate upgrade schedule for all agents
     upgrade_schedule = calculate_upgrade_schedule(
-        all_agent_ids,
-        upgrade_start_time_s,
-        upgrade_stagger_s,
-        upgrade_order,
-        miner_ids,
-        simulation_seed,
+        all_agent_ids, upgrade_start_time_s, upgrade_stagger_s,
+        upgrade_order, miner_ids, simulation_seed,
     )
 
-    # Calculate when the last upgrade completes
-    last_upgrade_complete_s = max(p1_start for _, (_, p1_start) in upgrade_schedule.items())
+    last_upgrade_complete_s = max(p1 for _, (_, p1) in upgrade_schedule.items())
 
-    # Calculate total simulation duration
-    requested_duration_s = parse_duration(duration) if duration else 0
-    min_duration_s = last_upgrade_complete_s + post_upgrade_duration_s
-    duration_s = max(requested_duration_s, min_duration_s)
-    duration = format_time_offset(duration_s)
-
-    # Build agents with phased daemons
-    agents = OrderedDict()
-
-    # Add miners with phased daemons
-    for i, miner in enumerate(FIXED_MINERS):
-        agent_id = f"miner-{i+1:03}"
-        phase0_stop, phase1_start = upgrade_schedule[agent_id]
-        agents[agent_id] = generate_miner_agent_phased(
-            miner["hashrate"],
-            miner["start_offset_s"],
-            upgrade_binary_v1,
-            upgrade_binary_v2,
-            phase0_stop,
-            phase1_start,
+    # Upgrade scenario callbacks: phased daemons with schedule lookup
+    def build_miner(agent_id, miner):
+        p0_stop, p1_start = upgrade_schedule[agent_id]
+        return generate_miner_agent_phased(
+            miner["hashrate"], miner["start_offset_s"],
+            upgrade_binary_v1, upgrade_binary_v2, p0_stop, p1_start,
         )
 
-    # Resolve auto-detected activity batch size (0 = auto from CPU count)
-    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
-
-    # Calculate staggered activity start times to prevent thundering herd
-    user_activity_times = calculate_activity_start_times(
-        num_users=num_users,
-        base_activity_start_s=activity_start_time_s,
-        batch_size=activity_batch_size,
-        batch_interval_s=activity_batch_interval_s,
-        jitter_fraction=activity_batch_jitter,
-        seed=simulation_seed,
-    )
-
-    # Calculate activity rollout duration for metadata
-    if num_users > 0:
-        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
-        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
-    else:
-        activity_rollout_duration_s = 0
-
-    # Add users with phased daemons
-    if use_batched and batch_schedule:
-        for user_index, start_time_s in batch_schedule:
-            agent_id = f"user-{user_index+1:03}"
-            phase0_stop, phase1_start = upgrade_schedule[agent_id]
-            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent_phased(
-                start_time_s,
-                tx_interval,
-                user_activity_time,
-                upgrade_binary_v1,
-                upgrade_binary_v2,
-                phase0_stop,
-                phase1_start,
-                tx_send_probability,
-            )
-    else:
-        for i in range(num_users):
-            agent_id = f"user-{i+1:03}"
-            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-            phase0_stop, phase1_start = upgrade_schedule[agent_id]
-            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent_phased(
-                start_offset_s,
-                tx_interval,
-                user_activity_time,
-                upgrade_binary_v1,
-                upgrade_binary_v2,
-                phase0_stop,
-                phase1_start,
-                tx_send_probability,
-            )
-
-    # Add relay nodes with phased daemons (daemon-only, no wallet or script)
-    # Simple linear stagger: start + i * stagger
-    for i in range(relay_nodes):
-        agent_id = f"relay-{i+1:03}"
-        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
-        phase0_stop, phase1_start = upgrade_schedule[agent_id]
-        agents[agent_id] = generate_relay_agent_phased(
-            relay_start_s,
-            upgrade_binary_v1,
-            upgrade_binary_v2,
-            phase0_stop,
-            phase1_start,
+    def build_user(agent_id, start_s, tx_int, activity_time, tx_prob):
+        p0_stop, p1_start = upgrade_schedule[agent_id]
+        return generate_user_agent_phased(
+            start_s, tx_int, activity_time,
+            upgrade_binary_v1, upgrade_binary_v2, p0_stop, p1_start, tx_prob,
         )
 
-    # Calculate last relay spawn time for metadata/warnings
-    if relay_nodes > 0:
-        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
-        if last_relay_spawn_s > bootstrap_end_time_s:
-            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
-                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
-                  f"Late relays may experience packet loss during sync.",
-                  file=sys.stderr)
-    else:
-        last_relay_spawn_s = 0
+    def build_relay(agent_id, relay_start_s):
+        p0_stop, p1_start = upgrade_schedule[agent_id]
+        return generate_relay_agent_phased(
+            relay_start_s, upgrade_binary_v1, upgrade_binary_v2, p0_stop, p1_start,
+        )
 
-    # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
-    agents["miner-distributor"] = OrderedDict([
-        ("script", "agents.miner_distributor"),
-        ("wait_time", md_start_time_s),  # When Shadow starts the process
-        ("initial_wait_time", 0),  # No additional Python wait (Shadow handles timing)
-        ("max_transaction_amount", "2.0"),
-        ("min_transaction_amount", "0.5"),
-        ("transaction_frequency", 30),
-        ("md_n_recipients", md_n_recipients),
-        ("md_out_per_tx", md_out_per_tx),
-        ("md_output_amount", md_output_amount),
-        ("md_funding_cycle_interval", md_funding_cycle_interval),
-    ])
+    def min_dur(_activity_start, _requested):
+        return last_upgrade_complete_s + post_upgrade_duration_s
 
-    # Add simulation-monitor
-    agents["simulation-monitor"] = OrderedDict([
-        ("script", "agents.simulation_monitor"),
-        ("poll_interval", poll_interval),
-        ("detailed_logging", False),
-        ("enable_alerts", True),
-        ("status_file", "monerosim_monitor.log"),
-    ])
-
-    # Build general config with daemon_defaults and wallet_defaults
-    general_config = _build_general_config(
-        duration, parallelism, simulation_seed, bootstrap_end_time_s,
-        fast_mode, process_threads, native_preemption,
-    )
-
-    timing_info = {
-        'bootstrap_end_time_s': bootstrap_end_time_s,
-        'md_start_time_s': md_start_time_s,
-        'activity_start_time_s': activity_start_time_s,
-        'last_user_spawn_s': last_user_spawn_s,
-        'user_spawn_start_s': user_spawn_start_s,
-        'duration_s': duration_s,
-        'requested_duration_s': requested_duration_s,
-        'use_batched': use_batched,
-        'batch_sizes': batch_sizes,
-        'batch_interval_s': batch_interval_s,
-        # Activity batching info
-        'activity_batching_enabled': True,
-        'activity_batch_size': activity_batch_size,
-        'activity_batch_interval_s': activity_batch_interval_s,
-        'activity_batch_jitter': activity_batch_jitter,
-        'activity_rollout_duration_s': activity_rollout_duration_s,
-        # Relay timing info
-        'relay_spawn_start_s': relay_spawn_start_s,
-        'relay_stagger_s': relay_stagger_s,
-        'last_relay_spawn_s': last_relay_spawn_s,
-        # Upgrade-specific timing info
+    extra_timing = {
         'upgrade_start_time_s': upgrade_start_time_s,
         'last_upgrade_complete_s': last_upgrade_complete_s,
         'upgrade_binary_v1': upgrade_binary_v1,
@@ -1233,31 +1160,28 @@ def generate_upgrade_config(
         'post_upgrade_duration_s': post_upgrade_duration_s,
     }
 
-    # Generate metadata section
-    metadata = generate_metadata(
-        scenario="upgrade",
-        num_miners=num_miners,
-        num_users=num_users,
-        timing_info=timing_info,
-        simulation_seed=simulation_seed,
-        gml_path=gml_path,
-        fast_mode=fast_mode,
-        stagger_interval_s=stagger_interval_s,
-        relay_nodes=relay_nodes,
+    return _generate_config_core(
+        total_agents=total_agents, duration=duration,
+        stagger_interval_s=stagger_interval_s, simulation_seed=simulation_seed,
+        gml_path=gml_path, fast_mode=fast_mode, process_threads=process_threads,
+        batched_bootstrap=batched_bootstrap, batch_interval=batch_interval,
+        initial_batch_size=initial_batch_size, max_batch_size=max_batch_size,
+        user_spawn_start=user_spawn_start, bootstrap_end_time=bootstrap_end_time,
+        regular_user_start=regular_user_start, md_start_time=md_start_time,
+        md_n_recipients=md_n_recipients, md_out_per_tx=md_out_per_tx,
+        md_output_amount=md_output_amount,
+        md_funding_cycle_interval=md_funding_cycle_interval,
+        tx_interval=tx_interval, tx_send_probability=tx_send_probability,
+        activity_batch_size=activity_batch_size,
+        activity_batch_interval_s=activity_batch_interval_s,
+        activity_batch_jitter=activity_batch_jitter,
+        parallelism=parallelism, native_preemption=native_preemption,
+        relay_nodes=relay_nodes, relay_spawn_start_s=relay_spawn_start_s,
+        relay_stagger_s=relay_stagger_s,
+        build_miner_fn=build_miner, build_user_fn=build_user,
+        build_relay_fn=build_relay, min_duration_s_fn=min_dur,
+        extra_timing_info=extra_timing, scenario_name="upgrade",
     )
-
-    # Build full config with metadata first
-    config = OrderedDict([
-        ("metadata", metadata),
-        ("general", general_config),
-        ("network", OrderedDict([
-            ("path", gml_path),
-            ("peer_mode", "Dynamic"),
-        ])),
-        ("agents", agents),
-    ])
-
-    return config, timing_info
 
 
 def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:

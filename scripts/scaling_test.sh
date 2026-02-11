@@ -91,6 +91,7 @@ else
     # Parse timeout if given in flexible format
     TIMEOUT=$(parse_duration_to_seconds "$TIMEOUT")
 fi
+SHARED_DIR="/tmp/monerosim_shared"
 MONEROSIM_BIN="./target/release/monerosim"
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 TEMP_DIR="/tmp/monerosim_scaling_test"
@@ -249,7 +250,7 @@ run_test() {
     rm -rf "$shadow_dir"
     mkdir -p "$shadow_dir"
     # Clean monerosim shared state from previous runs
-    rm -rf /tmp/monerosim_shared
+    rm -rf "${SHARED_DIR}"
     if ! "$MONEROSIM_BIN" --config "$config_file" --output "$shadow_dir" > "$TEMP_DIR/monerosim_${agent_count}.log" 2>&1; then
         echo "  FAIL: Shadow config generation failed" >&2
         printf "%-7s | %-6s | %-7s | %-8s | %-8s | %s\n" "$agent_count" "$user_count" "FAIL" "-" "-" "Shadow config generation failed"

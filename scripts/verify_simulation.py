@@ -15,6 +15,8 @@ import argparse
 from collections import defaultdict
 from datetime import datetime
 
+from agents.base_agent import DEFAULT_SHARED_DIR
+
 
 def verify_simulation(shared_dir: str) -> dict:
     """Verify simulation and return evidence dict."""
@@ -301,7 +303,7 @@ def print_report(evidence: dict):
 
 def main():
     parser = argparse.ArgumentParser(description="Verify monerosim simulation results")
-    parser.add_argument("--shared-dir", default="/tmp/monerosim_shared",
+    parser.add_argument("--shared-dir", default=DEFAULT_SHARED_DIR,
                         help="Path to shared simulation directory")
     parser.add_argument("--json", action="store_true",
                         help="Output as JSON instead of formatted report")

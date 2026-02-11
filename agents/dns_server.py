@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, DEFAULT_SHARED_DIR
 
 try:
     from dnslib import DNSRecord, DNSHeader, RR, QTYPE, A, TXT, RCODE
@@ -206,7 +206,7 @@ class MoneroDNSServer:
         agent_id: str,
         bind_ip: str = "0.0.0.0",
         port: int = 53,
-        shared_dir: Path = Path("/tmp/monerosim_shared"),
+        shared_dir: Path = Path(DEFAULT_SHARED_DIR),
         log_level: str = "INFO"
     ):
         self.agent_id = agent_id
@@ -292,7 +292,7 @@ def main():
     parser.add_argument('--bind-ip', default='0.0.0.0', help='IP to bind to')
     parser.add_argument('--port', type=int, default=53, help='DNS port')
     parser.add_argument('--shared-dir', type=Path,
-                       default=Path('/tmp/monerosim_shared'),
+                       default=Path(DEFAULT_SHARED_DIR),
                        help='Shared state directory')
     parser.add_argument('--log-level', default='INFO',
                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],

@@ -24,7 +24,7 @@ import statistics
 # Configuration
 # ============================================================================
 
-DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+from agents.base_agent import DEFAULT_SHARED_DIR
 DEFAULT_SHADOW_DATA = "shadow.data"
 DEFAULT_OUTPUT_DIR = "analysis_output"
 

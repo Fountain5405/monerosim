@@ -18,11 +18,13 @@ from typing import Dict, List, Set, Any, Optional
 import argparse
 from collections import defaultdict
 
+from agents.base_agent import DEFAULT_SHARED_DIR
+
 
 class PostSimulationAnalyzer:
     """Analyzes simulation data from shared monitor files."""
     
-    def __init__(self, shared_dir: str = "/tmp/monerosim_shared"):
+    def __init__(self, shared_dir: str = DEFAULT_SHARED_DIR):
         """
         Initialize the analyzer.
         
@@ -640,7 +642,7 @@ class PostSimulationAnalyzer:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Analyze MoneroSim monitor data")
-    parser.add_argument("--shared-dir", default="/tmp/monerosim_shared",
+    parser.add_argument("--shared-dir", default=DEFAULT_SHARED_DIR,
                        help="Path to shared directory containing monitor data")
     parser.add_argument("--output", help="Output file for text report")
     parser.add_argument("--json-output", help="Output file for JSON report")
