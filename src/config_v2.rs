@@ -1,7 +1,20 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 use regex::Regex;
 use crate::utils::duration::parse_duration_to_seconds;
+
+// Static regex patterns for parsing phase fields (compiled once)
+static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)$").unwrap());
+static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_args$").unwrap());
+static DAEMON_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_env$").unwrap());
+static DAEMON_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_start$").unwrap());
+static DAEMON_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_stop$").unwrap());
+static WALLET_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)$").unwrap());
+static WALLET_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_args$").unwrap());
+static WALLET_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_env$").unwrap());
+static WALLET_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_start$").unwrap());
+static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_stop$").unwrap());
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -455,18 +468,18 @@ fn parse_phase_fields(
     let mut daemon_phases: BTreeMap<u32, DaemonPhase> = BTreeMap::new();
     let mut wallet_phases: BTreeMap<u32, WalletPhase> = BTreeMap::new();
 
-    // Regex patterns for flat phase fields
-    let daemon_re = Regex::new(r"^daemon_(\d+)$").unwrap();
-    let daemon_args_re = Regex::new(r"^daemon_(\d+)_args$").unwrap();
-    let daemon_env_re = Regex::new(r"^daemon_(\d+)_env$").unwrap();
-    let daemon_start_re = Regex::new(r"^daemon_(\d+)_start$").unwrap();
-    let daemon_stop_re = Regex::new(r"^daemon_(\d+)_stop$").unwrap();
+    // Use static LazyLock regex patterns (compiled once, reused across calls)
+    let daemon_re = &*DAEMON_RE;
+    let daemon_args_re = &*DAEMON_ARGS_RE;
+    let daemon_env_re = &*DAEMON_ENV_RE;
+    let daemon_start_re = &*DAEMON_START_RE;
+    let daemon_stop_re = &*DAEMON_STOP_RE;
 
-    let wallet_re = Regex::new(r"^wallet_(\d+)$").unwrap();
-    let wallet_args_re = Regex::new(r"^wallet_(\d+)_args$").unwrap();
-    let wallet_env_re = Regex::new(r"^wallet_(\d+)_env$").unwrap();
-    let wallet_start_re = Regex::new(r"^wallet_(\d+)_start$").unwrap();
-    let wallet_stop_re = Regex::new(r"^wallet_(\d+)_stop$").unwrap();
+    let wallet_re = &*WALLET_RE;
+    let wallet_args_re = &*WALLET_ARGS_RE;
+    let wallet_env_re = &*WALLET_ENV_RE;
+    let wallet_start_re = &*WALLET_START_RE;
+    let wallet_stop_re = &*WALLET_STOP_RE;
 
     for (key, value) in extra {
         // Parse daemon phases

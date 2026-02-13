@@ -4,8 +4,17 @@
 //! This allows the simulation to use the same IPs that monerod expects.
 
 use std::path::Path;
+use std::sync::LazyLock;
 use std::fs;
 use regex::Regex;
+
+// Static regex patterns for seed IP extraction (compiled once)
+static ELSE_PATTERN: LazyLock<Regex> = LazyLock::new(||
+    Regex::new(r#"else\s*\{\s*(full_addrs\.insert\("[^"]+"\);\s*)+"#).unwrap()
+);
+static IP_PATTERN: LazyLock<Regex> = LazyLock::new(||
+    Regex::new(r#"full_addrs\.insert\("(\d+\.\d+\.\d+\.\d+):(\d+)"\)"#).unwrap()
+);
 
 /// Mainnet seed node info
 #[derive(Debug, Clone)]
@@ -83,15 +92,9 @@ fn parse_mainnet_seed_ips(content: &str) -> Result<Vec<SeedNode>, String> {
     // Get the content after the function definition
     let func_content = &content[func_start..];
 
-    // Find the else block (mainnet case) - it's the last block before return
-    // We look for the pattern: else\s*{\s*full_addrs.insert
-    let _else_pattern = Regex::new(r#"else\s*\{\s*(full_addrs\.insert\("[^"]+"\);\s*)+"#)
-        .map_err(|e| format!("Regex error: {}", e))?;
-
-    // Find all full_addrs.insert statements in the mainnet (else) block
-    // The mainnet block uses port 18080
-    let ip_pattern = Regex::new(r#"full_addrs\.insert\("(\d+\.\d+\.\d+\.\d+):(\d+)"\)"#)
-        .map_err(|e| format!("Regex error: {}", e))?;
+    // Use static LazyLock regex patterns (compiled once, reused across calls)
+    let _else_pattern = &*ELSE_PATTERN;
+    let ip_pattern = &*IP_PATTERN;
 
     let mut seed_nodes = Vec::new();
     let mut in_mainnet_block = false;
