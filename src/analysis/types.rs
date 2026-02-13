@@ -126,7 +126,7 @@ pub struct ConnectionDrop {
 }
 
 /// All log data parsed from a single node
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NodeLogData {
     pub node_id: String,
     pub tx_observations: Vec<TxObservation>,
@@ -545,9 +545,9 @@ pub struct WindowedMetrics {
     pub observation_count: usize,
 
     // Spy node metrics
-    /// Spy node inference accuracy (0.0 - 1.0)
-    pub spy_accuracy: Option<f64>,
-    /// Number of analyzable TXs for spy analysis
+    /// Synthetic spy accuracy at each visibility level (parallel to visibility_levels in metadata)
+    pub spy_accuracy_by_visibility: Option<Vec<f64>>,
+    /// Number of TXs analyzable for spy analysis
     pub spy_analyzable_txs: usize,
 
     // Propagation metrics
@@ -567,6 +567,8 @@ pub struct WindowedMetrics {
     // Dandelion metrics
     /// Average stem length
     pub avg_stem_length: Option<f64>,
+    /// Average stem length at each fluff gap threshold (parallel to fluff_gap_thresholds_ms in metadata)
+    pub stem_length_by_gap_threshold: Option<Vec<f64>>,
     /// Number of paths reconstructed
     pub paths_reconstructed: usize,
 
@@ -587,7 +589,7 @@ impl Default for WindowedMetrics {
             window: TimeWindow::new(0.0, 0.0),
             tx_count: 0,
             observation_count: 0,
-            spy_accuracy: None,
+            spy_accuracy_by_visibility: None,
             spy_analyzable_txs: 0,
             avg_propagation_ms: None,
             median_propagation_ms: None,
@@ -595,6 +597,7 @@ impl Default for WindowedMetrics {
             avg_peer_count: None,
             gini_coefficient: None,
             avg_stem_length: None,
+            stem_length_by_gap_threshold: None,
             paths_reconstructed: 0,
             bytes_sent: None,
             bytes_received: None,
@@ -619,18 +622,24 @@ pub struct AggregatedMetrics {
     pub total_txs: usize,
 
     // Aggregated metrics (mean of window values)
-    pub mean_spy_accuracy: Option<f64>,
+    /// Mean spy accuracy at each visibility level
+    pub mean_spy_accuracy_by_visibility: Option<Vec<f64>>,
     pub mean_propagation_ms: Option<f64>,
     pub mean_peer_count: Option<f64>,
     pub mean_gini: Option<f64>,
     pub mean_stem_length: Option<f64>,
+    /// Mean stem length at each fluff gap threshold
+    pub mean_stem_length_by_gap_threshold: Option<Vec<f64>>,
 
     // Standard deviations (for significance testing)
-    pub std_spy_accuracy: Option<f64>,
+    /// Std dev of spy accuracy at each visibility level
+    pub std_spy_accuracy_by_visibility: Option<Vec<f64>>,
     pub std_propagation_ms: Option<f64>,
     pub std_peer_count: Option<f64>,
     pub std_gini: Option<f64>,
     pub std_stem_length: Option<f64>,
+    /// Std dev of stem length at each fluff gap threshold
+    pub std_stem_length_by_gap_threshold: Option<Vec<f64>>,
 
     // Bandwidth aggregates
     /// Total bytes sent in period
@@ -737,6 +746,12 @@ pub struct UpgradeAnalysisMetadata {
     pub total_windows: usize,
     pub total_nodes: usize,
     pub total_transactions: usize,
+    /// Visibility levels used for synthetic spy analysis
+    pub spy_visibility_levels: Vec<f64>,
+    /// Number of random trials per visibility level
+    pub spy_trials_per_level: usize,
+    /// Gap thresholds (ms) used for multi-threshold stem length analysis
+    pub fluff_gap_thresholds_ms: Vec<f64>,
 }
 
 /// Overall assessment of upgrade impact

@@ -3,15 +3,16 @@
 //! Analyzes transaction propagation patterns, spy node vulnerabilities,
 //! and network resilience from simulation logs.
 
+use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context, Result};
 
 use monerosim::analysis::{
     self,
-    types::{AgentInfo, AnalysisMetadata, BlockInfo, FullAnalysisReport, Transaction},
+    types::{AgentInfo, AnalysisMetadata, BlockInfo, FullAnalysisReport, NodeLogData, Transaction},
 };
 
 #[derive(Parser)]
@@ -41,6 +42,10 @@ struct Cli {
     /// Number of parallel workers (0 = auto-detect)
     #[arg(short = 'j', long, default_value = "0")]
     threads: usize,
+
+    /// Disable parsed log cache (force re-parse from raw logs)
+    #[arg(long)]
+    no_cache: bool,
 }
 
 #[derive(Subcommand)]
@@ -185,10 +190,30 @@ fn main() -> Result<()> {
         blocks.len()
     );
 
-    // Parse logs in parallel
+    // Parse logs (with caching)
     let hosts_dir = cli.data_dir.join("hosts");
-    log::info!("Parsing logs from {}...", hosts_dir.display());
-    let log_data = analysis::parse_all_logs(&hosts_dir, &agents)?;
+    let cache_path = cli.data_dir.join("parsed_logs.bincode");
+    let start = std::time::Instant::now();
+
+    let log_data = if !cli.no_cache {
+        if let Some(cached) = try_load_cache(&cache_path, &hosts_dir) {
+            log::info!("Loaded parsed logs from cache in {:.1}s", start.elapsed().as_secs_f64());
+            cached
+        } else {
+            log::info!("Parsing logs from {}...", hosts_dir.display());
+            let data = analysis::parse_all_logs(&hosts_dir, &agents)?;
+            log::info!("Parsed logs in {:.1}s", start.elapsed().as_secs_f64());
+            if let Err(e) = save_cache(&cache_path, &data) {
+                log::warn!("Failed to write cache: {}", e);
+            }
+            data
+        }
+    } else {
+        log::info!("Parsing logs from {} (cache disabled)...", hosts_dir.display());
+        let data = analysis::parse_all_logs(&hosts_dir, &agents)?;
+        log::info!("Parsed logs in {:.1}s (cache disabled)", start.elapsed().as_secs_f64());
+        data
+    };
 
     // Create output directory
     fs::create_dir_all(&cli.output)
@@ -426,8 +451,14 @@ fn main() -> Result<()> {
                 &cli.data_dir.to_string_lossy(),
             )?;
 
-            // Print report
-            print_upgrade_report(&upgrade_report);
+            // Generate text report
+            let text_report = format_upgrade_report(&upgrade_report);
+            print!("{}", text_report);
+
+            // Save text report
+            let txt_path = cli.output.join("upgrade_analysis_report.txt");
+            fs::write(&txt_path, &text_report)?;
+            log::info!("Upgrade analysis text report written to {}", txt_path.display());
 
             // Save JSON report
             let json = serde_json::to_string_pretty(&upgrade_report)?;
@@ -715,103 +746,180 @@ fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
 }
 
 /// Print upgrade analysis report to stdout
-fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
-    println!("\n================================================================================");
-    println!("                      UPGRADE IMPACT ANALYSIS");
-    println!("================================================================================\n");
+fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    writeln!(out, "\n================================================================================").unwrap();
+    writeln!(out, "                      UPGRADE IMPACT ANALYSIS").unwrap();
+    writeln!(out, "================================================================================\n").unwrap();
 
     // Metadata
-    println!("Simulation Duration: {:.1}s - {:.1}s ({:.1}s total)",
+    writeln!(out, "Simulation Duration: {:.1}s - {:.1}s ({:.1}s total)",
         report.metadata.simulation_start,
         report.metadata.simulation_end,
-        report.metadata.simulation_end - report.metadata.simulation_start);
-    println!("Window Size: {}s ({} windows)",
+        report.metadata.simulation_end - report.metadata.simulation_start).unwrap();
+    writeln!(out, "Window Size: {}s ({} windows)",
         report.metadata.window_size_sec as u64,
-        report.metadata.total_windows);
-    println!();
+        report.metadata.total_windows).unwrap();
+    writeln!(out).unwrap();
 
     // Upgrade info
     if let Some(ref upgrade_info) = report.upgrade_info {
         if let (Some(start), Some(end)) = (upgrade_info.upgrade_start, upgrade_info.upgrade_end) {
-            println!("Upgrade Period: {:.1}s - {:.1}s", start, end);
-            println!("Nodes Upgraded: {}", upgrade_info.node_upgrades.len());
+            writeln!(out, "Upgrade Period: {:.1}s - {:.1}s", start, end).unwrap();
+            writeln!(out, "Nodes Upgraded: {}", upgrade_info.node_upgrades.len()).unwrap();
+            let mut version_line = String::new();
             if let Some(ref pre) = upgrade_info.pre_upgrade_version {
-                print!("  {} ", pre);
+                write!(version_line, "  {} ", pre).unwrap();
             }
-            print!("->");
+            write!(version_line, "->").unwrap();
             if let Some(ref post) = upgrade_info.post_upgrade_version {
-                print!(" {}", post);
+                write!(version_line, " {}", post).unwrap();
             }
-            println!();
+            writeln!(out, "{}", version_line).unwrap();
         }
     }
 
     // Period summaries
     if let (Some(ref pre), Some(ref post)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
-        println!();
-        println!("Pre-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
-            pre.start, pre.end, pre.window_count);
-        println!("Post-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
-            post.start, post.end, post.window_count);
+        writeln!(out).unwrap();
+        writeln!(out, "Pre-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
+            pre.start, pre.end, pre.window_count).unwrap();
+        writeln!(out, "Post-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
+            post.start, post.end, post.window_count).unwrap();
     }
-    println!();
+    writeln!(out).unwrap();
 
     // Metric comparison table
     if !report.changes.is_empty() {
-        println!("================================================================================");
-        println!("                         METRIC COMPARISON");
-        println!("================================================================================\n");
+        writeln!(out, "================================================================================").unwrap();
+        writeln!(out, "                         METRIC COMPARISON").unwrap();
+        writeln!(out, "================================================================================\n").unwrap();
 
-        println!("{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
-            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant");
-        println!("{:-<25}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
-            "", "", "", "", "");
+        writeln!(out, "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
+            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").unwrap();
+        writeln!(out, "{:-<25}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
+            "", "", "", "", "").unwrap();
 
         for change in &report.changes {
             let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
 
             let (pre_str, post_str, change_str) = if change.metric_name.contains("accuracy")
                 || change.metric_name.contains("coverage")
-                || change.metric_name.contains("ratio") {
-                // Display as percentage
+                || change.metric_name.contains("ratio")
+                || change.metric_name.starts_with("Spy Acc (") {
                 (format!("{:.1}%", change.pre_value * 100.0),
                  format!("{:.1}%", change.post_value * 100.0),
                  format!("{:+.1}%", change.percent_change))
             } else if change.metric_name.contains("propagation") || change.metric_name.contains("ms") {
-                // Display as time
                 (format!("{:.0}ms", change.pre_value),
                  format!("{:.0}ms", change.post_value),
                  format!("{:+.1}%", change.percent_change))
             } else if change.metric_name.contains("gini") || change.metric_name.contains("coefficient") {
-                // Display as decimal
                 (format!("{:.3}", change.pre_value),
                  format!("{:.3}", change.post_value),
                  format!("{:+.1}%", change.percent_change))
             } else if change.metric_name.contains("Bandwidth") || change.metric_name.contains("bandwidth") {
-                // Display as bytes
                 (analysis::bandwidth::format_bytes(change.pre_value as u64),
                  analysis::bandwidth::format_bytes(change.post_value as u64),
                  format!("{:+.1}%", change.percent_change))
             } else {
-                // Generic numeric
                 (format!("{:.1}", change.pre_value),
                  format!("{:.1}", change.post_value),
                  format!("{:+.1}%", change.percent_change))
             };
 
-            println!("{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
-                change.metric_name, pre_str, post_str, change_str, sig_marker);
+            writeln!(out, "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
+                change.metric_name, pre_str, post_str, change_str, sig_marker).unwrap();
         }
-        println!();
-        println!("* Statistically significant at p < 0.05");
-        println!();
+        writeln!(out).unwrap();
+        writeln!(out, "* Statistically significant at p < 0.05").unwrap();
+        writeln!(out).unwrap();
+    }
+
+    // Synthetic Spy Node Analysis section
+    if let (Some(_), Some(_)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
+        let spy_changes: Vec<_> = report.changes.iter()
+            .filter(|c| c.metric_name.starts_with("Spy Acc ("))
+            .collect();
+        if !spy_changes.is_empty() {
+            writeln!(out, "================================================================================").unwrap();
+            writeln!(out, "                    SYNTHETIC SPY NODE ANALYSIS").unwrap();
+            writeln!(out, "================================================================================\n").unwrap();
+
+            writeln!(out, "Methodology: For each visibility level, {} random trials select that fraction",
+                report.metadata.spy_trials_per_level).unwrap();
+            writeln!(out, "of nodes as \"monitored\". The spy infers the originator of each TX from the").unwrap();
+            writeln!(out, "earliest observation at a monitored node (source_ip = inferred sender).\n").unwrap();
+
+            writeln!(out, "{:<12} | {:>17} | {:>18} | {:>9} | {:>11}",
+                "Visibility", "Pre-Upgrade Acc", "Post-Upgrade Acc", "Change", "Significant").unwrap();
+            writeln!(out, "{:-<12}-+-{:-^17}-+-{:-^18}-+-{:-^9}-+-{:-^11}",
+                "", "", "", "", "").unwrap();
+
+            for change in &spy_changes {
+                let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
+                // Extract the visibility label from the metric name e.g. "Spy Acc (5% vis)" -> "5%"
+                let vis_label = change.metric_name
+                    .trim_start_matches("Spy Acc (")
+                    .trim_end_matches(" vis)")
+                    .to_string();
+
+                writeln!(out, "{:>12} | {:>16.1}% | {:>17.1}% | {:>8.1}% | {:>11}",
+                    vis_label,
+                    change.pre_value * 100.0,
+                    change.post_value * 100.0,
+                    change.percent_change,
+                    sig_marker).unwrap();
+            }
+            writeln!(out).unwrap();
+        }
+    }
+
+    // Stem Length by Fluff Gap Threshold section
+    if let (Some(_), Some(_)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
+        let stem_changes: Vec<_> = report.changes.iter()
+            .filter(|c| c.metric_name.starts_with("Stem Len ("))
+            .collect();
+        if !stem_changes.is_empty() {
+            writeln!(out, "================================================================================").unwrap();
+            writeln!(out, "                  STEM LENGTH BY FLUFF GAP THRESHOLD").unwrap();
+            writeln!(out, "================================================================================\n").unwrap();
+
+            writeln!(out, "Methodology: A fluff broadcast sends to 3+ peers in a tight time cluster.").unwrap();
+            writeln!(out, "The gap threshold controls how tight: smaller thresholds only detect very").unwrap();
+            writeln!(out, "fast broadcasts, larger thresholds tolerate more scheduling jitter.\n").unwrap();
+
+            writeln!(out, "{:<16} | {:>13} | {:>14} | {:>9} | {:>11}",
+                "Gap Threshold", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").unwrap();
+            writeln!(out, "{:-<16}-+-{:-^13}-+-{:-^14}-+-{:-^9}-+-{:-^11}",
+                "", "", "", "", "").unwrap();
+
+            for change in &stem_changes {
+                let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
+                // Extract the threshold label from the metric name e.g. "Stem Len (500ms gap)" -> "500ms"
+                let threshold_label = change.metric_name
+                    .trim_start_matches("Stem Len (")
+                    .trim_end_matches(" gap)")
+                    .to_string();
+
+                writeln!(out, "{:>16} | {:>13.1} | {:>14.1} | {:>8.1}% | {:>11}",
+                    threshold_label,
+                    change.pre_value,
+                    change.post_value,
+                    change.percent_change,
+                    sig_marker).unwrap();
+            }
+            writeln!(out).unwrap();
+        }
     }
 
     // Interpretation
     if !report.changes.is_empty() {
-        println!("================================================================================");
-        println!("                          INTERPRETATION");
-        println!("================================================================================\n");
+        writeln!(out, "================================================================================").unwrap();
+        writeln!(out, "                          INTERPRETATION").unwrap();
+        writeln!(out, "================================================================================\n").unwrap();
 
         let positive: Vec<_> = report.changes.iter()
             .filter(|c| c.statistically_significant && !c.interpretation.is_empty())
@@ -835,38 +943,38 @@ fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
             .collect();
 
         if !positive.is_empty() {
-            println!("POSITIVE CHANGES:");
+            writeln!(out, "POSITIVE CHANGES:").unwrap();
             for change in &positive {
-                println!("  - {}: {}", change.metric_name, change.interpretation);
+                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).unwrap();
             }
-            println!();
+            writeln!(out).unwrap();
         }
 
         if !negative.is_empty() {
-            println!("CONCERNS:");
+            writeln!(out, "CONCERNS:").unwrap();
             for change in &negative {
-                println!("  - {}: {}", change.metric_name, change.interpretation);
+                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).unwrap();
             }
-            println!();
+            writeln!(out).unwrap();
         }
 
         if !neutral.is_empty() && neutral.len() < 10 {
-            println!("NEUTRAL/NO CHANGE:");
+            writeln!(out, "NEUTRAL/NO CHANGE:").unwrap();
             for change in &neutral {
                 if !change.interpretation.is_empty() {
-                    println!("  - {}: {}", change.metric_name, change.interpretation);
+                    writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).unwrap();
                 } else {
-                    println!("  - {}: No significant change detected", change.metric_name);
+                    writeln!(out, "  - {}: No significant change detected", change.metric_name).unwrap();
                 }
             }
-            println!();
+            writeln!(out).unwrap();
         }
     }
 
     // Assessment
-    println!("================================================================================");
-    println!("                            ASSESSMENT");
-    println!("================================================================================\n");
+    writeln!(out, "================================================================================").unwrap();
+    writeln!(out, "                            ASSESSMENT").unwrap();
+    writeln!(out, "================================================================================\n").unwrap();
 
     let verdict_str = match report.assessment.verdict {
         analysis::types::UpgradeVerdict::Positive => "POSITIVE - Upgrade improved network behavior",
@@ -875,43 +983,43 @@ fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
         analysis::types::UpgradeVerdict::Neutral => "NEUTRAL - No significant changes detected",
         analysis::types::UpgradeVerdict::Inconclusive => "INCONCLUSIVE - Insufficient data for assessment",
     };
-    println!("Verdict: {}", verdict_str);
-    println!();
+    writeln!(out, "Verdict: {}", verdict_str).unwrap();
+    writeln!(out).unwrap();
 
     if !report.assessment.findings.is_empty() {
-        println!("Findings:");
+        writeln!(out, "Findings:").unwrap();
         for line in &report.assessment.findings {
-            println!("  - {}", line);
+            writeln!(out, "  - {}", line).unwrap();
         }
-        println!();
+        writeln!(out).unwrap();
     }
 
     if !report.assessment.concerns.is_empty() {
-        println!("Concerns:");
+        writeln!(out, "Concerns:").unwrap();
         for concern in &report.assessment.concerns {
-            println!("  - {}", concern);
+            writeln!(out, "  - {}", concern).unwrap();
         }
-        println!();
+        writeln!(out).unwrap();
     }
 
     if !report.assessment.recommendations.is_empty() {
-        println!("Recommendations:");
+        writeln!(out, "Recommendations:").unwrap();
         for rec in &report.assessment.recommendations {
-            println!("  - {}", rec);
+            writeln!(out, "  - {}", rec).unwrap();
         }
-        println!();
+        writeln!(out).unwrap();
     }
 
     // Time series summary
     if !report.time_series.is_empty() {
-        println!("================================================================================");
-        println!("                       TIME SERIES SUMMARY");
-        println!("================================================================================\n");
+        writeln!(out, "================================================================================").unwrap();
+        writeln!(out, "                       TIME SERIES SUMMARY").unwrap();
+        writeln!(out, "================================================================================\n").unwrap();
 
-        println!("{:<20} | {:>8} | {:>12} | {:>12} | {:>10}",
-            "Window", "TXs", "Spy Acc", "Avg Prop", "Peer Cnt");
-        println!("{:-<20}-+-{:-^8}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
-            "", "", "", "", "");
+        writeln!(out, "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
+            "Window", "TXs", "Spy 20%", "Avg Prop", "Stem Len", "Peer Cnt").unwrap();
+        writeln!(out, "{:-<20}-+-{:-^8}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
+            "", "", "", "", "", "").unwrap();
 
         for window in &report.time_series {
             let label = window.window.label.as_deref().unwrap_or("");
@@ -920,28 +1028,37 @@ fn print_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) {
                 window.window.end,
                 if !label.is_empty() { format!("({})", label) } else { String::new() });
 
-            let spy_str = window.spy_accuracy
+            // Show 20% visibility level (index 2) as representative
+            let spy_str = window.spy_accuracy_by_visibility
+                .as_ref()
+                .and_then(|v| v.get(2))
                 .map(|v| format!("{:.1}%", v * 100.0))
                 .unwrap_or_else(|| "-".to_string());
             let prop_str = window.avg_propagation_ms
                 .map(|v| format!("{:.0}ms", v))
                 .unwrap_or_else(|| "-".to_string());
+            let stem_str = window.avg_stem_length
+                .map(|v| format!("{:.1}", v))
+                .unwrap_or_else(|| "-".to_string());
             let peer_str = window.avg_peer_count
                 .map(|v| format!("{:.1}", v))
                 .unwrap_or_else(|| "-".to_string());
 
-            println!("{:<20} | {:>8} | {:>12} | {:>12} | {:>10}",
+            writeln!(out, "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
                 &label_display[..label_display.len().min(20)],
                 window.tx_count,
                 spy_str,
                 prop_str,
-                peer_str);
+                stem_str,
+                peer_str).unwrap();
         }
-        println!();
+        writeln!(out).unwrap();
     }
 
-    println!("(See upgrade_analysis.json for full time-series data)");
-    println!();
+    writeln!(out, "(See upgrade_analysis.json for full time-series data)").unwrap();
+    writeln!(out).unwrap();
+
+    out
 }
 
 /// Print bandwidth analysis report to stdout
@@ -1269,6 +1386,74 @@ fn load_transactions(shared_dir: &PathBuf) -> Result<Vec<Transaction>> {
     }
 
     Ok(transactions)
+}
+
+/// Try to load parsed log data from a bincode cache file.
+/// Returns None if the cache doesn't exist, is stale, or fails to deserialize.
+fn try_load_cache(cache_path: &Path, hosts_dir: &Path) -> Option<HashMap<String, NodeLogData>> {
+    let cache_meta = fs::metadata(cache_path).ok()?;
+    let cache_mtime = cache_meta.modified().ok()?;
+
+    // Walk hosts_dir to find the newest log file; if any is newer than cache, invalidate
+    if let Ok(entries) = fs::read_dir(hosts_dir) {
+        for entry in entries.flatten() {
+            let host_dir = entry.path();
+            if !host_dir.is_dir() {
+                continue;
+            }
+            if let Ok(files) = fs::read_dir(&host_dir) {
+                for file in files.flatten() {
+                    if let Ok(meta) = file.metadata() {
+                        if let Ok(mtime) = meta.modified() {
+                            if mtime > cache_mtime {
+                                log::info!("Cache stale: {} is newer than cache", file.path().display());
+                                return None;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let file = fs::File::open(cache_path).ok()?;
+    let decoder = match zstd::Decoder::new(file) {
+        Ok(d) => d,
+        Err(e) => {
+            log::warn!("Cache decompression failed: {}", e);
+            return None;
+        }
+    };
+    let reader = std::io::BufReader::new(decoder);
+    match bincode::deserialize_from(reader) {
+        Ok(data) => Some(data),
+        Err(e) => {
+            log::warn!("Cache deserialization failed (schema change?): {}", e);
+            None
+        }
+    }
+}
+
+/// Save parsed log data to a zstd-compressed bincode cache file (atomic write via tmp+rename).
+/// Uses streaming compression to avoid materializing the full uncompressed buffer in memory.
+fn save_cache(cache_path: &Path, data: &HashMap<String, NodeLogData>) -> Result<()> {
+    let tmp_path = cache_path.with_extension("bincode.tmp");
+    let file = fs::File::create(&tmp_path)
+        .with_context(|| format!("Failed to create cache tmp file: {}", tmp_path.display()))?;
+    // zstd level 3 is a good balance of speed and compression
+    let mut encoder = zstd::Encoder::new(file, 3)
+        .context("Failed to create zstd encoder")?;
+    bincode::serialize_into(&mut encoder, data)
+        .context("Failed to serialize log data to bincode+zstd")?;
+    encoder.finish()
+        .context("Failed to finish zstd compression")?;
+    let compressed_size = fs::metadata(&tmp_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    fs::rename(&tmp_path, cache_path)
+        .with_context(|| format!("Failed to rename cache file to {}", cache_path.display()))?;
+    log::info!("Wrote cache: {} ({:.1} MB)", cache_path.display(), compressed_size as f64 / 1_048_576.0);
+    Ok(())
 }
 
 fn load_blocks(shared_dir: &PathBuf) -> Result<Vec<BlockInfo>> {

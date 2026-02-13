@@ -36,6 +36,10 @@ regex = "1.10"
 # Parallel processing for log analysis
 rayon = "1.10"
 
+# Binary serialization for parsed log cache
+bincode = "1.3"
+zstd = "0.13"
+
 # Date/time handling for log timestamps
 chrono = { version = "0.4", features = ["serde"] }
 
