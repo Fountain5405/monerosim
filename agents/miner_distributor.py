@@ -9,7 +9,6 @@ its wallet to send transactions to other agents.
 Phase 1 Implementation: Core functionality for can_receive_distributions attribute
 """
 
-import hashlib
 import json
 import logging
 import os
@@ -19,7 +18,13 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from .base_agent import BaseAgent
+from .constants import (
+    ATOMIC_UNITS_PER_XMR,
+    DEFAULT_SIMULATION_SEED,
+    MAX_REASONABLE_TX_XMR,
+)
 from .monero_rpc import WalletRPC
+from .shared_utils import is_valid_monero_address, make_deterministic_seed, xmr_to_atomic
 
 
 class MinerDistributorAgent(BaseAgent):
@@ -37,8 +42,8 @@ class MinerDistributorAgent(BaseAgent):
         super().__init__(agent_id=agent_id, **kwargs)
 
         # Deterministic seeding for reproducibility
-        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % (2**31)
+        self.global_seed = int(os.getenv('SIMULATION_SEED', str(DEFAULT_SIMULATION_SEED)))
+        self.agent_seed = make_deterministic_seed(agent_id)
         random.seed(self.agent_seed)
 
         # Initialize transaction-specific parameters
@@ -273,7 +278,7 @@ class MinerDistributorAgent(BaseAgent):
             rpc = WalletRPC(host=agent['ip_addr'], port=agent['wallet_rpc_port'])
             rpc.wait_until_ready(max_wait=30, check_interval=2)
             address = rpc.get_address()
-            if address and address.startswith(('4', '8')):
+            if is_valid_monero_address(address):
                 return address
         except Exception as e:
             self.logger.debug(f"Failed to query wallet address for {agent.get('id')}: {e}")
@@ -579,11 +584,12 @@ class MinerDistributorAgent(BaseAgent):
                     self.logger.warning(f"Could not get balance for miner {miner.get('agent_id')}")
                     continue
 
-                # Convert from atomic units to XMR (1 XMR = 10^12 piconero)
+                # Convert from atomic units to XMR
+                from .shared_utils import atomic_to_xmr
                 balance_atomic = balance_info.get('balance', 0)
                 unlocked_atomic = balance_info.get('unlocked_balance', 0)
-                balance_xmr = balance_atomic / 1e12
-                unlocked_xmr = unlocked_atomic / 1e12
+                balance_xmr = atomic_to_xmr(balance_atomic)
+                unlocked_xmr = atomic_to_xmr(unlocked_atomic)
 
                 self.logger.info(f"Miner {miner.get('agent_id')} - Balance: {balance_xmr:.6f} XMR, Unlocked: {unlocked_xmr:.6f} XMR")
 
@@ -887,51 +893,40 @@ class MinerDistributorAgent(BaseAgent):
             True if parameters are valid, False otherwise
         """
         # Validate address format
-        if not address or not isinstance(address, str):
-            self.logger.error(f"Invalid address: {address}")
-            return False
-        
-        # Basic Monero address validation (4-95 characters, starts with 4 or 8)
-        if not (address.startswith(('4', '8')) and 4 <= len(address) <= 95):
+        if not is_valid_monero_address(address):
             self.logger.error(f"Invalid Monero address format: {address}")
             return False
-        
+
         # Validate amount
         if not isinstance(amount, (int, float)) or amount <= 0:
             self.logger.error(f"Invalid amount: {amount} (must be positive)")
             return False
-        
+
         # Check minimum transaction amount
         if amount < self.min_transaction_amount:
             self.logger.error(f"Amount {amount} is below minimum {self.min_transaction_amount}")
             return False
-        
+
         # Check maximum transaction amount (skip for batch funding with explicit md_output_amount)
         if not skip_max_check and amount > self.max_transaction_amount:
             self.logger.error(f"Amount {amount} exceeds maximum {self.max_transaction_amount}")
             return False
-        
-        # Check for reasonable maximum (1000 XMR as sanity check)
-        if amount > 1000:
-            self.logger.error(f"Amount {amount} exceeds reasonable maximum (1000 XMR)")
+
+        # Sanity check ceiling
+        if amount > MAX_REASONABLE_TX_XMR:
+            self.logger.error(f"Amount {amount} exceeds reasonable maximum ({MAX_REASONABLE_TX_XMR} XMR)")
             return False
-        
-        # Additional validation: check if amount would result in valid atomic units
-        # Monero uses 12 decimal places, so we need to ensure the amount can be properly converted
+
+        # Verify amount converts to valid atomic units
         try:
-            amount_atomic = int(amount * 10**12)
+            amount_atomic = xmr_to_atomic(amount)
             if amount_atomic <= 0:
                 self.logger.error(f"Amount {amount} XMR converts to invalid atomic units: {amount_atomic}")
-                return False
-            
-            # Check for dust amount (minimum atomic unit is 1)
-            if amount_atomic < 1:  # This should never happen with positive amounts, but good to check
-                self.logger.error(f"Amount {amount} XMR is below minimum atomic unit (1 piconero)")
                 return False
         except (ValueError, OverflowError) as e:
             self.logger.error(f"Failed to convert amount {amount} to atomic units: {e}")
             return False
-        
+
         self.logger.debug(f"Transaction parameters validated: address={address}, amount={amount} XMR ({amount_atomic} atomic)")
         return True
     
@@ -980,13 +975,8 @@ class MinerDistributorAgent(BaseAgent):
                 # Get address with error handling
                 address = rpc.get_address()
 
-                if not address:
-                    self.logger.warning(f"Empty address returned for recipient {recipient_id}")
-                    return None
-
-                # Validate address format
-                if not (address.startswith(('4', '8')) and 4 <= len(address) <= 95):
-                    self.logger.error(f"Invalid address format for recipient {recipient_id}: {address}")
+                if not is_valid_monero_address(address):
+                    self.logger.error(f"Invalid address for recipient {recipient_id}: {address}")
                     return None
 
                 self.logger.debug(f"Retrieved address via RPC for recipient {recipient_id}: {address}")
@@ -1067,7 +1057,7 @@ class MinerDistributorAgent(BaseAgent):
 
         # Convert XMR to atomic units
         try:
-            amount_atomic = int(per_output_amount * 10**12)
+            amount_atomic = xmr_to_atomic(per_output_amount)
             if amount_atomic <= 0:
                 self.logger.error(f"Invalid atomic unit conversion: {per_output_amount} XMR -> {amount_atomic} atomic units")
                 return False, [], [r.get('id') for r in recipients]

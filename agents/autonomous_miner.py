@@ -13,7 +13,6 @@ Key Features:
 - Self-contained mining loop with automatic timing recalculation
 """
 
-import hashlib
 import sys
 import time
 import math
@@ -24,7 +23,9 @@ import logging
 from typing import Optional, Dict, Any
 
 from .base_agent import BaseAgent
+from .constants import TARGET_BLOCK_TIME_SECS, DEFAULT_SIMULATION_SEED
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError, MethodNotAvailableError
+from .shared_utils import make_deterministic_seed
 
 
 class AutonomousMinerAgent(BaseAgent):
@@ -54,8 +55,8 @@ class AutonomousMinerAgent(BaseAgent):
         self.last_block_height = 0
         
         # Deterministic seeding for reproducibility
-        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % (2**31)
+        self.global_seed = int(os.getenv('SIMULATION_SEED', str(DEFAULT_SIMULATION_SEED)))
+        self.agent_seed = make_deterministic_seed(agent_id)
         random.seed(self.agent_seed)
 
         # Difficulty caching to reduce RPC calls
@@ -302,8 +303,7 @@ class AutonomousMinerAgent(BaseAgent):
         Returns:
             Time in seconds until next block discovery attempt
         """
-        # Monero target block time is 120 seconds
-        TARGET_BLOCK_TIME = 120.0
+        TARGET_BLOCK_TIME = TARGET_BLOCK_TIME_SECS
 
         # Use hashrate_pct as a fraction of 100 (baseline assumption)
         # This means if weights sum to 100, blocks arrive at 120s average

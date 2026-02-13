@@ -6,7 +6,6 @@ This agent simulates regular users in the Monero network who perform transaction
 Currently a placeholder implementation that will be extended in future tasks.
 """
 
-import hashlib
 import logging
 import os
 import time
@@ -15,6 +14,8 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 
 from .base_agent import BaseAgent, SHADOW_EPOCH, retry_with_backoff
+from .constants import ATOMIC_UNITS_PER_XMR, DEFAULT_SIMULATION_SEED
+from .shared_utils import make_deterministic_seed
 
 
 class RegularUserAgent(BaseAgent):
@@ -34,8 +35,8 @@ class RegularUserAgent(BaseAgent):
         super().__init__(agent_id=agent_id, tx_frequency=tx_frequency, hash_rate=hash_rate, **kwargs)
 
         # Deterministic seeding for reproducibility
-        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % (2**31)
+        self.global_seed = int(os.getenv('SIMULATION_SEED', str(DEFAULT_SIMULATION_SEED)))
+        self.agent_seed = make_deterministic_seed(agent_id)
         random.seed(self.agent_seed)
 
         # Wallet refresh and error recovery state
@@ -137,8 +138,8 @@ class RegularUserAgent(BaseAgent):
                 max_retries=3, logger=self.logger,
             )
             self.logger.info(f"Successfully registered miner info for {self.agent_id}")
-        except Exception:
-            pass  # retry_with_backoff already logged the error
+        except Exception as e:
+            self.logger.warning(f"Failed to register miner info after retries: {e}")
     
     def _register_user_info(self):
         """Register user information for the agent discovery system with atomic file operations"""
@@ -162,8 +163,8 @@ class RegularUserAgent(BaseAgent):
                 max_retries=3, logger=self.logger,
             )
             self.logger.info(f"Successfully registered user info for {self.agent_id}")
-        except Exception:
-            pass  # retry_with_backoff already logged the error
+        except Exception as e:
+            self.logger.warning(f"Failed to register user info after retries: {e}")
     
     def _setup_transaction_parameters(self):
         """Setup transaction parameters for regular users"""
@@ -360,10 +361,11 @@ class RegularUserAgent(BaseAgent):
         
         try:
             # Send transaction
+            from .shared_utils import xmr_to_atomic
             response = self.wallet_rpc.transfer(
                 destinations=[{
                     'address': recipient_address,
-                    'amount': int(amount * 1e12)  # Convert to atomic units
+                    'amount': xmr_to_atomic(amount),
                 }],
                 priority=1
             )
