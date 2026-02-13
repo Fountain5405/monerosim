@@ -461,154 +461,67 @@ impl<'de> Deserialize<'de> for AgentConfig {
     }
 }
 
+/// Parse phase fields for a single phase type (daemon or wallet) from flat YAML keys.
+///
+/// Matches keys like `{prefix}_{N}`, `{prefix}_{N}_args`, etc. against the
+/// provided regex patterns and populates the phases map.
+fn parse_typed_phases<P: Phase>(
+    extra: &BTreeMap<String, serde_yaml::Value>,
+    re_path: &Regex,
+    re_args: &Regex,
+    re_env: &Regex,
+    re_start: &Regex,
+    re_stop: &Regex,
+) -> BTreeMap<u32, P> {
+    let mut phases: BTreeMap<u32, P> = BTreeMap::new();
+
+    for (key, value) in extra {
+        if let Some(caps) = re_path.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            phases.entry(phase_num).or_default()
+                .set_path(value.as_str().unwrap_or_default().to_string());
+        } else if let Some(caps) = re_args.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            if let Some(args) = value.as_sequence() {
+                let args: Vec<String> = args.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect();
+                phases.entry(phase_num).or_default().set_args(args);
+            }
+        } else if let Some(caps) = re_env.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            if let Some(env_map) = value.as_mapping() {
+                let env: BTreeMap<String, String> = env_map.iter()
+                    .filter_map(|(k, v)| {
+                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
+                    })
+                    .collect();
+                phases.entry(phase_num).or_default().set_env(env);
+            }
+        } else if let Some(caps) = re_start.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            phases.entry(phase_num).or_default()
+                .set_start(value.as_str().unwrap_or_default().to_string());
+        } else if let Some(caps) = re_stop.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            phases.entry(phase_num).or_default()
+                .set_stop(value.as_str().unwrap_or_default().to_string());
+        }
+    }
+
+    phases
+}
+
 /// Parse flat phase fields (daemon_0, daemon_0_args, etc.) into structured phases
 fn parse_phase_fields(
     extra: &BTreeMap<String, serde_yaml::Value>,
 ) -> (BTreeMap<u32, DaemonPhase>, BTreeMap<u32, WalletPhase>) {
-    let mut daemon_phases: BTreeMap<u32, DaemonPhase> = BTreeMap::new();
-    let mut wallet_phases: BTreeMap<u32, WalletPhase> = BTreeMap::new();
-
-    // Use static LazyLock regex patterns (compiled once, reused across calls)
-    let daemon_re = &*DAEMON_RE;
-    let daemon_args_re = &*DAEMON_ARGS_RE;
-    let daemon_env_re = &*DAEMON_ENV_RE;
-    let daemon_start_re = &*DAEMON_START_RE;
-    let daemon_stop_re = &*DAEMON_STOP_RE;
-
-    let wallet_re = &*WALLET_RE;
-    let wallet_args_re = &*WALLET_ARGS_RE;
-    let wallet_env_re = &*WALLET_ENV_RE;
-    let wallet_start_re = &*WALLET_START_RE;
-    let wallet_stop_re = &*WALLET_STOP_RE;
-
-    for (key, value) in extra {
-        // Parse daemon phases
-        if let Some(caps) = daemon_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let path = value.as_str().unwrap_or_default().to_string();
-            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).path = path;
-        } else if let Some(caps) = daemon_args_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(args) = value.as_sequence() {
-                let args: Vec<String> = args.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect();
-                daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).args = Some(args);
-            }
-        } else if let Some(caps) = daemon_env_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(env_map) = value.as_mapping() {
-                let env: BTreeMap<String, String> = env_map.iter()
-                    .filter_map(|(k, v)| {
-                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
-                    })
-                    .collect();
-                daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).env = Some(env);
-            }
-        } else if let Some(caps) = daemon_start_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let start = value.as_str().unwrap_or_default().to_string();
-            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).start = Some(start);
-        } else if let Some(caps) = daemon_stop_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let stop = value.as_str().unwrap_or_default().to_string();
-            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).stop = Some(stop);
-        }
-
-        // Parse wallet phases
-        if let Some(caps) = wallet_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let path = value.as_str().unwrap_or_default().to_string();
-            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).path = path;
-        } else if let Some(caps) = wallet_args_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(args) = value.as_sequence() {
-                let args: Vec<String> = args.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect();
-                wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).args = Some(args);
-            }
-        } else if let Some(caps) = wallet_env_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(env_map) = value.as_mapping() {
-                let env: BTreeMap<String, String> = env_map.iter()
-                    .filter_map(|(k, v)| {
-                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
-                    })
-                    .collect();
-                wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).env = Some(env);
-            }
-        } else if let Some(caps) = wallet_start_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let start = value.as_str().unwrap_or_default().to_string();
-            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).start = Some(start);
-        } else if let Some(caps) = wallet_stop_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let stop = value.as_str().unwrap_or_default().to_string();
-            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).stop = Some(stop);
-        }
-    }
-
+    let daemon_phases = parse_typed_phases(
+        extra, &DAEMON_RE, &DAEMON_ARGS_RE, &DAEMON_ENV_RE, &DAEMON_START_RE, &DAEMON_STOP_RE,
+    );
+    let wallet_phases = parse_typed_phases(
+        extra, &WALLET_RE, &WALLET_ARGS_RE, &WALLET_ENV_RE, &WALLET_START_RE, &WALLET_STOP_RE,
+    );
     (daemon_phases, wallet_phases)
 }
 
@@ -869,7 +782,7 @@ impl DaemonConfig {
 }
 
 /// Configuration for a single daemon phase in an upgrade scenario
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DaemonPhase {
     /// Path to the daemon binary (or shorthand name)
     pub path: String,
@@ -888,7 +801,7 @@ pub struct DaemonPhase {
 }
 
 /// Configuration for a single wallet phase in an upgrade scenario
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct WalletPhase {
     /// Path to the wallet binary (or shorthand name)
     pub path: String,
@@ -905,6 +818,30 @@ pub struct WalletPhase {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<String>,
 }
+
+/// Common interface for phase types (DaemonPhase and WalletPhase share identical fields)
+trait Phase: Default {
+    fn set_path(&mut self, path: String);
+    fn set_args(&mut self, args: Vec<String>);
+    fn set_env(&mut self, env: BTreeMap<String, String>);
+    fn set_start(&mut self, start: String);
+    fn set_stop(&mut self, stop: String);
+}
+
+macro_rules! impl_phase {
+    ($t:ty) => {
+        impl Phase for $t {
+            fn set_path(&mut self, path: String) { self.path = path; }
+            fn set_args(&mut self, args: Vec<String>) { self.args = Some(args); }
+            fn set_env(&mut self, env: BTreeMap<String, String>) { self.env = Some(env); }
+            fn set_start(&mut self, start: String) { self.start = Some(start); }
+            fn set_stop(&mut self, stop: String) { self.stop = Some(stop); }
+        }
+    };
+}
+
+impl_phase!(DaemonPhase);
+impl_phase!(WalletPhase);
 
 /// Minimum gap between phase stop and next phase start (in seconds)
 /// This allows time for graceful shutdown and startup of the next binary
