@@ -16,7 +16,7 @@ const FLUFF_MIN_RECIPIENTS: usize = 3;
 pub fn analyze_dandelion(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> DandelionReport {
     // Build IP -> node_id mapping
     let ip_to_node: HashMap<String, String> = agents

@@ -34,7 +34,7 @@ pub fn add_user_agent_process(
 ) {
     let mut agent_args = vec![
         format!("--id {}", agent_id),
-        format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+        format!("--shared-dir {}", shared_dir.to_string_lossy()),
         format!("--rpc-host {}", agent_ip),
         format!("--log-level DEBUG"),
         format!("--stop-time {}", stop_time),
@@ -161,7 +161,7 @@ pub fn create_mining_agent_process(
         format!("--id {}", agent_id),
         format!("--rpc-host {}", ip_addr),
         format!("--daemon-rpc-port {}", daemon_rpc_port),
-        format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+        format!("--shared-dir {}", shared_dir.to_string_lossy()),
         format!("--log-level DEBUG"),
     ];
 

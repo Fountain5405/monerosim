@@ -11,7 +11,7 @@ use super::types::*;
 pub fn analyze_tx_relay_v2(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> TxRelayV2Report {
     let protocol_usage = analyze_protocol_usage(log_data);
     let delivery_analysis = analyze_tx_delivery(transactions, log_data, agents);
@@ -67,7 +67,7 @@ fn analyze_protocol_usage(log_data: &HashMap<String, NodeLogData>) -> ProtocolUs
 fn analyze_tx_delivery(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> TxDeliveryAnalysis {
     // Build set of TX hashes that were observed anywhere in the network
     let mut observed_txs: HashSet<String> = HashSet::new();

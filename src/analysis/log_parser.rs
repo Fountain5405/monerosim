@@ -473,7 +473,7 @@ fn find_daemon_log_files(host_dir: &Path) -> Vec<std::path::PathBuf> {
 /// Parse all log files in parallel
 pub fn parse_all_logs(
     hosts_dir: &Path,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> Result<HashMap<String, NodeLogData>> {
     log::info!("Parsing logs for {} agents in parallel...", agents.len());
 

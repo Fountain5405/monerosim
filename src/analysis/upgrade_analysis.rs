@@ -41,7 +41,7 @@ impl Default for UpgradeAnalysisConfig {
 pub fn analyze_upgrade_impact(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
     blocks: &[BlockInfo],
     config: &UpgradeAnalysisConfig,
     data_dir: &str,
@@ -139,7 +139,7 @@ fn calculate_window_metrics(
     window: &TimeWindow,
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
     _blocks: &[BlockInfo],
 ) -> WindowedMetrics {
     let mut metrics = WindowedMetrics {
@@ -152,7 +152,7 @@ fn calculate_window_metrics(
     metrics.tx_count = window_txs.len();
 
     // Build IP-to-agent mapping
-    let ip_to_agent: HashMap<&str, &AgentInfo> = agents
+    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> = agents
         .iter()
         .map(|a| (a.ip_addr.as_str(), a))
         .collect();
@@ -251,7 +251,7 @@ fn calculate_bandwidth_for_window(
 fn calculate_spy_accuracy_for_window(
     transactions: &[&Transaction],
     tx_observations: &HashMap<String, Vec<&TxObservation>>,
-    ip_to_agent: &HashMap<&str, &AgentInfo>,
+    ip_to_agent: &HashMap<&str, &AnalysisAgentInfo>,
 ) -> (Option<f64>, usize) {
     let mut correct = 0;
     let mut analyzable = 0;
@@ -389,7 +389,7 @@ fn calculate_gini_for_window(
 fn calculate_dandelion_for_window(
     transactions: &[&Transaction],
     tx_observations: &HashMap<String, Vec<&TxObservation>>,
-    ip_to_agent: &HashMap<&str, &AgentInfo>,
+    ip_to_agent: &HashMap<&str, &AnalysisAgentInfo>,
 ) -> (Option<f64>, usize) {
     let mut stem_lengths: Vec<f64> = Vec::new();
 

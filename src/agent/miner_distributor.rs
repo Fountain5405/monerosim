@@ -45,7 +45,7 @@ pub fn process_miner_distributor(
 
         let mut agent_args = vec![
             format!("--id {}", miner_distributor_id),
-            format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+            format!("--shared-dir {}", shared_dir.to_string_lossy()),
             format!("--log-level DEBUG"),
         ];
 

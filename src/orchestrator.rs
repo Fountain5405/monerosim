@@ -22,6 +22,19 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::fs;
 
+/// Convert a bandwidth string like "10Gbit" or "500Mbit" to a numeric Mbit string.
+/// Passes through values that are already plain numbers.
+fn convert_bandwidth_value(value: &str) -> String {
+    if value.ends_with("Gbit") {
+        if let Ok(gbit) = value.trim_end_matches("Gbit").parse::<f64>() {
+            return format!("{}", gbit * 1000.0);
+        }
+    } else if value.ends_with("Mbit") {
+        return value.trim_end_matches("Mbit").to_string();
+    }
+    value.to_string()
+}
+
 /// Detect the Python site-packages path in the virtual environment.
 /// Looks for venv/lib/python*/site-packages and returns the path.
 fn detect_venv_site_packages(base_dir: &str) -> Option<String> {
@@ -69,27 +82,12 @@ pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str) -> col
             gml_content.push_str(&format!("    label \"{}\"\n", label));
         }
         for (key, value) in &node.attributes {
-            let (processed_value, quote) = if key == "bandwidth" {
-                // Bandwidth is numeric, no quotes needed
-                let processed = if value.ends_with("Gbit") {
-                    // Convert Gbit to Mbit
-                    if let Ok(gbit) = value.trim_end_matches("Gbit").parse::<f64>() {
-                        format!("{}", gbit * 1000.0)
-                    } else {
-                        value.clone()
-                    }
-                } else if value.ends_with("Mbit") {
-                    // Remove "Mbit" suffix
-                    value.trim_end_matches("Mbit").to_string()
-                } else {
-                    value.clone()
-                };
-                (processed, false)
+            let (processed_value, needs_quotes) = if key == "bandwidth" {
+                (convert_bandwidth_value(value), false)
             } else {
-                // String attributes like "region" need to be quoted
                 (value.clone(), true)
             };
-            if quote {
+            if needs_quotes {
                 gml_content.push_str(&format!("    {} \"{}\"\n", key, processed_value));
             } else {
                 gml_content.push_str(&format!("    {} {}\n", key, processed_value));
@@ -104,31 +102,14 @@ pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str) -> col
         gml_content.push_str(&format!("    source {}\n", edge.source));
         gml_content.push_str(&format!("    target {}\n", edge.target));
         for (key, value) in &edge.attributes {
-            let (processed_value, quote) = if key == "packet_loss" || key == "bandwidth" {
-                // These are numeric values, no quotes
-                let processed = if key == "bandwidth" {
-                    if value.ends_with("Gbit") {
-                        // Convert Gbit to Mbit
-                        if let Ok(gbit) = value.trim_end_matches("Gbit").parse::<f64>() {
-                            format!("{}", gbit * 1000.0)
-                        } else {
-                            value.clone()
-                        }
-                    } else if value.ends_with("Mbit") {
-                        // Remove "Mbit" suffix
-                        value.trim_end_matches("Mbit").to_string()
-                    } else {
-                        value.clone()
-                    }
-                } else {
-                    value.clone()
-                };
-                (processed, false)
+            let (processed_value, needs_quotes) = if key == "packet_loss" {
+                (value.clone(), false)
+            } else if key == "bandwidth" {
+                (convert_bandwidth_value(value), false)
             } else {
-                // Keep latency as string with unit, quoted
                 (value.clone(), true)
             };
-            if quote {
+            if needs_quotes {
                 gml_content.push_str(&format!("    {} \"{}\"\n", key, processed_value));
             } else {
                 gml_content.push_str(&format!("    {} {}\n", key, processed_value));
@@ -190,8 +171,8 @@ pub fn generate_agent_shadow_config(
     // Common environment variables
     let mut environment: BTreeMap<String, String> = [
         ("HOME".to_string(), home_dir.clone()), // Required for $HOME expansion in binary paths
-        ("MALLOC_MMAP_THRESHOLD_".to_string(), "131072".to_string()),
-        ("MALLOC_TRIM_THRESHOLD_".to_string(), "131072".to_string()),
+        ("MALLOC_MMAP_THRESHOLD_".to_string(), crate::MALLOC_THRESHOLD.to_string()),
+        ("MALLOC_TRIM_THRESHOLD_".to_string(), crate::MALLOC_THRESHOLD.to_string()),
         ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
         ("MALLOC_ARENA_MAX".to_string(), "1".to_string()),
         ("PYTHONUNBUFFERED".to_string(), "1".to_string()), // Ensure Python output is unbuffered
@@ -209,7 +190,7 @@ pub fn generate_agent_shadow_config(
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
-    monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), "20".to_string());
+    monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), crate::MAX_CONNECTIONS_PER_IP.to_string());
 
     // Create centralized IP registry for robust IP management
     let mut ip_registry = GlobalIpRegistry::new();
@@ -341,7 +322,7 @@ pub fn generate_agent_shadow_config(
         let dns_script = "agents.dns_server";
         let dns_args = format!(
             "--id {} --bind-ip {} --port 53 --shared-dir {} --log-level DEBUG",
-            dns_agent_id, dns_ip, shared_dir_path.to_str().unwrap()
+            dns_agent_id, dns_ip, shared_dir_path.to_string_lossy()
         );
 
         let dns_python_cmd = format!("python3 -m {} {}", dns_script, dns_args);
@@ -382,8 +363,8 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
             network_node_id: 0, // DNS server on first network node
             ip_addr: Some(dns_ip.clone()),
             processes: dns_processes,
-            bandwidth_down: Some("1000000000".to_string()),
-            bandwidth_up: Some("1000000000".to_string()),
+            bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
+            bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
         });
 
         log::info!("Created DNS server at {}", dns_ip);
@@ -419,8 +400,8 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
     // Use a larger offset to ensure clear separation between agent types
     // Count all agents in the map for offset calculation
     let total_agent_count = config.agents.agents.len();
-    let distributor_offset = total_agent_count + 100; // Reserve 100 IPs for user agents
-    let script_offset = total_agent_count + 200; // Reserve another 100 IPs for miner distributor and other uses
+    let distributor_offset = total_agent_count + crate::DISTRIBUTOR_IP_OFFSET;
+    let script_offset = total_agent_count + crate::SCRIPT_IP_OFFSET;
 
     process_miner_distributor(
         &config.agents,
@@ -550,8 +531,9 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
     
     // DEBUG: Log registry structure before writing
     log::info!("Agent registry has {} agents", agent_registry.agents.len());
-    log::info!("Agent registry JSON preview (first 500 chars): {}",
-               &agent_registry_json.chars().take(500).collect::<String>());
+    log::info!("Agent registry JSON preview (first {} chars): {}",
+               crate::REGISTRY_PREVIEW_CHARS,
+               &agent_registry_json.chars().take(crate::REGISTRY_PREVIEW_CHARS).collect::<String>());
     
     std::fs::write(&agent_registry_path, &agent_registry_json)?;
     

@@ -113,6 +113,25 @@ pub const MONERO_RPC_PORT: u16 = 18081;
 /// Monero wallet RPC port (mainnet/regtest default).
 pub const MONERO_WALLET_RPC_PORT: u16 = 18082;
 
+/// Default host bandwidth in bits/sec (1 Gbit/s).
+pub const DEFAULT_BANDWIDTH_BPS: &str = "1000000000";
+/// glibc malloc mmap threshold for memory-constrained simulation hosts.
+pub const MALLOC_THRESHOLD: &str = "131072";
+/// Maximum inbound connections per IP for monerod.
+pub const MAX_CONNECTIONS_PER_IP: &str = "20";
+/// IP offset for miner-distributor agents to avoid collision with user agents.
+pub const DISTRIBUTOR_IP_OFFSET: usize = 100;
+/// IP offset for pure-script agents.
+pub const SCRIPT_IP_OFFSET: usize = 200;
+/// Delay (seconds) between daemon start and wallet start.
+pub const WALLET_STARTUP_DELAY_SECS: u64 = 2;
+/// Delay (seconds) between wallet start and agent script start.
+pub const AGENT_STARTUP_DELAY_SECS: u64 = 3;
+/// Max chars to preview when logging registry JSON.
+pub const REGISTRY_PREVIEW_CHARS: usize = 500;
+/// Monero coinbase maturity: 60 blocks at 120s each.
+pub const BLOCK_MATURITY_SECONDS: u64 = 7200;
+
 // Existing modules
 pub mod config_v2;
 pub mod config_loader;

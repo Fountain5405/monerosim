@@ -11,10 +11,10 @@ use super::types::*;
 pub fn analyze_spy_vulnerability(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> SpyNodeReport {
     // Build IP-to-agent mapping
-    let ip_to_agent: HashMap<&str, &AgentInfo> = agents
+    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> = agents
         .iter()
         .map(|a| (a.ip_addr.as_str(), a))
         .collect();
@@ -70,7 +70,7 @@ pub fn analyze_spy_vulnerability(
 fn analyze_single_tx(
     tx: &Transaction,
     observations: &[&TxObservation],
-    ip_to_agent: &HashMap<&str, &AgentInfo>,
+    ip_to_agent: &HashMap<&str, &AnalysisAgentInfo>,
 ) -> SpyNodeTxAnalysis {
     // Sort observations by timestamp
     let mut sorted_obs: Vec<&TxObservation> = observations.to_vec();

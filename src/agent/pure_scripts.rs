@@ -49,7 +49,7 @@ pub fn process_pure_script_agents(
 
         let mut script_args = vec![
             format!("--id {}", script_id),
-            format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+            format!("--shared-dir {}", shared_dir.to_string_lossy()),
             format!("--log-level DEBUG"),
         ];
 

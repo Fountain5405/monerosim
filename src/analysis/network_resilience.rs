@@ -11,7 +11,7 @@ use super::calculate_gini;
 /// Analyze network resilience based on connection topology
 pub fn analyze_resilience(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> ResilienceMetrics {
     // Build adjacency graph from connection events
     let graph = build_connection_graph(log_data, agents);
@@ -35,7 +35,7 @@ pub fn analyze_resilience(
 /// Build a graph of active connections (node_id -> set of connected peer IPs)
 fn build_connection_graph(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> HashMap<String, HashSet<String>> {
     let mut graph: HashMap<String, HashSet<String>> = HashMap::new();
 
@@ -80,7 +80,7 @@ fn build_connection_graph(
 /// Analyze connectivity metrics
 fn analyze_connectivity(
     graph: &HashMap<String, HashSet<String>>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> ConnectivityMetrics {
     let peer_counts: Vec<usize> = graph.values().map(|peers| peers.len()).collect();
 
@@ -118,7 +118,7 @@ fn analyze_connectivity(
 /// Analyze centralization metrics
 fn analyze_centralization(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> CentralizationMetrics {
     // Count first-seen observations per node
     let mut first_seen_counts: HashMap<String, usize> = HashMap::new();

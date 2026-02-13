@@ -64,11 +64,11 @@ pub fn process_simulation_monitor(
         let mut processes = Vec::new();
 
         // Convert output_dir to absolute path string
-        let output_dir_str = output_dir.to_str().unwrap();
+        let output_dir_str = output_dir.to_string_lossy();
 
         let mut agent_args = vec![
             format!("--id {}", simulation_monitor_id),
-            format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+            format!("--shared-dir {}", shared_dir.to_string_lossy()),
             format!("--output-dir {}", output_dir_str),
             format!("--log-level DEBUG"),
         ];
@@ -85,11 +85,11 @@ pub fn process_simulation_monitor(
                 agent_args.push(format!("--status-file {}", status_file));
             } else {
                 // Relative path - put in shared directory
-                agent_args.push(format!("--status-file {}/{}", shared_dir.to_str().unwrap(), status_file));
+                agent_args.push(format!("--status-file {}/{}", shared_dir.to_string_lossy(), status_file));
             }
         } else {
             // Default status file in shared directory
-            agent_args.push(format!("--status-file {}/monerosim_monitor.log", shared_dir.to_str().unwrap()));
+            agent_args.push(format!("--status-file {}/monerosim_monitor.log", shared_dir.to_string_lossy()));
         }
 
         if simulation_monitor_config.enable_alerts.unwrap_or(false) {
