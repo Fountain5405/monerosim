@@ -7,10 +7,13 @@ use std::collections::HashMap;
 
 use super::types::*;
 
-/// Threshold for detecting fluff: if N nodes receive from same source within this window
-const FLUFF_TIME_WINDOW_MS: f64 = 100.0;
-/// Minimum recipients in window to consider it a fluff event
+/// Minimum recipients to consider it a fluff event
 const FLUFF_MIN_RECIPIENTS: usize = 3;
+
+/// Gap threshold (ms) for fluff detection: if the first 3 observations from
+/// a sender are within this gap, it's a fluff broadcast. If the gap is larger,
+/// the first observation is a stem relay and the rest are later gossip re-relays.
+const FLUFF_GAP_THRESHOLD_MS: f64 = 2000.0;
 
 /// Analyze Dandelion++ stem paths for all transactions
 pub fn analyze_dandelion(
@@ -267,20 +270,24 @@ fn reconstruct_path(
         }
 
         // Check if this is a fluff point: multiple nodes received from same sender
+        // from_current is already scoped to this specific TX hash and source IP,
+        // so 3+ recipients means the sender *may* have broadcast (fluffed) this TX.
+        // However, we must check the time gap: genuine fluff broadcasts cluster
+        // tightly (within ~2s), while gossip re-relays happen seconds later after
+        // the TX round-trips through stem + fluff + gossip.
         if from_current.len() >= FLUFF_MIN_RECIPIENTS {
-            // Check if they're within the time window (simultaneous broadcast)
-            let first_time = from_current.first().unwrap().1.timestamp;
-            let recipients_in_window = from_current
-                .iter()
-                .filter(|(_, obs)| (obs.timestamp - first_time) * 1000.0 <= FLUFF_TIME_WINDOW_MS)
-                .count();
+            let first_time = from_current[0].1.timestamp;
+            let third_time = from_current[2].1.timestamp;
+            let gap_ms = (third_time - first_time) * 1000.0;
 
-            if recipients_in_window >= FLUFF_MIN_RECIPIENTS {
-                // This is the fluff point!
+            if gap_ms <= FLUFF_GAP_THRESHOLD_MS {
+                // Observations are clustered -> genuine fluff broadcast
                 fluff_node = stem_path.last().map(|h| h.node_id.clone());
                 fluff_recipients = from_current.len();
                 break;
             }
+            // Large gap -> first observation is stem relay, rest are later gossip.
+            // Fall through to take from_current[0] as the next stem hop.
         }
 
         // Single relay (stem phase) - take the first/earliest one
@@ -344,25 +351,26 @@ fn find_fluff_point(
         return None;
     }
 
-    // Look for a point where multiple nodes receive from the same source in quick succession
+    // Look for a point where multiple nodes receive from the same source
+    // with observations clustered within the gap threshold (genuine fluff).
     for i in 0..sorted_obs.len() {
-        let base_time = sorted_obs[i].timestamp;
         let base_source = &sorted_obs[i].source_ip;
+        let base_time = sorted_obs[i].timestamp;
 
-        // Count how many observations from same source within time window
-        let mut same_source_count = 0;
-        for j in i..sorted_obs.len() {
-            let delta_ms = (sorted_obs[j].timestamp - base_time) * 1000.0;
-            if delta_ms > FLUFF_TIME_WINDOW_MS {
-                break;
-            }
-            if &sorted_obs[j].source_ip == base_source {
-                same_source_count += 1;
-            }
-        }
+        // Collect observations from same source
+        let same_source: Vec<&TxObservation> = sorted_obs[i..]
+            .iter()
+            .filter(|obs| &obs.source_ip == base_source)
+            .collect();
 
-        if same_source_count >= FLUFF_MIN_RECIPIENTS {
-            return Some(i);
+        if same_source.len() >= FLUFF_MIN_RECIPIENTS {
+            // Check time gap between 1st and 3rd observation
+            let third_time = same_source[2].timestamp;
+            let gap_ms = (third_time - base_time) * 1000.0;
+
+            if gap_ms <= FLUFF_GAP_THRESHOLD_MS {
+                return Some(i);
+            }
         }
     }
 
