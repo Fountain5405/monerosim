@@ -29,7 +29,6 @@ This timing ensures:
 """
 
 import argparse
-import os
 import random
 import sys
 from typing import Dict, Any, List, Tuple
@@ -83,10 +82,10 @@ DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
 DEFAULT_DAEMON_RESTART_GAP_S = 30  # Gap between stopping old daemon and starting new one
 
 # User activity batching defaults (prevents thundering herd when all users try to transact at once)
-# Batch size 0 = auto-detect from CPU count: max(5, cpu_count // 8)
-# On 256-thread systems this gives 32, on 64-thread gives 8
-DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect from CPU count
-DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 300  # 5 minutes between batches
+# Both values at 0 = auto-detect: batch_size capped at 5 (proven safe concurrency),
+# interval spread across one tx_interval period (min 120s between batches)
+DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect (max 5 concurrent)
+DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 0  # 0 = auto-detect from user count and tx_interval
 DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
 
 # Relay node spawn staggering defaults
@@ -95,28 +94,40 @@ DEFAULT_RELAY_SPAWN_START_S = 5   # Start after miners (t=5s)
 DEFAULT_RELAY_STAGGER_S = 20      # 20s apart; sim-time moves fast so need wider spacing
 
 
-def auto_detect_activity_batch_size() -> int:
-    """Auto-detect activity batch size based on system CPU count.
+def auto_detect_activity_batching(num_users: int, tx_interval: int) -> tuple:
+    """Auto-detect activity batch size and interval for safe ring construction.
 
-    Formula: max(5, cpu_count // 8)
-    This keeps concurrent wallet thread load (2 threads/wallet) within
-    a fraction of available cores during activity ramp-up.
+    Ring signature decoy selection is CPU-intensive. In Shadow, too many
+    concurrent wallet-rpcs doing ring construction causes thread starvation
+    and permanent freezes. Miner wallets (max 5 concurrent) never freeze,
+    so we target a similar concurrency level.
 
-    Examples:
-        256 threads → 32 per batch (64 wallet threads)
-        128 threads → 16 per batch (32 wallet threads)
-         64 threads → 8 per batch  (16 wallet threads)
-         16 threads → 5 per batch  (minimum)
+    Strategy:
+    - batch_size: max 5 concurrent wallets (proven safe)
+    - interval: spread all batches across one tx_interval period,
+      with a minimum of 120s between batches for ring construction headroom
+
+    Returns:
+        (batch_size, batch_interval_s)
     """
-    cpu_count = os.cpu_count() or 64  # fallback if detection fails
-    return max(5, cpu_count // 8)
+    batch_size = max(3, min(5, num_users))
+    num_batches = (num_users + batch_size - 1) // batch_size
+    if num_batches <= 1:
+        return (batch_size, 300)
+    interval = max(120, tx_interval // num_batches)
+    return (batch_size, interval)
 
 
-def resolve_activity_batch_size(batch_size: int) -> int:
-    """Resolve batch size, auto-detecting if 0."""
-    if batch_size <= 0:
-        return auto_detect_activity_batch_size()
-    return batch_size
+def resolve_activity_batching(batch_size: int, batch_interval_s: int,
+                               num_users: int, tx_interval: int) -> tuple:
+    """Resolve activity batching, auto-detecting whichever value is 0."""
+    if batch_size <= 0 or batch_interval_s <= 0:
+        auto_size, auto_interval = auto_detect_activity_batching(num_users, tx_interval)
+        if batch_size <= 0:
+            batch_size = auto_size
+        if batch_interval_s <= 0:
+            batch_interval_s = auto_interval
+    return (batch_size, batch_interval_s)
 
 
 def calculate_activity_start_times(
@@ -739,8 +750,9 @@ def generate_config(
         agent_id = f"miner-{i+1:03}"
         agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
-    # Resolve auto-detected activity batch size (0 = auto from CPU count)
-    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
+    # Resolve auto-detected activity batching (0 = auto from user count and tx_interval)
+    activity_batch_size, activity_batch_interval_s = resolve_activity_batching(
+        activity_batch_size, activity_batch_interval_s, num_users, tx_interval)
 
     # Calculate staggered activity start times to prevent thundering herd
     # Each user gets a slightly different activity_start_time based on batching
@@ -1104,8 +1116,9 @@ def generate_upgrade_config(
             phase1_start,
         )
 
-    # Resolve auto-detected activity batch size (0 = auto from CPU count)
-    activity_batch_size = resolve_activity_batch_size(activity_batch_size)
+    # Resolve auto-detected activity batching (0 = auto from user count and tx_interval)
+    activity_batch_size, activity_batch_interval_s = resolve_activity_batching(
+        activity_batch_size, activity_batch_interval_s, num_users, tx_interval)
 
     # Calculate staggered activity start times to prevent thundering herd
     user_activity_times = calculate_activity_start_times(
@@ -1610,17 +1623,18 @@ Timeline (verified bootstrap for Monero regtest):
         "--activity-batch-size",
         type=int,
         default=DEFAULT_ACTIVITY_BATCH_SIZE,
-        help="Users per activity batch (0=auto-detect from CPU count, default). "
-             "Auto-detection: max(5, cpu_count/8). E.g., 256 threads → 32, 64 threads → 8. "
+        help="Users per activity batch (0=auto-detect, default). "
+             "Auto-detection caps at 5 concurrent wallets (proven safe for ring construction). "
              "Staggers when users start sending transactions to prevent overwhelming the network."
     )
 
     parser.add_argument(
         "--activity-batch-interval",
         type=str,
-        default="5m",
-        help="Target time between activity batches (default: 5m). "
-             "Each batch of users starts transacting this long after the previous batch."
+        default="auto",
+        help="Target time between activity batches (default: auto). "
+             "'auto' spreads batches across one tx_interval period (min 120s between batches). "
+             "Accepts time durations like '2m', '300s', '5m' for explicit override."
     )
 
     parser.add_argument(
@@ -1790,7 +1804,7 @@ Timeline (verified bootstrap for Monero regtest):
                 tx_interval=args.tx_interval,
                 tx_send_probability=args.tx_send_probability,
                 activity_batch_size=args.activity_batch_size,
-                activity_batch_interval_s=parse_duration(args.activity_batch_interval),
+                activity_batch_interval_s=0 if args.activity_batch_interval == "auto" else parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
@@ -1830,7 +1844,7 @@ Timeline (verified bootstrap for Monero regtest):
                 tx_interval=args.tx_interval,
                 tx_send_probability=args.tx_send_probability,
                 activity_batch_size=args.activity_batch_size,
-                activity_batch_interval_s=parse_duration(args.activity_batch_interval),
+                activity_batch_interval_s=0 if args.activity_batch_interval == "auto" else parse_duration(args.activity_batch_interval),
                 activity_batch_jitter=args.activity_batch_jitter,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
