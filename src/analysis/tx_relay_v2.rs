@@ -39,7 +39,7 @@ fn analyze_protocol_usage(log_data: &HashMap<String, NodeLogData>) -> ProtocolUs
     let mut v2_hash_announcements = 0usize;
     let mut v2_tx_requests = 0usize;
 
-    for (_, node_data) in log_data {
+    for node_data in log_data.values() {
         // Count v1 messages (NOTIFY_NEW_TRANSACTIONS)
         v1_tx_broadcasts += node_data.tx_observations.len();
 
@@ -206,7 +206,7 @@ fn analyze_request_response(log_data: &HashMap<String, NodeLogData>) -> RequestR
     let mut requests_sent = 0usize;
     let mut requests_received = 0usize;
 
-    for (_, node_data) in log_data {
+    for node_data in log_data.values() {
         for request in &node_data.tx_requests {
             if request.is_outgoing {
                 requests_sent += 1;

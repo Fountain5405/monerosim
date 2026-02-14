@@ -65,13 +65,8 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    // Initialize error handling
     color_eyre::install()?;
-    
-    // Parse command-line arguments
     let args = Args::parse();
-    
-    // Initialize logging with default filter level of "info"
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     
     info!("Starting MoneroSim configuration parser v2");

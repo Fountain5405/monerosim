@@ -5,15 +5,9 @@ Autonomous Miner Agent for Monerosim
 This agent independently determines when to generate blocks using a Poisson
 distribution model. Each miner operates autonomously without central coordination,
 creating a realistic, distributed mining simulation.
-
-Key Features:
-- Probabilistic block discovery using Poisson distribution
-- Deterministic reproducibility via seeded randomness
-- RPC-based operation with no shared state dependencies
-- Self-contained mining loop with automatic timing recalculation
 """
 
-import sys
+import json
 import time
 import math
 import random
@@ -29,14 +23,7 @@ from .shared_utils import make_deterministic_seed
 
 
 class AutonomousMinerAgent(BaseAgent):
-    """
-    Independent mining agent that autonomously generates blocks
-    using Poisson distribution timing model.
-    
-    This agent replaces centralized block controller architecture with
-    distributed, probabilistic mining that more accurately reflects
-    real-world mining dynamics.
-    """
+    """Mining agent using Poisson distribution timing for autonomous block generation."""
     
     def __init__(self, agent_id: str, **kwargs):
         """
@@ -120,7 +107,7 @@ class AutonomousMinerAgent(BaseAgent):
         # Activate mining
         self.mining_active = True
         self.mining_start_time = time.time()
-        self.logger.info(f"✓ Mining activated with hashrate weight {self.hashrate_pct}")
+        self.logger.info(f"Mining activated with hashrate weight {self.hashrate_pct}")
         self.logger.info(f"Using difficulty-only mode: timing scales with LWMA difficulty adjustments")
         self.logger.info(f"Base expected block time: {120.0 / (self.hashrate_pct / 100.0):.1f}s "
                         f"(at baseline difficulty {self.baseline_difficulty})")
@@ -140,7 +127,6 @@ class AutonomousMinerAgent(BaseAgent):
         Returns:
             Valid Monero address string, or None if polling times out
         """
-        import json
         from pathlib import Path
 
         if not self.shared_dir:
@@ -380,10 +366,10 @@ class AutonomousMinerAgent(BaseAgent):
                     blocks = inner_result.get('blocks', [])
                     if blocks:
                         block_hash = blocks[0]
-                        self.logger.info(f"✓ Block generated: {block_hash}")
+                        self.logger.info(f"Block generated: {block_hash}")
                         return True
                 elif method_used == 'start_mining':
-                    self.logger.info(f"✓ Mining started successfully")
+                    self.logger.info(f"Mining started successfully")
                     return True
                 else:
                     self.logger.warning(f"Unknown mining method: {method_used}")

@@ -32,7 +32,7 @@ pub fn analyze_dandelion(
 
     // Collect all TX observations grouped by tx_hash
     let mut tx_observations: HashMap<String, Vec<TxObservation>> = HashMap::new();
-    for (_, node_data) in log_data {
+    for node_data in log_data.values() {
         for obs in &node_data.tx_observations {
             tx_observations
                 .entry(obs.tx_hash.clone())
@@ -331,42 +331,6 @@ fn reconstruct_path(
         fluff_recipients,
         originator_confirmed,
     })
-}
-
-/// Find the index where fluff (broadcast) begins
-/// Returns the index of the first observation that's part of the fluff
-#[allow(dead_code)]
-fn find_fluff_point(
-    sorted_obs: &[TxObservation],
-    _ip_to_node: &HashMap<String, String>,
-) -> Option<usize> {
-    if sorted_obs.len() < FLUFF_MIN_RECIPIENTS + 1 {
-        return None;
-    }
-
-    // Look for a point where multiple nodes receive from the same source in quick succession
-    for i in 0..sorted_obs.len() {
-        let base_time = sorted_obs[i].timestamp;
-        let base_source = &sorted_obs[i].source_ip;
-
-        // Count how many observations from same source within time window
-        let mut same_source_count = 0;
-        for j in i..sorted_obs.len() {
-            let delta_ms = (sorted_obs[j].timestamp - base_time) * 1000.0;
-            if delta_ms > FLUFF_TIME_WINDOW_MS {
-                break;
-            }
-            if &sorted_obs[j].source_ip == base_source {
-                same_source_count += 1;
-            }
-        }
-
-        if same_source_count >= FLUFF_MIN_RECIPIENTS {
-            return Some(i);
-        }
-    }
-
-    None
 }
 
 /// Assess privacy based on Dandelion++ behavior

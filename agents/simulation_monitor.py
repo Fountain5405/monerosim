@@ -1635,9 +1635,14 @@ class SimulationMonitorAgent(BaseAgent):
 
 def main():
     """Main entry point for the simulation monitor agent."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
     parser = SimulationMonitorAgent.create_argument_parser()
     args = parser.parse_args()
-    
+
     try:
         # Create and run the agent
         agent = SimulationMonitorAgent(

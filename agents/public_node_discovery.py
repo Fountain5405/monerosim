@@ -62,7 +62,7 @@ class PublicNodeDiscovery:
         registry_path = self.shared_dir / "public_nodes.json"
 
         if not registry_path.exists():
-            self.logger.warning("Public nodes registry not found at %s", registry_path)
+            self.logger.warning(f"Public nodes registry not found at {registry_path}")
             return []
 
         try:
@@ -80,14 +80,14 @@ class PublicNodeDiscovery:
             self._cache = available_nodes
             self._cache_time = time.time()
 
-            self.logger.debug("Found %d available public nodes", len(available_nodes))
+            self.logger.debug(f"Found {len(available_nodes)} available public nodes")
             return available_nodes
 
         except json.JSONDecodeError as e:
-            self.logger.error("Failed to parse public nodes registry: %s", e)
+            self.logger.error(f"Failed to parse public nodes registry: {e}")
             return []
         except Exception as e:
-            self.logger.error("Failed to read public nodes registry: %s", e)
+            self.logger.error(f"Failed to read public nodes registry: {e}")
             return []
 
     def select_daemon(
@@ -130,8 +130,7 @@ class PublicNodeDiscovery:
         if selected_node:
             address = f"{selected_node['ip_addr']}:{selected_node['rpc_port']}"
             self.logger.info(
-                "Selected daemon: %s (agent: %s, strategy: %s)",
-                address, selected_node['agent_id'], strategy.value
+                f"Selected daemon: {address} (agent: {selected_node['agent_id']}, strategy: {strategy.value})"
             )
             return address
 
@@ -187,7 +186,7 @@ class PublicNodeDiscovery:
 
                     if not found:
                         self.logger.warning(
-                            "Agent %s not found in public nodes registry", agent_id
+                            f"Agent {agent_id} not found in public nodes registry"
                         )
                         return False
 
@@ -198,7 +197,7 @@ class PublicNodeDiscovery:
                     temp_path.rename(registry_path)
 
                     self.logger.info(
-                        "Updated public node %s status to %s", agent_id, status
+                        f"Updated public node {agent_id} status to {status}"
                     )
                     return True
 
@@ -206,7 +205,7 @@ class PublicNodeDiscovery:
                     fcntl.flock(lock_f, fcntl.LOCK_UN)
 
         except Exception as e:
-            self.logger.error("Failed to update public node status: %s", e)
+            self.logger.error(f"Failed to update public node status: {e}")
             return False
 
     def invalidate_cache(self):
@@ -236,7 +235,7 @@ def get_daemon_address(
     try:
         strategy_enum = DaemonSelectionStrategy(strategy.lower())
     except ValueError:
-        logging.warning("Unknown strategy '%s', defaulting to random", strategy)
+        logging.warning(f"Unknown strategy '{strategy}', defaulting to random")
         strategy_enum = DaemonSelectionStrategy.RANDOM
 
     exclude_ids = [exclude_self] if exclude_self else None
@@ -260,7 +259,6 @@ def parse_selection_strategy(strategy_str: Optional[str]) -> DaemonSelectionStra
         return DaemonSelectionStrategy(strategy_str.lower())
     except ValueError:
         logging.warning(
-            "Unknown daemon selection strategy '%s', defaulting to random",
-            strategy_str
+            f"Unknown daemon selection strategy '{strategy_str}', defaulting to random"
         )
         return DaemonSelectionStrategy.RANDOM

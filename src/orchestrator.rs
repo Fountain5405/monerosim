@@ -13,7 +13,7 @@ use crate::shadow::{
 };
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config, validate_simulation_seed};
+use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
 use serde_json;
@@ -140,10 +140,6 @@ pub fn generate_agent_shadow_config(
     output_path: &Path,
 ) -> color_eyre::eyre::Result<()> {
     let shared_dir_path = Path::new(crate::SHARED_DIR);
-
-    // Validate simulation seed
-    validate_simulation_seed(config.general.simulation_seed)
-        .map_err(|e| color_eyre::eyre::eyre!("Simulation seed validation failed: {}", e))?;
 
     // Mining and agent configuration validation is handled by AgentConfig methods
 
@@ -748,7 +744,9 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
     // Log IP allocation statistics
     let ip_stats = ip_registry.get_allocation_stats();
     println!("  - IP Allocation Summary:");
-    for (subnet, count) in ip_stats {
+    let mut sorted_stats: Vec<_> = ip_stats.iter().collect();
+    sorted_stats.sort_by_key(|(subnet, _)| (*subnet).clone());
+    for (subnet, count) in sorted_stats {
         println!("    - {}: {} IPs assigned", subnet, count);
     }
     let all_ips_map = ip_registry.get_all_assigned_ips();

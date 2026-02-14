@@ -1,24 +1,13 @@
 #!/usr/bin/env python3
-"""
-Agent Discovery Module for Monerosim
-
-This module provides a comprehensive agent discovery system that replaces the legacy 
-hardcoded network configuration approach. It enables dynamic agent discovery and 
-supports scaling to hundreds of agents.
-
-The module reads agent information from the shared state directory 
-(/tmp/monerosim_shared/) where agent registry files are stored.
-"""
+"""Agent discovery via JSON registry files in /tmp/monerosim_shared/."""
 
 import json
-import os
 import logging
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 from pathlib import Path
 import time
 
-from agents.base_agent import BaseAgent, DEFAULT_SHARED_DIR
-from scripts.error_handling import ErrorHandler, LogLevel
+from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
 
 
 class AgentDiscoveryError(Exception):
@@ -27,13 +16,7 @@ class AgentDiscoveryError(Exception):
 
 
 class AgentDiscovery:
-    """
-    A comprehensive agent discovery system for Monerosim that enables dynamic 
-    agent discovery and supports scaling to hundreds of agents.
-    
-    This class provides methods to discover and filter agents based on various 
-    criteria such as type, attributes, and capabilities.
-    """
+    """Reads agent/miner/public-node registries and provides filtered lookups."""
     
     def __init__(self, shared_state_dir: str = DEFAULT_SHARED_DIR):
         """
@@ -45,10 +28,6 @@ class AgentDiscovery:
         """
         self.shared_state_dir = Path(shared_state_dir)
         self.logger = self._setup_logger()
-        self._registry_cache: Optional[Dict[str, Any]] = None
-        self._registry_cache_time: float = 0
-        self.cache_ttl = 5  # Cache TTL in seconds
-        
         # Unified cache system
         self._caches = {
             'registry': {'data': None, 'time': 0, 'ttl': 5},
@@ -66,12 +45,6 @@ class AgentDiscovery:
             raise AgentDiscoveryError(f"Failed to create shared state directory: {e}")
     
     def _setup_logger(self) -> logging.Logger:
-        """
-        Set up a logger for the AgentDiscovery class.
-        
-        Returns:
-            Configured logger instance.
-        """
         logger = logging.getLogger("AgentDiscovery")
         
         # Set default level if not already configured
@@ -94,15 +67,6 @@ class AgentDiscovery:
         return logger
     
     def _is_cache_valid(self, cache_name: str) -> bool:
-        """
-        Check if a cache is still valid based on TTL.
-
-        Args:
-            cache_name: Name of the cache to check
-
-        Returns:
-            True if cache is valid, False otherwise.
-        """
         cache = self._caches.get(cache_name)
         if not cache:
             return False
@@ -756,12 +720,6 @@ class AgentDiscovery:
             self.logger.error(error_msg)
             raise AgentDiscoveryError(error_msg)
     
-    def _parse_boolean_attribute(self, value: str) -> bool:
-        """Parse a boolean attribute value. Delegates to BaseAgent.parse_bool."""
-        from .base_agent import BaseAgent
-        return BaseAgent.parse_bool(value)
-    
-    
     def get_distribution_recipients(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         Return all agents that can receive distributions.
@@ -797,7 +755,7 @@ class AgentDiscovery:
                 # Check if agent can receive distributions
                 attributes = agent.get("attributes", {})
                 can_receive_value = attributes.get("can_receive_distributions", "false")
-                can_receive = self._parse_boolean_attribute(can_receive_value)
+                can_receive = BaseAgent.parse_bool(can_receive_value)
                 
                 potential_recipients.append(agent)
                 if can_receive:
@@ -899,120 +857,6 @@ class AgentDiscovery:
             error_msg = f"Failed to get public nodes: {e}"
             self.logger.error(error_msg)
             raise AgentDiscoveryError(error_msg)
-
-
-# Convenience functions for direct usage
-def get_agent_registry(shared_state_dir: str = DEFAULT_SHARED_DIR) -> Dict[str, Any]:
-    """
-    Convenience function to get the agent registry.
-    
-    Args:
-        shared_state_dir: Path to the shared state directory.
-        
-    Returns:
-        Agent registry dictionary.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.get_agent_registry()
-
-
-def find_agents_by_type(
-    agent_type: str,
-    shared_state_dir: str = DEFAULT_SHARED_DIR
-) -> List[Dict[str, Any]]:
-    """
-    Convenience function to find agents by type.
-    
-    Args:
-        agent_type: The type of agents to find.
-        shared_state_dir: Path to the shared state directory.
-        
-    Returns:
-        List of matching agent dictionaries.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.find_agents_by_type(agent_type)
-
-
-def find_agents_by_attribute(
-    attribute_name: str,
-    attribute_value: Any,
-    shared_state_dir: str = DEFAULT_SHARED_DIR
-) -> List[Dict[str, Any]]:
-    """
-    Convenience function to find agents by attribute.
-    
-    Args:
-        attribute_name: The name of the attribute to match.
-        attribute_value: The value of the attribute to match.
-        shared_state_dir: Path to the shared state directory.
-        
-    Returns:
-        List of matching agent dictionaries.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.find_agents_by_attribute(attribute_name, attribute_value)
-
-
-def get_miner_agents(shared_state_dir: str = DEFAULT_SHARED_DIR) -> List[Dict[str, Any]]:
-    """
-    Convenience function to get miner agents.
-    
-    Args:
-        shared_state_dir: Path to the shared state directory.
-        
-    Returns:
-        List of miner agent dictionaries.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.get_miner_agents()
-
-
-def get_wallet_agents(shared_state_dir: str = DEFAULT_SHARED_DIR) -> List[Dict[str, Any]]:
-    """
-    Convenience function to get wallet agents.
-    
-    Args:
-        shared_state_dir: Path to the shared state directory.
-        
-    Returns:
-        List of wallet agent dictionaries.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.get_wallet_agents()
-
-
-def get_distribution_recipients(shared_state_dir: str = DEFAULT_SHARED_DIR) -> List[Dict[str, Any]]:
-    """
-    Convenience function to get distribution recipients.
-
-    Args:
-        shared_state_dir: Path to the shared state directory.
-
-    Returns:
-        List of agent dictionaries that can receive distributions.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.get_distribution_recipients()
-
-
-def get_public_nodes(
-    status_filter: Optional[str] = "available",
-    shared_state_dir: str = DEFAULT_SHARED_DIR
-) -> List[Dict[str, Any]]:
-    """
-    Convenience function to get public nodes.
-
-    Args:
-        status_filter: Filter nodes by status ("available", "busy", "offline").
-                      If None, returns all nodes regardless of status.
-        shared_state_dir: Path to the shared state directory.
-
-    Returns:
-        List of public node dictionaries.
-    """
-    discovery = AgentDiscovery(shared_state_dir)
-    return discovery.get_public_nodes(status_filter=status_filter)
 
 
 if __name__ == "__main__":

@@ -279,33 +279,6 @@ pub fn validate_agent_daemon_config(agents: &BTreeMap<String, AgentConfig>) -> R
     Ok(())
 }
 
-/// Validate simulation seed
-///
-/// Validates that the simulation seed is a valid non-negative u64 value.
-/// Since u64 is inherently non-negative, this function always succeeds
-/// but exists for API consistency and future extensibility.
-///
-/// # Arguments
-/// * `simulation_seed` - The simulation seed to validate
-///
-/// # Returns
-/// * `Ok(())` - Always succeeds for u64 values
-///
-/// # Examples
-/// ```
-/// use monerosim::utils::validation::validate_simulation_seed;
-///
-/// assert!(validate_simulation_seed(12345).is_ok());
-/// assert!(validate_simulation_seed(0).is_ok());
-/// assert!(validate_simulation_seed(u64::MAX).is_ok());
-/// ```
-pub fn validate_simulation_seed(simulation_seed: u64) -> Result<(), String> {
-    // u64 is already non-negative by type definition, so this is always valid
-    // This function exists for API consistency and future extensibility
-    log::debug!("Validated simulation seed: {}", simulation_seed);
-    Ok(())
-}
-
 /// Validate IP address diversity for Monero P2P compatibility.
 ///
 /// Monero's P2P layer has anti-Sybil protections that limit connections:
@@ -748,10 +721,4 @@ mod tests {
         assert!(result.unwrap_err().contains("wallet without local daemon requires remote daemon configuration"));
     }
 
-    #[test]
-    fn test_validate_simulation_seed() {
-        assert!(validate_simulation_seed(12345).is_ok());
-        assert!(validate_simulation_seed(0).is_ok());
-        assert!(validate_simulation_seed(u64::MAX).is_ok());
-    }
 }

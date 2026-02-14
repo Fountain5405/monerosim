@@ -278,7 +278,6 @@ pub fn process_user_agents(
             let has_local_daemon = user_agent_config.has_local_daemon();
             let has_remote_daemon = user_agent_config.has_remote_daemon();
             let has_wallet = user_agent_config.has_wallet();
-            let _is_script_only = user_agent_config.is_script_only();
             let has_daemon_phases = user_agent_config.has_daemon_phases();
             let has_wallet_phases = user_agent_config.has_wallet_phases();
 

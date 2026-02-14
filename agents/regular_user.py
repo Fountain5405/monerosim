@@ -11,11 +11,10 @@ import os
 import time
 import random
 from typing import Optional, List, Dict, Any
-from pathlib import Path
 
 from .base_agent import BaseAgent, SHADOW_EPOCH, retry_with_backoff
-from .constants import ATOMIC_UNITS_PER_XMR, DEFAULT_SIMULATION_SEED
-from .shared_utils import make_deterministic_seed
+from .constants import DEFAULT_SIMULATION_SEED
+from .shared_utils import make_deterministic_seed, xmr_to_atomic
 
 
 class RegularUserAgent(BaseAgent):
@@ -361,7 +360,6 @@ class RegularUserAgent(BaseAgent):
         
         try:
             # Send transaction
-            from .shared_utils import xmr_to_atomic
             response = self.wallet_rpc.transfer(
                 destinations=[{
                     'address': recipient_address,

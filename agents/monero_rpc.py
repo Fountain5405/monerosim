@@ -36,7 +36,7 @@ class BaseRPC:
         self.available_methods = {}
         
     def _create_session(self) -> requests.Session:
-        """Create a requests session with retry logic"""
+        """Create a requests session."""
         session = requests.Session()
         return session
         

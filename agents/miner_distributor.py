@@ -19,12 +19,11 @@ from pathlib import Path
 
 from .base_agent import BaseAgent
 from .constants import (
-    ATOMIC_UNITS_PER_XMR,
     DEFAULT_SIMULATION_SEED,
     MAX_REASONABLE_TX_XMR,
 )
 from .monero_rpc import WalletRPC
-from .shared_utils import is_valid_monero_address, make_deterministic_seed, xmr_to_atomic
+from .shared_utils import is_valid_monero_address, make_deterministic_seed, xmr_to_atomic, atomic_to_xmr
 
 
 class MinerDistributorAgent(BaseAgent):
@@ -394,7 +393,7 @@ class MinerDistributorAgent(BaseAgent):
                 continue
 
             # Check if agent can receive distributions
-            can_receive = self._parse_boolean_attribute(
+            can_receive = self.parse_bool(
                 agent.get("attributes", {}).get("can_receive_distributions", "false")
             )
 
@@ -585,7 +584,6 @@ class MinerDistributorAgent(BaseAgent):
                     continue
 
                 # Convert from atomic units to XMR
-                from .shared_utils import atomic_to_xmr
                 balance_atomic = balance_info.get('balance', 0)
                 unlocked_atomic = balance_info.get('unlocked_balance', 0)
                 balance_xmr = atomic_to_xmr(balance_atomic)
@@ -841,7 +839,7 @@ class MinerDistributorAgent(BaseAgent):
                 continue
                 
             # Check if agent can receive distributions
-            can_receive = self._parse_boolean_attribute(
+            can_receive = self.parse_bool(
                 agent.get("attributes", {}).get("can_receive_distributions", "false")
             )
             
@@ -874,10 +872,6 @@ class MinerDistributorAgent(BaseAgent):
         else:  # random
             # Random selection
             return random.choice(recipients_to_use)
-    
-    def _parse_boolean_attribute(self, value: str) -> bool:
-        """Parse a boolean attribute value. Delegates to BaseAgent.parse_bool."""
-        return self.parse_bool(value)
     
     def _validate_transaction_params(self, address: str, amount: float, skip_max_check: bool = False) -> bool:
         """
@@ -1201,10 +1195,15 @@ class MinerDistributorAgent(BaseAgent):
 
 def main():
     """Main entry point for miner distributor agent"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
     parser = BaseAgent.create_argument_parser("Miner Distributor Agent for Monerosim")
-    
+
     args = parser.parse_args()
-    
+
     # Create and run agent
     agent = MinerDistributorAgent(
         agent_id=args.id,

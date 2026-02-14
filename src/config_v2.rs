@@ -19,24 +19,17 @@ static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PeerMode {
-    /// Dynamic peer discovery using network protocols
     Dynamic,
-    /// Hardcoded list of peers
     Hardcoded,
-    /// Hybrid approach combining dynamic and hardcoded peers
     Hybrid,
 }
 
 /// Topology templates for peer connections
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Topology {
-    /// Star topology: all nodes connect to a central hub
     Star,
-    /// Mesh topology: all nodes connect to all other nodes
     Mesh,
-    /// Ring topology: circular connections between nodes
     Ring,
-    /// DAG (Directed Acyclic Graph): hierarchical connections
     Dag,
 }
 
@@ -603,10 +596,6 @@ impl Config {
         &self.general
     }
     
-    /// Check if this is an agent configuration (always true now)
-    pub fn is_agent_mode(&self) -> bool {
-        true
-    }
 }
 
 /// Shared general configuration

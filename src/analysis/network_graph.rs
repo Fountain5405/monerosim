@@ -49,8 +49,6 @@ pub struct Edge {
 /// Active connection with metadata
 #[derive(Debug, Clone)]
 struct ActiveConnection {
-    #[allow(dead_code)]
-    peer_ip: String,
     peer_node: Option<String>,
     direction: ConnectionDirection,
     open_time: SimTime,
@@ -232,7 +230,6 @@ pub fn analyze_network_graph(
                 node_connections.insert(
                     event.connection_id.clone(),
                     ActiveConnection {
-                        peer_ip: event.peer_ip.clone(),
                         peer_node,
                         direction: event.direction,
                         open_time: *timestamp,

@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from agents.base_agent import BaseAgent, DEFAULT_SHARED_DIR
+from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
 
 try:
     from dnslib import DNSRecord, DNSHeader, RR, QTYPE, A, TXT, RCODE
@@ -300,6 +300,11 @@ class MoneroDNSServer:
 
 def main():
     """Main entry point for the DNS server agent."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
     parser = argparse.ArgumentParser(
         description="DNS Server for Monerosim Shadow Simulation"
     )
