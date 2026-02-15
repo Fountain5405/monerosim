@@ -473,7 +473,7 @@ fn find_daemon_log_files(host_dir: &Path) -> Vec<std::path::PathBuf> {
 /// Parse all log files in parallel
 pub fn parse_all_logs(
     hosts_dir: &Path,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> Result<HashMap<String, NodeLogData>> {
     log::info!("Parsing logs for {} agents in parallel...", agents.len());
 
@@ -554,9 +554,9 @@ mod tests {
     fn test_parse_timestamp() {
         let ts = parse_timestamp("2000-01-01 04:00:05.464\tI Something");
         assert!(ts.is_some());
-        // 2000-01-01 00:00:00 UTC = 946684800
+        // 2000-01-01 00:00:00 UTC = SHADOW_EPOCH
         // 04:00:05.464 = 4*3600 + 5 + 0.464 = 14405.464
-        let expected = 946684800.0 + 14405.464;
+        let expected = crate::SHADOW_EPOCH + 14405.464;
         assert!((ts.unwrap() - expected).abs() < 0.001);
     }
 

@@ -12,7 +12,7 @@ use color_eyre::eyre::{Context, Result};
 
 use monerosim::analysis::{
     self,
-    types::{AgentInfo, AnalysisMetadata, BlockInfo, FullAnalysisReport, NodeLogData, Transaction},
+    types::{AnalysisAgentInfo, AnalysisMetadata, BlockInfo, FullAnalysisReport, NodeLogData, Transaction},
 };
 
 #[derive(Parser)]
@@ -1187,7 +1187,7 @@ fn run_full_analysis(
     transactions: &[Transaction],
     blocks: &[BlockInfo],
     log_data: &std::collections::HashMap<String, analysis::types::NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
     run_spy: bool,
     run_propagation: bool,
     run_resilience: bool,
@@ -1236,7 +1236,7 @@ fn run_full_analysis(
 
 fn create_metadata(
     data_dir: &PathBuf,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
     transactions: &[Transaction],
     blocks: &[BlockInfo],
 ) -> AnalysisMetadata {
@@ -1249,7 +1249,7 @@ fn create_metadata(
     }
 }
 
-fn load_agent_registry(shared_dir: &PathBuf) -> Result<Vec<AgentInfo>> {
+fn load_agent_registry(shared_dir: &PathBuf) -> Result<Vec<AnalysisAgentInfo>> {
     let path = shared_dir.join("agent_registry.json");
     let content = fs::read_to_string(&path)
         .with_context(|| format!("Failed to read agent registry from {}", path.display()))?;
@@ -1289,7 +1289,7 @@ fn load_agent_registry(shared_dir: &PathBuf) -> Result<Vec<AgentInfo>> {
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            agents.push(AgentInfo {
+            agents.push(AnalysisAgentInfo {
                 id,
                 ip_addr,
                 rpc_port,
@@ -1322,7 +1322,7 @@ fn load_agent_registry(shared_dir: &PathBuf) -> Result<Vec<AgentInfo>> {
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            agents.push(AgentInfo {
+            agents.push(AnalysisAgentInfo {
                 id: id.clone(),
                 ip_addr,
                 rpc_port,

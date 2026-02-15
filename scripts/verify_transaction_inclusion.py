@@ -21,6 +21,7 @@ import re
 sys.path.append(str(Path(__file__).parent))
 from post_simulation_monitor_analysis import PostSimulationAnalyzer
 from analyze_success_criteria import analyze_simulation
+from agents.base_agent import DEFAULT_SHARED_DIR
 
 
 def extract_tx_hashes_from_transactions(transactions: List[Dict]) -> Set[str]:
@@ -43,7 +44,7 @@ def analyze_transaction_discrepancies():
     
     # 1. Analyze monitor data
     print("1. Analyzing Monitor Agent Data...")
-    monitor_analyzer = PostSimulationAnalyzer("/tmp/monerosim_shared")
+    monitor_analyzer = PostSimulationAnalyzer(DEFAULT_SHARED_DIR)
     
     if not monitor_analyzer.load_data():
         print("ERROR: Could not load monitor data files")

@@ -2,12 +2,6 @@ use std::collections::HashMap;
 use std::fs;
 use color_eyre::eyre::{Result, eyre};
 
-/// Errors that can occur during GML parsing
-#[derive(Debug, Clone)]
-pub enum GmlParseError {
-    InvalidIp(String),
-}
-
 /// Represents a node in a GML graph
 #[derive(Debug, Clone)]
 pub struct GmlNode {

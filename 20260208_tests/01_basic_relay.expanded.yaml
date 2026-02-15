@@ -1,0 +1,105 @@
+general:
+  stop_time: 2h
+  simulation_seed: 42
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 1
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+network:
+  type: 1_gbit_switch
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 40
+    can_receive_distributions: true
+  miner-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 35
+    can_receive_distributions: true
+  miner-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 25
+    can_receive_distributions: true
+  user-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    transaction_interval: 60
+    activity_start_time: 18073
+    can_receive_distributions: true
+  user-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1205s
+    transaction_interval: 60
+    activity_start_time: 18000
+    can_receive_distributions: true
+  user-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1210s
+    transaction_interval: 60
+    activity_start_time: 18000
+    can_receive_distributions: true
+  user-004:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1215s
+    transaction_interval: 60
+    activity_start_time: 18000
+    can_receive_distributions: true
+  user-005:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1220s
+    transaction_interval: 60
+    activity_start_time: 18000
+    can_receive_distributions: true
+  relay-001:
+    daemon: monerod
+    start_time: 1s
+  relay-002:
+    daemon: monerod
+    start_time: 5s
+  relay-003:
+    daemon: monerod
+    start_time: 10s
+  relay-004:
+    daemon: monerod
+    start_time: 15s
+  relay-005:
+    daemon: monerod
+    start_time: 20s
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 3600
+    transaction_frequency: 30
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

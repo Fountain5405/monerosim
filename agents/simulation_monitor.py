@@ -8,19 +8,17 @@ and writes continuously updating status reports to shadow.data/monerosim_monitor
 """
 
 import argparse
-import glob
 import json
 import logging
 import os
 import re
 import sys
 import time
-import atexit
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
-from .base_agent import BaseAgent
+from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
 from .agent_discovery import AgentDiscovery
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 
@@ -113,9 +111,6 @@ class SimulationMonitorAgent(BaseAgent):
         self.last_daemon_discovery_time = 0  # Track when we last discovered daemon logs
         self.daemon_discovery_interval = 60  # Re-discover daemon logs every 60 seconds
 
-        # Register cleanup handler to ensure final report is generated
-        atexit.register(self._cleanup_agent)
-        
         self.logger.info(f"SimulationMonitorAgent initialized with poll_interval={poll_interval}s")
         self.logger.info(f"Status file: {self.status_file}")
     
@@ -706,21 +701,16 @@ class SimulationMonitorAgent(BaseAgent):
             Dictionary with RPC connection info or None if not available
         """
         try:
-            # Try different port field names
-            agent_rpc_port = (
-                agent.get("agent_rpc_port") or 
-                agent.get("daemon_rpc_port") or
-                agent.get("rpc_port")
-            )
+            daemon_rpc_port = agent.get("daemon_rpc_port") or agent.get("rpc_port")
             
             wallet_rpc_port = agent.get("wallet_rpc_port")
             
-            if not agent_rpc_port:
+            if not daemon_rpc_port:
                 return None
-            
+
             return {
                 "host": agent.get("ip_addr", "127.0.0.1"),
-                "agent_rpc_port": agent_rpc_port,
+                "daemon_rpc_port": daemon_rpc_port,
                 "wallet_rpc_port": wallet_rpc_port,
                 "agent_id": agent.get("id", "unknown")
             }
@@ -757,7 +747,7 @@ class SimulationMonitorAgent(BaseAgent):
 
                 data.update({
                     "height": current_height,
-                    "connections": daemon_rpc.get_connections(),
+                    "connections": daemon_rpc.get_connection_count(),
                     "synced": info.get("synchronized", False),
                     "difficulty": difficulty,
                     "target_height": info.get("target_height", 0),
@@ -866,13 +856,13 @@ class SimulationMonitorAgent(BaseAgent):
         Returns:
             MoneroRPC instance or None if connection fails
         """
-        cache_key = f"{rpc_info['host']}:{rpc_info['agent_rpc_port']}"
+        cache_key = f"{rpc_info['host']}:{rpc_info['daemon_rpc_port']}"
         
         if cache_key in self.rpc_cache:
             return self.rpc_cache[cache_key]
         
         try:
-            daemon_rpc = MoneroRPC(rpc_info["host"], rpc_info["agent_rpc_port"])
+            daemon_rpc = MoneroRPC(rpc_info["host"], rpc_info["daemon_rpc_port"])
             if daemon_rpc.is_ready():
                 self.rpc_cache[cache_key] = daemon_rpc
                 return daemon_rpc
@@ -1150,13 +1140,6 @@ class SimulationMonitorAgent(BaseAgent):
 
         except Exception as e:
             self.logger.error(f"Error reading transaction data: {e}")
-    
-    def _read_enhanced_block_data(self):
-        """
-        Legacy method - block data is now read via RPC in _extract_transactions_from_blocks.
-        This method is kept for backwards compatibility but does nothing.
-        """
-        pass
     
     def _save_transaction_tracking_data(self):
         """Save enhanced transaction tracking data to shared files."""
@@ -1438,8 +1421,7 @@ class SimulationMonitorAgent(BaseAgent):
         Returns:
             Formatted simulation time string
         """
-        # This is a placeholder - in a real implementation, this would
-        # get the actual simulation time from Shadow
+        # Shadow intercepts datetime.now() to return simulated time
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S.000")
     
     def _store_historical_data(self, node_data: Dict[str, Any], network_metrics: Dict[str, Any]):
@@ -1532,14 +1514,6 @@ class SimulationMonitorAgent(BaseAgent):
         try:
             # Generate final report
             self._generate_final_report()
-            
-            # Close RPC connections
-            for rpc in self.rpc_cache.values():
-                try:
-                    # RPC connections don't have explicit close methods in our implementation
-                    pass
-                except:
-                    pass
             
             self.rpc_cache.clear()
             
@@ -1641,7 +1615,7 @@ class SimulationMonitorAgent(BaseAgent):
         """Create argument parser for the simulation monitor agent."""
         parser = BaseAgent.create_argument_parser(
             description="MoneroSim Simulation Monitor Agent",
-            default_shared_dir='/tmp/monerosim_shared'
+            default_shared_dir=DEFAULT_SHARED_DIR
         )
         
         parser.add_argument('--poll-interval', type=int, default=300,
@@ -1661,15 +1635,20 @@ class SimulationMonitorAgent(BaseAgent):
 
 def main():
     """Main entry point for the simulation monitor agent."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
     parser = SimulationMonitorAgent.create_argument_parser()
     args = parser.parse_args()
-    
+
     try:
         # Create and run the agent
         agent = SimulationMonitorAgent(
             agent_id=args.id,
             shared_dir=args.shared_dir,
-            agent_rpc_port=args.agent_rpc_port,
+            daemon_rpc_port=args.daemon_rpc_port,
             wallet_rpc_port=args.wallet_rpc_port,
             p2p_port=args.p2p_port,
             rpc_host=args.rpc_host,

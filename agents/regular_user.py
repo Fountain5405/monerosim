@@ -11,9 +11,10 @@ import os
 import time
 import random
 from typing import Optional, List, Dict, Any
-from pathlib import Path
 
-from .base_agent import BaseAgent
+from .base_agent import BaseAgent, SHADOW_EPOCH, retry_with_backoff
+from .constants import DEFAULT_SIMULATION_SEED
+from .shared_utils import make_deterministic_seed, xmr_to_atomic
 
 
 class RegularUserAgent(BaseAgent):
@@ -33,8 +34,8 @@ class RegularUserAgent(BaseAgent):
         super().__init__(agent_id=agent_id, tx_frequency=tx_frequency, hash_rate=hash_rate, **kwargs)
 
         # Deterministic seeding for reproducibility
-        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + hash(agent_id)
+        self.global_seed = int(os.getenv('SIMULATION_SEED', str(DEFAULT_SIMULATION_SEED)))
+        self.agent_seed = make_deterministic_seed(agent_id)
         random.seed(self.agent_seed)
 
         # Wallet refresh and error recovery state
@@ -121,7 +122,7 @@ class RegularUserAgent(BaseAgent):
         if not self.wallet_address:
             self.logger.warning(f"No wallet address available for miner {self.agent_id}, skipping registration")
             return
-            
+
         miner_info = {
             "agent_id": self.agent_id,
             "wallet_address": self.wallet_address,
@@ -129,31 +130,22 @@ class RegularUserAgent(BaseAgent):
             "timestamp": time.time(),
             "agent_type": "miner"
         }
-        
-        # Use atomic file operations with retry logic
-        max_retries = 3
-        retry_delay = 1  # seconds
-        
-        for attempt in range(max_retries):
-            try:
-                # Write miner info to shared state
-                self.write_shared_state(f"{self.agent_id}_miner_info.json", miner_info)
-                self.logger.info(f"Successfully registered miner info for {self.agent_id}")
-                return
-            except Exception as e:
-                self.logger.warning(f"Failed to register miner info (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    self.logger.error(f"Failed to register miner info after {max_retries} attempts")
+
+        try:
+            retry_with_backoff(
+                lambda: self.write_shared_state(f"{self.agent_id}_miner_info.json", miner_info),
+                max_retries=3, logger=self.logger,
+            )
+            self.logger.info(f"Successfully registered miner info for {self.agent_id}")
+        except Exception as e:
+            self.logger.warning(f"Failed to register miner info after retries: {e}")
     
     def _register_user_info(self):
         """Register user information for the agent discovery system with atomic file operations"""
         if not self.wallet_address:
             self.logger.warning(f"No wallet address available for user {self.agent_id}, skipping registration")
             return
-            
+
         user_info = {
             "agent_id": self.agent_id,
             "wallet_address": self.wallet_address,
@@ -163,24 +155,15 @@ class RegularUserAgent(BaseAgent):
             "min_tx_amount": getattr(self, 'min_tx_amount', None),
             "max_tx_amount": getattr(self, 'max_tx_amount', None)
         }
-        
-        # Use atomic file operations with retry logic
-        max_retries = 3
-        retry_delay = 1  # seconds
-        
-        for attempt in range(max_retries):
-            try:
-                # Write user info to shared state
-                self.write_shared_state(f"{self.agent_id}_user_info.json", user_info)
-                self.logger.info(f"Successfully registered user info for {self.agent_id}")
-                return
-            except Exception as e:
-                self.logger.warning(f"Failed to register user info (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    self.logger.error(f"Failed to register user info after {max_retries} attempts")
+
+        try:
+            retry_with_backoff(
+                lambda: self.write_shared_state(f"{self.agent_id}_user_info.json", user_info),
+                max_retries=3, logger=self.logger,
+            )
+            self.logger.info(f"Successfully registered user info for {self.agent_id}")
+        except Exception as e:
+            self.logger.warning(f"Failed to register user info after retries: {e}")
     
     def _setup_transaction_parameters(self):
         """Setup transaction parameters for regular users"""
@@ -192,8 +175,7 @@ class RegularUserAgent(BaseAgent):
 
         # Activity start time: config value is in simulation seconds (e.g. 108000 for 30h).
         # Shadow's time.time() returns Unix timestamps starting from 2000-01-01 00:00:00 UTC
-        # (epoch 946684800), so we must convert simulation seconds to a Unix timestamp.
-        SHADOW_EPOCH = 946684800  # 2000-01-01 00:00:00 UTC
+        # (SHADOW_EPOCH), so we must convert simulation seconds to a Unix timestamp.
         activity_start_sim_s = int(self.attributes.get('activity_start_time', '0'))
 
         if activity_start_sim_s > 0:
@@ -334,8 +316,8 @@ class RegularUserAgent(BaseAgent):
                         )
                         self.wallet_rpc.reset_session()
                         # Re-point wallet-rpc at the daemon to force reconnection
-                        if self.agent_rpc_port:
-                            daemon_address = f"http://{self.rpc_host}:{self.agent_rpc_port}"
+                        if self.daemon_rpc_port:
+                            daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
                             self.wallet_rpc.set_daemon(daemon_address, trusted=True)
                             self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
 
@@ -381,7 +363,7 @@ class RegularUserAgent(BaseAgent):
             response = self.wallet_rpc.transfer(
                 destinations=[{
                     'address': recipient_address,
-                    'amount': int(amount * 1e12)  # Convert to atomic units
+                    'amount': xmr_to_atomic(amount),
                 }],
                 priority=1
             )
@@ -469,7 +451,7 @@ def main():
         agent_id=args.id,
         shared_dir=args.shared_dir,
         rpc_host=args.rpc_host,
-        agent_rpc_port=args.agent_rpc_port,
+        daemon_rpc_port=args.daemon_rpc_port,
         wallet_rpc_port=args.wallet_rpc_port,
         p2p_port=args.p2p_port,
         log_level=args.log_level,

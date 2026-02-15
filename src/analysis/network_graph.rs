@@ -49,8 +49,6 @@ pub struct Edge {
 /// Active connection with metadata
 #[derive(Debug, Clone)]
 struct ActiveConnection {
-    #[allow(dead_code)]
-    peer_ip: String,
     peer_node: Option<String>,
     direction: ConnectionDirection,
     open_time: SimTime,
@@ -139,11 +137,11 @@ pub struct NetworkValidation {
 /// Analyze the network graph from connection events
 pub fn analyze_network_graph(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
     snapshot_times: Option<Vec<SimTime>>,
 ) -> NetworkGraphReport {
     // Build IP to node mapping (only for daemon nodes)
-    let daemon_agents: Vec<&AgentInfo> = agents
+    let daemon_agents: Vec<&AnalysisAgentInfo> = agents
         .iter()
         .filter(|a| !a.script_type.contains("distributor") && !a.script_type.contains("monitor"))
         .collect();
@@ -232,7 +230,6 @@ pub fn analyze_network_graph(
                 node_connections.insert(
                     event.connection_id.clone(),
                     ActiveConnection {
-                        peer_ip: event.peer_ip.clone(),
                         peer_node,
                         direction: event.direction,
                         open_time: *timestamp,
@@ -552,7 +549,7 @@ fn validate_network(snapshot: &NetworkSnapshot, expected_max_outbound: usize) ->
 }
 
 /// Generate GraphViz DOT format for visualization
-pub fn generate_dot(snapshot: &NetworkSnapshot, _agents: &[AgentInfo]) -> String {
+pub fn generate_dot(snapshot: &NetworkSnapshot, _agents: &[AnalysisAgentInfo]) -> String {
     let mut dot = String::new();
     dot.push_str("digraph MoneroNetwork {\n");
     dot.push_str("    rankdir=LR;\n");

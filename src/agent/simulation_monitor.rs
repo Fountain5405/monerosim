@@ -9,6 +9,7 @@ use crate::config_v2::{AgentDefinitions, AgentConfig};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
+use crate::utils::script::write_wrapper_script;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -46,6 +47,7 @@ pub fn process_simulation_monitor(
     gml_graph: Option<&GmlGraph>,
     using_gml_topology: bool,
     agent_offset: usize,
+    scripts_dir: &Path,
 ) -> color_eyre::eyre::Result<()> {
     // Find simulation_monitor agent in the named agents map
     let simulation_monitor: Option<(&String, &AgentConfig)> = agents.agents.iter()
@@ -62,11 +64,11 @@ pub fn process_simulation_monitor(
         let mut processes = Vec::new();
 
         // Convert output_dir to absolute path string
-        let output_dir_str = output_dir.to_str().unwrap();
+        let output_dir_str = output_dir.to_string_lossy();
 
         let mut agent_args = vec![
             format!("--id {}", simulation_monitor_id),
-            format!("--shared-dir {}", shared_dir.to_str().unwrap()),
+            format!("--shared-dir {}", shared_dir.to_string_lossy()),
             format!("--output-dir {}", output_dir_str),
             format!("--log-level DEBUG"),
         ];
@@ -83,11 +85,11 @@ pub fn process_simulation_monitor(
                 agent_args.push(format!("--status-file {}", status_file));
             } else {
                 // Relative path - put in shared directory
-                agent_args.push(format!("--status-file {}/{}", shared_dir.to_str().unwrap(), status_file));
+                agent_args.push(format!("--status-file {}/{}", shared_dir.to_string_lossy(), status_file));
             }
         } else {
             // Default status file in shared directory
-            agent_args.push(format!("--status-file {}/monerosim_monitor.log", shared_dir.to_str().unwrap()));
+            agent_args.push(format!("--status-file {}/monerosim_monitor.log", shared_dir.to_string_lossy()));
         }
 
         if simulation_monitor_config.enable_alerts.unwrap_or(false) {
@@ -135,34 +137,16 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
             python_cmd
         );
 
-        // Write wrapper script to a temporary file and execute it
-        let script_path = format!("/tmp/{}_wrapper.sh", simulation_monitor_id);
-
-        // Determine execution start time (start early to monitor from beginning)
-        let simulation_monitor_start_time = "5s".to_string();
-
-        // Calculate script creation time (1 second before execution)
-        let script_creation_time = "4s".to_string();
-
-        // Process 1: Create wrapper script
-        processes.push(crate::shadow::ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: format!("-c 'cat > {} << \\EOF\n{}EOF'", script_path, wrapper_script),
-            environment: environment.clone(),
-            start_time: script_creation_time,
-            shutdown_time: None,
-            expected_final_state: None,
-        });
-
-        // Process 2: Execute wrapper script
-        processes.push(crate::shadow::ShadowProcess {
-            path: "/bin/bash".to_string(),
-            args: script_path.clone(),
-            environment: environment.clone(),
-            start_time: simulation_monitor_start_time,
-            shutdown_time: None,
-            expected_final_state: None,
-        });
+        let process = write_wrapper_script(
+            scripts_dir,
+            &format!("{}_wrapper.sh", simulation_monitor_id),
+            &wrapper_script,
+            environment,
+            "5s".to_string(), // Start early to monitor from beginning
+            None,
+            Some(crate::shadow::ExpectedFinalState::Running),
+        )?;
+        processes.push(process);
 
         hosts.insert(simulation_monitor_id.to_string(), ShadowHost {
             network_node_id, // Use the assigned GML node with bandwidth info

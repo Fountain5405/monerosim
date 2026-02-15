@@ -5,61 +5,58 @@
 
 use crate::config_v2::OptionValue;
 use crate::shadow::ShadowProcess;
+use crate::utils::options::{options_to_args, merge_options};
 use std::collections::BTreeMap;
 
-/// Convert OptionValue map to command-line arguments
-/// - Bool(true) -> --flag
-/// - Bool(false) -> (omitted)
-/// - String(s) -> --flag=s
-/// - Number(n) -> --flag=n
-fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
-    options.iter().filter_map(|(key, value)| {
-        match value {
-            OptionValue::Bool(true) => Some(format!("--{}", key)),
-            OptionValue::Bool(false) => None,
-            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
-            OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
-        }
-    }).collect()
-}
+/// Build wallet command-line arguments common to both local and remote daemon modes.
+fn build_wallet_args(
+    agent_id: &str,
+    agent_ip: &str,
+    daemon_address: &str,
+    wallet_rpc_port: u16,
+    environment: &BTreeMap<String, String>,
+    custom_args: Option<&Vec<String>>,
+    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
+    wallet_options: Option<&BTreeMap<String, OptionValue>>,
+    shared_dir: &str,
+) -> String {
+    let process_threads: u32 = environment.get("PROCESS_THREADS")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
 
-/// Merge two option maps, with overrides taking precedence over defaults
-fn merge_options(
-    defaults: Option<&BTreeMap<String, OptionValue>>,
-    overrides: Option<&BTreeMap<String, OptionValue>>,
-) -> BTreeMap<String, OptionValue> {
-    let mut merged = BTreeMap::new();
+    let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
 
-    // Apply defaults first
-    if let Some(defs) = defaults {
-        for (k, v) in defs {
-            merged.insert(k.clone(), v.clone());
-        }
+    let mut args = vec![
+        format!("--daemon-address={}", daemon_address),
+        format!("--rpc-bind-port={}", wallet_rpc_port),
+        format!("--rpc-bind-ip={}", agent_ip),
+        "--disable-rpc-login".to_string(),
+        "--trusted-daemon".to_string(),
+        format!("--wallet-dir={}/{}_wallet", shared_dir, agent_id),
+        "--confirm-external-bind".to_string(),
+        "--allow-mismatched-daemon-version".to_string(),
+    ];
+
+    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
+        args.push(format!("--max-concurrency={}", process_threads));
     }
 
-    // Apply overrides (these take precedence)
-    if let Some(ovrs) = overrides {
-        for (k, v) in ovrs {
-            merged.insert(k.clone(), v.clone());
-        }
+    args.extend(options_to_args(&merged_wallet_options));
+    args.push("--daemon-ssl-allow-any-cert".to_string());
+
+    if let Some(custom) = custom_args {
+        args.extend(custom.iter().cloned());
     }
 
-    merged
+    args.join(" ")
 }
 
-/// Add a wallet process to the processes list
-///
-/// # Parameters
-/// - `wallet_binary_path`: Path to wallet-rpc binary (already resolved for Shadow, e.g., "$HOME/.monerosim/bin/monero-wallet-rpc")
-/// - `custom_args`: Optional additional CLI arguments to append
-/// - `custom_env`: Optional additional environment variables to merge
-/// - `wallet_defaults`: Global wallet defaults from config
-/// - `wallet_options`: Per-agent wallet options (overrides defaults)
+/// Add a wallet process connecting to a local daemon on the same host.
 pub fn add_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
-    agent_rpc_port: u16,
+    daemon_rpc_port: u16,
     wallet_rpc_port: u16,
     wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
@@ -69,51 +66,14 @@ pub fn add_wallet_process(
     custom_env: Option<&BTreeMap<String, String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
+    shared_dir: &str,
 ) {
-    // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
-    // It creates /tmp/monerosim_shared/{agent_id}_wallet with chmod 755 before
-    // the Shadow config is even written.
+    let daemon_address = format!("http://{}:{}", agent_ip, daemon_rpc_port);
+    let wallet_args = build_wallet_args(
+        agent_id, agent_ip, &daemon_address, wallet_rpc_port,
+        environment, custom_args, wallet_defaults, wallet_options, shared_dir,
+    );
 
-    // Get process_threads from environment (convenience setting)
-    let process_threads: u32 = environment.get("PROCESS_THREADS")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
-
-    // Merge wallet_defaults with wallet_options
-    let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
-
-    // Build wallet args - start with required flags
-    let mut wallet_args_parts = vec![
-        format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
-        format!("--rpc-bind-port={}", wallet_rpc_port),
-        format!("--rpc-bind-ip={}", agent_ip),
-        "--disable-rpc-login".to_string(),
-        "--trusted-daemon".to_string(),
-        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
-        "--confirm-external-bind".to_string(),
-        "--allow-mismatched-daemon-version".to_string(),
-    ];
-
-    // Add process_threads flag if set and not overridden in wallet_defaults
-    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
-        wallet_args_parts.push(format!("--max-concurrency={}", process_threads));
-    }
-
-    // Add configurable options from merged wallet_defaults + wallet_options
-    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
-
-    wallet_args_parts.push("--daemon-ssl-allow-any-cert".to_string());
-
-    // Append custom args if provided
-    if let Some(args) = custom_args {
-        for arg in args {
-            wallet_args_parts.push(arg.clone());
-        }
-    }
-
-    let wallet_args = wallet_args_parts.join(" ");
-
-    // Merge custom environment if provided
     let mut wallet_env = environment.clone();
     if let Some(env) = custom_env {
         for (key, value) in env {
@@ -123,29 +83,18 @@ pub fn add_wallet_process(
 
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!(
-            "-c '{} {}'",
-            wallet_binary_path, wallet_args
-        ),
+        args: format!("-c '{} {}'", wallet_binary_path, wallet_args),
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
-        expected_final_state: None,
+        expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
     });
 }
 
-/// Add a wallet process for wallet-only agents that connect to a remote daemon
+/// Add a wallet process connecting to a remote daemon.
 ///
-/// For wallet-only agents, the daemon address can be either:
-/// - A specific address (e.g., "192.168.1.10:18081")
-/// - "auto" - wallet starts without initial daemon, Python agent calls set_daemon()
-///
-/// # Parameters
-/// - `wallet_binary_path`: Path to wallet-rpc binary (already resolved for Shadow)
-/// - `custom_args`: Optional additional CLI arguments to append
-/// - `custom_env`: Optional additional environment variables to merge
-/// - `wallet_defaults`: Global wallet defaults from config
-/// - `wallet_options`: Per-agent wallet options (overrides defaults)
+/// For "auto" mode, uses a localhost placeholder; the Python agent will
+/// call `set_daemon()` at runtime to connect to a discovered public node.
 pub fn add_remote_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
@@ -160,59 +109,18 @@ pub fn add_remote_wallet_process(
     custom_env: Option<&BTreeMap<String, String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
+    shared_dir: &str,
 ) {
-    // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
-
-    // Determine daemon address
-    let daemon_address_arg = match remote_daemon_address {
-        Some(addr) if addr != "auto" => {
-            format!("--daemon-address=http://{}", addr)
-        }
-        _ => {
-            // For "auto" mode, use a placeholder - Python agent will set it via RPC
-            "--daemon-address=http://127.0.0.1:18081".to_string()
-        }
+    let daemon_address = match remote_daemon_address {
+        Some(addr) if addr != "auto" => format!("http://{}", addr),
+        _ => format!("http://127.0.0.1:{}", crate::MONERO_RPC_PORT),
     };
 
-    // Get process_threads from environment (convenience setting)
-    let process_threads: u32 = environment.get("PROCESS_THREADS")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let wallet_args = build_wallet_args(
+        agent_id, agent_ip, &daemon_address, wallet_rpc_port,
+        environment, custom_args, wallet_defaults, wallet_options, shared_dir,
+    );
 
-    // Merge wallet_defaults with wallet_options
-    let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
-
-    // Build wallet args - start with required flags
-    let mut wallet_args_parts = vec![
-        daemon_address_arg,
-        format!("--rpc-bind-port={}", wallet_rpc_port),
-        format!("--rpc-bind-ip={}", agent_ip),
-        "--disable-rpc-login".to_string(),
-        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
-        "--confirm-external-bind".to_string(),
-        "--allow-mismatched-daemon-version".to_string(),
-    ];
-
-    // Add process_threads flag if set and not overridden in wallet_defaults
-    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
-        wallet_args_parts.push(format!("--max-concurrency={}", process_threads));
-    }
-
-    // Add configurable options from merged wallet_defaults + wallet_options
-    wallet_args_parts.extend(options_to_args(&merged_wallet_options));
-
-    wallet_args_parts.push("--daemon-ssl-allow-any-cert".to_string());
-
-    // Append custom args if provided
-    if let Some(args) = custom_args {
-        for arg in args {
-            wallet_args_parts.push(arg.clone());
-        }
-    }
-
-    let wallet_args = wallet_args_parts.join(" ");
-
-    // Merge custom environment if provided
     let mut wallet_env = environment.clone();
     if let Some(env) = custom_env {
         for (key, value) in env {
@@ -222,13 +130,10 @@ pub fn add_remote_wallet_process(
 
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!(
-            "-c '{} {}'",
-            wallet_binary_path, wallet_args
-        ),
+        args: format!("-c '{} {}'", wallet_binary_path, wallet_args),
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
-        expected_final_state: None,
+        expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
     });
 }

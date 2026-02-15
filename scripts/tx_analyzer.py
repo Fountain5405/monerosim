@@ -24,7 +24,7 @@ import statistics
 # Configuration
 # ============================================================================
 
-DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+from agents.base_agent import DEFAULT_SHARED_DIR
 DEFAULT_SHADOW_DATA = "shadow.data"
 DEFAULT_OUTPUT_DIR = "analysis_output"
 
@@ -2146,7 +2146,7 @@ def print_bandwidth_report(report: Dict, show_per_node: bool = False, show_by_ca
         print(f"{'Time Range':<15} | {'Sent':>12} | {'Received':>12} | {'Messages':>10}")
         print("-" * 15 + "-+-" + "-" * 12 + "-+-" + "-" * 12 + "-+-" + "-" * 10)
 
-        base_time = 946684800  # 2000-01-01 00:00:00 UTC
+        base_time = 946684800  # SHADOW_EPOCH: 2000-01-01 00:00:00 UTC
         for window in report['bandwidth_over_time']:
             time_range = f"{window['start'] - base_time:.0f}s-{window['end'] - base_time:.0f}s"
             print(f"{time_range:<15} | {format_bytes(window['bytes_sent']):>12} | "

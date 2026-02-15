@@ -1,0 +1,1995 @@
+general:
+  stop_time: 7200
+  seed: 2024
+  parallelism: 0
+  model_unblocked_syscall_latency: true
+  log_level: warning
+  bootstrap_end_time: 4h
+  progress: true
+network:
+  graph:
+    type: 1_gbit_switch
+  dns_server: 192.168.0.10
+experimental:
+  use_dynamic_runahead: true
+hosts:
+  dnsserver:
+    network_node_id: 0
+    ip_addr: 192.168.0.10
+    processes:
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/dns_server_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-001:
+    network_node_id: 0
+    ip_addr: 192.168.10.10
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-001 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.10 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.10 --p2p-bind-port=18080 --add-priority-node=192.168.10.12:18080 --add-priority-node=192.168.10.11:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 0s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.10:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.10 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/miner-001_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 2s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_miner-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 5s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/mining_agent_miner-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 15s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-002:
+    network_node_id: 0
+    ip_addr: 192.168.10.11
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-002 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.11 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.11 --p2p-bind-port=18080 --add-priority-node=192.168.10.10:18080 --add-priority-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.11:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.11 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/miner-002_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 3s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_miner-002_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 6s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/mining_agent_miner-002_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 16s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-003:
+    network_node_id: 0
+    ip_addr: 192.168.10.12
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-003 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.12 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.12 --p2p-bind-port=18080 --add-priority-node=192.168.10.11:18080 --add-priority-node=192.168.10.10:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 2s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.12:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.12 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/miner-003_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 4s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_miner-003_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 7s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/mining_agent_miner-003_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 17s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-distributor:
+    network_node_id: 0
+    ip_addr: 192.168.20.180
+    processes:
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/miner-distributor_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 3600s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-001:
+    network_node_id: 0
+    ip_addr: 192.168.10.13
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-001 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.13 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.13 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 10s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-002:
+    network_node_id: 0
+    ip_addr: 192.168.10.14
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-002 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.14 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.14 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 15s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-003:
+    network_node_id: 0
+    ip_addr: 192.168.10.15
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-003 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.15 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.15 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 20s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-004:
+    network_node_id: 0
+    ip_addr: 192.168.10.16
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-004 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.16 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.16 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 25s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-005:
+    network_node_id: 0
+    ip_addr: 192.168.10.17
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-005 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.17 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.17 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 30s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-006:
+    network_node_id: 0
+    ip_addr: 192.168.10.18
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-006 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.18 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.18 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 35s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-007:
+    network_node_id: 0
+    ip_addr: 192.168.10.19
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-007 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.19 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.19 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 40s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-008:
+    network_node_id: 0
+    ip_addr: 192.168.10.20
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-008 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.20 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.20 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 45s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-009:
+    network_node_id: 0
+    ip_addr: 192.168.10.21
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-009 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.21 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.21 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 50s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-010:
+    network_node_id: 0
+    ip_addr: 192.168.10.22
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-010 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.22 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.22 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 55s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-011:
+    network_node_id: 0
+    ip_addr: 192.168.10.23
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-011 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.23 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.23 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 60s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-012:
+    network_node_id: 0
+    ip_addr: 192.168.10.24
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-012 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.24 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.24 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 65s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-013:
+    network_node_id: 0
+    ip_addr: 192.168.10.25
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-013 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.25 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.25 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 70s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-014:
+    network_node_id: 0
+    ip_addr: 192.168.10.26
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-014 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.26 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.26 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 75s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-015:
+    network_node_id: 0
+    ip_addr: 192.168.10.27
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-015 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.27 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.27 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 80s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-016:
+    network_node_id: 0
+    ip_addr: 192.168.10.28
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-016 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.28 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.28 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 85s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-017:
+    network_node_id: 0
+    ip_addr: 192.168.10.29
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-017 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.29 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.29 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 90s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-018:
+    network_node_id: 0
+    ip_addr: 192.168.10.30
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-018 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.30 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.30 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 95s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-019:
+    network_node_id: 0
+    ip_addr: 192.168.10.31
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-019 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.31 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.31 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 100s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-020:
+    network_node_id: 0
+    ip_addr: 192.168.10.32
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-020 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.32 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.32 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 105s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-021:
+    network_node_id: 0
+    ip_addr: 192.168.10.33
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-021 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.33 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.33 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 110s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-022:
+    network_node_id: 0
+    ip_addr: 192.168.10.34
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-022 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.34 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.34 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 115s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-023:
+    network_node_id: 0
+    ip_addr: 192.168.10.35
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-023 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.35 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.35 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 120s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-024:
+    network_node_id: 0
+    ip_addr: 192.168.10.36
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-024 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.36 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.36 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 125s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-025:
+    network_node_id: 0
+    ip_addr: 192.168.10.37
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-025 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.37 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.37 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 130s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-026:
+    network_node_id: 0
+    ip_addr: 192.168.10.38
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-026 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.38 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.38 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 135s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-027:
+    network_node_id: 0
+    ip_addr: 192.168.10.39
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-027 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.39 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.39 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 140s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-028:
+    network_node_id: 0
+    ip_addr: 192.168.10.40
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-028 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.40 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.40 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 145s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-029:
+    network_node_id: 0
+    ip_addr: 192.168.10.41
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-029 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.41 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.41 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 150s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-030:
+    network_node_id: 0
+    ip_addr: 192.168.10.42
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-030 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.42 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.42 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 155s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-031:
+    network_node_id: 0
+    ip_addr: 192.168.10.43
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-031 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.43 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.43 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 160s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-032:
+    network_node_id: 0
+    ip_addr: 192.168.10.44
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-032 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.44 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.44 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 165s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-033:
+    network_node_id: 0
+    ip_addr: 192.168.10.45
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-033 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.45 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.45 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 170s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-034:
+    network_node_id: 0
+    ip_addr: 192.168.10.46
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-034 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.46 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.46 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 175s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-035:
+    network_node_id: 0
+    ip_addr: 192.168.10.47
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-035 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.47 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.47 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 180s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-036:
+    network_node_id: 0
+    ip_addr: 192.168.10.48
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-036 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.48 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.48 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 185s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-037:
+    network_node_id: 0
+    ip_addr: 192.168.10.49
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-037 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.49 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.49 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 190s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-038:
+    network_node_id: 0
+    ip_addr: 192.168.10.50
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-038 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.50 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.50 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 195s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-039:
+    network_node_id: 0
+    ip_addr: 192.168.10.51
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-039 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.51 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.51 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 200s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-040:
+    network_node_id: 0
+    ip_addr: 192.168.10.52
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-040 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.52 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.52 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 205s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-041:
+    network_node_id: 0
+    ip_addr: 192.168.10.53
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-041 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.53 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.53 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 210s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-042:
+    network_node_id: 0
+    ip_addr: 192.168.10.54
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-042 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.54 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.54 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 215s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-043:
+    network_node_id: 0
+    ip_addr: 192.168.10.55
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-043 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.55 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.55 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 220s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-044:
+    network_node_id: 0
+    ip_addr: 192.168.10.56
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-044 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.56 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.56 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 225s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-045:
+    network_node_id: 0
+    ip_addr: 192.168.10.57
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-045 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.57 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.57 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 230s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-046:
+    network_node_id: 0
+    ip_addr: 192.168.10.58
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-046 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.58 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.58 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 235s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-047:
+    network_node_id: 0
+    ip_addr: 192.168.10.59
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-047 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.59 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.59 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 240s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-048:
+    network_node_id: 0
+    ip_addr: 192.168.10.60
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-048 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.60 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.60 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 245s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-049:
+    network_node_id: 0
+    ip_addr: 192.168.10.61
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-049 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.61 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.61 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 250s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-050:
+    network_node_id: 0
+    ip_addr: 192.168.10.62
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-050 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.62 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.62 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 255s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-051:
+    network_node_id: 0
+    ip_addr: 192.168.10.63
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-051 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.63 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.63 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 260s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-052:
+    network_node_id: 0
+    ip_addr: 192.168.10.64
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-052 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.64 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.64 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 265s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-053:
+    network_node_id: 0
+    ip_addr: 192.168.10.65
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-053 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.65 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.65 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 270s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-054:
+    network_node_id: 0
+    ip_addr: 192.168.10.66
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-054 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.66 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.66 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 275s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-055:
+    network_node_id: 0
+    ip_addr: 192.168.10.67
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-055 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.67 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.67 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 280s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-056:
+    network_node_id: 0
+    ip_addr: 192.168.10.68
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-056 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.68 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.68 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 285s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-057:
+    network_node_id: 0
+    ip_addr: 192.168.10.69
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-057 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.69 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.69 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 290s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-058:
+    network_node_id: 0
+    ip_addr: 192.168.10.70
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-058 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.70 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.70 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 295s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-059:
+    network_node_id: 0
+    ip_addr: 192.168.10.71
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-059 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.71 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.71 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 300s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-060:
+    network_node_id: 0
+    ip_addr: 192.168.10.72
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-060 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.72 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.72 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 305s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  simulation-monitor:
+    network_node_id: 0
+    ip_addr: 192.168.30.85
+    processes:
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/simulation-monitor_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 5s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user-001:
+    network_node_id: 0
+    ip_addr: 192.168.10.73
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-user-001 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.73 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.73 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1200s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.73:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.73 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/user-001_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1202s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_user-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1205s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user-002:
+    network_node_id: 0
+    ip_addr: 192.168.10.74
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-user-002 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.74 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.74 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1205s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.74:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.74 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/user-002_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1207s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_user-002_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1210s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user-003:
+    network_node_id: 0
+    ip_addr: 192.168.10.75
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-user-003 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.75 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.75 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1210s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.75:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.75 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/user-003_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1212s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_user-003_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1215s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user-004:
+    network_node_id: 0
+    ip_addr: 192.168.10.76
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-user-004 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.76 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.76 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1215s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.76:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.76 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/user-004_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1217s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_user-004_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1220s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  user-005:
+    network_node_id: 0
+    ip_addr: 192.168.10.77
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-user-005 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=192.168.10.77 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=192.168.10.77 --p2p-bind-port=18080 --seed-node=192.168.10.10:18080 --seed-node=192.168.10.11:18080 --seed-node=192.168.10.12:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://192.168.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1220s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://192.168.10.77:18081 --rpc-bind-port=18082 --rpc-bind-ip=192.168.10.77 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/user-005_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1222s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260208_tests/04_large_relay_group_shadow/scripts/agent_user-005_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '2024'
+      start_time: 1225s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'

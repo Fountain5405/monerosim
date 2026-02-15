@@ -208,12 +208,12 @@ pub fn load_upgrade_manifest(path: &Path) -> Result<UpgradeManifest> {
             .node_upgrades
             .iter()
             .map(|u| u.timestamp)
-            .min_by(|a, b| a.partial_cmp(b).unwrap());
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         manifest.upgrade_end = manifest
             .node_upgrades
             .iter()
             .map(|u| u.timestamp)
-            .max_by(|a, b| a.partial_cmp(b).unwrap());
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     }
 
     Ok(manifest)

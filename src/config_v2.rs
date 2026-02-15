@@ -1,29 +1,35 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 use regex::Regex;
 use crate::utils::duration::parse_duration_to_seconds;
+
+// Static regex patterns for parsing phase fields (compiled once)
+static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)$").unwrap());
+static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_args$").unwrap());
+static DAEMON_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_env$").unwrap());
+static DAEMON_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_start$").unwrap());
+static DAEMON_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_stop$").unwrap());
+static WALLET_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)$").unwrap());
+static WALLET_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_args$").unwrap());
+static WALLET_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_env$").unwrap());
+static WALLET_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_start$").unwrap());
+static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_stop$").unwrap());
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PeerMode {
-    /// Dynamic peer discovery using network protocols
     Dynamic,
-    /// Hardcoded list of peers
     Hardcoded,
-    /// Hybrid approach combining dynamic and hardcoded peers
     Hybrid,
 }
 
 /// Topology templates for peer connections
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Topology {
-    /// Star topology: all nodes connect to a central hub
     Star,
-    /// Mesh topology: all nodes connect to all other nodes
     Mesh,
-    /// Ring topology: circular connections between nodes
     Ring,
-    /// DAG (Directed Acyclic Graph): hierarchical connections
     Dag,
 }
 
@@ -106,7 +112,6 @@ pub enum OptionValue {
 }
 
 /// Unified agent configuration for all agent types
-/// Replaces separate UserAgentConfig, MinerDistributorConfig, etc.
 ///
 /// Uses flat format for daemon/wallet phases:
 /// `daemon_0: "monerod"`, `daemon_0_start: "0s"`, `daemon_0_stop: "30m"`
@@ -449,154 +454,67 @@ impl<'de> Deserialize<'de> for AgentConfig {
     }
 }
 
+/// Parse phase fields for a single phase type (daemon or wallet) from flat YAML keys.
+///
+/// Matches keys like `{prefix}_{N}`, `{prefix}_{N}_args`, etc. against the
+/// provided regex patterns and populates the phases map.
+fn parse_typed_phases<P: Phase>(
+    extra: &BTreeMap<String, serde_yaml::Value>,
+    re_path: &Regex,
+    re_args: &Regex,
+    re_env: &Regex,
+    re_start: &Regex,
+    re_stop: &Regex,
+) -> BTreeMap<u32, P> {
+    let mut phases: BTreeMap<u32, P> = BTreeMap::new();
+
+    for (key, value) in extra {
+        if let Some(caps) = re_path.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            phases.entry(phase_num).or_default()
+                .set_path(value.as_str().unwrap_or_default().to_string());
+        } else if let Some(caps) = re_args.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            if let Some(args) = value.as_sequence() {
+                let args: Vec<String> = args.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect();
+                phases.entry(phase_num).or_default().set_args(args);
+            }
+        } else if let Some(caps) = re_env.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            if let Some(env_map) = value.as_mapping() {
+                let env: BTreeMap<String, String> = env_map.iter()
+                    .filter_map(|(k, v)| {
+                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
+                    })
+                    .collect();
+                phases.entry(phase_num).or_default().set_env(env);
+            }
+        } else if let Some(caps) = re_start.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            phases.entry(phase_num).or_default()
+                .set_start(value.as_str().unwrap_or_default().to_string());
+        } else if let Some(caps) = re_stop.captures(key) {
+            let phase_num: u32 = caps[1].parse().unwrap();
+            phases.entry(phase_num).or_default()
+                .set_stop(value.as_str().unwrap_or_default().to_string());
+        }
+    }
+
+    phases
+}
+
 /// Parse flat phase fields (daemon_0, daemon_0_args, etc.) into structured phases
 fn parse_phase_fields(
     extra: &BTreeMap<String, serde_yaml::Value>,
 ) -> (BTreeMap<u32, DaemonPhase>, BTreeMap<u32, WalletPhase>) {
-    let mut daemon_phases: BTreeMap<u32, DaemonPhase> = BTreeMap::new();
-    let mut wallet_phases: BTreeMap<u32, WalletPhase> = BTreeMap::new();
-
-    // Regex patterns for flat phase fields
-    let daemon_re = Regex::new(r"^daemon_(\d+)$").unwrap();
-    let daemon_args_re = Regex::new(r"^daemon_(\d+)_args$").unwrap();
-    let daemon_env_re = Regex::new(r"^daemon_(\d+)_env$").unwrap();
-    let daemon_start_re = Regex::new(r"^daemon_(\d+)_start$").unwrap();
-    let daemon_stop_re = Regex::new(r"^daemon_(\d+)_stop$").unwrap();
-
-    let wallet_re = Regex::new(r"^wallet_(\d+)$").unwrap();
-    let wallet_args_re = Regex::new(r"^wallet_(\d+)_args$").unwrap();
-    let wallet_env_re = Regex::new(r"^wallet_(\d+)_env$").unwrap();
-    let wallet_start_re = Regex::new(r"^wallet_(\d+)_start$").unwrap();
-    let wallet_stop_re = Regex::new(r"^wallet_(\d+)_stop$").unwrap();
-
-    for (key, value) in extra {
-        // Parse daemon phases
-        if let Some(caps) = daemon_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let path = value.as_str().unwrap_or_default().to_string();
-            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).path = path;
-        } else if let Some(caps) = daemon_args_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(args) = value.as_sequence() {
-                let args: Vec<String> = args.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect();
-                daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).args = Some(args);
-            }
-        } else if let Some(caps) = daemon_env_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(env_map) = value.as_mapping() {
-                let env: BTreeMap<String, String> = env_map.iter()
-                    .filter_map(|(k, v)| {
-                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
-                    })
-                    .collect();
-                daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).env = Some(env);
-            }
-        } else if let Some(caps) = daemon_start_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let start = value.as_str().unwrap_or_default().to_string();
-            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).start = Some(start);
-        } else if let Some(caps) = daemon_stop_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let stop = value.as_str().unwrap_or_default().to_string();
-            daemon_phases.entry(phase_num).or_insert_with(|| DaemonPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).stop = Some(stop);
-        }
-
-        // Parse wallet phases
-        if let Some(caps) = wallet_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let path = value.as_str().unwrap_or_default().to_string();
-            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).path = path;
-        } else if let Some(caps) = wallet_args_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(args) = value.as_sequence() {
-                let args: Vec<String> = args.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect();
-                wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).args = Some(args);
-            }
-        } else if let Some(caps) = wallet_env_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            if let Some(env_map) = value.as_mapping() {
-                let env: BTreeMap<String, String> = env_map.iter()
-                    .filter_map(|(k, v)| {
-                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
-                    })
-                    .collect();
-                wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                    path: String::new(),
-                    args: None,
-                    env: None,
-                    start: None,
-                    stop: None,
-                }).env = Some(env);
-            }
-        } else if let Some(caps) = wallet_start_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let start = value.as_str().unwrap_or_default().to_string();
-            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).start = Some(start);
-        } else if let Some(caps) = wallet_stop_re.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
-            let stop = value.as_str().unwrap_or_default().to_string();
-            wallet_phases.entry(phase_num).or_insert_with(|| WalletPhase {
-                path: String::new(),
-                args: None,
-                env: None,
-                start: None,
-                stop: None,
-            }).stop = Some(stop);
-        }
-    }
-
+    let daemon_phases = parse_typed_phases(
+        extra, &DAEMON_RE, &DAEMON_ARGS_RE, &DAEMON_ENV_RE, &DAEMON_START_RE, &DAEMON_STOP_RE,
+    );
+    let wallet_phases = parse_typed_phases(
+        extra, &WALLET_RE, &WALLET_ARGS_RE, &WALLET_ENV_RE, &WALLET_START_RE, &WALLET_STOP_RE,
+    );
     (daemon_phases, wallet_phases)
 }
 
@@ -678,10 +596,6 @@ impl Config {
         &self.general
     }
     
-    /// Check if this is an agent configuration (always true now)
-    pub fn is_agent_mode(&self) -> bool {
-        true
-    }
 }
 
 /// Shared general configuration
@@ -748,6 +662,15 @@ pub struct GeneralConfig {
     /// Example: { "log-level": 1 }
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_defaults: Option<BTreeMap<String, OptionValue>>,
+
+    /// Directory for inter-agent communication files (registries, wallets, locks).
+    #[serde(default = "default_shared_dir")]
+    pub shared_dir: String,
+
+    /// Base directory for per-agent monerod data directories.
+    /// Each agent gets `{daemon_data_dir}/monero-{agent_id}`.
+    #[serde(default = "default_daemon_data_dir")]
+    pub daemon_data_dir: String,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -764,6 +687,14 @@ fn default_difficulty_cache_ttl() -> u32 {
 
 fn default_shadow_log_level() -> String {
     "info".to_string()  // Reduced from "trace" to lower I/O overhead
+}
+
+fn default_shared_dir() -> String {
+    "/tmp/monerosim_shared".to_string()
+}
+
+fn default_daemon_data_dir() -> String {
+    "/tmp".to_string()
 }
 
 /// Agent definitions - named map of agents
@@ -857,7 +788,7 @@ impl DaemonConfig {
 }
 
 /// Configuration for a single daemon phase in an upgrade scenario
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DaemonPhase {
     /// Path to the daemon binary (or shorthand name)
     pub path: String,
@@ -876,7 +807,7 @@ pub struct DaemonPhase {
 }
 
 /// Configuration for a single wallet phase in an upgrade scenario
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct WalletPhase {
     /// Path to the wallet binary (or shorthand name)
     pub path: String,
@@ -893,6 +824,30 @@ pub struct WalletPhase {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<String>,
 }
+
+/// Common interface for phase types (DaemonPhase and WalletPhase share identical fields)
+trait Phase: Default {
+    fn set_path(&mut self, path: String);
+    fn set_args(&mut self, args: Vec<String>);
+    fn set_env(&mut self, env: BTreeMap<String, String>);
+    fn set_start(&mut self, start: String);
+    fn set_stop(&mut self, stop: String);
+}
+
+macro_rules! impl_phase {
+    ($t:ty) => {
+        impl Phase for $t {
+            fn set_path(&mut self, path: String) { self.path = path; }
+            fn set_args(&mut self, args: Vec<String>) { self.args = Some(args); }
+            fn set_env(&mut self, env: BTreeMap<String, String>) { self.env = Some(env); }
+            fn set_start(&mut self, start: String) { self.start = Some(start); }
+            fn set_stop(&mut self, stop: String) { self.stop = Some(stop); }
+        }
+    };
+}
+
+impl_phase!(DaemonPhase);
+impl_phase!(WalletPhase);
 
 /// Minimum gap between phase stop and next phase start (in seconds)
 /// This allows time for graceful shutdown and startup of the next binary
@@ -1046,39 +1001,6 @@ pub fn validate_daemon_phases(
     Ok(())
 }
 
-/// Miner distributor agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MinerDistributorConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub attributes: Option<BTreeMap<String, String>>,
-}
-
-/// Pure script agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PureScriptAgentConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<String>>,
-}
-
-/// Simulation monitor agent configuration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SimulationMonitorConfig {
-    pub script: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub poll_interval: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status_file: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enable_alerts: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub detailed_logging: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<String>>,
-}
-
-
 /// Network configuration, supporting different topology types
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
@@ -1144,6 +1066,8 @@ impl Default for GeneralConfig {
             native_preemption: None,  // Shadow default (false) applies when unset
             daemon_defaults: None,  // No daemon defaults by default
             wallet_defaults: None,  // No wallet defaults by default
+            shared_dir: default_shared_dir(),
+            daemon_data_dir: default_daemon_data_dir(),
         }
     }
 }

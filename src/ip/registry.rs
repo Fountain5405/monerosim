@@ -31,8 +31,6 @@ pub struct GlobalIpRegistry {
     assigned_ips: HashMap<String, String>, // IP -> Agent ID
     /// Fast lookup for IP uniqueness checking
     used_ips: HashSet<String>,
-    /// Next available IP counters for each subnet
-    subnet_counters: HashMap<String, u8>,
     /// Subnet group allocations: group_name -> (subnet_prefix, next_host)
     /// Each subnet group gets a unique /24 subnet in the 10.100.x.0 range
     subnet_groups: HashMap<String, (String, u8)>,
@@ -42,15 +40,9 @@ pub struct GlobalIpRegistry {
 
 impl GlobalIpRegistry {
     pub fn new() -> Self {
-        let mut subnet_counters = HashMap::new();
-
-        // Initialize counters for the base subnet
-        subnet_counters.insert("192.168".to_string(), 10);
-
         GlobalIpRegistry {
             assigned_ips: HashMap::new(),
             used_ips: HashSet::new(),
-            subnet_counters,
             subnet_groups: HashMap::new(),
             next_subnet_group_id: 0,
         }
@@ -160,14 +152,13 @@ impl GlobalIpRegistry {
         &self.assigned_ips
     }
 
-    /// Get statistics about IP allocation
+    /// Get statistics about IP allocation, grouped by first octet.
     pub fn get_allocation_stats(&self) -> HashMap<String, usize> {
-        let mut stats = HashMap::new();
-        for (subnet, _) in &self.subnet_counters {
-            let count = self.assigned_ips.keys()
-                .filter(|ip| ip.starts_with(&format!("{}.", subnet)))
-                .count();
-            stats.insert(subnet.clone(), count);
+        let mut stats: HashMap<String, usize> = HashMap::new();
+        for ip in self.assigned_ips.keys() {
+            if let Some(first_octet) = ip.split('.').next() {
+                *stats.entry(format!("{}.x.x.x", first_octet)).or_insert(0) += 1;
+            }
         }
         stats
     }

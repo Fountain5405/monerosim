@@ -19,7 +19,7 @@ const FLUFF_GAP_THRESHOLD_MS: f64 = 2000.0;
 pub fn analyze_dandelion(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> DandelionReport {
     // Build IP -> node_id mapping
     let ip_to_node: HashMap<String, String> = agents

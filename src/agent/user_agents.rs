@@ -10,51 +10,23 @@ use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
-
-/// Convert OptionValue map to command-line arguments
-/// - Bool(true) -> --flag
-/// - Bool(false) -> (omitted)
-/// - String(s) -> --flag=s
-/// - Number(n) -> --flag=n
-fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
-    options.iter().filter_map(|(key, value)| {
-        match value {
-            OptionValue::Bool(true) => Some(format!("--{}", key)),
-            OptionValue::Bool(false) => None,
-            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
-            OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
-        }
-    }).collect()
-}
-
-/// Merge two option maps, with overrides taking precedence over defaults
-fn merge_options(
-    defaults: Option<&BTreeMap<String, OptionValue>>,
-    overrides: Option<&BTreeMap<String, OptionValue>>,
-) -> BTreeMap<String, OptionValue> {
-    let mut merged = BTreeMap::new();
-
-    // Apply defaults first
-    if let Some(defs) = defaults {
-        for (k, v) in defs {
-            merged.insert(k.clone(), v.clone());
-        }
-    }
-
-    // Apply overrides (these take precedence)
-    if let Some(ovrs) = overrides {
-        for (k, v) in ovrs {
-            merged.insert(k.clone(), v.clone());
-        }
-    }
-
-    merged
-}
+use crate::utils::options::{options_to_args, merge_options};
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
+
+/// Named struct replacing anonymous tuples for agent information.
+struct AgentEntry {
+    index: usize,
+    #[allow(dead_code)] // Used during categorization, kept for debugging clarity
+    is_miner: bool,
+    is_seed_node: bool,
+    id: String,
+    ip: String,
+    port: u16,
+}
 
 /// Process user agents
 pub fn process_user_agents(
@@ -78,6 +50,8 @@ pub fn process_user_agents(
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     distribution_strategy: Option<&crate::config_v2::DistributionStrategy>,
     distribution_weights: Option<&crate::config_v2::RegionWeights>,
+    scripts_dir: &Path,
+    daemon_data_dir: &str,
 ) -> color_eyre::eyre::Result<()> {
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
@@ -125,11 +99,11 @@ pub fn process_user_agents(
     // No phase validation needed for new AgentConfig (simpler structure)
 
     // First, collect all agent information to build connection graphs
-    let mut agent_info = Vec::new();
-    let mut all_agent_ips = Vec::new(); // Collect all agent IPs for topology connections
-    let mut miners = Vec::new();
-    let mut seed_nodes = Vec::new();
-    let mut regular_agents = Vec::new();
+    let mut agent_info: Vec<AgentEntry> = Vec::new();
+    let mut all_agent_ips = Vec::new();
+    let mut miners: Vec<AgentEntry> = Vec::new();
+    let mut seed_nodes: Vec<AgentEntry> = Vec::new();
+    let mut regular_agents: Vec<AgentEntry> = Vec::new();
 
     for (i, (agent_id, agent_config)) in user_agents.iter().enumerate() {
         let is_miner = agent_config.is_miner();
@@ -137,122 +111,99 @@ pub fn process_user_agents(
             .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
             .unwrap_or(false);
 
-        // Determine network node ID for this agent
         let network_node_id = if i < agent_node_assignments.len() {
             agent_node_assignments[i]
         } else {
-            0 // Fallback to node 0 for switch-based networks
+            0
         };
 
-        // Get agent IP using dynamic assignment
-        // If agent has a subnet_group, use that for IP allocation (Sybil simulation)
         let subnet_group = user_agents.iter()
             .find(|(id, _)| id.as_str() == *agent_id)
             .and_then(|(_, config)| config.subnet_group.as_deref());
         let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group);
-        let agent_port = 18080;
+        let agent_port = crate::MONERO_P2P_PORT;
 
-        // Collect all agent IPs for topology connections
         all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
 
-        let agent_entry = (i, is_miner, is_seed_node, agent_id.to_string(), agent_ip.clone(), agent_port);
+        let entry = AgentEntry {
+            index: i,
+            is_miner,
+            is_seed_node,
+            id: agent_id.to_string(),
+            ip: agent_ip.clone(),
+            port: agent_port,
+        };
 
         if is_miner {
-            miners.push(agent_entry);
+            miners.push(entry);
         } else if is_seed_node {
-            seed_nodes.push(agent_entry);
+            seed_nodes.push(entry);
         } else {
-            regular_agents.push(agent_entry);
+            regular_agents.push(entry);
         }
 
-        agent_info.push((i, is_miner, is_seed_node, agent_id.to_string(), agent_ip, agent_port));
+        agent_info.push(AgentEntry {
+            index: i, is_miner, is_seed_node,
+            id: agent_id.to_string(), ip: agent_ip, port: agent_port,
+        });
     }
 
     // Ensure we have exactly 5 seed nodes; if less, promote some regular agents (for Hardcoded/Hybrid modes)
     if !matches!(peer_mode, PeerMode::Dynamic) {
         while seed_nodes.len() < 5 {
-            if let Some((i, _, _, id, ip, port)) = regular_agents.pop() {
-                seed_nodes.push((i, false, true, id, ip, port));
+            if let Some(mut entry) = regular_agents.pop() {
+                entry.is_seed_node = true;
+                seed_nodes.push(entry);
+            } else if let Some(mut entry) = miners.pop() {
+                entry.is_seed_node = true;
+                seed_nodes.push(entry);
             } else {
-                // If no more regular agents, promote from miners if needed
-                if let Some((i, _, _, id, ip, port)) = miners.pop() {
-                    seed_nodes.push((i, true, true, id, ip, port));
-                } else {
-                    // No more agents to promote
-                    break;
-                }
+                break;
             }
         }
     }
 
-    // Build seed_agents list from actual miner IPs (not pre-calculated effective_seed_nodes)
-    // For Dynamic mode, use miners as seed nodes since they have the longest-running daemons
-    // For other modes, use the promoted seed_nodes list
-    if matches!(peer_mode, PeerMode::Dynamic) {
-        // Use actual miner IPs collected above (correct IPs from actual agent processing)
-        for (_, _, _, _, agent_ip, agent_port) in &miners {
-            let seed_addr = format!("{}:{}", agent_ip, agent_port);
-            seed_agents.push(seed_addr);
-        }
-    } else {
-        for (_, _, _, _, agent_ip, agent_port) in &seed_nodes {
-            let seed_addr = format!("{}:{}", agent_ip, agent_port);
-            seed_agents.push(seed_addr);
-        }
+    // Build seed_agents list from actual miner IPs (Dynamic mode) or promoted seed_nodes
+    let seed_source = if matches!(peer_mode, PeerMode::Dynamic) { &miners } else { &seed_nodes };
+    for entry in seed_source {
+        seed_agents.push(format!("{}:{}", entry.ip, entry.port));
     }
 
-    // Generate fixed connections for initial network bootstrap
+    // Build ring connections among a group of agents.
+    // Each agent connects to its predecessor and successor in the ring.
+    fn build_ring_connections(group: &[AgentEntry], flag: &str) -> HashMap<String, Vec<String>> {
+        let mut connections = HashMap::new();
+        for (i, entry) in group.iter().enumerate() {
+            let mut conns = Vec::new();
+            let prev = if i == 0 { group.len() - 1 } else { i - 1 };
+            let next = if i == group.len() - 1 { 0 } else { i + 1 };
+            if prev < group.len() && group[prev].ip != entry.ip {
+                conns.push(format!("{}={}:{}", flag, group[prev].ip, group[prev].port));
+            }
+            if next < group.len() && group[next].ip != entry.ip {
+                conns.push(format!("{}={}:{}", flag, group[next].ip, group[next].port));
+            }
+            connections.insert(entry.id.clone(), conns);
+        }
+        connections
+    }
+
     // Miners connect in Ring among themselves
-    let mut miner_connections = HashMap::new();
-    for (i, (_, _, _, id, ip, _)) in miners.iter().enumerate() {
-        let mut connections = Vec::new();
-        // Connect to previous and next miner
-        let prev = if i == 0 { miners.len() - 1 } else { i - 1 };
-        let next = if i == miners.len() - 1 { 0 } else { i + 1 };
-        if prev < miners.len() {
-            let prev_miner = &miners[prev];
-            if prev_miner.4 != *ip { // Don't connect to self
-                connections.push(format!("--add-priority-node={}:{}", prev_miner.4, prev_miner.5));
-            }
-        }
-        if next < miners.len() {
-            let next_miner = &miners[next];
-            if next_miner.4 != *ip { // Don't connect to self
-                connections.push(format!("--add-priority-node={}:{}", next_miner.4, next_miner.5));
-            }
-        }
-        miner_connections.insert(id.clone(), connections);
-    }
+    let miner_connections = build_ring_connections(&miners, "--add-priority-node");
 
     // Seed nodes connect to all miners and to each other in Ring (for Hardcoded/Hybrid modes)
     let seed_connections = if !matches!(peer_mode, PeerMode::Dynamic) {
-        let mut seed_connections = HashMap::new();
-        for (i, (_, _, _, id, ip, _)) in seed_nodes.iter().enumerate() {
-            let mut connections = Vec::new();
-            // Connect to all miners using --seed-node
-            for (_, _, _, _, m_ip, m_port) in &miners {
-                if m_ip != ip {
-                    connections.push(format!("--seed-node={}:{}", m_ip, m_port));
+        let mut seed_conns = build_ring_connections(&seed_nodes, "--add-priority-node");
+        // Additionally connect each seed to all miners
+        for entry in &seed_nodes {
+            let conns = seed_conns.entry(entry.id.clone()).or_default();
+            for miner in &miners {
+                if miner.ip != entry.ip {
+                    conns.push(format!("--seed-node={}:{}", miner.ip, miner.port));
                 }
             }
-            // Connect to other seeds in Ring
-            let prev = if i == 0 { seed_nodes.len() - 1 } else { i - 1 };
-            let next = if i == seed_nodes.len() - 1 { 0 } else { i + 1 };
-            if prev < seed_nodes.len() {
-                let prev_seed = &seed_nodes[prev];
-                if prev_seed.4 != *ip {
-                    connections.push(format!("--add-priority-node={}:{}", prev_seed.4, prev_seed.5));
-                }
-            }
-            if next < seed_nodes.len() {
-                let next_seed = &seed_nodes[next];
-                if next_seed.4 != *ip {
-                    connections.push(format!("--add-priority-node={}:{}", next_seed.4, next_seed.5));
-                }
-            }
-            seed_connections.insert(id.clone(), connections);
         }
-        seed_connections
+        seed_conns
     } else {
         HashMap::new()
     };
@@ -273,34 +224,21 @@ pub fn process_user_agents(
             .and_then(|offset| parse_duration_to_seconds(offset).ok())
             .unwrap_or(0);
 
-            // Monero coinbase maturity = 60 blocks, block time = 120s (DIFFICULTY_TARGET_V2)
-            // Regular users must wait for block maturity before spending: 60 × 120s = 7200s
-            const BLOCK_MATURITY_SECONDS: u64 = 7200; // 60 blocks × 120s
-
             let base_start_time_seconds = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Dynamic mode launch sequence
                 if is_miner {
-                    // Miners start immediately to mine blocks
-                    if i == 0 {
-                        0u64 // First miner (node 0) at t=0s
-                    } else {
-                        1 + i as u64 // Remaining miners every 1s starting t=1s
-                    }
+                    if i == 0 { 0u64 } else { 1 + i as u64 }
                 } else {
-                    // Regular users: wait for block maturity, then stagger by 1s
                     let user_index = i.saturating_sub(miners.len());
-                    BLOCK_MATURITY_SECONDS + user_index as u64
+                    crate::BLOCK_MATURITY_SECONDS + user_index as u64
                 }
             } else {
-                // Other modes
                 if is_miner {
-                    i as u64 // Miners start early, staggered by 1s
-                } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
-                    BLOCK_MATURITY_SECONDS // Seeds start after block maturity
+                    i as u64
+                } else if is_seed_node || seed_nodes.iter().any(|e| e.is_seed_node && e.index == i) {
+                    crate::BLOCK_MATURITY_SECONDS
                 } else {
-                    // Regular agents: start after block maturity, with stagger
-                    let user_index = regular_agents.iter().position(|(idx, _, _, _, _, _)| *idx == i).unwrap_or(0);
-                    BLOCK_MATURITY_SECONDS + user_index as u64
+                    let user_index = regular_agents.iter().position(|e| e.index == i).unwrap_or(0);
+                    crate::BLOCK_MATURITY_SECONDS + user_index as u64
                 }
             };
 
@@ -313,52 +251,27 @@ pub fn process_user_agents(
             };
             let start_time_daemon = format!("{}s", effective_start_time);
 
-            // Wallet start time: coordinate with daemon start time (reduced delay)
-            let wallet_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Dynamic mode: start wallet 2 seconds after daemon (reduced from 5s)
-                if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
-                    format!("{}s", daemon_seconds + 2)
-                } else {
-                    format!("{}s", 2 + i)
-                }
+            // Wallet starts after daemon; agent starts after wallet
+            let wallet_start_time = if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
+                format!("{}s", daemon_seconds + crate::WALLET_STARTUP_DELAY_SECS)
             } else {
-                // Other modes: start wallet 2 seconds after daemon (reduced from 5s)
-                if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
-                    format!("{}s", daemon_seconds + 2)
-                } else {
-                    format!("{}s", 2 + i)
-                }
+                format!("{}s", crate::WALLET_STARTUP_DELAY_SECS + i as u64)
             };
 
-            // Agent start time: ensure agents start after their wallet services are ready (reduced delay)
-            let agent_start_time = if matches!(peer_mode, PeerMode::Dynamic) {
-                // Dynamic mode: start agent 3 seconds after wallet (reduced from 10s)
-                if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
-                    format!("{}s", wallet_seconds + 3)
-                } else {
-                    format!("{}s", 5 + i)
-                }
+            let agent_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
+                format!("{}s", wallet_seconds + crate::AGENT_STARTUP_DELAY_SECS)
             } else {
-                // Other modes: start agent 3 seconds after wallet (reduced from 10s)
-                if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
-                    format!("{}s", wallet_seconds + 3)
-                } else {
-                    format!("{}s", 5 + i)
-                }
+                format!("{}s", crate::WALLET_STARTUP_DELAY_SECS + crate::AGENT_STARTUP_DELAY_SECS + i as u64)
             };
 
             // Reuse the agent IP from the first pass (stored in agent_info)
             // This avoids calling get_agent_ip twice which would increment the host counter
-            let agent_ip = agent_info[i].4.clone();
-            let _agent_port = 18080;
-
-            // Use standard RPC ports for all agents (mainnet ports for FAKECHAIN/regtest)
-            let agent_rpc_port = 18081;
-
-            // Use standard wallet RPC port for all agents
-            // Since each agent has its own IP address, they can all use the same port
-            let wallet_rpc_port = 18082;
-            let p2p_port = 18080;
+            let agent_ip = agent_info[i].ip.clone();
+            // Use standard Monero ports (mainnet ports for FAKECHAIN/regtest)
+            // Since each agent has its own IP address, they can all use the same ports
+            let daemon_rpc_port = crate::MONERO_RPC_PORT;
+            let wallet_rpc_port = crate::MONERO_WALLET_RPC_PORT;
+            let p2p_port = crate::MONERO_P2P_PORT;
 
             let mut processes = Vec::new();
 
@@ -366,7 +279,6 @@ pub fn process_user_agents(
             let has_local_daemon = user_agent_config.has_local_daemon();
             let has_remote_daemon = user_agent_config.has_remote_daemon();
             let has_wallet = user_agent_config.has_wallet();
-            let _is_script_only = user_agent_config.is_script_only();
             let has_daemon_phases = user_agent_config.has_daemon_phases();
             let has_wallet_phases = user_agent_config.has_wallet_phases();
 
@@ -381,7 +293,7 @@ pub fn process_user_agents(
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                 // Start with required/injected flags that cannot be overridden
                 let mut args = vec![
-                    format!("--data-dir=/tmp/monero-{}", agent_id),
+                    format!("--data-dir={}/monero-{}", daemon_data_dir, agent_id),
                     "--regtest".to_string(),
                     "--keep-fakechain".to_string(),
                 ];
@@ -402,7 +314,7 @@ pub fn process_user_agents(
                 // Add required network binding flags (always injected, use agent-specific values)
                 args.extend(vec![
                     format!("--rpc-bind-ip={}", agent_ip),
-                    format!("--rpc-bind-port={}", agent_rpc_port),
+                    format!("--rpc-bind-port={}", daemon_rpc_port),
                     "--confirm-external-bind".to_string(),
                     "--rpc-access-control-origins=*".to_string(),
                     format!("--p2p-bind-ip={}", agent_ip),
@@ -424,7 +336,7 @@ pub fn process_user_agents(
                             args.push(conn.clone());
                         }
                     }
-                } else if is_seed_node || seed_nodes.iter().any(|(_, _, is_s, _, _, _)| *is_s && agent_info[i].0 == i) {
+                } else if is_seed_node || seed_nodes.iter().any(|e| e.is_seed_node && e.index == i) {
                     if let Some(conns) = seed_connections.get(*agent_id) {
                         for conn in conns {
                             args.push(conn.clone());
@@ -433,7 +345,7 @@ pub fn process_user_agents(
                 }
 
                 // Add peer connections for regular agents
-                let is_actual_seed_node = seed_nodes.iter().any(|(idx, _, _, _, _, _)| *idx == i);
+                let is_actual_seed_node = seed_nodes.iter().any(|e| e.index == i);
                 if !is_miner && !is_actual_seed_node {
                     for seed_node in seed_agents.iter() {
                         if !seed_node.starts_with(&format!("{}:", agent_ip)) {
@@ -500,18 +412,19 @@ pub fn process_user_agents(
                     // Determine shutdown time and expected final state
                     let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
                         // Not the last phase - needs shutdown
-                        // Shadow will send SIGTERM at shutdown_time (default behavior)
+                        // Shadow sends SIGTERM at shutdown_time; monerod handles it gracefully
+                        // and exits with code 0 (not killed by signal)
                         (
                             phase.stop.clone(),
-                            Some(ExpectedFinalState::Signaled("SIGTERM".to_string())),
+                            Some(ExpectedFinalState::Exited(0)),
                         )
                     } else {
                         // Last phase - runs until simulation end
-                        (None, None)
+                        (None, Some(ExpectedFinalState::Running))
                     };
 
-                    // Use `exec` so bash replaces itself with monerod - this ensures SIGKILL
-                    // goes directly to monerod rather than to bash (which would leave monerod orphaned)
+                    // Use `exec` so bash replaces itself with monerod - this ensures signals
+                    // go directly to monerod rather than to bash (which would leave monerod orphaned)
                     // Note: data directory cleanup is handled pre-simulation by main.rs
                     let args = format!("-c 'exec {} {}'", daemon_binary_path, daemon_args);
 
@@ -557,7 +470,7 @@ pub fn process_user_agents(
                     environment: daemon_env,
                     start_time: start_time_daemon.clone(),
                     shutdown_time: None,
-                    expected_final_state: None,
+                    expected_final_state: Some(ExpectedFinalState::Running),
                 });
             } // End of daemon configuration
 
@@ -573,12 +486,12 @@ pub fn process_user_agents(
                 // Build base wallet args
                 let build_wallet_args = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                     let mut args = vec![
-                        format!("--daemon-address=http://{}:{}", agent_ip, agent_rpc_port),
+                        format!("--daemon-address=http://{}:{}", agent_ip, daemon_rpc_port),
                         format!("--rpc-bind-port={}", wallet_rpc_port),
                         format!("--rpc-bind-ip={}", agent_ip),
                         "--disable-rpc-login".to_string(),
                         "--trusted-daemon".to_string(),
-                        format!("--wallet-dir=/tmp/monerosim_shared/{}_wallet", agent_id),
+                        format!("--wallet-dir={}/{}_wallet", shared_dir.to_string_lossy(), agent_id),
                         "--confirm-external-bind".to_string(),
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
@@ -632,13 +545,15 @@ pub fn process_user_agents(
                     // Determine shutdown time and expected final state
                     let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
                         // Not the last phase - needs shutdown
+                        // Shadow sends SIGTERM at shutdown_time; wallet-rpc handles it gracefully
+                        // and exits with code 0 (not killed by signal)
                         (
                             phase.stop.clone(),
-                            Some(ExpectedFinalState::Signaled("SIGTERM".to_string())),
+                            Some(ExpectedFinalState::Exited(0)),
                         )
                     } else {
                         // Last phase - runs until simulation end
-                        (None, None)
+                        (None, Some(ExpectedFinalState::Running))
                     };
 
                     // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
@@ -666,7 +581,7 @@ pub fn process_user_agents(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
-                        agent_rpc_port,
+                        daemon_rpc_port,
                         wallet_rpc_port,
                         &wallet_binary_path,
                         environment,
@@ -676,6 +591,7 @@ pub fn process_user_agents(
                         user_agent_config.wallet_env.as_ref(),
                         wallet_defaults,
                         user_agent_config.wallet_options.as_ref(),
+                        &shared_dir.to_string_lossy(),
                     );
                 } else if has_remote_daemon {
                     // Wallet-only agent: wallet connects to remote daemon
@@ -694,6 +610,7 @@ pub fn process_user_agents(
                         user_agent_config.wallet_env.as_ref(),
                         wallet_defaults,
                         user_agent_config.wallet_options.as_ref(),
+                        &shared_dir.to_string_lossy(),
                     );
                 }
             }
@@ -721,7 +638,7 @@ pub fn process_user_agents(
                     &mut processes,
                     agent_id,
                     &agent_ip,
-                    if has_local_daemon { Some(agent_rpc_port) } else { None },
+                    if has_local_daemon { Some(daemon_rpc_port) } else { None },
                     if has_wallet { Some(wallet_rpc_port) } else { None },
                     if has_local_daemon { Some(p2p_port) } else { None },
                     "agents.regular_user",
@@ -734,6 +651,7 @@ pub fn process_user_agents(
                     Some(&agent_start_time),
                     user_agent_config.remote_daemon_address(),
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    scripts_dir,
                 );
 
                 // Step 2: Run mining_script (autonomous_miner.py)
@@ -752,7 +670,7 @@ pub fn process_user_agents(
                 let mining_processes = create_mining_agent_process(
                     agent_id,
                     &agent_ip,
-                    agent_rpc_port,
+                    daemon_rpc_port,
                     mining_wallet_port,
                     &script,
                     Some(&merged_attributes),
@@ -762,6 +680,7 @@ pub fn process_user_agents(
                     i,
                     environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
                     Some(&mining_start_time),
+                    scripts_dir,
                 );
                 processes.extend(mining_processes);
             } else if !script.is_empty() {
@@ -782,7 +701,7 @@ pub fn process_user_agents(
                     &mut processes,
                     agent_id,
                     &agent_ip,
-                    if has_local_daemon { Some(agent_rpc_port) } else { None },
+                    if has_local_daemon { Some(daemon_rpc_port) } else { None },
                     if has_wallet { Some(wallet_rpc_port) } else { None },
                     if has_local_daemon { Some(p2p_port) } else { None },
                     &script,
@@ -795,6 +714,7 @@ pub fn process_user_agents(
                     Some(&agent_start_time),
                     user_agent_config.remote_daemon_address(),
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    scripts_dir,
                 );
             }
             } // end daemon-only guard
@@ -812,8 +732,8 @@ pub fn process_user_agents(
                     network_node_id,
                     ip_addr: Some(agent_ip.clone()),
                     processes,
-                    bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
-                    bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
+                    bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
+                    bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
                 });
                 // Note: next_ip is already incremented in get_agent_ip function
             }

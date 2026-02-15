@@ -20,6 +20,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
+
 try:
     from dnslib import DNSRecord, DNSHeader, RR, QTYPE, A, TXT, RCODE
     from dnslib.server import DNSServer, BaseResolver
@@ -96,7 +98,7 @@ class MoneroResolver(BaseResolver):
             for agent in registry.get("agents", []):
                 # Miners are seed nodes
                 attrs = agent.get("attributes", {})
-                is_miner = str(attrs.get("is_miner", "")).lower() in ("true", "1", "yes")
+                is_miner = BaseAgent.parse_bool(attrs.get("is_miner", ""))
 
                 if is_miner and agent.get("ip_addr"):
                     seed_ips.append(agent["ip_addr"])
@@ -204,7 +206,7 @@ class MoneroDNSServer:
         agent_id: str,
         bind_ip: str = "0.0.0.0",
         port: int = 53,
-        shared_dir: Path = Path("/tmp/monerosim_shared"),
+        shared_dir: Path = Path(DEFAULT_SHARED_DIR),
         log_level: str = "INFO"
     ):
         self.agent_id = agent_id
@@ -219,8 +221,9 @@ class MoneroDNSServer:
         # Create resolver
         self.resolver = MoneroResolver(shared_dir, self.logger)
 
-        # DNS server will be created on start
-        self.server: Optional[DNSServer] = None
+        # DNS servers will be created on start (TCP + UDP)
+        self.tcp_server: Optional[DNSServer] = None
+        self.udp_server: Optional[DNSServer] = None
 
         # Signal handlers
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -245,27 +248,39 @@ class MoneroDNSServer:
         """Handle shutdown signals."""
         self.logger.info(f"Received signal {signum}, shutting down")
         self.running = False
-        if self.server:
-            self.server.stop()
+        if self.tcp_server:
+            self.tcp_server.stop()
+        if self.udp_server:
+            self.udp_server.stop()
 
     def start(self):
-        """Start the DNS server."""
+        """Start the DNS server (both TCP and UDP listeners)."""
         self.logger.info(f"Starting DNS server on {self.bind_ip}:{self.port}")
 
         try:
-            # Use TCP - Monero's libunbound uses TCP for DNS queries
-            # (as seen in logs: "Using public DNS server(s): X.X.X.X (TCP)")
-            self.server = DNSServer(
+            # Start TCP server - Monero's libunbound uses TCP for DNS queries
+            self.tcp_server = DNSServer(
                 self.resolver,
                 port=self.port,
                 address=self.bind_ip,
-                tcp=True  # TCP mode - what Monero uses
+                tcp=True
             )
-            self.server.start_thread()
+            self.tcp_server.start_thread()
             self.logger.info("DNS server started successfully (TCP mode)")
 
+            # Start UDP server - Shadow's getaddrinfo passthrough uses UDP/TCP,
+            # and standard DNS clients may use either protocol
+            self.udp_server = DNSServer(
+                self.resolver,
+                port=self.port,
+                address=self.bind_ip,
+                tcp=False
+            )
+            self.udp_server.start_thread()
+            self.logger.info("DNS server started successfully (UDP mode)")
+
             # Keep running until signaled to stop
-            while self.running and self.server.isAlive():
+            while self.running and (self.tcp_server.isAlive() or self.udp_server.isAlive()):
                 time.sleep(1)
 
         except PermissionError:
@@ -276,13 +291,20 @@ class MoneroDNSServer:
             self.logger.error(f"Failed to start DNS server: {e}")
             sys.exit(1)
         finally:
-            if self.server:
-                self.server.stop()
+            if self.tcp_server:
+                self.tcp_server.stop()
+            if self.udp_server:
+                self.udp_server.stop()
             self.logger.info("DNS server stopped")
 
 
 def main():
     """Main entry point for the DNS server agent."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
     parser = argparse.ArgumentParser(
         description="DNS Server for Monerosim Shadow Simulation"
     )
@@ -290,7 +312,7 @@ def main():
     parser.add_argument('--bind-ip', default='0.0.0.0', help='IP to bind to')
     parser.add_argument('--port', type=int, default=53, help='DNS port')
     parser.add_argument('--shared-dir', type=Path,
-                       default=Path('/tmp/monerosim_shared'),
+                       default=Path(DEFAULT_SHARED_DIR),
                        help='Shared state directory')
     parser.add_argument('--log-level', default='INFO',
                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],

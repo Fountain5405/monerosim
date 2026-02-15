@@ -1,0 +1,68 @@
+=== Shadow Simulation Test Suite — Sun Feb  8 21:37:02 UTC 2026 ===
+Shadow binary: /home/lever65/monerosim_dev/shadowformonero/build/src/main/shadow
+
+
+--- 01_basic_relay ---
+  sim_time=7200s, hosts=16
+PASS (384s)
+  result: PASS in 384s
+  Progress: 93% — simulated: 01:51:26.274/02:00:00, realtime: 00:06:00, processes failed: 0
+
+--- 02_relay_only ---
+  sim_time=3600s, hosts=13
+PASS (87s)
+  result: PASS in 87s
+  Progress: 53% — simulated: 00:31:46.328/01:00:00, realtime: 00:01:00, processes failed: 0
+
+--- 03_relay_upgrade ---
+  sim_time=14400s, hosts=13
+FAIL (339s, exit=1)
+  result: FAIL in 339s (exit code 1)
+2000-01-01 03:58:20.963	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:10534	total_needed_money > unlocked_balance_subtotal || min_fee > unlocked_balance_subtotal. THROW EXCEPTION: error::not_enough_unlocked_money
+2000-01-01 03:58:22.970	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:10534	total_needed_money > unlocked_balance_subtotal || min_fee > unlocked_balance_subtotal. THROW EXCEPTION: error::not_enough_unlocked_money
+2000-01-01 03:58:26.978	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:10534	total_needed_money > unlocked_balance_subtotal || min_fee > unlocked_balance_subtotal. THROW EXCEPTION: error::not_enough_unlocked_money
+2000-01-01 03:58:34.985	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:10534	total_needed_money > unlocked_balance_subtotal || min_fee > unlocked_balance_subtotal. THROW EXCEPTION: error::not_enough_unlocked_money
+00:05:38.558570 [1765400:shadow] n/a [ERROR] [n/a] [shadow.rs:483] [shadow_rs::shadow::export] Failed to run the simulation
+00:05:38.558587 [1765400:shadow] n/a [ERROR] [n/a] [shadow.rs:483] [shadow_rs::shadow::export] 
+00:05:38.558594 [1765400:shadow] n/a [ERROR] [n/a] [shadow.rs:483] [shadow_rs::shadow::export] Caused by:
+00:05:38.558600 [1765400:shadow] n/a [ERROR] [n/a] [shadow.rs:483] [shadow_rs::shadow::export]     10 managed processes in unexpected final state
+Error:     10 managed processes in unexpected final state
+**   10 managed processes in unexpected final state
+
+--- 04_large_relay_group ---
+  sim_time=7200s, hosts=71
+  result: PASS in 2274s
+  Progress: 97% — simulated: 01:56:18.552/02:00:00, realtime: 00:37:00, processes failed: 0
+
+--- 05_mixed_agents ---
+  sim_time=7200s, hosts=18
+
+--- 04_large_relay_group ---
+  sim_time=7200s, hosts=71
+PASS (1802s)
+  result: PASS in 1802s
+  Progress: 97% — simulated: 01:56:03.049/02:00:00, realtime: 00:29:00, processes failed: 0
+
+--- 05_mixed_agents ---
+  sim_time=7200s, hosts=18
+PASS (252s)
+  result: PASS in 252s
+  Progress: 95% — simulated: 01:54:01.473/02:00:00, realtime: 00:04:00, processes failed: 0
+
+--- 06_relay_daemon_options ---
+  sim_time=3600s, hosts=11
+PASS (100s)
+  result: PASS in 100s
+  Progress: 53% — simulated: 00:32:05.763/01:00:00, realtime: 00:01:00, processes failed: 0
+
+--- 07_cli_relay_nodes ---
+  sim_time=25200s, hosts=18
+PASS (477s)
+  result: PASS in 477s
+  Progress: 91% — simulated: 06:20:10.991/07:00:00, realtime: 00:07:00, processes failed: 0
+
+--- 08_singleton_relay ---
+  sim_time=3600s, hosts=5
+PASS (30s)
+  result: PASS in 30s
+  

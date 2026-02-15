@@ -13,8 +13,10 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Any
 
+from agents.base_agent import DEFAULT_SHARED_DIR
 
-def regenerate_enhanced_blocks(shared_dir: str = "/tmp/monerosim_shared"):
+
+def regenerate_enhanced_blocks(shared_dir: str = DEFAULT_SHARED_DIR):
     """
     Regenerate the enhanced blocks file from existing data.
     
@@ -85,7 +87,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Regenerate enhanced blocks file")
-    parser.add_argument("--shared-dir", default="/tmp/monerosim_shared",
+    parser.add_argument("--shared-dir", default=DEFAULT_SHARED_DIR,
                        help="Path to shared directory containing monitor data")
     
     args = parser.parse_args()

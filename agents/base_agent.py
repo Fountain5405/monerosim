@@ -7,6 +7,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import signal
 import sys
 import time
@@ -18,13 +19,53 @@ from typing import Dict, Any, Optional, List
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 from .public_node_discovery import PublicNodeDiscovery, DaemonSelectionStrategy, parse_selection_strategy
 
+# Shared constants
+DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+MONERO_P2P_PORT = 18080
+MONERO_RPC_PORT = 18081
+MONERO_WALLET_RPC_PORT = 18082
+SHADOW_EPOCH = 946684800  # 2000-01-01T00:00:00 UTC
+
+
+def retry_with_backoff(fn, *, max_retries: int = 3, initial_delay: float = 1.0,
+                       backoff_factor: float = 2.0, logger: Optional[logging.Logger] = None):
+    """Call *fn* with exponential-backoff retries.
+
+    Args:
+        fn: Zero-argument callable to execute.
+        max_retries: Maximum number of attempts.
+        initial_delay: Seconds to wait after the first failure.
+        backoff_factor: Multiplier applied to the delay after each failure.
+        logger: Optional logger for warning/error messages.
+
+    Returns:
+        The return value of *fn* on success.
+
+    Raises:
+        The exception from the last failed attempt if all retries are exhausted.
+    """
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except Exception as exc:
+            if logger:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {exc}")
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+                delay *= backoff_factor
+            else:
+                if logger:
+                    logger.error(f"All {max_retries} attempts failed")
+                raise
+
 
 class BaseAgent(ABC):
     """Abstract base class for all Monerosim agents"""
 
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
-                 agent_rpc_port: Optional[int] = None,
+                 daemon_rpc_port: Optional[int] = None,
                  wallet_rpc_port: Optional[int] = None,
                  p2p_port: Optional[int] = None,
                  rpc_host: str = "127.0.0.1",
@@ -36,7 +77,7 @@ class BaseAgent(ABC):
                  daemon_selection_strategy: Optional[str] = None):
         self.agent_id = agent_id
         self._shared_dir = shared_dir
-        self.agent_rpc_port = agent_rpc_port
+        self.daemon_rpc_port = daemon_rpc_port
         self.wallet_rpc_port = wallet_rpc_port
         self.p2p_port = p2p_port
         self.rpc_host = rpc_host
@@ -68,12 +109,12 @@ class BaseAgent(ABC):
         
         # Shared state directory
         if shared_dir is None:
-            shared_dir = Path("/tmp/monerosim_shared")
+            shared_dir = Path(DEFAULT_SHARED_DIR)
         self._shared_dir = shared_dir
         self._shared_dir.mkdir(mode=0o700, exist_ok=True)
         
         # Initialize RPC connections first (required for logging context)
-        self.agent_rpc: Optional[MoneroRPC] = None
+        self.daemon_rpc: Optional[MoneroRPC] = None
         self.wallet_rpc: Optional[WalletRPC] = None
         
         # Register signal handlers
@@ -96,34 +137,29 @@ class BaseAgent(ABC):
         """Return whether this agent is a miner"""
         return self._is_miner
         
+    @staticmethod
+    def parse_bool(value, default: bool = False) -> bool:
+        """Parse a boolean from various types (str, bool, int, float).
+
+        Accepts 'true'/'1'/'yes'/'on' as True and 'false'/'0'/'no'/'off' as False
+        (case-insensitive). Returns *default* for unrecognized values.
+        """
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            lower = value.lower()
+            if lower in ('true', '1', 'yes', 'on'):
+                return True
+            if lower in ('false', '0', 'no', 'off'):
+                return False
+        return default
+
     def _extract_is_miner(self):
         """Extract is_miner from attributes and handle both string and boolean values"""
         if 'is_miner' in self.attributes:
-            is_miner_value = self.attributes['is_miner']
-            
-            # Handle string representations
-            if isinstance(is_miner_value, str):
-                if is_miner_value.lower() in ('true', '1', 'yes', 'on'):
-                    self._is_miner = True
-                elif is_miner_value.lower() in ('false', '0', 'no', 'off'):
-                    self._is_miner = False
-                else:
-                    self.logger.warning(f"Invalid string value for is_miner: '{is_miner_value}'. Defaulting to False.")
-                    self._is_miner = False
-            
-            # Handle boolean values
-            elif isinstance(is_miner_value, bool):
-                self._is_miner = is_miner_value
-            
-            # Handle numeric values
-            elif isinstance(is_miner_value, (int, float)):
-                self._is_miner = bool(is_miner_value)
-            
-            # Handle other types
-            else:
-                self.logger.warning(f"Unsupported type for is_miner: {type(is_miner_value)}. Defaulting to False.")
-                self._is_miner = False
-                
+            self._is_miner = self.parse_bool(self.attributes['is_miner'])
             self.logger.debug(f"Extracted is_miner={self._is_miner} from attributes")
         else:
             self.logger.debug("No is_miner attribute found, defaulting to False")
@@ -154,18 +190,18 @@ class BaseAgent(ABC):
     def setup(self):
         """Set up RPC connections and perform agent-specific initialization"""
         # Determine if this is a wallet-only agent
-        self._is_wallet_only = (self.remote_daemon is not None and self.agent_rpc_port is None)
+        self._is_wallet_only = (self.remote_daemon is not None and self.daemon_rpc_port is None)
 
-        # Connect to agent RPC if port provided (local daemon)
-        if self.agent_rpc_port:
-            self.logger.info(f"Connecting to agent RPC at {self.rpc_host}:{self.agent_rpc_port}")
-            self.agent_rpc = MoneroRPC(self.rpc_host, self.agent_rpc_port)
+        # Connect to daemon RPC if port provided (local daemon)
+        if self.daemon_rpc_port:
+            self.logger.info(f"Connecting to daemon RPC at {self.rpc_host}:{self.daemon_rpc_port}")
+            self.daemon_rpc = MoneroRPC(self.rpc_host, self.daemon_rpc_port)
             try:
-                self.agent_rpc.wait_until_ready(max_wait=120)
-                info = self.agent_rpc.get_info()
-                self.logger.info(f"Connected to agent: height={info.get('height', 0)}")
+                self.daemon_rpc.wait_until_ready(max_wait=120)
+                info = self.daemon_rpc.get_info()
+                self.logger.info(f"Connected to daemon: height={info.get('height', 0)}")
             except RPCError as e:
-                self.logger.error(f"Failed to connect to agent RPC: {e}")
+                self.logger.error(f"Failed to connect to daemon RPC: {e}")
                 raise
 
         # Connect to wallet RPC if port provided
@@ -225,10 +261,7 @@ class BaseAgent(ABC):
                 # Sleep for the requested duration, checking for shutdown every second
                 # This reduces wakeups from 10/sec (old 0.1s sleep) to 1/sec while
                 # still being responsive to shutdown signals
-                remaining = sleep_duration
-                while remaining > 0 and self.running:
-                    time.sleep(min(remaining, 1.0))
-                    remaining -= 1.0
+                self.interruptible_sleep(sleep_duration)
 
             self.logger.info("Agent run loop finished")
                 
@@ -246,8 +279,8 @@ class BaseAgent(ABC):
         if self.wallet_rpc:
             try:
                 self.wallet_rpc.close_wallet()
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Error closing wallet during cleanup: {e}")
                 
         # Call agent-specific cleanup
         self._cleanup_agent()
@@ -258,12 +291,19 @@ class BaseAgent(ABC):
         """Agent-specific cleanup logic (can be overridden by subclasses)"""
         pass
 
+    def interruptible_sleep(self, duration: float) -> None:
+        """Sleep for *duration* seconds, checking ``self.running`` every second.
+
+        Returns early if ``self.running`` becomes ``False``.
+        """
+        remaining = duration
+        while remaining > 0 and self.running:
+            time.sleep(min(remaining, 1.0))
+            remaining -= 1.0
+
     def _is_public_node(self) -> bool:
         """Check if this agent is configured as a public node"""
-        is_public = self.attributes.get('is_public_node', '')
-        if isinstance(is_public, str):
-            return is_public.lower() in ('true', '1', 'yes', 'on')
-        return bool(is_public)
+        return self.parse_bool(self.attributes.get('is_public_node', ''))
 
     def _setup_remote_daemon_connection(self):
         """
@@ -315,7 +355,7 @@ class BaseAgent(ABC):
 
         This updates the status to 'available' for this agent in public_nodes.json.
         """
-        if not self.agent_rpc_port:
+        if not self.daemon_rpc_port:
             self.logger.warning("Cannot register as public node: no local daemon")
             return
 
@@ -440,25 +480,7 @@ class BaseAgent(ABC):
         registry_path = self.shared_dir / "agent_registry.json"
         lock_path = self.shared_dir / "agent_registry.lock"
         
-        self.logger.info(f"Attempting to register in agent registry: {registry_path.resolve()}")
-        
-        # DIAGNOSTIC: Check if shared directory exists and is accessible
-        self.logger.info(f"Shared directory exists: {self.shared_dir.exists()}")
-        self.logger.info(f"Shared directory is directory: {self.shared_dir.is_dir()}")
-        self.logger.info(f"Registry file exists: {registry_path.exists()}")
-        
-        if registry_path.exists():
-            try:
-                file_size = registry_path.stat().st_size
-                self.logger.info(f"Registry file size: {file_size} bytes")
-                with open(registry_path, 'r') as f:
-                    content_preview = f.read(200)
-                    self.logger.info(f"Registry file preview: {content_preview[:200]}")
-            except Exception as e:
-                self.logger.error(f"Failed to read existing registry file: {e}")
-        else:
-            self.logger.warning(f"Registry file does NOT exist at {registry_path.resolve()}")
-            self.logger.info(f"Directory contents: {list(self.shared_dir.iterdir()) if self.shared_dir.exists() else 'N/A'}")
+        self.logger.debug(f"Registering in agent registry: {registry_path}")
 
         # First, ensure the file exists using a separate lock file for creation
         try:
@@ -505,12 +527,12 @@ class BaseAgent(ABC):
                     if not agent_found:
                         new_agent_entry = {
                             "id": self.agent_id,
-                            "type": self.__class__.__name__.lower().replace('agent', ''),
+                            "type": re.sub(r'(?<=[a-z])(?=[A-Z])', '_', self.__class__.__name__).lower().removesuffix('_agent'),
                             "attributes": self.attributes,
                             "hash_rate": getattr(self, 'hash_rate', None),
                             "ip_addr": self.rpc_host,
                             "p2p_port": self.p2p_port,
-                            "agent_rpc_port": self.agent_rpc_port,
+                            "daemon_rpc_port": self.daemon_rpc_port,
                             "wallet_rpc_port": self.wallet_rpc_port,
                             "wallet_address": getattr(self, 'wallet_address', None),
                             "timestamp": time.time()
@@ -533,12 +555,12 @@ class BaseAgent(ABC):
     
     def wait_for_height(self, target_height: int, timeout: int = 300):
         """Wait for blockchain to reach target height"""
-        if not self.agent_rpc:
+        if not self.daemon_rpc:
             raise RuntimeError("No agent RPC connection")
             
         start_time = time.time()
         while time.time() - start_time < timeout:
-            current_height = self.agent_rpc.get_height()
+            current_height = self.daemon_rpc.get_height()
             if current_height >= target_height:
                 return True
             self.logger.debug(f"Waiting for height {target_height}, current: {current_height}")
@@ -548,13 +570,13 @@ class BaseAgent(ABC):
         
     def wait_for_wallet_sync(self, timeout: int = 300):
         """Wait for wallet to sync with daemon"""
-        if not self.wallet_rpc or not self.agent_rpc:
+        if not self.wallet_rpc or not self.daemon_rpc:
             raise RuntimeError("Missing RPC connections")
             
         start_time = time.time()
         while time.time() - start_time < timeout:
             wallet_height = self.wallet_rpc.get_height()
-            daemon_height = self.agent_rpc.get_height()
+            daemon_height = self.daemon_rpc.get_height()
             
             if wallet_height >= daemon_height - 1:  # Allow 1 block difference
                 self.logger.info(f"Wallet synced at height {wallet_height}")
@@ -567,7 +589,7 @@ class BaseAgent(ABC):
         return False
         
     @staticmethod
-    def create_argument_parser(description: str, default_shared_dir: str = '/tmp/monerosim_shared',
+    def create_argument_parser(description: str, default_shared_dir: str = DEFAULT_SHARED_DIR,
                              default_rpc_host: str = '127.0.0.1', default_log_level: str = 'INFO') -> argparse.ArgumentParser:
         """Create standard argument parser for agents"""
         parser = argparse.ArgumentParser(description=description)
@@ -575,7 +597,9 @@ class BaseAgent(ABC):
         parser.add_argument('--shared-dir', type=Path, default=Path(default_shared_dir),
                           help='Shared directory for simulation state')
         parser.add_argument('--rpc-host', default=default_rpc_host, help='RPC host address')
-        parser.add_argument('--agent-rpc-port', type=int, help='Agent RPC port')
+        parser.add_argument('--daemon-rpc-port', type=int, help='Daemon RPC port')
+        parser.add_argument('--agent-rpc-port', type=int, dest='daemon_rpc_port',
+                          help='(Deprecated: use --daemon-rpc-port) Daemon RPC port')
         parser.add_argument('--wallet-rpc-port', type=int, help='Wallet RPC port')
         parser.add_argument('--p2p-port', type=int, help='P2P port of the agent\'s node')
         parser.add_argument('--log-level', default=default_log_level,

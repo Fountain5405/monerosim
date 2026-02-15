@@ -1,0 +1,242 @@
+general:
+  stop_time: 21600
+  seed: 1
+  parallelism: 0
+  model_unblocked_syscall_latency: true
+  log_level: warning
+  bootstrap_end_time: 4h
+  progress: true
+network:
+  graph:
+    type: gml
+    file:
+      path: /tmp/monerosim_gml.gml
+  dns_server: 3.0.0.10
+experimental:
+  use_dynamic_runahead: true
+hosts:
+  dnsserver:
+    network_node_id: 0
+    ip_addr: 3.0.0.10
+    processes:
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/dns_server_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 1s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-001:
+    network_node_id: 0
+    ip_addr: 3.0.0.13
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-001 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=3.0.0.13 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=3.0.0.13 --p2p-bind-port=18080 --add-priority-node=2.0.0.10:18080 --add-priority-node=2.0.0.10:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 0s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://3.0.0.13:18081 --rpc-bind-port=18082 --rpc-bind-ip=3.0.0.13 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/miner-001_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 2s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/agent_miner-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 5s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/mining_agent_miner-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 15s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-002:
+    network_node_id: 200
+    ip_addr: 2.0.0.10
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-002 --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=2.0.0.10 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=2.0.0.10 --p2p-bind-port=18080 --add-priority-node=3.0.0.13:18080 --add-priority-node=3.0.0.13:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 1s
+      expected_final_state: running
+    - path: /bin/bash
+      args: -c '/home/lever65/.monerosim/bin/monero-wallet-rpc --daemon-address=http://2.0.0.10:18081 --rpc-bind-port=18082 --rpc-bind-ip=2.0.0.10 --disable-rpc-login --trusted-daemon --wallet-dir=/tmp/monerosim_shared/miner-002_wallet --confirm-external-bind --allow-mismatched-daemon-version --max-concurrency=1 --log-file=/dev/stdout --log-level=1 --daemon-ssl-allow-any-cert'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 3s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/agent_miner-002_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 6s
+      expected_final_state: running
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/mining_agent_miner-002_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 16s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  miner-distributor:
+    network_node_id: 0
+    ip_addr: 3.0.0.14
+    processes:
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/miner-distributor_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 14400s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-gateway:
+    network_node_id: 500
+    ip_addr: 1.0.0.10
+    processes:
+    - path: /bin/bash
+      args: -c 'exec /home/lever65/.monerosim/bin/monerod --data-dir=/tmp/monero-relay-gateway --regtest --keep-fakechain --prep-blocks-threads=1 --max-concurrency=1 --allow-local-ip --db-sync-mode=fastest --disable-rpc-ban --log-file=/dev/stdout --log-level=1 --no-zmq --non-interactive --rpc-bind-ip=1.0.0.10 --rpc-bind-port=18081 --confirm-external-bind --rpc-access-control-origins=* --p2p-bind-ip=1.0.0.10 --p2p-bind-port=18080 --seed-node=3.0.0.13:18080 --seed-node=2.0.0.10:18080'
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        MONERO_MAX_CONNECTIONS_PER_IP: '20'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 5s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  simulation-monitor:
+    network_node_id: 0
+    ip_addr: 3.0.0.15
+    processes:
+    - path: /bin/bash
+      args: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/scripts/simulation-monitor_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: /home/lever65
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        PROCESS_THREADS: '1'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '1'
+      start_time: 5s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'

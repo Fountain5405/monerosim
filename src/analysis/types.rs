@@ -26,7 +26,7 @@ pub struct BlockInfo {
 
 /// Agent information from agent_registry.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentInfo {
+pub struct AnalysisAgentInfo {
     pub id: String,
     pub ip_addr: String,
     pub rpc_port: u16,

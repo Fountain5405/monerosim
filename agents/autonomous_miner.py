@@ -5,37 +5,25 @@ Autonomous Miner Agent for Monerosim
 This agent independently determines when to generate blocks using a Poisson
 distribution model. Each miner operates autonomously without central coordination,
 creating a realistic, distributed mining simulation.
-
-Key Features:
-- Probabilistic block discovery using Poisson distribution
-- Deterministic reproducibility via seeded randomness
-- RPC-based operation with no shared state dependencies
-- Self-contained mining loop with automatic timing recalculation
 """
 
-import sys
+import json
 import time
 import math
 import random
 import os
-import argparse
 import fcntl
 import logging
 from typing import Optional, Dict, Any
 
 from .base_agent import BaseAgent
+from .constants import TARGET_BLOCK_TIME_SECS, DEFAULT_SIMULATION_SEED
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError, MethodNotAvailableError
+from .shared_utils import make_deterministic_seed
 
 
 class AutonomousMinerAgent(BaseAgent):
-    """
-    Independent mining agent that autonomously generates blocks
-    using Poisson distribution timing model.
-    
-    This agent replaces centralized block controller architecture with
-    distributed, probabilistic mining that more accurately reflects
-    real-world mining dynamics.
-    """
+    """Mining agent using Poisson distribution timing for autonomous block generation."""
     
     def __init__(self, agent_id: str, **kwargs):
         """
@@ -54,8 +42,8 @@ class AutonomousMinerAgent(BaseAgent):
         self.last_block_height = 0
         
         # Deterministic seeding for reproducibility
-        self.global_seed = int(os.getenv('SIMULATION_SEED', '12345'))
-        self.agent_seed = self.global_seed + hash(agent_id)
+        self.global_seed = int(os.getenv('SIMULATION_SEED', str(DEFAULT_SIMULATION_SEED)))
+        self.agent_seed = make_deterministic_seed(agent_id)
         random.seed(self.agent_seed)
 
         # Difficulty caching to reduce RPC calls
@@ -86,14 +74,14 @@ class AutonomousMinerAgent(BaseAgent):
         self.logger.info(f"Configured hashrate weight: {self.hashrate_pct}")
 
         # Wait for daemon to be ready
-        if not self.agent_rpc:
-            self.logger.error("Agent RPC not initialized")
-            raise RuntimeError("Agent RPC connection required for mining")
+        if not self.daemon_rpc:
+            self.logger.error("Daemon RPC not initialized")
+            raise RuntimeError("Daemon RPC connection required for mining")
 
         self.logger.info("Waiting for daemon to be ready...")
         try:
-            self.agent_rpc.wait_until_ready(max_wait=120)
-            info = self.agent_rpc.get_info()
+            self.daemon_rpc.wait_until_ready(max_wait=120)
+            info = self.daemon_rpc.get_info()
             self.logger.info(f"Daemon ready at height {info.get('height', 0)}")
 
             # Use fixed baseline difficulty of 1 for all miners
@@ -119,7 +107,7 @@ class AutonomousMinerAgent(BaseAgent):
         # Activate mining
         self.mining_active = True
         self.mining_start_time = time.time()
-        self.logger.info(f"✓ Mining activated with hashrate weight {self.hashrate_pct}")
+        self.logger.info(f"Mining activated with hashrate weight {self.hashrate_pct}")
         self.logger.info(f"Using difficulty-only mode: timing scales with LWMA difficulty adjustments")
         self.logger.info(f"Base expected block time: {120.0 / (self.hashrate_pct / 100.0):.1f}s "
                         f"(at baseline difficulty {self.baseline_difficulty})")
@@ -139,7 +127,6 @@ class AutonomousMinerAgent(BaseAgent):
         Returns:
             Valid Monero address string, or None if polling times out
         """
-        import json
         from pathlib import Path
 
         if not self.shared_dir:
@@ -194,13 +181,9 @@ class AutonomousMinerAgent(BaseAgent):
             self.logger.debug(f"Waiting for wallet address... (elapsed: {elapsed:.1f}s)")
             time.sleep(poll_interval)
 
-        # Timeout - use fallback address for simulation
-        self.logger.warning(f"Timeout waiting for wallet address after {max_wait_time}s")
-        self.logger.warning(f"Using fallback simulation address (rewards won't be tracked)")
-
-        # Fallback to a known valid address for simulation purposes
-        fallback_address = "44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
-        return fallback_address
+        # Timeout - no valid address available
+        self.logger.error(f"Timeout waiting for wallet address after {max_wait_time}s")
+        return None
 
     def _parse_mining_config(self):
         """
@@ -254,7 +237,7 @@ class AutonomousMinerAgent(BaseAgent):
                 return self._cached_difficulty
 
         try:
-            info = self.agent_rpc.get_info()
+            info = self.daemon_rpc.get_info()
             difficulty = info.get('difficulty', 1)
 
             # Ensure difficulty is positive
@@ -306,8 +289,7 @@ class AutonomousMinerAgent(BaseAgent):
         Returns:
             Time in seconds until next block discovery attempt
         """
-        # Monero target block time is 120 seconds
-        TARGET_BLOCK_TIME = 120.0
+        TARGET_BLOCK_TIME = TARGET_BLOCK_TIME_SECS
 
         # Use hashrate_pct as a fraction of 100 (baseline assumption)
         # This means if weights sum to 100, blocks arrive at 120s average
@@ -372,7 +354,7 @@ class AutonomousMinerAgent(BaseAgent):
             
         try:
             # Generate block using ensure_mining (tries available methods)
-            result = self.agent_rpc.ensure_mining(wallet_address=self.wallet_address)
+            result = self.daemon_rpc.ensure_mining(wallet_address=self.wallet_address)
             
             if result and result.get('status') == 'OK':
                 # Extract block information based on method used
@@ -384,10 +366,10 @@ class AutonomousMinerAgent(BaseAgent):
                     blocks = inner_result.get('blocks', [])
                     if blocks:
                         block_hash = blocks[0]
-                        self.logger.info(f"✓ Block generated: {block_hash}")
+                        self.logger.info(f"Block generated: {block_hash}")
                         return True
                 elif method_used == 'start_mining':
-                    self.logger.info(f"✓ Mining started successfully")
+                    self.logger.info(f"Mining started successfully")
                     return True
                 else:
                     self.logger.warning(f"Unknown mining method: {method_used}")
@@ -462,9 +444,11 @@ class AutonomousMinerAgent(BaseAgent):
         # Calculate time until next block attempt
         next_block_time = self._calculate_next_block_time()
         
-        # Sleep for calculated duration
+        # Sleep for calculated duration, checking for shutdown every second
         self.logger.debug(f"Waiting {next_block_time:.1f}s before next block attempt")
-        time.sleep(next_block_time)
+        self.interruptible_sleep(next_block_time)
+        if not self.running:
+            return 0.0
         
         # Attempt to generate block
         success = self._generate_block()
@@ -475,7 +459,7 @@ class AutonomousMinerAgent(BaseAgent):
             
             # Get current blockchain height
             try:
-                info = self.agent_rpc.get_info()
+                info = self.daemon_rpc.get_info()
                 self.last_block_height = info.get('height', 0)
                 current_difficulty = info.get('difficulty', 0)
                 
@@ -545,7 +529,7 @@ def main():
     agent = AutonomousMinerAgent(
         agent_id=args.id,
         shared_dir=args.shared_dir,
-        agent_rpc_port=args.agent_rpc_port,
+        daemon_rpc_port=args.daemon_rpc_port,
         wallet_rpc_port=args.wallet_rpc_port,
         p2p_port=args.p2p_port,
         rpc_host=args.rpc_host,

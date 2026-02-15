@@ -198,7 +198,7 @@ fn build_spy_trial_sets(
 pub fn analyze_upgrade_impact(
     transactions: &[Transaction],
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
     _blocks: &[BlockInfo],
     config: &UpgradeAnalysisConfig,
     data_dir: &str,
@@ -252,7 +252,7 @@ pub fn analyze_upgrade_impact(
     );
 
     // Build IP-to-agent mapping (shared across all windows)
-    let ip_to_agent: HashMap<&str, &AgentInfo> = agents
+    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> = agents
         .iter()
         .map(|a| (a.ip_addr.as_str(), a))
         .collect();
@@ -352,7 +352,7 @@ fn calculate_window_metrics_fast(
     tx_obs_slice: &[&TxObservation],
     bw_slice: &[BwRef],
     avg_peer_count: Option<f64>,
-    ip_to_agent: &HashMap<&str, &AgentInfo>,
+    ip_to_agent: &HashMap<&str, &AnalysisAgentInfo>,
     spy_trials: &SpyTrialSets,
 ) -> WindowedMetrics {
     let mut metrics = WindowedMetrics {
@@ -456,7 +456,7 @@ fn calculate_bandwidth_from_slice(bw_slice: &[BwRef]) -> (u64, u64, u64) {
 fn calculate_synthetic_spy_accuracy(
     transactions: &[&Transaction],
     tx_observations: &HashMap<String, Vec<&TxObservation>>,
-    ip_to_agent: &HashMap<&str, &AgentInfo>,
+    ip_to_agent: &HashMap<&str, &AnalysisAgentInfo>,
     spy_trials: &SpyTrialSets,
 ) -> (Option<Vec<f64>>, usize) {
     // Count analyzable TXs (have observations and a known sender IP)
@@ -702,7 +702,7 @@ fn trace_stem_with_threshold(
 fn calculate_dandelion_for_window(
     transactions: &[&Transaction],
     tx_observations: &HashMap<String, Vec<&TxObservation>>,
-    ip_to_agent: &HashMap<&str, &AgentInfo>,
+    ip_to_agent: &HashMap<&str, &AnalysisAgentInfo>,
     gap_thresholds_ms: &[f64],
 ) -> (Option<f64>, usize, Option<Vec<f64>>) {
     // Build node_to_ip map once

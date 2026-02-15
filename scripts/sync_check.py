@@ -37,6 +37,7 @@ from typing import Optional, Tuple, List, Dict, Any
 
 # Import from error_handling and agent_discovery modules
 try:
+    from agents.base_agent import DEFAULT_SHARED_DIR
     from scripts.error_handling import (
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_network_sync, handle_exit
@@ -45,6 +46,7 @@ try:
 except ImportError:
     # Handle case where script is run from different directory
     sys.path.append('.')
+    from agents.base_agent import DEFAULT_SHARED_DIR
     from scripts.error_handling import (
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_network_sync, handle_exit
@@ -61,7 +63,7 @@ DEFAULT_SYNC_THRESHOLD = 1  # Maximum allowed height difference
 DEFAULT_SYNC_WAIT_TIME = 10  # Time to wait before checking sync
 
 
-def discover_nodes(shared_state_dir: str = "/tmp/monerosim_shared") -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+def discover_nodes(shared_state_dir: str = DEFAULT_SHARED_DIR) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """
     Discover nodes dynamically using agent discovery.
 
@@ -344,8 +346,8 @@ def main():
     )
     parser.add_argument(
         "--shared-state-dir",
-        default="/tmp/monerosim_shared",
-        help="Path to the shared state directory (default: /tmp/monerosim_shared)"
+        default=DEFAULT_SHARED_DIR,
+        help="Path to the shared state directory"
     )
     parser.add_argument(
         "--sync-threshold",

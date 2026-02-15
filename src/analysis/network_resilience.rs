@@ -6,11 +6,12 @@
 use std::collections::{HashMap, HashSet};
 
 use super::types::*;
+use super::calculate_gini;
 
 /// Analyze network resilience based on connection topology
 pub fn analyze_resilience(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> ResilienceMetrics {
     // Build adjacency graph from connection events
     let graph = build_connection_graph(log_data, agents);
@@ -34,7 +35,7 @@ pub fn analyze_resilience(
 /// Build a graph of active connections (node_id -> set of connected peer IPs)
 fn build_connection_graph(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> HashMap<String, HashSet<String>> {
     let mut graph: HashMap<String, HashSet<String>> = HashMap::new();
 
@@ -79,7 +80,7 @@ fn build_connection_graph(
 /// Analyze connectivity metrics
 fn analyze_connectivity(
     graph: &HashMap<String, HashSet<String>>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> ConnectivityMetrics {
     let peer_counts: Vec<usize> = graph.values().map(|peers| peers.len()).collect();
 
@@ -117,7 +118,7 @@ fn analyze_connectivity(
 /// Analyze centralization metrics
 fn analyze_centralization(
     log_data: &HashMap<String, NodeLogData>,
-    agents: &[AgentInfo],
+    agents: &[AnalysisAgentInfo],
 ) -> CentralizationMetrics {
     // Count first-seen observations per node
     let mut first_seen_counts: HashMap<String, usize> = HashMap::new();
@@ -193,29 +194,6 @@ fn analyze_partition_risk(graph: &HashMap<String, HashSet<String>>) -> Partition
         bridge_nodes,
         connected_components: components.len(),
     }
-}
-
-/// Calculate Gini coefficient
-fn calculate_gini(values: &[f64]) -> f64 {
-    if values.is_empty() {
-        return 0.0;
-    }
-
-    let n = values.len() as f64;
-    let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let sum: f64 = sorted.iter().sum();
-    if sum == 0.0 {
-        return 0.0;
-    }
-
-    let mut gini_sum = 0.0;
-    for (i, &val) in sorted.iter().enumerate() {
-        gini_sum += val * (2.0 * (i as f64 + 1.0) - n - 1.0);
-    }
-
-    gini_sum / (n * sum)
 }
 
 /// Find connected components using BFS

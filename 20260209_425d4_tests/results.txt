@@ -1,0 +1,958 @@
+=== Relay Node Test Suite — Tue Feb 10 18:23:04 UTC 2026 ===
+
+--- 01_basic_relay ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay.expanded.yaml
+  Agents: 13
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:04Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay_shadow"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:04Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:04Z INFO  monerosim] Removing stale daemon data directory: /tmp/monero-relay-gateway
+[2026-02-10T18:23:04Z INFO  monerosim] Removing stale daemon data directory: /tmp/monero-miner-002
+[2026-02-10T18:23:04Z INFO  monerosim] Removing stale daemon data directory: /tmp/monero-miner-001
+[2026-02-10T18:23:04Z INFO  monerosim] Removing stale shared ring database: "/home/lever65/.shared-ringdb"
+[2026-02-10T18:23:04Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-003 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Distributing 13 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   NorthAmerica: 3 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Europe: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Asia: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   SouthAmerica: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Africa: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Oceania: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent miner-003 (AS 500, node 500)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent relay-001 (AS 800, node 800)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent relay-002 (AS 1000, node 1000)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-003 (AS 1100, node 1100)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-004 (AS 1, node 1)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent relay-005 (AS 201, node 201)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 14.0.0.10 to agent user-001 (AS 501, node 501)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 179.0.0.10 to agent user-002 (AS 801, node 801)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 102.0.0.10 to agent user-003 (AS 1001, node 1001)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 103.0.0.10 to agent user-004 (AS 1101, node 1101)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 6.0.0.10 to agent user-005 (AS 2, node 2)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.16 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry has 15 agents
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.14",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "40",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 4293 bytes
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Total agents: 16
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique /24 subnets: 13 (81.2% of agents)
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique first octets: 13
+[2026-02-10T18:23:04Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/01_basic_relay_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[01_basic_relay] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-003: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-001: 1 process(es)
+  relay-002: 1 process(es)
+  relay-003: 1 process(es)
+  relay-004: 1 process(es)
+  relay-005: 1 process(es)
+  simulation-monitor: 1 process(es)
+  user-001: 3 process(es)
+  user-002: 3 process(es)
+  user-003: 3 process(es)
+  user-004: 3 process(es)
+  user-005: 3 process(es)
+OK
+[01_basic_relay] Agent registry relay entries:
+  relay-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-004: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-005: wallet=False, script=None, wallet_rpc_port=None [OK]
+[01_basic_relay] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 02_relay_only ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only.expanded.yaml
+  Agents: 10
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:04Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only_shadow"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:04Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:04Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Distributing 10 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   NorthAmerica: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Europe: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Asia: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   SouthAmerica: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Africa: 1 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Oceania: 1 agents
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent relay-001 (AS 500, node 500)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent relay-002 (AS 800, node 800)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent relay-003 (AS 1000, node 1000)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-004 (AS 1100, node 1100)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-005 (AS 1, node 1)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent relay-006 (AS 201, node 201)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 14.0.0.10 to agent relay-007 (AS 501, node 501)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 179.0.0.10 to agent relay-008 (AS 801, node 801)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry has 12 agents
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.13",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "60",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 3020 bytes
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Total agents: 13
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique /24 subnets: 10 (76.9% of agents)
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique first octets: 10
+[2026-02-10T18:23:04Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/02_relay_only_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[02_relay_only] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-001: 1 process(es)
+  relay-002: 1 process(es)
+  relay-003: 1 process(es)
+  relay-004: 1 process(es)
+  relay-005: 1 process(es)
+  relay-006: 1 process(es)
+  relay-007: 1 process(es)
+  relay-008: 1 process(es)
+  simulation-monitor: 1 process(es)
+OK
+[02_relay_only] Agent registry relay entries:
+  relay-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-004: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-005: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-006: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-007: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-008: wallet=False, script=None, wallet_rpc_port=None [OK]
+[02_relay_only] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 03_relay_upgrade ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade.expanded.yaml
+  Agents: 10
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:04Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade_shadow"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:04Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:04Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-003 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Distributing 10 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   NorthAmerica: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Europe: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Asia: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   SouthAmerica: 2 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Africa: 1 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Oceania: 1 agents
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent miner-003 (AS 500, node 500)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent relay-001 (AS 800, node 800)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent relay-002 (AS 1000, node 1000)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-003 (AS 1100, node 1100)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-004 (AS 1, node 1)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent user-001 (AS 201, node 201)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 14.0.0.10 to agent user-002 (AS 501, node 501)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 179.0.0.10 to agent user-003 (AS 801, node 801)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.16 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry has 12 agents
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.14",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "40",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 3418 bytes
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Total agents: 13
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique /24 subnets: 10 (76.9% of agents)
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique first octets: 10
+[2026-02-10T18:23:04Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/03_relay_upgrade_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[03_relay_upgrade] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 5 process(es)
+  miner-002: 5 process(es)
+  miner-003: 5 process(es)
+  miner-distributor: 1 process(es)
+  relay-001: 2 process(es)
+  relay-002: 2 process(es)
+  relay-003: 2 process(es)
+  relay-004: 2 process(es)
+  simulation-monitor: 1 process(es)
+  user-001: 4 process(es)
+  user-002: 4 process(es)
+  user-003: 4 process(es)
+FAIL: relay-001 has 2 processes, expected 1
+FAIL: relay-002 has 2 processes, expected 1
+FAIL: relay-003 has 2 processes, expected 1
+FAIL: relay-004 has 2 processes, expected 1
+[03_relay_upgrade] Agent registry relay entries:
+  relay-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-004: wallet=False, script=None, wallet_rpc_port=None [OK]
+[03_relay_upgrade] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 04_large_relay_group ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group.expanded.yaml
+  Agents: 38
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:04Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group_shadow"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group.expanded.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:04Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:04Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:04Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-003 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Distributing 38 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   NorthAmerica: 7 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Europe: 7 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Asia: 6 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   SouthAmerica: 6 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Africa: 6 agents
+[2026-02-10T18:23:04Z INFO  monerosim::topology::distribution]   Oceania: 6 agents
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent miner-003 (AS 500, node 500)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent relay-001 (AS 800, node 800)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent relay-002 (AS 1000, node 1000)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-003 (AS 1100, node 1100)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-004 (AS 1, node 1)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent relay-005 (AS 201, node 201)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 14.0.0.10 to agent relay-006 (AS 501, node 501)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 179.0.0.10 to agent relay-007 (AS 801, node 801)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 102.0.0.10 to agent relay-008 (AS 1001, node 1001)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 103.0.0.10 to agent relay-009 (AS 1101, node 1101)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 6.0.0.10 to agent relay-010 (AS 2, node 2)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 25.0.0.10 to agent relay-011 (AS 202, node 202)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 27.0.0.10 to agent relay-012 (AS 502, node 502)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 181.0.0.10 to agent relay-013 (AS 802, node 802)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 105.0.0.10 to agent relay-014 (AS 1002, node 1002)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 121.0.0.10 to agent relay-015 (AS 1102, node 1102)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 7.0.0.10 to agent relay-016 (AS 3, node 3)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 31.0.0.10 to agent relay-017 (AS 203, node 203)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 36.0.0.10 to agent relay-018 (AS 503, node 503)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 186.0.0.10 to agent relay-019 (AS 803, node 803)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 154.0.0.10 to agent relay-020 (AS 1003, node 1003)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 122.0.0.10 to agent relay-021 (AS 1103, node 1103)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 8.0.0.10 to agent relay-022 (AS 4, node 4)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 37.0.0.10 to agent relay-023 (AS 204, node 204)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 39.0.0.10 to agent relay-024 (AS 504, node 504)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 187.0.0.10 to agent relay-025 (AS 804, node 804)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 196.0.0.10 to agent relay-026 (AS 1004, node 1004)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 139.0.0.10 to agent relay-027 (AS 1104, node 1104)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 9.0.0.10 to agent relay-028 (AS 5, node 5)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 46.0.0.10 to agent relay-029 (AS 205, node 205)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 42.0.0.10 to agent relay-030 (AS 505, node 505)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 189.0.0.10 to agent user-001 (AS 805, node 805)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 197.0.0.10 to agent user-002 (AS 1005, node 1005)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 144.0.0.10 to agent user-003 (AS 1105, node 1105)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 13.0.0.10 to agent user-004 (AS 6, node 6)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 51.0.0.10 to agent user-005 (AS 206, node 206)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.16 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry has 40 agents
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.14",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "40",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 10052 bytes
+[2026-02-10T18:23:04Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Total agents: 41
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique /24 subnets: 38 (92.7% of agents)
+[2026-02-10T18:23:04Z INFO  monerosim::utils::validation]   Unique first octets: 38
+[2026-02-10T18:23:04Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/04_large_relay_group_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:04Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[04_large_relay_group] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-003: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-001: 1 process(es)
+  relay-002: 1 process(es)
+  relay-003: 1 process(es)
+  relay-004: 1 process(es)
+  relay-005: 1 process(es)
+  relay-006: 1 process(es)
+  relay-007: 1 process(es)
+  relay-008: 1 process(es)
+  relay-009: 1 process(es)
+  relay-010: 1 process(es)
+  relay-011: 1 process(es)
+  relay-012: 1 process(es)
+  relay-013: 1 process(es)
+  relay-014: 1 process(es)
+  relay-015: 1 process(es)
+  relay-016: 1 process(es)
+  relay-017: 1 process(es)
+  relay-018: 1 process(es)
+  relay-019: 1 process(es)
+  relay-020: 1 process(es)
+  relay-021: 1 process(es)
+  relay-022: 1 process(es)
+  relay-023: 1 process(es)
+  relay-024: 1 process(es)
+  relay-025: 1 process(es)
+  relay-026: 1 process(es)
+  relay-027: 1 process(es)
+  relay-028: 1 process(es)
+  relay-029: 1 process(es)
+  relay-030: 1 process(es)
+  simulation-monitor: 1 process(es)
+  user-001: 3 process(es)
+  user-002: 3 process(es)
+  user-003: 3 process(es)
+  user-004: 3 process(es)
+  user-005: 3 process(es)
+OK
+[04_large_relay_group] Agent registry relay entries:
+  relay-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-004: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-005: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-006: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-007: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-008: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-009: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-010: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-011: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-012: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-013: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-014: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-015: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-016: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-017: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-018: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-019: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-020: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-021: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-022: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-023: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-024: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-025: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-026: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-027: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-028: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-029: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-030: wallet=False, script=None, wallet_rpc_port=None [OK]
+[04_large_relay_group] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 05_mixed_agents ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents.expanded.yaml
+  Agents: 15
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:05Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents_shadow"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:05Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:05Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-003 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Distributing 15 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   NorthAmerica: 3 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Europe: 3 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Asia: 3 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   SouthAmerica: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Africa: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Oceania: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent miner-003 (AS 500, node 500)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent relay-001 (AS 800, node 800)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent relay-002 (AS 1000, node 1000)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-003 (AS 1100, node 1100)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-004 (AS 1, node 1)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent relay-005 (AS 201, node 201)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::registry] Created new subnet group 'spy_cluster' with prefix 10.100.0.0/24
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned subnet group IP 10.100.0.10 to agent spy-001 (group: spy_cluster)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned subnet group IP 10.100.0.11 to agent spy-002 (group: spy_cluster)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 102.0.0.10 to agent user-001 (AS 1001, node 1001)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 103.0.0.10 to agent user-002 (AS 1101, node 1101)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 6.0.0.10 to agent user-003 (AS 2, node 2)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 25.0.0.10 to agent user-004 (AS 202, node 202)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 27.0.0.10 to agent user-005 (AS 502, node 502)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.16 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry has 17 agents
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.14",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "40",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 4938 bytes
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Total agents: 18
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique /24 subnets: 14 (77.8% of agents)
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique first octets: 14
+[2026-02-10T18:23:05Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/05_mixed_agents_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[05_mixed_agents] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-003: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-001: 1 process(es)
+  relay-002: 1 process(es)
+  relay-003: 1 process(es)
+  relay-004: 1 process(es)
+  relay-005: 1 process(es)
+  simulation-monitor: 1 process(es)
+  spy-001: 3 process(es)
+  spy-002: 3 process(es)
+  user-001: 3 process(es)
+  user-002: 3 process(es)
+  user-003: 3 process(es)
+  user-004: 3 process(es)
+  user-005: 3 process(es)
+OK
+[05_mixed_agents] Agent registry relay entries:
+  relay-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-004: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-005: wallet=False, script=None, wallet_rpc_port=None [OK]
+[05_mixed_agents] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 06_relay_daemon_options ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options.expanded.yaml
+  Agents: 8
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:05Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options_shadow"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:05Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:05Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Distributing 8 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   NorthAmerica: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Europe: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Asia: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   SouthAmerica: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Africa: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Oceania: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent relay-hi-001 (AS 500, node 500)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent relay-hi-002 (AS 800, node 800)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent relay-hi-003 (AS 1000, node 1000)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-lo-001 (AS 1100, node 1100)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-lo-002 (AS 1, node 1)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent relay-lo-003 (AS 201, node 201)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry has 10 agents
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.13",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "60",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 2577 bytes
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Total agents: 11
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique /24 subnets: 8 (72.7% of agents)
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique first octets: 8
+[2026-02-10T18:23:05Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/06_relay_daemon_options_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[06_relay_daemon_options] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-hi-001: 1 process(es)
+  relay-hi-002: 1 process(es)
+  relay-hi-003: 1 process(es)
+  relay-lo-001: 1 process(es)
+  relay-lo-002: 1 process(es)
+  relay-lo-003: 1 process(es)
+  simulation-monitor: 1 process(es)
+OK
+[06_relay_daemon_options] Agent registry relay entries:
+  relay-hi-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-hi-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-hi-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-lo-001: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-lo-002: wallet=False, script=None, wallet_rpc_port=None [OK]
+  relay-lo-003: wallet=False, script=None, wallet_rpc_port=None [OK]
+[06_relay_daemon_options] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 08_singleton_relay ---
+Expanding scenario: /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay.scenario.yaml
+Expanded /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay.scenario.yaml -> /home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay.expanded.yaml
+  Agents: 3
+  Bootstrap ends: 4h
+  Activity starts: 5h
+OK
+[2026-02-10T18:23:05Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] This appears to be an agent configuration without nodes section. The new parser will handle this correctly.
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:05Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:05Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Distributing 3 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   NorthAmerica: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Europe: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Asia: 1 agents
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent relay-gateway (AS 500, node 500)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry has 5 agents
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.13",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "60",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 1413 bytes
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Total agents: 6
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique /24 subnets: 3 (50.0% of agents)
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique first octets: 3
+[2026-02-10T18:23:05Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/08_singleton_relay_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[08_singleton_relay] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-gateway: 1 process(es)
+  simulation-monitor: 1 process(es)
+OK
+[08_singleton_relay] Agent registry relay entries:
+  relay-gateway: wallet=False, script=None, wallet_rpc_port=None [OK]
+[08_singleton_relay] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+--- 07_cli_relay_nodes ---
+OK
+[2026-02-10T18:23:05Z INFO  monerosim] Starting MoneroSim configuration parser v2
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration file: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/07_cli_relay_nodes.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Output directory: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/07_cli_relay_nodes_shadow"
+[2026-02-10T18:23:05Z WARN  monerosim::config_loader] Configuration uses deprecated dummy nodes workaround. This will be removed in a future version. Please update to the new format.
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Loading configuration from: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/07_cli_relay_nodes.expanded.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Detected agent-based configuration
+[2026-02-10T18:23:05Z INFO  monerosim::config_loader] Configuration validated successfully
+[2026-02-10T18:23:05Z INFO  monerosim] Cleaning up previous simulation state
+[2026-02-10T18:23:05Z INFO  monerosim] Running in agent-based simulation mode
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.10 to agent dnsserver (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.12 to agent miner-002 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.13 to agent miner-003 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.14 to agent miner-004 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.15 to agent miner-005 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Created DNS server at 3.0.0.10
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Distributing 15 agents across GML topology '' using Global strategy
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Using global distribution across all regions
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution] Global distribution summary:
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   NorthAmerica: 3 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Europe: 3 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Asia: 3 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   SouthAmerica: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Africa: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::topology::distribution]   Oceania: 2 agents
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.16 to agent miner-001 (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent miner-002 (AS 200, node 200)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent miner-003 (AS 500, node 500)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 177.0.0.10 to agent miner-004 (AS 800, node 800)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 41.0.0.10 to agent miner-005 (AS 1000, node 1000)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 101.0.0.10 to agent relay-001 (AS 1100, node 1100)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 4.0.0.10 to agent relay-002 (AS 1, node 1)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 5.0.0.10 to agent relay-003 (AS 201, node 201)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 14.0.0.10 to agent relay-004 (AS 501, node 501)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 179.0.0.10 to agent relay-005 (AS 801, node 801)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 102.0.0.10 to agent user-001 (AS 1001, node 1001)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 103.0.0.10 to agent user-002 (AS 1101, node 1101)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 6.0.0.10 to agent user-003 (AS 2, node 2)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 25.0.0.10 to agent user-004 (AS 202, node 202)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 27.0.0.10 to agent user-005 (AS 502, node 502)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.17 to agent miner-distributor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.18 to agent simulation-monitor (AS 0, node 0)
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry has 17 agents
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Agent registry JSON preview (first 500 chars): {
+      "agents": [
+        {
+          "id": "miner-001",
+          "ip_addr": "3.0.0.16",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.autonomous_miner",
+          "attributes": {
+            "can_receive_distributions": "true",
+            "hashrate": "25",
+            "is_miner": "true"
+          },
+          "wallet_rpc_port": 18082,
+          "daemon_rpc_port": 18081
+        },
+        {
+          "id": "miner-002",
+          "ip_addr": "2.0.0.10",
+          "daemon": true,
+          "wallet": true,
+          "user_script": "agents.
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote agent registry to "/tmp/monerosim_shared/agent_registry.json", size: 4997 bytes
+[2026-02-10T18:23:05Z INFO  monerosim::orchestrator] Wrote public node registry to "/tmp/monerosim_shared/public_nodes.json" with 0 nodes
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] No pre-allocated IPs in GML file - all IPs will be assigned dynamically
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation] IP Diversity Analysis:
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Total agents: 18
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique /24 subnets: 15 (83.3% of agents)
+[2026-02-10T18:23:05Z INFO  monerosim::utils::validation]   Unique first octets: 15
+[2026-02-10T18:23:05Z INFO  monerosim] Generated Agent-based Shadow configuration: "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/07_cli_relay_nodes_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Ready to run Shadow simulation with: shadow "/home/lever65/monerosim_dev/monerosim/20260209_425d4_tests/07_cli_relay_nodes_shadow/shadow_agents.yaml"
+[2026-02-10T18:23:05Z INFO  monerosim] Configuration parsing completed successfully
+OK
+[07_cli_relay_nodes] Process counts:
+  dnsserver: 1 process(es)
+  miner-001: 4 process(es)
+  miner-002: 4 process(es)
+  miner-003: 4 process(es)
+  miner-004: 4 process(es)
+  miner-005: 4 process(es)
+  miner-distributor: 1 process(es)
+  relay-001: 1 process(es)
+  relay-002: 1 process(es)
+  relay-003: 1 process(es)
+  relay-004: 1 process(es)
+  relay-005: 1 process(es)
+  simulation-monitor: 1 process(es)
+  user-001: 3 process(es)
+  user-002: 3 process(es)
+  user-003: 3 process(es)
+  user-004: 3 process(es)
+  user-005: 3 process(es)
+[07_cli_relay_nodes] relay check... OK
+[07_cli_relay_nodes] Validator:
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    from scripts.ai_config.validator import ConfigValidator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/__init__.py", line 15, in <module>
+    from .generator import ConfigGenerator
+  File "/home/lever65/monerosim_dev/monerosim/scripts/ai_config/generator.py", line 23, in <module>
+    from ..scenario_parser import parse_scenario, expand_scenario
+  File "/home/lever65/monerosim_dev/monerosim/scripts/scenario_parser.py", line 60, in <module>
+    from generate_config import parse_duration, calculate_activity_start_times
+ModuleNotFoundError: No module named 'generate_config'
+
+========================================
+TOTAL: 8 tests, 8 passed, 0 failed
+
