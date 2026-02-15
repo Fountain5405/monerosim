@@ -114,20 +114,21 @@ fn main() -> Result<()> {
                 .wrap_err_with(|| format!("Failed to remove output directory '{}'", output_dir.display()))?;
         }
     }
-    let shared_dir = Path::new(monerosim::SHARED_DIR);
+    let shared_dir = Path::new(&new_config.general.shared_dir);
     remove_dir_with_permissions(shared_dir).wrap_err("Failed to remove shared directory")?;
 
-    // Clean up per-agent data directories from previous runs (/tmp/monero-*)
-    // This replaces the per-agent `rm -rf /tmp/monero-{id}` that was previously
+    // Clean up per-agent data directories from previous runs ({daemon_data_dir}/monero-*)
+    // This replaces the per-agent `rm -rf {daemon_data_dir}/monero-{id}` that was previously
     // done inside each daemon's bash wrapper at simulation startup.
-    if let Ok(entries) = fs::read_dir("/tmp") {
+    let daemon_data_dir = Path::new(&new_config.general.daemon_data_dir);
+    if let Ok(entries) = fs::read_dir(daemon_data_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
             if name_str.starts_with("monero-") {
-                info!("Removing stale daemon data directory: /tmp/{}", name_str);
+                info!("Removing stale daemon data directory: {}/{}", daemon_data_dir.display(), name_str);
                 remove_dir_with_permissions(&entry.path())
-                    .unwrap_or_else(|e| warn!("Failed to remove /tmp/{}: {}", name_str, e));
+                    .unwrap_or_else(|e| warn!("Failed to remove {}/{}: {}", daemon_data_dir.display(), name_str, e));
             }
         }
     }

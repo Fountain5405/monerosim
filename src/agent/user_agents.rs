@@ -51,6 +51,7 @@ pub fn process_user_agents(
     distribution_strategy: Option<&crate::config_v2::DistributionStrategy>,
     distribution_weights: Option<&crate::config_v2::RegionWeights>,
     scripts_dir: &Path,
+    daemon_data_dir: &str,
 ) -> color_eyre::eyre::Result<()> {
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
@@ -292,7 +293,7 @@ pub fn process_user_agents(
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                 // Start with required/injected flags that cannot be overridden
                 let mut args = vec![
-                    format!("--data-dir=/tmp/monero-{}", agent_id),
+                    format!("--data-dir={}/monero-{}", daemon_data_dir, agent_id),
                     "--regtest".to_string(),
                     "--keep-fakechain".to_string(),
                 ];
@@ -490,7 +491,7 @@ pub fn process_user_agents(
                         format!("--rpc-bind-ip={}", agent_ip),
                         "--disable-rpc-login".to_string(),
                         "--trusted-daemon".to_string(),
-                        format!("--wallet-dir={}/{}_wallet", crate::SHARED_DIR, agent_id),
+                        format!("--wallet-dir={}/{}_wallet", shared_dir.to_string_lossy(), agent_id),
                         "--confirm-external-bind".to_string(),
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
@@ -590,6 +591,7 @@ pub fn process_user_agents(
                         user_agent_config.wallet_env.as_ref(),
                         wallet_defaults,
                         user_agent_config.wallet_options.as_ref(),
+                        &shared_dir.to_string_lossy(),
                     );
                 } else if has_remote_daemon {
                     // Wallet-only agent: wallet connects to remote daemon
@@ -608,6 +610,7 @@ pub fn process_user_agents(
                         user_agent_config.wallet_env.as_ref(),
                         wallet_defaults,
                         user_agent_config.wallet_options.as_ref(),
+                        &shared_dir.to_string_lossy(),
                     );
                 }
             }

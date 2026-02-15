@@ -463,6 +463,8 @@ def _build_general_config(
     fast_mode: bool,
     process_threads: int,
     native_preemption: bool = None,
+    shared_dir: str = None,
+    daemon_data_dir: str = None,
 ) -> OrderedDict:
     """Build the shared general config section."""
     shadow_log_level = "warning" if fast_mode else "info"
@@ -501,6 +503,12 @@ def _build_general_config(
         ("log-level", 1),
         ("log-file", "/dev/stdout"),
     ])
+
+    # Only emit directory overrides when they differ from defaults
+    if shared_dir is not None and shared_dir != "/tmp/monerosim_shared":
+        general_config["shared_dir"] = shared_dir
+    if daemon_data_dir is not None and daemon_data_dir != "/tmp":
+        general_config["daemon_data_dir"] = daemon_data_dir
 
     return general_config
 

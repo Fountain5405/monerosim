@@ -55,16 +55,16 @@ fn detect_venv_site_packages(base_dir: &str) -> Option<String> {
 }
 
 /// Generate Shadow network configuration from GML graph
-pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str) -> color_eyre::eyre::Result<ShadowGraph> {
+pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str, output_dir: &Path) -> color_eyre::eyre::Result<ShadowGraph> {
     // Validate the topology first
     validate_topology(gml_graph).map_err(|e| color_eyre::eyre::eyre!("Invalid GML topology: {}", e))?;
 
     // Validate IP consistency
     validate_gml_ip_consistency(gml_graph).map_err(|e| color_eyre::eyre::eyre!("GML IP validation failed: {}", e))?;
 
-    // Create a temporary GML file with converted attributes (e.g., packet_loss percentages to floats)
-    // Use fixed path for determinism (process ID would vary between runs)
-    let temp_gml_path = "/tmp/monerosim_gml.gml".to_string();
+    // Create a GML file with converted attributes (e.g., packet_loss percentages to floats)
+    // Place in output directory alongside the Shadow config for locality and cleanup
+    let temp_gml_path = output_dir.join("topology.gml").to_string_lossy().to_string();
 
     let mut gml_content = String::new();
     gml_content.push_str("graph [\n");
@@ -139,7 +139,7 @@ pub fn generate_agent_shadow_config(
     config: &Config,
     output_path: &Path,
 ) -> color_eyre::eyre::Result<()> {
-    let shared_dir_path = Path::new(crate::SHARED_DIR);
+    let shared_dir_path = Path::new(&config.general.shared_dir);
 
     // Mining and agent configuration validation is handled by AgentConfig methods
 
@@ -389,6 +389,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
         distribution_strategy.as_ref(),
         distribution_weights.as_ref(),
         &scripts_dir,
+        &config.general.daemon_data_dir,
     )?;
 
 
@@ -677,8 +678,8 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
                 Some(Network::Gml { path, .. }) => {
                     // Use the loaded and validated GML graph to generate network config
                     if let Some(ref gml) = gml_graph {
-                        // Pass both the GML graph and the path to the file
-                        generate_gml_network_config(gml, path)?
+                        // Pass both the GML graph and the output dir for topology.gml
+                        generate_gml_network_config(gml, path, &output_dir)?
                     } else {
                         // Fallback to switch if GML loading failed
                         ShadowGraph {

@@ -18,6 +18,7 @@ fn build_wallet_args(
     custom_args: Option<&Vec<String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
+    shared_dir: &str,
 ) -> String {
     let process_threads: u32 = environment.get("PROCESS_THREADS")
         .and_then(|s| s.parse().ok())
@@ -31,7 +32,7 @@ fn build_wallet_args(
         format!("--rpc-bind-ip={}", agent_ip),
         "--disable-rpc-login".to_string(),
         "--trusted-daemon".to_string(),
-        format!("--wallet-dir={}/{}_wallet", crate::SHARED_DIR, agent_id),
+        format!("--wallet-dir={}/{}_wallet", shared_dir, agent_id),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
     ];
@@ -65,11 +66,12 @@ pub fn add_wallet_process(
     custom_env: Option<&BTreeMap<String, String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
+    shared_dir: &str,
 ) {
     let daemon_address = format!("http://{}:{}", agent_ip, daemon_rpc_port);
     let wallet_args = build_wallet_args(
         agent_id, agent_ip, &daemon_address, wallet_rpc_port,
-        environment, custom_args, wallet_defaults, wallet_options,
+        environment, custom_args, wallet_defaults, wallet_options, shared_dir,
     );
 
     let mut wallet_env = environment.clone();
@@ -107,6 +109,7 @@ pub fn add_remote_wallet_process(
     custom_env: Option<&BTreeMap<String, String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
+    shared_dir: &str,
 ) {
     let daemon_address = match remote_daemon_address {
         Some(addr) if addr != "auto" => format!("http://{}", addr),
@@ -115,7 +118,7 @@ pub fn add_remote_wallet_process(
 
     let wallet_args = build_wallet_args(
         agent_id, agent_ip, &daemon_address, wallet_rpc_port,
-        environment, custom_args, wallet_defaults, wallet_options,
+        environment, custom_args, wallet_defaults, wallet_options, shared_dir,
     );
 
     let mut wallet_env = environment.clone();

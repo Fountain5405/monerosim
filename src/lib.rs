@@ -18,6 +18,9 @@
 /// Shared directory for inter-agent communication and registry files.
 pub const SHARED_DIR: &str = "/tmp/monerosim_shared";
 
+/// Default base directory for per-agent monerod data directories.
+pub const DEFAULT_DAEMON_DATA_DIR: &str = "/tmp";
+
 /// Shadow simulation epoch: 2000-01-01 00:00:00 UTC as Unix timestamp.
 /// Shadow's simulated clock starts from this point; subtract it from
 /// `time.time()` (Python) or log timestamps to get simulation-relative seconds.

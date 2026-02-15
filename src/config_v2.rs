@@ -662,6 +662,15 @@ pub struct GeneralConfig {
     /// Example: { "log-level": 1 }
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_defaults: Option<BTreeMap<String, OptionValue>>,
+
+    /// Directory for inter-agent communication files (registries, wallets, locks).
+    #[serde(default = "default_shared_dir")]
+    pub shared_dir: String,
+
+    /// Base directory for per-agent monerod data directories.
+    /// Each agent gets `{daemon_data_dir}/monero-{agent_id}`.
+    #[serde(default = "default_daemon_data_dir")]
+    pub daemon_data_dir: String,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -678,6 +687,14 @@ fn default_difficulty_cache_ttl() -> u32 {
 
 fn default_shadow_log_level() -> String {
     "info".to_string()  // Reduced from "trace" to lower I/O overhead
+}
+
+fn default_shared_dir() -> String {
+    "/tmp/monerosim_shared".to_string()
+}
+
+fn default_daemon_data_dir() -> String {
+    "/tmp".to_string()
 }
 
 /// Agent definitions - named map of agents
@@ -1049,6 +1066,8 @@ impl Default for GeneralConfig {
             native_preemption: None,  // Shadow default (false) applies when unset
             daemon_defaults: None,  // No daemon defaults by default
             wallet_defaults: None,  // No wallet defaults by default
+            shared_dir: default_shared_dir(),
+            daemon_data_dir: default_daemon_data_dir(),
         }
     }
 }
