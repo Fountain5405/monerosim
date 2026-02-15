@@ -157,6 +157,10 @@ def calculate_activity_start_times(
     if num_users == 0:
         return []
 
+    # Guard against batch_size=0 (auto-detect sentinel) — treat as single batch
+    if batch_size <= 0:
+        batch_size = num_users
+
     rng = random.Random(seed)
     activity_times = []
 
@@ -581,6 +585,64 @@ def generate_relay_agent_phased(
 DEFAULT_GML_PATH = "gml_processing/1200_nodes_caida_with_loops.gml"
 
 
+def _build_general_config(
+    duration: str,
+    parallelism: int,
+    simulation_seed: int,
+    bootstrap_end_time_s: int,
+    fast_mode: bool,
+    process_threads: int,
+    native_preemption: bool = None,
+    shared_dir: str = None,
+    daemon_data_dir: str = None,
+) -> OrderedDict:
+    """Build the general config section shared by generate_config and generate_upgrade_config."""
+    shadow_log_level = "warning" if fast_mode else "info"
+    runahead = "100ms" if fast_mode else None
+
+    general_config = OrderedDict([
+        ("stop_time", duration),
+        ("parallelism", parallelism),
+        ("simulation_seed", simulation_seed),
+        ("enable_dns_server", True),
+        ("shadow_log_level", shadow_log_level),
+        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
+        ("progress", True),
+    ])
+
+    if runahead:
+        general_config["runahead"] = runahead
+
+    if process_threads != 1:
+        general_config["process_threads"] = process_threads
+
+    if native_preemption is not None:
+        general_config["native_preemption"] = native_preemption
+
+    # Only emit non-default directory paths
+    if shared_dir and shared_dir != "/tmp/monerosim_shared":
+        general_config["shared_dir"] = shared_dir
+    if daemon_data_dir and daemon_data_dir != "/tmp":
+        general_config["daemon_data_dir"] = daemon_data_dir
+
+    general_config["daemon_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+        ("db-sync-mode", "fastest"),
+        ("no-zmq", True),
+        ("non-interactive", True),
+        ("disable-rpc-ban", True),
+        ("allow-local-ip", True),
+    ])
+
+    general_config["wallet_defaults"] = OrderedDict([
+        ("log-level", 1),
+        ("log-file", "/dev/stdout"),
+    ])
+
+    return general_config
+
+
 def generate_config(
     total_agents: int,
     duration: str,
@@ -739,8 +801,6 @@ def generate_config(
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
-    shadow_log_level = "warning" if fast_mode else "info"
-    runahead = "100ms" if fast_mode else None
 
     # Build named agents map (OrderedDict to preserve order)
     agents = OrderedDict()
@@ -828,47 +888,15 @@ def generate_config(
         ("status_file", "monerosim_monitor.log"),
     ])
 
-    # Build general config with daemon_defaults
-    general_config = OrderedDict([
-        ("stop_time", duration),
-        ("parallelism", parallelism),
-        ("simulation_seed", simulation_seed),
-        ("enable_dns_server", True),
-        ("shadow_log_level", shadow_log_level),
-        # Bootstrap period: high bandwidth, no packet loss until all users spawned + buffer
-        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
-        # Show simulation progress on stderr for visibility
-        ("progress", True),
-    ])
-
-    # Add runahead for fast mode
-    if runahead:
-        general_config["runahead"] = runahead
-
-    # Add process_threads if not default (1)
-    if process_threads != 1:
-        general_config["process_threads"] = process_threads
-
-    # Add native_preemption only when explicitly set
-    if native_preemption is not None:
-        general_config["native_preemption"] = native_preemption
-
-    # Add daemon_defaults - these were previously hardcoded
-    general_config["daemon_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-        ("db-sync-mode", "fastest"),
-        ("no-zmq", True),
-        ("non-interactive", True),
-        ("disable-rpc-ban", True),
-        ("allow-local-ip", True),
-    ])
-
-    # Add wallet_defaults
-    general_config["wallet_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-    ])
+    general_config = _build_general_config(
+        duration=duration,
+        parallelism=parallelism,
+        simulation_seed=simulation_seed,
+        bootstrap_end_time_s=bootstrap_end_time_s,
+        fast_mode=fast_mode,
+        process_threads=process_threads,
+        native_preemption=native_preemption,
+    )
 
     # Return config and timing info for header generation
     timing_info = {
@@ -1072,8 +1100,6 @@ def generate_upgrade_config(
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
     poll_interval = 300
-    shadow_log_level = "warning" if fast_mode else "info"
-    runahead = "100ms" if fast_mode else None
 
     # Build list of all agent IDs for upgrade scheduling
     miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
@@ -1218,41 +1244,15 @@ def generate_upgrade_config(
         ("status_file", "monerosim_monitor.log"),
     ])
 
-    # Build general config
-    general_config = OrderedDict([
-        ("stop_time", duration),
-        ("parallelism", parallelism),
-        ("simulation_seed", simulation_seed),
-        ("enable_dns_server", True),
-        ("shadow_log_level", shadow_log_level),
-        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
-        ("progress", True),
-    ])
-
-    if runahead:
-        general_config["runahead"] = runahead
-
-    if process_threads != 1:
-        general_config["process_threads"] = process_threads
-
-    # Add native_preemption only when explicitly set
-    if native_preemption is not None:
-        general_config["native_preemption"] = native_preemption
-
-    general_config["daemon_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-        ("db-sync-mode", "fastest"),
-        ("no-zmq", True),
-        ("non-interactive", True),
-        ("disable-rpc-ban", True),
-        ("allow-local-ip", True),
-    ])
-
-    general_config["wallet_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("log-file", "/dev/stdout"),
-    ])
+    general_config = _build_general_config(
+        duration=duration,
+        parallelism=parallelism,
+        simulation_seed=simulation_seed,
+        bootstrap_end_time_s=bootstrap_end_time_s,
+        fast_mode=fast_mode,
+        process_threads=process_threads,
+        native_preemption=native_preemption,
+    )
 
     timing_info = {
         'bootstrap_end_time_s': bootstrap_end_time_s,

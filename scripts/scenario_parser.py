@@ -57,7 +57,10 @@ from typing import Dict, Any, List, Tuple, Optional
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
-from generate_config import parse_duration, calculate_activity_start_times
+try:
+    from generate_config import parse_duration, calculate_activity_start_times
+except ImportError:
+    from .generate_config import parse_duration, calculate_activity_start_times
 
 
 # Reuse constants from generate_config
