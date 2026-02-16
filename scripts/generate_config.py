@@ -1428,8 +1428,8 @@ Timeline (verified bootstrap for Monero regtest):
     parser.add_argument(
         "--output", "-o",
         type=str,
-        required=True,
-        help="Output filename"
+        default=None,
+        help="Output filename (default: monerosim.expanded.yaml, or derived from --from input)"
     )
 
     parser.add_argument(
@@ -1705,6 +1705,14 @@ Timeline (verified bootstrap for Monero regtest):
     )
 
     args = parser.parse_args()
+
+    # Derive output filename when not specified
+    if args.output is None:
+        if args.from_scenario:
+            from scenario_parser import derive_expanded_filename
+            args.output = derive_expanded_filename(args.from_scenario)
+        else:
+            args.output = "monerosim.expanded.yaml"
 
     # Handle --from scenario.yaml mode
     if args.from_scenario:

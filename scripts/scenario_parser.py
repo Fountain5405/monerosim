@@ -2,7 +2,7 @@
 """
 Scenario parser for compact monerosim configuration files.
 
-Parses scenario.yaml (compact format) and expands to full monerosim.yaml.
+Parses scenario.yaml (compact format) and expands to full monerosim.expanded.yaml.
 
 Example scenario.yaml:
 ```yaml
@@ -83,6 +83,79 @@ DEFAULT_DAEMON_RESTART_GAP_S = 30
 DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect from CPU count (matches generate_config.py)
 DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 300  # Target seconds between batches (matches generate_config.py)
 DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
+
+
+AGENT_TYPE_DEFAULTS = {
+    "miner": {
+        "daemon": True,
+        "wallet": True,
+        "script": True,
+        "daemon_options": {"start-mining": True},
+    },
+    "user": {
+        "daemon": True,
+        "wallet": True,
+        "script": True,
+    },
+    "relay": {
+        "daemon": True,
+    },
+    "spy": {
+        "daemon": True,
+        "daemon_options": {"out-peers": 0},
+    },
+    "distributor": {
+        "daemon": True,
+        "wallet": True,
+        "script": True,
+    },
+    "monitor": {
+        "daemon": True,
+        "wallet": True,
+        "script": True,
+    },
+}
+
+
+def apply_type_defaults(properties: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply type-based defaults to agent properties.
+
+    If a ``type`` key is present, its value is looked up in
+    :data:`AGENT_TYPE_DEFAULTS` and the defaults are deep-merged beneath
+    the explicit properties (explicit always wins).  The ``type`` key is
+    removed from the output so the Rust engine never sees it.
+
+    Args:
+        properties: Agent properties dict (will be mutated).
+
+    Returns:
+        The same dict with defaults merged and ``type`` removed.
+
+    Raises:
+        ValueError: If the type is not recognised.
+    """
+    agent_type = properties.pop("type", None)
+    if agent_type is None:
+        return properties
+
+    if agent_type not in AGENT_TYPE_DEFAULTS:
+        valid = ", ".join(sorted(AGENT_TYPE_DEFAULTS))
+        raise ValueError(
+            f"Unknown agent type '{agent_type}'. Valid types: {valid}"
+        )
+
+    defaults = AGENT_TYPE_DEFAULTS[agent_type]
+
+    for key, default_value in defaults.items():
+        if key not in properties:
+            properties[key] = default_value
+        elif isinstance(default_value, dict) and isinstance(properties[key], dict):
+            # Deep-merge nested dicts: default keys as base, explicit wins
+            merged = dict(default_value)
+            merged.update(properties[key])
+            properties[key] = merged
+
+    return properties
 
 
 @dataclass
@@ -247,11 +320,11 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
                 start_index=start,
                 end_index=end,
                 count=count,
-                properties=props.copy(),
+                properties=apply_type_defaults(props.copy()),
             )
             agent_groups.append(group)
         else:
-            singleton_agents[agent_id] = props.copy()
+            singleton_agents[agent_id] = apply_type_defaults(props.copy())
 
     return ScenarioConfig(
         general=general,
@@ -360,7 +433,7 @@ def expand_stagger(
 
 def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, Any]:
     """
-    Expand scenario config into full monerosim.yaml structure.
+    Expand scenario config into full monerosim expanded config structure.
 
     Returns:
         Full configuration dict ready for YAML output
@@ -622,16 +695,33 @@ def format_time(seconds: int) -> str:
         return f"{seconds}s"
 
 
+def derive_expanded_filename(input_path: str) -> str:
+    """Derive the expanded output filename from an input path.
+
+    Convention:
+        ``*.scenario.yaml`` → ``*.expanded.yaml``
+        Otherwise           → ``<stem>.expanded.yaml``
+    """
+    from pathlib import Path as _Path
+    p = _Path(input_path)
+    if p.name.endswith('.scenario.yaml'):
+        return str(p.with_name(p.name[:-len('.scenario.yaml')] + '.expanded.yaml'))
+    return str(p.with_name(p.stem + '.expanded.yaml'))
+
+
 # CLI interface
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Expand scenario.yaml to full monerosim.yaml")
+    parser = argparse.ArgumentParser(description="Expand scenario.yaml to full expanded config")
     parser.add_argument("input", help="Input scenario.yaml file")
-    parser.add_argument("-o", "--output", default="monerosim.yaml", help="Output file")
+    parser.add_argument("-o", "--output", default=None, help="Output file (default: derived from input name)")
     parser.add_argument("--seed", type=int, default=12345, help="Random seed")
 
     args = parser.parse_args()
+
+    if args.output is None:
+        args.output = derive_expanded_filename(args.input)
 
     with open(args.input) as f:
         scenario = parse_scenario(f.read())

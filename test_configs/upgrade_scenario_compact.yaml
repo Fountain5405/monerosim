@@ -1,5 +1,5 @@
 # Upgrade scenario.yaml - network upgrade simulation (compact format)
-# Expand with: python3 scripts/scenario_parser.py test_configs/upgrade_scenario_compact.yaml -o monerosim.yaml
+# Expand with: python3 scripts/scenario_parser.py test_configs/upgrade_scenario_compact.yaml -o monerosim.expanded.yaml
 
 general:
   stop_time: 24h

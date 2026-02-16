@@ -1,6 +1,6 @@
 # Scenario File Format
 
-Scenario files are a compact YAML format for defining monerosim simulations. They support range expansion, stagger fields, and automatic timing — features not available in the flat monerosim.yaml format that the Rust binary consumes.
+Scenario files are a compact YAML format for defining monerosim simulations. They support range expansion, stagger fields, and automatic timing — features not available in the flat expanded YAML format (`.expanded.yaml`) that the Rust binary consumes.
 
 ## Expanding a Scenario
 
@@ -8,7 +8,7 @@ Scenario files are a compact YAML format for defining monerosim simulations. The
 python3 scripts/generate_config.py --from my_scenario.yaml -o expanded.yaml
 ```
 
-This parses the scenario, expands ranges and staggers, resolves `auto` values, and writes a flat monerosim.yaml. You then run the simulation with:
+This parses the scenario, expands ranges and staggers, resolves `auto` values, and writes a flat `.expanded.yaml` file. You then run the simulation with:
 
 ```bash
 target/release/monerosim --config expanded.yaml

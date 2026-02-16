@@ -11,7 +11,7 @@ This feature enables monerosim to run different versions of Monero binaries (mon
 ## Design Principles
 
 - **Flat config**: No nested schemas or type-switching magic. Explicit and readable.
-- **Self-contained**: monerosim.yaml files contain full paths, no external references.
+- **Self-contained**: expanded config files contain full paths, no external references.
 - **Validate early**: Check binary paths exist before launching Shadow.
 
 ## Configuration Schema
@@ -106,7 +106,7 @@ For multi-phase configs:
 ### Simple Case
 
 ```yaml
-# monerosim.yaml
+# monerosim.expanded.yaml
 daemon: ~/.monerosim/bin/monerod
 daemon_args: ["--prune-blockchain"]
 ```
@@ -123,7 +123,7 @@ processes:
 ### Upgrade Case
 
 ```yaml
-# monerosim.yaml
+# monerosim.expanded.yaml
 daemon_0: ~/.monerosim/bin/monerod-v18
 daemon_0_stop: "1h"
 daemon_1: ~/.monerosim/bin/monerod-v19

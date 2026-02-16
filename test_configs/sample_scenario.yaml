@@ -1,5 +1,5 @@
 # Sample scenario.yaml - compact monerosim configuration
-# Expand with: python3 scripts/scenario_parser.py test_configs/sample_scenario.yaml -o monerosim.yaml
+# Expand with: python3 scripts/scenario_parser.py test_configs/sample_scenario.yaml -o monerosim.expanded.yaml
 
 general:
   stop_time: 24h

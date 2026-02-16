@@ -35,9 +35,9 @@ The system generates a configuration file that can be used directly with moneros
 
             User downloads
                  ↓
-$ python expand_config.py configurator.yaml > monerosim.yaml
+$ python expand_config.py configurator.yaml > monerosim.expanded.yaml
                  ↓
-$ monerosim --config monerosim.yaml
+$ monerosim --config monerosim.expanded.yaml
 ```
 
 ### Why Web-Based?
@@ -58,7 +58,7 @@ $ monerosim --config monerosim.yaml
 
 ## Intermediate DSL (configurator.yaml)
 
-A scenario-based, high-level configuration format that gets expanded into the full monerosim.yaml.
+A scenario-based, high-level configuration format that gets expanded into the full monerosim.expanded.yaml.
 
 ### Example
 
@@ -117,7 +117,7 @@ overrides:
 
 ## Expander Script
 
-Python script that converts configurator.yaml → monerosim.yaml:
+Python script that converts configurator.yaml → monerosim.expanded.yaml:
 - Expands `count` into individual agent stanzas
 - Distributes hashrates according to rules
 - Validates constraints (hashrates sum correctly, scripts exist, etc.)
@@ -130,7 +130,7 @@ Python script that converts configurator.yaml → monerosim.yaml:
 Before the configurator can support fork/upgrade testing, monerosim needs to support multiple daemon binaries:
 
 ```yaml
-# Needed in monerosim.yaml
+# Needed in monerosim.expanded.yaml
 binaries:
   stable: "/opt/monero/v18/monerod"
   experimental: "/opt/monero/v19-rc/monerod"

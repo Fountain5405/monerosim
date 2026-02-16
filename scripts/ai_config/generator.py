@@ -3,7 +3,7 @@ Main orchestrator for AI-powered config generation.
 
 Uses an agentic feedback loop:
 1. LLM generates scenario.yaml (compact format)
-2. Scenario parser expands to full monerosim.yaml
+2. Scenario parser expands to full monerosim.expanded.yaml
 3. Validator checks expanded YAML against user intent
 4. If issues, LLM corrects the scenario
 5. Repeat until valid or max attempts
@@ -306,7 +306,7 @@ class ConfigGenerator:
 
         Uses a two-stage process:
         1. LLM generates compact scenario.yaml
-        2. Scenario parser expands to full monerosim.yaml
+        2. Scenario parser expands to full monerosim.expanded.yaml
 
         Args:
             user_request: Natural language description of the scenario
@@ -490,7 +490,7 @@ class ConfigGenerator:
         return None
 
     def _expand_scenario(self, scenario_yaml: str) -> tuple[Optional[str], Optional[str]]:
-        """Parse and expand scenario.yaml to full monerosim.yaml."""
+        """Parse and expand scenario.yaml to full monerosim.expanded.yaml."""
         from collections import OrderedDict
 
         try:

@@ -462,6 +462,7 @@ class SimulationMonitorAgent(BaseAgent):
 
         # Try common config file locations
         config_candidates = [
+            Path("monerosim.expanded.yaml"),
             Path("monerosim.yaml"),
             Path("config.yaml"),
             self.shared_dir / "config_metadata.json",
@@ -470,6 +471,7 @@ class SimulationMonitorAgent(BaseAgent):
         # Also check parent directories
         cwd = Path.cwd()
         for parent in [cwd, cwd.parent, cwd.parent.parent]:
+            config_candidates.append(parent / "monerosim.expanded.yaml")
             config_candidates.append(parent / "monerosim.yaml")
             config_candidates.append(parent / "config.yaml")
 

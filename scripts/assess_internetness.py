@@ -17,7 +17,7 @@ Examples:
     python scripts/assess_internetness.py
 
     # Analyze specific config
-    python scripts/assess_internetness.py --config monerosim.yaml
+    python scripts/assess_internetness.py --config monerosim.expanded.yaml
 
     # Analyze GML topology only
     python scripts/assess_internetness.py --gml gml_processing/1200_nodes_caida_with_loops.gml
@@ -728,7 +728,7 @@ def main():
     parser.add_argument(
         '--config', '-c',
         type=Path,
-        help='Path to monerosim.yaml config file'
+        help='Path to monerosim config file (e.g. monerosim.expanded.yaml)'
     )
     parser.add_argument(
         '--gml', '-g',

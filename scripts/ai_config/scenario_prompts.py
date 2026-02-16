@@ -2,7 +2,7 @@
 Prompts for AI config generator - scenario.yaml format.
 
 The AI generates compact scenario.yaml files which are then expanded
-to full monerosim.yaml by the scenario_parser.
+to full monerosim.expanded.yaml by the scenario_parser.
 """
 
 SCENARIO_SYSTEM_PROMPT = '''You are a configuration generator for monerosim, a Monero network simulator.
@@ -75,6 +75,17 @@ agents:
     script: agents.simulation_monitor
     poll_interval: 300
 ```
+
+## Agent Types (optional)
+Each agent group can specify a `type:` field for sensible defaults:
+- miner: daemon + wallet + script, daemon_options includes start-mining
+- user: daemon + wallet + script
+- relay: daemon only
+- spy: daemon only, out-peers: 0
+- distributor: daemon + wallet + script
+- monitor: daemon + wallet + script
+Type defaults are overridden by explicit fields. The `type:` key is removed
+before expansion so the Rust engine never sees it.
 
 ## Key Syntax Rules
 
