@@ -815,7 +815,7 @@ class SimulationMonitorAgent(BaseAgent):
         try:
             wallet_rpc_port = rpc_info.get("wallet_rpc_port")
             if not wallet_rpc_port:
-                return {"error": "No wallet RPC port"}
+                return {"no_wallet": True}
             
             # Get or create wallet RPC connection
             wallet_rpc = self._get_wallet_rpc(rpc_info)
