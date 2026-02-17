@@ -42,6 +42,8 @@ class RegularUserAgent(BaseAgent):
         self._last_refresh_time = 0
         self._refresh_interval = 300  # Refresh wallet every 5 minutes
         self._consecutive_errors = 0
+        self._wallet_rpc_restarts = 0
+        self._max_wallet_rpc_restarts = 3
 
     def _setup_agent(self):
         """Agent-specific setup logic"""
@@ -305,6 +307,22 @@ class RegularUserAgent(BaseAgent):
 
             # After consecutive errors, try recovery strategies
             if self._consecutive_errors >= 2:
+                # Escalation: full process restart at 15+ consecutive errors
+                if (self._consecutive_errors >= 15
+                        and self._consecutive_errors % 15 == 0
+                        and self._wallet_rpc_restarts < self._max_wallet_rpc_restarts):
+                    self.logger.error(
+                        f"Soft recovery failed after {self._consecutive_errors} errors. "
+                        f"Attempting wallet-rpc restart "
+                        f"({self._wallet_rpc_restarts + 1}/{self._max_wallet_rpc_restarts})"
+                    )
+                    if self.restart_wallet_rpc():
+                        self._wallet_rpc_restarts += 1
+                        self._consecutive_errors = 0
+                        return 10.0
+                    else:
+                        self._wallet_rpc_restarts += 1
+
                 try:
                     # After 5+ errors, the connection is likely stale (e.g., daemon
                     # restarted during upgrade). Reset HTTP session and tell wallet-rpc

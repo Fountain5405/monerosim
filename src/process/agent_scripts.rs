@@ -31,6 +31,7 @@ pub fn add_user_agent_process(
     remote_daemon: Option<&str>,
     daemon_selection_strategy: Option<&str>,
     scripts_dir: &Path,
+    wallet_rpc_cmd: Option<&str>,
 ) {
     let mut agent_args = vec![
         format!("--id {}", agent_id),
@@ -97,17 +98,23 @@ pub fn add_user_agent_process(
     // No shell variable expansion needed - all paths are absolute.
     // Python agents handle their own RPC readiness retries via
     // wait_until_ready() with exponential backoff in base_agent.py.
+    let wallet_export = match wallet_rpc_cmd {
+        Some(cmd) => format!("export WALLET_RPC_CMD='{}'\n", cmd),
+        None => String::new(),
+    };
+
     let wrapper_content = format!(
         r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}
 export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
-
+{}
 {} 2>&1
 "#,
         current_dir,
         current_dir,
         home_dir,
+        wallet_export,
         python_cmd
     );
 
@@ -155,6 +162,7 @@ pub fn create_mining_agent_process(
     _stop_time: &str,
     custom_start_time: Option<&str>,
     scripts_dir: &Path,
+    wallet_rpc_cmd: Option<&str>,
 ) -> Vec<ShadowProcess> {
     // Build Python command with all required arguments
     let mut args = vec![
@@ -189,17 +197,23 @@ pub fn create_mining_agent_process(
         .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
     // Create wrapper script with fully-resolved paths.
+    let wallet_export = match wallet_rpc_cmd {
+        Some(cmd) => format!("export WALLET_RPC_CMD='{}'\n", cmd),
+        None => String::new(),
+    };
+
     let wrapper_content = format!(
         r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}
 export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
-
+{}
 {} 2>&1
 "#,
         current_dir,
         current_dir,
         home_dir,
+        wallet_export,
         python_cmd
     );
 

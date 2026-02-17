@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import signal
+import subprocess
 import sys
 import time
 import fcntl
@@ -290,6 +291,135 @@ class BaseAgent(ABC):
     def _cleanup_agent(self):
         """Agent-specific cleanup logic (can be overridden by subclasses)"""
         pass
+
+    def restart_wallet_rpc(self) -> bool:
+        """Kill and restart the wallet-rpc process.
+
+        Uses the WALLET_RPC_CMD environment variable (set by the Rust config
+        generator) to know how to re-launch the process.  Returns True on
+        success, False on failure.
+        """
+        wallet_cmd = os.environ.get('WALLET_RPC_CMD')
+        if not wallet_cmd:
+            self.logger.warning(
+                "WALLET_RPC_CMD not set — cannot restart wallet-rpc "
+                "(config may predate restart support)"
+            )
+            return False
+
+        self.logger.info("Attempting wallet-rpc process restart")
+
+        # Step 1: Find and kill the existing process
+        pid = self._find_wallet_rpc_pid()
+        if pid is not None:
+            self.logger.info(f"Found wallet-rpc process with PID {pid}, sending SIGKILL")
+            try:
+                os.kill(pid, signal.SIGKILL)
+                # Wait for process to die (up to 5s)
+                for _ in range(50):
+                    try:
+                        os.kill(pid, 0)  # Check if still alive
+                        time.sleep(0.1)
+                    except OSError:
+                        break
+                self.logger.info(f"Wallet-rpc process {pid} terminated")
+            except OSError as e:
+                self.logger.warning(f"Failed to kill wallet-rpc PID {pid}: {e}")
+        else:
+            self.logger.warning("Could not find wallet-rpc PID — process may already be dead")
+
+        # Step 2: Wait for port release
+        time.sleep(2)
+
+        # Step 3: Spawn new wallet-rpc process
+        try:
+            self.logger.info(f"Spawning new wallet-rpc: {wallet_cmd}")
+            subprocess.Popen(
+                wallet_cmd,
+                shell=True,
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to spawn wallet-rpc process: {e}")
+            return False
+
+        # Step 4: Reset RPC session and wait for new process to be ready
+        try:
+            self.wallet_rpc.reset_session()
+            self.wallet_rpc.wait_until_ready(max_wait=120)
+            self.logger.info("New wallet-rpc process is ready")
+        except Exception as e:
+            self.logger.error(f"New wallet-rpc process failed to become ready: {e}")
+            return False
+
+        # Step 5: Re-open wallet and reconnect to daemon
+        try:
+            wallet_name = f"{self.agent_id}_wallet"
+            self.wallet_rpc.open_wallet(wallet_name, password="")
+            self.logger.info(f"Re-opened wallet '{wallet_name}'")
+
+            if self.daemon_rpc_port:
+                daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
+                self.wallet_rpc.set_daemon(daemon_address, trusted=True)
+                self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
+
+            self.wallet_rpc.refresh()
+            self.logger.info("Wallet refresh completed after restart")
+        except Exception as e:
+            self.logger.error(f"Failed to restore wallet state after restart: {e}")
+            return False
+
+        self.logger.info("Wallet-rpc restart completed successfully")
+        return True
+
+    def _find_wallet_rpc_pid(self) -> Optional[int]:
+        """Find the PID of the wallet-rpc process for this agent.
+
+        Uses pgrep as primary method with /proc scan as fallback.
+        Returns the highest matching PID (the actual process, not a bash wrapper).
+        """
+        pattern = f'monero-wallet-rpc.*--rpc-bind-ip={self.rpc_host}'
+
+        # Primary: use pgrep
+        try:
+            result = subprocess.run(
+                ['pgrep', '-f', pattern],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                pids = [int(p) for p in result.stdout.strip().split('\n') if p.strip()]
+                if pids:
+                    pid = max(pids)
+                    self.logger.debug(f"pgrep found wallet-rpc PID(s): {pids}, using {pid}")
+                    return pid
+        except Exception as e:
+            self.logger.debug(f"pgrep failed: {e}")
+
+        # Fallback: scan /proc
+        try:
+            pids = []
+            for entry in os.listdir('/proc'):
+                if not entry.isdigit():
+                    continue
+                try:
+                    cmdline_path = f'/proc/{entry}/cmdline'
+                    with open(cmdline_path, 'rb') as f:
+                        cmdline = f.read().decode('utf-8', errors='replace')
+                    # /proc cmdline uses null bytes as separators
+                    if 'monero-wallet-rpc' in cmdline and f'--rpc-bind-ip={self.rpc_host}' in cmdline:
+                        pids.append(int(entry))
+                except (IOError, OSError, ValueError):
+                    continue
+            if pids:
+                pid = max(pids)
+                self.logger.debug(f"/proc scan found wallet-rpc PID(s): {pids}, using {pid}")
+                return pid
+        except Exception as e:
+            self.logger.debug(f"/proc scan failed: {e}")
+
+        return None
 
     def interruptible_sleep(self, duration: float) -> None:
         """Sleep for *duration* seconds, checking ``self.running`` every second.

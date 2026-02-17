@@ -67,12 +67,14 @@ pub fn add_wallet_process(
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
     shared_dir: &str,
-) {
+) -> String {
     let daemon_address = format!("http://{}:{}", agent_ip, daemon_rpc_port);
     let wallet_args = build_wallet_args(
         agent_id, agent_ip, &daemon_address, wallet_rpc_port,
         environment, custom_args, wallet_defaults, wallet_options, shared_dir,
     );
+
+    let wallet_cmd = format!("{} {}", wallet_binary_path, wallet_args);
 
     let mut wallet_env = environment.clone();
     if let Some(env) = custom_env {
@@ -83,12 +85,14 @@ pub fn add_wallet_process(
 
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c '{} {}'", wallet_binary_path, wallet_args),
+        args: format!("-c '{}'", wallet_cmd),
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
         expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
     });
+
+    wallet_cmd
 }
 
 /// Add a wallet process connecting to a remote daemon.
@@ -110,7 +114,7 @@ pub fn add_remote_wallet_process(
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
     shared_dir: &str,
-) {
+) -> String {
     let daemon_address = match remote_daemon_address {
         Some(addr) if addr != "auto" => format!("http://{}", addr),
         _ => format!("http://127.0.0.1:{}", crate::MONERO_RPC_PORT),
@@ -121,6 +125,8 @@ pub fn add_remote_wallet_process(
         environment, custom_args, wallet_defaults, wallet_options, shared_dir,
     );
 
+    let wallet_cmd = format!("{} {}", wallet_binary_path, wallet_args);
+
     let mut wallet_env = environment.clone();
     if let Some(env) = custom_env {
         for (key, value) in env {
@@ -130,10 +136,12 @@ pub fn add_remote_wallet_process(
 
     processes.push(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: format!("-c '{} {}'", wallet_binary_path, wallet_args),
+        args: format!("-c '{}'", wallet_cmd),
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
         expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
     });
+
+    wallet_cmd
 }

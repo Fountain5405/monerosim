@@ -478,6 +478,9 @@ pub fn process_user_agents(
             // Merge wallet_defaults with per-agent wallet_options
             let merged_wallet_options = merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
 
+            // Track wallet-rpc command for restart capability
+            let mut wallet_rpc_cmd: Option<String> = None;
+
             if has_wallet_phases {
                 // Phase-based wallet configuration (upgrade scenario)
                 let phases = user_agent_config.wallet_phases.as_ref().unwrap();
@@ -558,14 +561,18 @@ pub fn process_user_agents(
 
                     // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
 
+                    let wallet_cmd = format!("{} {}", wallet_binary_path, wallet_args);
                     processes.push(crate::shadow::ShadowProcess {
                         path: "/bin/bash".to_string(),
-                        args: format!("-c '{} {}'", wallet_binary_path, wallet_args),
+                        args: format!("-c '{}'", wallet_cmd),
                         environment: wallet_env,
                         start_time,
                         shutdown_time,
                         expected_final_state,
                     });
+
+                    // Keep the last phase's command for the agent restart env var
+                    wallet_rpc_cmd = Some(wallet_cmd);
                 }
             } else if has_wallet {
                 // Simple wallet configuration (single binary)
@@ -577,7 +584,7 @@ pub fn process_user_agents(
 
                 if has_local_daemon || has_daemon_phases {
                     // Full agent: wallet connects to local daemon
-                    add_wallet_process(
+                    wallet_rpc_cmd = Some(add_wallet_process(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
@@ -592,11 +599,11 @@ pub fn process_user_agents(
                         wallet_defaults,
                         user_agent_config.wallet_options.as_ref(),
                         &shared_dir.to_string_lossy(),
-                    );
+                    ));
                 } else if has_remote_daemon {
                     // Wallet-only agent: wallet connects to remote daemon
                     let remote_addr = user_agent_config.remote_daemon_address();
-                    add_remote_wallet_process(
+                    wallet_rpc_cmd = Some(add_remote_wallet_process(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
@@ -611,7 +618,7 @@ pub fn process_user_agents(
                         wallet_defaults,
                         user_agent_config.wallet_options.as_ref(),
                         &shared_dir.to_string_lossy(),
-                    );
+                    ));
                 }
             }
 
@@ -652,6 +659,7 @@ pub fn process_user_agents(
                     user_agent_config.remote_daemon_address(),
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                     scripts_dir,
+                    wallet_rpc_cmd.as_deref(),
                 );
 
                 // Step 2: Run mining_script (autonomous_miner.py)
@@ -681,6 +689,7 @@ pub fn process_user_agents(
                     environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
                     Some(&mining_start_time),
                     scripts_dir,
+                    wallet_rpc_cmd.as_deref(),
                 );
                 processes.extend(mining_processes);
             } else if !script.is_empty() {
@@ -715,6 +724,7 @@ pub fn process_user_agents(
                     user_agent_config.remote_daemon_address(),
                     user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                     scripts_dir,
+                    wallet_rpc_cmd.as_deref(),
                 );
             }
             } // end daemon-only guard
