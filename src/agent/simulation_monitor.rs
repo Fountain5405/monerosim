@@ -122,17 +122,21 @@ pub fn process_simulation_monitor(
         let home_dir = environment.get("HOME").cloned()
             .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
+        // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
+        let venv_sp = environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+
         // Create wrapper script with fully-resolved paths
         let wrapper_script = format!(
             r#"#!/bin/bash
 cd {}
-export PYTHONPATH={}
+export PYTHONPATH={}:{}
 export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
 {} 2>&1
 "#,
             current_dir,
             current_dir,
+            venv_sp,
             home_dir,
             python_cmd
         );

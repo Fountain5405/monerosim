@@ -8,7 +8,7 @@
 #   --all           Update all repositories (monerosim + sister repos)
 #   --rebuild       Rebuild binaries after updating
 #   --shadow        Update shadowformonero only
-#   --monero        Update monero-vanilla and monero-shadow only
+#   --monero        Update monero and monero-shadow only
 #   -h, --help      Show this help message
 
 set -e
@@ -32,7 +32,7 @@ PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 # Repository locations and their expected branches
 declare -A REPOS
 REPOS["monerosim"]="$SCRIPT_DIR:main"
-REPOS["monero-vanilla"]="$PARENT_DIR/monero-vanilla:master"
+REPOS["monero"]="$PARENT_DIR/monero:master"
 REPOS["monero-shadow"]="$PARENT_DIR/monero-shadow:shadow-complete"
 REPOS["shadowformonero"]="$PARENT_DIR/shadowformonero:optimize"
 
@@ -73,7 +73,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --all           Update all repositories (monerosim + sister repos)"
             echo "  --rebuild       Rebuild binaries after updating"
             echo "  --shadow        Update shadowformonero only"
-            echo "  --monero        Update monero-vanilla and monero-shadow only"
+            echo "  --monero        Update monero and monero-shadow only"
             echo "  -h, --help      Show this help message"
             echo ""
             echo "Examples:"
@@ -82,7 +82,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --all --rebuild   Update all and rebuild binaries"
             echo ""
             echo "Sister repositories (expected in parent directory):"
-            echo "  monero-vanilla    - Official Monero (branch: master)"
+            echo "  monero            - Official Monero (branch: master)"
             echo "  monero-shadow     - Monero for Shadow (branch: shadow-complete)"
             echo "  shadowformonero   - Shadow simulator (branch: optimize)"
             exit 0
@@ -248,8 +248,8 @@ if [[ "$UPDATE_ALL" == "true" ]] || [[ "$UPDATE_SHADOW" == "true" ]]; then
 fi
 
 if [[ "$UPDATE_ALL" == "true" ]] || [[ "$UPDATE_MONERO" == "true" ]]; then
-    IFS=':' read -r path branch <<< "${REPOS[monero-vanilla]}"
-    update_repo "monero-vanilla" "$path" "$branch" || true
+    IFS=':' read -r path branch <<< "${REPOS[monero]}"
+    update_repo "monero" "$path" "$branch" || true
 
     IFS=':' read -r path branch <<< "${REPOS[monero-shadow]}"
     if update_repo "monero-shadow" "$path" "$branch"; then
@@ -271,11 +271,11 @@ if [[ "$REBUILD" == "true" ]]; then
     fi
 
     if [[ "$MONERO_UPDATED" == "true" ]] || [[ "$UPDATE_MONERO" == "true" ]]; then
-        # Prefer monero-shadow if it exists, otherwise use monero-vanilla
+        # Prefer monero-shadow if it exists, otherwise use monero
         if [[ -d "$PARENT_DIR/monero-shadow" ]]; then
             rebuild_monero "$PARENT_DIR/monero-shadow" "monero-shadow"
-        elif [[ -d "$PARENT_DIR/monero-vanilla" ]]; then
-            rebuild_monero "$PARENT_DIR/monero-vanilla" "monero-vanilla"
+        elif [[ -d "$PARENT_DIR/monero" ]]; then
+            rebuild_monero "$PARENT_DIR/monero" "monero"
         fi
     fi
 elif [[ "$MONEROSIM_UPDATED" == "true" ]] || [[ "$SHADOW_UPDATED" == "true" ]] || [[ "$MONERO_UPDATED" == "true" ]]; then

@@ -183,6 +183,11 @@ pub fn generate_agent_shadow_config(
         environment.insert("MONEROSIM_LOG_LEVEL".to_string(), log_level.to_uppercase());
     }
 
+    // Detect venv site-packages path for Python dependency resolution (e.g. requests)
+    let venv_site_packages = detect_venv_site_packages(&current_dir)
+        .unwrap_or_else(|| format!("{}/venv/lib/python3/site-packages", current_dir));
+    environment.insert("VENV_SITE_PACKAGES".to_string(), venv_site_packages.clone());
+
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
@@ -322,11 +327,6 @@ pub fn generate_agent_shadow_config(
         );
 
         let dns_python_cmd = format!("python3 -m {} {}", dns_script, dns_args);
-
-        // Path to virtual environment site-packages (for dnslib and other dependencies)
-        // Dynamically detect Python version in venv, fallback to python3 if not found
-        let venv_site_packages = detect_venv_site_packages(&current_dir)
-            .unwrap_or_else(|| format!("{}/venv/lib/python3/site-packages", current_dir));
 
         // Create wrapper script for DNS server with fully-resolved paths
         let dns_wrapper_script = format!(

@@ -103,16 +103,20 @@ pub fn add_user_agent_process(
         None => String::new(),
     };
 
+    // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
+    let venv_sp = environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+
     let wrapper_content = format!(
         r#"#!/bin/bash
 cd {}
-export PYTHONPATH={}
+export PYTHONPATH={}:{}
 export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 {}
 {} 2>&1
 "#,
         current_dir,
         current_dir,
+        venv_sp,
         home_dir,
         wallet_export,
         python_cmd
@@ -202,16 +206,20 @@ pub fn create_mining_agent_process(
         None => String::new(),
     };
 
+    // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
+    let venv_sp = environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+
     let wrapper_content = format!(
         r#"#!/bin/bash
 cd {}
-export PYTHONPATH={}
+export PYTHONPATH={}:{}
 export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 {}
 {} 2>&1
 "#,
         current_dir,
         current_dir,
+        venv_sp,
         home_dir,
         wallet_export,
         python_cmd

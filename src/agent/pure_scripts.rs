@@ -71,18 +71,25 @@ pub fn process_pure_script_agents(
             format!("python3 {} {}", script, script_args.join(" "))
         };
 
+        // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
+        let home_dir = environment.get("HOME").cloned()
+            .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
+        let venv_sp = environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+
         // Create a simple wrapper script for pure script agents
         let wrapper_content = format!(
             r#"#!/bin/bash
 cd {}
-export PYTHONPATH="${{PYTHONPATH}}:{}"
-export PATH="${{PATH}}:$HOME/.monerosim/bin"
+export PYTHONPATH={}:{}
+export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
 echo "Starting pure script agent {}..."
 {} 2>&1
 "#,
             current_dir,
             current_dir,
+            venv_sp,
+            home_dir,
             script_id,
             python_cmd
         );
