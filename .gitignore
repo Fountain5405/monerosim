@@ -78,6 +78,7 @@ build/
 
 # Generated configs
 generated_config*.yaml
+*.expanded.yaml
 
 # Determinism fingerprints
 determinism_fingerprint_*.json
@@ -86,6 +87,4 @@ determinism_fingerprint_*.json
 benchmark_*.json
 
 # Dated test output directories
-20260213_*_tests/
-20260212_*_tests/
-20260205_tests/
+*_tests/

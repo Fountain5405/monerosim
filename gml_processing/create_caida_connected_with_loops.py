@@ -13,7 +13,7 @@ and approximate real-world RTT between continents. For more accurate AS-to-AS
 latencies, see TODO/ripe-atlas-as-latency.md.
 
 Bandwidth data is derived from Ookla Speedtest Global Index (2025) via
-World Population Review. See docs/data-sources.md for full citations.
+World Population Review.
 """
 
 import argparse

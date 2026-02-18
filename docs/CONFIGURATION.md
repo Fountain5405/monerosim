@@ -300,7 +300,7 @@ agents:
 
 ## Complete Example
 
-See `monerosim.expanded.yaml` in the project root for a full working configuration with 25 agents (5 miners + 20 users).
+See `test_configs/20260112_config.yaml` for a full working configuration, or check the `examples/` directory.
 
 Additional examples in `examples/`:
 - `config_caida_large_scale.yaml` - CAIDA-based topology

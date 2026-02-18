@@ -32,8 +32,8 @@ cd monerosim
 # 2. Build Monerosim
 cargo build --release
 
-# 3. Generate Shadow configuration from the default config
-./target/release/monerosim --config monerosim.expanded.yaml
+# 3. Generate Shadow configuration from a config file
+./target/release/monerosim --config test_configs/20260112_config.yaml
 
 # 4. Run the simulation
 rm -rf shadow.data shadow.log
@@ -89,7 +89,7 @@ agents:
 
 Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100.
 
-See [`monerosim.expanded.yaml`](monerosim.expanded.yaml) for the full default configuration (25 agents, 8h simulation).
+See [`test_configs/20260112_config.yaml`](test_configs/20260112_config.yaml) for a full working configuration, or check `examples/` for more.
 
 For the complete configuration reference, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
@@ -167,7 +167,7 @@ monerosim/
   gml_processing/            # CAIDA topology generation
   examples/                  # Example configurations
   docs/                      # Documentation
-  monerosim.expanded.yaml    # Default configuration (expanded format for Rust engine)
+  test_configs/              # Configuration files
   setup.sh                   # Environment setup
   run_sim.sh                 # Simulation runner
 ```

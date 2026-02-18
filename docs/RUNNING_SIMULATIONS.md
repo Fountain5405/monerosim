@@ -13,7 +13,7 @@ If you haven't set up the environment yet, run `./setup.sh` first. It will insta
 ## Step 1: Generate Shadow Configuration
 
 ```bash
-./target/release/monerosim --config monerosim.expanded.yaml --output shadow_output
+./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output
 ```
 
 This parses your YAML configuration and generates:
@@ -64,7 +64,7 @@ Do **not** use `tail -f` as it consumes unnecessary resources.
 
 ## Step 3: Wait for Completion
 
-A simulation with the default `monerosim.expanded.yaml` configuration (8h simulation time, 25 agents) takes several hours of wall-clock time depending on your hardware.
+A simulation with a typical configuration (8h simulation time, 25 agents) takes several hours of wall-clock time depending on your hardware.
 
 **Normal termination message**: When Shadow finishes, you will see a message like "N managed processes in unexpected final state". This is expected behavior - Shadow terminates all processes when the simulation time limit is reached.
 
@@ -133,7 +133,7 @@ The monitor writes status information internally during the simulation. Review i
 
 ## Typical Simulation Timeline
 
-Using the default `monerosim.expanded.yaml` configuration:
+Using a typical configuration:
 
 | Time | Event |
 |------|-------|

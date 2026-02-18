@@ -203,7 +203,7 @@ monerosim/
   gml_processing/         # CAIDA topology generation
   examples/               # Example configurations
   docs/                   # Documentation
-  monerosim.expanded.yaml # Default configuration (expanded format for Rust engine)
+  test_configs/           # Configuration files
   setup.sh                # Environment setup
   run_sim.sh              # Simulation runner
 ```

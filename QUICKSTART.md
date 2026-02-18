@@ -34,7 +34,7 @@ The setup script will:
 cargo build --release
 
 # Generate Shadow configuration
-./target/release/monerosim --config monerosim.expanded.yaml
+./target/release/monerosim --config test_configs/20260112_config.yaml
 
 # Run the simulation
 rm -rf shadow.data shadow.log
@@ -44,7 +44,7 @@ nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1
 tail shadow.log
 ```
 
-The default configuration (`monerosim.expanded.yaml`) runs 25 agents (5 miners + 20 users) for 8 hours of simulated time.
+The default configuration (`test_configs/20260112_config.yaml`) runs a simulation with miners and users for 8 hours of simulated time.
 
 ## Customizing
 
