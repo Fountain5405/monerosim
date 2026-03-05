@@ -2,18 +2,20 @@
 
 ## Prerequisites
 
-- Linux system (Ubuntu 20.04+, Debian, etc.)
-- Sudo access
-- Internet connection
+- Linux system (Ubuntu 22.04+ recommended, Debian and Arch also supported)
+- Sudo access (for installing system packages)
+- Internet connection (downloads ~1-2 GB of source code)
+- 30 GB free disk space (for building Shadow and Monero from source)
+- Python 3.10+
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Fountain5405/monerosim.git
 cd monerosim
 
-# Run the automated setup
+# Run the automated setup (~30-60 minutes)
 ./setup.sh
 ```
 
@@ -25,16 +27,50 @@ The setup script will:
 - Clone and build official Monero from source (monerod, monero-wallet-rpc)
 - Install all binaries to `~/.monerosim/bin/`
 - Generate a test Shadow configuration
-- Optionally run a test simulation
+
+After setup completes:
+
+```bash
+# IMPORTANT: Restart your shell to pick up PATH changes
+source ~/.bashrc    # or: source ~/.zshrc
+```
+
+## Verify Installation
+
+```bash
+shadow --version                       # Should print Shadow version
+monerod --version                      # Should print Monero version
+./target/release/monerosim --help      # Should print monerosim usage
+
+# Test Python agents load correctly
+source venv/bin/activate
+python -c "import agents; print('Python agents OK')"
+```
+
+If any of these fail, re-run `./setup.sh` or check the Troubleshooting section below.
 
 ## Running Your First Simulation
 
-```bash
-# Build Monerosim
-cargo build --release
+The quickest way to verify everything works end-to-end:
 
+```bash
+# Run the ultra-minimal test (2 miners, 1 user, 2.5h simulated time)
+# This takes ~5 minutes of wall clock time
+./run_sim.sh
+```
+
+For a larger simulation with more agents:
+
+```bash
+# 30 agents, 8h simulated time (~30-60 min wall clock)
+./run_sim.sh test_configs/20260112_config.yaml
+```
+
+Or run the steps manually:
+
+```bash
 # Generate Shadow configuration
-./target/release/monerosim --config test_configs/20260112_config.yaml
+./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output
 
 # Run the simulation
 rm -rf shadow.data shadow.log
@@ -42,17 +78,18 @@ nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1
 
 # Check progress
 tail shadow.log
-```
 
-The default configuration (`test_configs/20260112_config.yaml`) runs a simulation with miners and users for 8 hours of simulated time.
+# Real-time status dashboard
+./scripts/check_sim.sh
+```
 
 ## Customizing
 
-Edit the configuration to change simulation parameters:
+Edit a configuration or create your own:
 
 ```yaml
 general:
-  stop_time: "30m"          # Shorter simulation for testing
+  stop_time: "2.5h"
   simulation_seed: 12345
 
 network:
@@ -78,18 +115,27 @@ agents:
     daemon: monerod
     wallet: "monero-wallet-rpc"
     script: agents.regular_user
-    start_time: 20m
+    start_time: 60s
     transaction_interval: 60
-    activity_start_time: 1200
+    activity_start_time: 7500
     can_receive_distributions: true
 ```
 
-Then regenerate and run:
+Note: Monero wallets need ~60 blocks (~2 hours at 120s block time) to mature before spending. Set `activity_start_time` accordingly.
+
+Then generate and run:
 
 ```bash
-./target/release/monerosim --config your_config.yaml
+./target/release/monerosim --config your_config.yaml --output shadow_output
 rm -rf shadow.data shadow.log
 nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+```
+
+For large-scale simulations (100+ agents), use the config generator:
+
+```bash
+source venv/bin/activate
+python scripts/generate_config.py --agents 100 --duration 8h -o my_config.yaml
 ```
 
 ## Analyzing Results
@@ -97,45 +143,36 @@ nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1
 After the simulation completes:
 
 ```bash
-# Activate Python environment
+# Activate Python environment (required for analysis scripts)
 source venv/bin/activate
 
 # Process logs
 python scripts/log_processor.py
 
-# Run analysis
-cargo build --release --bin tx-analyzer
+# Run transaction analysis
 ./target/release/tx-analyzer full
 ```
 
-Check processed logs in `shadow.data/hosts/*/` and analysis output in `analysis_output/`.
-
-## Verification
-
-```bash
-# Check daemons started
-grep "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout
-
-# Check P2P connections
-grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
-
-# Check agent registry
-cat /tmp/monerosim_shared/agent_registry.json
-```
+Check analysis output in `analysis_output/` and processed logs in `shadow.data/hosts/*/`.
 
 ## Troubleshooting
 
-**"Shadow not found"**: Ensure `~/.monerosim/bin/` is in your PATH. Run `source ~/.bashrc`.
+**"shadow: command not found"**: Restart your shell or run `source ~/.bashrc`. Verify with `which shadow` (should show `~/.monerosim/bin/shadow`).
 
-**Permission denied**: Make sure you can run `sudo` commands.
+**"Permission denied"**: Make sure you can run `sudo` commands. setup.sh needs sudo to install system packages.
 
-**Simulation seems stuck**: Check `tail shadow.log`. Large simulations run slower than real time.
+**"Python 3.10+ is required"**: Install a newer Python version. On Ubuntu: `sudo apt install python3.10`.
+
+**Simulation seems stuck**: This is normal. Check `tail shadow.log` for progress. Simulations run slower than real time. Use `./scripts/check_sim.sh` for a detailed status dashboard.
 
 **"N managed processes in unexpected final state"**: This is normal. Shadow terminates all processes when simulation time expires.
+
+**setup.sh failed partway through**: Re-run `./setup.sh`. It handles partial installs gracefully. For a clean start: `./setup.sh --clean`.
 
 ## Next Steps
 
 - Read the full [README](README.md) for architecture overview
 - See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all configuration options
 - See [docs/RUNNING_SIMULATIONS.md](docs/RUNNING_SIMULATIONS.md) for detailed workflow
+- See [docs/NETWORK_SCALING_GUIDE.md](docs/NETWORK_SCALING_GUIDE.md) for large-scale simulations
 - Check [examples/](examples/) for more configuration examples

@@ -24,23 +24,30 @@ Monerosim simulations proceed in two stages:
 ## Quick Start
 
 ```bash
-# 1. Clone and set up (installs shadowformonero, builds Monero from source)
-git clone <repository-url>
+# 1. Clone and set up (builds everything: ~30-60 minutes)
+git clone https://github.com/Fountain5405/monerosim.git
 cd monerosim
 ./setup.sh
 
-# 2. Build Monerosim
-cargo build --release
+# 2. Restart your shell (required for PATH changes)
+source ~/.bashrc
 
-# 3. Generate Shadow configuration from a config file
-./target/release/monerosim --config test_configs/20260112_config.yaml
+# 3. Verify installation
+shadow --version           # Should print Shadow version
+monerod --version          # Should print Monero version
+./target/release/monerosim --help  # Should print usage
 
-# 4. Run the simulation
-rm -rf shadow.data shadow.log
-nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+# 4. Run the quick test simulation (2.5h simulated, ~5 min wall clock)
+./run_sim.sh
 
 # 5. Monitor progress
 tail shadow.log
+```
+
+For a longer simulation with more agents, pass a config file:
+
+```bash
+./run_sim.sh test_configs/20260112_config.yaml
 ```
 
 ## Configuration
@@ -162,18 +169,20 @@ monerosim/
   scripts/                   # Utility scripts
     log_processor.py         # Log processing
     sync_check.py            # Blockchain sync monitoring
-    migrate_mining_config.py # Config migration
+    check_sim.sh             # Real-time simulation status dashboard
+    generate_config.py       # Config generator for large simulations
     ai_config/               # LLM-based config generation
   gml_processing/            # CAIDA topology generation
   examples/                  # Example configurations
   docs/                      # Documentation
   test_configs/              # Configuration files
-  setup.sh                   # Environment setup
-  run_sim.sh                 # Simulation runner
+  setup.sh                   # Environment setup (~30-60 min)
+  run_sim.sh                 # Quick simulation runner
 ```
 
 ## Documentation
 
+- [Quick Start](QUICKSTART.md) - Installation and first simulation
 - [Configuration Guide](docs/CONFIGURATION.md) - Complete configuration reference
 - [Architecture](docs/ARCHITECTURE.md) - System design and component details
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
@@ -189,33 +198,61 @@ monerosim/
 | OS | Linux (Ubuntu 20.04+) | Ubuntu 22.04+ |
 | CPU | 4 cores | 8+ cores |
 | RAM | 8 GB | 16 GB (32 GB for 1000+ agents) |
-| Storage | 10 GB | 20+ GB |
+| Storage | 30 GB free | 50+ GB |
 | Rust | 1.80+ | Latest stable |
 | Python | 3.10+ | 3.10+ |
 
 ### Installation
 
-```bash
-# Install system dependencies (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install build-essential cmake libglib2.0-dev libclang-dev clang
+The setup script handles everything. On a fresh Ubuntu system:
 
-# Run the setup script (builds shadowformonero and Monero from source)
+```bash
+# Install minimal prerequisites
+sudo apt-get update
+sudo apt-get install git build-essential cmake libglib2.0-dev libclang-dev clang
+
+# Clone and run setup (builds shadowformonero and Monero from source)
+git clone https://github.com/Fountain5405/monerosim.git
+cd monerosim
 ./setup.sh
 
-# Set up Python environment
-python3 -m venv venv
-source venv/bin/activate
-pip install -r scripts/requirements.txt
+# IMPORTANT: Restart your shell or source your profile
+source ~/.bashrc
 ```
 
-Binaries are installed to `~/.monerosim/bin/` (shadow from shadowformonero, monerod and monero-wallet-rpc from official Monero).
+Setup installs all binaries to `~/.monerosim/bin/`:
+- `shadow` (from shadowformonero)
+- `monerod` (from official Monero)
+- `monero-wallet-rpc` (from official Monero)
+
+It also builds monerosim itself (`cargo build --release`), creates a Python virtual environment, and generates a test Shadow configuration.
+
+### Verify Installation
+
+After setup completes and you've restarted your shell:
+
+```bash
+shadow --version                       # shadowformonero version
+monerod --version                      # Monero daemon version
+./target/release/monerosim --help      # monerosim CLI usage
+source venv/bin/activate && python -c "import agents; print('Python agents OK')"
+```
+
+## Updating
+
+To update monerosim and its dependencies after initial setup:
+
+```bash
+./update.sh              # Update monerosim only
+./update.sh --all        # Update all repos (monerosim + shadowformonero + monero)
+./update.sh --rebuild    # Rebuild binaries after updating
+```
 
 ## Contributing
 
 1. Fork the repository and clone locally
 2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Run tests (`python3 scripts/run_all_tests.py`)
+3. Run tests (`cargo test`)
 4. Commit with clear, descriptive messages
 5. Push and submit a pull request
 
@@ -223,4 +260,4 @@ Code style: Rust uses `cargo fmt` and `cargo clippy`. Python follows PEP 8 (use 
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+BSD 3-Clause License - see [LICENSE](LICENSE) for details.

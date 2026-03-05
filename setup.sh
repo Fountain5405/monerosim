@@ -390,14 +390,14 @@ install_shadowformonero() {
     if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
         print_status "Found local shadowformonero repository"
         cd "$SHADOWFORMONERO_DIR"
-        git checkout optimize 2>/dev/null || true
-        git pull origin optimize
+        git checkout main 2>/dev/null || true
+        git pull origin main
     else
         print_status "Cloning shadowformonero repository..."
         if [[ -d "$SHADOWFORMONERO_DIR" ]]; then
             rm -rf "$SHADOWFORMONERO_DIR"
         fi
-        git clone -b optimize "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
+        git clone -b main "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
         cd "$SHADOWFORMONERO_DIR"
     fi
 
@@ -415,7 +415,7 @@ if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
     SHADOW_VERSION=$("$MONEROSIM_BIN/shadow" --version 2>&1 | head -n1)
     print_success "Shadow already installed: $SHADOW_VERSION"
 
-    # Check if it's a shadowformonero version (dirty build from optimize branch)
+    # Check if it's a shadowformonero version (custom build from main branch)
     if "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -qE "dirty|shadowformonero"; then
         print_success "Using shadowformonero version with Monero socket compatibility patches"
     else
@@ -836,21 +836,24 @@ fi
 print_header "Setup Complete!"
 print_success "MoneroSim is now ready to use!"
 echo ""
-print_status "Quick usage guide:"
-echo "  1. Edit test_configs/20260112_config.yaml to adjust simulation parameters"
-echo "  2. Generate configuration: ./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output"
-echo "  3. Run simulation: shadow shadow_output/shadow_agents.yaml"
-echo "  4. Analyze results in shadow.data/ directory"
+print_warning "IMPORTANT: Restart your shell or run 'source ~/.bashrc' to update PATH"
+echo ""
+print_status "Verify installation:"
+echo "  shadow --version                       # shadowformonero version"
+echo "  monerod --version                      # Monero daemon version"
+echo "  ./target/release/monerosim --help      # monerosim CLI usage"
+echo ""
+print_status "Run your first simulation:"
+echo "  ./run_sim.sh                           # Quick test (2.5h sim, ~5 min wall clock)"
+echo "  ./run_sim.sh test_configs/20260112_config.yaml  # Full test (8h sim)"
+echo ""
+print_status "Monitor a running simulation:"
+echo "  tail shadow.log                        # Shadow progress"
+echo "  ./scripts/check_sim.sh                 # Detailed status dashboard"
 echo ""
 print_status "Installed binaries: $MONEROSIM_BIN/"
 echo "  - shadow"
 echo "  - monerod"
 echo "  - monero-wallet-rpc"
-echo ""
-print_status "Configuration: test_configs/20260112_config.yaml"
-print_status "Simulation logs: shadow.data/hosts/*/monerod.*.stdout"
-print_status "Shadow log: shadow.data/shadow.log"
-echo ""
-print_warning "IMPORTANT: Restart your shell or run 'source ~/.bashrc' to update PATH"
 echo ""
 print_success "Happy simulating!"
