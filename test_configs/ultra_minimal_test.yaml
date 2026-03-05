@@ -1,0 +1,97 @@
+# Ultra-minimal test configuration for quick setup verification
+# Total agents: 4 (2 miners + 1 user + distributor + monitor)
+# Duration: 2.5 hours simulated time (allows ~70 block maturity + transactions)
+# Expected wall clock: ~5 minutes (includes startup overhead, depends on CPU cores)
+# Purpose: Verify installation works with complete transaction flow
+#
+# Rationale:
+#   - Monero wallets need ~60 blocks to mature before spending
+#   - At 120s block time: 60 blocks = 7200 seconds = 2 hours
+#   - Added buffer for block generation variability and transaction window
+#
+# Timeline:
+#   t=0s:      Miners start
+#   t=1m:      User spawns
+#   t=2h:      Bootstrap ends, distributor starts funding (after coinbase maturity)
+#   t=2h 5m:   User starts sending transactions
+#   t=2.5h:    Simulation ends
+
+metadata:
+  scenario: ultra_minimal_test
+  generator: manual
+  version: '1.0'
+  purpose: 'Quick installation verification with complete transaction flow'
+  agents:
+    total: 4
+    miners: 2
+    users: 1
+  timing:
+    duration_s: 9000
+    bootstrap_end_s: 7200
+    activity_start_s: 7500
+
+general:
+  stop_time: 2.5h
+  parallelism: 0
+  simulation_seed: 12345
+  enable_dns_server: true
+  shadow_log_level: warning
+  bootstrap_end_time: 2h
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+    log-file: /dev/stdout
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 50
+    can_receive_distributions: true
+  miner-002:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 50
+    can_receive_distributions: true
+  user-001:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 60s
+    transaction_interval: 60
+    activity_start_time: 7500
+    can_receive_distributions: true
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 7200
+    initial_wait_time: 0
+    max_transaction_amount: '2.0'
+    min_transaction_amount: '0.5'
+    transaction_frequency: 30
+    md_n_recipients: 1
+    md_out_per_tx: 2
+    md_output_amount: 5.0
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 60
+    detailed_logging: false
+    enable_alerts: false
+    status_file: monerosim_monitor.log

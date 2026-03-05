@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "monerosim"
+version = "0.1.0"
+description = "Configuration generator and agent framework for Monero network simulations in Shadow"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "BSD-3-Clause"}
+authors = [
+    {name = "MoneroSim Developer", email = "noreply@example.com"}
+]
+keywords = ["monero", "cryptocurrency", "simulation", "shadow", "network"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Networking",
+]
+
+dependencies = [
+    "requests>=2.28.0",
+    "PyYAML>=6.0",
+    "networkx>=3.0",
+    "dnslib>=0.9.24",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-mock>=3.11.0",
+    "coverage>=7.2.0",
+    "unittest-xml-reporting>=3.2.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.4.0",
+    "isort>=5.12.0",
+]
+
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=1.3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Fountain5405/monerosim"
+Documentation = "https://github.com/Fountain5405/monerosim/tree/main/docs"
+Repository = "https://github.com/Fountain5405/monerosim.git"
+Issues = "https://github.com/Fountain5405/monerosim/issues"
+
+[tool.setuptools]
+packages = ["agents", "scripts"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+py_version = 310
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["agents", "scripts"]
+python_files = "test_*.py"
+addopts = "--verbose --tb=short"

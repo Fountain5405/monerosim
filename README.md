@@ -190,8 +190,8 @@ monerosim/
 | CPU | 4 cores | 8+ cores |
 | RAM | 8 GB | 16 GB (32 GB for 1000+ agents) |
 | Storage | 10 GB | 20+ GB |
-| Rust | 1.70+ | Latest stable |
-| Python | 3.6+ | 3.8+ |
+| Rust | 1.80+ | Latest stable |
+| Python | 3.10+ | 3.10+ |
 
 ### Installation
 

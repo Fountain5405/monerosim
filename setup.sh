@@ -247,6 +247,18 @@ print_header "Step 2: Installing Python Dependencies"
 
 check_command "python3"
 
+# Check Python version (must be 3.10+)
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "0.0")
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 10 ]]; then
+    print_error "Python 3.10+ is required, but you have Python $PYTHON_VERSION"
+    print_error "Please install Python 3.10 or later and try again"
+    exit 1
+fi
+print_status "Python version check passed: $PYTHON_VERSION"
+
 # Check if python3-venv/ensurepip is available (venv module exists but ensurepip may not)
 if ! python3 -c "import ensurepip" &>/dev/null; then
     print_warning "python3-venv (ensurepip) is not available"
