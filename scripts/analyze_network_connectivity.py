@@ -11,8 +11,8 @@ Usage:
 
 Arguments:
     --config: Path to the simulation config file (required)
-    --logs: Path to shadow.data/hosts directory (default: /home/lever65/monerosim_dev/monerosim/shadow.data/hosts)
-    --output: Output directory for analysis results (default: analysis_results subfolder in /home/lever65/monerosim_dev/monerosim)
+    --logs: Path to shadow.data/hosts directory (default: shadow.data/hosts relative to project root)
+    --output: Output directory for analysis results (default: analysis_results subfolder in project root)
 
 Output Files:
     - network_graph.json: Network topology data
@@ -42,9 +42,9 @@ from scripts.error_handling import log_error, log_info, log_warning
 from agents.agent_discovery import AgentDiscovery
 
 # Constants
-DEFAULT_BASE_DIR = "/home/lever65/monerosim_dev/monerosim"
-DEFAULT_LOGS_DIR = f"{DEFAULT_BASE_DIR}/shadow.data/hosts"
-DEFAULT_OUTPUT_DIR = f"{DEFAULT_BASE_DIR}/analysis_results"
+DEFAULT_BASE_DIR = str(Path(__file__).resolve().parent.parent)
+DEFAULT_LOGS_DIR = str(Path(DEFAULT_BASE_DIR) / "shadow.data" / "hosts")
+DEFAULT_OUTPUT_DIR = str(Path(DEFAULT_BASE_DIR) / "analysis_results")
 IPAPI_TIMEOUT = 5
 MAX_RETRIES = 3
 
@@ -95,8 +95,7 @@ class NetworkConnectivityAnalyzer:
         self.config_file = Path(config_file)
         self.logs_dir = Path(logs_dir)
         # Create output directory in monerosim root
-        monerosim_root = Path(DEFAULT_BASE_DIR)
-        self.output_dir = monerosim_root / output_dir
+        self.output_dir = Path(output_dir) if os.path.isabs(output_dir) else Path(DEFAULT_BASE_DIR) / output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Load configuration

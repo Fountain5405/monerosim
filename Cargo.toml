@@ -3,7 +3,7 @@ name = "monerosim"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.80"
-license = "GPL-3"
+license = "BSD-3-Clause"
 description = "Configuration utility for Monero network simulations in Shadow"
 authors = ["MoneroSim Developer"]
 

@@ -43,7 +43,7 @@ _normalization_cache = {}
 # ===== CONFIGURATION =====
 
 # Default configuration values
-DEFAULT_BASE_LOG_DIR = "/home/lever65/monerosim_dev/monerosim/shadow.data/hosts"
+DEFAULT_BASE_LOG_DIR = str(Path(__file__).resolve().parent.parent / "shadow.data" / "hosts")
 DEFAULT_PROCESSED_EXTENSION = ".processed_log"
 DEFAULT_SIMILARITY_THRESHOLD = 0.90
 DEFAULT_MIN_OCCURRENCES = 3
