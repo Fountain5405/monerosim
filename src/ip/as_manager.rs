@@ -19,10 +19,11 @@
 //!
 //! ## IP Allocation Scheme
 //!
-//! - Uses the 10.0.0.0/8 private range (16 million IPs)
 //! - Each AS gets its own /24 subnet with up to 254 hosts
-//! - AS number maps deterministically to subnet: 10.{AS/256}.{AS%256}.{host}
-//! - This supports up to 65,536 ASes with 254 hosts each
+//! - Subnets are drawn from real RIR (Regional Internet Registry) IP ranges
+//!   so that IPs look geographically realistic (e.g., ARIN ranges for North America)
+//! - Each region cycles through its allocated first-octets for diversity
+//! - Host addresses start at .10 to avoid reserved addresses
 //!
 //! ## Geographic Distribution
 //!
@@ -132,6 +133,7 @@ pub const DEFAULT_REGION_PROPORTIONS: [(AsRegion, f64); 6] = [
 ///
 /// # Example
 /// ```
+/// use monerosim::ip::as_manager::calculate_region_boundaries;
 /// let boundaries = calculate_region_boundaries(1200);
 /// // boundaries[0] = (NorthAmerica, 0, 199)    // ~16.67% of 1200
 /// // boundaries[1] = (Europe, 200, 499)        // ~25% of 1200
@@ -392,44 +394,44 @@ mod tests {
 
     #[test]
     fn test_subnet_base_calculation() {
-        // AS 0 -> 10.0.0
-        assert_eq!(AsSubnetManager::get_subnet_base("0"), Some("10.0.0".to_string()));
+        // AS 0 (North America, offset 0) -> ARIN first octet 3
+        assert_eq!(AsSubnetManager::get_subnet_base("0"), Some("3.0.0".to_string()));
 
-        // AS 1 -> 10.0.1
-        assert_eq!(AsSubnetManager::get_subnet_base("1"), Some("10.0.1".to_string()));
+        // AS 1 (North America, offset 1) -> ARIN first octet 4
+        assert_eq!(AsSubnetManager::get_subnet_base("1"), Some("4.0.0".to_string()));
 
-        // AS 255 -> 10.0.255
-        assert_eq!(AsSubnetManager::get_subnet_base("255"), Some("10.0.255".to_string()));
+        // AS 255 (Europe, offset 55) -> RIPE octet 84, second=2
+        assert_eq!(AsSubnetManager::get_subnet_base("255"), Some("84.2.0".to_string()));
 
-        // AS 256 -> 10.1.0
-        assert_eq!(AsSubnetManager::get_subnet_base("256"), Some("10.1.0".to_string()));
+        // AS 256 (Europe, offset 56) -> RIPE octet 85, second=2
+        assert_eq!(AsSubnetManager::get_subnet_base("256"), Some("85.2.0".to_string()));
 
-        // AS 1199 -> 10.4.175 (1199 / 256 = 4, 1199 % 256 = 175)
-        assert_eq!(AsSubnetManager::get_subnet_base("1199"), Some("10.4.175".to_string()));
+        // AS 1199 (Oceania, offset 99) -> APNIC/OC octet 122, second=12
+        assert_eq!(AsSubnetManager::get_subnet_base("1199"), Some("122.12.0".to_string()));
 
-        // AS 65535 -> 10.255.255
-        assert_eq!(AsSubnetManager::get_subnet_base("65535"), Some("10.255.255".to_string()));
+        // AS 65535 (Unknown) -> fallback: 100+(65535%50)=135, 65535/50%256=30, 65535/12800%256=5
+        assert_eq!(AsSubnetManager::get_subnet_base("65535"), Some("135.30.5".to_string()));
     }
 
     #[test]
     fn test_ip_assignment() {
         let mut manager = AsSubnetManager::new();
 
-        // First agent in AS 0
+        // First agent in AS 0 (North America) -> ARIN octet 3
         let ip1 = manager.assign_as_aware_ip("0").unwrap();
-        assert_eq!(ip1, "10.0.0.10");
+        assert_eq!(ip1, "3.0.0.10");
 
-        // Second agent in AS 0
+        // Second agent in AS 0 -> same subnet, next host
         let ip2 = manager.assign_as_aware_ip("0").unwrap();
-        assert_eq!(ip2, "10.0.0.11");
+        assert_eq!(ip2, "3.0.0.11");
 
-        // First agent in AS 1
+        // First agent in AS 1 (North America) -> ARIN octet 4
         let ip3 = manager.assign_as_aware_ip("1").unwrap();
-        assert_eq!(ip3, "10.0.1.10");
+        assert_eq!(ip3, "4.0.0.10");
 
-        // First agent in AS 500 (Asia region)
+        // First agent in AS 500 (Asia, offset 0) -> APNIC octet 1
         let ip4 = manager.assign_as_aware_ip("500").unwrap();
-        assert_eq!(ip4, "10.1.244.10");
+        assert_eq!(ip4, "1.0.0.10");
     }
 
     #[test]

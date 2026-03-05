@@ -10,7 +10,7 @@ Monerosim is a Rust configuration generator for Monero network simulations runni
 
 ```bash
 cargo build --release          # Build the binary
-cargo test                     # Run unit tests (63 pass, 2 pre-existing IP test failures)
+cargo test                     # Run unit tests (64 pass, 0 failures)
 python3 -c "import agents"    # Verify Python agent imports
 ```
 
@@ -72,7 +72,6 @@ Test directories follow the naming convention `YYYYMMDD_<commit-hash>_tests/`. E
 
 ## Common Pitfalls
 
-- The 2 failing unit tests (`test_ip_assignment`, `test_subnet_base_calculation`) are pre-existing and unrelated to most changes
 - Shadow simulations are resource-intensive — run sequentially, not in parallel
 - Config test `03_relay_upgrade` reports "relay has 2 processes" — this is expected for upgrade scenarios with daemon phases
 - Python agents run inside Shadow's simulated network — they use `time.time()` relative to Shadow epoch, not real wall clock

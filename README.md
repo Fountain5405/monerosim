@@ -98,6 +98,20 @@ Each agent is identified by its key name (e.g., `miner-001`). Miners are identif
 
 See [`test_configs/20260112_config.yaml`](test_configs/20260112_config.yaml) for a full working configuration, or check `examples/` for more.
 
+For large-scale simulations, use the config generator:
+
+```bash
+source venv/bin/activate
+python scripts/generate_config.py --agents 100 --duration 8h -o my_config.yaml
+```
+
+Or generate configs with natural language using the AI config tool (requires an LLM API key):
+
+```bash
+./smart_config_tool.sh "5 miners, 20 users, 8h simulation"
+./smart_config_tool.sh   # Interactive mode
+```
+
 For the complete configuration reference, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ## Architecture
@@ -178,6 +192,7 @@ monerosim/
   test_configs/              # Configuration files
   setup.sh                   # Environment setup (~30-60 min)
   run_sim.sh                 # Quick simulation runner
+  smart_config_tool.sh       # AI-powered config generator (requires LLM API key)
 ```
 
 ## Documentation
