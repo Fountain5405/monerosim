@@ -720,7 +720,7 @@ def check_llm_config():
         if not api_key:
             return None
 
-        model = get_user_input("Model name", "qwen2.5:7b")
+        model = get_user_input("Model name", "qwen3:8b")
 
     config = {
         'api_key': api_key,
