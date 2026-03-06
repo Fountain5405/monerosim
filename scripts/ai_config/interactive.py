@@ -616,25 +616,25 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
     return False
 
 
-def load_monero_facts():
-    """Load Monero facts from YAML file."""
+def load_waiting_facts():
+    """Load facts from YAML file to display while waiting for LLM."""
     try:
         import yaml
-        facts_file = Path(__file__).parent / 'monero_facts.yaml'
+        facts_file = Path(__file__).parent / 'waiting_facts.yaml'
         with open(facts_file, 'r') as f:
             data = yaml.safe_load(f)
             return data.get('facts', []) if data else []
     except Exception:
         # Fallback facts if file not found
         return [
-            "Monero uses ring signatures to hide the sender of a transaction.",
-            "Monero's block time is ~2 minutes, faster than Bitcoin's 10 minutes.",
-            "Monero transactions are private by default, not an optional add-on.",
-            "The Monero network uses a dynamic block size to prevent spam.",
+            "Waiting for LLM response...",
+            "Processing your request...",
+            "Generating configuration...",
+            "Thinking...",
         ]
 
 
-MONERO_FACTS = load_monero_facts()
+WAITING_FACTS = load_waiting_facts()
 
 
 def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
@@ -703,7 +703,7 @@ def show_waiting_indicator(elapsed_time: float, fact_index: int) -> tuple[float,
     spinner_char = spinner[int(elapsed_time * 2) % len(spinner)]
 
     # Calculate display time per fact based on word count
-    fact = MONERO_FACTS[fact_index % len(MONERO_FACTS)]
+    fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
     word_count = len(fact.split())
     # ~3 seconds per 10 words, minimum 8 seconds
     display_time = max(8, (word_count / 10) * 3)
@@ -712,7 +712,7 @@ def show_waiting_indicator(elapsed_time: float, fact_index: int) -> tuple[float,
     if int(elapsed_time) % int(display_time) == 0 and int(elapsed_time) > 0:
         fact_index += 1
 
-    current_fact = MONERO_FACTS[fact_index % len(MONERO_FACTS)]
+    current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
     elapsed_str = f"{int(elapsed_time)}s"
 
     print(f"\r{spinner_char} {current_fact[:70]} ({elapsed_str})", end="", flush=True)

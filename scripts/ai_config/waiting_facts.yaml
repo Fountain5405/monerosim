@@ -1,5 +1,5 @@
-# Monero facts displayed while waiting for LLM responses
-# Each fact should be a clear, educational statement
+# Facts/tips displayed while waiting for LLM responses
+# Add anything you want here - facts, tips, quotes, trivia, etc.
 # Display time scales with word count: ~3 seconds per 10 words, minimum 8 seconds
 
 facts:
