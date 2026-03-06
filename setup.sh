@@ -78,6 +78,42 @@ if [[ ! -f "Cargo.toml" ]] || [[ ! -d "src" ]]; then
     exit 1
 fi
 
+# Display welcome message and what the script will do
+print_header "Welcome to MoneroSim Setup"
+echo ""
+echo "This script will:"
+echo ""
+echo "  1. ${BLUE}Check system dependencies${NC}"
+echo "     - Required: git, cmake, cargo, python3, build-essential, libglib2.0-dev"
+echo ""
+echo "  2. ${BLUE}Build and install binaries${NC} (~30-60 minutes)"
+echo "     - shadowformonero (network simulator fork)"
+echo "     - monerod (Monero daemon)"
+echo "     - monero-wallet-rpc (Monero wallet)"
+echo "     - monerosim (Rust config generator)"
+echo ""
+echo "  3. ${BLUE}Set up Python environment${NC}"
+echo "     - Create virtual environment"
+echo "     - Install Python dependencies"
+echo "     - Verify agent imports"
+echo ""
+echo "  4. ${BLUE}Configure your shell${NC}"
+echo "     - Add ~/.monerosim/bin to PATH"
+echo "     - Update ~/.bashrc (or ~/.zshrc)"
+echo "     - ${YELLOW}You'll need to restart your shell after setup${NC}"
+echo ""
+echo "Total installation size: ~30-50 GB"
+echo "Estimated time: 30-60 minutes depending on system"
+echo ""
+
+# Ask for confirmation
+read -p "Do you want to proceed with the setup? (yes/no): " -r CONFIRM
+if [[ ! "$CONFIRM" =~ ^[Yy][Ee][Ss]$ ]]; then
+    print_status "Setup cancelled."
+    exit 0
+fi
+echo ""
+
 # Clean up previous artifacts if requested
 if [[ "$CLEAN_START" == "true" ]]; then
     print_header "Cleaning Previous Setup"
