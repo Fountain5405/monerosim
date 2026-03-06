@@ -142,7 +142,7 @@ def get_llm_config(args):
         return {
             'api_key': api_key,
             'base_url': base_url,
-            'model': model or 'qwen3:8b-nothinker'
+            'model': model or 'qwen3:8b'
         }
 
     # Try config file
@@ -159,7 +159,7 @@ def get_llm_config(args):
                     return {
                         'api_key': config.get('api_key', ''),
                         'base_url': args.base_url or config.get('base_url', ''),
-                        'model': args.model or config.get('model', 'qwen3:8b-nothinker')
+                        'model': args.model or config.get('model', 'qwen3:8b')
                     }
         except Exception:
             pass
