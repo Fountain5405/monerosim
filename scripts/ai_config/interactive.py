@@ -616,29 +616,25 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
     return False
 
 
-# Monero facts for waiting display
-MONERO_FACTS = [
-    "Monero uses ring signatures to hide the sender of a transaction.",
-    "Monero's block time is ~2 minutes, faster than Bitcoin's 10 minutes.",
-    "Monero transactions are private by default, not an optional add-on.",
-    "The Monero network uses a dynamic block size to prevent spam.",
-    "Monero's proof-of-work algorithm (RandomX) is designed to be ASIC-resistant.",
-    "Monero stealth addresses hide the recipient of each transaction.",
-    "Monero uses RingCT to hide transaction amounts on the blockchain.",
-    "Monero's minimum ring size is 16, making it hard to identify the true sender.",
-    "The Monero project is community-driven with no ICO or pre-mine.",
-    "Monero blocks are validated with a 10-block confirmation period.",
-    "Monero uses Kovri (in development) to hide IP addresses of users.",
-    "Monero's supply will reach ~17.6 million coins with a perpetual tail emission.",
-    "Monero addresses are 95 characters long and use base58 encoding.",
-    "Monero transactions are larger than Bitcoin due to privacy features.",
-    "Monero was originally called 'BitMonero' before being shortened.",
-    "Monero uses the Ed25519 elliptic curve for digital signatures.",
-    "Monero's privacy features make it useful for legal transactions requiring confidentiality.",
-    "Monero can be mined on CPUs, making it more accessible than GPU-only coins.",
-    "Monero's view key allows optional, selective transparency of transaction details.",
-    "Monero research is ongoing to improve scalability while maintaining privacy.",
-]
+def load_monero_facts():
+    """Load Monero facts from YAML file."""
+    try:
+        import yaml
+        facts_file = Path(__file__).parent / 'monero_facts.yaml'
+        with open(facts_file, 'r') as f:
+            data = yaml.safe_load(f)
+            return data.get('facts', []) if data else []
+    except Exception:
+        # Fallback facts if file not found
+        return [
+            "Monero uses ring signatures to hide the sender of a transaction.",
+            "Monero's block time is ~2 minutes, faster than Bitcoin's 10 minutes.",
+            "Monero transactions are private by default, not an optional add-on.",
+            "The Monero network uses a dynamic block size to prevent spam.",
+        ]
+
+
+MONERO_FACTS = load_monero_facts()
 
 
 def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:

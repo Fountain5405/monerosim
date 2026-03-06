@@ -1,0 +1,25 @@
+# Monero facts displayed while waiting for LLM responses
+# Each fact should be a clear, educational statement
+# Display time scales with word count: ~3 seconds per 10 words, minimum 8 seconds
+
+facts:
+  - Monero uses ring signatures to hide the sender of a transaction.
+  - Monero's block time is ~2 minutes, faster than Bitcoin's 10 minutes.
+  - Monero transactions are private by default, not an optional add-on.
+  - The Monero network uses a dynamic block size to prevent spam.
+  - Monero's proof-of-work algorithm (RandomX) is designed to be ASIC-resistant.
+  - Monero stealth addresses hide the recipient of each transaction.
+  - Monero uses RingCT to hide transaction amounts on the blockchain.
+  - Monero's minimum ring size is 16, making it hard to identify the true sender.
+  - The Monero project is community-driven with no ICO or pre-mine.
+  - Monero blocks are validated with a 10-block confirmation period.
+  - Monero uses Kovri (in development) to hide IP addresses of users.
+  - Monero's supply will reach ~17.6 million coins with a perpetual tail emission.
+  - Monero addresses are 95 characters long and use base58 encoding.
+  - Monero transactions are larger than Bitcoin due to privacy features.
+  - Monero was originally called 'BitMonero' before being shortened.
+  - Monero uses the Ed25519 elliptic curve for digital signatures.
+  - Monero's privacy features make it useful for legal transactions requiring confidentiality.
+  - Monero can be mined on CPUs, making it more accessible than GPU-only coins.
+  - Monero's view key allows optional, selective transparency of transaction details.
+  - Monero research is ongoing to improve scalability while maintaining privacy.
