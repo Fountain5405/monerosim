@@ -450,6 +450,10 @@ class ConfigGenerator:
 
     def _extract_yaml(self, response: str) -> Optional[str]:
         """Extract YAML content from LLM response."""
+        # Strip <think>...</think> and stray </think> tags (common with Qwen models)
+        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+        response = re.sub(r'</think>\s*', '', response)
+
         # Try ```yaml ... ``` blocks (most common)
         pattern = r"```yaml\s*(.*?)```"
         matches = re.findall(pattern, response, re.DOTALL)
