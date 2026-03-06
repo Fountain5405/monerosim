@@ -105,6 +105,9 @@ echo ""
 echo "Total installation size: ~30-50 GB"
 echo "Estimated time: 30-60 minutes depending on system"
 echo ""
+echo "${YELLOW}Tip: Consider running this in a screen or tmux session${NC}"
+echo "     (${YELLOW}screen${NC} or ${YELLOW}tmux${NC}) to prevent terminal buffer issues during long builds"
+echo ""
 
 # Ask for confirmation
 read -p "Do you want to proceed with the setup? (yes/no): " -r CONFIRM
