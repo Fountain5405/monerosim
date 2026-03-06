@@ -662,7 +662,7 @@ def check_llm_config():
         '1': {
             'base_url': 'http://test.moneroworld.com:49767/v1',
             'api_key': 'x',
-            'model': 'qwen2.5:7b',
+            'model': 'qwen3:8b-nothinker',
             'name': 'MoneroWorld'
         },
         '2': {
