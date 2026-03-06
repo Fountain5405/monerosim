@@ -6,6 +6,7 @@ Interactive mode for AI config generator.
 import os
 import sys
 import time
+import threading
 from pathlib import Path
 from typing import Optional, Callable
 
@@ -356,7 +357,8 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
         ]
 
         try:
-            response = generator.provider.chat(messages)
+            print()
+            response = call_llm_with_waiting(generator.provider.chat, messages)
             scenario_content = generator._extract_yaml(response.content)
 
             if not scenario_content:
@@ -417,7 +419,8 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
                         {"role": "assistant", "content": scenario_content},
                         {"role": "user", "content": f"Please modify the scenario as follows:\n{instructions}\n\nOutput the complete updated scenario YAML."}
                     ]
-                    response = generator.provider.chat(modify_messages)
+                    print()
+                    response = call_llm_with_waiting(generator.provider.chat, modify_messages)
                     modified = generator._extract_yaml(response.content)
                     if modified:
                         scenario_content = modified
@@ -575,7 +578,8 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
                                 {"role": "assistant", "content": scenario_content},
                                 {"role": "user", "content": f"Please modify the scenario as follows:\n{instructions}\n\nOutput the complete updated scenario YAML."}
                             ]
-                            response = generator.provider.chat(modify_messages)
+                            print()
+                            response = call_llm_with_waiting(generator.provider.chat, modify_messages)
                             modified = generator._extract_yaml(response.content)
                             if modified:
                                 scenario_content = modified
@@ -610,6 +614,114 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
         continue
 
     return False
+
+
+# Monero facts for waiting display
+MONERO_FACTS = [
+    "Monero uses ring signatures to hide the sender of a transaction.",
+    "Monero's block time is ~2 minutes, faster than Bitcoin's 10 minutes.",
+    "Monero transactions are private by default, not an optional add-on.",
+    "The Monero network uses a dynamic block size to prevent spam.",
+    "Monero's proof-of-work algorithm (RandomX) is designed to be ASIC-resistant.",
+    "Monero stealth addresses hide the recipient of each transaction.",
+    "Monero uses RingCT to hide transaction amounts on the blockchain.",
+    "Monero's minimum ring size is 16, making it hard to identify the true sender.",
+    "The Monero project is community-driven with no ICO or pre-mine.",
+    "Monero blocks are validated with a 10-block confirmation period.",
+    "Monero uses Kovri (in development) to hide IP addresses of users.",
+    "Monero's supply will reach ~17.6 million coins with a perpetual tail emission.",
+    "Monero addresses are 95 characters long and use base58 encoding.",
+    "Monero transactions are larger than Bitcoin due to privacy features.",
+    "Monero was originally called 'BitMonero' before being shortened.",
+    "Monero uses the Ed25519 elliptic curve for digital signatures.",
+    "Monero's privacy features make it useful for legal transactions requiring confidentiality.",
+    "Monero can be mined on CPUs, making it more accessible than GPU-only coins.",
+    "Monero's view key allows optional, selective transparency of transaction details.",
+    "Monero research is ongoing to improve scalability while maintaining privacy.",
+]
+
+
+def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
+    """
+    Call LLM with animated Monero facts while waiting.
+
+    Args:
+        chat_fn: The chat function to call
+        messages: Messages to pass to chat
+
+    Returns:
+        Response from chat function
+    """
+    import threading
+
+    result = [None]
+    error = [None]
+    fact_index = [0]
+    start_time = time.time()
+    stop_animation = threading.Event()
+
+    def run_chat():
+        try:
+            result[0] = chat_fn(messages)
+        except Exception as e:
+            error[0] = e
+        finally:
+            stop_animation.set()
+
+    def animate():
+        elapsed = 0
+        while not stop_animation.is_set():
+            elapsed = time.time() - start_time
+            _, fact_index[0] = show_waiting_indicator(elapsed, fact_index[0])
+            time.sleep(0.2)  # Update spinner every 200ms
+        # Clear the line
+        sys.stdout.write('\r' + ' ' * 120 + '\r')
+        sys.stdout.flush()
+
+    # Start chat in background thread
+    chat_thread = threading.Thread(target=run_chat, daemon=True)
+    chat_thread.start()
+
+    # Animate while waiting
+    animate()
+
+    chat_thread.join(timeout=5)
+    if error[0]:
+        raise error[0]
+    return result[0]
+
+
+def show_waiting_indicator(elapsed_time: float, fact_index: int) -> tuple[float, int]:
+    """
+    Show a rotating Monero fact with spinner while waiting.
+
+    Args:
+        elapsed_time: Time elapsed since operation started
+        fact_index: Current fact index
+
+    Returns:
+        Updated elapsed_time and fact_index
+    """
+    c = Colors
+    spinner = "◐◓◑◒"
+    spinner_char = spinner[int(elapsed_time * 2) % len(spinner)]
+
+    # Calculate display time per fact based on word count
+    fact = MONERO_FACTS[fact_index % len(MONERO_FACTS)]
+    word_count = len(fact.split())
+    # ~3 seconds per 10 words, minimum 8 seconds
+    display_time = max(8, (word_count / 10) * 3)
+
+    # Only display fact every display_time seconds
+    if int(elapsed_time) % int(display_time) == 0 and int(elapsed_time) > 0:
+        fact_index += 1
+
+    current_fact = MONERO_FACTS[fact_index % len(MONERO_FACTS)]
+    elapsed_str = f"{int(elapsed_time)}s"
+
+    print(f"\r{spinner_char} {current_fact[:70]} ({elapsed_str})", end="", flush=True)
+
+    return elapsed_time, fact_index
 
 
 def check_llm_config():
