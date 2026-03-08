@@ -34,24 +34,24 @@ pub fn parse_duration_to_seconds(duration: &str) -> Result<u64, String> {
     // Hours
     if duration.ends_with("hours") || duration.ends_with("hour") || duration.ends_with("hrs") || duration.ends_with("hr") || duration.ends_with("h") {
         let num_str = extract_number_part(duration);
-        if let Ok(hours) = num_str.parse::<u64>() {
-            return Ok(hours * 3600);
+        if let Ok(hours) = num_str.parse::<f64>() {
+            return Ok((hours * 3600.0) as u64);
         }
     }
 
     // Minutes
     if duration.ends_with("minutes") || duration.ends_with("minute") || duration.ends_with("mins") || duration.ends_with("min") || duration.ends_with("m") {
         let num_str = extract_number_part(duration);
-        if let Ok(minutes) = num_str.parse::<u64>() {
-            return Ok(minutes * 60);
+        if let Ok(minutes) = num_str.parse::<f64>() {
+            return Ok((minutes * 60.0) as u64);
         }
     }
 
     // Seconds
     if duration.ends_with("seconds") || duration.ends_with("second") || duration.ends_with("secs") || duration.ends_with("sec") || duration.ends_with("s") {
         let num_str = extract_number_part(duration);
-        if let Ok(seconds) = num_str.parse::<u64>() {
-            return Ok(seconds);
+        if let Ok(seconds) = num_str.parse::<f64>() {
+            return Ok(seconds as u64);
         }
     }
 
@@ -63,14 +63,14 @@ pub fn parse_duration_to_seconds(duration: &str) -> Result<u64, String> {
     Err(format!("Invalid duration format: {}", duration))
 }
 
-/// Extract the numeric part from a duration string by finding the first non-digit character
+/// Extract the numeric part from a duration string by finding the first non-numeric character
 fn extract_number_part(duration: &str) -> &str {
     for (i, c) in duration.chars().enumerate() {
-        if !c.is_ascii_digit() {
+        if !c.is_ascii_digit() && c != '.' {
             return &duration[0..i];
         }
     }
-    duration // If all characters are digits
+    duration // If all characters are digits/dots
 }
 
 #[cfg(test)]
@@ -110,6 +110,11 @@ mod tests {
         assert_eq!(parse_duration_to_seconds("5hrs"), Ok(18000));
         assert_eq!(parse_duration_to_seconds("5hour"), Ok(18000));
         assert_eq!(parse_duration_to_seconds("5hours"), Ok(18000));
+
+        // Test decimal values
+        assert_eq!(parse_duration_to_seconds("2.5h"), Ok(9000));
+        assert_eq!(parse_duration_to_seconds("1.5h"), Ok(5400));
+        assert_eq!(parse_duration_to_seconds("0.5m"), Ok(30));
 
         // Test edge cases
         assert_eq!(parse_duration_to_seconds("1m"), Ok(60));
