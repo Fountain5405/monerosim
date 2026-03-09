@@ -265,6 +265,7 @@ class LLMProvider:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": 8192,
+            "num_ctx": 8192,  # Ollama: ensure context window fits the system prompt
         }).encode()
 
         req = urllib.request.Request(
