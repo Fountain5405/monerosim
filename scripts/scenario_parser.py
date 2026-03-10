@@ -540,15 +540,23 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                 else:
                     expanded_values[key] = [value] * group.count
 
+        # Fields the Rust parser expects as String (accept duration syntax like "18000s")
+        string_time_fields = {'start_time', 'daemon_0_start', 'daemon_0_stop',
+                              'daemon_1_start', 'daemon_1_stop'}
+        # Fields the Rust parser expects as u32 (plain integer seconds only)
+        u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
+                           'transaction_frequency', 'poll_interval'}
+
         # Create individual agent entries
         for i, agent_id in enumerate(agent_ids):
             agent_config = OrderedDict()
             for key, values in expanded_values.items():
                 val = values[i]
-                # Format time values
-                if key in ['start_time', 'daemon_0_start', 'daemon_0_stop',
-                          'daemon_1_start', 'daemon_1_stop'] and isinstance(val, (int, float)):
+                if key in string_time_fields and isinstance(val, (int, float)):
                     agent_config[key] = f"{int(val)}s"
+                elif key in u32_time_fields and isinstance(val, str) and val != 'auto':
+                    # Convert duration strings like "5m" to plain integer seconds
+                    agent_config[key] = parse_duration(val)
                 else:
                     agent_config[key] = val
 
