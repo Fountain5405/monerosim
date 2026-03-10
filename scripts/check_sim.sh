@@ -217,28 +217,29 @@ fi
 # ============================================================
 header "Simulation Time"
 
-# Get sim time from actual agent logs by sampling a few hosts for the latest timestamp.
-# We check a miner agent log (most active), then a few user agent logs, and take the max.
+# Get sim time from daemon logs (bitmonero.log) or legacy shadow.data stdout files.
 SIM_HOURS=""
 LATEST_TS=""
 
 _sample_logs=()
-# Grab a few miner agent logs
-for d in "$HOSTS_DIR"/miner-0*/; do
-    [ -d "$d" ] || continue
-    for f in "$d"/bash.*.stdout; do
-        [ -s "$f" ] && _sample_logs+=("$f") && break
-    done
+# Try bitmonero.log files first (new format)
+for f in /tmp/monero-miner-0*/bitmonero.log; do
+    [ -s "$f" ] && _sample_logs+=("$f")
     [ "${#_sample_logs[@]}" -ge 2 ] && break
 done
-# Grab a couple of user agent logs (first and last alphabetically)
-_user_dirs=("$HOSTS_DIR"/user-*/)
-if [ "${#_user_dirs[@]}" -gt 0 ]; then
-    for _ud in "${_user_dirs[0]}" "${_user_dirs[-1]}"; do
-        [ -d "$_ud" ] || continue
-        for f in "$_ud"/bash.*.stdout; do
+# Also sample a user daemon log
+for f in /tmp/monero-user-0*/bitmonero.log; do
+    [ -s "$f" ] && _sample_logs+=("$f") && break
+done
+
+# Fallback to legacy shadow.data stdout
+if [ "${#_sample_logs[@]}" -eq 0 ]; then
+    for d in "$HOSTS_DIR"/miner-0*/; do
+        [ -d "$d" ] || continue
+        for f in "$d"/bash.*.stdout; do
             [ -s "$f" ] && _sample_logs+=("$f") && break
         done
+        [ "${#_sample_logs[@]}" -ge 2 ] && break
     done
 fi
 
@@ -440,14 +441,18 @@ if [ "$NUM_MINERS" -gt 0 ]; then
     ALT_BLOCKS=0
     REORGS=0
     for miner_dir in "${MINER_DIRS[@]}"; do
-        # Find daemon log (largest stdout file, or one with p2p traffic)
-        daemon_log=""
-        for f in "$miner_dir"/bash.*.stdout; do
-            if [ -s "$f" ] && grep -q "BLOCK SUCCESSFULLY ADDED\|net.p2p\|Synced\|blockchain" "$f" 2>/dev/null; then
-                daemon_log="$f"
-                break
-            fi
-        done
+        miner_name=$(basename "$miner_dir")
+        # Try bitmonero.log first (new format), then legacy bash.*.stdout
+        daemon_log="/tmp/monero-${miner_name}/bitmonero.log"
+        if [ ! -s "$daemon_log" ]; then
+            daemon_log=""
+            for f in "$miner_dir"/bash.*.stdout; do
+                if [ -s "$f" ] && grep -q "BLOCK SUCCESSFULLY ADDED\|net.p2p\|Synced\|blockchain" "$f" 2>/dev/null; then
+                    daemon_log="$f"
+                    break
+                fi
+            done
+        fi
         if [ -n "$daemon_log" ]; then
             cnt=$(grep -c "ALTERNATIVE" "$daemon_log" 2>/dev/null || true)
             ALT_BLOCKS=$((ALT_BLOCKS + ${cnt:-0}))

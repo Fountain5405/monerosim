@@ -4,7 +4,7 @@ Simulation Monitor Agent for Monerosim
 
 This agent provides real-time monitoring capabilities for Monerosim simulations.
 It periodically polls all Monero nodes via RPC to collect status information
-and writes continuously updating status reports to shadow.data/monerosim_monitor.log.
+and writes continuously updating status reports to monerosim_monitor.log.
 """
 
 import argparse
@@ -28,14 +28,14 @@ class SimulationMonitorAgent(BaseAgent):
     Simulation Monitor Agent that provides real-time monitoring of Monerosim simulations.
     
     This agent periodically polls all Monero nodes via RPC to collect status information
-    and writes continuously updating status reports to shadow.data/monerosim_monitor.log.
+    and writes continuously updating status reports to monerosim_monitor.log.
     """
     
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
                  poll_interval: int = 300,
                  output_dir: Optional[str] = None,
-                 status_file: str = "shadow.data/monerosim_monitor.log",
+                 status_file: str = "monerosim_monitor.log",
                  enable_alerts: bool = True,
                  detailed_logging: bool = False,
                  log_level: str = "INFO",
@@ -191,82 +191,30 @@ class SimulationMonitorAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error loading miner registry: {e}")
 
-    def _find_shadow_data_hosts(self) -> Optional[Path]:
-        """
-        Find the shadow.data/hosts directory by searching common locations.
-        Returns the path if found, None otherwise.
-        """
-        # List of candidate paths to check
-        candidates = []
-
-        # If output_dir specified, check there first
-        if self.output_dir:
-            candidates.append(self.output_dir / "shadow.data" / "hosts")
-
-        # Check relative to current working directory
-        candidates.append(Path("shadow.data/hosts"))
-        candidates.append(Path("shadow_output/shadow.data/hosts"))
-
-        # Check parent directories (shadow might run from a subdirectory)
-        cwd = Path.cwd()
-        for parent in [cwd.parent, cwd.parent.parent]:
-            candidates.append(parent / "shadow.data" / "hosts")
-            candidates.append(parent / "shadow_output" / "shadow.data" / "hosts")
-
-        for candidate in candidates:
-            if candidate.exists():
-                self.logger.debug(f"Found shadow.data/hosts at: {candidate}")
-                return candidate
-
-        return None
-
     def _discover_daemon_log_files(self):
         """
-        Discover daemon log files for all hosts in shadow.data/hosts/.
-        These are the bash.*.stdout files that contain monerod output.
+        Discover daemon log files (bitmonero.log) for all nodes.
+        Searches /tmp/monero-*/bitmonero.log for live simulation logs.
         """
         try:
-            hosts_dir = self._find_shadow_data_hosts()
-
-            if not hosts_dir:
-                self.logger.warning("Could not find shadow.data/hosts directory")
-                return
-
-            for host_dir in hosts_dir.iterdir():
-                if not host_dir.is_dir():
+            tmp_dir = Path("/tmp")
+            for node_dir in sorted(tmp_dir.glob("monero-*")):
+                if not node_dir.is_dir():
                     continue
 
-                host_name = host_dir.name
+                log_file = node_dir / "bitmonero.log"
+                if not log_file.exists():
+                    continue
 
-                # Find bash.*.stdout files (daemon logs)
-                log_files = list(host_dir.glob("bash.*.stdout"))
-                if log_files:
-                    # Use the largest file (usually the daemon log)
-                    # or the first one - daemon is typically bash.1000.stdout
-                    daemon_log = None
-                    for log_file in sorted(log_files):
-                        # Check if this looks like a daemon log by reading first few lines
-                        try:
-                            with open(log_file, 'r', errors='ignore') as f:
-                                header = f.read(1000)
-                                if 'monerod' in header.lower() or 'monero' in header.lower() or 'blockchain' in header.lower():
-                                    daemon_log = log_file
-                                    break
-                        except Exception:
-                            continue
+                # Extract agent name: monero-miner-001 -> miner-001
+                host_name = node_dir.name.replace("monero-", "", 1)
 
-                    if daemon_log is None and log_files:
-                        # Fallback to first/largest file
-                        daemon_log = max(log_files, key=lambda f: f.stat().st_size)
-
-                    if daemon_log:
-                        self.daemon_log_files[host_name] = str(daemon_log)
-                        # Initialize file position
-                        if str(daemon_log) not in self.log_file_positions:
-                            # Always start at beginning to catch all blocks from simulation start
-                            self.log_file_positions[str(daemon_log)] = 0
-                            if self.last_daemon_discovery_time != 0:
-                                self.logger.info(f"Discovered new daemon log for late-joining agent: {host_name}")
+                self.daemon_log_files[host_name] = str(log_file)
+                # Initialize file position
+                if str(log_file) not in self.log_file_positions:
+                    self.log_file_positions[str(log_file)] = 0
+                    if self.last_daemon_discovery_time != 0:
+                        self.logger.info(f"Discovered new daemon log for late-joining agent: {host_name}")
 
             self.logger.info(f"Discovered daemon logs for {len(self.daemon_log_files)} hosts")
 
@@ -1625,7 +1573,7 @@ class SimulationMonitorAgent(BaseAgent):
         parser.add_argument('--output-dir', type=str, default=None,
                           help='Shadow output directory for daemon log discovery')
         parser.add_argument('--status-file', type=str,
-                          default='shadow.data/monerosim_monitor.log',
+                          default='monerosim_monitor.log',
                           help='Path to the real-time status file')
         parser.add_argument('--enable-alerts', action='store_true', default=True,
                           help='Enable alert generation')

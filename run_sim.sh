@@ -748,10 +748,13 @@ archive_results() {
     # 5b. Blockchain snapshots (3 copies: 1 miner, 1 user, 1 relay)
     archive_blockchain_snapshots
 
-    # 5c. Transaction registry
+    # 5c. Daemon logs (bitmonero.log files with thread/category detail)
+    archive_daemon_logs
+
+    # 5d. Transaction registry
     archive_transaction_registry
 
-    # 5d. Analysis (opt-in)
+    # 5e. Analysis (opt-in)
     if [[ "$RUN_ANALYZE" == true ]]; then
         run_analysis
     fi
@@ -804,6 +807,33 @@ copy_blockchain_snapshot() {
         log_ok "Blockchain snapshot: $node_name (${size})"
     else
         log_warn "No blockchain data for $node_type at $lmdb_dir"
+    fi
+}
+
+archive_daemon_logs() {
+    log_info "Archiving daemon logs (bitmonero.log)..."
+
+    local logs_dir="$ARCHIVE_DIR/daemon_logs"
+    mkdir -p "$logs_dir"
+
+    local count=0
+    for log_file in /tmp/monero-*/bitmonero.log; do
+        [[ -f "$log_file" ]] || continue
+        local node_dir
+        node_dir=$(dirname "$log_file")
+        local node_name
+        node_name=$(basename "$node_dir")
+        mkdir -p "$logs_dir/$node_name"
+        cp "$log_file" "$logs_dir/$node_name/"
+        count=$((count + 1))
+    done
+
+    if [[ $count -gt 0 ]]; then
+        local total_size
+        total_size=$(du -sh "$logs_dir" 2>/dev/null | cut -f1)
+        log_ok "Daemon logs: $count bitmonero.log files archived ($total_size total)"
+    else
+        log_warn "No bitmonero.log files found in /tmp/monero-*/"
     fi
 }
 
@@ -882,6 +912,16 @@ print_summary() {
             snap_size=$(du -sh "$snap_dir" 2>/dev/null | cut -f1)
             echo "    - $snap_name ($snap_size)"
         done
+        echo ""
+    fi
+
+    # Daemon logs
+    if [[ -d "$ARCHIVE_DIR/daemon_logs" ]]; then
+        local log_count
+        log_count=$(find "$ARCHIVE_DIR/daemon_logs" -name 'bitmonero.log' 2>/dev/null | wc -l)
+        local logs_size
+        logs_size=$(du -sh "$ARCHIVE_DIR/daemon_logs" 2>/dev/null | cut -f1)
+        echo "  Daemon logs:  $log_count bitmonero.log files ($logs_size)"
         echo ""
     fi
 

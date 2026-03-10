@@ -4,7 +4,7 @@ enhanced_monitor.py - Live Log Monitoring Script for MoneroSim
 
 This script provides advanced monitoring capabilities for the Monero simulation
 by parsing live log files from the Shadow environment. It monitors agent activity
-in real-time by reading log files from shadow.data/hosts/[agent]/ directories.
+in real-time by reading daemon log files from /tmp/monero-[agent]/ directories.
 
 Features:
 - Real-time blockchain visualization from logs
@@ -228,7 +228,7 @@ class EnhancedMonitor:
         self.export_format = "json"  # json, csv
         self.export_file = None
 
-    def find_log_directories(self, base_dir: str = "shadow.data/hosts") -> List[Tuple[str, str]]:
+    def find_log_directories(self, base_dir: str = "/tmp") -> List[Tuple[str, str]]:
         """Find agent log directories in the Shadow data directory."""
         log_dirs = []
 
@@ -254,7 +254,7 @@ class EnhancedMonitor:
 
         return log_dirs
 
-    def discover_agents(self, base_log_dir: str = "shadow.data/hosts") -> List[AgentStatus]:
+    def discover_agents(self, base_log_dir: str = "/tmp") -> List[AgentStatus]:
         """Discover agents by finding their log directories."""
         agents = []
 
@@ -843,8 +843,8 @@ def main():
     )
     parser.add_argument(
         "--log-dir",
-        default="shadow.data/hosts",
-        help="Base directory containing agent log directories (default: shadow.data/hosts)"
+        default="/tmp",
+        help="Base directory containing daemon log directories (default: /tmp)"
     )
     parser.add_argument(
         "--no-clear",

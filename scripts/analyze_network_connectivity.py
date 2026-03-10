@@ -43,7 +43,7 @@ from agents.agent_discovery import AgentDiscovery
 
 # Constants
 DEFAULT_BASE_DIR = str(Path(__file__).resolve().parent.parent)
-DEFAULT_LOGS_DIR = str(Path(DEFAULT_BASE_DIR) / "shadow.data" / "hosts")
+DEFAULT_LOGS_DIR = "/tmp"  # Daemon logs in /tmp/monero-*/bitmonero.log
 DEFAULT_OUTPUT_DIR = str(Path(DEFAULT_BASE_DIR) / "analysis_results")
 IPAPI_TIMEOUT = 5
 MAX_RETRIES = 3
@@ -137,7 +137,9 @@ class NetworkConnectivityAnalyzer:
 
     def _parse_log_file(self, log_file: Path) -> None:
         """Parse a single log file for successful connection events."""
-        node_name = log_file.parent.name  # Extract node name from path
+        # Extract node name: monero-miner-001 -> miner-001, or keep as-is for legacy
+        raw_name = log_file.parent.name
+        node_name = raw_name.replace("monero-", "", 1) if raw_name.startswith("monero-") else raw_name
 
         try:
             with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -273,8 +275,10 @@ class NetworkConnectivityAnalyzer:
         """Analyze all log files."""
         log_info("NetworkConnectivityAnalyzer", "Starting log analysis...")
 
-        # Find all log files
-        log_files = list(self.logs_dir.glob("*/bash.*.stdout"))
+        # Find all daemon log files (bitmonero.log in monero-* dirs, or legacy bash.*.stdout)
+        log_files = list(self.logs_dir.glob("monero-*/bitmonero.log"))
+        if not log_files:
+            log_files = list(self.logs_dir.glob("*/bash.*.stdout"))
 
         if not log_files:
             log_warning("NetworkConnectivityAnalyzer", f"No log files found in {self.logs_dir}")
@@ -628,7 +632,7 @@ Top 10 Most Used IP Addresses:
 def main():
     parser = argparse.ArgumentParser(description="Analyze Monero P2P network connectivity from Shadow logs")
     parser.add_argument('--config', required=True, help='Path to simulation config file')
-    parser.add_argument('--logs', default=DEFAULT_LOGS_DIR, help='Path to shadow.data/hosts directory')
+    parser.add_argument('--logs', default=DEFAULT_LOGS_DIR, help='Path to daemon log directory (default: /tmp)')
     parser.add_argument('--output', help='Output directory (default: analysis_results subfolder)')
 
     args = parser.parse_args()

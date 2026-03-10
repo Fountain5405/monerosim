@@ -194,36 +194,25 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
     """
     Analyze all host logs in the directory using multi-threading.
     Returns aggregated data and success report.
-    If log_dir is None, finds the most recent shadow.data/hosts directory.
+    If log_dir is None, auto-detects logs from /tmp/monero-* or shadow.data/hosts/.
     """
     if log_dir is None:
-        workspace = Path('.')
-        current_shadow_path = workspace / 'shadow.data' / 'hosts'
-        if current_shadow_path.exists():
-            log_path = current_shadow_path
-            shadow_data_dir = workspace / 'shadow.data'
+        # Auto-detect: try /tmp first (live run), then shadow.data/hosts (legacy)
+        tmp_logs = list(Path("/tmp").glob("monero-*/bitmonero.log"))
+        if tmp_logs:
+            log_path = Path("/tmp")
         else:
-            # Find the most recent dated shadow.data directory
-            shadow_dirs = []
-            for d in workspace.iterdir():
-                if d.is_dir() and re.match(r'\d{8}', d.name):
-                    shadow_path = d / 'shadow.data' / 'hosts'
-                    if shadow_path.exists():
-                        shadow_dirs.append((d.stat().st_mtime, shadow_path))
-            if not shadow_dirs:
-                raise ValueError("No shadow.data/hosts directory found in current workspace or dated subdirectories.")
-            # Sort by modification time, take the most recent
-            shadow_dirs.sort(reverse=True)
-            log_path = shadow_dirs[0][1]
-            shadow_data_dir = log_path.parent
+            workspace = Path('.')
+            current_shadow_path = workspace / 'shadow.data' / 'hosts'
+            if current_shadow_path.exists():
+                log_path = current_shadow_path
+            else:
+                raise ValueError("No daemon logs found in /tmp/monero-* or shadow.data/hosts/")
     else:
         log_path = Path(log_dir)
-        # Handle case where user passes shadow.data instead of shadow.data/hosts
+        # Handle legacy shadow.data path
         if log_path.name == 'shadow.data' and (log_path / 'hosts').exists():
-            shadow_data_dir = log_path
             log_path = log_path / 'hosts'
-        else:
-            shadow_data_dir = log_path.parent
         if not log_path.exists():
             raise ValueError(f"Log directory {log_dir} not found.")
 
@@ -238,15 +227,22 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
 
     # Collect all log files to process
     log_files_to_process = []
-    for host_dir in log_path.iterdir():
-        if not host_dir.is_dir():
-            continue
-        host_name = host_dir.name
 
-        # Find all bash.*.stdout files
-        log_files = glob(str(host_dir / 'bash.*.stdout'))
-        for log_file in log_files:
-            log_files_to_process.append((host_name, log_file))
+    # Try bitmonero.log in monero-* dirs first
+    monero_dirs = list(log_path.glob("monero-*/bitmonero.log"))
+    if monero_dirs:
+        for log_file in monero_dirs:
+            host_name = log_file.parent.name.replace("monero-", "", 1)
+            log_files_to_process.append((host_name, str(log_file)))
+    else:
+        # Fallback to legacy bash.*.stdout
+        for host_dir in log_path.iterdir():
+            if not host_dir.is_dir():
+                continue
+            host_name = host_dir.name
+            log_files = glob(str(host_dir / 'bash.*.stdout'))
+            for log_file in log_files:
+                log_files_to_process.append((host_name, log_file))
 
     # Process log files in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -521,7 +517,7 @@ def main():
     parser.add_argument('--fingerprint-file', type=str, default=None,
                        help='Output filename for determinism fingerprint')
     parser.add_argument('--log-dir', type=str, default=None,
-                       help='Path to shadow.data/hosts directory')
+                       help='Path to daemon log directory (default: auto-detect from /tmp or shadow.data)')
     args = parser.parse_args()
 
     try:

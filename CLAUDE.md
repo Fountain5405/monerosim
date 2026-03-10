@@ -75,3 +75,4 @@ Test directories follow the naming convention `YYYYMMDD_<commit-hash>_tests/`. E
 - Shadow simulations are resource-intensive — run sequentially, not in parallel
 - Config test `03_relay_upgrade` reports "relay has 2 processes" — this is expected for upgrade scenarios with daemon phases
 - Python agents run inside Shadow's simulated network — they use `time.time()` relative to Shadow epoch, not real wall clock
+- **Daemon logs** are in `/tmp/monero-[agent]/bitmonero.log` (not shadow.data stdout). Analysis tools read from there. The `--max-log-file-size 0` flag disables log rotation.

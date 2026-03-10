@@ -426,7 +426,10 @@ pub fn process_user_agents(
                     // Use `exec` so bash replaces itself with monerod - this ensures signals
                     // go directly to monerod rather than to bash (which would leave monerod orphaned)
                     // Note: data directory cleanup is handled pre-simulation by main.rs
-                    let args = format!("-c 'exec {} {}'", daemon_binary_path, daemon_args);
+                    let args = format!(
+                        "-c 'exec {} {}'",
+                        daemon_binary_path, daemon_args
+                    );
 
                     processes.push(crate::shadow::ShadowProcess {
                         path: "/bin/bash".to_string(),

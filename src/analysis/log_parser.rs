@@ -419,35 +419,43 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
     Ok(data)
 }
 
-/// Find all daemon log files for a node (handles upgrade scenarios with multiple daemon processes)
-fn find_daemon_log_files(host_dir: &Path) -> Vec<std::path::PathBuf> {
+/// Find the daemon log file for a node.
+///
+/// Looks for `bitmonero.log` in the node's data directory (e.g., `/tmp/monero-miner-001/`
+/// or `archive/daemon_logs/monero-miner-001/`). Falls back to legacy `bash.*.stdout`
+/// files in shadow.data for backward compatibility with older simulation archives.
+fn find_daemon_log_files(node_dir: &Path) -> Vec<std::path::PathBuf> {
     let mut daemon_logs = Vec::new();
 
-    // Read directory and find all .stdout files
-    if let Ok(entries) = std::fs::read_dir(host_dir) {
+    // Primary: look for bitmonero.log (native monerod log file)
+    let log_path = node_dir.join("bitmonero.log");
+    if log_path.exists() {
+        if let Ok(metadata) = log_path.metadata() {
+            if metadata.len() > 100 {
+                daemon_logs.push(log_path);
+                return daemon_logs;
+            }
+        }
+    }
+
+    // Fallback: look for legacy bash.*.stdout files (old shadow.data format)
+    if let Ok(entries) = std::fs::read_dir(node_dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                // Look for bash.*.stdout files
                 if name.starts_with("bash.") && name.ends_with(".stdout") {
-                    // Check if file is non-empty and contains daemon output
                     if let Ok(metadata) = path.metadata() {
                         if metadata.len() > 1000 {
-                            // Quick check: read first few KB to see if it looks like daemon output
                             if let Ok(file) = std::fs::File::open(&path) {
                                 let mut reader = std::io::BufReader::new(file);
                                 let mut buffer = String::new();
                                 use std::io::BufRead;
-                                // Read first few lines
                                 for _ in 0..20 {
                                     buffer.clear();
                                     if reader.read_line(&mut buffer).unwrap_or(0) == 0 {
                                         break;
                                     }
-                                    // Daemon logs have characteristic patterns
-                                    if buffer.contains("[P2P]") ||
-                                       buffer.contains("[net.p2p]") ||
-                                       buffer.contains("Cryptonote protocol") ||
+                                    if buffer.contains("Cryptonote protocol") ||
                                        buffer.contains("[INC]") ||
                                        buffer.contains("[OUT]") ||
                                        buffer.contains("NOTIFY_NEW_TRANSACTIONS") ||
@@ -465,29 +473,40 @@ fn find_daemon_log_files(host_dir: &Path) -> Vec<std::path::PathBuf> {
         }
     }
 
-    // Sort by filename to ensure consistent ordering
     daemon_logs.sort();
     daemon_logs
 }
 
-/// Parse all log files in parallel
+/// Parse all log files in parallel.
+///
+/// `log_dir` is the directory containing node data directories. This can be:
+/// - `/tmp` (live run: logs at `/tmp/monero-<agent_id>/bitmonero.log`)
+/// - `archive/daemon_logs` (archived: logs at `daemon_logs/monero-<agent_id>/bitmonero.log`)
+/// - `shadow.data/hosts` (legacy: logs at `hosts/<agent_id>/bash.*.stdout`)
 pub fn parse_all_logs(
-    hosts_dir: &Path,
+    log_dir: &Path,
     agents: &[AnalysisAgentInfo],
 ) -> Result<HashMap<String, NodeLogData>> {
-    log::info!("Parsing logs for {} agents in parallel...", agents.len());
+    log::info!("Parsing logs for {} agents from {}...", agents.len(), log_dir.display());
 
     let results: Vec<(String, NodeLogData)> = agents
         .par_iter()
         .filter_map(|agent| {
-            let host_dir = hosts_dir.join(&agent.id);
+            // Try multiple directory naming conventions:
+            // 1. monero-<agent_id> (new: /tmp/monero-miner-001/ or daemon_logs/monero-miner-001/)
+            // 2. <agent_id> (legacy shadow.data: hosts/miner-001/)
+            let node_dir = log_dir.join(format!("monero-{}", agent.id));
+            let node_dir = if node_dir.exists() {
+                node_dir
+            } else {
+                log_dir.join(&agent.id)
+            };
 
-            // Find all daemon log files (handles upgrade scenarios with v1 and v2 daemons)
-            let log_files = find_daemon_log_files(&host_dir);
+            let log_files = find_daemon_log_files(&node_dir);
 
             if log_files.is_empty() {
-                // Fallback to old behavior for backward compatibility
-                let log_path = host_dir.join("bash.1000.stdout");
+                // Last resort: try bash.1000.stdout in the agent dir
+                let log_path = node_dir.join("bash.1000.stdout");
                 if !log_path.exists() {
                     log::debug!("No log file found for {}", agent.id);
                     return None;

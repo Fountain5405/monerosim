@@ -82,11 +82,11 @@ This creates `.processed_log` files with summarized information. Always check th
 ### Quick verification
 
 ```bash
-# Check if daemons started
-grep "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout
+# Check if daemons started (logs in /tmp/monero-*/bitmonero.log)
+grep "RPC server initialized OK" /tmp/monero-*/bitmonero.log
 
 # Check P2P connections
-grep "Connected success" shadow.data/hosts/*/monerod.*.stdout
+grep "Connected success" /tmp/monero-*/bitmonero.log
 
 # Check agent discovery
 cat /tmp/monerosim_shared/agent_registry.json
@@ -101,9 +101,8 @@ There are also LLM-generated analysis tools (`tx-analyzer`, `scripts/tx_analyzer
 | Log | Path |
 |-----|------|
 | Shadow main log | `shadow.log` |
-| Daemon logs | `shadow.data/hosts/[hostname]/monerod.*.stdout` |
-| Wallet logs | `shadow.data/hosts/[hostname]/wallet.*.stdout` |
-| Agent logs | `shadow.data/hosts/[hostname]/bash.*.stdout` |
+| Daemon logs | `/tmp/monero-[agent]/bitmonero.log` |
+| Agent logs (Python) | `shadow.data/hosts/[hostname]/bash.*.stdout` |
 | Shared state | `/tmp/monerosim_shared/*.json` |
 
 ## Testing Approaches

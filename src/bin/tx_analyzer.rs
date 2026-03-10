@@ -23,9 +23,15 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    /// Path to shadow.data directory
+    /// Path to shadow.data directory (for shadow_agents.yaml and other metadata)
     #[arg(short, long, default_value = "shadow.data")]
     data_dir: PathBuf,
+
+    /// Path to daemon log directory (contains monero-<agent>/ dirs with bitmonero.log).
+    /// Defaults to /tmp for live runs. For archived runs, use the daemon_logs/ directory.
+    /// Falls back to shadow.data/hosts/ (legacy) if not specified and /tmp has no logs.
+    #[arg(short, long)]
+    log_dir: Option<PathBuf>,
 
     /// Path to shared data directory
     #[arg(short, long, default_value = "/tmp/monerosim_shared")]
@@ -190,18 +196,35 @@ fn main() -> Result<()> {
         blocks.len()
     );
 
+    // Determine log directory: --log-dir flag, or auto-detect from /tmp or shadow.data/hosts
+    let log_dir = if let Some(ref dir) = cli.log_dir {
+        dir.clone()
+    } else {
+        // Auto-detect: check /tmp for monero-* dirs first, then fall back to shadow.data/hosts
+        let tmp_dir = PathBuf::from("/tmp");
+        let has_tmp_logs = agents.iter().any(|a| {
+            tmp_dir.join(format!("monero-{}", a.id)).join("bitmonero.log").exists()
+        });
+        if has_tmp_logs {
+            log::info!("Auto-detected daemon logs in /tmp");
+            tmp_dir
+        } else {
+            log::info!("No daemon logs in /tmp, falling back to shadow.data/hosts");
+            cli.data_dir.join("hosts")
+        }
+    };
+
     // Parse logs (with caching)
-    let hosts_dir = cli.data_dir.join("hosts");
     let cache_path = cli.data_dir.join("parsed_logs.bincode");
     let start = std::time::Instant::now();
 
     let log_data = if !cli.no_cache {
-        if let Some(cached) = try_load_cache(&cache_path, &hosts_dir) {
+        if let Some(cached) = try_load_cache(&cache_path, &log_dir) {
             log::info!("Loaded parsed logs from cache in {:.1}s", start.elapsed().as_secs_f64());
             cached
         } else {
-            log::info!("Parsing logs from {}...", hosts_dir.display());
-            let data = analysis::parse_all_logs(&hosts_dir, &agents)?;
+            log::info!("Parsing logs from {}...", log_dir.display());
+            let data = analysis::parse_all_logs(&log_dir, &agents)?;
             log::info!("Parsed logs in {:.1}s", start.elapsed().as_secs_f64());
             if let Err(e) = save_cache(&cache_path, &data) {
                 log::warn!("Failed to write cache: {}", e);
@@ -209,8 +232,8 @@ fn main() -> Result<()> {
             data
         }
     } else {
-        log::info!("Parsing logs from {} (cache disabled)...", hosts_dir.display());
-        let data = analysis::parse_all_logs(&hosts_dir, &agents)?;
+        log::info!("Parsing logs from {} (cache disabled)...", log_dir.display());
+        let data = analysis::parse_all_logs(&log_dir, &agents)?;
         log::info!("Parsed logs in {:.1}s (cache disabled)", start.elapsed().as_secs_f64());
         data
     };
@@ -371,8 +394,16 @@ fn main() -> Result<()> {
                 let compare_agents = load_agent_registry(&compare_shared_dir)?;
                 let compare_transactions = load_transactions(&compare_shared_dir)?;
 
-                let compare_hosts_dir = compare_dir.join("hosts");
-                let compare_log_data = analysis::parse_all_logs(&compare_hosts_dir, &compare_agents)?;
+                // For comparison, try daemon_logs/ first, then shadow.data/hosts/
+                let compare_log_dir = {
+                    let daemon_logs = compare_dir.join("daemon_logs");
+                    if daemon_logs.exists() {
+                        daemon_logs
+                    } else {
+                        compare_dir.join("hosts")
+                    }
+                };
+                let compare_log_data = analysis::parse_all_logs(&compare_log_dir, &compare_agents)?;
 
                 let compare_report = analysis::analyze_tx_relay_v2(&compare_transactions, &compare_log_data, &compare_agents);
 

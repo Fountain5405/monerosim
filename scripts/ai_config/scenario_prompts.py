@@ -30,7 +30,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -38,7 +38,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -177,7 +176,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -185,7 +184,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 # === NETWORK TOPOLOGY ===
 network:
@@ -244,7 +242,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -252,7 +250,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -319,7 +316,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -327,7 +324,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -398,7 +394,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -406,7 +402,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -468,7 +463,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -476,7 +471,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -529,7 +523,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -537,7 +531,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -592,7 +585,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -600,7 +593,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
@@ -668,7 +660,7 @@ general:
   process_threads: 2
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -676,7 +668,6 @@ general:
     allow-local-ip: true
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 
 # === NETWORK TOPOLOGY ===
 network:

@@ -627,7 +627,7 @@ def _build_general_config(
 
     general_config["daemon_defaults"] = OrderedDict([
         ("log-level", 1),
-        ("log-file", "/dev/stdout"),
+        ("max-log-file-size", 0),
         ("db-sync-mode", "fastest"),
         ("no-zmq", True),
         ("non-interactive", True),
@@ -637,7 +637,6 @@ def _build_general_config(
 
     general_config["wallet_defaults"] = OrderedDict([
         ("log-level", 1),
-        ("log-file", "/dev/stdout"),
     ])
 
     return general_config

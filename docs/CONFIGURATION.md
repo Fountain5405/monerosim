@@ -37,7 +37,7 @@ general:
   # Default options applied to all daemons (overridable per-agent)
   daemon_defaults:
     log-level: 1
-    log-file: /dev/stdout
+    max-log-file-size: 0
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
@@ -47,7 +47,6 @@ general:
   # Default options applied to all wallets (overridable per-agent)
   wallet_defaults:
     log-level: 1
-    log-file: /dev/stdout
 ```
 
 ### General Field Reference

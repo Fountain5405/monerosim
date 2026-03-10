@@ -312,20 +312,42 @@ def parse_all_logs(shadow_data_dir: str, max_workers: int = None) -> Dict:
     """
     Parse all node logs in parallel.
 
+    Searches for daemon logs in multiple locations:
+    1. /tmp/monero-*/bitmonero.log (live run)
+    2. shadow_data_dir/daemon_logs/monero-*/bitmonero.log (archived)
+    3. shadow_data_dir/hosts/*/bash.1000.stdout (legacy)
+
     Returns aggregated results from all nodes.
     """
-    hosts_dir = Path(shadow_data_dir) / "hosts"
-    if not hosts_dir.exists():
-        print(f"Error: Hosts directory not found: {hosts_dir}", file=sys.stderr)
-        return {}
-
-    # Find all log files
     log_files = []
-    for node_dir in hosts_dir.iterdir():
-        if node_dir.is_dir():
-            log_file = node_dir / "bash.1000.stdout"
-            if log_file.exists():
-                log_files.append((str(log_file), node_dir.name))
+    base = Path(shadow_data_dir)
+
+    # Try /tmp first (live run)
+    tmp_logs = list(Path("/tmp").glob("monero-*/bitmonero.log"))
+    if tmp_logs:
+        for log_file in tmp_logs:
+            node_name = log_file.parent.name.replace("monero-", "", 1)
+            log_files.append((str(log_file), node_name))
+    else:
+        # Try daemon_logs/ in archive
+        daemon_logs_dir = base / "daemon_logs"
+        if daemon_logs_dir.exists():
+            for node_dir in daemon_logs_dir.iterdir():
+                if node_dir.is_dir():
+                    log_file = node_dir / "bitmonero.log"
+                    if log_file.exists():
+                        node_name = node_dir.name.replace("monero-", "", 1)
+                        log_files.append((str(log_file), node_name))
+
+        # Fallback to legacy shadow.data/hosts/
+        if not log_files:
+            hosts_dir = base / "hosts"
+            if hosts_dir.exists():
+                for node_dir in hosts_dir.iterdir():
+                    if node_dir.is_dir():
+                        log_file = node_dir / "bash.1000.stdout"
+                        if log_file.exists():
+                            log_files.append((str(log_file), node_dir.name))
 
     if not log_files:
         print("Warning: No log files found", file=sys.stderr)

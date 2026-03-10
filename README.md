@@ -19,7 +19,7 @@ Monerosim simulations proceed in two stages:
 
 **Stage 1** - You write a YAML config describing the network: how many miners, users, what topology, how long to run. Monerosim's Rust engine parses this and generates Shadow configuration files.
 
-**Stage 2** - shadowformonero runs the simulation. Each agent gets its own monerod daemon, wallet-rpc, and Python script running on a virtual host. Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output (logs, shared state) is written to `shadow.data/` and `/tmp/monerosim_shared/`.
+**Stage 2** - shadowformonero runs the simulation. Each agent gets its own monerod daemon, wallet-rpc, and Python script running on a virtual host. Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to `/tmp/monero-*/bitmonero.log` (daemon logs), `shadow.data/` (agent stdout), and `/tmp/monerosim_shared/` (shared state).
 
 ## Quick Start
 
