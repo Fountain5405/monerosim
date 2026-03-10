@@ -548,15 +548,14 @@ exit 0' INT
         local sim_elapsed_secs=0
         local progress_pct=0
 
-        # Extract latest timestamp from shadow log
-        sim_timestamp=$(tail -100 "$shadow_log" 2>/dev/null | grep -oP '\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}' | tail -1 || true)
+        # Extract simulated time from Shadow's progress lines
+        # Format: "Progress: 1% — simulated: 00:10:50.014/16:00:00, realtime: ..."
+        sim_timestamp=$(tail -200 "$shadow_log" 2>/dev/null | grep -oP '(?<=simulated: )\d{2}:\d{2}:\d{2}' | tail -1 || true)
 
         if [[ -n "$sim_timestamp" ]]; then
             sim_elapsed_secs=$(python3 -c "
-from datetime import datetime
-dt = datetime.strptime('$sim_timestamp', '%Y-%m-%d %H:%M:%S')
-epoch = datetime(2000, 1, 1)
-print(int((dt - epoch).total_seconds()))
+parts = '$sim_timestamp'.split(':')
+print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
 " 2>/dev/null || echo 0)
 
             if [[ $STOP_TIME_SECS -gt 0 ]]; then
