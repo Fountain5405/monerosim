@@ -45,9 +45,27 @@ export OPENAI_BASE_URL=https://api.openai.com/v1
 python3 -m scripts.ai_config --model gpt-4o-mini
 ```
 
-### Option 3: Local Model (llama.cpp)
+### Option 3: Local Ollama
 
-Run a local llama.cpp server, then:
+The system prompt is ~6600 tokens, so models need at least an 8K context window. Ollama's default is 2048-4096 depending on the model, which will truncate the prompt and produce bad configs.
+
+Create a model variant with 8K context:
+
+```bash
+ollama pull qwen3:8b
+echo -e "FROM qwen3:8b\nPARAMETER num_ctx 8192" | ollama create qwen3:8b-8k -f -
+```
+
+Then run:
+
+```bash
+export OPENAI_BASE_URL=http://localhost:11434/v1
+python3 -m scripts.ai_config --model qwen3:8b-8k
+```
+
+### Option 4: Local llama.cpp
+
+Run a local llama.cpp server with sufficient context (`-c 8192`), then:
 
 ```bash
 export OPENAI_API_KEY=not-needed
@@ -102,6 +120,11 @@ python3 -m scripts.ai_config --validate my_config.yaml
 ```
 
 ## Troubleshooting
+
+**"truncating input prompt" or garbled/incomplete configs from Ollama**
+- The system prompt (~6600 tokens) exceeds Ollama's default context window
+- Create a model variant with 8K context: `echo -e "FROM qwen3:8b\nPARAMETER num_ctx 8192" | ollama create qwen3:8b-8k -f -`
+- Use `--model qwen3:8b-8k` instead of `qwen3:8b`
 
 **"Could not extract Python script from response"**
 - The LLM didn't format code correctly
