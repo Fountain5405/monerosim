@@ -1740,8 +1740,25 @@ Timeline (verified bootstrap for Monero regtest):
         plain_config = to_plain_dict(config)
 
         # Count agents for summary
-        agent_count = len([k for k in config['agents'].keys()
-                          if k not in ['miner-distributor', 'simulation-monitor']])
+        agent_count = len(config['agents'])
+
+        # Read actual values from the generated config (not auto-calc timing)
+        bootstrap_end_val = config['general'].get('bootstrap_end_time', '')
+        if isinstance(bootstrap_end_val, str) and any(bootstrap_end_val.endswith(u) for u in ['s', 'm', 'h']):
+            bootstrap_end_s = parse_duration(bootstrap_end_val)
+        else:
+            bootstrap_end_s = scenario.timing['bootstrap_end_s']
+
+        # Find the earliest activity_start_time across user agents
+        activity_start_times = []
+        for agent_config in config['agents'].values():
+            ast = agent_config.get('activity_start_time')
+            if ast is not None:
+                if isinstance(ast, str) and any(ast.endswith(u) for u in ['s', 'm', 'h']):
+                    activity_start_times.append(parse_duration(ast))
+                elif isinstance(ast, (int, float)):
+                    activity_start_times.append(int(ast))
+        activity_start_s = min(activity_start_times) if activity_start_times else scenario.timing['activity_start_s']
 
         # Write output
         import yaml as yaml_module
@@ -1750,8 +1767,8 @@ Timeline (verified bootstrap for Monero regtest):
 
         print(f"Expanded {args.from_scenario} -> {args.output}", file=sys.stderr)
         print(f"  Agents: {agent_count}", file=sys.stderr)
-        print(f"  Bootstrap ends: {format_time(scenario.timing['bootstrap_end_s'])}", file=sys.stderr)
-        print(f"  Activity starts: {format_time(scenario.timing['activity_start_s'])}", file=sys.stderr)
+        print(f"  Bootstrap ends: {format_time(bootstrap_end_s)}", file=sys.stderr)
+        print(f"  Activity starts: {format_time(activity_start_s)}", file=sys.stderr)
         sys.exit(0)
 
     # Validate CLI args (only if not using --from)

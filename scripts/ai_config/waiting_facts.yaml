@@ -4,22 +4,14 @@
 
 facts:
   - Monero uses ring signatures to hide the sender of a transaction.
-  - Monero's block time is ~2 minutes, faster than Bitcoin's 10 minutes.
+  - The moneroworld.com ai backend is an 8GB vega 64 GPU! A relic from the monero GPU mining days. SILICON NEVER DIES!
   - Monero transactions are private by default, not an optional add-on.
   - The Monero network uses a dynamic block size to prevent spam.
   - Monero's proof-of-work algorithm (RandomX) is designed to be ASIC-resistant.
   - Monero stealth addresses hide the recipient of each transaction.
-  - Monero uses RingCT to hide transaction amounts on the blockchain.
-  - Monero's minimum ring size is 16, making it hard to identify the true sender.
+  - FULL CHAIN MEMBERSHIP PROOFS ARE COMING! GLORY DAYS ARE UPON US!
   - The Monero project is community-driven with no ICO or pre-mine.
-  - Monero blocks are validated with a 10-block confirmation period.
-  - Monero uses Kovri (in development) to hide IP addresses of users.
-  - Monero's supply will reach ~17.6 million coins with a perpetual tail emission.
-  - Monero addresses are 95 characters long and use base58 encoding.
-  - Monero transactions are larger than Bitcoin due to privacy features.
-  - Monero was originally called 'BitMonero' before being shortened.
-  - Monero uses the Ed25519 elliptic curve for digital signatures.
-  - Monero's privacy features make it useful for legal transactions requiring confidentiality.
-  - Monero can be mined on CPUs, making it more accessible than GPU-only coins.
-  - Monero's view key allows optional, selective transparency of transaction details.
   - Monero research is ongoing to improve scalability while maintaining privacy.
+  - This generation can take 5 minutes on the 8GB GPU moneroworld.com has. If you want this to go faster, switch providers or donate to moneroworld.com for GPU upgrade!
+  - Monerosim was 100% vibe coded. No longer do we need to memorize syntax. DEATH TO SYNTAX!
+  - Circa March 2026, the backend for the moneroworld server is qwen3:8b-16k with a 16k context.

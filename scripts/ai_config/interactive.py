@@ -661,6 +661,7 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
     result = [None]
     error = [None]
     fact_index = [0]
+    fact_shown_at = [0.0]  # When the current fact started displaying
     start_time = time.time()
     stop_animation = threading.Event()
 
@@ -673,13 +674,14 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
             stop_animation.set()
 
     def animate():
-        elapsed = 0
         while not stop_animation.is_set():
             elapsed = time.time() - start_time
-            _, fact_index[0] = show_waiting_indicator(elapsed, fact_index[0])
+            fact_index[0], fact_shown_at[0] = show_waiting_indicator(
+                elapsed, fact_index[0], fact_shown_at[0]
+            )
             time.sleep(0.2)  # Update spinner every 200ms
         # Clear the line
-        sys.stdout.write('\r' + ' ' * 120 + '\r')
+        sys.stdout.write('\r' + ' ' * 200 + '\r')
         sys.stdout.flush()
 
     # Start chat in background thread
@@ -695,37 +697,45 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
     return result[0]
 
 
-def show_waiting_indicator(elapsed_time: float, fact_index: int) -> tuple[float, int]:
+def show_waiting_indicator(elapsed_time: float, fact_index: int, fact_shown_at: float) -> tuple[int, float]:
     """
     Show a rotating Monero fact with spinner while waiting.
 
     Args:
         elapsed_time: Time elapsed since operation started
         fact_index: Current fact index
+        fact_shown_at: When the current fact started displaying
 
     Returns:
-        Updated elapsed_time and fact_index
+        Updated fact_index and fact_shown_at
     """
-    c = Colors
     spinner = "◐◓◑◒"
     spinner_char = spinner[int(elapsed_time * 2) % len(spinner)]
 
-    # Calculate display time per fact based on word count
-    fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
-    word_count = len(fact.split())
-    # ~3 seconds per 10 words, minimum 8 seconds
+    current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
+
+    # Calculate display time based on word count: ~3 seconds per 10 words, minimum 8 seconds
+    word_count = len(current_fact.split())
     display_time = max(8, (word_count / 10) * 3)
 
-    # Only display fact every display_time seconds
-    if int(elapsed_time) % int(display_time) == 0 and int(elapsed_time) > 0:
+    # Advance to next fact when display time has elapsed
+    if elapsed_time - fact_shown_at >= display_time:
         fact_index += 1
+        fact_shown_at = elapsed_time
+        current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
 
-    current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
     elapsed_str = f"{int(elapsed_time)}s"
+    line = f"\r{spinner_char} {current_fact} ({elapsed_str})"
+    # Pad with spaces to clear any leftover characters from longer previous facts
+    try:
+        terminal_width = os.get_terminal_size().columns
+    except (OSError, ValueError):
+        terminal_width = 120
+    line = line[:terminal_width]  # Don't exceed terminal width
+    padding = max(0, terminal_width - len(line))
+    print(f"{line}{' ' * padding}", end="", flush=True)
 
-    print(f"\r{spinner_char} {current_fact[:70]} ({elapsed_str})", end="", flush=True)
-
-    return elapsed_time, fact_index
+    return fact_index, fact_shown_at
 
 
 def check_llm_config():
@@ -734,27 +744,27 @@ def check_llm_config():
 
     config_path = Path.home() / '.monerosim' / 'ai_config.yaml'
 
-    # Check environment variables first
-    api_key = os.environ.get('OPENAI_API_KEY')
-    base_url = os.environ.get('OPENAI_BASE_URL')
+    # Load config file if it exists
+    file_config = {}
+    if config_path.exists():
+        try:
+            import yaml
+            with open(config_path) as f:
+                file_config = yaml.safe_load(f) or {}
+        except Exception:
+            pass
+
+    # Resolve each field: env vars > config file
+    api_key = os.environ.get('OPENAI_API_KEY') or file_config.get('api_key')
+    base_url = os.environ.get('OPENAI_BASE_URL') or file_config.get('base_url')
+    model = os.environ.get('AI_CONFIG_MODEL') or file_config.get('model')
 
     if api_key and base_url:
         return {
             'api_key': api_key,
             'base_url': base_url,
-            'model': os.environ.get('AI_CONFIG_MODEL', 'qwen2.5:7b')
+            'model': model or 'qwen3:8b-16k'
         }
-
-    # Check config file
-    if config_path.exists():
-        try:
-            import yaml
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-                if config and config.get('api_key') and config.get('base_url'):
-                    return config
-        except Exception:
-            pass
 
     # Prompt for configuration
     print(f"{c.YELLOW}LLM configuration not found.{c.RESET}")
@@ -778,19 +788,19 @@ def check_llm_config():
         '1': {
             'base_url': 'http://test.moneroworld.com:49767/v1',
             'api_key': 'x',
-            'model': 'qwen3:8b-8k',
+            'model': 'qwen3:8b-16k',
             'name': 'MoneroWorld'
         },
         '2': {
             'base_url': 'http://localhost:8080/v1',
             'api_key': 'x',
-            'model': 'qwen2.5:7b',
+            'model': 'qwen3:8b-16k',
             'name': 'llama.cpp'
         },
         '3': {
             'base_url': 'http://localhost:11434/v1',
             'api_key': 'x',
-            'model': 'qwen2.5:7b',
+            'model': 'qwen3:8b-16k',
             'name': 'Ollama'
         },
         '4': {
@@ -836,7 +846,7 @@ def check_llm_config():
         if not api_key:
             return None
 
-        model = get_user_input("Model name", "qwen3:8b")
+        model = get_user_input("Model name", "qwen3:8b-16k")
 
     config = {
         'api_key': api_key,

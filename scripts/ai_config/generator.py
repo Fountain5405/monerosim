@@ -265,7 +265,8 @@ class LLMProvider:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": 8192,
-            "num_ctx": 8192,  # Ollama: ensure context window fits the system prompt
+            "num_ctx": 16384,  # Ollama: context window size (match model's capacity)
+            "keep_alive": "30m",  # Ollama: keep model loaded between requests
         }).encode()
 
         req = urllib.request.Request(
@@ -278,7 +279,7 @@ class LLMProvider:
             }
         )
 
-        with urllib.request.urlopen(req, timeout=600) as resp:
+        with urllib.request.urlopen(req, timeout=1200) as resp:
             result = json.loads(resp.read().decode())
             return LLMResponse(
                 content=result["choices"][0]["message"]["content"],

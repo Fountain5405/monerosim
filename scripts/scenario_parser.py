@@ -743,7 +743,24 @@ if __name__ == "__main__":
     with open(args.output, 'w') as f:
         yaml.dump(plain_config, f, default_flow_style=False, sort_keys=False)
 
+    # Read actual values from the generated config (not auto-calc timing)
+    bootstrap_end_val = config['general'].get('bootstrap_end_time', '')
+    if isinstance(bootstrap_end_val, str) and any(bootstrap_end_val.endswith(u) for u in ['s', 'm', 'h']):
+        bootstrap_end_s = parse_duration(bootstrap_end_val)
+    else:
+        bootstrap_end_s = scenario.timing['bootstrap_end_s']
+
+    activity_start_times = []
+    for agent_config in config['agents'].values():
+        ast = agent_config.get('activity_start_time')
+        if ast is not None:
+            if isinstance(ast, str) and any(ast.endswith(u) for u in ['s', 'm', 'h']):
+                activity_start_times.append(parse_duration(ast))
+            elif isinstance(ast, (int, float)):
+                activity_start_times.append(int(ast))
+    activity_start_s = min(activity_start_times) if activity_start_times else scenario.timing['activity_start_s']
+
     print(f"Expanded {args.input} -> {args.output}")
     print(f"  Agents: {len(config['agents'])}")
-    print(f"  Bootstrap ends: {format_time(scenario.timing['bootstrap_end_s'])}")
-    print(f"  Activity starts: {format_time(scenario.timing['activity_start_s'])}")
+    print(f"  Bootstrap ends: {format_time(bootstrap_end_s)}")
+    print(f"  Activity starts: {format_time(activity_start_s)}")

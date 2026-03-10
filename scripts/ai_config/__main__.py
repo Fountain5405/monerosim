@@ -133,36 +133,30 @@ def get_llm_config(args):
     """Get LLM configuration from args, env vars, or config file."""
     # Priority: CLI args > env vars > config file
 
-    # Check CLI args and env vars first
-    api_key = os.environ.get('OPENAI_API_KEY')
-    base_url = args.base_url or os.environ.get('OPENAI_BASE_URL')
-    model = args.model or os.environ.get('AI_CONFIG_MODEL')
+    from pathlib import Path
+    config_path = Path.home() / '.monerosim' / 'ai_config.yaml'
+
+    # Load config file if it exists
+    file_config = {}
+    if config_path.exists():
+        try:
+            import yaml
+            with open(config_path) as f:
+                file_config = yaml.safe_load(f) or {}
+        except Exception:
+            pass
+
+    # Resolve each field: CLI args > env vars > config file
+    api_key = os.environ.get('OPENAI_API_KEY') or file_config.get('api_key')
+    base_url = args.base_url or os.environ.get('OPENAI_BASE_URL') or file_config.get('base_url')
+    model = args.model or os.environ.get('AI_CONFIG_MODEL') or file_config.get('model')
 
     if api_key and base_url:
         return {
             'api_key': api_key,
             'base_url': base_url,
-            'model': model or 'qwen3:8b'
+            'model': model or 'qwen3:8b-16k'
         }
-
-    # Try config file
-    from pathlib import Path
-    config_path = Path.home() / '.monerosim' / 'ai_config.yaml'
-
-    if config_path.exists():
-        try:
-            import yaml
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-                if config:
-                    # CLI args override config file
-                    return {
-                        'api_key': config.get('api_key', ''),
-                        'base_url': args.base_url or config.get('base_url', ''),
-                        'model': args.model or config.get('model', 'qwen3:8b')
-                    }
-        except Exception:
-            pass
 
     return None
 
