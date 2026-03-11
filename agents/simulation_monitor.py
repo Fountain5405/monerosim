@@ -139,6 +139,29 @@ class SimulationMonitorAgent(BaseAgent):
 
         self.logger.info("Simulation Monitor Agent setup complete")
 
+    def _find_shadow_data_hosts(self) -> Optional[Path]:
+        """Find the shadow.data/hosts directory.
+
+        Searches the output directory for the hosts directory that Shadow
+        creates during simulation.
+
+        Returns:
+            Path to hosts directory, or None if not found.
+        """
+        if not self.output_dir:
+            return None
+
+        hosts_dir = self.output_dir / "shadow.data" / "hosts"
+        if hosts_dir.is_dir():
+            return hosts_dir
+
+        # Also check parent in case output_dir is shadow.data itself
+        hosts_dir = self.output_dir / "hosts"
+        if hosts_dir.is_dir():
+            return hosts_dir
+
+        return None
+
     def _relocate_status_file_to_shadow_data(self):
         """Move status file to shadow.data directory if found."""
         hosts_dir = self._find_shadow_data_hosts()
