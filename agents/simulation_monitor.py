@@ -142,23 +142,28 @@ class SimulationMonitorAgent(BaseAgent):
     def _find_shadow_data_hosts(self) -> Optional[Path]:
         """Find the shadow.data/hosts directory.
 
-        Searches the output directory for the hosts directory that Shadow
-        creates during simulation.
+        Shadow creates shadow.data/ in its working directory (the project
+        root), not inside the output directory. Check both locations.
 
         Returns:
             Path to hosts directory, or None if not found.
         """
-        if not self.output_dir:
-            return None
+        # Shadow creates shadow.data in its cwd (project root)
+        candidates = [
+            Path("shadow.data") / "hosts",           # Relative to cwd (where Shadow runs)
+            Path.cwd() / "shadow.data" / "hosts",    # Absolute cwd
+        ]
 
-        hosts_dir = self.output_dir / "shadow.data" / "hosts"
-        if hosts_dir.is_dir():
-            return hosts_dir
+        if self.output_dir:
+            candidates += [
+                self.output_dir / "shadow.data" / "hosts",
+                self.output_dir / "hosts",
+                self.output_dir.parent / "shadow.data" / "hosts",
+            ]
 
-        # Also check parent in case output_dir is shadow.data itself
-        hosts_dir = self.output_dir / "hosts"
-        if hosts_dir.is_dir():
-            return hosts_dir
+        for hosts_dir in candidates:
+            if hosts_dir.is_dir():
+                return hosts_dir
 
         return None
 
