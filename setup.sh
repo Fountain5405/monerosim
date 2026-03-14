@@ -97,10 +97,6 @@ echo "     - Create virtual environment"
 echo "     - Install Python dependencies"
 echo "     - Verify agent imports"
 echo ""
-echo "  4. ${BLUE}Configure your shell${NC}"
-echo "     - Add ~/.monerosim/bin to PATH"
-echo "     - Update ~/.bashrc (or ~/.zshrc)"
-echo "     - ${YELLOW}You'll need to restart your shell after setup${NC}"
 echo ""
 echo "Total installation size: ~30-50 GB"
 echo "Estimated time: 30-60 minutes depending on system"
@@ -278,7 +274,7 @@ if [[ -f ~/.cargo/env ]]; then
     source ~/.cargo/env
 fi
 
-# Add ~/.monerosim/bin to PATH
+# Add ~/.monerosim/bin to PATH for this setup session only
 export PATH="$MONEROSIM_BIN:$PATH"
 
 # Step 2: Install Python dependencies
@@ -469,7 +465,7 @@ elif command -v shadow &> /dev/null; then
     print_status ""
     print_status "Choose an option:"
     echo "  y/Y - Install shadowformonero to $MONEROSIM_BIN (recommended)"
-    echo "  n/N - Skip (you'll need to ensure shadow is in PATH)"
+    echo "  n/N - Skip (you'll need shadow installed at ~/.monerosim/bin/shadow)"
     echo ""
     read -p "Install shadowformonero? (Y/n): " -n 1 -r
     echo ""
@@ -480,7 +476,7 @@ elif command -v shadow &> /dev/null; then
         install_shadowformonero
     else
         print_warning "Skipping Shadow installation"
-        print_warning "Make sure 'shadow' is in your PATH when running simulations"
+        print_warning "Make sure shadow is installed at ~/.monerosim/bin/shadow"
     fi
 else
     print_status "Shadow not found - installing shadowformonero..."
@@ -496,7 +492,7 @@ elif command -v shadow &> /dev/null; then
     print_success "Shadow available in PATH: $(which shadow)"
 else
     print_error "Shadow not found"
-    print_error "Please install shadowformonero manually or check your PATH"
+    print_error "Please install shadowformonero manually to ~/.monerosim/bin/"
     exit 1
 fi
 
@@ -751,36 +747,8 @@ else
     print_warning "monero-wallet-rpc installation may have issues"
 fi
 
-# Step 8: Setup PATH in shell configuration
-print_header "Step 8: Configuring PATH"
-
-# Add to .bashrc if not already present
-BASHRC_LINE='export PATH="$HOME/.monerosim/bin:$PATH"'
-if ! grep -q '.monerosim/bin' ~/.bashrc 2>/dev/null; then
-    print_status "Adding $MONEROSIM_BIN to PATH in ~/.bashrc..."
-    echo "" >> ~/.bashrc
-    echo "# MoneroSim binaries" >> ~/.bashrc
-    echo "$BASHRC_LINE" >> ~/.bashrc
-    print_success "PATH updated in ~/.bashrc"
-else
-    print_success "PATH already configured in ~/.bashrc"
-fi
-
-# Also add to .zshrc if it exists
-if [[ -f ~/.zshrc ]]; then
-    if ! grep -q '.monerosim/bin' ~/.zshrc 2>/dev/null; then
-        print_status "Adding $MONEROSIM_BIN to PATH in ~/.zshrc..."
-        echo "" >> ~/.zshrc
-        echo "# MoneroSim binaries" >> ~/.zshrc
-        echo "$BASHRC_LINE" >> ~/.zshrc
-        print_success "PATH updated in ~/.zshrc"
-    else
-        print_success "PATH already configured in ~/.zshrc"
-    fi
-fi
-
-# Step 9: Generate Shadow configuration
-print_header "Step 9: Generating Shadow Configuration"
+# Step 8: Generate Shadow configuration
+print_header "Step 8: Generating Shadow Configuration"
 
 print_status "Generating Shadow configuration from test_configs/20260112_config.yaml..."
 
@@ -802,8 +770,8 @@ else
     exit 1
 fi
 
-# Step 10: Optional Test Simulation
-print_header "Step 10: Optional Test Simulation"
+# Step 9: Optional Test Simulation
+print_header "Step 9: Optional Test Simulation"
 
 print_status "Setup is complete! You can now run a test simulation to verify everything works."
 print_warning "The test simulation (test_configs/20260112_config.yaml) runs for approximately 8 hours"
@@ -875,16 +843,14 @@ fi
 print_header "Setup Complete!"
 print_success "MoneroSim is now ready to use!"
 echo ""
-print_warning "IMPORTANT: Restart your shell or run 'source ~/.bashrc' to update PATH"
-echo ""
 print_status "Verify installation:"
-echo "  shadow --version                       # shadowformonero version"
-echo "  monerod --version                      # Monero daemon version"
+echo "  ~/.monerosim/bin/shadow --version      # shadowformonero version"
+echo "  ~/.monerosim/bin/monerod --version     # Monero daemon version"
 echo "  ./target/release/monerosim --help      # monerosim CLI usage"
 echo ""
 print_status "Run your first simulation:"
-echo "  ./run_sim.sh                           # Quick test (2.5h sim, ~5 min wall clock)"
-echo "  ./run_sim.sh test_configs/20260112_config.yaml  # Full test (8h sim)"
+echo "  ./run_sim.sh --config test_configs/ultra_minimal_test.yaml  # Quick test (~5 min)"
+echo "  ./run_sim.sh --config test_configs/20260112_config.yaml     # Full test (8h sim)"
 echo ""
 print_status "Monitor a running simulation:"
 echo "  tail shadow.log                        # Shadow progress"
