@@ -8,6 +8,15 @@
 - 30 GB free disk space (for building Shadow and Monero from source)
 - Python 3.10+
 
+## Important
+
+Monerosim deletes `~/.shared-ringdb/` on every simulation run to prevent stale ring database errors between runs. If you run a Monero node or wallet on this account, your ring database will be deleted. **We recommend installing monerosim on a dedicated user account.**
+
+```bash
+sudo adduser monerosim
+sudo su - monerosim
+```
+
 ## Installation
 
 ```bash
@@ -28,18 +37,11 @@ The setup script will:
 - Install all binaries to `~/.monerosim/bin/`
 - Generate a test Shadow configuration
 
-After setup completes:
-
-```bash
-# IMPORTANT: Restart your shell to pick up PATH changes
-source ~/.bashrc    # or: source ~/.zshrc
-```
-
 ## Verify Installation
 
 ```bash
-shadow --version                       # Should print Shadow version
-monerod --version                      # Should print Monero version
+~/.monerosim/bin/shadow --version      # Should print Shadow version
+~/.monerosim/bin/monerod --version     # Should print Monero version
 ./target/release/monerosim --help      # Should print monerosim usage
 
 # Test Python agents load correctly
@@ -56,14 +58,14 @@ The quickest way to verify everything works end-to-end:
 ```bash
 # Run the ultra-minimal test (2 miners, 1 user, 2.5h simulated time)
 # This takes ~5 minutes of wall clock time
-./run_sim.sh
+./run_sim.sh --config test_configs/ultra_minimal_test.yaml
 ```
 
 For a larger simulation with more agents:
 
 ```bash
 # 30 agents, 8h simulated time (~30-60 min wall clock)
-./run_sim.sh test_configs/20260112_config.yaml
+./run_sim.sh --config test_configs/20260112_config.yaml
 ```
 
 Or run the steps manually:

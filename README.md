@@ -2,6 +2,8 @@
 
 A tool for running Monero cryptocurrency network simulations inside the [Shadow](https://shadow.github.io/) network simulator. Monerosim generates Shadow configuration files from a concise YAML description of your desired network, then Shadow executes the simulation using real Monero binaries in a virtual network.
 
+> **We recommend installing monerosim on a dedicated Linux user account** (e.g., `sudo adduser monerosim`). Monerosim deletes `~/.shared-ringdb/` on every simulation run to prevent stale ring database errors. If you run a Monero node or wallet on the same account, your ring database will be deleted.
+
 ## How It Works
 
 Monerosim simulations proceed in two stages:
@@ -23,31 +25,30 @@ Monerosim simulations proceed in two stages:
 
 ## Quick Start
 
+**Important:** Monerosim deletes `~/.shared-ringdb/` on every simulation run to prevent stale ring database errors. If you run a Monero node or wallet on this account, use a dedicated user instead (e.g., `sudo adduser monerosim`).
+
 ```bash
 # 1. Clone and set up (builds everything: ~30-60 minutes)
 git clone https://github.com/Fountain5405/monerosim.git
 cd monerosim
 ./setup.sh
 
-# 2. Restart your shell (required for PATH changes)
-source ~/.bashrc
+# 2. Verify installation
+~/.monerosim/bin/shadow --version      # shadowformonero version
+~/.monerosim/bin/monerod --version     # Monero daemon version
+./target/release/monerosim --help      # monerosim CLI usage
 
-# 3. Verify installation
-shadow --version           # Should print Shadow version
-monerod --version          # Should print Monero version
-./target/release/monerosim --help  # Should print usage
+# 3. Run a test simulation (~5 min wall clock)
+./run_sim.sh --config test_configs/ultra_minimal_test.yaml
 
-# 4. Run the quick test simulation (2.5h simulated, ~5 min wall clock)
-./run_sim.sh
-
-# 5. Monitor progress
-tail shadow.log
+# 4. Monitor progress
+tail -f /tmp/monerosim_shared/monerosim_monitor.log
 ```
 
-For a longer simulation with more agents, pass a config file:
+For a longer simulation with more agents:
 
 ```bash
-./run_sim.sh test_configs/20260112_config.yaml
+./run_sim.sh --config test_configs/20260112_config.yaml
 ```
 
 ## Configuration
@@ -226,13 +227,14 @@ The setup script handles everything. On a fresh Ubuntu system:
 sudo apt-get update
 sudo apt-get install git build-essential cmake libglib2.0-dev libclang-dev clang
 
+# Recommended: use a dedicated user account
+sudo adduser monerosim
+sudo su - monerosim
+
 # Clone and run setup (builds shadowformonero and Monero from source)
 git clone https://github.com/Fountain5405/monerosim.git
 cd monerosim
 ./setup.sh
-
-# IMPORTANT: Restart your shell or source your profile
-source ~/.bashrc
 ```
 
 Setup installs all binaries to `~/.monerosim/bin/`:
@@ -244,11 +246,9 @@ It also builds monerosim itself (`cargo build --release`), creates a Python virt
 
 ### Verify Installation
 
-After setup completes and you've restarted your shell:
-
 ```bash
-shadow --version                       # shadowformonero version
-monerod --version                      # Monero daemon version
+~/.monerosim/bin/shadow --version      # shadowformonero version
+~/.monerosim/bin/monerod --version     # Monero daemon version
 ./target/release/monerosim --help      # monerosim CLI usage
 source venv/bin/activate && python -c "import agents; print('Python agents OK')"
 ```

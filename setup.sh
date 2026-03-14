@@ -104,11 +104,19 @@ echo ""
 echo "${YELLOW}Tip: Consider running this in a screen or tmux session${NC}"
 echo "     (${YELLOW}screen${NC} or ${YELLOW}tmux${NC}) to prevent terminal buffer issues during long builds"
 echo ""
+echo "${RED}${BOLD}WARNING:${NC} Monerosim deletes ${BOLD}~/.shared-ringdb/${NC} on every simulation run."
+echo "This is required to prevent stale ring database errors between runs (wallet-rpc"
+echo "instances share this directory, and stale entries cause ring size mismatches)."
+echo ""
+echo "If you run a Monero node or wallet on this user account, this will delete your"
+echo "ring database. ${BOLD}We recommend installing monerosim on a dedicated user account.${NC}"
+echo ""
 
 # Ask for confirmation
-read -p "Do you want to proceed with the setup? (yes/no): " -r CONFIRM
+read -p "Do you understand and want to proceed? (yes/no): " -r CONFIRM
 if [[ ! "$CONFIRM" =~ ^[Yy][Ee][Ss]$ ]]; then
     print_status "Setup cancelled."
+    echo "Tip: Create a dedicated user for monerosim with: sudo adduser monerosim"
     exit 0
 fi
 echo ""
