@@ -8,6 +8,8 @@
 - 30 GB free disk space (for building Shadow and Monero from source)
 - Python 3.10+
 
+> **Tip:** We recommend using a dedicated Linux user account for monerosim (e.g., `sudo adduser monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
+
 ## Installation
 
 ```bash

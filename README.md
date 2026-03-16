@@ -2,6 +2,8 @@
 
 A tool for running Monero cryptocurrency network simulations inside the [Shadow](https://shadow.github.io/) network simulator. Monerosim generates Shadow configuration files from a concise YAML description of your desired network, then Shadow executes the simulation using real Monero binaries in a virtual network.
 
+> **Tip:** We recommend running monerosim on a dedicated Linux user account (e.g., `sudo adduser monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
+
 ## How It Works
 
 Monerosim simulations proceed in two stages:
@@ -222,6 +224,10 @@ The setup script handles everything. On a fresh Ubuntu system:
 # Install minimal prerequisites
 sudo apt-get update
 sudo apt-get install git build-essential cmake libglib2.0-dev libclang-dev clang
+
+# Optional: use a dedicated user account (recommended)
+sudo adduser monerosim
+sudo su - monerosim
 
 # Clone and run setup (builds shadowformonero and Monero from source)
 git clone https://github.com/Fountain5405/monerosim.git
