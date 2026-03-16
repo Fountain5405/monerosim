@@ -8,15 +8,6 @@
 - 30 GB free disk space (for building Shadow and Monero from source)
 - Python 3.10+
 
-## Important
-
-Monerosim deletes `~/.shared-ringdb/` on every simulation run to prevent stale ring database errors between runs. If you run a Monero node or wallet on this account, your ring database will be deleted. **We recommend installing monerosim on a dedicated user account.**
-
-```bash
-sudo adduser monerosim
-sudo su - monerosim
-```
-
 ## Installation
 
 ```bash
@@ -159,7 +150,7 @@ Check analysis output in `analysis_output/` and processed logs in `shadow.data/h
 
 ## Troubleshooting
 
-**"shadow: command not found"**: Restart your shell or run `source ~/.bashrc`. Verify with `which shadow` (should show `~/.monerosim/bin/shadow`).
+**"shadow: command not found"**: Use the full path `~/.monerosim/bin/shadow` or add `~/.monerosim/bin` to your PATH manually.
 
 **"Permission denied"**: Make sure you can run `sudo` commands. setup.sh needs sudo to install system packages.
 

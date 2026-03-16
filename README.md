@@ -2,8 +2,6 @@
 
 A tool for running Monero cryptocurrency network simulations inside the [Shadow](https://shadow.github.io/) network simulator. Monerosim generates Shadow configuration files from a concise YAML description of your desired network, then Shadow executes the simulation using real Monero binaries in a virtual network.
 
-> **We recommend installing monerosim on a dedicated Linux user account** (e.g., `sudo adduser monerosim`). Monerosim deletes `~/.shared-ringdb/` on every simulation run to prevent stale ring database errors. If you run a Monero node or wallet on the same account, your ring database will be deleted.
-
 ## How It Works
 
 Monerosim simulations proceed in two stages:
@@ -24,8 +22,6 @@ Monerosim simulations proceed in two stages:
 **Stage 2** - shadowformonero runs the simulation. Each agent gets its own monerod daemon, wallet-rpc, and Python script running on a virtual host. Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to `/tmp/monero-*/bitmonero.log` (daemon logs), `shadow.data/` (agent stdout), and `/tmp/monerosim_shared/` (shared state).
 
 ## Quick Start
-
-**Important:** Monerosim deletes `~/.shared-ringdb/` on every simulation run to prevent stale ring database errors. If you run a Monero node or wallet on this account, use a dedicated user instead (e.g., `sudo adduser monerosim`).
 
 ```bash
 # 1. Clone and set up (builds everything: ~30-60 minutes)
@@ -226,10 +222,6 @@ The setup script handles everything. On a fresh Ubuntu system:
 # Install minimal prerequisites
 sudo apt-get update
 sudo apt-get install git build-essential cmake libglib2.0-dev libclang-dev clang
-
-# Recommended: use a dedicated user account
-sudo adduser monerosim
-sudo su - monerosim
 
 # Clone and run setup (builds shadowformonero and Monero from source)
 git clone https://github.com/Fountain5405/monerosim.git
