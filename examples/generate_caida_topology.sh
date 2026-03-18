@@ -4,6 +4,13 @@
 
 set -e
 
+# Activate the virtual environment if not already active
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "$PROJECT_ROOT/venv/bin/activate" ]]; then
+    source "$PROJECT_ROOT/venv/bin/activate"
+fi
+
 CAIDA_FILE="gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt"
 
 echo "Monerosim CAIDA Topology Generation Examples"
@@ -29,7 +36,7 @@ generate_topology() {
     echo "  ${output} \\"
     echo "  --max_nodes ${nodes}"
 
-    python gml_processing/create_caida_connected_with_loops.py \
+    python3 gml_processing/create_caida_connected_with_loops.py \
         "$CAIDA_FILE" \
         ${output} \
         --max_nodes ${nodes}

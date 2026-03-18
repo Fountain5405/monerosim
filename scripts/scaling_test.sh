@@ -107,6 +107,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+# Activate the virtual environment if not already active
+if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "venv/bin/activate" ]]; then
+    source venv/bin/activate
+fi
+
 # Check prerequisites
 check_prerequisites() {
     echo "Checking prerequisites..."

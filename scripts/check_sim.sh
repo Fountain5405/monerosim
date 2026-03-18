@@ -13,6 +13,13 @@
 
 set -uo pipefail
 
+# Activate the virtual environment if not already active
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "$PROJECT_ROOT/venv/bin/activate" ]]; then
+    source "$PROJECT_ROOT/venv/bin/activate"
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'

@@ -10,7 +10,7 @@
 cd "$(dirname "$0")"
 
 # Activate the virtual environment if not already active
-if [[ -z "$VIRTUAL_ENV" ]] && [[ -f "venv/bin/activate" ]]; then
+if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "venv/bin/activate" ]]; then
     source venv/bin/activate
 fi
 

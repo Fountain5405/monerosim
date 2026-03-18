@@ -34,6 +34,11 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Activate the virtual environment if not already active
+if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "venv/bin/activate" ]]; then
+    source venv/bin/activate
+fi
+
 # ============================================================
 # CLI Parsing
 # ============================================================
