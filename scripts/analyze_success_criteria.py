@@ -286,6 +286,10 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
         node_data[host_name] = events
 
     # Get wall clock time
+    # Derive shadow.data dir: log_path is either /tmp or shadow.data/hosts/
+    shadow_data_dir = Path('shadow.data')
+    if log_path.name == 'hosts' and log_path.parent.name == 'shadow.data':
+        shadow_data_dir = log_path.parent
     wall_clock = get_wall_clock_time(shadow_data_dir)
 
     # Verify success criteria
