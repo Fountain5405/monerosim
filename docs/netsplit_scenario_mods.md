@@ -449,7 +449,7 @@ Use Monero's `set_bans` RPC to simulate partitions.
 
 ## References
 
-- Shadow source: `/home/lever65/monerosim_scale/shadowformonero/`
+- Shadow source: `sibling_repos/shadowformonero/`
 - Key file: `src/main/core/worker.rs` (packet delivery at line 356)
 - Bootstrap time example: `src/main/core/worker.rs:330`
 - RoutingInfo: `src/main/network/graph/mod.rs:434`

@@ -27,13 +27,13 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Store script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="$(dirname "$SCRIPT_DIR")"
+DEPS_DIR="$SCRIPT_DIR/sibling_repos"
 
 # Repository locations and their expected branches
 declare -A REPOS
 REPOS["monerosim"]="$SCRIPT_DIR:main"
-REPOS["monero"]="$PARENT_DIR/monero:master"
-REPOS["shadowformonero"]="$PARENT_DIR/shadowformonero:main"
+REPOS["monero"]="$DEPS_DIR/monero:master"
+REPOS["shadowformonero"]="$DEPS_DIR/shadowformonero:main"
 
 # Installation directory
 MONEROSIM_HOME="$HOME/.monerosim"
@@ -80,7 +80,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --all        Update all repositories"
             echo "  $0 --all --rebuild   Update all and rebuild binaries"
             echo ""
-            echo "Sister repositories (expected in parent directory):"
+            echo "Dependency repositories (in sibling_repos/):"
             echo "  monero            - Official Monero (branch: master)"
             echo "  shadowformonero   - Shadow simulator (branch: main)"
             exit 0
@@ -205,7 +205,7 @@ rebuild_monero() {
 
 # Function to rebuild shadowformonero
 rebuild_shadow() {
-    local shadow_dir="$PARENT_DIR/shadowformonero"
+    local shadow_dir="$DEPS_DIR/shadowformonero"
 
     if [[ ! -d "$shadow_dir" ]]; then
         print_warning "shadowformonero directory not found - skipping rebuild"
@@ -266,8 +266,8 @@ if [[ "$REBUILD" == "true" ]]; then
     fi
 
     if [[ "$MONERO_UPDATED" == "true" ]] || [[ "$UPDATE_MONERO" == "true" ]]; then
-        if [[ -d "$PARENT_DIR/monero" ]]; then
-            rebuild_monero "$PARENT_DIR/monero" "monero"
+        if [[ -d "$DEPS_DIR/monero" ]]; then
+            rebuild_monero "$DEPS_DIR/monero" "monero"
         fi
     fi
 elif [[ "$MONEROSIM_UPDATED" == "true" ]] || [[ "$SHADOW_UPDATED" == "true" ]] || [[ "$MONERO_UPDATED" == "true" ]]; then

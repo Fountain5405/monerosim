@@ -419,8 +419,10 @@ fi
 # Helper function to install shadowformonero
 install_shadowformonero() {
     # Setup directory for shadowformonero
-    SHADOWFORMONERO_DIR="../shadowformonero"
+    SHADOWFORMONERO_DIR="$SCRIPT_DIR/sibling_repos/shadowformonero"
     SHADOWFORMONERO_REPO="https://github.com/Fountain5405/shadowformonero.git"
+
+    mkdir -p "$SCRIPT_DIR/sibling_repos"
 
     # Clone shadowformonero if not present
     if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
@@ -540,8 +542,10 @@ fi
 print_header "Step 5: Setting Up Monero Source Code"
 
 # Setup directory for Monero
-MONERO_DIR="../monero"
+MONERO_DIR="$SCRIPT_DIR/sibling_repos/monero"
 MONERO_REPO="https://github.com/monero-project/monero.git"
+
+mkdir -p "$SCRIPT_DIR/sibling_repos"
 
 print_status "Setting up official Monero source..."
 

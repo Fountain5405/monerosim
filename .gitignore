@@ -104,3 +104,6 @@ htmlcov/
 # Demonstration and debug files
 demonstration_data/
 docs/refactoring/determinism_fingerprint_*.json
+
+# Dependency repos cloned by setup.sh
+sibling_repos/
