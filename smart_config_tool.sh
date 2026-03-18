@@ -8,4 +8,10 @@
 #   ./smart_config_tool.sh --model llama-3.3-70b-versatile "your prompt"
 
 cd "$(dirname "$0")"
+
+# Activate the virtual environment if not already active
+if [[ -z "$VIRTUAL_ENV" ]] && [[ -f "venv/bin/activate" ]]; then
+    source venv/bin/activate
+fi
+
 python3 -m scripts.ai_config "$@"
