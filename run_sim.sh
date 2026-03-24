@@ -7,7 +7,7 @@
 # Options:
 #   --config <path>        Monerosim config file (required)
 #   --name <name>          Run name (default: derived from config filename)
-#   --archive-dir <dir>    Archive location (default: ../archived_monerosims)
+#   --archive-dir <dir>    Archive location (default: archived_runs)
 #   --no-monitor           Skip live progress display
 #   --analyze              Run post-simulation analysis (off by default)
 #   --no-build             Skip cargo build (use existing binary)
@@ -58,7 +58,7 @@ Run a MoneroSim simulation end-to-end and archive all results.
 Options:
   --config <path>        Monerosim config file (required)
   --name <name>          Run name (default: derived from config filename)
-  --archive-dir <dir>    Archive location (default: ../archived_monerosims)
+  --archive-dir <dir>    Archive location (default: archived_runs)
   --no-monitor           Skip live progress display
   --analyze              Run post-simulation analysis (off by default)
   --no-build             Skip cargo build (use existing binary)
@@ -116,7 +116,7 @@ if [[ -z "$CONFIG" ]]; then
 fi
 
 # Defaults
-[[ -z "$ARCHIVE_BASE" ]] && ARCHIVE_BASE="$SCRIPT_DIR/../archived_monerosims"
+[[ -z "$ARCHIVE_BASE" ]] && ARCHIVE_BASE="$SCRIPT_DIR/archived_runs"
 if [[ -z "$RUN_NAME" ]]; then
     # Derive from config filename: test_configs/20260305.yaml -> 20260305
     RUN_NAME=$(basename "$CONFIG" .yaml)

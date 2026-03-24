@@ -107,3 +107,6 @@ docs/refactoring/determinism_fingerprint_*.json
 
 # Dependency repos cloned by setup.sh
 sibling_repos/
+
+# Simulation run archives
+archived_runs/

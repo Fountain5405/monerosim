@@ -4,6 +4,34 @@ use std::sync::LazyLock;
 use regex::Regex;
 use crate::utils::duration::parse_duration_to_seconds;
 
+/// Deserialize an optional duration field that accepts either a u32 (seconds)
+/// or a duration string like "4h", "30m", "120s".
+fn deserialize_duration_option<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de;
+
+    let value: Option<serde_yaml::Value> = Option::deserialize(deserializer)?;
+    match value {
+        None => Ok(None),
+        Some(serde_yaml::Value::Number(n)) => {
+            n.as_u64()
+                .and_then(|v| u32::try_from(v).ok())
+                .map(Some)
+                .ok_or_else(|| de::Error::custom(format!("invalid u32 value: {n}")))
+        }
+        Some(serde_yaml::Value::String(s)) => {
+            parse_duration_to_seconds(&s)
+                .map(|v| Some(v as u32))
+                .map_err(|e| de::Error::custom(e))
+        }
+        Some(other) => Err(de::Error::custom(format!(
+            "expected number or duration string, got: {other:?}"
+        ))),
+    }
+}
+
 // Static regex patterns for parsing phase fields (compiled once)
 static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)$").unwrap());
 static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_args$").unwrap());
@@ -344,13 +372,13 @@ struct AgentConfigRaw {
     pub start_time: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hashrate: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub transaction_interval: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub activity_start_time: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub can_receive_distributions: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub wait_time: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_fund_amount: Option<String>,
@@ -358,9 +386,9 @@ struct AgentConfigRaw {
     pub max_transaction_amount: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_transaction_amount: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub transaction_frequency: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub initial_wait_time: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub md_n_recipients: Option<u32>,
@@ -368,7 +396,7 @@ struct AgentConfigRaw {
     pub md_out_per_tx: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub md_output_amount: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub poll_interval: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_file: Option<String>,

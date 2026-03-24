@@ -590,9 +590,15 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                 if is_bootstrap_participant:
                     bootstrap_participant_start_times.append(start_time_s)
 
-    # Add singleton agents
+    # Add singleton agents (with u32 duration conversion)
+    u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
+                       'transaction_frequency', 'poll_interval'}
     for agent_id, props in scenario.singleton_agents.items():
-        agents[agent_id] = props.copy()
+        agent_config = props.copy()
+        for key, val in agent_config.items():
+            if key in u32_time_fields and isinstance(val, str) and val != 'auto':
+                agent_config[key] = parse_duration(val)
+        agents[agent_id] = agent_config
 
     # Calculate timing with override support
     # Priority: explicit override > auto-calculated
