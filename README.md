@@ -36,17 +36,11 @@ cd monerosim
 ~/.monerosim/bin/monerod --version     # Monero daemon version
 ./target/release/monerosim --help      # monerosim CLI usage
 
-# 3. Run a test simulation (~5 min wall clock)
-./run_sim.sh --config test_configs/ultra_minimal_test.yaml
+# 3. Run a test simulation (~10-15 min wall clock)
+./run_sim.sh --config test_configs/quickstart.yaml
 
 # 4. Monitor progress
 tail -f /tmp/monerosim_shared/monerosim_monitor.log
-```
-
-For a longer simulation with more agents:
-
-```bash
-./run_sim.sh --config test_configs/20260112_config.yaml
 ```
 
 ## Configuration
@@ -95,7 +89,7 @@ agents:
 
 Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100.
 
-See [`test_configs/20260112_config.yaml`](test_configs/20260112_config.yaml) for a full working configuration, or check `examples/` for more.
+See [`test_configs/quickstart.yaml`](test_configs/quickstart.yaml) for a working configuration, or check `examples/` for more.
 
 For large-scale simulations, use the config generator:
 

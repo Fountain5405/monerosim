@@ -755,7 +755,7 @@ fi
 # Step 8: Generate Shadow configuration
 print_header "Step 8: Generating Shadow Configuration"
 
-print_status "Generating Shadow configuration from test_configs/20260112_config.yaml..."
+print_status "Generating Shadow configuration from test_configs/quickstart.yaml..."
 
 # Ensure we're in the right directory and the binary exists
 cd "$SCRIPT_DIR"
@@ -766,7 +766,7 @@ if [[ ! -f "./target/release/monerosim" ]]; then
     exit 1
 fi
 
-./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output
+./target/release/monerosim --config test_configs/quickstart.yaml --output shadow_output
 
 if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow_agents.yaml" ]]; then
     print_success "Shadow configuration generated successfully"
@@ -779,8 +779,8 @@ fi
 print_header "Step 9: Optional Test Simulation"
 
 print_status "Setup is complete! You can now run a test simulation to verify everything works."
-print_warning "The test simulation (test_configs/20260112_config.yaml) runs for approximately 8 hours"
-print_warning "This is a comprehensive test with 32 agents and complex network topology"
+print_warning "The test simulation (test_configs/quickstart.yaml) runs for 6 hours simulated time"
+print_warning "This is a quickstart test with 10 agents (~10-15 min wall clock)"
 print_status ""
 print_status "Choose an option:"
 echo "  y/Y - Run the full test simulation"
@@ -854,8 +854,7 @@ echo "  ~/.monerosim/bin/monerod --version     # Monero daemon version"
 echo "  ./target/release/monerosim --help      # monerosim CLI usage"
 echo ""
 print_status "Run your first simulation:"
-echo "  ./run_sim.sh --config test_configs/ultra_minimal_test.yaml  # Quick test (~5 min)"
-echo "  ./run_sim.sh --config test_configs/20260112_config.yaml     # Full test (8h sim)"
+echo "  ./run_sim.sh --config test_configs/quickstart.yaml           # Quick test (~10-15 min)"
 echo ""
 print_status "Monitor a running simulation:"
 echo "  tail shadow.log                        # Shadow progress"

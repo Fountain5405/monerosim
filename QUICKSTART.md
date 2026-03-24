@@ -49,23 +49,16 @@ If any of these fail, re-run `./setup.sh` or check the Troubleshooting section b
 The quickest way to verify everything works end-to-end:
 
 ```bash
-# Run the ultra-minimal test (2 miners, 1 user, 2.5h simulated time)
-# This takes ~5 minutes of wall clock time
-./run_sim.sh --config test_configs/ultra_minimal_test.yaml
-```
-
-For a larger simulation with more agents:
-
-```bash
-# 30 agents, 8h simulated time (~30-60 min wall clock)
-./run_sim.sh --config test_configs/20260112_config.yaml
+# Run the quickstart test (5 miners, 3 users, 6h simulated time)
+# This takes ~10-15 minutes of wall clock time
+./run_sim.sh --config test_configs/quickstart.yaml
 ```
 
 Or run the steps manually:
 
 ```bash
 # Generate Shadow configuration
-./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output
+./target/release/monerosim --config test_configs/quickstart.yaml --output shadow_output
 
 # Run the simulation
 rm -rf shadow.data shadow.log
