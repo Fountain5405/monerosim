@@ -778,9 +778,121 @@ archive_results() {
     # 5d. Transaction registry
     archive_transaction_registry
 
-    # 5e. Analysis (opt-in)
+    # 5e. Generate human-readable summary report
+    generate_summary_report
+
+    # 5f. Analysis (opt-in)
     if [[ "$RUN_ANALYZE" == true ]]; then
         run_analysis
+    fi
+}
+
+generate_summary_report() {
+    local report_file="$SHARED_DIR/monitoring/final_report.json"
+    local report_out="$ARCHIVE_DIR/summary.txt"
+
+    if [[ ! -f "$report_file" ]]; then
+        log_warn "No final_report.json found, skipping summary report"
+        return
+    fi
+
+    python3 -c "
+import json, sys
+from datetime import datetime
+
+with open('$report_file') as f:
+    d = json.load(f)
+
+s = d.get('summary', {})
+ts = d.get('transaction_stats', {})
+sc = s.get('success_criteria', {})
+hist = d.get('historical_data', [])
+
+lines = []
+lines.append('=' * 60)
+lines.append('MONEROSIM SIMULATION SUMMARY')
+lines.append('=' * 60)
+lines.append('')
+
+# Run info
+lines.append(f'Run:            $RUN_NAME')
+lines.append(f'Wall time:      $(format_duration $WALL_DURATION)')
+lines.append(f'Exit code:      $SHADOW_EXIT')
+lines.append('')
+
+# Success criteria
+all_pass = all(sc.values()) if sc else False
+lines.append('SUCCESS CRITERIA')
+lines.append('-' * 40)
+labels = {
+    'blocks_created': 'Blocks created',
+    'blocks_propagated': 'Blocks propagated',
+    'transactions_created_broadcast': 'Transactions broadcast',
+    'transactions_in_blocks': 'Transactions in blocks',
+}
+for key, label in labels.items():
+    status = 'PASS' if sc.get(key, False) else 'FAIL'
+    lines.append(f'  {label:30s} {status}')
+lines.append('')
+lines.append(f'  Result: {\"ALL CHECKS PASSED\" if all_pass else \"SOME CHECKS FAILED\"}')
+lines.append('')
+
+# Network
+lines.append('NETWORK')
+lines.append('-' * 40)
+lines.append(f'  Nodes online:     {s.get(\"total_nodes\", \"?\")}')
+lines.append(f'  Sync:             {s.get(\"avg_sync_percentage\", 0):.0f}%')
+lines.append(f'  Block height:     {s.get(\"max_height\", 0)}')
+lines.append(f'  Blocks mined:     {s.get(\"total_blocks_mined\", 0)}')
+lines.append(f'  Alerts:           {s.get(\"alert_count\", 0)}')
+lines.append('')
+
+# Transactions
+lines.append('TRANSACTIONS')
+lines.append('-' * 40)
+lines.append(f'  Created:          {s.get(\"total_transactions_created\", 0)}')
+lines.append(f'  In blocks:        {s.get(\"total_transactions_in_blocks\", 0)}')
+created_by = ts.get('tx_created_by_node', {})
+if created_by:
+    lines.append('')
+    lines.append('  Created by:')
+    for node, count in sorted(created_by.items()):
+        lines.append(f'    {node:20s} {count:>4} txs')
+lines.append('')
+
+# Per-node status from last monitoring cycle
+if hist:
+    last = hist[-1]
+    node_data = last.get('node_data', {})
+    if node_data:
+        lines.append('NODE STATUS (final)')
+        lines.append('-' * 40)
+        lines.append(f'  {\"Node\":20s} {\"Height\":>7} {\"Balance\":>12} {\"Conns\":>6} {\"Pool TXs\":>9}')
+        for nid in sorted(node_data.keys()):
+            ndata = node_data[nid]
+            daemon = ndata.get('daemon', {})
+            wallet = ndata.get('wallet', {})
+            height = daemon.get('height', '-')
+            conns = daemon.get('connections', '-')
+            pool = wallet.get('pool_size', '-')
+            bal = wallet.get('balance', 0)
+            if isinstance(bal, (int, float)) and bal > 0:
+                bal_str = f'{bal / 1e12:.2f} XMR'
+            else:
+                bal_str = '-'
+            lines.append(f'  {nid:20s} {str(height):>7} {bal_str:>12} {str(conns):>6} {str(pool):>9}')
+        lines.append('')
+
+lines.append('=' * 60)
+
+with open('$report_out', 'w') as f:
+    f.write('\n'.join(lines) + '\n')
+" 2>/dev/null
+
+    if [[ -f "$report_out" ]]; then
+        log_ok "Summary report: $report_out"
+    else
+        log_warn "Failed to generate summary report"
     fi
 }
 
