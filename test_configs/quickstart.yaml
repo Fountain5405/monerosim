@@ -70,7 +70,7 @@ agents:
     script: agents.regular_user
     start_time: 1210s
     transaction_interval: 120
-    activity_start_time: 18000
+    activity_start_time: 18060
     can_receive_distributions: true
   user-03:
     daemon: monerod
@@ -78,7 +78,7 @@ agents:
     script: agents.regular_user
     start_time: 1220s
     transaction_interval: 120
-    activity_start_time: 18000
+    activity_start_time: 18120
     can_receive_distributions: true
   miner-distributor:
     script: agents.miner_distributor

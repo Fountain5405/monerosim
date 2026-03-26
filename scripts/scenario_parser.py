@@ -491,6 +491,11 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                 elif is_daemon_only:
                     stagger_fields['start_time'] = '5s'
 
+            # Default activity_start_time stagger: prevents thundering herd when all
+            # users start transacting simultaneously (wallet-rpc overload)
+            if is_user_agent and 'activity_start_time' in base_fields and 'activity_start_time' not in stagger_fields:
+                stagger_fields['activity_start_time'] = '60s'
+
             # Default upgrade stagger: 30s between each node's daemon_0_stop
             if 'daemon_0_stop' in base_fields and 'daemon_0_stop' not in stagger_fields:
                 stagger_fields['daemon_0_stop'] = f'{DEFAULT_UPGRADE_STAGGER_S}s'
