@@ -257,8 +257,22 @@ class RegularUserAgent(BaseAgent):
                 # Check every 5 minutes or when ready, whichever is sooner
                 return min(300.0, remaining)
             else:
-                self.logger.info("Activity start time reached, starting transaction behavior")
+                self.logger.info("Activity start time reached, syncing wallet before transacting")
                 self.waiting_for_activity_start = False
+                self._wallet_synced = False
+
+        # Ensure wallet is synced before attempting any transactions
+        if not getattr(self, '_wallet_synced', True):
+            try:
+                self.logger.info("Waiting for wallet to sync with blockchain...")
+                self.wallet_rpc.refresh()
+                wallet_height = self.wallet_rpc.get_height()
+                self.logger.info(f"Wallet synced to height {wallet_height}")
+                self._wallet_synced = True
+                self._last_refresh_time = time.time()
+            except Exception as e:
+                self.logger.warning(f"Wallet not yet synced ({e}), retrying in 30s")
+                return 30.0
 
         # Regular users perform transactions
         self.logger.debug("Regular user running iteration - checking for transaction opportunities")
