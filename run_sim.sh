@@ -48,6 +48,7 @@ ARCHIVE_BASE=""
 SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
+BLOCKCHAIN_ARCHIVE_PCT=""
 
 usage() {
     cat <<'EOF'
@@ -62,12 +63,13 @@ Options:
   --no-monitor           Skip live progress display
   --analyze              Run post-simulation analysis (off by default)
   --no-build             Skip cargo build (use existing binary)
+  --archive-blockchain N%  Archive N% of blockchains (default: 1 per type)
   --help                 Show help
 
 Examples:
-  ./run_sim.sh --config test_configs/20260305.yaml
-  ./run_sim.sh --config test_configs/20260305.yaml --name scaling_1000 --analyze
-  ./run_sim.sh --config test_configs/ultra_minimal_test.yaml --no-build
+  ./run_sim.sh --config test_configs/quickstart.yaml
+  ./run_sim.sh --config test_configs/quickstart.yaml --name scaling_1000 --analyze
+  ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50%
 EOF
     exit 0
 }
@@ -97,6 +99,10 @@ while [[ $# -gt 0 ]]; do
         --no-build)
             DO_BUILD=false
             shift
+            ;;
+        --archive-blockchain)
+            BLOCKCHAIN_ARCHIVE_PCT="$2"
+            shift 2
             ;;
         --help|-h)
             usage
@@ -754,7 +760,7 @@ archive_results() {
         log_ok "monerosim_monitor.log archived"
     fi
 
-    # 5b. Blockchain snapshots (3 copies: 1 miner, 1 user, 1 relay)
+    # 5b. Blockchain snapshots
     archive_blockchain_snapshots
 
     # 5c. Daemon logs (bitmonero.log files with thread/category detail)
@@ -778,26 +784,42 @@ archive_blockchain_snapshots() {
         return
     fi
 
-    # Extract data-dir paths for each node type
-    local miner_dirs user_dirs relay_dirs
-    miner_dirs=$(grep -oP 'data-dir=\K/tmp/monero-miner-[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
-    user_dirs=$(grep -oP 'data-dir=\K/tmp/monero-user-[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
-    relay_dirs=$(grep -oP 'data-dir=\K/tmp/monero-relay-[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
+    # Extract all data-dir paths
+    local all_dirs
+    all_dirs=$(grep -oP 'data-dir=\K/tmp/monero-[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
+    local total
+    total=$(echo "$all_dirs" | grep -c . || echo 0)
 
-    # Pick one from each type
-    local selected_miner selected_user selected_relay
-    selected_miner=$(echo "$miner_dirs" | head -1)
-    selected_user=$(echo "$user_dirs" | shuf 2>/dev/null | head -1)
-    selected_relay=$(echo "$relay_dirs" | shuf 2>/dev/null | head -1)
+    if [[ $total -eq 0 ]]; then
+        log_warn "No blockchain data directories found"
+        return
+    fi
 
-    copy_blockchain_snapshot "$selected_miner" "miner"
-    copy_blockchain_snapshot "$selected_user" "user"
-    copy_blockchain_snapshot "$selected_relay" "relay"
+    if [[ -n "$BLOCKCHAIN_ARCHIVE_PCT" ]]; then
+        # Percentage mode: archive N% of all blockchains
+        local pct=${BLOCKCHAIN_ARCHIVE_PCT%\%}  # Strip trailing %
+        local count=$(python3 -c "import math; print(max(1, math.ceil($total * $pct / 100)))")
+        log_info "Archiving $count of $total blockchains (${pct}%)"
+
+        # Select evenly: take every Nth node to get a representative sample
+        echo "$all_dirs" | shuf --random-source=<(echo "$STOP_TIME_SECS") 2>/dev/null | head -"$count" | sort | while read -r data_dir; do
+            [[ -n "$data_dir" ]] && copy_blockchain_snapshot "$data_dir"
+        done
+    else
+        # Default: 1 per type (miner, user, relay)
+        local miner_dirs user_dirs relay_dirs
+        miner_dirs=$(echo "$all_dirs" | grep '/monero-miner-' || true)
+        user_dirs=$(echo "$all_dirs" | grep '/monero-user-' || true)
+        relay_dirs=$(echo "$all_dirs" | grep '/monero-relay-' || true)
+
+        [[ -n "$miner_dirs" ]] && copy_blockchain_snapshot "$(echo "$miner_dirs" | head -1)"
+        [[ -n "$user_dirs" ]] && copy_blockchain_snapshot "$(echo "$user_dirs" | shuf 2>/dev/null | head -1)"
+        [[ -n "$relay_dirs" ]] && copy_blockchain_snapshot "$(echo "$relay_dirs" | shuf 2>/dev/null | head -1)"
+    fi
 }
 
 copy_blockchain_snapshot() {
     local data_dir="$1"
-    local node_type="$2"
 
     [[ -z "$data_dir" ]] && return
 
@@ -815,7 +837,7 @@ copy_blockchain_snapshot() {
         size=$(du -sh "$dest/data.mdb" 2>/dev/null | cut -f1)
         log_ok "Blockchain snapshot: $node_name (${size})"
     else
-        log_warn "No blockchain data for $node_type at $lmdb_dir"
+        log_warn "No blockchain data for $node_name at $lmdb_dir"
     fi
 }
 
