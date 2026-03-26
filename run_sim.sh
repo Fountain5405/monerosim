@@ -585,12 +585,16 @@ print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
         for ((i = 0; i < filled; i++)); do bar+="█"; done
         for ((i = 0; i < empty; i++)); do bar+="░"; done
 
-        local sim_dur_fmt
-        sim_dur_fmt=$(format_duration "$sim_elapsed_secs")
         local stop_dur_fmt
         stop_dur_fmt=$(format_duration "$STOP_TIME_SECS")
 
-        output+="Progress:   [${bar}] ${progress_pct}%  (${sim_dur_fmt} / ${stop_dur_fmt})\n"; lines=$((lines + 1))
+        if [[ -z "$sim_timestamp" ]]; then
+            output+="Progress:   [${bar}] Starting...  (waiting for first update)\n"; lines=$((lines + 1))
+        else
+            local sim_dur_fmt
+            sim_dur_fmt=$(format_duration "$sim_elapsed_secs")
+            output+="Progress:   [${bar}] ${progress_pct}%  (${sim_dur_fmt} / ${stop_dur_fmt})\n"; lines=$((lines + 1))
+        fi
 
         if [[ -n "$sim_timestamp" ]]; then
             output+="Sim time:   ${sim_timestamp}\n"; lines=$((lines + 1))
