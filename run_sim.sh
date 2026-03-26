@@ -890,72 +890,164 @@ print_summary() {
     log_step "Phase 6: Summary"
 
     echo ""
-    echo -e "${BOLD}${GREEN}Simulation run complete!${NC}"
+    echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}${CYAN}║            Simulation Results                     ║${NC}"
+    echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Archive size
-    local archive_size
-    archive_size=$(du -sh "$ARCHIVE_DIR" 2>/dev/null | cut -f1)
-    echo "  Archive:      $ARCHIVE_DIR"
-    echo "  Archive size: $archive_size"
-    echo ""
-
-    # Wall time
+    # --- Run overview ---
+    echo -e "  ${BOLD}Run${NC}"
     echo "  Wall time:    $(format_duration $WALL_DURATION)"
     echo "  Exit code:    $SHADOW_EXIT"
+
+    local archive_size
+    archive_size=$(du -sh "$ARCHIVE_DIR" 2>/dev/null | cut -f1)
+    echo "  Archive:      $ARCHIVE_DIR ($archive_size)"
     echo ""
 
-    # Blockchain snapshots
-    if [[ -d "$ARCHIVE_DIR/blockchain" ]]; then
-        echo "  Blockchain snapshots:"
-        for snap_dir in "$ARCHIVE_DIR"/blockchain/*/; do
-            [[ -d "$snap_dir" ]] || continue
-            local snap_name
-            snap_name=$(basename "$snap_dir")
-            local snap_size
-            snap_size=$(du -sh "$snap_dir" 2>/dev/null | cut -f1)
-            echo "    - $snap_name ($snap_size)"
-        done
-        echo ""
-    fi
+    # --- Simulation results from monitor final report ---
+    local report_file="$SHARED_DIR/monitoring/final_report.json"
+    if [[ -f "$report_file" ]]; then
+        local sim_results
+        sim_results=$(python3 -c "
+import json, sys
+try:
+    with open('$report_file') as f:
+        d = json.load(f)
+    s = d.get('summary', {})
+    ts = d.get('transaction_stats', {})
+    sc = s.get('success_criteria', {})
 
-    # Daemon logs
-    if [[ -d "$ARCHIVE_DIR/daemon_logs" ]]; then
-        local log_count
-        log_count=$(find "$ARCHIVE_DIR/daemon_logs" -name 'bitmonero.log' 2>/dev/null | wc -l)
-        local logs_size
-        logs_size=$(du -sh "$ARCHIVE_DIR/daemon_logs" 2>/dev/null | cut -f1)
-        echo "  Daemon logs:  $log_count bitmonero.log files ($logs_size)"
-        echo ""
-    fi
+    nodes = s.get('total_nodes', '?')
+    sync = s.get('avg_sync_percentage', 0)
+    height = s.get('max_height', 0)
+    blocks = s.get('total_blocks_mined', 0)
+    tx_created = s.get('total_transactions_created', 0)
+    tx_in_blocks = s.get('total_transactions_in_blocks', 0)
+    alerts = s.get('alert_count', 0)
 
-    # Transaction registry
-    if [[ -d "$ARCHIVE_DIR/transaction_registry" ]]; then
-        local tx_count
-        tx_count=$(ls -1 "$ARCHIVE_DIR/transaction_registry/"*.json 2>/dev/null | wc -l)
-        echo "  Transaction registry: $tx_count files"
-        echo ""
-    fi
+    # Success criteria
+    all_pass = all(sc.values()) if sc else False
+    criteria_lines = []
+    labels = {
+        'blocks_created': 'Blocks created',
+        'blocks_propagated': 'Blocks propagated',
+        'transactions_created_broadcast': 'Transactions broadcast',
+        'transactions_in_blocks': 'Transactions in blocks',
+    }
+    for key, label in labels.items():
+        passed = sc.get(key, False)
+        mark = 'PASS' if passed else 'FAIL'
+        criteria_lines.append(f'{label}: {mark}')
 
-    # Archive contents listing
-    echo "  Archive contents:"
-    ls -1 "$ARCHIVE_DIR" | while read -r item; do
-        if [[ -d "$ARCHIVE_DIR/$item" ]]; then
-            local dir_size
-            dir_size=$(du -sh "$ARCHIVE_DIR/$item" 2>/dev/null | cut -f1)
-            echo "    ${item}/ ($dir_size)"
-        else
-            local file_size
-            file_size=$(ls -lh "$ARCHIVE_DIR/$item" 2>/dev/null | awk '{print $5}')
-            echo "    $item ($file_size)"
+    # Count wallets that received funds (balance > 0) from last monitoring cycle
+    wallets_funded = 0
+    hist = d.get('historical_data', [])
+    if hist:
+        last_cycle = hist[-1]
+        for ndata in last_cycle.get('node_data', {}).values():
+            w = ndata.get('wallet', {})
+            if w and w.get('balance', 0) > 0:
+                wallets_funded += 1
+
+    print(f'NODES={nodes}')
+    print(f'SYNC={sync:.0f}')
+    print(f'HEIGHT={height}')
+    print(f'BLOCKS={blocks}')
+    print(f'TX_CREATED={tx_created}')
+    print(f'TX_IN_BLOCKS={tx_in_blocks}')
+    print(f'WALLETS_FUNDED={wallets_funded}')
+    print(f'ALERTS={alerts}')
+    print(f'ALL_PASS={\"yes\" if all_pass else \"no\"}')
+    for line in criteria_lines:
+        print(f'CRITERIA={line}')
+except Exception as e:
+    print(f'ERROR={e}', file=sys.stderr)
+" 2>/dev/null)
+
+        if [[ -n "$sim_results" ]]; then
+            local nodes sync height blocks tx_created tx_in_blocks wallets_funded alerts all_pass
+            nodes=$(echo "$sim_results" | grep '^NODES=' | cut -d= -f2)
+            sync=$(echo "$sim_results" | grep '^SYNC=' | cut -d= -f2)
+            height=$(echo "$sim_results" | grep '^HEIGHT=' | cut -d= -f2)
+            blocks=$(echo "$sim_results" | grep '^BLOCKS=' | cut -d= -f2)
+            tx_created=$(echo "$sim_results" | grep '^TX_CREATED=' | cut -d= -f2)
+            tx_in_blocks=$(echo "$sim_results" | grep '^TX_IN_BLOCKS=' | cut -d= -f2)
+            wallets_funded=$(echo "$sim_results" | grep '^WALLETS_FUNDED=' | cut -d= -f2)
+            alerts=$(echo "$sim_results" | grep '^ALERTS=' | cut -d= -f2)
+            all_pass=$(echo "$sim_results" | grep '^ALL_PASS=' | cut -d= -f2)
+
+            echo -e "  ${BOLD}Network${NC}"
+            echo "  Nodes:        $nodes"
+            echo "  Sync:         ${sync}%"
+            echo "  Block height: $height"
+            echo "  Blocks mined: $blocks"
+            echo ""
+
+            echo -e "  ${BOLD}Transactions${NC}"
+            echo "  Created:      $tx_created"
+            echo "  In blocks:    $tx_in_blocks"
+            echo "  Wallets funded: $wallets_funded"
+            echo ""
+
+            echo -e "  ${BOLD}Health${NC}"
+            echo "  Alerts:       $alerts"
+            echo ""
+
+            echo -e "  ${BOLD}Success Criteria${NC}"
+            echo "$sim_results" | grep '^CRITERIA=' | cut -d= -f2- | while read -r line; do
+                if [[ "$line" == *"PASS" ]]; then
+                    echo -e "    ${GREEN}$line${NC}"
+                else
+                    echo -e "    ${YELLOW}$line${NC}"
+                fi
+            done
+            echo ""
+
+            if [[ "$all_pass" == "yes" ]]; then
+                echo -e "  ${BOLD}${GREEN}Result: ALL CHECKS PASSED${NC}"
+            else
+                echo -e "  ${BOLD}${YELLOW}Result: SOME CHECKS FAILED${NC}"
+            fi
+            echo ""
         fi
-    done
-    echo ""
+    else
+        # No monitor report — fall back to shadow log parsing
+        echo -e "  ${DIM}(No simulation monitor report found)${NC}"
+        echo ""
 
-    # Disk space remaining
+        # Try to get basic stats from shadow log
+        local final_height
+        final_height=$(grep -oP 'height \K\d+' "$SHADOW_LOG" 2>/dev/null | sort -n | tail -1)
+        if [[ -n "$final_height" ]]; then
+            echo "  Block height: $final_height (from daemon logs)"
+            echo ""
+        fi
+    fi
+
+    # --- Archive details ---
+    echo -e "  ${BOLD}Archive${NC}"
+    if [[ -d "$ARCHIVE_DIR/daemon_logs" ]]; then
+        local log_count logs_size
+        log_count=$(find "$ARCHIVE_DIR/daemon_logs" -name 'bitmonero.log' 2>/dev/null | wc -l)
+        logs_size=$(du -sh "$ARCHIVE_DIR/daemon_logs" 2>/dev/null | cut -f1)
+        echo "  Daemon logs:  $log_count files ($logs_size)"
+    fi
+    if [[ -d "$ARCHIVE_DIR/blockchain" ]]; then
+        local snap_count snap_size
+        snap_count=$(find "$ARCHIVE_DIR/blockchain" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+        snap_size=$(du -sh "$ARCHIVE_DIR/blockchain" 2>/dev/null | cut -f1)
+        echo "  Blockchain:   $snap_count snapshots ($snap_size)"
+    fi
+    if [[ -d "$ARCHIVE_DIR/transaction_registry" ]]; then
+        local tx_file_count
+        tx_file_count=$(ls -1 "$ARCHIVE_DIR/transaction_registry/"*.json 2>/dev/null | wc -l)
+        echo "  Tx registry:  $tx_file_count files"
+    fi
+
     local free_kb
     free_kb=$(df -k "$ARCHIVE_DIR" | tail -1 | awk '{print $4}')
-    echo "  Disk space remaining: $(format_kb "$free_kb")"
+    echo "  Disk free:    $(format_kb "$free_kb")"
     echo ""
 }
 
