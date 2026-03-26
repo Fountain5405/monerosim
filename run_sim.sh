@@ -561,7 +561,8 @@ exit 0' INT
 
         # Extract simulated time from Shadow's progress lines
         # Format: "Progress: 1% — simulated: 00:10:50.014/16:00:00, realtime: ..."
-        sim_timestamp=$(tail -200 "$shadow_log" 2>/dev/null | grep -oP '(?<=simulated: )\d{2}:\d{2}:\d{2}' | tail -1 || true)
+        # Use tac + grep -m1 to efficiently find the last progress line in large logs
+        sim_timestamp=$(tac "$shadow_log" 2>/dev/null | grep -oP -m1 '(?<=simulated: )\d{2}:\d{2}:\d{2}' || true)
 
         if [[ -n "$sim_timestamp" ]]; then
             sim_elapsed_secs=$(python3 -c "
