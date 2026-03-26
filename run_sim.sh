@@ -63,13 +63,13 @@ Options:
   --no-monitor           Skip live progress display
   --analyze              Run post-simulation analysis (off by default)
   --no-build             Skip cargo build (use existing binary)
-  --archive-blockchain N%  Archive N% of blockchains (default: 1 per type)
+  --archive-blockchain N   Archive N% of blockchains (default: 1 per type)
   --help                 Show help
 
 Examples:
   ./run_sim.sh --config test_configs/quickstart.yaml
   ./run_sim.sh --config test_configs/quickstart.yaml --name scaling_1000 --analyze
-  ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50%
+  ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50
 EOF
     exit 0
 }
@@ -797,7 +797,7 @@ archive_blockchain_snapshots() {
 
     if [[ -n "$BLOCKCHAIN_ARCHIVE_PCT" ]]; then
         # Percentage mode: archive N% of all blockchains
-        local pct=${BLOCKCHAIN_ARCHIVE_PCT%\%}  # Strip trailing %
+        local pct=$BLOCKCHAIN_ARCHIVE_PCT
         local count=$(python3 -c "import math; print(max(1, math.ceil($total * $pct / 100)))")
         log_info "Archiving $count of $total blockchains (${pct}%)"
 
