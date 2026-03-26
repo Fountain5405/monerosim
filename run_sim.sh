@@ -550,7 +550,11 @@ exit 0' INT
 
         output+="${BOLD}${CYAN}=== MoneroSim Simulation Monitor ===${NC}\n"; lines=$((lines + 1))
         output+="Run:        ${RUN_NAME}\n"; lines=$((lines + 1))
-        output+="Config:     ${CFG_TOTAL} nodes (${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays)\n"; lines=$((lines + 1))
+        local other=$((CFG_TOTAL - CFG_MINERS - CFG_USERS - CFG_RELAYS))
+        local config_detail="${CFG_MINERS} miners, ${CFG_USERS} users"
+        [[ $CFG_RELAYS -gt 0 ]] && config_detail+=", ${CFG_RELAYS} relays"
+        [[ $other -gt 0 ]] && config_detail+=", ${other} support"
+        output+="Config:     ${CFG_TOTAL} agents (${config_detail})\n"; lines=$((lines + 1))
         output+="Started:    ${START_TIME_FMT}\n"; lines=$((lines + 1))
         output+="\n"; lines=$((lines + 1))
 
