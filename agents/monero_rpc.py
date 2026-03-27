@@ -361,8 +361,8 @@ class MoneroRPC(BaseRPC):
 
 class WalletRPC(BaseRPC):
     """Monero wallet RPC client"""
-    
-    def __init__(self, host: str, port: int, timeout: int = 60):
+
+    def __init__(self, host: str, port: int, timeout: int = 180):
         super().__init__(host, port, timeout)
         self.current_wallet = None
         
