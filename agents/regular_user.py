@@ -42,8 +42,6 @@ class RegularUserAgent(BaseAgent):
         self._last_refresh_time = 0
         self._refresh_interval = 300  # Refresh wallet every 5 minutes
         self._consecutive_errors = 0
-        self._wallet_rpc_restarts = 0
-        self._max_wallet_rpc_restarts = 5
 
     def _setup_agent(self):
         """Agent-specific setup logic"""
@@ -319,48 +317,26 @@ class RegularUserAgent(BaseAgent):
             self._consecutive_errors += 1
             self.logger.error(f"Error in user iteration (consecutive: {self._consecutive_errors}): {e}")
 
-            # After consecutive errors, try recovery strategies
+            # Recovery: reset HTTP session and retry.
+            # Note: wallet-rpc process restart (os.kill) does not work inside
+            # Shadow simulations — PIDs are virtualized and the old process
+            # keeps the port. So we rely on session reset + reconnect instead.
             if self._consecutive_errors >= 2:
-                # Escalation: full process restart at 3+ consecutive errors.
-                # wallet-rpc can hang permanently during ring output selection
-                # in Shadow, so restart aggressively rather than waiting.
-                if (self._consecutive_errors >= 3
-                        and self._consecutive_errors % 3 == 0
-                        and self._wallet_rpc_restarts < self._max_wallet_rpc_restarts):
-                    self.logger.error(
-                        f"Soft recovery failed after {self._consecutive_errors} errors. "
-                        f"Attempting wallet-rpc restart "
-                        f"({self._wallet_rpc_restarts + 1}/{self._max_wallet_rpc_restarts})"
-                    )
-                    if self.restart_wallet_rpc():
-                        self._wallet_rpc_restarts += 1
-                        self._consecutive_errors = 0
-                        return 10.0
-                    else:
-                        self._wallet_rpc_restarts += 1
-
                 try:
-                    # After 5+ errors, the connection is likely stale (e.g., daemon
-                    # restarted during upgrade). Reset HTTP session and tell wallet-rpc
-                    # to reconnect to the daemon.
-                    if self._consecutive_errors >= 5 and self._consecutive_errors % 5 == 0:
-                        self.logger.warning(
-                            f"Persistent errors ({self._consecutive_errors}), "
-                            "resetting wallet connection and reconnecting to daemon"
-                        )
-                        self.wallet_rpc.reset_session()
-                        # Re-point wallet-rpc at the daemon to force reconnection
-                        if self.daemon_rpc_port:
-                            daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
-                            self.wallet_rpc.set_daemon(daemon_address, trusted=True)
-                            self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
+                    self.logger.warning(
+                        f"Persistent errors ({self._consecutive_errors}), "
+                        "resetting wallet connection"
+                    )
+                    self.wallet_rpc.reset_session()
+                    if self.daemon_rpc_port:
+                        daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
+                        self.wallet_rpc.set_daemon(daemon_address, trusted=True)
 
-                    self.logger.info(f"Attempting wallet refresh after {self._consecutive_errors} consecutive errors")
                     self.wallet_rpc.refresh()
                     self._last_refresh_time = current_time
-                    self.logger.info("Wallet refresh completed - will retry operation next iteration")
+                    self.logger.info("Wallet refresh completed - will retry next iteration")
                 except Exception as refresh_err:
-                    self.logger.warning(f"Wallet refresh failed during error recovery: {refresh_err}")
+                    self.logger.warning(f"Recovery failed: {refresh_err}")
 
             return 30.0
     
