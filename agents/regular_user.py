@@ -43,7 +43,7 @@ class RegularUserAgent(BaseAgent):
         self._refresh_interval = 300  # Refresh wallet every 5 minutes
         self._consecutive_errors = 0
         self._wallet_rpc_restarts = 0
-        self._max_wallet_rpc_restarts = 3
+        self._max_wallet_rpc_restarts = 5
 
     def _setup_agent(self):
         """Agent-specific setup logic"""
@@ -321,9 +321,11 @@ class RegularUserAgent(BaseAgent):
 
             # After consecutive errors, try recovery strategies
             if self._consecutive_errors >= 2:
-                # Escalation: full process restart at 15+ consecutive errors
-                if (self._consecutive_errors >= 15
-                        and self._consecutive_errors % 15 == 0
+                # Escalation: full process restart at 3+ consecutive errors.
+                # wallet-rpc can hang permanently during ring output selection
+                # in Shadow, so restart aggressively rather than waiting.
+                if (self._consecutive_errors >= 3
+                        and self._consecutive_errors % 3 == 0
                         and self._wallet_rpc_restarts < self._max_wallet_rpc_restarts):
                     self.logger.error(
                         f"Soft recovery failed after {self._consecutive_errors} errors. "
