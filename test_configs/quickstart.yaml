@@ -6,6 +6,7 @@ general:
   shadow_log_level: warning
   progress: true
   process_threads: 2
+  native_preemption: true
   daemon_defaults:
     log-level: 1
     max-log-file-size: 0
