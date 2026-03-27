@@ -825,6 +825,27 @@ def check_llm_config():
 
         print(f"{c.DIM}Using {preset['name']}: {base_url}{c.RESET}")
 
+        # Health check for MoneroWorld server
+        if choice == '1':
+            print(f"{c.DIM}Checking if server is available...{c.RESET}", end='', flush=True)
+            try:
+                import urllib.request
+                req = urllib.request.Request(
+                    base_url.rstrip('/') + '/models',
+                    headers={'Authorization': 'Bearer x'}
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    resp.read()
+                print(f"\r{c.GREEN}Server is online.{c.RESET}                    ")
+            except Exception:
+                print(f"\r{c.YELLOW}Warning: MoneroWorld server may be down or unreachable.{c.RESET}")
+                print(f"{c.YELLOW}The server is maintained by a volunteer and may not always be available.{c.RESET}")
+                print(f"{c.YELLOW}If generation hangs or fails, try a local backend (options 2-3) instead.{c.RESET}")
+                print()
+                proceed = get_user_input("Continue anyway? [y/N]", "n")
+                if proceed.lower() != 'y':
+                    return None
+
         # Prompt for API key if needed
         if not api_key:
             api_key = get_user_input(f"{preset['name']} API Key")
