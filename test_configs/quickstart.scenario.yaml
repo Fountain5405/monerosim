@@ -1,5 +1,5 @@
 # Quickstart test scenario — minimal config to verify monerosim works end-to-end.
-# Expands to 11 agents. Runs in ~10-15 minutes wall clock time.
+# Expands to 11 agents. Runs in ~20-30 minutes wall clock time.
 #
 # Usage:
 #   source venv/bin/activate
@@ -13,7 +13,6 @@ general:
   enable_dns_server: true
   shadow_log_level: warning
   progress: true
-  runahead: 100ms
   process_threads: 2
   daemon_defaults:
     log-level: 1
