@@ -348,7 +348,7 @@ class BaseAgent(ABC):
         # Step 4: Reset RPC session and wait for new process to be ready
         try:
             self.wallet_rpc.reset_session()
-            self.wallet_rpc.wait_until_ready(max_wait=120)
+            self.wallet_rpc.wait_until_ready(max_wait=300)
             self.logger.info("New wallet-rpc process is ready")
         except Exception as e:
             self.logger.error(f"New wallet-rpc process failed to become ready: {e}")

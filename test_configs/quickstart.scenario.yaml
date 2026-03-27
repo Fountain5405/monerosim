@@ -7,7 +7,7 @@
 #   ./run_sim.sh --config test_configs/quickstart.yaml
 
 general:
-  stop_time: 6h
+  stop_time: 8h
   simulation_seed: 42
   bootstrap_end_time: 4h
   enable_dns_server: true
