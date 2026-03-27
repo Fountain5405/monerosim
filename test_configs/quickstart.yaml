@@ -80,6 +80,9 @@ agents:
     transaction_interval: 120
     activity_start_time: 18120
     can_receive_distributions: true
+  relay-001:
+    daemon: monerod
+    start_time: 5m
   miner-distributor:
     script: agents.miner_distributor
     wait_time: 14400

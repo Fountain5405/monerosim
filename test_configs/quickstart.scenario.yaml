@@ -1,5 +1,5 @@
 # Quickstart test scenario — minimal config to verify monerosim works end-to-end.
-# Expands to ~7 agents. Runs in ~10-15 minutes wall clock time.
+# Expands to 11 agents. Runs in ~10-15 minutes wall clock time.
 #
 # Usage:
 #   source venv/bin/activate
@@ -51,6 +51,11 @@ agents:
     transaction_interval: 2m
     activity_start_time: 5h
     can_receive_distributions: true
+
+  # 1 relay — daemon-only node for network realism
+  relay-001:
+    daemon: monerod
+    start_time: 5m
 
   # Fund distribution and monitoring
   miner-distributor:
