@@ -769,21 +769,14 @@ archive_results() {
         log_ok "monerosim_monitor.log archived"
     fi
 
-    # 5b. Blockchain snapshots
-    archive_blockchain_snapshots
+    # Each step is guarded so a failure in one doesn't skip the rest
+    archive_blockchain_snapshots  || log_warn "Blockchain snapshot archiving failed"
+    archive_daemon_logs           || log_warn "Daemon log archiving failed"
+    archive_transaction_registry  || log_warn "Transaction registry archiving failed"
+    generate_summary_report       || log_warn "Summary report generation failed"
 
-    # 5c. Daemon logs (bitmonero.log files with thread/category detail)
-    archive_daemon_logs
-
-    # 5d. Transaction registry
-    archive_transaction_registry
-
-    # 5e. Generate human-readable summary report
-    generate_summary_report
-
-    # 5f. Analysis (opt-in)
     if [[ "$RUN_ANALYZE" == true ]]; then
-        run_analysis
+        run_analysis || log_warn "Post-simulation analysis failed"
     fi
 }
 
