@@ -502,10 +502,8 @@ pub fn process_user_agents(
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
 
-                    // Add process_threads flag if set and not overridden in wallet_defaults
-                    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
-                        args.push(format!("--max-concurrency={}", process_threads));
-                    }
+                    // Note: we intentionally do NOT set --max-concurrency on wallet-rpc.
+                    // See wallet.rs for details on the deadlock this causes.
 
                     // Add configurable options from merged wallet_defaults + wallet_options
                     args.extend(options_to_args(&merged_wallet_options));

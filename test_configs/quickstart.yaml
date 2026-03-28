@@ -6,7 +6,7 @@ general:
   shadow_log_level: warning
   progress: true
   runahead: 100ms
-  process_threads: 2
+  process_threads: 0
   native_preemption: true
   daemon_defaults:
     log-level: 1
