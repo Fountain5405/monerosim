@@ -14,16 +14,12 @@ fn build_wallet_args(
     agent_ip: &str,
     daemon_address: &str,
     wallet_rpc_port: u16,
-    environment: &BTreeMap<String, String>,
+    _environment: &BTreeMap<String, String>,
     custom_args: Option<&Vec<String>>,
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
     shared_dir: &str,
 ) -> String {
-    let process_threads: u32 = environment.get("PROCESS_THREADS")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
-
     let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
 
     let mut args = vec![
@@ -38,9 +34,12 @@ fn build_wallet_args(
         "--allow-mismatched-daemon-version".to_string(),
     ];
 
-    if process_threads > 0 && !merged_wallet_options.contains_key("max-concurrency") {
-        args.push(format!("--max-concurrency={}", process_threads));
-    }
+    // Note: we intentionally do NOT set --max-concurrency on wallet-rpc.
+    // With limited threads (e.g., 2), wallet-rpc's background refresh can
+    // deadlock against an in-flight transfer when both need the wallet lock
+    // and compete for the same threads. Letting wallet-rpc use its default
+    // (all cores) avoids this.
+    // process_threads is still applied to monerod (see daemon.rs).
 
     args.extend(options_to_args(&merged_wallet_options));
     args.push("--daemon-ssl-allow-any-cert".to_string());

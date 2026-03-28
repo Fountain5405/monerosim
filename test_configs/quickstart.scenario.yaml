@@ -13,6 +13,7 @@ general:
   enable_dns_server: true
   shadow_log_level: warning
   progress: true
+  runahead: 100ms
   process_threads: 2
   native_preemption: true
   daemon_defaults:
