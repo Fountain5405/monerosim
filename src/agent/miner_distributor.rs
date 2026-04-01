@@ -63,9 +63,6 @@ pub fn process_miner_distributor(
         if let Some(v) = &miner_distributor_config.initial_fund_amount {
             agent_args.push(format!("--attributes initial_fund_amount {}", v));
         }
-        if let Some(v) = miner_distributor_config.initial_wait_time {
-            agent_args.push(format!("--attributes initial_wait_time {}", v));
-        }
         // md_* parameters for batch transaction sizing (max 16 outputs per tx in Monero)
         if let Some(v) = miner_distributor_config.md_n_recipients {
             agent_args.push(format!("--attributes md_n_recipients {}", v));

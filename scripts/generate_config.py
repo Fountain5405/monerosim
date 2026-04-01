@@ -868,7 +868,6 @@ def generate_config(
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
         ("wait_time", md_start_time_s),  # When Shadow starts the process
-        ("initial_wait_time", 0),  # No additional Python wait (Shadow handles timing)
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
         ("transaction_frequency", 30),
@@ -1224,7 +1223,6 @@ def generate_upgrade_config(
     agents["miner-distributor"] = OrderedDict([
         ("script", "agents.miner_distributor"),
         ("wait_time", md_start_time_s),  # When Shadow starts the process
-        ("initial_wait_time", 0),  # No additional Python wait (Shadow handles timing)
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
         ("transaction_frequency", 30),

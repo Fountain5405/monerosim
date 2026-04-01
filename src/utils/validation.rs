@@ -396,7 +396,6 @@ mod tests {
             max_transaction_amount: None,
             min_transaction_amount: None,
             transaction_frequency: None,
-            initial_wait_time: None,
             md_n_recipients: None,
             md_out_per_tx: None,
             md_output_amount: None,

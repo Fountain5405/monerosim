@@ -64,8 +64,7 @@ class MinerDistributorAgent(BaseAgent):
         # md_output_amount: XMR amount per output
         self.md_output_amount = 5.0
         
-        # Wait time parameters for mining reward maturation
-        self.initial_wait_time = 3600  # 1 hour in seconds (default)
+        # Balance check parameters for mining reward maturation
         self.balance_check_interval = 30  # Check balance every 30 seconds
         self.max_wait_time = 7200  # Maximum 2 hours to wait before giving up
 
@@ -106,7 +105,6 @@ class MinerDistributorAgent(BaseAgent):
             'transaction_priority': ('int_range', 'transaction_priority', 1, 0, 3),
             'max_retries': ('int_min', 'max_retries', 5, 1),
             'recipient_selection': ('choice', 'recipient_selection', 'random', ['random', 'round_robin']),
-            'initial_wait_time': ('time_duration', 'initial_wait_time', 3600),
             'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
             'max_wait_time': ('time_duration', 'max_wait_time', 7200),
             'md_n_recipients': ('int_min', 'md_n_recipients', 8, 1),
@@ -336,24 +334,14 @@ class MinerDistributorAgent(BaseAgent):
         if already_funded:
             self.logger.info(f"Resuming initial funding: {len(already_funded)} already funded, {len(previously_failed)} previously failed")
 
-        # Check if we should wait for mining rewards to mature
-        current_time = time.time()
-        elapsed_time = current_time - self.startup_time
-
+        # Check if miners have sufficient unlocked balance before funding
         if self.waiting_for_maturity:
-            if elapsed_time < self.initial_wait_time:
-                remaining_wait = self.initial_wait_time - elapsed_time
-                self.logger.info(f"Waiting for mining rewards to mature... {remaining_wait:.0f} seconds remaining")
-
-                # Check if it's time to check balance
-                if current_time - self.last_balance_check >= self.balance_check_interval:
-                    self._check_miner_balance()
-                    self.last_balance_check = current_time
-
+            current_time = time.time()
+            if current_time - self.last_balance_check >= self.balance_check_interval:
+                self._check_miner_balance()
+                self.last_balance_check = current_time
+            if self.waiting_for_maturity:
                 return
-            else:
-                self.logger.info("Initial wait period completed, proceeding with funding")
-                self.waiting_for_maturity = False
 
         # Discover available miners
         self._discover_miners()
@@ -706,14 +694,9 @@ class MinerDistributorAgent(BaseAgent):
 
         # Check if we need to perform or retry initial funding
         if not self.initial_funding_completed:
-            # Check if we're still waiting for maturity
+            # Check if miners have unlocked balance before attempting funding
             if self.waiting_for_maturity:
-                elapsed_time = current_time - self.startup_time
-                if elapsed_time >= self.initial_wait_time:
-                    self.logger.info("Initial wait period completed, proceeding with funding")
-                    self.waiting_for_maturity = False
-                elif current_time - self.last_balance_check >= self.balance_check_interval:
-                    # Periodically check if miners have unlocked balance
+                if current_time - self.last_balance_check >= self.balance_check_interval:
                     self._check_miner_balance()
                     self.last_balance_check = current_time
 
