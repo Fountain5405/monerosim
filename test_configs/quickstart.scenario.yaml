@@ -7,8 +7,8 @@
 #   ./run_sim.sh --config test_configs/quickstart.yaml
 
 general:
-  stop_time: 8h
-  simulation_seed: 42
+  stop_time: 6h
+  simulation_seed: 12345
   bootstrap_end_time: 4h
   enable_dns_server: true
   shadow_log_level: warning
@@ -47,10 +47,10 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 20m
+    start_time: 40m
     start_time_stagger: 10s
     transaction_interval: 2m
-    activity_start_time: 5h
+    activity_start_time: 4h
     can_receive_distributions: true
 
   # 1 relay — daemon-only node for network realism
@@ -61,7 +61,7 @@ agents:
   # Fund distribution and monitoring
   miner-distributor:
     script: agents.miner_distributor
-    wait_time: 4h
+    wait_time: 70m
     transaction_frequency: 30
 
   simulation-monitor:
