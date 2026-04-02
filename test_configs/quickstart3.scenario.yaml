@@ -1,0 +1,62 @@
+general:
+  stop_time: 36h                       # Total simulation duration
+  simulation_seed: 12345
+  bootstrap_end_time: 24h              # Bootstrap completes at 24 hours
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 500ms                      # Set to 500 milliseconds as requested
+  process_threads: 0                   # Set to 0 as requested
+  native_preemption: true              # Enabled as requested
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    disable-rpc-ban: true
+    allow-local-ip: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+# === AGENTS ===
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]    # Total = 100 (required for initial miners)
+    can_receive_distributions: true
+
+  # --- 3 Users: Send transactions periodically ---
+  user-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 11h                 # Start after 20 minutes
+    start_time_stagger: auto          # Batched spawning for 3 users
+    transaction_interval: 60          # Send a transaction every 60 seconds
+    activity_start_time: auto         # Wait for bootstrap before transacting
+    can_receive_distributions: true
+
+  # --- 1 Relay Node: Daemon-only for P2P block/tx relay ---
+  relay-001:
+    daemon: monerod
+    start_time: 12h                   
+    start_time_stagger: 0s
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto                   # Wait for bootstrap to complete
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300                # Check every 5 minutes

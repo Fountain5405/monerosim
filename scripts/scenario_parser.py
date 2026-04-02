@@ -218,11 +218,16 @@ def parse_range_pattern(pattern: str) -> Optional[Tuple[str, str, int, int]]:
     """
     match = re.match(r'^(.+?)\{(\d+)\.\.(\d+)\}$', pattern)
     if not match:
-        return None
-
-    prefix = match.group(1)
-    start_str = match.group(2)
-    end_str = match.group(3)
+        # Also handle single-value braces: "relay-{001}" -> same as "relay-{001..001}"
+        single = re.match(r'^(.+?)\{(\d+)\}$', pattern)
+        if not single:
+            return None
+        prefix = single.group(1)
+        start_str = end_str = single.group(2)
+    else:
+        prefix = match.group(1)
+        start_str = match.group(2)
+        end_str = match.group(3)
 
     start = int(start_str)
     end = int(end_str)
@@ -495,7 +500,9 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
             # users start transacting simultaneously (wallet-rpc overload).
             # 120s gives each wallet-rpc time to finish its first transaction
             # before the next user starts.
-            if is_user_agent and 'activity_start_time' in base_fields and 'activity_start_time' not in stagger_fields:
+            if (is_user_agent and 'activity_start_time' in base_fields
+                    and 'activity_start_time' not in stagger_fields
+                    and base_fields.get('activity_start_time') != 'auto'):
                 stagger_fields['activity_start_time'] = '120s'
 
             # Default upgrade stagger: 30s between each node's daemon_0_stop
@@ -601,7 +608,7 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
                        'transaction_frequency', 'poll_interval'}
     for agent_id, props in scenario.singleton_agents.items():
-        agent_config = props.copy()
+        agent_config = {k: v for k, v in props.items() if not k.endswith('_stagger')}
         for key, val in agent_config.items():
             if key in u32_time_fields and isinstance(val, str) and val != 'auto':
                 agent_config[key] = parse_duration(val)
@@ -612,9 +619,13 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     last_bootstrap_spawn_s = max(bootstrap_participant_start_times) if bootstrap_participant_start_times else 0
     auto_bootstrap_end_s = max(MIN_BOOTSTRAP_END_TIME_S, int(last_bootstrap_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT)))
 
-    # 1. Bootstrap end time: use override or auto-calc
+    # 1. Bootstrap end time: use timing override, or general section value, or auto-calc
+    #    The general section's bootstrap_end_time is also the Shadow-level setting,
+    #    so it makes sense to use it for auto timing when no timing override exists.
     if overrides.bootstrap_end_time:
         bootstrap_end_s = parse_duration(overrides.bootstrap_end_time)
+    elif scenario.general.get('bootstrap_end_time') and scenario.general.get('bootstrap_end_time') != 'auto':
+        bootstrap_end_s = parse_duration(str(scenario.general['bootstrap_end_time']))
     else:
         bootstrap_end_s = auto_bootstrap_end_s
 

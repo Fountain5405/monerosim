@@ -321,7 +321,7 @@ check_disk_space() {
     if [[ "$free_kb" -lt "$max_size_kb" ]]; then
         echo ""
         log_warn "Free space may be insufficient for another run!"
-        log_info "  Needed (estimate): $(format_kb "$max_size_kb")"
+        log_info "  Largest previous run used: $(format_kb "$max_size_kb")"
         log_info "  Available: $(format_kb "$free_kb")"
         echo ""
         echo "  Archived runs (by size):"
@@ -335,7 +335,7 @@ check_disk_space() {
             exit 1
         fi
     else
-        log_ok "Disk space: $(format_kb "$free_kb") free (estimate needed: $(format_kb "$max_size_kb"))"
+        log_ok "Disk space: $(format_kb "$free_kb") free (largest previous run used: $(format_kb "$max_size_kb"))"
     fi
 }
 
@@ -930,6 +930,8 @@ archive_blockchain_snapshots() {
         [[ -n "$user_dirs" ]] && copy_blockchain_snapshot "$(echo "$user_dirs" | shuf 2>/dev/null | head -1)"
         [[ -n "$relay_dirs" ]] && copy_blockchain_snapshot "$(echo "$relay_dirs" | shuf 2>/dev/null | head -1)"
     fi
+
+    return 0
 }
 
 copy_blockchain_snapshot() {

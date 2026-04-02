@@ -26,6 +26,18 @@ timing:         # Optional overrides for bootstrap/activity timing
 
 `general` and `network` are passed through as-is to the expanded config. `agents` is expanded (ranges, staggers, auto values). `timing` controls the automatic timing calculations and is consumed during expansion.
 
+### Shadow Performance Settings (under `general:`)
+
+These are Shadow simulator settings — top-level fields under `general:`, **not** under `daemon_defaults:` or `wallet_defaults:`.
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `runahead` | `100ms` | Shadow runahead window. Larger = faster but less accurate |
+| `process_threads` | `2` | Threads per simulated process. `0` = program defaults, `1` = deterministic |
+| `native_preemption` | `false` | Enable Shadow native preemption for better wall-time performance |
+
+`daemon_defaults:` contains only monerod CLI flags. `wallet_defaults:` contains only wallet-rpc CLI flags.
+
 ## Range Expansion
 
 Agent IDs with `{START..END}` expand to multiple agents:
@@ -142,7 +154,7 @@ Agent 001 gets 30, 002 gets 25, etc. No `_stagger` suffix needed for lists.
 
 | Field | Resolves to |
 |-------|-------------|
-| `bootstrap_end_time` | `max(4h, last_bootstrap_spawn * 1.2)` |
+| `bootstrap_end_time` | `auto` → `max(4h, last_bootstrap_spawn * 1.2)`. Explicit value (e.g. `24h`) is used for both Shadow and auto timing |
 | `activity_start_time` | Staggered per-user times starting at `md_start + 1h` |
 | `wait_time` | `md_start_time` (for miner-distributor) |
 | `daemon_0_start` | Agent's `start_time` |

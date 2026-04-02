@@ -86,6 +86,30 @@ Each agent group can specify a `type:` field for sensible defaults:
 Type defaults are overridden by explicit fields. The `type:` key is removed
 before expansion so the Rust engine never sees it.
 
+## General Section — Shadow Performance Settings
+
+The `general:` section contains Shadow simulator settings. These are top-level fields
+under `general:`, NOT under `daemon_defaults:` or `wallet_defaults:`.
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `stop_time` | (required) | Total simulation duration |
+| `simulation_seed` | 12345 | Random seed for reproducibility |
+| `bootstrap_end_time` | auto | When bootstrap ends. `auto` = calculated. Explicit value (e.g. `24h`) is used for both Shadow AND auto timing |
+| `enable_dns_server` | true | Enable DNS for peer discovery |
+| `shadow_log_level` | warning | Shadow log verbosity |
+| `progress` | true | Show progress bar |
+| `runahead` | 100ms | Shadow runahead window. Larger = faster but less accurate. Try 500ms for speed |
+| `process_threads` | 2 | Threads per simulated process. 0 = use program defaults (monerod uses all cores, non-deterministic). 1 = deterministic but slow. 2 = good balance |
+| `native_preemption` | false | Enable Shadow native preemption. Improves wall-time performance |
+
+IMPORTANT: `runahead`, `process_threads`, and `native_preemption` are Shadow simulator
+settings that go directly under `general:`. They are NOT daemon options and must NEVER
+be placed under `daemon_defaults:` or `wallet_defaults:`.
+
+`daemon_defaults:` contains only monerod CLI flags (log-level, db-sync-mode, etc.).
+`wallet_defaults:` contains only monero-wallet-rpc CLI flags (log-level, etc.).
+
 ## Key Syntax Rules
 
 1. **Range expansion**: `{001..100}` expands to 001, 002, ..., 100
@@ -101,6 +125,7 @@ before expansion so the Rust engine never sees it.
 
 4. **Auto values**: Use `auto` for calculated fields
    - `bootstrap_end_time: auto` - calculated from spawn times
+   - `bootstrap_end_time: 24h` - explicit value used for Shadow AND auto timing (activity_start, wait_time)
    - `activity_start_time: auto` - bootstrap_end + 1 hour
    - `wait_time: auto` - for miner-distributor, equals md_start_time
 
