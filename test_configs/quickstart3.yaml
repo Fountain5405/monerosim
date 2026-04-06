@@ -1,12 +1,12 @@
 general:
-  stop_time: 36h
+  stop_time: 12h
   simulation_seed: 12345
-  bootstrap_end_time: 24h
+  bootstrap_end_time: 8h
   enable_dns_server: true
   shadow_log_level: warning
   progress: true
   runahead: 500ms
-  process_threads: 0
+  process_threads: 1
   native_preemption: true
   daemon_defaults:
     log-level: 1
@@ -16,6 +16,8 @@ general:
     non-interactive: true
     disable-rpc-ban: true
     allow-local-ip: true
+    no-igd: true
+    out-peers: 3
   wallet_defaults:
     log-level: 1
 network:
@@ -27,14 +29,14 @@ agents:
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
-    hashrate: 20
+    hashrate: 40
     can_receive_distributions: true
   miner-002:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 1s
-    hashrate: 20
+    hashrate: 40
     can_receive_distributions: true
   miner-003:
     daemon: monerod
@@ -43,50 +45,39 @@ agents:
     start_time: 2s
     hashrate: 20
     can_receive_distributions: true
-  miner-004:
-    daemon: monerod
-    wallet: monero-wallet-rpc
-    script: agents.autonomous_miner
-    start_time: 3s
-    hashrate: 20
-    can_receive_distributions: true
-  miner-005:
-    daemon: monerod
-    wallet: monero-wallet-rpc
-    script: agents.autonomous_miner
-    start_time: 4s
-    hashrate: 20
-    can_receive_distributions: true
   user-001:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 39600s
+    start_time: 21600s
     transaction_interval: 60
-    activity_start_time: 90016
+    activity_start_time: 32400
     can_receive_distributions: true
   user-002:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 39605s
+    start_time: 21605s
     transaction_interval: 60
-    activity_start_time: 90000
+    activity_start_time: 32420
     can_receive_distributions: true
   user-003:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 39610s
+    start_time: 21610s
     transaction_interval: 60
-    activity_start_time: 90000
+    activity_start_time: 32440
     can_receive_distributions: true
   relay-001:
     daemon: monerod
-    start_time: 12h
+    start_time: 2h
+  relay-002:
+    daemon: monerod
+    start_time: 2h
   miner-distributor:
     script: agents.miner_distributor
-    wait_time: 86400
+    wait_time: 25200
     transaction_frequency: 30
   simulation-monitor:
     script: agents.simulation_monitor
