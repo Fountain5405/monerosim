@@ -34,6 +34,8 @@ import sys
 from typing import Dict, Any, List, Tuple
 from collections import OrderedDict
 
+from calibrate import load_calibration, compute_stagger
+
 
 # Fixed miner configuration (same as config_32_agents.yaml)
 FIXED_MINERS = [
@@ -102,10 +104,14 @@ def auto_detect_activity_batching(num_users: int, tx_interval: int) -> tuple:
     and permanent freezes. Miner wallets (max 5 concurrent) never freeze,
     so we target a similar concurrency level.
 
+    If calibration data exists (~/.monerosim/calibration.json), uses measured
+    tx verification time to compute the minimum safe interval. Otherwise falls
+    back to heuristic defaults.
+
     Strategy:
     - batch_size: max 5 concurrent wallets (proven safe)
     - interval: spread all batches across one tx_interval period,
-      with a minimum of 120s between batches for ring construction headroom
+      with a minimum floor based on calibration or 120s fallback
 
     Returns:
         (batch_size, batch_interval_s)
@@ -114,7 +120,12 @@ def auto_detect_activity_batching(num_users: int, tx_interval: int) -> tuple:
     num_batches = (num_users + batch_size - 1) // batch_size
     if num_batches <= 1:
         return (batch_size, 300)
-    interval = max(120, tx_interval // num_batches)
+
+    # Use stagger formula: interval / num_users ensures even tx distribution
+    stagger = compute_stagger(num_users, tx_interval)
+    min_interval = max(stagger * batch_size, 60)
+
+    interval = max(min_interval, tx_interval // num_batches)
     return (batch_size, interval)
 
 

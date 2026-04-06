@@ -59,8 +59,10 @@ from dataclasses import dataclass, field
 
 try:
     from generate_config import parse_duration, calculate_activity_start_times
+    from calibrate import load_calibration, compute_stagger
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
+    from .calibrate import load_calibration, compute_stagger
 
 
 # Reuse constants from generate_config
@@ -498,12 +500,14 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
 
             # Default activity_start_time stagger: prevents thundering herd when all
             # users start transacting simultaneously (wallet-rpc overload).
-            # 120s gives each wallet-rpc time to finish its first transaction
-            # before the next user starts.
+            # Uses calibration data if available, otherwise falls back to
+            # interval/num_users (see docs/shadow-tx-stagger.md).
             if (is_user_agent and 'activity_start_time' in base_fields
                     and 'activity_start_time' not in stagger_fields
                     and base_fields.get('activity_start_time') != 'auto'):
-                stagger_fields['activity_start_time'] = '120s'
+                tx_interval = base_fields.get('transaction_interval', 60)
+                stagger_s = compute_stagger(group.count, tx_interval)
+                stagger_fields['activity_start_time'] = f'{stagger_s}s'
 
             # Default upgrade stagger: 30s between each node's daemon_0_stop
             if 'daemon_0_stop' in base_fields and 'daemon_0_stop' not in stagger_fields:
