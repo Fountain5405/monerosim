@@ -34,7 +34,7 @@ import sys
 from typing import Dict, Any, List, Tuple
 from collections import OrderedDict
 
-from calibrate import load_calibration, compute_stagger
+from calibrate import compute_stagger
 
 
 # Fixed miner configuration (same as config_32_agents.yaml)
@@ -83,12 +83,8 @@ DEFAULT_POST_UPGRADE_DURATION_S = 7200  # 2 hours of observation after upgrade
 DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
 DEFAULT_DAEMON_RESTART_GAP_S = 30  # Gap between stopping old daemon and starting new one
 
-# User activity batching defaults (prevents thundering herd when all users try to transact at once)
-# Both values at 0 = auto-detect: batch_size capped at 5 (proven safe concurrency),
-# interval spread across one tx_interval period (min 120s between batches)
-DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect (max 5 concurrent)
-DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 0  # 0 = auto-detect from user count and tx_interval
-DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
+# Activity stagger: see docs/shadow-tx-stagger.md
+# stagger = transaction_interval / num_users
 
 # Relay node spawn staggering defaults
 # Relays are daemon-only (1 process each) so simple linear stagger suffices
@@ -96,71 +92,23 @@ DEFAULT_RELAY_SPAWN_START_S = 5   # Start after miners (t=5s)
 DEFAULT_RELAY_STAGGER_S = 20      # 20s apart; sim-time moves fast so need wider spacing
 
 
-def auto_detect_activity_batching(num_users: int, tx_interval: int) -> tuple:
-    """Auto-detect activity batch size and interval for safe ring construction.
-
-    Ring signature decoy selection is CPU-intensive. In Shadow, too many
-    concurrent wallet-rpcs doing ring construction causes thread starvation
-    and permanent freezes. Miner wallets (max 5 concurrent) never freeze,
-    so we target a similar concurrency level.
-
-    If calibration data exists (~/.monerosim/calibration.json), uses measured
-    tx verification time to compute the minimum safe interval. Otherwise falls
-    back to heuristic defaults.
-
-    Strategy:
-    - batch_size: max 5 concurrent wallets (proven safe)
-    - interval: spread all batches across one tx_interval period,
-      with a minimum floor based on calibration or 120s fallback
-
-    Returns:
-        (batch_size, batch_interval_s)
-    """
-    batch_size = max(3, min(5, num_users))
-    num_batches = (num_users + batch_size - 1) // batch_size
-    if num_batches <= 1:
-        return (batch_size, 300)
-
-    # Use stagger formula: interval / num_users ensures even tx distribution
-    stagger = compute_stagger(num_users, tx_interval)
-    min_interval = max(stagger * batch_size, 60)
-
-    interval = max(min_interval, tx_interval // num_batches)
-    return (batch_size, interval)
-
-
-def resolve_activity_batching(batch_size: int, batch_interval_s: int,
-                               num_users: int, tx_interval: int) -> tuple:
-    """Resolve activity batching, auto-detecting whichever value is 0."""
-    if batch_size <= 0 or batch_interval_s <= 0:
-        auto_size, auto_interval = auto_detect_activity_batching(num_users, tx_interval)
-        if batch_size <= 0:
-            batch_size = auto_size
-        if batch_interval_s <= 0:
-            batch_interval_s = auto_interval
-    return (batch_size, batch_interval_s)
-
-
 def calculate_activity_start_times(
     num_users: int,
     base_activity_start_s: int,
-    batch_size: int,
-    batch_interval_s: int,
-    jitter_fraction: float,
-    seed: int,
+    tx_interval: int,
 ) -> List[int]:
-    """Calculate staggered activity start times to prevent thundering herd.
+    """Calculate evenly staggered activity start times.
 
-    Instead of all users starting transactions at the same time, this staggers
-    their start times in batches with randomization to spread the load.
+    Uses the stagger formula: stagger = transaction_interval / num_users
+    This ensures transaction generation is evenly distributed across
+    simulated time, preventing Shadow CPU starvation.
+
+    See docs/shadow-tx-stagger.md for the full explanation.
 
     Args:
         num_users: Total number of users
-        base_activity_start_s: When the first batch should start (sim time seconds)
-        batch_size: Number of users per batch
-        batch_interval_s: Target time between batch starts
-        jitter_fraction: Random jitter as fraction of batch_interval (e.g., 0.3 = +/-30%)
-        seed: Random seed for reproducible jitter
+        base_activity_start_s: When the first user starts transacting (sim seconds)
+        tx_interval: Transaction interval in seconds
 
     Returns:
         List of activity_start_time values for each user (in order)
@@ -168,31 +116,8 @@ def calculate_activity_start_times(
     if num_users == 0:
         return []
 
-    # Guard against batch_size=0 (auto-detect sentinel) — treat as single batch
-    if batch_size <= 0:
-        batch_size = num_users
-
-    rng = random.Random(seed)
-    activity_times = []
-
-    # Calculate jitter range in seconds
-    jitter_range_s = int(batch_interval_s * jitter_fraction)
-
-    for user_idx in range(num_users):
-        batch_num = user_idx // batch_size
-        batch_start_s = base_activity_start_s + (batch_num * batch_interval_s)
-
-        # Add random jitter: +/- jitter_range_s
-        if jitter_range_s > 0:
-            jitter_s = rng.randint(-jitter_range_s, jitter_range_s)
-        else:
-            jitter_s = 0
-
-        # Ensure we don't go before base_activity_start_s
-        activity_time = max(base_activity_start_s, batch_start_s + jitter_s)
-        activity_times.append(activity_time)
-
-    return activity_times
+    stagger = compute_stagger(num_users, tx_interval)
+    return [base_activity_start_s + i * stagger for i in range(num_users)]
 
 
 def calculate_upgrade_schedule(
@@ -459,12 +384,10 @@ def generate_metadata(
             ("stagger_interval_s", stagger_interval_s),
         ])
 
-    # Activity batching configuration (transaction start staggering)
-    metadata["activity_batching"] = OrderedDict([
-        ("enabled", timing_info.get('activity_batching_enabled', True)),
-        ("batch_size", timing_info.get('activity_batch_size', DEFAULT_ACTIVITY_BATCH_SIZE)),
-        ("batch_interval_s", timing_info.get('activity_batch_interval_s', DEFAULT_ACTIVITY_BATCH_INTERVAL_S)),
-        ("jitter_fraction", timing_info.get('activity_batch_jitter', DEFAULT_ACTIVITY_BATCH_JITTER)),
+    # Activity stagger configuration (see docs/shadow-tx-stagger.md)
+    metadata["activity_stagger"] = OrderedDict([
+        ("stagger_s", timing_info.get('activity_stagger_s', 0)),
+        ("tx_interval", timing_info.get('tx_interval', 60)),
         ("total_rollout_s", timing_info.get('activity_rollout_duration_s', 0)),
     ])
 
@@ -676,10 +599,6 @@ def generate_config(
     md_funding_cycle_interval: str = "5m",
     tx_interval: int = None,
     tx_send_probability: float = 0.75,
-    # User activity batching (prevents thundering herd)
-    activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
-    activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
-    activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
     # Shadow parallelism and preemption
     parallelism: int = 0,
     native_preemption: bool = None,
@@ -713,10 +632,6 @@ def generate_config(
         md_out_per_tx: Outputs per recipient per transaction (default: 2)
         md_output_amount: XMR amount per output (default: 5.0)
         md_funding_cycle_interval: Interval between continuous funding cycles (default: 5m)
-        tx_interval: Seconds between user transaction attempts (default: 120 fast, 60 normal)
-        activity_batch_size: Users per activity batch (default: 10)
-        activity_batch_interval_s: Target seconds between activity batches (default: 300)
-        activity_batch_jitter: Random jitter fraction +/- (default: 0.30 = 30%)
         relay_spawn_start_s: When relay nodes start spawning (default: 5s)
         relay_stagger_s: Interval between relay node spawns (default: 5s)
     """
@@ -820,27 +735,16 @@ def generate_config(
         agent_id = f"miner-{i+1:03}"
         agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
-    # Resolve auto-detected activity batching (0 = auto from user count and tx_interval)
-    activity_batch_size, activity_batch_interval_s = resolve_activity_batching(
-        activity_batch_size, activity_batch_interval_s, num_users, tx_interval)
-
-    # Calculate staggered activity start times to prevent thundering herd
-    # Each user gets a slightly different activity_start_time based on batching
+    # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
+    activity_stagger_s = compute_stagger(num_users, tx_interval)
     user_activity_times = calculate_activity_start_times(
         num_users=num_users,
         base_activity_start_s=activity_start_time_s,
-        batch_size=activity_batch_size,
-        batch_interval_s=activity_batch_interval_s,
-        jitter_fraction=activity_batch_jitter,
-        seed=simulation_seed,
+        tx_interval=tx_interval,
     )
 
-    # Calculate activity rollout duration for metadata
-    if num_users > 0:
-        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
-        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
-    else:
-        activity_rollout_duration_s = 0
+    # Activity rollout duration for metadata
+    activity_rollout_duration_s = (num_users - 1) * activity_stagger_s if num_users > 0 else 0
 
     # Add variable users with appropriate start times
     if use_batched and batch_schedule:
@@ -919,11 +823,9 @@ def generate_config(
         'use_batched': use_batched,
         'batch_sizes': batch_sizes,
         'batch_interval_s': batch_interval_s,
-        # Activity batching info
-        'activity_batching_enabled': True,
-        'activity_batch_size': activity_batch_size,
-        'activity_batch_interval_s': activity_batch_interval_s,
-        'activity_batch_jitter': activity_batch_jitter,
+        # Activity stagger info (see docs/shadow-tx-stagger.md)
+        'activity_stagger_s': activity_stagger_s,
+        'tx_interval': tx_interval,
         'activity_rollout_duration_s': activity_rollout_duration_s,
         # Relay timing info
         'relay_spawn_start_s': relay_spawn_start_s,
@@ -980,10 +882,6 @@ def generate_upgrade_config(
     md_funding_cycle_interval: str = "5m",
     tx_interval: int = None,
     tx_send_probability: float = 0.75,
-    # User activity batching (prevents thundering herd)
-    activity_batch_size: int = DEFAULT_ACTIVITY_BATCH_SIZE,
-    activity_batch_interval_s: int = DEFAULT_ACTIVITY_BATCH_INTERVAL_S,
-    activity_batch_jitter: float = DEFAULT_ACTIVITY_BATCH_JITTER,
     # Shadow parallelism and preemption
     parallelism: int = 0,
     native_preemption: bool = None,
@@ -1151,26 +1049,16 @@ def generate_upgrade_config(
             phase1_start,
         )
 
-    # Resolve auto-detected activity batching (0 = auto from user count and tx_interval)
-    activity_batch_size, activity_batch_interval_s = resolve_activity_batching(
-        activity_batch_size, activity_batch_interval_s, num_users, tx_interval)
-
-    # Calculate staggered activity start times to prevent thundering herd
+    # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
+    activity_stagger_s = compute_stagger(num_users, tx_interval)
     user_activity_times = calculate_activity_start_times(
         num_users=num_users,
         base_activity_start_s=activity_start_time_s,
-        batch_size=activity_batch_size,
-        batch_interval_s=activity_batch_interval_s,
-        jitter_fraction=activity_batch_jitter,
-        seed=simulation_seed,
+        tx_interval=tx_interval,
     )
 
-    # Calculate activity rollout duration for metadata
-    if num_users > 0:
-        num_activity_batches = (num_users + activity_batch_size - 1) // activity_batch_size
-        activity_rollout_duration_s = (num_activity_batches - 1) * activity_batch_interval_s
-    else:
-        activity_rollout_duration_s = 0
+    # Activity rollout duration for metadata
+    activity_rollout_duration_s = (num_users - 1) * activity_stagger_s if num_users > 0 else 0
 
     # Add users with phased daemons
     if use_batched and batch_schedule:
@@ -1273,11 +1161,9 @@ def generate_upgrade_config(
         'use_batched': use_batched,
         'batch_sizes': batch_sizes,
         'batch_interval_s': batch_interval_s,
-        # Activity batching info
-        'activity_batching_enabled': True,
-        'activity_batch_size': activity_batch_size,
-        'activity_batch_interval_s': activity_batch_interval_s,
-        'activity_batch_jitter': activity_batch_jitter,
+        # Activity stagger info (see docs/shadow-tx-stagger.md)
+        'activity_stagger_s': activity_stagger_s,
+        'tx_interval': tx_interval,
         'activity_rollout_duration_s': activity_rollout_duration_s,
         # Relay timing info
         'relay_spawn_start_s': relay_spawn_start_s,
@@ -1626,33 +1512,6 @@ Timeline (verified bootstrap for Monero regtest):
              "Accepts time durations like '2m', '300s', '5m'."
     )
 
-    # User activity batching options (prevents thundering herd when all users try to transact at once)
-    parser.add_argument(
-        "--activity-batch-size",
-        type=int,
-        default=DEFAULT_ACTIVITY_BATCH_SIZE,
-        help="Users per activity batch (0=auto-detect, default). "
-             "Auto-detection caps at 5 concurrent wallets (proven safe for ring construction). "
-             "Staggers when users start sending transactions to prevent overwhelming the network."
-    )
-
-    parser.add_argument(
-        "--activity-batch-interval",
-        type=str,
-        default="auto",
-        help="Target time between activity batches (default: auto). "
-             "'auto' spreads batches across one tx_interval period (min 120s between batches). "
-             "Accepts time durations like '2m', '300s', '5m' for explicit override."
-    )
-
-    parser.add_argument(
-        "--activity-batch-jitter",
-        type=float,
-        default=DEFAULT_ACTIVITY_BATCH_JITTER,
-        help=f"Random jitter fraction +/- for activity start times (default: {DEFAULT_ACTIVITY_BATCH_JITTER}). "
-             "E.g., 0.3 means each user's start time varies +/-30%% of the batch interval."
-    )
-
     # Upgrade scenario options
     parser.add_argument(
         "--scenario",
@@ -1836,9 +1695,6 @@ Timeline (verified bootstrap for Monero regtest):
                 md_funding_cycle_interval=args.md_funding_cycle_interval,
                 tx_interval=args.tx_interval,
                 tx_send_probability=args.tx_send_probability,
-                activity_batch_size=args.activity_batch_size,
-                activity_batch_interval_s=0 if args.activity_batch_interval == "auto" else parse_duration(args.activity_batch_interval),
-                activity_batch_jitter=args.activity_batch_jitter,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
                 relay_nodes=args.relay_nodes,
@@ -1876,9 +1732,6 @@ Timeline (verified bootstrap for Monero regtest):
                 md_funding_cycle_interval=args.md_funding_cycle_interval,
                 tx_interval=args.tx_interval,
                 tx_send_probability=args.tx_send_probability,
-                activity_batch_size=args.activity_batch_size,
-                activity_batch_interval_s=0 if args.activity_batch_interval == "auto" else parse_duration(args.activity_batch_interval),
-                activity_batch_jitter=args.activity_batch_jitter,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
                 relay_nodes=args.relay_nodes,
@@ -1907,10 +1760,8 @@ Timeline (verified bootstrap for Monero regtest):
     batch_sizes = timing_info['batch_sizes']
     batch_interval_s = timing_info['batch_interval_s']
 
-    # Activity batching info
-    activity_batch_size = timing_info.get('activity_batch_size', DEFAULT_ACTIVITY_BATCH_SIZE)
-    activity_batch_interval_s = timing_info.get('activity_batch_interval_s', DEFAULT_ACTIVITY_BATCH_INTERVAL_S)
-    activity_batch_jitter = timing_info.get('activity_batch_jitter', DEFAULT_ACTIVITY_BATCH_JITTER)
+    # Activity stagger info
+    activity_stagger_s = timing_info.get('activity_stagger_s', 0)
     activity_rollout_s = timing_info.get('activity_rollout_duration_s', 0)
 
     fast_note = " [FAST MODE]" if args.fast else ""
@@ -1937,13 +1788,12 @@ Timeline (verified bootstrap for Monero regtest):
         batched_note = ""
         spawn_note = f"Users spawn ({stagger_note})"
 
-    # Activity batching note
+    # Activity stagger note (see docs/shadow-tx-stagger.md)
     activity_rollout_str = format_time_offset(activity_rollout_s, for_config=False)
-    activity_interval_str = format_time_offset(activity_batch_interval_s, for_config=False)
-    activity_batching_note = f"""#
-# Activity batching (prevents thundering herd):
-#   Batch size: {activity_batch_size} users
-#   Batch interval: {activity_interval_str} (+/-{int(activity_batch_jitter*100)}% jitter)
+    activity_stagger_str = format_time_offset(activity_stagger_s, for_config=False)
+    activity_stagger_note = f"""#
+# Activity stagger (prevents Shadow CPU starvation):
+#   Stagger: {activity_stagger_str} between users (interval/num_users)
 #   Total rollout: ~{activity_rollout_str}"""
 
     # Generate header based on scenario
@@ -1961,7 +1811,7 @@ Timeline (verified bootstrap for Monero regtest):
 #   Binary v2: {timing_info['upgrade_binary_v2']}
 #   Upgrade order: {timing_info['upgrade_order']}
 #   Upgrade stagger: {args.upgrade_stagger}
-{activity_batching_note}
+{activity_stagger_note}
 #
 # Timeline:
 #   t=0:           Miners start{relay_timeline_note}
@@ -1979,7 +1829,7 @@ Timeline (verified bootstrap for Monero regtest):
 # Total hosts: {5 + num_users + relay_nodes} (5 miners + {num_users} users{relay_agent_note})
 # Duration: {actual_duration}{duration_note}
 # Network topology: {args.gml}
-{activity_batching_note}
+{activity_stagger_note}
 #
 # Timeline:
 #   t=0:       Miners start{relay_timeline_note}

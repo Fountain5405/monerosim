@@ -59,10 +59,10 @@ from dataclasses import dataclass, field
 
 try:
     from generate_config import parse_duration, calculate_activity_start_times
-    from calibrate import load_calibration, compute_stagger
+    from calibrate import compute_stagger
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
-    from .calibrate import load_calibration, compute_stagger
+    from .calibrate import compute_stagger
 
 
 # Reuse constants from generate_config
@@ -78,13 +78,6 @@ DEFAULT_MAX_BATCH_SIZE = 200
 DEFAULT_INTRA_BATCH_STAGGER_S = 5
 DEFAULT_UPGRADE_STAGGER_S = 30
 DEFAULT_DAEMON_RESTART_GAP_S = 30
-
-# User activity batching defaults (prevents thundering herd when all users try to transact at once)
-# Ring signature / Bulletproof construction is CPU-intensive in simulated time, so batches
-# need wide spacing to let each batch complete before the next starts.
-DEFAULT_ACTIVITY_BATCH_SIZE = 0  # 0 = auto-detect from CPU count (matches generate_config.py)
-DEFAULT_ACTIVITY_BATCH_INTERVAL_S = 300  # Target seconds between batches (matches generate_config.py)
-DEFAULT_ACTIVITY_BATCH_JITTER = 0.30  # +/- 30% randomization per user within batch
 
 
 AGENT_TYPE_DEFAULTS = {
@@ -187,10 +180,6 @@ class TimingOverrides:
     bootstrap_end_time: Optional[str] = None    # When bootstrap ends (e.g., "20h")
     md_start_time: Optional[str] = None         # When miner distributor starts (e.g., "18h")
     activity_start_time: Optional[str] = None   # When users start transacting (e.g., "20h")
-    # Activity batching (prevents thundering herd)
-    activity_batch_size: Optional[int] = None   # Users per activity batch (default: 10)
-    activity_batch_interval: Optional[str] = None  # Time between batches (default: 300s)
-    activity_batch_jitter: Optional[float] = None  # Jitter fraction +/- (default: 0.30)
 
 
 @dataclass
@@ -305,9 +294,6 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
         bootstrap_end_time=timing_raw.get('bootstrap_end_time'),
         md_start_time=timing_raw.get('md_start_time'),
         activity_start_time=timing_raw.get('activity_start_time'),
-        activity_batch_size=timing_raw.get('activity_batch_size'),
-        activity_batch_interval=timing_raw.get('activity_batch_interval'),
-        activity_batch_jitter=timing_raw.get('activity_batch_jitter'),
     )
 
     agent_groups = []
@@ -502,6 +488,9 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
             # users start transacting simultaneously (wallet-rpc overload).
             # Uses calibration data if available, otherwise falls back to
             # interval/num_users (see docs/shadow-tx-stagger.md).
+            # When activity_start_time is 'auto', stagger is applied during
+            # auto-resolution via calculate_activity_start_times() which uses
+            # compute_stagger(). Only apply stagger here for explicit values.
             if (is_user_agent and 'activity_start_time' in base_fields
                     and 'activity_start_time' not in stagger_fields
                     and base_fields.get('activity_start_time') != 'auto'):
@@ -645,24 +634,12 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     else:
         activity_start_s = md_start_s + FUNDING_PERIOD_S
 
-    # 4. Activity batching settings
-    activity_batch_size = overrides.activity_batch_size or DEFAULT_ACTIVITY_BATCH_SIZE
-    activity_batch_interval_s = (
-        parse_duration(overrides.activity_batch_interval)
-        if overrides.activity_batch_interval
-        else DEFAULT_ACTIVITY_BATCH_INTERVAL_S
-    )
-    activity_batch_jitter = overrides.activity_batch_jitter or DEFAULT_ACTIVITY_BATCH_JITTER
-
     scenario.timing = {
         'last_bootstrap_spawn_s': last_bootstrap_spawn_s,
         'bootstrap_end_s': bootstrap_end_s,
         'md_start_s': md_start_s,
         'activity_start_s': activity_start_s,
         'user_spawn_start_s': user_spawn_start_s,
-        'activity_batch_size': activity_batch_size,
-        'activity_batch_interval_s': activity_batch_interval_s,
-        'activity_batch_jitter': activity_batch_jitter,
     }
 
     # Resolve 'auto' values in general section
@@ -670,22 +647,22 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     if general.get('bootstrap_end_time') == 'auto':
         general['bootstrap_end_time'] = f"{bootstrap_end_s // 3600}h" if bootstrap_end_s % 3600 == 0 else f"{bootstrap_end_s}s"
 
-    # Collect user agents with auto activity_start_time for batching
+    # Collect user agents with auto activity_start_time for staggering
     user_agents_with_auto_activity = []
+    # Determine tx_interval from any user agent (they should all share the same value)
+    auto_tx_interval = 60
     for agent_id, agent_config in agents.items():
         if agent_config.get('activity_start_time') == 'auto':
             is_user = 'regular_user' in str(agent_config.get('script', ''))
             if is_user:
                 user_agents_with_auto_activity.append(agent_id)
+                auto_tx_interval = agent_config.get('transaction_interval', 60)
 
-    # Calculate staggered activity start times for users
+    # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
     user_activity_times = calculate_activity_start_times(
         num_users=len(user_agents_with_auto_activity),
         base_activity_start_s=activity_start_s,
-        batch_size=activity_batch_size,
-        batch_interval_s=activity_batch_interval_s,
-        jitter_fraction=activity_batch_jitter,
-        seed=seed,
+        tx_interval=auto_tx_interval,
     )
 
     # Map user agent IDs to their staggered activity times
