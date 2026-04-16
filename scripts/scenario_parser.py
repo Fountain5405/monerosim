@@ -59,10 +59,10 @@ from dataclasses import dataclass, field
 
 try:
     from generate_config import parse_duration, calculate_activity_start_times
-    from calibrate import compute_stagger
+    from calibrate import compute_stagger, disable_auto_calibration
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
-    from .calibrate import compute_stagger
+    from .calibrate import compute_stagger, disable_auto_calibration
 
 
 # Reuse constants from generate_config
@@ -730,8 +730,13 @@ if __name__ == "__main__":
     parser.add_argument("input", help="Input scenario.yaml file")
     parser.add_argument("-o", "--output", default=None, help="Output file (default: derived from input name)")
     parser.add_argument("--seed", type=int, default=12345, help="Random seed")
+    parser.add_argument("--no-calibrate", action="store_true",
+                        help="Skip auto-calibration even if no calibration data exists")
 
     args = parser.parse_args()
+
+    if args.no_calibrate:
+        disable_auto_calibration()
 
     if args.output is None:
         args.output = derive_expanded_filename(args.input)

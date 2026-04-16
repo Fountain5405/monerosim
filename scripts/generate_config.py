@@ -34,7 +34,10 @@ import sys
 from typing import Dict, Any, List, Tuple
 from collections import OrderedDict
 
-from calibrate import compute_stagger
+try:
+    from calibrate import compute_stagger, disable_auto_calibration
+except ImportError:
+    from .calibrate import compute_stagger, disable_auto_calibration
 
 
 # Fixed miner configuration (same as config_32_agents.yaml)
@@ -1571,7 +1574,16 @@ Timeline (verified bootstrap for Monero regtest):
         help="How long to observe after upgrade completes (default: 2h)"
     )
 
+    parser.add_argument(
+        "--no-calibrate",
+        action="store_true",
+        help="Skip auto-calibration even if no calibration data exists"
+    )
+
     args = parser.parse_args()
+
+    if args.no_calibrate:
+        disable_auto_calibration()
 
     # Derive output filename when not specified
     if args.output is None:

@@ -60,22 +60,23 @@ network, preventing any single daemon from being overwhelmed.
 ## Calibration
 
 The minimum safe `transaction_interval` depends on how fast your hardware
-can run tx verification under Shadow. Run calibration to measure this:
+can verify transactions. Run calibration to measure this:
 
 ```bash
-python scripts/calibrate.py              # Run calibration sim (~5 min)
+python scripts/calibrate.py              # Run calibration (~30 seconds)
 python scripts/calibrate.py --show       # Show current calibration data
+python scripts/calibrate.py --build      # Build benchmark binary first
 ```
 
-This measures the PERF `add_tx` time from daemon logs and saves results to
-`~/.monerosim/calibration.json`. The config generators (`generate_config.py`,
-`scenario_parser.py`) automatically use this data when computing stagger values.
+This runs Monero's built-in `performance_tests` binary to benchmark the two
+dominant operations in transaction verification:
 
-You can also extract calibration from any existing run:
+- **CLSAG ring signature verification** (ring size 16, 2 inputs, 2 outputs)
+- **Bulletproofs+ range proof verification** (2 outputs)
 
-```bash
-python scripts/calibrate.py --from-run archived_runs/20260406_103204_quickstart3
-```
+Results are saved to `~/.monerosim/calibration.json`. The config generators
+(`generate_config.py`, `scenario_parser.py`) automatically use this data
+when computing stagger values.
 
 ### The Formula
 
@@ -85,7 +86,8 @@ stagger = interval / num_users
 ```
 
 Where:
-- `verify_time_p95` — 95th percentile tx verification time (from calibration)
+- `verify_time_p95` — estimated 95th percentile tx verification time (sum of
+  CLSAG + Bulletproofs+ benchmarks)
 - `safety_factor` — default 3x (accounts for multi-input txs and variance)
 - `interval` — the larger of `transaction_interval` and `min_interval`
 

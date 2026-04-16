@@ -1,0 +1,121 @@
+diff --git a/contrib/epee/include/serialization/keyvalue_serialization_overloads.h b/contrib/epee/include/serialization/keyvalue_serialization_overloads.h
+index 8c5e28d7a..856b4dc0e 100644
+--- a/contrib/epee/include/serialization/keyvalue_serialization_overloads.h
++++ b/contrib/epee/include/serialization/keyvalue_serialization_overloads.h
+@@ -28,6 +28,7 @@
+ 
+ #include <cstddef>
+ #include <cstdint>
++#include <unistd.h>
+ #include <set>
+ #include <list>
+ #include <vector>
+@@ -147,6 +148,8 @@ namespace epee
+           memcpy(std::addressof(v), pelem, sizeof(v));
+           container.insert(container.end(), v);
+           pelem += sizeof(v);
++          // MoneroSim: yield periodically so Shadow can advance simulated time
++          if (i % 64 == 0) usleep(1);
+         }
+       }
+       return res;
+diff --git a/src/rpc/core_rpc_server_commands_defs.h b/src/rpc/core_rpc_server_commands_defs.h
+index 60b48622f..3a37a98a4 100644
+--- a/src/rpc/core_rpc_server_commands_defs.h
++++ b/src/rpc/core_rpc_server_commands_defs.h
+@@ -30,6 +30,7 @@
+ 
+ #pragma once
+ 
++#include <unistd.h>
+ #include "string_tools.h"
+ 
+ #include "cryptonote_protocol/cryptonote_protocol_defs.h"
+@@ -60,6 +61,7 @@ namespace
+     std::vector<T> v;
+     v.reserve(s.size());
+     int read = 0;
++    uint64_t loop_iters = 0;
+     const std::string::const_iterator end = s.end();
+     for (std::string::const_iterator i = s.begin(); i != end; std::advance(i, read))
+     {
+@@ -67,6 +69,8 @@ namespace
+       read = tools::read_varint(std::string::const_iterator(i), s.end(), t);
+       CHECK_AND_ASSERT_THROW_MES(read > 0 && read <= 256, "Error decompressing data");
+       v.push_back(t);
++      // MoneroSim: yield periodically so Shadow can advance simulated time
++      if (++loop_iters % 64 == 0) usleep(1);
+     }
+     return v;
+   }
+diff --git a/src/wallet/wallet2.cpp b/src/wallet/wallet2.cpp
+index b7ec6d28c..5f0c92827 100644
+--- a/src/wallet/wallet2.cpp
++++ b/src/wallet/wallet2.cpp
+@@ -34,6 +34,7 @@
+ #include <string>
+ #include <tuple>
+ #include <queue>
++#include <unistd.h>
+ #include <boost/format.hpp>
+ #include <boost/optional/optional.hpp>
+ #include <boost/algorithm/string/classification.hpp>
+@@ -4348,7 +4349,11 @@ bool wallet2::get_rct_distribution(uint64_t &start_height, std::vector<uint64_t>
+     return false;
+   }
+   for (size_t i = 1; i < res.distributions[0].data.distribution.size(); ++i)
++  {
+     res.distributions[0].data.distribution[i] += res.distributions[0].data.distribution[i-1];
++    // MoneroSim: yield periodically so Shadow can advance simulated time
++    if (i % 64 == 0) usleep(1);
++  }
+   start_height = res.distributions[0].data.start_height;
+   distribution = std::move(res.distributions[0].data.distribution);
+   return true;
+@@ -9406,19 +9411,24 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>>
+           {
+             THROW_WALLET_EXCEPTION_IF(!gamma, error::wallet_internal_error, "No gamma picker");
+             // gamma distribution
++            // MoneroSim: yield every 64 iterations so Shadow can advance
++            // simulated time.  The gamma distribution is calibrated for
++            // mainnet (millions of outputs); on small simulated chains most
++            // samples exceed num_outs, causing a tight syscall-free loop.
++            uint64_t gamma_iters = 0;
+             if (num_found -1 < recent_outputs_count + pre_fork_outputs_count)
+             {
+-              do i = gamma->pick(); while (i >= segregation_limit[amount].first);
++              do { i = gamma->pick(); if (++gamma_iters % 64 == 0) usleep(1); } while (i >= segregation_limit[amount].first);
+               type = "pre-fork gamma";
+             }
+             else if (num_found -1 < recent_outputs_count + pre_fork_outputs_count + post_fork_outputs_count)
+             {
+-              do i = gamma->pick(); while (i < segregation_limit[amount].first || i >= num_outs);
++              do { i = gamma->pick(); if (++gamma_iters % 64 == 0) usleep(1); } while (i < segregation_limit[amount].first || i >= num_outs);
+               type = "post-fork gamma";
+             }
+             else
+             {
+-              do i = gamma->pick(); while (i >= num_outs);
++              do { i = gamma->pick(); if (++gamma_iters % 64 == 0) usleep(1); } while (i >= num_outs);
+               type = "gamma";
+             }
+           }
+@@ -9468,10 +9478,18 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>>
+           }
+ 
+           if (seen_indices.count(i))
++          {
++            // MoneroSim: yield on EVERY miss so Shadow can advance simulated
++            // time.  Even a few consecutive misses in the tight retry loop
++            // (Keccak PRNG + atomic CAS mutex, no syscalls) can cause Shadow
++            // to freeze the wallet-rpc process.
++            usleep(1);
+             continue;
++          }
+           if (!allow_blackballed && is_output_blackballed(std::make_pair(amount, i))) // don't add blackballed outputs
+           {
+             --num_usable_outs;
++            usleep(1);
+             continue;
+           }
+           seen_indices.emplace(i);

@@ -1,12 +1,12 @@
 general:
-  stop_time: 36h                       # Total simulation duration
+  stop_time: 12h                       # Total simulation duration
   simulation_seed: 12345
-  bootstrap_end_time: 24h              # Bootstrap completes at 24 hours
+  bootstrap_end_time: 8h              # Bootstrap completes at 24 hours
   enable_dns_server: true
   shadow_log_level: warning
   progress: true
   runahead: 500ms                      # Set to 500 milliseconds as requested
-  process_threads: 0                   # Set to 0 as requested
+  process_threads: 1                   # Set to 0 as requested
   native_preemption: true              # Enabled as requested
   daemon_defaults:
     log-level: 1
@@ -16,6 +16,8 @@ general:
     non-interactive: true
     disable-rpc-ban: true
     allow-local-ip: true
+    no-igd: true
+    out-peers: 3                        # Limit outgoing conns to reduce seed retry storms
   wallet_defaults:
     log-level: 1
 
@@ -26,13 +28,13 @@ network:
 # === AGENTS ===
 agents:
   # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
-  miner-{001..005}:
+  miner-{001..003}:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
     start_time_stagger: 1s
-    hashrate: [20, 20, 20, 20, 20]    # Total = 100 (required for initial miners)
+    hashrate: [40, 40, 20]    # Total = 100 (required for initial miners)
     can_receive_distributions: true
 
   # --- 3 Users: Send transactions periodically ---
@@ -40,21 +42,21 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 11h                 # Start after 20 minutes
+    start_time: 6h                 # Start after 20 minutes
     start_time_stagger: auto          # Batched spawning for 3 users
     transaction_interval: 60          # Send a transaction every 60 seconds
-    activity_start_time: auto         # Wait for bootstrap before transacting
+    activity_start_time: 9h         # Wait for bootstrap before transacting
     can_receive_distributions: true
 
-  # --- 1 Relay Node: Daemon-only for P2P block/tx relay ---
-  relay-001:
+  # --- Relay Nodes: Daemon-only for P2P block/tx relay ---
+  relay-{001..002}:
     daemon: monerod
-    start_time: 12h                   
-    start_time_stagger: 0s
+    start_time: 2h                    # Start early so users have peers at 6h
+    start_time_stagger: 1s
 
   miner-distributor:
     script: agents.miner_distributor
-    wait_time: auto                   # Wait for bootstrap to complete
+    wait_time: 7h                   # Wait for bootstrap to complete
     transaction_frequency: 30
 
   simulation-monitor:

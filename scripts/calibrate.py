@@ -2,212 +2,256 @@
 """
 Calibrate MoneroSim timing parameters for the current hardware.
 
-Runs a short simulation with 2 miners and 1 user, measures how long
-transaction verification takes under Shadow's scheduler, and saves the
-results to ~/.monerosim/calibration.json.
-
-These measurements are used by generate_config.py and scenario_parser.py
-to compute safe activity_start_time stagger and transaction_interval values.
+Runs Monero's built-in performance_tests binary to measure the real CPU cost
+of transaction verification (CLSAG ring signatures, Bulletproofs+ range proofs)
+on this machine.  Results are saved to ~/.monerosim/calibration.json and used
+by generate_config.py and scenario_parser.py to compute safe stagger and
+transaction_interval values.
 
 Usage:
-    python scripts/calibrate.py                    # Run calibration
-    python scripts/calibrate.py --from-run DIR     # Extract from existing run
-    python scripts/calibrate.py --show             # Show current calibration
+    python scripts/calibrate.py              # Run calibration (~30 s)
+    python scripts/calibrate.py --show       # Show current calibration
+    python scripts/calibrate.py --build      # Build perf binary first
 """
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 CALIBRATION_PATH = Path.home() / ".monerosim" / "calibration.json"
 
-# Minimal config for calibration: 2 miners, 1 user, 1 relay
-# Short sim: 8h bootstrap + 1h funding + 30min activity = ~9.5h sim time
-# With fast mining (high hashrate), this completes in ~5 min wall time
-CALIBRATION_CONFIG = """\
-general:
-  stop_time: 10h
-  simulation_seed: 99999
-  bootstrap_end_time: 7h
-  enable_dns_server: true
-  shadow_log_level: warning
-  progress: true
-  runahead: 500ms
-  process_threads: 1
-  native_preemption: true
-  daemon_defaults:
-    log-level: 1
-    max-log-file-size: 0
-    db-sync-mode: fastest
-    no-zmq: true
-    non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
-    no-igd: true
-    out-peers: 3
-  wallet_defaults:
-    log-level: 1
-network:
-  path: gml_processing/1200_nodes_caida_with_loops.gml
-  peer_mode: Dynamic
-agents:
-  miner-001:
-    daemon: monerod
-    wallet: monero-wallet-rpc
-    script: agents.autonomous_miner
-    start_time: 0s
-    hashrate: 50
-    can_receive_distributions: true
-  miner-002:
-    daemon: monerod
-    wallet: monero-wallet-rpc
-    script: agents.autonomous_miner
-    start_time: 1s
-    hashrate: 50
-    can_receive_distributions: true
-  user-001:
-    daemon: monerod
-    wallet: monero-wallet-rpc
-    script: agents.regular_user
-    start_time: 21600s
-    transaction_interval: 60
-    activity_start_time: 28800
-    can_receive_distributions: true
-  relay-001:
-    daemon: monerod
-    start_time: 2h
-  miner-distributor:
-    script: agents.miner_distributor
-    wait_time: 25200
-    transaction_frequency: 30
-  simulation-monitor:
-    script: agents.simulation_monitor
-    poll_interval: 300
-"""
+# Relative from this script's directory to the Monero source root
+_MONERO_SRC_RELATIVE = "../../monero"
+_PERF_BINARY_SUBPATH = "build/release/tests/performance_tests/performance_tests"
 
 
-def parse_perf_add_tx(log_path: str) -> list:
-    """Extract PERF add_tx times (in microseconds) from a daemon log."""
-    times = []
-    pattern = re.compile(r"PERF\s+(\d+)\s+add_tx")
-    try:
-        with open(log_path, "r") as f:
-            for line in f:
-                m = pattern.search(line)
-                if m:
-                    times.append(int(m.group(1)))
-    except FileNotFoundError:
-        pass
-    return times
+# ---------------------------------------------------------------------------
+# Binary discovery / build
+# ---------------------------------------------------------------------------
+
+def _monero_root() -> Path:
+    return (Path(__file__).resolve().parent / _MONERO_SRC_RELATIVE).resolve()
 
 
-def extract_from_run(run_dir: str) -> dict:
-    """Extract calibration data from an existing archived run."""
-    run_path = Path(run_dir)
-    daemon_logs = run_path / "daemon_logs"
-
-    if not daemon_logs.exists():
-        print(f"Error: {daemon_logs} not found", file=sys.stderr)
-        sys.exit(1)
-
-    all_times = []
-    agents_sampled = []
-    notify_counts = {}
-
-    for agent_dir in sorted(daemon_logs.iterdir()):
-        log_file = agent_dir / "bitmonero.log"
-        if log_file.exists():
-            times = parse_perf_add_tx(str(log_file))
-            if times:
-                all_times.extend(times)
-                agents_sampled.append(agent_dir.name)
-            notifs = count_notify_events(str(log_file))
-            if notifs:
-                notify_counts[agent_dir.name] = len(notifs)
-
-    if not all_times:
-        print("Warning: no PERF add_tx entries found, using notify counts only",
-              file=sys.stderr)
-
-    return build_calibration(all_times, agents_sampled, str(run_path), notify_counts)
+def find_perf_binary() -> "Path | None":
+    """Return the performance_tests binary path, or None."""
+    p = _monero_root() / _PERF_BINARY_SUBPATH
+    return p if p.is_file() else None
 
 
-def count_notify_events(log_path: str) -> list:
-    """Count NOTIFY_NEW_TRANSACTIONS events and measure inter-arrival times."""
-    timestamps = []
-    pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+).*NOTIFY_NEW_TRANSACTIONS")
-    try:
-        with open(log_path, "r") as f:
-            for line in f:
-                m = pattern.search(line)
-                if m:
-                    timestamps.append(m.group(1))
-    except FileNotFoundError:
-        pass
-    return timestamps
+def build_perf_binary() -> Path:
+    """Enable BUILD_TESTS in CMake and compile performance_tests."""
+    build_dir = _monero_root() / "build" / "release"
+    if not build_dir.is_dir():
+        raise CalibrationError(
+            f"Monero build dir not found at {build_dir}")
+
+    print("Configuring CMake with BUILD_TESTS=ON ...")
+    r = subprocess.run(
+        ["cmake", "-DBUILD_TESTS=ON", "../.."],
+        cwd=str(build_dir), capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        raise CalibrationError(
+            f"cmake configure failed:\n{r.stderr[-2000:]}")
+
+    nproc = os.cpu_count() or 4
+    print(f"Building performance_tests (make -j{nproc}) ...")
+    r = subprocess.run(
+        ["cmake", "--build", ".", "--target", "performance_tests",
+         "--", f"-j{nproc}"],
+        cwd=str(build_dir), capture_output=True, text=True, timeout=600,
+    )
+    if r.returncode != 0:
+        raise CalibrationError(
+            f"Build failed:\n{r.stderr[-2000:]}")
+
+    binary = build_dir / "tests" / "performance_tests" / "performance_tests"
+    if not binary.is_file():
+        raise CalibrationError(
+            f"binary not produced at {binary}")
+
+    print(f"  Built: {binary}")
+    return binary
 
 
-def build_calibration(times_us: list, agents: list, source: str,
-                      notify_counts: dict = None) -> dict:
-    """Build calibration data from raw measurements.
+# ---------------------------------------------------------------------------
+# Benchmark execution & parsing
+# ---------------------------------------------------------------------------
 
-    Note: Under Shadow, PERF add_tx times measure simulated time (not real
-    CPU time), so they appear near-zero. The meaningful metric is the tx
-    notification rate — how many NOTIFY_NEW_TRANSACTIONS a daemon receives
-    per unit of simulated time. The stagger formula (interval / num_users)
-    ensures notifications are spread evenly.
+def _run_bench(binary: Path, filt: str, timeout: int = 600) -> str:
+    """Run performance_tests with --filter/--stats/--verbose, return stdout."""
+    r = subprocess.run(
+        [str(binary), f"--filter={filt}", "--stats", "--verbose"],
+        capture_output=True, text=True, timeout=timeout,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"Benchmark failed (rc={r.returncode}):\n{r.stderr}")
+    return r.stdout
+
+
+def parse_bench_output(stdout: str) -> dict:
+    """Parse verbose+stats output into {test_name: {metric: value_ns}}."""
+    tests = {}
+    cur = None
+
+    for line in stdout.splitlines():
+        # Header: "test_sig_clsag<16, 2, 2> - OK:"
+        m = re.match(r"^(test_\w+<[^>]+>)\s*-\s*OK:", line)
+        if m:
+            cur = m.group(1)
+            tests[cur] = {}
+            continue
+        if cur is None:
+            continue
+
+        # Raw stat lines (always in ns): "  median:    23464559 ns"
+        m = re.match(r"^\s+(min|max|median|std dev|loop count|elapsed):\s+(\S+)", line)
+        if m:
+            key = m.group(1).replace(" ", "_")
+            try:
+                tests[cur][key] = float(m.group(2))
+            except ValueError:
+                pass
+            continue
+
+        # Summary line with dynamic units:
+        #  (min 22966 µs, 90th 23877 µs, median 23464 µs, std dev 644 µs)
+        #  (min 112 ms, 90th 115 ms, median 112 ms, std dev 1 ms)
+        m = re.match(
+            r"\s*\(min\s+([\d.]+)\s+(µs|ms),\s*90th\s+([\d.]+)\s+(µs|ms)",
+            line,
+        )
+        if m:
+            def _to_us(val, unit):
+                v = float(val)
+                return int(v * 1000) if unit == "ms" else int(v)
+            tests[cur]["p90_us"] = _to_us(m.group(3), m.group(4))
+
+    return tests
+
+
+# ---------------------------------------------------------------------------
+# Calibration logic
+# ---------------------------------------------------------------------------
+
+class CalibrationError(RuntimeError):
+    """Raised when calibration cannot complete."""
+
+
+def run_calibration(do_build: bool = False):
+    """Run crypto benchmarks and save calibration data.
+
+    Raises CalibrationError on failure (instead of sys.exit) so callers
+    like ensure_calibrated() can catch and fall back gracefully.
     """
-    times_us.sort()
-    n = len(times_us)
-    p50 = times_us[n // 2] if n > 0 else 0
-    p95 = times_us[int(n * 0.95)] if n > 0 else 0
-    p99 = times_us[int(n * 0.99)] if n >= 100 else (times_us[-1] if n > 0 else 0)
-    max_val = times_us[-1] if n > 0 else 0
+    binary = find_perf_binary()
+    if binary is None or do_build:
+        binary = build_perf_binary()
+    if binary is None:
+        raise CalibrationError(
+            "performance_tests not found. Run with --build to compile.")
 
-    result = {
+    print(f"Binary: {binary}\n")
+
+    # -- CLSAG ring-signature verification --
+    # Ring size 16, 2 inputs, 2 outputs — standard Monero tx since hard-fork 14
+    print("Benchmarking CLSAG verification (ring 16, 2-in/2-out) ...")
+    clsag_out = _run_bench(binary, "*clsag<16*")
+    clsag_data = parse_bench_output(clsag_out)
+
+    clsag_key = "test_sig_clsag<16, 2, 2>"
+    if clsag_key not in clsag_data:
+        raise CalibrationError(
+            f"{clsag_key} not in results: {list(clsag_data)}")
+    clsag = clsag_data[clsag_key]
+
+    # -- Bulletproofs+ range-proof verification --
+    # false = verify (not prove), 2 outputs
+    print("Benchmarking Bulletproofs+ verification (2 outputs) ...")
+    bp_out = _run_bench(binary, "*bulletproof_plus<false, 2>*")
+    bp_data = parse_bench_output(bp_out)
+
+    bp_key = "test_bulletproof_plus<false, 2>"
+    if bp_key not in bp_data:
+        raise CalibrationError(
+            f"{bp_key} not in results: {list(bp_data)}")
+    bp = bp_data[bp_key]
+
+    # -- Compose total tx verification estimate --
+    def _ns_to_us(v): return int(v / 1000)
+
+    clsag_median_us = _ns_to_us(clsag["median"])
+    bp_median_us    = _ns_to_us(bp["median"])
+
+    # p90 from summary line, fall back to raw p90 ≈ median + 1.3·σ
+    clsag_p90_us = clsag.get("p90_us", clsag_median_us + int(1.3 * clsag.get("std_dev", 0) / 1000))
+    bp_p90_us    = bp.get("p90_us",    bp_median_us    + int(1.3 * bp.get("std_dev", 0) / 1000))
+
+    # p95 ≈ p90 + 0.5·σ  (a rough approximation, fine given 3× safety factor)
+    clsag_sigma_us = _ns_to_us(clsag.get("std_dev", 0))
+    bp_sigma_us    = _ns_to_us(bp.get("std_dev", 0))
+    combined_sigma = int(math.sqrt(clsag_sigma_us**2 + bp_sigma_us**2))
+
+    total_p50 = clsag_median_us + bp_median_us
+    total_p90 = clsag_p90_us + bp_p90_us
+    total_p95 = total_p90 + combined_sigma // 2
+    total_max = _ns_to_us(clsag.get("max", 0)) + _ns_to_us(bp.get("max", 0))
+
+    clsag_loops = int(clsag.get("loop_count", 0))
+    bp_loops    = int(bp.get("loop_count", 0))
+
+    calibration = {
         "verify_time_us": {
-            "p50": p50,
-            "p95": p95,
-            "p99": p99,
-            "max": max_val,
-            "samples": n,
+            "p50": total_p50,
+            "p95": total_p95,
+            "p99": total_max,
+            "max": total_max,
+            "samples": min(clsag_loops, bp_loops),
         },
-        "agents_sampled": agents,
-        "source": source,
+        "components": {
+            "clsag_ring16_2in_2out": {
+                "median_us": clsag_median_us,
+                "p90_us": clsag_p90_us,
+                "stddev_us": clsag_sigma_us,
+                "loops": clsag_loops,
+            },
+            "bulletproof_plus_verify_2out": {
+                "median_us": bp_median_us,
+                "p90_us": bp_p90_us,
+                "stddev_us": bp_sigma_us,
+                "loops": bp_loops,
+            },
+        },
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "note": (
-            "Under Shadow, PERF times are simulated (near-zero). "
-            "Use stagger = transaction_interval / num_users as the primary rule. "
-            "See docs/shadow-tx-stagger.md for details."
-        ),
-        "formula": {
-            "description": "stagger = transaction_interval / num_users",
-            "stagger": "interval / num_users",
-        },
+        "method": "performance_tests",
+        "binary": str(binary),
     }
 
-    if notify_counts:
-        result["notify_events"] = notify_counts
+    save_calibration(calibration)
+    print()
+    show_calibration()
 
-    return result
 
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
 
 def save_calibration(data: dict):
-    """Save calibration data to ~/.monerosim/calibration.json."""
     CALIBRATION_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(CALIBRATION_PATH, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"Calibration saved to {CALIBRATION_PATH}")
+    print(f"\nCalibration saved to {CALIBRATION_PATH}")
 
 
-def load_calibration() -> dict:
-    """Load calibration data. Returns None if not found."""
+def load_calibration() -> "dict | None":
+    """Load calibration data.  Returns None if file is missing."""
     try:
         with open(CALIBRATION_PATH) as f:
             return json.load(f)
@@ -215,128 +259,143 @@ def load_calibration() -> dict:
         return None
 
 
-def show_calibration():
-    """Display current calibration data and recommended settings."""
-    data = load_calibration()
-    if data is None:
-        print("No calibration data found. Run: python scripts/calibrate.py")
-        print()
-        print("Default stagger formula: stagger = transaction_interval / num_users")
-        print()
-        print("  Example settings (interval=60s):")
-        for n in [3, 5, 10, 20, 50]:
-            stagger = compute_stagger(n, 60)
-            print(f"    {n:3d} users: stagger = {stagger:3d}s")
+# ---------------------------------------------------------------------------
+# Auto-calibration
+# ---------------------------------------------------------------------------
+
+_auto_calibrate_disabled = False
+_auto_calibrate_attempted = False
+
+
+def disable_auto_calibration():
+    """Suppress auto-calibration for this process (--no-calibrate)."""
+    global _auto_calibrate_disabled
+    _auto_calibrate_disabled = True
+
+
+def ensure_calibrated():
+    """Run calibration automatically if no data exists yet.
+
+    Called by compute_stagger() on first use.  Safe to call multiple times —
+    only attempts once per process and only if calibration.json is missing.
+    Skipped entirely if disable_auto_calibration() was called.
+    """
+    global _auto_calibrate_attempted
+    if _auto_calibrate_disabled or _auto_calibrate_attempted:
+        return
+    _auto_calibrate_attempted = True
+
+    if load_calibration() is not None:
         return
 
-    v = data["verify_time_us"]
-    print(f"MoneroSim Calibration ({data['timestamp']})")
-    print(f"  Source: {data['source']}")
-    print(f"  PERF add_tx samples: {v['samples']}")
-    if data.get("notify_events"):
-        total_notifs = sum(data["notify_events"].values())
-        print(f"  NOTIFY_NEW_TRANSACTIONS events: {total_notifs} across {len(data['notify_events'])} daemons")
-    print()
-    print(f"  Stagger formula: stagger = transaction_interval / num_users")
-    print()
-    print(f"  Recommended settings (interval=60s):")
-    for n in [3, 5, 10, 20, 50]:
-        stagger = compute_stagger(n, 60)
-        print(f"    {n:3d} users: stagger = {stagger:3d}s")
+    print("No calibration data found — running first-time calibration (~30 s) ...")
+    try:
+        run_calibration()
+    except (CalibrationError, Exception) as e:
+        print(f"Warning: auto-calibration failed: {e}", file=sys.stderr)
+        print("  Falling back to stagger = transaction_interval / num_users",
+              file=sys.stderr)
 
 
-def compute_stagger(num_users: int, tx_interval: int, calibration: dict = None) -> int:
-    """Compute the ideal activity_start_time stagger.
+# ---------------------------------------------------------------------------
+# Stagger computation  (imported by generate_config / scenario_parser)
+# ---------------------------------------------------------------------------
 
-    The formula is: stagger = transaction_interval / num_users
+def compute_stagger(num_users: int, tx_interval: int) -> int:
+    """Compute the activity_start_time stagger between users.
 
-    This ensures transaction generation is evenly distributed across
-    simulated time, preventing any single daemon from being overwhelmed
-    by verification work from other users' transactions.
+    Formula:  stagger = effective_interval / num_users
 
+    If calibration data exists, enforces a floor on the interval:
+        min_interval = num_users × verify_time_p95_seconds × 3
+
+    Automatically runs calibration on first call if no data exists.
     See docs/shadow-tx-stagger.md for the full explanation.
-
-    Args:
-        num_users: Number of user agents
-        tx_interval: Transaction interval in seconds
-        calibration: Unused (kept for API compatibility). The stagger
-            depends only on interval and user count, not hardware.
-
-    Returns:
-        Stagger in seconds between consecutive users' activity_start_time
     """
     if num_users <= 0:
         return 0
-    return max(1, tx_interval // num_users)
+
+    ensure_calibrated()
+
+    effective_interval = tx_interval
+
+    cal = load_calibration()
+    if cal and cal.get("verify_time_us", {}).get("samples", 0) > 0:
+        p95_us = cal["verify_time_us"]["p95"]
+        p95_s = p95_us / 1_000_000
+        safety_factor = 3
+        min_interval = int(num_users * p95_s * safety_factor)
+        if min_interval > effective_interval:
+            effective_interval = min_interval
+
+    return max(1, effective_interval // num_users)
 
 
-def run_calibration(monerosim_dir: str):
-    """Run a calibration simulation and extract measurements."""
-    print("Running calibration simulation (~5 min)...")
+# ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
 
-    # Write temporary config
-    config_path = os.path.join(monerosim_dir, "test_configs", "_calibration.yaml")
-    with open(config_path, "w") as f:
-        f.write(CALIBRATION_CONFIG)
+def show_calibration():
+    data = load_calibration()
+    if data is None:
+        print("No calibration data found.  Run:  python scripts/calibrate.py")
+        return
 
-    try:
-        # Run the simulation
-        result = subprocess.run(
-            ["bash", "run_sim.sh", "--config", config_path, "--no-monitor",
-             "--name", "calibration"],
-            cwd=monerosim_dir,
-            capture_output=True,
-            text=True,
-            timeout=1800,  # 30 min max
-        )
+    v = data.get("verify_time_us", {})
+    samples = v.get("samples", 0)
+    print(f"MoneroSim Calibration  ({data.get('timestamp', '?')})")
+    print(f"  Method:  {data.get('method', '?')}")
 
-        if result.returncode != 0:
-            print(f"Simulation failed (exit {result.returncode}):", file=sys.stderr)
-            print(result.stderr[-500:] if result.stderr else "(no stderr)", file=sys.stderr)
-            sys.exit(1)
+    comp = data.get("components", {})
+    for label, key in [("CLSAG (ring 16, 2-in/2-out)", "clsag_ring16_2in_2out"),
+                       ("Bulletproofs+ verify (2-out)", "bulletproof_plus_verify_2out")]:
+        c = comp.get(key, {})
+        if c:
+            print(f"  {label}:  median {c['median_us']:,} µs  "
+                  f"p90 {c['p90_us']:,} µs  ({c.get('loops', '?')} loops)")
 
-        # Find the archived run
-        archive_dir = Path(monerosim_dir) / "archived_runs"
-        cal_runs = sorted(archive_dir.glob("*_calibration"), reverse=True)
-        if not cal_runs:
-            print("Error: calibration run not found in archived_runs/", file=sys.stderr)
-            sys.exit(1)
+    if samples > 0:
+        print(f"\n  Combined tx verification estimate:")
+        print(f"    p50: {v['p50']:,} µs  ({v['p50']/1000:.1f} ms)")
+        print(f"    p95: {v['p95']:,} µs  ({v['p95']/1000:.1f} ms)")
+        print(f"    max: {v['max']:,} µs  ({v['max']/1000:.1f} ms)")
 
-        run_dir = str(cal_runs[0])
-        print(f"Extracting from {run_dir}")
+        p95_s = v["p95"] / 1_000_000
+        safety = 3
+        print(f"\n  Recommended min transaction_interval (p95×{safety}×N):")
+        print(f"  {'Users':>6}  {'Min interval':>14}  {'Stagger (iv=60s)':>18}")
+        print(f"  {'-----':>6}  {'-'*14:>14}  {'-'*18:>18}")
+        for n in [3, 5, 10, 20, 50, 100]:
+            min_iv = max(1, int(n * p95_s * safety))
+            eff_iv = max(60, min_iv)
+            stagger = max(1, eff_iv // n)
+            print(f"  {n:>6}  {min_iv:>12} s  {stagger:>16} s")
+    else:
+        print("  No data — stagger = transaction_interval / num_users")
 
-        data = extract_from_run(run_dir)
-        save_calibration(data)
-        show_calibration()
 
-    finally:
-        # Clean up temp config
-        if os.path.exists(config_path):
-            os.remove(config_path)
-
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Calibrate MoneroSim timing parameters")
-    parser.add_argument("--from-run", metavar="DIR",
-                        help="Extract calibration from an existing archived run")
-    parser.add_argument("--show", action="store_true",
-                        help="Show current calibration data")
-    args = parser.parse_args()
+    ap = argparse.ArgumentParser(
+        description="Calibrate MoneroSim timing for this hardware")
+    ap.add_argument("--show", action="store_true",
+                    help="Show current calibration data")
+    ap.add_argument("--build", action="store_true",
+                    help="(Re)build the performance_tests binary before running")
+    args = ap.parse_args()
 
     if args.show:
         show_calibration()
         return
 
-    if args.from_run:
-        data = extract_from_run(args.from_run)
-        save_calibration(data)
-        show_calibration()
-        return
-
-    # Determine monerosim directory
-    script_dir = Path(__file__).resolve().parent
-    monerosim_dir = str(script_dir.parent)
-    run_calibration(monerosim_dir)
+    try:
+        run_calibration(do_build=args.build)
+    except CalibrationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
