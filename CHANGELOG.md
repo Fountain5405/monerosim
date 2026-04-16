@@ -5,6 +5,35 @@
 Changes since v0.0.1 (2025-10-07). The section "Since last shared (Mar 11)"
 highlights what changed after the project was shared externally.
 
+### Key fix: transaction starvation in Shadow
+
+Shadow is a discrete-event network simulator where all processes on the same
+simulated host share a single real CPU thread, switching only at syscall
+boundaries. Each user agent runs two processes on one host: `monerod` (daemon)
+and `monero-wallet-rpc` (wallet). When one user broadcasts a transaction, it
+propagates to every other daemon for verification — and Monero tx verification
+is CPU-heavy (~140ms for CLSAG + Bulletproofs+). While a daemon is verifying,
+the wallet on that same host is blocked from running.
+
+This caused a "winner take all" failure: the first user to transact would
+flood other daemons with verification work, starving their wallets of CPU time.
+The wallets would time out (180s), and only one user would ever successfully
+transact.
+
+The fix has two parts:
+1. **Stagger**: space out `activity_start_time` values so transaction
+   generation is evenly distributed: `stagger = interval / num_users`.
+   With 3 users and a 60s interval, users start 20s apart, producing one
+   tx every 20s instead of three simultaneous txs.
+2. **Calibration**: measure how fast this specific CPU can verify transactions
+   (by benchmarking CLSAG and Bulletproofs+ natively), then enforce a minimum
+   `transaction_interval` so the network is never asked to verify faster
+   than the hardware can handle.
+
+This is a **Shadow simulation artifact**, not a real Monero issue. On real
+hardware each node has its own CPU. See `docs/shadow-tx-stagger.md` for the
+full explanation.
+
 ### Since last shared (Mar 11)
 
 #### Calibration system (new)
