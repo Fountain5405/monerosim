@@ -293,49 +293,62 @@ check_disk_space() {
     # Create archive dir if it doesn't exist (needed for df check)
     mkdir -p "$archive_dir"
 
-    # Find largest existing archived run
-    local max_size_kb=0
-    local largest_run=""
-    for dir in "$archive_dir"/*/; do
-        [[ -d "$dir" ]] || continue
-        local size_kb
-        size_kb=$(du -sk "$dir" 2>/dev/null | cut -f1)
-        if [[ "$size_kb" -gt "$max_size_kb" ]]; then
-            max_size_kb=$size_kb
-            largest_run=$(basename "$dir")
-        fi
-    done
-
-    if [[ "$max_size_kb" -eq 0 ]]; then
-        log_ok "Disk space: first run, skipping size estimate"
-        return 0
-    fi
-
     # Get free space on archive filesystem
     local free_kb
     free_kb=$(df -k "$archive_dir" | tail -1 | awk '{print $4}')
 
-    log_info "Largest archived run: $largest_run ($(format_kb "$max_size_kb"))"
+    # Estimate disk usage based on simulation parameters.
+    # Empirical rate: ~1.2 MB per host per simulated hour of shadow.data output
+    # (measured from a 1000-node, 48h simulation that produced 46 GB at 82%).
+    # We add a 20% margin for logs, archives, and overhead.
+    local mb_per_host_per_hour="1.2"
+    local safety_margin="1.2"
+    local num_hosts="${CFG_TOTAL:-0}"
+    local sim_hours
+    sim_hours=$(python3 -c "print(max(1, ${STOP_TIME_SECS:-0} / 3600))")
+
+    local estimated_mb
+    estimated_mb=$(python3 -c "
+h = $num_hosts
+t = $sim_hours
+rate = $mb_per_host_per_hour
+margin = $safety_margin
+print(f'{h * t * rate * margin:.0f}')
+")
+    local estimated_kb=$((estimated_mb * 1024))
+
+    log_info "Estimated disk usage: $(format_kb "$estimated_kb") ($num_hosts hosts x ${sim_hours}h x ${mb_per_host_per_hour} MB/host/h x ${safety_margin}x margin)"
     log_info "Free disk space: $(format_kb "$free_kb")"
 
-    if [[ "$free_kb" -lt "$max_size_kb" ]]; then
+    if [[ "$estimated_kb" -gt "$free_kb" ]]; then
         echo ""
-        log_warn "Free space may be insufficient for another run!"
-        log_info "  Largest previous run used: $(format_kb "$max_size_kb")"
+        log_warn "Not enough disk space for this simulation!"
+        log_info "  Estimated: $(format_kb "$estimated_kb")"
         log_info "  Available: $(format_kb "$free_kb")"
+        log_info "  Shortfall: $(format_kb "$((estimated_kb - free_kb))")"
         echo ""
-        echo "  Archived runs (by size):"
-        du -sh "$archive_dir"/*/ 2>/dev/null | sort -rh | while read -r line; do
-            echo "    $line"
-        done
+        echo "  Tips:"
+        echo "    - Delete old runs: rm -rf archived_runs/<run_name>"
+        echo "    - Reduce simulation duration (stop_time)"
+        echo "    - Reduce node count (fewer relays)"
         echo ""
+        if [[ -d "$archive_dir" ]]; then
+            echo "  Existing archived runs (by size):"
+            du -sh "$archive_dir"/*/ 2>/dev/null | sort -rh | head -10 | while read -r line; do
+                echo "    $line"
+            done
+            echo ""
+        fi
         read -rp "  Continue anyway? (yes/no): " CONFIRM
         if [[ ! "$CONFIRM" =~ ^[Yy] ]]; then
             echo "Aborted."
             exit 1
         fi
+    elif [[ "$((estimated_kb * 2))" -gt "$free_kb" ]]; then
+        # Tight but possible — warn but don't block
+        log_warn "Disk space is tight (estimated $(format_kb "$estimated_kb"), free $(format_kb "$free_kb"))"
     else
-        log_ok "Disk space: $(format_kb "$free_kb") free (largest previous run used: $(format_kb "$max_size_kb"))"
+        log_ok "Disk space: $(format_kb "$free_kb") free (estimated need: $(format_kb "$estimated_kb"))"
     fi
 }
 
