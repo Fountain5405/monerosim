@@ -49,6 +49,7 @@ SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
 BLOCKCHAIN_ARCHIVE_PCT=""
+DATA_DIR=""
 
 usage() {
     cat <<'EOF'
@@ -60,6 +61,8 @@ Options:
   --config <path>        Monerosim config file (required)
   --name <name>          Run name (default: derived from config filename)
   --archive-dir <dir>    Archive location (default: archived_runs)
+  --data-dir <dir>       Shadow data output directory (default: shadow.data in cwd)
+                         Use this to write simulation data to a different volume
   --no-monitor           Skip live progress display
   --analyze              Run post-simulation analysis (off by default)
   --no-build             Skip cargo build (use existing binary)
@@ -70,6 +73,7 @@ Examples:
   ./run_sim.sh --config test_configs/quickstart.yaml
   ./run_sim.sh --config test_configs/quickstart.yaml --name scaling_1000 --analyze
   ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50
+  ./run_sim.sh --config large.yaml --data-dir /scratch/shadow_data
 EOF
     exit 0
 }
@@ -104,6 +108,10 @@ while [[ $# -gt 0 ]]; do
             BLOCKCHAIN_ARCHIVE_PCT="$2"
             shift 2
             ;;
+        --data-dir)
+            DATA_DIR="$2"
+            shift 2
+            ;;
         --help|-h)
             usage
             ;;
@@ -127,6 +135,8 @@ if [[ -z "$RUN_NAME" ]]; then
     # Derive from config filename: test_configs/20260305.yaml -> 20260305
     RUN_NAME=$(basename "$CONFIG" .yaml)
 fi
+
+[[ -z "$DATA_DIR" ]] && DATA_DIR="$SCRIPT_DIR/shadow.data"
 
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 MONEROSIM_BIN="$SCRIPT_DIR/target/release/monerosim"
@@ -290,35 +300,122 @@ print(f'{total} {miners} {users} {relays}')
 check_disk_space() {
     local archive_dir="$1"
 
-    # Create archive dir if it doesn't exist (needed for df check)
+    # Create dirs if needed (for df check)
     mkdir -p "$archive_dir"
+    mkdir -p "$(dirname "$DATA_DIR")"
 
-    # Get free space on archive filesystem
+    # Check free space on the DATA_DIR filesystem (where shadow.data goes)
+    local data_parent
+    data_parent="$(dirname "$DATA_DIR")"
     local free_kb
-    free_kb=$(df -k "$archive_dir" | tail -1 | awk '{print $4}')
+    free_kb=$(df -k "$data_parent" | tail -1 | awk '{print $4}')
 
-    # Estimate disk usage based on simulation parameters.
-    # Empirical rate: ~1.2 MB per host per simulated hour of shadow.data output
-    # (measured from a 1000-node, 48h simulation that produced 46 GB at 82%).
-    # We add a 20% margin for logs, archives, and overhead.
-    local mb_per_host_per_hour="1.2"
-    local safety_margin="1.2"
+    # Check if data dir and archive dir are on different filesystems
+    local data_dev archive_dev
+    data_dev=$(df "$data_parent" | tail -1 | awk '{print $1}')
+    archive_dev=$(df "$archive_dir" | tail -1 | awk '{print $1}')
+    local archive_free_kb
+    archive_free_kb=$(df -k "$archive_dir" | tail -1 | awk '{print $4}')
+
+    # Estimate disk usage using per-node-type rates from previous runs,
+    # falling back to defaults if no history exists.
+    local num_miners="${CFG_MINERS:-0}"
+    local num_users="${CFG_USERS:-0}"
+    local num_relays="${CFG_RELAYS:-0}"
     local num_hosts="${CFG_TOTAL:-0}"
     local sim_hours
     sim_hours=$(python3 -c "print(max(1, ${STOP_TIME_SECS:-0} / 3600))")
 
     local estimated_mb
     estimated_mb=$(python3 -c "
-h = $num_hosts
-t = $sim_hours
-rate = $mb_per_host_per_hour
-margin = $safety_margin
-print(f'{h * t * rate * margin:.0f}')
-")
+import os, json
+
+# Default rates (MB/host/hr) — conservative estimates
+defaults = {'miner': 4.0, 'user': 2.0, 'relay': 1.25, 'other': 0.5}
+
+# Try to learn rates from previous runs
+archive_dir = '$archive_dir'
+learned = {}
+sample_hours = 0
+for run_name in sorted(os.listdir(archive_dir), reverse=True) if os.path.isdir(archive_dir) else []:
+    hosts_dir = os.path.join(archive_dir, run_name, 'shadow.data', 'hosts')
+    cfg_path = os.path.join(archive_dir, run_name, 'input_config.yaml')
+    if not os.path.isdir(hosts_dir) or not os.path.isfile(cfg_path):
+        continue
+    # Get sim duration from config
+    try:
+        import yaml
+        with open(cfg_path) as f:
+            cfg = yaml.safe_load(f)
+        st = cfg.get('general', {}).get('stop_time', '')
+        # Parse duration
+        h = 0
+        import re
+        m = re.match(r'(\d+)h', str(st))
+        if m: h = int(m.group(1))
+        m2 = re.match(r'(\d+)$', str(st))
+        if m2: h = int(m2.group(1)) / 3600
+        if h <= 0: continue
+    except Exception:
+        continue
+    # Measure per-type rates
+    by_type = {}
+    for host in os.listdir(hosts_dir):
+        host_path = os.path.join(hosts_dir, host)
+        if not os.path.isdir(host_path): continue
+        size_kb = sum(os.path.getsize(os.path.join(dp, fn))
+                      for dp, _, fns in os.walk(host_path) for fn in fns) / 1024
+        if host.startswith('miner-'): t = 'miner'
+        elif host.startswith('user-'): t = 'user'
+        elif host.startswith('relay-'): t = 'relay'
+        else: t = 'other'
+        by_type.setdefault(t, []).append(size_kb)
+    for t, sizes in by_type.items():
+        avg_mb = (sum(sizes) / len(sizes)) / 1024
+        rate = avg_mb / h
+        if t not in learned or len(sizes) > 10:  # prefer runs with more samples
+            learned[t] = rate
+    sample_hours = h
+    break  # use most recent run
+
+rates = {**defaults, **learned}
+source = 'learned from previous run' if learned else 'default estimates'
+
+miners = $num_miners
+users = $num_users
+relays = $num_relays
+others = max(0, $num_hosts - miners - users - relays)
+hours = $sim_hours
+margin = 1.2
+
+est = (miners * rates['miner'] + users * rates['user'] +
+       relays * rates['relay'] + others * rates['other']) * hours * margin
+print(f'{est:.0f}')
+
+# Print breakdown to stderr for the log message
+import sys
+print(f'RATES:{json.dumps(rates)}|SOURCE:{source}', file=sys.stderr)
+" 2>/tmp/monerosim_disk_est_info.txt)
+
+    # Read rate info
+    local rate_info=""
+    if [[ -f /tmp/monerosim_disk_est_info.txt ]]; then
+        rate_info=$(cat /tmp/monerosim_disk_est_info.txt)
+        rm -f /tmp/monerosim_disk_est_info.txt
+    fi
+    local source="default estimates"
+    if [[ "$rate_info" == *"learned from previous run"* ]]; then
+        source="learned from previous run"
+    fi
+
     local estimated_kb=$((estimated_mb * 1024))
 
-    log_info "Estimated disk usage: $(format_kb "$estimated_kb") ($num_hosts hosts x ${sim_hours}h x ${mb_per_host_per_hour} MB/host/h x ${safety_margin}x margin)"
-    log_info "Free disk space: $(format_kb "$free_kb")"
+    log_info "Estimated disk usage: $(format_kb "$estimated_kb") ($source)"
+    log_info "  ${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays x ${sim_hours}h"
+    log_info "Free disk space: $(format_kb "$free_kb") (on $(dirname "$DATA_DIR"))"
+    if [[ "$data_dev" != "$archive_dev" ]]; then
+        log_info "Archive disk space: $(format_kb "$archive_free_kb") (on $archive_dir)"
+    fi
 
     if [[ "$estimated_kb" -gt "$free_kb" ]]; then
         echo ""
@@ -331,6 +428,7 @@ print(f'{h * t * rate * margin:.0f}')
         echo "    - Delete old runs: rm -rf archived_runs/<run_name>"
         echo "    - Reduce simulation duration (stop_time)"
         echo "    - Reduce node count (fewer relays)"
+        echo "    - Use --data-dir to write to a different volume"
         echo ""
         if [[ -d "$archive_dir" ]]; then
             echo "  Existing archived runs (by size):"
@@ -345,7 +443,6 @@ print(f'{h * t * rate * margin:.0f}')
             exit 1
         fi
     elif [[ "$((estimated_kb * 2))" -gt "$free_kb" ]]; then
-        # Tight but possible — warn but don't block
         log_warn "Disk space is tight (estimated $(format_kb "$estimated_kb"), free $(format_kb "$free_kb"))"
     else
         log_ok "Disk space: $(format_kb "$free_kb") free (estimated need: $(format_kb "$estimated_kb"))"
@@ -415,12 +512,12 @@ run_simulation() {
 
     # Clean old simulation data
     log_info "Cleaning previous simulation data..."
-    rm -rf shadow.data/ shadow.log
+    rm -rf "$DATA_DIR" shadow.log
 
     # Start Shadow in its own process group (via setsid) so Ctrl+C won't reach it
     SHADOW_LOG="$ARCHIVE_DIR/shadow_run.log"
-    log_info "Starting Shadow..."
-    setsid "$SHADOW_BIN" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 &
+    log_info "Starting Shadow (data dir: $DATA_DIR)..."
+    setsid "$SHADOW_BIN" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 &
     SHADOW_PID=$!
     START_TIME=$(date +%s)
     START_TIME_FMT=$(date '+%Y-%m-%d %H:%M:%S')
@@ -761,12 +858,12 @@ archive_results() {
     log_step "Phase 5: Archiving Results"
 
     # 5a. Shadow data
-    if [[ -d "shadow.data" ]]; then
-        log_info "Moving shadow.data/ to archive..."
-        mv shadow.data/ "$ARCHIVE_DIR/shadow.data/"
+    if [[ -d "$DATA_DIR" ]]; then
+        log_info "Moving $DATA_DIR to archive..."
+        mv "$DATA_DIR" "$ARCHIVE_DIR/shadow.data/"
         log_ok "shadow.data archived"
     else
-        log_warn "shadow.data/ not found"
+        log_warn "$DATA_DIR not found"
     fi
 
     # Copy monitoring data (generated by simulation-monitor agent)
