@@ -42,7 +42,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Parse command line arguments
 FULL_MONERO_COMPILE=false
 CLEAN_START=false
-APPLY_PATCHES=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --full-monero-compile)
@@ -53,10 +52,6 @@ while [[ $# -gt 0 ]]; do
             CLEAN_START=true
             shift
             ;;
-        --patch-monero)
-            APPLY_PATCHES=true
-            shift
-            ;;
         -h|--help)
             echo "Usage: ./setup.sh [OPTIONS]"
             echo ""
@@ -65,8 +60,6 @@ while [[ $# -gt 0 ]]; do
             echo "                         Use this for a fresh start after failed setup"
             echo "  --full-monero-compile  Build all Monero binaries (slower)"
             echo "                         Default: only build monerod and monero-wallet-rpc"
-            echo "  --patch-monero         Apply MoneroSim patches to Monero source before building"
-            echo "                         Fixes wallet-rpc freezes in Shadow's simulated environment"
             echo "  -h, --help             Show this help message"
             exit 0
             ;;
@@ -657,23 +650,6 @@ fi
 
 # Navigate to monero directory
 cd "$MONERO_DIR"
-
-# Apply MoneroSim patches to Monero source (opt-in via --patch-monero)
-if [[ "$APPLY_PATCHES" == "true" ]]; then
-    PATCH_DIR="$SCRIPT_DIR/patches"
-    if [[ -d "$PATCH_DIR" ]]; then
-        for patch_file in "$PATCH_DIR"/*.patch; do
-            [[ -f "$patch_file" ]] || continue
-            patch_name="$(basename "$patch_file")"
-            if git apply --check "$patch_file" 2>/dev/null; then
-                print_status "Applying patch: $patch_name"
-                git apply "$patch_file"
-            else
-                print_status "Patch already applied or not applicable: $patch_name (skipping)"
-            fi
-        done
-    fi
-fi
 
 # Create build directory
 mkdir -p build/release

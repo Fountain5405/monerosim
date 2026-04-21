@@ -81,7 +81,6 @@ full explanation.
 #### Other fixes since Mar 11
 - Removed `initial_wait_time` from miner distributor.
 - Updated quickstart config: seed 12345, reduced to 6h/8h durations.
-- Added `--patch-monero` flag to `setup.sh` for optional source patches.
 - Updated `docs/shadow-tx-stagger.md` for new calibration method.
 
 ---
