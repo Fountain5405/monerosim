@@ -301,34 +301,69 @@ def ensure_calibrated():
 # Stagger computation  (imported by generate_config / scenario_parser)
 # ---------------------------------------------------------------------------
 
+# SAFETY_FACTOR derivation:
+# The naive formula `min_interval = N × p95` assumes a single verifier and
+# ignores wallet-rpc/daemon contention on a Shadow host. Empirical runs show:
+#   - N=100, interval=60s,   1000-node network → 96/100 wallets deadlock
+#   - N=100, interval=1200s, 1000-node network → 100/100 wallets survive
+# That implies a real-world safety factor of ~200 (1200 / (100 × 0.061)).
+# We use 200 as the default. It only kicks in when N × p95 × 200 > requested
+# interval, so small simulations (e.g. N=3) are unaffected.
+SAFETY_FACTOR = 200
+
+# MIN_WAKEUP_STAGGER_S: floor on the per-user spacing of activity_start_time.
+# The naive formula `stagger = interval/N` produces 12s/user for N=100, which
+# means 100 wallets all do their first (heavy) transfer + decoy lookup within
+# 20 minutes. Empirically that still hangs ~65 of them. Forcing a wider
+# wakeup window (60s/user → ~100 min for 100 users) gives daemons time to
+# drain each user's first-tx P2P storm before the next user wakes.
+#
+# Tradeoff: when stagger > interval/N the steady-state cadence isn't perfectly
+# spread (later users wake while earlier users are mid-cycle, so transactions
+# can briefly cluster). For small N this barely matters because the network
+# isn't loaded; for large N the wakeup-window benefit dominates.
+MIN_WAKEUP_STAGGER_S = 60
+
+
+def compute_min_safe_interval(num_users: int) -> int:
+    """Return the minimum safe transaction_interval (seconds), or 0 if no calibration data."""
+    if num_users <= 0:
+        return 0
+    ensure_calibrated()
+    cal = load_calibration()
+    if not cal or cal.get("verify_time_us", {}).get("samples", 0) <= 0:
+        return 0
+    p95_s = cal["verify_time_us"]["p95"] / 1_000_000
+    return int(num_users * p95_s * SAFETY_FACTOR)
+
+
+def compute_safe_interval(num_users: int, requested_interval: int) -> int:
+    """Return the requested interval, or the calibrated minimum if higher.
+
+    Callers should overwrite the user's transaction_interval with this value
+    (and warn) so the actual sustained tx rate matches what the calibrator
+    deems safe.
+    """
+    return max(requested_interval, compute_min_safe_interval(num_users))
+
+
 def compute_stagger(num_users: int, tx_interval: int) -> int:
     """Compute the activity_start_time stagger between users.
 
-    Formula:  stagger = effective_interval / num_users
+    Formula:  stagger = max(MIN_WAKEUP_STAGGER_S, safe_interval / num_users)
 
-    If calibration data exists, enforces a floor on the interval:
-        min_interval = num_users × verify_time_p95_seconds × 3
+    Returns the floor so the wakeup window is wide enough for daemons to
+    handle each user's first-transfer P2P burst sequentially. See module
+    docstring on MIN_WAKEUP_STAGGER_S for the tradeoff.
 
     Automatically runs calibration on first call if no data exists.
     See docs/shadow-tx-stagger.md for the full explanation.
     """
     if num_users <= 0:
         return 0
-
-    ensure_calibrated()
-
-    effective_interval = tx_interval
-
-    cal = load_calibration()
-    if cal and cal.get("verify_time_us", {}).get("samples", 0) > 0:
-        p95_us = cal["verify_time_us"]["p95"]
-        p95_s = p95_us / 1_000_000
-        safety_factor = 3
-        min_interval = int(num_users * p95_s * safety_factor)
-        if min_interval > effective_interval:
-            effective_interval = min_interval
-
-    return max(1, effective_interval // num_users)
+    effective_interval = compute_safe_interval(num_users, tx_interval)
+    rate_based = effective_interval // num_users
+    return max(MIN_WAKEUP_STAGGER_S, rate_based, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -361,15 +396,16 @@ def show_calibration():
         print(f"    max: {v['max']:,} µs  ({v['max']/1000:.1f} ms)")
 
         p95_s = v["p95"] / 1_000_000
-        safety = 3
+        safety = SAFETY_FACTOR
         print(f"\n  Recommended min transaction_interval (p95×{safety}×N):")
         print(f"  {'Users':>6}  {'Min interval':>14}  {'Stagger (iv=60s)':>18}")
         print(f"  {'-----':>6}  {'-'*14:>14}  {'-'*18:>18}")
-        for n in [3, 5, 10, 20, 50, 100]:
+        for n in [3, 5, 10, 20, 50, 100, 500, 1000]:
             min_iv = max(1, int(n * p95_s * safety))
             eff_iv = max(60, min_iv)
-            stagger = max(1, eff_iv // n)
+            stagger = max(MIN_WAKEUP_STAGGER_S, eff_iv // n, 1)
             print(f"  {n:>6}  {min_iv:>12} s  {stagger:>16} s")
+        print(f"\n  Stagger floor: MIN_WAKEUP_STAGGER_S = {MIN_WAKEUP_STAGGER_S}s")
     else:
         print("  No data — stagger = transaction_interval / num_users")
 

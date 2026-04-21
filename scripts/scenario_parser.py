@@ -59,10 +59,10 @@ from dataclasses import dataclass, field
 
 try:
     from generate_config import parse_duration, calculate_activity_start_times
-    from calibrate import compute_stagger, disable_auto_calibration
+    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
-    from .calibrate import compute_stagger, disable_auto_calibration
+    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
 
 
 # Reuse constants from generate_config
@@ -647,20 +647,47 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     if general.get('bootstrap_end_time') == 'auto':
         general['bootstrap_end_time'] = f"{bootstrap_end_s // 3600}h" if bootstrap_end_s % 3600 == 0 else f"{bootstrap_end_s}s"
 
-    # Collect user agents with auto activity_start_time for staggering
+    # Collect user agents with auto activity_start_time for staggering.
+    # Treat transaction_interval: 'auto' as a request to use the calibrator's
+    # recommended minimum for this user count.
     user_agents_with_auto_activity = []
-    # Determine tx_interval from any user agent (they should all share the same value)
-    auto_tx_interval = 60
+    auto_tx_interval = 60  # Baseline if no explicit value found.
+    has_auto_tx_interval = False
     for agent_id, agent_config in agents.items():
         if agent_config.get('activity_start_time') == 'auto':
             is_user = 'regular_user' in str(agent_config.get('script', ''))
             if is_user:
                 user_agents_with_auto_activity.append(agent_id)
-                auto_tx_interval = agent_config.get('transaction_interval', 60)
+                iv = agent_config.get('transaction_interval', 60)
+                if iv == 'auto':
+                    has_auto_tx_interval = True
+                else:
+                    auto_tx_interval = iv
+
+    # Resolve 'auto' and bump explicit values below the calibrated minimum.
+    # The calibrator's safety factor accounts for wallet/daemon CPU contention
+    # in Shadow that the bare verify-time benchmark doesn't capture; without
+    # this, larger user counts overload the wallet-rpc and most wallets hang.
+    num_auto_users = len(user_agents_with_auto_activity)
+    if num_auto_users > 0:
+        safe_interval = compute_safe_interval(num_auto_users, auto_tx_interval)
+        bumped = safe_interval > auto_tx_interval
+        if has_auto_tx_interval:
+            print(f"Resolved transaction_interval=auto to {safe_interval}s "
+                  f"(calibrated for {num_auto_users} users).")
+        elif bumped:
+            print(f"Warning: transaction_interval={auto_tx_interval}s is below the "
+                  f"calibrated safe minimum for {num_auto_users} users; "
+                  f"bumping to {safe_interval}s. Set transaction_interval explicitly "
+                  f"per agent to override.")
+        if has_auto_tx_interval or bumped:
+            auto_tx_interval = safe_interval
+            for uid in user_agents_with_auto_activity:
+                agents[uid]['transaction_interval'] = safe_interval
 
     # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
     user_activity_times = calculate_activity_start_times(
-        num_users=len(user_agents_with_auto_activity),
+        num_users=num_auto_users,
         base_activity_start_s=activity_start_s,
         tx_interval=auto_tx_interval,
     )

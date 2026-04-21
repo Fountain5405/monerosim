@@ -35,9 +35,9 @@ from typing import Dict, Any, List, Tuple
 from collections import OrderedDict
 
 try:
-    from calibrate import compute_stagger, disable_auto_calibration
+    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
 except ImportError:
-    from .calibrate import compute_stagger, disable_auto_calibration
+    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
 
 
 # Fixed miner configuration (same as config_32_agents.yaml)
@@ -728,6 +728,13 @@ def generate_config(
     # Performance settings for fast mode
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
+    # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
+    safe_interval = compute_safe_interval(num_users, tx_interval)
+    if safe_interval > tx_interval:
+        print(f"Warning: tx_interval={tx_interval}s is below the calibrated safe "
+              f"minimum for {num_users} users; bumping to {safe_interval}s. "
+              f"Pass --tx-interval explicitly to override.")
+        tx_interval = safe_interval
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
 
     # Build named agents map (OrderedDict to preserve order)
@@ -1009,6 +1016,13 @@ def generate_upgrade_config(
     # Performance settings
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
+    # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
+    safe_interval = compute_safe_interval(num_users, tx_interval)
+    if safe_interval > tx_interval:
+        print(f"Warning: tx_interval={tx_interval}s is below the calibrated safe "
+              f"minimum for {num_users} users; bumping to {safe_interval}s. "
+              f"Pass --tx-interval explicitly to override.")
+        tx_interval = safe_interval
     poll_interval = 300
 
     # Build list of all agent IDs for upgrade scheduling
