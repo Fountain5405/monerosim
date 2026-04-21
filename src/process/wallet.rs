@@ -29,7 +29,7 @@ fn build_wallet_args(
         "--disable-rpc-login".to_string(),
         "--trusted-daemon".to_string(),
         format!("--wallet-dir={}/{}_wallet", shared_dir, agent_id),
-        format!("--shared-ringdb-dir={}/ringdb", shared_dir),
+        format!("--shared-ringdb-dir={}/{}_ringdb", shared_dir, agent_id),
         "--confirm-external-bind".to_string(),
         "--allow-mismatched-daemon-version".to_string(),
     ];
