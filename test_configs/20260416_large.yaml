@@ -62,7 +62,7 @@ agents:
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 2400s
-    transaction_interval: 60
+    transaction_interval: 1174
     activity_start_time: 18000
     can_receive_distributions: true
   user-002:
@@ -70,792 +70,792 @@ agents:
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 2405s
-    transaction_interval: 60
-    activity_start_time: 18001
+    transaction_interval: 1174
+    activity_start_time: 18011
     can_receive_distributions: true
   user-003:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 2410s
-    transaction_interval: 60
-    activity_start_time: 18002
+    transaction_interval: 1174
+    activity_start_time: 18022
     can_receive_distributions: true
   user-004:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 2415s
-    transaction_interval: 60
-    activity_start_time: 18003
+    transaction_interval: 1174
+    activity_start_time: 18033
     can_receive_distributions: true
   user-005:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 2420s
-    transaction_interval: 60
-    activity_start_time: 18004
+    transaction_interval: 1174
+    activity_start_time: 18044
     can_receive_distributions: true
   user-006:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3600s
-    transaction_interval: 60
-    activity_start_time: 18005
+    transaction_interval: 1174
+    activity_start_time: 18055
     can_receive_distributions: true
   user-007:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3605s
-    transaction_interval: 60
-    activity_start_time: 18006
+    transaction_interval: 1174
+    activity_start_time: 18066
     can_receive_distributions: true
   user-008:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3610s
-    transaction_interval: 60
-    activity_start_time: 18007
+    transaction_interval: 1174
+    activity_start_time: 18077
     can_receive_distributions: true
   user-009:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3615s
-    transaction_interval: 60
-    activity_start_time: 18008
+    transaction_interval: 1174
+    activity_start_time: 18088
     can_receive_distributions: true
   user-010:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3620s
-    transaction_interval: 60
-    activity_start_time: 18009
+    transaction_interval: 1174
+    activity_start_time: 18099
     can_receive_distributions: true
   user-011:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3625s
-    transaction_interval: 60
-    activity_start_time: 18010
+    transaction_interval: 1174
+    activity_start_time: 18110
     can_receive_distributions: true
   user-012:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3630s
-    transaction_interval: 60
-    activity_start_time: 18011
+    transaction_interval: 1174
+    activity_start_time: 18121
     can_receive_distributions: true
   user-013:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3635s
-    transaction_interval: 60
-    activity_start_time: 18012
+    transaction_interval: 1174
+    activity_start_time: 18132
     can_receive_distributions: true
   user-014:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3640s
-    transaction_interval: 60
-    activity_start_time: 18013
+    transaction_interval: 1174
+    activity_start_time: 18143
     can_receive_distributions: true
   user-015:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 3645s
-    transaction_interval: 60
-    activity_start_time: 18014
+    transaction_interval: 1174
+    activity_start_time: 18154
     can_receive_distributions: true
   user-016:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4800s
-    transaction_interval: 60
-    activity_start_time: 18015
+    transaction_interval: 1174
+    activity_start_time: 18165
     can_receive_distributions: true
   user-017:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4805s
-    transaction_interval: 60
-    activity_start_time: 18016
+    transaction_interval: 1174
+    activity_start_time: 18176
     can_receive_distributions: true
   user-018:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4810s
-    transaction_interval: 60
-    activity_start_time: 18017
+    transaction_interval: 1174
+    activity_start_time: 18187
     can_receive_distributions: true
   user-019:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4815s
-    transaction_interval: 60
-    activity_start_time: 18018
+    transaction_interval: 1174
+    activity_start_time: 18198
     can_receive_distributions: true
   user-020:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4820s
-    transaction_interval: 60
-    activity_start_time: 18019
+    transaction_interval: 1174
+    activity_start_time: 18209
     can_receive_distributions: true
   user-021:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4825s
-    transaction_interval: 60
-    activity_start_time: 18020
+    transaction_interval: 1174
+    activity_start_time: 18220
     can_receive_distributions: true
   user-022:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4830s
-    transaction_interval: 60
-    activity_start_time: 18021
+    transaction_interval: 1174
+    activity_start_time: 18231
     can_receive_distributions: true
   user-023:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4835s
-    transaction_interval: 60
-    activity_start_time: 18022
+    transaction_interval: 1174
+    activity_start_time: 18242
     can_receive_distributions: true
   user-024:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4840s
-    transaction_interval: 60
-    activity_start_time: 18023
+    transaction_interval: 1174
+    activity_start_time: 18253
     can_receive_distributions: true
   user-025:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4845s
-    transaction_interval: 60
-    activity_start_time: 18024
+    transaction_interval: 1174
+    activity_start_time: 18264
     can_receive_distributions: true
   user-026:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4850s
-    transaction_interval: 60
-    activity_start_time: 18025
+    transaction_interval: 1174
+    activity_start_time: 18275
     can_receive_distributions: true
   user-027:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4855s
-    transaction_interval: 60
-    activity_start_time: 18026
+    transaction_interval: 1174
+    activity_start_time: 18286
     can_receive_distributions: true
   user-028:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4860s
-    transaction_interval: 60
-    activity_start_time: 18027
+    transaction_interval: 1174
+    activity_start_time: 18297
     can_receive_distributions: true
   user-029:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4865s
-    transaction_interval: 60
-    activity_start_time: 18028
+    transaction_interval: 1174
+    activity_start_time: 18308
     can_receive_distributions: true
   user-030:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4870s
-    transaction_interval: 60
-    activity_start_time: 18029
+    transaction_interval: 1174
+    activity_start_time: 18319
     can_receive_distributions: true
   user-031:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4875s
-    transaction_interval: 60
-    activity_start_time: 18030
+    transaction_interval: 1174
+    activity_start_time: 18330
     can_receive_distributions: true
   user-032:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4880s
-    transaction_interval: 60
-    activity_start_time: 18031
+    transaction_interval: 1174
+    activity_start_time: 18341
     can_receive_distributions: true
   user-033:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4885s
-    transaction_interval: 60
-    activity_start_time: 18032
+    transaction_interval: 1174
+    activity_start_time: 18352
     can_receive_distributions: true
   user-034:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4890s
-    transaction_interval: 60
-    activity_start_time: 18033
+    transaction_interval: 1174
+    activity_start_time: 18363
     can_receive_distributions: true
   user-035:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 4895s
-    transaction_interval: 60
-    activity_start_time: 18034
+    transaction_interval: 1174
+    activity_start_time: 18374
     can_receive_distributions: true
   user-036:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6000s
-    transaction_interval: 60
-    activity_start_time: 18035
+    transaction_interval: 1174
+    activity_start_time: 18385
     can_receive_distributions: true
   user-037:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6005s
-    transaction_interval: 60
-    activity_start_time: 18036
+    transaction_interval: 1174
+    activity_start_time: 18396
     can_receive_distributions: true
   user-038:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6010s
-    transaction_interval: 60
-    activity_start_time: 18037
+    transaction_interval: 1174
+    activity_start_time: 18407
     can_receive_distributions: true
   user-039:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6015s
-    transaction_interval: 60
-    activity_start_time: 18038
+    transaction_interval: 1174
+    activity_start_time: 18418
     can_receive_distributions: true
   user-040:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6020s
-    transaction_interval: 60
-    activity_start_time: 18039
+    transaction_interval: 1174
+    activity_start_time: 18429
     can_receive_distributions: true
   user-041:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6025s
-    transaction_interval: 60
-    activity_start_time: 18040
+    transaction_interval: 1174
+    activity_start_time: 18440
     can_receive_distributions: true
   user-042:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6030s
-    transaction_interval: 60
-    activity_start_time: 18041
+    transaction_interval: 1174
+    activity_start_time: 18451
     can_receive_distributions: true
   user-043:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6035s
-    transaction_interval: 60
-    activity_start_time: 18042
+    transaction_interval: 1174
+    activity_start_time: 18462
     can_receive_distributions: true
   user-044:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6040s
-    transaction_interval: 60
-    activity_start_time: 18043
+    transaction_interval: 1174
+    activity_start_time: 18473
     can_receive_distributions: true
   user-045:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6045s
-    transaction_interval: 60
-    activity_start_time: 18044
+    transaction_interval: 1174
+    activity_start_time: 18484
     can_receive_distributions: true
   user-046:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6050s
-    transaction_interval: 60
-    activity_start_time: 18045
+    transaction_interval: 1174
+    activity_start_time: 18495
     can_receive_distributions: true
   user-047:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6055s
-    transaction_interval: 60
-    activity_start_time: 18046
+    transaction_interval: 1174
+    activity_start_time: 18506
     can_receive_distributions: true
   user-048:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6060s
-    transaction_interval: 60
-    activity_start_time: 18047
+    transaction_interval: 1174
+    activity_start_time: 18517
     can_receive_distributions: true
   user-049:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6065s
-    transaction_interval: 60
-    activity_start_time: 18048
+    transaction_interval: 1174
+    activity_start_time: 18528
     can_receive_distributions: true
   user-050:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6070s
-    transaction_interval: 60
-    activity_start_time: 18049
+    transaction_interval: 1174
+    activity_start_time: 18539
     can_receive_distributions: true
   user-051:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6075s
-    transaction_interval: 60
-    activity_start_time: 18050
+    transaction_interval: 1174
+    activity_start_time: 18550
     can_receive_distributions: true
   user-052:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6080s
-    transaction_interval: 60
-    activity_start_time: 18051
+    transaction_interval: 1174
+    activity_start_time: 18561
     can_receive_distributions: true
   user-053:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6085s
-    transaction_interval: 60
-    activity_start_time: 18052
+    transaction_interval: 1174
+    activity_start_time: 18572
     can_receive_distributions: true
   user-054:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6090s
-    transaction_interval: 60
-    activity_start_time: 18053
+    transaction_interval: 1174
+    activity_start_time: 18583
     can_receive_distributions: true
   user-055:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6095s
-    transaction_interval: 60
-    activity_start_time: 18054
+    transaction_interval: 1174
+    activity_start_time: 18594
     can_receive_distributions: true
   user-056:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6100s
-    transaction_interval: 60
-    activity_start_time: 18055
+    transaction_interval: 1174
+    activity_start_time: 18605
     can_receive_distributions: true
   user-057:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6105s
-    transaction_interval: 60
-    activity_start_time: 18056
+    transaction_interval: 1174
+    activity_start_time: 18616
     can_receive_distributions: true
   user-058:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6110s
-    transaction_interval: 60
-    activity_start_time: 18057
+    transaction_interval: 1174
+    activity_start_time: 18627
     can_receive_distributions: true
   user-059:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6115s
-    transaction_interval: 60
-    activity_start_time: 18058
+    transaction_interval: 1174
+    activity_start_time: 18638
     can_receive_distributions: true
   user-060:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6120s
-    transaction_interval: 60
-    activity_start_time: 18059
+    transaction_interval: 1174
+    activity_start_time: 18649
     can_receive_distributions: true
   user-061:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6125s
-    transaction_interval: 60
-    activity_start_time: 18060
+    transaction_interval: 1174
+    activity_start_time: 18660
     can_receive_distributions: true
   user-062:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6130s
-    transaction_interval: 60
-    activity_start_time: 18061
+    transaction_interval: 1174
+    activity_start_time: 18671
     can_receive_distributions: true
   user-063:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6135s
-    transaction_interval: 60
-    activity_start_time: 18062
+    transaction_interval: 1174
+    activity_start_time: 18682
     can_receive_distributions: true
   user-064:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6140s
-    transaction_interval: 60
-    activity_start_time: 18063
+    transaction_interval: 1174
+    activity_start_time: 18693
     can_receive_distributions: true
   user-065:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6145s
-    transaction_interval: 60
-    activity_start_time: 18064
+    transaction_interval: 1174
+    activity_start_time: 18704
     can_receive_distributions: true
   user-066:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6150s
-    transaction_interval: 60
-    activity_start_time: 18065
+    transaction_interval: 1174
+    activity_start_time: 18715
     can_receive_distributions: true
   user-067:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6155s
-    transaction_interval: 60
-    activity_start_time: 18066
+    transaction_interval: 1174
+    activity_start_time: 18726
     can_receive_distributions: true
   user-068:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6160s
-    transaction_interval: 60
-    activity_start_time: 18067
+    transaction_interval: 1174
+    activity_start_time: 18737
     can_receive_distributions: true
   user-069:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6165s
-    transaction_interval: 60
-    activity_start_time: 18068
+    transaction_interval: 1174
+    activity_start_time: 18748
     can_receive_distributions: true
   user-070:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6170s
-    transaction_interval: 60
-    activity_start_time: 18069
+    transaction_interval: 1174
+    activity_start_time: 18759
     can_receive_distributions: true
   user-071:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6175s
-    transaction_interval: 60
-    activity_start_time: 18070
+    transaction_interval: 1174
+    activity_start_time: 18770
     can_receive_distributions: true
   user-072:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6180s
-    transaction_interval: 60
-    activity_start_time: 18071
+    transaction_interval: 1174
+    activity_start_time: 18781
     can_receive_distributions: true
   user-073:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6185s
-    transaction_interval: 60
-    activity_start_time: 18072
+    transaction_interval: 1174
+    activity_start_time: 18792
     can_receive_distributions: true
   user-074:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6190s
-    transaction_interval: 60
-    activity_start_time: 18073
+    transaction_interval: 1174
+    activity_start_time: 18803
     can_receive_distributions: true
   user-075:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 6195s
-    transaction_interval: 60
-    activity_start_time: 18074
+    transaction_interval: 1174
+    activity_start_time: 18814
     can_receive_distributions: true
   user-076:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7200s
-    transaction_interval: 60
-    activity_start_time: 18075
+    transaction_interval: 1174
+    activity_start_time: 18825
     can_receive_distributions: true
   user-077:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7205s
-    transaction_interval: 60
-    activity_start_time: 18076
+    transaction_interval: 1174
+    activity_start_time: 18836
     can_receive_distributions: true
   user-078:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7210s
-    transaction_interval: 60
-    activity_start_time: 18077
+    transaction_interval: 1174
+    activity_start_time: 18847
     can_receive_distributions: true
   user-079:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7215s
-    transaction_interval: 60
-    activity_start_time: 18078
+    transaction_interval: 1174
+    activity_start_time: 18858
     can_receive_distributions: true
   user-080:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7220s
-    transaction_interval: 60
-    activity_start_time: 18079
+    transaction_interval: 1174
+    activity_start_time: 18869
     can_receive_distributions: true
   user-081:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7225s
-    transaction_interval: 60
-    activity_start_time: 18080
+    transaction_interval: 1174
+    activity_start_time: 18880
     can_receive_distributions: true
   user-082:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7230s
-    transaction_interval: 60
-    activity_start_time: 18081
+    transaction_interval: 1174
+    activity_start_time: 18891
     can_receive_distributions: true
   user-083:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7235s
-    transaction_interval: 60
-    activity_start_time: 18082
+    transaction_interval: 1174
+    activity_start_time: 18902
     can_receive_distributions: true
   user-084:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7240s
-    transaction_interval: 60
-    activity_start_time: 18083
+    transaction_interval: 1174
+    activity_start_time: 18913
     can_receive_distributions: true
   user-085:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7245s
-    transaction_interval: 60
-    activity_start_time: 18084
+    transaction_interval: 1174
+    activity_start_time: 18924
     can_receive_distributions: true
   user-086:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7250s
-    transaction_interval: 60
-    activity_start_time: 18085
+    transaction_interval: 1174
+    activity_start_time: 18935
     can_receive_distributions: true
   user-087:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7255s
-    transaction_interval: 60
-    activity_start_time: 18086
+    transaction_interval: 1174
+    activity_start_time: 18946
     can_receive_distributions: true
   user-088:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7260s
-    transaction_interval: 60
-    activity_start_time: 18087
+    transaction_interval: 1174
+    activity_start_time: 18957
     can_receive_distributions: true
   user-089:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7265s
-    transaction_interval: 60
-    activity_start_time: 18088
+    transaction_interval: 1174
+    activity_start_time: 18968
     can_receive_distributions: true
   user-090:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7270s
-    transaction_interval: 60
-    activity_start_time: 18089
+    transaction_interval: 1174
+    activity_start_time: 18979
     can_receive_distributions: true
   user-091:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7275s
-    transaction_interval: 60
-    activity_start_time: 18090
+    transaction_interval: 1174
+    activity_start_time: 18990
     can_receive_distributions: true
   user-092:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7280s
-    transaction_interval: 60
-    activity_start_time: 18091
+    transaction_interval: 1174
+    activity_start_time: 19001
     can_receive_distributions: true
   user-093:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7285s
-    transaction_interval: 60
-    activity_start_time: 18092
+    transaction_interval: 1174
+    activity_start_time: 19012
     can_receive_distributions: true
   user-094:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7290s
-    transaction_interval: 60
-    activity_start_time: 18093
+    transaction_interval: 1174
+    activity_start_time: 19023
     can_receive_distributions: true
   user-095:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7295s
-    transaction_interval: 60
-    activity_start_time: 18094
+    transaction_interval: 1174
+    activity_start_time: 19034
     can_receive_distributions: true
   user-096:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7300s
-    transaction_interval: 60
-    activity_start_time: 18095
+    transaction_interval: 1174
+    activity_start_time: 19045
     can_receive_distributions: true
   user-097:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7305s
-    transaction_interval: 60
-    activity_start_time: 18096
+    transaction_interval: 1174
+    activity_start_time: 19056
     can_receive_distributions: true
   user-098:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7310s
-    transaction_interval: 60
-    activity_start_time: 18097
+    transaction_interval: 1174
+    activity_start_time: 19067
     can_receive_distributions: true
   user-099:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7315s
-    transaction_interval: 60
-    activity_start_time: 18098
+    transaction_interval: 1174
+    activity_start_time: 19078
     can_receive_distributions: true
   user-100:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 7320s
-    transaction_interval: 60
-    activity_start_time: 18099
+    transaction_interval: 1174
+    activity_start_time: 19089
     can_receive_distributions: true
   relay-001:
     daemon: monerod

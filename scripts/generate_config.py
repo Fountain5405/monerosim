@@ -99,6 +99,7 @@ def calculate_activity_start_times(
     num_users: int,
     base_activity_start_s: int,
     tx_interval: int,
+    num_nodes: int = None,
 ) -> List[int]:
     """Calculate evenly staggered activity start times.
 
@@ -112,6 +113,9 @@ def calculate_activity_start_times(
         num_users: Total number of users
         base_activity_start_s: When the first user starts transacting (sim seconds)
         tx_interval: Transaction interval in seconds
+        num_nodes: Total nodes in the simulated network (for scale-aware
+                   interval calibration). Defaults to num_users (conservative
+                   fallback when network size is not known).
 
     Returns:
         List of activity_start_time values for each user (in order)
@@ -119,7 +123,7 @@ def calculate_activity_start_times(
     if num_users == 0:
         return []
 
-    stagger = compute_stagger(num_users, tx_interval)
+    stagger = compute_stagger(num_users, tx_interval, num_nodes=num_nodes)
     return [base_activity_start_s + i * stagger for i in range(num_users)]
 
 
@@ -728,12 +732,14 @@ def generate_config(
     # Performance settings for fast mode
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
+    # Total network node count (used for scale-aware interval calibration).
+    total_nodes = len(FIXED_MINERS) + num_users + relay_nodes
     # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
-    safe_interval = compute_safe_interval(num_users, tx_interval)
+    safe_interval = compute_safe_interval(num_users, tx_interval, num_nodes=total_nodes)
     if safe_interval > tx_interval:
         print(f"Warning: tx_interval={tx_interval}s is below the calibrated safe "
-              f"minimum for {num_users} users; bumping to {safe_interval}s. "
-              f"Pass --tx-interval explicitly to override.")
+              f"minimum for {num_users} users × {total_nodes} nodes; bumping "
+              f"to {safe_interval}s. Pass --tx-interval explicitly to override.")
         tx_interval = safe_interval
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
 
@@ -746,11 +752,12 @@ def generate_config(
         agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
 
     # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
-    activity_stagger_s = compute_stagger(num_users, tx_interval)
+    activity_stagger_s = compute_stagger(num_users, tx_interval, num_nodes=total_nodes)
     user_activity_times = calculate_activity_start_times(
         num_users=num_users,
         base_activity_start_s=activity_start_time_s,
         tx_interval=tx_interval,
+        num_nodes=total_nodes,
     )
 
     # Activity rollout duration for metadata
@@ -1016,12 +1023,13 @@ def generate_upgrade_config(
     # Performance settings
     if tx_interval is None:
         tx_interval = 120 if fast_mode else 60
+    total_nodes = num_miners + num_users + relay_nodes
     # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
-    safe_interval = compute_safe_interval(num_users, tx_interval)
+    safe_interval = compute_safe_interval(num_users, tx_interval, num_nodes=total_nodes)
     if safe_interval > tx_interval:
         print(f"Warning: tx_interval={tx_interval}s is below the calibrated safe "
-              f"minimum for {num_users} users; bumping to {safe_interval}s. "
-              f"Pass --tx-interval explicitly to override.")
+              f"minimum for {num_users} users × {total_nodes} nodes; bumping "
+              f"to {safe_interval}s. Pass --tx-interval explicitly to override.")
         tx_interval = safe_interval
     poll_interval = 300
 
@@ -1067,11 +1075,12 @@ def generate_upgrade_config(
         )
 
     # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
-    activity_stagger_s = compute_stagger(num_users, tx_interval)
+    activity_stagger_s = compute_stagger(num_users, tx_interval, num_nodes=total_nodes)
     user_activity_times = calculate_activity_start_times(
         num_users=num_users,
         base_activity_start_s=activity_start_time_s,
         tx_interval=tx_interval,
+        num_nodes=total_nodes,
     )
 
     # Activity rollout duration for metadata

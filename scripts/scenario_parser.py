@@ -437,6 +437,10 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     overrides = scenario.timing_overrides
     user_spawn_start_s = parse_duration(overrides.user_spawn_start) if overrides.user_spawn_start else None
 
+    # Total simulated-network node count used for scale-aware interval
+    # calibration (passed to compute_stagger / compute_safe_interval).
+    total_nodes = sum(g.count for g in scenario.agent_groups) + len(scenario.singleton_agents)
+
     # Track global stagger offsets for upgrade phases (continue across groups)
     upgrade_stagger_offset = 0
 
@@ -495,7 +499,8 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                     and 'activity_start_time' not in stagger_fields
                     and base_fields.get('activity_start_time') != 'auto'):
                 tx_interval = base_fields.get('transaction_interval', 60)
-                stagger_s = compute_stagger(group.count, tx_interval)
+                stagger_s = compute_stagger(group.count, tx_interval,
+                                             num_nodes=total_nodes)
                 stagger_fields['activity_start_time'] = f'{stagger_s}s'
 
             # Default upgrade stagger: 30s between each node's daemon_0_stop
@@ -670,16 +675,17 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     # this, larger user counts overload the wallet-rpc and most wallets hang.
     num_auto_users = len(user_agents_with_auto_activity)
     if num_auto_users > 0:
-        safe_interval = compute_safe_interval(num_auto_users, auto_tx_interval)
+        safe_interval = compute_safe_interval(num_auto_users, auto_tx_interval,
+                                              num_nodes=total_nodes)
         bumped = safe_interval > auto_tx_interval
         if has_auto_tx_interval:
             print(f"Resolved transaction_interval=auto to {safe_interval}s "
-                  f"(calibrated for {num_auto_users} users).")
+                  f"(calibrated for {num_auto_users} users × {total_nodes} nodes).")
         elif bumped:
             print(f"Warning: transaction_interval={auto_tx_interval}s is below the "
-                  f"calibrated safe minimum for {num_auto_users} users; "
-                  f"bumping to {safe_interval}s. Set transaction_interval explicitly "
-                  f"per agent to override.")
+                  f"calibrated safe minimum for {num_auto_users} users × "
+                  f"{total_nodes} nodes; bumping to {safe_interval}s. "
+                  f"Set transaction_interval explicitly per agent to override.")
         if has_auto_tx_interval or bumped:
             auto_tx_interval = safe_interval
             for uid in user_agents_with_auto_activity:
@@ -690,6 +696,7 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
         num_users=num_auto_users,
         base_activity_start_s=activity_start_s,
         tx_interval=auto_tx_interval,
+        num_nodes=total_nodes,
     )
 
     # Map user agent IDs to their staggered activity times

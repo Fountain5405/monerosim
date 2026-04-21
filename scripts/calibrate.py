@@ -300,70 +300,107 @@ def ensure_calibrated():
 # ---------------------------------------------------------------------------
 # Stagger computation  (imported by generate_config / scenario_parser)
 # ---------------------------------------------------------------------------
-
-# SAFETY_FACTOR derivation:
-# The naive formula `min_interval = N × p95` assumes a single verifier and
-# ignores wallet-rpc/daemon contention on a Shadow host. Empirical runs show:
-#   - N=100, interval=60s,   1000-node network → 96/100 wallets deadlock
-#   - N=100, interval=1200s, 1000-node network → 100/100 wallets survive
-# That implies a real-world safety factor of ~200 (1200 / (100 × 0.061)).
-# We use 200 as the default. It only kicks in when N × p95 × 200 > requested
-# interval, so small simulations (e.g. N=3) are unaffected.
-SAFETY_FACTOR = 200
-
-# MIN_WAKEUP_STAGGER_S: floor on the per-user spacing of activity_start_time.
-# The naive formula `stagger = interval/N` produces 12s/user for N=100, which
-# means 100 wallets all do their first (heavy) transfer + decoy lookup within
-# 20 minutes. Empirically that still hangs ~65 of them. Forcing a wider
-# wakeup window (60s/user → ~100 min for 100 users) gives daemons time to
-# drain each user's first-tx P2P storm before the next user wakes.
 #
-# Tradeoff: when stagger > interval/N the steady-state cadence isn't perfectly
-# spread (later users wake while earlier users are mid-cycle, so transactions
-# can briefly cluster). For small N this barely matters because the network
-# isn't loaded; for large N the wakeup-window benefit dominates.
-MIN_WAKEUP_STAGGER_S = 60
+# There are two independent reasons to floor transaction_interval:
+#
+# 1) **Per-wallet crypto cost** (CRYPTO_SAFETY_FACTOR × N × p95). Each tx
+#    needs CLSAG + Bulletproofs+ verification locally. This dominates for
+#    small single-box simulations with few network nodes.
+#
+# 2) **Shadow event-storm cost** (N × M × SHADOW_EVENT_COST_S / C). Each tx
+#    propagates to every daemon (M nodes), each propagation is a Shadow
+#    event, and Shadow can only process so many events per real second
+#    across its worker threads (C cores). Past a certain event rate the
+#    sim's wall-clock time explodes or the clock stalls entirely.
+#
+# The effective minimum is max(crypto_floor, shadow_floor). For small
+# sims (few nodes, lots of cores) crypto_floor dominates; for large sims
+# (1000+ nodes) shadow_floor dominates by orders of magnitude.
+#
+# CRYPTO_SAFETY_FACTOR derivation: a small multiple of p95 accounts for
+# multi-input txs and variance. 3 is fine since the Shadow floor almost
+# always dominates.
+CRYPTO_SAFETY_FACTOR = 3
+
+# SHADOW_EVENT_COST_S derivation: empirical from a known-good run that
+# produced 100/100 surviving wallets over 48h:
+#   N=100 users, M=1000 nodes, C=256 cores, interval=1200s → works
+#   K = interval × C / (N × M) = 1200 × 256 / (100 × 1000) = 3.07
+# This represents "real CPU-seconds per user-per-node-per-(1/interval)".
+# Raising it is safer/slower; lowering it is faster but risks Shadow
+# stalling under event load. 3.0 matches the empirical data point.
+SHADOW_EVENT_COST_S = 3.0
 
 
-def compute_min_safe_interval(num_users: int) -> int:
-    """Return the minimum safe transaction_interval (seconds), or 0 if no calibration data."""
+def _get_core_count(num_cores=None):
+    """Resolve core count: explicit > nproc > conservative fallback."""
+    if num_cores and num_cores > 0:
+        return num_cores
+    try:
+        n = os.cpu_count()
+        return n if n else 4
+    except Exception:
+        return 4
+
+
+def compute_min_safe_interval(num_users, num_nodes=None, num_cores=None):
+    """Return the minimum safe transaction_interval (seconds).
+
+    Args:
+        num_users: number of agents that will send user transactions
+        num_nodes: total nodes in the simulated network (tx-propagation target
+                   count). Defaults to num_users if unknown (conservative).
+        num_cores: Shadow worker cores available on this machine. Defaults
+                   to os.cpu_count().
+
+    Returns 0 if no calibration data exists.
+    """
     if num_users <= 0:
         return 0
     ensure_calibrated()
     cal = load_calibration()
     if not cal or cal.get("verify_time_us", {}).get("samples", 0) <= 0:
         return 0
+
+    # Crypto floor: per-tx verification cost.
     p95_s = cal["verify_time_us"]["p95"] / 1_000_000
-    return int(num_users * p95_s * SAFETY_FACTOR)
+    crypto_floor = int(num_users * p95_s * CRYPTO_SAFETY_FACTOR)
+
+    # Shadow event-storm floor: prevents the simulator from being overwhelmed
+    # by tx-propagation events at the configured user count × network size.
+    if num_nodes is None:
+        num_nodes = num_users  # fallback: assume worst-case every node is a user
+    cores = _get_core_count(num_cores)
+    shadow_floor = int(num_users * num_nodes * SHADOW_EVENT_COST_S / cores)
+
+    return max(crypto_floor, shadow_floor)
 
 
-def compute_safe_interval(num_users: int, requested_interval: int) -> int:
+def compute_safe_interval(num_users, requested_interval,
+                          num_nodes=None, num_cores=None):
     """Return the requested interval, or the calibrated minimum if higher.
 
     Callers should overwrite the user's transaction_interval with this value
     (and warn) so the actual sustained tx rate matches what the calibrator
-    deems safe.
+    deems safe for this user count, network size, and hardware.
     """
-    return max(requested_interval, compute_min_safe_interval(num_users))
+    return max(requested_interval,
+               compute_min_safe_interval(num_users, num_nodes, num_cores))
 
 
-def compute_stagger(num_users: int, tx_interval: int) -> int:
+def compute_stagger(num_users, tx_interval, num_nodes=None, num_cores=None):
     """Compute the activity_start_time stagger between users.
 
-    Formula:  stagger = max(MIN_WAKEUP_STAGGER_S, safe_interval / num_users)
-
-    Returns the floor so the wakeup window is wide enough for daemons to
-    handle each user's first-transfer P2P burst sequentially. See module
-    docstring on MIN_WAKEUP_STAGGER_S for the tradeoff.
+    Formula:  stagger = max(1, safe_interval / num_users)
 
     Automatically runs calibration on first call if no data exists.
     See docs/shadow-tx-stagger.md for the full explanation.
     """
     if num_users <= 0:
         return 0
-    effective_interval = compute_safe_interval(num_users, tx_interval)
-    rate_based = effective_interval // num_users
-    return max(MIN_WAKEUP_STAGGER_S, rate_based, 1)
+    effective_interval = compute_safe_interval(num_users, tx_interval,
+                                               num_nodes, num_cores)
+    return max(1, effective_interval // num_users)
 
 
 # ---------------------------------------------------------------------------

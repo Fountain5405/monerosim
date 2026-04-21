@@ -42,13 +42,8 @@ agents:
     script: agents.regular_user
     start_time: 1200s                 # Start after 20 minutes
     start_time_stagger: auto          # Batched spawning for 100+ agents
-    # Explicit override of calibrator auto values to test whether the
-    # ringdb fix is sufficient on its own (SAFETY_FACTOR=200 and
-    # MIN_WAKEUP_STAGGER_S=60 are conservative; this reproduces the
-    # pre-ringdb-fix failing config: 60s interval, 1s stagger).
-    transaction_interval: 60
-    activity_start_time: 18000        # First user tx at sim 5h
-    activity_start_time_stagger: 1s   # 1s gap per user, window = 100s
+    transaction_interval: auto        # Calibrator picks a safe rate for N+M+cores
+    activity_start_time: auto         # Wait for bootstrap before transacting
     can_receive_distributions: true
 
   # --- 895 Relay Nodes: Daemon-only for P2P block/tx relay ---
