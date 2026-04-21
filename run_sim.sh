@@ -1081,7 +1081,10 @@ archive_daemon_logs() {
         local node_name
         node_name=$(basename "$node_dir")
         mkdir -p "$logs_dir/$node_name"
-        cp "$log_file" "$logs_dir/$node_name/"
+        # mv is free within the same filesystem and avoids the 2x disk-space
+        # requirement that cp creates. Falls back to copy-then-unlink if the
+        # destination is on a different filesystem.
+        mv "$log_file" "$logs_dir/$node_name/"
         count=$((count + 1))
     done
 
@@ -1092,6 +1095,15 @@ archive_daemon_logs() {
     else
         log_warn "No bitmonero.log files found in /tmp/monero-*/"
     fi
+
+    # Clean up the leftover /tmp/monero-*/ directories (blockchain DBs, config,
+    # lock files, etc. — everything that isn't bitmonero.log, which we moved
+    # above). Can run into tens of GB on a 1000-node sim.
+    log_info "Cleaning up /tmp/monero-*/ leftovers..."
+    local tmp_size
+    tmp_size=$(du -shc /tmp/monero-* 2>/dev/null | tail -1 | cut -f1)
+    rm -rf /tmp/monero-* 2>/dev/null || true
+    log_ok "Freed ~$tmp_size from /tmp/monero-*/"
 }
 
 archive_transaction_registry() {
@@ -1100,17 +1112,40 @@ archive_transaction_registry() {
     local tx_dir="$ARCHIVE_DIR/transaction_registry"
     mkdir -p "$tx_dir"
 
+    # Registry JSON (+ lock) files go into transaction_registry/.
     local count=0
-    for json_file in "$SHARED_DIR"/*.json; do
-        [[ -f "$json_file" ]] || continue
-        cp "$json_file" "$tx_dir/"
+    for f in "$SHARED_DIR"/*.json "$SHARED_DIR"/*.lock; do
+        [[ -f "$f" ]] || continue
+        mv "$f" "$tx_dir/"
         count=$((count + 1))
     done
 
     if [[ $count -gt 0 ]]; then
-        log_ok "Transaction registry: $count JSON files archived"
+        log_ok "Transaction registry: $count files archived"
     else
-        log_warn "No JSON files found in $SHARED_DIR"
+        log_warn "No registry files found in $SHARED_DIR"
+    fi
+
+    # Per-agent wallet state (keys, balance, tx history) and ringdb state.
+    # Useful for post-run forensics (spin up wallet-rpc against the archived
+    # wallet + a preserved daemon, query balances, etc.).
+    local wallets_dir="$ARCHIVE_DIR/wallets"
+    local ringdbs_dir="$ARCHIVE_DIR/ringdbs"
+    local wallet_count=0 ringdb_count=0
+    for d in "$SHARED_DIR"/*_wallet; do
+        [[ -d "$d" ]] || continue
+        mkdir -p "$wallets_dir"
+        mv "$d" "$wallets_dir/"
+        wallet_count=$((wallet_count + 1))
+    done
+    for d in "$SHARED_DIR"/*_ringdb; do
+        [[ -d "$d" ]] || continue
+        mkdir -p "$ringdbs_dir"
+        mv "$d" "$ringdbs_dir/"
+        ringdb_count=$((ringdb_count + 1))
+    done
+    if [[ $wallet_count -gt 0 || $ringdb_count -gt 0 ]]; then
+        log_ok "Wallet state: $wallet_count wallets, $ringdb_count ringdbs archived"
     fi
 }
 
