@@ -420,7 +420,8 @@ def compute_stagger(num_users, tx_interval, num_nodes=None, num_cores=None):
 # in the same ballpark across scales.
 
 MONITOR_TARGET_RATE = 3.0   # max RPC events/sim-sec from polling
-MIN_POLL_INTERVAL_S = 60    # don't poll faster than this regardless
+MIN_POLL_INTERVAL_S = 300   # 5 min — finer monitoring than this is overkill
+                            # for sim purposes and just adds baseline load
 
 
 def compute_safe_poll_interval(num_nodes):
