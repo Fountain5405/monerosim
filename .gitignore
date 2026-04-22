@@ -114,3 +114,4 @@ sibling_repos/
 
 # Simulation run archives
 archived_runs/
+scaling_sweep_results*.csv
