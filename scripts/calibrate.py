@@ -419,16 +419,30 @@ def compute_stagger(num_users, tx_interval, num_nodes=None, num_cores=None):
 # cores -- comfortable. Setting MONITOR_TARGET_RATE = 3 keeps monitor cost
 # in the same ballpark across scales.
 
-MONITOR_TARGET_RATE = 3.0   # max RPC events/sim-sec from polling
+# Empirical anchor (working full-scale config): M=1000 nodes on C=256 cores
+# with poll_interval=334s gave 3 events/sim-sec from monitoring. Per-core,
+# that's 3/256 ≈ 0.0117 events/sim-sec/core. Scaling this rate budget with
+# the number of cores keeps the same headroom on smaller hardware.
+MONITOR_RATE_PER_CORE = 3.0 / 256
 MIN_POLL_INTERVAL_S = 300   # 5 min — finer monitoring than this is overkill
                             # for sim purposes and just adds baseline load
 
 
-def compute_safe_poll_interval(num_nodes):
-    """Recommended poll_interval (sec) for monitor / distributor at this scale."""
+def compute_safe_poll_interval(num_nodes, num_cores=None):
+    """Recommended poll_interval (sec) for monitor / distributor at this scale.
+
+    Formula:  poll_interval = max(MIN_POLL_INTERVAL_S, M / (C × rate_per_core))
+
+    Larger M -> longer interval (more nodes to poll per cycle).
+    Smaller C -> longer interval (fewer cores to process the events).
+    """
     if num_nodes is None or num_nodes <= 0:
         return MIN_POLL_INTERVAL_S
-    rate_based = int(num_nodes / MONITOR_TARGET_RATE)
+    cores = _get_core_count(num_cores)
+    rate_budget = cores * MONITOR_RATE_PER_CORE
+    if rate_budget <= 0:
+        return MIN_POLL_INTERVAL_S
+    rate_based = int(num_nodes / rate_budget)
     return max(MIN_POLL_INTERVAL_S, rate_based)
 
 
