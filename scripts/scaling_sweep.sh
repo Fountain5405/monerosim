@@ -123,7 +123,10 @@ EOF
 
   simulation-monitor:
     script: agents.simulation_monitor
-    poll_interval: 60
+    # 300s matches working full-scale configs. With smaller intervals
+    # the monitor's per-node RPC sweep dominates the baseline event load
+    # and stalls Shadow during bootstrap before any user activity starts.
+    poll_interval: 300
 EOF
 }
 
@@ -208,15 +211,22 @@ run_default_grid() {
     # intervals at same (N,M) (find the ratio=1 threshold).
     local grid=(
         # N  M    interval  -- predicted-safe minimum (K=3, C=256) in comments
-         20 100   15    # predicted 23s; 15s should just barely fail or just work
+
+        # === Storm-validation tests (does interval predict pass/fail?) ===
          20 100   60    # predicted 23s; 60s clearly safe
-         50 200   60    # predicted 117s; 60s should storm
+         50 200   60    # predicted 117s; should storm
          50 200  120    # predicted 117s; borderline
-         50 200  300    # predicted 117s; clearly safe
         100 500  300    # predicted 586s; should storm
         100 500  600    # predicted 586s; borderline
-        100 500 1200    # predicted 586s; clearly safe
         100 1000 600    # predicted 1172s; should storm (matches known-failing config)
+
+        # === M-only baseline tests (interval huge, ~no user txs) ===
+        # Isolates Shadow event-storm cost that depends on M alone:
+        # network bring-up, block propagation, monitor polling, peer keepalive.
+          3 100  10000   # tiny; baseline only
+          3 200  10000
+          3 500  10000
+          3 1000 10000
     )
     local n=$(( ${#grid[@]} / 3 ))
     echo "Running $n configurations, writing to $CSV"
