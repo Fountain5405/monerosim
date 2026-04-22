@@ -110,11 +110,20 @@ EOF
 EOF
     fi
 
+    # Scale distributor throughput with N. Default md_n_recipients=8 is
+    # only enough to fund ~96 users in the 1h bootstrap_end -> activity
+    # window (12 cycles × 8). For larger N we'd never get past funding.
+    # Aim to fund all N users in 8 of the 12 available cycles, leaving
+    # buffer for the funding txs to mature (~22 min).
+    local md_recipients=$(( (N + 7) / 8 ))   # ceil(N/8) -> finish in 8 cycles
+    if (( md_recipients < 1 )); then md_recipients=1; fi
+
     cat <<EOF
   miner-distributor:
     script: agents.miner_distributor
     wait_time: ${BOOTSTRAP_S}s
     transaction_frequency: 30
+    md_n_recipients: ${md_recipients}    # scaled to fund N=$N in ~8 cycles
 
   simulation-monitor:
     script: agents.simulation_monitor
