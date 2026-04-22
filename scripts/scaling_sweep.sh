@@ -34,10 +34,16 @@ cd "$REPO_DIR"
 
 # ---------- config ----------
 : "${CSV:=$REPO_DIR/scaling_sweep_results.csv}"
-: "${STOP_S:=7200}"          # 2h sim duration per run (~1h activity once funding matures)
-: "${BOOTSTRAP_S:=2700}"     # 45m bootstrap: miners mine + coinbase matures
-: "${ACTIVITY_S:=3300}"      # activity starts 10m after bootstrap, after distributor funds
-: "${TIMEOUT_S:=3600}"       # kill if run takes longer than 1h wall (signals storm)
+# Sim timings: Monero coinbase unlock window is 60 blocks. At the default
+# 120s block target, that's 2h of mining before the first coinbase can
+# even be spent by miner-distributor. Then the distributor's funding
+# txs need ~10 blocks (~20 min) to mature in user wallets. So tx
+# activity can't start before sim t≈2h 30m. 4h sim leaves 1.5h of
+# real tx activity, enough to actually exercise the user-tx storm load.
+: "${STOP_S:=14400}"         # 4h sim per run
+: "${BOOTSTRAP_S:=8100}"     # 2h 15m: comfortable margin past coinbase maturity
+: "${ACTIVITY_S:=9300}"      # 2h 35m: distributor's funding txs mature by here
+: "${TIMEOUT_S:=21600}"      # 6h wall: enough headroom for slow machines / large M
 : "${SIMULATION_SEED:=12345}"
 
 # ---------- scenario template ----------
