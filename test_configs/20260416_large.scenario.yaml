@@ -62,4 +62,4 @@ agents:
   # --- Support: Monitors simulation health ---
   simulation-monitor:
     script: agents.simulation_monitor
-    poll_interval: 300                # Check every 5 minutes
+    poll_interval: auto                # Check every 5 minutes

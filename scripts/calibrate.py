@@ -404,6 +404,34 @@ def compute_stagger(num_users, tx_interval, num_nodes=None, num_cores=None):
 
 
 # ---------------------------------------------------------------------------
+# Polling-interval calibration
+# ---------------------------------------------------------------------------
+#
+# simulation-monitor and miner-distributor both periodically iterate every
+# node in the network and call its RPC. That's M RPC events per poll cycle,
+# so events/sim-sec from polling = M / poll_interval. If this value gets
+# close to Shadow's per-core throughput, polling alone stalls the simulation
+# during bootstrap (before any user activity starts).
+#
+# Empirical anchor: the working full-scale run used poll_interval=300 at
+# M=1000 nodes -> 3.3 RPC events/sec. Combined with mining propagation
+# (~M/120 = 8.3 events/sec), total baseline was ~11.7 events/sec on 256
+# cores -- comfortable. Setting MONITOR_TARGET_RATE = 3 keeps monitor cost
+# in the same ballpark across scales.
+
+MONITOR_TARGET_RATE = 3.0   # max RPC events/sim-sec from polling
+MIN_POLL_INTERVAL_S = 60    # don't poll faster than this regardless
+
+
+def compute_safe_poll_interval(num_nodes):
+    """Recommended poll_interval (sec) for monitor / distributor at this scale."""
+    if num_nodes is None or num_nodes <= 0:
+        return MIN_POLL_INTERVAL_S
+    rate_based = int(num_nodes / MONITOR_TARGET_RATE)
+    return max(MIN_POLL_INTERVAL_S, rate_based)
+
+
+# ---------------------------------------------------------------------------
 # Display
 # ---------------------------------------------------------------------------
 

@@ -123,10 +123,7 @@ EOF
 
   simulation-monitor:
     script: agents.simulation_monitor
-    # 300s matches working full-scale configs. With smaller intervals
-    # the monitor's per-node RPC sweep dominates the baseline event load
-    # and stalls Shadow during bootstrap before any user activity starts.
-    poll_interval: 300
+    poll_interval: auto   # calibrated for M nodes (see calibrate.py)
 EOF
 }
 

@@ -59,10 +59,10 @@ from dataclasses import dataclass, field
 
 try:
     from generate_config import parse_duration, calculate_activity_start_times
-    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
+    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
-    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
+    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval
 
 
 # Reuse constants from generate_config
@@ -701,6 +701,18 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
 
     # Map user agent IDs to their staggered activity times
     user_activity_map = dict(zip(user_agents_with_auto_activity, user_activity_times))
+
+    # Resolve auto poll_interval / transaction_frequency on agents that
+    # iterate every node (simulation-monitor, miner-distributor). Both
+    # generate baseline event load proportional to M / interval; if too
+    # frequent for the network size, Shadow stalls during bootstrap.
+    safe_poll = compute_safe_poll_interval(total_nodes)
+    for agent_id, agent_config in agents.items():
+        for key in ('poll_interval', 'transaction_frequency'):
+            if agent_config.get(key) == 'auto':
+                print(f"Resolved {agent_id}.{key}=auto to {safe_poll}s "
+                      f"(calibrated for {total_nodes} nodes).")
+                agent_config[key] = safe_poll
 
     # Resolve 'auto' in agents
     for agent_id, agent_config in agents.items():
