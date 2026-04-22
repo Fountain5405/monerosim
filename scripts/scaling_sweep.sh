@@ -159,6 +159,16 @@ sweep_one() {
     fi
     local wall=$(( SECONDS - start ))
 
+    # CRITICAL: run_sim.sh launches `shadow` via `setsid`, so when timeout
+    # SIGTERMs run_sim.sh the shadow child survives in its own session. Left
+    # alone, the orphan keeps running, contaminates the next iteration's
+    # /tmp + shadow.data, and consumes cores. Kill any leftover shadow and
+    # monero processes before the next iteration starts.
+    pkill -KILL -f "/home/lever65/.monerosim/bin/shadow .*shadow_agents\.yaml" 2>/dev/null || true
+    pkill -KILL -f "/home/lever65/.monerosim/bin/monerod" 2>/dev/null || true
+    pkill -KILL -f "/home/lever65/.monerosim/bin/monero-wallet-rpc" 2>/dev/null || true
+    sleep 2
+
     # Find the archive dir we just produced
     archive=$(ls -dt archived_runs/*sweep_${tag}* 2>/dev/null | head -1 || true)
 
