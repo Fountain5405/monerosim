@@ -78,6 +78,23 @@ if [[ ! -f "Cargo.toml" ]] || [[ ! -d "src" ]]; then
     exit 1
 fi
 
+# Pick a parallel-build job count that won't OOM the C++ compile.
+# Monero's heaviest TUs (blockchain.cpp, bulletproofs_plus.cc) can each
+# need ~2GB of RAM in cc1plus. Running -j$(nproc) on low-memory machines
+# kills the build with "Killed signal terminated program cc1plus".
+# Rule: jobs = min(nproc, max(1, ram_gb / 2)).
+NPROC=$(nproc)
+RAM_GB=$(free -g 2>/dev/null | awk '/^Mem:/{print $2}')
+[[ -z "$RAM_GB" || "$RAM_GB" -lt 1 ]] && RAM_GB=2
+RAM_JOBS=$(( RAM_GB / 2 ))
+(( RAM_JOBS < 1 )) && RAM_JOBS=1
+if (( RAM_JOBS < NPROC )); then
+    BUILD_JOBS=$RAM_JOBS
+else
+    BUILD_JOBS=$NPROC
+fi
+export BUILD_JOBS
+
 # Display welcome message and what the script will do
 print_header "Welcome to MoneroSim Setup"
 echo ""
@@ -440,8 +457,8 @@ install_shadowformonero() {
     fi
 
     # Install shadowformonero to ~/.monerosim
-    print_status "Building and installing shadowformonero to $MONEROSIM_HOME..."
-    ./setup build --jobs $(nproc) --prefix "$MONEROSIM_HOME"
+    print_status "Building and installing shadowformonero to $MONEROSIM_HOME (using -j${BUILD_JOBS}, capped by RAM=${RAM_GB}GB)..."
+    ./setup build --jobs "$BUILD_JOBS" --prefix "$MONEROSIM_HOME"
     ./setup install
 
     # Return to script directory
@@ -665,14 +682,17 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # Build Monero binaries
+# Use BUILD_JOBS (RAM-capped) instead of $(nproc) to avoid OOM-killing
+# cc1plus on low-memory machines. blockchain.cpp + bulletproofs_plus.cc
+# can each peak at ~2GB during compile.
 if [[ "$FULL_MONERO_COMPILE" == "true" ]]; then
-    print_status "Compiling ALL Monero binaries (--full-monero-compile enabled)..."
-    make -j$(nproc)
+    print_status "Compiling ALL Monero binaries (--full-monero-compile enabled, -j${BUILD_JOBS})..."
+    make -j"$BUILD_JOBS"
 else
     # Build only the binaries we need (daemon and wallet_rpc_server)
     # This is much faster than building everything
-    print_status "Compiling monerod and monero-wallet-rpc only (use --full-monero-compile for all)..."
-    make -j$(nproc) daemon wallet_rpc_server
+    print_status "Compiling monerod and monero-wallet-rpc only (use --full-monero-compile for all, -j${BUILD_JOBS})..."
+    make -j"$BUILD_JOBS" daemon wallet_rpc_server
 fi
 
 if [[ $? -ne 0 ]]; then
