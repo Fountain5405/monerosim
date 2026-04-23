@@ -177,9 +177,17 @@ sweep_one() {
     # Find the archive dir we just produced
     archive=$(ls -dt archived_runs/*sweep_${tag}* 2>/dev/null | head -1 || true)
 
-    # Parse the last Progress: line from shadow_run.log to get sim_s reached
+    # Determine sim_s reached.
+    #   - If ok=1, Shadow exited cleanly => it reached the full STOP_S.
+    #     (Don't trust the last Progress line: Shadow stops emitting them
+    #     before 100%, so tail -1 undercounts by anywhere from 1% to 30x
+    #     depending on how sparse the late phase is.)
+    #   - If ok=0 (timeout/crash), parse the last Progress line for a
+    #     best-effort estimate of how far it actually got.
     local sim_s=0
-    if [[ -n "$archive" ]] && [[ -f "$archive/shadow_run.log" ]]; then
+    if (( ok == 1 )); then
+        sim_s=$STOP_S
+    elif [[ -n "$archive" ]] && [[ -f "$archive/shadow_run.log" ]]; then
         # "Progress: 100% — simulated: 01:30:00.000/01:30:00, realtime: 00:03:21"
         local last
         last=$(grep '^Progress:' "$archive/shadow_run.log" | tail -1 || true)
