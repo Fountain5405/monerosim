@@ -83,15 +83,19 @@ fi
 # need ~2GB of RAM in cc1plus. Running -j$(nproc) on low-memory machines
 # kills the build with "Killed signal terminated program cc1plus".
 # Rule: jobs = min(nproc, max(1, ram_gb / 2)).
+# Honor a pre-set BUILD_JOBS env var so users can override with
+# e.g. BUILD_JOBS=2 ./setup.sh on tight machines.
 NPROC=$(nproc)
 RAM_GB=$(free -g 2>/dev/null | awk '/^Mem:/{print $2}')
 [[ -z "$RAM_GB" || "$RAM_GB" -lt 1 ]] && RAM_GB=2
-RAM_JOBS=$(( RAM_GB / 2 ))
-(( RAM_JOBS < 1 )) && RAM_JOBS=1
-if (( RAM_JOBS < NPROC )); then
-    BUILD_JOBS=$RAM_JOBS
-else
-    BUILD_JOBS=$NPROC
+if [[ -z "${BUILD_JOBS:-}" ]]; then
+    RAM_JOBS=$(( RAM_GB / 2 ))
+    (( RAM_JOBS < 1 )) && RAM_JOBS=1
+    if (( RAM_JOBS < NPROC )); then
+        BUILD_JOBS=$RAM_JOBS
+    else
+        BUILD_JOBS=$NPROC
+    fi
 fi
 export BUILD_JOBS
 
