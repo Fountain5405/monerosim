@@ -358,6 +358,90 @@ def _get_core_count(num_cores=None):
         return 4
 
 
+def _get_ram_gb(ram_gb=None):
+    """Resolve total RAM in GB: explicit > /proc/meminfo > conservative."""
+    if ram_gb and ram_gb > 0:
+        return ram_gb
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    kb = int(line.split()[1])
+                    return max(1, kb // (1024 * 1024))
+    except Exception:
+        pass
+    return 2  # conservative fallback
+
+
+# ---------------------------------------------------------------------------
+# Wall-time estimate & safe-N cap
+# ---------------------------------------------------------------------------
+#
+# These are the "noob guardrail" knobs used by scenario_parser when resolving
+# auto-config values. They intentionally do NOT try to be accurate — they try
+# to be conservatively pessimistic so users don't accidentally launch a run
+# that will take 3× its simulated duration in wall clock.
+#
+# Background: we ran a scaling sweep across 4 machines (r7525 256c/1TB,
+# beryllium 24c/59GB, phantom 24c/31GB, ffcmp 12c/8GB) at N=10…1000 and
+# fit wall_s ≈ a + b·N per machine. The per-user slope `b` varied from
+# 3.2 to 40 s/N with no clean predictor from (cores, ram, crypto_p95,
+# sysbench) — phantom was slower-per-N than r7525 despite faster p95,
+# suggesting memory-bandwidth or disk effects we don't benchmark.
+#
+# So instead of a tight fit we pick a conservative K such that
+# K × p95_s × N ≥ observed b · N for every machine we tested.
+# K=1000 covers the slowest (phantom ≈ 849 when expressed this way).
+WALL_CONST_S = 1000    # per-run setup + mining overhead (seconds)
+WALL_PER_N_K = 1000    # × (p95 in seconds) = seconds per extra user
+
+
+def estimate_wall_time_s(num_users, p95_us=None):
+    """Pessimistic wall-time estimate for a scenario with N users.
+
+    Uses the local calibration's crypto p95 (if available) multiplied by a
+    conservative coefficient that over-predicts on fast machines. Returns
+    seconds. See the WALL_* constants above for methodology.
+    """
+    if p95_us is None:
+        cal = load_calibration()
+        if cal:
+            p95_us = cal.get("verify_time_us", {}).get("p95")
+    if not p95_us:
+        p95_us = 60_000  # fallback ≈ r7525-class (pessimistic)
+    p95_s = p95_us / 1_000_000
+    return int(WALL_CONST_S + WALL_PER_N_K * p95_s * num_users)
+
+
+def max_safe_users(num_cores=None, ram_gb=None):
+    """Conservative cap on N for the noob auto-config path.
+
+    Tier table derived from the cross-machine sweep. Power users who
+    exceed the cap should set transaction_interval / N explicitly to
+    bypass auto-resolution; this is only a guardrail for the default
+    path.
+    """
+    cores = _get_core_count(num_cores)
+    ram = _get_ram_gb(ram_gb)
+    # RAM tier — dominated by per-host memory (monerod + wallet + events).
+    # r7525 stalled at N=1000 with plenty of RAM, so the top tier is
+    # capped well below its "theoretical" RAM capacity.
+    if ram >= 96:
+        ram_cap = 600
+    elif ram >= 48:
+        ram_cap = 350
+    elif ram >= 24:
+        ram_cap = 150
+    elif ram >= 12:
+        ram_cap = 75
+    else:
+        ram_cap = 30
+    # Cores tier — Shadow's per-host scheduler gets unhappy past ~3
+    # users/core regardless of RAM.
+    cores_cap = max(cores * 3, 10)
+    return min(ram_cap, cores_cap)
+
+
 def compute_min_safe_interval(num_users, num_nodes=None, num_cores=None):
     """Return the minimum safe transaction_interval (seconds).
 

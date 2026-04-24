@@ -59,10 +59,10 @@ from dataclasses import dataclass, field
 
 try:
     from generate_config import parse_duration, calculate_activity_start_times
-    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval
+    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval, estimate_wall_time_s, max_safe_users
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
-    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval
+    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval, estimate_wall_time_s, max_safe_users
 
 
 # Reuse constants from generate_config
@@ -713,6 +713,34 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                 print(f"Resolved {agent_id}.{key}=auto to {safe_poll}s "
                       f"(calibrated for {total_nodes} nodes).")
                 agent_config[key] = safe_poll
+
+    # Noob guardrail: warn when the estimated wall time looks longer than
+    # the simulated duration, or when N exceeds the per-machine safe cap.
+    # Power users with explicit (non-auto) settings for all agents aren't
+    # in "noob mode" here; we still warn but don't modify their values.
+    stop_time_raw = scenario.general.get('stop_time')
+    if stop_time_raw and stop_time_raw != 'auto':
+        try:
+            stop_s = parse_duration(str(stop_time_raw))
+        except Exception:
+            stop_s = 0
+    else:
+        stop_s = 0
+    if num_auto_users > 0:
+        est_wall_s = estimate_wall_time_s(num_auto_users)
+        cap = max_safe_users()
+        est_ratio = (stop_s / est_wall_s) if est_wall_s > 0 else 0
+        print(f"Estimated wall time for N={num_auto_users} users: "
+              f"~{est_wall_s // 60} min "
+              f"(stop_time={stop_s // 60} min, predicted ratio ≈ {est_ratio:.2f}).")
+        if stop_s > 0 and est_wall_s > stop_s:
+            print(f"⚠ Warning: estimated wall time exceeds stop_time. "
+                  f"Consider reducing N or increasing stop_time.")
+        if num_auto_users > cap:
+            print(f"⚠ Warning: N={num_auto_users} exceeds the per-machine "
+                  f"safe cap (~{cap} for this hardware). Expect stalls. "
+                  f"Set transaction_interval / activity_start_time "
+                  f"explicitly per agent to bypass auto-config.")
 
     # Resolve 'auto' in agents
     for agent_id, agent_config in agents.items():
