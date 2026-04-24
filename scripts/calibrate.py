@@ -491,7 +491,7 @@ def show_calibration():
         print(f"    max: {v['max']:,} µs  ({v['max']/1000:.1f} ms)")
 
         p95_s = v["p95"] / 1_000_000
-        safety = SAFETY_FACTOR
+        safety = CRYPTO_SAFETY_FACTOR
         print(f"\n  Recommended min transaction_interval (p95×{safety}×N):")
         print(f"  {'Users':>6}  {'Min interval':>14}  {'Stagger (iv=60s)':>18}")
         print(f"  {'-----':>6}  {'-'*14:>14}  {'-'*18:>18}")
