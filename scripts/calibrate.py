@@ -490,17 +490,20 @@ def show_calibration():
         print(f"    p95: {v['p95']:,} µs  ({v['p95']/1000:.1f} ms)")
         print(f"    max: {v['max']:,} µs  ({v['max']/1000:.1f} ms)")
 
-        p95_s = v["p95"] / 1_000_000
         safety = CRYPTO_SAFETY_FACTOR
-        print(f"\n  Recommended min transaction_interval (p95×{safety}×N):")
-        print(f"  {'Users':>6}  {'Min interval':>14}  {'Stagger (iv=60s)':>18}")
-        print(f"  {'-----':>6}  {'-'*14:>14}  {'-'*18:>18}")
+        cores = _get_core_count()
+        print(f"\n  Recommended min transaction_interval "
+              f"(crypto floor = p95×{safety}×N; this machine: cores={cores}):")
+        print(f"  {'Users':>6}  {'Min interval':>14}  {'Stagger':>10}")
+        print(f"  {'-----':>6}  {'-'*14:>14}  {'-'*10:>10}")
         for n in [3, 5, 10, 20, 50, 100, 500, 1000]:
-            min_iv = max(1, int(n * p95_s * safety))
-            eff_iv = max(60, min_iv)
-            stagger = max(MIN_WAKEUP_STAGGER_S, eff_iv // n, 1)
-            print(f"  {n:>6}  {min_iv:>12} s  {stagger:>16} s")
-        print(f"\n  Stagger floor: MIN_WAKEUP_STAGGER_S = {MIN_WAKEUP_STAGGER_S}s")
+            # Use the same functions the scenario parser uses, so this
+            # table can't drift from the real behavior.
+            min_iv = compute_safe_interval(n, 60, num_nodes=n + 3,
+                                           num_cores=cores)
+            stagger = compute_stagger(n, 60, num_nodes=n + 3,
+                                      num_cores=cores)
+            print(f"  {n:>6}  {min_iv:>12} s  {stagger:>8} s")
     else:
         print("  No data — stagger = transaction_interval / num_users")
 
