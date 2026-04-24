@@ -35,9 +35,32 @@ from typing import Dict, Any, List, Tuple
 from collections import OrderedDict
 
 try:
-    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
+    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, estimate_wall_time_s, max_safe_users
 except ImportError:
-    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
+    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, estimate_wall_time_s, max_safe_users
+
+
+def _print_scale_guardrail(num_users: int, duration_s: int) -> None:
+    """Print wall-time estimate and safe-N cap warnings for a scenario.
+
+    Mirrors the guardrail in scenario_parser.py so both entry points give
+    the same pre-flight feedback. See docs/PERFORMANCE_AND_SCALE.md.
+    """
+    if num_users <= 0:
+        return
+    est_wall_s = estimate_wall_time_s(num_users)
+    cap = max_safe_users()
+    est_ratio = (duration_s / est_wall_s) if est_wall_s > 0 else 0
+    print(f"Estimated wall time for N={num_users} users: "
+          f"~{est_wall_s // 60} min "
+          f"(stop_time={duration_s // 60} min, predicted ratio ≈ {est_ratio:.2f}).")
+    if duration_s > 0 and est_wall_s > duration_s:
+        print(f"⚠ Warning: estimated wall time exceeds stop_time. "
+              f"Consider reducing --users or increasing --duration.")
+    if num_users > cap:
+        print(f"⚠ Warning: --users={num_users} exceeds the per-machine "
+              f"safe cap (~{cap} for this hardware). Expect stalls. "
+              f"See docs/PERFORMANCE_AND_SCALE.md.")
 
 
 # Fixed miner configuration (same as config_32_agents.yaml)
@@ -743,6 +766,8 @@ def generate_config(
         tx_interval = safe_interval
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
 
+    _print_scale_guardrail(num_users, duration_s)
+
     # Build named agents map (OrderedDict to preserve order)
     agents = OrderedDict()
 
@@ -1057,6 +1082,8 @@ def generate_upgrade_config(
     min_duration_s = last_upgrade_complete_s + post_upgrade_duration_s
     duration_s = max(requested_duration_s, min_duration_s)
     duration = format_time_offset(duration_s)
+
+    _print_scale_guardrail(num_users, duration_s)
 
     # Build agents with phased daemons
     agents = OrderedDict()

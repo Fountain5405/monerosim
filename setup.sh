@@ -799,8 +799,23 @@ else
     exit 1
 fi
 
-# Step 9: Optional Test Simulation
-print_header "Step 9: Optional Test Simulation"
+# Step 9: Calibrate crypto timing for this machine
+# This builds Monero's performance_tests binary and measures CLSAG +
+# Bulletproofs+ verification time, which is used by the auto-config
+# guardrail to predict wall time and warn if a scenario won't fit.
+# If we don't do it here, it will run lazily (with ~30 s pause) the
+# first time someone generates/expands a scenario.
+print_header "Step 9: Calibrating Crypto Timing"
+print_status "Measuring crypto verification time (~30 s)..."
+if python3 -m scripts.calibrate; then
+    print_success "Calibration saved to ~/.monerosim/calibration.json"
+else
+    print_warning "Calibration failed — will retry lazily on first config expansion."
+    print_warning "Auto-config will fall back to pessimistic defaults until then."
+fi
+
+# Step 10: Optional Test Simulation
+print_header "Step 10: Optional Test Simulation"
 
 print_status "Setup is complete! You can now run a test simulation to verify everything works."
 print_warning "The test simulation (test_configs/quickstart.yaml) runs for 6 hours simulated time"
