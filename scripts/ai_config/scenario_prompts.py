@@ -110,6 +110,35 @@ be placed under `daemon_defaults:` or `wallet_defaults:`.
 `daemon_defaults:` contains only monerod CLI flags (log-level, db-sync-mode, etc.).
 `wallet_defaults:` contains only monero-wallet-rpc CLI flags (log-level, etc.).
 
+## Scale Limits and Performance
+
+Simulations get slower as the user count (N) and total node count (M) grow. The
+wall-clock time can easily exceed the simulated duration if N is too high for the
+hardware. Per-machine safe-N caps (used by the auto-config guardrail):
+
+| RAM | Approx safe N | Typical use case |
+|-----|---------------|------------------|
+| < 12 GB | 30 | Laptop, small smoke test |
+| 12–24 GB | 75 | Desktop, small scenario |
+| 24–48 GB | 150 | Workstation, medium scenario |
+| 48–96 GB | 350 | Server-class, large scenario |
+| ≥ 96 GB | 600 | Large server; bigger hits Shadow scheduling cliff |
+
+Cores add a secondary cap of `3 × cores`, whichever is lower. Shadow's per-host
+scheduler degrades past ~3 simulated hosts per physical core.
+
+When generating configs:
+- If the user asks for more users than the safe cap for a typical machine (assume
+  48–96 GB if unspecified), note the scale concern briefly in your response (e.g.,
+  "This will need ≥ 96 GB RAM to run in reasonable time").
+- Prefer `transaction_interval: auto`, `activity_start_time: auto`, `poll_interval:
+  auto` — the parser computes safe values per-machine and warns at launch.
+- For large N (200+), favor `start_time_stagger: auto` (batched spawning).
+- The sim will warn at launch if `N` exceeds the per-machine cap or if estimated
+  wall time exceeds `stop_time`. Users can override with explicit values.
+
+See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
+
 ## Key Syntax Rules
 
 1. **Range expansion**: `{001..100}` expands to 001, 002, ..., 100

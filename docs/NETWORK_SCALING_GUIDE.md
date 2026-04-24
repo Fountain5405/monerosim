@@ -2,6 +2,10 @@
 
 This guide provides comprehensive information about Monerosim's network scaling feature, which enables large-scale cryptocurrency network simulations with thousands of nodes and geographically distributed agents.
 
+> **See also:** [PERFORMANCE_AND_SCALE.md](PERFORMANCE_AND_SCALE.md) — what makes a
+> simulation slow, per-machine safe-N limits, and how the auto-config guardrail works.
+> This guide focuses on topology generation; the performance doc focuses on wall-time.
+
 ## Overview
 
 The network scaling feature allows you to create and simulate large-scale Monero networks with the following capabilities:

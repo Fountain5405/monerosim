@@ -195,6 +195,7 @@ monerosim/
 - [Architecture](docs/ARCHITECTURE.md) - System design and component details
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
 - [Network Scaling Guide](docs/NETWORK_SCALING_GUIDE.md) - CAIDA topologies and large-scale simulations
+- [Performance and Scale Limits](docs/PERFORMANCE_AND_SCALE.md) - Speed knobs, per-machine safe-N caps, and auto-config guardrails
 - [How It Works](docs/FLOW.md) - Detailed mechanics of how monerosim interfaces with Shadow
 - [Determinism Fixes](docs/DETERMINISM_FIXES.md) - Sources of non-determinism and fixes
 - [AI Config Generator](docs/AI_CONFIG_GENERATOR.md) - LLM-based configuration generation
