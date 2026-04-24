@@ -116,21 +116,24 @@ Simulations get slower as the user count (N) and total node count (M) grow. The
 wall-clock time can easily exceed the simulated duration if N is too high for the
 hardware. Per-machine safe-N caps (used by the auto-config guardrail):
 
-| RAM | Approx safe N | Typical use case |
-|-----|---------------|------------------|
-| < 12 GB | 30 | Laptop, small smoke test |
-| 12–24 GB | 75 | Desktop, small scenario |
-| 24–48 GB | 150 | Workstation, medium scenario |
-| 48–96 GB | 350 | Server-class, large scenario |
-| ≥ 96 GB | 600 | Large server; bigger hits Shadow scheduling cliff |
+| RAM | Approx safe N | Who this is |
+|-----|---------------|-------------|
+| < 12 GB | 30 | Old laptop; swap-bound quickly |
+| 12–24 GB | 75 | **Typical laptop (16 GB is common)** |
+| 24–48 GB | 150 | **Typical desktop (32 GB is common)** |
+| 48–96 GB | 350 | Power-user workstation |
+| ≥ 96 GB | 600 | Server; bigger hits Shadow scheduling cliff |
 
 Cores add a secondary cap of `3 × cores`, whichever is lower. Shadow's per-host
 scheduler degrades past ~3 simulated hosts per physical core.
 
 When generating configs:
-- If the user asks for more users than the safe cap for a typical machine (assume
-  48–96 GB if unspecified), note the scale concern briefly in your response (e.g.,
-  "This will need ≥ 96 GB RAM to run in reasonable time").
+- **Assume the user has a 16–32 GB machine unless they say otherwise.** Most
+  general users are laptop/desktop class. If they ask for more than ~150 users,
+  briefly note the scale concern (e.g., "This will need a workstation with
+  ≥ 48 GB RAM; on a typical 32 GB desktop plan for N ≤ 150").
+- If the user mentions their hardware ("I have a server with 256 GB"), use that
+  tier instead.
 - Prefer `transaction_interval: auto`, `activity_start_time: auto`, `poll_interval:
   auto` — the parser computes safe values per-machine and warns at launch.
 - For large N (200+), favor `start_time_stagger: auto` (batched spawning).

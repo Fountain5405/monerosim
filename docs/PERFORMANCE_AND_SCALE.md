@@ -40,13 +40,17 @@ These are guardrail caps used by the auto-config — exceeding them doesn't
 immediately fail, but past the cap you are likely to hit stalls, OOM, or
 the Shadow host-count cliff:
 
-| RAM | Approx safe N (users) | Notes |
+| RAM | Approx safe N (users) | Who this is |
 |---|---|---|
-| < 12 GB | 30 | Swap-bound quickly; each host ~250 MB |
-| 12–24 GB | 75 | |
-| 24–48 GB | 150 | |
-| 48–96 GB | 350 | |
-| ≥ 96 GB | 600 | Top tier is also capped by the host-count cliff |
+| < 12 GB | 30 | Old laptop; swap-bound quickly (each host ~250 MB) |
+| 12–24 GB | 75 | **Typical laptop (16 GB is common)** |
+| 24–48 GB | 150 | **Typical desktop / workstation (32 GB is common)** |
+| 48–96 GB | 350 | Power-user workstation |
+| ≥ 96 GB | 600 | Server-class; top tier is also capped by the host-count cliff |
+
+Most general users are in the 16–32 GB tier and should plan for N ≤ 150
+unless they know their machine handles more. N ≥ 350 typically requires
+dedicated server hardware.
 
 Cores add a second cap: `3 × cores`, whichever is lower. Shadow's per-host
 scheduler starts degrading past ~3 simulated hosts per physical core.
