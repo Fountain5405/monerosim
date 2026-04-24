@@ -26,8 +26,14 @@ from pathlib import Path
 
 CALIBRATION_PATH = Path.home() / ".monerosim" / "calibration.json"
 
-# Relative from this script's directory to the Monero source root
-_MONERO_SRC_RELATIVE = "../../monero"
+# Candidate locations for the Monero source root, relative to this script.
+# setup.sh clones to <repo>/sibling_repos/monero; historically it was also
+# placed as a sibling to the monerosim repo, so we check both. Users can
+# override by setting MONERO_SRC_DIR in the environment.
+_MONERO_SRC_CANDIDATES = [
+    "../sibling_repos/monero",   # current: setup.sh clones here
+    "../../monero",              # legacy: sibling of monerosim repo
+]
 _PERF_BINARY_SUBPATH = "build/release/tests/performance_tests/performance_tests"
 
 
@@ -36,7 +42,16 @@ _PERF_BINARY_SUBPATH = "build/release/tests/performance_tests/performance_tests"
 # ---------------------------------------------------------------------------
 
 def _monero_root() -> Path:
-    return (Path(__file__).resolve().parent / _MONERO_SRC_RELATIVE).resolve()
+    override = os.environ.get("MONERO_SRC_DIR")
+    if override:
+        return Path(override).resolve()
+    script_dir = Path(__file__).resolve().parent
+    for rel in _MONERO_SRC_CANDIDATES:
+        p = (script_dir / rel).resolve()
+        if p.is_dir():
+            return p
+    # Fall back to the first candidate so error messages point somewhere sensible.
+    return (script_dir / _MONERO_SRC_CANDIDATES[0]).resolve()
 
 
 def find_perf_binary() -> "Path | None":
