@@ -41,8 +41,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
 
   # Default options applied to all wallets (overridable per-agent)
   wallet_defaults:

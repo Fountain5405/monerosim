@@ -34,8 +34,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -238,8 +236,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -304,8 +300,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -378,8 +372,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -456,8 +448,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -525,8 +515,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -585,8 +573,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -647,8 +633,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 
@@ -722,8 +706,6 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    disable-rpc-ban: true
-    allow-local-ip: true
   wallet_defaults:
     log-level: 1
 

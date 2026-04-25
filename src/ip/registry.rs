@@ -75,38 +75,42 @@ impl GlobalIpRegistry {
             }
         };
 
-        // Global IP distribution - simulate different geographic regions across multiple /16 subnets
-        // North America: 10.x.x.x, 192.168.x.x
-        // Europe: 172.16-31.x.x
-        // Asia: 203.x.x.x
-        // South America: 200.x.x.x
-        // Africa: 197.x.x.x
-        // Oceania: 202.x.x.x
+        // Global IP distribution - simulate different geographic regions across multiple /16 subnets.
+        //
+        // All ranges below are public (not in epee::is_ip_local, which
+        // covers 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16). Using
+        // public ranges means we don't need monerod's --allow-local-ip
+        // flag, which is the default-off "debug" escape hatch.
+        //
+        // We also avoid /8s where Monero's hardcoded fallback seed IPs
+        // live (5.x, 37.x, 88.x, 176.x, 192.99.x) so that the dedicated
+        // monero-seed-NNN hosts don't risk collision with geographic
+        // assignments.
+        //
+        // North America: 24.x.x.x (ARIN)
+        // Europe:        80.x.x.x (RIPE)
+        // Asia:          203.x.x.x (APNIC)
+        // South America: 200.x.x.x (LACNIC)
+        // Africa:        197.x.x.x (AFRINIC)
+        // Oceania:       202.x.x.x (APNIC)
 
         let region = agent_number % 6;
         let subnet_offset = agent_number / 6;
         let (octet1, octet2, _region_name) = match region {
-            0 => (10, subnet_offset % 256, "North America"),          // 10.x.x.x (/16 subnets)
-            1 => (172, 16 + (subnet_offset % 16), "Europe"),          // 172.16-31.x.x (/16 subnets)
-            2 => (203, subnet_offset % 256, "Asia"),                  // 203.x.x.x (/16 subnets)
-            3 => (200, subnet_offset % 256, "South America"),         // 200.x.x.x (/16 subnets)
-            4 => (197, subnet_offset % 256, "Africa"),                // 197.x.x.x (/16 subnets)
-            5 => (202, subnet_offset % 256, "Oceania"),               // 202.x.x.x (/16 subnets)
-            _ => (10, 0, "Default"),
-        };
-
-        // For North America, also use 192.168.x.x range occasionally
-        let (final_octet1, final_octet2) = if octet1 == 10 && (agent_number % 12) == 0 {
-            (192, 168) // Occasionally use 192.168.x.x for North America
-        } else {
-            (octet1, octet2)
+            0 => (24,  subnet_offset % 256, "North America"),
+            1 => (80,  subnet_offset % 256, "Europe"),
+            2 => (203, subnet_offset % 256, "Asia"),
+            3 => (200, subnet_offset % 256, "South America"),
+            4 => (197, subnet_offset % 256, "Africa"),
+            5 => (202, subnet_offset % 256, "Oceania"),
+            _ => (24,  0,                   "Default"),
         };
 
         // Create unique subnet and host
         let subnet_octet3 = agent_number % 256;
         let host_octet4 = 10 + (agent_number / 256) % 246; // Keep host part in valid range
 
-        let ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4);
+        let ip = format!("{}.{}.{}.{}", octet1, octet2, subnet_octet3, host_octet4);
 
         // Check if this IP is already assigned using HashSet for fast lookup
         if !self.used_ips.contains(&ip) {
@@ -120,7 +124,7 @@ impl GlobalIpRegistry {
                 Ok(ip)
             } else {
                 // Fallback: try a different host IP
-                let fallback_ip = format!("{}.{}.{}.{}", final_octet1, final_octet2, subnet_octet3, host_octet4 + 100);
+                let fallback_ip = format!("{}.{}.{}.{}", octet1, octet2, subnet_octet3, host_octet4 + 100);
                 if !self.used_ips.contains(&fallback_ip) {
                     self.used_ips.insert(fallback_ip.clone());
                     self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
@@ -181,7 +185,9 @@ impl GlobalIpRegistry {
     /// All agents in the same subnet group will receive IPs from the same /24 subnet.
     /// This is useful for simulating Sybil attacks where an attacker's nodes share infrastructure.
     ///
-    /// Subnet groups use the 10.100.x.0/24 range, where x is assigned sequentially.
+    /// Subnet groups use 100.64.x.0/24 (RFC 6598 shared address space — public per
+    /// epee::is_ip_local, so monerod doesn't need --allow-local-ip to peer with them).
+    /// `x` is assigned sequentially.
     pub fn assign_subnet_group_ip(&mut self, subnet_group: &str, agent_id: &str) -> Result<String, String> {
         // Get or create subnet allocation for this group
         let (subnet_prefix, next_host) = self.subnet_groups
@@ -189,8 +195,8 @@ impl GlobalIpRegistry {
             .or_insert_with(|| {
                 let subnet_id = self.next_subnet_group_id;
                 self.next_subnet_group_id = self.next_subnet_group_id.wrapping_add(1);
-                // Use 10.100.x.0/24 range for subnet groups
-                let prefix = format!("10.100.{}", subnet_id);
+                // RFC 6598 (CGNAT) — public per epee, plenty of /24 capacity.
+                let prefix = format!("100.64.{}", subnet_id);
                 log::info!("Created new subnet group '{}' with prefix {}.0/24", subnet_group, prefix);
                 (prefix, 10) // Start host IPs at .10
             });

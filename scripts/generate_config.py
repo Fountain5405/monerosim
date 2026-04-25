@@ -601,8 +601,6 @@ def _build_general_config(
         ("db-sync-mode", "fastest"),
         ("no-zmq", True),
         ("non-interactive", True),
-        ("disable-rpc-ban", True),
-        ("allow-local-ip", True),
     ])
 
     general_config["wallet_defaults"] = OrderedDict([

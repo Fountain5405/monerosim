@@ -293,9 +293,9 @@ Every monerod instance runs with `--regtest --keep-fakechain`, which:
 Other key daemon flags:
 - `--db-sync-mode=fastest` -- Skip fsync for speed (data loss on crash is acceptable in simulation)
 - `--no-zmq` -- Disable ZMQ pub/sub (not needed, saves resources)
-- `--disable-rpc-ban` -- Prevent banning peers in the simulated network
-- `--allow-local-ip` -- Allow connections to/from private IP ranges
 - `--non-interactive` -- No interactive console
+
+We deliberately do **not** override `--disable-rpc-ban` or `--allow-local-ip`. monerod runs at its real defaults for both — the IP allocator uses public ranges (no RFC1918), so peering doesn't need the local-IP escape hatch, and we accept the small risk of an agent fail-banning itself in exchange for staying close to production behavior.
 
 ## What Happens at Simulation End
 

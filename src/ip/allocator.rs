@@ -124,12 +124,14 @@ pub fn get_agent_ip(
             // Fallback to legacy assignment if centralized registry fails
             log::warn!("IP registry assignment failed for {}: {}. Using geographic fallback.", agent_id, error);
 
-            // Fallback logic using geographic subnets
+            // Fallback range: 198.18.0.0/15 (RFC 2544 benchmarking).
+            // Public per epee::is_ip_local, so monerod accepts it
+            // without --allow-local-ip. Easy to recognize as "test".
             let fallback_ip = match agent_type {
-                AgentType::UserAgent => format!("192.168.10.{}", 10 + (agent_index % 245)),
-                AgentType::MinerDistributor => format!("192.168.20.{}", 10 + (agent_index % 245)),
-                AgentType::PureScriptAgent => format!("192.168.30.{}", 10 + (agent_index % 245)),
-                AgentType::Infrastructure => format!("192.168.40.{}", 10 + (agent_index % 245)),
+                AgentType::UserAgent => format!("198.18.10.{}", 10 + (agent_index % 245)),
+                AgentType::MinerDistributor => format!("198.18.20.{}", 10 + (agent_index % 245)),
+                AgentType::PureScriptAgent => format!("198.18.30.{}", 10 + (agent_index % 245)),
+                AgentType::Infrastructure => format!("198.18.40.{}", 10 + (agent_index % 245)),
             };
 
             // Try to register the fallback IP
