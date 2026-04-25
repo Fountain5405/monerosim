@@ -229,7 +229,6 @@ The orchestrator injects environment variables into every Shadow process for det
 | `GLIBC_TUNABLES` | `glibc.malloc.arena_max=1` | Single malloc arena prevents non-deterministic memory layout |
 | `MALLOC_ARENA_MAX` | `1` | Same as above (fallback for older glibc) |
 | `MONERO_BLOCK_SYNC_SIZE` | `1` | Minimal sync batch size, reduces memory spikes |
-| `MONERO_MAX_CONNECTIONS_PER_IP` | `20` | Allows more connections from same subnet |
 | `DNS_PUBLIC` | `tcp://[dns_ip]` | Points monerod at the simulation's DNS server |
 | `PROCESS_THREADS` | from config | Controls monerod thread count (1 for determinism) |
 

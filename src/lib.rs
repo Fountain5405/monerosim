@@ -37,8 +37,11 @@ pub const MONERO_WALLET_RPC_PORT: u16 = 18082;
 pub const DEFAULT_BANDWIDTH_BPS: &str = "1000000000";
 /// glibc malloc mmap threshold for memory-constrained simulation hosts.
 pub const MALLOC_THRESHOLD: &str = "131072";
-/// Maximum inbound connections per IP for monerod.
-pub const MAX_CONNECTIONS_PER_IP: &str = "20";
+// MAX_CONNECTIONS_PER_IP intentionally removed: it backed an env var
+// (MONERO_MAX_CONNECTIONS_PER_IP) that monerod never read, so the
+// "override" was a no-op. We run at monerod's CLI default (1) instead.
+// See orchestrator.rs near monero_environment population for the
+// re-enable recipe (use daemon_defaults instead of an env var).
 /// IP offset for miner-distributor agents to avoid collision with user agents.
 pub const DISTRIBUTOR_IP_OFFSET: usize = 100;
 /// IP offset for pure-script agents.

@@ -191,7 +191,12 @@ pub fn generate_agent_shadow_config(
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
-    monero_environment.insert("MONERO_MAX_CONNECTIONS_PER_IP".to_string(), crate::MAX_CONNECTIONS_PER_IP.to_string());
+    // (Previously set MONERO_MAX_CONNECTIONS_PER_IP=20 here, but
+    // monerod doesn't read that env var — it only honors the CLI flag
+    // `--max-connections-per-ip`. The env var was a no-op for years.
+    // We now run at monerod's actual default (1) per net_node.cpp:172.
+    // If bootstrap issues reappear with many agents in shared subnets,
+    // bump it explicitly via `daemon_defaults: { max-connections-per-ip: N }`.)
 
     // Create centralized IP registry for robust IP management
     let mut ip_registry = GlobalIpRegistry::new();
