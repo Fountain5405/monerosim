@@ -9,7 +9,7 @@
 //!
 //! This module pins those IPs to dedicated in-sim hosts so the fallback
 //! path resolves inside the simulation. Behavior is controlled by
-//! `general.seed_nodes`:
+//! `general.fallback_seeds`:
 //!
 //! - `Auto`: 6 daemon-only hosts named `monero-seed-001..006` are
 //!   auto-injected, each pinned to one fallback IP.
@@ -24,7 +24,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::config_v2::{AgentConfig, AgentDefinitions, DaemonConfig, SeedNodesMode};
+use crate::config_v2::{AgentConfig, AgentDefinitions, DaemonConfig, FallbackSeedsMode};
 use crate::ip::GlobalIpRegistry;
 use crate::utils::extract_mainnet_seed_ips_from_repo;
 use crate::{fallback_seed_agent_id, MONERO_FALLBACK_SEED_IPS};
@@ -41,21 +41,21 @@ use crate::{fallback_seed_agent_id, MONERO_FALLBACK_SEED_IPS};
 /// Returns `(effective_agents, pinned_count)` — `pinned_count` is the
 /// number of fallback IPs actually claimed (for logging).
 pub fn prepare_fallback_seeds(
-    mode: SeedNodesMode,
+    mode: FallbackSeedsMode,
     user_agents: &AgentDefinitions,
     ip_registry: &mut GlobalIpRegistry,
     repo_dir: &Path,
 ) -> (AgentDefinitions, usize) {
-    if matches!(mode, SeedNodesMode::Off) {
+    if matches!(mode, FallbackSeedsMode::Off) {
         return (clone_agent_definitions(user_agents), 0);
     }
 
     let ips = resolve_fallback_ips(repo_dir);
 
     match mode {
-        SeedNodesMode::Off => unreachable!(),
-        SeedNodesMode::Auto => prepare_auto(&ips, user_agents, ip_registry),
-        SeedNodesMode::Custom => prepare_custom(&ips, user_agents, ip_registry),
+        FallbackSeedsMode::Off => unreachable!(),
+        FallbackSeedsMode::Auto => prepare_auto(&ips, user_agents, ip_registry),
+        FallbackSeedsMode::Custom => prepare_custom(&ips, user_agents, ip_registry),
     }
 }
 

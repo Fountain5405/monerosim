@@ -374,7 +374,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
     // hardcoded constant as a fallback.
     let repo_dir = std::path::Path::new(&current_dir);
     let (effective_agents, _seed_count) = prepare_fallback_seeds(
-        config.general.seed_nodes,
+        config.general.fallback_seeds,
         &config.agents,
         &mut ip_registry,
         repo_dir,

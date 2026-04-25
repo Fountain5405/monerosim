@@ -61,17 +61,21 @@ pub enum PeerMode {
 ///   monerosim pins their IPs to the fallback list in declaration order.
 /// - `Off`: no fallback seeds; miners alone serve the seed-node role
 ///   (current legacy behavior). Some monerod fallback warnings may appear.
+///
+/// Distinct from `network.seed_nodes` (a list of IP:port strings used by
+/// Hardcoded/Hybrid peer-discovery modes). This field controls Monero's
+/// hardcoded *fallback* IPs; that field configures explicit peer seeds.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum SeedNodesMode {
+pub enum FallbackSeedsMode {
     Auto,
     Custom,
     Off,
 }
 
-impl Default for SeedNodesMode {
+impl Default for FallbackSeedsMode {
     fn default() -> Self {
-        SeedNodesMode::Auto
+        FallbackSeedsMode::Auto
     }
 }
 
@@ -717,9 +721,14 @@ pub struct GeneralConfig {
     pub daemon_data_dir: String,
 
     /// How to populate hosts at Monero's hardcoded fallback seed IPs.
-    /// See `SeedNodesMode` for semantics.
+    /// See `FallbackSeedsMode` for semantics.
+    ///
+    /// Note: this is **distinct from `network.seed_nodes`** (a list of
+    /// `ip:port` strings for Hardcoded/Hybrid peer-discovery modes).
+    /// This field is a mode enum controlling Monero's hardcoded
+    /// *fallback* IPs. Both fields can coexist in one config.
     #[serde(default)]
-    pub seed_nodes: SeedNodesMode,
+    pub fallback_seeds: FallbackSeedsMode,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -1117,7 +1126,7 @@ impl Default for GeneralConfig {
             wallet_defaults: None,  // No wallet defaults by default
             shared_dir: default_shared_dir(),
             daemon_data_dir: default_daemon_data_dir(),
-            seed_nodes: SeedNodesMode::default(),
+            fallback_seeds: FallbackSeedsMode::default(),
         }
     }
 }

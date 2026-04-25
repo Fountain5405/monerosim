@@ -35,16 +35,18 @@ These are Shadow simulator settings — top-level fields under `general:`, **not
 | `runahead` | `100ms` | Shadow runahead window. Larger = faster but less accurate |
 | `process_threads` | `2` | Threads per simulated process. `0` = program defaults, `1` = deterministic |
 | `native_preemption` | `false` | Enable Shadow native preemption for better wall-time performance |
-| `seed_nodes` | `auto` | How to host Monero's hardcoded fallback seed IPs. See below. |
+| `fallback_seeds` | `auto` | How to host Monero's hardcoded fallback seed IPs. See below. |
 
 `daemon_defaults:` contains only monerod CLI flags. `wallet_defaults:` contains only wallet-rpc CLI flags.
 
-#### `seed_nodes` mode
+> **Heads-up on the name.** `general.fallback_seeds` (a mode enum) is **not** the same as `network.seed_nodes` (a list of `ip:port` strings used in Hardcoded/Hybrid peer-discovery modes). Both can appear in the same config and they do different things.
+
+#### `fallback_seeds` mode
 
 monerod has 6 hardcoded fallback seed IPs baked into the binary
 (`src/p2p/net_node.inl`). When DNS seeds and `--seed-node` peers fail,
 monerod tries those IPs directly — and Shadow drops the connection
-attempts because the IPs aren't in the virtual network. `seed_nodes`
+attempts because the IPs aren't in the virtual network. `fallback_seeds`
 controls how monerosim handles those IPs:
 
 | Value | Behavior |

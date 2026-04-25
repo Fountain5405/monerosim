@@ -98,7 +98,7 @@ class MoneroResolver(BaseResolver):
             # production). These are the `monero-seed-NNN` hosts pinned
             # to Monero's hardcoded fallback IPs when seed_nodes is
             # `auto` or `custom`. Fall back to miners only when no seed
-            # hosts exist (i.e., `seed_nodes: off`, the legacy model).
+            # hosts exist (i.e., `fallback_seeds: off`, the legacy model).
             seed_ips = []
             miner_ips = []
             for agent in registry.get("agents", []):

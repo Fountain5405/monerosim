@@ -59,10 +59,10 @@ pub const BLOCK_MATURITY_SECONDS: u64 = 7200;
 /// the simulation instead of hitting Shadow's "no host exists" warning.
 ///
 /// **This is a fallback default.** At runtime, `prepare_fallback_seeds`
-/// extracts the live list from the Monero source tree
-/// (`<repo>/sibling_repos/monero-shadow/src/p2p/net_node.inl` or sibling
-/// layouts; override with `MONERO_SRC_DIR`). This baked-in list is only
-/// used if the source isn't reachable on disk.
+/// (driven by `general.fallback_seeds`) extracts the live list from the
+/// Monero source tree (`<repo>/sibling_repos/monero-shadow/src/p2p/net_node.inl`
+/// or sibling layouts; override with `MONERO_SRC_DIR`). This baked-in
+/// list is only used if the source isn't reachable on disk.
 pub const MONERO_FALLBACK_SEED_IPS: [&str; 6] = [
     "176.9.0.187",
     "88.198.163.90",

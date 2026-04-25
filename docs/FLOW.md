@@ -209,7 +209,7 @@ monerod's binary contains 6 hardcoded fallback seed IPs at `src/p2p/net_node.inl
 
 The IP list is **read live from the Monero source tree** at orchestrator startup, so it always matches the binary you're running. Search order: `MONERO_SRC_DIR` env var, then `<repo>/sibling_repos/monero-shadow`, `<repo>/sibling_repos/monero`, then the same names as siblings of the monerosim repo. If the source isn't reachable, monerosim falls back to a baked-in constant in `src/lib.rs`.
 
-The `general.seed_nodes` field controls how monerosim handles this:
+The `general.fallback_seeds` field controls how monerosim handles this. (Note: distinct from `network.seed_nodes`, which is the explicit peer-discovery list for Hardcoded/Hybrid modes.)
 
 - **`auto` (default)**: orchestrator auto-injects 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP. The fallback path resolves inside the simulation. Adds 6 hosts to the simulation total.
 - **`custom`**: user declares agents named `monero-seed-NNN` (any subset, in any order). Their IPs are pinned to the fallback list in declaration order — useful for adding offline phases or custom timing.
