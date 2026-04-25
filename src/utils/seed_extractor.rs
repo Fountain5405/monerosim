@@ -3,9 +3,10 @@
 //! Extracts hardcoded seed node IPs from monerod source code.
 //! This allows the simulation to use the same IPs that monerod expects.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::fs;
+use std::env;
 use regex::Regex;
 
 static IP_PATTERN: LazyLock<Regex> = LazyLock::new(||
@@ -68,6 +69,71 @@ pub fn extract_seed_ips_from_file(file_path: &Path) -> Result<Vec<SeedNode>, Str
         .map_err(|e| format!("Failed to read {}: {}", file_path.display(), e))?;
 
     parse_mainnet_seed_ips(&content)
+}
+
+/// Locate `src/p2p/net_node.inl` from a Monero source tree by checking
+/// common layouts:
+///
+/// 1. `MONERO_SRC_DIR` env var (highest priority — explicit user override)
+/// 2. `<repo>/sibling_repos/monero-shadow/src/p2p/net_node.inl` (the
+///    shadowformonero fork, what we actually build against)
+/// 3. `<repo>/sibling_repos/monero/src/p2p/net_node.inl` (vanilla setup.sh layout)
+/// 4. `<parent of repo>/monero-shadow/src/p2p/net_node.inl` (siblings of monerosim)
+/// 5. `<parent of repo>/monero/src/p2p/net_node.inl`
+///
+/// `monerosim_repo_dir` is the monerosim repository root.
+pub fn find_net_node_source(monerosim_repo_dir: &Path) -> Option<PathBuf> {
+    // 1. Explicit env override
+    if let Ok(env_dir) = env::var("MONERO_SRC_DIR") {
+        let candidate = Path::new(&env_dir).join("src/p2p/net_node.inl");
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    let parent = monerosim_repo_dir.parent();
+
+    let candidates: Vec<PathBuf> = [
+        monerosim_repo_dir.join("sibling_repos/monero-shadow/src/p2p/net_node.inl"),
+        monerosim_repo_dir.join("sibling_repos/monero/src/p2p/net_node.inl"),
+    ]
+    .into_iter()
+    .chain(parent.into_iter().flat_map(|p| {
+        vec![
+            p.join("monero-shadow/src/p2p/net_node.inl"),
+            p.join("monero/src/p2p/net_node.inl"),
+        ]
+    }))
+    .collect();
+
+    candidates.into_iter().find(|p| p.exists())
+}
+
+/// Extract just the mainnet IPs from a Monero source tree, returning a
+/// vector of IP strings (no ports). On any failure, returns `None` so
+/// callers can fall back to a baked-in default.
+///
+/// Uses `find_net_node_source` to locate the source.
+pub fn extract_mainnet_seed_ips_from_repo(monerosim_repo_dir: &Path) -> Option<Vec<String>> {
+    let path = find_net_node_source(monerosim_repo_dir)?;
+    match extract_seed_ips_from_file(&path) {
+        Ok(seeds) => {
+            log::info!(
+                "Loaded {} Monero fallback seed IPs from {}",
+                seeds.len(),
+                path.display()
+            );
+            Some(seeds.into_iter().map(|s| s.ip).collect())
+        }
+        Err(e) => {
+            log::warn!(
+                "Failed to extract seed IPs from {}: {}. Falling back to hardcoded list.",
+                path.display(),
+                e
+            );
+            None
+        }
+    }
 }
 
 /// Parse mainnet seed IPs from net_node.inl content

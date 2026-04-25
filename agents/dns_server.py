@@ -93,22 +93,36 @@ class MoneroResolver(BaseResolver):
                 finally:
                     fcntl.flock(lock_f, fcntl.LOCK_UN)
 
-            # Get IPs of miners (seed nodes)
+            # Prefer dedicated seed-node hosts (the in-sim equivalent of
+            # the public seed servers DNS seed domains resolve to in
+            # production). These are the `monero-seed-NNN` hosts pinned
+            # to Monero's hardcoded fallback IPs when seed_nodes is
+            # `auto` or `custom`. Fall back to miners only when no seed
+            # hosts exist (i.e., `seed_nodes: off`, the legacy model).
             seed_ips = []
+            miner_ips = []
             for agent in registry.get("agents", []):
-                # Miners are seed nodes
                 attrs = agent.get("attributes", {})
-                is_miner = BaseAgent.parse_bool(attrs.get("is_miner", ""))
+                ip = agent.get("ip_addr")
+                if not ip:
+                    continue
+                if BaseAgent.parse_bool(attrs.get("is_seed_node", "")):
+                    seed_ips.append(ip)
+                elif BaseAgent.parse_bool(attrs.get("is_miner", "")):
+                    miner_ips.append(ip)
 
-                if is_miner and agent.get("ip_addr"):
-                    seed_ips.append(agent["ip_addr"])
+            if seed_ips:
+                source = "monero-seed hosts"
+            else:
+                seed_ips = miner_ips
+                source = "miners (legacy)"
 
             if seed_ips:
                 self.seed_ips = seed_ips
                 self._last_registry_load = now
-                self.logger.info(f"Loaded {len(seed_ips)} seed node IPs: {seed_ips}")
+                self.logger.info(f"Loaded {len(seed_ips)} DNS seed IPs from {source}: {seed_ips}")
             else:
-                self.logger.warning("No miner IPs found in registry")
+                self.logger.warning("No seed-node or miner IPs found in registry")
 
         except Exception as e:
             self.logger.error(f"Failed to load agent registry: {e}")

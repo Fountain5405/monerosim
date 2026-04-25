@@ -52,6 +52,29 @@ pub enum PeerMode {
     Hybrid,
 }
 
+/// How to populate the in-sim hosts at Monero's hardcoded fallback seed IPs
+/// (the IPs baked into monerod at src/p2p/net_node.inl).
+///
+/// - `Auto`: monerosim auto-injects 6 daemon-only hosts named
+///   `monero-seed-001..006`, each pinned to one fallback IP.
+/// - `Custom`: user declares agents named `monero-seed-NNN` in the YAML;
+///   monerosim pins their IPs to the fallback list in declaration order.
+/// - `Off`: no fallback seeds; miners alone serve the seed-node role
+///   (current legacy behavior). Some monerod fallback warnings may appear.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SeedNodesMode {
+    Auto,
+    Custom,
+    Off,
+}
+
+impl Default for SeedNodesMode {
+    fn default() -> Self {
+        SeedNodesMode::Auto
+    }
+}
+
 /// Topology templates for peer connections
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Topology {
@@ -692,6 +715,11 @@ pub struct GeneralConfig {
     /// Each agent gets `{daemon_data_dir}/monero-{agent_id}`.
     #[serde(default = "default_daemon_data_dir")]
     pub daemon_data_dir: String,
+
+    /// How to populate hosts at Monero's hardcoded fallback seed IPs.
+    /// See `SeedNodesMode` for semantics.
+    #[serde(default)]
+    pub seed_nodes: SeedNodesMode,
 }
 
 fn default_simulation_seed() -> u64 {
@@ -1089,6 +1117,7 @@ impl Default for GeneralConfig {
             wallet_defaults: None,  // No wallet defaults by default
             shared_dir: default_shared_dir(),
             daemon_data_dir: default_daemon_data_dir(),
+            seed_nodes: SeedNodesMode::default(),
         }
     }
 }

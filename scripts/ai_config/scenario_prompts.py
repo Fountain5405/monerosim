@@ -102,6 +102,7 @@ under `general:`, NOT under `daemon_defaults:` or `wallet_defaults:`.
 | `runahead` | 100ms | Shadow runahead window. Larger = faster but less accurate. Try 500ms for speed |
 | `process_threads` | 2 | Threads per simulated process. 0 = use program defaults (monerod uses all cores, non-deterministic). 1 = deterministic but slow. 2 = good balance |
 | `native_preemption` | false | Enable Shadow native preemption. Improves wall-time performance |
+| `seed_nodes` | auto | How to host Monero's hardcoded fallback seed IPs. `auto` = orchestrator injects 6 dedicated `monero-seed-NNN` daemon-only hosts pinned to those IPs (silences "no host exists" warnings). `custom` = user declares `monero-seed-NNN` agents themselves (lets them add offline phases, etc.). `off` = no seed hosts (legacy behavior). Leave at `auto` unless the user specifically asks otherwise. |
 
 IMPORTANT: `runahead`, `process_threads`, and `native_preemption` are Shadow simulator
 settings that go directly under `general:`. They are NOT daemon options and must NEVER

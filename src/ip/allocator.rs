@@ -15,6 +15,7 @@ fn get_node_as_number(gml_node: &GmlNode) -> Option<String> {
 
 /// Get IP address for an agent using the centralized Global IP Registry
 /// Priority order:
+/// 0) Pre-registered IP (e.g., Monero fallback seed pinning) — honored unconditionally
 /// 1) Subnet group (if specified) - agents with the same group share a /24 subnet
 /// 2) Pre-allocated GML IP
 /// 3) AS-aware IP
@@ -30,7 +31,14 @@ pub fn get_agent_ip(
     ip_registry: &mut GlobalIpRegistry,
     subnet_group: Option<&str>,
 ) -> String {
-    // Priority 0: If subnet_group is specified, use subnet group allocation
+    // Priority 0: Honor any IP that was pre-registered for this agent before
+    // the main allocation loop ran (e.g., Monero fallback seed IP pinning).
+    if let Some(pre_registered) = ip_registry.get_ip_for_agent(agent_id).cloned() {
+        log::debug!("Using pre-registered IP {} for agent {}", pre_registered, agent_id);
+        return pre_registered;
+    }
+
+    // Priority 1: If subnet_group is specified, use subnet group allocation
     if let Some(group) = subnet_group {
         match ip_registry.assign_subnet_group_ip(group, agent_id) {
             Ok(ip) => {

@@ -29,6 +29,10 @@ pub struct SubnetAllocation {
 pub struct GlobalIpRegistry {
     /// Tracks all assigned IP addresses to prevent collisions
     assigned_ips: HashMap<String, String>, // IP -> Agent ID
+    /// Reverse lookup: agent_id -> IP. Lets `get_agent_ip()` find an IP that
+    /// was pre-registered (e.g., a Monero fallback seed IP pinned to a
+    /// specific agent before the main allocation loop runs).
+    agent_to_ip: HashMap<String, String>,
     /// Fast lookup for IP uniqueness checking
     used_ips: HashSet<String>,
     /// Subnet group allocations: group_name -> (subnet_prefix, next_host)
@@ -42,10 +46,17 @@ impl GlobalIpRegistry {
     pub fn new() -> Self {
         GlobalIpRegistry {
             assigned_ips: HashMap::new(),
+            agent_to_ip: HashMap::new(),
             used_ips: HashSet::new(),
             subnet_groups: HashMap::new(),
             next_subnet_group_id: 0,
         }
+    }
+
+    /// Look up the IP previously assigned to `agent_id`, if any.
+    /// Used by `get_agent_ip()` Priority 0 to honor pre-registered pinnings.
+    pub fn get_ip_for_agent(&self, agent_id: &str) -> Option<&String> {
+        self.agent_to_ip.get(agent_id)
     }
 
     /// Assign a unique IP address for the given agent type and ID
@@ -101,6 +112,7 @@ impl GlobalIpRegistry {
         if !self.used_ips.contains(&ip) {
             self.used_ips.insert(ip.clone());
             self.assigned_ips.insert(ip.clone(), agent_id.to_string());
+            self.agent_to_ip.insert(agent_id.to_string(), ip.clone());
             Ok(ip)
         } else {
             // Check if it's assigned to the same agent (shouldn't happen with HashSet, but being safe)
@@ -112,6 +124,7 @@ impl GlobalIpRegistry {
                 if !self.used_ips.contains(&fallback_ip) {
                     self.used_ips.insert(fallback_ip.clone());
                     self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
+                    self.agent_to_ip.insert(agent_id.to_string(), fallback_ip.clone());
                     Ok(fallback_ip)
                 } else {
                     Err(format!("Could not assign unique IP for agent {}", agent_id))
@@ -138,6 +151,7 @@ impl GlobalIpRegistry {
         } else {
             self.used_ips.insert(ip.to_string());
             self.assigned_ips.insert(ip.to_string(), agent_id.to_string());
+            self.agent_to_ip.insert(agent_id.to_string(), ip.to_string());
             Ok(())
         }
     }
@@ -200,6 +214,7 @@ impl GlobalIpRegistry {
                 if !self.used_ips.contains(&try_ip) {
                     self.used_ips.insert(try_ip.clone());
                     self.assigned_ips.insert(try_ip.clone(), agent_id.to_string());
+                    self.agent_to_ip.insert(agent_id.to_string(), try_ip.clone());
                     // Update next_host for future allocations
                     if let Some((_, next)) = self.subnet_groups.get_mut(subnet_group) {
                         *next = try_host + 1;
@@ -215,6 +230,7 @@ impl GlobalIpRegistry {
 
         self.used_ips.insert(ip.clone());
         self.assigned_ips.insert(ip.clone(), agent_id.to_string());
+        self.agent_to_ip.insert(agent_id.to_string(), ip.clone());
 
         // Increment next_host for this group
         if let Some((_, next)) = self.subnet_groups.get_mut(subnet_group) {

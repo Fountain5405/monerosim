@@ -52,6 +52,32 @@ pub const REGISTRY_PREVIEW_CHARS: usize = 500;
 /// Monero coinbase maturity: 60 blocks at 120s each.
 pub const BLOCK_MATURITY_SECONDS: u64 = 7200;
 
+/// Mainnet fallback seed IPs hardcoded in monerod at
+/// `monero-shadow/src/p2p/net_node.inl:752-758`. These are the IPs monerod
+/// falls back to when DNS seeds and configured `--seed-node` peers fail.
+/// In-sim hosts pinned to these IPs let the fallback path resolve inside
+/// the simulation instead of hitting Shadow's "no host exists" warning.
+///
+/// **This is a fallback default.** At runtime, `prepare_fallback_seeds`
+/// extracts the live list from the Monero source tree
+/// (`<repo>/sibling_repos/monero-shadow/src/p2p/net_node.inl` or sibling
+/// layouts; override with `MONERO_SRC_DIR`). This baked-in list is only
+/// used if the source isn't reachable on disk.
+pub const MONERO_FALLBACK_SEED_IPS: [&str; 6] = [
+    "176.9.0.187",
+    "88.198.163.90",
+    "192.99.8.110",
+    "37.187.74.171",
+    "88.99.195.15",
+    "5.104.84.64",
+];
+
+/// Generate the agent ID for the Nth fallback seed (1-indexed).
+/// `seed_index = 1` → `"monero-seed-001"`.
+pub fn fallback_seed_agent_id(seed_index: usize) -> String {
+    format!("monero-seed-{:03}", seed_index)
+}
+
 pub mod config_v2;
 pub mod config_loader;
 pub mod gml_parser;

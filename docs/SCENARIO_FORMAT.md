@@ -35,8 +35,23 @@ These are Shadow simulator settings — top-level fields under `general:`, **not
 | `runahead` | `100ms` | Shadow runahead window. Larger = faster but less accurate |
 | `process_threads` | `2` | Threads per simulated process. `0` = program defaults, `1` = deterministic |
 | `native_preemption` | `false` | Enable Shadow native preemption for better wall-time performance |
+| `seed_nodes` | `auto` | How to host Monero's hardcoded fallback seed IPs. See below. |
 
 `daemon_defaults:` contains only monerod CLI flags. `wallet_defaults:` contains only wallet-rpc CLI flags.
+
+#### `seed_nodes` mode
+
+monerod has 6 hardcoded fallback seed IPs baked into the binary
+(`src/p2p/net_node.inl`). When DNS seeds and `--seed-node` peers fail,
+monerod tries those IPs directly — and Shadow drops the connection
+attempts because the IPs aren't in the virtual network. `seed_nodes`
+controls how monerosim handles those IPs:
+
+| Value | Behavior |
+|-------|----------|
+| `auto` (default) | Orchestrator auto-injects 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP. Silences "no host exists" warnings. Adds 6 hosts to the simulation. |
+| `custom` | You declare agents named `monero-seed-NNN` (any subset, in any order) in the `agents:` section. Their IPs get pinned to the fallback list in declaration order. Lets you customize start time, add offline phases, etc. |
+| `off` | No seed hosts. Miners alone serve the seed-node role. Some "no host exists" warnings will appear in the Shadow log. Use for backward compat with older configs. |
 
 ## Range Expansion
 

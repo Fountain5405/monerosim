@@ -15,7 +15,7 @@ use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor};
+use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor, prepare_fallback_seeds};
 use serde_json;
 use serde_yaml;
 use std::collections::BTreeMap;
@@ -366,9 +366,23 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
         log::info!("Created DNS server at {}", dns_ip);
     }
 
+    // Reserve Monero fallback-seed IPs (and inject synthesized seed
+    // hosts in `auto` mode) before the main allocation loop so that
+    // `get_agent_ip()`'s Priority 0 lookup honors the pinning. The IP
+    // list is extracted live from the Monero source tree at
+    // `<repo>/sibling_repos/monero` (or sibling layouts), with the
+    // hardcoded constant as a fallback.
+    let repo_dir = std::path::Path::new(&current_dir);
+    let (effective_agents, _seed_count) = prepare_fallback_seeds(
+        config.general.seed_nodes,
+        &config.agents,
+        &mut ip_registry,
+        repo_dir,
+    );
+
     // Process all agent types from the configuration
     process_user_agents(
-        &config.agents,
+        &effective_agents,
         &mut hosts,
         &mut seed_nodes,
         &mut subnet_manager,
@@ -395,8 +409,9 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
 
     // Calculate offset for script agents to avoid IP collisions
     // Use a larger offset to ensure clear separation between agent types
-    // Count all agents in the map for offset calculation
-    let total_agent_count = config.agents.agents.len();
+    // Count all agents in the map for offset calculation (use the
+    // effective set so injected seeds are accounted for).
+    let total_agent_count = effective_agents.agents.len();
     let distributor_offset = total_agent_count + crate::DISTRIBUTOR_IP_OFFSET;
     let script_offset = total_agent_count + crate::SCRIPT_IP_OFFSET;
 
@@ -465,8 +480,10 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
     // Populate agent registry from all agent types
     // Extract IPs from the already created hosts instead of generating new ones
 
-    // Add all agents to registry from the named agents map
-    for (agent_id, agent_config) in config.agents.agents.iter() {
+    // Add all agents to registry from the effective agents map (so
+    // auto-injected fallback-seed hosts appear here too — DNS server
+    // and other consumers read this file).
+    for (agent_id, agent_config) in effective_agents.agents.iter() {
         // Get IP from the corresponding host that was already created
         let agent_ip = hosts.get(agent_id)
             .and_then(|host| host.ip_addr.clone())

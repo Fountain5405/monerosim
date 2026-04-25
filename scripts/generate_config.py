@@ -72,6 +72,10 @@ FIXED_MINERS = [
     {"hashrate": 10, "start_offset_s": 4},
 ]
 
+# Number of Monero fallback seed IPs (mirrors src/lib.rs MONERO_FALLBACK_SEED_IPS).
+# Bumped to match upstream when monerod's hardcoded fallback list changes.
+NUM_MONERO_FALLBACK_SEEDS = 6
+
 # Bootstrap timing constants (verified for Monero regtest with ring size 16)
 # This ensures sufficient blocks for unlock (60) and outputs for ring signatures
 
@@ -559,6 +563,7 @@ def _build_general_config(
     native_preemption: bool = None,
     shared_dir: str = None,
     daemon_data_dir: str = None,
+    seed_nodes_mode: str = "auto",
 ) -> OrderedDict:
     """Build the general config section shared by generate_config and generate_upgrade_config."""
     shadow_log_level = "warning" if fast_mode else "info"
@@ -569,6 +574,7 @@ def _build_general_config(
         ("parallelism", parallelism),
         ("simulation_seed", simulation_seed),
         ("enable_dns_server", True),
+        ("seed_nodes", seed_nodes_mode),
         ("shadow_log_level", shadow_log_level),
         ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
         ("progress", True),
@@ -636,6 +642,8 @@ def generate_config(
     relay_nodes: int = 0,
     relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
     relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
+    # Monero fallback-seed handling: auto | custom | off
+    seed_nodes_mode: str = "auto",
 ) -> Dict[str, Any]:
     """Generate the complete monerosim configuration.
 
@@ -810,6 +818,13 @@ def generate_config(
         relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
         agents[agent_id] = generate_relay_agent(relay_start_s, daemon_binary)
 
+    # In custom mode, scaffold 6 monero-seed-XXX agents the user can edit
+    # before running the sim. (In auto mode the orchestrator injects them
+    # automatically; in off mode no seed hosts exist.)
+    if seed_nodes_mode == "custom":
+        for i in range(NUM_MONERO_FALLBACK_SEEDS):
+            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, daemon_binary)
+
     # Calculate last relay spawn time for metadata/warnings
     if relay_nodes > 0:
         last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
@@ -851,6 +866,7 @@ def generate_config(
         fast_mode=fast_mode,
         process_threads=process_threads,
         native_preemption=native_preemption,
+        seed_nodes_mode=seed_nodes_mode,
     )
 
     # Return config and timing info for header generation
@@ -931,6 +947,8 @@ def generate_upgrade_config(
     relay_nodes: int = 0,
     relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
     relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
+    # Monero fallback-seed handling: auto | custom | off
+    seed_nodes_mode: str = "auto",
     # Upgrade-specific parameters
     upgrade_binary_v1: str = "monerod",
     upgrade_binary_v2: str = "monerod",
@@ -1160,6 +1178,14 @@ def generate_upgrade_config(
             phase1_start,
         )
 
+    # In custom mode, scaffold 6 monero-seed-XXX agents the user can edit.
+    # Phased daemons aren't applied here — seed hosts use the v1 binary
+    # for the entire run (they don't participate in upgrade scenarios by
+    # default).
+    if seed_nodes_mode == "custom":
+        for i in range(NUM_MONERO_FALLBACK_SEEDS):
+            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, upgrade_binary_v1)
+
     # Calculate last relay spawn time for metadata/warnings
     if relay_nodes > 0:
         last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
@@ -1201,6 +1227,7 @@ def generate_upgrade_config(
         fast_mode=fast_mode,
         process_threads=process_threads,
         native_preemption=native_preemption,
+        seed_nodes_mode=seed_nodes_mode,
     )
 
     timing_info = {
@@ -1504,6 +1531,19 @@ Timeline (verified bootstrap for Monero regtest):
              "With 895 relays at 20s stagger, all online in ~5h."
     )
 
+    parser.add_argument(
+        "--seed-nodes",
+        type=str,
+        choices=["auto", "custom", "off"],
+        default="auto",
+        help="Monero fallback-seed handling (default: auto). "
+             "auto: orchestrator injects 6 monero-seed-001..006 hosts pinned to "
+             "Monero's hardcoded fallback IPs (silences 'no host exists' warnings). "
+             "custom: scaffold 6 monero-seed-NNN entries in the YAML so you can "
+             "edit start times / phases / etc. before running. "
+             "off: legacy behavior — no seed hosts; miners alone serve the role."
+    )
+
     # Timing control flags
     parser.add_argument(
         "--user-spawn-start",
@@ -1762,6 +1802,7 @@ Timeline (verified bootstrap for Monero regtest):
                 relay_nodes=args.relay_nodes,
                 relay_spawn_start_s=parse_duration(args.relay_spawn_start),
                 relay_stagger_s=parse_duration(args.relay_stagger),
+                seed_nodes_mode=args.seed_nodes,
                 upgrade_binary_v1=args.upgrade_binary_v1,
                 upgrade_binary_v2=args.upgrade_binary_v2,
                 upgrade_start=args.upgrade_start,
@@ -1799,6 +1840,7 @@ Timeline (verified bootstrap for Monero regtest):
                 relay_nodes=args.relay_nodes,
                 relay_spawn_start_s=parse_duration(args.relay_spawn_start),
                 relay_stagger_s=parse_duration(args.relay_stagger),
+                seed_nodes_mode=args.seed_nodes,
             )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)

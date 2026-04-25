@@ -203,6 +203,20 @@ If `enable_dns_server: true` is set, the orchestrator creates a DNS server agent
 
 Without the DNS server, monerod would try to resolve these domains and fail, requiring `--disable-seed-nodes` on every daemon.
 
+### 3. Hardcoded fallback seed IPs
+
+monerod's binary contains 6 hardcoded fallback seed IPs at `src/p2p/net_node.inl` (currently `176.9.0.187`, `88.198.163.90`, `192.99.8.110`, `37.187.74.171`, `88.99.195.15`, `5.104.84.64`, all on `:18080`). When DNS lookup and configured `--seed-node` peers fail to provide enough connections, monerod falls back to those IPs directly. They live on the real internet, which Shadow's virtual network can't reach — so each attempt logs `Attempting to connect to address 'X' for which no host exists` and drops.
+
+The IP list is **read live from the Monero source tree** at orchestrator startup, so it always matches the binary you're running. Search order: `MONERO_SRC_DIR` env var, then `<repo>/sibling_repos/monero-shadow`, `<repo>/sibling_repos/monero`, then the same names as siblings of the monerosim repo. If the source isn't reachable, monerosim falls back to a baked-in constant in `src/lib.rs`.
+
+The `general.seed_nodes` field controls how monerosim handles this:
+
+- **`auto` (default)**: orchestrator auto-injects 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP. The fallback path resolves inside the simulation. Adds 6 hosts to the simulation total.
+- **`custom`**: user declares agents named `monero-seed-NNN` (any subset, in any order). Their IPs are pinned to the fallback list in declaration order — useful for adding offline phases or custom timing.
+- **`off`**: no seed hosts. Fallback warnings appear in the Shadow log. Use for backward compat with older configs.
+
+The pinning works through a Priority 0 lookup in the IP allocator (`src/ip/allocator.rs`): pre-registered agent→IP pairs short-circuit the normal geographic/AS allocation. See `src/agent/fallback_seeds.rs`.
+
 ## Environment Variables
 
 The orchestrator injects environment variables into every Shadow process for determinism and compatibility:
