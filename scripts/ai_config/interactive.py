@@ -625,24 +625,66 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
 
 
 def load_waiting_facts():
-    """Load facts from YAML file to display while waiting for LLM."""
+    """Load facts from YAML file to display while waiting for LLM.
+
+    Returns the list shuffled in-place so each session shows a fresh
+    order rather than cycling through the YAML top-to-bottom every time.
+    Non-string entries (e.g. a fact with an unquoted colon that YAML
+    silently parsed as a single-key map) are coerced to strings so a
+    typo in the YAML can't break the spinner.
+    """
+    import random
     try:
         import yaml
         facts_file = Path(__file__).parent / 'waiting_facts.yaml'
         with open(facts_file, 'r') as f:
             data = yaml.safe_load(f)
-            return data.get('facts', []) if data else []
+            raw = data.get('facts', []) if data else []
     except Exception:
         # Fallback facts if file not found
-        return [
+        raw = [
             "Waiting for LLM response...",
             "Processing your request...",
             "Generating configuration...",
             "Thinking...",
         ]
+    facts: list[str] = []
+    for entry in raw:
+        if isinstance(entry, str):
+            facts.append(entry)
+        elif isinstance(entry, dict) and len(entry) == 1:
+            # YAML parsed an unquoted "key: value" line as a one-key map;
+            # rejoin into a single string so it still displays.
+            (k, v), = entry.items()
+            facts.append(f"{k}: {v}")
+        else:
+            facts.append(str(entry))
+    random.shuffle(facts)
+    return facts
 
 
 WAITING_FACTS = load_waiting_facts()
+
+
+def _wrap_fact(fact: str, available_width: int) -> list[str]:
+    """Break a fact into chunks that fit in `available_width` columns.
+
+    We render facts on a single overwriting line (\\r-style), so a long
+    fact has to be cycled through as a series of chunks rather than a
+    multi-line block. Returns at least one chunk; chunks are filled to
+    near the width budget without splitting words.
+    """
+    import textwrap
+    if available_width <= 1:
+        return [fact]
+    # break_long_words=True so a single freakishly long word still fits
+    chunks = textwrap.wrap(
+        fact,
+        width=max(available_width, 20),
+        break_long_words=True,
+        break_on_hyphens=False,
+    )
+    return chunks if chunks else [fact]
 
 
 def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
@@ -661,7 +703,8 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
     result = [None]
     error = [None]
     fact_index = [0]
-    fact_shown_at = [0.0]  # When the current fact started displaying
+    chunk_index = [0]
+    chunk_shown_at = [0.0]  # When the current chunk started displaying
     start_time = time.time()
     stop_animation = threading.Event()
 
@@ -676,12 +719,20 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
     def animate():
         while not stop_animation.is_set():
             elapsed = time.time() - start_time
-            fact_index[0], fact_shown_at[0] = show_waiting_indicator(
-                elapsed, fact_index[0], fact_shown_at[0]
+            (
+                fact_index[0],
+                chunk_index[0],
+                chunk_shown_at[0],
+            ) = show_waiting_indicator(
+                elapsed, fact_index[0], chunk_index[0], chunk_shown_at[0]
             )
             time.sleep(0.2)  # Update spinner every 200ms
-        # Clear the line
-        sys.stdout.write('\r' + ' ' * 200 + '\r')
+        # Clear the line — best-effort using current terminal width
+        try:
+            width = os.get_terminal_size().columns
+        except (OSError, ValueError):
+            width = 200
+        sys.stdout.write('\r' + ' ' * width + '\r')
         sys.stdout.flush()
 
     # Start chat in background thread
@@ -697,45 +748,72 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
     return result[0]
 
 
-def show_waiting_indicator(elapsed_time: float, fact_index: int, fact_shown_at: float) -> tuple[int, float]:
+def show_waiting_indicator(
+    elapsed_time: float,
+    fact_index: int,
+    chunk_index: int,
+    chunk_shown_at: float,
+) -> tuple[int, int, float]:
     """
     Show a rotating Monero fact with spinner while waiting.
 
+    Long facts that don't fit the terminal are split into chunks and
+    cycled one at a time so nothing gets truncated.
+
     Args:
-        elapsed_time: Time elapsed since operation started
-        fact_index: Current fact index
-        fact_shown_at: When the current fact started displaying
+        elapsed_time:    Time elapsed since operation started
+        fact_index:      Index into WAITING_FACTS
+        chunk_index:     Which chunk of the current fact is showing
+        chunk_shown_at:  When the current chunk started displaying
 
     Returns:
-        Updated fact_index and fact_shown_at
+        Updated (fact_index, chunk_index, chunk_shown_at)
     """
     spinner = "◐◓◑◒"
     spinner_char = spinner[int(elapsed_time * 2) % len(spinner)]
 
-    current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
-
-    # Calculate display time based on word count: ~3 seconds per 10 words, minimum 8 seconds
-    word_count = len(current_fact.split())
-    display_time = max(8, (word_count / 10) * 3)
-
-    # Advance to next fact when display time has elapsed
-    if elapsed_time - fact_shown_at >= display_time:
-        fact_index += 1
-        fact_shown_at = elapsed_time
-        current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
-
-    elapsed_str = f"{int(elapsed_time)}s"
-    line = f"\r{spinner_char} {current_fact} ({elapsed_str})"
-    # Pad with spaces to clear any leftover characters from longer previous facts
     try:
         terminal_width = os.get_terminal_size().columns
     except (OSError, ValueError):
         terminal_width = 120
-    line = line[:terminal_width]  # Don't exceed terminal width
+
+    # Reserve space for spinner + space + " (Ns)" suffix; cap suffix at
+    # ~8 chars (good through "9999s") so we don't overshoot.
+    suffix_budget = 8
+    available = max(20, terminal_width - 2 - suffix_budget)
+
+    current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
+    chunks = _wrap_fact(current_fact, available)
+    # Re-clamp chunk_index in case terminal width changed and the new
+    # wrapping produced fewer chunks than before.
+    if chunk_index >= len(chunks):
+        chunk_index = len(chunks) - 1
+
+    # Per-chunk display time: enough to read a line of text, scaled by
+    # word count. Minimum 4s, maximum 8s per chunk.
+    word_count = len(chunks[chunk_index].split())
+    display_time = max(4.0, min(8.0, word_count * 0.35))
+
+    if elapsed_time - chunk_shown_at >= display_time:
+        chunk_index += 1
+        if chunk_index >= len(chunks):
+            # Done with this fact — advance to the next one.
+            fact_index += 1
+            chunk_index = 0
+            current_fact = WAITING_FACTS[fact_index % len(WAITING_FACTS)]
+            chunks = _wrap_fact(current_fact, available)
+        chunk_shown_at = elapsed_time
+
+    elapsed_str = f"{int(elapsed_time)}s"
+    line = f"\r{spinner_char} {chunks[chunk_index]} ({elapsed_str})"
+    # Hard-truncate as a safety net (shouldn't trigger since we already
+    # wrapped to `available`), then pad to clear any leftover characters
+    # from a longer previous chunk.
+    line = line[:terminal_width]
     padding = max(0, terminal_width - len(line))
     print(f"{line}{' ' * padding}", end="", flush=True)
 
-    return fact_index, fact_shown_at
+    return fact_index, chunk_index, chunk_shown_at
 
 
 def check_llm_config():

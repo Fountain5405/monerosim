@@ -1,17 +1,37 @@
-# Facts/tips displayed while waiting for LLM responses
-# Add anything you want here - facts, tips, quotes, trivia, etc.
-# Display time scales with word count: ~3 seconds per 10 words, minimum 8 seconds
+# Facts/tips displayed while waiting for LLM responses.
+# Add anything you want here — facts, tips, quotes, trivia, etc.
+#
+# Display order is randomized per session.
+# Long facts wrap to terminal width and cycle through chunks.
+#
+# IMPORTANT: if a fact contains a colon followed by a space (e.g.
+# "process_threads: 1"), wrap the whole entry in double quotes —
+# otherwise YAML parses it as a key:value mapping and the loader
+# silently drops it.
 
 facts:
-  - Monero uses ring signatures to hide the sender of a transaction.
   - The moneroworld.com ai backend is an 8GB vega 64 GPU! A relic from the monero GPU mining days. SILICON NEVER DIES!
-  - Monero transactions are private by default, not an optional add-on.
-  - The Monero network uses a dynamic block size to prevent spam.
-  - Monero's proof-of-work algorithm (RandomX) is designed to be ASIC-resistant.
-  - Monero stealth addresses hide the recipient of each transaction.
   - FULL CHAIN MEMBERSHIP PROOFS ARE COMING! GLORY DAYS ARE UPON US!
-  - The Monero project is community-driven with no ICO or pre-mine.
-  - Monero research is ongoing to improve scalability while maintaining privacy.
-  - This generation can take 5 minutes on the 8GB GPU moneroworld.com has. If you want this to go faster, switch providers or donate to moneroworld.com for GPU upgrade!
+  - This scenario generation can take 5 minutes on the 8GB GPU moneroworld.com has. If you want this to go faster, switch providers or donate to moneroworld.com for GPU upgrade!
   - Monerosim was 100% vibe coded. No longer do we need to memorize syntax. DEATH TO SYNTAX!
   - Circa March 2026, the backend for the moneroworld server is qwen3:8b-16k with a 16k context.
+  - --regtest --keep-fakechain on every daemon — bypasses RandomX entirely; that's what makes mining feasible inside Shadow at all without modifying monerod.
+  - FAKECHAIN doesn't fully apply to P2P — net_node.inl:432 only checks --testnet/--stagenet, so the P2P subsystem still thinks it's MAINNET in regtest mode. This is why the hardcoded fallback seed IPs fire.
+  - Real-internet IPs reserved for in-sim hosts — monero-seed-001..006 get pinned to 88.99.195.15, 176.9.0.187, etc. — the actual production seed-server IPs, but living inside Shadow.
+  - DNS server runs inside Shadow — intercepts monerod's seeds.moneroseeds.se queries, returns in-sim seed IPs. The simulation has its own DNS infrastructure.
+  - Agent discovery via JSON file, not network protocol — agents read /tmp/monerosim_shared/agent_registry.json to find peers. Trades realism for determinism + zero startup latency.
+  - "Geographic IP allocation across 6 simulated continents — 24.x = NA, 80.x = EU, 203.x = Asia, 200.x = SA, 197.x = Africa, 202.x = Oceania. All public ranges so monerod doesn't need --allow-local-ip."
+  - GML topology from real CAIDA AS-link data — 1200 nodes, 18,000 edges of measured internet routing, not a synthetic graph.
+  - Each user is 3 processes — monerod + wallet-rpc + Python agent script. 100 users = 300 Shadow processes. Relay hosts just have a monerod. 
+  - Two-stage architecture (Rust + Python) — Rust generates Shadow YAML with compile-time validation; Python agents run inside the sim for behavioral flexibility.
+  - shadowformonero is a Shadow fork — adds Monero socket-compat patches. We don't touch monerod itself; we touch the simulator.
+  - Hashrates are weights — each tick picks a winner by hashrate-weighted random; the winner produces a block via Poisson-distributed timing. Hashrates must sum to 100 for the initiation of the network.             
+  - MALLOC_ARENA_MAX=1 — single malloc arena → reproducible memory layout. Slightly slower but required for byte-identical reruns.
+  - PYTHONHASHSEED=0 — Python's hash() is randomized per process by default; we pin it so dict iteration order matches across runs.
+  - "process_threads: 1 default — multi-threaded monerod is non-deterministic. The default trades wall-time speed for reproducibility."
+  - The Shadow cliff at N=1000 — observed stall on a 256-core/1TB R7525, ratio 0.063×. Shadow's event queue scales non-linearly past ~1000 hosts. That's why the top safe-N tier is capped at 600 (not by RAM).
+  - 12× cross-machine variance with no predictor — wall time per user varies 12× across machines, and cores/RAM/sysbench/crypto-p95 don't predict it. There's no universal scaling formula. You'll need to find the limits of your own machine on your own. 
+  - Pessimistic guardrail, not a formula — auto-config bounds the worst observed case rather than predicting actual wall time. Over-predicts on fast machines on purpose — that's the price of safety.
+  - Crypto calibration uses Monero's own performance_tests — measures real CLSAG + Bulletproofs+ verification. Not a synthetic CPU benchmark.
+  - Fallback-seed pinning (just shipped) — silenced the long-ignored "no host exists" warnings by giving monerod's hardcoded fallback IPs real homes inside the sim.
+  - --disable-seed-nodes would make things WORSE — that flag short-circuits DNS but still loads the IP fallback seeds immediately, so they fire as primary connections instead of last-resort fallbacks. Counterintuitive enough to be worth documenting. 
