@@ -103,7 +103,9 @@ fn prepare_auto(
             continue;
         }
 
-        // Otherwise inject a synthesized daemon-only seed.
+        // Otherwise inject a synthesized daemon-only seed. Start time
+        // is staggered (0s, 1s, 2s, ...) to match the miner pattern
+        // and avoid all 6 daemons booting on the same simulated tick.
         if let Err(e) = ip_registry.register_pre_allocated_ip(ip, &agent_id) {
             log::warn!(
                 "Could not reserve fallback IP {} for {}: {}. Skipping.",
@@ -111,7 +113,7 @@ fn prepare_auto(
             );
             continue;
         }
-        agents.agents.insert(agent_id.clone(), build_seed_agent());
+        agents.agents.insert(agent_id.clone(), build_seed_agent(i));
         pinned += 1;
     }
 
@@ -170,7 +172,10 @@ fn mark_as_seed_node(cfg: &mut AgentConfig) {
 
 /// Build a daemon-only `AgentConfig` for a synthesized seed host.
 /// All other fields default to `None` so it behaves like a minimal relay.
-fn build_seed_agent() -> AgentConfig {
+/// `seed_index` (0..5 for the 6 fallback slots) is used to stagger
+/// daemon start times so they come up on consecutive simulated seconds
+/// rather than all on tick 0.
+fn build_seed_agent(seed_index: usize) -> AgentConfig {
     let mut attrs = BTreeMap::new();
     attrs.insert("is_seed_node".to_string(), "true".to_string());
     AgentConfig {
@@ -179,7 +184,7 @@ fn build_seed_agent() -> AgentConfig {
         script: None,
         daemon_options: None,
         wallet_options: None,
-        start_time: Some("0s".to_string()),
+        start_time: Some(format!("{}s", seed_index)),
         hashrate: None,
         transaction_interval: None,
         activity_start_time: None,

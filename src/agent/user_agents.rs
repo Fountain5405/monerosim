@@ -218,11 +218,28 @@ pub fn process_user_agents(
             .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
             .unwrap_or(false);
 
-        // Parse start_time if present (e.g., "2h", "7200s", "30m")
-        let start_time_offset_seconds: u64 = user_agent_config.start_time
-            .as_ref()
-            .and_then(|offset| parse_duration_to_seconds(offset).ok())
-            .unwrap_or(0);
+        // Parse start_time if present (e.g., "2h", "7200s", "30m"). We
+        // keep this as Option so we can distinguish "user explicitly
+        // set 0s" from "user didn't set start_time at all" — the
+        // previous version coerced both to 0 and then bumped to a
+        // calculated default, silently overriding any user-supplied 0s
+        // or otherwise-default-looking value. A bad-format string is
+        // still treated as "not set" but emits a warning, since a hard
+        // parse error here would require plumbing config-validation
+        // upstream.
+        let explicit_start_time: Option<u64> = match user_agent_config.start_time.as_ref() {
+            None => None,
+            Some(s) => match parse_duration_to_seconds(s) {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    log::warn!(
+                        "Agent '{}': could not parse start_time={:?} ({}); falling back to calculated default",
+                        agent_id, s, e
+                    );
+                    None
+                }
+            },
+        };
 
             let base_start_time_seconds = if matches!(peer_mode, PeerMode::Dynamic) {
                 if is_miner {
@@ -242,13 +259,10 @@ pub fn process_user_agents(
                 }
             };
 
-            // Apply start_time_offset: if specified, use it directly (replaces base time)
-            // If not specified (0), use the calculated base time
-            let effective_start_time = if start_time_offset_seconds > 0 {
-                start_time_offset_seconds  // Use explicit offset as absolute start time
-            } else {
-                base_start_time_seconds  // Use calculated default
-            };
+            // Honor any explicit start_time, including 0. Only fall
+            // through to the calculated default when the user didn't
+            // supply one at all (or it failed to parse — see warning above).
+            let effective_start_time = explicit_start_time.unwrap_or(base_start_time_seconds);
             let start_time_daemon = format!("{}s", effective_start_time);
 
             // Wallet starts after daemon; agent starts after wallet
