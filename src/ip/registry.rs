@@ -59,20 +59,42 @@ impl GlobalIpRegistry {
         self.agent_to_ip.get(agent_id)
     }
 
-    /// Assign a unique IP address for the given agent type and ID
-    /// Distributes agents across different IP ranges to simulate global internet distribution
+    /// Assign a unique IP address for the given agent type and ID.
+    /// Distributes agents across different IP ranges to simulate global
+    /// internet distribution.
+    ///
+    /// agent_number assignment by ID prefix (collision-free ranges so
+    /// agents in different categories don't fight for the same IP):
+    ///   user-NNN          -> 0..999       (index = NNN)
+    ///   miner-NNN         -> 1000..1999   (1000 + NNN)
+    ///   relay-NNN         -> 2000..2999   (2000 + NNN)
+    ///   script-NNN        -> 3000..3999   (3000 + NNN)
+    ///   miner-distributor -> 50           (singleton)
+    ///   simulation-monitor -> 51          (singleton)
+    ///   everything else   -> 0            (will collide → fallback path)
+    ///
+    /// The trailing digit run is parsed regardless of separator so both
+    /// `user-001` and `user001` work.
     pub fn assign_ip(&mut self, _agent_type: AgentType, agent_id: &str) -> Result<String, String> {
-        // Extract numeric part from agent_id (e.g., "user005" -> 5)
-        let agent_number = if let Some(num_str) = agent_id.strip_prefix("user") {
-            num_str.parse::<u32>().unwrap_or(0)
-        } else if let Some(num_str) = agent_id.strip_prefix("script") {
-            100 + num_str.parse::<u32>().unwrap_or(0) // Offset script agents
+        fn trailing_num(s: &str) -> u32 {
+            let digits: String = s.chars().rev().take_while(|c| c.is_ascii_digit()).collect();
+            digits.chars().rev().collect::<String>().parse().unwrap_or(0)
+        }
+
+        let agent_number = if agent_id == "miner-distributor" {
+            50
+        } else if agent_id == "simulation-monitor" {
+            51
+        } else if agent_id.starts_with("user") {
+            trailing_num(agent_id)
+        } else if agent_id.starts_with("miner-") {
+            1000 + trailing_num(agent_id)
+        } else if agent_id.starts_with("relay-") {
+            2000 + trailing_num(agent_id)
+        } else if agent_id.starts_with("script") {
+            3000 + trailing_num(agent_id)
         } else {
-            // For minerdistributor and other special cases
-            match agent_id {
-                "minerdistributor" => 200,
-                _ => 0,
-            }
+            0
         };
 
         // Global IP distribution - simulate different geographic regions across multiple /16 subnets.
