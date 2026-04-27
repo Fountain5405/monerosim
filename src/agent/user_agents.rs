@@ -108,7 +108,7 @@ pub fn process_user_agents(
     for (i, (agent_id, agent_config)) in user_agents.iter().enumerate() {
         let is_miner = agent_config.is_miner();
         let is_seed_node = is_miner || agent_config.attributes.as_ref()
-            .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
+            .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
             .unwrap_or(false);
 
         let network_node_id = if i < agent_node_assignments.len() {
@@ -191,21 +191,30 @@ pub fn process_user_agents(
     // Miners connect in Ring among themselves
     let miner_connections = build_ring_connections(&miners, "--add-priority-node");
 
-    // Seed nodes connect to all miners and to each other in Ring (for Hardcoded/Hybrid modes)
-    let seed_connections = if !matches!(peer_mode, PeerMode::Dynamic) {
-        let mut seed_conns = build_ring_connections(&seed_nodes, "--add-priority-node");
-        // Additionally connect each seed to all miners
+    // Seed nodes connect to all miners as persistent priority peers, and
+    // (in Hardcoded/Hybrid modes) ring-link to each other.
+    //
+    // We deliberately use --add-priority-node, not --seed-node: a fallback
+    // seed IS the bootstrap target for other peers, so it shouldn't be
+    // bootstrapping from anyone itself. With --seed-node, monerod connects,
+    // exchanges peer list, then disconnects ("pruning seed 0") — the
+    // moment its outgoing slot frees up it reconnects, producing a forever
+    // before_handshake reconnect loop with that miner.
+    let seed_connections = {
+        let mut seed_conns = if !matches!(peer_mode, PeerMode::Dynamic) {
+            build_ring_connections(&seed_nodes, "--add-priority-node")
+        } else {
+            HashMap::new()
+        };
         for entry in &seed_nodes {
             let conns = seed_conns.entry(entry.id.clone()).or_default();
             for miner in &miners {
                 if miner.ip != entry.ip {
-                    conns.push(format!("--seed-node={}:{}", miner.ip, miner.port));
+                    conns.push(format!("--add-priority-node={}:{}", miner.ip, miner.port));
                 }
             }
         }
         seed_conns
-    } else {
-        HashMap::new()
     };
 
     // Regular agents will use seed nodes for --seed-node
@@ -215,7 +224,7 @@ pub fn process_user_agents(
         // Determine agent type and start time
         let is_miner = user_agent_config.is_miner();
         let is_seed_node = is_miner || user_agent_config.attributes.as_ref()
-            .map(|attrs| attrs.get("seed-node").map_or(false, |v| v == "true"))
+            .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
             .unwrap_or(false);
 
         // Parse start_time if present (e.g., "2h", "7200s", "30m"). We
