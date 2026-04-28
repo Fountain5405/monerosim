@@ -666,15 +666,23 @@ def load_waiting_facts():
 WAITING_FACTS = load_waiting_facts()
 
 
-def _wrap_fact(fact: str, available_width: int) -> list[str]:
+def _wrap_fact(fact, available_width: int) -> list[str]:
     """Break a fact into chunks that fit in `available_width` columns.
 
     We render facts on a single overwriting line (\\r-style), so a long
     fact has to be cycled through as a series of chunks rather than a
     multi-line block. Returns at least one chunk; chunks are filled to
     near the width budget without splitting words.
+
+    Non-string facts are coerced via str() — the YAML loader's safety
+    net should have caught these already, but a stale pre-update Python
+    process (loaded WAITING_FACTS before the loader gained the safety
+    net) can still slip a dict through. Coercing here means we render
+    a slightly ugly fact instead of crashing the spinner thread.
     """
     import textwrap
+    if not isinstance(fact, str):
+        fact = str(fact)
     if available_width <= 1:
         return [fact]
     # break_long_words=True so a single freakishly long word still fits
@@ -717,15 +725,26 @@ def call_llm_with_waiting(chat_fn: Callable, messages: list) -> object:
             stop_animation.set()
 
     def animate():
+        # Spinner failures must NOT take down the LLM call. animate()
+        # runs in the main thread, so an unhandled exception here would
+        # propagate out of call_llm_with_waiting and be reported as an
+        # "LLM error" — even though the chat thread is still happily
+        # talking to the LLM in the background. Catch broadly and bail
+        # to a passive sleep loop on any spinner-side bug.
+        spinner_broken = False
         while not stop_animation.is_set():
             elapsed = time.time() - start_time
-            (
-                fact_index[0],
-                chunk_index[0],
-                chunk_shown_at[0],
-            ) = show_waiting_indicator(
-                elapsed, fact_index[0], chunk_index[0], chunk_shown_at[0]
-            )
+            if not spinner_broken:
+                try:
+                    (
+                        fact_index[0],
+                        chunk_index[0],
+                        chunk_shown_at[0],
+                    ) = show_waiting_indicator(
+                        elapsed, fact_index[0], chunk_index[0], chunk_shown_at[0]
+                    )
+                except Exception:
+                    spinner_broken = True
             time.sleep(0.2)  # Update spinner every 200ms
         # Clear the line — best-effort using current terminal width
         try:
