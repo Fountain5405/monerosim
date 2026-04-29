@@ -285,12 +285,6 @@ run_prune_archives() {
         return
     fi
 
-    say "Each archive's per-host stdout dominates its size (often >99%)."
-    say "Pruning keeps the small files plus a few sample hosts — enough"
-    say "to compare wall-time, RAM use, and Shadow stats against future"
-    say "runs without keeping the full ${DIM}shadow.data/hosts/${NC} tree."
-    say ""
-
     # Build a sized, indexed list. du is slow on big trees, so show a
     # one-line "scanning…" hint while it runs.
     info "Scanning archive sizes..."
@@ -326,6 +320,23 @@ run_prune_archives() {
         printf "%-2d %-9s %s\n" "$i" "$size" "${path##*/}"
         i=$((i + 1))
     done
+    say ""
+    say "${BOLD}What pruning does${NC} (per archive selected):"
+    say "  ${DIM}KEEPS${NC}  small files: summary.txt, configs, logs, monitoring/,"
+    say "         blockchain/, transaction_registry/, sim-stats.json"
+    say "  ${DIM}KEEPS${NC}  sample hosts: miner-001, relay-001, miner-distributor,"
+    say "         simulation-monitor, dnsserver"
+    say "  ${DIM}KEEPS${NC}  top-4 tx-sending users + 3 failed-user samples + any"
+    say "         user whose wallet-rpc died (auto-detected from summary.txt)"
+    say "  ${DIM}DROPS${NC}  every other host's directory in ${DIM}daemon_logs/${NC} and"
+    say "         ${DIM}shadow.data/hosts/${NC} — the bulk of the per-host stdout"
+    say ""
+    say "Per-host stdout typically dominates archive size (often >99%). A 1k-host"
+    say "run shrinks from ~150 GB to ~1.5 GB. Enough left to compare wall-time,"
+    say "RAM, and Shadow stats against future runs; not enough to forensically"
+    say "debug an arbitrary user. Operation is destructive — original full data"
+    say "is gone after this. Use ${DIM}scripts/prune_archives.sh --dry-run <dir>${NC} to"
+    say "preview, or ${DIM}--keep user-042,user-099${NC} to retain specific users."
     say ""
     say "Enter a comma-separated list of numbers (e.g. ${DIM}1,3,5${NC}),"
     say "or ${BOLD}all${NC} to prune every archive, or ${BOLD}M${NC} to go back."
