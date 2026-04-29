@@ -33,6 +33,94 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | `runahead: 500ms` (default 100ms) | Shadow batches more events before sync | Slightly less accurate timing between hosts |
 | `process_threads: 2` (default 2) | Threads per simulated process | `0` = non-deterministic but fastest; `1` = deterministic but slow |
 | `native_preemption: true` (default false) | Shadow preempts long-running code | Improves wall perf; can break strict reproducibility |
+| `daemon_defaults.log-level: 0` (default 1) | Cuts monerod log volume 10–100× | Less granular per-host forensics |
+| `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
+| `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | See [Modeling syscall latency](#modeling-syscall-latency) — for Monero this is essentially free |
+| Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
+
+## Modeling syscall latency
+
+The `performance.model_unblocked_syscall_latency` knob is worth a dedicated
+section because it tends to give a real wall-time win on Monero workloads
+at near-zero cost in fidelity, and it's the perf knob people most often
+misunderstand.
+
+### What it is
+
+A Shadow modeling decision: when a simulated process makes a syscall that
+*doesn't actually block* — `getpid()`, `gettimeofday()`, a `read()` on a
+buffer that already has data ready, an `epoll_wait` returning immediately
+— should Shadow advance the simulated clock by the few microseconds that
+syscall would cost on real hardware?
+
+- `true` (default): yes, charge ~1.4 µs of sim-time per non-blocking syscall.
+- `false`: no, treat non-blocking syscalls as instantaneous in sim-time.
+
+Blocking syscalls (`recv` on a quiet socket, `nanosleep`, `read` on an
+empty pipe, `epoll_wait` with no ready events) are *always* modeled
+regardless — the simulated process is properly suspended until whatever
+it's waiting on materializes. The toggle only affects the cheap,
+non-blocking calls.
+
+### Why the default is `true`
+
+Real syscalls cost real CPU time even when they don't block: kernel
+transition, argument copy, table lookup, return. If you skip that cost
+in the model, processes that issue millions of cheap syscalls (logging,
+time reads, epoll churn) tear through wall-time without ever advancing
+sim-time, which:
+
+1. Lets them starve out other processes in the work queue.
+2. Produces unrealistic timing — a real Linux kernel does slow you down
+   per syscall.
+3. Can hide "syscall storm" pathologies that would matter on real hardware.
+
+Shadow's safe default is therefore to model the cost.
+
+### Why turning it off speeds things up
+
+Per syscall, Shadow does extra bookkeeping: compute the latency, apply
+it to the process's clock, possibly reschedule. Skipping that for
+non-blocking syscalls means less per-syscall work in the simulator and
+fewer "tiny" sim-time advances, which means fewer event-queue rebalances.
+
+monerod is *very* talkative. Every socket read/write, every epoll cycle,
+every log line involves multiple syscalls. Across 1000 hosts × hours of
+sim-time you're talking billions of non-blocking calls. A 48h / 1k-host
+run typically reports tens of billions of `Event` objects in
+`sim-stats.json`, substantially driven by this. Removing the per-call
+cost is one of Shadow's biggest available knobs.
+
+### What you give up
+
+Some accuracy in syscall-density-sensitive scenarios:
+
+- A process doing a tight `gettimeofday()`-in-a-loop will no longer be
+  throttled by sim-modeled syscall cost, so it can hog the work queue.
+- Behavioral timing of code paths that *should* be slow because of
+  syscall density will now appear instant.
+
+For Monero this almost never matters because:
+
+- Block validation / signing / verification is CPU work — Shadow models
+  that via `process_threads` accounting, not syscall latency.
+- Network behavior is gated by *blocking* `recv`/`epoll_wait`, which are
+  still modeled.
+- The non-blocking syscalls in the Monero hot path are mostly logging
+  and epoll housekeeping — neither affects consensus or P2P semantics.
+
+### Rule of thumb
+
+| Workload | Recommended |
+|----------|-------------|
+| Anything Monero / CPU-heavy / network-bound | Safe to set `false` |
+| Tight syscall-loop benchmarking, kernel-overhead studies, anything where per-syscall µs matter for the *result* | Keep `true` |
+
+For a 1k-host run, `false` should give a real wall-time win with no
+observable change in block production, sync behavior, or transaction
+propagation. The only thing that'll look different is the `Event` count
+in `sim-stats.json` and slightly different syscall-timing in any
+forensic-level inspection of per-host stdout.
 
 ## Hard scale limits per machine
 
