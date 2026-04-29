@@ -502,7 +502,13 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
             if (is_user_agent and 'activity_start_time' in base_fields
                     and 'activity_start_time' not in stagger_fields
                     and base_fields.get('activity_start_time') != 'auto'):
+                # transaction_interval may be a duration string ("2m", "30s")
+                # in scenario YAML — compute_stagger expects integer seconds.
+                # The per-agent string→int conversion happens later (line 573)
+                # but that's after this stagger calculation.
                 tx_interval = base_fields.get('transaction_interval', 60)
+                if isinstance(tx_interval, str):
+                    tx_interval = parse_duration(tx_interval)
                 stagger_s = compute_stagger(group.count, tx_interval,
                                              num_nodes=total_nodes)
                 stagger_fields['activity_start_time'] = f'{stagger_s}s'
@@ -671,6 +677,11 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
                 if iv == 'auto':
                     has_auto_tx_interval = True
                 else:
+                    # Singleton agents bypass the group-expansion path that
+                    # converts duration strings to ints, so a "2m" can land
+                    # here unparsed. compute_safe_interval needs a number.
+                    if isinstance(iv, str):
+                        iv = parse_duration(iv)
                     auto_tx_interval = iv
 
     # Resolve 'auto' and bump explicit values below the calibrated minimum.
