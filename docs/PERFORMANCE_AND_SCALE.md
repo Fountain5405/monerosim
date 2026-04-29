@@ -32,7 +32,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 |---|---|---|
 | `runahead: 500ms` (default 100ms) | Shadow batches more events before sync | Slightly less accurate timing between hosts |
 | `process_threads: 2` (default 2) | Threads per simulated process | `0` = non-deterministic but fastest; `1` = deterministic but slow |
-| `native_preemption: true` (default false) | Shadow preempts long-running code | Improves wall perf; can break strict reproducibility |
+| `native_preemption: true` (default false) | Shadow preempts long-running CPU-bound code so other hosts get scheduled | See [Native preemption](#native-preemption) — improves wall perf; breaks strict reproducibility |
 | `daemon_defaults.log-level: 0` (default 1) | Cuts monerod log volume 10–100× | Less granular per-host forensics |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
 | `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | See [Modeling syscall latency](#modeling-syscall-latency) — for Monero this is essentially free |
@@ -121,6 +121,59 @@ observable change in block production, sync behavior, or transaction
 propagation. The only thing that'll look different is the `Event` count
 in `sim-stats.json` and slightly different syscall-timing in any
 forensic-level inspection of per-host stdout.
+
+## Native preemption
+
+The `native_preemption` knob is a sibling perf lever to syscall-latency
+modeling — both trade a sliver of fidelity for meaningful throughput.
+
+### What it is
+
+Shadow only gets scheduling control back from a managed process when
+that process makes a syscall. A CPU-bound code path with no syscalls
+(a tight verification loop, a hash chain) would otherwise monopolize
+the worker thread until it finally calls into the kernel.
+
+- `false` (Shadow upstream default): Shadow waits for the next syscall
+  before it can deschedule the process.
+- `true` (our quickstart default): Shadow installs a signal-based timer
+  (SIGVTALRM via `setitimer`) that forcibly yields the process every
+  ~10ms of native CPU, so other hosts can make progress.
+
+### Why turning it on speeds things up
+
+Block validation (CLSAG, Bulletproofs+) is the longest CPU stretch in
+monerod. Without preemption, one host doing a verify can starve every
+other host queued on the same worker thread. With many hosts per core
+— we recommend ≤3:1 but real ratios drift higher at scale — preemption
+is what keeps the round-robin fair.
+
+The win is most visible when `host_count > core_count`, which on the
+target hardware tier is always.
+
+### What you give up
+
+- **Strict reproducibility**: the exact preemption point depends on
+  wall-clock CPU timing, so two runs of the same seed can interleave
+  differently at the instruction level. Consensus-level outcomes still
+  match (Monero's protocol is deterministic), but per-host stdout
+  ordering, `Event` counts, and any forensic timestamp comparison
+  between runs may shift.
+- Tiny overhead from signal delivery itself — negligible compared to
+  the throughput gain.
+
+### Interaction with `process_threads`
+
+| `process_threads` | `native_preemption` | Result |
+|---|---|---|
+| `0` | `true` | Fastest, fully non-deterministic (our quickstart default) |
+| `0` | `false` | Non-deterministic without the throughput win — rarely useful |
+| `1` | `false` | Deterministic, slow — pick this for strict reproducibility |
+| `1` | `true` | Determinism guarantee is broken; treat as effectively non-deterministic |
+
+If you actually need bit-for-bit reproducibility (e.g., reproducing a
+known-good run for a paper), set `process_threads: 1` *and*
+`native_preemption: false`. Otherwise leave preemption on.
 
 ## Hard scale limits per machine
 
