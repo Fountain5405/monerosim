@@ -271,6 +271,147 @@ offer_run() {
     fi
 }
 
+# ---------- prune archived runs ----------
+# A typical 1k-host run produces ~150 GB of per-host stdout in shadow.data/hosts/.
+# scripts/prune_archives.sh trims each archive down to the small files plus a
+# handful of representative hosts (~1.5 GB), enough to compare wall-time / RAM
+# against future runs without keeping the full per-host log set.
+run_prune_archives() {
+    screen "Prune archived runs"
+
+    if [[ ! -d archived_runs ]] || [[ -z "$(ls -A archived_runs 2>/dev/null)" ]]; then
+        warn "No archives in ./archived_runs/."
+        pause
+        return
+    fi
+
+    say "Each archive's per-host stdout dominates its size (often >99%)."
+    say "Pruning keeps the small files plus a few sample hosts — enough"
+    say "to compare wall-time, RAM use, and Shadow stats against future"
+    say "runs without keeping the full ${DIM}shadow.data/hosts/${NC} tree."
+    say ""
+
+    # Build a sized, indexed list. du is slow on big trees, so show a
+    # one-line "scanning…" hint while it runs.
+    info "Scanning archive sizes..."
+    mapfile -t lines < <(
+        du -sb archived_runs/*/ 2>/dev/null \
+            | sort -rn \
+            | awk '{
+                size = $1
+                # Format as human-readable
+                if (size >= 1099511627776)      printf "%.1fT\t%s\n", size/1099511627776, $2
+                else if (size >= 1073741824)    printf "%.1fG\t%s\n", size/1073741824, $2
+                else if (size >= 1048576)       printf "%.0fM\t%s\n", size/1048576, $2
+                else                            printf "%dK\t%s\n", size/1024, $2
+            }'
+    )
+
+    if [[ ${#lines[@]} -eq 0 ]]; then
+        warn "No archives found."
+        pause
+        return
+    fi
+
+    screen "Prune archived runs"
+    say "${BOLD}#  Size      Archive${NC}"
+    local i=1
+    local -a paths=()
+    for line in "${lines[@]}"; do
+        local size path
+        size=$(printf "%s" "$line" | cut -f1)
+        path=$(printf "%s" "$line" | cut -f2)
+        path="${path%/}"
+        paths+=("$path")
+        printf "%-2d %-9s %s\n" "$i" "$size" "${path##*/}"
+        i=$((i + 1))
+    done
+    say ""
+    say "Enter a comma-separated list of numbers (e.g. ${DIM}1,3,5${NC}),"
+    say "or ${BOLD}all${NC} to prune every archive, or ${BOLD}M${NC} to go back."
+    say ""
+    read -r -p "Selection: " sel
+
+    case "${sel,,}" in
+        m|"") return ;;
+        all)  local -a chosen=("${paths[@]}") ;;
+        *)
+            local -a chosen=()
+            IFS=',' read -ra parts <<< "$sel"
+            for p in "${parts[@]}"; do
+                p="${p// /}"
+                if [[ "$p" =~ ^[0-9]+$ ]] && (( p >= 1 && p <= ${#paths[@]} )); then
+                    chosen+=("${paths[$((p - 1))]}")
+                else
+                    warn "Skipping invalid entry: $p"
+                fi
+            done
+            ;;
+    esac
+
+    if [[ ${#chosen[@]} -eq 0 ]]; then
+        warn "Nothing selected."
+        pause
+        return
+    fi
+
+    say ""
+    say "Will prune ${BOLD}${#chosen[@]}${NC} archive(s):"
+    for c in "${chosen[@]}"; do say "  ${c##*/}"; done
+    say ""
+    read -r -p "Proceed? [y/N] " ans
+    if [[ ! "$ans" =~ ^[Yy] ]]; then
+        info "Cancelled."
+        pause
+        return
+    fi
+
+    local before_total=0 after_total=0
+    for c in "${chosen[@]}"; do
+        local before
+        before=$(du -sb "$c" 2>/dev/null | awk '{print $1}')
+        before_total=$((before_total + before))
+        say ""
+        info "Pruning ${c##*/}..."
+        if scripts/prune_archives.sh "$c"; then
+            local after
+            after=$(du -sb "$c" 2>/dev/null | awk '{print $1}')
+            after_total=$((after_total + after))
+            ok "Done."
+        else
+            err "prune_archives.sh failed for $c. Skipping rest."
+            break
+        fi
+    done
+
+    say ""
+    hr
+    if (( before_total > 0 )); then
+        local saved=$((before_total - after_total))
+        printf "Total: %.1fG -> %.1fG (saved %.1fG)\n" \
+            "$(echo "$before_total / 1073741824" | bc -l)" \
+            "$(echo "$after_total / 1073741824" | bc -l)" \
+            "$(echo "$saved / 1073741824" | bc -l)"
+    fi
+    pause
+}
+
+# ---------- advanced menu ----------
+advanced_menu() {
+    while true; do
+        screen "Advanced tools"
+        say "  ${BOLD}P)${NC} Prune archived runs (free disk space)"
+        say "  ${BOLD}M)${NC} Back to main menu"
+        say ""
+        read -r -p "Choose [P/M]: " choice
+        case "${choice^^}" in
+            P)    run_prune_archives ;;
+            M|"") return ;;
+            *)    warn "Please choose P or M."; sleep 1 ;;
+        esac
+    done
+}
+
 # ---------- create menu (A/B/C) ----------
 create_menu() {
     while true; do
@@ -299,17 +440,19 @@ top_menu() {
         say ""
         say "  ${BOLD}L)${NC} Learn how it works (~2 min walkthrough)"
         say "  ${BOLD}C)${NC} Create a simulation now"
+        say "  ${BOLD}A)${NC} Advanced tools (prune archives, etc.)"
         say "  ${BOLD}Q)${NC} Quit"
         say ""
         say "${DIM}Skip-the-docs wizard. Power users: see QUICKSTART.md, or call"
         say "./run_sim.sh / scenario_parser.py / generate_config.py direct.${NC}"
         say ""
-        read -r -p "Choose [L/C/Q]: " choice
+        read -r -p "Choose [L/C/A/Q]: " choice
         case "${choice^^}" in
             L) learn_walkthrough ;;
             C) create_menu ;;
+            A) advanced_menu ;;
             Q|"") say "OK, exiting. Run ./start_here.sh anytime."; return ;;
-            *)   warn "Please choose L, C, or Q."; sleep 1 ;;
+            *)   warn "Please choose L, C, A, or Q."; sleep 1 ;;
         esac
     done
 }
