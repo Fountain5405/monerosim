@@ -29,8 +29,12 @@ general:
 # accuracy-first defaults. Uncomment individually to trade fidelity for
 # wall-time speedup. For a 1k-host run the biggest wins come from:
 #
-#   1. Lower monerod log volume        -> general.daemon_defaults.log-level: 0
-#                                         (was 1; can cut stdout I/O 10-100x)
+#   1. Lower monerod log volume        -> general.daemon_defaults.log-level: monitor
+#                                         (was 1; curated category string that
+#                                         drops bulk noise but KEEPS the lines
+#                                         the live monitor + post-run analyzer
+#                                         parse. Do NOT use level 0 — it
+#                                         silences the block counter.)
 #   2. Skip non-blocking syscall cost  -> performance.model_unblocked_syscall_latency: false
 #   3. Quieter Shadow                  -> general.shadow_log_level: error
 #   4. Faster monerod per host         -> general.process_threads: 4   (breaks determinism)
@@ -39,6 +43,9 @@ general:
 # Plus one system-side knob that doesn't live in YAML:
 #   6. Mount /tmp on tmpfs             -> sudo mount -t tmpfs -o size=32G tmpfs /tmp
 #                                         (LMDB writes hit RAM, not disk)
+#
+# See docs/PERFORMANCE_AND_SCALE.md ("Tuning monerod log-level") for the
+# full breakdown of log-level options (1 / monitor / custom string / 0).
 #
 # performance:
 #   model_unblocked_syscall_latency: false

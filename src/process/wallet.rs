@@ -5,7 +5,7 @@
 
 use crate::config_v2::OptionValue;
 use crate::shadow::ShadowProcess;
-use crate::utils::options::{options_to_args, merge_options};
+use crate::utils::options::{options_to_args, merge_options, translate_wallet_log_level};
 use std::collections::BTreeMap;
 
 /// Build wallet command-line arguments common to both local and remote daemon modes.
@@ -20,7 +20,8 @@ fn build_wallet_args(
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
     shared_dir: &str,
 ) -> String {
-    let merged_wallet_options = merge_options(wallet_defaults, wallet_options);
+    let mut merged_wallet_options = merge_options(wallet_defaults, wallet_options);
+    translate_wallet_log_level(&mut merged_wallet_options);
 
     let mut args = vec![
         format!("--daemon-address={}", daemon_address),

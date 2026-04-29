@@ -33,7 +33,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | `runahead: 500ms` (default 100ms) | Shadow batches more events before sync | Slightly less accurate timing between hosts |
 | `process_threads: 2` (default 2) | Threads per simulated process | `0` = non-deterministic but fastest; `1` = deterministic but slow |
 | `native_preemption: true` (default false) | Shadow preempts long-running CPU-bound code so other hosts get scheduled | See [Native preemption](#native-preemption) — improves wall perf; breaks strict reproducibility |
-| `daemon_defaults.log-level: 0` (default 1) | Cuts monerod log volume 10–100× | Less granular per-host forensics |
+| `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
 | `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | See [Modeling syscall latency](#modeling-syscall-latency) — for Monero this is essentially free |
 | Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
@@ -174,6 +174,68 @@ target hardware tier is always.
 If you actually need bit-for-bit reproducibility (e.g., reproducing a
 known-good run for a paper), set `process_threads: 1` *and*
 `native_preemption: false`. Otherwise leave preemption on.
+
+## Tuning monerod log-level
+
+monerod is the loudest process in the simulation. Per-host stdout
+typically dominates archive size (often >99% — see the prune-archives
+docs), and writing all those bytes through Shadow's syscall layer
+isn't free at runtime either. Cutting log volume is one of the
+biggest available perf wins.
+
+But monerod's `--log-level 0` silences the very lines our tooling
+needs:
+
+- The live monitor (`agents/simulation_monitor.py`) counts blocks by
+  parsing `+++++ BLOCK SUCCESSFULLY ADDED` from `bitmonero.log`. That's
+  `MINFO()` on the `blockchain` category, which `*:WARNING` (level 0)
+  suppresses. Result: post-run summary reports 0 blocks regardless of
+  what the chain actually did.
+- The Rust post-run analyzer (`src/analysis/log_parser.rs`) needs
+  `Received NOTIFY_NEW_FLUFFY_BLOCK`, `Received NOTIFY_NEW_TRANSACTIONS`,
+  `NEW CONNECTION`, `Including transaction <HASH>`, and several other
+  patterns. All on `net.p2p.msg`, `net.cn`, or `txpool` categories.
+  All hidden at level 0.
+
+### Three ways to set `daemon_defaults.log-level`
+
+| Value | What monerod gets | When to use |
+|---|---|---|
+| `1` (default) | All `MINFO` everywhere — verbose | Default. Safe; enough granularity for debugging an individual host post-mortem. |
+| `monitor` | Curated category string: `*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,...` | Best perf-with-monitoring tradeoff. Keeps every line the live monitor and post-run analyzer parse, drops the bulk noise (peer-conn lifecycle, verify, perf, serialization). |
+| Literal category string, e.g. `"*:WARNING,blockchain:INFO,daemon.rpc:INFO"` | Passed through verbatim | Power-user override. You're on your own to keep what your tooling needs. |
+| `0` | All `MINFO` suppressed; only WARNING+ globally | **Avoid unless you don't care about per-host data.** The live block counter and post-run analyzer go silent. Useful only for pure Shadow-throughput benchmarking where the simulation summary is irrelevant. |
+
+YAML caveat: the literal-string form must be quoted because a leading
+`*` is a YAML alias marker:
+
+```yaml
+daemon_defaults:
+  log-level: "*:WARNING,blockchain:INFO,daemon.rpc:INFO"
+```
+
+### What `log-level: monitor` keeps
+
+The curated string lives in `src/utils/options.rs` as
+`MONITOR_LOG_CATEGORIES` and currently expands to:
+
+```
+*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,
+global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,
+verify:FATAL,serialization:FATAL,perf.*:FATAL
+```
+
+That set is calibrated against the patterns parsed by
+`agents/simulation_monitor.py` and `src/analysis/log_parser.rs`. If
+either gains a new pattern that needs a different category, the
+`monitor` string should be updated alongside.
+
+### Wallet RPC
+
+`wallet_defaults.log-level: monitor` is coerced to `0` (WARNING) at
+config-generation time — `monitor` is a monerod-only shortcut and the
+wallet-rpc binary doesn't recognize it. The intent ("be quiet") is
+preserved.
 
 ## Hard scale limits per machine
 

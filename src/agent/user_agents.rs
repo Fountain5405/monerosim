@@ -10,7 +10,7 @@ use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
 use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::options::{options_to_args, merge_options};
+use crate::utils::options::{options_to_args, merge_options, translate_daemon_log_level, translate_wallet_log_level};
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
@@ -311,7 +311,10 @@ pub fn process_user_agents(
                 .unwrap_or(0);
 
             // Merge daemon_defaults with per-agent daemon_options
-            let merged_daemon_options = merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
+            let mut merged_daemon_options = merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
+            // Expand symbolic log-level values (e.g., "monitor") into the
+            // equivalent monerod category string before they reach the CLI.
+            translate_daemon_log_level(&mut merged_daemon_options);
 
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                 // Start with required/injected flags that cannot be overridden.
@@ -514,7 +517,8 @@ pub fn process_user_agents(
 
             // Add wallet process based on agent type
             // Merge wallet_defaults with per-agent wallet_options
-            let merged_wallet_options = merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
+            let mut merged_wallet_options = merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
+            translate_wallet_log_level(&mut merged_wallet_options);
 
             // Track wallet-rpc command for restart capability
             let mut wallet_rpc_cmd: Option<String> = None;
