@@ -685,7 +685,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
             stop_time: stop_time_seconds,
             seed: config.general.simulation_seed,  // Shadow uses this to seed all RNGs for determinism
             parallelism: config.general.parallelism,  // 0=auto, 1=deterministic, N=N threads
-            model_unblocked_syscall_latency: true,
+            model_unblocked_syscall_latency: config.performance.model_unblocked_syscall_latency,
             log_level: config.general.shadow_log_level.clone(),  // Use shadow_log_level (default: "info")
             bootstrap_end_time: config.general.bootstrap_end_time.clone(),  // High bandwidth period for network settling
             progress: config.general.progress.unwrap_or(true),  // Show simulation progress on stderr (default: true)

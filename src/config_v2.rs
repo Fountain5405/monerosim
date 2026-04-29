@@ -573,6 +573,39 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<Network>,
     pub agents: AgentDefinitions,
+    /// Optional performance-tuning knobs that don't fit neatly into
+    /// `general:`. Existing perf fields (runahead, parallelism, process_threads,
+    /// shadow_log_level) stay in `general:` for backward compat — this
+    /// stanza is for additions, currently just one Shadow-level toggle.
+    #[serde(default)]
+    pub performance: PerformanceConfig,
+}
+
+/// Shadow / sim-engine performance knobs. All fields default to the
+/// safer / more accurate setting; flip them to trade accuracy for
+/// wall-time speedup when you've decided you don't need the precision.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PerformanceConfig {
+    /// When true (default), Shadow charges simulated time for every
+    /// syscall — even ones that don't actually block in the host
+    /// kernel. Setting to false skips that cost for non-blocking
+    /// syscalls. Faster sim, slightly looser syscall-timing fidelity.
+    /// Safe for Monero workloads — they don't hinge on sub-microsecond
+    /// syscall accuracy.
+    #[serde(default = "default_model_unblocked_syscall_latency")]
+    pub model_unblocked_syscall_latency: bool,
+}
+
+impl Default for PerformanceConfig {
+    fn default() -> Self {
+        PerformanceConfig {
+            model_unblocked_syscall_latency: default_model_unblocked_syscall_latency(),
+        }
+    }
+}
+
+fn default_model_unblocked_syscall_latency() -> bool {
+    true
 }
 
 impl Config {

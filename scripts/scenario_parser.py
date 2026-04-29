@@ -190,6 +190,9 @@ class ScenarioConfig:
     agent_groups: List[AgentGroup]
     singleton_agents: Dict[str, Dict[str, Any]]
     timing_overrides: TimingOverrides = field(default_factory=TimingOverrides)
+    # Optional `performance:` stanza — passes through verbatim to the
+    # expanded config and is consumed by the Rust orchestrator.
+    performance: Dict[str, Any] = field(default_factory=dict)
 
     # Calculated during expansion
     timing: Dict[str, int] = field(default_factory=dict)
@@ -325,6 +328,7 @@ def parse_scenario(yaml_content: str) -> ScenarioConfig:
         agent_groups=agent_groups,
         singleton_agents=singleton_agents,
         timing_overrides=timing_overrides,
+        performance=data.get('performance', {}),
     )
 
 
@@ -767,6 +771,8 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
     # Build final config
     config['general'] = general
     config['network'] = scenario.network
+    if scenario.performance:
+        config['performance'] = scenario.performance
     config['agents'] = agents
 
     return config
