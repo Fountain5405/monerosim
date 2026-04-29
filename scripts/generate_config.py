@@ -1413,6 +1413,15 @@ Timeline (verified bootstrap for Monero regtest):
     )
 
     parser.add_argument(
+        "--no-safe-tx-interval",
+        action="store_true",
+        default=False,
+        help="Don't bump explicit transaction_interval values up to the calibrated safe "
+             "minimum. Use when you know your machine handles the configured rate, or "
+             "when reproducing a known run. Only applies in --from scenario mode."
+    )
+
+    parser.add_argument(
         "--gml",
         type=str,
         default=DEFAULT_GML_PATH,
@@ -1697,7 +1706,8 @@ Timeline (verified bootstrap for Monero regtest):
 
         # Expand with seed from args (or scenario if specified)
         seed = scenario.general.get('simulation_seed', args.seed)
-        config = expand_scenario(scenario, seed=seed)
+        config = expand_scenario(scenario, seed=seed,
+                                  respect_safe_tx_interval=not args.no_safe_tx_interval)
 
         # Convert to YAML
         def to_plain_dict(obj):

@@ -428,7 +428,8 @@ def expand_stagger(
     return [base_value] * count
 
 
-def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, Any]:
+def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
+                    respect_safe_tx_interval: bool = True) -> Dict[str, Any]:
     """
     Expand scenario config into full monerosim expanded config structure.
 
@@ -696,12 +697,18 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345) -> Dict[str, An
         if has_auto_tx_interval:
             print(f"Resolved transaction_interval=auto to {safe_interval}s "
                   f"(calibrated for {num_auto_users} users × {total_nodes} nodes).")
-        elif bumped:
+        elif bumped and respect_safe_tx_interval:
             print(f"Warning: transaction_interval={auto_tx_interval}s is below the "
                   f"calibrated safe minimum for {num_auto_users} users × "
                   f"{total_nodes} nodes; bumping to {safe_interval}s. "
-                  f"Set transaction_interval explicitly per agent to override.")
-        if has_auto_tx_interval or bumped:
+                  f"Pass --no-safe-tx-interval (or set transaction_interval "
+                  f"explicitly per agent) to override.")
+        elif bumped:
+            print(f"Note: transaction_interval={auto_tx_interval}s is below the "
+                  f"calibrated safe minimum ({safe_interval}s) for {num_auto_users} "
+                  f"users × {total_nodes} nodes, but --no-safe-tx-interval was set; "
+                  f"keeping the user-specified value.")
+        if has_auto_tx_interval or (bumped and respect_safe_tx_interval):
             auto_tx_interval = safe_interval
             for uid in user_agents_with_auto_activity:
                 agents[uid]['transaction_interval'] = safe_interval
@@ -823,6 +830,10 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=12345, help="Random seed")
     parser.add_argument("--no-calibrate", action="store_true",
                         help="Skip auto-calibration even if no calibration data exists")
+    parser.add_argument("--no-safe-tx-interval", action="store_true",
+                        help="Don't bump explicit transaction_interval values up to the "
+                             "calibrated safe minimum (lets you keep e.g. 60s on 200 users "
+                             "even though calibration says it'll overload wallet-rpc).")
 
     args = parser.parse_args()
 
@@ -835,7 +846,8 @@ if __name__ == "__main__":
     with open(args.input) as f:
         scenario = parse_scenario(f.read())
 
-    config = expand_scenario(scenario, seed=args.seed)
+    config = expand_scenario(scenario, seed=args.seed,
+                              respect_safe_tx_interval=not args.no_safe_tx_interval)
 
     # Convert OrderedDicts to regular dicts for clean YAML output
     def to_plain_dict(obj):
