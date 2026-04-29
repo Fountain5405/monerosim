@@ -314,9 +314,21 @@ pub fn process_user_agents(
             let merged_daemon_options = merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
 
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
-                // Start with required/injected flags that cannot be overridden
+                // Start with required/injected flags that cannot be overridden.
+                //
+                // --log-file: vanilla monerod's default is ~/.bitmonero/bitmonero.log
+                // (per `monerod --help`), NOT <data-dir>/bitmonero.log. The
+                // shadowformonero patches we used to apply pinned it to data-dir,
+                // but those were dropped in 641bc5a6 (Apr 21 2026). Without an
+                // explicit --log-file, monerod silently writes nothing — the
+                // monitor's daemon-log discovery and run_sim.sh's archive step
+                // both glob /tmp/monero-*/bitmonero.log and turn up empty,
+                // leaving the post-run summary reporting "0 nodes / 0 blocks"
+                // even on a healthy sim.
+                let data_dir = format!("{}/monero-{}", daemon_data_dir, agent_id);
                 let mut args = vec![
-                    format!("--data-dir={}/monero-{}", daemon_data_dir, agent_id),
+                    format!("--data-dir={}", data_dir),
+                    format!("--log-file={}/bitmonero.log", data_dir),
                     "--regtest".to_string(),
                     "--keep-fakechain".to_string(),
                 ];
