@@ -35,7 +35,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | `native_preemption: true` (default false) | Shadow preempts long-running CPU-bound code so other hosts get scheduled | See [Native preemption](#native-preemption) — improves wall perf; breaks strict reproducibility |
 | `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
-| `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | See [Modeling syscall latency](#modeling-syscall-latency) — for Monero this is essentially free |
+| `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | **Don't enable.** See [Modeling syscall latency](#modeling-syscall-latency) — empirically stalls Monerosim runs even at quickstart scale. |
 | Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
 
 ## Modeling syscall latency
@@ -91,36 +91,33 @@ run typically reports tens of billions of `Event` objects in
 `sim-stats.json`, substantially driven by this. Removing the per-call
 cost is one of Shadow's biggest available knobs.
 
-### What you give up
+### Why turning it off breaks Monerosim runs
 
-Some accuracy in syscall-density-sensitive scenarios:
+Empirically, setting this to `false` stalls Monerosim simulations —
+even at quickstart scale (11 hosts). Sim time stays at `00:00:00.000`
+indefinitely while monerod processes burn 100% real CPU.
 
-- A process doing a tight `gettimeofday()`-in-a-loop will no longer be
-  throttled by sim-modeled syscall cost, so it can hog the work queue.
-- Behavioral timing of code paths that *should* be slow because of
-  syscall density will now appear instant.
+The mechanism: monerod's startup phase (config parse, fakechain
+genesis init, RandomX dataset alloc, etc.) is CPU-bound and makes
+relatively few *blocking* syscalls. With non-blocking syscall costs
+unmodeled, none of those calls advance Shadow's simulated clock. With
+no events queued and no process making a blocking call, Shadow has
+nothing to advance to — the clock freezes at zero and the run never
+gets past startup.
 
-For Monero this almost never matters because:
+This contradicts the earlier guidance in this section that said the
+knob was "essentially free for Monero." That guidance was wrong:
+Shadow can only advance simulated time when *something* is willing to
+block, and monerod's hot init path doesn't block enough.
 
-- Block validation / signing / verification is CPU work — Shadow models
-  that via `process_threads` accounting, not syscall latency.
-- Network behavior is gated by *blocking* `recv`/`epoll_wait`, which are
-  still modeled.
-- The non-blocking syscalls in the Monero hot path are mostly logging
-  and epoll housekeeping — neither affects consensus or P2P semantics.
+### Verdict
 
-### Rule of thumb
+**Leave `model_unblocked_syscall_latency` at the default (`true`).**
 
-| Workload | Recommended |
-|----------|-------------|
-| Anything Monero / CPU-heavy / network-bound | Safe to set `false` |
-| Tight syscall-loop benchmarking, kernel-overhead studies, anything where per-syscall µs matter for the *result* | Keep `true` |
-
-For a 1k-host run, `false` should give a real wall-time win with no
-observable change in block production, sync behavior, or transaction
-propagation. The only thing that'll look different is the `Event` count
-in `sim-stats.json` and slightly different syscall-timing in any
-forensic-level inspection of per-host stdout.
+Don't include it in the `performance:` block of your scenario YAML.
+The other perf knobs (`runahead`, `process_threads`, `native_preemption`,
+`daemon_defaults.log-level: monitor`, `shadow_log_level: error`) are
+the safe ones; this one is a foot-gun.
 
 ## Native preemption
 
