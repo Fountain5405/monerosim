@@ -276,6 +276,11 @@ print(st)
     log_ok "Simulation duration: $STOP_TIME_RAW ($STOP_TIME_SECS seconds)"
 
     # Parse agent counts from config metadata or agent list
+    # fallback_seeds: monero-seed-NNN hosts the orchestrator injects to
+    # populate Monero's hardcoded fallback IPs so peer discovery works.
+    # `auto` (default) -> 6 seeds, not in the agents: map.
+    # `custom` -> seeds declared explicitly under agents:.
+    # `off` -> 0 seeds.
     CONFIG_SUMMARY=$(python3 -c "
 import yaml
 with open('$CONFIG') as f:
@@ -287,11 +292,19 @@ miners = agents_meta.get('miners', sum(1 for a in agents if a.startswith('miner-
 users = agents_meta.get('users', sum(1 for a in agents if a.startswith('user-')))
 total = agents_meta.get('total', len(agents))
 relays = sum(1 for a in agents if a.startswith('relay-'))
-print(f'{total} {miners} {users} {relays}')
+fb_mode = (cfg.get('general', {}).get('fallback_seeds') or 'auto').lower()
+custom_seeds = sum(1 for a in agents if a.startswith('monero-seed-'))
+if fb_mode == 'off':
+    fb_seeds = 0
+elif fb_mode == 'custom':
+    fb_seeds = custom_seeds
+else:
+    fb_seeds = 6
+print(f'{total} {miners} {users} {relays} {fb_seeds}')
 " 2>/dev/null)
 
-    read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS <<< "$CONFIG_SUMMARY"
-    log_ok "Agents: ${CFG_TOTAL} total (${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays)"
+    read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS CFG_FALLBACK_SEEDS <<< "$CONFIG_SUMMARY"
+    log_ok "Agents: ${CFG_TOTAL} total (${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays, ${CFG_FALLBACK_SEEDS} fallback seeds)"
 
     # Disk space check
     check_disk_space "$ARCHIVE_BASE"
@@ -714,6 +727,7 @@ print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
         if [[ -n "$sim_timestamp" ]]; then
             output+="Sim time:   ${sim_timestamp}\n"; lines=$((lines + 1))
         fi
+        output+="Stop at:    ${stop_dur_fmt} sim (configured stop_time: ${STOP_TIME_RAW})\n"; lines=$((lines + 1))
 
         local now
         now=$(date +%s)
@@ -801,7 +815,7 @@ print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
         # Save current sizes for next cycle
         echo -e "$current_sizes" > "$prev_sizes_file"
 
-        local total_expected=$((CFG_MINERS + CFG_USERS + CFG_RELAYS))
+        local total_expected=$((CFG_MINERS + CFG_USERS + CFG_RELAYS + CFG_FALLBACK_SEEDS))
         output+="Nodes:      ${nodes_online}/${total_expected} online"; lines=$((lines + 1))
 
         if [[ ${#deltas[@]} -gt 0 ]]; then
