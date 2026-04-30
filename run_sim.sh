@@ -532,16 +532,38 @@ check_disk_space() {
     estimated_mb=$(python3 -c "
 import os, json
 
-# Default rates (MB/host/hr) — conservative estimates
+# Default rates (MB/host/hr) — conservative estimates that include logs +
+# blockchain. monerod at log-level=monitor on a 1k-node net writes ~10-30 MB
+# of bitmonero.log per host-day; LMDB grows ~50 MB/host-day at chain tip.
 defaults = {'miner': 4.0, 'user': 2.0, 'relay': 1.25, 'other': 0.5}
 
-# Try to learn rates from previous runs
+def disk_kb(path):
+    # Use st_blocks * 512 (actual disk allocation) instead of getsize() so
+    # sparse LMDB files (1 GB apparent / few MB allocated) are sized correctly.
+    total = 0
+    for dp, _, fns in os.walk(path):
+        for fn in fns:
+            try:
+                total += os.stat(os.path.join(dp, fn)).st_blocks * 512
+            except (OSError, FileNotFoundError):
+                pass
+    return total / 1024
+
+# Try to learn rates from previous runs. We aggregate per-host disk usage
+# across THREE archive subdirs:
+#   1. shadow.data/hosts/<host>/             (shadow shim/stderr/stdout)
+#   2. daemon_logs/monero-<host>/            (bitmonero.log — usually dominant)
+#   3. blockchain/monero-<host>/             (LMDB snapshot — sampled hosts only)
+# Without (2) and (3) the estimate is ~5-10x too low.
 archive_dir = '$archive_dir'
 learned = {}
 sample_hours = 0
 for run_name in sorted(os.listdir(archive_dir), reverse=True) if os.path.isdir(archive_dir) else []:
-    hosts_dir = os.path.join(archive_dir, run_name, 'shadow.data', 'hosts')
-    cfg_path = os.path.join(archive_dir, run_name, 'input_config.yaml')
+    run_path = os.path.join(archive_dir, run_name)
+    hosts_dir = os.path.join(run_path, 'shadow.data', 'hosts')
+    daemon_logs_dir = os.path.join(run_path, 'daemon_logs')
+    blockchain_dir = os.path.join(run_path, 'blockchain')
+    cfg_path = os.path.join(run_path, 'input_config.yaml')
     if not os.path.isdir(hosts_dir) or not os.path.isfile(cfg_path):
         continue
     # Get sim duration from config
@@ -560,20 +582,37 @@ for run_name in sorted(os.listdir(archive_dir), reverse=True) if os.path.isdir(a
         if h <= 0: continue
     except Exception:
         continue
-    # Measure per-type rates
-    by_type = {}
+    # Measure per-type rates. shadow.data + daemon_logs are always per-host;
+    # blockchain is sampled (only a few hosts archived per --archive-blockchain),
+    # so we average separately and add a per-host blockchain rate by type.
+    by_type_log = {}
+    by_type_chain = {}
     for host in os.listdir(hosts_dir):
         host_path = os.path.join(hosts_dir, host)
         if not os.path.isdir(host_path): continue
-        size_kb = sum(os.path.getsize(os.path.join(dp, fn))
-                      for dp, _, fns in os.walk(host_path) for fn in fns) / 1024
+        size_kb = disk_kb(host_path)
+        # bitmonero.log lives under daemon_logs/monero-<host>/ post-archive
+        log_path = os.path.join(daemon_logs_dir, 'monero-' + host)
+        if os.path.isdir(log_path):
+            size_kb += disk_kb(log_path)
+        # LMDB only archived for sampled hosts
+        chain_path = os.path.join(blockchain_dir, 'monero-' + host)
+        chain_kb = disk_kb(chain_path) if os.path.isdir(chain_path) else None
+
         if host.startswith('miner-'): t = 'miner'
         elif host.startswith('user-'): t = 'user'
         elif host.startswith('relay-'): t = 'relay'
         else: t = 'other'
-        by_type.setdefault(t, []).append(size_kb)
-    for t, sizes in by_type.items():
+        by_type_log.setdefault(t, []).append(size_kb)
+        if chain_kb is not None:
+            by_type_chain.setdefault(t, []).append(chain_kb)
+
+    for t, sizes in by_type_log.items():
         avg_mb = (sum(sizes) / len(sizes)) / 1024
+        # Add per-type blockchain average if we have any sampled hosts of this type
+        chain_sizes = by_type_chain.get(t, [])
+        if chain_sizes:
+            avg_mb += (sum(chain_sizes) / len(chain_sizes)) / 1024
         rate = avg_mb / h
         if t not in learned or len(sizes) > 10:  # prefer runs with more samples
             learned[t] = rate
