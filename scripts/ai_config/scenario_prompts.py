@@ -191,6 +191,20 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
    `wallet:` field; if only the wallet is upgrading, leave a single `daemon:`
    field.
 
+   **CRITICAL — never mix single and phase fields for the same role on the
+   same agent.** An agent has EITHER a single `daemon:` field OR `daemon_0`/
+   `daemon_1` phase fields, not both. Same for `wallet:` vs `wallet_0`/
+   `wallet_1`. The parser silently ignores the single field when phases are
+   also present, which is a footgun. Examples:
+   - Upgrading both daemon and wallet -> `daemon_0`/`daemon_1` AND
+     `wallet_0`/`wallet_1`, NO single `daemon:` or `wallet:` field.
+   - Upgrading only the daemon -> `daemon_0`/`daemon_1` AND a single
+     `wallet: monero-wallet-rpc` field. NO `wallet_0`/`wallet_1`.
+   - Upgrading only the wallet -> `wallet_0`/`wallet_1` AND a single
+     `daemon: monerod` field. NO `daemon_0`/`daemon_1`.
+   - Not upgrading at all -> a single `daemon:` and `wallet:` field. NO
+     phase fields.
+
 8. **Always include**: miner-distributor (funds users) and simulation-monitor
 
 ## Agent Types
