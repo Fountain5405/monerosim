@@ -50,6 +50,9 @@ RUN_ANALYZE=false
 DO_BUILD=true
 BLOCKCHAIN_ARCHIVE_PCT=""
 DATA_DIR=""
+RAMDISK_REQUEST=""        # "" = off, "auto" = size from estimate, else explicit (e.g. "8G")
+RAMDISK_PATH=""           # set by mount_ramdisk() if mount succeeds
+RAMDISK_MOUNTED=false     # cleared once watchdog has taken over
 
 usage() {
     cat <<'EOF'
@@ -63,6 +66,12 @@ Options:
   --archive-dir <dir>    Archive location (default: archived_runs)
   --data-dir <dir>       Shadow data output directory (default: shadow.data in cwd)
                          Use this to write simulation data to a different volume
+  --ramdisk [SIZE]       Mount tmpfs for monerod data dirs (faster LMDB I/O).
+                         Mounts at /tmp/monerosim_ramdisk_<pid>/ and overrides
+                         general.daemon_data_dir. SIZE optional (e.g. 8G, 16G);
+                         omit to auto-size from estimated chain growth.
+                         Requires sudo. Cleaned up after shadow exits, even if
+                         you Ctrl-C run_sim.sh in the meantime.
   --no-monitor           Skip live progress display
   --analyze              Run post-simulation analysis (off by default)
   --no-build             Skip cargo build (use existing binary)
@@ -111,6 +120,17 @@ while [[ $# -gt 0 ]]; do
         --data-dir)
             DATA_DIR="$2"
             shift 2
+            ;;
+        --ramdisk)
+            # Optional value: if next arg is a size (digits + optional G/M/K)
+            # consume it; otherwise auto-size.
+            if [[ -n "${2:-}" && "$2" =~ ^[0-9]+[GMK]?$ ]]; then
+                RAMDISK_REQUEST="$2"
+                shift 2
+            else
+                RAMDISK_REQUEST="auto"
+                shift
+            fi
             ;;
         --help|-h)
             usage
@@ -235,6 +255,175 @@ format_kb() {
     else
         echo "${kb} KB"
     fi
+}
+
+# ============================================================
+# Ramdisk (tmpfs) helpers
+# ============================================================
+# We mount tmpfs on a dedicated subdirectory rather than over /tmp itself,
+# so we don't hide existing /tmp contents from other processes.
+RAMDISK_PARENT="/tmp"
+
+# Sweep stale ramdisks left by prior crashed runs. A ramdisk is "orphaned"
+# if no process has any file open on it. Lazy unmount + rmdir on orphans.
+sweep_orphan_ramdisks() {
+    local found=0
+    for d in "$RAMDISK_PARENT"/monerosim_ramdisk_*; do
+        [[ -d "$d" ]] || continue
+        # Still mounted?
+        if mountpoint -q "$d" 2>/dev/null; then
+            # Anyone using it?
+            if [[ -z "$(lsof +D "$d" 2>/dev/null | tail -n +2)" ]]; then
+                log_warn "Cleaning stale ramdisk: $d"
+                sudo umount -l "$d" 2>/dev/null || true
+                rmdir "$d" 2>/dev/null || true
+                found=$((found + 1))
+            fi
+        else
+            # Empty unmounted leftover dir
+            rmdir "$d" 2>/dev/null || true
+        fi
+    done
+    if [[ $found -gt 0 ]]; then
+        log_info "Cleaned up $found stale ramdisk mount(s)."
+    fi
+}
+
+# Estimate ramdisk size (MB) needed for monerod LMDBs over the sim duration.
+# Per-host: 100 MB base + 10 MB per simulated hour. Min 2 GB total.
+# LMDB sparse file alloc means actual page-backed RAM grows with chain
+# size, not the apparent file size — these per-host numbers are empirical
+# from inspecting du output on running sims.
+estimate_ramdisk_mb() {
+    local total_monerods=$((CFG_MINERS + CFG_USERS + CFG_RELAYS + CFG_FALLBACK_SEEDS))
+    local sim_hours
+    sim_hours=$(python3 -c "print(max(1, ${STOP_TIME_SECS:-0} / 3600))")
+    python3 -c "
+total = $total_monerods
+hours = $sim_hours
+per_host = 100 + (10 * hours)
+est = max(2048, total * per_host)
+print(int(est))
+"
+}
+
+# Convert a size argument (e.g. 8G, 4096M, 2048) to MB for the mount call.
+size_to_mb() {
+    local s="$1"
+    case "$s" in
+        *G) echo $(( ${s%G} * 1024 )) ;;
+        *M) echo "${s%M}" ;;
+        *K) echo $(( ${s%K} / 1024 )) ;;
+        *)  echo "$s" ;;  # assume already MB
+    esac
+}
+
+# Mount tmpfs at /tmp/monerosim_ramdisk_<pid>/. Sets RAMDISK_PATH on success.
+# Aborts the script on failure.
+mount_ramdisk() {
+    local request="$1"  # "auto" or explicit (8G, 4096M, etc.)
+    local size_mb
+
+    if [[ "$request" == "auto" ]]; then
+        size_mb=$(estimate_ramdisk_mb)
+        log_info "Auto-sized ramdisk: $(format_kb $((size_mb * 1024))) (estimate)"
+    else
+        size_mb=$(size_to_mb "$request")
+        log_info "Requested ramdisk size: $(format_kb $((size_mb * 1024))) (--ramdisk $request)"
+    fi
+
+    # RAM availability check: refuse if estimate > 70% of MemAvailable
+    local mem_avail_kb
+    mem_avail_kb=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
+    local mem_avail_mb=$((mem_avail_kb / 1024))
+    local mem_pct=$((size_mb * 100 / mem_avail_mb))
+    log_info "Available RAM: $(format_kb "$mem_avail_kb") (ramdisk would consume ${mem_pct}%)"
+
+    if [[ "$mem_pct" -ge 70 ]]; then
+        log_err "Refusing to mount ramdisk: ${size_mb} MB exceeds 70% of available RAM (${mem_avail_mb} MB)."
+        log_info "Either skip --ramdisk, or pass an explicit smaller size (--ramdisk ${mem_avail_mb}M would be ~100%)."
+        exit 1
+    elif [[ "$mem_pct" -ge 50 ]]; then
+        log_warn "Ramdisk would consume ${mem_pct}% of available RAM. Sim may swap if other processes need memory."
+    fi
+
+    RAMDISK_PATH="$RAMDISK_PARENT/monerosim_ramdisk_$$"
+    mkdir -p "$RAMDISK_PATH"
+
+    log_info "Mounting tmpfs at $RAMDISK_PATH (${size_mb} MB)..."
+    if ! sudo mount -t tmpfs -o "size=${size_mb}M,uid=$(id -u),gid=$(id -g),mode=0755" tmpfs "$RAMDISK_PATH"; then
+        log_err "Failed to mount tmpfs. Check sudo permissions."
+        rmdir "$RAMDISK_PATH" 2>/dev/null || true
+        RAMDISK_PATH=""
+        exit 1
+    fi
+
+    RAMDISK_MOUNTED=true
+    log_ok "Ramdisk mounted: $RAMDISK_PATH"
+}
+
+# Pre-shadow trap path: if we abort before shadow is launched, unmount cleanly.
+# Once the watchdog is running it owns cleanup, so this is a no-op.
+cleanup_ramdisk_pre_shadow() {
+    if [[ "$RAMDISK_MOUNTED" == true && -n "$RAMDISK_PATH" ]]; then
+        log_warn "Aborting before shadow launch — cleaning up ramdisk $RAMDISK_PATH"
+        sudo umount -l "$RAMDISK_PATH" 2>/dev/null || true
+        rmdir "$RAMDISK_PATH" 2>/dev/null || true
+    fi
+}
+
+# Detached watchdog: waits for SHADOW_PID to exit (regardless of why
+# run_sim.sh ends), then unmounts the ramdisk and rmdirs the mount point.
+# Survives Ctrl-C of run_sim.sh because shadow is in its own setsid session.
+start_ramdisk_watchdog() {
+    local shadow_pid="$1"
+    local path="$2"
+    setsid bash -c "
+        while kill -0 $shadow_pid 2>/dev/null; do sleep 5; done
+        sleep 2  # let any final fsync settle
+        sudo umount -l '$path' 2>/dev/null
+        rmdir '$path' 2>/dev/null
+    " </dev/null >/dev/null 2>&1 &
+    disown
+    # Watchdog now owns cleanup; the pre-shadow trap path becomes a no-op.
+    RAMDISK_MOUNTED=false
+    log_ok "Ramdisk watchdog detached (cleanup will fire when shadow PID $shadow_pid exits)"
+}
+
+# Top-level orchestrator: mount the ramdisk and rewrite CONFIG so that
+# general.daemon_data_dir points at it. Run after preflight_checks (so
+# CFG_* and STOP_TIME_SECS are populated) and before build_and_generate
+# (so monerosim sees the override).
+setup_ramdisk() {
+    [[ -z "$RAMDISK_REQUEST" ]] && return  # not requested
+
+    log_step "Setting up tmpfs ramdisk for monerod data"
+
+    # Register pre-shadow trap BEFORE mounting so a signal between mount
+    # success and trap setup can't leak the mount. cleanup_ramdisk_pre_shadow
+    # checks RAMDISK_MOUNTED, which is only set true after mount succeeds,
+    # so it's a no-op until mount completes.
+    trap 'cleanup_ramdisk_pre_shadow' EXIT INT TERM
+
+    mount_ramdisk "$RAMDISK_REQUEST"
+    # Now $RAMDISK_PATH is set and RAMDISK_MOUNTED=true.
+
+    # Rewrite CONFIG so monerosim emits args pointing daemon data dirs at
+    # the ramdisk. Original CONFIG content is preserved verbatim except
+    # for general.daemon_data_dir.
+    local effective_config="/tmp/monerosim_ramdisk_$$_config.yaml"
+    python3 -c "
+import yaml, sys
+with open('$CONFIG') as f:
+    cfg = yaml.safe_load(f)
+cfg.setdefault('general', {})['daemon_data_dir'] = '$RAMDISK_PATH'
+with open('$effective_config', 'w') as f:
+    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+" || { log_err "Failed to rewrite config with ramdisk override"; exit 1; }
+
+    CONFIG="$effective_config"
+    log_ok "Config rewritten with daemon_data_dir=$RAMDISK_PATH"
+    log_info "Effective config: $CONFIG"
 }
 
 # ============================================================
@@ -537,6 +726,12 @@ run_simulation() {
 
     log_ok "Shadow started (PID: $SHADOW_PID)"
     log_ok "Log: $SHADOW_LOG"
+
+    # If we mounted a ramdisk, hand cleanup off to the detached watchdog
+    # so it survives Ctrl-C of run_sim.sh while shadow keeps running.
+    if [[ -n "$RAMDISK_PATH" ]]; then
+        start_ramdisk_watchdog "$SHADOW_PID" "$RAMDISK_PATH"
+    fi
 
     # Start memory monitor in background
     start_memory_monitor "$SHADOW_PID" "$ARCHIVE_DIR/memory_samples.csv" &
@@ -1363,7 +1558,9 @@ main() {
     echo "╚══════════════════════════════════════╝"
     echo -e "${NC}"
 
+    sweep_orphan_ramdisks
     preflight_checks
+    setup_ramdisk
     build_and_generate
     run_simulation
     archive_results
