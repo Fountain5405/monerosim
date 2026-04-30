@@ -53,6 +53,7 @@ DATA_DIR=""
 RAMDISK_REQUEST=""        # "" = off, "auto" = size from estimate, else explicit (e.g. "8G")
 RAMDISK_PATH=""           # set by mount_ramdisk() if mount succeeds
 RAMDISK_MOUNTED=false     # cleared once watchdog has taken over
+PREFLIGHT_ONLY=false      # if true, exit after preflight without touching shadow.data or /tmp
 
 usage() {
     cat <<'EOF'
@@ -76,6 +77,10 @@ Options:
   --analyze              Run post-simulation analysis (off by default)
   --no-build             Skip cargo build (use existing binary)
   --archive-blockchain N   Archive N% of blockchains (default: 1 per type)
+  --preflight-only       Run only Phase 1 (config inspection, disk estimate)
+                         and exit. Does NOT touch shadow.data, /tmp, or
+                         spawn shadow. Safe to run alongside an in-flight
+                         simulation.
   --help                 Show help
 
 Examples:
@@ -111,6 +116,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-build)
             DO_BUILD=false
+            shift
+            ;;
+        --preflight-only)
+            PREFLIGHT_ONLY=true
             shift
             ;;
         --archive-blockchain)
@@ -524,7 +533,9 @@ check_disk_space() {
     local num_miners="${CFG_MINERS:-0}"
     local num_users="${CFG_USERS:-0}"
     local num_relays="${CFG_RELAYS:-0}"
-    local num_hosts="${CFG_TOTAL:-0}"
+    # CFG_TOTAL excludes fallback seeds (they're injected daemon-only hosts);
+    # include them in the host count so the estimator counts their disk usage.
+    local num_hosts=$((${CFG_TOTAL:-0} + ${CFG_FALLBACK_SEEDS:-0}))
     local sim_hours
     sim_hours=$(python3 -c "print(max(1, ${STOP_TIME_SECS:-0} / 3600))")
 
@@ -1596,6 +1607,14 @@ main() {
     echo "║      MoneroSim Simulation Runner     ║"
     echo "╚══════════════════════════════════════╝"
     echo -e "${NC}"
+
+    if [[ "$PREFLIGHT_ONLY" == true ]]; then
+        # Skip sweep_orphan_ramdisks too — it could unmount a ramdisk used
+        # by another in-flight run if its lsof check races.
+        preflight_checks
+        log_ok "Preflight complete (--preflight-only). Exiting without touching shadow.data, /tmp, or spawning shadow."
+        exit 0
+    fi
 
     sweep_orphan_ramdisks
     preflight_checks
