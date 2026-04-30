@@ -1,0 +1,71 @@
+# Upgrade smoke test for daemon + wallet phases.
+# 5 miners + 3 users. Bootstrap=4h, activity=5h, upgrade=5h30m, stop=6h30m.
+# Goal: confirm daemon_0/daemon_1 + wallet_0/wallet_1 cycle works end-to-end.
+
+general:
+  stop_time: 23400s              # 6h30m
+  simulation_seed: 12345
+  bootstrap_end_time: 14400s     # 4h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  native_preemption: true
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..005}:
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+    daemon_0: monerod-v1
+    daemon_0_start: auto
+    daemon_0_stop: 19800s        # upgrade at 5h30m
+    daemon_1: monerod-v2
+    daemon_1_start: auto
+    wallet_0: monero-wallet-rpc
+    wallet_0_start: auto
+    wallet_0_stop: 19800s
+    wallet_1: monero-wallet-rpc-v2
+    wallet_1_start: auto
+
+  user-{01..03}:
+    script: agents.regular_user
+    start_time: 2400s            # 40m
+    start_time_stagger: 10s
+    transaction_interval: 120
+    activity_start_time: 18000   # 5h
+    can_receive_distributions: true
+    daemon_0: monerod-v1
+    daemon_0_start: auto
+    daemon_0_stop: 19800s
+    daemon_1: monerod-v2
+    daemon_1_start: auto
+    wallet_0: monero-wallet-rpc
+    wallet_0_start: auto
+    wallet_0_stop: 19800s
+    wallet_1: monero-wallet-rpc-v2
+    wallet_1_start: auto
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 4200              # 70m, same as quickstart
+    transaction_frequency: 30
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

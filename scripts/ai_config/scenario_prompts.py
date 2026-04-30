@@ -183,7 +183,13 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
    - 15 miners: [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6]
    - Late-joining miners can add extra hashrate (not bound by 100)
 
-7. **Daemon binaries**: Use `monerod` for standard, `monerod-v2` etc for upgrades
+7. **Binaries for upgrades**: Use `monerod` for the standard daemon and
+   `monero-wallet-rpc` for the standard wallet. For upgrade scenarios use
+   `monerod-v1` / `monerod-v2` and `monero-wallet-rpc-v1` /
+   `monero-wallet-rpc-v2` (set via `daemon_0`/`daemon_1` and
+   `wallet_0`/`wallet_1`). If only the daemon is upgrading, leave a single
+   `wallet:` field; if only the wallet is upgrading, leave a single `daemon:`
+   field.
 
 8. **Always include**: miner-distributor (funds users) and simulation-monitor
 
@@ -612,7 +618,7 @@ agents:
 ```
 
 ---
-USER: "Network upgrade scenario: 5 miners and 50 users start on monerod-v1, then upgrade to monerod-v2 at 7 hours. Run for 12 hours total."
+USER: "Network upgrade scenario: 5 miners and 50 users start on monerod-v1 with monero-wallet-rpc-v1, then upgrade to monerod-v2 with monero-wallet-rpc-v2 at 7 hours. Run for 12 hours total."
 
 SCENARIO:
 ```yaml
@@ -642,26 +648,32 @@ network:
 
 # === AGENTS ===
 agents:
-  # --- 5 Miners: Upgrade from v1 to v2 ---
-  # daemon_0 = first phase, daemon_1 = second phase
-  # Nodes stop daemon_0, wait 30s gap, then start daemon_1
+  # --- 5 Miners: Upgrade daemon AND wallet from v1 to v2 ---
+  # daemon_0 / wallet_0 = first phase, daemon_1 / wallet_1 = second phase
+  # Nodes stop phase 0, wait 30s gap, then start phase 1
+  # daemon_* and wallet_* stagger independently (separate offset trackers),
+  # so you can upgrade them at the same wall-clock time or stagger them.
   miner-{001..005}:
-    wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
     start_time_stagger: 1s
     hashrate: [20, 20, 20, 20, 20]
     can_receive_distributions: true
-    daemon_0: monerod-v1              # Phase 1: run v1 binary
+    daemon_0: monerod-v1              # Daemon phase 1
     daemon_0_start: auto              # Start when agent starts
-    daemon_0_stop: 25200s             # Stop at 7 hours (25200s)
+    daemon_0_stop: 25200s             # Stop at 7 hours
     daemon_0_stop_stagger: 30s        # 30s between each node's upgrade
-    daemon_1: monerod-v2              # Phase 2: run v2 binary
+    daemon_1: monerod-v2              # Daemon phase 2
     daemon_1_start: auto              # Start 30s after daemon_0 stops
+    wallet_0: monero-wallet-rpc-v1    # Wallet phase 1
+    wallet_0_start: auto
+    wallet_0_stop: 25200s             # Upgrade wallet at the same time
+    wallet_0_stop_stagger: 30s
+    wallet_1: monero-wallet-rpc-v2    # Wallet phase 2
+    wallet_1_start: auto
 
-  # --- 50 Users: Also upgrade from v1 to v2 ---
+  # --- 50 Users: Also upgrade both daemon and wallet ---
   user-{001..050}:
-    wallet: monero-wallet-rpc
     script: agents.regular_user
     start_time: 1200s
     start_time_stagger: auto          # Auto-batch for 50+ users
@@ -674,6 +686,12 @@ agents:
     daemon_0_stop_stagger: 30s        # Stagger continues from miners
     daemon_1: monerod-v2
     daemon_1_start: auto
+    wallet_0: monero-wallet-rpc-v1
+    wallet_0_start: auto
+    wallet_0_stop: 25200s
+    wallet_0_stop_stagger: 30s
+    wallet_1: monero-wallet-rpc-v2
+    wallet_1_start: auto
 
   miner-distributor:
     script: agents.miner_distributor
@@ -684,6 +702,10 @@ agents:
     script: agents.simulation_monitor
     poll_interval: 300
 ```
+
+NOTE: If only the daemon is changing (e.g. consensus upgrade with no wallet
+changes), omit the wallet_* fields and keep a single `wallet:` field. If only
+the wallet is changing, omit daemon_* and keep a single `daemon:` field.
 
 ---
 USER: "1000 nodes for a large scale test, 24 hour simulation"

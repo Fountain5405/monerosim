@@ -78,6 +78,7 @@ DEFAULT_MAX_BATCH_SIZE = 200
 DEFAULT_INTRA_BATCH_STAGGER_S = 5
 DEFAULT_UPGRADE_STAGGER_S = 30
 DEFAULT_DAEMON_RESTART_GAP_S = 30
+DEFAULT_WALLET_RESTART_GAP_S = 30
 
 
 AGENT_TYPE_DEFAULTS = {
@@ -446,8 +447,11 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
     # calibration (passed to compute_stagger / compute_safe_interval).
     total_nodes = sum(g.count for g in scenario.agent_groups) + len(scenario.singleton_agents)
 
-    # Track global stagger offsets for upgrade phases (continue across groups)
+    # Track global stagger offsets for upgrade phases (continue across groups).
+    # Daemon and wallet upgrades may happen at different times, so each tracks
+    # its own offset.
     upgrade_stagger_offset = 0
+    wallet_upgrade_stagger_offset = 0
 
     # Track timing for auto calculations
     # Only track start times of "bootstrap participants" - agents with activity_start_time: auto
@@ -518,6 +522,10 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
             if 'daemon_0_stop' in base_fields and 'daemon_0_stop' not in stagger_fields:
                 stagger_fields['daemon_0_stop'] = f'{DEFAULT_UPGRADE_STAGGER_S}s'
 
+            # Same default for wallet phase upgrades
+            if 'wallet_0_stop' in base_fields and 'wallet_0_stop' not in stagger_fields:
+                stagger_fields['wallet_0_stop'] = f'{DEFAULT_UPGRADE_STAGGER_S}s'
+
         # Expand each field
         expanded_values = {}
 
@@ -540,10 +548,21 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                         # For linear stagger, set base value to user_spawn_start
                         value = f"{user_spawn_start_s}s"
 
-                # Determine if this stagger continues across groups
-                # daemon_* fields continue, others reset
-                if key.startswith('daemon_') and ('stop' in key or 'start' in key and '0' not in key):
+                # Determine if this stagger continues across groups.
+                # daemon_* and wallet_* phase fields continue (so cross-group
+                # upgrades waterfall as expected); other staggers reset per-group.
+                # Phase 0 _start is the agent's spawn time, so it doesn't
+                # participate in upgrade stagger continuation.
+                is_daemon_phase = key.startswith('daemon_') and (
+                    'stop' in key or ('start' in key and '0' not in key)
+                )
+                is_wallet_phase = key.startswith('wallet_') and (
+                    'stop' in key or ('start' in key and '0' not in key)
+                )
+                if is_daemon_phase:
                     offset = upgrade_stagger_offset
+                elif is_wallet_phase:
+                    offset = wallet_upgrade_stagger_offset
                 else:
                     offset = 0
 
@@ -553,9 +572,11 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                 )
                 expanded_values[key] = expanded
 
-                # Update global offset for daemon phases
-                if key.startswith('daemon_') and ('stop' in key):
+                # Update global offset for phase fields
+                if key.startswith('daemon_') and 'stop' in key:
                     upgrade_stagger_offset += group.count
+                elif key.startswith('wallet_') and 'stop' in key:
+                    wallet_upgrade_stagger_offset += group.count
             else:
                 # No stagger - same value for all or list
                 if isinstance(value, list) and len(value) == group.count:
@@ -564,8 +585,11 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                     expanded_values[key] = [value] * group.count
 
         # Fields the Rust parser expects as String (accept duration syntax like "18000s")
-        string_time_fields = {'start_time', 'daemon_0_start', 'daemon_0_stop',
-                              'daemon_1_start', 'daemon_1_stop'}
+        string_time_fields = {'start_time',
+                              'daemon_0_start', 'daemon_0_stop',
+                              'daemon_1_start', 'daemon_1_stop',
+                              'wallet_0_start', 'wallet_0_stop',
+                              'wallet_1_start', 'wallet_1_stop'}
         # Fields the Rust parser expects as u32 (plain integer seconds only)
         u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
                            'transaction_frequency', 'poll_interval'}
@@ -785,6 +809,16 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
             else:
                 stop_s = stop_time
             agent_config['daemon_1_start'] = f"{stop_s + DEFAULT_DAEMON_RESTART_GAP_S}s"
+        if agent_config.get('wallet_0_start') == 'auto':
+            agent_config['wallet_0_start'] = agent_config.get('start_time', '0s')
+        if agent_config.get('wallet_1_start') == 'auto':
+            # wallet_1_start = wallet_0_stop + gap
+            stop_time = agent_config.get('wallet_0_stop', '0s')
+            if isinstance(stop_time, str):
+                stop_s = parse_duration(stop_time)
+            else:
+                stop_s = stop_time
+            agent_config['wallet_1_start'] = f"{stop_s + DEFAULT_WALLET_RESTART_GAP_S}s"
 
     # Build final config
     config['general'] = general
