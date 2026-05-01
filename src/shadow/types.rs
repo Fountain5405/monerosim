@@ -376,9 +376,15 @@ pub struct ShadowProcess {
     pub environment: BTreeMap<String, String>,
     /// Start time for the process (e.g., "0s", "10s", "1m")
     pub start_time: String,
-    /// Shutdown time - when to send SIGTERM to the process
+    /// Shutdown time - when to send the `shutdown_signal` to the process
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shutdown_time: Option<String>,
+    /// Signal to send at `shutdown_time`. Shadow defaults to SIGTERM
+    /// when this field is omitted; we only emit it when overriding
+    /// (e.g. SIGKILL for non-final wallet phases that may deadlock and
+    /// not service SIGTERM in time for the next phase to bind).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shutdown_signal: Option<String>,
     /// Expected final state when simulation ends (to avoid spurious errors)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_final_state: Option<ExpectedFinalState>,

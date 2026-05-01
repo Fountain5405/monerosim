@@ -46,6 +46,7 @@ pub fn write_wrapper_script(
         environment: environment.clone(),
         start_time,
         shutdown_time,
+        shutdown_signal: None,
         expected_final_state,
     })
 }
