@@ -422,8 +422,7 @@ pub fn process_user_agents(
                 let phase_count = phases.len();
 
                 for (phase_num, phase) in phases {
-                    let daemon_args_base = build_daemon_args_base(phase.args.as_ref());
-                    let daemon_args = daemon_args_base.join(" ");
+                    let daemon_args = build_daemon_args_base(phase.args.as_ref());
 
                     // Resolve binary path for this phase
                     let daemon_binary_path = resolve_binary_path_for_shadow(&phase.path)
@@ -461,17 +460,12 @@ pub fn process_user_agents(
                         (None, Some(ExpectedFinalState::Running))
                     };
 
-                    // Use `exec` so bash replaces itself with monerod - this ensures signals
-                    // go directly to monerod rather than to bash (which would leave monerod orphaned)
-                    // Note: data directory cleanup is handled pre-simulation by main.rs
-                    let args = format!(
-                        "-c 'exec {} {}'",
-                        daemon_binary_path, daemon_args
-                    );
-
+                    // Direct launch — Shadow execs monerod itself, so SIGTERM at
+                    // shutdown_time goes straight to it. Data directory cleanup
+                    // is handled pre-simulation by main.rs.
                     processes.push(crate::shadow::ShadowProcess {
-                        path: "/bin/bash".to_string(),
-                        args,
+                        path: daemon_binary_path,
+                        args: crate::shadow::ProcessArgs::List(daemon_args),
                         environment: daemon_env,
                         start_time,
                         shutdown_time,
@@ -480,8 +474,7 @@ pub fn process_user_agents(
                 }
             } else if has_local_daemon {
                 // Simple daemon configuration (single binary)
-                let daemon_args_base = build_daemon_args_base(user_agent_config.daemon_args.as_ref());
-                let daemon_args = daemon_args_base.join(" ");
+                let daemon_args = build_daemon_args_base(user_agent_config.daemon_args.as_ref());
 
                 // Get daemon binary path from config, fall back to default
                 let daemon_binary_path = match &user_agent_config.daemon {
@@ -499,15 +492,10 @@ pub fn process_user_agents(
                     }
                 }
 
-                // Use `exec` so bash replaces itself with monerod - this ensures signals
-                // go directly to monerod rather than to bash
-                // Note: data directory cleanup is handled pre-simulation by main.rs
+                // Direct launch — see phase-daemon comment above.
                 processes.push(crate::shadow::ShadowProcess {
-                    path: "/bin/bash".to_string(),
-                    args: format!(
-                        "-c 'exec {} {}'",
-                        daemon_binary_path, daemon_args
-                    ),
+                    path: daemon_binary_path,
+                    args: crate::shadow::ProcessArgs::List(daemon_args),
                     environment: daemon_env,
                     start_time: start_time_daemon.clone(),
                     shutdown_time: None,
@@ -560,8 +548,7 @@ pub fn process_user_agents(
                 };
 
                 for (phase_num, phase) in phases {
-                    let wallet_args_vec = build_wallet_args(phase.args.as_ref());
-                    let wallet_args = wallet_args_vec.join(" ");
+                    let wallet_args = build_wallet_args(phase.args.as_ref());
 
                     // Resolve binary path for this phase
                     let wallet_binary_path = resolve_binary_path_for_shadow(&phase.path)
@@ -601,10 +588,18 @@ pub fn process_user_agents(
 
                     // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
 
-                    let wallet_cmd = format!("{} {}", wallet_binary_path, wallet_args);
+                    // Shell-quoted form for the WALLET_RPC_CMD env var (consumed
+                    // by restart_wallet_rpc() via subprocess.Popen(shell=True)).
+                    // The Shadow process below uses ProcessArgs::List directly.
+                    let wallet_cmd = format!(
+                        "{} {}",
+                        crate::utils::options::shell_quote_args(&[wallet_binary_path.clone()]),
+                        crate::utils::options::shell_quote_args(&wallet_args),
+                    );
+
                     processes.push(crate::shadow::ShadowProcess {
-                        path: "/bin/bash".to_string(),
-                        args: format!("-c '{}'", wallet_cmd),
+                        path: wallet_binary_path,
+                        args: crate::shadow::ProcessArgs::List(wallet_args),
                         environment: wallet_env,
                         start_time,
                         shutdown_time,

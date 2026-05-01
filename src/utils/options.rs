@@ -54,27 +54,45 @@ pub fn translate_wallet_log_level(opts: &mut BTreeMap<String, OptionValue>) {
 /// Convert OptionValue map to command-line arguments
 /// - Bool(true) -> --flag
 /// - Bool(false) -> (omitted)
-/// - String(s) -> --flag="s"  (always double-quoted; see note below)
+/// - String(s) -> --flag=s   (literal value; no shell quoting)
 /// - Number(n) -> --flag=n
 ///
-/// String values are always double-quoted because callers (notably
-/// `agent/user_agents.rs`) wrap the joined args in `bash -c 'exec <bin>
-/// <args>'`. Bash re-tokenizes the inside of the `-c` and would expand
-/// shell metacharacters (`*`, `?`, `~`, etc.) in unquoted values
-/// against the working directory before invoking the binary. The
-/// double quotes suppress that. In practice this matters for the
-/// `log-level` category-string passthrough (e.g.
-/// `"*:WARNING,blockchain:INFO"`); no real value contains a literal
-/// `"`, so naive quoting is sufficient.
+/// Each returned string is one argv element. Daemon and wallet processes
+/// are launched directly via Shadow (`ProcessArgs::List`), so values pass
+/// straight to execve and never see a shell. Glob/word-split concerns
+/// only matter when the joined form is later fed back through a shell —
+/// see `shell_quote_args` for that path (currently the `WALLET_RPC_CMD`
+/// env var consumed by `restart_wallet_rpc()` via `subprocess.Popen(..., shell=True)`).
 pub fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
     options.iter().filter_map(|(key, value)| {
         match value {
             OptionValue::Bool(true) => Some(format!("--{}", key)),
             OptionValue::Bool(false) => None,
-            OptionValue::String(s) => Some(format!("--{}=\"{}\"", key, s)),
+            OptionValue::String(s) => Some(format!("--{}={}", key, s)),
             OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
         }
     }).collect()
+}
+
+/// Join argv-style elements into a single shell command string, quoting
+/// each element so the shell will reproduce it verbatim. Use this when
+/// you need to ferry a command through `shell=True` or `bash -c '...'`
+/// (e.g. `WALLET_RPC_CMD`); for direct Shadow process launches, prefer
+/// passing the `Vec<String>` itself as `ProcessArgs::List`.
+pub fn shell_quote_args(args: &[String]) -> String {
+    args.iter().map(|a| shell_quote(a)).collect::<Vec<_>>().join(" ")
+}
+
+/// POSIX-shell-quote a single argument: wrap in single quotes, escaping
+/// any embedded single quotes with the standard `'\''` dance. Always
+/// quotes — the cost is two extra bytes; the upside is unconditional
+/// safety regardless of metacharacters.
+fn shell_quote(arg: &str) -> String {
+    if arg.contains('\'') {
+        format!("'{}'", arg.replace('\'', r"'\''"))
+    } else {
+        format!("'{}'", arg)
+    }
 }
 
 /// Merge two option maps, with overrides taking precedence over defaults

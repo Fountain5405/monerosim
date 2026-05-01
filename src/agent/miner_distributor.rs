@@ -81,13 +81,13 @@ pub fn process_miner_distributor(
             }
         }
 
-        // Simplified command for miner distributor
+        // `exec` so bash is replaced by python3 — see add_user_agent_process.
         let script = miner_distributor_config.script.clone()
             .unwrap_or_else(|| "agents.miner_distributor".to_string());
         let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
-            format!("python3 -m {} {}", script, agent_args.join(" "))
+            format!("exec python3 -m {} {}", script, agent_args.join(" "))
         } else {
-            format!("python3 {} {}", script, agent_args.join(" "))
+            format!("exec python3 {} {}", script, agent_args.join(" "))
         };
 
         // Resolve HOME for fully-qualified paths (no shell expansion needed)

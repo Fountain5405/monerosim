@@ -4,11 +4,14 @@
 //! for monero-wallet-rpc instances.
 
 use crate::config_v2::OptionValue;
-use crate::shadow::ShadowProcess;
-use crate::utils::options::{options_to_args, merge_options, translate_wallet_log_level};
+use crate::shadow::{ShadowProcess, ProcessArgs};
+use crate::utils::options::{options_to_args, merge_options, shell_quote_args, translate_wallet_log_level};
 use std::collections::BTreeMap;
 
 /// Build wallet command-line arguments common to both local and remote daemon modes.
+///
+/// Returns argv-style strings (one element per arg); join later if a shell
+/// string is needed (see `shell_quote_args`).
 fn build_wallet_args(
     agent_id: &str,
     agent_ip: &str,
@@ -19,7 +22,7 @@ fn build_wallet_args(
     wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
     shared_dir: &str,
-) -> String {
+) -> Vec<String> {
     let mut merged_wallet_options = merge_options(wallet_defaults, wallet_options);
     translate_wallet_log_level(&mut merged_wallet_options);
 
@@ -49,7 +52,7 @@ fn build_wallet_args(
         args.extend(custom.iter().cloned());
     }
 
-    args.join(" ")
+    args
 }
 
 /// Add a wallet process connecting to a local daemon on the same host.
@@ -75,7 +78,15 @@ pub fn add_wallet_process(
         environment, custom_args, wallet_defaults, wallet_options, shared_dir,
     );
 
-    let wallet_cmd = format!("{} {}", wallet_binary_path, wallet_args);
+    // Shell-quoted command string for the WALLET_RPC_CMD env var consumed
+    // by `restart_wallet_rpc()` in agents/base_agent.py (which runs it via
+    // `subprocess.Popen(..., shell=True)`). The Shadow process itself is
+    // launched directly (no shell), using ProcessArgs::List(wallet_args).
+    let wallet_cmd = format!(
+        "{} {}",
+        shell_quote_args(&[wallet_binary_path.to_string()]),
+        shell_quote_args(&wallet_args),
+    );
 
     let mut wallet_env = environment.clone();
     if let Some(env) = custom_env {
@@ -85,8 +96,8 @@ pub fn add_wallet_process(
     }
 
     processes.push(ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!("-c '{}'", wallet_cmd),
+        path: wallet_binary_path.to_string(),
+        args: ProcessArgs::List(wallet_args),
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,
@@ -126,7 +137,11 @@ pub fn add_remote_wallet_process(
         environment, custom_args, wallet_defaults, wallet_options, shared_dir,
     );
 
-    let wallet_cmd = format!("{} {}", wallet_binary_path, wallet_args);
+    let wallet_cmd = format!(
+        "{} {}",
+        shell_quote_args(&[wallet_binary_path.to_string()]),
+        shell_quote_args(&wallet_args),
+    );
 
     let mut wallet_env = environment.clone();
     if let Some(env) = custom_env {
@@ -136,8 +151,8 @@ pub fn add_remote_wallet_process(
     }
 
     processes.push(ShadowProcess {
-        path: "/bin/bash".to_string(),
-        args: format!("-c '{}'", wallet_cmd),
+        path: wallet_binary_path.to_string(),
+        args: ProcessArgs::List(wallet_args),
         environment: wallet_env,
         start_time: wallet_start_time.to_string(),
         shutdown_time: None,

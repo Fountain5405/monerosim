@@ -318,6 +318,51 @@ impl serde::Serialize for ExpectedFinalState {
     }
 }
 
+/// Process arguments for a Shadow process.
+///
+/// Mirrors Shadow's own `ProcessArgs` enum: arguments can be either a
+/// single shell-style string (which Shadow tokenizes internally) or a
+/// list of pre-tokenized strings (passed straight to execve, no parsing).
+///
+/// Prefer `List` for binaries we launch directly — it sidesteps any
+/// disagreement between bash/Shadow tokenizers on quoting and globbing.
+/// Use `Str` for the wrapper-script case where the single arg is just
+/// the script path.
+#[derive(Debug, Clone)]
+pub enum ProcessArgs {
+    /// Single string; Shadow's parser tokenizes it into argv.
+    Str(String),
+    /// Pre-tokenized argv; passed straight to execve.
+    List(Vec<String>),
+}
+
+impl Default for ProcessArgs {
+    fn default() -> Self {
+        ProcessArgs::Str(String::new())
+    }
+}
+
+impl serde::Serialize for ProcessArgs {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            ProcessArgs::Str(s) => serializer.serialize_str(s),
+            ProcessArgs::List(v) => v.serialize(serializer),
+        }
+    }
+}
+
+impl From<String> for ProcessArgs {
+    fn from(s: String) -> Self { ProcessArgs::Str(s) }
+}
+
+impl From<&str> for ProcessArgs {
+    fn from(s: &str) -> Self { ProcessArgs::Str(s.to_string()) }
+}
+
+impl From<Vec<String>> for ProcessArgs {
+    fn from(v: Vec<String>) -> Self { ProcessArgs::List(v) }
+}
+
 /// Shadow process definition.
 ///
 /// Represents a single process to be executed within a Shadow host.
@@ -326,7 +371,7 @@ pub struct ShadowProcess {
     /// Path to the executable
     pub path: String,
     /// Command-line arguments
-    pub args: String,
+    pub args: ProcessArgs,
     /// Environment variables for the process
     pub environment: BTreeMap<String, String>,
     /// Start time for the process (e.g., "0s", "10s", "1m")

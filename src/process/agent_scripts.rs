@@ -83,11 +83,13 @@ pub fn add_user_agent_process(
     // Remove stop-time from agent args since agents handle their own lifecycle
     agent_args.retain(|arg| !arg.starts_with("--stop-time"));
 
-    // Simplified command without nc dependency - just sleep and retry
+    // `exec` so bash is replaced by python3 — Shadow's SIGTERM at shutdown
+    // then goes directly to the agent (which has its own SIGTERM handler in
+    // base_agent.py) instead of being absorbed by an idle bash parent.
     let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
-        format!("python3 -m {} {}", script, agent_args.join(" "))
+        format!("exec python3 -m {} {}", script, agent_args.join(" "))
     } else {
-        format!("python3 {} {}", script, agent_args.join(" "))
+        format!("exec python3 {} {}", script, agent_args.join(" "))
     };
 
     // Resolve HOME for fully-qualified paths (no shell expansion needed)
@@ -99,7 +101,11 @@ pub fn add_user_agent_process(
     // Python agents handle their own RPC readiness retries via
     // wait_until_ready() with exponential backoff in base_agent.py.
     let wallet_export = match wallet_rpc_cmd {
-        Some(cmd) => format!("export WALLET_RPC_CMD='{}'\n", cmd),
+        // Outer double-quotes make the assignment a single word; the inner
+        // single-quoted segments produced by shell_quote_args are then
+        // literal (no glob/word-split). Safe because our args never
+        // contain $, ", \, or backtick.
+        Some(cmd) => format!("export WALLET_RPC_CMD=\"{}\"\n", cmd),
         None => String::new(),
     };
 
@@ -189,11 +195,11 @@ pub fn create_mining_agent_process(
         }
     }
 
-    // Create Python command - handle module path format
+    // `exec` so bash is replaced by python3 (see add_user_agent_process).
     let python_cmd = if mining_script.contains('.') && !mining_script.contains('/') && !mining_script.contains('\\') {
-        format!("python3 -m {} {}", mining_script, args.join(" "))
+        format!("exec python3 -m {} {}", mining_script, args.join(" "))
     } else {
-        format!("python3 {} {}", mining_script, args.join(" "))
+        format!("exec python3 {} {}", mining_script, args.join(" "))
     };
 
     // Resolve HOME for fully-qualified paths (no shell expansion needed)
@@ -202,7 +208,11 @@ pub fn create_mining_agent_process(
 
     // Create wrapper script with fully-resolved paths.
     let wallet_export = match wallet_rpc_cmd {
-        Some(cmd) => format!("export WALLET_RPC_CMD='{}'\n", cmd),
+        // Outer double-quotes make the assignment a single word; the inner
+        // single-quoted segments produced by shell_quote_args are then
+        // literal (no glob/word-split). Safe because our args never
+        // contain $, ", \, or backtick.
+        Some(cmd) => format!("export WALLET_RPC_CMD=\"{}\"\n", cmd),
         None => String::new(),
     };
 

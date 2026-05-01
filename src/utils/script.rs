@@ -42,7 +42,7 @@ pub fn write_wrapper_script(
 
     Ok(ShadowProcess {
         path: "/bin/bash".to_string(),
-        args: script_path.to_string_lossy().to_string(),
+        args: crate::shadow::ProcessArgs::List(vec![script_path.to_string_lossy().to_string()]),
         environment: environment.clone(),
         start_time,
         shutdown_time,

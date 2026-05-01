@@ -64,11 +64,11 @@ pub fn process_pure_script_agents(
         let script = pure_script_config.script.clone()
             .unwrap_or_else(|| "agents.pure_script".to_string());
 
-        // Simplified command for pure script agents
+        // `exec` so bash is replaced by python3 — see add_user_agent_process.
         let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
-            format!("python3 -m {} {}", script, script_args.join(" "))
+            format!("exec python3 -m {} {}", script, script_args.join(" "))
         } else {
-            format!("python3 {} {}", script, script_args.join(" "))
+            format!("exec python3 {} {}", script, script_args.join(" "))
         };
 
         // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found

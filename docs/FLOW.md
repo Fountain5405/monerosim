@@ -37,19 +37,25 @@ hosts:
     network_node_id: 0
     ip_addr: "10.0.0.10"
     processes:
-      # 1. monerod daemon (via bash exec wrapper)
-      - path: "/bin/bash"
-        args: "-c 'exec /home/user/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-001 --regtest ...'"
+      # 1. monerod daemon (direct launch, args as YAML list)
+      - path: "/home/user/.monerosim/bin/monerod"
+        args:
+          - "--data-dir=/tmp/monero-miner-001"
+          - "--regtest"
+          - "..."
         start_time: "0s"
 
-      # 2. monero-wallet-rpc
-      - path: "/bin/bash"
-        args: "-c '/home/user/.monerosim/bin/monero-wallet-rpc --daemon-address=http://10.0.0.10:18081 ...'"
+      # 2. monero-wallet-rpc (direct launch)
+      - path: "/home/user/.monerosim/bin/monero-wallet-rpc"
+        args:
+          - "--daemon-address=http://10.0.0.10:18081"
+          - "..."
         start_time: "2s"
 
       # 3. Execute pre-written agent wrapper script
       - path: "/bin/bash"
-        args: "shadow_output/scripts/agent_miner-001_wrapper.sh"
+        args:
+          - "shadow_output/scripts/agent_miner-001_wrapper.sh"
         start_time: "5s"
 ```
 
@@ -86,29 +92,11 @@ This centralized cleanup replaces the per-agent bash cleanup processes that prev
 
 ## Why Bash Is Still Used
 
-Bash usage has been minimized but not fully eliminated. Here's what remains and why.
-
-### Daemon exec pattern
-
-```bash
-bash -c 'exec /home/user/.monerosim/bin/monerod --data-dir=/tmp/monero-miner-001 ...'
-```
-
-The `exec` replaces the bash process with monerod, ensuring SIGTERM from Shadow goes directly to monerod rather than to a parent bash process. Without `exec`, bash would receive SIGTERM and monerod would be orphaned.
-
-If Shadow sends SIGTERM correctly to directly-launched binaries (without bash), this could be eliminated entirely. This hasn't been verified with shadowformonero yet.
-
-### Wallet-rpc launch
-
-```bash
-bash -c '/home/user/.monerosim/bin/monero-wallet-rpc --daemon-address=...'
-```
-
-Wallet-rpc is launched through bash but without `exec`. This is a candidate for direct binary launch once the SIGTERM behavior is verified.
+Bash has been removed from the daemon and wallet launch paths entirely — Shadow now `execve`s those binaries directly with `args` as a YAML list, so SIGTERM at `shutdown_time` goes straight to the binary. The only remaining bash usage is for the Python agent wrapper scripts.
 
 ### Python agent wrapper scripts
 
-Shadow's `ShadowProcess` has no `working_directory` field, so `cd` requires bash. The wrapper scripts set the working directory and environment before launching the Python agent. These scripts are pre-written at generation time (in `shadow_output/scripts/`) and executed as a single Shadow process.
+Shadow's `ShadowProcess` has no `working_directory` field, so `cd` requires bash. The wrapper scripts set the working directory and environment, then `exec python3 -m agents.<module>` so bash is replaced by the Python interpreter — Shadow's SIGTERM then reaches the agent's own handler in `base_agent.py` instead of being absorbed by an idle bash parent. These scripts are pre-written at generation time (in `shadow_output/scripts/`) and executed as a single Shadow process.
 
 Python agents handle their own RPC readiness retries via `wait_until_ready()` with exponential backoff in `base_agent.py`, so no bash retry loop is needed in the wrapper.
 
@@ -299,7 +287,7 @@ We deliberately do **not** override `--disable-rpc-ban` or `--allow-local-ip`. m
 
 ## What Happens at Simulation End
 
-When the simulation reaches `stop_time`, Shadow sends SIGTERM to all processes. Because of the `exec` pattern, SIGTERM goes directly to monerod (not to a wrapping bash process). Wallet-rpc and Python agents receive SIGTERM directly from Shadow.
+When the simulation reaches `stop_time`, Shadow sends SIGTERM to all processes. Because daemon and wallet are launched directly (no bash wrapper), and the wrapper scripts `exec` into Python, SIGTERM reaches the target binary in every case.
 
 Python agents register `SIGTERM` handlers in `base_agent.py` for graceful shutdown (flushing stats, closing RPC connections). Monerod handles SIGTERM natively.
 

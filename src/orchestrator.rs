@@ -331,7 +331,8 @@ pub fn generate_agent_shadow_config(
             dns_agent_id, dns_ip, shared_dir_path.to_string_lossy()
         );
 
-        let dns_python_cmd = format!("python3 -m {} {}", dns_script, dns_args);
+        // `exec` so bash is replaced by python3 — see add_user_agent_process.
+        let dns_python_cmd = format!("exec python3 -m {} {}", dns_script, dns_args);
 
         // Create wrapper script for DNS server with fully-resolved paths
         let dns_wrapper_script = format!(

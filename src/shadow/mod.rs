@@ -21,5 +21,6 @@ pub use types::{
     ShadowNetworkEdge,
     ShadowHost,
     ShadowProcess,
+    ProcessArgs,
     ExpectedFinalState,
 };
