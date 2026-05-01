@@ -407,18 +407,269 @@ run_prune_archives() {
     pause
 }
 
+# ---------- rust analysis pipeline (tx-analyzer) ----------
+# tx-analyzer is the Rust analysis CLI built alongside monerosim. It reads
+# bitmonero.log files + Shadow metadata and produces JSON/text reports on
+# tx propagation, spy-node vulnerability, resilience, dandelion, bandwidth,
+# upgrade impact, etc. Source: src/bin/tx_analyzer.rs + src/analysis/.
+run_rust_analysis() {
+    screen "Rust analysis pipeline (tx-analyzer)"
+
+    local bin="./target/release/tx-analyzer"
+    if [[ ! -x "$bin" ]]; then
+        err "tx-analyzer binary not found at $bin."
+        say "Build it with: ${DIM}cargo build --release${NC}"
+        pause
+        return
+    fi
+
+    say "Reads daemon logs + Shadow metadata and writes reports to an"
+    say "${DIM}analysis_output/${NC} directory inside the chosen run."
+    say ""
+
+    # ----- pick a target run -----
+    local -a targets=()
+    local -a labels=()
+
+    if [[ -d shadow.data ]] && [[ -d shadow.data/hosts ]]; then
+        targets+=("LIVE")
+        labels+=("(live) shadow.data/  — most recent run still in the working dir")
+    fi
+
+    if [[ -d archived_runs ]]; then
+        while IFS= read -r -d '' path; do
+            path="${path%/}"
+            targets+=("$path")
+            labels+=("${path##*/}")
+        done < <(find archived_runs -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null \
+                   | sort -rz)
+    fi
+
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        warn "No shadow.data/ in cwd and no entries in archived_runs/."
+        say "Run a simulation first, then come back."
+        pause
+        return
+    fi
+
+    say "${BOLD}Pick a run to analyze${NC} (newest first):"
+    say ""
+    local i=1
+    for label in "${labels[@]}"; do
+        printf "  %2d) %s\n" "$i" "$label"
+        i=$((i + 1))
+    done
+    say ""
+    say "  ${BOLD}M)${NC} Back"
+    say ""
+    read -r -p "Selection: " sel
+    case "${sel,,}" in
+        m|"") return ;;
+    esac
+    if ! [[ "$sel" =~ ^[0-9]+$ ]] || (( sel < 1 || sel > ${#targets[@]} )); then
+        err "Invalid selection."
+        pause
+        return
+    fi
+
+    local target="${targets[$((sel - 1))]}"
+    local data_dir log_dir out_dir
+    if [[ "$target" == "LIVE" ]]; then
+        data_dir="shadow.data"
+        # Live runs write daemon logs to /tmp/monero-<host>/. tx-analyzer
+        # defaults to /tmp when --log-dir is omitted, so leave it unset.
+        log_dir=""
+        out_dir="analysis_output"
+    else
+        data_dir="$target/shadow.data"
+        log_dir="$target/daemon_logs"
+        out_dir="$target/analysis_output"
+        if [[ ! -d "$data_dir" ]] || [[ ! -d "$log_dir" ]]; then
+            err "Archive missing shadow.data/ or daemon_logs/ — was it pruned?"
+            pause
+            return
+        fi
+    fi
+
+    # ----- pick which analysis to run -----
+    screen "Rust analysis pipeline — choose analysis"
+    say "Run on: ${DIM}${target##*/}${NC}"
+    say ""
+    say "  ${BOLD}1)${NC} ${BOLD}full${NC}             — spy-node + propagation + resilience (default)"
+    say "  ${BOLD}2)${NC} summary          — quick stats only"
+    say "  ${BOLD}3)${NC} propagation      — tx propagation timing"
+    say "  ${BOLD}4)${NC} spy-node         — spy-node vulnerability"
+    say "  ${BOLD}5)${NC} resilience       — network resilience"
+    say "  ${BOLD}6)${NC} dandelion        — Dandelion++ stem-path privacy"
+    say "  ${BOLD}7)${NC} network-graph    — P2P topology / connection patterns"
+    say "  ${BOLD}8)${NC} bandwidth        — per-host bandwidth and data usage"
+    say "  ${BOLD}9)${NC} upgrade-analysis — pre/post-upgrade metric comparison"
+    say " ${BOLD}10)${NC} tx-relay-v2      — TX relay v2 (PR #9933) behavior"
+    say ""
+    say "  ${BOLD}M)${NC} Back"
+    say ""
+    read -r -p "Choose [1-10/M, default 1]: " sub
+    local cmd
+    case "${sub,,}" in
+        ""|1)  cmd="full" ;;
+        2)     cmd="summary" ;;
+        3)     cmd="propagation" ;;
+        4)     cmd="spy-node" ;;
+        5)     cmd="resilience" ;;
+        6)     cmd="dandelion" ;;
+        7)     cmd="network-graph" ;;
+        8)     cmd="bandwidth" ;;
+        9)     cmd="upgrade-analysis" ;;
+        10)    cmd="tx-relay-v2" ;;
+        m)     return ;;
+        *)     err "Invalid selection."; pause; return ;;
+    esac
+
+    # ----- run it -----
+    local -a args=(--data-dir "$data_dir" --output "$out_dir")
+    [[ -n "$log_dir" ]] && args+=(--log-dir "$log_dir")
+    args+=("$cmd")
+
+    screen "Rust analysis pipeline — running"
+    say "Command:"
+    say "  ${DIM}$bin ${args[*]}${NC}"
+    say ""
+    if "$bin" "${args[@]}"; then
+        say ""
+        ok "Analysis complete."
+        say "Output: ${BOLD}$out_dir/${NC}"
+    else
+        local rc=$?
+        say ""
+        err "tx-analyzer exited with code $rc."
+    fi
+    pause
+}
+
+# ---------- re-run setup.sh ----------
+# Wraps ./setup.sh — the first-time / full-reinstall installer. Heavy; checks
+# apt deps, builds Shadow + Monero + monerosim from source, sets up venv.
+# is_installed() already auto-prompts setup at startup if anything's missing,
+# so this entry is for users who want to redo it (e.g. after a clean OS image,
+# corrupted venv, or to install --full-monero patches).
+run_setup_again() {
+    screen "Re-run setup.sh (full install)"
+    say "${BOLD}When to use this${NC}"
+    say "  • First time on a new machine and the wizard didn't auto-prompt"
+    say "  • Your install looks broken (missing binaries, busted venv)"
+    say "  • You want to recompile Monero from scratch with patches applied"
+    say ""
+    say "${BOLD}What it does${NC}"
+    say "  • Checks system packages (apt), Rust ≥1.82, Python ≥3.10"
+    say "  • Builds Shadow simulator from sibling_repos/shadowformonero"
+    say "  • Builds Monero daemon + wallet from sibling_repos/monero"
+    say "  • Builds the Rust monerosim binary"
+    say "  • Recreates the Python venv"
+    say "  • Installs everything to ${DIM}~/.monerosim/${NC}"
+    say ""
+    warn "Takes 30-60 minutes on a typical laptop. Don't close the terminal."
+    say ""
+    say "${BOLD}Pick a mode${NC}"
+    say "  ${BOLD}1)${NC} Normal     — skips Monero rebuild if binaries already exist"
+    say "  ${BOLD}2)${NC} Full       — forces Monero recompile (${DIM}--full-monero${NC})"
+    say "  ${BOLD}3)${NC} Clean      — wipes ${DIM}~/.monerosim/${NC} and starts over (${DIM}--clean${NC})"
+    say "  ${BOLD}M)${NC} Back"
+    say ""
+    read -r -p "Choose [1/2/3/M]: " mode
+    local -a flags=()
+    case "${mode^^}" in
+        ""|1) ;;
+        2)    flags+=(--full-monero) ;;
+        3)
+            warn "${BOLD}Clean mode wipes ~/.monerosim/${NC} — your installed binaries will be deleted."
+            read -r -p "Are you sure? [y/N] " ans
+            [[ "$ans" =~ ^[Yy] ]] || { info "Cancelled."; pause; return; }
+            flags+=(--clean)
+            ;;
+        M)    return ;;
+        *)    err "Invalid choice."; pause; return ;;
+    esac
+    say ""
+    info "Launching: ${DIM}./setup.sh ${flags[*]}${NC}"
+    say ""
+    if ./setup.sh "${flags[@]}"; then
+        say ""
+        ok "Setup finished."
+    else
+        local rc=$?
+        say ""
+        err "setup.sh exited with code $rc. Scroll up for the failing step."
+    fi
+    pause
+}
+
+# ---------- update / rebuild ----------
+# Wraps ./update.sh — light maintenance: git pull on monerosim (and optionally
+# the sister repos shadowformonero + monero), with an optional rebuild step.
+# Doesn't touch apt deps or recreate the venv. Use this for ongoing upkeep.
+run_update() {
+    screen "Update repos & rebuild"
+    say "${BOLD}When to use this${NC}"
+    say "  • You've been using monerosim a while and want the latest fixes"
+    say "  • A coworker pushed changes you want to pull in"
+    say "  • You changed the Rust source and need to rebuild monerosim"
+    say ""
+    say "${BOLD}What it does${NC}"
+    say "  • Runs ${DIM}git pull${NC} on monerosim (and on sister repos if you pick that)"
+    say "  • Optionally rebuilds binaries that changed (Rust, Shadow, Monero)"
+    say "  • Skips dep checks and venv setup — those are setup.sh's job"
+    say ""
+    say "${DIM}If git finds local uncommitted changes it will offer to stash them.${NC}"
+    say ""
+    say "${BOLD}Pick a mode${NC}"
+    say "  ${BOLD}1)${NC} Quick       — pull monerosim only, no rebuild   ${DIM}(seconds)${NC}"
+    say "  ${BOLD}2)${NC} Quick + build — pull monerosim, rebuild Rust binary  ${DIM}(~1 min)${NC}"
+    say "  ${BOLD}3)${NC} Pull all    — pull monerosim + Shadow + Monero, no rebuild   ${DIM}(seconds)${NC}"
+    say "  ${BOLD}4)${NC} Full update — pull all + rebuild every changed binary  ${DIM}(10-30+ min)${NC}"
+    say "  ${BOLD}M)${NC} Back"
+    say ""
+    read -r -p "Choose [1/2/3/4/M]: " mode
+    local -a flags=()
+    case "${mode^^}" in
+        ""|1) ;;
+        2)    flags+=(--rebuild) ;;
+        3)    flags+=(--all) ;;
+        4)    flags+=(--all --rebuild) ;;
+        M)    return ;;
+        *)    err "Invalid choice."; pause; return ;;
+    esac
+    say ""
+    info "Launching: ${DIM}./update.sh ${flags[*]}${NC}"
+    say ""
+    if ./update.sh "${flags[@]}"; then
+        say ""
+        ok "Update finished."
+    else
+        local rc=$?
+        say ""
+        err "update.sh exited with code $rc. Scroll up for details."
+    fi
+    pause
+}
+
 # ---------- advanced menu ----------
 advanced_menu() {
     while true; do
         screen "Advanced tools"
+        say "  ${BOLD}R)${NC} Run Rust analysis pipeline on a sim run (tx-analyzer)"
         say "  ${BOLD}P)${NC} Prune archived runs (free disk space)"
+        say "  ${BOLD}U)${NC} Update repos & rebuild  ${DIM}(git pull + optional rebuild)${NC}"
+        say "  ${BOLD}S)${NC} Re-run setup.sh         ${DIM}(full reinstall, 30-60 min)${NC}"
         say "  ${BOLD}M)${NC} Back to main menu"
         say ""
-        read -r -p "Choose [P/M]: " choice
+        read -r -p "Choose [R/P/U/S/M]: " choice
         case "${choice^^}" in
+            R)    run_rust_analysis ;;
             P)    run_prune_archives ;;
+            U)    run_update ;;
+            S)    run_setup_again ;;
             M|"") return ;;
-            *)    warn "Please choose P or M."; sleep 1 ;;
+            *)    warn "Please choose R, P, U, S, or M."; sleep 1 ;;
         esac
     done
 }

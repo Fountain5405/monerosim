@@ -1,0 +1,80 @@
+# =============================================================
+# COMPACT SCENARIO FILE - REQUIRES EXPANSION
+# =============================================================
+# This file uses compact syntax (e.g., {001..010}) that must be
+# expanded before use with monerosim.
+#
+# To expand this file into a full config:
+#   python -m scripts.scenario_parser 20260430_large_upgrade.scenario.yaml -o config.yaml
+#
+# Or use the AI config tool to re-import and expand:
+#   python -m scripts.ai_config
+# =============================================================
+
+general:
+  stop_time: 72h                       # 72-hour simulation duration
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+# === AGENTS ===
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]    # Total = 100 (required for initial miners)
+    can_receive_distributions: true
+
+  # --- 1000 Users: Upgrade binaries at 34h mark ---
+  user-{001..1000}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 0s
+    start_time_stagger: auto         # Batched spawning for 1000+ users
+    transaction_interval: 20m
+    activity_start_time: auto
+    can_receive_distributions: true
+    daemon_0: monerod
+    daemon_0_start: auto
+    daemon_0_stop: 122400s           # Stop old binary at 34h mark (34*3600=122400s)
+    daemon_0_stop_stagger: 30s       # 30s stagger between user upgrades
+    daemon_1: monerod-v2
+    daemon_1_start: auto
+    wallet_0: monero-wallet-rpc
+    wallet_0_start: auto
+    wallet_0_stop: 122400s
+    wallet_0_stop_stagger: 30s
+    wallet_1: monero-wallet-rpc-v2
+    wallet_1_start: auto
+
+  # --- Support: Distributes mined funds to users ---
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+    transaction_frequency: 30
+
+  # --- Support: Monitors simulation health ---
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

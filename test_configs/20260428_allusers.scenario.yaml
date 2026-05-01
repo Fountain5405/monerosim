@@ -1,0 +1,71 @@
+general:
+  stop_time: 48h                       # Extended duration for large-scale simulation
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 0
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+# Optional perf-tuning knobs. All commented out — current values are the
+# accuracy-first defaults. Uncomment individually to trade fidelity for
+# wall-time speedup. For a 1k-host run the biggest wins come from:
+#
+#   1. Lower monerod log volume        -> general.daemon_defaults.log-level: 0
+#                                         (was 1; can cut stdout I/O 10-100x)
+#   2. Skip non-blocking syscall cost  -> performance.model_unblocked_syscall_latency: false
+#   3. Quieter Shadow                  -> general.shadow_log_level: error
+#   4. Faster monerod per host         -> general.process_threads: 4   (breaks determinism)
+#   5. Longer Shadow runahead          -> general.runahead: 500ms      (already auto-tuned)
+#
+# Plus one system-side knob that doesn't live in YAML:
+#   6. Mount /tmp on tmpfs             -> sudo mount -t tmpfs -o size=32G tmpfs /tmp
+#                                         (LMDB writes hit RAM, not disk)
+#
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+# === AGENTS ===
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]    # Total = 100 (required for initial miners)
+    can_receive_distributions: true
+
+  # --- 200 Users: Send transactions periodically ---
+  user-{001..1000}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s                 # Start after 20 minutes
+    start_time_stagger: auto          # Batched spawning for large groups
+    transaction_interval: 60          # Send a transaction every 60 seconds
+    activity_start_time: auto         # Wait for bootstrap before transacting
+    can_receive_distributions: true
+
+  # --- Support: Distributes mined funds to users ---
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto                   # Wait for bootstrap to complete
+    transaction_frequency: 30         # Distribute every 30 seconds
+
+  # --- Support: Monitors simulation health ---
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300                # Check every 5 minutes
