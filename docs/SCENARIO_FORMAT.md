@@ -175,7 +175,8 @@ Agent 001 gets 30, 002 gets 25, etc. No `_stagger` suffix needed for lists.
 | `activity_start_time` | Staggered per-user times starting at `md_start + 1h` |
 | `wait_time` | `md_start_time` (for miner-distributor) |
 | `daemon_0_start` | Agent's `start_time` |
-| `daemon_1_start` | `daemon_0_stop + 30s` |
+| `daemon_1_start` | `daemon_0_stop + 5m` |
+| `wallet_1_start` | `wallet_0_stop + 5m` |
 
 ## Daemon Phases (Upgrade Scenarios)
 
@@ -188,7 +189,7 @@ miner-{001..005}:
   daemon_0_stop: 25200s          # When to kill v1
   daemon_0_stop_stagger: 30s     # Rolling upgrade
   daemon_1: monerod-v2           # Phase 1 binary
-  daemon_1_start: auto           # = daemon_0_stop + 30s
+  daemon_1_start: auto           # = daemon_0_stop + 5m
   wallet: monero-wallet-rpc
   script: agents.autonomous_miner
   hashrate: [30, 25, 20, 15, 10]
@@ -374,7 +375,7 @@ python3 scripts/generate_config.py --from scenario.yaml -o expanded.yaml
 | Max batch size | 200 | Cap per batch |
 | Intra-batch stagger | 5s | Between agents within a batch |
 | Upgrade stagger | 30s | Default daemon_0_stop stagger |
-| Daemon restart gap | 30s | Min gap between daemon phases |
+| Daemon restart gap | 5m (300s) | Default gap between phases (daemon and wallet) when `phase_1_start: auto`. Min enforced by validator is 30s. |
 | Activity batch size | 10 | Users per activity batch |
 | Activity batch interval | 5m (300s) | Between activity batches |
 | Activity batch jitter | 0.30 | +/- 30% randomization |

@@ -77,8 +77,16 @@ DEFAULT_GROWTH_FACTOR = 2.0
 DEFAULT_MAX_BATCH_SIZE = 200
 DEFAULT_INTRA_BATCH_STAGGER_S = 5
 DEFAULT_UPGRADE_STAGGER_S = 30
-DEFAULT_DAEMON_RESTART_GAP_S = 30
-DEFAULT_WALLET_RESTART_GAP_S = 30
+# Within-node gap between an old binary's stop time and the next phase's
+# start. Defaulted to 5 min: monero-wallet-rpc occasionally hangs in a
+# CPU-bound section (ring signature construction during a transfer)
+# under cooperative Shadow scheduling, and a tight gap risks the v1
+# wallet still holding port 18082 when v2 tries to bind. 5 min gives
+# Shadow enough wall time to deliver SIGTERM, then SIGKILL if needed,
+# before the next phase fires. (See run 20260501_165857_upgrade_smoke
+# for an instance of the hang.)
+DEFAULT_DAEMON_RESTART_GAP_S = 300
+DEFAULT_WALLET_RESTART_GAP_S = 300
 
 
 AGENT_TYPE_DEFAULTS = {

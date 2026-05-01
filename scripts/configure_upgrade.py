@@ -24,6 +24,7 @@ from generate_config import (
     FIXED_MINERS,
     DEFAULT_GML_PATH,
     DEFAULT_INITIAL_DELAY_S,
+    DEFAULT_DAEMON_RESTART_GAP_S,
 )
 
 
@@ -155,7 +156,7 @@ def calculate_and_display_timeline(
 
     # Upgrade window duration
     upgrade_window_s = num_agents * upgrade_stagger_s
-    upgrade_complete_s = upgrade_start_s + upgrade_window_s + 30  # +30s for last restart gap
+    upgrade_complete_s = upgrade_start_s + upgrade_window_s + DEFAULT_DAEMON_RESTART_GAP_S
 
     # Total simulation time
     total_s = upgrade_complete_s + post_upgrade_s

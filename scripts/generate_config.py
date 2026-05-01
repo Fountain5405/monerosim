@@ -111,7 +111,7 @@ DEFAULT_INTRA_BATCH_STAGGER_S = 5  # 5 seconds between users in same batch
 DEFAULT_STEADY_STATE_DURATION_S = 7200  # 2 hours of observation before upgrade
 DEFAULT_POST_UPGRADE_DURATION_S = 7200  # 2 hours of observation after upgrade
 DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
-DEFAULT_DAEMON_RESTART_GAP_S = 30  # Gap between stopping old daemon and starting new one
+DEFAULT_DAEMON_RESTART_GAP_S = 300  # Gap between stopping old daemon and starting new one — see scenario_parser.py for rationale
 
 # Activity stagger: see docs/shadow-tx-stagger.md
 # stagger = transaction_interval / num_users

@@ -664,7 +664,7 @@ network:
 agents:
   # --- 5 Miners: Upgrade daemon AND wallet from v1 to v2 ---
   # daemon_0 / wallet_0 = first phase, daemon_1 / wallet_1 = second phase
-  # Nodes stop phase 0, wait 30s gap, then start phase 1
+  # Nodes stop phase 0, wait 5min gap (default), then start phase 1
   # daemon_* and wallet_* stagger independently (separate offset trackers),
   # so you can upgrade them at the same wall-clock time or stagger them.
   miner-{001..005}:
