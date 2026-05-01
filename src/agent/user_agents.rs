@@ -578,15 +578,13 @@ pub fn process_user_agents(
                     //
                     // Non-final wallet phases use SIGKILL rather than the default
                     // SIGTERM. monero-wallet-rpc can deadlock during normal
-                    // operation (background refresh vs. in-flight transfer), and
-                    // a deadlocked wallet ignores SIGTERM indefinitely — it then
-                    // holds port 18082 past shutdown_time, which blocks the
-                    // next-phase binary from binding. SIGKILL is safe in the
-                    // upgrade context: the wallet's .keys file is written
-                    // eagerly, and the cache is rebuildable from the daemon
-                    // chain on the next phase's first refresh. (See run
-                    // 20260501_174105_upgrade_smoke for an instance of the
-                    // SIGTERM-ignored deadlock.)
+                    // operation, and a deadlocked wallet ignores SIGTERM
+                    // indefinitely — holding port 18082 past shutdown_time and
+                    // blocking the next-phase binary from binding. SIGKILL is
+                    // safe in the upgrade context (chain rebuilds wallet state
+                    // on the next phase's first refresh). Full rationale,
+                    // tradeoffs, and an escalation-wrapper alternative are in
+                    // docs/UPGRADE_WALLET_SIGKILL.md.
                     let (shutdown_time, shutdown_signal, expected_final_state) =
                         if *phase_num < (phase_count as u32 - 1) {
                             (

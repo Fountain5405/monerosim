@@ -42,7 +42,9 @@ fn build_wallet_args(
     // With limited threads (e.g., 2), wallet-rpc's background refresh can
     // deadlock against an in-flight transfer when both need the wallet lock
     // and compete for the same threads. Letting wallet-rpc use its default
-    // (all cores) avoids this.
+    // (all cores) reduces the frequency but does not fully eliminate it
+    // under Shadow's cooperative scheduling — non-final wallet phases use
+    // shutdown_signal: SIGKILL to recover. See docs/UPGRADE_WALLET_SIGKILL.md.
     // process_threads is still applied to monerod (see daemon.rs).
 
     args.extend(options_to_args(&merged_wallet_options));
