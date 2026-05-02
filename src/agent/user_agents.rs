@@ -20,8 +20,6 @@ use std::path::Path;
 /// Named struct replacing anonymous tuples for agent information.
 struct AgentEntry {
     index: usize,
-    #[allow(dead_code)] // Used during categorization, kept for debugging clarity
-    is_miner: bool,
     is_seed_node: bool,
     id: String,
     ip: String,
@@ -127,7 +125,6 @@ pub fn process_user_agents(
 
         let entry = AgentEntry {
             index: i,
-            is_miner,
             is_seed_node,
             id: agent_id.to_string(),
             ip: agent_ip.clone(),
@@ -143,7 +140,7 @@ pub fn process_user_agents(
         }
 
         agent_info.push(AgentEntry {
-            index: i, is_miner, is_seed_node,
+            index: i, is_seed_node,
             id: agent_id.to_string(), ip: agent_ip, port: agent_port,
         });
     }
