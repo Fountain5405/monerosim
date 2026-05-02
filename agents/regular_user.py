@@ -325,31 +325,15 @@ class RegularUserAgent(BaseAgent):
             err_str = str(e)
             wallet_not_loaded = ("-13" in err_str) or ("No wallet file" in err_str)
 
-            # Recovery: reset HTTP session, re-open wallet if needed,
-            # and reconnect to the daemon.
+            # Recovery: reset HTTP session, re-open wallet, reconnect daemon, refresh.
             if wallet_not_loaded or self._consecutive_errors >= 2:
-                try:
-                    self.logger.warning(
-                        f"Persistent errors ({self._consecutive_errors}), "
-                        "resetting wallet connection"
-                        + (" (wallet not loaded — likely phase upgrade)" if wallet_not_loaded else "")
-                    )
-                    self.wallet_rpc.reset_session()
-
-                    if wallet_not_loaded:
-                        wallet_name = f"{self.agent_id}_wallet"
-                        self.wallet_rpc.open_wallet(wallet_name, password="")
-                        self.logger.info(f"Re-opened wallet '{wallet_name}' after phase upgrade")
-
-                    if self.daemon_rpc_port:
-                        daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
-                        self.wallet_rpc.set_daemon(daemon_address, trusted=True)
-
-                    self.wallet_rpc.refresh()
+                self.logger.warning(
+                    f"Persistent errors ({self._consecutive_errors}), "
+                    "resetting wallet connection"
+                    + (" (wallet not loaded — likely phase upgrade)" if wallet_not_loaded else "")
+                )
+                if self._recover_wallet_connection():
                     self._last_refresh_time = current_time
-                    self.logger.info("Wallet refresh completed - will retry next iteration")
-                except Exception as refresh_err:
-                    self.logger.warning(f"Recovery failed: {refresh_err}")
 
             return 30.0
     

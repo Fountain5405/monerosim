@@ -355,24 +355,38 @@ class BaseAgent(ABC):
             return False
 
         # Step 5: Re-open wallet and reconnect to daemon
-        try:
-            wallet_name = f"{self.agent_id}_wallet"
-            self.wallet_rpc.open_wallet(wallet_name, password="")
-            self.logger.info(f"Re-opened wallet '{wallet_name}'")
-
-            if self.daemon_rpc_port:
-                daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
-                self.wallet_rpc.set_daemon(daemon_address, trusted=True)
-                self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
-
-            self.wallet_rpc.refresh()
-            self.logger.info("Wallet refresh completed after restart")
-        except Exception as e:
-            self.logger.error(f"Failed to restore wallet state after restart: {e}")
+        if not self._recover_wallet_connection(reset_session=False):
             return False
 
         self.logger.info("Wallet-rpc restart completed successfully")
         return True
+
+    def _recover_wallet_connection(self, *, reset_session: bool = True) -> bool:
+        """Re-open this agent's wallet and reconnect it to the daemon.
+
+        Used both after we explicitly restart wallet-rpc (restart_wallet_rpc,
+        where reset_session=False because the new process is fresh) and after
+        Shadow silently restarted it at a phase-upgrade boundary (regular_user
+        recovery path, where reset_session=True clears stale HTTP state). See
+        docs/UPGRADE_WALLET_SIGKILL.md for the upgrade phase context.
+
+        Returns True on success, False if the recovery itself failed.
+        """
+        try:
+            if reset_session:
+                self.wallet_rpc.reset_session()
+            wallet_name = f"{self.agent_id}_wallet"
+            self.wallet_rpc.open_wallet(wallet_name, password="")
+            self.logger.info(f"Re-opened wallet '{wallet_name}'")
+            if self.daemon_rpc_port:
+                daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
+                self.wallet_rpc.set_daemon(daemon_address, trusted=True)
+                self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
+            self.wallet_rpc.refresh()
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to recover wallet connection: {e}")
+            return False
 
     def _find_wallet_rpc_pid(self) -> Optional[int]:
         """Find the PID of the wallet-rpc process for this agent.
