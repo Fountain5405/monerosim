@@ -23,12 +23,7 @@ MONITOR_INTERVAL=30  # seconds between progress refreshes
 MEMORY_SAMPLE_INTERVAL=30
 
 # Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"
 
 # Script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

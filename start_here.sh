@@ -10,13 +10,7 @@
 set -u
 
 # ---------- pretty output ----------
-BOLD='\033[1m'
-DIM='\033[2m'
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"
 
 say()  { printf "%b\n" "$*"; }
 info() { printf "${CYAN}%s${NC}\n" "$*"; }
