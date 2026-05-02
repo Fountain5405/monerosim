@@ -317,17 +317,30 @@ class RegularUserAgent(BaseAgent):
             self._consecutive_errors += 1
             self.logger.error(f"Error in user iteration (consecutive: {self._consecutive_errors}): {e}")
 
-            # Recovery: reset HTTP session and retry.
-            # Note: wallet-rpc process restart (os.kill) does not work inside
-            # Shadow simulations — PIDs are virtualized and the old process
-            # keeps the port. So we rely on session reset + reconnect instead.
-            if self._consecutive_errors >= 2:
+            # Detect "no wallet loaded" — happens after Shadow restarts the
+            # wallet-rpc process at a binary-upgrade phase boundary (see
+            # docs/UPGRADE_WALLET_SIGKILL.md). The new wallet-rpc binary is
+            # listening on the RPC port but has no wallet open, so every call
+            # returns -13 / "No wallet file" until we explicitly re-open.
+            err_str = str(e)
+            wallet_not_loaded = ("-13" in err_str) or ("No wallet file" in err_str)
+
+            # Recovery: reset HTTP session, re-open wallet if needed,
+            # and reconnect to the daemon.
+            if wallet_not_loaded or self._consecutive_errors >= 2:
                 try:
                     self.logger.warning(
                         f"Persistent errors ({self._consecutive_errors}), "
                         "resetting wallet connection"
+                        + (" (wallet not loaded — likely phase upgrade)" if wallet_not_loaded else "")
                     )
                     self.wallet_rpc.reset_session()
+
+                    if wallet_not_loaded:
+                        wallet_name = f"{self.agent_id}_wallet"
+                        self.wallet_rpc.open_wallet(wallet_name, password="")
+                        self.logger.info(f"Re-opened wallet '{wallet_name}' after phase upgrade")
+
                     if self.daemon_rpc_port:
                         daemon_address = f"http://{self.rpc_host}:{self.daemon_rpc_port}"
                         self.wallet_rpc.set_daemon(daemon_address, trusted=True)
