@@ -13,7 +13,7 @@ use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::options::{options_to_args, merge_options, translate_daemon_log_level, translate_wallet_log_level};
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::process::{add_wallet_process, add_remote_wallet_process, add_user_agent_process, create_mining_agent_process};
+use crate::process::{add_wallet_process, DaemonAddress, add_user_agent_process, create_mining_agent_process};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
@@ -631,32 +631,19 @@ pub fn process_user_agents(
                     wallet_path.to_string()
                 };
 
-                if has_local_daemon || has_daemon_phases {
-                    // Full agent: wallet connects to local daemon
+                let daemon = if has_local_daemon || has_daemon_phases {
+                    Some(DaemonAddress::Local { agent_ip: &agent_ip, daemon_rpc_port })
+                } else if has_remote_daemon {
+                    Some(DaemonAddress::Remote(user_agent_config.remote_daemon_address()))
+                } else {
+                    None
+                };
+                if let Some(daemon) = daemon {
                     wallet_rpc_cmd = Some(add_wallet_process(
                         &mut processes,
                         &agent_id,
                         &agent_ip,
-                        daemon_rpc_port,
-                        wallet_rpc_port,
-                        &wallet_binary_path,
-                        environment,
-                        i,
-                        &wallet_start_time,
-                        user_agent_config.wallet_args.as_ref(),
-                        user_agent_config.wallet_env.as_ref(),
-                        wallet_defaults,
-                        user_agent_config.wallet_options.as_ref(),
-                        &shared_dir.to_string_lossy(),
-                    ));
-                } else if has_remote_daemon {
-                    // Wallet-only agent: wallet connects to remote daemon
-                    let remote_addr = user_agent_config.remote_daemon_address();
-                    wallet_rpc_cmd = Some(add_remote_wallet_process(
-                        &mut processes,
-                        &agent_id,
-                        &agent_ip,
-                        remote_addr,
+                        daemon,
                         wallet_rpc_port,
                         &wallet_binary_path,
                         environment,

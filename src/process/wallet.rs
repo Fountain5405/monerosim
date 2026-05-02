@@ -57,12 +57,40 @@ fn build_wallet_args(
     args
 }
 
-/// Add a wallet process connecting to a local daemon on the same host.
+/// Format a daemon URL for a wallet's `--daemon-address` flag.
+///
+/// `Local { agent_ip, daemon_rpc_port }` → `http://ip:port` (same-host daemon).
+/// `Remote(None)` or `Remote(Some("auto"))` → localhost placeholder; the
+/// Python agent calls `set_daemon()` at runtime to connect to a discovered
+/// public node.
+/// `Remote(Some(addr))` for an explicit address → `http://addr`.
+pub enum DaemonAddress<'a> {
+    Local { agent_ip: &'a str, daemon_rpc_port: u16 },
+    Remote(Option<&'a str>),
+}
+
+impl DaemonAddress<'_> {
+    fn format(&self) -> String {
+        match self {
+            DaemonAddress::Local { agent_ip, daemon_rpc_port } => {
+                format!("http://{}:{}", agent_ip, daemon_rpc_port)
+            }
+            DaemonAddress::Remote(Some(addr)) if *addr != "auto" => {
+                format!("http://{}", addr)
+            }
+            DaemonAddress::Remote(_) => {
+                format!("http://127.0.0.1:{}", crate::MONERO_RPC_PORT)
+            }
+        }
+    }
+}
+
+/// Add a wallet process pointing at the given daemon address.
 pub fn add_wallet_process(
     processes: &mut Vec<ShadowProcess>,
     agent_id: &str,
     agent_ip: &str,
-    daemon_rpc_port: u16,
+    daemon: DaemonAddress<'_>,
     wallet_rpc_port: u16,
     wallet_binary_path: &str,
     environment: &BTreeMap<String, String>,
@@ -74,7 +102,7 @@ pub fn add_wallet_process(
     wallet_options: Option<&BTreeMap<String, OptionValue>>,
     shared_dir: &str,
 ) -> String {
-    let daemon_address = format!("http://{}:{}", agent_ip, daemon_rpc_port);
+    let daemon_address = daemon.format();
     let wallet_args = build_wallet_args(
         agent_id, agent_ip, &daemon_address, wallet_rpc_port,
         environment, custom_args, wallet_defaults, wallet_options, shared_dir,
@@ -84,62 +112,6 @@ pub fn add_wallet_process(
     // by `restart_wallet_rpc()` in agents/base_agent.py (which runs it via
     // `subprocess.Popen(..., shell=True)`). The Shadow process itself is
     // launched directly (no shell), using ProcessArgs::List(wallet_args).
-    let wallet_cmd = format!(
-        "{} {}",
-        shell_quote_args(&[wallet_binary_path.to_string()]),
-        shell_quote_args(&wallet_args),
-    );
-
-    let mut wallet_env = environment.clone();
-    if let Some(env) = custom_env {
-        for (key, value) in env {
-            wallet_env.insert(key.clone(), value.clone());
-        }
-    }
-
-    processes.push(ShadowProcess {
-        path: wallet_binary_path.to_string(),
-        args: ProcessArgs::List(wallet_args),
-        environment: wallet_env,
-        start_time: wallet_start_time.to_string(),
-        shutdown_time: None,
-        shutdown_signal: None,
-        expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),
-    });
-
-    wallet_cmd
-}
-
-/// Add a wallet process connecting to a remote daemon.
-///
-/// For "auto" mode, uses a localhost placeholder; the Python agent will
-/// call `set_daemon()` at runtime to connect to a discovered public node.
-pub fn add_remote_wallet_process(
-    processes: &mut Vec<ShadowProcess>,
-    agent_id: &str,
-    agent_ip: &str,
-    remote_daemon_address: Option<&str>,
-    wallet_rpc_port: u16,
-    wallet_binary_path: &str,
-    environment: &BTreeMap<String, String>,
-    _index: usize,
-    wallet_start_time: &str,
-    custom_args: Option<&Vec<String>>,
-    custom_env: Option<&BTreeMap<String, String>>,
-    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
-    wallet_options: Option<&BTreeMap<String, OptionValue>>,
-    shared_dir: &str,
-) -> String {
-    let daemon_address = match remote_daemon_address {
-        Some(addr) if addr != "auto" => format!("http://{}", addr),
-        _ => format!("http://127.0.0.1:{}", crate::MONERO_RPC_PORT),
-    };
-
-    let wallet_args = build_wallet_args(
-        agent_id, agent_ip, &daemon_address, wallet_rpc_port,
-        environment, custom_args, wallet_defaults, wallet_options, shared_dir,
-    );
-
     let wallet_cmd = format!(
         "{} {}",
         shell_quote_args(&[wallet_binary_path.to_string()]),
