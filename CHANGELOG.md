@@ -1,5 +1,81 @@
 # Changelog
 
+## Unreleased
+
+### Key fix: upgrade-pipeline shutdown chain
+
+Network upgrade scenarios (where nodes switch from `monerod`/`monero-wallet-rpc`
+to `monerod-v2`/`monero-wallet-rpc-v2` mid-simulation) failed at scale: in a
+1011-node run with seed 12345, **every** v2 wallet failed to bind because
+the v1 wallet held port 18082 past `shutdown_time`. After the fix, the same
+1011-node run completes with 0 wallet bind failures and 8.5× more blocks
+mined post-upgrade than before.
+
+The diagnosis went through three layers, each masking the next:
+
+1. **`bash -c '...'` wrapper absorbed SIGTERM.** Daemon launches used
+   `bash -c 'exec monerod ...'` (the `exec` makes bash hand off to monerod
+   so SIGTERM lands on the binary), but the wallet path used
+   `bash -c 'monero-wallet-rpc ...'` without `exec`. SIGTERM at
+   `shutdown_time` killed bash; the wallet was reparented to PID 1 and
+   kept running, holding the port. Fix: removed bash from daemon and
+   wallet launches entirely. New `ProcessArgs` enum on `ShadowProcess`
+   serializes args as a YAML sequence, passing them straight through
+   to `execve`. Wrapper scripts (still needed for Python agents because
+   Shadow has no `working_directory` field) now `exec python3 -m ...`
+   so bash hands off to the Python interpreter the same way.
+
+2. **Insufficient gap between phase 0 stop and phase 1 start.** Default
+   was 30s; bumped to 5min (`DEFAULT_DAEMON_RESTART_GAP_S` and
+   `DEFAULT_WALLET_RESTART_GAP_S` in `scripts/scenario_parser.py` and
+   `scripts/generate_config.py`). This was based on a wrong diagnosis —
+   Shadow doesn't escalate `shutdown_signal` to SIGKILL after a timeout,
+   so a wallet that ignores SIGTERM ignores it forever — but the longer
+   gap is still useful headroom for legitimate slow shutdowns and costs
+   nothing in wall time.
+
+3. **monero-wallet-rpc deadlock during normal operation.** Background
+   refresh and in-flight transfer can compete for the wallet lock under
+   Shadow's cooperative scheduling, leaving the main RPC thread blocked
+   indefinitely. SIGTERM is queued behind the held mutex and never runs.
+   Fix: non-final wallet phases now ship with `shutdown_signal: SIGKILL`
+   (and `expected_final_state: Signaled(SIGKILL)`). Daemon phases keep
+   the default SIGTERM since monerod handles it cleanly. Acceptable in
+   the simulation context because the chain is canonical and v2 rebuilds
+   wallet state on first refresh; full rationale, tradeoffs, and a
+   documented escalation-wrapper alternative are in
+   `docs/UPGRADE_WALLET_SIGKILL.md`.
+
+#### Validation
+- 1011-node, 72h-sim upgrade run after the fix: exit code 1 only because
+  one wallet (user-894) crashed via SIGABRT — its own internal
+  `std::length_error`, before our SIGKILL fired — instead of being
+  Signaled(SIGKILL). The v2 wallet still bound and ran cleanly. 0/1000
+  bind failures.
+- Pre-upgrade vs post-upgrade block production stays within 0.3% of
+  matching the time split (637 vs 635 blocks across 34h and 38h
+  respectively). In the broken baseline, post-upgrade mining collapsed
+  because the wallets were dead.
+
+#### Files touched
+- New: `docs/UPGRADE_WALLET_SIGKILL.md`
+- `src/shadow/types.rs`: new `ProcessArgs` enum, new `shutdown_signal`
+  field on `ShadowProcess`.
+- `src/agent/user_agents.rs`, `src/process/wallet.rs`,
+  `src/utils/script.rs`: direct binary launch for daemon and wallet,
+  SIGKILL on non-final wallet phases.
+- `src/process/agent_scripts.rs`, `src/agent/pure_scripts.rs`,
+  `src/agent/simulation_monitor.rs`, `src/agent/miner_distributor.rs`,
+  `src/orchestrator.rs`: wrapper scripts now `exec python3 -m ...`.
+- `src/utils/options.rs`: `options_to_args` no longer wraps String
+  values in shell quotes (no longer needed without bash); new
+  `shell_quote_args` helper for the one path that still needs a shell
+  string (`WALLET_RPC_CMD` env var consumed by `restart_wallet_rpc()`).
+- `scripts/scenario_parser.py`, `scripts/generate_config.py`,
+  `scripts/configure_upgrade.py`: gap defaults, with rationale.
+- `docs/FLOW.md`, `docs/SCENARIO_FORMAT.md`,
+  `scripts/ai_config/scenario_prompts.py`: doc updates.
+
 ## v0.0.2 (2026-04-16)
 
 Changes since v0.0.1 (2025-10-07). The section "Since last shared (Mar 11)"
