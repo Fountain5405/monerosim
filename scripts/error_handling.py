@@ -182,205 +182,123 @@ class RetryHandler:
 
         return False, "Max attempts reached"
 
-    def call_daemon_with_retry(self, daemon_url: str, method: str, params: Dict[str, Any],
-                              max_attempts: int, delay: float, component: str) -> Tuple[bool, Dict[str, Any]]:
-        """
-        Call daemon RPC with retry logic.
+    def _call_rpc_with_retry(self, url: str, method: str, params: Dict[str, Any],
+                             max_attempts: int, delay: float, component: str,
+                             *, is_wallet: bool) -> Tuple[bool, Dict[str, Any]]:
+        """Shared retry loop for daemon and wallet JSON-RPC calls.
 
-        Args:
-            daemon_url: URL of the daemon RPC endpoint
-            method: RPC method name
-            params: RPC parameters
-            max_attempts: Maximum number of attempts
-            delay: Base delay between attempts
-            component: Component name for logging
-
-        Returns:
-            Tuple of (success, response_dict)
+        is_wallet enables wallet-only behavior:
+          - "Wallet RPC" log labels instead of plain "RPC"
+          - special-case create_wallet "already exists" → open_wallet recovery
         """
+        label = "Wallet RPC" if is_wallet else "RPC"
+        endpoint_label = "Wallet" if is_wallet else "Daemon"
+
         for attempt in range(1, max_attempts + 1):
             current_delay = exponential_backoff(attempt, delay, 60)
 
             self.error_handler.log_info(component,
-                f"RPC call attempt {attempt}/{max_attempts}: {method}")
+                f"{label} call attempt {attempt}/{max_attempts}: {method}")
 
             try:
-                # Check if daemon is reachable
-                ping_response = requests.get(daemon_url, timeout=5)
+                ping_response = requests.get(url, timeout=5)
                 if ping_response.status_code not in [200, 405]:
                     raise requests.RequestException(
-                        f"Daemon not reachable (HTTP {ping_response.status_code})")
+                        f"{endpoint_label} not reachable (HTTP {ping_response.status_code})")
             except requests.RequestException as e:
                 self.error_handler.log_warning(component,
-                    f"Daemon URL {daemon_url} is not reachable: {e}")
+                    f"{endpoint_label} URL {url} is not reachable: {e}")
                 if attempt < max_attempts:
                     self.error_handler.log_info(component,
                         f"Retrying in {current_delay} seconds...")
                     time.sleep(current_delay)
                     continue
-                else:
-                    self.error_handler.log_error(component,
-                        f"Daemon URL {daemon_url} is not reachable after {max_attempts} attempts")
-                    return False, {"error": "Daemon URL not reachable"}
+                self.error_handler.log_error(component,
+                    f"{endpoint_label} URL {url} is not reachable after {max_attempts} attempts")
+                return False, {"error": f"{endpoint_label} URL not reachable"}
 
-            # Make the actual RPC call
             try:
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": "0",
-                    "method": method,
-                    "params": params
-                }
-                response = requests.post(daemon_url, json=payload, timeout=30)
+                payload = {"jsonrpc": "2.0", "id": "0", "method": method, "params": params}
+                response = requests.post(url, json=payload, timeout=30)
                 response_data = response.json()
 
                 if "result" in response_data:
                     self.error_handler.log_info(component,
-                        f"RPC call succeeded on attempt {attempt}")
+                        f"{label} call succeeded on attempt {attempt}")
                     return True, response_data
-                elif "error" in response_data:
+
+                if "error" in response_data:
                     error_info = response_data["error"]
-                    self.error_handler.log_warning(component,
-                        f"RPC call returned error on attempt {attempt}: {error_info}")
+                    if is_wallet:
+                        error_code = error_info.get("code", None)
+                        error_message = error_info.get("message", "")
+                        self.error_handler.log_warning(component,
+                            f"{label} call returned error on attempt {attempt}: "
+                            f"code={error_code}, message={error_message}")
+                        # create_wallet "already exists" → open_wallet recovery
+                        if (error_code == -1 and method == "create_wallet"
+                                and "already exists" in error_message):
+                            self.error_handler.log_info(component,
+                                "Wallet already exists, trying to open it instead...")
+                            open_payload = {
+                                "jsonrpc": "2.0", "id": "0", "method": "open_wallet",
+                                "params": {
+                                    "filename": params.get("filename"),
+                                    "password": params.get("password", ""),
+                                },
+                            }
+                            open_response = requests.post(url, json=open_payload, timeout=30)
+                            open_data = open_response.json()
+                            if "result" in open_data:
+                                self.error_handler.log_info(component,
+                                    "Successfully opened existing wallet")
+                                return True, open_data
+                    else:
+                        self.error_handler.log_warning(component,
+                            f"{label} call returned error on attempt {attempt}: {error_info}")
+
                     if attempt < max_attempts:
                         self.error_handler.log_info(component,
                             f"Retrying in {current_delay} seconds...")
                         time.sleep(current_delay)
                         continue
-                    else:
-                        return False, response_data
-                else:
-                    raise ValueError("Invalid response format")
+                    return False, response_data
+
+                raise ValueError("Invalid response format")
 
             except Exception as e:
                 self.error_handler.log_warning(component,
-                    f"RPC call failed on attempt {attempt}: {e}")
+                    f"{label} call failed on attempt {attempt}: {e}")
                 if attempt < max_attempts:
                     self.error_handler.log_info(component,
                         f"Retrying in {current_delay} seconds...")
                     time.sleep(current_delay)
                     continue
-                else:
-                    self.error_handler.log_error(component,
-                        f"RPC call failed after {max_attempts} attempts: {e}")
-                    return False, {"error": str(e)}
+                self.error_handler.log_error(component,
+                    f"{label} call failed after {max_attempts} attempts: {e}")
+                return False, {"error": str(e)}
 
         return False, {"error": "Max attempts reached"}
+
+    def call_daemon_with_retry(self, daemon_url: str, method: str, params: Dict[str, Any],
+                              max_attempts: int, delay: float, component: str) -> Tuple[bool, Dict[str, Any]]:
+        """Call daemon RPC with retry logic. Returns (success, response_dict)."""
+        return self._call_rpc_with_retry(
+            daemon_url, method, params, max_attempts, delay, component,
+            is_wallet=False,
+        )
 
     def call_wallet_with_retry(self, wallet_url: str, method: str, params: Dict[str, Any],
                               max_attempts: int, delay: float, component: str) -> Tuple[bool, Dict[str, Any]]:
+        """Call wallet RPC with retry logic. Returns (success, response_dict).
+
+        Adds wallet-specific recovery: a `create_wallet` that fails with
+        "already exists" automatically retries as `open_wallet`.
         """
-        Call wallet RPC with retry logic.
-
-        Args:
-            wallet_url: URL of the wallet RPC endpoint
-            method: RPC method name
-            params: RPC parameters
-            max_attempts: Maximum number of attempts
-            delay: Base delay between attempts
-            component: Component name for logging
-
-        Returns:
-            Tuple of (success, response_dict)
-        """
-        for attempt in range(1, max_attempts + 1):
-            current_delay = exponential_backoff(attempt, delay, 60)
-
-            self.error_handler.log_info(component,
-                f"Wallet RPC call attempt {attempt}/{max_attempts}: {method}")
-
-            try:
-                # Check if wallet is reachable
-                ping_response = requests.get(wallet_url, timeout=5)
-                if ping_response.status_code not in [200, 405]:
-                    raise requests.RequestException(
-                        f"Wallet not reachable (HTTP {ping_response.status_code})")
-            except requests.RequestException as e:
-                self.error_handler.log_warning(component,
-                    f"Wallet URL {wallet_url} is not reachable: {e}")
-                if attempt < max_attempts:
-                    self.error_handler.log_info(component,
-                        f"Retrying in {current_delay} seconds...")
-                    time.sleep(current_delay)
-                    continue
-                else:
-                    self.error_handler.log_error(component,
-                        f"Wallet URL {wallet_url} is not reachable after {max_attempts} attempts")
-                    return False, {"error": "Wallet URL not reachable"}
-
-            # Make the actual RPC call
-            try:
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": "0",
-                    "method": method,
-                    "params": params
-                }
-                response = requests.post(wallet_url, json=payload, timeout=30)
-                response_data = response.json()
-
-                if "result" in response_data:
-                    self.error_handler.log_info(component,
-                        f"Wallet RPC call succeeded on attempt {attempt}")
-                    return True, response_data
-                elif "error" in response_data:
-                    error_info = response_data["error"]
-                    error_code = error_info.get("code", None)
-                    error_message = error_info.get("message", "")
-
-                    self.error_handler.log_warning(component,
-                        f"Wallet RPC call returned error on attempt {attempt}: "
-                        f"code={error_code}, message={error_message}")
-
-                    # Special handling for wallet already exists error
-                    if (error_code == -1 and method == "create_wallet" and
-                        "already exists" in error_message):
-                        self.error_handler.log_info(component,
-                            "Wallet already exists, trying to open it instead...")
-
-                        # Try to open the wallet
-                        open_params = {
-                            "filename": params.get("filename"),
-                            "password": params.get("password", "")
-                        }
-                        open_payload = {
-                            "jsonrpc": "2.0",
-                            "id": "0",
-                            "method": "open_wallet",
-                            "params": open_params
-                        }
-                        open_response = requests.post(wallet_url, json=open_payload, timeout=30)
-                        open_data = open_response.json()
-
-                        if "result" in open_data:
-                            self.error_handler.log_info(component,
-                                "Successfully opened existing wallet")
-                            return True, open_data
-
-                    if attempt < max_attempts:
-                        self.error_handler.log_info(component,
-                            f"Retrying in {current_delay} seconds...")
-                        time.sleep(current_delay)
-                        continue
-                    else:
-                        return False, response_data
-                else:
-                    raise ValueError("Invalid response format")
-
-            except Exception as e:
-                self.error_handler.log_warning(component,
-                    f"Wallet RPC call failed on attempt {attempt}: {e}")
-                if attempt < max_attempts:
-                    self.error_handler.log_info(component,
-                        f"Retrying in {current_delay} seconds...")
-                    time.sleep(current_delay)
-                    continue
-                else:
-                    self.error_handler.log_error(component,
-                        f"Wallet RPC call failed after {max_attempts} attempts: {e}")
-                    return False, {"error": str(e)}
-
-        return False, {"error": "Max attempts reached"}
+        return self._call_rpc_with_retry(
+            wallet_url, method, params, max_attempts, delay, component,
+            is_wallet=True,
+        )
 
 # ===== VERIFICATION FUNCTIONS =====
 
