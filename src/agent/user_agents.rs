@@ -527,6 +527,11 @@ pub fn process_user_agents(
                         "--disable-rpc-login".to_string(),
                         "--trusted-daemon".to_string(),
                         format!("--wallet-dir={}/{}_wallet", shared_dir.to_string_lossy(), agent_id),
+                        // Per-agent ringdb path — without this, all wallets fall
+                        // back to a single shared LMDB and serialize on its writer
+                        // mutex, deadlocking under Shadow at scale (see commit
+                        // c4d45d15 for the simple-wallet fix that this mirrors).
+                        format!("--shared-ringdb-dir={}/{}_ringdb", shared_dir.to_string_lossy(), agent_id),
                         "--confirm-external-bind".to_string(),
                         "--allow-mismatched-daemon-version".to_string(),
                     ];
