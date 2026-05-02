@@ -23,9 +23,8 @@ from generate_config import (
     parse_duration,
     FIXED_MINERS,
     DEFAULT_GML_PATH,
-    DEFAULT_INITIAL_DELAY_S,
-    DEFAULT_DAEMON_RESTART_GAP_S,
 )
+from timing_constants import DEFAULT_INITIAL_DELAY_S, DEFAULT_DAEMON_RESTART_GAP_S
 
 
 def print_header():

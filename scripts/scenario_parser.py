@@ -60,33 +60,23 @@ from dataclasses import dataclass, field
 try:
     from generate_config import parse_duration, calculate_activity_start_times
     from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval, estimate_wall_time_s, max_safe_users
+    from timing_constants import (
+        MIN_BOOTSTRAP_END_TIME_S, BOOTSTRAP_BUFFER_PERCENT, FUNDING_PERIOD_S,
+        DEFAULT_AUTO_THRESHOLD, DEFAULT_INITIAL_DELAY_S, DEFAULT_BATCH_INTERVAL_S,
+        DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
+        DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
+        DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+    )
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
     from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, compute_safe_poll_interval, estimate_wall_time_s, max_safe_users
-
-
-# Reuse constants from generate_config
-MIN_BOOTSTRAP_END_TIME_S = 14400
-BOOTSTRAP_BUFFER_PERCENT = 0.20
-FUNDING_PERIOD_S = 3600
-DEFAULT_AUTO_THRESHOLD = 50
-DEFAULT_INITIAL_DELAY_S = 1200
-DEFAULT_BATCH_INTERVAL_S = 1200
-DEFAULT_INITIAL_BATCH_SIZE = 5
-DEFAULT_GROWTH_FACTOR = 2.0
-DEFAULT_MAX_BATCH_SIZE = 200
-DEFAULT_INTRA_BATCH_STAGGER_S = 5
-DEFAULT_UPGRADE_STAGGER_S = 30
-# Within-node gap between an old binary's stop time and the next phase's
-# start. Defaulted to 5 min: monero-wallet-rpc occasionally hangs in a
-# CPU-bound section (ring signature construction during a transfer)
-# under cooperative Shadow scheduling, and a tight gap risks the v1
-# wallet still holding port 18082 when v2 tries to bind. 5 min gives
-# Shadow enough wall time to deliver SIGTERM, then SIGKILL if needed,
-# before the next phase fires. (See run 20260501_165857_upgrade_smoke
-# for an instance of the hang.)
-DEFAULT_DAEMON_RESTART_GAP_S = 300
-DEFAULT_WALLET_RESTART_GAP_S = 300
+    from .timing_constants import (
+        MIN_BOOTSTRAP_END_TIME_S, BOOTSTRAP_BUFFER_PERCENT, FUNDING_PERIOD_S,
+        DEFAULT_AUTO_THRESHOLD, DEFAULT_INITIAL_DELAY_S, DEFAULT_BATCH_INTERVAL_S,
+        DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
+        DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
+        DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+    )
 
 
 AGENT_TYPE_DEFAULTS = {

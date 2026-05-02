@@ -76,42 +76,31 @@ FIXED_MINERS = [
 # Bumped to match upstream when monerod's hardcoded fallback list changes.
 NUM_MONERO_FALLBACK_SEEDS = 6
 
-# Bootstrap timing constants (verified for Monero regtest with ring size 16)
-# This ensures sufficient blocks for unlock (60) and outputs for ring signatures
+# Shared with scenario_parser.py and configure_upgrade.py.
+try:
+    from timing_constants import (
+        MIN_BOOTSTRAP_END_TIME_S, BOOTSTRAP_BUFFER_PERCENT, FUNDING_PERIOD_S,
+        DEFAULT_AUTO_THRESHOLD, DEFAULT_INITIAL_DELAY_S, DEFAULT_BATCH_INTERVAL_S,
+        DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
+        DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
+        DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+    )
+except ImportError:
+    from .timing_constants import (
+        MIN_BOOTSTRAP_END_TIME_S, BOOTSTRAP_BUFFER_PERCENT, FUNDING_PERIOD_S,
+        DEFAULT_AUTO_THRESHOLD, DEFAULT_INITIAL_DELAY_S, DEFAULT_BATCH_INTERVAL_S,
+        DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
+        DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
+        DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+    )
 
-# Users spawn at 3h mark (sync during bootstrap period)
-USER_START_TIME_S = 10800  # 3 hours in seconds
+# Generate-config-specific timing.
+USER_START_TIME_S = 10800            # users spawn at 3h
+MIN_ACTIVITY_PERIOD_S = 7200         # 2h minimum activity window after activity_start
 
-# Minimum bootstrap time - ensures enough blocks for coinbase unlock (60 blocks)
-# At ~2 min/block, 4h gives ~120 blocks which is sufficient
-MIN_BOOTSTRAP_END_TIME_S = 14400  # 4 hours minimum
-
-# Buffer percentage added after last user spawn to account for hardware variance
-BOOTSTRAP_BUFFER_PERCENT = 0.20  # 20% buffer
-
-# Time after bootstrap ends for miner distributor to fund users before activity starts
-FUNDING_PERIOD_S = 3600  # 1 hour for funding
-
-# Minimum activity period (time after activity_start before simulation ends)
-MIN_ACTIVITY_PERIOD_S = 7200  # 2 hours minimum for meaningful transaction activity
-
-# Note: monerosim only supports seconds resolution (no ms support in duration parser)
-# Default 5s stagger spreads user spawns to reduce simultaneous load on Shadow
-
-# Batched bootstrap defaults
-DEFAULT_AUTO_THRESHOLD = 50  # Enable batching when > 50 users
-DEFAULT_INITIAL_DELAY_S = 1200  # 20 minutes after miners
-DEFAULT_BATCH_INTERVAL_S = 1200  # 20 minutes between batches
-DEFAULT_INITIAL_BATCH_SIZE = 5
-DEFAULT_GROWTH_FACTOR = 2.0
-DEFAULT_MAX_BATCH_SIZE = 200
-DEFAULT_INTRA_BATCH_STAGGER_S = 5  # 5 seconds between users in same batch
-
-# Upgrade scenario defaults
-DEFAULT_STEADY_STATE_DURATION_S = 7200  # 2 hours of observation before upgrade
-DEFAULT_POST_UPGRADE_DURATION_S = 7200  # 2 hours of observation after upgrade
-DEFAULT_UPGRADE_STAGGER_S = 30  # 30 seconds between node upgrades
-DEFAULT_DAEMON_RESTART_GAP_S = 300  # Gap between stopping old daemon and starting new one — see scenario_parser.py for rationale
+# Upgrade scenario windows (only generate_upgrade_config uses these).
+DEFAULT_STEADY_STATE_DURATION_S = 7200    # 2h pre-upgrade observation
+DEFAULT_POST_UPGRADE_DURATION_S = 7200    # 2h post-upgrade observation
 
 # Activity stagger: see docs/shadow-tx-stagger.md
 # stagger = transaction_interval / num_users
