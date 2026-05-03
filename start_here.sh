@@ -401,6 +401,126 @@ run_prune_archives() {
     pause
 }
 
+# ---------- delete archived runs ----------
+# rm -rf the entire selected archive directories. Unlike prune, this drops
+# the small files too (summary.txt, configs, sim-stats) — use only when you
+# don't need any record of the run. Requires typing DELETE to confirm.
+run_delete_archives() {
+    screen "Delete archived runs"
+
+    if [[ ! -d archived_runs ]] || [[ -z "$(ls -A archived_runs 2>/dev/null)" ]]; then
+        warn "No archives in ./archived_runs/."
+        pause
+        return
+    fi
+
+    info "Scanning archive sizes..."
+    mapfile -t lines < <(
+        du -sb archived_runs/*/ 2>/dev/null \
+            | sort -rn \
+            | awk '{
+                size = $1
+                if (size >= 1099511627776)      printf "%.1fT\t%s\n", size/1099511627776, $2
+                else if (size >= 1073741824)    printf "%.1fG\t%s\n", size/1073741824, $2
+                else if (size >= 1048576)       printf "%.0fM\t%s\n", size/1048576, $2
+                else                            printf "%dK\t%s\n", size/1024, $2
+            }'
+    )
+
+    if [[ ${#lines[@]} -eq 0 ]]; then
+        warn "No archives found."
+        pause
+        return
+    fi
+
+    screen "Delete archived runs"
+    say "${BOLD}#  Size      Archive${NC}"
+    local i=1
+    local -a paths=()
+    for line in "${lines[@]}"; do
+        local size path
+        size=$(printf "%s" "$line" | cut -f1)
+        path=$(printf "%s" "$line" | cut -f2)
+        path="${path%/}"
+        paths+=("$path")
+        printf "%-2d %-9s %s\n" "$i" "$size" "${path##*/}"
+        i=$((i + 1))
+    done
+    say ""
+    say "${BOLD}${RED}DESTRUCTIVE — rm -rf the entire archive dir.${NC}"
+    say "Drops everything: summary.txt, configs, blockchain/, monitoring/,"
+    say "shadow.data/, daemon_logs/. No recovery. Use ${BOLD}P)${NC} prune instead"
+    say "if you want to keep the small diagnostic files."
+    say ""
+    say "Enter a comma-separated list of numbers (e.g. ${DIM}1,3,5${NC}),"
+    say "or ${BOLD}all${NC} to delete every archive, or ${BOLD}M${NC} to go back."
+    say ""
+    read -r -p "Selection: " sel
+
+    case "${sel,,}" in
+        m|"") return ;;
+        all)  local -a chosen=("${paths[@]}") ;;
+        *)
+            local -a chosen=()
+            IFS=',' read -ra parts <<< "$sel"
+            for p in "${parts[@]}"; do
+                p="${p// /}"
+                if [[ "$p" =~ ^[0-9]+$ ]] && (( p >= 1 && p <= ${#paths[@]} )); then
+                    chosen+=("${paths[$((p - 1))]}")
+                else
+                    warn "Skipping invalid entry: $p"
+                fi
+            done
+            ;;
+    esac
+
+    if [[ ${#chosen[@]} -eq 0 ]]; then
+        warn "Nothing selected."
+        pause
+        return
+    fi
+
+    # Compute total size up-front so the user sees the stakes.
+    local before_total=0
+    for c in "${chosen[@]}"; do
+        local before
+        before=$(du -sb "$c" 2>/dev/null | awk '{print $1}')
+        before_total=$((before_total + before))
+    done
+    local before_h
+    before_h=$(printf "%.1fG" "$(echo "$before_total / 1073741824" | bc -l)")
+
+    say ""
+    say "Will ${BOLD}${RED}DELETE${NC} ${BOLD}${#chosen[@]}${NC} archive(s), freeing ${BOLD}${before_h}${NC}:"
+    for c in "${chosen[@]}"; do say "  ${RED}rm -rf${NC} ${c}"; done
+    say ""
+    say "${BOLD}${RED}This cannot be undone.${NC}"
+    read -r -p "Type ${BOLD}DELETE${NC} (uppercase) to confirm, anything else to cancel: " ans
+    if [[ "$ans" != "DELETE" ]]; then
+        info "Cancelled."
+        pause
+        return
+    fi
+
+    local deleted=0
+    for c in "${chosen[@]}"; do
+        say ""
+        info "Deleting ${c##*/}..."
+        if rm -rf -- "$c"; then
+            deleted=$((deleted + 1))
+            ok "Done."
+        else
+            err "rm -rf failed for $c. Skipping rest."
+            break
+        fi
+    done
+
+    say ""
+    hr
+    say "Deleted ${BOLD}${deleted}${NC} of ${#chosen[@]} archive(s), freed ${BOLD}${before_h}${NC}."
+    pause
+}
+
 # ---------- rust analysis pipeline (tx-analyzer) ----------
 # tx-analyzer is the Rust analysis CLI built alongside monerosim. It reads
 # bitmonero.log files + Shadow metadata and produces JSON/text reports on
@@ -651,19 +771,21 @@ advanced_menu() {
     while true; do
         screen "Advanced tools"
         say "  ${BOLD}R)${NC} Run Rust analysis pipeline on a sim run (tx-analyzer)"
-        say "  ${BOLD}P)${NC} Prune archived runs (free disk space)"
+        say "  ${BOLD}P)${NC} Prune archived runs (free disk space, keep diagnostics)"
+        say "  ${BOLD}D)${NC} Delete archived runs (rm -rf, irreversible)"
         say "  ${BOLD}U)${NC} Update repos & rebuild  ${DIM}(git pull + optional rebuild)${NC}"
         say "  ${BOLD}S)${NC} Re-run setup.sh         ${DIM}(full reinstall, 30-60 min)${NC}"
         say "  ${BOLD}M)${NC} Back to main menu"
         say ""
-        read -r -p "Choose [R/P/U/S/M]: " choice
+        read -r -p "Choose [R/P/D/U/S/M]: " choice
         case "${choice^^}" in
             R)    run_rust_analysis ;;
             P)    run_prune_archives ;;
+            D)    run_delete_archives ;;
             U)    run_update ;;
             S)    run_setup_again ;;
             M|"") return ;;
-            *)    warn "Please choose R, P, U, S, or M."; sleep 1 ;;
+            *)    warn "Please choose R, P, D, U, S, or M."; sleep 1 ;;
         esac
     done
 }
