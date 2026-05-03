@@ -199,7 +199,16 @@ class BaseAgent(ABC):
             self.daemon_rpc = MoneroRPC(self.rpc_host, self.daemon_rpc_port)
             try:
                 self.daemon_rpc.wait_until_ready(max_wait=120)
-                info = self.daemon_rpc.get_info()
+                # wait_until_ready uses get_version (cheap), but get_info hits
+                # blockchain state and can briefly return a malformed empty
+                # error ({'code': 0, 'message': ''}) right after readiness.
+                # Observed at 400 nodes, sim t=15s, killed all 5 miners.
+                info = retry_with_backoff(
+                    self.daemon_rpc.get_info,
+                    max_retries=5,
+                    initial_delay=1.0,
+                    logger=self.logger,
+                )
                 self.logger.info(f"Connected to daemon: height={info.get('height', 0)}")
             except RPCError as e:
                 self.logger.error(f"Failed to connect to daemon RPC: {e}")
