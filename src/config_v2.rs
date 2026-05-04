@@ -231,10 +231,6 @@ pub struct AgentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_transaction_amount: Option<String>,
 
-    /// Transaction frequency in seconds
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transaction_frequency: Option<u32>,
-
     /// Number of recipients per batch transaction (max 16 due to Monero tx size limits)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub md_n_recipients: Option<u32>,
@@ -409,8 +405,6 @@ struct AgentConfigRaw {
     pub max_transaction_amount: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_transaction_amount: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_duration_option")]
-    pub transaction_frequency: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub md_n_recipients: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -482,7 +476,6 @@ impl<'de> Deserialize<'de> for AgentConfig {
             initial_fund_amount: raw.initial_fund_amount,
             max_transaction_amount: raw.max_transaction_amount,
             min_transaction_amount: raw.min_transaction_amount,
-            transaction_frequency: raw.transaction_frequency,
             md_n_recipients: raw.md_n_recipients,
             md_out_per_tx: raw.md_out_per_tx,
             md_output_amount: raw.md_output_amount,

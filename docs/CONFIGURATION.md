@@ -182,7 +182,6 @@ agents:
     initial_fund_amount: "1.0"
     max_transaction_amount: "2.0"
     min_transaction_amount: "0.5"
-    transaction_frequency: 30
 ```
 
 ### Simulation Monitor
@@ -283,7 +282,6 @@ agents:
 | `initial_fund_amount` | string | Miner distributor: initial fund amount in XMR |
 | `max_transaction_amount` | string | Max transaction amount in XMR |
 | `min_transaction_amount` | string | Min transaction amount in XMR |
-| `transaction_frequency` | u32 | Miner distributor: seconds between distributions |
 | `poll_interval` | u32 | Monitor: seconds between status checks |
 | `status_file` | string | Monitor: path for status output |
 | `enable_alerts` | bool | Monitor: enable alert notifications |

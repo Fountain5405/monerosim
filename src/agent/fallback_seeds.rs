@@ -193,7 +193,6 @@ fn build_seed_agent(seed_index: usize) -> AgentConfig {
         initial_fund_amount: None,
         max_transaction_amount: None,
         min_transaction_amount: None,
-        transaction_frequency: None,
         md_n_recipients: None,
         md_out_per_tx: None,
         md_output_amount: None,

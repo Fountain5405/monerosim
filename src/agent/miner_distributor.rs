@@ -51,9 +51,6 @@ pub fn process_miner_distributor(
 
         // Pass all known miner distributor config fields as attributes
         // These are read by the Python agent via --attributes key value
-        if let Some(v) = miner_distributor_config.transaction_frequency {
-            agent_args.push(format!("--attributes transaction_frequency {}", v));
-        }
         if let Some(v) = &miner_distributor_config.min_transaction_amount {
             agent_args.push(format!("--attributes min_transaction_amount {}", v));
         }

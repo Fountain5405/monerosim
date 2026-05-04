@@ -829,7 +829,6 @@ def generate_config(
         ("wait_time", md_start_time_s),  # When Shadow starts the process
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
-        ("transaction_frequency", 30),
         ("md_n_recipients", md_n_recipients),
         ("md_out_per_tx", md_out_per_tx),
         ("md_output_amount", md_output_amount),
@@ -1190,7 +1189,6 @@ def generate_upgrade_config(
         ("wait_time", md_start_time_s),  # When Shadow starts the process
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
-        ("transaction_frequency", 30),
         ("md_n_recipients", md_n_recipients),
         ("md_out_per_tx", md_out_per_tx),
         ("md_output_amount", md_output_amount),

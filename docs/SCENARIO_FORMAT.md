@@ -287,7 +287,6 @@ spy-{001..003}:
 miner-distributor:
   script: agents.miner_distributor
   wait_time: auto
-  transaction_frequency: 30
 
 simulation-monitor:
   script: agents.simulation_monitor
@@ -347,7 +346,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor

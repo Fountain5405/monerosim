@@ -46,7 +46,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 ```
 """
 
@@ -590,7 +589,7 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                               'wallet_1_start', 'wallet_1_stop'}
         # Fields the Rust parser expects as u32 (plain integer seconds only)
         u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
-                           'transaction_frequency', 'poll_interval'}
+                           'poll_interval'}
 
         # Create individual agent entries
         for i, agent_id in enumerate(agent_ids):
@@ -637,7 +636,7 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
 
     # Add singleton agents (with u32 duration conversion)
     u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
-                       'transaction_frequency', 'poll_interval'}
+                       'poll_interval'}
     for agent_id, props in scenario.singleton_agents.items():
         agent_config = {k: v for k, v in props.items() if not k.endswith('_stagger')}
         for key, val in agent_config.items():
@@ -746,17 +745,16 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
     # Map user agent IDs to their staggered activity times
     user_activity_map = dict(zip(user_agents_with_auto_activity, user_activity_times))
 
-    # Resolve auto poll_interval / transaction_frequency on agents that
-    # iterate every node (simulation-monitor, miner-distributor). Both
-    # generate baseline event load proportional to M / interval; if too
-    # frequent for the network size, Shadow stalls during bootstrap.
+    # Resolve auto poll_interval on agents that iterate every node
+    # (simulation-monitor). Generates baseline event load proportional
+    # to M / interval; if too frequent for the network size, Shadow
+    # stalls during bootstrap.
     safe_poll = compute_safe_poll_interval(total_nodes)
     for agent_id, agent_config in agents.items():
-        for key in ('poll_interval', 'transaction_frequency'):
-            if agent_config.get(key) == 'auto':
-                print(f"Resolved {agent_id}.{key}=auto to {safe_poll}s "
-                      f"(calibrated for {total_nodes} nodes).")
-                agent_config[key] = safe_poll
+        if agent_config.get('poll_interval') == 'auto':
+            print(f"Resolved {agent_id}.poll_interval=auto to {safe_poll}s "
+                  f"(calibrated for {total_nodes} nodes).")
+            agent_config['poll_interval'] = safe_poll
 
     # Noob guardrail: warn when the estimated wall time looks longer than
     # the simulated duration, or when N exceeds the per-machine safe cap.

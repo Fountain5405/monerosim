@@ -84,7 +84,6 @@ agents:
     script: agents.miner_distributor
     wait_time: 3600
     initial_fund_amount: "1.0"
-    transaction_frequency: 30
 ```
 
 Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100.

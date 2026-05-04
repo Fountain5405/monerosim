@@ -4059,7 +4059,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: 14400
-    transaction_frequency: 30
   simulation-monitor:
     script: agents.simulation_monitor
     poll_interval: 300

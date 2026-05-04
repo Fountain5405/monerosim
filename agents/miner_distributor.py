@@ -48,7 +48,6 @@ class MinerDistributorAgent(BaseAgent):
         # Initialize transaction-specific parameters
         self.min_transaction_amount = 0.1
         self.max_transaction_amount = 1.0
-        self.transaction_frequency = 60
         self.miner_selection_strategy = "weighted"
         self.transaction_priority = 1
         self.max_retries = 5
@@ -98,7 +97,6 @@ class MinerDistributorAgent(BaseAgent):
     def _parse_configuration(self):
         """Parse configuration attributes from self.attributes"""
         config_mappings = {
-            'transaction_frequency': ('int', 'transaction_frequency', 60),
             'min_transaction_amount': ('float', 'min_transaction_amount', 0.1),
             'max_transaction_amount': ('float', 'max_transaction_amount', 1.0),
             'miner_selection_strategy': ('choice', 'miner_selection_strategy', 'weighted', ['weighted', 'balance', 'random']),

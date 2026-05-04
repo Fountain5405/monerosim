@@ -129,7 +129,6 @@ agents:
     wait_time: 28800
     max_transaction_amount: '2.0'
     min_transaction_amount: '0.5'
-    transaction_frequency: 30
     md_n_recipients: 8
     md_out_per_tx: 2
     md_output_amount: 5.0

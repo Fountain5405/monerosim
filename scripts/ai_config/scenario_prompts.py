@@ -66,7 +66,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -291,7 +290,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto                   # Wait for bootstrap to complete
-    transaction_frequency: 30         # Distribute every 30 seconds
 
   # --- Support: Monitors simulation health ---
   simulation-monitor:
@@ -364,7 +362,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -440,7 +437,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -508,7 +504,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -565,7 +560,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -624,7 +618,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -710,7 +703,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto
-    transaction_frequency: 30
 
   simulation-monitor:
     script: agents.simulation_monitor
@@ -786,7 +778,6 @@ agents:
   miner-distributor:
     script: agents.miner_distributor
     wait_time: auto                     # Uses timing.md_start_time
-    transaction_frequency: 30
 
   # --- Support: Monitors simulation health ---
   simulation-monitor:

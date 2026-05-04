@@ -24,7 +24,7 @@ These knobs **increase wall time** (reduce ratio):
 | **M total nodes** (users + relays + miners) | Scheduler cost per tick | Shadow advances every host every tick. More hosts = slower. |
 | `transaction_interval` below the storm floor | Shadow chokes on tx propagation events | Auto-config raises this to `N × M × K / C` (see `calibrate.py`). |
 | `poll_interval` on `simulation-monitor` too low | Monitor RPC-polls every node each cycle | Auto-config uses `M / (C × rate)` with a 300s floor. |
-| `transaction_frequency` on `miner-distributor` too low | Funding cycle hits every node too often | Same RPC-polling pattern. |
+| `md_funding_cycle_interval` on `miner-distributor` too low (default 300s) | Funding cycle sends a batch tx every interval; too frequent overloads the network | Default 5min is sane; only override if you need denser funding. |
 
 These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 
@@ -326,5 +326,5 @@ Set explicit values per agent (bypassing `auto`) when:
 
 To override, replace `transaction_interval: auto` with an explicit
 value (in seconds), and do the same for `activity_start_time`,
-`poll_interval`, `transaction_frequency`, and `start_time_stagger` if
-you want full manual control.
+`poll_interval`, and `start_time_stagger` if you want full manual
+control.

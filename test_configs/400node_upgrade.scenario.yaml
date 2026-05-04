@@ -1,0 +1,109 @@
+# 400-node upgrade calibration scenario.
+#
+# Purpose: middle ground between upgrade_smoke (14 nodes, ~17m wall) and
+# 20260430_large_upgrade (1011 nodes, ~15h wall). Built to reproduce the
+# original wallet-bind / port-release / wallet-rpc-deadlock failure modes
+# that only manifest with many concurrent wallets going through phase
+# transition. Intended use: run with the BROKEN commit (parent of
+# 5505a634) to confirm the bug surfaces here, then use this as the cheap
+# refactor-validation gate going forward.
+#
+# Estimated wall time: ~2-4h (bootstrap-bound for first ~1-2h).
+#
+# Timing structure (mirrors upgrade_smoke shape, scaled):
+#   bootstrap_end_time:     14400s ( 4h)  - same as smoke and large
+#   activity_start_time:    auto    (~5h) - resolved by scenario_parser
+#   daemon_0_stop:          23400s (6.5h) - first agent upgrades; 1.5h pre-upgrade activity
+#   daemon_0_stop_stagger:    5s          - 400 users * 5s = 2000s (33m) full stagger window
+#   daemon_1_start:         auto          - +5min after daemon_0_stop (DEFAULT_DAEMON_RESTART_GAP_S)
+#   stop_time:              32400s ( 9h)  - last agent gets ~1h45m post-upgrade activity
+#
+# Stagger reduced from large_upgrade's 30s to 5s because at 9h sim window
+# the 30s stagger would push the last upgrade past stop_time. The 5s
+# stagger is also more stress-test-y - more wallets transitioning closer
+# in time, which is the failure mode's risk surface.
+#
+# REQUIRED CLI FLAG when expanding:
+#   python -m scripts.scenario_parser \
+#       test_configs/400node_upgrade.scenario.yaml \
+#       -o test_configs/400node_upgrade.yaml \
+#       --no-safe-tx-interval
+#
+# Why --no-safe-tx-interval: calibration would bump transaction_interval
+# from 20m to ~31m for 395 users * 402 nodes "for hardware safety", but
+# 20m matches large_upgrade.scenario.yaml exactly. We want to reproduce
+# the broken behavior under the production tx load, not under a cushioned
+# version of it.
+
+general:
+  stop_time: 32400s              # 9h
+  simulation_seed: 12345
+  bootstrap_end_time: 14400s     # 4h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  native_preemption: true
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # 5 miners with hashrate summing to 100 (required for initial miners).
+  # Miners upgrade at exactly the same time (no stagger) — matches large_upgrade.
+  miner-{001..005}:
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+    daemon_0: monerod
+    daemon_0_start: auto
+    daemon_0_stop: 23400s        # 6.5h
+    daemon_1: monerod-v2
+    daemon_1_start: auto
+    wallet_0: monero-wallet-rpc
+    wallet_0_start: auto
+    wallet_0_stop: 23400s
+    wallet_1: monero-wallet-rpc-v2
+    wallet_1_start: auto
+
+  # 395 users, transaction_interval matches large_upgrade for fidelity.
+  # Stagger condensed to 5s so all upgrades complete within sim window.
+  user-{001..395}:
+    script: agents.regular_user
+    start_time: 0s
+    start_time_stagger: auto
+    transaction_interval: 20m
+    activity_start_time: auto
+    can_receive_distributions: true
+    daemon_0: monerod
+    daemon_0_start: auto
+    daemon_0_stop: 23400s        # 6.5h - first user
+    daemon_0_stop_stagger: 5s    # last user at 6.5h + 395*5s = 7.05h
+    daemon_1: monerod-v2
+    daemon_1_start: auto         # +5min after daemon_0_stop
+    wallet_0: monero-wallet-rpc
+    wallet_0_start: auto
+    wallet_0_stop: 23400s
+    wallet_0_stop_stagger: 5s
+    wallet_1: monero-wallet-rpc-v2
+    wallet_1_start: auto
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

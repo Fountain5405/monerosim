@@ -120,7 +120,6 @@ EOF
   miner-distributor:
     script: agents.miner_distributor
     wait_time: ${BOOTSTRAP_S}s
-    transaction_frequency: 30
     md_n_recipients: ${md_recipients}    # scaled to fund N=$N in ~8 cycles
 
   simulation-monitor:
