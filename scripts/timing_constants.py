@@ -41,3 +41,14 @@ DEFAULT_UPGRADE_STAGGER_S = 30           # 30s between node upgrades
 # for an instance of the hang.)
 DEFAULT_DAEMON_RESTART_GAP_S = 300
 DEFAULT_WALLET_RESTART_GAP_S = 300
+
+
+# Threshold (total agent count) above which config generators auto-enable
+# `native_preemption: true` in the Shadow general section. Without it,
+# Shadow uses cooperative scheduling, which can deadlock when a single
+# monerod process enters a busy CPU section (notably LMDB blockchain
+# resize). See run 20260504_104925_large_upgrade_short for the failure
+# this guards against: one v2 daemon hit "DB resize needed", entered a
+# futex spin, and froze the entire 1011-node sim because Shadow couldn't
+# advance simulation time while waiting for it to yield.
+LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD = 100

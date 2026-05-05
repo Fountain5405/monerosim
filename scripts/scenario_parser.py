@@ -65,6 +65,7 @@ try:
         DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
         DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
         DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+        LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD,
     )
 except ImportError:
     from .generate_config import parse_duration, calculate_activity_start_times
@@ -75,6 +76,7 @@ except ImportError:
         DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
         DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
         DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+        LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD,
     )
 
 
@@ -683,6 +685,16 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
     general = scenario.general.copy()
     if general.get('bootstrap_end_time') == 'auto':
         general['bootstrap_end_time'] = f"{bootstrap_end_s // 3600}h" if bootstrap_end_s % 3600 == 0 else f"{bootstrap_end_s}s"
+
+    # Auto-enable native_preemption for large sims to avoid monerod LMDB
+    # resize stalls under cooperative scheduling. See timing_constants.py
+    # for the failure mode this guards against. Caller can set
+    # `general.native_preemption: false` explicitly to override.
+    if total_nodes >= LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD and 'native_preemption' not in general:
+        print(f"Note: enabling native_preemption=true for large sim "
+              f"({total_nodes} agents >= {LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD} threshold). "
+              f"Set general.native_preemption: false to override.")
+        general['native_preemption'] = True
 
     # Collect user agents with auto activity_start_time for staggering.
     # Treat transaction_interval: 'auto' as a request to use the calibrator's

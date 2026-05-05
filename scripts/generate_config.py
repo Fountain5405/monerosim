@@ -84,6 +84,7 @@ try:
         DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
         DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
         DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+        LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD,
     )
 except ImportError:
     from .timing_constants import (
@@ -92,6 +93,7 @@ except ImportError:
         DEFAULT_INITIAL_BATCH_SIZE, DEFAULT_GROWTH_FACTOR, DEFAULT_MAX_BATCH_SIZE,
         DEFAULT_INTRA_BATCH_STAGGER_S, DEFAULT_UPGRADE_STAGGER_S,
         DEFAULT_DAEMON_RESTART_GAP_S, DEFAULT_WALLET_RESTART_GAP_S,
+        LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD,
     )
 
 # Generate-config-specific timing.
@@ -550,6 +552,7 @@ def _build_general_config(
     fast_mode: bool,
     process_threads: int,
     native_preemption: bool = None,
+    total_agents: int = 0,
     shared_dir: str = None,
     daemon_data_dir: str = None,
     fallback_seeds_mode: str = "auto",
@@ -557,6 +560,15 @@ def _build_general_config(
     """Build the general config section shared by generate_config and generate_upgrade_config."""
     shadow_log_level = "warning" if fast_mode else "info"
     runahead = "100ms" if fast_mode else None
+
+    # Auto-enable native_preemption for large sims (see timing_constants.py
+    # for the failure mode this guards against). Caller can pass
+    # native_preemption=False explicitly to disable.
+    if native_preemption is None and total_agents >= LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD:
+        print(f"Note: enabling native_preemption=true for large sim "
+              f"({total_agents} agents >= {LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD} threshold). "
+              f"Pass native_preemption=False to disable.")
+        native_preemption = True
 
     general_config = OrderedDict([
         ("stop_time", duration),
@@ -852,6 +864,7 @@ def generate_config(
         fast_mode=fast_mode,
         process_threads=process_threads,
         native_preemption=native_preemption,
+        total_agents=total_agents,
         fallback_seeds_mode=fallback_seeds_mode,
     )
 
@@ -1212,6 +1225,7 @@ def generate_upgrade_config(
         fast_mode=fast_mode,
         process_threads=process_threads,
         native_preemption=native_preemption,
+        total_agents=total_agents,
         fallback_seeds_mode=fallback_seeds_mode,
     )
 

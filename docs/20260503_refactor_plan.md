@@ -40,7 +40,8 @@ values "why" comments tied to specific incidents (see
 | 1.5 | `BaseAgent._recover_wallet_connection()` consolidating wallet recovery | DONE | `39969da1` |
 | 1.6 | Extract `scripts/colors.sh` sourced by 3 shell scripts | DONE | `5c0b3c17` |
 | 1.7 | Retry `get_info()` in `BaseAgent.setup()` (discovered during 400-node calibration; `AutonomousMinerAgent` was crashing on transient empty-error from `get_info()` at sim t=15s) | DONE | `3e7a49a6` |
-| 1.8 | Delete dead `transaction_frequency` field from miner-distributor (parsed but never read; ~25 templates implied seconds-between-distributions which is actually `md_funding_cycle_interval`) | DONE | (this commit) |
+| 1.8 | Delete dead `transaction_frequency` field from miner-distributor (parsed but never read; ~25 templates implied seconds-between-distributions which is actually `md_funding_cycle_interval`) | DONE | `1089af09` |
+| 1.9 | Auto-default `native_preemption: true` in scenario_parser + generate_config when total agents >= 100. Without it, a single monerod's LMDB resize can deadlock the entire sim under Shadow's cooperative scheduling (observed in `archived_runs/20260504_104925_large_upgrade_short`). | DONE | (this commit) |
 
 Net: ~110 lines removed across Tier 1.1–1.6; all `shadow_agents.yaml`
 output verified byte-identical against pre-refactor baseline (paths
