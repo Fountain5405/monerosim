@@ -41,7 +41,13 @@ values "why" comments tied to specific incidents (see
 | 1.6 | Extract `scripts/colors.sh` sourced by 3 shell scripts | DONE | `5c0b3c17` |
 | 1.7 | Retry `get_info()` in `BaseAgent.setup()` (discovered during 400-node calibration; `AutonomousMinerAgent` was crashing on transient empty-error from `get_info()` at sim t=15s) | DONE | `3e7a49a6` |
 | 1.8 | Delete dead `transaction_frequency` field from miner-distributor (parsed but never read; ~25 templates implied seconds-between-distributions which is actually `md_funding_cycle_interval`) | DONE | `1089af09` |
-| 1.9 | Auto-default `native_preemption: true` in scenario_parser + generate_config when total agents >= 100. Without it, a single monerod's LMDB resize can deadlock the entire sim under Shadow's cooperative scheduling (observed in `archived_runs/20260504_104925_large_upgrade_short`). | DONE | (this commit) |
+| 1.9 | Auto-default `native_preemption: true` in scenario_parser + generate_config when total agents >= 100. Without it, a single monerod's LMDB resize can deadlock the entire sim under Shadow's cooperative scheduling (observed in `archived_runs/20260504_104925_large_upgrade_short`). | DONE | `857d0233` |
+
+**Tier 1 fully validated end-to-end at 1011-node scale on 2026-05-06.**
+See `docs/20260506_1011node_validation.md` for headline metrics, pre/post
+upgrade activity split, and reproduction notes. Post-upgrade tx counts
+of 11–18 per user (vs 0–3 pre-upgrade) confirm Bug 1 + Bug 2 + Tier 1.7
+all hold under real load at full scale.
 
 Net: ~110 lines removed across Tier 1.1–1.6; all `shadow_agents.yaml`
 output verified byte-identical against pre-refactor baseline (paths
