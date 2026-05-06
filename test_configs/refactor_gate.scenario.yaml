@@ -1,0 +1,97 @@
+# Refactor validation gate: 5 miners + 100 users + 400 relays = 505 agents.
+# No upgrade event. Designed to be the cheap-but-meaningful gate that
+# every refactor must pass before merging.
+#
+# Why this shape:
+# - 505 agents > 100, so native_preemption auto-enables (Tier 1.9).
+# - 400 relays add network mesh weight without the 3-process cost of
+#   user agents, so Shadow scheduling load is much lower than a pure
+#   1000-user run (~700 processes vs ~3000 for the canonical large).
+# - 100 users at 10-min tx interval = ~1000+ txs over a 2h activity
+#   window. Plenty of signal to confirm Bug 1, Bug 2, Tier 1.7, and
+#   any future refactor doesn't break tx generation, propagation, or
+#   confirmation.
+# - No phase transitions = sidesteps the LMDB resize stall that
+#   currently makes 1011-node upgrade runs cost 30+ hours wall.
+#
+# Estimated wall time: ~6-12 hours (predicted ratio ~0.4-0.6 sim/wall
+# at this scale with native_preemption). One-day turnaround.
+#
+# Schedule (sim time):
+#    0h00 - bootstrap begins; miners + relays start; users in batches
+#    1h45 - last user batched online (100 users / 5-batch growth)
+#    2h00 - bootstrap_end_time
+#    3h00 - activity_start_time (1h funding period for miner-distributor)
+#    3h05 - last user activity start (100 * 3s stagger)
+#    5h00 - stop_time (~2h activity window per user, ~12 txs each)
+#
+# REQUIRED CLI FLAG when expanding:
+#   python -m scripts.scenario_parser \
+#       test_configs/refactor_gate.scenario.yaml \
+#       -o test_configs/refactor_gate.yaml \
+#       --no-safe-tx-interval
+
+general:
+  stop_time: 18000s                    # 5h
+  simulation_seed: 12345
+  bootstrap_end_time: 7200s            # 2h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  # native_preemption auto-added by scenario_parser at >= 100 agents
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # 5 miners with hashrate summing to 100 (required for initial miners).
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # 100 users — full agents (daemon + wallet + Python script).
+  # Explicit activity_start_time and stagger to keep timing tight
+  # within the 5h sim window. transaction_interval explicit so the
+  # calibrator doesn't bump it up for "safety" (with --no-safe-tx-interval).
+  user-{001..100}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 0s
+    start_time_stagger: auto           # batched bootstrap
+    transaction_interval: 600s         # 10 min — gives plenty of activity
+    activity_start_time: 10800s        # 3h (1h after bootstrap_end)
+    activity_start_time_stagger: 3s    # 100 users * 3s = 5 min stagger window
+    can_receive_distributions: true
+
+  # 400 relays — daemon-only, no wallet, no script.
+  # These add network mesh weight cheaply (only 1 process per relay
+  # vs 3 for users) and exercise tx propagation paths under load.
+  relay-{001..400}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto           # batched bootstrap
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto                    # = bootstrap_end_time = 2h
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: auto                # calibrator-safe value for 505 nodes
