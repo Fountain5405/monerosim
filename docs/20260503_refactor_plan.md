@@ -53,20 +53,36 @@ Net: ~110 lines removed across Tier 1.1–1.6; all `shadow_agents.yaml`
 output verified byte-identical against pre-refactor baseline (paths
 normalized via `sed`).
 
-## Tier 2 — worth doing in the next month, NOT STARTED
+## Tier 2 — DONE 2026-05-07
 
-These are bigger structural changes. Not byte-identical YAML output is
-expected (struct field reordering); semantic equivalence verified via
-`compare_determinism.py` fingerprint match.
+Net validation: refactor_gate (`archived_runs/20260507_035142_post_md_giveup_v2_gate`)
+matches the 2026-05-06 baseline `archived_runs/20260506_193346_refactor_gate`
+within ±1 tx. Wall time 1h 36m identical. 0 process failures. All 4
+success criteria PASS. Miner tx counts identical per-miner (56/16/96/52/56).
 
-| Action | Effort | Risk |
+| Action | Status | Commit |
 |---|---|---|
-| Introduce `WalletProcessArgs` / `DaemonProcessArgs` / `UserAgentProcessContext` Rust structs to collapse the 14–23 param signatures | 1 day | Mechanical, many call sites |
-| `GenerationConfig` dataclass for `generate_config`'s 32 params (nested `TimingOverrides`, `BatchedBootstrap`, `MinerDistributorConfig`) | 1 day | Same |
-| Extract common core from `generate_config` ↔ `generate_upgrade_config` (~80% overlap per audit) | 1 day | Need integration tests first to prove behavior unchanged |
-| Split `_run_user_iteration` (114 lines, 6 responsibilities) and `_perform_initial_funding` (192 lines) | 1 day | Hot paths — needs sim run to validate after |
-| Pick **one term**: agent vs node vs host. Mass-rename. Update SCENARIO_FORMAT.md | 4h | Low risk, high readability win |
-| Move dated `test_configs/*.yaml` artifacts to `archived_runs/`. Keep only generic templates | 30min | Pure cleanup |
+| Move dated `test_configs/*.yaml` artifacts to `archived_runs/` | DONE | `63013fee` |
+| `GenerationConfig` dataclass for `generate_config`'s 28 params | DONE | `47a55a39` |
+| Rust `WalletProcessArgs`/`UserAgentProcessArgs`/`MiningAgentProcessArgs`/`UserAgentProcessContext` structs (22/18/14/14 params) | DONE | `32c3c57a` |
+| Extract common core from `generate_config` ↔ `generate_upgrade_config` (-94 lines net) | DONE | `b3460246` |
+| Split `_run_user_iteration` (97 lines → 6 helpers) and `_perform_initial_funding` (191 lines → 8 helpers) | DONE | `67d5c1f8` |
+| Layer-consistent audit of agent/host/node terminology (5 drift fixes; mass-rename rejected — terms are layer-distinct, see below) | DONE | `02dc7102` |
+| MD give-up threshold for permanently-broken recipients (closes plateau bug exposed by the cumulative gate run) | DONE | `c02a975e` |
+
+### Notes for future readers
+
+**agent/host/node are NOT synonymous in this codebase**:
+
+- **agent** = Python script that simulates user activity (`agents/regular_user.py`, etc.). May control a node and/or wallet via RPC.
+- **host** = Shadow's process container (one per simulated machine). Has its own network identity. May or may not run a node, may or may not run an agent. Pure relays are hosts with a node but no agent.
+- **node** = a monerod process — a peer in the Monero P2P gossip network.
+
+The original audit said "pick one and mass-rename." That would have conflated three layers. The audit-and-fix-only-mis-uses approach (commit `02dc7102`) found the codebase was already roughly correct; only 5 spots needed fixing, all docstring/comment/log-string drift.
+
+**MD give-up first attempt was over-aggressive** (commit `8b7fcb62`, reverted in `d1efcd40`). It counted *all* batch failures including miner-side ones (e.g. "not enough unlocked money" during early sim). The corrected fix (`c02a975e`) only counts recipient-side failures — specifically, failures from `_get_recipient_address()` returning `None`, which surface as the `batch_failed` element of `_send_batch_transaction()`'s `(success=True, funded_ids, batch_failed)` tuple. Don't increment the per-recipient counter from no-miner-available paths or from generic batch-send failures.
+
+**Wallet-rpc keys-file flake** observed at scale (3/100 in `archived_runs/20260507_004801_post_tier2_21_gate`): wallet-rpc fails to write `<host>_wallet/<host>_wallet.keys.new` even though the parent dir is pre-created at config-gen time (`src/orchestrator.rs:653-668`). Cause appears to be inside Monero's `wallet2.cpp::store_to()` — possibly a concurrent-write race when 100 wallet-rpcs bootstrap simultaneously. The MD give-up fix (`c02a975e`) lets MD transition past this gracefully. A separate root-cause fix would be welcome but isn't required.
 
 ## Tier 3 — DO NOT DO (explicit traps)
 
