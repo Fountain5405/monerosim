@@ -247,30 +247,14 @@ class RegularUserAgent(BaseAgent):
             float: The recommended time to sleep (in seconds) before the next iteration.
         """
         # Check if we're still waiting for activity start (bootstrap period)
-        if getattr(self, 'waiting_for_activity_start', False):
-            current_time = time.time()
-            if current_time < self.activity_start_time:
-                remaining = self.activity_start_time - current_time
-                self.logger.debug(f"Waiting {remaining:.0f}s before starting transactions")
-                # Check every 5 minutes or when ready, whichever is sooner
-                return min(300.0, remaining)
-            else:
-                self.logger.info("Activity start time reached, syncing wallet before transacting")
-                self.waiting_for_activity_start = False
-                self._wallet_synced = False
+        bootstrap_wait = self._maybe_wait_for_activity_start()
+        if bootstrap_wait is not None:
+            return bootstrap_wait
 
         # Ensure wallet is synced before attempting any transactions
-        if not getattr(self, '_wallet_synced', True):
-            try:
-                self.logger.info("Waiting for wallet to sync with blockchain...")
-                self.wallet_rpc.refresh()
-                wallet_height = self.wallet_rpc.get_height()
-                self.logger.info(f"Wallet synced to height {wallet_height}")
-                self._wallet_synced = True
-                self._last_refresh_time = time.time()
-            except Exception as e:
-                self.logger.warning(f"Wallet not yet synced ({e}), retrying in 30s")
-                return 30.0
+        sync_wait = self._ensure_wallet_synced()
+        if sync_wait is not None:
+            return sync_wait
 
         # Regular users perform transactions
         self.logger.debug("Regular user running iteration - checking for transaction opportunities")
@@ -283,6 +267,52 @@ class RegularUserAgent(BaseAgent):
         current_time = time.time()
 
         # Periodic wallet refresh to stay synced with daemon (important during/after upgrades)
+        self._periodic_wallet_refresh(current_time)
+
+        try:
+            self._maybe_send_transaction()
+            return self._on_iteration_success()
+        except Exception as e:
+            return self._on_iteration_error(e, current_time)
+
+    def _maybe_wait_for_activity_start(self) -> Optional[float]:
+        """
+        If still in bootstrap delay, return the sleep duration.
+        Returns None when the iteration should proceed.
+        """
+        if getattr(self, 'waiting_for_activity_start', False):
+            current_time = time.time()
+            if current_time < self.activity_start_time:
+                remaining = self.activity_start_time - current_time
+                self.logger.debug(f"Waiting {remaining:.0f}s before starting transactions")
+                # Check every 5 minutes or when ready, whichever is sooner
+                return min(300.0, remaining)
+            else:
+                self.logger.info("Activity start time reached, syncing wallet before transacting")
+                self.waiting_for_activity_start = False
+                self._wallet_synced = False
+        return None
+
+    def _ensure_wallet_synced(self) -> Optional[float]:
+        """
+        Ensure the wallet is synced with the blockchain after bootstrap.
+        Returns a retry-sleep duration if not yet synced, or None to proceed.
+        """
+        if not getattr(self, '_wallet_synced', True):
+            try:
+                self.logger.info("Waiting for wallet to sync with blockchain...")
+                self.wallet_rpc.refresh()
+                wallet_height = self.wallet_rpc.get_height()
+                self.logger.info(f"Wallet synced to height {wallet_height}")
+                self._wallet_synced = True
+                self._last_refresh_time = time.time()
+            except Exception as e:
+                self.logger.warning(f"Wallet not yet synced ({e}), retrying in 30s")
+                return 30.0
+        return None
+
+    def _periodic_wallet_refresh(self, current_time: float):
+        """Refresh the wallet if the refresh interval has elapsed."""
         if current_time - self._last_refresh_time >= self._refresh_interval:
             try:
                 self.logger.debug("Performing periodic wallet refresh")
@@ -292,51 +322,55 @@ class RegularUserAgent(BaseAgent):
             except Exception as e:
                 self.logger.warning(f"Periodic wallet refresh failed: {e}")
 
-        try:
-            # Get wallet balance
-            balance_info = self.wallet_rpc.get_balance()
-            unlocked_balance = balance_info.get('unlocked_balance', 0)
+    def _maybe_send_transaction(self):
+        """Inspect the wallet balance and probabilistically send a transaction."""
+        # Get wallet balance
+        balance_info = self.wallet_rpc.get_balance()
+        unlocked_balance = balance_info.get('unlocked_balance', 0)
 
-            # Only send transactions if we have sufficient balance
-            if unlocked_balance > 0:
-                self.logger.debug(f"User has unlocked balance: {unlocked_balance}")
+        # Only send transactions if we have sufficient balance
+        if unlocked_balance > 0:
+            self.logger.debug(f"User has unlocked balance: {unlocked_balance}")
 
-                # Randomly decide whether to send a transaction
-                if self._should_send_transaction():
-                    self._send_random_transaction()
+            # Randomly decide whether to send a transaction
+            if self._should_send_transaction():
+                self._send_random_transaction()
 
-            # Success - reset consecutive error counter
-            if self._consecutive_errors > 0:
-                self.logger.info(f"Recovered after {self._consecutive_errors} consecutive errors")
-            self._consecutive_errors = 0
+    def _on_iteration_success(self) -> float:
+        """Reset consecutive-error state and return the configured sleep interval."""
+        # Success - reset consecutive error counter
+        if self._consecutive_errors > 0:
+            self.logger.info(f"Recovered after {self._consecutive_errors} consecutive errors")
+        self._consecutive_errors = 0
 
-            # Use configured transaction interval
-            return getattr(self, 'tx_interval', 60.0)
+        # Use configured transaction interval
+        return getattr(self, 'tx_interval', 60.0)
 
-        except Exception as e:
-            self._consecutive_errors += 1
-            self.logger.error(f"Error in user iteration (consecutive: {self._consecutive_errors}): {e}")
+    def _on_iteration_error(self, e: Exception, current_time: float) -> float:
+        """Handle an exception from the transaction step, recovering the wallet if needed."""
+        self._consecutive_errors += 1
+        self.logger.error(f"Error in user iteration (consecutive: {self._consecutive_errors}): {e}")
 
-            # Detect "no wallet loaded" — happens after Shadow restarts the
-            # wallet-rpc process at a binary-upgrade phase boundary (see
-            # docs/UPGRADE_WALLET_SIGKILL.md). The new wallet-rpc binary is
-            # listening on the RPC port but has no wallet open, so every call
-            # returns -13 / "No wallet file" until we explicitly re-open.
-            err_str = str(e)
-            wallet_not_loaded = ("-13" in err_str) or ("No wallet file" in err_str)
+        # Detect "no wallet loaded" — happens after Shadow restarts the
+        # wallet-rpc process at a binary-upgrade phase boundary (see
+        # docs/UPGRADE_WALLET_SIGKILL.md). The new wallet-rpc binary is
+        # listening on the RPC port but has no wallet open, so every call
+        # returns -13 / "No wallet file" until we explicitly re-open.
+        err_str = str(e)
+        wallet_not_loaded = ("-13" in err_str) or ("No wallet file" in err_str)
 
-            # Recovery: reset HTTP session, re-open wallet, reconnect daemon, refresh.
-            if wallet_not_loaded or self._consecutive_errors >= 2:
-                self.logger.warning(
-                    f"Persistent errors ({self._consecutive_errors}), "
-                    "resetting wallet connection"
-                    + (" (wallet not loaded — likely phase upgrade)" if wallet_not_loaded else "")
-                )
-                if self._recover_wallet_connection():
-                    self._last_refresh_time = current_time
+        # Recovery: reset HTTP session, re-open wallet, reconnect daemon, refresh.
+        if wallet_not_loaded or self._consecutive_errors >= 2:
+            self.logger.warning(
+                f"Persistent errors ({self._consecutive_errors}), "
+                "resetting wallet connection"
+                + (" (wallet not loaded — likely phase upgrade)" if wallet_not_loaded else "")
+            )
+            if self._recover_wallet_connection():
+                self._last_refresh_time = current_time
 
-            return 30.0
-    
+        return 30.0
+
     def _should_send_transaction(self) -> bool:
         """Determine if a transaction should be sent in this iteration"""
         return random.random() < self.tx_send_probability
