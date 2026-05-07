@@ -32,15 +32,15 @@
 #       --no-safe-tx-interval
 
 general:
-  stop_time: 18000s                    # 5h
+  stop_time: 8h
   simulation_seed: 12345
-  bootstrap_end_time: 7200s            # 2h
+  bootstrap_end_time: 3h            # 2h
   enable_dns_server: true
   shadow_log_level: error
   progress: true
   runahead: 500ms
   process_threads: 2
-  # native_preemption auto-added by scenario_parser at >= 100 agents
+  native_preemption: false
   daemon_defaults:
     log-level: monitor
     max-log-file-size: 0
@@ -73,7 +73,7 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 0s
+    start_time: 2h
     start_time_stagger: auto           # batched bootstrap
     transaction_interval: 600s         # 10 min — gives plenty of activity
     activity_start_time: 10800s        # 3h (1h after bootstrap_end)
@@ -85,7 +85,7 @@ agents:
   # vs 3 for users) and exercise tx propagation paths under load.
   relay-{001..400}:
     daemon: monerod
-    start_time: 0s
+    start_time: 10m
     start_time_stagger: auto           # batched bootstrap
 
   miner-distributor:

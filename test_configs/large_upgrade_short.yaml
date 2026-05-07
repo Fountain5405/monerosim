@@ -7,6 +7,7 @@ general:
   progress: true
   runahead: 500ms
   process_threads: 2
+  native_preemption: true
   daemon_defaults:
     log-level: monitor
     max-log-file-size: 0
