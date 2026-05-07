@@ -15,7 +15,7 @@ use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::agent::{process_user_agents, process_miner_distributor, process_pure_script_agents, process_simulation_monitor, prepare_fallback_seeds};
+use crate::agent::{process_user_agents, UserAgentProcessContext, process_miner_distributor, process_pure_script_agents, process_simulation_monitor, prepare_fallback_seeds};
 use serde_json;
 use serde_yaml;
 use std::collections::BTreeMap;
@@ -387,30 +387,30 @@ export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
     );
 
     // Process all agent types from the configuration
-    process_user_agents(
-        &effective_agents,
-        &mut hosts,
-        &mut seed_nodes,
-        &mut subnet_manager,
-        &mut ip_registry,
-        &monerod_path,
-        &wallet_path,
-        &environment,
-        &monero_environment,
-        shared_dir_path,
-        &current_dir,
-        gml_graph.as_ref(),
+    process_user_agents(UserAgentProcessContext {
+        agents: &effective_agents,
+        hosts: &mut hosts,
+        seed_agents: &mut seed_nodes,
+        subnet_manager: &mut subnet_manager,
+        ip_registry: &mut ip_registry,
+        monerod_path: &monerod_path,
+        wallet_path: &wallet_path,
+        environment: &environment,
+        monero_environment: &monero_environment,
+        shared_dir: shared_dir_path,
+        current_dir: &current_dir,
+        gml_graph: gml_graph.as_ref(),
         using_gml_topology,
-        &peer_mode,
-        topology.as_ref(),
+        peer_mode: &peer_mode,
+        topology: topology.as_ref(),
         enable_dns_server,
-        config.general.daemon_defaults.as_ref(),
-        config.general.wallet_defaults.as_ref(),
-        distribution_strategy.as_ref(),
-        distribution_weights.as_ref(),
-        &scripts_dir,
-        &config.general.daemon_data_dir,
-    )?;
+        daemon_defaults: config.general.daemon_defaults.as_ref(),
+        wallet_defaults: config.general.wallet_defaults.as_ref(),
+        distribution_strategy: distribution_strategy.as_ref(),
+        distribution_weights: distribution_weights.as_ref(),
+        scripts_dir: &scripts_dir,
+        daemon_data_dir: &config.general.daemon_data_dir,
+    })?;
 
 
     // Calculate offset for script agents to avoid IP collisions

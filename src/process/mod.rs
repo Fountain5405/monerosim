@@ -3,5 +3,5 @@
 pub mod wallet;
 pub mod agent_scripts;
 
-pub use wallet::{add_wallet_process, DaemonAddress};
-pub use agent_scripts::{add_user_agent_process, create_mining_agent_process};
+pub use wallet::{add_wallet_process, DaemonAddress, WalletProcessArgs};
+pub use agent_scripts::{add_user_agent_process, create_mining_agent_process, UserAgentProcessArgs, MiningAgentProcessArgs};

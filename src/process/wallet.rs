@@ -85,27 +85,29 @@ impl DaemonAddress<'_> {
     }
 }
 
+/// Arguments for `add_wallet_process`.
+pub struct WalletProcessArgs<'a> {
+    pub processes: &'a mut Vec<ShadowProcess>,
+    pub agent_id: &'a str,
+    pub agent_ip: &'a str,
+    pub daemon: DaemonAddress<'a>,
+    pub wallet_rpc_port: u16,
+    pub wallet_binary_path: &'a str,
+    pub environment: &'a BTreeMap<String, String>,
+    pub wallet_start_time: &'a str,
+    pub custom_args: Option<&'a Vec<String>>,
+    pub custom_env: Option<&'a BTreeMap<String, String>>,
+    pub wallet_defaults: Option<&'a BTreeMap<String, OptionValue>>,
+    pub wallet_options: Option<&'a BTreeMap<String, OptionValue>>,
+    pub shared_dir: &'a str,
+}
+
 /// Add a wallet process pointing at the given daemon address.
-pub fn add_wallet_process(
-    processes: &mut Vec<ShadowProcess>,
-    agent_id: &str,
-    agent_ip: &str,
-    daemon: DaemonAddress<'_>,
-    wallet_rpc_port: u16,
-    wallet_binary_path: &str,
-    environment: &BTreeMap<String, String>,
-    _index: usize,
-    wallet_start_time: &str,
-    custom_args: Option<&Vec<String>>,
-    custom_env: Option<&BTreeMap<String, String>>,
-    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
-    wallet_options: Option<&BTreeMap<String, OptionValue>>,
-    shared_dir: &str,
-) -> String {
-    let daemon_address = daemon.format();
+pub fn add_wallet_process(args: WalletProcessArgs<'_>) -> String {
+    let daemon_address = args.daemon.format();
     let wallet_args = build_wallet_args(
-        agent_id, agent_ip, &daemon_address, wallet_rpc_port,
-        environment, custom_args, wallet_defaults, wallet_options, shared_dir,
+        args.agent_id, args.agent_ip, &daemon_address, args.wallet_rpc_port,
+        args.environment, args.custom_args, args.wallet_defaults, args.wallet_options, args.shared_dir,
     );
 
     // Shell-quoted command string for the WALLET_RPC_CMD env var consumed
@@ -114,22 +116,22 @@ pub fn add_wallet_process(
     // launched directly (no shell), using ProcessArgs::List(wallet_args).
     let wallet_cmd = format!(
         "{} {}",
-        shell_quote_args(&[wallet_binary_path.to_string()]),
+        shell_quote_args(&[args.wallet_binary_path.to_string()]),
         shell_quote_args(&wallet_args),
     );
 
-    let mut wallet_env = environment.clone();
-    if let Some(env) = custom_env {
+    let mut wallet_env = args.environment.clone();
+    if let Some(env) = args.custom_env {
         for (key, value) in env {
             wallet_env.insert(key.clone(), value.clone());
         }
     }
 
-    processes.push(ShadowProcess {
-        path: wallet_binary_path.to_string(),
+    args.processes.push(ShadowProcess {
+        path: args.wallet_binary_path.to_string(),
         args: ProcessArgs::List(wallet_args),
         environment: wallet_env,
-        start_time: wallet_start_time.to_string(),
+        start_time: args.wallet_start_time.to_string(),
         shutdown_time: None,
         shutdown_signal: None,
         expected_final_state: Some(crate::shadow::ExpectedFinalState::Running),

@@ -13,7 +13,11 @@ use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::options::{options_to_args, merge_options, translate_daemon_log_level, translate_wallet_log_level};
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::process::{add_wallet_process, DaemonAddress, add_user_agent_process, create_mining_agent_process};
+use crate::process::{
+    add_wallet_process, DaemonAddress, WalletProcessArgs,
+    add_user_agent_process, UserAgentProcessArgs,
+    create_mining_agent_process, MiningAgentProcessArgs,
+};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
@@ -26,31 +30,59 @@ struct AgentEntry {
     port: u16,
 }
 
+/// Context bundle for `process_user_agents`.
+pub struct UserAgentProcessContext<'a> {
+    pub agents: &'a AgentDefinitions,
+    pub hosts: &'a mut BTreeMap<String, ShadowHost>,
+    pub seed_agents: &'a mut Vec<String>,
+    pub subnet_manager: &'a mut AsSubnetManager,
+    pub ip_registry: &'a mut GlobalIpRegistry,
+    pub monerod_path: &'a str,
+    pub wallet_path: &'a str,
+    pub environment: &'a BTreeMap<String, String>,
+    pub monero_environment: &'a BTreeMap<String, String>,
+    pub shared_dir: &'a Path,
+    pub current_dir: &'a str,
+    pub gml_graph: Option<&'a GmlGraph>,
+    pub using_gml_topology: bool,
+    pub peer_mode: &'a PeerMode,
+    pub topology: Option<&'a Topology>,
+    pub enable_dns_server: bool,
+    pub daemon_defaults: Option<&'a BTreeMap<String, OptionValue>>,
+    pub wallet_defaults: Option<&'a BTreeMap<String, OptionValue>>,
+    pub distribution_strategy: Option<&'a crate::config_v2::DistributionStrategy>,
+    pub distribution_weights: Option<&'a crate::config_v2::RegionWeights>,
+    pub scripts_dir: &'a Path,
+    pub daemon_data_dir: &'a str,
+}
+
 /// Process user agents
-pub fn process_user_agents(
-    agents: &AgentDefinitions,
-    hosts: &mut BTreeMap<String, ShadowHost>,
-    seed_agents: &mut Vec<String>,
-    subnet_manager: &mut AsSubnetManager,
-    ip_registry: &mut GlobalIpRegistry,
-    monerod_path: &str,
-    wallet_path: &str,
-    environment: &BTreeMap<String, String>,
-    monero_environment: &BTreeMap<String, String>,
-    shared_dir: &Path,
-    current_dir: &str,
-    gml_graph: Option<&GmlGraph>,
-    using_gml_topology: bool,
-    peer_mode: &PeerMode,
-    topology: Option<&Topology>,
-    enable_dns_server: bool,
-    daemon_defaults: Option<&BTreeMap<String, OptionValue>>,
-    wallet_defaults: Option<&BTreeMap<String, OptionValue>>,
-    distribution_strategy: Option<&crate::config_v2::DistributionStrategy>,
-    distribution_weights: Option<&crate::config_v2::RegionWeights>,
-    scripts_dir: &Path,
-    daemon_data_dir: &str,
-) -> color_eyre::eyre::Result<()> {
+pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre::Result<()> {
+    let UserAgentProcessContext {
+        agents,
+        hosts,
+        seed_agents,
+        subnet_manager,
+        ip_registry,
+        monerod_path,
+        wallet_path,
+        environment,
+        monero_environment,
+        shared_dir,
+        current_dir,
+        gml_graph,
+        using_gml_topology,
+        peer_mode,
+        topology,
+        enable_dns_server,
+        daemon_defaults,
+        wallet_defaults,
+        distribution_strategy,
+        distribution_weights,
+        scripts_dir,
+        daemon_data_dir,
+    } = ctx;
+
     // Filter agents that have daemon or wallet (user agents, not script-only)
     let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
         .filter(|(_, config)| config.has_local_daemon() || config.has_remote_daemon() || config.has_wallet())
@@ -639,22 +671,21 @@ pub fn process_user_agents(
                     None
                 };
                 if let Some(daemon) = daemon {
-                    wallet_rpc_cmd = Some(add_wallet_process(
-                        &mut processes,
-                        &agent_id,
-                        &agent_ip,
+                    wallet_rpc_cmd = Some(add_wallet_process(WalletProcessArgs {
+                        processes: &mut processes,
+                        agent_id: &agent_id,
+                        agent_ip: &agent_ip,
                         daemon,
                         wallet_rpc_port,
-                        &wallet_binary_path,
+                        wallet_binary_path: &wallet_binary_path,
                         environment,
-                        i,
-                        &wallet_start_time,
-                        user_agent_config.wallet_args.as_ref(),
-                        user_agent_config.wallet_env.as_ref(),
+                        wallet_start_time: &wallet_start_time,
+                        custom_args: user_agent_config.wallet_args.as_ref(),
+                        custom_env: user_agent_config.wallet_env.as_ref(),
                         wallet_defaults,
-                        user_agent_config.wallet_options.as_ref(),
-                        &shared_dir.to_string_lossy(),
-                    ));
+                        wallet_options: user_agent_config.wallet_options.as_ref(),
+                        shared_dir: &shared_dir.to_string_lossy(),
+                    }));
                 }
             }
 
@@ -677,26 +708,26 @@ pub fn process_user_agents(
                 }
 
                 // Step 1: Run regular_user.py first for wallet creation and address registration
-                add_user_agent_process(
-                    &mut processes,
+                add_user_agent_process(UserAgentProcessArgs {
+                    processes: &mut processes,
                     agent_id,
-                    &agent_ip,
-                    if has_local_daemon { Some(daemon_rpc_port) } else { None },
-                    if has_wallet { Some(wallet_rpc_port) } else { None },
-                    if has_local_daemon { Some(p2p_port) } else { None },
-                    "agents.regular_user",
-                    Some(&merged_attributes),
+                    agent_ip: &agent_ip,
+                    daemon_rpc_port: if has_local_daemon { Some(daemon_rpc_port) } else { None },
+                    wallet_rpc_port: if has_wallet { Some(wallet_rpc_port) } else { None },
+                    p2p_port: if has_local_daemon { Some(p2p_port) } else { None },
+                    script: "agents.regular_user",
+                    attributes: Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
-                    i,
-                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                    Some(&agent_start_time),
-                    user_agent_config.remote_daemon_address(),
-                    user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    index: i,
+                    stop_time: environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    custom_start_time: Some(&agent_start_time),
+                    remote_daemon: user_agent_config.remote_daemon_address(),
+                    daemon_selection_strategy: user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                     scripts_dir,
-                    wallet_rpc_cmd.as_deref(),
-                );
+                    wallet_rpc_cmd: wallet_rpc_cmd.as_deref(),
+                });
 
                 // Step 2: Run mining_script (autonomous_miner.py)
                 let mining_start_time = if let Ok(agent_seconds) = parse_duration_to_seconds(&agent_start_time) {
@@ -711,22 +742,21 @@ pub fn process_user_agents(
                     None
                 };
 
-                let mining_processes = create_mining_agent_process(
+                let mining_processes = create_mining_agent_process(MiningAgentProcessArgs {
                     agent_id,
-                    &agent_ip,
+                    ip_addr: &agent_ip,
                     daemon_rpc_port,
-                    mining_wallet_port,
-                    &script,
-                    Some(&merged_attributes),
+                    wallet_rpc_port: mining_wallet_port,
+                    mining_script: &script,
+                    attributes: Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
-                    i,
-                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                    Some(&mining_start_time),
+                    index: i,
+                    custom_start_time: Some(&mining_start_time),
                     scripts_dir,
-                    wallet_rpc_cmd.as_deref(),
-                );
+                    wallet_rpc_cmd: wallet_rpc_cmd.as_deref(),
+                });
                 processes.extend(mining_processes);
             } else if !script.is_empty() {
                 // Regular user agent script
@@ -742,26 +772,26 @@ pub fn process_user_agents(
                     merged_attributes.insert("can_receive_distributions".to_string(), "true".to_string());
                 }
 
-                add_user_agent_process(
-                    &mut processes,
+                add_user_agent_process(UserAgentProcessArgs {
+                    processes: &mut processes,
                     agent_id,
-                    &agent_ip,
-                    if has_local_daemon { Some(daemon_rpc_port) } else { None },
-                    if has_wallet { Some(wallet_rpc_port) } else { None },
-                    if has_local_daemon { Some(p2p_port) } else { None },
-                    &script,
-                    Some(&merged_attributes),
+                    agent_ip: &agent_ip,
+                    daemon_rpc_port: if has_local_daemon { Some(daemon_rpc_port) } else { None },
+                    wallet_rpc_port: if has_wallet { Some(wallet_rpc_port) } else { None },
+                    p2p_port: if has_local_daemon { Some(p2p_port) } else { None },
+                    script: &script,
+                    attributes: Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
-                    i,
-                    environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
-                    Some(&agent_start_time),
-                    user_agent_config.remote_daemon_address(),
-                    user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    index: i,
+                    stop_time: environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    custom_start_time: Some(&agent_start_time),
+                    remote_daemon: user_agent_config.remote_daemon_address(),
+                    daemon_selection_strategy: user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
                     scripts_dir,
-                    wallet_rpc_cmd.as_deref(),
-                );
+                    wallet_rpc_cmd: wallet_rpc_cmd.as_deref(),
+                });
             }
             } // end daemon-only guard
 
