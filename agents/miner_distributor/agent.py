@@ -15,28 +15,33 @@ import os
 import random
 import time
 from typing import Dict, Any, Optional, List
-from pathlib import Path
 
-from .base_agent import BaseAgent
-from .constants import (
+from ..base_agent import BaseAgent
+from ..constants import (
     DEFAULT_SIMULATION_SEED,
     MAX_REASONABLE_TX_XMR,
 )
-from .monero_rpc import WalletRPC
-from .shared_utils import is_valid_monero_address, make_deterministic_seed, xmr_to_atomic, atomic_to_xmr
+from ..monero_rpc import WalletRPC
+from ..shared_utils import is_valid_monero_address, make_deterministic_seed, xmr_to_atomic, atomic_to_xmr
+
+from .config import parse_time_duration
+from .discovery import query_miner_wallet_address
+from .funding import fit_batch_to_unlocked_balance
+from .selection import select_miner_by_balance, select_miner_by_weight
+from .state import FUNDING_STATUS_FILE, empty_funding_status
 
 
 class MinerDistributorAgent(BaseAgent):
     """
     Agent that distributes Monero from miner wallets to other agents.
-    
+
     This agent:
     1. Discovers available miners from the agent registry
     2. Selects a miner wallet based on configurable strategy
     3. Distributes Monero to other agents in the network
     4. Records transaction history in shared state
     """
-    
+
     def __init__(self, agent_id: str, **kwargs):
         super().__init__(agent_id=agent_id, **kwargs)
 
@@ -62,7 +67,7 @@ class MinerDistributorAgent(BaseAgent):
         self.md_out_per_tx = 2
         # md_output_amount: XMR amount per output
         self.md_output_amount = 5.0
-        
+
         # Balance check parameters for mining reward maturation
         self.balance_check_interval = 30  # Check balance every 30 seconds
         self.max_wait_time = 7200  # Maximum 2 hours to wait before giving up
@@ -97,7 +102,7 @@ class MinerDistributorAgent(BaseAgent):
         self._funding_cycle_index = 0  # Current position in funding cycle
         self._last_funding_cycle_time = 0  # Last time we ran a funding cycle
         self.md_funding_cycle_interval = 300  # Run funding cycle every 5 minutes (configurable)
-    
+
     def _setup_agent(self):
         """Initialize the miner distributor agent"""
         # Parse configuration attributes
@@ -108,7 +113,7 @@ class MinerDistributorAgent(BaseAgent):
 
         # Perform initial funding of eligible agents
         self._perform_initial_funding()
-    
+
     def _parse_configuration(self):
         """Parse configuration attributes from self.attributes"""
         config_mappings = {
@@ -190,22 +195,8 @@ class MinerDistributorAgent(BaseAgent):
 
     def _parse_time_duration(self, value: str) -> Optional[int]:
         """Parse time duration string (e.g., '1h', '30m', '3600s')"""
-        if isinstance(value, (int, float)):
-            return int(value)
-        elif isinstance(value, str):
-            try:
-                if value.endswith('h'):
-                    return int(float(value[:-1]) * 3600)
-                elif value.endswith('m'):
-                    return int(float(value[:-1]) * 60)
-                elif value.endswith('s'):
-                    return int(float(value[:-1]))
-                else:
-                    return int(float(value))
-            except ValueError:
-                return None
-        return None
-    
+        return parse_time_duration(value)
+
     def _discover_miners(self):
         """
         Discover available miners from agent and miner registries.
@@ -284,16 +275,8 @@ class MinerDistributorAgent(BaseAgent):
         Returns:
             Wallet address string or None if query fails
         """
-        try:
-            rpc = WalletRPC(host=agent['ip_addr'], port=agent['wallet_rpc_port'])
-            rpc.wait_until_ready(max_wait=30, check_interval=2)
-            address = rpc.get_address()
-            if is_valid_monero_address(address):
-                return address
-        except Exception as e:
-            self.logger.debug(f"Failed to query wallet address for {agent.get('id')}: {e}")
-        return None
-    
+        return query_miner_wallet_address(agent, self.logger)
+
     def _register_as_miner_distributor_agent(self):
         """Register this agent as a miner distributor in the shared state"""
         distributor_info = {
@@ -307,15 +290,9 @@ class MinerDistributorAgent(BaseAgent):
 
     def _read_funding_status(self) -> Dict[str, Any]:
         """Read initial funding status from shared state"""
-        status = self.read_shared_state("initial_funding_status.json")
+        status = self.read_shared_state(FUNDING_STATUS_FILE)
         if not status:
-            return {
-                "funded_recipients": [],
-                "failed_recipients": [],
-                "permanently_failed": [],
-                "completed": False,
-                "last_updated": None
-            }
+            return empty_funding_status()
         # Backfill key for status files written before permanently_failed existed.
         status.setdefault("permanently_failed", [])
         return status
@@ -329,7 +306,7 @@ class MinerDistributorAgent(BaseAgent):
             "completed": completed,
             "last_updated": time.time()
         }
-        self.write_shared_state("initial_funding_status.json", status)
+        self.write_shared_state(FUNDING_STATUS_FILE, status)
         self.logger.debug(
             f"Updated funding status: {len(funded)} funded, {len(failed)} failed, "
             f"{len(self._permanently_failed)} permanently failed, completed={completed}"
@@ -765,19 +742,19 @@ class MinerDistributorAgent(BaseAgent):
         This addresses the bootstrapping issue where miners need to be funded before they can send transactions.
         """
         self.logger.info("Starting miner funding to address bootstrapping issue")
-        
+
         # Find all miners that need funding
         miners_to_fund = []
         for miner in self.miners:
             if not miner.get("wallet_address"):
                 miners_to_fund.append(miner)
-        
+
         if not miners_to_fund:
             self.logger.info("All miners already have wallet addresses")
             return
-        
+
         self.logger.info(f"Found {len(miners_to_fund)} miners that need funding")
-        
+
         # For now, we'll use a simple approach: fund each miner with a small amount
         # In a real implementation, this might involve a special funding mechanism
         funded_count = 0
@@ -789,7 +766,7 @@ class MinerDistributorAgent(BaseAgent):
                 "wallet_rpc_port": miner.get("wallet_rpc_port"),
                 "attributes": {}
             }
-            
+
             # Try to get the miner's wallet address
             address = self._get_recipient_address(miner_recipient)
             if address:
@@ -797,14 +774,14 @@ class MinerDistributorAgent(BaseAgent):
                 funded_count += 1
             else:
                 self.logger.warning(f"Could not retrieve wallet address for miner {miner.get('agent_id')}")
-        
+
         self.logger.info(f"Miner funding completed: {funded_count}/{len(miners_to_fund)} miners have addresses")
-        
+
         # If we successfully funded some miners, try initial funding again
         if funded_count > 0:
             self.logger.info("Re-attempting initial funding after miner funding")
             self._perform_initial_funding()
-    
+
     def _check_miner_balance(self):
         """
         Check if any miner has sufficient unlocked balance for transactions.
@@ -842,16 +819,16 @@ class MinerDistributorAgent(BaseAgent):
             except Exception as e:
                 self.logger.warning(f"Error checking balance for miner {miner.get('agent_id')}: {e}")
                 continue
-        
+
         # Check if we've exceeded the maximum wait time
         current_time = time.time()
         elapsed_time = current_time - self.startup_time
-        
+
         if elapsed_time >= self.max_wait_time:
             self.logger.warning(f"Maximum wait time ({self.max_wait_time} seconds) exceeded, proceeding with funding attempt")
             self.waiting_for_maturity = False
             return True
-        
+
         self.logger.info("No miners have sufficient unlocked balance yet, continuing to wait")
         return False
 
@@ -877,41 +854,13 @@ class MinerDistributorAgent(BaseAgent):
         On RPC error we conservatively return the original batch unchanged
         — let _send_batch_transaction's existing error path handle it.
         """
-        try:
-            miner_rpc = WalletRPC(host=miner['ip_addr'], port=miner['wallet_rpc_port'])
-            balance_info = miner_rpc.get_balance()
-            unlocked_atomic = (balance_info or {}).get('unlocked_balance', 0)
-            unlocked_xmr = atomic_to_xmr(unlocked_atomic)
-        except Exception as e:
-            self.logger.debug(
-                f"Could not query unlocked balance for {miner.get('agent_id')} "
-                f"before funding cycle: {e}; sending full batch"
-            )
-            return batch_agents
-
-        per_recipient = self.md_out_per_tx * self.md_output_amount
-        if per_recipient <= 0:
-            return batch_agents
-
-        # 5% headroom for tx fees; we don't know the exact fee in advance.
-        usable_xmr = unlocked_xmr / 1.05
-        max_fit = int(usable_xmr // per_recipient)
-        if max_fit >= len(batch_agents):
-            return batch_agents
-
-        if max_fit <= 0:
-            self.logger.info(
-                f"Miner {miner.get('agent_id')} has {unlocked_xmr:.6f} XMR unlocked, "
-                f"insufficient for any recipient ({per_recipient} XMR each); "
-                f"will fail over"
-            )
-            return []
-
-        self.logger.info(
-            f"Miner {miner.get('agent_id')} has {unlocked_xmr:.6f} XMR unlocked; "
-            f"shrinking batch from {len(batch_agents)} to {max_fit} recipients to fit"
+        return fit_batch_to_unlocked_balance(
+            miner,
+            batch_agents,
+            self.md_out_per_tx,
+            self.md_output_amount,
+            self.logger,
         )
-        return batch_agents[:max_fit]
 
     def _run_funding_cycle(self):
         """
@@ -1058,7 +1007,7 @@ class MinerDistributorAgent(BaseAgent):
         # Fallback: if not time for funding cycle yet, wait
         time_until_next = self.md_funding_cycle_interval - (current_time - self._last_funding_cycle_time)
         return max(30.0, time_until_next)
-    
+
     def _select_miner(self) -> Optional[Dict[str, Any]]:
         """
         Select a miner based on the configured strategy.
@@ -1101,46 +1050,19 @@ class MinerDistributorAgent(BaseAgent):
             return self._select_miner_by_balance(available_miners)
         else:  # random
             return random.choice(available_miners)
-    
+
     def _select_miner_by_weight(self, miners: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Select a miner based on hashrate weight"""
-        # Extract weights
-        weights = [miner.get("weight", 0) for miner in miners]
-        total_weight = sum(weights)
-        
-        if total_weight == 0:
-            self.logger.warning("Total weight is zero, falling back to random selection")
-            return random.choice(miners)
-        
-        # Use cumulative weights for selection
-        cumulative_weights = []
-        cumulative_sum = 0
-        for weight in weights:
-            cumulative_sum += weight
-            cumulative_weights.append(cumulative_sum)
-        
-        random_value = random.uniform(0, total_weight)
-        winner_index = 0
-        for i, cumulative_weight in enumerate(cumulative_weights):
-            if random_value <= cumulative_weight:
-                winner_index = i
-                break
-        
-        winner = miners[winner_index]
-        self.logger.info(f"Selected miner {winner.get('agent_id')} with weight {winner.get('weight')}")
-        return winner
-    
+        return select_miner_by_weight(miners, self.logger)
+
     def _select_miner_by_balance(self, miners: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Select a miner with the highest balance"""
-        # Placeholder implementation - would need RPC connection to check balances
-        # For now, just select randomly
-        self.logger.warning("Balance-based selection not fully implemented, using random selection")
-        return random.choice(miners)
-    
+        return select_miner_by_balance(miners, self.logger)
+
     def _select_recipient(self) -> Optional[Dict[str, Any]]:
         """
         Select a recipient for the transaction based on can_receive_distributions attribute.
-        
+
         Returns:
             Recipient information or None if no suitable recipient found
         """
@@ -1149,29 +1071,29 @@ class MinerDistributorAgent(BaseAgent):
         if not agent_registry:
             self.logger.warning("Agent registry not found")
             return None
-        
+
         # Find all agents with wallets that are not the selected miner
         potential_recipients = []
         distribution_enabled_recipients = []
-        
+
         for agent in agent_registry.get("agents", []):
             # Skip if this is the selected miner
             if self.selected_miner and agent.get("id") == self.selected_miner.get("agent_id"):
                 continue
-            
+
             # Only consider agents with wallets
             if not agent.get("wallet_rpc_port"):
                 continue
-                
+
             # Check if agent can receive distributions
             can_receive = self.parse_bool(
                 agent.get("attributes", {}).get("can_receive_distributions", "false")
             )
-            
+
             potential_recipients.append(agent)
             if can_receive:
                 distribution_enabled_recipients.append(agent)
-        
+
         # Use distribution-enabled recipients if available, otherwise fall back to all recipients
         recipients_to_use = distribution_enabled_recipients if distribution_enabled_recipients else potential_recipients
 
@@ -1197,7 +1119,7 @@ class MinerDistributorAgent(BaseAgent):
         else:  # random
             # Random selection
             return random.choice(recipients_to_use)
-    
+
     def _validate_transaction_params(self, address: str, amount: float, skip_max_check: bool = False) -> bool:
         """
         Validate transaction parameters before sending.
@@ -1248,7 +1170,7 @@ class MinerDistributorAgent(BaseAgent):
 
         self.logger.debug(f"Transaction parameters validated: address={address}, amount={amount} XMR ({amount_atomic} atomic)")
         return True
-    
+
     def _get_recipient_address(self, recipient: Dict[str, Any]) -> Optional[str]:
         """
         Get the wallet address for a recipient, checking cached sources first.
@@ -1309,7 +1231,7 @@ class MinerDistributorAgent(BaseAgent):
                 else:
                     self.logger.error(f"Failed to get address for recipient {recipient_id} after {max_retries} attempts: {e}")
                     return None
-    
+
     def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any]) -> bool:
         """
         Send a transaction from the selected miner to a single recipient.
@@ -1506,7 +1428,7 @@ class MinerDistributorAgent(BaseAgent):
 
         # Should not reach here, but return failure if we do
         return False, [], [r.get('id') for r in recipients]
-    
+
     def _record_transaction(self, tx_hash: str, sender_id: str, recipient_id: str, amount: float,
                             num_outputs: int = 1, amount_per_output: Optional[float] = None):
         """Record transaction in shared state"""
@@ -1521,7 +1443,7 @@ class MinerDistributorAgent(BaseAgent):
         }
 
         self.append_shared_list("transactions.json", tx_record)
-    
+
     def _cleanup_agent(self):
         """Agent-specific cleanup logic"""
         self.logger.info("Cleaning up MinerDistributorAgent")
@@ -1549,7 +1471,7 @@ def main():
         log_level=args.log_level,
         attributes=args.attributes
     )
-    
+
     agent.run()
 
 
