@@ -8,27 +8,18 @@
 use crate::config::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
-use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
+use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections, build_peer_topology, PeerTopology};
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::options::{options_to_args, merge_options, translate_daemon_log_level, translate_wallet_log_level};
 use crate::utils::binary::resolve_binary_path_for_shadow;
-use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
+use crate::ip::{GlobalIpRegistry, AsSubnetManager};
 use crate::process::{
     add_wallet_process, DaemonAddress, WalletProcessArgs,
     add_user_agent_process, UserAgentProcessArgs,
     create_mining_agent_process, MiningAgentProcessArgs,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::path::Path;
-
-/// Named struct replacing anonymous tuples for agent information.
-struct AgentEntry {
-    index: usize,
-    is_seed_node: bool,
-    id: String,
-    ip: String,
-    port: u16,
-}
 
 /// Context bundle for `process_user_agents`.
 pub struct UserAgentProcessContext<'a> {
@@ -128,123 +119,29 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
 
     // No phase validation needed for new AgentConfig (simpler structure)
 
-    // First, collect all agent information to build connection graphs
-    let mut agent_info: Vec<AgentEntry> = Vec::new();
-    let mut all_agent_ips = Vec::new();
-    let mut miners: Vec<AgentEntry> = Vec::new();
-    let mut seed_nodes: Vec<AgentEntry> = Vec::new();
-    let mut regular_agents: Vec<AgentEntry> = Vec::new();
-
-    for (i, (agent_id, agent_config)) in user_agents.iter().enumerate() {
-        let is_miner = agent_config.is_miner();
-        let is_seed_node = is_miner || agent_config.attributes.as_ref()
-            .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
-            .unwrap_or(false);
-
-        let network_node_id = if i < agent_node_assignments.len() {
-            agent_node_assignments[i]
-        } else {
-            0
-        };
-
-        let subnet_group = user_agents.iter()
-            .find(|(id, _)| id.as_str() == *agent_id)
-            .and_then(|(_, config)| config.subnet_group.as_deref());
-        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group);
-        let agent_port = crate::MONERO_P2P_PORT;
-
-        all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
-
-        let entry = AgentEntry {
-            index: i,
-            is_seed_node,
-            id: agent_id.to_string(),
-            ip: agent_ip.clone(),
-            port: agent_port,
-        };
-
-        if is_miner {
-            miners.push(entry);
-        } else if is_seed_node {
-            seed_nodes.push(entry);
-        } else {
-            regular_agents.push(entry);
-        }
-
-        agent_info.push(AgentEntry {
-            index: i, is_seed_node,
-            id: agent_id.to_string(), ip: agent_ip, port: agent_port,
-        });
-    }
-
-    // Ensure we have exactly 5 seed nodes; if less, promote some regular agents (for Hardcoded/Hybrid modes)
-    if !matches!(peer_mode, PeerMode::Dynamic) {
-        while seed_nodes.len() < 5 {
-            if let Some(mut entry) = regular_agents.pop() {
-                entry.is_seed_node = true;
-                seed_nodes.push(entry);
-            } else if let Some(mut entry) = miners.pop() {
-                entry.is_seed_node = true;
-                seed_nodes.push(entry);
-            } else {
-                break;
-            }
-        }
-    }
-
-    // Build seed_agents list from actual miner IPs (Dynamic mode) or promoted seed_nodes
-    let seed_source = if matches!(peer_mode, PeerMode::Dynamic) { &miners } else { &seed_nodes };
-    for entry in seed_source {
-        seed_agents.push(format!("{}:{}", entry.ip, entry.port));
-    }
-
-    // Build ring connections among a group of agents.
-    // Each agent connects to its predecessor and successor in the ring.
-    fn build_ring_connections(group: &[AgentEntry], flag: &str) -> HashMap<String, Vec<String>> {
-        let mut connections = HashMap::new();
-        for (i, entry) in group.iter().enumerate() {
-            let mut conns = Vec::new();
-            let prev = if i == 0 { group.len() - 1 } else { i - 1 };
-            let next = if i == group.len() - 1 { 0 } else { i + 1 };
-            if prev < group.len() && group[prev].ip != entry.ip {
-                conns.push(format!("{}={}:{}", flag, group[prev].ip, group[prev].port));
-            }
-            if next < group.len() && group[next].ip != entry.ip {
-                conns.push(format!("{}={}:{}", flag, group[next].ip, group[next].port));
-            }
-            connections.insert(entry.id.clone(), conns);
-        }
-        connections
-    }
-
-    // Miners connect in Ring among themselves
-    let miner_connections = build_ring_connections(&miners, "--add-priority-node");
-
-    // Seed nodes connect to all miners as persistent priority peers, and
-    // (in Hardcoded/Hybrid modes) ring-link to each other.
-    //
-    // We deliberately use --add-priority-node, not --seed-node: a fallback
-    // seed IS the bootstrap target for other peers, so it shouldn't be
-    // bootstrapping from anyone itself. With --seed-node, monerod connects,
-    // exchanges peer list, then disconnects ("pruning seed 0") — the
-    // moment its outgoing slot frees up it reconnects, producing a forever
-    // before_handshake reconnect loop with that miner.
-    let seed_connections = {
-        let mut seed_conns = if !matches!(peer_mode, PeerMode::Dynamic) {
-            build_ring_connections(&seed_nodes, "--add-priority-node")
-        } else {
-            HashMap::new()
-        };
-        for entry in &seed_nodes {
-            let conns = seed_conns.entry(entry.id.clone()).or_default();
-            for miner in &miners {
-                if miner.ip != entry.ip {
-                    conns.push(format!("--add-priority-node={}:{}", miner.ip, miner.port));
-                }
-            }
-        }
-        seed_conns
-    };
+    // Classify user agents into miners / seed nodes / regular agents,
+    // allocate per-agent IPs, and build the ring/cross-link
+    // --add-priority-node connection maps. Mutates subnet_manager,
+    // ip_registry, and seed_agents (the latter receives the seed-source
+    // IPs that downstream regular agents bootstrap against).
+    let PeerTopology {
+        agent_info,
+        miners,
+        seed_nodes,
+        regular_agents,
+        all_agent_ips,
+        miner_connections,
+        seed_connections,
+    } = build_peer_topology(
+        &user_agents,
+        &agent_node_assignments,
+        peer_mode,
+        gml_graph,
+        using_gml_topology,
+        subnet_manager,
+        ip_registry,
+        seed_agents,
+    );
 
     // Regular agents will use seed nodes for --seed-node
 
