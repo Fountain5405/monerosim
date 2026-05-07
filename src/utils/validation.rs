@@ -4,7 +4,7 @@
 //! parameters and consistency checks.
 
 use crate::gml_parser::{GmlGraph, GmlNode};
-use crate::config_v2::{Topology, AgentConfig};
+use crate::config::{Topology, AgentConfig};
 use std::collections::BTreeMap;
 
 /// Validate GML topology for IP conflicts and inconsistencies
@@ -97,7 +97,7 @@ pub fn validate_gml_ip_consistency(gml_graph: &GmlGraph) -> Result<(), String> {
 /// # Examples
 /// ```
 /// use monerosim::utils::validation::validate_topology_config;
-/// use monerosim::config_v2::Topology;
+/// use monerosim::config::Topology;
 ///
 /// assert!(validate_topology_config(&Topology::Mesh, 10).is_ok());
 /// assert!(validate_topology_config(&Topology::Ring, 2).is_err()); // Ring needs at least 3 agents
@@ -367,7 +367,7 @@ pub fn validate_ip_subnet_diversity(ip_addresses: &[String], agent_count: usize)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_v2::{DaemonConfig, DaemonSelectionStrategy};
+    use crate::config::{DaemonConfig, DaemonSelectionStrategy};
     use crate::gml_parser::{GmlGraph, GmlNode};
     use std::collections::HashMap;
 

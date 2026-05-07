@@ -1,4 +1,4 @@
-use crate::config_v2::{Config, validate_daemon_phases};
+use crate::config::{Config, validate_daemon_phases};
 use crate::utils::validation::{validate_mining_config, validate_agent_daemon_config};
 use color_eyre::Result;
 use color_eyre::eyre::eyre;

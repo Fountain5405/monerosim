@@ -24,7 +24,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::config_v2::{AgentConfig, AgentDefinitions, DaemonConfig, FallbackSeedsMode};
+use crate::config::{AgentConfig, AgentDefinitions, DaemonConfig, FallbackSeedsMode};
 use crate::ip::GlobalIpRegistry;
 use crate::utils::extract_mainnet_seed_ips_from_repo;
 use crate::{fallback_seed_agent_id, MONERO_FALLBACK_SEED_IPS};

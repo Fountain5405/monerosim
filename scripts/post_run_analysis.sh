@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # This script launches three Python scripts in the background.
 
 # Activate the virtual environment if not already active

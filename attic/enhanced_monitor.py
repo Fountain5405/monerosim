@@ -35,8 +35,8 @@ import math
 import select
 import fcntl
 
-# Import error handling
-from scripts.error_handling import log_info, log_warning, log_error, log_critical, log_success, handle_exit
+# Import monero verification helpers
+from scripts.monero_verification import log_info, log_warning, log_error, log_critical, log_success, handle_exit
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agents.agent_discovery import AgentDiscovery
 

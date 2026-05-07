@@ -7,6 +7,8 @@
 #   ./smart_config_tool.sh "5 miners, 20 users, 8h"    # Direct generation
 #   ./smart_config_tool.sh --model llama-3.3-70b-versatile "your prompt"
 
+set -euo pipefail
+
 cd "$(dirname "$0")"
 
 # Activate the virtual environment if not already active

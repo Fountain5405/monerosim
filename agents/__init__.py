@@ -25,7 +25,6 @@ from .shared_utils import (
     atomic_to_xmr,
     make_deterministic_seed,
 )
-from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 
 __all__ = [
     'DEFAULT_SHARED_DIR', 'MONERO_P2P_PORT', 'MONERO_RPC_PORT',
@@ -34,5 +33,5 @@ __all__ = [
     'VALID_ADDRESS_PREFIXES', 'DEFAULT_SIMULATION_SEED',
     'is_valid_monero_address', 'xmr_to_atomic', 'atomic_to_xmr',
     'make_deterministic_seed',
-    'BaseAgent', 'MoneroRPC', 'WalletRPC', 'RPCError',
+    'BaseAgent',
 ]

@@ -12,7 +12,7 @@
 #
 # Output is stored in ~/scale_run_logs/
 
-set -e
+set -euo pipefail
 
 # Shared directory (single source of truth)
 SHARED_DIR="/tmp/monerosim_shared"
@@ -50,10 +50,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 
 # Ensure we're in project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

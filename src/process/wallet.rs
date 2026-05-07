@@ -3,7 +3,7 @@
 //! This file handles generation of Shadow process configurations
 //! for monero-wallet-rpc instances.
 
-use crate::config_v2::OptionValue;
+use crate::config::OptionValue;
 use crate::shadow::{ShadowProcess, ProcessArgs};
 use crate::utils::options::{options_to_args, merge_options, shell_quote_args, translate_wallet_log_level};
 use std::collections::BTreeMap;

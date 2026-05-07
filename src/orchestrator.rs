@@ -3,7 +3,7 @@
 //! This module coordinates the overall configuration generation process,
 //! managing the flow from configuration parsing through Shadow YAML generation.
 
-use crate::config_v2::{Config, Network, PeerMode};
+use crate::config::{Config, Network, PeerMode};
 use crate::gml_parser::{self, GmlGraph, validate_topology, get_autonomous_systems};
 use crate::shadow::{
     MinerInfo, MinerRegistry, AgentInfo, AgentRegistry,

@@ -35,10 +35,10 @@ import time
 import argparse
 from typing import Optional, Tuple, List, Dict, Any
 
-# Import from error_handling and agent_discovery modules
+# Import from monero_verification and agent_discovery modules
 try:
     from agents.base_agent import DEFAULT_SHARED_DIR
-    from scripts.error_handling import (
+    from scripts.monero_verification import (
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_network_sync, handle_exit
     )
@@ -47,7 +47,7 @@ except ImportError:
     # Handle case where script is run from different directory
     sys.path.append('.')
     from agents.base_agent import DEFAULT_SHARED_DIR
-    from scripts.error_handling import (
+    from scripts.monero_verification import (
         log_info, log_warning, log_error, log_critical, log_success,
         call_daemon_with_retry, verify_network_sync, handle_exit
     )
@@ -264,7 +264,7 @@ def check_synchronization(node1_url: str, node1_name: str,
     height_diff = abs(height1 - height2)
     log_info(COMPONENT, f"Initial height difference: {height_diff} blocks")
 
-    # Use the verify_network_sync function from error_handling
+    # Use the verify_network_sync function from monero_verification
     if verify_network_sync(node1_url, node2_url, sync_threshold,
                           max_attempts, retry_delay, COMPONENT):
         log_success(COMPONENT, f"Nodes {node1_name} and {node2_name} are synchronized")

@@ -4,8 +4,8 @@
 //! patterns supported by the system (Star, Mesh, Ring, DAG).
 
 
-/// Re-export types from config_v2 to maintain API compatibility
-pub use crate::config_v2::{Topology, PeerMode};
+/// Re-export types from config to maintain API compatibility
+pub use crate::config::{Topology, PeerMode};
 
 /// Type of network topology to generate
 #[derive(Debug, Clone, PartialEq)]

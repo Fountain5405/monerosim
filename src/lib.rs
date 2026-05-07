@@ -5,7 +5,7 @@
 //!
 //! ## Modules
 //!
-//! - `config_v2` / `config_loader`: YAML config parsing and loading
+//! - `config` / `config_loader`: YAML config parsing and loading
 //! - `orchestrator`: High-level config generation coordination
 //! - `shadow`: Shadow YAML data structures
 //! - `ip`: IP address allocation with geographic distribution
@@ -81,7 +81,7 @@ pub fn fallback_seed_agent_id(seed_index: usize) -> String {
     format!("monero-seed-{:03}", seed_index)
 }
 
-pub mod config_v2;
+pub mod config;
 pub mod config_loader;
 pub mod gml_parser;
 pub mod shadow;

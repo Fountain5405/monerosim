@@ -13,7 +13,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.error_handling import log_info
+from scripts.monero_verification import log_info
 
 # Define data structures
 Block = Tuple[int, str]  # (height, hash)

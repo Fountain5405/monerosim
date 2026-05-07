@@ -20,8 +20,8 @@ import zlib
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
-# Import error handling from existing module
-from scripts.error_handling import log_info, log_warning, log_error, log_critical
+# Import logging helpers from monero_verification module
+from scripts.monero_verification import log_info, log_warning, log_error, log_critical
 
 # ===== PERFORMANCE OPTIMIZATIONS =====
 

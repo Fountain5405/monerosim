@@ -11,6 +11,8 @@
 # Also reads input_config.yaml (if found) for timeline/phase info,
 # and /tmp/monerosim_shared/monitoring/ for live monitoring data.
 
+# Status checker: -e omitted so individual diagnostic checks (grep, ps,
+# wc) can fail without aborting the dashboard.
 set -uo pipefail
 
 # Activate the virtual environment if not already active
@@ -21,13 +23,7 @@ if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "$PROJECT_ROOT/venv/bin/activate" ]]; th
 fi
 
 # Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 
 header() { echo -e "\n${BOLD}${CYAN}=== $1 ===${NC}"; }
 ok()     { echo -e "  ${GREEN}$1${NC}"; }

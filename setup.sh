@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e  # Exit on any error
+set -euo pipefail
 
 # Colors for output
 source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"

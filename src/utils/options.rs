@@ -1,6 +1,6 @@
 //! Option value conversion and merging utilities.
 
-use crate::config_v2::OptionValue;
+use crate::config::OptionValue;
 use std::collections::BTreeMap;
 
 /// monerod `--log-level` category string that silences the bulk of the

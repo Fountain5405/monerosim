@@ -5,7 +5,7 @@
 //! track simulation state, performance metrics, and can trigger alerts based on
 //! configurable conditions.
 
-use crate::config_v2::{AgentDefinitions, AgentConfig};
+use crate::config::{AgentDefinitions, AgentConfig};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
@@ -123,7 +123,7 @@ pub fn process_simulation_monitor(
             .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
         // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
-        let venv_sp = environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+        let venv_sp = environment.get("VENV_SITE_PACKAGES").map(String::as_str).unwrap_or("");
 
         // Create wrapper script with fully-resolved paths
         let wrapper_script = format!(

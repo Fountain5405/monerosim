@@ -3,6 +3,10 @@
 # Robust Shadow Simulation Status Checker
 # This script provides multiple methods to determine if a Shadow simulation is still running
 
+# Status checker: -e omitted so individual diagnostic checks (grep, ps,
+# pgrep) can fail without aborting the monitoring loop.
+set -uo pipefail
+
 # Configuration
 SHADOW_CONFIG="shadow_output/shadow_agents.yaml"
 LOG_FILE="shadow.log"
@@ -10,10 +14,7 @@ PID_FILE="shadow.pid"
 CHECK_INTERVAL=30
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 
 # Function to check if Shadow is running by PID
 check_by_pid() {

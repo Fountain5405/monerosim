@@ -7,7 +7,11 @@
 # scripts/scenario_parser.py, scripts/generate_config.py, or scripts/ai_config
 # directly — no wizard needed.
 
-set -u
+# Interactive wizard: -e is intentionally NOT enabled because several
+# branches (e.g. lines 60-67, 655-660, 711-716) call helper scripts
+# bare and then inspect $? to surface a friendly error message — under
+# -e, the parent would exit before reaching the error-handling code.
+set -uo pipefail
 
 # ---------- pretty output ----------
 source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"

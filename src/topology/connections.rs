@@ -100,7 +100,7 @@ pub fn generate_topology_connections(
 /// # Returns
 /// A vector of connection strings in the format `--seed-node=IP:PORT`
 pub fn generate_peer_connections(
-    peer_mode: &crate::config_v2::PeerMode,
+    peer_mode: &crate::config::PeerMode,
     topology: &Topology,
     agent_index: usize,
     agent_ips: &[String], 
@@ -109,7 +109,7 @@ pub fn generate_peer_connections(
     miner_ips: &[String],
 ) -> Vec<String> {
     match peer_mode {
-        crate::config_v2::PeerMode::Dynamic => {
+        crate::config::PeerMode::Dynamic => {
             // Dynamic mode: Prioritize miners, use selective connections
             if !miner_ips.is_empty() {
                 // If there are miners, connect to them preferentially
@@ -126,7 +126,7 @@ pub fn generate_peer_connections(
                 generate_topology_connections(topology, agent_index, agent_ips, agent_ip)
             }
         }
-        crate::config_v2::PeerMode::Hardcoded => {
+        crate::config::PeerMode::Hardcoded => {
             // Hardcoded mode: Use the specified topology template
             if let Some(nodes) = seed_nodes {
                 if !nodes.is_empty() {
@@ -144,7 +144,7 @@ pub fn generate_peer_connections(
                 generate_topology_connections(topology, agent_index, agent_ips, agent_ip)
             }
         }
-        crate::config_v2::PeerMode::Hybrid => {
+        crate::config::PeerMode::Hybrid => {
             // Hybrid mode: Combine explicit seeds with topology-based connections
             let mut connections = Vec::new();
             

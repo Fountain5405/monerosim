@@ -2,7 +2,7 @@
 # File: examples/generate_caida_topology.sh
 # Description: Example script for generating CAIDA-based network topologies
 
-set -e
+set -euo pipefail
 
 # Activate the virtual environment if not already active
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

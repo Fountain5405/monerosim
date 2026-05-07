@@ -6,7 +6,10 @@
 # Usage: ./scripts/scaling_test.sh [--fast] [--agents N] [--duration D] [--timeout T]
 #
 
-set -e
+# Note: -e omitted because the test harness deliberately captures exit
+# codes of timeout/shadow runs (see `wait $shadow_pid; exit_code=$?`)
+# and surfaces them per-test rather than aborting the sweep.
+set -uo pipefail
 
 # Parse arguments
 FAST_MODE=""
@@ -97,10 +100,7 @@ SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 TEMP_DIR="/tmp/monerosim_scaling_test"
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 
 # Ensure we're in the project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

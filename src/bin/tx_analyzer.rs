@@ -409,7 +409,7 @@ fn main() -> Result<()> {
 
                 // Print comparison
                 println!("\n");
-                let comparison = analysis::tx_relay_v2::compare_runs(&v2_report, &compare_report);
+                let comparison = analysis::tx_relay::compare_runs(&v2_report, &compare_report);
                 for line in &comparison {
                     println!("{}", line);
                 }

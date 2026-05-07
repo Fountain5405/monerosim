@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """
-error_handling.py - Standardized error handling library for MoneroSim
+monero_verification.py - Monero-RPC retry + verification utility library
 
-This library provides common error handling, logging, retry mechanisms,
-and verification functions for critical processes.
-
-This is a Python port of error_handling.sh, providing the same functionality
-in a more Pythonic way.
+Provides common logging helpers, exponential-backoff retry mechanisms
+(RetryHandler), and Monero RPC verification functions (VerificationHandler,
+daemon/wallet readiness checks) used by analysis and monitoring scripts.
 """
 
 import sys
@@ -1031,7 +1029,7 @@ def verify_wallet_directory(wallet_dir: str, component: str) -> bool:
 # Main entry point for testing
 if __name__ == "__main__":
     # Example usage
-    log_info("TEST", "Testing error_handling.py module")
+    log_info("TEST", "Testing monero_verification.py module")
     log_warning("TEST", "This is a warning message")
     log_error("TEST", "This is an error message")
     log_critical("TEST", "This is a critical message")

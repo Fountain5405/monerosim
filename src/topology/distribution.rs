@@ -13,7 +13,7 @@
 use std::path::Path;
 use log::{debug, info, warn};
 
-use crate::config_v2::{DistributionStrategy, RegionWeights};
+use crate::config::{DistributionStrategy, RegionWeights};
 use crate::ip::as_manager::calculate_region_boundaries;
 
 /// Distributes agents across network topology nodes.

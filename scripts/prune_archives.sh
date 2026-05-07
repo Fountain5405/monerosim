@@ -20,7 +20,7 @@
 #
 # Typical: 100-user, 895-relay run goes from ~150 GB to ~1.5 GB.
 
-set -eu
+set -euo pipefail
 
 # ---------- defaults ----------
 TOP_USERS=4

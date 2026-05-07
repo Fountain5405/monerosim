@@ -5,7 +5,7 @@
 //! These agents are typically used for monitoring, analysis, or specialized tasks
 //! that don't require blockchain interaction.
 
-use crate::config_v2::AgentDefinitions;
+use crate::config::AgentDefinitions;
 use crate::gml_parser::GmlGraph;
 use crate::shadow::ShadowHost;
 use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
@@ -31,7 +31,7 @@ pub fn process_pure_script_agents(
 ) -> color_eyre::eyre::Result<()> {
     // Find pure script agents (script-only, no daemon/wallet)
     // Exclude miner_distributor and simulation_monitor which have their own processing
-    let pure_scripts: Vec<(&String, &crate::config_v2::AgentConfig)> = agents.agents.iter()
+    let pure_scripts: Vec<(&String, &crate::config::AgentConfig)> = agents.agents.iter()
         .filter(|(id, config)| {
             config.is_script_only() &&
             !id.contains("miner_distributor") &&
@@ -74,7 +74,7 @@ pub fn process_pure_script_agents(
         // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
         let home_dir = environment.get("HOME").cloned()
             .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
-        let venv_sp = environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+        let venv_sp = environment.get("VENV_SITE_PACKAGES").map(String::as_str).unwrap_or("");
 
         // Create a simple wrapper script for pure script agents
         let wrapper_content = format!(

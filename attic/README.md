@@ -17,7 +17,7 @@ if the use case justifies that).
 ## Running
 
 These scripts assume they're run from the repo root with the repo root on
-the Python path. Set `PYTHONPATH=.` so that imports like `from scripts.error_handling`
+the Python path. Set `PYTHONPATH=.` so that imports like `from scripts.monero_verification`
 or `from agents.base_agent` resolve:
 
 ```sh

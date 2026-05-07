@@ -5,7 +5,7 @@
 //! It manages peer discovery, IP allocation, and process configuration for
 //! user agents within the Shadow network simulator environment.
 
-use crate::config_v2::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue};
+use crate::config::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue};
 use crate::gml_parser::GmlGraph;
 use crate::shadow::{ShadowHost, ExpectedFinalState};
 use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections};
@@ -50,8 +50,8 @@ pub struct UserAgentProcessContext<'a> {
     pub enable_dns_server: bool,
     pub daemon_defaults: Option<&'a BTreeMap<String, OptionValue>>,
     pub wallet_defaults: Option<&'a BTreeMap<String, OptionValue>>,
-    pub distribution_strategy: Option<&'a crate::config_v2::DistributionStrategy>,
-    pub distribution_weights: Option<&'a crate::config_v2::RegionWeights>,
+    pub distribution_strategy: Option<&'a crate::config::DistributionStrategy>,
+    pub distribution_weights: Option<&'a crate::config::RegionWeights>,
     pub scripts_dir: &'a Path,
     pub daemon_data_dir: &'a str,
 }
