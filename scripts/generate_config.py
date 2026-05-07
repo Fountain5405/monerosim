@@ -163,13 +163,32 @@ class RelayNodes:
 
 
 @dataclass
+class UpgradeSpec:
+    """Network-upgrade scenario configuration.
+
+    When attached to a GenerationConfig as ``upgrade=...``, the generator
+    emits phased agents (daemon_0/daemon_1 fields) and the duration is
+    stretched to cover the full pre/post-upgrade observation windows.
+    When None, the generator produces a regular (non-upgrade) config.
+    """
+    binary_v1: str = "monerod"
+    binary_v2: str = "monerod"
+    upgrade_start: Optional[str] = None  # None = activity_start + steady_state
+    stagger_s: int = DEFAULT_UPGRADE_STAGGER_S
+    order: str = "sequential"  # "sequential" | "random" | "miners-first"
+    steady_state_duration_s: int = DEFAULT_STEADY_STATE_DURATION_S
+    post_upgrade_duration_s: int = DEFAULT_POST_UPGRADE_DURATION_S
+
+
+@dataclass
 class GenerationConfig:
     """Top-level configuration for generate_config().
 
     Bundles the ~30 parameters that previously formed generate_config's
-    signature into a single struct with nested substructs. Designed so the
-    same shape can serve a future consolidated generate_upgrade_config
-    by adding an UpgradeConfig substruct alongside the existing fields.
+    signature into a single struct with nested substructs. The optional
+    ``upgrade`` field toggles upgrade-scenario output (phased daemons,
+    extended duration, upgrade metadata); when None, a regular config
+    is generated.
     """
     total_agents: int = 0
     duration: str = "8h"
@@ -187,6 +206,7 @@ class GenerationConfig:
     timing: TimingOverrides = field(default_factory=TimingOverrides)
     miner_distributor: MinerDistributorConfig = field(default_factory=MinerDistributorConfig)
     relay_nodes: RelayNodes = field(default_factory=RelayNodes)
+    upgrade: Optional[UpgradeSpec] = None
 
 
 def calculate_activity_start_times(
@@ -683,21 +703,16 @@ def _build_general_config(
     return general_config
 
 
-def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Generate the complete monerosim configuration.
+def _compute_user_spawn_schedule(
+    num_users: int,
+    cfg: GenerationConfig,
+) -> Tuple[bool, int, int, int, list, list]:
+    """Compute user-spawn batching state shared by both scenarios.
 
-    Args:
-        cfg: Bundle of generation parameters. See GenerationConfig and its
-             nested substructs (BatchedBootstrap, TimingOverrides,
-             MinerDistributorConfig, RelayNodes) for the full shape.
+    Returns:
+        (use_batched, batch_interval_s, user_spawn_start_s,
+         last_user_spawn_s, batch_sizes, batch_schedule)
     """
-
-    num_miners = len(FIXED_MINERS)
-    num_users = cfg.total_agents  # --agents now means user count directly
-
-    if num_users < 0:
-        raise ValueError(f"User agent count ({cfg.total_agents}) must be non-negative")
-
     # Determine if batched bootstrap should be enabled
     use_batched = (
         cfg.batched_bootstrap.mode == "true" or
@@ -715,8 +730,8 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
         user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
 
     # Calculate user start times based on batching mode
-    batch_sizes = []
-    batch_schedule = []
+    batch_sizes: list = []
+    batch_schedule: list = []
 
     if use_batched and num_users > 0:
         # Batched bootstrap: users start in waves
@@ -744,11 +759,20 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
         else:
             last_user_spawn_s = user_spawn_start_s
 
-    # Calculate timing with dependency chain:
-    # 1. bootstrap_end_time_s: explicit or auto-calc
-    # 2. md_start_time_s: explicit or defaults to bootstrap_end_time_s
-    # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
+    return (use_batched, batch_interval_s, user_spawn_start_s,
+            last_user_spawn_s, batch_sizes, batch_schedule)
 
+
+def _compute_timing_chain(
+    cfg: GenerationConfig,
+    last_user_spawn_s: int,
+) -> Tuple[int, int, int]:
+    """Compute the bootstrap_end / md_start / activity_start dependency chain.
+
+    Step 1: bootstrap_end_time_s -- explicit or auto from last_user_spawn + buffer.
+    Step 2: md_start_time_s -- explicit or defaults to bootstrap_end_time_s.
+    Step 3: activity_start_time_s -- explicit or defaults to md_start + funding period.
+    """
     # Step 1: Bootstrap end time
     if cfg.timing.bootstrap_end_time is not None:
         bootstrap_end_time_s = parse_duration(cfg.timing.bootstrap_end_time)
@@ -777,18 +801,18 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
     else:
         activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
 
-    # Parse and potentially extend duration to ensure minimum activity period
-    requested_duration_s = parse_duration(cfg.duration)
-    min_duration_s = activity_start_time_s + MIN_ACTIVITY_PERIOD_S
-    duration_s = max(requested_duration_s, min_duration_s)
-    duration = format_time_offset(duration_s)  # Update duration string if extended
+    return bootstrap_end_time_s, md_start_time_s, activity_start_time_s
 
-    # Performance settings for fast mode
+
+def _resolve_tx_interval(
+    cfg: GenerationConfig,
+    num_users: int,
+    total_nodes: int,
+) -> int:
+    """Resolve tx_interval, applying fast-mode default and safe-interval bumping."""
     tx_interval = cfg.timing.tx_interval
     if tx_interval is None:
         tx_interval = 120 if cfg.fast_mode else 60
-    # Total network node count (used for scale-aware interval calibration).
-    total_nodes = len(FIXED_MINERS) + num_users + cfg.relay_nodes.count
     # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
     safe_interval = compute_safe_interval(num_users, tx_interval, num_nodes=total_nodes)
     if safe_interval > tx_interval:
@@ -796,6 +820,97 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
               f"minimum for {num_users} users × {total_nodes} nodes; bumping "
               f"to {safe_interval}s. Pass --tx-interval explicitly to override.")
         tx_interval = safe_interval
+    return tx_interval
+
+
+def _maybe_warn_late_relay(
+    cfg: GenerationConfig,
+    bootstrap_end_time_s: int,
+) -> int:
+    """Compute last_relay_spawn_s and warn if it lands after bootstrap_end_time."""
+    if cfg.relay_nodes.count > 0:
+        last_relay_spawn_s = (cfg.relay_nodes.spawn_start_s
+                              + ((cfg.relay_nodes.count - 1) * cfg.relay_nodes.stagger_s))
+        if last_relay_spawn_s > bootstrap_end_time_s:
+            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
+                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
+                  f"Late relays may experience packet loss during sync.",
+                  file=sys.stderr)
+        return last_relay_spawn_s
+    return 0
+
+
+def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Generate the complete monerosim configuration.
+
+    Handles both regular and upgrade scenarios; pass ``cfg.upgrade=UpgradeSpec(...)``
+    to emit phased agents (daemon_0/daemon_1) and upgrade-specific timing/metadata.
+
+    Args:
+        cfg: Bundle of generation parameters. See GenerationConfig and its
+             nested substructs (BatchedBootstrap, TimingOverrides,
+             MinerDistributorConfig, RelayNodes, UpgradeSpec) for the full shape.
+    """
+
+    num_miners = len(FIXED_MINERS)
+    num_users = cfg.total_agents  # --agents now means user count directly
+
+    if num_users < 0:
+        raise ValueError(f"User agent count ({cfg.total_agents}) must be non-negative")
+
+    is_upgrade = cfg.upgrade is not None
+
+    # User-spawn batching/staggering schedule
+    (use_batched, batch_interval_s, user_spawn_start_s, last_user_spawn_s,
+     batch_sizes, batch_schedule) = _compute_user_spawn_schedule(num_users, cfg)
+
+    # Timing dependency chain (bootstrap -> md_start -> activity_start)
+    bootstrap_end_time_s, md_start_time_s, activity_start_time_s = (
+        _compute_timing_chain(cfg, last_user_spawn_s)
+    )
+
+    # Upgrade scheduling (only when cfg.upgrade is set). Compute schedule before
+    # building agents so the per-agent phase times are available below.
+    upgrade_schedule: Dict[str, Tuple[int, int]] = {}
+    upgrade_start_time_s = 0
+    last_upgrade_complete_s = 0
+    if is_upgrade:
+        spec = cfg.upgrade
+        # Calculate upgrade timing
+        if spec.upgrade_start is not None:
+            upgrade_start_time_s = parse_duration(spec.upgrade_start)
+        else:
+            # Auto: upgrade starts after steady state observation period
+            upgrade_start_time_s = activity_start_time_s + spec.steady_state_duration_s
+        # Build agent ID list and calculate per-agent upgrade times
+        miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
+        user_ids = [f"user-{i+1:03}" for i in range(num_users)]
+        relay_ids = [f"relay-{i+1:03}" for i in range(cfg.relay_nodes.count)]
+        all_agent_ids = miner_ids + user_ids + relay_ids
+        upgrade_schedule = calculate_upgrade_schedule(
+            all_agent_ids,
+            upgrade_start_time_s,
+            spec.stagger_s,
+            spec.order,
+            miner_ids,
+            cfg.simulation_seed,
+        )
+        last_upgrade_complete_s = max(p1_start for _, (_, p1_start) in upgrade_schedule.items())
+
+    # Parse and potentially extend duration. The minimum duration differs:
+    # - Regular: at least MIN_ACTIVITY_PERIOD_S of activity after activity_start.
+    # - Upgrade: at least last_upgrade_complete + post_upgrade observation window.
+    requested_duration_s = parse_duration(cfg.duration) if cfg.duration else 0
+    if is_upgrade:
+        min_duration_s = last_upgrade_complete_s + cfg.upgrade.post_upgrade_duration_s
+    else:
+        min_duration_s = activity_start_time_s + MIN_ACTIVITY_PERIOD_S
+    duration_s = max(requested_duration_s, min_duration_s)
+    duration = format_time_offset(duration_s)  # Update duration string if extended
+
+    # tx_interval (with fast-mode default + safe-interval bumping)
+    total_nodes = num_miners + num_users + cfg.relay_nodes.count
+    tx_interval = _resolve_tx_interval(cfg, num_users, total_nodes)
     poll_interval = 300  # 5 minutes for reasonable monitoring updates
 
     _print_scale_guardrail(num_users, duration_s)
@@ -803,10 +918,23 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
     # Build named agents map (OrderedDict to preserve order)
     agents = OrderedDict()
 
-    # Add fixed miners with explicit IDs
+    # Add fixed miners with explicit IDs (phased in upgrade scenario)
     for i, miner in enumerate(FIXED_MINERS):
         agent_id = f"miner-{i+1:03}"
-        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], cfg.daemon_binary)
+        if is_upgrade:
+            phase0_stop, phase1_start = upgrade_schedule[agent_id]
+            agents[agent_id] = generate_miner_agent_phased(
+                miner["hashrate"],
+                miner["start_offset_s"],
+                cfg.upgrade.binary_v1,
+                cfg.upgrade.binary_v2,
+                phase0_stop,
+                phase1_start,
+            )
+        else:
+            agents[agent_id] = generate_miner_agent(
+                miner["hashrate"], miner["start_offset_s"], cfg.daemon_binary,
+            )
 
     # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
     activity_stagger_s = compute_stagger(num_users, tx_interval, num_nodes=total_nodes)
@@ -820,45 +948,74 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
     # Activity rollout duration for metadata
     activity_rollout_duration_s = (num_users - 1) * activity_stagger_s if num_users > 0 else 0
 
-    # Add variable users with appropriate start times
+    # Add variable users with appropriate start times (phased in upgrade scenario)
     if use_batched and batch_schedule:
         # Batched bootstrap: use calculated batch schedule for spawning
         for user_index, start_time_s in batch_schedule:
             agent_id = f"user-{user_index+1:03}"
-            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, cfg.daemon_binary, cfg.tx_send_probability)
+            user_activity_time = (user_activity_times[user_index]
+                                  if user_index < len(user_activity_times)
+                                  else activity_start_time_s)
+            if is_upgrade:
+                phase0_stop, phase1_start = upgrade_schedule[agent_id]
+                agents[agent_id] = generate_user_agent_phased(
+                    start_time_s, tx_interval, user_activity_time,
+                    cfg.upgrade.binary_v1, cfg.upgrade.binary_v2,
+                    phase0_stop, phase1_start, cfg.tx_send_probability,
+                )
+            else:
+                agents[agent_id] = generate_user_agent(
+                    start_time_s, tx_interval, user_activity_time,
+                    cfg.daemon_binary, cfg.tx_send_probability,
+                )
     else:
         # Non-batched bootstrap: start at USER_START_TIME_S with stagger
         for i in range(num_users):
             agent_id = f"user-{i+1:03}"
             start_offset_s = USER_START_TIME_S + (i * cfg.stagger_interval_s)
-            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, cfg.daemon_binary, cfg.tx_send_probability)
+            user_activity_time = (user_activity_times[i]
+                                  if i < len(user_activity_times)
+                                  else activity_start_time_s)
+            if is_upgrade:
+                phase0_stop, phase1_start = upgrade_schedule[agent_id]
+                agents[agent_id] = generate_user_agent_phased(
+                    start_offset_s, tx_interval, user_activity_time,
+                    cfg.upgrade.binary_v1, cfg.upgrade.binary_v2,
+                    phase0_stop, phase1_start, cfg.tx_send_probability,
+                )
+            else:
+                agents[agent_id] = generate_user_agent(
+                    start_offset_s, tx_interval, user_activity_time,
+                    cfg.daemon_binary, cfg.tx_send_probability,
+                )
 
-    # Add relay nodes (daemon-only, no wallet or script)
+    # Add relay nodes (daemon-only, no wallet or script). Phased in upgrade scenario.
     # Simple linear stagger: start + i * stagger
     for i in range(cfg.relay_nodes.count):
         agent_id = f"relay-{i+1:03}"
         relay_start_s = cfg.relay_nodes.spawn_start_s + (i * cfg.relay_nodes.stagger_s)
-        agents[agent_id] = generate_relay_agent(relay_start_s, cfg.daemon_binary)
+        if is_upgrade:
+            phase0_stop, phase1_start = upgrade_schedule[agent_id]
+            agents[agent_id] = generate_relay_agent_phased(
+                relay_start_s, cfg.upgrade.binary_v1, cfg.upgrade.binary_v2,
+                phase0_stop, phase1_start,
+            )
+        else:
+            agents[agent_id] = generate_relay_agent(relay_start_s, cfg.daemon_binary)
 
     # In custom mode, scaffold 6 monero-seed-XXX agents the user can edit
     # before running the sim. (In auto mode the orchestrator injects them
     # automatically; in off mode no seed hosts exist.)
+    # Phased daemons aren't applied here -- seed hosts use the v1 binary
+    # for the entire run (they don't participate in upgrade scenarios by
+    # default).
     if cfg.fallback_seeds_mode == "custom":
+        seed_binary = cfg.upgrade.binary_v1 if is_upgrade else cfg.daemon_binary
         for i in range(NUM_MONERO_FALLBACK_SEEDS):
-            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, cfg.daemon_binary)
+            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, seed_binary)
 
     # Calculate last relay spawn time for metadata/warnings
-    if cfg.relay_nodes.count > 0:
-        last_relay_spawn_s = cfg.relay_nodes.spawn_start_s + ((cfg.relay_nodes.count - 1) * cfg.relay_nodes.stagger_s)
-        if last_relay_spawn_s > bootstrap_end_time_s:
-            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
-                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
-                  f"Late relays may experience packet loss during sync.",
-                  file=sys.stderr)
-    else:
-        last_relay_spawn_s = 0
+    last_relay_spawn_s = _maybe_warn_late_relay(cfg, bootstrap_end_time_s)
 
     # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
     agents["miner-distributor"] = OrderedDict([
@@ -894,7 +1051,7 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
     )
 
     # Return config and timing info for header generation
-    timing_info = {
+    timing_info: Dict[str, Any] = {
         'bootstrap_end_time_s': bootstrap_end_time_s,
         'md_start_time_s': md_start_time_s,
         'activity_start_time_s': activity_start_time_s,
@@ -915,9 +1072,22 @@ def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, An
         'last_relay_spawn_s': last_relay_spawn_s,
     }
 
+    if is_upgrade:
+        spec = cfg.upgrade
+        timing_info.update({
+            'upgrade_start_time_s': upgrade_start_time_s,
+            'last_upgrade_complete_s': last_upgrade_complete_s,
+            'upgrade_binary_v1': spec.binary_v1,
+            'upgrade_binary_v2': spec.binary_v2,
+            'upgrade_order': spec.order,
+            'upgrade_stagger_s': spec.stagger_s,
+            'steady_state_duration_s': spec.steady_state_duration_s,
+            'post_upgrade_duration_s': spec.post_upgrade_duration_s,
+        })
+
     # Generate metadata section
     metadata = generate_metadata(
-        scenario="default",
+        scenario="upgrade" if is_upgrade else "default",
         num_miners=num_miners,
         num_users=num_users,
         timing_info=timing_info,
@@ -984,8 +1154,10 @@ def generate_upgrade_config(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Generate monerosim configuration for upgrade scenario.
 
-    This creates a config where all nodes run daemon_v1 initially, then switch
-    to daemon_v2 in a staggered fashion after a steady-state observation period.
+    Thin keyword-argument wrapper around generate_config(): assembles a
+    GenerationConfig with an UpgradeSpec attached and delegates. Kept for
+    backwards compatibility with configure_upgrade.py and any external
+    callers; new code should construct GenerationConfig directly.
 
     Timeline:
       t=0:           Miners start
@@ -993,322 +1165,56 @@ def generate_upgrade_config(
       t=activity:    Users start transacting (steady state)
       t=upgrade:     Nodes begin switching to v2 (staggered)
       t=end:         Simulation ends after post-upgrade observation
-
-    Args:
-        upgrade_binary_v1: Phase 0 binary (e.g., "monerod-v1")
-        upgrade_binary_v2: Phase 1 binary (e.g., "monerod-v2")
-        upgrade_start: When upgrades begin (None = activity_start + steady_state_duration)
-        upgrade_stagger_s: Time between consecutive node upgrades
-        upgrade_order: "sequential" | "random" | "miners-first"
-        steady_state_duration_s: How long to observe before upgrade
-        post_upgrade_duration_s: How long to observe after upgrade
     """
-    num_miners = len(FIXED_MINERS)
-    num_users = total_agents  # --agents now means user count directly
-
-    if num_users < 0:
-        raise ValueError(f"User agent count ({total_agents}) must be non-negative")
-
-    # Determine if batched bootstrap should be enabled
-    use_batched = (
-        batched_bootstrap == "true" or
-        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
-    )
-
-    # Parse batch interval
-    batch_interval_s = parse_duration(batch_interval)
-
-    # Calculate user spawn start time
-    if user_spawn_start is not None:
-        user_spawn_start_s = parse_duration(user_spawn_start)
-    else:
-        # Default: 20m for batched, 3h for non-batched
-        user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
-
-    # Calculate user start times based on batching mode
-    batch_sizes = []
-    batch_schedule = []
-
-    if use_batched and num_users > 0:
-        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
-        batch_schedule = calculate_batch_schedule(
-            num_users,
-            user_spawn_start_s,
-            batch_interval_s,
-            initial_batch_size,
-            2.0,
-            max_batch_size,
-            DEFAULT_INTRA_BATCH_STAGGER_S,
-        )
-        last_user_spawn_s = batch_schedule[-1][1] if batch_schedule else 0
-    else:
-        if num_users > 0:
-            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
-        else:
-            last_user_spawn_s = user_spawn_start_s
-
-    # Calculate timing with dependency chain:
-    # 1. bootstrap_end_time_s: explicit or auto-calc
-    # 2. md_start_time_s: explicit or defaults to bootstrap_end_time_s
-    # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
-
-    # Step 1: Bootstrap end time
-    if bootstrap_end_time is not None:
-        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
-    else:
-        # Auto-calculate: max of minimum time and last spawn + buffer
-        spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
-        bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
-
-    # Step 2: Miner distributor start time
-    if md_start_time is not None:
-        md_start_time_s = parse_duration(md_start_time)
-        if md_start_time_s < bootstrap_end_time_s:
-            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
-                  f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
-                  file=sys.stderr)
-    else:
-        md_start_time_s = bootstrap_end_time_s
-
-    # Step 3: Regular user activity start time
-    if regular_user_start is not None:
-        activity_start_time_s = parse_duration(regular_user_start)
-        if activity_start_time_s < md_start_time_s:
-            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
-                  f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
-                  file=sys.stderr)
-    else:
-        activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
-
-    # Calculate upgrade timing
-    if upgrade_start is not None:
-        upgrade_start_time_s = parse_duration(upgrade_start)
-    else:
-        # Auto: upgrade starts after steady state observation period
-        upgrade_start_time_s = activity_start_time_s + steady_state_duration_s
-
-    # Performance settings
-    if tx_interval is None:
-        tx_interval = 120 if fast_mode else 60
-    total_nodes = num_miners + num_users + relay_nodes
-    # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
-    safe_interval = compute_safe_interval(num_users, tx_interval, num_nodes=total_nodes)
-    if safe_interval > tx_interval:
-        print(f"Warning: tx_interval={tx_interval}s is below the calibrated safe "
-              f"minimum for {num_users} users × {total_nodes} nodes; bumping "
-              f"to {safe_interval}s. Pass --tx-interval explicitly to override.")
-        tx_interval = safe_interval
-    poll_interval = 300
-
-    # Build list of all agent IDs for upgrade scheduling
-    miner_ids = [f"miner-{i+1:03}" for i in range(num_miners)]
-    user_ids = [f"user-{i+1:03}" for i in range(num_users)]
-    relay_ids = [f"relay-{i+1:03}" for i in range(relay_nodes)]
-    all_agent_ids = miner_ids + user_ids + relay_ids
-
-    # Calculate upgrade schedule for all agents
-    upgrade_schedule = calculate_upgrade_schedule(
-        all_agent_ids,
-        upgrade_start_time_s,
-        upgrade_stagger_s,
-        upgrade_order,
-        miner_ids,
-        simulation_seed,
-    )
-
-    # Calculate when the last upgrade completes
-    last_upgrade_complete_s = max(p1_start for _, (_, p1_start) in upgrade_schedule.items())
-
-    # Calculate total simulation duration
-    requested_duration_s = parse_duration(duration) if duration else 0
-    min_duration_s = last_upgrade_complete_s + post_upgrade_duration_s
-    duration_s = max(requested_duration_s, min_duration_s)
-    duration = format_time_offset(duration_s)
-
-    _print_scale_guardrail(num_users, duration_s)
-
-    # Build agents with phased daemons
-    agents = OrderedDict()
-
-    # Add miners with phased daemons
-    for i, miner in enumerate(FIXED_MINERS):
-        agent_id = f"miner-{i+1:03}"
-        phase0_stop, phase1_start = upgrade_schedule[agent_id]
-        agents[agent_id] = generate_miner_agent_phased(
-            miner["hashrate"],
-            miner["start_offset_s"],
-            upgrade_binary_v1,
-            upgrade_binary_v2,
-            phase0_stop,
-            phase1_start,
-        )
-
-    # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
-    activity_stagger_s = compute_stagger(num_users, tx_interval, num_nodes=total_nodes)
-    user_activity_times = calculate_activity_start_times(
-        num_users=num_users,
-        base_activity_start_s=activity_start_time_s,
-        tx_interval=tx_interval,
-        num_nodes=total_nodes,
-    )
-
-    # Activity rollout duration for metadata
-    activity_rollout_duration_s = (num_users - 1) * activity_stagger_s if num_users > 0 else 0
-
-    # Add users with phased daemons
-    if use_batched and batch_schedule:
-        for user_index, start_time_s in batch_schedule:
-            agent_id = f"user-{user_index+1:03}"
-            phase0_stop, phase1_start = upgrade_schedule[agent_id]
-            user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent_phased(
-                start_time_s,
-                tx_interval,
-                user_activity_time,
-                upgrade_binary_v1,
-                upgrade_binary_v2,
-                phase0_stop,
-                phase1_start,
-                tx_send_probability,
-            )
-    else:
-        for i in range(num_users):
-            agent_id = f"user-{i+1:03}"
-            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
-            phase0_stop, phase1_start = upgrade_schedule[agent_id]
-            user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent_phased(
-                start_offset_s,
-                tx_interval,
-                user_activity_time,
-                upgrade_binary_v1,
-                upgrade_binary_v2,
-                phase0_stop,
-                phase1_start,
-                tx_send_probability,
-            )
-
-    # Add relay nodes with phased daemons (daemon-only, no wallet or script)
-    # Simple linear stagger: start + i * stagger
-    for i in range(relay_nodes):
-        agent_id = f"relay-{i+1:03}"
-        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
-        phase0_stop, phase1_start = upgrade_schedule[agent_id]
-        agents[agent_id] = generate_relay_agent_phased(
-            relay_start_s,
-            upgrade_binary_v1,
-            upgrade_binary_v2,
-            phase0_stop,
-            phase1_start,
-        )
-
-    # In custom mode, scaffold 6 monero-seed-XXX agents the user can edit.
-    # Phased daemons aren't applied here — seed hosts use the v1 binary
-    # for the entire run (they don't participate in upgrade scenarios by
-    # default).
-    if fallback_seeds_mode == "custom":
-        for i in range(NUM_MONERO_FALLBACK_SEEDS):
-            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, upgrade_binary_v1)
-
-    # Calculate last relay spawn time for metadata/warnings
-    if relay_nodes > 0:
-        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
-        if last_relay_spawn_s > bootstrap_end_time_s:
-            print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
-                  f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
-                  f"Late relays may experience packet loss during sync.",
-                  file=sys.stderr)
-    else:
-        last_relay_spawn_s = 0
-
-    # Add miner-distributor (md_start_time_s calculated earlier in timing chain)
-    agents["miner-distributor"] = OrderedDict([
-        ("script", "agents.miner_distributor"),
-        ("wait_time", md_start_time_s),  # When Shadow starts the process
-        ("max_transaction_amount", "2.0"),
-        ("min_transaction_amount", "0.5"),
-        ("md_n_recipients", md_n_recipients),
-        ("md_out_per_tx", md_out_per_tx),
-        ("md_output_amount", md_output_amount),
-        ("md_funding_cycle_interval", md_funding_cycle_interval),
-    ])
-
-    # Add simulation-monitor
-    agents["simulation-monitor"] = OrderedDict([
-        ("script", "agents.simulation_monitor"),
-        ("poll_interval", poll_interval),
-        ("detailed_logging", False),
-        ("enable_alerts", True),
-        ("status_file", "monerosim_monitor.log"),
-    ])
-
-    general_config = _build_general_config(
-        duration=duration,
-        parallelism=parallelism,
-        simulation_seed=simulation_seed,
-        bootstrap_end_time_s=bootstrap_end_time_s,
-        fast_mode=fast_mode,
-        process_threads=process_threads,
-        native_preemption=native_preemption,
+    cfg = GenerationConfig(
         total_agents=total_agents,
-        fallback_seeds_mode=fallback_seeds_mode,
-    )
-
-    timing_info = {
-        'bootstrap_end_time_s': bootstrap_end_time_s,
-        'md_start_time_s': md_start_time_s,
-        'activity_start_time_s': activity_start_time_s,
-        'last_user_spawn_s': last_user_spawn_s,
-        'user_spawn_start_s': user_spawn_start_s,
-        'duration_s': duration_s,
-        'requested_duration_s': requested_duration_s,
-        'use_batched': use_batched,
-        'batch_sizes': batch_sizes,
-        'batch_interval_s': batch_interval_s,
-        # Activity stagger info (see docs/shadow-tx-stagger.md)
-        'activity_stagger_s': activity_stagger_s,
-        'tx_interval': tx_interval,
-        'activity_rollout_duration_s': activity_rollout_duration_s,
-        # Relay timing info
-        'relay_spawn_start_s': relay_spawn_start_s,
-        'relay_stagger_s': relay_stagger_s,
-        'last_relay_spawn_s': last_relay_spawn_s,
-        # Upgrade-specific timing info
-        'upgrade_start_time_s': upgrade_start_time_s,
-        'last_upgrade_complete_s': last_upgrade_complete_s,
-        'upgrade_binary_v1': upgrade_binary_v1,
-        'upgrade_binary_v2': upgrade_binary_v2,
-        'upgrade_order': upgrade_order,
-        'upgrade_stagger_s': upgrade_stagger_s,
-        'steady_state_duration_s': steady_state_duration_s,
-        'post_upgrade_duration_s': post_upgrade_duration_s,
-    }
-
-    # Generate metadata section
-    metadata = generate_metadata(
-        scenario="upgrade",
-        num_miners=num_miners,
-        num_users=num_users,
-        timing_info=timing_info,
+        duration=duration,
+        stagger_interval_s=stagger_interval_s,
         simulation_seed=simulation_seed,
         gml_path=gml_path,
         fast_mode=fast_mode,
-        stagger_interval_s=stagger_interval_s,
-        relay_nodes=relay_nodes,
+        process_threads=process_threads,
+        # daemon_binary is unused in upgrade mode (per-agent binaries come
+        # from UpgradeSpec.binary_v1/v2); keep the dataclass default.
+        tx_send_probability=tx_send_probability,
+        parallelism=parallelism,
+        native_preemption=native_preemption,
+        fallback_seeds_mode=fallback_seeds_mode,
+        batched_bootstrap=BatchedBootstrap(
+            mode=batched_bootstrap,
+            batch_interval=batch_interval,
+            initial_batch_size=initial_batch_size,
+            max_batch_size=max_batch_size,
+        ),
+        timing=TimingOverrides(
+            user_spawn_start=user_spawn_start,
+            bootstrap_end_time=bootstrap_end_time,
+            regular_user_start=regular_user_start,
+            md_start_time=md_start_time,
+            tx_interval=tx_interval,
+        ),
+        miner_distributor=MinerDistributorConfig(
+            n_recipients=md_n_recipients,
+            out_per_tx=md_out_per_tx,
+            output_amount=md_output_amount,
+            funding_cycle_interval=md_funding_cycle_interval,
+        ),
+        relay_nodes=RelayNodes(
+            count=relay_nodes,
+            spawn_start_s=relay_spawn_start_s,
+            stagger_s=relay_stagger_s,
+        ),
+        upgrade=UpgradeSpec(
+            binary_v1=upgrade_binary_v1,
+            binary_v2=upgrade_binary_v2,
+            upgrade_start=upgrade_start,
+            stagger_s=upgrade_stagger_s,
+            order=upgrade_order,
+            steady_state_duration_s=steady_state_duration_s,
+            post_upgrade_duration_s=post_upgrade_duration_s,
+        ),
     )
-
-    # Build full config with metadata first
-    config = OrderedDict([
-        ("metadata", metadata),
-        ("general", general_config),
-        ("network", OrderedDict([
-            ("path", gml_path),
-            ("peer_mode", "Dynamic"),
-        ])),
-        ("agents", agents),
-    ])
-
-    return config, timing_info
+    return generate_config(cfg)
 
 
 def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:
