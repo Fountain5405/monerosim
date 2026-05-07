@@ -302,13 +302,8 @@ estimate_ramdisk_mb() {
     local total_monerods=$((CFG_MINERS + CFG_USERS + CFG_RELAYS + CFG_FALLBACK_SEEDS))
     local sim_hours
     sim_hours=$(python3 -c "print(max(1, ${STOP_TIME_SECS:-0} / 3600))")
-    python3 -c "
-total = $total_monerods
-hours = $sim_hours
-per_host = 100 + (10 * hours)
-est = max(2048, total * per_host)
-print(int(est))
-"
+    python3 scripts/run_sim_helpers.py estimate-ramdisk-mb \
+        --total-monerods "$total_monerods" --sim-hours "$sim_hours"
 }
 
 # Convert a size argument (e.g. 8G, 4096M, 2048) to MB for the mount call.
@@ -416,14 +411,11 @@ setup_ramdisk() {
     # the ramdisk. Original CONFIG content is preserved verbatim except
     # for general.daemon_data_dir.
     local effective_config="/tmp/monerosim_ramdisk_$$_config.yaml"
-    python3 -c "
-import yaml, sys
-with open('$CONFIG') as f:
-    cfg = yaml.safe_load(f)
-cfg.setdefault('general', {})['daemon_data_dir'] = '$RAMDISK_PATH'
-with open('$effective_config', 'w') as f:
-    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
-" || { log_err "Failed to rewrite config with ramdisk override"; exit 1; }
+    python3 scripts/run_sim_helpers.py rewrite-daemon-data-dir \
+        --config "$CONFIG" \
+        --daemon-data-dir "$RAMDISK_PATH" \
+        --dest "$effective_config" \
+        || { log_err "Failed to rewrite config with ramdisk override"; exit 1; }
 
     CONFIG="$effective_config"
     log_ok "Config rewritten with daemon_data_dir=$RAMDISK_PATH"
@@ -452,13 +444,7 @@ preflight_checks() {
     log_ok "Config file: $CONFIG"
 
     # Parse stop_time from config
-    STOP_TIME_RAW=$(python3 -c "
-import yaml, sys
-with open('$CONFIG') as f:
-    cfg = yaml.safe_load(f)
-st = cfg.get('general', {}).get('stop_time', '')
-print(st)
-" 2>/dev/null)
+    STOP_TIME_RAW=$(python3 scripts/run_sim_helpers.py extract-stop-time "$CONFIG" 2>/dev/null)
 
     if [[ -z "$STOP_TIME_RAW" ]]; then
         log_err "Could not parse stop_time from config"
@@ -474,27 +460,7 @@ print(st)
     # `auto` (default) -> 6 seeds, not in the agents: map.
     # `custom` -> seeds declared explicitly under agents:.
     # `off` -> 0 seeds.
-    CONFIG_SUMMARY=$(python3 -c "
-import yaml
-with open('$CONFIG') as f:
-    cfg = yaml.safe_load(f)
-meta = cfg.get('metadata', {})
-agents_meta = meta.get('agents', {})
-agents = cfg.get('agents', {})
-miners = agents_meta.get('miners', sum(1 for a in agents if a.startswith('miner-0') or a.startswith('miner-1')))
-users = agents_meta.get('users', sum(1 for a in agents if a.startswith('user-')))
-total = agents_meta.get('total', len(agents))
-relays = sum(1 for a in agents if a.startswith('relay-'))
-fb_mode = (cfg.get('general', {}).get('fallback_seeds') or 'auto').lower()
-custom_seeds = sum(1 for a in agents if a.startswith('monero-seed-'))
-if fb_mode == 'off':
-    fb_seeds = 0
-elif fb_mode == 'custom':
-    fb_seeds = custom_seeds
-else:
-    fb_seeds = 6
-print(f'{total} {miners} {users} {relays} {fb_seeds}')
-" 2>/dev/null)
+    CONFIG_SUMMARY=$(python3 scripts/run_sim_helpers.py config-summary "$CONFIG" 2>/dev/null)
 
     read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS CFG_FALLBACK_SEEDS <<< "$CONFIG_SUMMARY"
     log_ok "Agents: ${CFG_TOTAL} total (${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays, ${CFG_FALLBACK_SEEDS} fallback seeds)"
@@ -535,114 +501,14 @@ check_disk_space() {
     sim_hours=$(python3 -c "print(max(1, ${STOP_TIME_SECS:-0} / 3600))")
 
     local estimated_mb
-    estimated_mb=$(python3 -c "
-import os, json
-
-# Default rates (MB/host/hr) — conservative estimates that include logs +
-# blockchain. monerod at log-level=monitor on a 1k-node net writes ~10-30 MB
-# of bitmonero.log per host-day; LMDB grows ~50 MB/host-day at chain tip.
-defaults = {'miner': 4.0, 'user': 2.0, 'relay': 1.25, 'other': 0.5}
-
-def disk_kb(path):
-    # Use st_blocks * 512 (actual disk allocation) instead of getsize() so
-    # sparse LMDB files (1 GB apparent / few MB allocated) are sized correctly.
-    total = 0
-    for dp, _, fns in os.walk(path):
-        for fn in fns:
-            try:
-                total += os.stat(os.path.join(dp, fn)).st_blocks * 512
-            except (OSError, FileNotFoundError):
-                pass
-    return total / 1024
-
-# Try to learn rates from previous runs. We aggregate per-host disk usage
-# across THREE archive subdirs:
-#   1. shadow.data/hosts/<host>/             (shadow shim/stderr/stdout)
-#   2. daemon_logs/monero-<host>/            (bitmonero.log — usually dominant)
-#   3. blockchain/monero-<host>/             (LMDB snapshot — sampled hosts only)
-# Without (2) and (3) the estimate is ~5-10x too low.
-archive_dir = '$archive_dir'
-learned = {}
-sample_hours = 0
-for run_name in sorted(os.listdir(archive_dir), reverse=True) if os.path.isdir(archive_dir) else []:
-    run_path = os.path.join(archive_dir, run_name)
-    hosts_dir = os.path.join(run_path, 'shadow.data', 'hosts')
-    daemon_logs_dir = os.path.join(run_path, 'daemon_logs')
-    blockchain_dir = os.path.join(run_path, 'blockchain')
-    cfg_path = os.path.join(run_path, 'input_config.yaml')
-    if not os.path.isdir(hosts_dir) or not os.path.isfile(cfg_path):
-        continue
-    # Get sim duration from config
-    try:
-        import yaml
-        with open(cfg_path) as f:
-            cfg = yaml.safe_load(f)
-        st = cfg.get('general', {}).get('stop_time', '')
-        # Parse duration
-        h = 0
-        import re
-        m = re.match(r'(\d+)h', str(st))
-        if m: h = int(m.group(1))
-        m2 = re.match(r'(\d+)$', str(st))
-        if m2: h = int(m2.group(1)) / 3600
-        if h <= 0: continue
-    except Exception:
-        continue
-    # Measure per-type rates. shadow.data + daemon_logs are always per-host;
-    # blockchain is sampled (only a few hosts archived per --archive-blockchain),
-    # so we average separately and add a per-host blockchain rate by type.
-    by_type_log = {}
-    by_type_chain = {}
-    for host in os.listdir(hosts_dir):
-        host_path = os.path.join(hosts_dir, host)
-        if not os.path.isdir(host_path): continue
-        size_kb = disk_kb(host_path)
-        # bitmonero.log lives under daemon_logs/monero-<host>/ post-archive
-        log_path = os.path.join(daemon_logs_dir, 'monero-' + host)
-        if os.path.isdir(log_path):
-            size_kb += disk_kb(log_path)
-        # LMDB only archived for sampled hosts
-        chain_path = os.path.join(blockchain_dir, 'monero-' + host)
-        chain_kb = disk_kb(chain_path) if os.path.isdir(chain_path) else None
-
-        if host.startswith('miner-'): t = 'miner'
-        elif host.startswith('user-'): t = 'user'
-        elif host.startswith('relay-'): t = 'relay'
-        else: t = 'other'
-        by_type_log.setdefault(t, []).append(size_kb)
-        if chain_kb is not None:
-            by_type_chain.setdefault(t, []).append(chain_kb)
-
-    for t, sizes in by_type_log.items():
-        avg_mb = (sum(sizes) / len(sizes)) / 1024
-        # Add per-type blockchain average if we have any sampled hosts of this type
-        chain_sizes = by_type_chain.get(t, [])
-        if chain_sizes:
-            avg_mb += (sum(chain_sizes) / len(chain_sizes)) / 1024
-        rate = avg_mb / h
-        if t not in learned or len(sizes) > 10:  # prefer runs with more samples
-            learned[t] = rate
-    sample_hours = h
-    break  # use most recent run
-
-rates = {**defaults, **learned}
-source = 'learned from previous run' if learned else 'default estimates'
-
-miners = $num_miners
-users = $num_users
-relays = $num_relays
-others = max(0, $num_hosts - miners - users - relays)
-hours = $sim_hours
-margin = 1.2
-
-est = (miners * rates['miner'] + users * rates['user'] +
-       relays * rates['relay'] + others * rates['other']) * hours * margin
-print(f'{est:.0f}')
-
-# Print breakdown to stderr for the log message
-import sys
-print(f'RATES:{json.dumps(rates)}|SOURCE:{source}', file=sys.stderr)
-" 2>/tmp/monerosim_disk_est_info.txt)
+    estimated_mb=$(python3 scripts/run_sim_helpers.py estimate-disk-mb \
+        --archive-dir "$archive_dir" \
+        --num-miners "$num_miners" \
+        --num-users "$num_users" \
+        --num-relays "$num_relays" \
+        --num-hosts "$num_hosts" \
+        --sim-hours "$sim_hours" \
+        2>/tmp/monerosim_disk_est_info.txt)
 
     # Read rate info
     local rate_info=""
@@ -932,10 +798,7 @@ exit 0' INT
         sim_timestamp=$(tac "$shadow_log" 2>/dev/null | grep -oP -m1 '(?<=simulated: )\d{2}:\d{2}:\d{2}' || true)
 
         if [[ -n "$sim_timestamp" ]]; then
-            sim_elapsed_secs=$(python3 -c "
-parts = '$sim_timestamp'.split(':')
-print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
-" 2>/dev/null || echo 0)
+            sim_elapsed_secs=$(python3 scripts/run_sim_helpers.py hms-to-seconds "$sim_timestamp" 2>/dev/null || echo 0)
 
             if [[ $STOP_TIME_SECS -gt 0 ]]; then
                 progress_pct=$(python3 -c "print(f'{min($sim_elapsed_secs / $STOP_TIME_SECS * 100, 100):.1f}')" 2>/dev/null || echo "0.0")
@@ -1061,25 +924,14 @@ print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
         if [[ ${#deltas[@]} -gt 0 ]]; then
             output+="  |  ${nodes_syncing} actively syncing\n"
 
-            # Compute stats on deltas
+            # Compute stats on deltas (helper expects comma-separated --deltas).
+            # Use --deltas=... so a leading negative value (rare LMDB shrink)
+            # isn't parsed as a flag.
             local stats
-            stats=$(python3 -c "
-import sys
-deltas = [${deltas[*]}]
-deltas.sort()
-n = len(deltas)
-mx = max(deltas)
-mn = min(deltas)
-mean = sum(deltas) / n
-median = deltas[n // 2] if n % 2 else (deltas[n // 2 - 1] + deltas[n // 2]) / 2
-
-def fmt(b):
-    if b >= 1048576: return f'{b / 1048576:.1f}M'
-    if b >= 1024: return f'{b / 1024:.0f}K'
-    return f'{b}B'
-
-print(f'max {fmt(mx)}  mean {fmt(mean)}  median {fmt(median)}  min {fmt(mn)}')
-" 2>/dev/null || echo "")
+            local deltas_csv
+            deltas_csv=$(IFS=,; echo "${deltas[*]}")
+            stats=$(python3 scripts/run_sim_helpers.py chain-growth-stats \
+                "--deltas=$deltas_csv" 2>/dev/null || echo "")
 
             if [[ -n "$stats" ]]; then
                 output+="Chain growth (${MONITOR_INTERVAL}s): ${stats}\n"; lines=$((lines + 1))
@@ -1153,98 +1005,13 @@ generate_summary_report() {
         return
     fi
 
-    python3 -c "
-import json, sys
-from datetime import datetime
-
-with open('$report_file') as f:
-    d = json.load(f)
-
-s = d.get('summary', {})
-ts = d.get('transaction_stats', {})
-sc = s.get('success_criteria', {})
-hist = d.get('historical_data', [])
-
-lines = []
-lines.append('=' * 60)
-lines.append('MONEROSIM SIMULATION SUMMARY')
-lines.append('=' * 60)
-lines.append('')
-
-# Run info
-lines.append(f'Run:            $RUN_NAME')
-lines.append(f'Wall time:      $(format_duration $WALL_DURATION)')
-lines.append(f'Exit code:      $SHADOW_EXIT')
-lines.append('')
-
-# Success criteria
-all_pass = all(sc.values()) if sc else False
-lines.append('SUCCESS CRITERIA')
-lines.append('-' * 40)
-labels = {
-    'blocks_created': 'Blocks created',
-    'blocks_propagated': 'Blocks propagated',
-    'transactions_created_broadcast': 'Transactions broadcast',
-    'transactions_in_blocks': 'Transactions in blocks',
-}
-for key, label in labels.items():
-    status = 'PASS' if sc.get(key, False) else 'FAIL'
-    lines.append(f'  {label:30s} {status}')
-lines.append('')
-lines.append(f'  Result: {\"ALL CHECKS PASSED\" if all_pass else \"SOME CHECKS FAILED\"}')
-lines.append('')
-
-# Network
-lines.append('NETWORK')
-lines.append('-' * 40)
-lines.append(f'  Nodes online:     {s.get(\"total_nodes\", \"?\")}')
-lines.append(f'  Sync:             {s.get(\"avg_sync_percentage\", 0):.0f}%')
-lines.append(f'  Block height:     {s.get(\"max_height\", 0)}')
-lines.append(f'  Blocks mined:     {s.get(\"total_blocks_mined\", 0)}')
-lines.append(f'  Alerts:           {s.get(\"alert_count\", 0)}')
-lines.append('')
-
-# Transactions
-lines.append('TRANSACTIONS')
-lines.append('-' * 40)
-lines.append(f'  Created:          {s.get(\"total_transactions_created\", 0)}')
-lines.append(f'  In blocks:        {s.get(\"total_transactions_in_blocks\", 0)}')
-created_by = ts.get('tx_created_by_node', {})
-if created_by:
-    lines.append('')
-    lines.append('  Created by:')
-    for node, count in sorted(created_by.items()):
-        lines.append(f'    {node:20s} {count:>4} txs')
-lines.append('')
-
-# Per-node status from last monitoring cycle
-if hist:
-    last = hist[-1]
-    node_data = last.get('node_data', {})
-    if node_data:
-        lines.append('NODE STATUS (final)')
-        lines.append('-' * 40)
-        lines.append(f'  {\"Node\":20s} {\"Height\":>7} {\"Balance\":>12} {\"Conns\":>6} {\"Pool TXs\":>9}')
-        for nid in sorted(node_data.keys()):
-            ndata = node_data[nid]
-            daemon = ndata.get('daemon', {})
-            wallet = ndata.get('wallet', {})
-            height = daemon.get('height', '-')
-            conns = daemon.get('connections', '-')
-            pool = wallet.get('pool_size', '-')
-            bal = wallet.get('balance', 0)
-            if isinstance(bal, (int, float)) and bal > 0:
-                bal_str = f'{bal / 1e12:.2f} XMR'
-            else:
-                bal_str = '-'
-            lines.append(f'  {nid:20s} {str(height):>7} {bal_str:>12} {str(conns):>6} {str(pool):>9}')
-        lines.append('')
-
-lines.append('=' * 60)
-
-with open('$report_out', 'w') as f:
-    f.write('\n'.join(lines) + '\n')
-" 2>/dev/null
+    python3 scripts/run_sim_helpers.py write-summary-report \
+        --report "$report_file" \
+        --out "$report_out" \
+        --run-name "$RUN_NAME" \
+        --wall-time "$(format_duration "$WALL_DURATION")" \
+        --exit-code "$SHADOW_EXIT" \
+        2>/dev/null
 
     if [[ -f "$report_out" ]]; then
         log_ok "Summary report: $report_out"
@@ -1451,61 +1218,8 @@ print_summary() {
     local report_file="$SHARED_DIR/monitoring/final_report.json"
     if [[ -f "$report_file" ]]; then
         local sim_results
-        sim_results=$(python3 -c "
-import json, sys
-try:
-    with open('$report_file') as f:
-        d = json.load(f)
-    s = d.get('summary', {})
-    ts = d.get('transaction_stats', {})
-    sc = s.get('success_criteria', {})
-
-    nodes = s.get('total_nodes', '?')
-    sync = s.get('avg_sync_percentage', 0)
-    height = s.get('max_height', 0)
-    blocks = s.get('total_blocks_mined', 0)
-    tx_created = s.get('total_transactions_created', 0)
-    tx_in_blocks = s.get('total_transactions_in_blocks', 0)
-    alerts = s.get('alert_count', 0)
-
-    # Success criteria
-    all_pass = all(sc.values()) if sc else False
-    criteria_lines = []
-    labels = {
-        'blocks_created': 'Blocks created',
-        'blocks_propagated': 'Blocks propagated',
-        'transactions_created_broadcast': 'Transactions broadcast',
-        'transactions_in_blocks': 'Transactions in blocks',
-    }
-    for key, label in labels.items():
-        passed = sc.get(key, False)
-        mark = 'PASS' if passed else 'FAIL'
-        criteria_lines.append(f'{label}: {mark}')
-
-    # Count wallets that received funds (balance > 0) from last monitoring cycle
-    wallets_funded = 0
-    hist = d.get('historical_data', [])
-    if hist:
-        last_cycle = hist[-1]
-        for ndata in last_cycle.get('node_data', {}).values():
-            w = ndata.get('wallet', {})
-            if w and w.get('balance', 0) > 0:
-                wallets_funded += 1
-
-    print(f'NODES={nodes}')
-    print(f'SYNC={sync:.0f}')
-    print(f'HEIGHT={height}')
-    print(f'BLOCKS={blocks}')
-    print(f'TX_CREATED={tx_created}')
-    print(f'TX_IN_BLOCKS={tx_in_blocks}')
-    print(f'WALLETS_FUNDED={wallets_funded}')
-    print(f'ALERTS={alerts}')
-    print(f'ALL_PASS={\"yes\" if all_pass else \"no\"}')
-    for line in criteria_lines:
-        print(f'CRITERIA={line}')
-except Exception as e:
-    print(f'ERROR={e}', file=sys.stderr)
-" 2>/dev/null)
+        sim_results=$(python3 scripts/run_sim_helpers.py print-summary-kv \
+            --report "$report_file" 2>/dev/null)
 
         if [[ -n "$sim_results" ]]; then
             local nodes sync height blocks tx_created tx_in_blocks wallets_funded alerts all_pass
