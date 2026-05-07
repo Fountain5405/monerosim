@@ -31,7 +31,8 @@ This timing ensures:
 import argparse
 import random
 import sys
-from typing import Dict, Any, List, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, Any, List, Optional, Tuple
 from collections import OrderedDict
 
 try:
@@ -111,6 +112,81 @@ DEFAULT_POST_UPGRADE_DURATION_S = 7200    # 2h post-upgrade observation
 # Relays are daemon-only (1 process each) so simple linear stagger suffices
 DEFAULT_RELAY_SPAWN_START_S = 5   # Start after miners (t=5s)
 DEFAULT_RELAY_STAGGER_S = 20      # 20s apart; sim-time moves fast so need wider spacing
+
+
+# Single GML file for all tests (1200 nodes supports up to 1200 agents)
+DEFAULT_GML_PATH = "gml_processing/1200_nodes_caida_with_loops.gml"
+
+
+@dataclass
+class BatchedBootstrap:
+    """Batched user-startup configuration.
+
+    Controls the exponential-growth batch schedule used to spawn users in
+    waves so Shadow doesn't see all wallet-rpc processes start at once.
+    """
+    mode: str = "auto"               # "auto", "true", or "false"
+    batch_interval: str = "20m"      # Time between batches (duration string)
+    initial_batch_size: int = 5
+    max_batch_size: int = 200
+
+
+@dataclass
+class TimingOverrides:
+    """Explicit timing overrides for the timeline dependency chain.
+
+    Each field is optional; when None, the value is auto-calculated from
+    earlier stages of the chain (see generate_config for derivation order).
+    """
+    user_spawn_start: Optional[str] = None      # When users start spawning
+    bootstrap_end_time: Optional[str] = None    # When bootstrap ends
+    regular_user_start: Optional[str] = None    # When users start transacting
+    md_start_time: Optional[str] = None         # When miner distributor starts
+    tx_interval: Optional[int] = None           # Per-user transaction interval
+
+
+@dataclass
+class MinerDistributorConfig:
+    """Per-cycle parameters for the miner-distributor agent."""
+    n_recipients: int = 8
+    out_per_tx: int = 2
+    output_amount: float = 5.0
+    funding_cycle_interval: str = "5m"
+
+
+@dataclass
+class RelayNodes:
+    """Daemon-only relay node configuration."""
+    count: int = 0
+    spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S
+    stagger_s: int = DEFAULT_RELAY_STAGGER_S
+
+
+@dataclass
+class GenerationConfig:
+    """Top-level configuration for generate_config().
+
+    Bundles the ~30 parameters that previously formed generate_config's
+    signature into a single struct with nested substructs. Designed so the
+    same shape can serve a future consolidated generate_upgrade_config
+    by adding an UpgradeConfig substruct alongside the existing fields.
+    """
+    total_agents: int = 0
+    duration: str = "8h"
+    stagger_interval_s: int = 5
+    simulation_seed: int = 12345
+    gml_path: str = DEFAULT_GML_PATH
+    fast_mode: bool = False
+    process_threads: int = 1
+    daemon_binary: str = "monerod"
+    tx_send_probability: float = 0.75
+    parallelism: int = 0
+    native_preemption: Optional[bool] = None
+    fallback_seeds_mode: str = "auto"
+    batched_bootstrap: BatchedBootstrap = field(default_factory=BatchedBootstrap)
+    timing: TimingOverrides = field(default_factory=TimingOverrides)
+    miner_distributor: MinerDistributorConfig = field(default_factory=MinerDistributorConfig)
+    relay_nodes: RelayNodes = field(default_factory=RelayNodes)
 
 
 def calculate_activity_start_times(
@@ -540,10 +616,6 @@ def generate_relay_agent_phased(
     ])
 
 
-# Single GML file for all tests (1200 nodes supports up to 1200 agents)
-DEFAULT_GML_PATH = "gml_processing/1200_nodes_caida_with_loops.gml"
-
-
 def _build_general_config(
     duration: str,
     parallelism: int,
@@ -611,86 +683,33 @@ def _build_general_config(
     return general_config
 
 
-def generate_config(
-    total_agents: int,
-    duration: str,
-    stagger_interval_s: int,
-    simulation_seed: int = 12345,
-    gml_path: str = DEFAULT_GML_PATH,
-    fast_mode: bool = False,
-    process_threads: int = 1,
-    batched_bootstrap: str = "auto",
-    batch_interval: str = "20m",
-    initial_batch_size: int = 5,
-    max_batch_size: int = 200,
-    daemon_binary: str = "monerod",
-    user_spawn_start: str = None,
-    bootstrap_end_time: str = None,
-    regular_user_start: str = None,
-    md_start_time: str = None,
-    md_n_recipients: int = 8,
-    md_out_per_tx: int = 2,
-    md_output_amount: float = 5.0,
-    md_funding_cycle_interval: str = "5m",
-    tx_interval: int = None,
-    tx_send_probability: float = 0.75,
-    # Shadow parallelism and preemption
-    parallelism: int = 0,
-    native_preemption: bool = None,
-    # Relay nodes (daemon-only)
-    relay_nodes: int = 0,
-    relay_spawn_start_s: int = DEFAULT_RELAY_SPAWN_START_S,
-    relay_stagger_s: int = DEFAULT_RELAY_STAGGER_S,
-    # Monero fallback-seed handling: auto | custom | off
-    fallback_seeds_mode: str = "auto",
-) -> Dict[str, Any]:
+def generate_config(cfg: GenerationConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Generate the complete monerosim configuration.
 
     Args:
-        total_agents: Total number of agents (5 miners + N users)
-        duration: Simulation duration (e.g., "6h")
-        stagger_interval_s: Seconds between user starts
-        simulation_seed: Random seed for reproducibility
-        gml_path: Path to GML topology file
-        fast_mode: If True, use performance-friendly settings
-        process_threads: Thread count for monerod/wallet-rpc (0=auto, 1=single, 2+=explicit)
-        batched_bootstrap: "auto", "true", or "false" for batched user startup
-        batch_interval: Time between batches (e.g., "20m")
-        initial_batch_size: Size of first user batch
-        max_batch_size: Maximum users per batch
-        daemon_binary: Path to monerod binary (default: "monerod")
-        tx_interval: Seconds between user transaction attempts (default: 120 in fast mode, 60 otherwise)
-        tx_send_probability: Probability of sending a TX each iteration (default: 0.75)
-        user_spawn_start: When users start spawning (default: 20m batched, 3h non-batched)
-        bootstrap_end_time: When bootstrap ends (default: auto-calc from user spawns)
-        regular_user_start: When users start transacting (default: md_start_time + 1h)
-        md_start_time: When miner distributor starts (default: bootstrap_end_time)
-        md_n_recipients: Recipients per batch transaction (default: 8)
-        md_out_per_tx: Outputs per recipient per transaction (default: 2)
-        md_output_amount: XMR amount per output (default: 5.0)
-        md_funding_cycle_interval: Interval between continuous funding cycles (default: 5m)
-        relay_spawn_start_s: When relay nodes start spawning (default: 5s)
-        relay_stagger_s: Interval between relay node spawns (default: 5s)
+        cfg: Bundle of generation parameters. See GenerationConfig and its
+             nested substructs (BatchedBootstrap, TimingOverrides,
+             MinerDistributorConfig, RelayNodes) for the full shape.
     """
 
     num_miners = len(FIXED_MINERS)
-    num_users = total_agents  # --agents now means user count directly
+    num_users = cfg.total_agents  # --agents now means user count directly
 
     if num_users < 0:
-        raise ValueError(f"User agent count ({total_agents}) must be non-negative")
+        raise ValueError(f"User agent count ({cfg.total_agents}) must be non-negative")
 
     # Determine if batched bootstrap should be enabled
     use_batched = (
-        batched_bootstrap == "true" or
-        (batched_bootstrap == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
+        cfg.batched_bootstrap.mode == "true" or
+        (cfg.batched_bootstrap.mode == "auto" and num_users >= DEFAULT_AUTO_THRESHOLD)
     )
 
     # Parse batch interval
-    batch_interval_s = parse_duration(batch_interval)
+    batch_interval_s = parse_duration(cfg.batched_bootstrap.batch_interval)
 
     # Calculate user spawn start time
-    if user_spawn_start is not None:
-        user_spawn_start_s = parse_duration(user_spawn_start)
+    if cfg.timing.user_spawn_start is not None:
+        user_spawn_start_s = parse_duration(cfg.timing.user_spawn_start)
     else:
         # Default: 20m for batched, 3h for non-batched
         user_spawn_start_s = DEFAULT_INITIAL_DELAY_S if use_batched else USER_START_TIME_S
@@ -701,14 +720,19 @@ def generate_config(
 
     if use_batched and num_users > 0:
         # Batched bootstrap: users start in waves
-        batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, 2.0, max_batch_size)
+        batch_sizes = calculate_batch_sizes(
+            num_users,
+            cfg.batched_bootstrap.initial_batch_size,
+            2.0,
+            cfg.batched_bootstrap.max_batch_size,
+        )
         batch_schedule = calculate_batch_schedule(
             num_users,
             user_spawn_start_s,
             batch_interval_s,
-            initial_batch_size,
+            cfg.batched_bootstrap.initial_batch_size,
             2.0,  # growth_factor
-            max_batch_size,
+            cfg.batched_bootstrap.max_batch_size,
             DEFAULT_INTRA_BATCH_STAGGER_S,
         )
         # Last user spawn time from batch schedule
@@ -716,7 +740,7 @@ def generate_config(
     else:
         # Non-batched: users start at user_spawn_start_s with stagger
         if num_users > 0:
-            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * stagger_interval_s)
+            last_user_spawn_s = user_spawn_start_s + ((num_users - 1) * cfg.stagger_interval_s)
         else:
             last_user_spawn_s = user_spawn_start_s
 
@@ -726,44 +750,45 @@ def generate_config(
     # 3. activity_start_time_s: explicit or defaults to md_start_time_s + 1h
 
     # Step 1: Bootstrap end time
-    if bootstrap_end_time is not None:
-        bootstrap_end_time_s = parse_duration(bootstrap_end_time)
+    if cfg.timing.bootstrap_end_time is not None:
+        bootstrap_end_time_s = parse_duration(cfg.timing.bootstrap_end_time)
     else:
         # Auto-calculate: max of minimum time and last spawn + buffer
         spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
         bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
 
     # Step 2: Miner distributor start time
-    if md_start_time is not None:
-        md_start_time_s = parse_duration(md_start_time)
+    if cfg.timing.md_start_time is not None:
+        md_start_time_s = parse_duration(cfg.timing.md_start_time)
         if md_start_time_s < bootstrap_end_time_s:
-            print(f"Warning: --md-start-time ({md_start_time}) is before bootstrap_end_time "
+            print(f"Warning: --md-start-time ({cfg.timing.md_start_time}) is before bootstrap_end_time "
                   f"({format_time_offset(bootstrap_end_time_s)}). Miners may not have accumulated enough funds.",
                   file=sys.stderr)
     else:
         md_start_time_s = bootstrap_end_time_s
 
     # Step 3: Regular user activity start time
-    if regular_user_start is not None:
-        activity_start_time_s = parse_duration(regular_user_start)
+    if cfg.timing.regular_user_start is not None:
+        activity_start_time_s = parse_duration(cfg.timing.regular_user_start)
         if activity_start_time_s < md_start_time_s:
-            print(f"Warning: --regular-user-start ({regular_user_start}) is before md_start_time "
+            print(f"Warning: --regular-user-start ({cfg.timing.regular_user_start}) is before md_start_time "
                   f"({format_time_offset(md_start_time_s)}). Users may start before receiving funds.",
                   file=sys.stderr)
     else:
         activity_start_time_s = md_start_time_s + FUNDING_PERIOD_S
 
     # Parse and potentially extend duration to ensure minimum activity period
-    requested_duration_s = parse_duration(duration)
+    requested_duration_s = parse_duration(cfg.duration)
     min_duration_s = activity_start_time_s + MIN_ACTIVITY_PERIOD_S
     duration_s = max(requested_duration_s, min_duration_s)
     duration = format_time_offset(duration_s)  # Update duration string if extended
 
     # Performance settings for fast mode
+    tx_interval = cfg.timing.tx_interval
     if tx_interval is None:
-        tx_interval = 120 if fast_mode else 60
+        tx_interval = 120 if cfg.fast_mode else 60
     # Total network node count (used for scale-aware interval calibration).
-    total_nodes = len(FIXED_MINERS) + num_users + relay_nodes
+    total_nodes = len(FIXED_MINERS) + num_users + cfg.relay_nodes.count
     # Bump to calibrated minimum if needed (see calibrate.py SAFETY_FACTOR comment).
     safe_interval = compute_safe_interval(num_users, tx_interval, num_nodes=total_nodes)
     if safe_interval > tx_interval:
@@ -781,7 +806,7 @@ def generate_config(
     # Add fixed miners with explicit IDs
     for i, miner in enumerate(FIXED_MINERS):
         agent_id = f"miner-{i+1:03}"
-        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], daemon_binary)
+        agents[agent_id] = generate_miner_agent(miner["hashrate"], miner["start_offset_s"], cfg.daemon_binary)
 
     # Calculate staggered activity start times (see docs/shadow-tx-stagger.md)
     activity_stagger_s = compute_stagger(num_users, tx_interval, num_nodes=total_nodes)
@@ -801,32 +826,32 @@ def generate_config(
         for user_index, start_time_s in batch_schedule:
             agent_id = f"user-{user_index+1:03}"
             user_activity_time = user_activity_times[user_index] if user_index < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
+            agents[agent_id] = generate_user_agent(start_time_s, tx_interval, user_activity_time, cfg.daemon_binary, cfg.tx_send_probability)
     else:
         # Non-batched bootstrap: start at USER_START_TIME_S with stagger
         for i in range(num_users):
             agent_id = f"user-{i+1:03}"
-            start_offset_s = USER_START_TIME_S + (i * stagger_interval_s)
+            start_offset_s = USER_START_TIME_S + (i * cfg.stagger_interval_s)
             user_activity_time = user_activity_times[i] if i < len(user_activity_times) else activity_start_time_s
-            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, daemon_binary, tx_send_probability)
+            agents[agent_id] = generate_user_agent(start_offset_s, tx_interval, user_activity_time, cfg.daemon_binary, cfg.tx_send_probability)
 
     # Add relay nodes (daemon-only, no wallet or script)
     # Simple linear stagger: start + i * stagger
-    for i in range(relay_nodes):
+    for i in range(cfg.relay_nodes.count):
         agent_id = f"relay-{i+1:03}"
-        relay_start_s = relay_spawn_start_s + (i * relay_stagger_s)
-        agents[agent_id] = generate_relay_agent(relay_start_s, daemon_binary)
+        relay_start_s = cfg.relay_nodes.spawn_start_s + (i * cfg.relay_nodes.stagger_s)
+        agents[agent_id] = generate_relay_agent(relay_start_s, cfg.daemon_binary)
 
     # In custom mode, scaffold 6 monero-seed-XXX agents the user can edit
     # before running the sim. (In auto mode the orchestrator injects them
     # automatically; in off mode no seed hosts exist.)
-    if fallback_seeds_mode == "custom":
+    if cfg.fallback_seeds_mode == "custom":
         for i in range(NUM_MONERO_FALLBACK_SEEDS):
-            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, daemon_binary)
+            agents[f"monero-seed-{i+1:03}"] = generate_relay_agent(0, cfg.daemon_binary)
 
     # Calculate last relay spawn time for metadata/warnings
-    if relay_nodes > 0:
-        last_relay_spawn_s = relay_spawn_start_s + ((relay_nodes - 1) * relay_stagger_s)
+    if cfg.relay_nodes.count > 0:
+        last_relay_spawn_s = cfg.relay_nodes.spawn_start_s + ((cfg.relay_nodes.count - 1) * cfg.relay_nodes.stagger_s)
         if last_relay_spawn_s > bootstrap_end_time_s:
             print(f"Warning: Last relay spawn ({format_time_offset(last_relay_spawn_s, for_config=False)}) "
                   f"exceeds bootstrap_end_time ({format_time_offset(bootstrap_end_time_s, for_config=False)}). "
@@ -841,10 +866,10 @@ def generate_config(
         ("wait_time", md_start_time_s),  # When Shadow starts the process
         ("max_transaction_amount", "2.0"),
         ("min_transaction_amount", "0.5"),
-        ("md_n_recipients", md_n_recipients),
-        ("md_out_per_tx", md_out_per_tx),
-        ("md_output_amount", md_output_amount),
-        ("md_funding_cycle_interval", md_funding_cycle_interval),
+        ("md_n_recipients", cfg.miner_distributor.n_recipients),
+        ("md_out_per_tx", cfg.miner_distributor.out_per_tx),
+        ("md_output_amount", cfg.miner_distributor.output_amount),
+        ("md_funding_cycle_interval", cfg.miner_distributor.funding_cycle_interval),
     ])
 
     # Add simulation-monitor
@@ -858,14 +883,14 @@ def generate_config(
 
     general_config = _build_general_config(
         duration=duration,
-        parallelism=parallelism,
-        simulation_seed=simulation_seed,
+        parallelism=cfg.parallelism,
+        simulation_seed=cfg.simulation_seed,
         bootstrap_end_time_s=bootstrap_end_time_s,
-        fast_mode=fast_mode,
-        process_threads=process_threads,
-        native_preemption=native_preemption,
-        total_agents=total_agents,
-        fallback_seeds_mode=fallback_seeds_mode,
+        fast_mode=cfg.fast_mode,
+        process_threads=cfg.process_threads,
+        native_preemption=cfg.native_preemption,
+        total_agents=cfg.total_agents,
+        fallback_seeds_mode=cfg.fallback_seeds_mode,
     )
 
     # Return config and timing info for header generation
@@ -885,8 +910,8 @@ def generate_config(
         'tx_interval': tx_interval,
         'activity_rollout_duration_s': activity_rollout_duration_s,
         # Relay timing info
-        'relay_spawn_start_s': relay_spawn_start_s,
-        'relay_stagger_s': relay_stagger_s,
+        'relay_spawn_start_s': cfg.relay_nodes.spawn_start_s,
+        'relay_stagger_s': cfg.relay_nodes.stagger_s,
         'last_relay_spawn_s': last_relay_spawn_s,
     }
 
@@ -896,11 +921,11 @@ def generate_config(
         num_miners=num_miners,
         num_users=num_users,
         timing_info=timing_info,
-        simulation_seed=simulation_seed,
-        gml_path=gml_path,
-        fast_mode=fast_mode,
-        stagger_interval_s=stagger_interval_s,
-        relay_nodes=relay_nodes,
+        simulation_seed=cfg.simulation_seed,
+        gml_path=cfg.gml_path,
+        fast_mode=cfg.fast_mode,
+        stagger_interval_s=cfg.stagger_interval_s,
+        relay_nodes=cfg.relay_nodes.count,
     )
 
     # Build full config with metadata first
@@ -908,7 +933,7 @@ def generate_config(
         ("metadata", metadata),
         ("general", general_config),
         ("network", OrderedDict([
-            ("path", gml_path),
+            ("path", cfg.gml_path),
             ("peer_mode", "Dynamic"),
         ])),
         ("agents", agents),
@@ -1823,7 +1848,7 @@ Timeline (verified bootstrap for Monero regtest):
                 post_upgrade_duration_s=parse_duration(args.post_upgrade_duration),
             )
         else:
-            config, timing_info = generate_config(
+            cfg = GenerationConfig(
                 total_agents=args.agents,
                 duration=args.duration,
                 stagger_interval_s=args.stagger_interval,
@@ -1831,28 +1856,37 @@ Timeline (verified bootstrap for Monero regtest):
                 gml_path=args.gml,
                 fast_mode=args.fast,
                 process_threads=process_threads,
-                batched_bootstrap=args.batched_bootstrap,
-                batch_interval=args.batch_interval,
-                initial_batch_size=args.initial_batch_size,
-                max_batch_size=args.max_batch_size,
                 daemon_binary=args.daemon_binary,
-                user_spawn_start=args.user_spawn_start,
-                bootstrap_end_time=args.bootstrap_end_time,
-                regular_user_start=args.regular_user_start,
-                md_start_time=args.md_start_time,
-                md_n_recipients=args.md_n_recipients,
-                md_out_per_tx=args.md_out_per_tx,
-                md_output_amount=args.md_output_amount,
-                md_funding_cycle_interval=args.md_funding_cycle_interval,
-                tx_interval=args.tx_interval,
                 tx_send_probability=args.tx_send_probability,
                 parallelism=parallelism,
                 native_preemption=native_preemption,
-                relay_nodes=args.relay_nodes,
-                relay_spawn_start_s=parse_duration(args.relay_spawn_start),
-                relay_stagger_s=parse_duration(args.relay_stagger),
                 fallback_seeds_mode=args.fallback_seeds,
+                batched_bootstrap=BatchedBootstrap(
+                    mode=args.batched_bootstrap,
+                    batch_interval=args.batch_interval,
+                    initial_batch_size=args.initial_batch_size,
+                    max_batch_size=args.max_batch_size,
+                ),
+                timing=TimingOverrides(
+                    user_spawn_start=args.user_spawn_start,
+                    bootstrap_end_time=args.bootstrap_end_time,
+                    regular_user_start=args.regular_user_start,
+                    md_start_time=args.md_start_time,
+                    tx_interval=args.tx_interval,
+                ),
+                miner_distributor=MinerDistributorConfig(
+                    n_recipients=args.md_n_recipients,
+                    out_per_tx=args.md_out_per_tx,
+                    output_amount=args.md_output_amount,
+                    funding_cycle_interval=args.md_funding_cycle_interval,
+                ),
+                relay_nodes=RelayNodes(
+                    count=args.relay_nodes,
+                    spawn_start_s=parse_duration(args.relay_spawn_start),
+                    stagger_s=parse_duration(args.relay_stagger),
+                ),
             )
+            config, timing_info = generate_config(cfg)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
