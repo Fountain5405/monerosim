@@ -692,7 +692,7 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
     # `general.native_preemption: false` explicitly to override.
     if total_nodes >= LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD and 'native_preemption' not in general:
         print(f"Note: enabling native_preemption=true for large sim "
-              f"({total_nodes} agents >= {LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD} threshold). "
+              f"({total_nodes} nodes >= {LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD} threshold). "
               f"Set general.native_preemption: false to override.")
         general['native_preemption'] = True
 

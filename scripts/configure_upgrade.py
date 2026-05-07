@@ -230,7 +230,7 @@ def main():
         # Step 3: Steady State Duration
         print("\n" + "-" * 70)
         print("\n[3/6] STEADY STATE OBSERVATION")
-        print("How long should nodes transact before the upgrade begins?")
+        print("How long should agents transact before the upgrade begins?")
         print("This is the 'steady state' period for baseline observation.")
         steady_state = ask_duration("Observation duration before upgrade", default="2h")
 

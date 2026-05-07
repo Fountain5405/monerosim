@@ -117,7 +117,7 @@ class AutonomousMinerAgent(BaseAgent):
         Poll for wallet address from miner_info file (created by regular_user.py).
 
         In the hybrid approach:
-        - regular_user.py runs on this node and creates the wallet
+        - regular_user.py runs on this host and creates the wallet
         - regular_user.py writes the address to {agent_id}_miner_info.json
         - autonomous_miner.py polls this file until address is available
 

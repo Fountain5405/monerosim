@@ -388,7 +388,7 @@ class PostSimulationAnalyzer:
             },
             "blocks_propagated": {
                 "success": total_blocks > 0 and user_agents > 0,
-                "details": f"{total_blocks} blocks available to {user_agents} user nodes"
+                "details": f"{total_blocks} blocks available to {user_agents} user agents"
             },
             "transactions_created_broadcast": {
                 "success": total_transactions > 0,
@@ -494,7 +494,7 @@ class PostSimulationAnalyzer:
         summary = success_criteria.get("summary", {})
         
         report_lines.extend([
-            f"  Total Nodes Analyzed: {self.analysis_results.get('agents', {}).get('total_agents', 0)}",
+            f"  Total Agents Analyzed: {self.analysis_results.get('agents', {}).get('total_agents', 0)}",
             f"  Total Blocks Mined: {summary.get('total_blocks', 0)}",
             f"  Total Unique Transactions Created: {summary.get('total_transactions', 0)}",
             f"  Transactions in Blocks: {summary.get('transactions_in_blocks', 'unknown')}",

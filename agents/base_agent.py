@@ -629,7 +629,7 @@ class BaseAgent(ABC):
         return data if isinstance(data, list) else []
         
     def _register_self(self):
-        """Register this agent in the node registry with atomic file updates"""
+        """Register this agent in the agent registry with atomic file updates"""
         registry_path = self.shared_dir / "agent_registry.json"
         lock_path = self.shared_dir / "agent_registry.lock"
         
