@@ -11,26 +11,30 @@ import argparse
 import json
 import logging
 import os
-import re
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
-from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
-from .agent_discovery import AgentDiscovery
-from .monero_rpc import MoneroRPC, WalletRPC, RPCError
+from ..base_agent import BaseAgent, DEFAULT_SHARED_DIR
+from ..agent_discovery import AgentDiscovery
+from ..monero_rpc import MoneroRPC, WalletRPC, RPCError
+
+from .alerts import check_alerts, write_alerts
+from .log_parser import parse_mining_events
+from .metadata import get_git_commit_hash, get_config_metadata
+from .status_paths import find_shadow_data_hosts
 
 
 class SimulationMonitorAgent(BaseAgent):
     """
     Simulation Monitor Agent that provides real-time monitoring of Monerosim simulations.
-    
+
     This agent periodically polls all Monero nodes via RPC to collect status information
     and writes continuously updating status reports to monerosim_monitor.log.
     """
-    
+
     def __init__(self, agent_id: str,
                  shared_dir: Optional[Path] = None,
                  poll_interval: int = 300,
@@ -62,17 +66,17 @@ class SimulationMonitorAgent(BaseAgent):
         self.enable_alerts = enable_alerts
         self.detailed_logging = detailed_logging
         self.cycle_count = 0
-        
+
         # Initialize agent discovery
         self.discovery = AgentDiscovery(str(self.shared_dir))
-        
+
         # Historical data storage
         self.historical_data = []
         self.max_historical_entries = 1000  # Limit memory usage
-        
+
         # RPC connections cache
         self.rpc_cache = {}
-        
+
         # Transaction tracking
         self.transaction_stats = {
             "total_created": 0,
@@ -113,7 +117,7 @@ class SimulationMonitorAgent(BaseAgent):
 
         self.logger.info(f"SimulationMonitorAgent initialized with poll_interval={poll_interval}s")
         self.logger.info(f"Status file: {self.status_file}")
-    
+
     def _setup_agent(self):
         """Set up the monitor agent."""
         self.logger.info("Setting up Simulation Monitor Agent")
@@ -148,24 +152,7 @@ class SimulationMonitorAgent(BaseAgent):
         Returns:
             Path to hosts directory, or None if not found.
         """
-        # Shadow creates shadow.data in its cwd (project root)
-        candidates = [
-            Path("shadow.data") / "hosts",           # Relative to cwd (where Shadow runs)
-            Path.cwd() / "shadow.data" / "hosts",    # Absolute cwd
-        ]
-
-        if self.output_dir:
-            candidates += [
-                self.output_dir / "shadow.data" / "hosts",
-                self.output_dir / "hosts",
-                self.output_dir.parent / "shadow.data" / "hosts",
-            ]
-
-        for hosts_dir in candidates:
-            if hosts_dir.is_dir():
-                return hosts_dir
-
-        return None
+        return find_shadow_data_hosts(self.output_dir)
 
     def _relocate_status_file_to_shadow_data(self):
         """Move status file to shadow.data directory if found."""
@@ -254,49 +241,6 @@ class SimulationMonitorAgent(BaseAgent):
         Parse daemon logs for mining events (blocks mined).
         This reads new content since last check (like tail -f).
         """
-        # Regex patterns for mining detection
-        # Pattern 1: "mined new block" with height
-        mined_pattern = re.compile(
-            r'mined new block.*height[=:\s]*(\d+)',
-            re.IGNORECASE
-        )
-
-        # Pattern 2: "BLOCK SUCCESSFULLY ADDED" followed by block details
-        block_added_pattern = re.compile(
-            r'\+{5,}\s*BLOCK SUCCESSFULLY ADDED',
-            re.IGNORECASE
-        )
-
-        # Pattern 3: Block ID/hash after successful add
-        block_id_pattern = re.compile(
-            r'id:\s*<([0-9a-f]{64})>',
-            re.IGNORECASE
-        )
-
-        # Pattern 4: Height from block info
-        height_pattern = re.compile(
-            r'HEIGHT\s+(\d+)',
-            re.IGNORECASE
-        )
-
-        # Pattern 5: PoW indicator (present in all blocks, not just mined ones)
-        pow_pattern = re.compile(
-            r'PoW:\s*<([0-9a-f]{64})>',
-            re.IGNORECASE
-        )
-
-        # Pattern 6: Received block from network (means NOT locally mined)
-        received_block_pattern = re.compile(
-            r'Received NOTIFY_NEW_FLUFFY_BLOCK|NOTIFY_NEW_BLOCK',
-            re.IGNORECASE
-        )
-
-        # Pattern 7: generateblocks RPC call (means locally mined via RPC)
-        generateblocks_pattern = re.compile(
-            r'generateblocks',
-            re.IGNORECASE
-        )
-
         for agent_id, log_file in self.daemon_log_files.items():
             try:
                 if not os.path.exists(log_file):
@@ -317,57 +261,10 @@ class SimulationMonitorAgent(BaseAgent):
                 # Update position
                 self.log_file_positions[log_file] = current_size
 
-                # Parse for mining events
-                lines = new_content.split('\n')
-                i = 0
-                while i < len(lines):
-                    line = lines[i]
-
-                    # Check for "mined new block" pattern
-                    mined_match = mined_pattern.search(line)
-                    if mined_match:
-                        height = int(mined_match.group(1))
-                        self._record_block_mined(agent_id, height)
-                        i += 1
-                        continue
-
-                    # Check for "BLOCK SUCCESSFULLY ADDED" pattern
-                    if block_added_pattern.search(line):
-                        # Look BACK to check if this was locally mined vs received from network
-                        # Received blocks have "NOTIFY_NEW_FLUFFY_BLOCK" before them
-                        # Mined blocks have "generateblocks" RPC call before them
-                        is_received_from_network = False
-                        is_locally_mined = False
-
-                        # Look back up to 5 lines for context
-                        for j in range(max(0, i - 5), i):
-                            check_line = lines[j]
-                            if received_block_pattern.search(check_line):
-                                is_received_from_network = True
-                                break
-                            if generateblocks_pattern.search(check_line):
-                                is_locally_mined = True
-
-                        # Skip if this block was received from network (not locally mined)
-                        if is_received_from_network:
-                            i += 1
-                            continue
-
-                        # Look ahead for height info
-                        block_height = None
-                        for j in range(i, min(i + 10, len(lines))):
-                            check_line = lines[j]
-                            height_match = height_pattern.search(check_line)
-                            if height_match:
-                                block_height = int(height_match.group(1))
-                                break
-
-                        # Record if we have height, it was locally mined, and it's not genesis block
-                        # Genesis block (height 0) is generated by all nodes, not "mined"
-                        if block_height is not None and block_height > 0 and is_locally_mined:
-                            self._record_block_mined(agent_id, block_height)
-
-                    i += 1
+                # Parse for mining events (returns heights of locally-mined
+                # blocks observed in this chunk).
+                for height in parse_mining_events(new_content):
+                    self._record_block_mined(agent_id, height)
 
             except Exception as e:
                 self.logger.warning(f"Error parsing log for {agent_id}: {e}")
@@ -419,54 +316,11 @@ class SimulationMonitorAgent(BaseAgent):
 
     def _get_git_commit_hash(self) -> str:
         """Get the current git commit hash of the monerosim codebase."""
-        try:
-            import subprocess
-            # Try to get git commit from the monerosim directory
-            result = subprocess.run(
-                ['git', 'rev-parse', '--short', 'HEAD'],
-                capture_output=True, text=True, timeout=5
-            )
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except Exception:
-            pass
-        return "unknown"
+        return get_git_commit_hash()
 
     def _get_config_metadata(self) -> Dict[str, Any]:
         """Read metadata from the monerosim config file."""
-        import yaml
-
-        # Try common config file locations
-        config_candidates = [
-            Path("monerosim.expanded.yaml"),
-            Path("monerosim.yaml"),
-            Path("config.yaml"),
-            self.shared_dir / "config_metadata.json",
-        ]
-
-        # Also check parent directories
-        cwd = Path.cwd()
-        for parent in [cwd, cwd.parent, cwd.parent.parent]:
-            config_candidates.append(parent / "monerosim.expanded.yaml")
-            config_candidates.append(parent / "monerosim.yaml")
-            config_candidates.append(parent / "config.yaml")
-
-        for config_path in config_candidates:
-            try:
-                if config_path.exists():
-                    if config_path.suffix == '.json':
-                        with open(config_path, 'r') as f:
-                            return json.load(f)
-                    else:
-                        with open(config_path, 'r') as f:
-                            config = yaml.safe_load(f)
-                            if config and 'metadata' in config:
-                                return config['metadata']
-            except Exception as e:
-                self.logger.debug(f"Could not read config from {config_path}: {e}")
-                continue
-
-        return {}
+        return get_config_metadata(self.shared_dir, self.logger)
 
     def _initialize_status_file(self):
         """Create and initialize the status file with header."""
@@ -545,7 +399,7 @@ class SimulationMonitorAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Failed to initialize status file: {e}")
             raise
-    
+
     def run_iteration(self) -> float:
         """
         Main monitoring loop iteration.
@@ -568,26 +422,26 @@ class SimulationMonitorAgent(BaseAgent):
 
             # Collect data from all nodes
             node_data = self._collect_node_data()
-            
+
             # Analyze network status
             network_metrics = self._analyze_network_health(node_data)
-            
+
             # Track transactions and blocks
             self._track_transactions_and_blocks(node_data)
-            
+
             # Write real-time status to file (includes alerts)
             self._write_status_update(node_data, network_metrics)
 
             # Store detailed data for final report
             self._store_historical_data(node_data, network_metrics)
-            
+
             self.logger.debug(f"Completed monitoring cycle {self.cycle_count}")
             return self.poll_interval
-            
+
         except Exception as e:
             self.logger.error(f"Error in monitoring cycle {self.cycle_count}: {e}", exc_info=True)
             return self.poll_interval  # Return standard interval even on error
-    
+
     def _collect_node_data(self) -> Dict[str, Any]:
         """
         Collect data from all discovered agents via RPC.
@@ -663,26 +517,26 @@ class SimulationMonitorAgent(BaseAgent):
 
             self.logger.info(f"Successfully collected data from {len(node_data)} nodes")
             return node_data
-            
+
         except Exception as e:
             self.logger.error(f"Failed to collect node data: {e}")
             return {}
-    
+
     def _get_agent_rpc_info(self, agent: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Extract RPC connection information from agent data.
-        
+
         Args:
             agent: Agent dictionary from registry
-            
+
         Returns:
             Dictionary with RPC connection info or None if not available
         """
         try:
             daemon_rpc_port = agent.get("daemon_rpc_port") or agent.get("rpc_port")
-            
+
             wallet_rpc_port = agent.get("wallet_rpc_port")
-            
+
             if not daemon_rpc_port:
                 return None
 
@@ -692,11 +546,11 @@ class SimulationMonitorAgent(BaseAgent):
                 "wallet_rpc_port": wallet_rpc_port,
                 "agent_id": agent.get("id", "unknown")
             }
-            
+
         except Exception as e:
             self.logger.error(f"Error extracting RPC info from agent: {e}")
             return None
-    
+
     def _collect_daemon_data(self, rpc_info: Dict[str, Any]) -> Dict[str, Any]:
         """
         Collect data from a Monero daemon via RPC.
@@ -777,14 +631,14 @@ class SimulationMonitorAgent(BaseAgent):
 
         except Exception as e:
             return {"error": str(e)}
-    
+
     def _collect_wallet_data(self, rpc_info: Dict[str, Any]) -> Dict[str, Any]:
         """
         Collect data from a Monero wallet via RPC.
-        
+
         Args:
             rpc_info: RPC connection information
-            
+
         Returns:
             Dictionary containing wallet data
         """
@@ -792,15 +646,15 @@ class SimulationMonitorAgent(BaseAgent):
             wallet_rpc_port = rpc_info.get("wallet_rpc_port")
             if not wallet_rpc_port:
                 return {"no_wallet": True}
-            
+
             # Get or create wallet RPC connection
             wallet_rpc = self._get_wallet_rpc(rpc_info)
             if not wallet_rpc:
                 return {"error": "Failed to create wallet RPC connection"}
-            
+
             # Collect wallet information
             data = {}
-            
+
             try:
                 balance = wallet_rpc.get_balance()
                 data.update({
@@ -810,7 +664,7 @@ class SimulationMonitorAgent(BaseAgent):
                 })
             except Exception as e:
                 data["balance_error"] = str(e)
-            
+
             try:
                 # Get transaction pool information
                 transfers = wallet_rpc.get_transfers(pool=True)
@@ -818,27 +672,27 @@ class SimulationMonitorAgent(BaseAgent):
                 data["pool_size"] = len(pool_txs)
             except Exception as e:
                 data["pool_error"] = str(e)
-            
+
             return data
-            
+
         except Exception as e:
             return {"error": str(e)}
-    
+
     def _get_daemon_rpc(self, rpc_info: Dict[str, Any]) -> Optional[MoneroRPC]:
         """
         Get or create a daemon RPC connection.
-        
+
         Args:
             rpc_info: RPC connection information
-            
+
         Returns:
             MoneroRPC instance or None if connection fails
         """
         cache_key = f"{rpc_info['host']}:{rpc_info['daemon_rpc_port']}"
-        
+
         if cache_key in self.rpc_cache:
             return self.rpc_cache[cache_key]
-        
+
         try:
             daemon_rpc = MoneroRPC(rpc_info["host"], rpc_info["daemon_rpc_port"])
             if daemon_rpc.is_ready():
@@ -846,28 +700,28 @@ class SimulationMonitorAgent(BaseAgent):
                 return daemon_rpc
         except Exception as e:
             self.logger.warning(f"Failed to connect to daemon RPC at {cache_key}: {e}")
-        
+
         return None
-    
+
     def _get_wallet_rpc(self, rpc_info: Dict[str, Any]) -> Optional[WalletRPC]:
         """
         Get or create a wallet RPC connection.
-        
+
         Args:
             rpc_info: RPC connection information
-            
+
         Returns:
             WalletRPC instance or None if connection fails
         """
         wallet_rpc_port = rpc_info.get("wallet_rpc_port")
         if not wallet_rpc_port:
             return None
-        
+
         cache_key = f"{rpc_info['host']}:{wallet_rpc_port}"
-        
+
         if cache_key in self.rpc_cache:
             return self.rpc_cache[cache_key]
-        
+
         try:
             wallet_rpc = WalletRPC(rpc_info["host"], wallet_rpc_port)
             if wallet_rpc.is_ready():
@@ -875,16 +729,16 @@ class SimulationMonitorAgent(BaseAgent):
                 return wallet_rpc
         except Exception as e:
             self.logger.warning(f"Failed to connect to wallet RPC at {cache_key}: {e}")
-        
+
         return None
-    
+
     def _analyze_network_health(self, node_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyze network health metrics from collected node data.
-        
+
         Args:
             node_data: Dictionary containing data from all nodes
-            
+
         Returns:
             Dictionary containing network health metrics
         """
@@ -929,35 +783,35 @@ class SimulationMonitorAgent(BaseAgent):
                 metrics["mining_hashrates"].append(daemon.get("mining_hashrate", 0))
                 metrics["mining_weights"].append(weight)
                 metrics["total_mining_weight"] += weight
-            
+
             # Collect height information
             height = daemon.get("height", 0)
             if height > 0:
                 metrics["heights"].append(height)
-            
+
             # Collect connection information
             connections = daemon.get("connections", 0)
             if connections > 0:
                 metrics["total_connections"] += connections
-            
+
             # Collect balance information
             balance = wallet.get("balance", 0)
             unlocked_balance = wallet.get("unlocked_balance", 0)
             if balance > 0:
                 metrics["total_balance"] += balance
                 metrics["total_unlocked_balance"] += unlocked_balance
-            
+
             # Collect pool size
             pool_size = wallet.get("pool_size", 0)
             if pool_size > 0:
                 metrics["total_pool_size"] += pool_size
-            
+
             # Collect errors
             if "error" in daemon:
                 metrics["errors"].append(f"{node_id} daemon: {daemon['error']}")
             if "error" in wallet:
                 metrics["errors"].append(f"{node_id} wallet: {wallet['error']}")
-        
+
         # Calculate derived metrics
         if metrics["heights"]:
             metrics["avg_height"] = sum(metrics["heights"]) / len(metrics["heights"])
@@ -969,18 +823,18 @@ class SimulationMonitorAgent(BaseAgent):
             metrics["max_height"] = 0
             metrics["min_height"] = 0
             metrics["height_variance"] = 0
-        
+
         if metrics["mining_hashrates"]:
             metrics["total_hashrate"] = sum(metrics["mining_hashrates"])
             metrics["avg_hashrate"] = metrics["total_hashrate"] / len(metrics["mining_hashrates"])
         else:
             metrics["total_hashrate"] = 0
             metrics["avg_hashrate"] = 0
-        
+
         metrics["sync_percentage"] = (metrics["synced_nodes"] / metrics["total_nodes"] * 100) if metrics["total_nodes"] > 0 else 0
-        
+
         return metrics
-    
+
     def _track_transactions_and_blocks(self, node_data: Dict[str, Any]):
         """
         Track transactions and blocks across the network by querying daemon RPC
@@ -1081,7 +935,7 @@ class SimulationMonitorAgent(BaseAgent):
 
         # Update total transactions in blocks count
         self.transaction_stats["total_in_blocks"] = len(self.transaction_stats["included_txs"])
-    
+
     def _read_transaction_data(self):
         """Read transaction data from the shared state file."""
         try:
@@ -1118,7 +972,7 @@ class SimulationMonitorAgent(BaseAgent):
 
         except Exception as e:
             self.logger.error(f"Error reading transaction data: {e}")
-    
+
     def _save_transaction_tracking_data(self):
         """Save enhanced transaction tracking data to shared files."""
         try:
@@ -1156,14 +1010,14 @@ class SimulationMonitorAgent(BaseAgent):
                 with open(self.blocks_with_tx_file, 'w') as f:
                     json.dump(enhanced_blocks, f, indent=2)
                 self.logger.debug(f"Updated enhanced blocks file with {len(enhanced_blocks)} blocks")
-            
+
         except Exception as e:
             self.logger.error(f"Error saving transaction tracking data: {e}")
-    
+
     def _write_status_update(self, node_data: Dict[str, Any], network_metrics: Dict[str, Any]):
         """
         Write real-time status update to the monitor file.
-        
+
         Args:
             node_data: Dictionary containing data from all nodes
             network_metrics: Dictionary containing network health metrics
@@ -1175,7 +1029,7 @@ class SimulationMonitorAgent(BaseAgent):
                 f.write(f"\n{'='*60}\n")
                 f.write(f"=== MoneroSim Simulation Monitor ===\n")
                 f.write(f"Sim Time: {sim_time} | Cycle: {self.cycle_count}\n\n")
-                
+
                 # Write network status
                 f.write("NETWORK STATUS:\n")
                 pending = getattr(self, '_pending_agents_count', 0)
@@ -1196,27 +1050,27 @@ class SimulationMonitorAgent(BaseAgent):
                 total_blocks = network_metrics.get('total_blocks_mined', 0)
                 f.write(f"- Registered Miners: {registered}\n")
                 f.write(f"- Actively Mining: {actively_mining} (detected {total_blocks} blocks from logs)\n\n")
-                
+
                 # Write node details table
                 self._write_node_table(f, node_data)
-                
+
                 # Write transaction status
                 self._write_transaction_status(f, network_metrics)
-                
+
                 # Write blockchain status
                 self._write_blockchain_status(f, network_metrics)
-                
+
                 # Write alerts if any
                 alerts = self._check_alerts(network_metrics)
                 if alerts:
                     self._write_alerts(f, alerts)
-                
+
                 f.write(f"\n=== End Status Update ===\n")
                 f.flush()  # Ensure immediate visibility for tail -f
-                
+
         except Exception as e:
             self.logger.error(f"Failed to write status update: {e}")
-    
+
     def _write_node_table(self, f, node_data: Dict[str, Any]):
         """Write formatted node details table."""
         f.write("NODE DETAILS:\n")
@@ -1282,34 +1136,34 @@ class SimulationMonitorAgent(BaseAgent):
             f.write(f"│ {node_display:<11} │ {height:>5} │ {sync_status:<5} │ {mining_status:<8} │ {blocks_str:>6} │ {weight_str:>6} │ {connections:>7} │ {tx_str:>4} │\n")
 
         f.write("└─────────────┴───────┴───────┴──────────┴────────┴────────┴─────────┴──────┘\n\n")
-    
+
     def _write_transaction_status(self, f, network_metrics: Dict[str, Any]):
         """Write transaction status information."""
         f.write("TRANSACTION STATUS:\n")
         f.write(f"- Total Pool Size: {network_metrics['total_pool_size']}\n")
-        
+
         # Write comprehensive transaction statistics
         f.write(f"- Total Transactions Created: {self.transaction_stats['total_created']}\n")
         f.write(f"- Total Transactions in Blocks: {self.transaction_stats['total_in_blocks']}\n")
         f.write(f"- Blockchain Height: {self.transaction_stats['blocks_mined']} (excluding genesis)\n")
         f.write(f"- Nodes with Transactions: {len(self.transaction_stats['node_tx_counts'])}\n")
-        
+
         # Calculate transaction metrics if we have historical data
         if len(self.historical_data) > 1:
             prev_data = self.historical_data[-2]
             curr_data = self.historical_data[-1] if self.historical_data else network_metrics
-            
+
             prev_pool = prev_data.get("network_metrics", {}).get("total_pool_size", 0)
             curr_pool = curr_data.get("total_pool_size", 0)
-            
+
             # Simple transaction rate calculation
             if prev_pool > curr_pool:
                 tx_processed = prev_pool - curr_pool
                 f.write(f"- Transactions Processed: {tx_processed}\n")
-        
+
         f.write(f"- Total Balance: {network_metrics['total_balance']/1e12:.6f} XMR\n")
         f.write(f"- Unlocked Balance: {network_metrics['total_unlocked_balance']/1e12:.6f} XMR\n\n")
-    
+
     def _write_blockchain_status(self, f, network_metrics: Dict[str, Any]):
         """Write blockchain status information."""
         f.write("BLOCKCHAIN STATUS:\n")
@@ -1327,85 +1181,37 @@ class SimulationMonitorAgent(BaseAgent):
             f.write(f"- Total Mining Weight: {total_weight}\n")
 
         f.write(f"- Total Connections: {network_metrics['total_connections']}\n\n")
-    
+
     def _check_alerts(self, network_metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Check for alert conditions in the network metrics.
-        
+
         Args:
             network_metrics: Dictionary containing network health metrics
-            
+
         Returns:
             List of alert dictionaries
         """
-        alerts = []
-        
-        # Check synchronization issues
-        if network_metrics['sync_percentage'] < 90:
-            alerts.append({
-                "type": "sync_issue",
-                "severity": "warning",
-                "message": f"Low synchronization rate: {network_metrics['sync_percentage']:.1f}%"
-            })
-        
-        # Check height variance
-        if network_metrics['height_variance'] > 10:
-            alerts.append({
-                "type": "height_variance",
-                "severity": "warning",
-                "message": f"High height variance: {network_metrics['height_variance']:.2f}"
-            })
-        
-        # Check for no miners - use registered_miners count
-        registered_miners = network_metrics.get('registered_miners', 0)
-        active_miners = network_metrics.get('active_miners', 0)
-        if registered_miners == 0 and active_miners == 0:
-            alerts.append({
-                "type": "no_miners",
-                "severity": "critical",
-                "message": "No miners registered or detected"
-            })
-        
-        # Check for large transaction pool
-        if network_metrics['total_pool_size'] > 50:
-            alerts.append({
-                "type": "large_pool",
-                "severity": "warning",
-                "message": f"Large transaction pool: {network_metrics['total_pool_size']} transactions"
-            })
-        
-        # Check for errors
-        if network_metrics['errors']:
-            alerts.append({
-                "type": "node_errors",
-                "severity": "warning",
-                "message": f"{len(network_metrics['errors'])} nodes reporting errors"
-            })
-        
-        return alerts
-    
+        return check_alerts(network_metrics)
+
     def _write_alerts(self, f, alerts: List[Dict[str, Any]]):
         """Write alerts to the status file."""
-        f.write("ALERTS:\n")
-        for alert in alerts:
-            severity_symbol = "⚠️" if alert["severity"] == "warning" else "🚨"
-            f.write(f"{severity_symbol} {alert['message']}\n")
-        f.write("\n")
-    
+        write_alerts(f, alerts)
+
     def _get_simulation_time(self) -> str:
         """
         Get the current simulation time.
-        
+
         Returns:
             Formatted simulation time string
         """
         # Shadow intercepts datetime.now() to return simulated time
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S.000")
-    
+
     def _store_historical_data(self, node_data: Dict[str, Any], network_metrics: Dict[str, Any]):
         """
         Store historical data for final report generation.
-        
+
         Args:
             node_data: Dictionary containing data from all nodes
             network_metrics: Dictionary containing network health metrics
@@ -1418,53 +1224,53 @@ class SimulationMonitorAgent(BaseAgent):
                 "node_data": node_data,
                 "network_metrics": network_metrics
             }
-            
+
             self.historical_data.append(historical_entry)
-            
+
             # Limit memory usage
             if len(self.historical_data) > self.max_historical_entries:
                 self.historical_data = self.historical_data[-self.max_historical_entries:]
-            
+
             # Save historical data every cycle
             self._save_historical_data()
-            
+
             # Update final report periodically (every poll_interval)
             if self.cycle_count == 1 or (time.time() - getattr(self, '_last_report_update', 0)) >= self.poll_interval:
                 self._update_final_report()
                 self._last_report_update = time.time()
                 self.logger.info(f"Updated final report at cycle {self.cycle_count}")
-                
+
         except Exception as e:
             self.logger.error(f"Failed to store historical data: {e}")
-    
+
     def _save_historical_data(self):
         """Save historical data to disk."""
         try:
             monitoring_dir = self.shared_dir / "monitoring"
             monitoring_dir.mkdir(exist_ok=True)
-            
+
             historical_file = monitoring_dir / "historical_data.json"
-            
+
             with open(historical_file, 'w') as f:
                 json.dump(self.historical_data, f, indent=2)
-                
+
             self.logger.debug(f"Saved historical data with {len(self.historical_data)} entries")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to save historical data: {e}")
-    
+
     def _update_final_report(self):
         """Update the final report with current data."""
         try:
             monitoring_dir = self.shared_dir / "monitoring"
             monitoring_dir.mkdir(exist_ok=True)
-            
+
             # Convert sets to lists for JSON serialization
             tx_stats_copy = self.transaction_stats.copy()
             tx_stats_copy["unique_tx_hashes"] = list(self.transaction_stats["unique_tx_hashes"])
             tx_stats_copy["pending_txs"] = list(self.transaction_stats["pending_txs"])
             tx_stats_copy["included_txs"] = list(self.transaction_stats["included_txs"])
-            
+
             final_report = {
                 "agent_id": self.agent_id,
                 "start_time": self.historical_data[0]["timestamp"] if self.historical_data else time.time(),
@@ -1475,26 +1281,26 @@ class SimulationMonitorAgent(BaseAgent):
                 "summary": self._generate_summary(),
                 "status": "running"
             }
-            
+
             report_file = monitoring_dir / "final_report.json"
             with open(report_file, 'w') as f:
                 json.dump(final_report, f, indent=2)
-                
+
             self.logger.debug(f"Updated final report with {len(self.historical_data)} entries")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to update final report: {e}")
-    
+
     def _cleanup_agent(self):
         """Clean up resources before shutdown."""
         self.logger.info("Cleaning up Simulation Monitor Agent")
-        
+
         try:
             # Generate final report
             self._generate_final_report()
-            
+
             self.rpc_cache.clear()
-            
+
             # Write shutdown message to status file
             with open(self.status_file, 'a') as f:
                 f.write(f"\n=== MoneroSim Simulation Monitor Stopped ===\n")
@@ -1502,22 +1308,22 @@ class SimulationMonitorAgent(BaseAgent):
                 f.write(f"Total Cycles: {self.cycle_count}\n")
                 f.write("=== End Monitor Session ===\n")
                 f.flush()
-                
+
         except Exception as e:
             self.logger.error(f"Error during cleanup: {e}")
-    
+
     def _generate_final_report(self):
         """Generate a comprehensive final report."""
         try:
             monitoring_dir = self.shared_dir / "monitoring"
             monitoring_dir.mkdir(exist_ok=True)
-            
+
             # Convert sets to lists for JSON serialization
             tx_stats_copy = self.transaction_stats.copy()
             tx_stats_copy["unique_tx_hashes"] = list(self.transaction_stats["unique_tx_hashes"])
             tx_stats_copy["pending_txs"] = list(self.transaction_stats["pending_txs"])
             tx_stats_copy["included_txs"] = list(self.transaction_stats["included_txs"])
-            
+
             final_report = {
                 "agent_id": self.agent_id,
                 "start_time": self.historical_data[0]["timestamp"] if self.historical_data else time.time(),
@@ -1528,21 +1334,21 @@ class SimulationMonitorAgent(BaseAgent):
                 "summary": self._generate_summary(),
                 "status": "completed"
             }
-            
+
             report_file = monitoring_dir / "final_report.json"
             with open(report_file, 'w') as f:
                 json.dump(final_report, f, indent=2)
-                
+
             self.logger.info(f"Generated final report: {report_file}")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to generate final report: {e}")
-    
+
     def _generate_summary(self) -> Dict[str, Any]:
         """Generate a summary of the monitoring session."""
         if not self.historical_data:
             return {}
-        
+
         summary = {
             "total_nodes": 0,
             "avg_sync_percentage": 0,
@@ -1561,17 +1367,17 @@ class SimulationMonitorAgent(BaseAgent):
                 "transactions_in_blocks": self.transaction_stats["total_in_blocks"] > 0
             }
         }
-        
+
         sync_percentages = []
         heights = []
         alert_count = 0
-        
+
         for entry in self.historical_data:
             metrics = entry.get("network_metrics", {})
-            
+
             sync_percentages.append(metrics.get("sync_percentage", 0))
             heights.append(metrics.get("max_height", 0))
-            
+
             # Count alerts (this is a simplified count)
             if metrics.get("sync_percentage", 0) < 90:
                 alert_count += 1
@@ -1579,15 +1385,15 @@ class SimulationMonitorAgent(BaseAgent):
                 alert_count += 1
             if metrics.get("active_miners", 0) == 0:
                 alert_count += 1
-        
+
         if self.historical_data:
             summary["total_nodes"] = self.historical_data[-1].get("network_metrics", {}).get("total_nodes", 0)
             summary["avg_sync_percentage"] = sum(sync_percentages) / len(sync_percentages)
             summary["max_height"] = max(heights) if heights else 0
             summary["alert_count"] = alert_count
-        
+
         return summary
-    
+
     @staticmethod
     def create_argument_parser() -> argparse.ArgumentParser:
         """Create argument parser for the simulation monitor agent."""
@@ -1595,7 +1401,7 @@ class SimulationMonitorAgent(BaseAgent):
             description="MoneroSim Simulation Monitor Agent",
             default_shared_dir=DEFAULT_SHARED_DIR
         )
-        
+
         parser.add_argument('--poll-interval', type=int, default=300,
                           help='Polling interval in seconds (default: 300)')
         parser.add_argument('--output-dir', type=str, default=None,
@@ -1607,7 +1413,7 @@ class SimulationMonitorAgent(BaseAgent):
                           help='Enable alert generation')
         parser.add_argument('--detailed-logging', action='store_true', default=False,
                           help='Enable detailed logging')
-        
+
         return parser
 
 
@@ -1638,9 +1444,9 @@ def main():
             enable_alerts=args.enable_alerts,
             detailed_logging=args.detailed_logging
         )
-        
+
         agent.run()
-        
+
     except KeyboardInterrupt:
         print("\nReceived keyboard interrupt, shutting down...")
     except Exception as e:
