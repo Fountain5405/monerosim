@@ -42,15 +42,6 @@ monero-wallet-rpc-*
 .DS_Store
 Thumbs.db
 
-# Test files
-test_*.yaml
-test_*.sh
-test_*.c
-test_*.py
-
-# Exclude legacy_scripts from test file patterns
-!legacy_scripts/test_*.sh
-
 # Scripts that might contain sensitive data
 install_*.sh
 

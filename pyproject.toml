@@ -80,6 +80,6 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["agents", "scripts"]
+testpaths = ["agents", "scripts", "tests"]
 python_files = "test_*.py"
 addopts = "--verbose --tb=short"

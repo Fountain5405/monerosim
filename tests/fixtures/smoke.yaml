@@ -1,0 +1,23 @@
+general:
+  stop_time: 1h
+  simulation_seed: 42
+  fallback_seeds: off
+network:
+  type: 1_gbit_switch
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 100
+  user-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 5m
+    transaction_interval: 60
+  monitor:
+    script: agents.simulation_monitor
+    poll_interval: 60
