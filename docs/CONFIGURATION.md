@@ -295,7 +295,7 @@ agents:
 
 ## Complete Example
 
-See `test_configs/20260112_config.yaml` for a full working configuration, or check the `examples/` directory.
+See `test_configs/quickstart.yaml` for a full working configuration, or check the `examples/` directory.
 
 Additional examples in `examples/`:
 - `config_caida_large_scale.yaml` - CAIDA-based topology

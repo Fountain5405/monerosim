@@ -13,7 +13,7 @@ If you haven't set up the environment yet, run `./setup.sh` first. It will insta
 ## Step 1: Generate Shadow Configuration
 
 ```bash
-./target/release/monerosim --config test_configs/20260112_config.yaml --output shadow_output
+./target/release/monerosim --config test_configs/quickstart.yaml --output shadow_output
 ```
 
 This parses your YAML configuration and generates:

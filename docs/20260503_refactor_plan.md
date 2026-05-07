@@ -86,22 +86,24 @@ expected (struct field reordering); semantic equivalence verified via
 Three layers of verification, cheapest first:
 
 1. **Bytewise YAML diff** (free, instant): generate
-   `shadow_agents.yaml` for `test_configs/400node_upgrade.yaml` (or
+   `shadow_agents.yaml` for `test_configs/refactor_gate.yaml` (or
    smaller) before and after each refactor. For Tier 1, expect
    byte-identical (after path normalization via
    `sed 's|/tmp/.../|PATH/|g'`). For Tier 2, expect a diff but verify
    it's field reordering only.
-2. **Functional run**: `quickstart` (~10min wall) and `upgrade_smoke`
-   (~17min wall) should both end with `summary.txt` PASS and 0 process
-   failures. Determinism fingerprint via `scripts/analyze_success_criteria.py
-   --fingerprint-only` then `scripts/compare_determinism.py` for semantic
-   equivalence.
-3. **Scale gate** before merging Tier 2 to main: full 1011-node
-   `large_upgrade` (~15h wall). Catches scale-only regressions.
+2. **Functional run**: `upgrade_smoke` (~17min wall) and
+   `refactor_gate` (~1h36m wall) should both end with `summary.txt`
+   PASS and 0 process failures. Determinism fingerprint via
+   `scripts/analyze_success_criteria.py --fingerprint-only` then
+   `scripts/compare_determinism.py` for semantic equivalence.
+3. **Scale gate** before merging a tier to main: full 1011-node
+   `large_upgrade_short` (~31h wall — see
+   `docs/20260506_1011node_validation.md`). Catches scale-only
+   regressions.
 
-The 400-node `test_configs/400node_upgrade.{scenario,}yaml` was built
-to be a middle-ground gate (~3h wall predicted, ~14h actual at first
-run), but the 2026-05-02 run revealed Tier 1.7 first — see Open Issues.
+`refactor_gate` (5 miners + 100 users + 400 relays = 505 agents,
+no upgrade) is the daily-driver gate, replacing the abandoned
+`400node_upgrade` middle-ground attempt.
 
 ## Open issues / context for next session
 
