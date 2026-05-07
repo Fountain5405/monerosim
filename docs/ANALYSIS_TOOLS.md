@@ -1,8 +1,8 @@
 # Transaction Routing Analysis Tools
 
-> **Disclaimer**: These analysis tools were LLM-generated and have **0% human-verified validity**. The methodologies for spy node detection, Dandelion++ path reconstruction, propagation timing analysis, and other measurements have not been independently validated. Use at your own risk and verify results before drawing any conclusions.
+> **Disclaimer**: This analysis tool was LLM-generated and has **0% human-verified validity**. The methodologies for spy node detection, Dandelion++ path reconstruction, propagation timing analysis, and other measurements have not been independently validated. Use at your own risk and verify results before drawing any conclusions.
 
-Monerosim includes two analysis implementations (Rust and Python) for examining transaction routing behavior, network topology, and privacy characteristics after running a simulation.
+Monerosim includes a Rust analyzer (`tx-analyzer`) for examining transaction routing behavior, network topology, and privacy characteristics after running a simulation.
 
 ## Prerequisites
 
@@ -18,9 +18,6 @@ cargo build --release --bin tx-analyzer
 
 # Run full analysis
 ./target/release/tx-analyzer full
-
-# Or use Python
-python3 scripts/tx_analyzer.py full
 ```
 
 Output is written to `analysis_output/` directory.
@@ -100,57 +97,6 @@ cargo build --release --bin tx-analyzer
 
 # Bandwidth analysis with category breakdown
 ./target/release/tx-analyzer bandwidth --by-category --per-node --top 20
-```
-
-## Python Analyzer (`tx_analyzer.py`)
-
-### Installation
-
-```bash
-# Activate virtual environment (if using)
-source venv/bin/activate
-
-# No additional dependencies required (uses standard library)
-```
-
-### Commands
-
-```bash
-# Full analysis
-python3 scripts/tx_analyzer.py full
-
-# Individual analyses
-python3 scripts/tx_analyzer.py spy-node
-python3 scripts/tx_analyzer.py propagation
-python3 scripts/tx_analyzer.py resilience
-python3 scripts/tx_analyzer.py dandelion
-python3 scripts/tx_analyzer.py relay-v2
-python3 scripts/tx_analyzer.py summary
-python3 scripts/tx_analyzer.py upgrade-analysis
-python3 scripts/tx_analyzer.py bandwidth
-```
-
-### Options
-
-```bash
---shadow-data <PATH>      Shadow data directory [default: shadow.data]
---shared-dir <PATH>       Shared state directory [default: /tmp/monerosim_shared]
---output-dir <PATH>       Output directory [default: analysis_output]
---max-workers <N>         Parallel workers [default: CPU count]
---detailed                Include per-TX details in output
---json                    Output JSON only (no text summary)
-
-# Upgrade analysis options
---window-size <N>         Time window size in seconds [default: 60]
---manifest <PATH>         Path to upgrade manifest JSON file
---pre-upgrade-end <T>     Manual override: end of pre-upgrade period (seconds)
---post-upgrade-start <T>  Manual override: start of post-upgrade period (seconds)
-
-# Bandwidth analysis options
---per-node                Show per-node bandwidth breakdown
---by-category             Show bandwidth by message category
---time-series <N>         Show bandwidth over time (window size in seconds)
---top <N>                 Show top N nodes by bandwidth [default: 10]
 ```
 
 ## Analysis Types
@@ -417,21 +363,6 @@ All output is written to the `analysis_output/` directory:
 | `upgrade_analysis.json` | Upgrade impact analysis with time series |
 | `bandwidth_analysis.json` | Bandwidth usage per node and category |
 | `network_graph.dot` | GraphViz visualization (if `--dot`) |
-
-## Cross-Validation
-
-Both Rust and Python implementations use identical methodologies and produce matching results:
-
-| Metric | Status |
-|--------|--------|
-| Spy Node Accuracy | Exact match |
-| Propagation Timing | Exact match |
-| Gini Coefficient | < 1% difference |
-| Dandelion Stem Range | Exact match |
-| Upgrade Analysis | Same methodology |
-| Bandwidth Analysis | Same methodology |
-
-This cross-validation ensures the analysis is correct and reproducible.
 
 ## Example Workflow
 

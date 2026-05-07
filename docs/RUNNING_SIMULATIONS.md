@@ -70,15 +70,6 @@ A simulation with a typical configuration (8h simulation time, 25 agents) takes 
 
 ## Step 4: Analyze Results
 
-### Process logs first
-
-```bash
-source venv/bin/activate
-python scripts/log_processor.py
-```
-
-This creates `.processed_log` files with summarized information. Always check these before reading raw logs.
-
 ### Quick verification
 
 ```bash
@@ -94,7 +85,7 @@ cat /tmp/monerosim_shared/agent_registry.json
 
 ### Analysis tools (LLM-generated, unverified)
 
-There are also LLM-generated analysis tools (`tx-analyzer`, `scripts/tx_analyzer.py`) in the repository for examining transaction routing and network behavior. These have **not been human-verified** and their results should not be trusted without independent validation. See [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md) for details.
+There is an LLM-generated analysis tool (`tx-analyzer`, the Rust binary at `target/release/tx-analyzer`) in the repository for examining transaction routing and network behavior. Its results have **not been human-verified** and should not be trusted without independent validation. See [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md) for details.
 
 ## Log File Locations
 
@@ -110,9 +101,8 @@ There are also LLM-generated analysis tools (`tx-analyzer`, `scripts/tx_analyzer
 ### Post-simulation analysis (recommended)
 
 1. Wait for the simulation to complete
-2. Process logs with `log_processor.py`
-3. Analyze processed logs (`.processed_log` files)
-4. Use grep on raw logs for detailed investigation
+2. Use grep on raw logs (e.g., `/tmp/monero-*/bitmonero.log`) for detailed investigation
+3. Run `./target/release/tx-analyzer` for transaction-flow analysis (see [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md))
 
 ### In-simulation monitoring
 

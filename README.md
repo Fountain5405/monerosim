@@ -173,11 +173,10 @@ monerosim/
     base_agent.py            # Base agent class
     monero_rpc.py            # RPC client library
   scripts/                   # Utility scripts
-    log_processor.py         # Log processing
-    sync_check.py            # Blockchain sync monitoring
     check_sim.sh             # Real-time simulation status dashboard
     generate_config.py       # Config generator for large simulations
     ai_config/               # LLM-based config generation
+  attic/                     # Ad-hoc / unmaintained tools (see attic/README.md)
   gml_processing/            # CAIDA topology generation
   examples/                  # Example configurations
   docs/                      # Documentation

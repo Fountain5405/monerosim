@@ -21,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
 # Import error handling from existing module
-from error_handling import log_info, log_warning, log_error, log_critical
+from scripts.error_handling import log_info, log_warning, log_error, log_critical
 
 # ===== PERFORMANCE OPTIMIZATIONS =====
 

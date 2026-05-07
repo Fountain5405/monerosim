@@ -54,14 +54,6 @@ struct Args {
     /// Output directory for Shadow configuration and simulation files
     #[arg(short, long, default_value = "shadow_output")]
     output: PathBuf,
-    
-    /// Migrate configuration to new format
-    #[arg(long)]
-    migrate: bool,
-    
-    /// Output path for migrated configuration
-    #[arg(long, requires = "migrate")]
-    migrate_output: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -72,23 +64,7 @@ fn main() -> Result<()> {
     info!("Starting MoneroSim configuration parser v2");
     info!("Configuration file: {:?}", args.config);
     info!("Output directory: {:?}", args.output);
-    
-    // Handle migration if requested
-    if args.migrate {
-        let output_path = args.migrate_output.unwrap_or_else(|| {
-            let mut path = args.config.clone();
-            path.set_extension("migrated.yaml");
-            path
-        });
-        
-        config_loader::migrate_config(&args.config, &output_path)?;
-        info!("Configuration migrated successfully to: {:?}", output_path);
-        return Ok(());
-    }
-    
-    // Check configuration compatibility
-    config_loader::check_config_compatibility(&args.config)?;
-    
+
     // Load configuration using new system
     let new_config = config_loader::load_config(&args.config)?;
     

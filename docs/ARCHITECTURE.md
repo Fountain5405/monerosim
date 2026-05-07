@@ -53,8 +53,7 @@ Monerosim is a Rust-based configuration generator that produces configurations f
                     +-------------------------------+
                     | Post-Simulation Analysis      |
                     |  - tx-analyzer (Rust)         |
-                    |  - tx_analyzer.py (Python)    |
-                    |  - log_processor.py           |
+                    |  - analyze_success_criteria.py|
                     +-------------------------------+
 ```
 
@@ -131,10 +130,10 @@ shadowformonero then executes the entire simulation deterministically within a s
 
 ### 4. Analysis Tools (LLM-generated, unverified)
 
-Post-simulation analysis tools exist in both Rust and Python, but these were LLM-generated and have not been human-verified for correctness. See [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md) for details.
+Post-simulation analysis is provided by a Rust binary, but it was LLM-generated and has not been human-verified for correctness. See [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md) for details.
 
-- **Rust**: `src/bin/tx_analyzer.rs`
-- **Python**: `scripts/tx_analyzer.py`
+- **Rust source**: `src/bin/tx_analyzer.rs`
+- **Built binary**: `target/release/tx-analyzer`
 
 ## Network Architecture
 

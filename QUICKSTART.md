@@ -134,9 +134,6 @@ After the simulation completes:
 # Activate Python environment (required for analysis scripts)
 source venv/bin/activate
 
-# Process logs
-python scripts/log_processor.py
-
 # Run transaction analysis
 ./target/release/tx-analyzer full
 ```

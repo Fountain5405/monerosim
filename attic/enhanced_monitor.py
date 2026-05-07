@@ -36,7 +36,7 @@ import select
 import fcntl
 
 # Import error handling
-from error_handling import log_info, log_warning, log_error, log_critical, log_success, handle_exit
+from scripts.error_handling import log_info, log_warning, log_error, log_critical, log_success, handle_exit
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agents.agent_discovery import AgentDiscovery
 

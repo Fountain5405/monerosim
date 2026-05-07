@@ -427,9 +427,8 @@ with open('shadow_output/agent_registry.json') as f:
 ### Getting Help
 
 1. Check the logs in `shadow.data/hosts/` for detailed error messages
-2. Run `python scripts/log_processor.py` to analyze processed logs
-3. Verify configuration syntax with YAML validator
-4. Test with smaller scale first to isolate issues
+2. Verify configuration syntax with YAML validator
+3. Test with smaller scale first to isolate issues
 
 ## Examples
 

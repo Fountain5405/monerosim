@@ -498,6 +498,7 @@ fi
 # ============================================================
 echo ""
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-echo -e "${DIM}For detailed log analysis:${NC}"
-echo -e "${DIM}  python3 $SCRIPT_DIR/log_processor.py --base-dir $HOSTS_DIR --chunk \"3,500\" --dry-run --max-workers 4${NC}"
+REPO_ROOT=$(dirname "$SCRIPT_DIR")
+echo -e "${DIM}For detailed log analysis (ad-hoc, unmaintained):${NC}"
+echo -e "${DIM}  PYTHONPATH=$REPO_ROOT python3 $REPO_ROOT/attic/log_processor.py --base-dir $HOSTS_DIR --chunk \"3,500\" --dry-run --max-workers 4${NC}"
 echo ""

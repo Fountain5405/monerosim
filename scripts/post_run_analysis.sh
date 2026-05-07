@@ -11,7 +11,8 @@ fi
 
 echo "Starting Python scripts..."
 
-#python3 scripts/log_processor.py &
+# (log_processor.py is now at attic/log_processor.py and unmaintained;
+#  invoke manually with PYTHONPATH=. if needed)
 python3 scripts/analyze_success_criteria.py &
 python3 scripts/analyze_network_connectivity.py &
 

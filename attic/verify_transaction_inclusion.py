@@ -19,6 +19,8 @@ import re
 
 # Import our analysis modules
 sys.path.append(str(Path(__file__).parent))
+# NOTE: depends on post_simulation_monitor_analysis.py which was deleted; this
+# script is preserved as a reference only and is not expected to run as-is.
 from post_simulation_monitor_analysis import PostSimulationAnalyzer
 from analyze_success_criteria import analyze_simulation
 from agents.base_agent import DEFAULT_SHARED_DIR
