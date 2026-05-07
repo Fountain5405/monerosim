@@ -29,39 +29,76 @@ This timing ensures:
 """
 
 import argparse
-import random
 import sys
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Tuple
 from collections import OrderedDict
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Tuple
+
+# Internal helpers extracted into scripts/config_generation/. Dual-import
+# pattern: works both when scripts/ is on sys.path (legacy direct invocation
+# via ``python3 scripts/generate_config.py``) and when imported as
+# ``scripts.generate_config``.
+try:
+    from config_generation.timeline import (
+        _print_scale_guardrail,
+        calculate_activity_start_times,
+        calculate_batch_schedule,
+        calculate_batch_sizes,
+        calculate_bootstrap_timing,
+        calculate_upgrade_schedule,
+        format_batch_summary,
+        format_time_offset,
+        parse_duration,
+    )
+    from config_generation.timeline import USER_START_TIME_S
+    from config_generation.agent_emit import (
+        generate_miner_agent,
+        generate_miner_agent_phased,
+        generate_relay_agent,
+        generate_relay_agent_phased,
+        generate_user_agent,
+        generate_user_agent_phased,
+    )
+    from config_generation.general_emit import (
+        DEFAULT_RELAY_SPAWN_START_S,
+        DEFAULT_RELAY_STAGGER_S,
+        _build_general_config,
+        generate_metadata,
+    )
+    from config_generation.yaml_emit import config_to_yaml, format_yaml_value
+except ImportError:
+    from .config_generation.timeline import (
+        _print_scale_guardrail,
+        calculate_activity_start_times,
+        calculate_batch_schedule,
+        calculate_batch_sizes,
+        calculate_bootstrap_timing,
+        calculate_upgrade_schedule,
+        format_batch_summary,
+        format_time_offset,
+        parse_duration,
+    )
+    from .config_generation.timeline import USER_START_TIME_S
+    from .config_generation.agent_emit import (
+        generate_miner_agent,
+        generate_miner_agent_phased,
+        generate_relay_agent,
+        generate_relay_agent_phased,
+        generate_user_agent,
+        generate_user_agent_phased,
+    )
+    from .config_generation.general_emit import (
+        DEFAULT_RELAY_SPAWN_START_S,
+        DEFAULT_RELAY_STAGGER_S,
+        _build_general_config,
+        generate_metadata,
+    )
+    from .config_generation.yaml_emit import config_to_yaml, format_yaml_value
 
 try:
-    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, estimate_wall_time_s, max_safe_users
+    from calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
 except ImportError:
-    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval, estimate_wall_time_s, max_safe_users
-
-
-def _print_scale_guardrail(num_users: int, duration_s: int) -> None:
-    """Print wall-time estimate and safe-N cap warnings for a scenario.
-
-    Mirrors the guardrail in scenario_parser.py so both entry points give
-    the same pre-flight feedback. See docs/PERFORMANCE_AND_SCALE.md.
-    """
-    if num_users <= 0:
-        return
-    est_wall_s = estimate_wall_time_s(num_users)
-    cap = max_safe_users()
-    est_ratio = (duration_s / est_wall_s) if est_wall_s > 0 else 0
-    print(f"Estimated wall time for N={num_users} users: "
-          f"~{est_wall_s // 60} min "
-          f"(stop_time={duration_s // 60} min, predicted ratio ≈ {est_ratio:.2f}).")
-    if duration_s > 0 and est_wall_s > duration_s:
-        print(f"⚠ Warning: estimated wall time exceeds stop_time. "
-              f"Consider reducing --users or increasing --duration.")
-    if num_users > cap:
-        print(f"⚠ Warning: --users={num_users} exceeds the per-machine "
-              f"safe cap (~{cap} for this hardware). Expect stalls. "
-              f"See docs/PERFORMANCE_AND_SCALE.md.")
+    from .calibrate import compute_stagger, disable_auto_calibration, compute_safe_interval
 
 
 # Fixed miner configuration (same as config_32_agents.yaml)
@@ -98,7 +135,6 @@ except ImportError:
     )
 
 # Generate-config-specific timing.
-USER_START_TIME_S = 10800            # users spawn at 3h
 MIN_ACTIVITY_PERIOD_S = 7200         # 2h minimum activity window after activity_start
 
 # Upgrade scenario windows (only generate_upgrade_config uses these).
@@ -107,11 +143,6 @@ DEFAULT_POST_UPGRADE_DURATION_S = 7200    # 2h post-upgrade observation
 
 # Activity stagger: see docs/shadow-tx-stagger.md
 # stagger = transaction_interval / num_users
-
-# Relay node spawn staggering defaults
-# Relays are daemon-only (1 process each) so simple linear stagger suffices
-DEFAULT_RELAY_SPAWN_START_S = 5   # Start after miners (t=5s)
-DEFAULT_RELAY_STAGGER_S = 20      # 20s apart; sim-time moves fast so need wider spacing
 
 
 # Single GML file for all tests (1200 nodes supports up to 1200 agents)
@@ -207,500 +238,6 @@ class GenerationConfig:
     miner_distributor: MinerDistributorConfig = field(default_factory=MinerDistributorConfig)
     relay_nodes: RelayNodes = field(default_factory=RelayNodes)
     upgrade: Optional[UpgradeSpec] = None
-
-
-def calculate_activity_start_times(
-    num_users: int,
-    base_activity_start_s: int,
-    tx_interval: int,
-    num_nodes: int = None,
-) -> List[int]:
-    """Calculate evenly staggered activity start times.
-
-    Uses the stagger formula: stagger = transaction_interval / num_users
-    This ensures transaction generation is evenly distributed across
-    simulated time, preventing Shadow CPU starvation.
-
-    See docs/shadow-tx-stagger.md for the full explanation.
-
-    Args:
-        num_users: Total number of users
-        base_activity_start_s: When the first user starts transacting (sim seconds)
-        tx_interval: Transaction interval in seconds
-        num_nodes: Total nodes in the simulated network (for scale-aware
-                   interval calibration). Defaults to num_users (conservative
-                   fallback when network size is not known).
-
-    Returns:
-        List of activity_start_time values for each user (in order)
-    """
-    if num_users == 0:
-        return []
-
-    stagger = compute_stagger(num_users, tx_interval, num_nodes=num_nodes)
-    return [base_activity_start_s + i * stagger for i in range(num_users)]
-
-
-def calculate_upgrade_schedule(
-    agents: List[str],
-    upgrade_start_s: int,
-    upgrade_stagger_s: int,
-    upgrade_order: str,
-    miner_ids: List[str],
-    seed: int,
-) -> Dict[str, Tuple[int, int]]:
-    """Calculate when each agent's daemon phases switch.
-
-    Args:
-        agents: List of agent IDs to upgrade
-        upgrade_start_s: When upgrades begin (sim time in seconds)
-        upgrade_stagger_s: Time between consecutive node upgrades
-        upgrade_order: "sequential" | "random" | "miners-first"
-        miner_ids: List of miner agent IDs (used for miners-first ordering)
-        seed: Random seed for reproducible ordering
-
-    Returns:
-        Dict mapping agent_id to (phase0_stop_s, phase1_start_s)
-    """
-    # Determine upgrade order
-    if upgrade_order == "random":
-        rng = random.Random(seed)
-        ordered_agents = list(agents)
-        rng.shuffle(ordered_agents)
-    elif upgrade_order == "miners-first":
-        miners = [a for a in agents if a in miner_ids]
-        users = [a for a in agents if a not in miner_ids]
-        ordered_agents = miners + users
-    else:  # sequential (default)
-        ordered_agents = list(agents)
-
-    # Calculate upgrade times for each agent
-    schedule = {}
-    for i, agent_id in enumerate(ordered_agents):
-        phase0_stop = upgrade_start_s + (i * upgrade_stagger_s)
-        phase1_start = phase0_stop + DEFAULT_DAEMON_RESTART_GAP_S
-        schedule[agent_id] = (phase0_stop, phase1_start)
-
-    return schedule
-
-
-def calculate_batch_sizes(num_users: int, initial_size: int, growth_factor: float, max_size: int) -> list:
-    """Calculate batch sizes using exponential growth strategy.
-
-    Args:
-        num_users: Total number of users to distribute
-        initial_size: Size of first batch
-        growth_factor: Multiplier for each subsequent batch
-        max_size: Maximum batch size cap
-
-    Returns:
-        List of batch sizes
-    """
-    if num_users == 0:
-        return []
-
-    batches = []
-    remaining = num_users
-    current_size = initial_size
-
-    while remaining > 0:
-        # Cap at max_size and remaining
-        batch_size = min(current_size, max_size, remaining)
-        batches.append(batch_size)
-        remaining -= batch_size
-
-        # Calculate next batch size (exponential growth)
-        current_size = int(current_size * growth_factor + 0.5)  # Round
-        current_size = max(current_size, 1)  # Ensure at least 1
-
-    return batches
-
-
-def calculate_batch_schedule(
-    num_users: int,
-    initial_delay_s: int,
-    batch_interval_s: int,
-    initial_batch_size: int,
-    growth_factor: float,
-    max_batch_size: int,
-    intra_batch_stagger_s: int,
-) -> list:
-    """Calculate complete batch schedule with user start times.
-
-    Returns:
-        List of (user_index, start_time_seconds) tuples
-    """
-    batch_sizes = calculate_batch_sizes(num_users, initial_batch_size, growth_factor, max_batch_size)
-
-    schedule = []
-    user_index = 0
-
-    for batch_num, batch_size in enumerate(batch_sizes):
-        batch_start_time = initial_delay_s + (batch_num * batch_interval_s)
-
-        for i in range(batch_size):
-            user_start_time = batch_start_time + (i * intra_batch_stagger_s)
-            schedule.append((user_index, user_start_time))
-            user_index += 1
-
-    return schedule
-
-
-def format_batch_summary(batch_sizes: list, initial_delay_s: int, batch_interval_s: int) -> str:
-    """Format batch schedule for display (with # comment prefixes)."""
-    lines = [f"Batched bootstrap: {sum(batch_sizes)} users in {len(batch_sizes)} batches"]
-    for i, size in enumerate(batch_sizes):
-        start_time = initial_delay_s + (i * batch_interval_s)
-        lines.append(f"#   Batch {i+1}: {size} users starting at {format_time_offset(start_time, for_config=False)}")
-    return "\n".join(lines)
-
-
-def calculate_bootstrap_timing(num_users: int, stagger_interval_s: int) -> tuple:
-    """Calculate dynamic bootstrap timing based on user count and stagger.
-
-    Returns:
-        (bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s)
-    """
-    # Calculate when the last user spawns
-    if num_users > 0:
-        last_user_spawn_s = USER_START_TIME_S + ((num_users - 1) * stagger_interval_s)
-    else:
-        last_user_spawn_s = USER_START_TIME_S
-
-    # Add buffer for hardware variance (users need time to actually sync after spawning)
-    spawn_with_buffer_s = int(last_user_spawn_s * (1 + BOOTSTRAP_BUFFER_PERCENT))
-
-    # Bootstrap must be at least MIN_BOOTSTRAP_END_TIME_S to ensure enough blocks
-    bootstrap_end_time_s = max(MIN_BOOTSTRAP_END_TIME_S, spawn_with_buffer_s)
-
-    # Activity starts after funding period
-    activity_start_time_s = bootstrap_end_time_s + FUNDING_PERIOD_S
-
-    return (bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s)
-
-
-def parse_duration(duration_str: str) -> int:
-    """Parse duration string like '4h', '30m', '45s' to seconds."""
-    duration_str = duration_str.strip().lower()
-
-    if duration_str.endswith('h'):
-        return int(duration_str[:-1]) * 3600
-    elif duration_str.endswith('m'):
-        return int(duration_str[:-1]) * 60
-    elif duration_str.endswith('s'):
-        return int(duration_str[:-1])
-    else:
-        # Assume seconds if no unit
-        return int(duration_str)
-
-
-def format_time_offset(seconds: int, for_config: bool = True) -> str:
-    """Format time offset in the most readable way.
-
-    Args:
-        seconds: Time in seconds
-        for_config: If True, use simple format for YAML config (e.g., "4h", "90m", "30s")
-                   If False, use human-readable format (e.g., "4h 22m")
-    """
-    if for_config:
-        # Simple format for YAML config values
-        if seconds % 3600 == 0 and seconds >= 3600:
-            return f"{seconds // 3600}h"
-        elif seconds % 60 == 0 and seconds >= 60:
-            return f"{seconds // 60}m"
-        else:
-            return f"{seconds}s"
-    else:
-        # Human-readable format for comments
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        secs = seconds % 60
-        parts = []
-        if hours > 0:
-            parts.append(f"{hours}h")
-        if minutes > 0:
-            parts.append(f"{minutes}m")
-        if secs > 0 and hours == 0:  # Only show seconds if less than an hour
-            parts.append(f"{secs}s")
-        return " ".join(parts) if parts else "0s"
-
-
-def generate_metadata(
-    scenario: str,
-    num_miners: int,
-    num_users: int,
-    timing_info: Dict[str, Any],
-    simulation_seed: int,
-    gml_path: str,
-    fast_mode: bool,
-    stagger_interval_s: int,
-    relay_nodes: int = 0,
-) -> OrderedDict:
-    """Generate machine-parseable metadata section for analysis tools.
-
-    Args:
-        scenario: "default" or "upgrade"
-        num_miners: Number of miner agents
-        num_users: Number of user agents
-        timing_info: Dictionary with timing calculations
-        simulation_seed: Random seed used
-        gml_path: Path to GML topology file
-        fast_mode: Whether fast mode is enabled
-        stagger_interval_s: User stagger interval
-        relay_nodes: Number of daemon-only relay nodes
-
-    Returns:
-        OrderedDict with metadata structure
-    """
-    metadata = OrderedDict([
-        ("scenario", scenario),
-        ("generator", "generate_config.py"),
-        ("version", "1.0"),
-    ])
-
-    # Agent counts
-    agents_meta = OrderedDict([
-        ("total", num_miners + num_users + relay_nodes),
-        ("miners", num_miners),
-        ("users", num_users),
-    ])
-    if relay_nodes > 0:
-        agents_meta["relay_nodes"] = relay_nodes
-        agents_meta["relay_spawn_start_s"] = timing_info.get('relay_spawn_start_s', DEFAULT_RELAY_SPAWN_START_S)
-        agents_meta["relay_stagger_s"] = timing_info.get('relay_stagger_s', DEFAULT_RELAY_STAGGER_S)
-        agents_meta["last_relay_spawn_s"] = timing_info.get('last_relay_spawn_s', 0)
-    metadata["agents"] = agents_meta
-
-    # Core timing (all in seconds for easy parsing)
-    metadata["timing"] = OrderedDict([
-        ("duration_s", timing_info['duration_s']),
-        ("bootstrap_end_s", timing_info['bootstrap_end_time_s']),
-        ("activity_start_s", timing_info['activity_start_time_s']),
-        ("last_user_spawn_s", timing_info['last_user_spawn_s']),
-    ])
-
-    # Upgrade-specific metadata
-    if scenario == "upgrade":
-        metadata["upgrade"] = OrderedDict([
-            ("binary_v1", timing_info.get('upgrade_binary_v1', 'monerod')),
-            ("binary_v2", timing_info.get('upgrade_binary_v2', 'monerod')),
-            ("order", timing_info.get('upgrade_order', 'sequential')),
-            ("start_s", timing_info.get('upgrade_start_time_s', 0)),
-            ("complete_s", timing_info.get('last_upgrade_complete_s', 0)),
-            ("stagger_s", timing_info.get('upgrade_stagger_s', 30)),
-            ("steady_state_duration_s", timing_info.get('steady_state_duration_s', 7200)),
-            ("post_upgrade_duration_s", timing_info.get('post_upgrade_duration_s', 7200)),
-        ])
-
-    # Bootstrap batching configuration (user spawning)
-    if timing_info.get('use_batched', False):
-        metadata["batching"] = OrderedDict([
-            ("enabled", True),
-            ("batch_sizes", timing_info.get('batch_sizes', [])),
-            ("batch_interval_s", timing_info.get('batch_interval_s', 1200)),
-        ])
-    else:
-        metadata["batching"] = OrderedDict([
-            ("enabled", False),
-            ("stagger_interval_s", stagger_interval_s),
-        ])
-
-    # Activity stagger configuration (see docs/shadow-tx-stagger.md)
-    metadata["activity_stagger"] = OrderedDict([
-        ("stagger_s", timing_info.get('activity_stagger_s', 0)),
-        ("tx_interval", timing_info.get('tx_interval', 60)),
-        ("total_rollout_s", timing_info.get('activity_rollout_duration_s', 0)),
-    ])
-
-    # Simulation settings
-    metadata["settings"] = OrderedDict([
-        ("seed", simulation_seed),
-        ("gml_topology", gml_path),
-        ("fast_mode", fast_mode),
-    ])
-
-    return metadata
-
-
-def generate_miner_agent(hashrate: int, start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
-    """Generate a miner agent configuration (new format)."""
-    return OrderedDict([
-        ("daemon", daemon_binary),
-        ("wallet", "monero-wallet-rpc"),
-        ("script", "agents.autonomous_miner"),
-        ("start_time", format_time_offset(start_offset_s)),
-        ("hashrate", hashrate),
-        ("can_receive_distributions", True),
-    ])
-
-
-def generate_miner_agent_phased(
-    hashrate: int,
-    start_offset_s: int,
-    daemon_v1: str,
-    daemon_v2: str,
-    phase0_stop_s: int,
-    phase1_start_s: int,
-) -> Dict[str, Any]:
-    """Generate a miner agent with daemon phase switching for upgrade scenario."""
-    return OrderedDict([
-        ("wallet", "monero-wallet-rpc"),
-        ("script", "agents.autonomous_miner"),
-        ("start_time", format_time_offset(start_offset_s)),
-        ("hashrate", hashrate),
-        ("can_receive_distributions", True),
-        ("daemon_0", daemon_v1),
-        ("daemon_0_start", format_time_offset(start_offset_s)),
-        ("daemon_0_stop", format_time_offset(phase0_stop_s)),
-        ("daemon_1", daemon_v2),
-        ("daemon_1_start", format_time_offset(phase1_start_s)),
-    ])
-
-
-def generate_user_agent(start_offset_s: int, tx_interval: int = 60, activity_start_time: int = 0, daemon_binary: str = "monerod", tx_send_probability: float = 0.75) -> Dict[str, Any]:
-    """Generate a regular user agent configuration (new format).
-
-    Args:
-        start_offset_s: When the agent process spawns (sim time)
-        tx_interval: Interval between transaction attempts
-        activity_start_time: Absolute sim time when transactions should start (0 = start immediately)
-        daemon_binary: Path to monerod binary (default: "monerod")
-        tx_send_probability: Probability of sending a transaction each iteration (default: 0.75)
-    """
-    return OrderedDict([
-        ("daemon", daemon_binary),
-        ("wallet", "monero-wallet-rpc"),
-        ("script", "agents.regular_user"),
-        ("start_time", format_time_offset(start_offset_s)),
-        ("transaction_interval", tx_interval),
-        ("activity_start_time", activity_start_time),
-        ("tx_send_probability", tx_send_probability),
-        ("can_receive_distributions", True),
-    ])
-
-
-def generate_user_agent_phased(
-    start_offset_s: int,
-    tx_interval: int,
-    activity_start_time: int,
-    daemon_v1: str,
-    daemon_v2: str,
-    phase0_stop_s: int,
-    phase1_start_s: int,
-    tx_send_probability: float = 0.75,
-) -> Dict[str, Any]:
-    """Generate a user agent with daemon phase switching for upgrade scenario."""
-    return OrderedDict([
-        ("wallet", "monero-wallet-rpc"),
-        ("script", "agents.regular_user"),
-        ("start_time", format_time_offset(start_offset_s)),
-        ("transaction_interval", tx_interval),
-        ("activity_start_time", activity_start_time),
-        ("tx_send_probability", tx_send_probability),
-        ("can_receive_distributions", True),
-        ("daemon_0", daemon_v1),
-        ("daemon_0_start", format_time_offset(start_offset_s)),
-        ("daemon_0_stop", format_time_offset(phase0_stop_s)),
-        ("daemon_1", daemon_v2),
-        ("daemon_1_start", format_time_offset(phase1_start_s)),
-    ])
-
-
-def generate_relay_agent(start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
-    """Generate a daemon-only relay node configuration (no wallet, no script).
-
-    Relay nodes run monerod for P2P block/transaction relay only.
-    They increase network size and realism without transacting.
-    """
-    return OrderedDict([
-        ("daemon", daemon_binary),
-        ("start_time", format_time_offset(start_offset_s)),
-    ])
-
-
-def generate_relay_agent_phased(
-    start_offset_s: int,
-    daemon_v1: str,
-    daemon_v2: str,
-    phase0_stop_s: int,
-    phase1_start_s: int,
-) -> Dict[str, Any]:
-    """Generate a relay node with daemon phase switching for upgrade scenario."""
-    return OrderedDict([
-        ("start_time", format_time_offset(start_offset_s)),
-        ("daemon_0", daemon_v1),
-        ("daemon_0_start", format_time_offset(start_offset_s)),
-        ("daemon_0_stop", format_time_offset(phase0_stop_s)),
-        ("daemon_1", daemon_v2),
-        ("daemon_1_start", format_time_offset(phase1_start_s)),
-    ])
-
-
-def _build_general_config(
-    duration: str,
-    parallelism: int,
-    simulation_seed: int,
-    bootstrap_end_time_s: int,
-    fast_mode: bool,
-    process_threads: int,
-    native_preemption: bool = None,
-    total_agents: int = 0,
-    shared_dir: str = None,
-    daemon_data_dir: str = None,
-    fallback_seeds_mode: str = "auto",
-) -> OrderedDict:
-    """Build the general config section shared by generate_config and generate_upgrade_config."""
-    shadow_log_level = "warning" if fast_mode else "info"
-    runahead = "100ms" if fast_mode else None
-
-    # Auto-enable native_preemption for large sims (see timing_constants.py
-    # for the failure mode this guards against). Caller can pass
-    # native_preemption=False explicitly to disable.
-    if native_preemption is None and total_agents >= LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD:
-        print(f"Note: enabling native_preemption=true for large sim "
-              f"({total_agents} agents >= {LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD} threshold). "
-              f"Pass native_preemption=False to disable.")
-        native_preemption = True
-
-    general_config = OrderedDict([
-        ("stop_time", duration),
-        ("parallelism", parallelism),
-        ("simulation_seed", simulation_seed),
-        ("enable_dns_server", True),
-        ("fallback_seeds", fallback_seeds_mode),
-        ("shadow_log_level", shadow_log_level),
-        ("bootstrap_end_time", format_time_offset(bootstrap_end_time_s)),
-        ("progress", True),
-    ])
-
-    if runahead:
-        general_config["runahead"] = runahead
-
-    if process_threads != 1:
-        general_config["process_threads"] = process_threads
-
-    if native_preemption is not None:
-        general_config["native_preemption"] = native_preemption
-
-    # Only emit non-default directory paths
-    if shared_dir and shared_dir != "/tmp/monerosim_shared":
-        general_config["shared_dir"] = shared_dir
-    if daemon_data_dir and daemon_data_dir != "/tmp":
-        general_config["daemon_data_dir"] = daemon_data_dir
-
-    general_config["daemon_defaults"] = OrderedDict([
-        ("log-level", 1),
-        ("max-log-file-size", 0),
-        ("db-sync-mode", "fastest"),
-        ("no-zmq", True),
-        ("non-interactive", True),
-    ])
-
-    general_config["wallet_defaults"] = OrderedDict([
-        ("log-level", 1),
-    ])
-
-    return general_config
 
 
 def _compute_user_spawn_schedule(
@@ -1215,71 +752,6 @@ def generate_upgrade_config(
         ),
     )
     return generate_config(cfg)
-
-
-def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:
-    """Convert config dict to YAML string manually for clean output."""
-    lines = []
-    prefix = "  " * indent
-
-    for key, value in config.items():
-        if isinstance(value, dict):
-            lines.append(f"{prefix}{key}:")
-            lines.append(config_to_yaml(value, indent + 1))
-        elif isinstance(value, list):
-            lines.append(f"{prefix}{key}:")
-            for item in value:
-                if isinstance(item, dict):
-                    # First key-value on same line as dash
-                    first = True
-                    for k, v in item.items():
-                        if first:
-                            if isinstance(v, dict):
-                                lines.append(f"{prefix}  - {k}:")
-                                lines.append(config_to_yaml(v, indent + 3))
-                            elif isinstance(v, bool):
-                                lines.append(f"{prefix}  - {k}: {str(v).lower()}")
-                            else:
-                                lines.append(f"{prefix}  - {k}: {format_yaml_value(v)}")
-                            first = False
-                        else:
-                            if isinstance(v, dict):
-                                lines.append(f"{prefix}    {k}:")
-                                lines.append(config_to_yaml(v, indent + 3))
-                            elif isinstance(v, bool):
-                                lines.append(f"{prefix}    {k}: {str(v).lower()}")
-                            else:
-                                lines.append(f"{prefix}    {k}: {format_yaml_value(v)}")
-                else:
-                    lines.append(f"{prefix}  - {format_yaml_value(item)}")
-        elif isinstance(value, bool):
-            lines.append(f"{prefix}{key}: {str(value).lower()}")
-        else:
-            lines.append(f"{prefix}{key}: {format_yaml_value(value)}")
-
-    return "\n".join(lines)
-
-
-def format_yaml_value(value: Any) -> str:
-    """Format a value for YAML output."""
-    if isinstance(value, str):
-        # Quote strings that might be parsed as other types
-        if value.lower() in ('true', 'false', 'yes', 'no', 'on', 'off', 'null', 'none'):
-            return f"'{value}'"
-        # Quote strings with special characters
-        if any(c in value for c in ':{}[]&*#?|-<>=!%@\\'):
-            return f"'{value}'"
-        # Quote strings that look like numbers
-        try:
-            float(value)
-            return f"'{value}'"
-        except ValueError:
-            pass
-        return value
-    elif isinstance(value, bool):
-        return str(value).lower()
-    else:
-        return str(value)
 
 
 def main():
