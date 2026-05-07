@@ -1,0 +1,37 @@
+{
+  "scenario": "quickstart",
+  "config": "test_configs/quickstart.yaml",
+  "captured_from": "archived_runs/20260507_184117_quickstart",
+  "captured_at_commit": "27b7ecbd",
+  "captured_at_date": "2026-05-07",
+  "notes": [
+    "per_miner_tx_floor: 0 is intentional. Poisson block-time variance under different seeds can leave a miner at 0 txs created. The grep-pattern check + per-user floor are the load-bearing assertions for catching the wallets-die-after-3-txs regression.",
+    "all_nodes_within_height_range: max(final_node_heights) - min(final_node_heights) <= 2 across all 15 nodes.",
+    "wallets_funded_exact: 8 = 5 miners with can_receive_distributions: true + 3 users.",
+    "wall_time_seconds_max: 1080s (18 min) is generous over the canonical 14-15 min.",
+    "tx_in_blocks_ratio_min: ratio of tx_in_blocks / tx_created. The canonical was 137/168 = 0.815. Threshold of 0.80 leaves room for one or two extra tx-not-yet-mined."
+  ],
+  "expected": {
+    "exit_code": 0,
+    "all_success_criteria_pass": true,
+    "max_alerts": 0,
+    "wall_time_seconds_max": 1080,
+    "block_height_min": 100,
+    "blocks_mined_min": 100,
+    "all_nodes_within_height_range": 2,
+    "tx_created_min": 150,
+    "tx_in_blocks_ratio_min": 0.80,
+    "wallets_funded_exact": 8,
+    "per_user_tx_floor": 20,
+    "per_miner_tx_floor": 0
+  },
+  "log_patterns_disallowed": [
+    "SIGABRT",
+    "SIGKILL",
+    "panic",
+    "FATAL ERROR",
+    "Read timed out",
+    "Failed to bind",
+    "deadlock"
+  ]
+}

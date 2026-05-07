@@ -254,6 +254,20 @@ To update monerosim and its dependencies after initial setup:
 ./update.sh --rebuild    # Rebuild binaries after updating
 ```
 
+## Testing
+
+The Tier 2 smoke test runs a real Shadow simulation end-to-end and then evaluates the resulting archive against a stricter baseline than the default 4 PASS/FAIL success criteria (block height, blocks-mined floor, per-node height spread, per-user transaction floor, disallowed log patterns, etc.). It exists to catch regressions that the loose default checks miss (e.g., wallets sending only a handful of transactions before dying).
+
+```bash
+./scripts/smoke_test.sh                # quickstart, ~15 min wall
+./scripts/smoke_test.sh quickstart
+./scripts/smoke_test.sh refactor_gate  # any scenario with a YAML + baseline
+```
+
+Run it pre-release and after non-trivial changes to the agents or orchestrator. Exit code 0 = all assertions PASS; non-zero = at least one assertion failed (see `scripts/smoke_test.sh` for the exit-code map).
+
+Baselines live at `tests/baselines/<scenario>_metrics.json` and capture the expected envelope (wall-time cap, height floor, transaction floors, etc.) for that scenario. To add or refresh one, run a known-good simulation, then copy the canonical metrics from the resulting `archived_runs/<TS>_<scenario>/summary.txt` into a new `<scenario>_metrics.json` (see the existing quickstart baseline for the schema).
+
 ## Contributing
 
 1. Fork the repository and clone locally
