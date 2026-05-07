@@ -78,6 +78,21 @@ class MinerDistributorAgent(BaseAgent):
         self.balance_check_attempts = 0
         self.initial_funding_completed = False
 
+        # Per-recipient give-up tracking for initial funding.
+        # If a recipient's address lookup fails N consecutive times (because
+        # its wallet-rpc returns -13/"No wallet file" or similar), mark it
+        # permanently_failed and exclude from subsequent attempts so MD can
+        # transition out of initial-funding mode. Only address-lookup
+        # failures count toward this threshold; miner-side failures (no
+        # miner has funds, tx send failed) do NOT, because those are not
+        # the recipient's fault. Earlier attempt (commit 8b7fcb62, reverted
+        # in d1efcd40) over-counted miner-side failures and broke initial
+        # funding entirely — see archived_runs/20260507_030005_post_md_giveup_smoke/
+        # for the failure mode.
+        self._recipient_retry_counts: Dict[str, int] = {}
+        self._permanently_failed: set = set()
+        self._PERMANENT_FAILURE_THRESHOLD = 5
+
         # Continuous funding cycle state
         self._funding_cycle_index = 0  # Current position in funding cycle
         self._last_funding_cycle_time = 0  # Last time we ran a funding cycle
@@ -297,9 +312,12 @@ class MinerDistributorAgent(BaseAgent):
             return {
                 "funded_recipients": [],
                 "failed_recipients": [],
+                "permanently_failed": [],
                 "completed": False,
                 "last_updated": None
             }
+        # Backfill key for status files written before permanently_failed existed.
+        status.setdefault("permanently_failed", [])
         return status
 
     def _write_funding_status(self, funded: List[str], failed: List[str], completed: bool):
@@ -307,11 +325,15 @@ class MinerDistributorAgent(BaseAgent):
         status = {
             "funded_recipients": funded,
             "failed_recipients": failed,
+            "permanently_failed": sorted(self._permanently_failed),
             "completed": completed,
             "last_updated": time.time()
         }
         self.write_shared_state("initial_funding_status.json", status)
-        self.logger.debug(f"Updated funding status: {len(funded)} funded, {len(failed)} failed, completed={completed}")
+        self.logger.debug(
+            f"Updated funding status: {len(funded)} funded, {len(failed)} failed, "
+            f"{len(self._permanently_failed)} permanently failed, completed={completed}"
+        )
 
     def _perform_initial_funding(self):
         """
@@ -377,8 +399,18 @@ class MinerDistributorAgent(BaseAgent):
         already_funded = set(funding_status.get("funded_recipients", []))
         previously_failed = set(funding_status.get("failed_recipients", []))
 
-        if already_funded:
-            self.logger.info(f"Resuming initial funding: {len(already_funded)} already funded, {len(previously_failed)} previously failed")
+        # Rehydrate permanently_failed across MD restarts so we don't reset the
+        # give-up state and re-attempt known-broken wallets.
+        persisted_permanent = set(funding_status.get("permanently_failed", []))
+        if persisted_permanent:
+            self._permanently_failed.update(persisted_permanent)
+
+        if already_funded or self._permanently_failed:
+            self.logger.info(
+                f"Resuming initial funding: {len(already_funded)} already funded, "
+                f"{len(previously_failed)} previously failed, "
+                f"{len(self._permanently_failed)} permanently failed"
+            )
 
         return already_funded, previously_failed
 
@@ -446,7 +478,11 @@ class MinerDistributorAgent(BaseAgent):
         # Get miner IDs to exclude from recipients
         miner_ids = {m.get("agent_id") for m in self.miners}
 
-        # Build list of eligible recipients, excluding already funded ones
+        # Build list of eligible recipients. Permanently_failed agents stay
+        # in all_eligible so the universe size stays stable across iterations,
+        # but they are excluded from unfunded_recipients so we don't keep
+        # retrying them. Completion check in _finalize_funding_status uses
+        # (funded + permanently_failed) >= all_eligible.
         all_eligible = []
         unfunded_recipients = []
         for agent in agent_registry.get("agents", []):
@@ -465,9 +501,12 @@ class MinerDistributorAgent(BaseAgent):
 
             if can_receive:
                 all_eligible.append(agent)
-                # Only add to unfunded if not already funded
-                if agent.get("id") not in already_funded:
-                    unfunded_recipients.append(agent)
+                agent_id = agent.get("id")
+                if agent_id in already_funded:
+                    continue
+                if agent_id in self._permanently_failed:
+                    continue
+                unfunded_recipients.append(agent)
 
         if not all_eligible:
             self.logger.info("No eligible recipients found for initial funding")
@@ -476,12 +515,23 @@ class MinerDistributorAgent(BaseAgent):
             return None
 
         if not unfunded_recipients:
-            self.logger.info(f"All {len(all_eligible)} eligible recipients already funded!")
+            if self._permanently_failed:
+                self.logger.info(
+                    f"All attemptable eligible recipients funded: {len(already_funded)} funded, "
+                    f"{len(self._permanently_failed)} permanently failed (excluded from "
+                    f"{len(all_eligible)} total eligible)"
+                )
+            else:
+                self.logger.info(f"All {len(all_eligible)} eligible recipients already funded!")
             self._write_funding_status(list(already_funded), list(previously_failed), True)
             self.initial_funding_completed = True
             return None
 
-        self.logger.info(f"Found {len(unfunded_recipients)} unfunded recipients (of {len(all_eligible)} total eligible)")
+        self.logger.info(
+            f"Found {len(unfunded_recipients)} unfunded recipients "
+            f"(of {len(all_eligible)} total eligible, "
+            f"{len(self._permanently_failed)} permanently failed)"
+        )
         return all_eligible, unfunded_recipients
 
     def _batch_recipients(self, unfunded_recipients: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
@@ -494,6 +544,51 @@ class MinerDistributorAgent(BaseAgent):
 
         self.logger.info(f"Batching {len(unfunded_recipients)} recipients into {len(recipient_batches)} batches of up to {batch_size}")
         return recipient_batches
+
+    def _record_recipient_failure(
+        self,
+        recipient_ids: List[str],
+        failed_recipients: set,
+        funded_recipients: set,
+    ):
+        """
+        Increment per-recipient retry counter (address-lookup failures only)
+        and promote to permanently_failed at threshold.
+
+        IMPORTANT: only call this for recipients that ended up in the
+        batch_failed sub-list returned by _send_batch_transaction — i.e.
+        recipients whose _get_recipient_address() returned None because their
+        wallet-rpc returned -13/"No wallet file" or similar. Do NOT call from
+        miner-side failure paths (no miner has funds, tx send failed,
+        all miners exhausted) — those are not the recipient's fault, and the
+        prior attempt (commit 8b7fcb62, reverted in d1efcd40) over-counted
+        them and broke initial funding entirely. See
+        archived_runs/20260507_030005_post_md_giveup_smoke/ for the failure mode.
+
+        Mutates failed_recipients / self._recipient_retry_counts /
+        self._permanently_failed in place. Recipients that succeed later are
+        cleared via _record_recipient_success (called from the success paths).
+        """
+        for rid in recipient_ids:
+            if not rid or rid in funded_recipients or rid in self._permanently_failed:
+                continue
+            failed_recipients.add(rid)
+            count = self._recipient_retry_counts.get(rid, 0) + 1
+            self._recipient_retry_counts[rid] = count
+            if count >= self._PERMANENT_FAILURE_THRESHOLD:
+                self._permanently_failed.add(rid)
+                # Drop from transient failed set — it's now in the permanent
+                # set and shouldn't double-count.
+                failed_recipients.discard(rid)
+                self.logger.warning(
+                    f"Recipient {rid} marked permanently_failed after {count} "
+                    f"address-lookup failures; excluding from initial funding "
+                    f"so MD can transition to continuous cycle"
+                )
+
+    def _record_recipient_success(self, recipient_id: str):
+        """Reset the per-recipient retry counter on a successful funding."""
+        self._recipient_retry_counts.pop(recipient_id, None)
 
     def _process_funding_batches(
         self,
@@ -543,8 +638,10 @@ class MinerDistributorAgent(BaseAgent):
                 for rid in funded_ids:
                     funded_recipients.add(rid)
                     failed_recipients.discard(rid)  # Remove from failed if previously failed
-                for rid in batch_failed:
-                    failed_recipients.add(rid)
+                    self._record_recipient_success(rid)
+                # batch_failed here is only recipients whose address lookup
+                # failed inside _send_batch_transaction (recipient-side flake).
+                self._record_recipient_failure(batch_failed, failed_recipients, funded_recipients)
                 self.logger.info(f"Batch {batch_idx + 1} completed: {len(funded_ids)} funded")
                 # Persist progress after each successful batch
                 self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
@@ -601,11 +698,16 @@ class MinerDistributorAgent(BaseAgent):
                 for rid in funded_ids:
                     funded_recipients.add(rid)
                     failed_recipients.discard(rid)
-                for rid in batch_failed:
-                    failed_recipients.add(rid)
+                    self._record_recipient_success(rid)
+                # batch_failed here is only recipients whose address lookup
+                # failed inside _send_batch_transaction (recipient-side flake).
+                self._record_recipient_failure(batch_failed, failed_recipients, funded_recipients)
                 self._write_funding_status(list(funded_recipients), list(failed_recipients), False)
                 return True
             else:
+                # Miner-side failure (tx send failed). Mark recipients as
+                # transiently failed but DO NOT increment the give-up counter
+                # — this isn't the recipient's fault.
                 exhausted_miners.add(retry_miner.get('agent_id'))
                 for r in batch:
                     failed_recipients.add(r.get('id'))
@@ -626,18 +728,36 @@ class MinerDistributorAgent(BaseAgent):
         funded_recipients: set,
         failed_recipients: set,
     ):
-        """Write the final funding status file and mark completion if all funded."""
-        # Check if all eligible recipients are now funded
-        all_funded = len(funded_recipients) >= len(all_eligible)
-        self._write_funding_status(list(funded_recipients), list(failed_recipients), all_funded)
+        """Write the final funding status file and mark completion if all funded.
 
-        self.logger.info(f"Initial funding progress: {len(funded_recipients)}/{len(all_eligible)} agents funded")
+        Permanent failures count toward completion so MD can transition to
+        the continuous funding cycle even when a few wallets are stuck.
+        """
+        # Completion: every still-attemptable recipient is funded. Permanent
+        # failures don't block the transition to continuous funding cycle.
+        all_done = (
+            len(funded_recipients) + len(self._permanently_failed)
+        ) >= len(all_eligible)
+        self._write_funding_status(list(funded_recipients), list(failed_recipients), all_done)
+
+        progress_msg = (
+            f"Initial funding progress: {len(funded_recipients)}/{len(all_eligible)} agents funded"
+        )
+        if self._permanently_failed:
+            progress_msg += f" ({len(self._permanently_failed)} permanently failed, excluded)"
+        self.logger.info(progress_msg)
         if failed_recipients:
-            self.logger.warning(f"Failed recipients: {len(failed_recipients)}")
+            self.logger.warning(f"Failed recipients (transient): {len(failed_recipients)}")
 
-        if all_funded:
+        if all_done:
             self.initial_funding_completed = True
-            self.logger.info("Initial funding phase completed - ALL recipients funded!")
+            if self._permanently_failed:
+                self.logger.info(
+                    f"Initial funding phase completed - {len(funded_recipients)} funded, "
+                    f"{len(self._permanently_failed)} permanently failed (excluded)"
+                )
+            else:
+                self.logger.info("Initial funding phase completed - ALL recipients funded!")
 
     def _fund_miners_first(self):
         """
