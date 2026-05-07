@@ -10,7 +10,8 @@ use std::env;
 use regex::Regex;
 
 static IP_PATTERN: LazyLock<Regex> = LazyLock::new(||
-    Regex::new(r#"full_addrs\.insert\("(\d+\.\d+\.\d+\.\d+):(\d+)"\)"#).unwrap()
+    Regex::new(r#"full_addrs\.insert\("(\d+\.\d+\.\d+\.\d+):(\d+)"\)"#)
+        .expect("invariant: IP_PATTERN is a valid regex")
 );
 
 /// Mainnet seed node info
@@ -179,8 +180,19 @@ fn parse_mainnet_seed_ips(content: &str) -> Result<Vec<SeedNode>, String> {
         // If we're in the mainnet block and find an insert with port 18080
         if in_mainnet_block {
             if let Some(caps) = ip_pattern.captures(line) {
-                let ip = caps.get(1).unwrap().as_str().to_string();
-                let port: u16 = caps.get(2).unwrap().as_str().parse().unwrap_or(18080);
+                // Both capture groups are non-optional in IP_PATTERN, so they
+                // must be present whenever the regex matches.
+                let ip = caps
+                    .get(1)
+                    .expect("invariant: IP_PATTERN group 1 is non-optional")
+                    .as_str()
+                    .to_string();
+                let port: u16 = caps
+                    .get(2)
+                    .expect("invariant: IP_PATTERN group 2 is non-optional")
+                    .as_str()
+                    .parse()
+                    .unwrap_or(18080);
 
                 // Only include mainnet IPs (port 18080)
                 if port == 18080 {

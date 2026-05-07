@@ -32,17 +32,20 @@ where
     }
 }
 
-// Static regex patterns for parsing phase fields (compiled once)
-static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)$").unwrap());
-static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_args$").unwrap());
-static DAEMON_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_env$").unwrap());
-static DAEMON_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_start$").unwrap());
-static DAEMON_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_stop$").unwrap());
-static WALLET_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)$").unwrap());
-static WALLET_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_args$").unwrap());
-static WALLET_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_env$").unwrap());
-static WALLET_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_start$").unwrap());
-static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_stop$").unwrap());
+// Static regex patterns for parsing phase fields (compiled once).
+// `.expect()` is safe here: the literal patterns are syntactically valid Rust
+// regex and tested at startup via LazyLock — if these ever fail, it's a code
+// bug, not user input.
+static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)$").expect("invariant: DAEMON_RE pattern is a valid regex"));
+static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_args$").expect("invariant: DAEMON_ARGS_RE pattern is a valid regex"));
+static DAEMON_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_env$").expect("invariant: DAEMON_ENV_RE pattern is a valid regex"));
+static DAEMON_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_start$").expect("invariant: DAEMON_START_RE pattern is a valid regex"));
+static DAEMON_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_stop$").expect("invariant: DAEMON_STOP_RE pattern is a valid regex"));
+static WALLET_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)$").expect("invariant: WALLET_RE pattern is a valid regex"));
+static WALLET_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_args$").expect("invariant: WALLET_ARGS_RE pattern is a valid regex"));
+static WALLET_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_env$").expect("invariant: WALLET_ENV_RE pattern is a valid regex"));
+static WALLET_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_start$").expect("invariant: WALLET_START_RE pattern is a valid regex"));
+static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_stop$").expect("invariant: WALLET_STOP_RE pattern is a valid regex"));
 
 /// Peer mode options for network configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -325,12 +328,12 @@ impl AgentConfig {
 
     /// Check if this agent has daemon phases
     pub fn has_daemon_phases(&self) -> bool {
-        self.daemon_phases.is_some() && !self.daemon_phases.as_ref().unwrap().is_empty()
+        self.daemon_phases.as_ref().is_some_and(|p| !p.is_empty())
     }
 
     /// Check if this agent has wallet phases
     pub fn has_wallet_phases(&self) -> bool {
-        self.wallet_phases.is_some() && !self.wallet_phases.as_ref().unwrap().is_empty()
+        self.wallet_phases.as_ref().is_some_and(|p| !p.is_empty())
     }
 
     /// Check if this is a miner based on hashrate
@@ -509,13 +512,30 @@ fn parse_typed_phases<P: Phase>(
 ) -> BTreeMap<u32, P> {
     let mut phases: BTreeMap<u32, P> = BTreeMap::new();
 
+    // Helper that parses the phase number capture group. The regex only
+    // matches `\d+`, so the only realistic failure is u32 overflow on a
+    // pathological key (e.g. `daemon_99999999999`). Skip with a warning
+    // rather than panic — keeps load resilient to weird user input.
+    let parse_phase_num = |caps: &regex::Captures, key: &str| -> Option<u32> {
+        match caps[1].parse::<u32>() {
+            Ok(n) => Some(n),
+            Err(e) => {
+                log::warn!(
+                    "Ignoring phase key '{}': phase number does not fit in u32 ({})",
+                    key, e
+                );
+                None
+            }
+        }
+    };
+
     for (key, value) in extra {
         if let Some(caps) = re_path.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
+            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
             phases.entry(phase_num).or_default()
                 .set_path(value.as_str().unwrap_or_default().to_string());
         } else if let Some(caps) = re_args.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
+            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
             if let Some(args) = value.as_sequence() {
                 let args: Vec<String> = args.iter()
                     .filter_map(|v| v.as_str().map(String::from))
@@ -523,7 +543,7 @@ fn parse_typed_phases<P: Phase>(
                 phases.entry(phase_num).or_default().set_args(args);
             }
         } else if let Some(caps) = re_env.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
+            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
             if let Some(env_map) = value.as_mapping() {
                 let env: BTreeMap<String, String> = env_map.iter()
                     .filter_map(|(k, v)| {
@@ -533,11 +553,11 @@ fn parse_typed_phases<P: Phase>(
                 phases.entry(phase_num).or_default().set_env(env);
             }
         } else if let Some(caps) = re_start.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
+            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
             phases.entry(phase_num).or_default()
                 .set_start(value.as_str().unwrap_or_default().to_string());
         } else if let Some(caps) = re_stop.captures(key) {
-            let phase_num: u32 = caps[1].parse().unwrap();
+            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
             phases.entry(phase_num).or_default()
                 .set_stop(value.as_str().unwrap_or_default().to_string());
         }
@@ -641,7 +661,7 @@ impl Config {
         if let Some(mode) = peer_mode {
             match mode {
                 PeerMode::Hardcoded | PeerMode::Hybrid => {
-                    if seed_nodes.is_none() || seed_nodes.as_ref().unwrap().is_empty() {
+                    if !seed_nodes.as_ref().is_some_and(|n| !n.is_empty()) {
                         return Err(ValidationError::InvalidNetwork(
                             format!("seed_nodes must be provided and non-empty for peer_mode {:?}", mode)
                         ));

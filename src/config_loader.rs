@@ -1,7 +1,7 @@
 use crate::config::{Config, validate_daemon_phases};
 use crate::utils::validation::{validate_mining_config, validate_agent_daemon_config};
 use color_eyre::Result;
-use color_eyre::eyre::eyre;
+use color_eyre::eyre::{eyre, WrapErr};
 use log::info;
 use std::fs::File;
 use std::path::Path;
@@ -11,16 +11,20 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
     info!("Loading configuration from: {:?}", config_path);
 
     // Open the configuration file
-    let file = File::open(config_path)?;
+    let file = File::open(config_path)
+        .wrap_err_with(|| format!("Failed to open config file: {}", config_path.display()))?;
 
     // Parse the YAML content
-    let config: Config = serde_yaml::from_reader(file)?;
+    let config: Config = serde_yaml::from_reader(file)
+        .wrap_err_with(|| format!("Failed to parse YAML config: {}", config_path.display()))?;
 
     // Log that we're using agent mode
     info!("Detected agent-based configuration");
 
     // Validate the configuration structure
-    config.validate()?;
+    config
+        .validate()
+        .wrap_err_with(|| format!("Invalid configuration in {}", config_path.display()))?;
 
     // Validate agent configurations
     validate_agent_daemon_config(&config.agents.agents)
@@ -34,7 +38,7 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
         if let Some(phases) = &agent_config.daemon_phases {
             if !phases.is_empty() {
                 validate_daemon_phases(agent_id, phases)
-                    .map_err(|e| eyre!("Phase configuration error: {}", e))?;
+                    .map_err(|e| eyre!("Phase configuration error in agent '{}': {}", agent_id, e))?;
             }
         }
     }

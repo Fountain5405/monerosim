@@ -446,8 +446,12 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
 
             // Add Monero daemon process(es) - either simple or phase-based
             if has_daemon_phases {
-                // Phase-based daemon configuration (upgrade scenario)
-                let phases = user_agent_config.daemon_phases.as_ref().unwrap();
+                // Phase-based daemon configuration (upgrade scenario).
+                // `has_daemon_phases` already verified daemon_phases is Some and non-empty.
+                let phases = user_agent_config
+                    .daemon_phases
+                    .as_ref()
+                    .expect("invariant: has_daemon_phases() == true implies daemon_phases.is_some()");
                 let phase_count = phases.len();
 
                 for (phase_num, phase) in phases {
@@ -543,8 +547,12 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             let mut wallet_rpc_cmd: Option<String> = None;
 
             if has_wallet_phases {
-                // Phase-based wallet configuration (upgrade scenario)
-                let phases = user_agent_config.wallet_phases.as_ref().unwrap();
+                // Phase-based wallet configuration (upgrade scenario).
+                // `has_wallet_phases` already verified wallet_phases is Some and non-empty.
+                let phases = user_agent_config
+                    .wallet_phases
+                    .as_ref()
+                    .expect("invariant: has_wallet_phases() == true implies wallet_phases.is_some()");
                 let phase_count = phases.len();
 
                 // Build base wallet args
