@@ -910,32 +910,55 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.warning("No valid agents in this funding batch")
             return
 
-        # Select a miner for funding
-        selected_miner = self._select_miner()
-        if not selected_miner:
-            self.logger.warning("No miner available for funding cycle, will retry later")
-            return
-
-        # Refresh miner's wallet before sending (handles post-upgrade daemon state)
-        try:
-            miner_rpc = WalletRPC(host=selected_miner['ip_addr'], port=selected_miner['wallet_rpc_port'])
-            miner_rpc.wait_until_ready(max_wait=30, check_interval=2)
-            miner_rpc.refresh()
-            self.logger.debug(f"Refreshed miner {selected_miner.get('agent_id')} wallet before funding cycle")
-        except Exception as e:
-            self.logger.warning(f"Failed to refresh miner wallet: {e}")
-
-        # Send batch transaction to fund the recipients
+        # Try miners with failover: if a chosen miner has insufficient
+        # unlocked balance (or any other tx-send failure), exclude it and
+        # try the next one. Without this, an unlucky weighted-random pick
+        # of a miner whose mining rewards haven't matured yet wastes the
+        # whole cycle; combined with the deterministic RNG, that miner
+        # may never be retried this run, leaving its txs at zero (the
+        # original quickstart seed=12345 / miner-002 bug).
+        exhausted_miners: set = set()
+        attempts = 0
+        max_failover_attempts = len(self.miners) if self.miners else 1
         self.logger.info(f"Funding {len(batch_agents)} agents: {[a.get('id') for a in batch_agents]}")
+        while attempts < max_failover_attempts:
+            attempts += 1
+            selected_miner = self._select_miner_excluding(exhausted_miners)
+            if not selected_miner:
+                self.logger.warning(
+                    f"No miner available for funding cycle after {attempts - 1} failover attempts, will retry later"
+                )
+                return
 
-        success, funded_ids, failed_ids = self._send_batch_transaction(
-            selected_miner, batch_agents
+            # Refresh miner's wallet before sending (handles post-upgrade daemon state)
+            try:
+                miner_rpc = WalletRPC(host=selected_miner['ip_addr'], port=selected_miner['wallet_rpc_port'])
+                miner_rpc.wait_until_ready(max_wait=30, check_interval=2)
+                miner_rpc.refresh()
+                self.logger.debug(f"Refreshed miner {selected_miner.get('agent_id')} wallet before funding cycle")
+            except Exception as e:
+                self.logger.warning(f"Failed to refresh miner {selected_miner.get('agent_id')} wallet: {e}")
+
+            success, funded_ids, failed_ids = self._send_batch_transaction(
+                selected_miner, batch_agents
+            )
+
+            if success:
+                self.logger.info(f"Funding cycle complete: funded {len(funded_ids)} agents")
+                return
+
+            # Failure: mark this miner exhausted for THIS cycle and try
+            # another. The exclusion is per-cycle only — next cycle starts
+            # fresh.
+            self.logger.warning(
+                f"Funding cycle: miner {selected_miner.get('agent_id')} failed to send; "
+                f"trying another miner"
+            )
+            exhausted_miners.add(selected_miner.get('agent_id'))
+
+        self.logger.warning(
+            f"Funding cycle failed after trying {attempts} miners, will retry next cycle"
         )
-
-        if success:
-            self.logger.info(f"Funding cycle complete: funded {len(funded_ids)} agents")
-        else:
-            self.logger.warning(f"Funding cycle failed for batch, will retry next cycle")
 
     def run_iteration(self) -> float:
         """Single iteration of Monero distribution behavior"""
@@ -1376,9 +1399,18 @@ class MinerDistributorAgent(BaseAgent):
             except Exception as e:
                 error_msg = str(e).lower()
 
-                # Check for specific error types to determine retry strategy
-                if "not enough money" in error_msg or "insufficient funds" in error_msg:
-                    self.logger.warning(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: Insufficient funds in miner wallet")
+                # Check for specific error types to determine retry strategy.
+                # "not enough unlocked money" (RPC code -37) is a distinct
+                # message from "not enough money" — match it explicitly so
+                # we fail over immediately to a different miner instead of
+                # burning ~15s of backoff retries on a wallet whose funds
+                # haven't matured yet (60-block confirmations).
+                if (
+                    "not enough money" in error_msg
+                    or "not enough unlocked money" in error_msg
+                    or "insufficient funds" in error_msg
+                ):
+                    self.logger.warning(f"Batch transaction attempt {attempt + 1}/{self.max_retries} failed: Insufficient (unlocked) funds in miner wallet")
                     # Don't retry insufficient funds - caller should try different miner
                     return False, [], [r.get('id') for r in recipients]
 
