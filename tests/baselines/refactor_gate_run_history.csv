@@ -1,0 +1,3 @@
+run_id,date,commit_hash,scenario,smoke_result,wall_seconds,exit_code,success_criteria_pass,block_height,blocks_mined,total_tx_created,total_tx_in_blocks,tx_in_blocks_ratio,alerts,sync_pct,nodes_online,per_user_min,per_user_max,per_user_median,per_miner_min,per_miner_max,per_miner_median
+20260506_193346_refactor_gate,2026-05-06,97d6dc82,refactor_gate,PASS,5760,0,True,185,184,1462,1237,0.8461,8,99.9930,511,8,17,12,16,96,56
+20260508_015955_refactor_gate,2026-05-08,3bf8562a,refactor_gate,PASS,5820,0,True,185,184,1539,1281,0.8324,8,99.9930,511,8,17,12,32,94,52

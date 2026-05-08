@@ -100,6 +100,23 @@ python3 "$SCRIPT_DIR/smoke_assertions.py" \
     --run-dir "$ARCHIVE_DIR" \
     --baseline "$BASELINE_PATH" || ASSERT_EXIT=$?
 
+# --- Append run-history row -----------------------------------------------
+# One row per smoke run (PASS or FAIL) into tests/baselines/<scenario>_run_history.csv.
+# Failures here MUST NOT change the smoke-test outcome: log a warning and continue.
+if (( SIM_EXIT == 0 && ASSERT_EXIT == 0 )); then
+    SMOKE_RESULT="PASS"
+else
+    SMOKE_RESULT="FAIL"
+fi
+APPEND_EXIT=0
+python3 "$SCRIPT_DIR/append_run_history.py" \
+    --run-dir "$ARCHIVE_DIR" \
+    --scenario "$SCENARIO" \
+    --result "$SMOKE_RESULT" || APPEND_EXIT=$?
+if (( APPEND_EXIT != 0 )); then
+    echo -e "${YELLOW}Warning: append_run_history.py exited ${APPEND_EXIT}; not failing the smoke run.${NC}" >&2
+fi
+
 # --- Final result ---------------------------------------------------------
 echo
 if (( SIM_EXIT == 0 && ASSERT_EXIT == 0 )); then

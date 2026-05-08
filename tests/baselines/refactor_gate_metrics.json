@@ -1,0 +1,44 @@
+{
+  "scenario": "refactor_gate",
+  "config": "test_configs/refactor_gate.yaml",
+  "captured_from": [
+    "archived_runs/20260506_193346_refactor_gate",
+    "archived_runs/20260508_015955_refactor_gate"
+  ],
+  "captured_at_commit": "3bf8562a",
+  "captured_at_date": "2026-05-08",
+  "notes": [
+    "Bands derived from the two known successful refactor_gate runs (97d6dc82 on 2026-05-06 and 3bf8562a on 2026-05-08). Both finished with identical 4/4 success criteria, alerts=8, height=185, blocks_mined=184, tx_in_blocks_ratio between 0.832 and 0.846.",
+    "wall_time_seconds_max: 7200s (120m) is generous over the canonical ~5760-5820s. refactor_gate is ~6x larger than quickstart (511 vs 15 nodes); wall variance is correspondingly bigger.",
+    "max_alerts: 10 is generous over the canonical 8. Alerts are emitted by simulation_monitor for transient height-spread / sync-lag events; expect ~8 with a small tolerance.",
+    "all_nodes_within_height_range: 20 is generous over the observed spread of 0-19 in the prior run (relay-334 at -1 was an offline node, otherwise 17-block spread is normal at 511 nodes since relays start staggered out to 9420s).",
+    "wallets_funded_exact: 105 = 5 miners with can_receive_distributions: true + 100 users with can_receive_distributions: true. All 105 are senders in the per-agent tx breakdown.",
+    "per_user_tx_floor: 6 is the canary against the wallets-die-early regression. Observed minimum was 8 in both runs (a tight cluster at 8-17 txs/user). The floor is chosen to allow ~25% headroom while still catching a dramatic regression like the 'wallets send 3 txs and die' bug.",
+    "per_miner_tx_floor: 0 mirrors quickstart. Block-proposer luck under Poisson hashrate can leave a miner at 0 txs created at 511-node scale.",
+    "tx_created_min: 1300 is conservative below the observed 1462-1539. tx_in_blocks_ratio_min: 0.78 is conservative below the observed 0.832-0.846; the 5% margin tolerates a few extra not-yet-mined transactions when the sim halts at stop_time.",
+    "block_height_min/blocks_mined_min: 175 / 175 is a 5% safety margin below the canonical 185/184."
+  ],
+  "expected": {
+    "exit_code": 0,
+    "all_success_criteria_pass": true,
+    "max_alerts": 10,
+    "wall_time_seconds_max": 7200,
+    "block_height_min": 175,
+    "blocks_mined_min": 175,
+    "all_nodes_within_height_range": 20,
+    "tx_created_min": 1300,
+    "tx_in_blocks_ratio_min": 0.78,
+    "wallets_funded_exact": 105,
+    "per_user_tx_floor": 6,
+    "per_miner_tx_floor": 0
+  },
+  "log_patterns_disallowed": [
+    "SIGABRT",
+    "SIGKILL",
+    "panic",
+    "FATAL ERROR",
+    "Read timed out",
+    "Failed to bind",
+    "deadlock"
+  ]
+}
