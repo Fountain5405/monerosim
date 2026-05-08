@@ -119,7 +119,7 @@ pub fn add_user_agent_process(args: UserAgentProcessArgs<'_>) {
         r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}:{}
-export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
+export PATH="$PATH:{}/.monerosim/bin"
 {}
 {} 2>&1
 "#,
@@ -228,7 +228,7 @@ pub fn create_mining_agent_process(args: MiningAgentProcessArgs<'_>) -> Vec<Shad
         r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}:{}
-export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
+export PATH="$PATH:{}/.monerosim/bin"
 {}
 {} 2>&1
 "#,

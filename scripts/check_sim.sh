@@ -250,7 +250,7 @@ if [ "${#_sample_logs[@]}" -gt 0 ]; then
     # Get the last timestamp from each sample log, then pick the max
     LATEST_TS=$(
         for _sl in "${_sample_logs[@]}"; do
-            grep -oP "2000-01-\d+ \d+:\d+:\d+" "$_sl" 2>/dev/null | tail -1
+            grep -oE "2000-01-[0-9]+ [0-9]+:[0-9]+:[0-9]+" "$_sl" 2>/dev/null | tail -1
         done | sort | tail -1
     )
 fi
@@ -354,7 +354,7 @@ for miner_dir in "${MINER_DIRS[@]}"; do
         fi
     done
     if [ -n "$agent_log" ]; then
-        last_height=$(grep -oP "New height: \K\d+" "$agent_log" 2>/dev/null | tail -1)
+        last_height=$(grep -oE "New height: [0-9]+" "$agent_log" 2>/dev/null | awk '{print $3}' | tail -1)
         if [ -n "$last_height" ]; then
             ok "$miner: height $last_height"
         else
@@ -380,7 +380,7 @@ if [ -n "$DIST_DIR" ] && [ -d "$DIST_DIR" ]; then
     if [ -n "$DIST_LOG" ]; then
         BATCHES_OK=$(grep -c "Batch transaction sent successfully\|batch.*success" "$DIST_LOG" 2>/dev/null || true)
         BATCHES_FAIL=$(grep -c "Batch.*failed\|Failed to send batch\|real output" "$DIST_LOG" 2>/dev/null || true)
-        LAST_TS=$(grep -oP "2000-01-\d+ \d+:\d+:\d+" "$DIST_LOG" 2>/dev/null | tail -1)
+        LAST_TS=$(grep -oE "2000-01-[0-9]+ [0-9]+:[0-9]+:[0-9]+" "$DIST_LOG" 2>/dev/null | tail -1)
         ok "Active (last: ${LAST_TS:-unknown})"
         info "Successful batches: ${BATCHES_OK:-0} | Failed: ${BATCHES_FAIL:-0}"
     else

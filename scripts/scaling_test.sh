@@ -313,7 +313,7 @@ run_test() {
     if [[ -n "$mem_kb" && "$mem_kb" -gt 0 ]]; then
         local mem_mb=$((mem_kb / 1024))
         if [[ $mem_mb -gt 1024 ]]; then
-            mem_readable="$(echo "scale=1; $mem_mb / 1024" | bc)GB"
+            mem_readable="$(awk -v m="$mem_mb" 'BEGIN{printf "%.1f\n", m/1024}')GB"
         else
             mem_readable="${mem_mb}MB"
         fi

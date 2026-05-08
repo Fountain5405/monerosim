@@ -99,7 +99,7 @@ pub fn process_miner_distributor(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}:{}
-export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
+export PATH="$PATH:{}/.monerosim/bin"
 
 {} 2>&1
 "#,

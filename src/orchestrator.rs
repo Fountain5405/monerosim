@@ -279,7 +279,7 @@ fn emit_dns_server_host(
         r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}:{}
-export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
+export PATH="$PATH:{}/.monerosim/bin"
 
 {} 2>&1
 "#,

@@ -6,10 +6,18 @@ top-level config structure. ``_build_general_config`` produces the
 ``metadata:`` block consumed by analysis tools.
 """
 
+import os
 from collections import OrderedDict
 from typing import Any, Dict
 
 from .timeline import format_time_offset
+
+
+# Sentinel default for shared_dir suppression in _build_general_config.
+# Mirrors agents.base_agent.DEFAULT_SHARED_DIR (kept independent so this
+# module doesn't import from agents/). MONEROSIM_SHARED_DIR overrides for
+# portability — see PORTABILITY.md F-FS-3.
+_DEFAULT_SHARED_DIR = os.environ.get("MONEROSIM_SHARED_DIR", "/tmp/monerosim_shared")
 
 # Dual-import pattern: works both when scripts/ is on sys.path and when
 # imported as scripts.config_generation.general_emit.
@@ -73,7 +81,7 @@ def _build_general_config(
         general_config["native_preemption"] = native_preemption
 
     # Only emit non-default directory paths
-    if shared_dir and shared_dir != "/tmp/monerosim_shared":
+    if shared_dir and shared_dir != _DEFAULT_SHARED_DIR:
         general_config["shared_dir"] = shared_dir
     if daemon_data_dir and daemon_data_dir != "/tmp":
         general_config["daemon_data_dir"] = daemon_data_dir

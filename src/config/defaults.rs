@@ -17,11 +17,11 @@ pub(super) fn default_shadow_log_level() -> String {
 }
 
 pub(super) fn default_shared_dir() -> String {
-    "/tmp/monerosim_shared".to_string()
+    crate::shared_dir()
 }
 
 pub(super) fn default_daemon_data_dir() -> String {
-    "/tmp".to_string()
+    crate::default_daemon_data_dir()
 }
 
 pub(super) fn default_model_unblocked_syscall_latency() -> bool {

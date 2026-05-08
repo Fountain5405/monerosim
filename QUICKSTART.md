@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-- Linux system (Ubuntu 22.04+ recommended, Debian and Arch also supported)
+- Linux system (Ubuntu 22.04+, Debian, Fedora 38+, RHEL 9+ / Rocky / Alma with EPEL, Arch, openSUSE Leap 15.5+)
 - Sudo access (for installing system packages)
 - Internet connection (downloads ~1-2 GB of source code)
 - 30 GB free disk space (for building Shadow and Monero from source)
 - Python 3.10+
 
-> **Tip:** We recommend using a dedicated Linux user account for monerosim (e.g., `sudo adduser monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
+> **Tip:** We recommend using a dedicated Linux user account for monerosim (e.g., `sudo useradd -m monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
 
 ## Installation
 
@@ -146,7 +146,7 @@ Check analysis output in `analysis_output/` and processed logs in `shadow.data/h
 
 **"Permission denied"**: Make sure you can run `sudo` commands. setup.sh needs sudo to install system packages.
 
-**"Python 3.10+ is required"**: Install a newer Python version. On Ubuntu: `sudo apt install python3.10`.
+**"Python 3.10+ is required"**: Install a newer Python version. On Ubuntu/Debian: `sudo apt install python3.10`. On Fedora: `sudo dnf install python3.10`. On Arch: `sudo pacman -S python`. On openSUSE: `sudo zypper install python310`.
 
 **Simulation seems stuck**: This is normal. Check `tail shadow.log` for progress. Simulations run slower than real time. Use `./scripts/check_sim.sh` for a detailed status dashboard.
 

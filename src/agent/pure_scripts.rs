@@ -81,7 +81,7 @@ pub fn process_pure_script_agents(
             r#"#!/bin/bash
 cd {}
 export PYTHONPATH={}:{}
-export PATH=/usr/local/bin:/usr/bin:/bin:{}/.monerosim/bin
+export PATH="$PATH:{}/.monerosim/bin"
 
 echo "Starting pure script agent {}..."
 {} 2>&1

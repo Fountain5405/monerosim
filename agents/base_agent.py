@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -21,7 +22,10 @@ from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 from .public_node_discovery import PublicNodeDiscovery, DaemonSelectionStrategy, parse_selection_strategy
 
 # Shared constants
-DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+# MONEROSIM_SHARED_DIR overrides the default for portability (e.g. when /tmp
+# is read-only or on systems where another agent owns it). See PORTABILITY.md
+# F-FS-3.
+DEFAULT_SHARED_DIR = os.environ.get("MONEROSIM_SHARED_DIR", "/tmp/monerosim_shared")
 MONERO_P2P_PORT = 18080
 MONERO_RPC_PORT = 18081
 MONERO_WALLET_RPC_PORT = 18082
@@ -342,11 +346,24 @@ class BaseAgent(ABC):
         time.sleep(2)
 
         # Step 3: Spawn new wallet-rpc process
+        # WALLET_RPC_CMD is a POSIX-shell-quoted command string emitted by
+        # src/process/wallet.rs (see shell_quote_args in src/utils/options.rs);
+        # parse it back into argv with shlex so we can launch without a shell.
+        # No pipes/redirects/env-expansion are used in the emitted form, so
+        # shlex.split is a faithful inverse. Avoiding shell=True keeps us
+        # portable across /bin/sh implementations (dash, ash) and removes a
+        # latent injection vector if any input ever flows into the command.
+        try:
+            wallet_cmd_args = shlex.split(wallet_cmd)
+        except ValueError as e:
+            self.logger.error(f"Failed to parse WALLET_RPC_CMD: {e}")
+            return False
+
         try:
             self.logger.info(f"Spawning new wallet-rpc: {wallet_cmd}")
             subprocess.Popen(
-                wallet_cmd,
-                shell=True,
+                wallet_cmd_args,
+                shell=False,  # explicit; default is False
                 start_new_session=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

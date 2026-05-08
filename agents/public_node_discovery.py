@@ -7,6 +7,7 @@ connecting to remote public nodes.
 """
 
 import json
+import os
 import random
 import time
 import fcntl
@@ -18,8 +19,9 @@ from enum import Enum
 from .shared_utils import PUBLIC_NODES_REGISTRY_FILENAME, load_public_nodes_registry
 
 
-# Shared constant (canonical source: base_agent.DEFAULT_SHARED_DIR)
-_DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
+# Shared constant (canonical source: base_agent.DEFAULT_SHARED_DIR).
+# MONEROSIM_SHARED_DIR env-var override mirrors base_agent for portability.
+_DEFAULT_SHARED_DIR = os.environ.get("MONEROSIM_SHARED_DIR", "/tmp/monerosim_shared")
 
 
 class DaemonSelectionStrategy(Enum):

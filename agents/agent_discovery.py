@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Agent discovery via JSON registry files in /tmp/monerosim_shared/."""
+"""Agent discovery via JSON registry files in the shared state directory.
+
+Default location is /tmp/monerosim_shared, overridable via the
+MONEROSIM_SHARED_DIR environment variable (see base_agent.DEFAULT_SHARED_DIR).
+"""
 
 import json
 import logging
@@ -25,7 +29,9 @@ class AgentDiscovery:
         
         Args:
             shared_state_dir: Path to the directory containing agent registry files.
-                            Defaults to "/tmp/monerosim_shared".
+                            Defaults to base_agent.DEFAULT_SHARED_DIR
+                            ("/tmp/monerosim_shared" unless overridden by
+                            the MONEROSIM_SHARED_DIR env var).
         """
         self.shared_state_dir = Path(shared_state_dir)
         self.logger = self._setup_logger()

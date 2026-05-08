@@ -16,10 +16,22 @@
 //! - `utils`: Duration parsing, validation, seed extraction
 
 /// Shared directory for inter-agent communication and registry files.
-pub const SHARED_DIR: &str = "/tmp/monerosim_shared";
+///
+/// Reads `MONEROSIM_SHARED_DIR` env var; defaults to `/tmp/monerosim_shared`.
+/// Override on hardened RHEL/SUSE installs where `/tmp` may have noexec,
+/// SELinux contexts, or aggressive cleanup.
+pub fn shared_dir() -> String {
+    std::env::var("MONEROSIM_SHARED_DIR")
+        .unwrap_or_else(|_| "/tmp/monerosim_shared".to_string())
+}
 
 /// Default base directory for per-agent monerod data directories.
-pub const DEFAULT_DAEMON_DATA_DIR: &str = "/tmp";
+///
+/// Reads `MONEROSIM_DAEMON_DATA_DIR` env var; defaults to `/tmp`.
+pub fn default_daemon_data_dir() -> String {
+    std::env::var("MONEROSIM_DAEMON_DATA_DIR")
+        .unwrap_or_else(|_| "/tmp".to_string())
+}
 
 /// Shadow simulation epoch: 2000-01-01 00:00:00 UTC as Unix timestamp.
 /// Shadow's simulated clock starts from this point; subtract it from

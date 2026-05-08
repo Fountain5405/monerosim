@@ -182,6 +182,24 @@ check_command "g++"
 check_command "curl"
 check_command "pkg-config"
 
+# Detect whether the bulk dev-libs install is needed.
+# Fix 6: previously only triggered when gcc/g++ were missing — but a user can have
+# gcc preinstalled while still missing libssl-dev/libsodium-dev/etc., causing the
+# Shadow/Monero compile to fail later with cryptic linker errors. Probe the dev
+# headers via pkg-config so we install the bulk list when *any* are missing.
+BULK_INSTALL_NEEDED=false
+if command -v pkg-config &> /dev/null; then
+    # If any core dev headers are missing, force the bulk install.
+    if ! pkg-config --exists openssl libsodium libzmq libunbound 2>/dev/null; then
+        print_warning "One or more core dev headers (openssl/libsodium/libzmq/libunbound) missing"
+        BULK_INSTALL_NEEDED=true
+    fi
+else
+    # pkg-config is itself missing (and thus already in MISSING_DEPS) — we can't
+    # probe headers, so be safe and run the bulk install.
+    BULK_INSTALL_NEEDED=true
+fi
+
 # Minimum required Rust version
 MIN_RUST_VERSION="1.82.0"
 
@@ -236,26 +254,45 @@ if [[ "$NEED_RUST" == "true" ]]; then
     fi
 fi
 
-# Install system dependencies if any are missing (requires sudo)
-if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
-    print_warning "Missing system dependencies: ${MISSING_DEPS[*]}"
+# Install system dependencies if any are missing (requires sudo).
+# Fix 6: also enter this branch when BULK_INSTALL_NEEDED=true even if MISSING_DEPS
+# is empty — handles the "gcc present, dev headers missing" case.
+if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
+    if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
+        print_warning "Missing system dependencies: ${MISSING_DEPS[*]}"
+    fi
+    if [[ "$BULK_INSTALL_NEEDED" == "true" ]]; then
+        print_warning "Bulk dev-libs install needed (missing pkg-config-detectable dev headers)"
+    fi
     print_status "Attempting to install missing dependencies (requires sudo)..."
 
     # Detect package manager
+    # Note: dnf is checked before yum because on modern RHEL/Fedora both may
+    # exist (yum is often a symlink to dnf); we want to prefer the modern tool.
     if command -v apt-get &> /dev/null; then
         PKG_MANAGER="apt-get"
         UPDATE_CMD="sudo apt-get update"
         INSTALL_CMD="sudo apt-get install -y"
+    elif command -v dnf &> /dev/null; then
+        PKG_MANAGER="dnf"
+        UPDATE_CMD="sudo dnf makecache"
+        INSTALL_CMD="sudo dnf install -y"
     elif command -v yum &> /dev/null; then
         PKG_MANAGER="yum"
-        UPDATE_CMD="sudo yum update"
+        # `yum update` upgrades all installed packages; `yum makecache` is the
+        # actual equivalent of `apt-get update` (cache refresh only).
+        UPDATE_CMD="sudo yum makecache"
         INSTALL_CMD="sudo yum install -y"
     elif command -v pacman &> /dev/null; then
         PKG_MANAGER="pacman"
         UPDATE_CMD="sudo pacman -Sy"
         INSTALL_CMD="sudo pacman -S --noconfirm"
+    elif command -v zypper &> /dev/null; then
+        PKG_MANAGER="zypper"
+        UPDATE_CMD="sudo zypper refresh"
+        INSTALL_CMD="sudo zypper install -y --no-recommends"
     else
-        print_error "Could not detect package manager (apt, yum, or pacman)"
+        print_error "Could not detect package manager (apt-get, dnf, yum, pacman, or zypper)"
         print_error "Please install the following dependencies manually: ${MISSING_DEPS[*]}"
         exit 1
     fi
@@ -266,7 +303,9 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
     print_status "Updating package lists..."
     $UPDATE_CMD
 
-    # Install basic dependencies
+    # Install single-package dependencies via the per-dep loop.
+    # The bulk dev-libs install is handled separately below (see Fix 6).
+    BULK_TRIGGERED=false
     for dep in "${MISSING_DEPS[@]}"; do
         case $dep in
             "git"|"cmake"|"make"|"curl"|"pkg-config"|"jq")
@@ -274,17 +313,34 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
                 $INSTALL_CMD $dep
                 ;;
             "gcc"|"g++")
-                print_status "Installing build-essential/development tools..."
-                if [[ $PKG_MANAGER == "apt-get" ]]; then
-                    $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 python3-venv ccache
-                elif [[ $PKG_MANAGER == "yum" ]]; then
-                    $INSTALL_CMD gcc gcc-c++ make openssl-devel zeromq-devel unbound-devel sodium-devel libunwind-devel xz-devel readline-devel expat-devel pgm-devel qt5-linguist hidapi-devel libusbx-devel protobuf-devel protobuf-compiler systemd-devel boost-devel python3 ccache
-                elif [[ $PKG_MANAGER == "pacman" ]]; then
-                    $INSTALL_CMD base-devel openssl zeromq unbound sodium libunwind xz readline expat openpgm qt5-tools hidapi libusb protobuf systemd boost python ccache
-                fi
+                # Defer to the bulk install below — it includes the compilers.
+                BULK_TRIGGERED=true
                 ;;
         esac
     done
+
+    # Fix 6: install the full bulk dev-libs list when either (a) gcc/g++ were
+    # in MISSING_DEPS, or (b) pkg-config probing detected missing dev headers.
+    # This prevents the prior bug where a user with gcc preinstalled but missing
+    # libssl-dev/libsodium-dev/etc. would silently skip the bulk install and hit
+    # cryptic linker errors during the Shadow/Monero compile.
+    if [[ "$BULK_TRIGGERED" == "true" || "$BULK_INSTALL_NEEDED" == "true" ]]; then
+        print_status "Installing build-essential/development tools..."
+        if [[ $PKG_MANAGER == "apt-get" ]]; then
+            $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 python3-venv ccache
+        elif [[ $PKG_MANAGER == "yum" || $PKG_MANAGER == "dnf" ]]; then
+            # NOTE: openpgm-devel lives in EPEL on RHEL/Rocky/Alma — enable EPEL first
+            # (e.g. `sudo dnf install -y epel-release`). On Fedora it is in the main repos.
+            # NOTE: qt5-linguist and libusbx-devel package names vary across RHEL versions
+            # (EL7 vs EL8/9/Fedora); adjust per distro version if installation fails.
+            $INSTALL_CMD gcc gcc-c++ make openssl-devel zeromq-devel unbound-devel libsodium-devel libunwind-devel xz-devel readline-devel expat-devel openpgm-devel qt5-linguist hidapi-devel libusbx-devel protobuf-devel protobuf-compiler systemd-devel boost-devel python3 ccache
+        elif [[ $PKG_MANAGER == "pacman" ]]; then
+            $INSTALL_CMD base-devel openssl zeromq unbound libsodium libunwind xz readline expat openpgm qt5-tools hidapi libusb protobuf systemd boost python ccache
+        elif [[ $PKG_MANAGER == "zypper" ]]; then
+            # TODO: verify on openSUSE Leap — package splits/names may differ from listed candidates
+            $INSTALL_CMD gcc gcc-c++ make libopenssl-devel zeromq-devel unbound-devel libsodium-devel libunwind-devel xz-devel readline-devel libexpat-devel openpgm-devel libqt5-linguist libhidapi-devel libusb-1_0-devel libprotobuf-devel protobuf-devel libudev-devel boost-devel python3 ccache
+        fi
+    fi
 fi
 
 # Make sure we have Rust and monerosim binaries in PATH
@@ -322,10 +378,22 @@ if ! python3 -c "import ensurepip" &>/dev/null; then
         PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
         print_status "Installing python${PYTHON_VERSION}-venv..."
         sudo apt-get update && sudo apt-get install -y "python${PYTHON_VERSION}-venv"
+    elif command -v dnf &> /dev/null; then
+        print_error "On RHEL/Fedora, the venv module ships with the main python3 package;"
+        print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo dnf reinstall python3\`)"
+        exit 1
     elif command -v yum &> /dev/null; then
-        sudo yum install -y python3-virtualenv
+        print_error "On RHEL/CentOS, the venv module ships with the main python3 package;"
+        print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo yum reinstall python3\`)"
+        exit 1
     elif command -v pacman &> /dev/null; then
-        sudo pacman -S --noconfirm python-virtualenv
+        print_error "On Arch, the venv module ships with the main python package;"
+        print_error "if ensurepip is missing, try reinstalling python (e.g. \`sudo pacman -S python\`)"
+        exit 1
+    elif command -v zypper &> /dev/null; then
+        print_error "On openSUSE, the venv module ships with the main python3 package;"
+        print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo zypper install -f python3\`)"
+        exit 1
     else
         print_error "Could not install python3-venv automatically"
         print_error "Please install it manually and re-run setup.sh"
@@ -411,10 +479,14 @@ if [[ "$SHADOW_DEPS_NEEDED" == "true" ]]; then
 
     if command -v apt-get &> /dev/null; then
         sudo apt-get update && sudo apt-get install -y libglib2.0-dev clang libclang-dev
+    elif command -v dnf &> /dev/null; then
+        sudo dnf install -y glib2-devel clang clang-devel pkgconfig
     elif command -v yum &> /dev/null; then
         sudo yum install -y glib2-devel clang clang-devel
     elif command -v pacman &> /dev/null; then
         sudo pacman -S --noconfirm glib2 clang
+    elif command -v zypper &> /dev/null; then
+        sudo zypper install -y --no-recommends glib2-devel clang clang-devel pkg-config
     else
         print_error "Could not install Shadow dependencies automatically"
         print_error "Please install libglib2.0-dev, clang, libclang-dev and re-run setup.sh"
@@ -639,16 +711,35 @@ if [[ "$MONERO_DEPS_MISSING" == "true" ]]; then
             libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev \
             libboost-locale-dev libboost-program-options-dev libboost-regex-dev \
             libboost-serialization-dev libboost-system-dev libboost-thread-dev
+    elif command -v dnf &> /dev/null; then
+        # NOTE: openpgm-devel is in EPEL on RHEL/Rocky/Alma (enable EPEL first);
+        # in main repos on Fedora.
+        # NOTE: libusbx-devel name varies by RHEL version (EL7 vs EL8/9/Fedora).
+        sudo dnf install -y \
+            openssl-devel zeromq-devel unbound-devel libsodium-devel \
+            libunwind-devel xz-devel readline-devel expat-devel \
+            openpgm-devel hidapi-devel libusbx-devel protobuf-devel protobuf-compiler \
+            systemd-devel boost-devel
     elif command -v yum &> /dev/null; then
+        # NOTE: openpgm-devel is in EPEL on RHEL/Rocky/Alma (enable EPEL first).
+        # NOTE: libusbx-devel name varies by RHEL version (EL7 vs EL8/9/Fedora).
         sudo yum install -y \
             openssl-devel zeromq-devel unbound-devel libsodium-devel \
             libunwind-devel xz-devel readline-devel expat-devel \
-            hidapi-devel libusbx-devel protobuf-devel protobuf-compiler \
+            openpgm-devel hidapi-devel libusbx-devel protobuf-devel protobuf-compiler \
             systemd-devel boost-devel
     elif command -v pacman &> /dev/null; then
         sudo pacman -S --noconfirm \
             openssl zeromq unbound libsodium libunwind xz readline expat \
             hidapi libusb protobuf systemd boost
+    elif command -v zypper &> /dev/null; then
+        # TODO: verify on openSUSE Leap — package splits/names may differ
+        # (e.g. libusb-1_0-devel vs libusb-1.0-devel, libexpat-devel vs expat-devel).
+        sudo zypper install -y --no-recommends \
+            libopenssl-devel zeromq-devel unbound-devel libsodium-devel \
+            libunwind-devel xz-devel readline-devel libexpat-devel \
+            libhidapi-devel libusb-1_0-devel libprotobuf-devel protobuf-devel \
+            libudev-devel boost-devel
     else
         print_error "Could not install Monero dependencies automatically"
         print_error "Please install libunbound-dev, libsodium-dev, libzmq3-dev, libboost-all-dev"

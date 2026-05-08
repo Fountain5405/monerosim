@@ -43,7 +43,10 @@ from agents.agent_discovery import AgentDiscovery
 
 # Constants
 DEFAULT_BASE_DIR = str(Path(__file__).resolve().parent.parent)
-DEFAULT_LOGS_DIR = "/tmp"  # Daemon logs in /tmp/monero-*/bitmonero.log
+# Daemon logs live under DEFAULT_LOGS_DIR/monero-*/bitmonero.log. The default
+# matches the Shadow process spawn dir (/tmp); MONEROSIM_LOGS_DIR overrides it
+# for portability (PORTABILITY.md F-FS-3 — sibling to MONEROSIM_SHARED_DIR).
+DEFAULT_LOGS_DIR = os.environ.get("MONEROSIM_LOGS_DIR", "/tmp")
 DEFAULT_OUTPUT_DIR = str(Path(DEFAULT_BASE_DIR) / "analysis_results")
 IPAPI_TIMEOUT = 5
 MAX_RETRIES = 3

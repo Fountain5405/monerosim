@@ -2,7 +2,7 @@
 
 A tool for running Monero cryptocurrency network simulations inside the [Shadow](https://shadow.github.io/) network simulator. Monerosim generates Shadow configuration files from a concise YAML description of your desired network, then Shadow executes the simulation using real Monero binaries in a virtual network.
 
-> **Tip:** We recommend running monerosim on a dedicated Linux user account (e.g., `sudo adduser monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
+> **Tip:** We recommend running monerosim on a dedicated Linux user account (e.g., `sudo useradd -m monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
 
 ## How It Works
 
@@ -232,15 +232,41 @@ monerosim/
 
 ### Installation
 
-The setup script handles everything. On a fresh Ubuntu system:
+Install the minimal prerequisites for your distro, then run `setup.sh`.
+
+**Debian/Ubuntu (apt):**
 
 ```bash
-# Install minimal prerequisites
 sudo apt-get update
 sudo apt-get install git build-essential cmake libglib2.0-dev libclang-dev clang
+```
 
+**RHEL/Fedora/Rocky/Alma (dnf):**
+
+```bash
+# On RHEL/Rocky/Alma, enable EPEL first (Fedora has it built in):
+# sudo dnf install epel-release
+sudo dnf install git cmake glib2-devel clang clang-devel
+sudo dnf groupinstall "Development Tools"
+```
+
+**Arch/Manjaro (pacman):**
+
+```bash
+sudo pacman -S --needed git base-devel cmake glib2 clang
+```
+
+**openSUSE (zypper):**
+
+```bash
+sudo zypper install git cmake glib2-devel clang clang-devel gcc gcc-c++ make
+```
+
+After prerequisites are installed, `./setup.sh` handles the rest — it auto-detects your package manager and installs the build dependencies for shadowformonero and Monero.
+
+```bash
 # Optional: use a dedicated user account (recommended)
-sudo adduser monerosim
+sudo useradd -m monerosim
 sudo su - monerosim
 
 # Clone and run setup (builds shadowformonero and Monero from source)

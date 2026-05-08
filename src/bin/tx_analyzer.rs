@@ -33,8 +33,9 @@ struct Cli {
     #[arg(short, long)]
     log_dir: Option<PathBuf>,
 
-    /// Path to shared data directory
-    #[arg(short, long, default_value = "/tmp/monerosim_shared")]
+    /// Path to shared data directory.
+    /// Defaults to `MONEROSIM_SHARED_DIR` env var (or `/tmp/monerosim_shared` if unset).
+    #[arg(short, long, default_value_os_t = PathBuf::from(monerosim::shared_dir()))]
     shared_dir: PathBuf,
 
     /// Output directory for reports
