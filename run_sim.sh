@@ -576,6 +576,17 @@ build_and_generate() {
 
     # Build
     if [[ "$DO_BUILD" == true ]]; then
+        # Ensure cargo is on PATH. setup.sh sources ~/.cargo/env in its own
+        # shell, but those modifications don't propagate to a parent shell
+        # that hasn't re-read .bashrc — so a fresh-install user who runs
+        # ./setup.sh then ./run_sim.sh in the same SSH session would hit
+        # `cargo: command not found` here. rustup-installed cargo lives at
+        # ~/.cargo/bin/cargo via ~/.cargo/env.
+        if ! command -v cargo &> /dev/null && [[ -f "$HOME/.cargo/env" ]]; then
+            # shellcheck source=/dev/null
+            source "$HOME/.cargo/env"
+        fi
+
         log_info "Building monerosim (cargo build --release)..."
         if cargo build --release > "$ARCHIVE_DIR/build.log" 2>&1; then
             log_ok "Build successful"
