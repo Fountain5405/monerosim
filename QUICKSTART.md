@@ -6,6 +6,7 @@
 - Sudo access (for installing system packages)
 - Internet connection (downloads ~1-2 GB of source code)
 - 30 GB free disk space (for building Shadow and Monero from source)
+- 8 GB RAM minimum (will run the quickstart but expect memory pressure); 16 GB recommended for any real work. See [docs/PERFORMANCE_AND_SCALE.md](docs/PERFORMANCE_AND_SCALE.md) for the RAM-vs-agent-count table.
 - Python 3.10+
 
 > **Tip:** We recommend using a dedicated Linux user account for monerosim (e.g., `sudo useradd -m monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.

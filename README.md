@@ -225,7 +225,7 @@ monerosim/
 |-------------|---------|-------------|
 | OS | Linux (Ubuntu 20.04+) | Ubuntu 22.04+ |
 | CPU | 4 cores | 8+ cores |
-| RAM | 8 GB | 16 GB (32 GB for 1000+ agents) |
+| RAM | 8 GB (bare minimum — runs the quickstart only, with memory pressure) | 16 GB for any real work (32 GB for 1000+ agents) — see [docs/PERFORMANCE_AND_SCALE.md](docs/PERFORMANCE_AND_SCALE.md) for the RAM-vs-agent-count table |
 | Storage | 30 GB free | 50+ GB |
 | Rust | 1.80+ | Latest stable |
 | Python | 3.10+ | 3.10+ |
