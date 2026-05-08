@@ -106,7 +106,11 @@ pub fn analyze_upgrade_impact(
 
     // Pre-sort transactions by timestamp for binary-search window filtering
     let mut sorted_txs: Vec<&Transaction> = transactions.iter().collect();
-    sorted_txs.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+    sorted_txs.sort_by(|a, b| {
+        a.timestamp
+            .partial_cmp(&b.timestamp)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // Pre-partition all observation data (one-time O(N*O*log) cost)
     log::info!("Pre-partitioning observation data for {} windows...", windows.len());
@@ -170,13 +174,9 @@ pub fn analyze_upgrade_impact(
     let post_upgrade_summary = create_period_summary("post-upgrade", &by_label);
 
     // Compare pre vs post
-    let changes = if pre_upgrade_summary.is_some() && post_upgrade_summary.is_some() {
-        compare_periods(
-            pre_upgrade_summary.as_ref().unwrap(),
-            post_upgrade_summary.as_ref().unwrap(),
-        )
-    } else {
-        Vec::new()
+    let changes = match (pre_upgrade_summary.as_ref(), post_upgrade_summary.as_ref()) {
+        (Some(pre), Some(post)) => compare_periods(pre, post),
+        _ => Vec::new(),
     };
 
     // Generate assessment

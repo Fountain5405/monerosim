@@ -420,8 +420,8 @@ fn calculate_stats(values: &[usize]) -> DegreeStats {
     let mut sorted = values.to_vec();
     sorted.sort();
 
-    let min = *sorted.first().unwrap();
-    let max = *sorted.last().unwrap();
+    let min = *sorted.first().expect("invariant: sorted is non-empty (checked above)");
+    let max = *sorted.last().expect("invariant: sorted is non-empty (checked above)");
     let sum: usize = sorted.iter().sum();
     let mean = sum as f64 / sorted.len() as f64;
 

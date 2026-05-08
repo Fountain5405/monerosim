@@ -44,7 +44,11 @@ pub(super) fn prepartition_data<'a>(
         .values()
         .flat_map(|nd| nd.tx_observations.iter())
         .collect();
-    tx_obs_sorted.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+    tx_obs_sorted.sort_by(|a, b| {
+        a.timestamp
+            .partial_cmp(&b.timestamp)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let tx_obs_window_ranges: Vec<(usize, usize)> = windows
         .iter()
@@ -60,7 +64,7 @@ pub(super) fn prepartition_data<'a>(
         .values()
         .flat_map(|nd| nd.bandwidth_events.iter().map(|e| (e, e.timestamp)))
         .collect();
-    bw_pairs.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    bw_pairs.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let bw_sorted: Vec<BwRef> = bw_pairs
         .iter()
@@ -84,7 +88,11 @@ pub(super) fn prepartition_data<'a>(
             nd.connection_events.iter().map(move |e| (e, nid.as_str()))
         })
         .collect();
-    all_conn_events.sort_by(|a, b| a.0.timestamp.partial_cmp(&b.0.timestamp).unwrap());
+    all_conn_events.sort_by(|a, b| {
+        a.0.timestamp
+            .partial_cmp(&b.0.timestamp)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // Walk through events once, snapshotting peer counts at each window end
     let mut conn_avg_peer_counts = Vec::with_capacity(windows.len());

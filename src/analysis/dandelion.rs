@@ -255,7 +255,9 @@ fn reconstruct_path(
             break;
         }
 
-        let sender_ip = current_sender_ip.as_ref().unwrap();
+        let sender_ip = current_sender_ip
+            .as_ref()
+            .expect("invariant: current_sender_ip.is_none() handled by break above");
 
         // Find all observations from the current sender that we haven't used
         let from_current: Vec<(usize, &TxObservation)> = sorted_obs
@@ -322,7 +324,13 @@ fn reconstruct_path(
 
     let stem_length = stem_path.len();
     let stem_duration_ms = if stem_path.len() >= 2 {
-        (stem_path.last().unwrap().timestamp - stem_path.first().unwrap().timestamp) * 1000.0
+        let last = stem_path
+            .last()
+            .expect("invariant: stem_path.len() >= 2 (checked above)");
+        let first = stem_path
+            .first()
+            .expect("invariant: stem_path.len() >= 2 (checked above)");
+        (last.timestamp - first.timestamp) * 1000.0
     } else {
         0.0
     };

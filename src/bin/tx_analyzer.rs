@@ -781,57 +781,57 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
     use std::fmt::Write;
     let mut out = String::new();
 
-    writeln!(out, "\n================================================================================").unwrap();
-    writeln!(out, "                      UPGRADE IMPACT ANALYSIS").unwrap();
-    writeln!(out, "================================================================================\n").unwrap();
+    writeln!(out, "\n================================================================================").expect("write to String is infallible");
+    writeln!(out, "                      UPGRADE IMPACT ANALYSIS").expect("write to String is infallible");
+    writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
     // Metadata
     writeln!(out, "Simulation Duration: {:.1}s - {:.1}s ({:.1}s total)",
         report.metadata.simulation_start,
         report.metadata.simulation_end,
-        report.metadata.simulation_end - report.metadata.simulation_start).unwrap();
+        report.metadata.simulation_end - report.metadata.simulation_start).expect("write to String is infallible");
     writeln!(out, "Window Size: {}s ({} windows)",
         report.metadata.window_size_sec as u64,
-        report.metadata.total_windows).unwrap();
-    writeln!(out).unwrap();
+        report.metadata.total_windows).expect("write to String is infallible");
+    writeln!(out).expect("write to String is infallible");
 
     // Upgrade info
     if let Some(ref upgrade_info) = report.upgrade_info {
         if let (Some(start), Some(end)) = (upgrade_info.upgrade_start, upgrade_info.upgrade_end) {
-            writeln!(out, "Upgrade Period: {:.1}s - {:.1}s", start, end).unwrap();
-            writeln!(out, "Nodes Upgraded: {}", upgrade_info.node_upgrades.len()).unwrap();
+            writeln!(out, "Upgrade Period: {:.1}s - {:.1}s", start, end).expect("write to String is infallible");
+            writeln!(out, "Nodes Upgraded: {}", upgrade_info.node_upgrades.len()).expect("write to String is infallible");
             let mut version_line = String::new();
             if let Some(ref pre) = upgrade_info.pre_upgrade_version {
-                write!(version_line, "  {} ", pre).unwrap();
+                write!(version_line, "  {} ", pre).expect("write to String is infallible");
             }
-            write!(version_line, "->").unwrap();
+            write!(version_line, "->").expect("write to String is infallible");
             if let Some(ref post) = upgrade_info.post_upgrade_version {
-                write!(version_line, " {}", post).unwrap();
+                write!(version_line, " {}", post).expect("write to String is infallible");
             }
-            writeln!(out, "{}", version_line).unwrap();
+            writeln!(out, "{}", version_line).expect("write to String is infallible");
         }
     }
 
     // Period summaries
     if let (Some(ref pre), Some(ref post)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
-        writeln!(out).unwrap();
+        writeln!(out).expect("write to String is infallible");
         writeln!(out, "Pre-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
-            pre.start, pre.end, pre.window_count).unwrap();
+            pre.start, pre.end, pre.window_count).expect("write to String is infallible");
         writeln!(out, "Post-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
-            post.start, post.end, post.window_count).unwrap();
+            post.start, post.end, post.window_count).expect("write to String is infallible");
     }
-    writeln!(out).unwrap();
+    writeln!(out).expect("write to String is infallible");
 
     // Metric comparison table
     if !report.changes.is_empty() {
-        writeln!(out, "================================================================================").unwrap();
-        writeln!(out, "                         METRIC COMPARISON").unwrap();
-        writeln!(out, "================================================================================\n").unwrap();
+        writeln!(out, "================================================================================").expect("write to String is infallible");
+        writeln!(out, "                         METRIC COMPARISON").expect("write to String is infallible");
+        writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
         writeln!(out, "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
-            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").unwrap();
+            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").expect("write to String is infallible");
         writeln!(out, "{:-<25}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
-            "", "", "", "", "").unwrap();
+            "", "", "", "", "").expect("write to String is infallible");
 
         for change in &report.changes {
             let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
@@ -862,11 +862,11 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
             };
 
             writeln!(out, "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
-                change.metric_name, pre_str, post_str, change_str, sig_marker).unwrap();
+                change.metric_name, pre_str, post_str, change_str, sig_marker).expect("write to String is infallible");
         }
-        writeln!(out).unwrap();
-        writeln!(out, "* Statistically significant at p < 0.05").unwrap();
-        writeln!(out).unwrap();
+        writeln!(out).expect("write to String is infallible");
+        writeln!(out, "* Statistically significant at p < 0.05").expect("write to String is infallible");
+        writeln!(out).expect("write to String is infallible");
     }
 
     // Synthetic Spy Node Analysis section
@@ -875,19 +875,19 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
             .filter(|c| c.metric_name.starts_with("Spy Acc ("))
             .collect();
         if !spy_changes.is_empty() {
-            writeln!(out, "================================================================================").unwrap();
-            writeln!(out, "                    SYNTHETIC SPY NODE ANALYSIS").unwrap();
-            writeln!(out, "================================================================================\n").unwrap();
+            writeln!(out, "================================================================================").expect("write to String is infallible");
+            writeln!(out, "                    SYNTHETIC SPY NODE ANALYSIS").expect("write to String is infallible");
+            writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
             writeln!(out, "Methodology: For each visibility level, {} random trials select that fraction",
-                report.metadata.spy_trials_per_level).unwrap();
-            writeln!(out, "of nodes as \"monitored\". The spy infers the originator of each TX from the").unwrap();
-            writeln!(out, "earliest observation at a monitored node (source_ip = inferred sender).\n").unwrap();
+                report.metadata.spy_trials_per_level).expect("write to String is infallible");
+            writeln!(out, "of nodes as \"monitored\". The spy infers the originator of each TX from the").expect("write to String is infallible");
+            writeln!(out, "earliest observation at a monitored node (source_ip = inferred sender).\n").expect("write to String is infallible");
 
             writeln!(out, "{:<12} | {:>17} | {:>18} | {:>9} | {:>11}",
-                "Visibility", "Pre-Upgrade Acc", "Post-Upgrade Acc", "Change", "Significant").unwrap();
+                "Visibility", "Pre-Upgrade Acc", "Post-Upgrade Acc", "Change", "Significant").expect("write to String is infallible");
             writeln!(out, "{:-<12}-+-{:-^17}-+-{:-^18}-+-{:-^9}-+-{:-^11}",
-                "", "", "", "", "").unwrap();
+                "", "", "", "", "").expect("write to String is infallible");
 
             for change in &spy_changes {
                 let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
@@ -902,9 +902,9 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
                     change.pre_value * 100.0,
                     change.post_value * 100.0,
                     change.percent_change,
-                    sig_marker).unwrap();
+                    sig_marker).expect("write to String is infallible");
             }
-            writeln!(out).unwrap();
+            writeln!(out).expect("write to String is infallible");
         }
     }
 
@@ -914,18 +914,18 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
             .filter(|c| c.metric_name.starts_with("Stem Len ("))
             .collect();
         if !stem_changes.is_empty() {
-            writeln!(out, "================================================================================").unwrap();
-            writeln!(out, "                  STEM LENGTH BY FLUFF GAP THRESHOLD").unwrap();
-            writeln!(out, "================================================================================\n").unwrap();
+            writeln!(out, "================================================================================").expect("write to String is infallible");
+            writeln!(out, "                  STEM LENGTH BY FLUFF GAP THRESHOLD").expect("write to String is infallible");
+            writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
-            writeln!(out, "Methodology: A fluff broadcast sends to 3+ peers in a tight time cluster.").unwrap();
-            writeln!(out, "The gap threshold controls how tight: smaller thresholds only detect very").unwrap();
-            writeln!(out, "fast broadcasts, larger thresholds tolerate more scheduling jitter.\n").unwrap();
+            writeln!(out, "Methodology: A fluff broadcast sends to 3+ peers in a tight time cluster.").expect("write to String is infallible");
+            writeln!(out, "The gap threshold controls how tight: smaller thresholds only detect very").expect("write to String is infallible");
+            writeln!(out, "fast broadcasts, larger thresholds tolerate more scheduling jitter.\n").expect("write to String is infallible");
 
             writeln!(out, "{:<16} | {:>13} | {:>14} | {:>9} | {:>11}",
-                "Gap Threshold", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").unwrap();
+                "Gap Threshold", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").expect("write to String is infallible");
             writeln!(out, "{:-<16}-+-{:-^13}-+-{:-^14}-+-{:-^9}-+-{:-^11}",
-                "", "", "", "", "").unwrap();
+                "", "", "", "", "").expect("write to String is infallible");
 
             for change in &stem_changes {
                 let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
@@ -940,17 +940,17 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
                     change.pre_value,
                     change.post_value,
                     change.percent_change,
-                    sig_marker).unwrap();
+                    sig_marker).expect("write to String is infallible");
             }
-            writeln!(out).unwrap();
+            writeln!(out).expect("write to String is infallible");
         }
     }
 
     // Interpretation
     if !report.changes.is_empty() {
-        writeln!(out, "================================================================================").unwrap();
-        writeln!(out, "                          INTERPRETATION").unwrap();
-        writeln!(out, "================================================================================\n").unwrap();
+        writeln!(out, "================================================================================").expect("write to String is infallible");
+        writeln!(out, "                          INTERPRETATION").expect("write to String is infallible");
+        writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
         let positive: Vec<_> = report.changes.iter()
             .filter(|c| c.statistically_significant && !c.interpretation.is_empty())
@@ -974,38 +974,38 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
             .collect();
 
         if !positive.is_empty() {
-            writeln!(out, "POSITIVE CHANGES:").unwrap();
+            writeln!(out, "POSITIVE CHANGES:").expect("write to String is infallible");
             for change in &positive {
-                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).unwrap();
+                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).expect("write to String is infallible");
             }
-            writeln!(out).unwrap();
+            writeln!(out).expect("write to String is infallible");
         }
 
         if !negative.is_empty() {
-            writeln!(out, "CONCERNS:").unwrap();
+            writeln!(out, "CONCERNS:").expect("write to String is infallible");
             for change in &negative {
-                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).unwrap();
+                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).expect("write to String is infallible");
             }
-            writeln!(out).unwrap();
+            writeln!(out).expect("write to String is infallible");
         }
 
         if !neutral.is_empty() && neutral.len() < 10 {
-            writeln!(out, "NEUTRAL/NO CHANGE:").unwrap();
+            writeln!(out, "NEUTRAL/NO CHANGE:").expect("write to String is infallible");
             for change in &neutral {
                 if !change.interpretation.is_empty() {
-                    writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).unwrap();
+                    writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).expect("write to String is infallible");
                 } else {
-                    writeln!(out, "  - {}: No significant change detected", change.metric_name).unwrap();
+                    writeln!(out, "  - {}: No significant change detected", change.metric_name).expect("write to String is infallible");
                 }
             }
-            writeln!(out).unwrap();
+            writeln!(out).expect("write to String is infallible");
         }
     }
 
     // Assessment
-    writeln!(out, "================================================================================").unwrap();
-    writeln!(out, "                            ASSESSMENT").unwrap();
-    writeln!(out, "================================================================================\n").unwrap();
+    writeln!(out, "================================================================================").expect("write to String is infallible");
+    writeln!(out, "                            ASSESSMENT").expect("write to String is infallible");
+    writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
     let verdict_str = match report.assessment.verdict {
         analysis::types::UpgradeVerdict::Positive => "POSITIVE - Upgrade improved network behavior",
@@ -1014,43 +1014,43 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
         analysis::types::UpgradeVerdict::Neutral => "NEUTRAL - No significant changes detected",
         analysis::types::UpgradeVerdict::Inconclusive => "INCONCLUSIVE - Insufficient data for assessment",
     };
-    writeln!(out, "Verdict: {}", verdict_str).unwrap();
-    writeln!(out).unwrap();
+    writeln!(out, "Verdict: {}", verdict_str).expect("write to String is infallible");
+    writeln!(out).expect("write to String is infallible");
 
     if !report.assessment.findings.is_empty() {
-        writeln!(out, "Findings:").unwrap();
+        writeln!(out, "Findings:").expect("write to String is infallible");
         for line in &report.assessment.findings {
-            writeln!(out, "  - {}", line).unwrap();
+            writeln!(out, "  - {}", line).expect("write to String is infallible");
         }
-        writeln!(out).unwrap();
+        writeln!(out).expect("write to String is infallible");
     }
 
     if !report.assessment.concerns.is_empty() {
-        writeln!(out, "Concerns:").unwrap();
+        writeln!(out, "Concerns:").expect("write to String is infallible");
         for concern in &report.assessment.concerns {
-            writeln!(out, "  - {}", concern).unwrap();
+            writeln!(out, "  - {}", concern).expect("write to String is infallible");
         }
-        writeln!(out).unwrap();
+        writeln!(out).expect("write to String is infallible");
     }
 
     if !report.assessment.recommendations.is_empty() {
-        writeln!(out, "Recommendations:").unwrap();
+        writeln!(out, "Recommendations:").expect("write to String is infallible");
         for rec in &report.assessment.recommendations {
-            writeln!(out, "  - {}", rec).unwrap();
+            writeln!(out, "  - {}", rec).expect("write to String is infallible");
         }
-        writeln!(out).unwrap();
+        writeln!(out).expect("write to String is infallible");
     }
 
     // Time series summary
     if !report.time_series.is_empty() {
-        writeln!(out, "================================================================================").unwrap();
-        writeln!(out, "                       TIME SERIES SUMMARY").unwrap();
-        writeln!(out, "================================================================================\n").unwrap();
+        writeln!(out, "================================================================================").expect("write to String is infallible");
+        writeln!(out, "                       TIME SERIES SUMMARY").expect("write to String is infallible");
+        writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
         writeln!(out, "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
-            "Window", "TXs", "Spy 20%", "Avg Prop", "Stem Len", "Peer Cnt").unwrap();
+            "Window", "TXs", "Spy 20%", "Avg Prop", "Stem Len", "Peer Cnt").expect("write to String is infallible");
         writeln!(out, "{:-<20}-+-{:-^8}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
-            "", "", "", "", "", "").unwrap();
+            "", "", "", "", "", "").expect("write to String is infallible");
 
         for window in &report.time_series {
             let label = window.window.label.as_deref().unwrap_or("");
@@ -1081,13 +1081,13 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
                 spy_str,
                 prop_str,
                 stem_str,
-                peer_str).unwrap();
+                peer_str).expect("write to String is infallible");
         }
-        writeln!(out).unwrap();
+        writeln!(out).expect("write to String is infallible");
     }
 
-    writeln!(out, "(See upgrade_analysis.json for full time-series data)").unwrap();
-    writeln!(out).unwrap();
+    writeln!(out, "(See upgrade_analysis.json for full time-series data)").expect("write to String is infallible");
+    writeln!(out).expect("write to String is infallible");
 
     out
 }

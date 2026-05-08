@@ -164,7 +164,8 @@ fn calculate_synthetic_spy_accuracy(
                     if true_sender_ip.is_none() {
                         continue;
                     }
-                    let true_ip = true_sender_ip.unwrap();
+                    let true_ip = true_sender_ip
+                        .expect("invariant: true_sender_ip.is_none() handled by continue above");
 
                     // Find earliest observation from a monitored node
                     let earliest = observations
@@ -323,7 +324,8 @@ fn trace_stem_with_threshold(
                 break;
             }
 
-            let sender_ip = current_sender_ip.unwrap();
+            let sender_ip = current_sender_ip
+                .expect("invariant: current_sender_ip.is_none() handled by break above");
 
             let from_current: Vec<(usize, &TxObservation)> = sorted_obs
                 .iter()
@@ -392,7 +394,8 @@ fn calculate_dandelion_for_window(
                 continue;
             }
 
-            let originator_ip = originator_ip.unwrap();
+            let originator_ip =
+                originator_ip.expect("invariant: originator_ip.is_none() handled by continue above");
 
             // Sort observations once
             let mut sorted_obs: Vec<&TxObservation> = observations.iter().copied().collect();
