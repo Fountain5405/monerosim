@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from enum import Enum
 
+from .shared_utils import PUBLIC_NODES_REGISTRY_FILENAME, load_public_nodes_registry
+
 
 # Shared constant (canonical source: base_agent.DEFAULT_SHARED_DIR)
 _DEFAULT_SHARED_DIR = "/tmp/monerosim_shared"
@@ -59,36 +61,31 @@ class PublicNodeDiscovery:
             if (time.time() - self._cache_time) < self._cache_ttl:
                 return self._cache
 
-        registry_path = self.shared_dir / "public_nodes.json"
-
-        if not registry_path.exists():
-            self.logger.warning(f"Public nodes registry not found at {registry_path}")
-            return []
-
         try:
-            with open(registry_path, 'r') as f:
-                registry = json.load(f)
-
-            # Filter to available nodes
-            nodes = registry.get("nodes", [])
-            available_nodes = [
-                node for node in nodes
-                if node.get("status") == "available"
-            ]
-
-            # Update cache
-            self._cache = available_nodes
-            self._cache_time = time.time()
-
-            self.logger.debug(f"Found {len(available_nodes)} available public nodes")
-            return available_nodes
-
+            nodes = load_public_nodes_registry(self.shared_dir, self.logger)
         except json.JSONDecodeError as e:
             self.logger.error(f"Failed to parse public nodes registry: {e}")
             return []
         except Exception as e:
             self.logger.error(f"Failed to read public nodes registry: {e}")
             return []
+
+        if nodes is None:
+            # Registry file absent: preserve "don't cache, return []" behavior.
+            return []
+
+        # Filter to available nodes
+        available_nodes = [
+            node for node in nodes
+            if node.get("status") == "available"
+        ]
+
+        # Update cache
+        self._cache = available_nodes
+        self._cache_time = time.time()
+
+        self.logger.debug(f"Found {len(available_nodes)} available public nodes")
+        return available_nodes
 
     def select_daemon(
         self,
@@ -155,7 +152,7 @@ class PublicNodeDiscovery:
         Returns:
             True if update was successful, False otherwise
         """
-        registry_path = self.shared_dir / "public_nodes.json"
+        registry_path = self.shared_dir / PUBLIC_NODES_REGISTRY_FILENAME
         lock_path = self.shared_dir / "public_nodes.lock"
 
         if registered_at is None:

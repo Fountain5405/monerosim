@@ -8,6 +8,7 @@ from pathlib import Path
 import time
 
 from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
+from .shared_utils import load_public_nodes_registry
 
 
 class AgentDiscoveryError(Exception):
@@ -825,16 +826,11 @@ class AgentDiscovery:
             return cached_data
 
         try:
-            registry_path = self.shared_state_dir / "public_nodes.json"
+            nodes = load_public_nodes_registry(self.shared_state_dir, self.logger)
 
-            if not registry_path.exists():
-                self.logger.warning(f"Public nodes registry not found at {registry_path}")
+            if nodes is None:
+                # Registry file absent: preserve "don't cache, return []" behavior.
                 return []
-
-            with open(registry_path, 'r') as f:
-                registry = json.load(f)
-
-            nodes = registry.get("nodes", [])
 
             # Update cache with all nodes (unfiltered)
             self._caches['public_nodes']['data'] = nodes

@@ -5,11 +5,15 @@ Consolidates duplicated logic that was spread across multiple agent modules:
 - Monero address validation
 - XMR / atomic-unit conversion
 - Deterministic per-agent seeding
+- Public-nodes registry I/O
 """
 
 import hashlib
+import json
+import logging
 import os
-from typing import Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from .constants import (
     ATOMIC_UNITS_PER_XMR,
@@ -19,6 +23,8 @@ from .constants import (
     SEED_HASH_MODULUS,
     VALID_ADDRESS_PREFIXES,
 )
+
+PUBLIC_NODES_REGISTRY_FILENAME = "public_nodes.json"
 
 
 def is_valid_monero_address(address: Optional[str]) -> bool:
@@ -62,3 +68,31 @@ def make_deterministic_seed(agent_id: str) -> int:
     global_seed = int(os.getenv('SIMULATION_SEED', str(DEFAULT_SIMULATION_SEED)))
     agent_hash = int(hashlib.sha256(agent_id.encode()).hexdigest(), 16) % SEED_HASH_MODULUS
     return global_seed + agent_hash
+
+
+def load_public_nodes_registry(
+    shared_dir: Path,
+    logger: logging.Logger,
+) -> Optional[List[Dict[str, Any]]]:
+    """Read ``public_nodes.json`` from *shared_dir* and return its ``nodes`` list.
+
+    Both ``AgentDiscovery`` and ``PublicNodeDiscovery`` independently load this
+    registry; this helper is the single source of truth for the file path,
+    "missing-file" semantics, and JSON shape extraction.
+
+    Returns ``None`` (with a warning log) if the file does not exist, allowing
+    callers to distinguish "registry absent" from "registry empty" so they can
+    skip cache updates in the absent case. ``json.JSONDecodeError`` and other
+    exceptions are propagated so callers can apply their own error-translation
+    policy (e.g. re-raise as ``AgentDiscoveryError`` or log-and-swallow).
+    """
+    registry_path = shared_dir / PUBLIC_NODES_REGISTRY_FILENAME
+
+    if not registry_path.exists():
+        logger.warning(f"Public nodes registry not found at {registry_path}")
+        return None
+
+    with open(registry_path, 'r') as f:
+        registry = json.load(f)
+
+    return registry.get("nodes", [])
