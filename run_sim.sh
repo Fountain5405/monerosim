@@ -933,7 +933,7 @@ exit 0' INT
         output+="Nodes:      ${nodes_online}/${total_expected} online"; lines=$((lines + 1))
 
         if [[ ${#deltas[@]} -gt 0 ]]; then
-            output+="  |  ${nodes_syncing} actively syncing\n"
+            output+="  |  ${nodes_syncing} grew chain in last ${MONITOR_INTERVAL}s\n"
 
             # Compute stats on deltas (helper expects comma-separated --deltas).
             # Use --deltas=... so a leading negative value (rare LMDB shrink)
