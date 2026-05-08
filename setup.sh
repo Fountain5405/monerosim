@@ -912,8 +912,7 @@ print_status "Choose an option:"
 echo "  y/Y - Run the full test simulation"
 echo "  n/N - Skip test simulation and exit setup"
 echo ""
-read -p "Run test simulation? (y/N): " -n 1 -r
-echo ""
+read -p "Run test simulation? (y/N): " -r
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_status "Running test simulation..."
