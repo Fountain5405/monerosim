@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Deep investigation of the monerosim codebase has identified **14 distinct sources of non-determinism** that could cause simulations to produce different outputs across runs. These issues range from critical (unseeded RNG in Python agents) to architectural (Monero's internal PRNG not being seedable).
+Deep investigation of the monerosim codebase has identified **12 distinct sources of non-determinism** that could cause simulations to produce different outputs across runs. These issues range from critical (unseeded RNG in Python agents) to architectural (Monero's internal PRNG not being seedable).
 
 ---
 

@@ -126,8 +126,9 @@ class BaseRPC:
                 else:
                     # If we get other errors, the method exists but had parameter issues
                     result[method] = True
-            except Exception:
-                # For any other exception, assume method is not available
+            except (AttributeError, TypeError, KeyError):
+                # Malformed JSON-RPC response shape (non-dict result, missing keys, etc.)
+                # — assume the method is not available.
                 result[method] = False
         
         self.available_methods.update(result)

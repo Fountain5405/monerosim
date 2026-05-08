@@ -303,7 +303,6 @@ mod tests {
 
         // All agents should be in North America (0-199) or Europe (200-499)
         let boundaries = calculate_region_boundaries(1200);
-        let na_end = boundaries[0].2;
         let eu_end = boundaries[1].2;
 
         for node in result.iter() {

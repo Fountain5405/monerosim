@@ -595,7 +595,7 @@ use crate::utils::ip_utils;
 
     #[test]
     fn test_get_autonomous_systems() {
-        let mut graph = GmlGraph {
+        let graph = GmlGraph {
             nodes: vec![
                 GmlNode { id: 0, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
                 GmlNode { id: 1, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
@@ -679,7 +679,7 @@ use crate::utils::ip_utils;
         assert_eq!(node.get_ip(), None); // Should be None since dedicated field is None
 
         // Test with different keys - these should be None since get_ip() uses dedicated field
-        let mut node2 = GmlNode {
+        let node2 = GmlNode {
             id: 1,
             label: None,
             ip: None,
@@ -688,7 +688,7 @@ use crate::utils::ip_utils;
         };
         assert_eq!(node2.get_ip(), None);
 
-        let mut node3 = GmlNode {
+        let node3 = GmlNode {
             id: 2,
             label: None,
             ip: None,
@@ -698,7 +698,7 @@ use crate::utils::ip_utils;
         assert_eq!(node3.get_ip(), None);
 
         // Test invalid IP - should be None
-        let mut node4 = GmlNode {
+        let node4 = GmlNode {
             id: 3,
             label: None,
             ip: None,
