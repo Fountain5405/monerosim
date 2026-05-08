@@ -326,8 +326,10 @@ impl AsSubnetManager {
         // Get or initialize the host counter for this AS (start at 10)
         let counter = self.host_counters.entry(as_number.to_string()).or_insert(10);
 
-        // Check if we've exhausted the subnet (max 254 for last octet)
-        if *counter >= 255 {
+        // Check if we've exhausted the subnet (max 254 for last octet).
+        // Counter is u8 and increments via saturating_add(1), so 255 is
+        // both the maximum value and the exhausted-sentinel.
+        if *counter == 255 {
             log::warn!("AS {} subnet exhausted (254 hosts assigned)", as_number);
             return None;
         }

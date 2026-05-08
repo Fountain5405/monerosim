@@ -63,9 +63,12 @@ pub fn parse_duration_to_seconds(duration: &str) -> Result<u64, String> {
     Err(format!("Invalid duration format: {}", duration))
 }
 
-/// Extract the numeric part from a duration string by finding the first non-numeric character
+/// Extract the numeric part from a duration string by finding the first non-numeric character.
+///
+/// Uses `char_indices()` so the slice index is a valid byte boundary even when the
+/// non-numeric character is multi-byte (UTF-8).
 fn extract_number_part(duration: &str) -> &str {
-    for (i, c) in duration.chars().enumerate() {
+    for (i, c) in duration.char_indices() {
         if !c.is_ascii_digit() && c != '.' {
             return &duration[0..i];
         }
@@ -126,5 +129,16 @@ mod tests {
         assert!(parse_duration_to_seconds("invalid").is_err());
         assert!(parse_duration_to_seconds("5x").is_err());
         assert!(parse_duration_to_seconds("5minutesx").is_err());
+    }
+
+    #[test]
+    fn test_extract_number_part_handles_multibyte_char_boundary() {
+        // Regression for the char-index vs byte-index bug at duration.rs:70.
+        // Before fix: `chars().enumerate()` yielded a char index, then sliced
+        // the &str with that index — which panics if the non-numeric
+        // character is multi-byte (e.g. CJK, emoji).
+        assert_eq!(extract_number_part("3小时"), "3");
+        assert_eq!(extract_number_part("12.5秒"), "12.5");
+        assert_eq!(extract_number_part("100🦀"), "100");
     }
 }
