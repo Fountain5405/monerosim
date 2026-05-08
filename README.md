@@ -250,6 +250,11 @@ sudo dnf install git cmake glib2-devel clang clang-devel
 sudo dnf groupinstall "Development Tools"
 ```
 
+> Note: RHEL / Rocky / Alma **9** is not currently supported — `simulation_monitor`
+> exits without writing `final_report.json` on EL9, causing Shadow to abort the
+> sim early. EL10 (Rocky 10 / RHEL 10 / Alma 10) and Fedora work. See
+> [PORTABILITY.md](PORTABILITY.md) for details.
+
 **Arch/Manjaro (pacman):**
 
 ```bash

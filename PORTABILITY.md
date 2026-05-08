@@ -568,6 +568,18 @@ decision.
 
 ## 5. Out-of-scope / accepted limitations
 
+- **RHEL / Rocky / Alma 9 (EL9 family).** Tested empirically on Rocky 9 in
+  May 2026. After Wave 1+2 fixes, `setup.sh` runs to completion (Python 3.11
+  auto-installed from AppStream, EPEL+CRB enabled, all build deps resolve)
+  and the Monero + Shadow builds succeed. But the test simulation aborts at
+  ~87% sim time with `simulation_monitor` failing to write `final_report.json`
+  and Shadow exiting code 1. Suspected root cause: a Python 3.11 ABI quirk
+  or SELinux denial that hits the simulation_monitor agent specifically.
+  Out-of-scope unless someone wants to chase that thread; **EL10** (Rocky 10
+  / RHEL 10 / Alma 10) does not exhibit the issue and is the recommended
+  RHEL-family target. The setup.sh changes that auto-handle EL9
+  prerequisites (Python 3.11 install, EPEL+CRB enable) remain in place
+  and benefit anyone who tries to push EL9 support further.
 - **Alpine/musl as a primary target.** Listed in Wave 3 but pursued only
   on demand. Cost: validating two large external codebases (Shadow +
   Monero) build on musl. Worth doing only if there's a concrete user need.

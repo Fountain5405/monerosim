@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Linux system (Ubuntu 22.04+, Debian, Fedora 38+, RHEL 9+ / Rocky / Alma with EPEL, Arch, openSUSE Leap 15.5+)
+- Linux system (Ubuntu 22.04+, Debian, Fedora 38+, RHEL 10+ / Rocky 10+ / Alma 10+ with EPEL, Arch, openSUSE Leap 16). RHEL / Rocky / Alma **9** is currently unsupported — see [PORTABILITY.md](PORTABILITY.md) for details.
 - Sudo access (for installing system packages)
 - Internet connection (downloads ~1-2 GB of source code)
 - 30 GB free disk space (for building Shadow and Monero from source)
