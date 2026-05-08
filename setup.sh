@@ -365,8 +365,21 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
         elif [[ $PKG_MANAGER == "pacman" ]]; then
             $INSTALL_CMD base-devel openssl zeromq unbound libsodium libunwind xz readline expat openpgm qt5-tools hidapi libusb protobuf systemd boost python ccache
         elif [[ $PKG_MANAGER == "zypper" ]]; then
-            # TODO: verify on openSUSE Leap — package splits/names may differ from listed candidates
-            $INSTALL_CMD gcc gcc-c++ make libopenssl-devel zeromq-devel unbound-devel libsodium-devel libunwind-devel xz-devel readline-devel libexpat-devel openpgm-devel libqt5-linguist libhidapi-devel libusb-1_0-devel libprotobuf-devel protobuf-devel libudev-devel boost-devel python3 ccache
+            # NOTE: openSUSE splits Boost into per-component -devel packages.
+            # `boost-devel` alone gives headers + version probe but not the
+            # individual libboost_filesystem/thread/etc. .so files that
+            # Monero's CMake `find_package(Boost COMPONENTS ...)` looks up.
+            # Without these, CMake fails with "Could NOT find Boost (missing:
+            # filesystem thread date_time chrono serialization program_options)"
+            # even though the version probe succeeds. Verified on Leap 16.
+            # NOTE: qt5-linguist dropped — Qt5 deprecated on Leap 16 and not
+            # needed for the headless monerod + monero-wallet-rpc build.
+            # NOTE: if the unversioned libboost_*-devel names don't resolve
+            # on a given Leap version, the versioned form is e.g.
+            # libboost_filesystem1_86_0-devel. Run `zypper search libboost_<comp>`
+            # to find what's actually available.
+            $INSTALL_CMD gcc gcc-c++ make libopenssl-devel zeromq-devel unbound-devel libsodium-devel libunwind-devel xz-devel readline-devel libexpat-devel openpgm-devel libhidapi-devel libusb-1_0-devel libprotobuf-devel protobuf-devel libudev-devel python3 ccache \
+                libboost_filesystem-devel libboost_thread-devel libboost_date_time-devel libboost_chrono-devel libboost_serialization-devel libboost_program_options-devel libboost_regex-devel libboost_system-devel libboost_locale-devel
         fi
     fi
 fi
