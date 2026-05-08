@@ -200,6 +200,24 @@ else
     BULK_INSTALL_NEEDED=true
 fi
 
+# Boost doesn't expose itself via pkg-config, but we still need to verify the
+# component .so files exist — on openSUSE Leap 16 the bulk install is skipped
+# silently when other deps are present, leaving Monero's CMake to fail with
+# "Could NOT find Boost (missing: filesystem thread date_time ...)" later. Probe
+# for libboost_filesystem.so in any of the standard arch-specific lib paths.
+if [[ "$BULK_INSTALL_NEEDED" == "false" ]]; then
+    if ! ls /usr/lib64/libboost_filesystem.so 2>/dev/null \
+        && ! ls /usr/lib/libboost_filesystem.so 2>/dev/null \
+        && ! ls /usr/lib/x86_64-linux-gnu/libboost_filesystem.so 2>/dev/null \
+        ; then
+        # All three lookups silenced; if none returned a path, we need the bulk install.
+        if ! find /usr/lib /usr/lib64 -maxdepth 3 -name 'libboost_filesystem.so' 2>/dev/null | grep -q .; then
+            print_warning "Boost component libraries (libboost_filesystem.so) not found — bulk install will run"
+            BULK_INSTALL_NEEDED=true
+        fi
+    fi
+fi
+
 # Minimum required Rust version
 MIN_RUST_VERSION="1.82.0"
 
