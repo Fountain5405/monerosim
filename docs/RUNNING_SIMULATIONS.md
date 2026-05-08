@@ -94,6 +94,34 @@ There is an LLM-generated analysis tool (`tx-analyzer`, the Rust binary at `targ
 | Agent logs (Python) | `shadow.data/hosts/[hostname]/bash.*.stdout` |
 | Shared state | `/tmp/monerosim_shared/*.json` |
 
+## Interpreting Logs
+
+Shadow emits warnings during normal operation that look alarming but are expected for Monero workloads on every distro. Distinguish noise from real failures using the lists below.
+
+### Expected warnings (safe to ignore)
+
+| Pattern (in `shadow.log`) | What it is |
+|---|---|
+| `[WARN] ... ioctl.c ... ioctl request 21519` | `TIOCGWINSZ` — monerod queries terminal size on stderr at startup. Shadow doesn't fully emulate ttys; the call fails harmlessly. |
+| `[WARN] ... regular_file.c ... /proc/sys/crypto/fips_enabled` | monerod's crypto init reads Linux's FIPS-mode flag. Shadow's regular_file shim falls through to the host's value (always `0` on a normal box), which is what monerod expects. |
+| `[WARN] ... Detected unsupported syscall umask` | Shadow doesn't emulate `umask`. Processes use the default file-creation mask, which is irrelevant to the simulation. |
+| `N managed processes in unexpected final state` | Shadow terminates all processes when `stop_time` is reached. Normal end-of-simulation message. |
+
+These appear on every Monerosim run. They are not portability issues, not configuration-specific, and not a sign that anything is wrong.
+
+### Real failure signals (investigate)
+
+If any of the following appear, the simulation likely has a real problem:
+
+- **Non-zero exit code from `run_sim.sh`** — Shadow itself crashed.
+- **`[ERROR]` lines (not `[WARN]`) in `shadow.log`** — Shadow recorded an error condition. Read surrounding context.
+- **`Killed` or signal-related shutdowns of monerod processes mid-sim** — typically OOM, or a crash. Check `/tmp/monero-[agent]/bitmonero.log` for the cause.
+- **`shadow.data/hosts/*/monerod.*.stdout` empty or missing for many agents** at end of sim — many daemons failed to start or were killed.
+- **`./scripts/check_sim.sh` reporting 0 P2P connections** after the bootstrap window — peer discovery failed; check `peer_mode` and seed nodes.
+- **Non-zero exit from `./scripts/smoke_test.sh`** — Tier 2 baselines (block-height floor, transaction floors, disallowed log patterns from `tests/baselines/`) failed. Indicates a real regression.
+
+For real errors, start with the relevant per-agent log at `/tmp/monero-[agent]/bitmonero.log` — that has the actual failure context, while `shadow.log` aggregates Shadow-level events.
+
 ## Testing Approaches
 
 ### Post-simulation analysis (recommended)
