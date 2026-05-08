@@ -114,6 +114,34 @@ def test_resolve_seed_domain_with_wrong_qtype_returns_nxdomain(resolver):
 # Registry cache TTL
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# MoneroDNSServer wrapper: logger idempotency
+# ---------------------------------------------------------------------------
+
+def test_dns_server_setup_logging_is_idempotent(shared_dir):
+    """Re-instantiating MoneroDNSServer with the same agent_id must not
+    double-add stream handlers to the shared named logger."""
+    from agents.dns_server import MoneroDNSServer
+
+    s1 = MoneroDNSServer(
+        agent_id="dns-test",
+        shared_dir=shared_dir,
+        bind_ip="127.0.0.1",
+        port=0,
+        log_level="INFO",
+    )
+    handlers_after_first = len(s1.logger.handlers)
+
+    s2 = MoneroDNSServer(
+        agent_id="dns-test",
+        shared_dir=shared_dir,
+        bind_ip="127.0.0.1",
+        port=0,
+        log_level="INFO",
+    )
+    assert len(s2.logger.handlers) == handlers_after_first
+
+
 def test_seed_ip_cache_refreshes_after_ttl(resolver, shared_dir, mocker):
     """The seed-IP cache rereads the registry once TTL has elapsed."""
     (shared_dir / "agent_registry.json").write_text(json.dumps({

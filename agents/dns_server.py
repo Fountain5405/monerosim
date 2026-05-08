@@ -246,15 +246,17 @@ class MoneroDNSServer:
     def _setup_logging(self, log_level: str) -> logging.Logger:
         """Setup logging for the DNS server."""
         logger = logging.getLogger(f"DNSServer[{self.agent_id}]")
-        level = getattr(logging, log_level.upper(), logging.INFO)
-        logger.setLevel(level)
 
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            f'%(asctime)s - {self.agent_id} - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        if not logger.handlers:
+            level = getattr(logging, log_level.upper(), logging.INFO)
+            logger.setLevel(level)
+
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                f'%(asctime)s - {self.agent_id} - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
 
         return logger
 
