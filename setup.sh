@@ -299,6 +299,28 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
 
     print_status "Using package manager: $PKG_MANAGER"
 
+    # RHEL family (RHEL/CentOS/Rocky/Alma) splits dev headers across the default
+    # repos plus EPEL (Extra Packages for Enterprise Linux) and CRB / PowerTools
+    # (CodeReady Builder). Enable both before the cache refresh, otherwise
+    # libsodium-devel, libunwind-devel, zeromq-devel, openpgm-devel, protobuf-devel,
+    # ccache, etc. won't be findable. Fedora ships these in its main repos and is
+    # skipped here. CRB is the modern repo name (EL9+); PowerTools is the EL8 name.
+    if [[ "$PKG_MANAGER" == "dnf" || "$PKG_MANAGER" == "yum" ]] && [[ -f /etc/os-release ]]; then
+        # shellcheck source=/dev/null
+        . /etc/os-release
+        case "$ID" in
+            rhel|centos|rocky|almalinux)
+                print_status "Enabling EPEL and CRB/PowerTools for RHEL-family Monero deps..."
+                $INSTALL_CMD dnf-plugins-core epel-release || true
+                sudo dnf config-manager --set-enabled crb 2>/dev/null \
+                    || sudo dnf config-manager --enable crb 2>/dev/null \
+                    || sudo dnf config-manager --set-enabled powertools 2>/dev/null \
+                    || sudo dnf config-manager --enable powertools 2>/dev/null \
+                    || true
+                ;;
+        esac
+    fi
+
     # Update package lists
     print_status "Updating package lists..."
     $UPDATE_CMD
@@ -329,11 +351,17 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
         if [[ $PKG_MANAGER == "apt-get" ]]; then
             $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 python3-venv ccache
         elif [[ $PKG_MANAGER == "yum" || $PKG_MANAGER == "dnf" ]]; then
-            # NOTE: openpgm-devel lives in EPEL on RHEL/Rocky/Alma — enable EPEL first
-            # (e.g. `sudo dnf install -y epel-release`). On Fedora it is in the main repos.
-            # NOTE: qt5-linguist and libusbx-devel package names vary across RHEL versions
-            # (EL7 vs EL8/9/Fedora); adjust per distro version if installation fails.
-            $INSTALL_CMD gcc gcc-c++ make openssl-devel zeromq-devel unbound-devel libsodium-devel libunwind-devel xz-devel readline-devel expat-devel openpgm-devel qt5-linguist hidapi-devel libusbx-devel protobuf-devel protobuf-compiler systemd-devel boost-devel python3 ccache
+            # EPEL + CRB/PowerTools enabled above (for RHEL-family) so that
+            # libsodium-devel, libunwind-devel, zeromq-devel, openpgm-devel,
+            # protobuf-devel, ccache, etc. resolve. On Fedora these are in the
+            # main repos and the EPEL/CRB block is a no-op.
+            # NOTE: qt5-linguist removed — Qt5 is deprecated on EL10 (Rocky 10 /
+            # CentOS Stream 10) and the headless monerod + monero-wallet-rpc
+            # build does not need it. Re-add as a separate `|| true` install
+            # only if --full-monero-compile reveals a hard requirement.
+            # NOTE: libusbx-devel may be libusb1-devel on newer Fedora/EL9+;
+            # adjust per distro version if installation fails.
+            $INSTALL_CMD gcc gcc-c++ make openssl-devel zeromq-devel unbound-devel libsodium-devel libunwind-devel xz-devel readline-devel expat-devel openpgm-devel hidapi-devel libusbx-devel protobuf-devel protobuf-compiler systemd-devel boost-devel python3 ccache
         elif [[ $PKG_MANAGER == "pacman" ]]; then
             $INSTALL_CMD base-devel openssl zeromq unbound libsodium libunwind xz readline expat openpgm qt5-tools hidapi libusb protobuf systemd boost python ccache
         elif [[ $PKG_MANAGER == "zypper" ]]; then
