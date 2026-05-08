@@ -122,9 +122,9 @@ echo -e "${YELLOW}Tip: Consider running this in a screen or tmux session${NC}"
 echo -e "     (${YELLOW}screen${NC} or ${YELLOW}tmux${NC}) to prevent terminal buffer issues during long builds"
 echo ""
 
-# Ask for confirmation
-read -p "Proceed with setup? (Y/n): " -n 1 -r
-echo ""
+# Ask for confirmation. Drain stdin first so a stray keypress doesn't auto-answer.
+read -r -t 0.1 -N 1000 _ 2>/dev/null || true
+read -p "Proceed with setup? (Y/n): " -r
 if [[ $REPLY =~ ^[Nn]$ ]]; then
     print_status "Setup cancelled."
     exit 0
@@ -559,8 +559,9 @@ elif command -v shadow &> /dev/null; then
     echo "  y/Y - Install shadowformonero to $MONEROSIM_BIN (recommended)"
     echo "  n/N - Skip (you'll need shadow installed at ~/.monerosim/bin/shadow)"
     echo ""
-    read -p "Install shadowformonero? (Y/n): " -n 1 -r
-    echo ""
+    # Drain stdin so a stray keypress during the previous build phases doesn't auto-answer.
+    read -r -t 0.1 -N 1000 _ 2>/dev/null || true
+    read -p "Install shadowformonero? (Y/n): " -r
 
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
         print_status "Installing shadowformonero..."
