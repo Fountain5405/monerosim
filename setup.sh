@@ -397,28 +397,62 @@ print_header "Step 2: Installing Python Dependencies"
 
 check_command "python3"
 
-# Check Python version (must be 3.10+)
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "0.0")
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+# Find a Python interpreter >= 3.10. The default `python3` is too old on
+# RHEL/Rocky/Alma 9 (ships 3.9), so probe versioned binaries too. If none is
+# found and we're on EL8/EL9, try installing python3.11 from AppStream.
+find_python_310plus() {
+    local cand
+    for cand in python3 python3.13 python3.12 python3.11 python3.10; do
+        if command -v "$cand" >/dev/null 2>&1 \
+            && "$cand" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+            echo "$cand"
+            return 0
+        fi
+    done
+    return 1
+}
 
-if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 10 ]]; then
-    print_error "Python 3.10+ is required, but you have Python $PYTHON_VERSION"
-    print_error "Please install Python 3.10 or later and try again"
+PYTHON_BIN=$(find_python_310plus || true)
+if [[ -z "$PYTHON_BIN" ]] && [[ -f /etc/os-release ]]; then
+    # shellcheck source=/dev/null
+    . /etc/os-release
+    case "${ID:-}:${VERSION_ID:-}" in
+        rhel:[89]*|centos:[89]*|rocky:[89]*|almalinux:[89]*)
+            print_warning "System python3 is older than 3.10 (default on EL${VERSION_ID%%.*})."
+            print_status "Installing python3.11 from AppStream..."
+            if command -v dnf &>/dev/null; then
+                sudo dnf install -y python3.11 || true
+            elif command -v yum &>/dev/null; then
+                sudo yum install -y python3.11 || true
+            fi
+            PYTHON_BIN=$(find_python_310plus || true)
+            ;;
+    esac
+fi
+
+if [[ -z "$PYTHON_BIN" ]]; then
+    print_error "Python 3.10+ is required but no usable interpreter was found."
+    print_error "Tried: python3, python3.13, python3.12, python3.11, python3.10."
+    print_error "Install one for your distro, e.g.:"
+    print_error "  Debian/Ubuntu: sudo apt install python3.11"
+    print_error "  Rocky/Alma 9:  sudo dnf install python3.11"
+    print_error "  Fedora:        default python3 is already >= 3.10 (reinstall if missing)"
+    print_error "  Arch:          sudo pacman -S python"
     exit 1
 fi
-print_status "Python version check passed: $PYTHON_VERSION"
+
+PYTHON_VERSION=$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+print_status "Python version check passed: $PYTHON_VERSION (using $PYTHON_BIN)"
 
 # Check if python3-venv/ensurepip is available (venv module exists but ensurepip may not)
-if ! python3 -c "import ensurepip" &>/dev/null; then
-    print_warning "python3-venv (ensurepip) is not available"
-    print_status "Attempting to install python3-venv (requires sudo)..."
+if ! "$PYTHON_BIN" -c "import ensurepip" &>/dev/null; then
+    print_warning "$PYTHON_BIN venv (ensurepip) is not available"
+    print_status "Attempting to install the venv module (requires sudo)..."
 
     if command -v apt-get &> /dev/null; then
-        # Get the Python version to install the correct venv package
-        PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-        print_status "Installing python${PYTHON_VERSION}-venv..."
-        sudo apt-get update && sudo apt-get install -y "python${PYTHON_VERSION}-venv"
+        # On Debian/Ubuntu the package name is e.g. python3.11-venv.
+        print_status "Installing ${PYTHON_BIN}-venv..."
+        sudo apt-get update && sudo apt-get install -y "${PYTHON_BIN}-venv"
     elif command -v dnf &> /dev/null; then
         print_error "On RHEL/Fedora, the venv module ships with the main python3 package;"
         print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo dnf reinstall python3\`)"
@@ -442,11 +476,11 @@ if ! python3 -c "import ensurepip" &>/dev/null; then
     fi
 
     # Verify it worked
-    if ! python3 -c "import ensurepip" &>/dev/null; then
-        print_error "Failed to install python3-venv"
+    if ! "$PYTHON_BIN" -c "import ensurepip" &>/dev/null; then
+        print_error "Failed to install the venv module for $PYTHON_BIN"
         exit 1
     fi
-    print_success "python3-venv installed successfully"
+    print_success "venv module for $PYTHON_BIN installed successfully"
 fi
 
 # Check if we have a valid virtual environment
@@ -457,8 +491,8 @@ if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
         print_warning "Found incomplete virtual environment, recreating..."
         rm -rf "$VENV_DIR"
     fi
-    print_status "Creating Python virtual environment..."
-    python3 -m venv "$VENV_DIR"
+    print_status "Creating Python virtual environment with $PYTHON_BIN..."
+    "$PYTHON_BIN" -m venv "$VENV_DIR"
     if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
         print_error "Failed to create Python virtual environment"
         print_error "Please ensure python3-venv is installed and try again"
