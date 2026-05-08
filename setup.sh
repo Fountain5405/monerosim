@@ -917,54 +917,18 @@ read -r -t 0.1 -N 1000 _ 2>/dev/null || true
 read -p "Run test simulation? (y/N): " -r
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_status "Running test simulation..."
-    print_status "You can monitor progress with: tail -f shadow.data/shadow.log"
-    print_status "Or check agent logs in: shadow.data/hosts/*/"
+    print_status "Delegating to ./run_sim.sh — the same path users run day-to-day."
+    print_status "run_sim.sh handles preflight, ramdisk, archiving, OOM detection,"
+    print_status "and live progress display. Scroll up after it finishes for the summary."
+    echo ""
 
-    # Clean up any existing shadow data
-    if [[ -d "shadow.data" ]]; then
-        print_status "Cleaning up previous simulation data..."
-        rm -rf shadow.data/
-    fi
-
-    # Run the simulation (use our shadow binary)
-    if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
-        "$MONEROSIM_BIN/shadow" shadow_output/shadow_agents.yaml
+    if ./run_sim.sh --config test_configs/quickstart.yaml; then
+        print_success "Test simulation completed successfully."
+        print_status "Per-host logs and run summary archived under archived_runs/<latest>/."
+        print_status "For deeper validation: ./scripts/smoke_test.sh quickstart"
     else
-        shadow shadow_output/shadow_agents.yaml
-    fi
-
-    if [[ $? -eq 0 ]]; then
-        print_success "Simulation completed successfully!"
-
-        # Quick analysis of results
-        print_header "Basic Results Analysis"
-
-        if [[ -d "shadow.data/hosts" ]]; then
-            NODE_COUNT=$(ls shadow.data/hosts/ | wc -l)
-            print_status "Simulation created $NODE_COUNT node(s)"
-
-            # Check for successful RPC initialization
-            RPC_SUCCESS=$(grep -r "RPC server initialized OK" shadow.data/hosts/*/monerod.*.stdout 2>/dev/null | wc -l)
-            print_status "Nodes with successful RPC initialization: $RPC_SUCCESS"
-
-            # Check for P2P connections
-            P2P_CONNECTIONS=$(grep -r "Connected success" shadow.data/hosts/*/monerod.*.stdout 2>/dev/null | wc -l)
-            print_status "Successful P2P connections established: $P2P_CONNECTIONS"
-
-            if [[ $RPC_SUCCESS -gt 0 ]]; then
-                print_success "Monero nodes started successfully!"
-            fi
-
-            if [[ $P2P_CONNECTIONS -gt 0 ]]; then
-                print_success "P2P connections are working!"
-            else
-                print_warning "No P2P connections detected - this may be expected for short simulations"
-            fi
-        fi
-    else
-        print_error "Simulation failed"
-        print_status "Check shadow.data/shadow.log for details"
+        print_error "Test simulation failed (run_sim.sh exited non-zero)."
+        print_status "Check archived_runs/<latest>/ for shadow.log, monerosim.log, and per-host stdout."
         exit 1
     fi
 else
