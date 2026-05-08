@@ -142,5 +142,5 @@ python3 -m scripts.ai_config --validate my_config.yaml
 
 - Uses OpenAI-compatible API format (works with Groq, OpenAI, local servers)
 - Config stored in `~/.monerosim/ai_config.yaml`
-- Prompts in `scripts/ai_config/prompts.py`
+- Prompts in `scripts/ai_config/scenario_prompts.py`
 - Validation in `scripts/ai_config/validator.py`

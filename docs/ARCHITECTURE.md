@@ -69,8 +69,8 @@ The Rust core parses a user-written YAML configuration and generates the Shadow 
 
 | Module | Purpose |
 |--------|---------|
-| `config_v2.rs` | Type-safe configuration structures (serde YAML) |
-| `config_loader.rs` | Config file loading, validation, and migration |
+| `config/` | Type-safe configuration structures (serde YAML), validation, defaults |
+| `config_loader.rs` | Config file loading and validation |
 | `orchestrator.rs` | Main orchestration: coordinates all generation steps |
 | `gml_parser.rs` | GML graph format parser for complex topologies |
 
@@ -81,12 +81,11 @@ The Rust core parses a user-written YAML configuration and generates the Shadow 
 | `src/agent/` | Agent lifecycle and processing |
 | `src/ip/` | IP allocation with geographic distribution (6 continents) |
 | `src/process/` | Process configuration (daemon, wallet, agent scripts) |
-| `src/registry/` | Agent and miner registry generation |
 | `src/shadow/` | Shadow YAML output structures |
-| `src/topology/` | Network topology logic and agent distribution |
+| `src/topology/` | Network topology logic, peer connections, and agent distribution |
 | `src/utils/` | Shared utilities (validation, duration parsing, logging) |
-| `src/mining_shim/` | Mining strategy implementations |
 | `src/analysis/` | Transaction routing analysis modules (LLM-generated, unverified) |
+| `src/bin/` | Auxiliary binaries (e.g. `tx_analyzer`) |
 
 ### 2. Python Agent Framework (`agents/`)
 
@@ -97,8 +96,8 @@ Agents are autonomous participants that run inside Shadow alongside monerod and 
 | `base_agent.py` | Abstract base class with lifecycle management |
 | `autonomous_miner.py` | Independent mining with Poisson-distributed block times |
 | `regular_user.py` | Sends transactions at configurable intervals |
-| `miner_distributor.py` | Distributes mining rewards to eligible wallets |
-| `simulation_monitor.py` | Real-time monitoring and status reporting |
+| `miner_distributor/` | Distributes mining rewards to eligible wallets (package) |
+| `simulation_monitor/` | Real-time monitoring and status reporting (package) |
 | `agent_discovery.py` | Dynamic agent discovery via shared state (5-sec TTL cache) |
 | `monero_rpc.py` | RPC client library for monerod and wallet-rpc |
 | `public_node_discovery.py` | Discovers public seed nodes |
@@ -198,7 +197,9 @@ Monerosim uses **autonomous mining** where each miner agent independently genera
 monerosim/
   src/                    # Rust configuration engine
   agents/                 # Python agent framework
-  scripts/                # Utility scripts (analysis, migration, generation)
+  scripts/                # Utility scripts (analysis, generation, smoke wrapper)
+  tests/                  # Rust integration tests + golden/baseline fixtures
+  attic/                  # Ad-hoc / unmaintained tools (see attic/README.md)
   gml_processing/         # CAIDA topology generation
   examples/               # Example configurations
   docs/                   # Documentation

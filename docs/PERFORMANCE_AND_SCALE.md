@@ -183,7 +183,7 @@ biggest available perf wins.
 But monerod's `--log-level 0` silences the very lines our tooling
 needs:
 
-- The live monitor (`agents/simulation_monitor.py`) counts blocks by
+- The live monitor (`agents/simulation_monitor/`) counts blocks by
   parsing `+++++ BLOCK SUCCESSFULLY ADDED` from `bitmonero.log`. That's
   `MINFO()` on the `blockchain` category, which `*:WARNING` (level 0)
   suppresses. Result: post-run summary reports 0 blocks regardless of
@@ -223,7 +223,7 @@ verify:FATAL,serialization:FATAL,perf.*:FATAL
 ```
 
 That set is calibrated against the patterns parsed by
-`agents/simulation_monitor.py` and `src/analysis/log_parser.rs`. If
+`agents/simulation_monitor/` and `src/analysis/log_parser.rs`. If
 either gains a new pattern that needs a different category, the
 `monitor` string should be updated alongside.
 

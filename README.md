@@ -127,12 +127,19 @@ These all run on a virtual host with a geographically-distributed IP address. Th
 
 ### Agent types
 
+User-facing agents you place in the YAML:
+
 | Agent | Script | Purpose |
 |-------|--------|---------|
 | Autonomous miner | `agents.autonomous_miner` | Generates blocks with Poisson-distributed timing |
 | Regular user | `agents.regular_user` | Sends transactions at configurable intervals |
 | Miner distributor | `agents.miner_distributor` | Distributes mining rewards to user wallets |
 | Simulation monitor | `agents.simulation_monitor` | Tracks network stats and block generation |
+
+Infrastructure agents auto-spawned by the orchestrator (not declared in YAML):
+`agents.dns_server` (in-sim DNS for monerod peer discovery). The
+`agents.agent_discovery` and `agents.public_node_discovery` modules are
+shared-state helpers imported by the user-facing agents above.
 
 ### Network topologies
 
@@ -154,28 +161,42 @@ These all run on a virtual host with a geographically-distributed IP address. Th
 monerosim/
   src/                       # Rust configuration engine
     main.rs                  # CLI entry point
-    config_v2.rs             # Configuration structures
+    config/                  # Configuration structures (types, validation, defaults, ...)
     config_loader.rs         # YAML loading and validation
     orchestrator.rs          # Shadow config generation
     gml_parser.rs            # GML topology parser
     agent/                   # Agent lifecycle and processing
+    analysis/                # Post-simulation log analysis (LLM-generated, unverified)
+    bin/                     # Auxiliary binaries (e.g. tx_analyzer)
     ip/                      # Geographic IP allocation
     process/                 # Daemon, wallet, script config
-    topology/                # Network topology logic
-    registry/                # Agent/miner registries
+    topology/                # Network topology logic and peer connections
     shadow/                  # Shadow YAML output
+    utils/                   # Shared utilities (duration parsing, validation, ...)
   agents/                    # Python agent framework
     autonomous_miner.py      # Autonomous mining agent
     regular_user.py          # Transaction-sending user agent
-    miner_distributor.py     # Mining reward distribution
-    simulation_monitor.py    # Real-time monitoring
+    miner_distributor/       # Mining reward distribution (package)
+    simulation_monitor/      # Real-time monitoring (package)
     agent_discovery.py       # Dynamic agent discovery
+    public_node_discovery.py # Public daemon discovery
+    dns_server.py            # In-sim DNS for monerod peer discovery
     base_agent.py            # Base agent class
     monero_rpc.py            # RPC client library
+    test_*.py                # Tier 1 unit tests for the agents
   scripts/                   # Utility scripts
     check_sim.sh             # Real-time simulation status dashboard
     generate_config.py       # Config generator for large simulations
+    config_generation/       # Helpers used by generate_config.py
+    monero_verification.py   # RPC/log verification helpers
+    smoke_test.sh            # Tier 2 smoke wrapper around run_sim.sh
+    smoke_assertions.py      # Stricter post-run assertion checker
+    run_sim_helpers.py       # Python helpers extracted from run_sim.sh
     ai_config/               # LLM-based config generation
+  tests/                     # Rust integration tests + golden/baseline fixtures
+    orchestrator_smoke.rs
+    orchestrator_quickstart.rs
+    baselines/               # Smoke-test baselines (e.g. quickstart_metrics.json)
   attic/                     # Ad-hoc / unmaintained tools (see attic/README.md)
   gml_processing/            # CAIDA topology generation
   examples/                  # Example configurations

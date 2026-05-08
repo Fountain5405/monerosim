@@ -29,8 +29,6 @@ The `--output` flag defaults to `shadow_output` if omitted.
 |------|-------------|
 | `--config <path>` | Path to YAML configuration file (required) |
 | `--output <path>` | Output directory (default: `shadow_output`) |
-| `--migrate` | Migrate old config format to new |
-| `--migrate-output <path>` | Output path for migrated config |
 
 ## Step 2: Run the Simulation
 
