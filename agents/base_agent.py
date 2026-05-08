@@ -264,7 +264,7 @@ class BaseAgent(ABC):
                 try:
                     sleep_duration = self.run_iteration()
                     sleep_duration = sleep_duration or 1.0
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - intentional resilience: keep agent loop alive across any iteration failure (full traceback logged)
                     self.logger.error(f"Error in agent iteration: {e}", exc_info=True)
                     sleep_duration = 5.0  # Default sleep on error
 
@@ -275,7 +275,7 @@ class BaseAgent(ABC):
 
             self.logger.info("Agent run loop finished")
                 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - top-level entry point: log full traceback, then exit non-zero so the process surfaces failure
             self.logger.error(f"Fatal error in agent: {e}", exc_info=True)
             sys.exit(1)
         finally:
@@ -289,7 +289,8 @@ class BaseAgent(ABC):
         if self.wallet_rpc:
             try:
                 self.wallet_rpc.close_wallet()
-            except Exception as e:
+            except RPCError as e:
+                # Cleanup path: a wallet that's already closed/unreachable is fine; just log.
                 self.logger.debug(f"Error closing wallet during cleanup: {e}")
                 
         # Call agent-specific cleanup
@@ -350,7 +351,7 @@ class BaseAgent(ABC):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        except Exception as e:
+        except OSError as e:
             self.logger.error(f"Failed to spawn wallet-rpc process: {e}")
             return False
 
@@ -359,7 +360,7 @@ class BaseAgent(ABC):
             self.wallet_rpc.reset_session()
             self.wallet_rpc.wait_until_ready(max_wait=300)
             self.logger.info("New wallet-rpc process is ready")
-        except Exception as e:
+        except RPCError as e:
             self.logger.error(f"New wallet-rpc process failed to become ready: {e}")
             return False
 
@@ -393,7 +394,7 @@ class BaseAgent(ABC):
                 self.logger.info(f"Wallet reconnected to daemon at {daemon_address}")
             self.wallet_rpc.refresh()
             return True
-        except Exception as e:
+        except RPCError as e:
             self.logger.error(f"Failed to recover wallet connection: {e}")
             return False
 
@@ -417,7 +418,8 @@ class BaseAgent(ABC):
                     pid = max(pids)
                     self.logger.debug(f"pgrep found wallet-rpc PID(s): {pids}, using {pid}")
                     return pid
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError, ValueError) as e:
+            # OSError: pgrep binary missing; SubprocessError: timeout/failed exec; ValueError: int() parse failure
             self.logger.debug(f"pgrep failed: {e}")
 
         # Fallback: scan /proc
@@ -439,7 +441,8 @@ class BaseAgent(ABC):
                 pid = max(pids)
                 self.logger.debug(f"/proc scan found wallet-rpc PID(s): {pids}, using {pid}")
                 return pid
-        except Exception as e:
+        except OSError as e:
+            # os.listdir('/proc') is the only outer call that can fail; per-process errors are caught above.
             self.logger.debug(f"/proc scan failed: {e}")
 
         return None
@@ -555,7 +558,8 @@ class BaseAgent(ABC):
                 # Atomic rename
                 temp_filepath.rename(filepath)
             self.logger.debug(f"Wrote shared state to {filename}")
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
+            # OSError: open()/rename(); TypeError/ValueError: json.dump on un-serializable data.
             self.logger.error(f"Failed to write shared state {filename}: {e}")
             raise
             
@@ -583,7 +587,8 @@ class BaseAgent(ABC):
                     with open(filepath, 'r') as f:
                         return json.load(f)
             return None
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
+            # OSError: missing/unreadable file; JSONDecodeError: corrupt content.
             self.logger.error(f"Failed to read shared state {filename}: {e}")
             return None
 
@@ -619,7 +624,8 @@ class BaseAgent(ABC):
                 finally:
                     fcntl.flock(lock_f, fcntl.LOCK_UN)
             self.logger.debug(f"Appended item to {filename}")
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
+            # OSError: open()/rename(); JSONDecodeError: corrupt prior file; TypeError/ValueError: json.dump.
             self.logger.error(f"Failed to append to shared list {filename}: {e}")
             raise
         
@@ -650,7 +656,8 @@ class BaseAgent(ABC):
                 finally:
                     self.logger.debug(f"Releasing lock on {lock_path}")
                     fcntl.flock(lock_f, fcntl.LOCK_UN)
-        except Exception as e:
+        except OSError as e:
+            # OSError covers open()/flock() failures (incl. permissions, missing dir).
             self.logger.error(f"Failed to create or lock registry file: {e}", exc_info=True)
             return
 
@@ -698,7 +705,8 @@ class BaseAgent(ABC):
                 finally:
                     self.logger.debug(f"Releasing lock on {registry_path}")
                     fcntl.flock(f, fcntl.LOCK_UN)
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
+            # OSError: open()/flock()/truncate(); JSONDecodeError: corrupt registry contents.
             self.logger.error(f"Failed to lock and update registry file: {e}", exc_info=True)
             return
 

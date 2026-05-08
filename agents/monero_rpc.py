@@ -48,7 +48,8 @@ class BaseRPC:
         """
         try:
             self.session.close()
-        except Exception:
+        except (OSError, requests.RequestException):
+            # Tear-down: if the underlying socket was already broken, we don't care.
             pass
         self.session = self._create_session()
         self.logger.info("HTTP session reset - new connection will be established")
@@ -88,7 +89,7 @@ class BaseRPC:
             # We'll use get_version which doesn't require a wallet to be loaded
             self._make_request("get_version")
             return True
-        except Exception as e:
+        except RPCError as e:
             self.logger.debug(f"RPC service not ready: {e}")
             return False
     
@@ -432,7 +433,7 @@ class WalletRPC(BaseRPC):
                             try:
                                 self.logger.info(f"Attempting to reopen wallet '{self.current_wallet}'")
                                 self.open_wallet(self.current_wallet)
-                            except Exception as open_err:
+                            except RPCError as open_err:
                                 self.logger.warning(f"Failed to reopen wallet: {open_err}")
                         
                         continue
@@ -441,7 +442,8 @@ class WalletRPC(BaseRPC):
                         raise WalletError(f"Wallet file not available after {max_retries} retries: {e}")
                 else:
                     raise
-            except Exception as e:
+            except (KeyError, IndexError, TypeError) as e:
+                # Malformed get_address response (missing 'addresses' key, empty list, wrong type).
                 self.logger.error(f"An unexpected error occurred in get_address: {e}")
                 raise
 
