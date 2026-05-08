@@ -912,6 +912,8 @@ print_status "Choose an option:"
 echo "  y/Y - Run the full test simulation"
 echo "  n/N - Skip test simulation and exit setup"
 echo ""
+# Drain stdin so a stray keypress during the long build doesn't auto-answer the prompt.
+read -r -t 0.1 -N 1000 _ 2>/dev/null || true
 read -p "Run test simulation? (y/N): " -r
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
