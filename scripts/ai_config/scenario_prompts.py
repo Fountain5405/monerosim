@@ -148,6 +148,12 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
 2. **Stagger fields**: Add `_stagger` suffix to time fields
    - `start_time: 0s` + `start_time_stagger: 1s` → 0s, 1s, 2s, 3s...
    - Use `auto` for large groups (50+) to enable batched spawning
+   - **Term mapping** — if the user says any of: "batched bootstrap",
+     "batched spawn", "batched startup", "staged bootstrap", "staged spawn",
+     "gradual startup", "phased startup", "ramped startup" — they mean
+     `start_time_stagger: auto` on EVERY range group with 50+ agents (users,
+     relays, spies — not just users). A literal `5s`/`1s` stagger on an
+     800-agent group is NOT batched and is wrong for these requests.
 
 3. **Per-agent lists**: Lists assign values to each agent in order
    - `hashrate: [30, 25, 20, 15, 10]` for 5 miners
@@ -228,6 +234,9 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
 - Increase network size and realism without transacting
 - Config: only daemon and start_time fields (NO wallet, script, hashrate, etc.)
 - Example: `relay-{001..020}:` with `daemon: monerod` and `start_time: 0s`
+- **At scale (50+ relays)**: use `start_time_stagger: auto` so they spawn in
+  batches, same as large user groups. A linear `5s` stagger on 800 relays is
+  a 66-minute linear ramp and is NOT what users mean by "batched bootstrap".
 
 ## Example Scenarios
 
@@ -496,6 +505,9 @@ agents:
 
   # --- 10 Relay Nodes: Daemon-only for P2P block/tx relay ---
   # No wallet or script — just monerod for network realism
+  # NOTE: 5s linear is fine here because count < 50. For 50+ relays, or any
+  # request mentioning "batched bootstrap", use `start_time_stagger: auto`
+  # instead — see the 200-user/800-relay example below.
   relay-{001..010}:
     daemon: monerod
     start_time: 0s
@@ -784,6 +796,96 @@ agents:
     script: agents.simulation_monitor
     poll_interval: 300
 ```
+
+---
+USER: "16 hour simulation, 200 user nodes and 800 relay nodes, batched bootstrap"
+
+NOTE: "batched bootstrap" means `start_time_stagger: auto` on EVERY large
+range group — both the 200 users AND the 800 relays. A literal stagger like
+`5s` on the relays is wrong here.
+
+SCENARIO:
+```yaml
+# === SIMULATION SETTINGS ===
+general:
+  stop_time: 16h                        # Total simulation duration
+  simulation_seed: 12345
+  bootstrap_end_time: auto              # Calculated from agent spawn times
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+# === NETWORK TOPOLOGY ===
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+# === AGENTS ===
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # --- 200 Users: Batched spawning (auto) — NOT linear ---
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s                   # Start after 20 minutes
+    start_time_stagger: auto            # BATCHED — exponential batch growth
+    transaction_interval: 60
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 800 Relay Nodes: Daemon-only, batched spawning (auto) ---
+  # CRITICAL: 800 relays MUST use `auto` for batched bootstrap.
+  # A 5s linear stagger on 800 relays would be a 66-minute linear ramp.
+  relay-{001..800}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto            # BATCHED — same rule as large user group
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
+```
+
+## Final pre-output checklist (read before emitting)
+
+1. **Stagger rule for large groups.** Every range group whose count is 50 or
+   more — users, relays, spies, anything — uses
+   `start_time_stagger: auto`. Not `5s`. Not `1s`. **`auto`.**
+2. **"Batched bootstrap" trigger phrase.** If the user's request contains any
+   of: "batched bootstrap", "batched spawn", "batched startup", "staged
+   bootstrap", "staged spawn", "gradual startup", "phased startup", "ramped
+   startup" — apply rule 1 to EVERY range group in the scenario, regardless
+   of count. The user is explicitly asking for batched behavior.
+3. **Common failure to avoid.** Putting `start_time_stagger: 5s` on an 800-
+   relay group is wrong. A 5s linear stagger on 800 relays is a 66-minute
+   linear ramp, which is the opposite of batched bootstrap. Use `auto`.
+4. **Don't truncate keys.** Every key on its own line must have a `:` and a
+   value. `start_time_st` alone on a line is malformed YAML and will be
+   rejected.
 
 ## Output Format
 

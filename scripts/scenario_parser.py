@@ -444,7 +444,16 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
 
     # Total simulated-network node count used for scale-aware interval
     # calibration (passed to compute_stagger / compute_safe_interval).
-    total_nodes = sum(g.count for g in scenario.agent_groups) + len(scenario.singleton_agents)
+    # Only count agents that actually run monerod — script-only singletons
+    # like miner-distributor / simulation-monitor are not tx-propagation
+    # targets and should not inflate the node count.
+    def _runs_daemon(props: Dict[str, Any]) -> bool:
+        return any(k in props for k in ('daemon', 'daemon_0', 'daemon_1'))
+
+    total_nodes = (
+        sum(g.count for g in scenario.agent_groups if _runs_daemon(g.properties))
+        + sum(1 for p in scenario.singleton_agents.values() if _runs_daemon(p))
+    )
 
     # Track global stagger offsets for upgrade phases (continue across groups).
     # Daemon and wallet upgrades may happen at different times, so each tracks

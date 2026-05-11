@@ -226,6 +226,64 @@ def print_final_menu():
     print()
 
 
+def check_scenario_syntax(yaml_content: str) -> list:
+    """Cheap syntactic sanity check on freshly-generated scenario YAML.
+
+    Catches the kinds of malformed output the LLM occasionally emits before
+    the user sees the View menu — e.g. a key with no value (`start_time_st`
+    on its own line) or YAML that doesn't parse at all.
+
+    Returns a list of human-readable issue strings. Empty list = clean.
+    """
+    import yaml as _yaml
+    issues = []
+
+    for i, raw in enumerate(yaml_content.split('\n'), start=1):
+        stripped = raw.strip()
+        if not stripped or stripped.startswith('#') or stripped.startswith('-'):
+            continue
+        if ':' in stripped:
+            continue
+        # Identifier-only line inside what should be a mapping — almost
+        # always a truncated key (e.g. "start_time_st").
+        if stripped.replace('_', '').replace('-', '').isalnum():
+            issues.append(
+                f"line {i}: '{stripped}' looks like a truncated key "
+                f"(no ':' or value)"
+            )
+
+    try:
+        parsed = _yaml.safe_load(yaml_content)
+    except _yaml.YAMLError as e:
+        issues.append(f"YAML does not parse: {e}")
+        return issues
+
+    # Large-group stagger sanity: a range group with 50+ agents using a
+    # literal stagger (not `auto`) is almost always wrong, and is the
+    # canonical "batched bootstrap was requested but not applied" failure.
+    import re as _re
+    agents = (parsed or {}).get('agents') or {}
+    for key, body in agents.items():
+        if not isinstance(body, dict):
+            continue
+        m = _re.search(r'\{(\d+)\.\.(\d+)\}', str(key))
+        if not m:
+            continue
+        count = int(m.group(2)) - int(m.group(1)) + 1
+        if count < 50:
+            continue
+        stagger = body.get('start_time_stagger')
+        if stagger is None or stagger == 'auto' or stagger == 'batched':
+            continue
+        issues.append(
+            f"agent group '{key}' has {count} agents but "
+            f"start_time_stagger={stagger!r} (not 'auto'). "
+            f"Large groups should use 'auto' for batched spawning."
+        )
+
+    return issues
+
+
 def view_config(yaml_content: str, max_lines: int = 60):
     """Display the YAML config with syntax highlighting."""
     c = Colors
@@ -306,13 +364,20 @@ def print_tips(is_small_model: bool = False):
         print(f"  {c.GREEN}You can be as specific or vague as you like.{c.RESET}")
         print()
 
-    print(f"  {c.DIM}• Minimum 5 initial miners required (hashrates must sum to 100){c.RESET}")
-    print(f"  {c.DIM}• Miners start at time 0 with staggered starts (1s apart){c.RESET}")
-    print(f"  {c.DIM}• Bootstrap period (min 4h, scales with users) relaxes network{c.RESET}")
-    print(f"  {c.DIM}  limits so miners can accumulate XMR for distribution{c.RESET}")
-    print(f"  {c.DIM}• Users begin transacting after bootstrap, once they have funds{c.RESET}")
-    print(f"  {c.DIM}• Upgrade scenarios use daemon phases (v1 -> v2 transitions){c.RESET}")
-    print(f"  {c.DIM}• Spy nodes have high peer counts (100+) for network monitoring{c.RESET}")
+    print(f"  {c.DIM}How the simulator behaves (these are baked in, not knobs you set):{c.RESET}")
+    print(f"  {c.DIM}  • At least 5 miners are always present; hashrates sum to 100{c.RESET}")
+    print(f"  {c.DIM}  • Miners start at simulated time 0 with 1-second staggers{c.RESET}")
+    print(f"  {c.DIM}  • A bootstrap period (min 4h, longer with more users) runs{c.RESET}")
+    print(f"  {c.DIM}    before any user activity so miners can accumulate XMR{c.RESET}")
+    print(f"  {c.DIM}  • Users only begin transacting after bootstrap, once funded{c.RESET}")
+    print(f"  {c.DIM}  • Spy nodes always run with 100+ peer connections{c.RESET}")
+    print()
+    print(f"  {c.DIM}For upgrade scenarios (v1 -> v2 transitions):{c.RESET}")
+    print(f"  {c.DIM}  • You must supply the v2 monerod and monero-wallet-rpc{c.RESET}")
+    print(f"  {c.DIM}    binaries yourself — setup.sh only builds one version{c.RESET}")
+    print(f"  {c.DIM}  • Place them in ~/.monerosim/bin/ with filenames that match{c.RESET}")
+    print(f"  {c.DIM}    what you describe in your prompt (e.g. monerod-v2,{c.RESET}")
+    print(f"  {c.DIM}    monero-wallet-rpc-v2). Mismatched names = run won't launch.{c.RESET}")
     print()
 
 
@@ -370,6 +435,14 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
             continue
 
         print(f"{c.GREEN}Scenario generated!{c.RESET}")
+
+        syntax_issues = check_scenario_syntax(scenario_content)
+        if syntax_issues:
+            print()
+            print(f"{c.YELLOW}Heads up — the generated scenario has likely issues:{c.RESET}")
+            for issue in syntax_issues:
+                print(f"  {c.YELLOW}- {issue}{c.RESET}")
+            print(f"{c.DIM}You can [R]egenerate, [M]odify, or [E]dit to fix.{c.RESET}")
         print()
 
         # === PHASE 2: Scenario review loop ===
@@ -425,6 +498,13 @@ def run_interactive(generator, output_file: str, save_scenario: Optional[str] = 
                     if modified:
                         scenario_content = modified
                         print(f"{c.GREEN}Scenario modified!{c.RESET}")
+                        syntax_issues = check_scenario_syntax(scenario_content)
+                        if syntax_issues:
+                            print()
+                            print(f"{c.YELLOW}Heads up — the modified scenario has likely issues:{c.RESET}")
+                            for issue in syntax_issues:
+                                print(f"  {c.YELLOW}- {issue}{c.RESET}")
+                            print(f"{c.DIM}You can [R]egenerate, [M]odify again, or [E]dit to fix.{c.RESET}")
                     else:
                         print(f"{c.RED}Failed to extract scenario from LLM response.{c.RESET}")
                 except Exception as e:
