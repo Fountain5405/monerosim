@@ -978,18 +978,23 @@ exit 0' INT
         fi
 
         # Block-rate status board: parse miner-001's bitmonero.log tail and
-        # surface the live block height, rolling rate, and time since the
-        # last block. Cheap (tail-only read) so it's safe on every refresh.
+        # surface the live block height, rolling rate, time since the last
+        # block, and a run-cumulative interval histogram. Cheap (tail-only
+        # reads + small JSON state file inside shadow.data/).
         local miner_log="/tmp/monero-miner-001/bitmonero.log"
         if [[ -f "$miner_log" ]]; then
-            local LAST_HEIGHT="" LAST_BLOCK_AGO_SEC="" RECENT_RATE_PER_MIN=""
+            local LAST_HEIGHT="" LAST_BLOCK_AGO_SEC=""
+            local RECENT_RATE_PER_MIN="" RECENT_MIN_PER_BLOCK=""
             local RECENT_RATE_WINDOW_SEC="" RECENT_RATE_BLOCKS=""
+            local HISTOGRAM="" HISTOGRAM_AXIS="" HISTOGRAM_TOTAL=""
+            local block_state="$DATA_DIR/block_histogram_state.json"
             eval "$(python3 scripts/run_sim_helpers.py block-rate \
-                --log "$miner_log" 2>/dev/null || true)"
+                --log "$miner_log" \
+                --state-file "$block_state" 2>/dev/null || true)"
             if [[ -n "$LAST_HEIGHT" ]]; then
                 output+="Chain tip:  height ${LAST_HEIGHT}"
-                if [[ -n "$RECENT_RATE_PER_MIN" ]]; then
-                    output+="  |  ${RECENT_RATE_PER_MIN}/min over last $((RECENT_RATE_WINDOW_SEC / 60))m sim (${RECENT_RATE_BLOCKS} blocks)"
+                if [[ -n "$RECENT_MIN_PER_BLOCK" ]]; then
+                    output+="  |  recent: ${RECENT_MIN_PER_BLOCK} min/block over $((RECENT_RATE_WINDOW_SEC / 60))m (${RECENT_RATE_BLOCKS} blocks, target 2 min/block)"
                 fi
                 output+="\n"; lines=$((lines + 1))
                 if [[ -n "$LAST_BLOCK_AGO_SEC" ]]; then
@@ -999,6 +1004,11 @@ exit 0' INT
                         output+="Last block: ${LAST_BLOCK_AGO_SEC}s sim ago\n"
                     fi
                     lines=$((lines + 1))
+                fi
+                if [[ -n "$HISTOGRAM" ]]; then
+                    output+="Intervals (run total: ${HISTOGRAM_TOTAL}):\n"; lines=$((lines + 1))
+                    output+="  ${DIM}${HISTOGRAM_AXIS}  min${NC}\n"; lines=$((lines + 1))
+                    output+="  ${HISTOGRAM}\n"; lines=$((lines + 1))
                 fi
             fi
         fi

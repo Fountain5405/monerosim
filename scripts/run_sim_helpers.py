@@ -263,17 +263,68 @@ def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
     return 0
 
 
+HIST_WIDTH = 36       # characters in the live-monitor compact histogram
+HIST_MAX_MIN = 12     # rightmost (overflow) bucket = >=12 sim-minutes
+
+
+def _count_char(c: int) -> str:
+    """Render a bucket count to a single character: '.' 1-9 a-g ^."""
+    if c <= 0:
+        return '.'
+    if c <= 9:
+        return str(c)
+    if c <= 16:
+        return chr(ord('a') + c - 10)
+    return '^'
+
+
+def _histogram_bucket(interval_sec: float, width: int = HIST_WIDTH,
+                      max_min: int = HIST_MAX_MIN) -> int:
+    """Map a block-interval (sec) to a histogram column. Last col = overflow."""
+    if interval_sec >= max_min * 60:
+        return width - 1
+    if interval_sec < 0:
+        return 0
+    return int((interval_sec / (max_min * 60)) * (width - 1))
+
+
+def _histogram_axis_label(width: int = HIST_WIDTH,
+                          max_min: int = HIST_MAX_MIN) -> str:
+    """Tick-mark labels under the histogram. Major ticks every 2 sim-minutes."""
+    axis = list(' ' * width)
+    for minute in range(0, max_min, 2):
+        # Distribute labels across columns 0 .. width-4 (last 3 cols reserved
+        # for "12+" or whichever overflow label).
+        pos = int(round((minute / max_min) * (width - 4)))
+        label = str(minute)
+        for i, ch in enumerate(label):
+            if 0 <= pos + i < width:
+                axis[pos + i] = ch
+    overflow_label = f'{max_min}+'
+    start = width - len(overflow_label)
+    for i, ch in enumerate(overflow_label):
+        if 0 <= start + i < width:
+            axis[start + i] = ch
+    return ''.join(axis)
+
+
 def cmd_block_rate(args: argparse.Namespace) -> int:
     """Emit live block-rate stats parsed from a monerod bitmonero.log tail.
 
-    Reads only the last ~100KB of the log for speed (these files grow
-    to hundreds of MB on big runs), extracts (sim_time, height) for the
-    BLOCK SUCCESSFULLY ADDED events found there, and prints shell-friendly
-    KEY=VALUE lines that the live monitor loop in run_sim.sh consumes.
+    Reads only the tail of the log (extending up to 32 MB if no events are
+    found in the initial window) and emits shell-friendly KEY=VALUE lines
+    the live monitor loop in run_sim.sh consumes.
+
+    With --state-file, the helper also maintains a small JSON state file
+    that accumulates a per-bucket histogram of every block interval seen
+    across the entire run. Each call processes only NEW blocks (height >
+    last seen) so the histogram grows monotonically. The state file lives
+    inside shadow.data/ by convention and is archived with the run.
 
     Outputs nothing (exit 0) when the log is missing, empty, or has no
     block events in the tail — callers should just skip the section.
     """
+    import json
     import re
     from datetime import datetime
     from pathlib import Path
@@ -352,9 +403,69 @@ def cmd_block_rate(args: argparse.Namespace) -> int:
         grew = last_h - oldest_h
         if span_sec >= 60 and grew >= 1:
             rate_per_min = grew / (span_sec / 60.0)
+            min_per_block = (span_sec / 60.0) / grew
             print(f'RECENT_RATE_PER_MIN={rate_per_min:.2f}')
+            print(f'RECENT_MIN_PER_BLOCK={min_per_block:.2f}')
             print(f'RECENT_RATE_WINDOW_SEC={int(span_sec)}')
             print(f'RECENT_RATE_BLOCKS={grew}')
+
+    # Stateful histogram: load → process new blocks since last call → save.
+    # No state file means we just emit live stats above with no histogram.
+    if args.state_file:
+        state_path = Path(args.state_file)
+        state = {
+            'last_seen_height': -1,
+            'last_seen_block_time_iso': None,
+            'bucket_counts': [0] * HIST_WIDTH,
+        }
+        if state_path.is_file():
+            try:
+                with state_path.open() as f:
+                    loaded = json.load(f)
+                # Defensive: only accept state with the expected shape and
+                # width — otherwise reset rather than crashing or producing
+                # garbage if the bucket count was tuned mid-run.
+                if (isinstance(loaded, dict)
+                        and 'bucket_counts' in loaded
+                        and len(loaded['bucket_counts']) == HIST_WIDTH):
+                    state = loaded
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Process new blocks (height > last_seen_height), in height order.
+        new_events = sorted(
+            [(t, h) for (t, h) in events if h > state['last_seen_height']],
+            key=lambda e: e[1],
+        )
+        prev_ts: datetime | None = None
+        if state['last_seen_block_time_iso']:
+            try:
+                prev_ts = datetime.fromisoformat(state['last_seen_block_time_iso'])
+            except ValueError:
+                prev_ts = None
+        for ts, h in new_events:
+            if prev_ts is not None:
+                interval_sec = (ts - prev_ts).total_seconds()
+                bucket = _histogram_bucket(interval_sec)
+                state['bucket_counts'][bucket] += 1
+            prev_ts = ts
+            state['last_seen_height'] = h
+            state['last_seen_block_time_iso'] = ts.isoformat()
+
+        try:
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            with state_path.open('w') as f:
+                json.dump(state, f)
+        except OSError:
+            pass
+
+        hist_str = ''.join(_count_char(c) for c in state['bucket_counts'])
+        axis_str = _histogram_axis_label()
+        # Quote values that contain spaces so a shell `eval $(...)` works
+        # correctly (HISTOGRAM_AXIS has lots of internal whitespace).
+        print(f'HISTOGRAM="{hist_str}"')
+        print(f'HISTOGRAM_AXIS="{axis_str}"')
+        print(f'HISTOGRAM_TOTAL={sum(state["bucket_counts"])}')
     return 0
 
 
@@ -661,6 +772,13 @@ def build_parser() -> argparse.ArgumentParser:
         '--log',
         required=True,
         help='Path to a live monerod bitmonero.log file.',
+    )
+    p_br.add_argument(
+        '--state-file',
+        default=None,
+        help='Optional JSON file used to accumulate the run-wide block-interval '
+             'histogram across ticks. Created on first call. Without this flag '
+             'the helper only emits the live rate stats and skips the histogram.',
     )
     p_br.set_defaults(func=cmd_block_rate)
 
