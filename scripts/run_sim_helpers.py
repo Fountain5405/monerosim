@@ -274,9 +274,15 @@ HIST_AXIS_CHARS = '0123456789abcdefg'             # 17 minute labels
 
 
 def _count_char(c: int) -> str:
-    """Render a bucket count to a single character: '.' 1-9 a-g ^."""
+    """Render a bucket count to a single character: 0-9 a-g ^.
+
+    Uses literal '0' for empty cells so the data row's column widths
+    visually match the axis row's labels (which include '0' at the
+    leftmost minute). In monospace fonts '.' and '0' are the same
+    width, but '0' reads as a number in context.
+    """
     if c <= 0:
-        return '.'
+        return '0'
     if c <= 9:
         return str(c)
     if c <= 16:
