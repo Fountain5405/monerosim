@@ -73,6 +73,9 @@ prompt_run_setup() {
         # ends by printing a Simulation Results summary box that the user
         # almost certainly wants to read. Block on Enter rather than auto-
         # advancing to top_menu, which would `clear` the screen immediately.
+        # Drain stdin first so a stray keypress during the ~30-75 min of
+        # setup + quickstart can't auto-fire the prompt.
+        read -r -t 0.1 -N 1000 _ 2>/dev/null || true
         pause "Press Enter to see the menu (scroll up first to review the setup + quickstart output)..."
     else
         say ""
