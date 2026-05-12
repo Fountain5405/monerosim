@@ -103,8 +103,9 @@ Example:
 ```
 ai_config: harden large-group stagger defaults
 
-gpt-4o-mini kept anchoring on the small 10-relay `5s` example
-and applying it to 800-relay groups. The prompt now has an
+The small open-weight Qwen3 model used in practice kept
+anchoring on the small 10-relay `5s` example and applying it to
+800-relay groups. The prompt now has an
 explicit term-mapping for "batched bootstrap" and a final
 pre-output checklist. The validator also flags any 50+ range
 group with a non-`auto` stagger so failures are caught at

@@ -63,9 +63,10 @@ A focused round of release-readiness work driven by `RELEASE_PLAN.md`.
 ### AI config generator hardening (May 11)
 
 - The AI config generator wasn't reliably applying batched-spawn
-  guidance to large groups. `gpt-4o-mini` kept anchoring on the
-  small 10-relay example with a `5s` linear stagger and copying it
-  onto 800-relay groups. Fixed by adding an explicit term-mapping
+  guidance to large groups. The small open-weight model used in
+  practice (Qwen3-class via Ollama) kept anchoring on the small
+  10-relay example with a `5s` linear stagger and copying it onto
+  800-relay groups. Fixed by adding an explicit term-mapping
   for "batched bootstrap" / "staged spawn" phrases, a scale callout
   on the relay-nodes prompt section, a large-relay worked example,
   and a final pre-output checklist. Belt-and-suspenders:
