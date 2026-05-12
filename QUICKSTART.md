@@ -158,7 +158,8 @@ Check analysis output in `analysis_output/` and processed logs in `shadow.data/h
 ## Next Steps
 
 - Read the full [README](README.md) for architecture overview
-- See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all configuration options
+- See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all configuration options (flat YAML format)
+- See [docs/SCENARIO_FORMAT.md](docs/SCENARIO_FORMAT.md) for the compact `.scenario.yaml` format (range expansion, staggers, `auto` timing) — what you'll actually want to write for anything bigger than 10 agents
 - See [docs/RUNNING_SIMULATIONS.md](docs/RUNNING_SIMULATIONS.md) for detailed workflow
 - See [docs/NETWORK_SCALING_GUIDE.md](docs/NETWORK_SCALING_GUIDE.md) for large-scale simulations
 - Check [test_configs/](test_configs/) for more configuration examples (larger scenarios, upgrade flows)
