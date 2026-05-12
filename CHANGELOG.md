@@ -41,13 +41,6 @@ A focused round of release-readiness work driven by `RELEASE_PLAN.md`.
     deliberately out of scope).
   - `CONTRIBUTING.md`: dev environment, the three test tiers in
     order, code style, commit style, PR flow, bug report flow.
-- **CI added (`QG-1`).** `.github/workflows/test.yml` runs on
-  Ubuntu 22.04: `cargo build --release --locked` + `cargo test`
-  (Tier 0 goldens) as a gating check; `cargo clippy` and
-  `cargo fmt --check` advisory-only for now (existing drift tracked
-  as `BUILD-3` / `QG-3` / `QG-5` in `RELEASE_PLAN.md`); Python
-  matrix on 3.10 / 3.11 / 3.12 running `pytest agents/ scripts/
-  tests/`; `shellcheck` advisory on top-level `.sh` scripts.
 - **Portability verified end-to-end on 5 distros** (recorded in
   `PORTABILITY.md` and surfaced in README's Known limitations):
   Ubuntu 24.04, Fedora 43, Debian 13, Rocky 10, openSUSE 16. Each
