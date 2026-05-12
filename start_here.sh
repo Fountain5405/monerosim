@@ -69,7 +69,11 @@ prompt_run_setup() {
             exit $rc
         fi
         ok "Setup done."
-        sleep 1
+        # setup.sh's Step 10 optionally runs the quickstart simulation, which
+        # ends by printing a Simulation Results summary box that the user
+        # almost certainly wants to read. Block on Enter rather than auto-
+        # advancing to top_menu, which would `clear` the screen immediately.
+        pause "Press Enter to see the menu (scroll up first to review the setup + quickstart output)..."
     else
         say ""
         info "When ready: ./setup.sh    then: ./start_here.sh"
