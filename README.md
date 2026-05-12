@@ -52,52 +52,102 @@ cd monerosim
 
 ## Configuration
 
-Configurations are YAML files with three sections: `general`, `network`, and `agents`. Here is a minimal example:
+Configurations are YAML files with three sections: `general`, `network`, and `agents`. Below is `test_configs/quickstart.yaml` verbatim — a working configuration you can save, pass to `./run_sim.sh --config`, and a runnable starting point to copy from for your own scenarios:
 
 ```yaml
 general:
-  stop_time: "2h"
+  stop_time: 6h
   simulation_seed: 12345
-
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 0
+  native_preemption: true
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
 network:
-  path: "gml_processing/1200_nodes_caida_with_loops.gml"
+  path: gml_processing/1200_nodes_caida_with_loops.gml
   peer_mode: Dynamic
-
 agents:
   miner-001:
     daemon: monerod
-    wallet: "monero-wallet-rpc"
+    wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
-    hashrate: 50
-
+    hashrate: 20
+    can_receive_distributions: true
   miner-002:
     daemon: monerod
-    wallet: "monero-wallet-rpc"
+    wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 1s
-    hashrate: 50
-
-  user-001:
-    daemon: monerod
-    wallet: "monero-wallet-rpc"
-    script: agents.regular_user
-    start_time: 1h
-    transaction_interval: 60
-    activity_start_time: 3600
+    hashrate: 20
     can_receive_distributions: true
-
+  miner-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 20
+    can_receive_distributions: true
+  miner-004:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 3s
+    hashrate: 20
+    can_receive_distributions: true
+  miner-005:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 4s
+    hashrate: 20
+    can_receive_distributions: true
+  user-01:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 2400s
+    transaction_interval: 120
+    activity_start_time: 14400
+    can_receive_distributions: true
+  user-02:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 2410s
+    transaction_interval: 120
+    activity_start_time: 14520
+    can_receive_distributions: true
+  user-03:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 2420s
+    transaction_interval: 120
+    activity_start_time: 14640
+    can_receive_distributions: true
+  relay-001:
+    daemon: monerod
+    start_time: 5m
   miner-distributor:
     script: agents.miner_distributor
-    wait_time: 3600
-    initial_fund_amount: "1.0"
-
+    wait_time: 4200
   simulation-monitor:
     script: agents.simulation_monitor
     poll_interval: 300
 ```
 
-Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100. Every config should include both `miner-distributor` (funds users) and `simulation-monitor` (tracks network health and feeds `run_sim.sh`'s live progress display).
+Each agent is identified by its key name (e.g., `miner-001`). Initial miners are identified by having a `hashrate` value; the hashrates of initial miners must sum to exactly 100, with a minimum of 5 initial miners for network stability. Every config should include both `miner-distributor` (funds users) and `simulation-monitor` (tracks network health and feeds `run_sim.sh`'s live progress display). Relay nodes (`relay-001` above) are daemon-only — they participate in P2P propagation without sending transactions and are useful for scaling network size cheaply.
 
 ### Compact scenario format
 
