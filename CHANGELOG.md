@@ -52,6 +52,25 @@ A focused round of release-readiness work driven by `RELEASE_PLAN.md`.
   difficulty, agent-driven Poisson rate control, and why
   `start_mining` can't be used: Shadow's sim-clock only advances on
   syscalls, so a tight hash loop freezes simulated time).
+- **Compact `.scenario.yaml` format documented.** Added a section to
+  the README's Configuration block and a Documentation-index entry
+  pointing at `docs/SCENARIO_FORMAT.md`, plus a matching pointer in
+  `QUICKSTART.md`. Every config in `test_configs/` ships as a
+  `.scenario.yaml` + expanded `.yaml` pair; the docs now make that
+  workflow discoverable instead of leaving readers to write 800
+  agents by hand.
+- **Quick Start progress instruction fixed.** README's
+  "tail -f /tmp/monerosim_shared/monerosim_monitor.log" line was
+  wrong on two counts (run_sim.sh has a built-in live monitor;
+  the path was `shadow.data/`, not `/tmp/monerosim_shared/`).
+  Replaced with an inline comment explaining the built-in monitor
+  and where the archived log ends up.
+- **shadowformonero pinned by tag (`SHADOWFORMONERO_REF=v0.1.0`).**
+  `setup.sh` now clones the fork at the exact tag matching this
+  monerosim release rather than tracking `main`. Bump the variable
+  in lock-step with each subsequent monerosim release. The fork
+  itself now has a README addendum + `CHANGELOG-monerosim-fork.md`
+  explaining the 18 patches it carries over upstream Shadow.
 
 ### AI config generator hardening (May 11)
 
