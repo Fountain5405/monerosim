@@ -94,7 +94,18 @@ agents:
 
 Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100.
 
-See [`test_configs/`](test_configs/) for working configurations — `quickstart.yaml` is the entry point, with progressively larger scenarios alongside it.
+### Compact scenario format
+
+Writing every agent out by hand is fine for 10 miners but tedious for 200 users + 800 relays. Monerosim also accepts a **compact scenario format** (`.scenario.yaml`) that supports range expansion (`user-{001..200}`), staggered start times (`start_time_stagger: auto`), per-agent value lists, and `auto` values for bootstrap-derived timings. The scenario file is expanded to the flat YAML shown above before Shadow consumes it:
+
+```bash
+python3 -m scripts.scenario_parser my.scenario.yaml -o my.yaml
+target/release/monerosim --config my.yaml
+```
+
+Every working config in `test_configs/` ships as a `.scenario.yaml` (compact, hand-edited) and matching `.yaml` (expanded, generated). See [docs/SCENARIO_FORMAT.md](docs/SCENARIO_FORMAT.md) for the full syntax — range expansion, stagger modes (`auto`/`5s`/`batched`/`range`), `auto` timing fields, activity batching, and the `timing:` overrides section.
+
+See [`test_configs/`](test_configs/) for working configurations — `quickstart.scenario.yaml` is the entry point, with progressively larger scenarios alongside it.
 
 For large-scale simulations, use the config generator:
 
@@ -215,7 +226,8 @@ monerosim/
 ## Documentation
 
 - [Quick Start](QUICKSTART.md) - Installation and first simulation
-- [Configuration Guide](docs/CONFIGURATION.md) - Complete configuration reference
+- [Configuration Guide](docs/CONFIGURATION.md) - Complete reference for the flat expanded-YAML config format
+- [Scenario File Format](docs/SCENARIO_FORMAT.md) - Compact `.scenario.yaml` format with range expansion, staggers, and `auto` timing
 - [Architecture](docs/ARCHITECTURE.md) - System design and component details
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
 - [Network Scaling Guide](docs/NETWORK_SCALING_GUIDE.md) - CAIDA topologies and large-scale simulations
