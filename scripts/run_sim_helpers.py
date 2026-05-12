@@ -263,12 +263,14 @@ def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
     return 0
 
 
-# Compact histogram dimensions. One column per sim-minute, 17 cols total
-# (0..16), with both the axis labels and the count cells using the same
-# 0-9 a-g symbol palette so they line up 1:1.
-HIST_WIDTH = 17       # one column per minute
-HIST_MAX_MIN = 16     # rightmost column = "16+" (implicit overflow)
-HIST_AXIS = '0123456789abcdefg'  # length must == HIST_WIDTH
+# Compact histogram dimensions. 4 columns per sim-minute, so each cell
+# is a 15-second bucket. 17 hex-style minute labels (0..g) sit at every
+# 4th column with '-' fillers between them — the axis row and the data
+# row are exactly the same width and line up 1:1.
+SUBCOLS_PER_MIN = 4
+HIST_MAX_MIN = 16    # last column = "16+ min" implicit overflow
+HIST_WIDTH = HIST_MAX_MIN * SUBCOLS_PER_MIN + 1   # 65 cols total
+HIST_AXIS_CHARS = '0123456789abcdefg'             # 17 minute labels
 
 
 def _count_char(c: int) -> str:
@@ -283,18 +285,32 @@ def _count_char(c: int) -> str:
 
 
 def _histogram_bucket(interval_sec: float) -> int:
-    """Map a block-interval (sec) to a histogram column (1 col / sim-minute)."""
+    """Map a block-interval (sec) to a histogram column.
+
+    Cells are 60/SUBCOLS_PER_MIN seconds wide (15s at SUBCOLS_PER_MIN=4).
+    The final column is the overflow for any interval >= HIST_MAX_MIN min.
+    """
     if interval_sec < 0:
         return 0
-    minute = int(interval_sec // 60)
-    if minute >= HIST_WIDTH:
+    sec_per_col = 60.0 / SUBCOLS_PER_MIN
+    col = int(interval_sec // sec_per_col)
+    if col >= HIST_WIDTH:
         return HIST_WIDTH - 1
-    return minute
+    return col
 
 
 def _histogram_axis_label() -> str:
-    """Per-column position labels: '0123456789abcdefg'."""
-    return HIST_AXIS
+    """Axis row: minute labels at every Nth column with '-' fillers.
+
+    Example (SUBCOLS_PER_MIN=4):
+      "0---1---2---3---4---5---6---7---8---9---a---b---c---d---e---f---g"
+    """
+    chars = ['-'] * HIST_WIDTH
+    for i, label_char in enumerate(HIST_AXIS_CHARS):
+        pos = i * SUBCOLS_PER_MIN
+        if pos < HIST_WIDTH:
+            chars[pos] = label_char
+    return ''.join(chars)
 
 
 def cmd_block_rate(args: argparse.Namespace) -> int:
