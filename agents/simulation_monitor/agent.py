@@ -115,6 +115,13 @@ class SimulationMonitorAgent(BaseAgent):
         self.last_daemon_discovery_time = 0  # Track when we last discovered daemon logs
         self.daemon_discovery_interval = 60  # Re-discover daemon logs every 60 seconds
 
+        # Live block-rate tracking: snapshot (sim_time_sec, max_height) each
+        # polling cycle so the live monitor can report a rolling rate and
+        # time-since-last-block. Sim-time only — Shadow's intercepted clock.
+        self.height_history = []          # list of (sim_time, max_height) tuples
+        self.last_height_change_time = None
+        self.last_known_max_height = -1
+
         self.logger.info(f"SimulationMonitorAgent initialized with poll_interval={poll_interval}s")
         self.logger.info(f"Status file: {self.status_file}")
 
@@ -1169,6 +1176,30 @@ class SimulationMonitorAgent(BaseAgent):
         f.write("BLOCKCHAIN STATUS:\n")
         f.write(f"- Average Height: {network_metrics['avg_height']:.0f}\n")
         f.write(f"- Height Range: {network_metrics['min_height']:.0f} - {network_metrics['max_height']:.0f}\n")
+
+        # Update block-rate tracking and emit derived metrics.
+        max_h = int(network_metrics.get('max_height', 0))
+        now_sim = time.time()  # Shadow intercepts; this is sim seconds
+        self.height_history.append((now_sim, max_h))
+        # Keep only the last hour of sim time
+        cutoff = now_sim - 3600
+        self.height_history = [(t, h) for (t, h) in self.height_history if t >= cutoff]
+        if max_h > self.last_known_max_height:
+            self.last_height_change_time = now_sim
+            self.last_known_max_height = max_h
+
+        if len(self.height_history) >= 2:
+            oldest_t, oldest_h = self.height_history[0]
+            span = now_sim - oldest_t
+            grew = max_h - oldest_h
+            if span >= 60 and grew >= 0:
+                rate_per_min = grew / (span / 60.0)
+                f.write(f"- Recent Block Rate: {grew} blocks in last "
+                        f"{span/60:.0f} min ({rate_per_min:.2f}/min, target 0.5/min)\n")
+        if self.last_height_change_time is not None:
+            since = now_sim - self.last_height_change_time
+            if since >= 0:
+                f.write(f"- Time Since Last Block: {since:.0f}s ({since/60:.1f} min)\n")
 
         # Show difficulty
         difficulty = network_metrics.get('network_difficulty', 0)
