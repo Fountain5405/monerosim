@@ -823,8 +823,16 @@ exit 0' INT
 
         # Extract simulated time from Shadow's progress lines
         # Format: "Progress: 1% — simulated: 00:10:50.014/16:00:00, realtime: ..."
-        # Use tac + grep -m1 to efficiently find the last progress line in large logs
-        sim_timestamp=$(tac "$shadow_log" 2>/dev/null | grep -oP -m1 '(?<=simulated: )\d{2}:\d{2}:\d{2}' || true)
+        # Progress lines are emitted ~every wall second, so the latest one is
+        # always near the end of the file. Read a small tail and grow if the
+        # tail somehow didn't contain a Progress line (e.g. during early
+        # bootstrap or after a long stall). Avoids the O(filesize) cost of
+        # `tac` on multi-tens-of-MB shadow.logs.
+        for tail_kb in 64 256 1024 4096; do
+            sim_timestamp=$(tail -c $((tail_kb * 1024)) "$shadow_log" 2>/dev/null \
+                | grep -oP '(?<=simulated: )\d{2}:\d{2}:\d{2}' | tail -1 || true)
+            [[ -n "$sim_timestamp" ]] && break
+        done
 
         if [[ -n "$sim_timestamp" ]]; then
             sim_elapsed_secs=$(python3 scripts/run_sim_helpers.py hms-to-seconds "$sim_timestamp" 2>/dev/null || echo 0)
