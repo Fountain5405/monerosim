@@ -603,21 +603,28 @@ install_shadowformonero() {
     # Setup directory for shadowformonero
     SHADOWFORMONERO_DIR="$SCRIPT_DIR/sibling_repos/shadowformonero"
     SHADOWFORMONERO_REPO="https://github.com/Fountain5405/shadowformonero.git"
+    # Pin shadowformonero to the tag matching this monerosim release.
+    # Bump in lock-step with monerosim's own tag so a given monerosim
+    # version always installs the exact fork commit it was tested against.
+    SHADOWFORMONERO_REF="v0.1.0"
 
     mkdir -p "$SCRIPT_DIR/sibling_repos"
 
     # Clone shadowformonero if not present
     if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
-        print_status "Found local shadowformonero repository"
+        print_status "Found local shadowformonero repository; syncing to $SHADOWFORMONERO_REF"
         cd "$SHADOWFORMONERO_DIR"
-        git checkout main 2>/dev/null || true
-        git pull origin main
+        git fetch origin --tags
+        git checkout "$SHADOWFORMONERO_REF"
     else
-        print_status "Cloning shadowformonero repository..."
+        print_status "Cloning shadowformonero repository (pinned to $SHADOWFORMONERO_REF)..."
         if [[ -d "$SHADOWFORMONERO_DIR" ]]; then
             rm -rf "$SHADOWFORMONERO_DIR"
         fi
-        git clone -b main "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
+        # --branch accepts tags; --depth keeps the clone small since the
+        # full upstream Shadow history is heavy and we only build one ref.
+        git clone --branch "$SHADOWFORMONERO_REF" --depth 1 \
+            "$SHADOWFORMONERO_REPO" "$SHADOWFORMONERO_DIR"
         cd "$SHADOWFORMONERO_DIR"
     fi
 
