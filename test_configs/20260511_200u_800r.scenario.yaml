@@ -1,0 +1,59 @@
+general:
+  stop_time: 16h                       # Total simulation duration
+  simulation_seed: 12345
+  bootstrap_end_time: auto            # Calculated from agent spawn times
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s          # 1s stagger for small miner group
+    hashrate: [20, 20, 20, 20, 20]  # Total = 100 (required for initial miners)
+    can_receive_distributions: true
+
+  # --- 200 Users: Batched spawning (auto) ---
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s               # Start after 20 minutes
+    start_time_stagger: auto        # BATCHED - exponential batch growth
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 800 Relay Nodes: Daemon-only, batched spawning (auto) ---
+  # No wallet or script - just monerod for network realism
+  relay-{001..800}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto        # BATCHED - same rule as large user group
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
