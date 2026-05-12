@@ -271,6 +271,7 @@ SUBCOLS_PER_MIN = 4
 HIST_MAX_MIN = 16    # last column = "16+ min" implicit overflow
 HIST_WIDTH = HIST_MAX_MIN * SUBCOLS_PER_MIN + 1   # 65 cols total
 HIST_AXIS_CHARS = '0123456789abcdefg'             # 17 minute labels
+HIST_RECENT_N = 30   # sliding window for the "last N blocks" row
 
 
 def _count_char(c: int) -> str:
@@ -424,10 +425,11 @@ def cmd_block_rate(args: argparse.Namespace) -> int:
     # No state file means we just emit live stats above with no histogram.
     if args.state_file:
         state_path = Path(args.state_file)
-        state = {
+        state: dict = {
             'last_seen_height': -1,
             'last_seen_block_time_iso': None,
             'bucket_counts': [0] * HIST_WIDTH,
+            'recent_intervals': [],  # rolling window of last N interval seconds
         }
         if state_path.is_file():
             try:
@@ -440,6 +442,7 @@ def cmd_block_rate(args: argparse.Namespace) -> int:
                         and 'bucket_counts' in loaded
                         and len(loaded['bucket_counts']) == HIST_WIDTH):
                     state = loaded
+                    state.setdefault('recent_intervals', [])
             except (json.JSONDecodeError, OSError):
                 pass
 
@@ -457,11 +460,15 @@ def cmd_block_rate(args: argparse.Namespace) -> int:
         for ts, h in new_events:
             if prev_ts is not None:
                 interval_sec = (ts - prev_ts).total_seconds()
-                bucket = _histogram_bucket(interval_sec)
-                state['bucket_counts'][bucket] += 1
+                state['bucket_counts'][_histogram_bucket(interval_sec)] += 1
+                state['recent_intervals'].append(interval_sec)
             prev_ts = ts
             state['last_seen_height'] = h
             state['last_seen_block_time_iso'] = ts.isoformat()
+
+        # Trim the recent-intervals window to the last N blocks.
+        if len(state['recent_intervals']) > HIST_RECENT_N:
+            state['recent_intervals'] = state['recent_intervals'][-HIST_RECENT_N:]
 
         try:
             state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -470,13 +477,24 @@ def cmd_block_rate(args: argparse.Namespace) -> int:
         except OSError:
             pass
 
-        hist_str = ''.join(_count_char(c) for c in state['bucket_counts'])
         axis_str = _histogram_axis_label()
-        # Quote values that contain spaces so a shell `eval $(...)` works
-        # correctly (HISTOGRAM_AXIS has lots of internal whitespace).
+        hist_str = ''.join(_count_char(c) for c in state['bucket_counts'])
+
+        # Build the "last N blocks" histogram fresh from the rolling window.
+        recent_counts = [0] * HIST_WIDTH
+        for sec in state['recent_intervals']:
+            recent_counts[_histogram_bucket(sec)] += 1
+        hist_recent_str = ''.join(_count_char(c) for c in recent_counts)
+        n_recent = len(state['recent_intervals'])
+
+        # Quote values that contain spaces (HISTOGRAM_AXIS has '-' fillers
+        # but no whitespace; quoting just for safety / shell-eval clarity).
         print(f'HISTOGRAM="{hist_str}"')
         print(f'HISTOGRAM_AXIS="{axis_str}"')
         print(f'HISTOGRAM_TOTAL={sum(state["bucket_counts"])}')
+        print(f'HISTOGRAM_RECENT="{hist_recent_str}"')
+        print(f'HISTOGRAM_RECENT_N={n_recent}')
+        print(f'HISTOGRAM_RECENT_WINDOW={HIST_RECENT_N}')
     return 0
 
 

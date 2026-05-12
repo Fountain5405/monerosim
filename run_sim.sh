@@ -987,6 +987,7 @@ exit 0' INT
             local RECENT_RATE_PER_MIN="" RECENT_MIN_PER_BLOCK=""
             local RECENT_RATE_WINDOW_SEC="" RECENT_RATE_BLOCKS=""
             local HISTOGRAM="" HISTOGRAM_AXIS="" HISTOGRAM_TOTAL=""
+            local HISTOGRAM_RECENT="" HISTOGRAM_RECENT_N="" HISTOGRAM_RECENT_WINDOW=""
             local block_state="$DATA_DIR/block_histogram_state.json"
             eval "$(python3 scripts/run_sim_helpers.py block-rate \
                 --log "$miner_log" \
@@ -1006,9 +1007,12 @@ exit 0' INT
                     lines=$((lines + 1))
                 fi
                 if [[ -n "$HISTOGRAM" ]]; then
-                    output+="Intervals (run total: ${HISTOGRAM_TOTAL}):\n"; lines=$((lines + 1))
+                    output+="Intervals  ${DIM}(min interval per block; cell = 15s)${NC}\n"; lines=$((lines + 1))
                     output+="  ${DIM}${HISTOGRAM_AXIS}  min${NC}\n"; lines=$((lines + 1))
-                    output+="  ${HISTOGRAM}\n"; lines=$((lines + 1))
+                    output+="  ${HISTOGRAM}  ${DIM}(run total: ${HISTOGRAM_TOTAL})${NC}\n"; lines=$((lines + 1))
+                    if [[ -n "$HISTOGRAM_RECENT" && "$HISTOGRAM_RECENT_N" -gt 0 ]]; then
+                        output+="  ${HISTOGRAM_RECENT}  ${DIM}(last ${HISTOGRAM_RECENT_N} of ${HISTOGRAM_RECENT_WINDOW})${NC}\n"; lines=$((lines + 1))
+                    fi
                 fi
             fi
         fi
