@@ -1,0 +1,78 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref (e.g. force-push to a PR branch).
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build (release)
+        run: cargo build --release --locked
+
+      - name: Tests (Tier 0 goldens)
+        run: cargo test --release --locked
+
+      # Clippy and rustfmt are advisory for now — there's existing drift
+      # tracked as BUILD-3 / QG-3 / QG-5 in RELEASE_PLAN.md. Once the
+      # backlog is cleared, drop the `|| true` and the warning suppression
+      # so these gate the build.
+      - name: Clippy (advisory)
+        run: |
+          cargo clippy --release --locked --all-targets -- -D warnings \
+            || echo "::warning::clippy reported issues (advisory); see BUILD-3"
+
+      - name: rustfmt (advisory)
+        run: |
+          cargo fmt --all -- --check \
+            || echo "::warning::rustfmt reported issues (advisory); see QG-5"
+
+  python:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package + dev deps
+        run: pip install -e .[dev]
+
+      - name: pytest (Tier 1 agent / scripts / tests)
+        run: pytest agents/ scripts/ tests/ -v
+
+  shellcheck:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run shellcheck on top-level .sh scripts
+        # Top-level only. scripts/*.sh have known historic warnings we
+        # haven't audited yet; revisit before adding them here.
+        run: |
+          shellcheck setup.sh run_sim.sh update.sh smart_config_tool.sh \
+            || { echo "::warning::shellcheck found issues; not failing the build yet"; exit 0; }

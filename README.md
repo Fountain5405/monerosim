@@ -1,5 +1,11 @@
 # Monerosim
 
+**Status:** 0.1.0 — public beta. Config formats and CLI behavior may
+change between minor versions (0.1.x → 0.2.0); patch releases
+(0.1.0 → 0.1.1) are bug-fix only and config-compatible. Production
+use is discouraged. Pin to a tagged release if you need stability.
+See [Known limitations](#known-limitations) below before relying on it.
+
 A tool for running Monero cryptocurrency network simulations inside the [Shadow](https://shadow.github.io/) network simulator. Monerosim generates Shadow configuration files from a concise YAML description of your desired network, then Shadow executes the simulation using real Monero binaries in a virtual network.
 
 > **Tip:** We recommend running monerosim on a dedicated Linux user account (e.g., `sudo useradd -m monerosim`). Monerosim manages several daemons, writes to `/tmp`, and cleans up simulation state between runs. A dedicated user keeps things isolated from your other work.
@@ -319,15 +325,68 @@ Run it pre-release and after non-trivial changes to the agents or orchestrator. 
 
 Baselines live at `tests/baselines/<scenario>_metrics.json` and capture the expected envelope (wall-time cap, height floor, transaction floors, etc.) for that scenario. To add or refresh one, run a known-good simulation, then copy the canonical metrics from the resulting `archived_runs/<TS>_<scenario>/summary.txt` into a new `<scenario>_metrics.json` (see the existing quickstart baseline for the schema).
 
+## Known limitations
+
+A short list of things to know before you depend on monerosim. See
+[CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and
+[PORTABILITY.md](PORTABILITY.md) for more.
+
+**Platform**
+
+- Linux only — Shadow itself is Linux-only.
+- Glibc-only. Alpine / musl distributions are out of scope.
+- RHEL / Rocky / Alma **9** is unsupported (see the Requirements section
+  above). EL10 and Fedora work.
+- Supported targets: Ubuntu 22.04+, Debian 12+, Fedora 38+, RHEL 10+ /
+  Rocky 10+ / Alma 10+ (with EPEL), Arch Linux, openSUSE Leap 16+.
+
+**Scale & resources**
+
+- 8 GB RAM is the floor for the quickstart only; 16 GB minimum for any
+  real work, 32 GB+ recommended for 1000+ agents. See
+  [docs/PERFORMANCE_AND_SCALE.md](docs/PERFORMANCE_AND_SCALE.md) for
+  the RAM-vs-agent-count guidance.
+- Shadow simulates slower than real time, with the wall-time-to-sim-time
+  ratio growing with agent count. A 16h simulation on 1000 agents takes
+  roughly the same wall clock to run.
+
+**Stability & API**
+
+- Config schema (`monerosim --config` YAML keys) and CLI flags are not
+  frozen. Breaking changes can appear on any 0.x.0 minor bump.
+- Determinism is asserted at small scale but has not been validated at
+  1000+ agents.
+- `tx-analyzer` output is LLM-assisted and unverified. Treat results as
+  exploratory, not authoritative.
+- No CI in this beta. Tests exist (`cargo test`, `pytest`, the Tier 2
+  smoke wrapper) but are not enforced automatically on push/PR yet.
+
+**Mid-cleanup code-quality caveats**
+
+- `.unwrap()` density in Rust paths is higher than ideal; some error
+  conditions will surface as panics rather than user-facing context.
+  See [AUDIT.md](AUDIT.md) for the full list of identified-but-deferred
+  cleanup items.
+
 ## Contributing
 
-1. Fork the repository and clone locally
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Run tests (`cargo test`)
-4. Commit with clear, descriptive messages
-5. Push and submit a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the test-tier workflow,
+commit style, and how to refresh the orchestrator goldens. Short
+version:
 
-Code style: Rust uses `cargo fmt` and `cargo clippy`. Python follows PEP 8 (use `black`).
+1. Fork and clone.
+2. Create a feature branch (`git checkout -b feature/your-feature`).
+3. Run the tests: `cargo test` (Rust), `pytest` (Python), and
+   `./scripts/smoke_test.sh` (Shadow end-to-end) before pushing.
+4. Commit with clear, descriptive messages.
+5. Submit a pull request.
+
+Code style: Rust uses `cargo fmt` and `cargo clippy`. Python follows
+PEP 8 (use `black`).
+
+## Security
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## License
 

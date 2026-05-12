@@ -634,8 +634,26 @@ build_and_generate() {
 run_simulation() {
     log_step "Phase 3: Starting Simulation"
 
-    # Clean old simulation data
+    # Clean old simulation data.
+    # Safety guard: refuse to recursively delete $DATA_DIR unless it lives
+    # under the project tree ($SCRIPT_DIR) or under /tmp. A user who passes
+    # --data-dir /scratch/foo might be pointing us at a real directory of
+    # theirs; we shouldn't silently wipe it without intent. The same path
+    # gets archived intact by archive_simulation() at end-of-run, so a real
+    # workflow should already be safe; this guard catches typos.
     log_info "Cleaning previous simulation data..."
+    if [[ -d "$DATA_DIR" ]]; then
+        data_abs="$(readlink -f "$DATA_DIR")"
+        script_abs="$(readlink -f "$SCRIPT_DIR")"
+        if [[ "$data_abs" != "$script_abs"/* && "$data_abs" != /tmp/* ]]; then
+            log_err "Refusing to 'rm -rf' $DATA_DIR — path is outside the"
+            log_err "project tree ($SCRIPT_DIR) and outside /tmp."
+            log_err "If you really want to delete it, remove it manually"
+            log_err "before re-running, or pick a --data-dir inside the"
+            log_err "project tree or /tmp."
+            exit 1
+        fi
+    fi
     rm -rf "$DATA_DIR" shadow.log
 
     # Start Shadow in its own process group (via setsid) so Ctrl+C won't reach it
