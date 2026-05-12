@@ -1,6 +1,82 @@
 # Changelog
 
-## Unreleased
+## [0.1.0] — 2026-05-12
+
+First public beta. The codebase is at a stable point after several
+months of cleanup, refactor, test-infrastructure, and portability
+work; this tag marks "good enough to share."
+
+### Release prep (May 11-12)
+
+A focused round of release-readiness work driven by `RELEASE_PLAN.md`.
+
+- **Project identity finalized.** `Cargo.toml` + `pyproject.toml`
+  authors set to `gingeropolous <gingeropolous@gmail.com>`,
+  descriptions aligned across both manifests, repository / homepage
+  / documentation / keywords / categories added to `Cargo.toml`.
+- **Beta signal added to README.** Status banner near the top
+  declaring 0.1.0 beta, the stability promise (breaking changes only
+  on minor bumps 0.x.0, not on patch 0.x.y), and a pointer to the
+  new Known limitations section that covers platform support, scale
+  / resource appetite, API stability, and mid-cleanup code-quality
+  caveats from `AUDIT.md`.
+- **Examples folder deleted (`DOC-1` / `DOC-2`).** The three
+  long-stale configs and the broken `generate_caida_topology.sh`
+  wrapper are gone. Production flow is `test_configs/` (working
+  configs) + `gml_processing/` (topology generation). The
+  `200u_800r` scenario from the May 11 benchmark is committed as the
+  canonical large-scale reference. `README.md`, `QUICKSTART.md`,
+  `docs/ARCHITECTURE.md`, `docs/CONFIGURATION.md`, and
+  `docs/NETWORK_SCALING_GUIDE.md` all re-pointed.
+- **Hardcoded `/home/lever65` removed from `scripts/scaling_sweep.sh`**
+  — `pkill` patterns now use `${HOME}/.monerosim/bin/...`.
+- **`run_sim.sh` destructive-ops guard.** Refuses to `rm -rf
+  $DATA_DIR` if `--data-dir` resolves outside both the project tree
+  and `/tmp`. Catches typos that would otherwise silently wipe a
+  user-supplied directory.
+- **New files for open-source consumption.**
+  - `SECURITY.md`: vulnerability reporting to
+    `gingeropolous@gmail.com`, coordinated-disclosure framing, scope
+    and non-scope notes (upstream Monero / Shadow issues are
+    deliberately out of scope).
+  - `CONTRIBUTING.md`: dev environment, the three test tiers in
+    order, code style, commit style, PR flow, bug report flow.
+- **CI added (`QG-1`).** `.github/workflows/test.yml` runs on
+  Ubuntu 22.04: `cargo build --release --locked` + `cargo test`
+  (Tier 0 goldens) as a gating check; `cargo clippy` and
+  `cargo fmt --check` advisory-only for now (existing drift tracked
+  as `BUILD-3` / `QG-3` / `QG-5` in `RELEASE_PLAN.md`); Python
+  matrix on 3.10 / 3.11 / 3.12 running `pytest agents/ scripts/
+  tests/`; `shellcheck` advisory on top-level `.sh` scripts.
+- **Portability verified end-to-end on 5 distros** (recorded in
+  `PORTABILITY.md` and surfaced in README's Known limitations):
+  Ubuntu 24.04, Fedora 43, Debian 13, Rocky 10, openSUSE 16. Each
+  ran `setup.sh` to completion followed by a successful quickstart
+  simulation. RHEL/Rocky/Alma **9** remains explicitly unsupported.
+- **Planning artifacts committed.** `AUDIT.md`, `RELEASE_PLAN.md`,
+  and `docs/20260512_how_pow_works.md` (a walkthrough of how block
+  production works in the simulator — real RandomX PoW at regtest
+  difficulty, agent-driven Poisson rate control, and why
+  `start_mining` can't be used: Shadow's sim-clock only advances on
+  syscalls, so a tight hash loop freezes simulated time).
+
+### AI config generator hardening (May 11)
+
+- The AI config generator wasn't reliably applying batched-spawn
+  guidance to large groups. `gpt-4o-mini` kept anchoring on the
+  small 10-relay example with a `5s` linear stagger and copying it
+  onto 800-relay groups. Fixed by adding an explicit term-mapping
+  for "batched bootstrap" / "staged spawn" phrases, a scale callout
+  on the relay-nodes prompt section, a large-relay worked example,
+  and a final pre-output checklist. Belt-and-suspenders:
+  `check_scenario_syntax()` now runs right after generation and
+  flags truncated keys, unparseable YAML, **and** any 50+ range
+  group with a non-`auto` stagger.
+- `scenario_parser`: `total_nodes` (the calibrator's `num_nodes`
+  input) now counts only daemon-running agents. Script-only
+  singletons like `miner-distributor` and `simulation-monitor` are
+  not tx-propagation targets and were inflating the calibrator's
+  per-tx propagation cost slightly.
 
 ### Audit-driven cleanup, refactor, and test infrastructure (May 7-8)
 
