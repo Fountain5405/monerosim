@@ -43,10 +43,11 @@ cd monerosim
 ./target/release/monerosim --help      # monerosim CLI usage
 
 # 3. Run a test simulation (~10-15 min wall clock)
+#    run_sim.sh shows a live progress display by default
+#    (height, blocks, tx counts, sync %, ETA). Pass --no-monitor
+#    to suppress it. The full monitor log is archived to
+#    archived_runs/<TS>_<name>/monerosim_monitor.log after the run.
 ./run_sim.sh --config test_configs/quickstart.yaml
-
-# 4. Monitor progress
-tail -f /tmp/monerosim_shared/monerosim_monitor.log
 ```
 
 ## Configuration
