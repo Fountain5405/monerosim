@@ -29,6 +29,10 @@ from pathlib import Path
 TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)")
 HEIGHT_RE = re.compile(r"HEIGHT (\d+), difficulty:\s+(\d+)")
 
+# ANSI bold; turn off when stdout isn't a TTY (e.g. piped into summary.txt).
+_BOLD = "\033[1m" if sys.stdout.isatty() else ""
+_RESET = "\033[0m" if sys.stdout.isatty() else ""
+
 
 def find_miner_log(archive_dir: Path) -> Path | None:
     daemon_logs = archive_dir / "daemon_logs"
@@ -122,11 +126,11 @@ def main() -> int:
     final_diff = events[-1][2]
 
     print()
-    print(f"  \033[1mBlock production\033[0m  (parsed from {log.parent.name})")
+    print(f"  {_BOLD}Block production{_RESET}  (parsed from {log.parent.name})")
     print(f"  Chain reached height:    {final_height} ({n_blocks} blocks in {fmt_seconds(sim_end)})")
     print(f"  Final difficulty:        {final_diff}")
     print()
-    print(f"  \033[1mBlock intervals\033[0m  (n={len(intervals)})")
+    print(f"  {_BOLD}Block intervals{_RESET}  (n={len(intervals)})")
     print(f"    mean:    {fmt_seconds(statistics.mean(intervals)):>8}"
           f"   target = 2m (mainnet)")
     print(f"    median:  {fmt_seconds(statistics.median(intervals)):>8}")
@@ -135,7 +139,7 @@ def main() -> int:
     print(f"    min:     {fmt_seconds(min(intervals)):>8}")
     print(f"    max:     {fmt_seconds(max(intervals)):>8}")
     print()
-    print("  \033[1mInterval distribution\033[0m")
+    print(f"  {_BOLD}Interval distribution{_RESET}")
     print(histogram_buckets(intervals))
     print()
     return 0

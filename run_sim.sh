@@ -969,6 +969,32 @@ exit 0' INT
             output+="\n"
         fi
 
+        # Block-rate status board: parse miner-001's bitmonero.log tail and
+        # surface the live block height, rolling rate, and time since the
+        # last block. Cheap (tail-only read) so it's safe on every refresh.
+        local miner_log="/tmp/monero-miner-001/bitmonero.log"
+        if [[ -f "$miner_log" ]]; then
+            local LAST_HEIGHT="" LAST_BLOCK_AGO_SEC="" RECENT_RATE_PER_MIN=""
+            local RECENT_RATE_WINDOW_SEC="" RECENT_RATE_BLOCKS=""
+            eval "$(python3 scripts/run_sim_helpers.py block-rate \
+                --log "$miner_log" 2>/dev/null || true)"
+            if [[ -n "$LAST_HEIGHT" ]]; then
+                output+="Chain tip:  height ${LAST_HEIGHT}"
+                if [[ -n "$RECENT_RATE_PER_MIN" ]]; then
+                    output+="  |  ${RECENT_RATE_PER_MIN}/min over last $((RECENT_RATE_WINDOW_SEC / 60))m sim (${RECENT_RATE_BLOCKS} blocks)"
+                fi
+                output+="\n"; lines=$((lines + 1))
+                if [[ -n "$LAST_BLOCK_AGO_SEC" ]]; then
+                    if [[ $LAST_BLOCK_AGO_SEC -ge 300 ]]; then
+                        output+="${YELLOW}Last block: ${LAST_BLOCK_AGO_SEC}s sim ago${NC}\n"
+                    else
+                        output+="Last block: ${LAST_BLOCK_AGO_SEC}s sim ago\n"
+                    fi
+                    lines=$((lines + 1))
+                fi
+            fi
+        fi
+
         output+="\n"; lines=$((lines + 1))
         output+="${DIM}Last update: $(date '+%Y-%m-%d %H:%M:%S')${NC}\n"; lines=$((lines + 1))
 
@@ -1043,6 +1069,17 @@ generate_summary_report() {
         2>/dev/null
 
     if [[ -f "$report_out" ]]; then
+        # Append the full block-time analysis (mean/median/stdev + histogram)
+        # to summary.txt. block_time_analysis.py drops ANSI escapes when
+        # stdout isn't a TTY, so the file stays clean.
+        {
+            echo ""
+            echo "============================================================"
+            echo "BLOCK PRODUCTION"
+            echo "============================================================"
+            python3 "$SCRIPT_DIR/scripts/block_time_analysis.py" "$ARCHIVE_DIR" \
+                2>/dev/null
+        } >> "$report_out"
         log_ok "Summary report: $report_out"
     else
         log_warn "Failed to generate summary report"

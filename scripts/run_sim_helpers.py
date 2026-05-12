@@ -263,6 +263,101 @@ def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_block_rate(args: argparse.Namespace) -> int:
+    """Emit live block-rate stats parsed from a monerod bitmonero.log tail.
+
+    Reads only the last ~100KB of the log for speed (these files grow
+    to hundreds of MB on big runs), extracts (sim_time, height) for the
+    BLOCK SUCCESSFULLY ADDED events found there, and prints shell-friendly
+    KEY=VALUE lines that the live monitor loop in run_sim.sh consumes.
+
+    Outputs nothing (exit 0) when the log is missing, empty, or has no
+    block events in the tail — callers should just skip the section.
+    """
+    import re
+    from datetime import datetime
+    from pathlib import Path
+
+    log_path = Path(args.log)
+    try:
+        size = log_path.stat().st_size
+    except (OSError, FileNotFoundError):
+        return 0
+    if size == 0:
+        return 0
+
+    # Read a sliding tail. Block events are sparse in a busy log (lots of
+    # per-block churn after each one), so start at 2 MB and grow if we
+    # don't see at least 2 events. Cap at 32 MB to bound the worst case.
+    ts_re = re.compile(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)')
+    height_re = re.compile(r'HEIGHT (\d+), difficulty:')
+
+    def parse_tail(window: int) -> list[tuple[datetime, int]]:
+        with log_path.open('rb') as f:
+            f.seek(max(0, size - window))
+            tail_bytes = f.read()
+        out: list[tuple[datetime, int]] = []
+        pending: datetime | None = None
+        for line in tail_bytes.decode('utf-8', errors='ignore').split('\n'):
+            if 'BLOCK SUCCESSFULLY ADDED' in line:
+                m = ts_re.match(line)
+                if m:
+                    try:
+                        pending = datetime.strptime(m.group(1)[:23],
+                                                    "%Y-%m-%d %H:%M:%S.%f")
+                    except ValueError:
+                        pending = None
+            elif pending and 'HEIGHT' in line and 'difficulty:' in line:
+                mh = height_re.search(line)
+                if mh:
+                    out.append((pending, int(mh.group(1))))
+                    pending = None
+        return out
+
+    window = 2_000_000
+    events: list[tuple[datetime, int]] = parse_tail(window)
+    while len(events) < 2 and window < 32_000_000 and window < size:
+        window *= 4
+        events = parse_tail(window)
+
+    if not events:
+        return 0
+    tail_bytes_used = min(window, size)
+    # We need the "now sim time" line scan too; redo a small tail just for that.
+    with log_path.open('rb') as f:
+        f.seek(max(0, size - 100_000))
+        tail_for_now = f.read().decode('utf-8', errors='ignore')
+
+    last_ts, last_h = events[-1]
+
+    # "Now" in sim time = the most recent timestamp anywhere in the tail.
+    now_sim = last_ts
+    for line in reversed(tail_for_now.split('\n')):
+        m = ts_re.match(line)
+        if m:
+            try:
+                now_sim = datetime.strptime(m.group(1)[:23],
+                                            "%Y-%m-%d %H:%M:%S.%f")
+                break
+            except ValueError:
+                continue
+
+    time_since_last_block = (now_sim - last_ts).total_seconds()
+    print(f'LAST_HEIGHT={last_h}')
+    print(f'LAST_BLOCK_AGO_SEC={int(max(time_since_last_block, 0))}')
+
+    if len(events) >= 2:
+        oldest_ts, oldest_h = events[0]
+        span_sec = (last_ts - oldest_ts).total_seconds()
+        grew = last_h - oldest_h
+        if span_sec >= 60 and grew >= 1:
+            rate_per_min = grew / (span_sec / 60.0)
+            print(f'RECENT_RATE_PER_MIN={rate_per_min:.2f}')
+            print(f'RECENT_RATE_WINDOW_SEC={int(span_sec)}')
+            print(f'RECENT_RATE_BLOCKS={grew}')
+    return 0
+
+
 def cmd_chain_growth_stats(args: argparse.Namespace) -> int:
     """Print "max X mean Y median Z min W" for a list of byte deltas.
 
@@ -556,6 +651,18 @@ def build_parser() -> argparse.ArgumentParser:
         help='Comma-separated list of byte deltas.',
     )
     p_cg.set_defaults(func=cmd_chain_growth_stats)
+
+    # block-rate
+    p_br = sub.add_parser(
+        'block-rate',
+        help='Emit KEY=VALUE block-rate stats from a bitmonero.log tail.',
+    )
+    p_br.add_argument(
+        '--log',
+        required=True,
+        help='Path to a live monerod bitmonero.log file.',
+    )
+    p_br.set_defaults(func=cmd_block_rate)
 
     # write-summary-report
     p_sr = sub.add_parser(
