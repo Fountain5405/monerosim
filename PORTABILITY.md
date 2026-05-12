@@ -60,6 +60,23 @@ below — order of an afternoon's work for someone with all the test VMs in
 hand). Alpine/musl is a deliberate choice — out of scope unless someone
 commits to validating the sibling Shadow and Monero builds on musl.
 
+### Verified end-to-end (2026-05-12)
+
+Following the Wave 1+2 fixes (now merged), the following distros were
+verified by running `./setup.sh` to completion and successfully running
+the quickstart simulation end-to-end:
+
+| Distro          | Status |
+|-----------------|:------:|
+| Ubuntu 24.04    | ✅     |
+| Fedora 43       | ✅     |
+| Debian 13       | ✅     |
+| Rocky 10        | ✅     |
+| openSUSE 16     | ✅     |
+
+This supersedes the unknown / "probably works" markings for these distros
+in §2 below. RHEL/Rocky/Alma **9** remains unsupported (see §5).
+
 ---
 
 ## 2. Distro coverage matrix

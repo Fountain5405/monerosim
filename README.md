@@ -339,6 +339,9 @@ A short list of things to know before you depend on monerosim. See
   above). EL10 and Fedora work.
 - Supported targets: Ubuntu 22.04+, Debian 12+, Fedora 38+, RHEL 10+ /
   Rocky 10+ / Alma 10+ (with EPEL), Arch Linux, openSUSE Leap 16+.
+- **Verified end-to-end (2026-05-12)** on Ubuntu 24.04, Fedora 43,
+  Debian 13, Rocky 10, and openSUSE 16. See
+  [PORTABILITY.md](PORTABILITY.md) for the full matrix.
 
 **Scale & resources**
 
