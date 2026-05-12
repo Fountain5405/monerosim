@@ -263,8 +263,12 @@ def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
     return 0
 
 
-HIST_WIDTH = 36       # characters in the live-monitor compact histogram
-HIST_MAX_MIN = 12     # rightmost (overflow) bucket = >=12 sim-minutes
+# Compact histogram dimensions. One column per sim-minute, 17 cols total
+# (0..16), with both the axis labels and the count cells using the same
+# 0-9 a-g symbol palette so they line up 1:1.
+HIST_WIDTH = 17       # one column per minute
+HIST_MAX_MIN = 16     # rightmost column = "16+" (implicit overflow)
+HIST_AXIS = '0123456789abcdefg'  # length must == HIST_WIDTH
 
 
 def _count_char(c: int) -> str:
@@ -278,34 +282,19 @@ def _count_char(c: int) -> str:
     return '^'
 
 
-def _histogram_bucket(interval_sec: float, width: int = HIST_WIDTH,
-                      max_min: int = HIST_MAX_MIN) -> int:
-    """Map a block-interval (sec) to a histogram column. Last col = overflow."""
-    if interval_sec >= max_min * 60:
-        return width - 1
+def _histogram_bucket(interval_sec: float) -> int:
+    """Map a block-interval (sec) to a histogram column (1 col / sim-minute)."""
     if interval_sec < 0:
         return 0
-    return int((interval_sec / (max_min * 60)) * (width - 1))
+    minute = int(interval_sec // 60)
+    if minute >= HIST_WIDTH:
+        return HIST_WIDTH - 1
+    return minute
 
 
-def _histogram_axis_label(width: int = HIST_WIDTH,
-                          max_min: int = HIST_MAX_MIN) -> str:
-    """Tick-mark labels under the histogram. Major ticks every 2 sim-minutes."""
-    axis = list(' ' * width)
-    for minute in range(0, max_min, 2):
-        # Distribute labels across columns 0 .. width-4 (last 3 cols reserved
-        # for "12+" or whichever overflow label).
-        pos = int(round((minute / max_min) * (width - 4)))
-        label = str(minute)
-        for i, ch in enumerate(label):
-            if 0 <= pos + i < width:
-                axis[pos + i] = ch
-    overflow_label = f'{max_min}+'
-    start = width - len(overflow_label)
-    for i, ch in enumerate(overflow_label):
-        if 0 <= start + i < width:
-            axis[start + i] = ch
-    return ''.join(axis)
+def _histogram_axis_label() -> str:
+    """Per-column position labels: '0123456789abcdefg'."""
+    return HIST_AXIS
 
 
 def cmd_block_rate(args: argparse.Namespace) -> int:
