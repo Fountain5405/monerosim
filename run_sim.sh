@@ -1296,6 +1296,12 @@ print_summary() {
             fi
             echo ""
         fi
+
+        # Block-time analysis (best-effort; never aborts the summary).
+        # Reads daemon_logs/monero-miner-001/bitmonero.log from the archive
+        # and prints interval stats + a histogram.
+        python3 "$SCRIPT_DIR/scripts/block_time_analysis.py" "$ARCHIVE_DIR" \
+            2>/dev/null || true
     else
         # No monitor report — fall back to shadow log parsing
         echo -e "  ${DIM}(No simulation monitor report found)${NC}"
