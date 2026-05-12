@@ -1007,11 +1007,11 @@ exit 0' INT
                     lines=$((lines + 1))
                 fi
                 if [[ -n "$HISTOGRAM" ]]; then
-                    output+="Intervals  ${DIM}(min interval per block; cell = 15s)${NC}\n"; lines=$((lines + 1))
-                    output+="  ${DIM}${HISTOGRAM_AXIS}  min${NC}\n"; lines=$((lines + 1))
-                    output+="  ${HISTOGRAM}  ${DIM}(run total: ${HISTOGRAM_TOTAL})${NC}\n"; lines=$((lines + 1))
+                    output+="Block-interval histogram  ${DIM}(cell = 15s sim; cell value: 0=empty, 1-9 literal, a-g=10-16, ^=17+)${NC}\n"; lines=$((lines + 1))
+                    output+="   ${DIM}min:${NC}  ${DIM}${HISTOGRAM_AXIS}${NC}\n"; lines=$((lines + 1))
+                    output+="   ${DIM}all:${NC}  ${HISTOGRAM}  ${DIM}(${HISTOGRAM_TOTAL} blocks)${NC}\n"; lines=$((lines + 1))
                     if [[ -n "$HISTOGRAM_RECENT" && "$HISTOGRAM_RECENT_N" -gt 0 ]]; then
-                        output+="  ${HISTOGRAM_RECENT}  ${DIM}(last ${HISTOGRAM_RECENT_N} of ${HISTOGRAM_RECENT_WINDOW})${NC}\n"; lines=$((lines + 1))
+                        output+="  ${DIM}last:${NC}  ${HISTOGRAM_RECENT}  ${DIM}(last ${HISTOGRAM_RECENT_N} of ${HISTOGRAM_RECENT_WINDOW})${NC}\n"; lines=$((lines + 1))
                     fi
                 fi
             fi
