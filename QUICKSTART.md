@@ -161,4 +161,4 @@ Check analysis output in `analysis_output/` and processed logs in `shadow.data/h
 - See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all configuration options
 - See [docs/RUNNING_SIMULATIONS.md](docs/RUNNING_SIMULATIONS.md) for detailed workflow
 - See [docs/NETWORK_SCALING_GUIDE.md](docs/NETWORK_SCALING_GUIDE.md) for large-scale simulations
-- Check [examples/](examples/) for more configuration examples
+- Check [test_configs/](test_configs/) for more configuration examples (larger scenarios, upgrade flows)

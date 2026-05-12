@@ -88,7 +88,7 @@ agents:
 
 Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100.
 
-See [`test_configs/quickstart.yaml`](test_configs/quickstart.yaml) for a working configuration, or check `examples/` for more.
+See [`test_configs/`](test_configs/) for working configurations — `quickstart.yaml` is the entry point, with progressively larger scenarios alongside it.
 
 For large-scale simulations, use the config generator:
 
@@ -199,9 +199,8 @@ monerosim/
     baselines/               # Smoke-test baselines (e.g. quickstart_metrics.json)
   attic/                     # Ad-hoc / unmaintained tools (see attic/README.md)
   gml_processing/            # CAIDA topology generation
-  examples/                  # Example configurations
   docs/                      # Documentation
-  test_configs/              # Configuration files
+  test_configs/              # Configuration files (scenarios + expanded)
   setup.sh                   # Environment setup (~30-60 min)
   run_sim.sh                 # Quick simulation runner
   smart_config_tool.sh       # AI-powered config generator (requires LLM API key)

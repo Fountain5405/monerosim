@@ -295,12 +295,7 @@ agents:
 
 ## Complete Example
 
-See `test_configs/quickstart.yaml` for a full working configuration, or check the `examples/` directory.
-
-Additional examples in `examples/`:
-- `config_caida_large_scale.yaml` - CAIDA-based topology
-- `config_large_scale.yaml` - Large network simulation
-- `config_sparse_placement.yaml` - Sparse agent placement
+See `test_configs/quickstart.yaml` for a full working configuration. Additional working scenarios live alongside it in `test_configs/` (200-user/800-relay benchmark, upgrade smoke test, etc.).
 
 ## Determinism
 

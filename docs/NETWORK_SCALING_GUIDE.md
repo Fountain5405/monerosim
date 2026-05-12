@@ -432,14 +432,19 @@ with open('shadow_output/agent_registry.json') as f:
 
 ## Examples
 
-See the `examples/` directory for complete configuration files:
+Working large-scale configurations live in `test_configs/`:
 
-- `examples/config_large_scale.yaml`: 1000 agents on 5000 nodes
-- `examples/config_sparse_placement.yaml`: 100 agents on 1000 nodes
-- `examples/generate_topology.sh`: Automation script for topology generation
+- `test_configs/20260511_200u_800r.yaml`: 200 users + 800 relays on
+  the bundled 1200-node CAIDA topology (the canonical large-scale
+  benchmark)
+- `test_configs/quickstart.yaml`: small reference scenario
+
+For topology generation, the scripts in `gml_processing/` are the
+canonical entry point — `create_caida_connected_with_loops.py` builds
+the GMLs that the configs reference.
 
 ## Next Steps
 
-- Read the technical documentation in `docs/TOPOLOGY_GENERATION.md`
-- Explore the example configurations in `examples/`
-- Join the Monerosim community for support and updates
+- Explore the working configurations in `test_configs/`
+- Read `gml_processing/` source for topology generation specifics
+- Open issues on the project tracker for support and feedback

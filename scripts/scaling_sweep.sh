@@ -166,9 +166,9 @@ sweep_one() {
     # alone, the orphan keeps running, contaminates the next iteration's
     # /tmp + shadow.data, and consumes cores. Kill any leftover shadow and
     # monero processes before the next iteration starts.
-    pkill -KILL -f "/home/lever65/.monerosim/bin/shadow .*shadow_agents\.yaml" 2>/dev/null || true
-    pkill -KILL -f "/home/lever65/.monerosim/bin/monerod" 2>/dev/null || true
-    pkill -KILL -f "/home/lever65/.monerosim/bin/monero-wallet-rpc" 2>/dev/null || true
+    pkill -KILL -f "${HOME}/.monerosim/bin/shadow .*shadow_agents\.yaml" 2>/dev/null || true
+    pkill -KILL -f "${HOME}/.monerosim/bin/monerod" 2>/dev/null || true
+    pkill -KILL -f "${HOME}/.monerosim/bin/monero-wallet-rpc" 2>/dev/null || true
     sleep 2
 
     # Find the archive dir we just produced

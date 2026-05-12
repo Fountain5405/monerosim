@@ -4,8 +4,13 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.80"
 license = "BSD-3-Clause"
-description = "Configuration utility for Monero network simulations in Shadow"
-authors = ["MoneroSim Developer"]
+description = "Configuration generator and agent framework for Monero network simulations in Shadow"
+authors = ["gingeropolous <gingeropolous@gmail.com>"]
+repository = "https://github.com/Fountain5405/monerosim"
+homepage = "https://github.com/Fountain5405/monerosim"
+documentation = "https://github.com/Fountain5405/monerosim/tree/main/docs"
+keywords = ["monero", "cryptocurrency", "simulation", "shadow", "network"]
+categories = ["simulation", "network-programming"]
 
 [dependencies]
 # Command-line argument parsing with derive feature

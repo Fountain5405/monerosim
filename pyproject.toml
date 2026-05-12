@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "BSD-3-Clause"}
 authors = [
-    {name = "MoneroSim Developer", email = "noreply@example.com"}
+    {name = "gingeropolous", email = "gingeropolous@gmail.com"}
 ]
 keywords = ["monero", "cryptocurrency", "simulation", "shadow", "network"]
 classifiers = [
