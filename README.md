@@ -27,7 +27,7 @@ Monerosim simulations proceed in two stages:
 
 **Stage 1** - You write a YAML config describing the network: how many miners, users, what topology, how long to run. Monerosim's Rust engine parses this and generates Shadow configuration files.
 
-**Stage 2** - shadowformonero runs the simulation. Each agent gets its own monerod daemon, wallet-rpc, and Python script running on a virtual host. Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to `/tmp/monero-*/bitmonero.log` (daemon logs), `shadow.data/` (agent stdout), and `/tmp/monerosim_shared/` (shared state).
+**Stage 2** - shadowformonero runs the simulation. Most agents are a triple of `monerod` + `monero-wallet-rpc` + a Python script on a virtual host; some are daemon-only (**relay nodes** — `monerod` only, for P2P realism) or script-only (the support agents `miner-distributor` and `simulation-monitor`). Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to `/tmp/monero-*/bitmonero.log` (daemon logs), `shadow.data/` (agent stdout), and `/tmp/monerosim_shared/` (shared state).
 
 ## Quick Start
 
@@ -91,9 +91,13 @@ agents:
     script: agents.miner_distributor
     wait_time: 3600
     initial_fund_amount: "1.0"
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
 ```
 
-Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100.
+Each agent is identified by its key name (e.g., `miner-001`). Miners are identified by having a `hashrate` value. The hashrate values across all miners should sum to 100. Every config should include both `miner-distributor` (funds users) and `simulation-monitor` (tracks network health and feeds `run_sim.sh`'s live progress display).
 
 ### Compact scenario format
 
@@ -101,8 +105,10 @@ Writing every agent out by hand is fine for 10 miners but tedious for 200 users 
 
 ```bash
 python3 -m scripts.scenario_parser my.scenario.yaml -o my.yaml
-target/release/monerosim --config my.yaml
+./run_sim.sh --config my.yaml          # pass the EXPANDED .yaml, not the .scenario.yaml
 ```
+
+`run_sim.sh` does not auto-expand the compact format — always pass the expanded `.yaml`. (You can also invoke the orchestrator directly with `target/release/monerosim --config my.yaml --output shadow_output`, then `~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml`; `run_sim.sh` is a wrapper that does both.)
 
 Every working config in `test_configs/` ships as a `.scenario.yaml` (compact, hand-edited) and matching `.yaml` (expanded, generated). See [docs/SCENARIO_FORMAT.md](docs/SCENARIO_FORMAT.md) for the full syntax — range expansion, stagger modes (`auto`/`5s`/`batched`/`range`), `auto` timing fields, activity batching, and the `timing:` overrides section.
 
@@ -147,17 +153,20 @@ These all run on a virtual host with a geographically-distributed IP address. Th
 
 User-facing agents you place in the YAML:
 
-| Agent | Script | Purpose |
-|-------|--------|---------|
-| Autonomous miner | `agents.autonomous_miner` | Generates blocks with Poisson-distributed timing |
-| Regular user | `agents.regular_user` | Sends transactions at configurable intervals |
-| Miner distributor | `agents.miner_distributor` | Distributes mining rewards to user wallets |
-| Simulation monitor | `agents.simulation_monitor` | Tracks network stats and block generation |
+| Agent | Fields used | Script | Purpose |
+|-------|-------------|--------|---------|
+| Autonomous miner | `daemon` + `wallet` + `script` | `agents.autonomous_miner` | Generates blocks with Poisson-distributed timing |
+| Regular user | `daemon` + `wallet` + `script` | `agents.regular_user` | Sends transactions at configurable intervals |
+| Relay node | `daemon` only | — | Daemon-only host that participates in P2P block/tx relay; no wallet, no script. Used to scale up realistic network size cheaply. |
+| Miner distributor | `script` only | `agents.miner_distributor` | Distributes mining rewards to user wallets |
+| Simulation monitor | `script` only | `agents.simulation_monitor` | Tracks network stats and block generation; feeds `run_sim.sh`'s live progress display |
 
 Infrastructure agents auto-spawned by the orchestrator (not declared in YAML):
-`agents.dns_server` (in-sim DNS for monerod peer discovery). The
-`agents.agent_discovery` and `agents.public_node_discovery` modules are
-shared-state helpers imported by the user-facing agents above.
+`agents.dns_server` (in-sim DNS for monerod peer discovery — enabled
+when `general.enable_dns_server: true`, which is the case for every
+shipped config). The `agents.agent_discovery` and
+`agents.public_node_discovery` modules are shared-state helpers
+imported by the user-facing agents above.
 
 ### Network topologies
 
@@ -167,11 +176,18 @@ shared-state helpers imported by the user-facing agents above.
 
 ### Peer discovery modes
 
-| Mode | Description |
-|------|-------------|
-| Dynamic | Automatic seed selection prioritizing miners |
-| Hardcoded | Explicit seed nodes with topology templates (Star/Mesh/Ring/Dag) |
-| Hybrid | Combines topology structure with dynamic discovery |
+| Mode | Status | Description |
+|------|--------|-------------|
+| Dynamic | **tested** | Automatic seed selection prioritizing miners. This is what every shipped config and test uses. |
+| Hardcoded | partial / untested at runtime | Explicit seed nodes. The schema accepts `peer_mode: Hardcoded` + a `seed_nodes:` list, and validation runs, but no shipped scenario exercises this path end-to-end. Treat as experimental. |
+| Hybrid | partial / untested at runtime | Same caveat as Hardcoded. |
+
+The `Topology` enum (`Star`, `Mesh`, `Ring`, `Dag`) is currently only
+consumed by size-constraint validation (e.g., "Ring needs ≥3 agents");
+there is no peer-list-generation code path that materializes a star
+or ring at simulation time. The default `Topology::Dag` is effectively
+a placeholder. Plan to drive simulations with `peer_mode: Dynamic`
+unless you are specifically extending the Hardcoded/Hybrid pathway.
 
 ## Project Structure
 
