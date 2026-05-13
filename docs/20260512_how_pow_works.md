@@ -183,6 +183,68 @@ receiving node still validates the RandomX hash — but the election is
 moved out of the hash grinder and into agent code, where it interacts
 with Shadow's scheduler correctly.
 
+## Validity envelope — what this faithfully reproduces and what it doesn't
+
+The hack — a Python agent firing `generateblocks` on a Poisson schedule
+— produces **network-level behavior that is statistically indistinguishable
+from a real PoW network** when looked at as a sequence of block events:
+
+- **Block interval distribution is exponential** with mean ≈ target.
+  Verified empirically across 3 different runs spanning 3 months
+  (2026-02-16, 2026-03-05, 2026-05-11): in all three, median interval
+  sat right at 2 sim-minutes, mean was within ~50% of target (long-tail
+  Poisson skew), and a chi-square-style fit to the observed exponential
+  is good to within ~3 percentage points across the 0-30s / 0-60s / 0-2m
+  / 0-3m / 0-5m cumulative bands.
+- **Each block is fully consensus-valid.** Real RandomX hash, real
+  signatures, real ring sigs, real coinbase, real propagation, real
+  validation by every receiving peer using stock `monerod` code paths.
+- **LWMA difficulty adjustment runs.** The orchestrator does not patch
+  difficulty logic; LWMA observes actual block-interval samples and
+  adjusts within its normal feedback envelope (we observe oscillation
+  between 1 and 4 in regtest baseline).
+- **Per-miner block share matches hashrate weights** because the agent
+  timer is hashrate-weighted by design.
+
+What you **give up** in exchange:
+
+- **Mining-economics fidelity.** Selfish-mining strategies, fee-market
+  dynamics under hashpower competition, and any phenomenon that depends
+  on actual hashpower cost vs. block reward — none of these are
+  modeled. The "election" of which miner produces each block is decided
+  by Python (weighted Poisson) rather than by a real hashing race, so
+  the strategic surface that mining economics studies operates on isn't
+  exposed.
+- **Reorgs / chain forks are under-represented.** Real Monero
+  occasionally sees natural reorgs from network propagation delays and
+  near-simultaneous discoveries on multiple continents. Our model
+  elects one block producer per height deterministically; competing
+  blocks at the same height don't get authored. We do see *occasional*
+  reorgs in the daemon logs (from edge cases in our propagation
+  ordering), but at a much lower rate than mainnet. **Any research
+  premised on reorg dynamics — selfish mining, double-spend windows,
+  finality analysis — should treat results from this simulator with
+  skepticism.**
+- **Difficulty range is regtest-shaped (1..~10).** LWMA works, but it
+  has very little dynamic range above the regtest baseline. Research
+  that depends on the *absolute* difficulty value, or on quantization
+  effects in the adjustment formula at mainnet-scale numbers (~10^11),
+  won't surface in this simulator. See the README's "Known
+  limitations" for the larger context.
+- **Per-block PoW cost is artificially trivial.** Real mainnet miners
+  spend ~10^15 RandomX hashes per block; this simulator does 1-2 (one
+  nonce loop at regtest difficulty). Doesn't affect protocol-level
+  correctness, but it means *cost*-related phenomena (e.g., timing
+  attacks on hashpower withholding) can't be studied here.
+
+**Summary for the README's known-limitations list:** the simulator is
+validated for **protocol-level network research** (block propagation,
+sync behavior, transaction flow, peer-discovery dynamics, upgrade
+scenarios, mempool dynamics). It is **not validated for mining-economics
+research** (reorgs, selfish mining, fee-market behavior under
+hashpower competition), and any such usage should be a separate
+investigation with that limitation explicitly accepted up front.
+
 ## Sanity-check from the 1k-node run
 
 `miner-001` log, sim 00:07:24:
