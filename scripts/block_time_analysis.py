@@ -48,8 +48,16 @@ def find_miner_log(archive_dir: Path) -> Path | None:
 
 
 def parse_block_events(log_path: Path) -> list[tuple[float, int, int]]:
-    """Return list of (sim_offset_seconds, height, difficulty) per block-add."""
-    events: list[tuple[dt.datetime, int, int]] = []
+    """Return list of (sim_offset_seconds, height, difficulty) per block-add.
+
+    Dedupes by height: monerod logs "BLOCK SUCCESSFULLY ADDED" once when a
+    block is added to the main chain, and again every time it replays
+    `handle_block_to_main_chain` during a reorg (walking onto a longer
+    competing chain) or batch catch-up. We want one entry per main-chain
+    height — the earliest timestamp — so sort by (height, timestamp) and
+    keep the first occurrence per height.
+    """
+    raw: list[tuple[dt.datetime, int, int]] = []
     pending_ts: dt.datetime | None = None
     with log_path.open() as f:
         for line in f:
@@ -61,12 +69,20 @@ def parse_block_events(log_path: Path) -> list[tuple[float, int, int]]:
             elif pending_ts is not None and "HEIGHT" in line and "difficulty:" in line:
                 mh = HEIGHT_RE.search(line)
                 if mh:
-                    events.append((pending_ts, int(mh.group(1)), int(mh.group(2))))
+                    raw.append((pending_ts, int(mh.group(1)), int(mh.group(2))))
                     pending_ts = None
-    if not events:
+    if not raw:
         return []
-    sim_start = events[0][0]
-    return [((t - sim_start).total_seconds(), h, d) for (t, h, d) in events]
+    raw.sort(key=lambda e: (e[1], e[0]))
+    deduped: list[tuple[dt.datetime, int, int]] = []
+    seen: set[int] = set()
+    for ts, h, d in raw:
+        if h in seen:
+            continue
+        seen.add(h)
+        deduped.append((ts, h, d))
+    sim_start = deduped[0][0]
+    return [((t - sim_start).total_seconds(), h, d) for (t, h, d) in deduped]
 
 
 def histogram_buckets(intervals: list[float]) -> str:

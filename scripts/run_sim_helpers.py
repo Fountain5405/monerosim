@@ -446,11 +446,25 @@ def cmd_block_rate(args: argparse.Namespace) -> int:
             except (json.JSONDecodeError, OSError):
                 pass
 
-        # Process new blocks (height > last_seen_height), in height order.
-        new_events = sorted(
+        # Process new blocks (height > last_seen_height) deduped by height.
+        #
+        # The same HEIGHT can appear in the log multiple times — once for the
+        # original add, and again every time the daemon replays
+        # handle_block_to_main_chain() during a reorg. We want the EARLIEST
+        # timestamp for each height (the moment the chain first reached it),
+        # so sort by (height, timestamp) ascending and keep the first seen
+        # per height.
+        candidates = sorted(
             [(t, h) for (t, h) in events if h > state['last_seen_height']],
-            key=lambda e: e[1],
+            key=lambda e: (e[1], e[0]),
         )
+        new_events: list[tuple[datetime, int]] = []
+        seen_heights: set[int] = set()
+        for ts, h in candidates:
+            if h in seen_heights:
+                continue
+            seen_heights.add(h)
+            new_events.append((ts, h))
         prev_ts: datetime | None = None
         if state['last_seen_block_time_iso']:
             try:
