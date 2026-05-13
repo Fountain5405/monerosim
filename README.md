@@ -443,6 +443,39 @@ A short list of things to know before you depend on monerosim. See
 - No CI in this beta. Tests exist (`cargo test`, `pytest`, the Tier 2
   smoke wrapper) but are not enforced automatically on push/PR yet.
 
+**Simulation fidelity**
+
+Block production is driven by a Python agent firing `generateblocks` on
+a Poisson schedule, not by real hashing competition — see
+[docs/20260512_how_pow_works.md](docs/20260512_how_pow_works.md) for
+the full mechanics and validity analysis. This is faithful at the
+network level (block intervals, propagation, consensus rules, LWMA)
+but **deliberately not faithful at the mining-economics level**.
+
+- **Validated for protocol-level network research.** Cross-run
+  evidence (three runs from 2026-02 to 2026-05) shows median block
+  interval exactly at the 2-minute mainnet target with exponential
+  distribution shape fitting an exponential to within ~3pp. Block
+  propagation, sync behavior, mempool dynamics, peer discovery,
+  transaction flow, and upgrade scenarios all behave as on mainnet.
+- **Not validated for mining-economics research.** Selfish-mining,
+  fee-market behavior under hashpower competition, and similar
+  strategy-vs-strategy analyses operate on a surface the simulator
+  doesn't model — block-producer election is decided by a weighted
+  Poisson timer, not by hashing race.
+- **Reorgs are under-represented.** Natural reorgs from
+  near-simultaneous discoveries don't happen because the agent timer
+  picks a single producer per height. Any research premised on reorg
+  dynamics (selfish mining, finality, double-spend windows) should
+  treat results from this simulator with skepticism.
+- **Difficulty range is regtest-shaped (1..~10).** LWMA runs, but
+  it has very little dynamic range above the regtest baseline.
+  Research that depends on the absolute difficulty value or on
+  quantization effects at mainnet-scale (~10^11) won't surface here.
+- **Per-block PoW cost is artificially trivial** (~1 hash, not
+  ~10^15). Doesn't affect protocol correctness; means
+  cost-of-hashpower phenomena can't be studied.
+
 **Mid-cleanup code-quality caveats**
 
 - `.unwrap()` density in Rust paths is higher than ideal; some error
