@@ -43,6 +43,24 @@ of agents up to ~1000-node networks on a workstation.
   Debian 13, Rocky 10, and openSUSE 16. `setup.sh` auto-detects the
   package manager. See [PORTABILITY.md](PORTABILITY.md).
 
+- **Live block-production telemetry.** `run_sim.sh`'s live monitor
+  shows current block height, recent rate in min/block, time since
+  the last block, and a single-line ASCII histogram of block-interval
+  distribution accumulated across the run plus a sliding-window "last
+  N blocks" view. Post-run, `summary.txt` gets the full mean/median/
+  stdev/percentile-style breakdown plus a wider bucketed histogram.
+  Both come from a new parser that reads the daemon log tail and
+  dedupes by block height so reorg replays don't double-count.
+
+- **Documented validity envelope.** The new
+  [docs/20260512_how_pow_works.md](docs/20260512_how_pow_works.md)
+  walks through how synthetic block production preserves real PoW
+  while delegating producer election to the agent timer, and the
+  README "Known limitations" now spells out what the simulator is
+  validated for (protocol-level network research, with statistical
+  evidence) and what it isn't (mining-economics research, reorg
+  dynamics, mainnet-scale difficulty granularity).
+
 ### Install
 
 ```bash
