@@ -1,17 +1,9 @@
 #!/bin/bash
 #
-# run_sim.sh - Run a MoneroSim simulation end-to-end and archive results
+# run_sim.sh - Run a MoneroSim simulation end-to-end and archive results.
 #
-# Usage: ./run_sim.sh --config <path.yaml> [options]
-#
-# Options:
-#   --config <path>        Monerosim config file (required)
-#   --name <name>          Run name (default: derived from config filename)
-#   --archive-dir <dir>    Archive location (default: archived_runs)
-#   --no-monitor           Skip live progress display
-#   --analyze              Run post-simulation analysis (off by default)
-#   --no-build             Skip cargo build (use existing binary)
-#   --help                 Show help
+# Run ./run_sim.sh --help for the full option list (the usage() function
+# below is the source of truth; do not duplicate it in this header).
 
 set -euo pipefail
 
@@ -49,6 +41,11 @@ RAMDISK_REQUEST=""        # "" = off, "auto" = size from estimate, else explicit
 RAMDISK_PATH=""           # set by mount_ramdisk() if mount succeeds
 RAMDISK_MOUNTED=false     # cleared once watchdog has taken over
 PREFLIGHT_ONLY=false      # if true, exit after preflight without touching shadow.data or /tmp
+NO_ARCHIVE=false          # if true, skip the post-sim archive step (shadow.data, daemon logs,
+                          # blockchain snapshots, summary report). Still cleans /tmp/monero-*
+                          # unless --no-clean is also set.
+NO_CLEAN=false            # if true, skip the /tmp/monero-* cleanup so the user can dig
+                          # through raw blockchain DBs / config files / etc. by hand.
 
 usage() {
     cat <<'EOF'
@@ -76,6 +73,19 @@ Options:
                          and exit. Does NOT touch shadow.data, /tmp, or
                          spawn shadow. Safe to run alongside an in-flight
                          simulation.
+  --no-archive           Skip the post-simulation archive step. shadow.data/,
+                         daemon bitmonero.log files, blockchain snapshots,
+                         and summary.txt are NOT preserved. /tmp/monero-*
+                         is still cleaned (unless --no-clean is also set).
+                         Pre-run artifacts (input_config.yaml,
+                         shadow_agents.yaml, build.log, monerosim.log,
+                         shadow_run.log) are still kept under archive_runs/.
+  --no-clean             Skip the /tmp/monero-*/ cleanup. The raw daemon
+                         data directories (blockchain LMDB, monerod config,
+                         and — with --no-archive also — bitmonero.log files)
+                         remain in /tmp for you to inspect by hand. Can
+                         occupy tens of GB; remember to clean up manually
+                         when you're done.
   --help                 Show help
 
 Examples:
@@ -115,6 +125,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --preflight-only)
             PREFLIGHT_ONLY=true
+            shift
+            ;;
+        --no-archive)
+            NO_ARCHIVE=true
+            shift
+            ;;
+        --no-clean)
+            NO_CLEAN=true
             shift
             ;;
         --archive-blockchain)
@@ -1176,6 +1194,26 @@ copy_blockchain_snapshot() {
     fi
 }
 
+cleanup_tmp_monero() {
+    # Always-safe cleanup: removes /tmp/monero-*/ leftovers regardless of
+    # whether the archive step ran. Called from archive_daemon_logs() in the
+    # normal path, and standalone from main() in the --no-archive path.
+    # Skipped entirely with --no-clean so users can dig through raw data.
+    if [[ "$NO_CLEAN" == true ]]; then
+        local tmp_size
+        tmp_size=$(du -shc /tmp/monero-* 2>/dev/null | tail -1 | cut -f1)
+        log_warn "Skipping /tmp/monero-*/ cleanup (--no-clean). "
+        log_warn "${tmp_size:-?} left in /tmp/monero-*/ for inspection."
+        log_warn "Remember to 'rm -rf /tmp/monero-*' when you're done."
+        return
+    fi
+    log_info "Cleaning up /tmp/monero-*/ leftovers..."
+    local tmp_size
+    tmp_size=$(du -shc /tmp/monero-* 2>/dev/null | tail -1 | cut -f1)
+    rm -rf /tmp/monero-* 2>/dev/null || true
+    log_ok "Freed ~${tmp_size:-0} from /tmp/monero-*/"
+}
+
 archive_daemon_logs() {
     log_info "Archiving daemon logs (bitmonero.log)..."
 
@@ -1207,12 +1245,9 @@ archive_daemon_logs() {
 
     # Clean up the leftover /tmp/monero-*/ directories (blockchain DBs, config,
     # lock files, etc. — everything that isn't bitmonero.log, which we moved
-    # above). Can run into tens of GB on a 1000-node sim.
-    log_info "Cleaning up /tmp/monero-*/ leftovers..."
-    local tmp_size
-    tmp_size=$(du -shc /tmp/monero-* 2>/dev/null | tail -1 | cut -f1)
-    rm -rf /tmp/monero-* 2>/dev/null || true
-    log_ok "Freed ~$tmp_size from /tmp/monero-*/"
+    # above). Can run into tens of GB on a 1000-node sim. Skipped under
+    # --no-clean.
+    cleanup_tmp_monero
 }
 
 archive_transaction_registry() {
@@ -1424,7 +1459,17 @@ main() {
     setup_ramdisk
     build_and_generate
     run_simulation
-    archive_results
+    if [[ "$NO_ARCHIVE" == true ]]; then
+        log_step "Phase 5: Archive skipped (--no-archive)"
+        log_warn "shadow.data/, daemon bitmonero.log files, blockchain snapshots,"
+        log_warn "monitoring data, and summary.txt are NOT being preserved."
+        log_warn "Pre-run artifacts (input_config.yaml, shadow_agents.yaml,"
+        log_warn "monerosim.log, shadow_run.log, build.log, memory_samples.csv)"
+        log_warn "remain in $ARCHIVE_DIR."
+        cleanup_tmp_monero  # internally respects --no-clean
+    else
+        archive_results
+    fi
     print_summary
 }
 
