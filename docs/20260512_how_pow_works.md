@@ -218,6 +218,52 @@ receiving node still validates the RandomX hash — but the election is
 moved out of the hash grinder and into agent code, where it interacts
 with Shadow's scheduler correctly.
 
+### Aside: the `mininghook` branch (alternative approach, requires patching monerod)
+
+monerosim deliberately avoids patching monerod — every
+Shadow-compatibility patch lives in `shadowformonero`, never in
+monero source itself. But if that constraint were relaxed, there's an
+alternative architecture worth flagging.
+
+The `mininghook` branch on
+[Fountain5405/monero-shadow](https://github.com/Fountain5405/monero-shadow/tree/mininghook)
+(commit `0d6028981`, "Add mining hook mode for Shadow network
+simulation") adds a `--mininghook` flag that replaces the inner
+RandomX hash loop with socket-based communication to an external mining
+agent (Unix socket or TCP). When enabled, monerod's normal mining
+lifecycle is preserved — `start_mining`/`stop_mining` work, the miner
+thread runs, block templates get built — but block timing is dictated
+by the external agent rather than by hash grinding. The block validator
+bypasses PoW verification when this mode is active.
+
+Side-by-side with the current approach:
+
+| | `generateblocks` (current) | `--mininghook` (hypothetical) |
+|---|---|---|
+| Code path | One-shot RPC, agent calls per block | Normal `start_mining` lifecycle, miner thread driven by external socket |
+| Real PoW computed | Yes (at regtest difficulty) | No — bypassed in validator |
+| monerod patches required | None | Significant — a second fork to maintain alongside `shadowformonero` |
+| `start_mining` / `stop_mining` RPCs | Effectively unused | Behave as documented |
+| Per-miner hashrate weighting | Agent-side (Python Poisson timing) | Agent-side via socket grant cadence |
+| What it's "more faithful to" | Real PoW verification | Real mining lifecycle |
+
+We chose `generateblocks` because preserving real RandomX verification
+on every block has more value for protocol-level research — block
+propagation, ring signatures, P2P behavior — than preserving the
+mining lifecycle. The lifecycle only matters for studies of mining
+behavior itself: selfish-mining strategies, fee-market dynamics under
+contested blocks, hashrate-attack modeling, etc. If monerosim's
+research focus ever shifts in that direction, the `mininghook` branch
+becomes the more natural foundation, at the cost of giving up real PoW
+fidelity and taking on a monero-side fork.
+
+The `start_mining` branch in `MoneroRPC.ensure_mining()` is
+intentionally retained as a no-op fallback against this future
+possibility — today it just gets marked unavailable and the code
+falls through to `generateblocks`, but if `--mininghook` is ever
+brought into mainline monerosim, that's the entry point that would
+become primary.
+
 ## Validity envelope — what this faithfully reproduces and what it doesn't
 
 The hack — a Python agent firing `generateblocks` on a Poisson schedule
