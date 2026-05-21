@@ -148,6 +148,46 @@ blocking syscall that *does* advance sim-time. The simulator stays
 healthy because every block costs a bounded amount of CPU bracketed by
 syscalls Shadow can see.
 
+### What about trivially-low difficulty?
+
+A natural follow-up: if the problem is the hash grinder never making
+syscalls, why not just set difficulty to 1 so it finds nonces
+immediately? Then `start_mining` would constantly be submitting blocks,
+which *are* syscalls, and sim-time would advance.
+
+That swaps one failure mode for another. At difficulty ~1:
+
+- The miner thread finds a nonce in roughly one RandomX hash attempt
+- It submits the block (a syscall — sim-time advances a hair)
+- It immediately builds the next template and finds the next nonce
+- ... at wall-clock RandomX hash speed (~1 ms per attempt → ~1000
+  blocks per second of wall clock, with almost no sim-time accumulated
+  between submissions)
+
+Per simulated minute, you'd get thousands of blocks. The block rate
+becomes a function of your CPU's RandomX hashing speed, which is the
+worst possible input to "did this simulation match a target block rate?"
+
+So the two failure modes bracket the usable range:
+
+| Difficulty | What `start_mining` does | Outcome |
+|---|---|---|
+| Realistic (~GH range) | Hash thread spins, never finds a block | No syscalls → sim-time freezes |
+| Trivial (~1) | Hash thread finds blocks instantly, submits at wall-clock pace | Block rate decouples from sim-time → runaway production |
+
+There's no goldilocks setting between them. The underlying reason: real
+Monero uses PoW expense as the *throttle* on block rate. We've
+trivialized PoW (necessary for simulation speed), so the throttle is
+gone, and `start_mining` has no other throttle — it just mines as fast
+as it can.
+
+`generateblocks` reinjects the throttle in user-space. The agent owns
+the timing decision: each block is one explicit RPC call, and
+`time.sleep()` between calls (a real syscall) is what advances sim-time
+and rate-limits production. Block rate becomes a function of agent
+decisions, which is what we want for modeling declared hashrate
+weights, adversarial strategies, etc.
+
 ### Secondary reasons (which would still apply even if scheduling weren't an issue)
 
 These don't dominate the decision, but they reinforce that the
@@ -159,11 +199,6 @@ agent-driven design is the right one even setting Shadow aside:
   enforce a 20/20/20/20/20 hashrate split by letting `start_mining`
   run — every miner would just chew its scheduled slice equally. The
   split has to be imposed in user-space.
-- **Difficulty is a forced choice that breaks real mining either way.**
-  At mainnet difficulty (~300 GH) a single simulated CPU finds a block
-  effectively never; you'd have to fake the rate anyway. At regtest
-  difficulty (~1–2) `start_mining` would dump thousands of blocks per
-  second. No useful middle ground exists.
 - **Determinism / reproducibility.** Agent-driven Poisson timing
   derived from `simulation_seed` is exactly reproducible run to run.
   A real miner loop's nonce-hit timing depends on cache and scheduling
