@@ -598,15 +598,19 @@ if [[ "$SHADOW_DEPS_NEEDED" == "true" ]]; then
     print_success "Shadow build dependencies installed"
 fi
 
+# Pin shadowformonero to the tag matching this monerosim release.
+# Bump in lock-step with monerosim's own tag so a given monerosim
+# version always installs the exact fork commit it was tested against.
+# install_shadowformonero() stamps this into
+# $MONEROSIM_HOME/SHADOWFORMONERO_VERSION so subsequent runs can detect
+# a stale install and prompt for reinstall.
+SHADOWFORMONERO_REF="v0.1.0"
+
 # Helper function to install shadowformonero
 install_shadowformonero() {
     # Setup directory for shadowformonero
     SHADOWFORMONERO_DIR="$SCRIPT_DIR/sibling_repos/shadowformonero"
     SHADOWFORMONERO_REPO="https://github.com/Fountain5405/shadowformonero.git"
-    # Pin shadowformonero to the tag matching this monerosim release.
-    # Bump in lock-step with monerosim's own tag so a given monerosim
-    # version always installs the exact fork commit it was tested against.
-    SHADOWFORMONERO_REF="v0.1.0"
 
     mkdir -p "$SCRIPT_DIR/sibling_repos"
 
@@ -633,6 +637,9 @@ install_shadowformonero() {
     ./setup build --jobs "$BUILD_JOBS" --prefix "$MONEROSIM_HOME"
     ./setup install
 
+    # Stamp the installed ref so future runs can detect a stale install.
+    echo "$SHADOWFORMONERO_REF" > "$MONEROSIM_HOME/SHADOWFORMONERO_VERSION"
+
     # Return to script directory
     cd "$SCRIPT_DIR"
 }
@@ -642,11 +649,43 @@ if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
     SHADOW_VERSION=$("$MONEROSIM_BIN/shadow" --version 2>&1 | head -n1)
     print_success "Shadow already installed: $SHADOW_VERSION"
 
-    # Check if it's a shadowformonero version (custom build from main branch)
-    if "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -qE "dirty|shadowformonero"; then
-        print_success "Using shadowformonero version with Monero socket compatibility patches"
+    # Decide whether the install matches what this monerosim release
+    # expects. Three cases warrant a reinstall prompt:
+    #   1. Binary is stock Shadow, not shadowformonero (missing patches)
+    #   2. shadowformonero is installed but the stamp file is missing
+    #      (pre-versioning install — can't verify the ref it was built from)
+    #   3. shadowformonero is installed but the stamp differs from the
+    #      pinned $SHADOWFORMONERO_REF for this monerosim release
+    STAMP_FILE="$MONEROSIM_HOME/SHADOWFORMONERO_VERSION"
+    REINSTALL_REASON=""
+    if ! "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -qE "dirty|shadowformonero"; then
+        REINSTALL_REASON="installed binary is stock Shadow, not shadowformonero — it lacks the Monero socket-compatibility patches"
+    elif [[ ! -f "$STAMP_FILE" ]]; then
+        REINSTALL_REASON="installed shadowformonero predates version stamping; cannot verify it matches the pinned ref ($SHADOWFORMONERO_REF)"
     else
-        print_warning "Standard Shadow detected - consider reinstalling shadowformonero for vanilla monerod support"
+        INSTALLED_REF=$(cat "$STAMP_FILE")
+        if [[ "$INSTALLED_REF" != "$SHADOWFORMONERO_REF" ]]; then
+            REINSTALL_REASON="installed shadowformonero is $INSTALLED_REF; this monerosim release expects $SHADOWFORMONERO_REF"
+        else
+            print_success "shadowformonero $INSTALLED_REF matches pinned ref"
+        fi
+    fi
+
+    if [[ -n "$REINSTALL_REASON" ]]; then
+        print_warning ""
+        print_warning "shadowformonero install needs attention:"
+        print_warning "  $REINSTALL_REASON"
+        print_warning ""
+        print_warning "Reinstalling will rebuild from source and takes 10-20 minutes."
+        # Drain stdin so a stray keypress during earlier phases doesn't auto-answer.
+        read -r -t 0.1 -N 1000 _ 2>/dev/null || true
+        read -p "Reinstall shadowformonero now? (Y/n): " -r
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            print_status "Reinstalling shadowformonero..."
+            install_shadowformonero
+        else
+            print_warning "Keeping existing shadowformonero install. Simulations may fail or behave unexpectedly."
+        fi
     fi
 elif command -v shadow &> /dev/null; then
     # Shadow exists elsewhere - check version and offer to install to our location
