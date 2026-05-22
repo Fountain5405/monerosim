@@ -241,7 +241,7 @@ Side-by-side with the current approach:
 | | `generateblocks` (current) | `--mininghook` (hypothetical) |
 |---|---|---|
 | Code path | One-shot RPC, agent calls per block | Normal `start_mining` lifecycle, miner thread driven by external socket |
-| Real PoW computed | Yes (at regtest difficulty) | No — bypassed in validator |
+| Real PoW computed | Yes (at regtest difficulty) | No — miner thread skips hashing entirely (nonce comes from the agent over the socket); validator still computes the longhash but discards it without checking against difficulty |
 | monerod patches required | None | Significant — a second fork to maintain alongside `shadowformonero` |
 | `start_mining` / `stop_mining` RPCs | Effectively unused | Behave as documented |
 | Per-miner hashrate weighting | Agent-side (Python Poisson timing) | Agent-side via socket grant cadence |
