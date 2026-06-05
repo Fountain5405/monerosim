@@ -242,6 +242,25 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             // equivalent monerod category string before they reach the CLI.
             translate_daemon_log_level(&mut merged_daemon_options);
 
+            // monerosim baseline: lift --max-connections-per-ip off monerod's
+            // default of 1. That default is a mainnet anti-spam measure built
+            // on the assumption that one IP == one node. In monerosim every
+            // node has a stable, known IP, and monerod's post-handshake
+            // reachability probe (try_ping, src/p2p/net_node.inl:2499) opens a
+            // SECOND short-lived connection back to the peer from the SAME
+            // source IP. With the cap at 1 that probe is refused, which tears
+            // down the original connection as well — leaving every daemon in a
+            // permanent reconnect loop with no stable peers. Lifting the floor
+            // to 4 gives the back-ping plus a little concurrent-race headroom
+            // room under the cap. See docs/20260605_max_connections_per_ip_bug.md.
+            //
+            // This is a floor, not a force: merge_options() above has already
+            // applied daemon_defaults and per-agent daemon_options, so entry()
+            // only fills the value in when the user hasn't set it themselves.
+            merged_daemon_options
+                .entry("max-connections-per-ip".to_string())
+                .or_insert(OptionValue::Number(4));
+
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                 // Start with required/injected flags that cannot be overridden.
                 //

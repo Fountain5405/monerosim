@@ -176,12 +176,16 @@ fn compose_base_environment(
     // Monero-specific environment variables
     let mut monero_environment = environment.clone();
     monero_environment.insert("MONERO_BLOCK_SYNC_SIZE".to_string(), "1".to_string());
-    // (Previously set MONERO_MAX_CONNECTIONS_PER_IP=20 here, but
-    // monerod doesn't read that env var — it only honors the CLI flag
-    // `--max-connections-per-ip`. The env var was a no-op for years.
-    // We now run at monerod's actual default (1) per net_node.cpp:172.
-    // If bootstrap issues reappear with many agents in shared subnets,
-    // bump it explicitly via `daemon_defaults: { max-connections-per-ip: N }`.)
+    // (Previously set MONERO_MAX_CONNECTIONS_PER_IP=20 here, but monerod
+    // doesn't read that env var — it only honors the CLI flag
+    // `--max-connections-per-ip`. The env var was a no-op for years, so for
+    // a while we ran at monerod's actual default of 1. That turned out to
+    // break P2P at every scale: monerod's post-handshake reachability probe
+    // opens a second connection from the same source IP, which the cap-of-1
+    // refuses, dropping the original connection and looping forever. The
+    // floor is now injected as the CLI flag in user_agents.rs
+    // (build_daemon_args_base) so it applies to every daemon agent without
+    // per-config opt-in. See docs/20260605_max_connections_per_ip_bug.md.)
 
     // DNS server configuration - allocate IP from node 0's subnet for proper routing
     let enable_dns_server = config.general.enable_dns_server.unwrap_or(false);
