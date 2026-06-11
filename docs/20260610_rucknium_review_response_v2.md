@@ -229,7 +229,11 @@ stable mesh; flooring the cap at 4 fixes it — orchestrator commit
 peer discovery at this scale, present identically pre- and post-fix.) So the
 cap fix is a genuine correctness improvement for small sims discovered thanks
 to this review — but it does not explain, and did not change, any statistic
-the review measured at 1000 nodes.
+the review measured at 1000 nodes. The injected `4` is a config default, not
+hardcoded behavior: setting `max-connections-per-ip: 1` in `daemon_defaults`
+restores stock monerod exactly (verified through config generation), and the
+example configs document the knob — fidelity-minded users can run stock at
+scale, where it makes no measurable difference anyway.
 
 ## 7. Corrections to our earlier (briefly published) analysis
 

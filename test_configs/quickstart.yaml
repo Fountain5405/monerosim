@@ -14,6 +14,12 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
+    # max-connections-per-ip: 1
+    #   Unset, monerosim injects 4 (stock monerod defaults to 1). Cap 4 lets
+    #   small/dense networks like this one maintain a stable mesh; at 15
+    #   nodes the stock default refuses thousands of same-IP connections.
+    #   Verified to make no measurable difference at 1000-node scale.
+    #   Uncomment (=1) for strict stock-monerod fidelity.
   wallet_defaults:
     log-level: 1
 network:

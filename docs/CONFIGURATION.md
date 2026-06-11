@@ -41,6 +41,14 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
+    # max-connections-per-ip: 1
+    #   If unset, monerosim injects 4 (stock monerod's default is 1; the cap
+    #   counts simultaneous incoming connections per remote IP). 4 lets
+    #   small/dense networks form stable meshes — at 15 nodes the stock
+    #   default refuses thousands of same-IP connections and no mesh forms.
+    #   At 1000-node scale the value makes no measurable difference
+    #   (verified). Set to 1 to match stock monerod exactly.
+    #   See docs/20260605_max_connections_per_ip_bug.md.
 
   # Default options applied to all wallets (overridable per-agent)
   wallet_defaults:
@@ -67,6 +75,11 @@ general:
 | `wallet_defaults` | map | - | Default wallet CLI options |
 | `runahead` | string | - | Shadow runahead duration |
 | `python_venv` | string | - | Path to Python virtual environment |
+
+Note: if `daemon_defaults` does not set `max-connections-per-ip`, monerosim
+injects `4` (a floor, not a force — any user-provided value wins, including
+stock monerod's default of `1`). See the commented example above and
+`docs/20260605_max_connections_per_ip_bug.md` for why.
 
 ## Network Section
 

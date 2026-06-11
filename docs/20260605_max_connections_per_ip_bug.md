@@ -133,7 +133,13 @@ merged_daemon_options
 - A **floor, not a force**: `merge_options()` has already applied
   `daemon_defaults` and per-agent options, so the entry only fills in when
   the user set nothing. Setting `max-connections-per-ip: 8` in a config
-  yields `=8` everywhere, `=4` nowhere (verified).
+  yields `=8` everywhere, `=4` nowhere; setting `1` yields `=1` everywhere —
+  i.e., **stock monerod behavior is one YAML line away** (both directions
+  verified through config generation). The quickstart example configs carry
+  the key commented out with this guidance, and `daemon_defaults` is
+  documented in `docs/CONFIGURATION.md`. For fidelity-sensitive large-scale
+  studies, running at `1` is reasonable: at 1000 nodes the cap value makes
+  no measurable difference either way.
 - Why 4: verification briefly needs 2 simultaneous inbound from one IP
   (data + back-ping); 4 adds headroom for cleanup races during rapid
   reconnects while staying far below anything that matters in a sim where
