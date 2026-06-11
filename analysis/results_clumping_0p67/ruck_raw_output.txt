@@ -1,0 +1,112 @@
+Wed Jun 10 16:42:27 2026 Reading 1 log files...
+Wed Jun 10 16:42:39 2026 Finished reading 1 log files.
+Wed Jun 10 16:42:42 2026 1 log messages not aligned. Repairing...
+Wed Jun 10 16:42:46 2026 Reading 1 log files...
+Wed Jun 10 16:42:59 2026 Finished reading 1 log files.
+Wed Jun 10 16:43:02 2026 4 log messages not aligned. Repairing...
+Wed Jun 10 16:43:05 2026 Reading 1 log files...
+Wed Jun 10 16:43:22 2026 Finished reading 1 log files.
+Wed Jun 10 16:43:26 2026 3 log messages not aligned. Repairing...
+Wed Jun 10 16:43:30 2026 Reading 1 log files...
+Wed Jun 10 16:43:43 2026 Finished reading 1 log files.
+Wed Jun 10 16:43:47 2026 1 log messages not aligned. Repairing...
+Wed Jun 10 16:43:50 2026 Reading 1 log files...
+Wed Jun 10 16:44:06 2026 Finished reading 1 log files.
+Wed Jun 10 16:44:10 2026 3 log messages not aligned. Repairing...
+Wed Jun 10 16:44:15 2026 Reading 1 log files...
+Wed Jun 10 16:44:30 2026 Finished reading 1 log files.
+Wed Jun 10 16:44:34 2026 2 log messages not aligned. Repairing...
+Wed Jun 10 16:44:39 2026 Reading 1 log files...
+Wed Jun 10 16:44:51 2026 Finished reading 1 log files.
+Wed Jun 10 16:44:54 2026 1 log messages not aligned. Repairing...
+Wed Jun 10 16:44:58 2026 Reading 1 log files...
+Wed Jun 10 16:45:10 2026 Finished reading 1 log files.
+Wed Jun 10 16:45:13 2026 1 log messages not aligned. Repairing...
+Wed Jun 10 16:45:17 2026 Reading 1 log files...
+Wed Jun 10 16:45:32 2026 Finished reading 1 log files.
+Wed Jun 10 16:45:36 2026 2 log messages not aligned. Repairing...
+Wed Jun 10 16:45:40 2026 Reading 1 log files...
+Wed Jun 10 16:45:54 2026 Finished reading 1 log files.
+Wed Jun 10 16:45:57 2026 1 log messages not aligned. Repairing...
+
+ 6 
+10 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   1.00    1.00    1.00    1.37    1.00   12.00 
+   direction  Min. 1st Qu. Median     Mean 3rd Qu.  Max.
+      <char> <num>   <num>  <num>    <num>   <num> <num>
+1:       INC     1       1      1 1.346193       1    12
+2:       OUT     1       1      1 1.393459       1    12
+   direction  Min. 1st Qu. Median     Mean 3rd Qu.  Max.
+      <char> <num>   <num>  <num>    <num>   <num> <num>
+1:       INC     1       1      1 1.055330       1     2
+2:       OUT     1       1      1 1.060041       1     2
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
+   <num>    <num>    <num>    <num>    <num>    <num>
+1:     0 1.472383 1.523833 18.85344 1.565283 709.7826
+   direction  Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
+      <char> <num>    <num>    <num>    <num>    <num>    <num>
+1:       INC     0 1.506608 1.546650 17.57093 1.579429 709.7826
+2:       OUT     0 1.449600 1.498133 20.13874 1.540317 709.7614
+
+    FALSE      TRUE 
+98.361051  1.638949 
+
+FALSE 
+  100 
+
+    FALSE      TRUE 
+98.605099  1.394901 
+
+FALSE 
+  100 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   1.470   1.521   6.104   1.560 198.426 
+
+
+|        |    Minutes|
+|:-------|----------:|
+|Min.    |   0.000000|
+|1st Qu. |   1.472383|
+|Median  |   1.523833|
+|Mean    |  18.853444|
+|3rd Qu. |   1.565283|
+|Max.    | 709.782583|
+null device 
+          1 
+
+
+|Number of txs in message | Share of messages (percentage)|
+|:------------------------|------------------------------:|
+|1                        |                          23.03|
+|2                        |                          32.19|
+|3                        |                          23.35|
+|4                        |                          12.67|
+|5                        |                           4.95|
+|6                        |                           1.53|
+|7                        |                           0.40|
+|8                        |                           0.09|
+|9                        |                           0.02|
+|10                       |                           0.01|
+|> 10                     |                           1.68|
+========================================
+circlize version 0.4.18
+CRAN page: https://cran.r-project.org/package=circlize
+Github page: https://github.com/jokergoo/circlize
+Documentation: https://jokergoo.github.io/circlize_book/book/
+
+If you use it in published research, please cite:
+Gu, Z. circlize implements and enhances circular visualization
+  in R. Bioinformatics 2014.
+
+This message can be suppressed by:
+  suppressPackageStartupMessages(library(circlize))
+========================================
+
+Note: 2 points are out of plotting region in sector 'A', track '1'.
+Note: 7 points are out of plotting region in sector 'A', track '1'.
+Note: 2 points are out of plotting region in sector 'A', track '1'.
+null device 
+          1 
+null device 
+          1 

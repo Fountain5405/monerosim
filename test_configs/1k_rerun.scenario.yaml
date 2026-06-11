@@ -1,0 +1,59 @@
+general:
+  stop_time: 16h                       # match the analyzed run's duration
+  simulation_seed: 12345               # same seed as the stalled run -> controlled comparison
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms                      # unchanged
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    # peers at monerod defaults (full realism); max-connections-per-ip=4 injected by orchestrator (the fix)
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners: hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # --- 200 Users @ 2400s: total tx rate at the hardware-calibrated safe ceiling
+  #     (200 distinct senders ~ mainnet sender diversity; same total volume as the
+  #     50u@600s validation run, just spread across more senders) ---
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 2400         # just above the 2355s safe floor for 200u x 1005 nodes
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 800 Relay Nodes: daemon-only (matches the analyzed run's composition) ---
+  relay-{001..800}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

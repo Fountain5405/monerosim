@@ -243,16 +243,16 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             translate_daemon_log_level(&mut merged_daemon_options);
 
             // monerosim baseline: lift --max-connections-per-ip off monerod's
-            // default of 1. That default is a mainnet anti-spam measure built
-            // on the assumption that one IP == one node. In monerosim every
-            // node has a stable, known IP, and monerod's post-handshake
-            // reachability probe (try_ping, src/p2p/net_node.inl:2499) opens a
-            // SECOND short-lived connection back to the peer from the SAME
-            // source IP. With the cap at 1 that probe is refused, which tears
-            // down the original connection as well — leaving every daemon in a
-            // permanent reconnect loop with no stable peers. Lifting the floor
-            // to 4 gives the back-ping plus a little concurrent-race headroom
-            // room under the cap. See docs/20260605_max_connections_per_ip_bug.md.
+            // default of 1 (the cap counts simultaneous INCOMING connections
+            // per remote IP, enforced at accept). In small/dense scenarios —
+            // where node pairs hold mutual connections and exchange try_ping
+            // reachability back-pings — a second incoming from the same IP is
+            // routine and gets refused at cap 1, preventing a stable mesh
+            // (quickstart-15: 31,180 refusals/run, no mesh; 0 with the floor).
+            // At large sparse scale the default is nearly harmless, and this
+            // floor was verified to change nothing measurable at 1000 nodes.
+            // 4 = data conn + back-ping + headroom for cleanup races.
+            // See docs/20260605_max_connections_per_ip_bug.md.
             //
             // This is a floor, not a force: merge_options() above has already
             // applied daemon_defaults and per-agent daemon_options, so entry()

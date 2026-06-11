@@ -1,0 +1,68 @@
+# 1000-node MILESTONE run: standard-mainnet transaction intensity.
+# Identical to 1k_rerun in EVERY respect except transaction_interval: this is a
+# controlled single-variable change (tx rate) from the validated 1k_rerun base.
+#
+# Target: ~0.30 tx/s aggregate = standard mainnet today (~26k tx/day, 2025).
+#   200 users / 0.30 tx/s -> interval 667s.  (1k_rerun used 2400s = 0.083 tx/s,
+#   only ~28% of mainnet load; calib used 50u/600s = same 0.083 total.)
+# Per-user this is GENTLER than calib's 600s, which sent 49 tx/user cleanly, so
+# funding/output-unlocking is not a concern; only the 4x aggregate verification
+# load is new. Old stall was 0.67 tx/s WITH the max-conn-per-ip bug (now fixed),
+# so 0.30 should sit below the post-fix ceiling. Disk projection ~170G (<350G).
+general:
+  stop_time: 16h                       # full duration, for direct comparability with 1k_rerun/calib
+  simulation_seed: 12345               # same seed -> controlled comparison
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: 1                       # unchanged: keeps net.p2p connection events + gossip
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    # max-connections-per-ip=4 injected by orchestrator (the fix)
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners: hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # --- 200 Users: aggregate ~0.30 tx/s = standard mainnet intensity ---
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 667          # 200u / 667s = 0.30 tx/s = ~26k tx/day (mainnet 2025)
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 800 Relay Nodes: daemon-only ---
+  relay-{001..800}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
