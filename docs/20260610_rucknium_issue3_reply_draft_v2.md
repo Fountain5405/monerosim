@@ -1,6 +1,7 @@
-<!-- DRAFT v2 reply to post manually on https://github.com/Fountain5405/monerosim/issues/3 -->
-<!-- Supersedes docs/20260609_rucknium_issue3_reply_draft.md (do NOT post that one — -->
-<!-- it contains retracted claims). gh CLI not installed; copy the body below. -->
+<!-- Reply to Rucknium's review, POSTED 2026-06-11 on -->
+<!-- https://github.com/Fountain5405/monerosim/issues/3 -->
+<!-- This file is the posted text of record; companion doc: -->
+<!-- docs/20260610_rucknium_review_response_v2.md -->
 
 Thank you again for the review — every one of your flags turned out to be a real signal. Our first interpretation of them didn't survive verification, so we re-investigated each discrepancy against the original 1000-node run's own logs and monerod source, and then re-ran your exact 1000-node configuration on the fixed stack and analyzed it with your own `xmrpeers` code. Full writeup with measurements, source citations, and reproduction scripts: `docs/20260610_rucknium_review_response_v2.md`. The short version:
 
