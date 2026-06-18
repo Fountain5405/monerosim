@@ -54,6 +54,14 @@ struct Args {
     /// Output directory for Shadow configuration and simulation files
     #[arg(short, long, default_value = "shadow_output")]
     output: PathBuf,
+
+    /// Fraction of non-seed nodes that are reachable (advertise their P2P
+    /// port), in [0.0, 1.0]. 1.0 = all reachable (default / perfect network);
+    /// lower = mainnet-like NAT majority, with the complement getting
+    /// --hide-my-port. Overrides `general.reachable_fraction` from the config.
+    /// Seeds and miners are always reachable regardless.
+    #[arg(long)]
+    reachable: Option<f64>,
 }
 
 fn main() -> Result<()> {
@@ -66,8 +74,18 @@ fn main() -> Result<()> {
     info!("Output directory: {:?}", args.output);
 
     // Load configuration using new system
-    let new_config = config_loader::load_config(&args.config)?;
-    
+    let mut new_config = config_loader::load_config(&args.config)?;
+
+    // CLI override: --reachable sets the global reachable fraction, beating
+    // general.reachable_fraction from the config file.
+    if let Some(r) = args.reachable {
+        if !(0.0..=1.0).contains(&r) {
+            color_eyre::eyre::bail!("--reachable must be in [0.0, 1.0], got {}", r);
+        }
+        info!("CLI override: reachable_fraction = {} (was {})", r, new_config.general.reachable_fraction);
+        new_config.general.reachable_fraction = r;
+    }
+
     // Determine output directory and final config path
     let (output_dir, shadow_config_path) = if args.output.extension().map_or(false, |ext| ext == "yaml") {
         (

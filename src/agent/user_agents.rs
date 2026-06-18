@@ -18,7 +18,7 @@ use crate::process::{
     add_user_agent_process, UserAgentProcessArgs,
     create_mining_agent_process, MiningAgentProcessArgs,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
 /// Context bundle for `process_user_agents`.
@@ -45,9 +45,74 @@ pub struct UserAgentProcessContext<'a> {
     pub distribution_weights: Option<&'a crate::config::RegionWeights>,
     pub scripts_dir: &'a Path,
     pub daemon_data_dir: &'a str,
+    /// Deterministic seed for selecting which nodes are unreachable.
+    pub simulation_seed: u64,
+    /// Global fraction of non-seed nodes that are reachable (1.0 = all).
+    pub reachable_fraction: f64,
+    /// Per-role overrides for `reachable_fraction` (override semantics).
+    pub reachable_by_role: Option<&'a BTreeMap<String, f64>>,
 }
 
 /// Process user agents
+/// Stable FNV-1a hash of (seed, id) — deterministic and reproducible
+/// without depending on std's (unstable across versions) hasher, so the
+/// same binary + seed always selects the same unreachable nodes.
+fn seeded_hash(seed: u64, s: &str) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325 ^ seed;
+    for b in s.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+/// Decide which non-seed agents are unreachable (get `--hide-my-port`).
+/// Roles: `user` (has a wallet) and `relay` (daemon-only). Seeds and miners
+/// are always reachable and excluded entirely (bootstrap backbone). `reachable`
+/// is the global fraction; `by_role` overrides it per role (override semantics,
+/// NOT multiply). For each role, `round((1 - r) * count)` agents are marked
+/// unreachable, chosen deterministically by seeded hash so runs reproduce.
+fn compute_unreachable_set(
+    user_agents: &[(&String, &AgentConfig)],
+    seed: u64,
+    reachable: f64,
+    by_role: Option<&BTreeMap<String, f64>>,
+) -> HashSet<String> {
+    let mut by_role_ids: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    for (id, cfg) in user_agents {
+        let is_miner = cfg.is_miner();
+        let is_seed = is_miner
+            || cfg
+                .attributes
+                .as_ref()
+                .map(|a| a.get("is_seed_node").map_or(false, |v| v == "true"))
+                .unwrap_or(false);
+        if is_seed {
+            continue; // seeds + miners always reachable
+        }
+        let role = if cfg.has_wallet() { "user" } else { "relay" };
+        by_role_ids.entry(role).or_default().push(id.to_string());
+    }
+
+    let mut unreachable = HashSet::new();
+    for (role, mut ids) in by_role_ids {
+        let r = by_role
+            .and_then(|m| m.get(role))
+            .copied()
+            .unwrap_or(reachable)
+            .clamp(0.0, 1.0);
+        if r >= 1.0 {
+            continue; // every node of this role stays reachable
+        }
+        ids.sort_by_key(|id| seeded_hash(seed, id));
+        let n_unreach = (((1.0 - r) * ids.len() as f64).round() as usize).min(ids.len());
+        for id in ids.into_iter().take(n_unreach) {
+            unreachable.insert(id);
+        }
+    }
+    unreachable
+}
+
 pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre::Result<()> {
     let UserAgentProcessContext {
         agents,
@@ -72,6 +137,9 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         distribution_weights,
         scripts_dir,
         daemon_data_dir,
+        simulation_seed,
+        reachable_fraction,
+        reachable_by_role,
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
@@ -144,6 +212,25 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     );
 
     // Regular agents will use seed nodes for --seed-node
+
+    // Deterministically select which non-seed nodes are UNREACHABLE
+    // (advertise my_port=0 via --hide-my-port), to mimic mainnet's NAT
+    // majority. Seeds and miners are always reachable (bootstrap backbone).
+    // See docs/20260618_mainnet_topology_targets.md.
+    let unreachable_agents = compute_unreachable_set(
+        &user_agents,
+        simulation_seed,
+        reachable_fraction,
+        reachable_by_role,
+    );
+    if !unreachable_agents.is_empty() {
+        log::info!(
+            "Reachability: {} node(s) marked unreachable via --hide-my-port \
+             (global reachable_fraction={}; seeds + miners always reachable)",
+            unreachable_agents.len(),
+            reachable_fraction
+        );
+    }
 
     // Now process all user agents with staggered start times
     for (i, (agent_id, user_agent_config)) in user_agents.iter().enumerate() {
@@ -260,6 +347,19 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             merged_daemon_options
                 .entry("max-connections-per-ip".to_string())
                 .or_insert(OptionValue::Number(4));
+
+            // Mainnet-realism: if this node was selected as unreachable,
+            // inject --hide-my-port (advertise my_port=0). The node still
+            // binds/listens and forms its own outbound peers, but is never
+            // inserted into anyone's peerlist (white-listing is gated on a
+            // successful back-ping, which requires my_port != 0), so it
+            // accepts ~no inbound — exactly a NAT'd mainnet leaf. A user who
+            // sets hide-my-port explicitly per-agent still wins (or_insert).
+            if unreachable_agents.contains(agent_id.as_str()) {
+                merged_daemon_options
+                    .entry("hide-my-port".to_string())
+                    .or_insert(OptionValue::Bool(true));
+            }
 
             let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
                 // Start with required/injected flags that cannot be overridden.

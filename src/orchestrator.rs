@@ -751,6 +751,9 @@ pub fn generate_agent_shadow_config(
         distribution_weights: distribution_weights.as_ref(),
         scripts_dir: &scripts_dir,
         daemon_data_dir: &config.general.daemon_data_dir,
+        simulation_seed: config.general.simulation_seed,
+        reachable_fraction: config.general.reachable_fraction,
+        reachable_by_role: config.general.reachable_by_role.as_ref(),
     })?;
 
 

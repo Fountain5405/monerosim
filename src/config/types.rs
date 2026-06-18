@@ -313,6 +313,32 @@ pub struct GeneralConfig {
     /// *fallback* IPs. Both fields can coexist in one config.
     #[serde(default)]
     pub fallback_seeds: FallbackSeedsMode,
+
+    /// Fraction of non-seed nodes (per role) that advertise a reachable
+    /// P2P port. `1.0` (default) = every node reachable — the historical
+    /// "perfect network". Lower values make the complement unreachable
+    /// via monerod `--hide-my-port` (advertise my_port=0; the node still
+    /// dials out and forms its outbound peers but is never inserted into
+    /// anyone's peerlist), mimicking mainnet's NAT majority (~15% reachable).
+    /// Seeds and miners are ALWAYS reachable (bootstrap backbone) regardless.
+    /// Selection of which nodes are hidden is deterministic from
+    /// `simulation_seed`. Overridable by `--reachable` on the CLI.
+    /// See docs/20260618_mainnet_topology_targets.md.
+    #[serde(default = "default_reachable_fraction")]
+    pub reachable_fraction: f64,
+
+    /// Per-role overrides for `reachable_fraction`. OVERRIDE semantics, not
+    /// multiply: a role listed here REPLACES the global for that role (what
+    /// you write is what you get). Roles: `user`, `relay`. (Seeds/miners are
+    /// always reachable, so listing them has no effect.)
+    /// Example: `{ user: 0.15, relay: 0.10 }`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reachable_by_role: Option<BTreeMap<String, f64>>,
+}
+
+/// Default reachable fraction: 1.0 = all nodes reachable (perfect network).
+fn default_reachable_fraction() -> f64 {
+    1.0
 }
 
 /// Agent definitions - named map of agents
@@ -461,6 +487,8 @@ impl Default for GeneralConfig {
             shared_dir: default_shared_dir(),
             daemon_data_dir: default_daemon_data_dir(),
             fallback_seeds: FallbackSeedsMode::default(),
+            reachable_fraction: default_reachable_fraction(),
+            reachable_by_role: None,
         }
     }
 }

@@ -32,6 +32,7 @@ fi
 CONFIG=""
 RUN_NAME=""
 ARCHIVE_BASE=""
+REACHABLE=""              # "" = use config default; else fraction in [0,1] passed to monerosim --reachable
 SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
@@ -56,6 +57,10 @@ Run a MoneroSim simulation end-to-end and archive all results.
 Options:
   --config <path>        Monerosim config file (required)
   --name <name>          Run name (default: derived from config filename)
+  --reachable <frac>     Fraction of non-seed nodes reachable, [0.0-1.0]. 1.0 =
+                         all reachable (default). Lower = mainnet-like NAT
+                         majority (the rest get --hide-my-port). Seeds + miners
+                         always reachable. Overrides general.reachable_fraction.
   --archive-dir <dir>    Archive location (default: archived_runs)
   --data-dir <dir>       Shadow data output directory (default: shadow.data in cwd)
                          Use this to write simulation data to a different volume
@@ -105,6 +110,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --name)
             RUN_NAME="$2"
+            shift 2
+            ;;
+        --reachable)
+            REACHABLE="$2"
             shift 2
             ;;
         --archive-dir)
@@ -628,7 +637,12 @@ build_and_generate() {
 
     # Generate Shadow config
     log_info "Generating Shadow configuration..."
-    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
+    REACHABLE_ARGS=()
+    if [[ -n "$REACHABLE" ]]; then
+        REACHABLE_ARGS=(--reachable "$REACHABLE")
+        log_info "Reachability override: --reachable $REACHABLE"
+    fi
+    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
         log_ok "Shadow config generated"
     else
         log_err "Config generation failed! See $ARCHIVE_DIR/monerosim.log"

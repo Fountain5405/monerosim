@@ -1,0 +1,71 @@
+# 300-node TOPOLOGY A/B base config.
+# Purpose: test mainnet-like unreachability (--reachable). Run this SAME config
+# twice — control (--reachable 1.0, the default perfect network) vs treatment
+# (--reachable 0.15, ~85% NAT'd via --hide-my-port) — and compare connection
+# duration (does tx-carrying median move from the all-reachable baseline toward
+# mainnet's ~23 min) + inbound distribution on reachable nodes (~50-100?).
+# See docs/20260618_mainnet_topology_targets.md.
+#
+# Composition scaled from the 1k runs: 5 miners + 60 users + 235 relays = 300.
+# At --reachable 0.15: ~44 of 295 eligible stay reachable; + 5 miners + fallback
+# seeds => ~55 reachable backbone; 12*300/55 ~= 65 inbound/reachable node (in
+# Rucknium's 50-100 band). Monitor log level => net.p2p.msg gossip for the
+# Rucknium connection-duration + clumping analysis (analysis/ruck_analysis.r).
+general:
+  stop_time: 16h                       # comparable to the 1k baselines
+  simulation_seed: 12345               # same seed -> deterministic, reproducible selection
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: monitor                 # net.p2p.msg gossip (lean); needed by ruck_analysis.r
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    # max-connections-per-ip=4 injected by orchestrator (the fix)
+  # reachable_fraction left at default 1.0 here; set per-run via --reachable.
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners (also the Dynamic-mode seeds; always reachable) ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # --- 60 Users (tx generators; ~0.2 tx/s nominal at 300s interval) ---
+  user-{001..060}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 235 Relay nodes (daemon-only; the NAT majority under --reachable<1) ---
+  relay-{001..235}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
