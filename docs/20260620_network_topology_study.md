@@ -40,9 +40,9 @@ which you exchange transactions (grouped into contiguous-hour periods) — **not
 raw TCP socket lifetime. We verified what actually drives it:
 
 - The sync-search peer dropper (`update_sync_search`, 101 s timer) cycles each
-  node's outbound peers; **individual TCP connections live ~100 s regardless of
-  topology** (measured ~100 s median in both all-reachable and 15%-reachable
-  runs; the dropper fires ~26–31×/h in both).
+  node's outbound peers; **individual TCP connections live ~100 s** (measured
+  ~100 s median TCP lifetime, ~31 drops/h/node, in the complete all-reachable
+  log-level-1 reference run, 20260511).
 - What changes with topology is **recurrence**: with a *large* reachable pool,
   each ~100 s connection lands on a *different* peer, so the per-peer tx-gap span
   ≈ one connection ≈ 1.5 min. With a *small* reachable pool, every node
@@ -86,24 +86,48 @@ to full-16 h runs.
 
 | reachable | supernodes | conn-duration median | % single-tx | tx created | run |
 |---:|:--:|---:|---:|---:|---|
-| **100%** | no | **1.52 min** | 23.0% | 13,678 | `clumping_0p67_monitor` (control) |
-| 15% (uniform) | no | ~127 min\* | 25.0% | (partial) | `topo1k_r15` (48% partial)\* |
+| 100% (0.30 load) | no | 1.47 min | 49.5% | 8,945 | `1k_mainnet` — v2 response\* |
+| **100%** (0.67 load) | no | **1.52 min** | 23.0% | 13,678 | `clumping_0p67_monitor` (control)\* |
 | **15%** | **yes (5)** | **150 min** | 91.3%† | 3,254 | **`sn_r15`** (2026-06-19) |
 | 40% | yes (5) | _TBD_ | _TBD_ | _TBD_ | sweep (running) |
 | 60% | yes (5) | _TBD_ | _TBD_ | _TBD_ | sweep (running) |
 | 80% | yes (5) | _TBD_ | _TBD_ | _TBD_ | sweep (running) |
 | — | — | **23 min** (target) | 25.0% | — | mainnet (Rucknium, 2024 spam wave) |
 
-\* `topo1k_r15` timed out at 48% (the uniform 85%-hidden topology is ~3× slower
-to simulate — which motivated adding supernodes); 127 min is from ~3 h of
-activity, so the full value would be higher. † 91.3% single is a low-volume
-artifact of the ~5× throughput throttle (§4), not a topology effect.
+\* The two 100% rows are from our review-response work (`docs/20260610_rucknium_review_response_v2.md`):
+the standard-mainnet milestone (0.30 tx/s) and the matched-config replication
+(0.67) — both all-reachable and *completing*. Note connection duration is ~1.5 min
+at 100% reachable **regardless of load**, confirming it is topology-driven, not
+volume-driven. † 91.3% single is a low-volume artifact of the ~5× throughput
+throttle (§4), not a topology effect.
+
+> **Excluded (incomplete):** a uniform 15%-reachable run *without* supernodes
+> (`topo1k_r15`, log-level 1) was attempted to capture TCP-level events, but
+> **timed out at 48%** — the unreachable-majority topology is ~3× slower to
+> simulate, which is precisely what motivated adding supernodes. It is **not
+> used as a data point**; its partial logs only informally corroborated the
+> mechanism below (TCP connections still ~100 s; sync-search drops still
+> firing), consistent with the complete runs.
 
 **Headline so far:** topology (reachable-pool size) moves connection duration
 from 1.5 min (all-reachable) to 150 min (15% reachable) — ~100× — confirming it
 is the lever. 15% **overshoots** mainnet's 23 min; the realistic fraction is
 **higher**. The running sweep (40/60/80%) pinpoints where it crosses 23 min.
 Supernodes change the *simulation cost*, not the duration.
+
+**Clumping is volume-bound (from the review response).** Our v2 work established
+that transaction clumping tracks delivered tx rate, not topology — so sn_r15's
+91% single is just a consequence of its low throughput, not a topology signal:
+
+| delivered tx/s | % single-tx msgs | run |
+|---:|---:|---|
+| 0.080 | 92.4% | 1k_rerun (under-loaded) |
+| 0.226 | 49.5% | 1k_mainnet milestone (standard mainnet) |
+| 0.345 | 23.0% | 0.67-config replication |
+| 0.466 | 23.4% | original v0.1.0 1000-node |
+| 1.45 | 25.0% | mainnet (Rucknium spam wave) |
+
+(Full detail: `docs/20260610_rucknium_review_response_v2.md` §4.)
 
 ### 5.1 All of Rucknium's metrics for sn_r15 (not just duration)
 
@@ -166,7 +190,13 @@ sn_r15 returns to quarter-second (volume-confound caveat in §5.1).
 <table>
 <tr><th>run</th><th>Connection duration</th><th>One-second cycle</th><th>Skellam</th></tr>
 <tr>
-<td><b>All-reachable 1k</b><br>(control, 1.52 min)</td>
+<td><b>v2 response: all-reachable 1k</b><br>(standard mainnet, 0.30, 1.47 min)</td>
+<td><img src="assets/topology_study/v2_milestone_connection-duration.png" width="230"></td>
+<td><img src="assets/topology_study/v2_milestone_one-second-cycle.png" width="230"></td>
+<td><img src="assets/topology_study/v2_milestone_skellam.png" width="230"></td>
+</tr>
+<tr>
+<td>All-reachable 1k @ 0.67<br>(matched control, 1.52 min)</td>
 <td><img src="assets/topology_study/allreach_connection-duration.png" width="230"></td>
 <td><img src="assets/topology_study/allreach_one-second-cycle.png" width="230"></td>
 <td><img src="assets/topology_study/allreach_skellam.png" width="230"></td>
@@ -205,5 +235,7 @@ sn_r15 returns to quarter-second (volume-confound caveat in §5.1).
 - Analyze: `analysis/ruck_analysis.r` (tx-gap conn-duration + clumping);
   `analysis/results_clumping_0p67/conn_gossip_join.py` (TCP-level join, needs
   log-level 1).
-- Archives: `archived_runs/20260619_135809_sn_r15/` (+ `salvage_analysis/` for
-  the partial `topo1k_r15`).
+- Archives: `archived_runs/20260619_135809_sn_r15/` (the new run);
+  `archived_runs/20260610_031558_clumping_0p67_monitor/` and the v2 response doc
+  for the all-reachable baselines. (The excluded `topo1k_r15` partial is not a
+  data source.)
