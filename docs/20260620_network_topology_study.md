@@ -1,27 +1,39 @@
-# Network Topology Realism: Reachability, Supernodes, and Connection Duration
+# Matching Mainnet: Simulator Fidelity Across Rucknium's Four Metrics
 
-**Status:** Living report — reachable-fraction sweep in progress (§5 table has
-TBD rows). Everything else is final and reproducible.
-**Companion:** follows up the connection-duration finding in
-`docs/20260610_rucknium_review_response_v2.md` §3/§10.
+**Status:** Living report — reachable-fraction sweep in progress (§5 table + the
+one-second-cycle question have TBD rows). Everything else is final and reproducible.
+**Companion:** `docs/20260610_rucknium_review_response_v2.md` (review response —
+where clumping and Skellam were resolved).
 
-## 1. Motivation
+## 1. Where the simulator stands vs mainnet, on every metric Rucknium measured
 
-Rucknium's review (issue #3) flagged that the 1000-node simulation's peer
-**connection duration** (~1.5 min, by his tx-gap method) was far below
-mainnet's ~23 min. We traced that to an *environmental* difference: monerosim
-launched a **"perfect network"** — every node advertises a reachable P2P port
-and accepts inbound. Mainnet is the opposite:
+Rucknium's review (issue #3) compared mainnet against the simulation on **four**
+transaction-propagation statistics. This is the scorecard — the full set of
+deltas, not just the headline one:
+
+| Metric | Mainnet (Rucknium) | Simulator | Driver of the gap | Status |
+|---|---|---|---|---|
+| **Transaction clumping** | 25% single-tx (1.45 tx/s spam wave) | volume-bound; 23.4% single at 0.47 tx/s — the curve matches mainnet | tx **volume** (not topology); spam-wave intensity isn't reachable at 1000 nodes on one box, but the curve does | ✅ resolved (v2 §4) |
+| **Skellam timing** | good fit, mild zero-spike | good fit, centered at 0 | — (already matched) | ✅ resolved (v2 §5) |
+| **Connection duration** | 23 min | 1.5 min (all-reachable) → 150 min (15% reachable) | **reachable-pool size** (peer recurrence in the tx-gap metric) | 🔧 tunable — sweep is locating the fraction that hits 23 min |
+| **One-second cycle** | quarter-second | eighth-second (all-reachable); quarter-second (at 15%) | **topology** (recurrence) — but volume-confounded | 🔬 was the "un-matchable item"; may close via topology — sweep confirms |
+
+**Two of the four (clumping, Skellam) were resolved in the review response.** The
+other two — connection duration and the one-second cycle — both turned out to be
+**topology-driven**, and that is what this study investigates.
+
+The root cause for both: monerosim launched a **"perfect network"** — every node
+advertised a reachable P2P port and accepted inbound. Mainnet is the opposite:
 
 - **Most nodes are unreachable** (behind NAT / firewall / `--hide-my-port`).
-  Triangulated estimate: **~15% reachable / ~85% unreachable** (Cao et al. 2019
-  found 86.8% of nodes are low-degree leaves; reachable nodes carry 50–100
-  inbound, which with 12 outbound/node implies ~12–24% reachable).
+  Triangulated estimate: **~15% reachable / ~85% unreachable** (Cao et al. 2019:
+  86.8% of nodes are low-degree leaves; reachable nodes carry 50–100 inbound,
+  which with 12 outbound/node implies ~12–24% reachable).
 - **A few supernodes** carry a disproportionate share (Cao 2019: ~0.7% of nodes
   are super-peers with >250 connections; 13% of nodes hold 83% of all edges).
 
-This study adds both to monerosim and measures the effect on connection
-duration, with mainnet's 23 min as the target.
+This study adds both to monerosim and measures the effect on the two remaining
+gaps, with mainnet's values as the targets.
 
 ## 2. The knob: `--reachable`
 
@@ -33,7 +45,7 @@ reachable. Selection is deterministic from `simulation_seed`. Available as
 `general.reachable_fraction` (+ per-role override), CLI `--reachable`, and
 `run_sim.sh --reachable`.
 
-## 3. The mechanism (verified): peer recurrence, not TCP instability
+## 3. Gap #1 — Connection duration: mechanism (peer recurrence, not TCP instability)
 
 Rucknium's "connection duration" is a **tx-gap** metric: per peer, the span over
 which you exchange transactions (grouped into contiguous-hour periods) — **not**
@@ -59,13 +71,16 @@ the dropper "stops firing" — it does not; checked against drop counts.)
   (≈161 reachable carrying all discovery + inbound), runs complete with 100%
   sync, 0 process failures, normal block production. Discovery flows through the
   reachable minority + seeds.
-- **Supernodes fix the simulation cost.** A uniform 85%-hidden network is ~3×
-  *slower to simulate* (850 nodes re-dialing 161 reachable = a huge connection
-  event load; ~40 h for a 16 h sim). Adding 5 high-degree hubs (`out-peers`/
-  `in-peers` 256) stabilizes the topology and **cuts that to ~6 h** — the hubs
-  absorb connections instead of the network thrashing. Hub formation verified
-  (a supernode relayed 414k tx-notifies across ~700 peers vs a hidden leaf's
-  34k across 68).
+- **Supernodes were added as a hypothesis test** (does mainnet's hub structure
+  affect these metrics?) — and brought an unexpected byproduct: they **slash the
+  simulation cost**. A uniform 85%-hidden network is ~3× *slower to simulate*
+  (850 nodes re-dialing 161 reachable = a huge connection event load; ~40 h for
+  a 16 h sim). With 5 high-degree hubs (`out-peers`/`in-peers` 256) the topology
+  stabilizes and the run **drops to ~6 h** — the hubs absorb connections instead
+  of the network thrashing. Hub formation verified (a supernode relayed 414k
+  tx-notifies across ~700 peers vs a hidden leaf's 34k across 68). On the
+  *metrics*, the hubs did not pull connection duration toward mainnet (still
+  150 min at 15% reachable) — the reachable fraction is the lever, not the hubs.
 - **Open side-effect:** the NAT-heavy topology throttles *effective tx
   throughput* ~5× (sn_r15: ~12 tx/user vs the control's ~64), **cause not yet
   resolved**. Ruled out: sync (all nodes reach the same height in lockstep,
@@ -104,8 +119,9 @@ throttle (§4), not a topology effect.
 > **Excluded (incomplete):** a uniform 15%-reachable run *without* supernodes
 > (`topo1k_r15`, log-level 1) was attempted to capture TCP-level events, but
 > **timed out at 48%** — the unreachable-majority topology is ~3× slower to
-> simulate, which is precisely what motivated adding supernodes. It is **not
-> used as a data point**; its partial logs only informally corroborated the
+> simulate (the speedup from supernodes, added separately as a hypothesis test,
+> is what later made full runs practical). It is **not used as a data point**;
+> its partial logs only informally corroborated the
 > mechanism below (TCP connections still ~100 s; sync-search drops still
 > firing), consistent with the complete runs.
 
