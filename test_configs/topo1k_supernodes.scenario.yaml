@@ -1,0 +1,81 @@
+# 1000-node SUPERNODE test: add 5 high-degree hub nodes to the 200u/800r/300s mix.
+# Hypothesis: mainnet's connection dynamics partly reflect supernodes (Cao 2019:
+# ~0.7% of nodes are super-peers with >250 connections; 13% of nodes hold 83% of
+# all connections). Our uniform topology lacks these hubs. This adds 5 supernodes
+# with out/in-peers = 256 (vs the default 12 out / unlimited in), always reachable.
+#
+# Run modes (same config, flag controls reachability of the NON-supernode nodes):
+#   all-reachable (no flag) : isolate the supernode effect vs the 1.52-min control.
+#   --reachable 0.15        : realistic combined model (NAT majority + hubs); the
+#                             5 supernodes stay reachable (hide-my-port: false
+#                             survives the hiding logic's or_insert).
+# Compare conn-duration (Rucknium tx-gap) vs control clumping_0p67_monitor=1.52min
+# and the 15%-uniform partial=127min. See docs/20260618_mainnet_topology_targets.md.
+general:
+  stop_time: 16h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: monitor                 # net.p2p.msg gossip for ruck_analysis.r (matched to control)
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 0
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners (Dynamic-mode seeds; always reachable) ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # --- 5 SUPERNODES: high-degree hubs, always reachable ---
+  supernode-{1..5}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    daemon_options:
+      out-peers: 256                   # vs default 12 -> dials many peers (hub out-degree)
+      in-peers: 256                    # accepts up to 256 inbound (hub in-degree)
+      hide-my-port: false              # stays reachable even under --reachable < 1 (survives or_insert)
+
+  # --- 200 Users (tx generators, ~0.67 nominal at 300s) ---
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 790 Relay nodes (daemon-only; the NAT-able majority under --reachable<1) ---
+  relay-{001..790}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
