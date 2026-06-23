@@ -1,7 +1,7 @@
 # Matching Mainnet: Simulator Fidelity Across Rucknium's Four Metrics
 
-**Status:** Living report — reachable-fraction sweep in progress (§5 table + the
-one-second-cycle question have TBD rows). Everything else is final and reproducible.
+**Status:** Reachable-fraction sweep complete (15/40/50/60/80%). Next experiment
+is peer churn (§5.3). All results below are final and reproducible.
 **Companion:** `docs/20260610_rucknium_review_response_v2.md` (review response —
 where clumping and Skellam were resolved).
 
@@ -15,8 +15,8 @@ deltas, not just the headline one:
 |---|---|---|---|---|
 | **Transaction clumping** | 25% single-tx (1.45 tx/s spam wave) | volume-bound; 23.4% single at 0.47 tx/s — the curve matches mainnet | tx **volume** (not topology); spam-wave intensity isn't reachable at 1000 nodes on one box, but the curve does | ✅ resolved (v2 §4) |
 | **Skellam timing** | good fit, mild zero-spike | good fit, centered at 0 | — (already matched) | ✅ resolved (v2 §5) |
-| **Connection duration** | 23 min | 1.5 min (all-reachable) → 150 min (15% reachable) | **reachable-pool size** (peer recurrence in the tx-gap metric) | 🔧 tunable — sweep is locating the fraction that hits 23 min |
-| **One-second cycle** | quarter-second | eighth-second (all-reachable); quarter-second (at 15%) | **topology** (recurrence) — but volume-confounded | 🔬 was the "un-matchable item"; may close via topology — sweep confirms |
+| **Connection duration** | 23 min (few long conns) | median tunable 150→1.5 min via reachability; hits 23 min at ~50% | **reachable-pool size** (median) — but the *distribution* needs **churn** | 🔧 partial — median fits at ~50%, but not at mainnet's real ~15%, and the >6h tail stays ~8× too heavy (§5.3); churn is next |
+| **One-second cycle** | quarter-second | quarter-second appears (15%, 60%); not a clean function of reachability | likely topology, but the plot is a high-variance single-pair statistic | 🔬 mainnet's quarter-second is *reproducible* in-sim; can't yet claim it's controlled (§5.1) |
 
 **Two of the four (clumping, Skellam) were resolved in the review response.** The
 other two — connection duration and the one-second cycle — both turned out to be
@@ -103,10 +103,11 @@ to full-16 h runs.
 |---:|:--:|---:|---:|---:|---|
 | 100% (0.30 load) | no | 1.47 min | 49.5% | 8,945 | `1k_mainnet` — v2 response\* |
 | **100%** (0.67 load) | no | **1.52 min** | 23.0% | 13,678 | `clumping_0p67_monitor` (control)\* |
-| **15%** | **yes (5)** | **150 min** | 91.3%† | 3,254 | **`sn_r15`** (2026-06-19) |
-| 40% | yes (5) | _TBD_ | _TBD_ | _TBD_ | sweep (running) |
-| 60% | yes (5) | _TBD_ | _TBD_ | _TBD_ | sweep (running) |
-| 80% | yes (5) | _TBD_ | _TBD_ | _TBD_ | sweep (running) |
+| **15%** | yes (5) | **150 min** | 91.3%† | 3,254 | `sn_r15` |
+| 40% | yes (5) | 62 min | 90.8%† | 3,242 | `sn_sweep_r40` |
+| **50%** | yes (5) | **20.7 min** | 90.5%† | 3,245 | **`sn_sweep_r50`** ← ≈ mainnet median |
+| 60% | yes (5) | 2.1 min | 90.2%† | 3,262 | `sn_sweep_r60` |
+| 80% | yes (5) | 1.5 min | 90.8%† | 3,282 | `sn_sweep_r80` |
 | — | — | **23 min** (target) | 25.0% | — | mainnet (Rucknium, 2024 spam wave) |
 
 \* The two 100% rows are from our review-response work (`docs/20260610_rucknium_review_response_v2.md`):
@@ -125,11 +126,45 @@ throttle (§4), not a topology effect.
 > mechanism below (TCP connections still ~100 s; sync-search drops still
 > firing), consistent with the complete runs.
 
-**Headline so far:** topology (reachable-pool size) moves connection duration
-from 1.5 min (all-reachable) to 150 min (15% reachable) — ~100× — confirming it
-is the lever. 15% **overshoots** mainnet's 23 min; the realistic fraction is
-**higher**. The running sweep (40/60/80%) pinpoints where it crosses 23 min.
-Supernodes change the *simulation cost*, not the duration.
+**Headline:** reachable-pool size is a real lever for the connection-duration
+**median** — it sweeps from 150 min (15% reachable) through mainnet's 23 min
+(at ~50%, measured 20.7 min) down to the 1.5-min floor (80%+). But the match is
+**partial and tells a clear story about what's still missing** (§5.3).
+
+### 5.3 The catch: a fitted median is not a matched network
+
+Two facts keep the ~50%-reachable median match from being "mainnet matched":
+
+1. **~50% reachable is not mainnet's topology.** Mainnet is ~15% reachable
+   (§1). At that *realistic* fraction the median is 150 min, ~6.5× too high. So
+   hitting 23 min requires cranking reachability to an unrealistic ~50% — fitting
+   the metric, not reproducing the network.
+2. **The connection-duration distribution is the wrong shape — at every
+   fraction.** Mainnet has *few* long-lived connections; the simulator has many,
+   and reachability barely dents it:
+
+   | reachable | median | conns lasting > 6 h (OUT / INC) |
+   |---:|---:|---:|
+   | 15% | 150 min | 20.9% / 25.1% |
+   | 40% | 62 min | 16.7% / 17.8% |
+   | **50%** | **20.7 min** | **12.9% / 12.4%** |
+   | 60% | 2.1 min | 10.0% / 9.8% |
+   | 80% | 1.5 min | 9.1% / 8.1% |
+   | **mainnet** | **23 min** | **~0% / ~1.5%** |
+
+   Even at the 50% that nails the median, ~12% of connections persist > 6 h
+   versus mainnet's ~1.5% — **~8× too many over-stable connections** — and the
+   gap shrinks only slowly with reachability, never approaching mainnet.
+
+**Conclusion: reachable fraction is necessary but not sufficient.** It cannot
+simultaneously reproduce (a) mainnet's actual reachability (~15%), (b) the 23-min
+median, and (c) the connection-duration *distribution*. The mechanism that ties
+all three together is **peer churn** (nodes leaving and rejoining): on mainnet a
+peer relationship is naturally bounded because peers come and go, which caps the
+long tail *and* sets a realistic median *at* a realistic reachability. Churn is
+the indicated next experiment — at ~15% reachable, does adding turnover pull the
+median to ~23 min **and** the > 6 h share to ~1.5%? Supernodes change the
+*simulation cost* (≈6 h vs ≈40 h), not the duration.
 
 **Clumping is volume-bound (from the review response).** Our v2 work established
 that transaction clumping tracks delivered tx rate, not topology — so sn_r15's
@@ -158,16 +193,21 @@ that transaction clumping tracks delivered tx rate, not topology — so sn_r15's
 
 Two findings beyond duration:
 
-- **The one-second cycle moved toward mainnet.** The all-reachable sim shows the
-  eighth-second sub-lobes Rucknium called the "one un-matchable item"; sn_r15
-  shows clean **quarter-second**, mainnet's signature. The Skellam fit is also
-  cleaner. **Caveat:** sn_r15's ~5× lower tx volume is a confound (less data →
-  sparser one-second plot, smoother Skellam), so this is *not yet* attributable
-  to topology vs volume. The sweep disentangles it: if the quarter-second
-  persists at 60–80% reachable (where volume recovers), it's a topology effect;
-  if it reverts to eighth-second, it was a volume artifact. **[to verify on sweep]**
+- **The one-second cycle: mainnet's quarter-second is reproducible, but not a
+  clean function of reachability.** sn_r15 (15%) shows clean **quarter-second**
+  — mainnet's signature, and the very pattern Rucknium called the "one
+  un-matchable item." But across the full sweep the petal count is *not*
+  monotonic: 15%→quarter (4 petals), 40%→eighth (8), 60%→quarter (4), 80%→
+  sixteenth (~16). The reason is methodological: Rucknium's circular-density plot
+  is built from the **single most-common node pair** in the sample
+  (`pair.in.time.sync`), so it is a high-variance, one-pair statistic. The honest
+  reading: the simulator *can* produce mainnet's quarter-second cycle (so it is
+  no longer "un-matchable"), but we cannot claim reachability *controls* it from
+  these data. (An earlier draft of this report over-read three points as a clean
+  monotonic trend; the fourth point refuted it.)
 - **Over-stable connections:** ~21–25% of connections last > 6 h vs mainnet's
-  ~1.5% — an independent indicator that 15% reachable overshoots.
+  ~1.5% — an independent indicator that 15% reachable overshoots (see §5.3 for
+  the full sweep and why this points to churn).
 
 ### 5.2 Figures
 
@@ -198,10 +238,10 @@ mainnet column (2024 spam wave) is the target; the bottom row is his analysis of
 </table>
 
 **(b) Our topology response.** Fixed all-reachable 1000-node (the "perfect
-network" control) → 15% reachable + 5 supernodes (this study's new run) →
-reachable-fraction sweep (in progress). Watch the **one-second-cycle** column:
-mainnet is quarter-second, the all-reachable control is eighth-second, and
-sn_r15 returns to quarter-second (volume-confound caveat in §5.1).
+network" control) → 15% reachable + 5 supernodes → the 50% point where the
+connection-duration median matches mainnet. (The one-second-cycle column is a
+high-variance single-pair statistic — see §5.1; read it as "quarter-second is
+reproducible," not as a clean trend.)
 
 <table>
 <tr><th>run</th><th>Connection duration</th><th>One-second cycle</th><th>Skellam</th></tr>
@@ -224,8 +264,25 @@ sn_r15 returns to quarter-second (volume-confound caveat in §5.1).
 <td><img src="assets/topology_study/sn_r15_skellam.png" width="230"></td>
 </tr>
 <tr>
-<td>Reachable-fraction sweep<br>(40 / 60 / 80%)</td>
-<td colspan="3" align="center"><i>— sweep in progress; figures + the fraction that lands at ~23 min will be added here —</i></td>
+<td><b>50% reachable + 5 supernodes</b><br>(sn_sweep_r50, 20.7 min ≈ mainnet)</td>
+<td><img src="assets/topology_study/r50_connection-duration.png" width="230"></td>
+<td><img src="assets/topology_study/r50_one-second-cycle.png" width="230"></td>
+<td><img src="assets/topology_study/r50_skellam.png" width="230"></td>
+</tr>
+</table>
+
+**(c) The reachable-fraction sweep — connection-duration kernel densities.**
+The median sweeps down through mainnet's 23 min (at ~50%) toward the all-reachable
+floor; the long > 6 h tail (§5.3) persists throughout.
+
+<table>
+<tr><th>15% (150 min)</th><th>40% (62 min)</th><th>50% (20.7 min)</th><th>60% (2.1 min)</th><th>80% (1.5 min)</th></tr>
+<tr>
+<td><img src="assets/topology_study/sn_r15_connection-duration.png" width="150"></td>
+<td><img src="assets/topology_study/r40_connection-duration.png" width="150"></td>
+<td><img src="assets/topology_study/r50_connection-duration.png" width="150"></td>
+<td><img src="assets/topology_study/r60_connection-duration.png" width="150"></td>
+<td><img src="assets/topology_study/r80_connection-duration.png" width="150"></td>
 </tr>
 </table>
 
