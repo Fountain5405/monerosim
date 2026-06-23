@@ -51,6 +51,10 @@ pub struct UserAgentProcessContext<'a> {
     pub reachable_fraction: f64,
     /// Per-role overrides for `reachable_fraction` (override semantics).
     pub reachable_by_role: Option<&'a BTreeMap<String, f64>>,
+    /// Simulation stop time in seconds — bounds churn session generation.
+    pub simulation_stop_secs: u64,
+    /// Peer-churn config (None = no churn; relays stay always-on).
+    pub churn: Option<&'a crate::config::ChurnConfig>,
 }
 
 /// Process user agents
@@ -113,6 +117,130 @@ fn compute_unreachable_set(
     unreachable
 }
 
+/// Map a seeded hash to a uniform float in (0, 1), nudged off the exact
+/// endpoints so the inverse-CDF `ln()` below is always finite.
+///
+/// FNV-1a's avalanche in its *high* bits is poor when only the trailing byte
+/// changes (e.g. the session index in `cs:<id>:<k>`), and we extract the top
+/// 53 bits — so consecutive keys would otherwise yield near-identical draws
+/// (every session the same length). Run the FNV output through a splitmix64
+/// finalizer first: any 1-bit input change then flips ~half the output bits,
+/// giving well-distributed top bits regardless of key layout.
+fn seeded_unit(seed: u64, s: &str) -> f64 {
+    let mut h = seeded_hash(seed, s);
+    h ^= h >> 30;
+    h = h.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    h ^= h >> 27;
+    h = h.wrapping_mul(0x94d0_49bb_1331_11eb);
+    h ^= h >> 31;
+    let u = (h >> 11) as f64 / (1u64 << 53) as f64; // top 53 bits → [0,1)
+    u.clamp(1e-9, 1.0 - 1e-9)
+}
+
+/// Exponentially-distributed draw with the given `mean` (memoryless churn),
+/// clamped to [min, max]. Deterministic in (seed, key).
+fn exp_draw(seed: u64, key: &str, mean: f64, min: f64, max: f64) -> f64 {
+    let u = seeded_unit(seed, key);
+    (-mean * (1.0 - u).ln()).clamp(min, max) // inverse-CDF of Exp(mean)
+}
+
+/// Decide which nodes participate in churn. Eligible = every non-seed,
+/// non-miner daemon node (relays AND users) that is NOT pinned always-on via
+/// an explicit `hide-my-port: false` in its own daemon_options (the supernode
+/// / infrastructure convention). Only the daemon cycles; a user's wallet-rpc
+/// and tx-agent stay up and reconnect on restart (regular_user.py has
+/// daemon-down recovery). `fraction` of the eligible set is selected
+/// deterministically by a churn-namespaced seeded hash, so reachability and
+/// churn membership are independent.
+fn compute_churn_set(
+    user_agents: &[(&String, &AgentConfig)],
+    seed: u64,
+    fraction: f64,
+) -> HashSet<String> {
+    let frac = fraction.clamp(0.0, 1.0);
+    let mut set = HashSet::new();
+    if frac <= 0.0 {
+        return set;
+    }
+    let mut eligible: Vec<String> = Vec::new();
+    for (id, cfg) in user_agents {
+        if cfg.is_miner() {
+            continue;
+        }
+        let is_seed = cfg
+            .attributes
+            .as_ref()
+            .map(|a| a.get("is_seed_node").map_or(false, |v| v == "true"))
+            .unwrap_or(false);
+        if is_seed {
+            continue; // seeds stay always-on (bootstrap backbone)
+        }
+        // NOTE: users (has_wallet) churn too now — only the *daemon* cycles;
+        // the wallet-rpc + agent stay up and reconnect. Miners are already
+        // excluded above via is_miner().
+        let pinned_on = cfg
+            .daemon_options
+            .as_ref()
+            .and_then(|o| o.get("hide-my-port"))
+            .map_or(false, |v| matches!(v, OptionValue::Bool(false)));
+        if pinned_on {
+            continue; // supernodes / explicitly-reachable infra stay always-on
+        }
+        eligible.push(id.to_string());
+    }
+    eligible.sort_by_key(|id| seeded_hash(seed, &format!("churn:{}", id)));
+    let n = ((frac * eligible.len() as f64).round() as usize).min(eligible.len());
+    for id in eligible.into_iter().take(n) {
+        set.insert(id);
+    }
+    set
+}
+
+/// Build a churn schedule for one node: a list of (start_secs, Option<stop_secs>)
+/// online sessions, in time order. `None` stop = the final session runs to
+/// simulation end. Sessions and offline gaps are exponential draws
+/// (deterministic in seed + id + session index) clamped to the given bounds.
+/// Returns a single open-ended session when the node would not cycle at all
+/// (start already at/after the end), i.e. effectively no churn.
+#[allow(clippy::too_many_arguments)]
+fn build_churn_schedule(
+    seed: u64,
+    id: &str,
+    start_secs: u64,
+    stop_secs: u64,
+    mean_session: f64,
+    mean_downtime: f64,
+    min_session: f64,
+    max_session: f64,
+    min_downtime: f64,
+) -> Vec<(u64, Option<u64>)> {
+    const MAX_SESSIONS: usize = 1000; // safety backstop against pathological params
+    if start_secs >= stop_secs {
+        return vec![(start_secs, None)];
+    }
+    let mut out: Vec<(u64, Option<u64>)> = Vec::new();
+    let mut t = start_secs;
+    let mut k = 0usize;
+    loop {
+        let s = exp_draw(seed, &format!("cs:{}:{}", id, k), mean_session, min_session, max_session);
+        let end = t.saturating_add(s.round() as u64);
+        if end >= stop_secs || k + 1 >= MAX_SESSIONS {
+            out.push((t, None)); // final session runs to the end
+            break;
+        }
+        out.push((t, Some(end)));
+        let d = exp_draw(seed, &format!("cd:{}:{}", id, k), mean_downtime, min_downtime, f64::INFINITY);
+        t = end.saturating_add(d.round() as u64);
+        k += 1;
+        if t >= stop_secs {
+            // Node left and does not return before the end — the last process
+            // already carries its shutdown_time; nothing more to emit.
+            break;
+        }
+    }
+    out
+}
+
 pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre::Result<()> {
     let UserAgentProcessContext {
         agents,
@@ -140,6 +268,8 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         simulation_seed,
         reachable_fraction,
         reachable_by_role,
+        simulation_stop_secs,
+        churn,
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
@@ -230,6 +360,54 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             unreachable_agents.len(),
             reachable_fraction
         );
+    }
+
+    // Deterministically select which RELAYS churn (cycle offline/online) and
+    // pre-parse the churn timing knobs once. See compute_churn_set + the
+    // per-session emission in the daemon loop below. Empty / None when churn
+    // is disabled (no [general.churn] and no --churn-* flag).
+    let churn_set = match churn {
+        Some(c) => compute_churn_set(&user_agents, simulation_seed, c.fraction),
+        None => HashSet::new(),
+    };
+    let churn_params: Option<(f64, f64, f64, f64, f64)> = match churn {
+        Some(c) => {
+            let mean_session = parse_duration_to_seconds(&c.mean_session)
+                .map_err(|e| color_eyre::eyre::eyre!("churn.mean_session '{}': {}", c.mean_session, e))?
+                as f64;
+            let mean_downtime = parse_duration_to_seconds(&c.mean_downtime)
+                .map_err(|e| color_eyre::eyre::eyre!("churn.mean_downtime '{}': {}", c.mean_downtime, e))?
+                as f64;
+            let min_session = match &c.min_session {
+                Some(s) => parse_duration_to_seconds(s)
+                    .map_err(|e| color_eyre::eyre::eyre!("churn.min_session '{}': {}", s, e))? as f64,
+                None => 300.0,
+            };
+            let max_session = match &c.max_session {
+                Some(s) => parse_duration_to_seconds(s)
+                    .map_err(|e| color_eyre::eyre::eyre!("churn.max_session '{}': {}", s, e))? as f64,
+                None => f64::INFINITY,
+            };
+            let min_downtime = match &c.min_downtime {
+                Some(s) => parse_duration_to_seconds(s)
+                    .map_err(|e| color_eyre::eyre::eyre!("churn.min_downtime '{}': {}", s, e))? as f64,
+                None => 30.0,
+            };
+            Some((mean_session, mean_downtime, min_session, max_session, min_downtime))
+        }
+        None => None,
+    };
+    if !churn_set.is_empty() {
+        if let Some(c) = churn {
+            log::info!(
+                "Churn: {} node(s) cycle offline/online (mean_session={}, mean_downtime={}, \
+                 fraction={}); miners + seeds + pinned supernodes stay always-on",
+                churn_set.len(),
+                c.mean_session,
+                c.mean_downtime,
+                c.fraction
+            );
+        }
     }
 
     // Now process all user agents with staggered start times
@@ -542,16 +720,61 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     }
                 }
 
-                // Direct launch — see phase-daemon comment above.
-                processes.push(crate::shadow::ShadowProcess {
-                    path: daemon_binary_path,
-                    args: crate::shadow::ProcessArgs::List(daemon_args),
-                    environment: daemon_env,
-                    start_time: start_time_daemon.clone(),
-                    shutdown_time: None,
-                    shutdown_signal: None,
-                    expected_final_state: Some(ExpectedFinalState::Running),
-                });
+                // Churn: if this relay was selected to cycle offline/online,
+                // emit one ShadowProcess per online session (each a fresh
+                // monerod on the SAME data-dir, so chain state survives the
+                // restart). Non-final sessions stop via shutdown_time
+                // (SIGTERM → monerod exits 0, mirroring the upgrade path); the
+                // final open-ended session runs to simulation end. Otherwise
+                // (no churn) emit the single always-on daemon as before.
+                let churn_schedule = match (&churn_params, churn_set.contains(agent_id.as_str())) {
+                    (Some((ms, md, mins, maxs, mind)), true) => Some(build_churn_schedule(
+                        simulation_seed,
+                        agent_id,
+                        effective_start_time,
+                        simulation_stop_secs,
+                        *ms,
+                        *md,
+                        *mins,
+                        *maxs,
+                        *mind,
+                    )),
+                    _ => None,
+                };
+                match churn_schedule {
+                    Some(schedule) => {
+                        for (start, stop_opt) in schedule {
+                            let (shutdown_time, expected_final_state) = match stop_opt {
+                                Some(stop) => (
+                                    Some(format!("{}s", stop)),
+                                    Some(ExpectedFinalState::Exited(0)),
+                                ),
+                                None => (None, Some(ExpectedFinalState::Running)),
+                            };
+                            processes.push(crate::shadow::ShadowProcess {
+                                path: daemon_binary_path.clone(),
+                                args: crate::shadow::ProcessArgs::List(daemon_args.clone()),
+                                environment: daemon_env.clone(),
+                                start_time: format!("{}s", start),
+                                shutdown_time,
+                                shutdown_signal: None,
+                                expected_final_state,
+                            });
+                        }
+                    }
+                    None => {
+                        // Direct launch — see phase-daemon comment above.
+                        processes.push(crate::shadow::ShadowProcess {
+                            path: daemon_binary_path,
+                            args: crate::shadow::ProcessArgs::List(daemon_args),
+                            environment: daemon_env,
+                            start_time: start_time_daemon.clone(),
+                            shutdown_time: None,
+                            shutdown_signal: None,
+                            expected_final_state: Some(ExpectedFinalState::Running),
+                        });
+                    }
+                }
             } // End of daemon configuration
 
             // Add wallet process based on agent type
@@ -840,4 +1063,81 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod churn_tests {
+    use super::*;
+    use std::collections::HashSet as Set;
+
+    #[test]
+    fn seeded_unit_varies_on_trailing_index() {
+        // Regression: FNV-1a's high bits barely move when only the trailing
+        // byte (the session index) changes, and seeded_unit reads the top 53
+        // bits — without the splitmix finalizer every session drew the same
+        // length. Across 64 consecutive keys the draws must be ~all distinct
+        // and spread around 0.5.
+        let vals: Vec<f64> = (0..64)
+            .map(|k| seeded_unit(42, &format!("cs:relay-001:{k}")))
+            .collect();
+        let distinct = vals.iter().map(|v| (v * 1e6) as u64).collect::<Set<_>>().len();
+        assert!(distinct >= 60, "expected ~all distinct draws, got {distinct}/64");
+        let mean = vals.iter().sum::<f64>() / vals.len() as f64;
+        assert!((0.3..0.7).contains(&mean), "mean {mean} not ~0.5");
+    }
+
+    #[test]
+    fn exp_draw_respects_clamps() {
+        for k in 0..200 {
+            let v = exp_draw(7, &format!("k{k}"), 7200.0, 300.0, 6000.0);
+            assert!((300.0..=6000.0).contains(&v), "v={v} out of [300,6000]");
+        }
+    }
+
+    #[test]
+    fn churn_schedule_sessions_vary_and_are_ordered() {
+        let sched = build_churn_schedule(
+            12345, "relay-001", 1200, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0,
+        );
+        assert!(sched.len() >= 2, "expected multiple sessions, got {}", sched.len());
+        // Final session is open-ended (runs to sim end); earlier ones bounded.
+        assert_eq!(sched.last().unwrap().1, None);
+        // Time-ordered, non-overlapping, with a real downtime gap between.
+        for i in 0..sched.len() - 1 {
+            let stop_i = sched[i].1.expect("non-final session must have a stop");
+            assert!(sched[i].0 < stop_i, "start < stop within a session");
+            assert!(sched[i + 1].0 > stop_i, "next start after prev stop");
+        }
+        // The bug we fixed: bounded session lengths must not all be identical.
+        let lens: Vec<u64> = sched[..sched.len() - 1]
+            .iter()
+            .map(|(s, e)| e.unwrap() - s)
+            .collect();
+        if lens.len() >= 2 {
+            assert!(lens.iter().collect::<Set<_>>().len() >= 2, "lengths flat: {lens:?}");
+        }
+    }
+
+    #[test]
+    fn churn_schedule_is_deterministic() {
+        let a = build_churn_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+        let b = build_churn_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn churn_schedule_no_cycle_when_start_past_end() {
+        let s = build_churn_schedule(1, "x", 60000, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+        assert_eq!(s, vec![(60000, None)]);
+    }
+
+    #[test]
+    fn churn_schedule_respects_max_session_ceiling() {
+        let sched = build_churn_schedule(7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0);
+        for (s, e) in &sched {
+            if let Some(end) = e {
+                assert!(end - s <= 14400, "session {} exceeds the 4h ceiling", end - s);
+            }
+        }
+    }
 }

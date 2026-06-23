@@ -62,6 +62,23 @@ struct Args {
     /// Seeds and miners are always reachable regardless.
     #[arg(long)]
     reachable: Option<f64>,
+
+    /// Enable/override peer churn: mean ONLINE session length (e.g. "2h").
+    /// If the config has no `[general.churn]`, passing this enables churn
+    /// with sensible defaults (downtime 30m, all eligible relays + users).
+    /// Overrides
+    /// `general.churn.mean_session`. See --churn-downtime / --churn-max-session.
+    #[arg(long)]
+    churn_session: Option<String>,
+
+    /// Mean OFFLINE gap between churn sessions (e.g. "30m"). See --churn-session.
+    #[arg(long)]
+    churn_downtime: Option<String>,
+
+    /// Hard ceiling on any single churn session (e.g. "6h"); omit to let the
+    /// exponential tail run free. See --churn-session.
+    #[arg(long)]
+    churn_max_session: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -84,6 +101,26 @@ fn main() -> Result<()> {
         }
         info!("CLI override: reachable_fraction = {} (was {})", r, new_config.general.reachable_fraction);
         new_config.general.reachable_fraction = r;
+    }
+
+    // CLI: --churn-* enable or override peer churn. Any of these flags
+    // switches churn on (with defaults) when the config has no [general.churn].
+    if args.churn_session.is_some() || args.churn_downtime.is_some() || args.churn_max_session.is_some() {
+        let c = new_config.general.churn.get_or_insert_with(|| monerosim::config::ChurnConfig {
+            mean_session: "2h".to_string(),
+            mean_downtime: "30m".to_string(),
+            fraction: 1.0,
+            min_session: None,
+            max_session: None,
+            min_downtime: None,
+        });
+        if let Some(s) = args.churn_session { c.mean_session = s; }
+        if let Some(d) = args.churn_downtime { c.mean_downtime = d; }
+        if let Some(m) = args.churn_max_session { c.max_session = Some(m); }
+        info!(
+            "CLI churn: mean_session={} mean_downtime={} max_session={:?} fraction={}",
+            c.mean_session, c.mean_downtime, c.max_session, c.fraction
+        );
     }
 
     // Determine output directory and final config path

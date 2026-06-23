@@ -754,6 +754,9 @@ pub fn generate_agent_shadow_config(
         simulation_seed: config.general.simulation_seed,
         reachable_fraction: config.general.reachable_fraction,
         reachable_by_role: config.general.reachable_by_role.as_ref(),
+        simulation_stop_secs: parse_duration_to_seconds(&config.general.stop_time)
+            .map_err(|e| color_eyre::eyre::eyre!("Failed to parse stop_time '{}': {}", config.general.stop_time, e))?,
+        churn: config.general.churn.as_ref(),
     })?;
 
 
