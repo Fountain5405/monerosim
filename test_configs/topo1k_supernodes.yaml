@@ -7,7 +7,8 @@ general:
   progress: true
   runahead: 100ms
   process_threads: 2
-  native_preemption: false
+  native_preemption: true   # churn restarts hit LMDB DB-resize; preemption lets
+                            # Shadow advance past the resize busy-op (else livelock)
   daemon_defaults:
     log-level: monitor
     max-log-file-size: 0
