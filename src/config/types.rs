@@ -335,7 +335,7 @@ pub struct GeneralConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reachable_by_role: Option<BTreeMap<String, f64>>,
 
-    /// Peer-churn configuration. When present, eligible relay nodes cycle
+    /// Peer-turnover configuration. When present, eligible relay nodes cycle
     /// offline/online during the run: the daemon is stopped via Shadow
     /// `shutdown_time` (SIGTERM → graceful exit) and a fresh daemon is
     /// restarted on the SAME data-dir, so chain state persists across the
@@ -343,17 +343,17 @@ pub struct GeneralConfig {
     /// recurrence: no relay stays in another node's connection rotation for
     /// the whole run, capping the tx-gap connection-duration metric and (the
     /// hypothesis under test) collapsing the over-heavy >6h tail toward
-    /// mainnet's ~1.5%. Churn covers every non-seed, non-miner daemon node
+    /// mainnet's ~1.5%. Turnover covers every non-seed, non-miner daemon node
     /// (relays AND users) not pinned always-on via `hide-my-port: false`
     /// (e.g. supernodes). For a user only the daemon cycles — its wallet-rpc
     /// and tx-agent stay up and reconnect on restart. Miners, seeds and
     /// pinned supernodes stay always-on (continuous block production +
     /// bootstrap backbone). Selection and per-session lengths are
     /// deterministic from `simulation_seed`.
-    /// None = no churn (historical behavior). Enable/override on the CLI with
-    /// `--churn-session`. See docs/20260618_mainnet_topology_targets.md.
+    /// None = no turnover (historical behavior). Enable/override on the CLI with
+    /// `--turnover-session`. See docs/20260618_mainnet_topology_targets.md.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub churn: Option<ChurnConfig>,
+    pub turnover: Option<TurnoverConfig>,
 }
 
 /// Default reachable fraction: 1.0 = all nodes reachable (perfect network).
@@ -361,18 +361,18 @@ fn default_reachable_fraction() -> f64 {
     1.0
 }
 
-/// Peer-churn parameters (see `GeneralConfig::churn`). Online sessions and
-/// offline gaps are drawn from exponential distributions (memoryless churn)
+/// Peer-turnover parameters (see `GeneralConfig::turnover`). Online sessions and
+/// offline gaps are drawn from exponential distributions (memoryless turnover)
 /// around the given means, seeded deterministically per node + session index.
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ChurnConfig {
+pub struct TurnoverConfig {
     /// Mean ONLINE session length, e.g. "2h". Exponentially distributed.
     pub mean_session: String,
     /// Mean OFFLINE gap between sessions, e.g. "30m". Exponentially distributed.
     pub mean_downtime: String,
-    /// Fraction of eligible relays that churn (default 1.0 = all). The
+    /// Fraction of eligible nodes that cycle (default 1.0 = all). The
     /// complement stays always-on. Selected deterministically by seed.
-    #[serde(default = "default_churn_fraction")]
+    #[serde(default = "default_turnover_fraction")]
     pub fraction: f64,
     /// Optional floor on any single session (default 300s) so a restarting
     /// node has time to sync and serve before it leaves again.
@@ -390,8 +390,8 @@ pub struct ChurnConfig {
     pub min_downtime: Option<String>,
 }
 
-/// Default churn participation fraction: 1.0 = every eligible relay churns.
-fn default_churn_fraction() -> f64 {
+/// Default turnover participation fraction: 1.0 = every eligible node cycles.
+fn default_turnover_fraction() -> f64 {
     1.0
 }
 
@@ -543,7 +543,7 @@ impl Default for GeneralConfig {
             fallback_seeds: FallbackSeedsMode::default(),
             reachable_fraction: default_reachable_fraction(),
             reachable_by_role: None,
-            churn: None,
+            turnover: None,
         }
     }
 }

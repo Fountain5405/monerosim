@@ -33,9 +33,9 @@ CONFIG=""
 RUN_NAME=""
 ARCHIVE_BASE=""
 REACHABLE=""              # "" = use config default; else fraction in [0,1] passed to monerosim --reachable
-CHURN_SESSION=""          # "" = no churn; else mean ONLINE session (e.g. 1h) -> monerosim --churn-session
-CHURN_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --churn-downtime
-CHURN_MAX_SESSION=""      # optional hard session ceiling (e.g. 6h) -> monerosim --churn-max-session
+TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 1h) -> monerosim --turnover-session
+TURNOVER_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --turnover-downtime
+TURNOVER_MAX_SESSION=""      # optional hard session ceiling (e.g. 6h) -> monerosim --turnover-max-session
 SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
@@ -64,12 +64,12 @@ Options:
                          all reachable (default). Lower = mainnet-like NAT
                          majority (the rest get --hide-my-port). Seeds + miners
                          always reachable. Overrides general.reachable_fraction.
-  --churn-session <dur>  Enable peer churn: mean ONLINE session (e.g. 1h).
+  --turnover-session <dur>  Enable peer turnover: mean ONLINE session (e.g. 1h).
                          Relays + users cycle offline/online; supernodes,
-                         miners and seeds stay always-on. Overrides general.churn.
-  --churn-downtime <dur> Mean OFFLINE gap for churn (e.g. 1h). Average uptime =
+                         miners and seeds stay always-on. Overrides general.turnover.
+  --turnover-downtime <dur> Mean OFFLINE gap for turnover (e.g. 1h). Average uptime =
                          session/(session+downtime).
-  --churn-max-session <dur>  Optional hard ceiling on a single churn session.
+  --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
   --archive-dir <dir>    Archive location (default: archived_runs)
   --data-dir <dir>       Shadow data output directory (default: shadow.data in cwd)
                          Use this to write simulation data to a different volume
@@ -125,16 +125,16 @@ while [[ $# -gt 0 ]]; do
             REACHABLE="$2"
             shift 2
             ;;
-        --churn-session)
-            CHURN_SESSION="$2"
+        --turnover-session)
+            TURNOVER_SESSION="$2"
             shift 2
             ;;
-        --churn-downtime)
-            CHURN_DOWNTIME="$2"
+        --turnover-downtime)
+            TURNOVER_DOWNTIME="$2"
             shift 2
             ;;
-        --churn-max-session)
-            CHURN_MAX_SESSION="$2"
+        --turnover-max-session)
+            TURNOVER_MAX_SESSION="$2"
             shift 2
             ;;
         --archive-dir)
@@ -663,12 +663,12 @@ build_and_generate() {
         REACHABLE_ARGS=(--reachable "$REACHABLE")
         log_info "Reachability override: --reachable $REACHABLE"
     fi
-    CHURN_ARGS=()
-    [[ -n "$CHURN_SESSION" ]] && CHURN_ARGS+=(--churn-session "$CHURN_SESSION")
-    [[ -n "$CHURN_DOWNTIME" ]] && CHURN_ARGS+=(--churn-downtime "$CHURN_DOWNTIME")
-    [[ -n "$CHURN_MAX_SESSION" ]] && CHURN_ARGS+=(--churn-max-session "$CHURN_MAX_SESSION")
-    [[ ${#CHURN_ARGS[@]} -gt 0 ]] && log_info "Churn override: ${CHURN_ARGS[*]}"
-    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${CHURN_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
+    TURNOVER_ARGS=()
+    [[ -n "$TURNOVER_SESSION" ]] && TURNOVER_ARGS+=(--turnover-session "$TURNOVER_SESSION")
+    [[ -n "$TURNOVER_DOWNTIME" ]] && TURNOVER_ARGS+=(--turnover-downtime "$TURNOVER_DOWNTIME")
+    [[ -n "$TURNOVER_MAX_SESSION" ]] && TURNOVER_ARGS+=(--turnover-max-session "$TURNOVER_MAX_SESSION")
+    [[ ${#TURNOVER_ARGS[@]} -gt 0 ]] && log_info "Turnover override: ${TURNOVER_ARGS[*]}"
+    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${TURNOVER_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
         log_ok "Shadow config generated"
     else
         log_err "Config generation failed! See $ARCHIVE_DIR/monerosim.log"

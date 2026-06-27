@@ -51,10 +51,10 @@ pub struct UserAgentProcessContext<'a> {
     pub reachable_fraction: f64,
     /// Per-role overrides for `reachable_fraction` (override semantics).
     pub reachable_by_role: Option<&'a BTreeMap<String, f64>>,
-    /// Simulation stop time in seconds — bounds churn session generation.
+    /// Simulation stop time in seconds — bounds turnover session generation.
     pub simulation_stop_secs: u64,
-    /// Peer-churn config (None = no churn; relays stay always-on).
-    pub churn: Option<&'a crate::config::ChurnConfig>,
+    /// Peer-turnover config (None = no turnover; relays stay always-on).
+    pub turnover: Option<&'a crate::config::TurnoverConfig>,
 }
 
 /// Process user agents
@@ -137,22 +137,22 @@ fn seeded_unit(seed: u64, s: &str) -> f64 {
     u.clamp(1e-9, 1.0 - 1e-9)
 }
 
-/// Exponentially-distributed draw with the given `mean` (memoryless churn),
+/// Exponentially-distributed draw with the given `mean` (memoryless turnover),
 /// clamped to [min, max]. Deterministic in (seed, key).
 fn exp_draw(seed: u64, key: &str, mean: f64, min: f64, max: f64) -> f64 {
     let u = seeded_unit(seed, key);
     (-mean * (1.0 - u).ln()).clamp(min, max) // inverse-CDF of Exp(mean)
 }
 
-/// Decide which nodes participate in churn. Eligible = every non-seed,
+/// Decide which nodes participate in turnover. Eligible = every non-seed,
 /// non-miner daemon node (relays AND users) that is NOT pinned always-on via
 /// an explicit `hide-my-port: false` in its own daemon_options (the supernode
 /// / infrastructure convention). Only the daemon cycles; a user's wallet-rpc
 /// and tx-agent stay up and reconnect on restart (regular_user.py has
 /// daemon-down recovery). `fraction` of the eligible set is selected
-/// deterministically by a churn-namespaced seeded hash, so reachability and
-/// churn membership are independent.
-fn compute_churn_set(
+/// deterministically by a turnover-namespaced seeded hash, so reachability and
+/// turnover membership are independent.
+fn compute_turnover_set(
     user_agents: &[(&String, &AgentConfig)],
     seed: u64,
     fraction: f64,
@@ -175,7 +175,7 @@ fn compute_churn_set(
         if is_seed {
             continue; // seeds stay always-on (bootstrap backbone)
         }
-        // NOTE: users (has_wallet) churn too now — only the *daemon* cycles;
+        // NOTE: users (has_wallet) take part too now — only the *daemon* cycles;
         // the wallet-rpc + agent stay up and reconnect. Miners are already
         // excluded above via is_miner().
         let pinned_on = cfg
@@ -188,7 +188,7 @@ fn compute_churn_set(
         }
         eligible.push(id.to_string());
     }
-    eligible.sort_by_key(|id| seeded_hash(seed, &format!("churn:{}", id)));
+    eligible.sort_by_key(|id| seeded_hash(seed, &format!("turnover:{}", id)));
     let n = ((frac * eligible.len() as f64).round() as usize).min(eligible.len());
     for id in eligible.into_iter().take(n) {
         set.insert(id);
@@ -196,14 +196,14 @@ fn compute_churn_set(
     set
 }
 
-/// Build a churn schedule for one node: a list of (start_secs, Option<stop_secs>)
+/// Build a turnover schedule for one node: a list of (start_secs, Option<stop_secs>)
 /// online sessions, in time order. `None` stop = the final session runs to
 /// simulation end. Sessions and offline gaps are exponential draws
 /// (deterministic in seed + id + session index) clamped to the given bounds.
 /// Returns a single open-ended session when the node would not cycle at all
-/// (start already at/after the end), i.e. effectively no churn.
+/// (start already at/after the end), i.e. effectively no turnover.
 #[allow(clippy::too_many_arguments)]
-fn build_churn_schedule(
+fn build_turnover_schedule(
     seed: u64,
     id: &str,
     start_secs: u64,
@@ -269,7 +269,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         reachable_fraction,
         reachable_by_role,
         simulation_stop_secs,
-        churn,
+        turnover,
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
@@ -362,47 +362,47 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         );
     }
 
-    // Deterministically select which RELAYS churn (cycle offline/online) and
-    // pre-parse the churn timing knobs once. See compute_churn_set + the
-    // per-session emission in the daemon loop below. Empty / None when churn
-    // is disabled (no [general.churn] and no --churn-* flag).
-    let churn_set = match churn {
-        Some(c) => compute_churn_set(&user_agents, simulation_seed, c.fraction),
+    // Deterministically select which NODES cycle offline/online (turnover) and
+    // pre-parse the turnover timing knobs once. See compute_turnover_set + the
+    // per-session emission in the daemon loop below. Empty / None when turnover
+    // is disabled (no [general.turnover] and no --turnover-* flag).
+    let turnover_set = match turnover {
+        Some(c) => compute_turnover_set(&user_agents, simulation_seed, c.fraction),
         None => HashSet::new(),
     };
-    let churn_params: Option<(f64, f64, f64, f64, f64)> = match churn {
+    let turnover_params: Option<(f64, f64, f64, f64, f64)> = match turnover {
         Some(c) => {
             let mean_session = parse_duration_to_seconds(&c.mean_session)
-                .map_err(|e| color_eyre::eyre::eyre!("churn.mean_session '{}': {}", c.mean_session, e))?
+                .map_err(|e| color_eyre::eyre::eyre!("turnover.mean_session '{}': {}", c.mean_session, e))?
                 as f64;
             let mean_downtime = parse_duration_to_seconds(&c.mean_downtime)
-                .map_err(|e| color_eyre::eyre::eyre!("churn.mean_downtime '{}': {}", c.mean_downtime, e))?
+                .map_err(|e| color_eyre::eyre::eyre!("turnover.mean_downtime '{}': {}", c.mean_downtime, e))?
                 as f64;
             let min_session = match &c.min_session {
                 Some(s) => parse_duration_to_seconds(s)
-                    .map_err(|e| color_eyre::eyre::eyre!("churn.min_session '{}': {}", s, e))? as f64,
+                    .map_err(|e| color_eyre::eyre::eyre!("turnover.min_session '{}': {}", s, e))? as f64,
                 None => 300.0,
             };
             let max_session = match &c.max_session {
                 Some(s) => parse_duration_to_seconds(s)
-                    .map_err(|e| color_eyre::eyre::eyre!("churn.max_session '{}': {}", s, e))? as f64,
+                    .map_err(|e| color_eyre::eyre::eyre!("turnover.max_session '{}': {}", s, e))? as f64,
                 None => f64::INFINITY,
             };
             let min_downtime = match &c.min_downtime {
                 Some(s) => parse_duration_to_seconds(s)
-                    .map_err(|e| color_eyre::eyre::eyre!("churn.min_downtime '{}': {}", s, e))? as f64,
+                    .map_err(|e| color_eyre::eyre::eyre!("turnover.min_downtime '{}': {}", s, e))? as f64,
                 None => 30.0,
             };
             Some((mean_session, mean_downtime, min_session, max_session, min_downtime))
         }
         None => None,
     };
-    if !churn_set.is_empty() {
-        if let Some(c) = churn {
+    if !turnover_set.is_empty() {
+        if let Some(c) = turnover {
             log::info!(
-                "Churn: {} node(s) cycle offline/online (mean_session={}, mean_downtime={}, \
+                "Turnover: {} node(s) cycle offline/online (mean_session={}, mean_downtime={}, \
                  fraction={}); miners + seeds + pinned supernodes stay always-on",
-                churn_set.len(),
+                turnover_set.len(),
                 c.mean_session,
                 c.mean_downtime,
                 c.fraction
@@ -720,15 +720,15 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     }
                 }
 
-                // Churn: if this relay was selected to cycle offline/online,
+                // Turnover: if this relay was selected to cycle offline/online,
                 // emit one ShadowProcess per online session (each a fresh
                 // monerod on the SAME data-dir, so chain state survives the
                 // restart). Non-final sessions stop via shutdown_time
                 // (SIGTERM → monerod exits 0, mirroring the upgrade path); the
                 // final open-ended session runs to simulation end. Otherwise
-                // (no churn) emit the single always-on daemon as before.
-                let churn_schedule = match (&churn_params, churn_set.contains(agent_id.as_str())) {
-                    (Some((ms, md, mins, maxs, mind)), true) => Some(build_churn_schedule(
+                // (no turnover) emit the single always-on daemon as before.
+                let turnover_schedule = match (&turnover_params, turnover_set.contains(agent_id.as_str())) {
+                    (Some((ms, md, mins, maxs, mind)), true) => Some(build_turnover_schedule(
                         simulation_seed,
                         agent_id,
                         effective_start_time,
@@ -741,7 +741,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     )),
                     _ => None,
                 };
-                match churn_schedule {
+                match turnover_schedule {
                     Some(schedule) => {
                         for (start, stop_opt) in schedule {
                             let (shutdown_time, expected_final_state) = match stop_opt {
@@ -1066,7 +1066,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
 }
 
 #[cfg(test)]
-mod churn_tests {
+mod turnover_tests {
     use super::*;
     use std::collections::HashSet as Set;
 
@@ -1095,8 +1095,8 @@ mod churn_tests {
     }
 
     #[test]
-    fn churn_schedule_sessions_vary_and_are_ordered() {
-        let sched = build_churn_schedule(
+    fn turnover_schedule_sessions_vary_and_are_ordered() {
+        let sched = build_turnover_schedule(
             12345, "relay-001", 1200, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0,
         );
         assert!(sched.len() >= 2, "expected multiple sessions, got {}", sched.len());
@@ -1119,21 +1119,21 @@ mod churn_tests {
     }
 
     #[test]
-    fn churn_schedule_is_deterministic() {
-        let a = build_churn_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
-        let b = build_churn_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+    fn turnover_schedule_is_deterministic() {
+        let a = build_turnover_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+        let b = build_turnover_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
         assert_eq!(a, b);
     }
 
     #[test]
-    fn churn_schedule_no_cycle_when_start_past_end() {
-        let s = build_churn_schedule(1, "x", 60000, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+    fn turnover_schedule_no_cycle_when_start_past_end() {
+        let s = build_turnover_schedule(1, "x", 60000, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
         assert_eq!(s, vec![(60000, None)]);
     }
 
     #[test]
-    fn churn_schedule_respects_max_session_ceiling() {
-        let sched = build_churn_schedule(7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0);
+    fn turnover_schedule_respects_max_session_ceiling() {
+        let sched = build_turnover_schedule(7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0);
         for (s, e) in &sched {
             if let Some(end) = e {
                 assert!(end - s <= 14400, "session {} exceeds the 4h ceiling", end - s);

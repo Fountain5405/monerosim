@@ -20,7 +20,7 @@ general:
   progress: true
   runahead: 100ms
   process_threads: 2
-  native_preemption: true   # churn restarts hit LMDB DB-resize; preemption lets
+  native_preemption: true   # turnover restarts hit LMDB DB-resize; preemption lets
                             # Shadow advance past the resize busy-op (else livelock)
   daemon_defaults:
     log-level: monitor                 # net.p2p.msg gossip for ruck_analysis.r (matched to control)

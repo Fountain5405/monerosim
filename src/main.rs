@@ -63,22 +63,22 @@ struct Args {
     #[arg(long)]
     reachable: Option<f64>,
 
-    /// Enable/override peer churn: mean ONLINE session length (e.g. "2h").
-    /// If the config has no `[general.churn]`, passing this enables churn
+    /// Enable/override peer turnover: mean ONLINE session length (e.g. "2h").
+    /// If the config has no `[general.turnover]`, passing this enables turnover
     /// with sensible defaults (downtime 30m, all eligible relays + users).
     /// Overrides
-    /// `general.churn.mean_session`. See --churn-downtime / --churn-max-session.
+    /// `general.turnover.mean_session`. See --turnover-downtime / --turnover-max-session.
     #[arg(long)]
-    churn_session: Option<String>,
+    turnover_session: Option<String>,
 
-    /// Mean OFFLINE gap between churn sessions (e.g. "30m"). See --churn-session.
+    /// Mean OFFLINE gap between turnover sessions (e.g. "30m"). See --turnover-session.
     #[arg(long)]
-    churn_downtime: Option<String>,
+    turnover_downtime: Option<String>,
 
-    /// Hard ceiling on any single churn session (e.g. "6h"); omit to let the
-    /// exponential tail run free. See --churn-session.
+    /// Hard ceiling on any single turnover session (e.g. "6h"); omit to let the
+    /// exponential tail run free. See --turnover-session.
     #[arg(long)]
-    churn_max_session: Option<String>,
+    turnover_max_session: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -103,10 +103,10 @@ fn main() -> Result<()> {
         new_config.general.reachable_fraction = r;
     }
 
-    // CLI: --churn-* enable or override peer churn. Any of these flags
-    // switches churn on (with defaults) when the config has no [general.churn].
-    if args.churn_session.is_some() || args.churn_downtime.is_some() || args.churn_max_session.is_some() {
-        let c = new_config.general.churn.get_or_insert_with(|| monerosim::config::ChurnConfig {
+    // CLI: --turnover-* enable or override peer turnover. Any of these flags
+    // switches turnover on (with defaults) when the config has no [general.turnover].
+    if args.turnover_session.is_some() || args.turnover_downtime.is_some() || args.turnover_max_session.is_some() {
+        let c = new_config.general.turnover.get_or_insert_with(|| monerosim::config::TurnoverConfig {
             mean_session: "2h".to_string(),
             mean_downtime: "30m".to_string(),
             fraction: 1.0,
@@ -114,11 +114,11 @@ fn main() -> Result<()> {
             max_session: None,
             min_downtime: None,
         });
-        if let Some(s) = args.churn_session { c.mean_session = s; }
-        if let Some(d) = args.churn_downtime { c.mean_downtime = d; }
-        if let Some(m) = args.churn_max_session { c.max_session = Some(m); }
+        if let Some(s) = args.turnover_session { c.mean_session = s; }
+        if let Some(d) = args.turnover_downtime { c.mean_downtime = d; }
+        if let Some(m) = args.turnover_max_session { c.max_session = Some(m); }
         info!(
-            "CLI churn: mean_session={} mean_downtime={} max_session={:?} fraction={}",
+            "CLI turnover: mean_session={} mean_downtime={} max_session={:?} fraction={}",
             c.mean_session, c.mean_downtime, c.max_session, c.fraction
         );
     }

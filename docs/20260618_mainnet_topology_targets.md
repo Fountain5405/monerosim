@@ -214,7 +214,7 @@ nodes synced to 188, 0 process failures. Reachable nodes carry heavy inbound
 ### Implications for next steps
 - Don't run low-reachable at 16h LL1 again (3x-slow + heavy = >40h). For a
   fraction SWEEP: higher reachable fractions simulate FASTER (bigger pool, less
-  churn) and likely bracket 23 min; and partial/short runs already read the
+  reconnection) and likely bracket 23 min; and partial/short runs already read the
   conn-duration trend (signal is clear by ~3h activity).
 - The tx-gap metric is WINDOW-SENSITIVE (recurrence accumulates over the
   observation window), so matching the absolute 23 min needs a consistent window

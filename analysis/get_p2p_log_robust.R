@@ -1,12 +1,12 @@
-# Churn-robust drop-in replacement for xmrpeers::get.p2p.log.
+# Turnover-robust drop-in replacement for xmrpeers::get.p2p.log.
 #
 # WHY: xmrpeers::get.p2p.log infers the tx count of each NOTIFY_NEW_TRANSACTIONS
 # message from runs of "Including transaction" lines via rle(). When a monerod is
-# restarted mid-simulation (peer churn), a NOTIFY can be logged with its
+# restarted mid-simulation (peer turnover), a NOTIFY can be logged with its
 # "Including transaction" lines truncated by the shutdown, so the rle run-lengths
 # stop matching the notify count -> a negative / mismatched `number.of.txs.corrected`
 # -> rep(times = ...) aborts with "invalid 'times' argument", killing the whole
-# analysis. ~40% of churning nodes hit this.
+# analysis. ~40% of nodes that cycle hit this.
 #
 # FIX: compute the per-notify tx count directly. After the log is filtered to ONLY
 # notify + "Including transaction" lines, the includes belonging to notify[i] are
