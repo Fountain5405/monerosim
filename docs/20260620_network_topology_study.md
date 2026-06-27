@@ -1,7 +1,9 @@
 # Matching Mainnet: Simulator Fidelity Across Rucknium's Four Metrics
 
-**Status:** Reachable-fraction sweep complete (15/40/50/60/80%). Next experiment
-is peer churn (§5.3). All results below are final and reproducible.
+**Status:** Reachable-fraction sweep complete (15/40/50/60/80%) **and the
+peer-turnover experiment is done (§5.4): at mainnet-realistic 15% reachability it
+matches both the median *and* the > 6 h distribution** — the combination the sweep
+alone could not. All results below are final and reproducible.
 **Companion:** `docs/20260610_rucknium_review_response_v2.md` (review response —
 where clumping and Skellam were resolved).
 
@@ -15,7 +17,7 @@ deltas, not just the headline one:
 |---|---|---|---|---|
 | **Transaction clumping** | 25% single-tx (1.45 tx/s spam wave) | volume-bound; 23.4% single at 0.47 tx/s — the curve matches mainnet | tx **volume** (not topology); spam-wave intensity isn't reachable at 1000 nodes on one box, but the curve does | ✅ resolved (v2 §4) |
 | **Skellam timing** | good fit, mild zero-spike | good fit, centered at 0 | — (already matched) | ✅ resolved (v2 §5) |
-| **Connection duration** | 23 min (few long conns) | median tunable 150→1.5 min via reachability; hits 23 min at ~50% | **reachable-pool size** (median) — but the *distribution* needs **churn** | 🔧 partial — median fits at ~50%, but not at mainnet's real ~15%, and the >6h tail stays ~8× too heavy (§5.3); churn is next |
+| **Connection duration** | 23 min (few long conns) | 28.75 min median **and** a mainnet-like > 6 h tail at the realistic 15% reachable, once peer turnover is added | **reachable-pool size** (median) + **peer turnover** (the > 6 h distribution) | ✅ resolved — turnover at 15% hits both median (28.75 min) and tail (~2% / 0%) at once (§5.4) |
 | **One-second cycle** | quarter-second | quarter-second appears (15%, 60%); not a clean function of reachability | likely topology, but the plot is a high-variance single-pair statistic | 🔬 mainnet's quarter-second is *reproducible* in-sim; can't yet claim it's controlled (§5.1) |
 
 **Two of the four (clumping, Skellam) were resolved in the review response.** The
@@ -159,11 +161,11 @@ Two facts keep the ~50%-reachable median match from being "mainnet matched":
 **Conclusion: reachable fraction is necessary but not sufficient.** It cannot
 simultaneously reproduce (a) mainnet's actual reachability (~15%), (b) the 23-min
 median, and (c) the connection-duration *distribution*. The mechanism that ties
-all three together is **peer churn** (nodes leaving and rejoining): on mainnet a
-peer relationship is naturally bounded because peers come and go, which caps the
-long tail *and* sets a realistic median *at* a realistic reachability. Churn is
-the indicated next experiment — at ~15% reachable, does adding turnover pull the
-median to ~23 min **and** the > 6 h share to ~1.5%? Supernodes change the
+all three together is **peer turnover** (nodes leaving and rejoining): on mainnet
+a peer relationship is naturally bounded because peers come and go, which caps the
+long tail *and* sets a realistic median *at* a realistic reachability. **§5.4 runs
+exactly this test** — at ~15% reachable, does adding turnover pull the median to
+~23 min **and** the > 6 h share to ~1.5%? (It does.) Supernodes change the
 *simulation cost* (≈6 h vs ≈40 h), not the duration.
 
 **Clumping is volume-bound (from the review response).** Our v2 work established
@@ -179,6 +181,48 @@ that transaction clumping tracks delivered tx rate, not topology — so sn_r15's
 | 1.45 | 25.0% | mainnet (Rucknium spam wave) |
 
 (Full detail: `docs/20260610_rucknium_review_response_v2.md` §4.)
+
+### 5.4 Turnover closes the gap
+
+The §5.3 prediction holds. Adding **peer turnover** — eligible nodes (relays *and*
+users) leave and rejoin during the run, each cycling offline/online on exponential
+sessions; only the daemon restarts, on the same data-dir so chain state survives —
+at the **realistic 15% reachability** reproduces mainnet on *both* axes the
+reachable-fraction sweep could not hit together:
+
+| config | conn-duration median | conns > 6 h (OUT / INC) |
+|---|---:|---:|
+| sn_r15 — 15% reachable, **no turnover** | 150 min | 20.9% / 25.1% |
+| 50% reachable, no turnover (sweep's best median) | 20.7 min | 12.9% / 12.4% |
+| **15% reachable + turnover (1 h on / 1 h off, ~50% uptime)** | **28.75 min** | **2.07% / 0%** |
+| **mainnet** | **23 min** | **~0% / ~1.5%** |
+
+At mainnet's *own* reachability, turnover pulls the median from 150 min to **28.75
+min** (1.25× mainnet's 23, versus 6.5× without it) **and** collapses the over-6 h
+tail from ~21–25% to **~2% / 0%**. That is mainnet-like on both at once — which no
+static reachable fraction managed (50% nailed the median but left a ~12% tail, at
+the wrong reachability). Figure: §5.2(b), bottom row.
+
+**Mechanism, confirmed (§3).** The long-duration gap was peer *recurrence*: with a
+small reachable pool you keep reconnecting to the same few peers, so the tx-gap
+metric stretches to hours even though each TCP connection lives ~100 s. Turnover
+breaks recurrence at the source — a peer that has gone offline cannot be re-dialed,
+so no relationship outlives the peer's session, and with ~1 h sessions essentially
+none survives 6 h.
+
+**The residual tail is the supernodes — exactly as predicted.** The only non-zero
+tail is **2.07% of *outbound* connections, 0% inbound.** That asymmetry is the 5
+always-on supernodes: a node's *outbound* links to them recur all run (they never
+leave), while *inbound* links — opened only by cycling peers — are all bounded.
+So even the leftover ~2% is accounted for; letting the supernodes turn over too
+would push it toward 0 (mainnet keeps ~1.5% regardless, so 2% is already realistic).
+
+This was a complete 16 h run at 15% reachable with 5 supernodes (100% simulated,
+0 process failures, ALL CHECKS PASSED), analyzed with the same 10-user-node tx-gap
+method as sn_r15 and mainnet. An 11 h partial from an earlier attempt gave the same
+picture (median 22 min, tail 0.27% / 0%), so the result is not an artifact of a
+single run. Two engineering notes needed to reproduce restart-heavy runs are in
+§6 (items 4–5) and §7.
 
 ### 5.1 All of Rucknium's metrics for sn_r15 (not just duration)
 
@@ -207,7 +251,7 @@ Two findings beyond duration:
   monotonic trend; the fourth point refuted it.)
 - **Over-stable connections:** ~21–25% of connections last > 6 h vs mainnet's
   ~1.5% — an independent indicator that 15% reachable overshoots (see §5.3 for
-  the full sweep and why this points to churn).
+  the sweep, and §5.4 for how peer turnover removes this tail).
 
 ### 5.2 Figures
 
@@ -239,9 +283,10 @@ mainnet column (2024 spam wave) is the target; the bottom row is his analysis of
 
 **(b) Our topology response.** Fixed all-reachable 1000-node (the "perfect
 network" control) → 15% reachable + 5 supernodes → the 50% point where the
-connection-duration median matches mainnet. (The one-second-cycle column is a
-high-variance single-pair statistic — see §5.1; read it as "quarter-second is
-reproducible," not as a clean trend.)
+connection-duration median matches mainnet → **15% + turnover, which matches the
+median *and* removes the > 6 h tail at realistic reachability (§5.4).** (The
+one-second-cycle column is a high-variance single-pair statistic — see §5.1; read
+it as "quarter-second is reproducible," not as a clean trend.)
 
 <table>
 <tr><th>run</th><th>Connection duration</th><th>One-second cycle</th><th>Skellam</th></tr>
@@ -269,6 +314,12 @@ reproducible," not as a clean trend.)
 <td><img src="assets/topology_study/r50_one-second-cycle.png" width="230"></td>
 <td><img src="assets/topology_study/r50_skellam.png" width="230"></td>
 </tr>
+<tr>
+<td><b>15% reachable + turnover</b><br>(1 h/1 h, 28.75 min, > 6 h ~2% / 0%)</td>
+<td><img src="assets/topology_study/turnover_r15_connection-duration.png" width="230"></td>
+<td><img src="assets/topology_study/turnover_r15_one-second-cycle.png" width="230"></td>
+<td><img src="assets/topology_study/turnover_r15_skellam.png" width="230"></td>
+</tr>
 </table>
 
 **(c) The reachable-fraction sweep — connection-duration kernel densities.**
@@ -290,25 +341,40 @@ floor; the long > 6 h tail (§5.3) persists throughout.
 
 1. **Window-sensitivity:** the tx-gap metric accumulates recurrence over the
    observation window, so matching the *absolute* 23 min requires a window
-   comparable to Rucknium's. A static reachable fraction may not produce a
-   window-independent 23 min — peer **turnover (churn)** is the mechanism that
-   bounds recurrence on real mainnet, and is the natural next lever after the
-   fraction sweep.
+   comparable to Rucknium's. A static reachable fraction does not bound recurrence
+   the way real mainnet does; **peer turnover** does (§5.4), which is why turnover,
+   not a higher fraction, is what reproduces the distribution at realistic ~15%.
 2. **Throughput-throttle cause** (§4) is unresolved.
 3. **Supernode model:** regular reachable nodes use the default *unlimited*
    inbound, so they too become high-degree; the supernodes' distinction here is
    mainly out-degree. A sharper hub model would cap regular-node inbound.
+4. **Turnover runs need Shadow `native_preemption`.** A restarting monerod hits an
+   LMDB map-resize (a native busy-operation); with `native_preemption_enabled:
+   false` Shadow's discrete-event clock can livelock on it. Setting it `true` (in
+   `test_configs/topo1k_supernodes.{,scenario.}yaml`) lets restart-heavy runs
+   complete, at ~2× wall-clock cost.
+5. **Restarted logs need a robust parser.** A daemon restart can truncate a
+   `NOTIFY_NEW_TRANSACTIONS` message's "Including transaction" lines, breaking
+   `xmrpeers::get.p2p.log`'s tx-count repair (~40% of turnover nodes fail).
+   `analysis/get_p2p_log_robust.R` + `analysis/ruck_analysis_turnover.r` fix it with
+   a gap-based tx count; every other metric is computed upstream-identically.
+6. **The 2% outbound > 6 h residual** under turnover is the always-on supernodes
+   (§5.4); letting them turn over too is the open follow-up to drive it toward 0.
 
 ## 7. Reproduction
 
-- Feature + configs: `--reachable` (commit `cbd36f19`);
-  `test_configs/topo1k_supernodes.{scenario.,}yaml` (supernode mix),
-  `test_configs/clumping_0p67_monitor.yaml` (all-reachable control).
-- Run: `./run_sim.sh --config test_configs/topo1k_supernodes.yaml --name <n> --reachable <f>`
-- Analyze: `analysis/ruck_analysis.r` (tx-gap conn-duration + clumping);
-  `analysis/results_clumping_0p67/conn_gossip_join.py` (TCP-level join, needs
-  log-level 1).
-- Archives: `archived_runs/20260619_135809_sn_r15/` (the new run);
+- Feature + configs: `--reachable` (commit `cbd36f19`) and `--turnover-session /
+  --turnover-downtime` (peer turnover); `test_configs/topo1k_supernodes.{scenario.,}yaml`
+  (supernode mix, `native_preemption: true`), `test_configs/clumping_0p67_monitor.yaml`
+  (all-reachable control).
+- Run (sweep): `./run_sim.sh --config test_configs/topo1k_supernodes.yaml --name <n> --reachable <f>`
+- Run (turnover): add `--turnover-session 1h --turnover-downtime 1h` (relays + users
+  cycle ~50% uptime; supernodes/miners/seeds stay always-on).
+- Analyze: `analysis/ruck_analysis.r` (tx-gap conn-duration + clumping) for static
+  runs; **`analysis/ruck_analysis_turnover.r` for turnover runs** (restart-robust,
+  same metrics); `analysis/results_clumping_0p67/conn_gossip_join.py` (TCP-level
+  join, needs log-level 1).
+- Archives: the 15% + turnover full run; `archived_runs/20260619_135809_sn_r15/`;
   `archived_runs/20260610_031558_clumping_0p67_monitor/` and the v2 response doc
   for the all-reachable baselines. (The excluded `topo1k_r15` partial is not a
   data source.)
