@@ -349,22 +349,29 @@ repo before the fix, not just asserted by a reviewer.
 
 | # | Where | Bug | Status |
 |---|---|---|---|
-| 1 | `src/orchestrator.rs:671-691` | Discarded print-loop side effect pins all miner IPs to node 0's /24 | OPEN |
-| 2 | `agents/base_agent.py:683-721` + readers | agent_registry.json torn-read race (writer/readers lock different objects; non-atomic rewrite) | OPEN |
-| 3 | `src/analysis/time_window.rs:317-326` | t-test `t*0.9` fudge behind every "statistically significant" claim | OPEN |
-| 4 | `src/analysis/tx_relay.rs:232-246` | Fulfillment metric structurally ~100%, fallback hardcodes 1.0 | OPEN |
-| 5 | `scripts/configure_upgrade.py:305` | Wizard emits N+5 hosts for "N agents" after `--agents` semantics change | OPEN |
+| 1 | `src/orchestrator.rs:671-691` | Discarded print-loop side effect pins all miner IPs to node 0's /24 | **FIXED** `009c3041` (golden diff verified IP-only; miner-002..005 move to true GML subnets) |
+| 2 | `agents/base_agent.py:683-721` + readers | agent_registry.json torn-read race (writer/readers lock different objects; non-atomic rewrite) | **FIXED** `cf5decb3` (sidecar lock + atomic rename; stress: 1 torn read before, 0 after over ~850k reads) |
+| 3 | `src/analysis/time_window.rs:317-326` | t-test `t*0.9` fudge behind every "statistically significant" claim | **FIXED** `b9feae12` (exact Student's t via regularized incomplete beta; unit tests pin known values) |
+| 4 | `src/analysis/tx_relay.rs:232-246` | Fulfillment metric structurally ~100%, fallback hardcodes 1.0 | **FIXED** `b9feae12` (deleted — real pairing not derivable from logs; phantom `txs_in_blocks`/`drops_protocol_violation` also removed) |
+| 5 | `scripts/configure_upgrade.py:305` | Wizard emits N+5 hosts for "N agents" after `--agents` semantics change | **FIXED** `97ec143e` (verified 30→30) |
 
 ### P1 — broken wiring
 
 | # | Where | Bug | Status |
 |---|---|---|---|
-| 6 | `start_here.sh:707` (+700,709) | Passes `--full-monero` (rejected by setup.sh); `--clean` description wrong | OPEN |
-| 7 | `scripts/post_run_analysis.sh:19` | Analyzer launched without required `--config`; fails every run behind a ✅ | OPEN |
-| 8 | `run_sim.sh:1182` | `\|\| echo 0` yields `"0\n0"` → arithmetic error → snapshot archiving fails | OPEN |
-| 9 | `update.sh:187,213` | Missing RAM-capped BUILD_JOBS (OOM regression); un-pins setup.sh's ref pin | OPEN |
-| 10 | `scripts/analyze_network_connectivity.py:436-461` | Live ipapi.co geolocation of simulated IPs | OPEN |
-| 11 | `agents/simulation_monitor/agent.py:1159,878,670,621` | Metrics silently garbage (wrong key → always 0; cycles counted as txs) | OPEN |
+| 6 | `start_here.sh:707` (+700,709) | Passes `--full-monero` (rejected by setup.sh); `--clean` description wrong | **FIXED** `8b803afe` |
+| 7 | `scripts/post_run_analysis.sh:19` | Analyzer launched without required `--config`; fails every run behind a ✅ | **FIXED** `cbc46155` (config wired through run_sim.sh; jobs now waited on, exit code honest) |
+| 8 | `run_sim.sh:1182` | `\|\| echo 0` yields `"0\n0"` → arithmetic error → snapshot archiving fails | **FIXED** `cbc46155` |
+| 9 | `update.sh:187,213` | Missing RAM-capped BUILD_JOBS (OOM regression); un-pins setup.sh's ref pin | **FIXED** `8b803afe` |
+| 10 | `scripts/analyze_network_connectivity.py:436-461` | Live ipapi.co geolocation of simulated IPs | **FIXED** `cbc46155` (static placeholder; requests dependency dropped) |
+| 11 | `agents/simulation_monitor/agent.py:1159,878,670,621` | Metrics silently garbage (wrong key → always 0; cycles counted as txs) | **FIXED** `6c52e682` (verified vs real archived final_report.json; consumer keys audited, baselines unaffected; +1 pin test) |
+
+Baseline repair note: the golden output-equivalence tests had been red since
+June — `d21f971b` added the max-connections-per-ip floor without regenerating
+goldens. Repaired in `d9d30b3c` (diff verified as exactly the 17 injected flag
+lines) *before* any fix landed, so every fix above was validated against a
+green baseline. Post-fix suite: cargo 78 passed / 0 failed, pytest 88 passed
+(87 baseline + 1 new pin), `bash -n` clean on all touched scripts.
 
 ### P2 — debt (not this pass; tracked)
 
