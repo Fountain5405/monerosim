@@ -303,7 +303,7 @@ def main():
         print("\nGenerating configuration...")
 
         config, timing_info = generate_upgrade_config(
-            total_agents=num_agents,
+            total_agents=num_users,
             duration=format_time_offset(timeline['total_s']),
             stagger_interval_s=5,  # User spawn stagger
             simulation_seed=seed,
