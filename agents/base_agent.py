@@ -652,47 +652,36 @@ class BaseAgent(ABC):
         return data if isinstance(data, list) else []
         
     def _register_self(self):
-        """Register this agent in the agent registry with atomic file updates"""
+        """Register this agent in the agent registry with atomic file updates.
+
+        The whole read-modify-write runs under an exclusive flock on the
+        sidecar lock file ``agent_registry.lock`` -- the SAME lock readers
+        acquire -- so concurrent registrations are serialised. The updated
+        registry is written to a temp file in the same directory and then
+        atomically renamed into place, so even unlocked readers never observe
+        a truncated/partial file (mirrors write_shared_state/append_shared_list).
+        """
         registry_path = self.shared_dir / "agent_registry.json"
         lock_path = self.shared_dir / "agent_registry.lock"
-        
+        temp_path = registry_path.with_suffix(".tmp")
+
         self.logger.debug(f"Registering in agent registry: {registry_path}")
 
-        # First, ensure the file exists using a separate lock file for creation
         try:
             with open(lock_path, "w") as lock_f:
                 self.logger.debug(f"Acquiring lock on {lock_path}")
                 fcntl.flock(lock_f, fcntl.LOCK_EX)
                 self.logger.debug(f"Acquired lock on {lock_path}")
                 try:
-                    if not registry_path.exists():
-                        self.logger.warning(f"Registry file not found at {registry_path}. Creating it.")
-                        with open(registry_path, "w") as f:
-                            json.dump({"agents": []}, f, indent=4)
-                        self.logger.info(f"Successfully created registry file at {registry_path}")
-                finally:
-                    self.logger.debug(f"Releasing lock on {lock_path}")
-                    fcntl.flock(lock_f, fcntl.LOCK_UN)
-        except OSError as e:
-            # OSError covers open()/flock() failures (incl. permissions, missing dir).
-            self.logger.error(f"Failed to create or lock registry file: {e}", exc_info=True)
-            return
-
-        # Now, atomically update the now-existing registry file
-        try:
-            with open(registry_path, "r+") as f:
-                self.logger.debug(f"Acquiring lock on {registry_path}")
-                fcntl.flock(f, fcntl.LOCK_EX)
-                self.logger.debug(f"Acquired lock on {registry_path}")
-                try:
-                    # Handle potentially empty file
-                    content = f.read()
-                    if not content.strip():
-                        data = {"agents": []}
+                    # Read current registry, tolerating a missing/empty file.
+                    if registry_path.exists():
+                        with open(registry_path, "r") as f:
+                            content = f.read()
+                        data = json.loads(content) if content.strip() else {"agents": []}
                     else:
-                        f.seek(0)
-                        data = json.load(f)
-                    
+                        self.logger.warning(f"Registry file not found at {registry_path}. Creating it.")
+                        data = {"agents": []}
+
                     # Find and update the agent's entry or create a new one
                     agent_found = False
                     for agent in data.get("agents", []):
@@ -700,7 +689,7 @@ class BaseAgent(ABC):
                             agent["wallet_address"] = getattr(self, 'wallet_address', None)
                             agent_found = True
                             break
-                    
+
                     if not agent_found:
                         new_agent_entry = {
                             "id": self.agent_id,
@@ -715,15 +704,17 @@ class BaseAgent(ABC):
                             "timestamp": time.time()
                         }
                         data.setdefault("agents", []).append(new_agent_entry)
-                    
-                    f.seek(0)
-                    json.dump(data, f, indent=4)
-                    f.truncate()
+
+                    # Write to a temp file, then atomically rename over the
+                    # registry so readers never see a partial file.
+                    with open(temp_path, "w") as f:
+                        json.dump(data, f, indent=4)
+                    temp_path.rename(registry_path)
                 finally:
-                    self.logger.debug(f"Releasing lock on {registry_path}")
-                    fcntl.flock(f, fcntl.LOCK_UN)
+                    self.logger.debug(f"Releasing lock on {lock_path}")
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
         except (OSError, json.JSONDecodeError) as e:
-            # OSError: open()/flock()/truncate(); JSONDecodeError: corrupt registry contents.
+            # OSError: open()/flock()/rename(); JSONDecodeError: corrupt registry contents.
             self.logger.error(f"Failed to lock and update registry file: {e}", exc_info=True)
             return
 
