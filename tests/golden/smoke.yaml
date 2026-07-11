@@ -23,6 +23,7 @@ hosts:
       - --keep-fakechain
       - --prep-blocks-threads=1
       - --max-concurrency=1
+      - --max-connections-per-ip=4
       - --rpc-bind-ip=202.166.233.13
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -144,6 +145,7 @@ hosts:
       - --keep-fakechain
       - --prep-blocks-threads=1
       - --max-concurrency=1
+      - --max-connections-per-ip=4
       - --rpc-bind-ip=80.0.1.10
       - --rpc-bind-port=18081
       - --confirm-external-bind

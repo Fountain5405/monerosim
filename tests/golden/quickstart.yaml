@@ -52,6 +52,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -154,6 +155,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -256,6 +258,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -358,6 +361,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -460,6 +464,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -585,6 +590,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -629,6 +635,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -673,6 +680,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -717,6 +725,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -761,6 +770,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -805,6 +815,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -849,6 +860,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -916,6 +928,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -1004,6 +1017,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
@@ -1092,6 +1106,7 @@ hosts:
       - --keep-fakechain
       - --db-sync-mode=fastest
       - --log-level=1
+      - --max-connections-per-ip=4
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
