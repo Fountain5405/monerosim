@@ -666,29 +666,21 @@ pub fn generate_agent_shadow_config(
         }
     }
 
-    // Use the configured seed nodes, or collect miner IPs if not provided
-    // Note: This is computed for the informative print statement below
-    let _effective_seed_nodes = if seed_node_list.is_empty() {
-        // Collect actual miner IPs for seed nodes
-        let mut miner_ips = Vec::new();
-        for (i, (agent_id, agent_config)) in config.agents.agents.iter()
-            .filter(|(_, cfg)| cfg.has_local_daemon() || cfg.has_remote_daemon() || cfg.has_wallet())
-            .enumerate()
-        {
-            if agent_config.is_miner() {
-                // For seed node IP calculation, use node 0 (switch topology assumption)
-                let network_node_id = 0;
-                let subnet_group = agent_config.subnet_group.as_deref();
-                let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph.as_ref(), using_gml_topology, &mut subnet_manager, &mut ip_registry, subnet_group);
-                miner_ips.push(format!("{}:{}", agent_ip, crate::MONERO_P2P_PORT));
-            }
-        }
-        println!("Using {} miner IPs as seed nodes: {:?}", miner_ips.len(), miner_ips);
-        miner_ips
+    // Informative print only: the real seed wiring (--add-priority-node) is
+    // built in topology::peer_connections from the IPs assigned at host
+    // emission. Do NOT resolve miner IPs here — calling get_agent_ip before
+    // process_user_agents allocates (and caches) every miner's IP against
+    // network node 0, pinning all miners into node 0's subnet regardless of
+    // their GML placement (docs/20260711_code_quality_review.md, P0 #1).
+    if seed_node_list.is_empty() {
+        let miner_ids: Vec<&String> = config.agents.agents.iter()
+            .filter(|(_, cfg)| cfg.is_miner())
+            .map(|(agent_id, _)| agent_id)
+            .collect();
+        println!("Using {} miners as seed sources (IPs assigned at host emission): {:?}", miner_ids.len(), miner_ids);
     } else {
         println!("Using configured seed nodes: {:?}", seed_node_list);
-        seed_node_list
-    };
+    }
 
     // Create scripts directory for wrapper scripts (used by all agent types)
     let scripts_dir = output_path.parent()

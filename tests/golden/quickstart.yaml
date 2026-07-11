@@ -62,8 +62,8 @@ hosts:
       - --rpc-access-control-origins=*
       - --p2p-bind-ip=3.0.0.11
       - --p2p-bind-port=18080
-      - --add-priority-node=3.0.0.15:18080
-      - --add-priority-node=3.0.0.12:18080
+      - --add-priority-node=41.0.0.10:18080
+      - --add-priority-node=2.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -145,7 +145,7 @@ hosts:
     bandwidth_up: '1000000000'
   miner-002:
     network_node_id: 200
-    ip_addr: 3.0.0.12
+    ip_addr: 2.0.0.10
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -159,14 +159,14 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-bind-ip=3.0.0.12
+      - --rpc-bind-ip=2.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=3.0.0.12
+      - --p2p-bind-ip=2.0.0.10
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.13:18080
+      - --add-priority-node=1.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -185,9 +185,9 @@ hosts:
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
       args:
-      - --daemon-address=http://3.0.0.12:18081
+      - --daemon-address=http://2.0.0.10:18081
       - --rpc-bind-port=18082
-      - --rpc-bind-ip=3.0.0.12
+      - --rpc-bind-ip=2.0.0.10
       - --disable-rpc-login
       - --trusted-daemon
       - --wallet-dir=TMPDIR/shared/miner-002_wallet
@@ -248,7 +248,7 @@ hosts:
     bandwidth_up: '1000000000'
   miner-003:
     network_node_id: 500
-    ip_addr: 3.0.0.13
+    ip_addr: 1.0.0.10
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -262,14 +262,14 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-bind-ip=3.0.0.13
+      - --rpc-bind-ip=1.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=3.0.0.13
+      - --p2p-bind-ip=1.0.0.10
       - --p2p-bind-port=18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.14:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -288,9 +288,9 @@ hosts:
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
       args:
-      - --daemon-address=http://3.0.0.13:18081
+      - --daemon-address=http://1.0.0.10:18081
       - --rpc-bind-port=18082
-      - --rpc-bind-ip=3.0.0.13
+      - --rpc-bind-ip=1.0.0.10
       - --disable-rpc-login
       - --trusted-daemon
       - --wallet-dir=TMPDIR/shared/miner-003_wallet
@@ -351,7 +351,7 @@ hosts:
     bandwidth_up: '1000000000'
   miner-004:
     network_node_id: 800
-    ip_addr: 3.0.0.14
+    ip_addr: 177.0.0.10
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -365,14 +365,14 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-bind-ip=3.0.0.14
+      - --rpc-bind-ip=177.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=3.0.0.14
+      - --p2p-bind-ip=177.0.0.10
       - --p2p-bind-port=18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -391,9 +391,9 @@ hosts:
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
       args:
-      - --daemon-address=http://3.0.0.14:18081
+      - --daemon-address=http://177.0.0.10:18081
       - --rpc-bind-port=18082
-      - --rpc-bind-ip=3.0.0.14
+      - --rpc-bind-ip=177.0.0.10
       - --disable-rpc-login
       - --trusted-daemon
       - --wallet-dir=TMPDIR/shared/miner-004_wallet
@@ -454,7 +454,7 @@ hosts:
     bandwidth_up: '1000000000'
   miner-005:
     network_node_id: 1000
-    ip_addr: 3.0.0.15
+    ip_addr: 41.0.0.10
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -468,13 +468,13 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-bind-ip=3.0.0.15
+      - --rpc-bind-ip=41.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=3.0.0.15
+      - --p2p-bind-ip=41.0.0.10
       - --p2p-bind-port=18080
-      - --add-priority-node=3.0.0.14:18080
+      - --add-priority-node=177.0.0.10:18080
       - --add-priority-node=3.0.0.11:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -494,9 +494,9 @@ hosts:
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
       args:
-      - --daemon-address=http://3.0.0.15:18081
+      - --daemon-address=http://41.0.0.10:18081
       - --rpc-bind-port=18082
-      - --rpc-bind-ip=3.0.0.15
+      - --rpc-bind-ip=41.0.0.10
       - --disable-rpc-login
       - --trusted-daemon
       - --wallet-dir=TMPDIR/shared/miner-005_wallet
@@ -557,7 +557,7 @@ hosts:
     bandwidth_up: '1000000000'
   miner-distributor:
     network_node_id: 0
-    ip_addr: 3.0.0.16
+    ip_addr: 3.0.0.12
     processes:
     - path: /bin/bash
       args:
@@ -601,10 +601,10 @@ hosts:
       - --p2p-bind-ip=176.9.0.187
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.14:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -646,10 +646,10 @@ hosts:
       - --p2p-bind-ip=88.198.163.90
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.14:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -691,10 +691,10 @@ hosts:
       - --p2p-bind-ip=192.99.8.110
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.14:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -736,10 +736,10 @@ hosts:
       - --p2p-bind-ip=37.187.74.171
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.14:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -781,10 +781,10 @@ hosts:
       - --p2p-bind-ip=88.99.195.15
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.14:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -826,10 +826,10 @@ hosts:
       - --p2p-bind-ip=5.104.84.64
       - --p2p-bind-port=18080
       - --add-priority-node=3.0.0.11:18080
-      - --add-priority-node=3.0.0.12:18080
-      - --add-priority-node=3.0.0.13:18080
-      - --add-priority-node=3.0.0.14:18080
-      - --add-priority-node=3.0.0.15:18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=177.0.0.10:18080
+      - --add-priority-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -871,10 +871,10 @@ hosts:
       - --p2p-bind-ip=103.0.0.10
       - --p2p-bind-port=18080
       - --seed-node=3.0.0.11:18080
-      - --seed-node=3.0.0.12:18080
-      - --seed-node=3.0.0.13:18080
-      - --seed-node=3.0.0.14:18080
-      - --seed-node=3.0.0.15:18080
+      - --seed-node=2.0.0.10:18080
+      - --seed-node=1.0.0.10:18080
+      - --seed-node=177.0.0.10:18080
+      - --seed-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -895,7 +895,7 @@ hosts:
     bandwidth_up: '1000000000'
   simulation-monitor:
     network_node_id: 0
-    ip_addr: 3.0.0.17
+    ip_addr: 3.0.0.13
     processes:
     - path: /bin/bash
       args:
@@ -939,10 +939,10 @@ hosts:
       - --p2p-bind-ip=6.0.0.10
       - --p2p-bind-port=18080
       - --seed-node=3.0.0.11:18080
-      - --seed-node=3.0.0.12:18080
-      - --seed-node=3.0.0.13:18080
-      - --seed-node=3.0.0.14:18080
-      - --seed-node=3.0.0.15:18080
+      - --seed-node=2.0.0.10:18080
+      - --seed-node=1.0.0.10:18080
+      - --seed-node=177.0.0.10:18080
+      - --seed-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -1028,10 +1028,10 @@ hosts:
       - --p2p-bind-ip=25.0.0.10
       - --p2p-bind-port=18080
       - --seed-node=3.0.0.11:18080
-      - --seed-node=3.0.0.12:18080
-      - --seed-node=3.0.0.13:18080
-      - --seed-node=3.0.0.14:18080
-      - --seed-node=3.0.0.15:18080
+      - --seed-node=2.0.0.10:18080
+      - --seed-node=1.0.0.10:18080
+      - --seed-node=177.0.0.10:18080
+      - --seed-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
@@ -1117,10 +1117,10 @@ hosts:
       - --p2p-bind-ip=27.0.0.10
       - --p2p-bind-port=18080
       - --seed-node=3.0.0.11:18080
-      - --seed-node=3.0.0.12:18080
-      - --seed-node=3.0.0.13:18080
-      - --seed-node=3.0.0.14:18080
-      - --seed-node=3.0.0.15:18080
+      - --seed-node=2.0.0.10:18080
+      - --seed-node=1.0.0.10:18080
+      - --seed-node=177.0.0.10:18080
+      - --seed-node=41.0.0.10:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         DNS_PUBLIC: tcp://3.0.0.10
