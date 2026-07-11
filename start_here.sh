@@ -696,17 +696,17 @@ run_setup_again() {
     say ""
     say "${BOLD}Pick a mode${NC}"
     say "  ${BOLD}1)${NC} Normal     — skips Monero rebuild if binaries already exist"
-    say "  ${BOLD}2)${NC} Full       — forces Monero recompile (${DIM}--full-monero${NC})"
-    say "  ${BOLD}3)${NC} Clean      — wipes ${DIM}~/.monerosim/${NC} and starts over (${DIM}--clean${NC})"
+    say "  ${BOLD}2)${NC} Full       — forces Monero recompile (${DIM}--full-monero-compile${NC})"
+    say "  ${BOLD}3)${NC} Clean      — wipes ${DIM}venv/, shadow_output/, target/${NC} and starts over (${DIM}--clean${NC})"
     say "  ${BOLD}M)${NC} Back"
     say ""
     read -r -p "Choose [1/2/3/M]: " mode
     local -a flags=()
     case "${mode^^}" in
         ""|1) ;;
-        2)    flags+=(--full-monero) ;;
+        2)    flags+=(--full-monero-compile) ;;
         3)
-            warn "${BOLD}Clean mode wipes ~/.monerosim/${NC} — your installed binaries will be deleted."
+            warn "${BOLD}Clean mode wipes venv/, shadow_output/, and target/${NC} — it does not touch ${DIM}~/.monerosim/${NC} or your installed binaries."
             read -r -p "Are you sure? [y/N] " ans
             [[ "$ans" =~ ^[Yy] ]] || { info "Cancelled."; pause; return; }
             flags+=(--clean)
