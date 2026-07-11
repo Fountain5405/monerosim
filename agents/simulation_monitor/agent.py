@@ -65,6 +65,11 @@ class SimulationMonitorAgent(BaseAgent):
         self.status_file = status_file
         self.enable_alerts = enable_alerts
         self.detailed_logging = detailed_logging
+        # detailed_logging forces the monitor's logger to DEBUG regardless of
+        # the configured log level (previously the attribute was stored but
+        # never read).
+        if self.detailed_logging:
+            self.logger.setLevel(logging.DEBUG)
         self.cycle_count = 0
 
         # Initialize agent discovery
@@ -86,7 +91,7 @@ class SimulationMonitorAgent(BaseAgent):
             "blocks_mined": 0,
             "last_block_height": 0,
             "last_processed_height": 0,  # Track last block we've processed for tx extraction
-            "node_tx_counts": {},  # Track transactions per node (received)
+            "nodes_with_balance": {},  # node_id -> polling cycles seen funded; len() = distinct funded nodes (NOT a per-node tx count)
             "tx_created_by_node": {},  # Track transactions created per sender node
             "tx_to_block_mapping": {},  # Track which block contains which tx (height -> tx_hashes)
             "pending_txs": set(),  # Track transactions waiting to be included
@@ -617,10 +622,12 @@ class SimulationMonitorAgent(BaseAgent):
             # A miner is "actively mining" if they've mined blocks recently or are registered
             is_actively_mining = recent_block_count > 0 or is_registered_miner
 
-            # Calculate effective hashrate based on weight percentage
+            # Effective hashrate = this miner's share of the total registered
+            # mining weight, expressed as a percentage (the "weight percentage").
+            # Was previously left as the raw weight, ignoring total_weight.
             total_weight = sum(m.get("weight", 0) for m in self.miner_registry.values())
             if total_weight > 0 and weight > 0:
-                effective_hashrate = weight
+                effective_hashrate = (weight / total_weight) * 100
             else:
                 effective_hashrate = 0
 
@@ -667,7 +674,7 @@ class SimulationMonitorAgent(BaseAgent):
                 data.update({
                     "balance": balance.get("balance", 0),
                     "unlocked_balance": balance.get("unlocked_balance", 0),
-                    "height": balance.get("blocks_to_unlock", 0)
+                    "blocks_to_unlock": balance.get("blocks_to_unlock", 0)
                 })
             except Exception as e:
                 data["balance_error"] = str(e)
@@ -856,7 +863,6 @@ class SimulationMonitorAgent(BaseAgent):
 
             # Find current max height and set up reference daemon
             current_max_height = 0
-            total_nodes_with_txs = 0
 
             for node_id, data in node_data.items():
                 daemon = data.get("daemon", {})
@@ -874,13 +880,14 @@ class SimulationMonitorAgent(BaseAgent):
                         if rpc_info:
                             self.reference_daemon = self._get_daemon_rpc(rpc_info)
 
-                # Track transactions in wallet
+                # Record which nodes have a positive balance (received funds).
+                # Only the KEY SET is meaningful downstream (len() = distinct
+                # funded nodes); the value counts polling cycles the node was
+                # seen funded, NOT the number of transactions it received.
                 if wallet.get("balance", 0) > 0 or wallet.get("unlocked_balance", 0) > 0:
-                    # This node has received transactions
-                    if node_id not in self.transaction_stats["node_tx_counts"]:
-                        self.transaction_stats["node_tx_counts"][node_id] = 0
-                    self.transaction_stats["node_tx_counts"][node_id] += 1
-                    total_nodes_with_txs += 1
+                    self.transaction_stats["nodes_with_balance"][node_id] = (
+                        self.transaction_stats["nodes_with_balance"].get(node_id, 0) + 1
+                    )
 
             # Update block statistics
             self.transaction_stats["last_block_height"] = current_max_height
@@ -888,10 +895,6 @@ class SimulationMonitorAgent(BaseAgent):
 
             # Query new blocks for transaction data via RPC
             self._extract_transactions_from_blocks(current_max_height)
-
-            # Update broadcast count (nodes that have received transactions)
-            if total_nodes_with_txs > len(self.transaction_stats["node_tx_counts"]):
-                self.transaction_stats["total_broadcast"] = total_nodes_with_txs
 
             # Save enhanced tracking data
             self._save_transaction_tracking_data()
@@ -1067,10 +1070,11 @@ class SimulationMonitorAgent(BaseAgent):
                 # Write blockchain status
                 self._write_blockchain_status(f, network_metrics)
 
-                # Write alerts if any
-                alerts = self._check_alerts(network_metrics)
-                if alerts:
-                    self._write_alerts(f, alerts)
+                # Write alerts if any (only when alerting is enabled)
+                if self.enable_alerts:
+                    alerts = self._check_alerts(network_metrics)
+                    if alerts:
+                        self._write_alerts(f, alerts)
 
                 f.write(f"\n=== End Status Update ===\n")
                 f.flush()  # Ensure immediate visibility for tail -f
@@ -1153,7 +1157,7 @@ class SimulationMonitorAgent(BaseAgent):
         f.write(f"- Total Transactions Created: {self.transaction_stats['total_created']}\n")
         f.write(f"- Total Transactions in Blocks: {self.transaction_stats['total_in_blocks']}\n")
         f.write(f"- Blockchain Height: {self.transaction_stats['blocks_mined']} (excluding genesis)\n")
-        f.write(f"- Nodes with Transactions: {len(self.transaction_stats['node_tx_counts'])}\n")
+        f.write(f"- Nodes with Transactions: {len(self.transaction_stats['nodes_with_balance'])}\n")
 
         # Calculate transaction metrics if we have historical data
         if len(self.historical_data) > 1:
@@ -1161,7 +1165,7 @@ class SimulationMonitorAgent(BaseAgent):
             curr_data = self.historical_data[-1] if self.historical_data else network_metrics
 
             prev_pool = prev_data.get("network_metrics", {}).get("total_pool_size", 0)
-            curr_pool = curr_data.get("total_pool_size", 0)
+            curr_pool = curr_data.get("network_metrics", {}).get("total_pool_size", 0)
 
             # Simple transaction rate calculation
             if prev_pool > curr_pool:
@@ -1390,10 +1394,10 @@ class SimulationMonitorAgent(BaseAgent):
             "total_blocks_mined": self.transaction_stats["blocks_mined"],
             "total_transactions_created": self.transaction_stats["total_created"],
             "total_transactions_in_blocks": self.transaction_stats["total_in_blocks"],
-            "nodes_with_transactions": len(self.transaction_stats["node_tx_counts"]),
+            "nodes_with_transactions": len(self.transaction_stats["nodes_with_balance"]),
             "success_criteria": {
                 "blocks_created": self.transaction_stats["blocks_mined"] > 0,
-                "blocks_propagated": len(self.transaction_stats["node_tx_counts"]) > 0,
+                "blocks_propagated": len(self.transaction_stats["nodes_with_balance"]) > 0,
                 "transactions_created_broadcast": self.transaction_stats["total_created"] > 0,
                 "transactions_in_blocks": self.transaction_stats["total_in_blocks"] > 0
             }
@@ -1440,8 +1444,11 @@ class SimulationMonitorAgent(BaseAgent):
         parser.add_argument('--status-file', type=str,
                           default='monerosim_monitor.log',
                           help='Path to the real-time status file')
-        parser.add_argument('--enable-alerts', action='store_true', default=True,
-                          help='Enable alert generation')
+        parser.add_argument('--enable-alerts', action='store_true', default=False,
+                          help='Enable alert generation. Default off; the '
+                               'orchestrator passes this flag when the '
+                               'enable_alerts config attribute is true, so that '
+                               'attribute actually controls alerting.')
         parser.add_argument('--detailed-logging', action='store_true', default=False,
                           help='Enable detailed logging')
 
