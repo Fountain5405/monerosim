@@ -21,7 +21,6 @@ pub fn analyze_tx_relay_v2(
         &protocol_usage,
         &delivery_analysis,
         &connection_stability,
-        &request_response,
     );
 
     TxRelayV2Report {
@@ -136,7 +135,6 @@ fn analyze_tx_delivery(
     TxDeliveryAnalysis {
         total_txs_created: transactions.len(),
         txs_fully_propagated,
-        txs_in_blocks: 0, // Will be set by caller if block data available
         txs_potentially_lost,
         per_node_delivery_rate,
         average_propagation_coverage,
@@ -148,7 +146,6 @@ fn analyze_connection_stability(log_data: &HashMap<String, NodeLogData>) -> Conn
     let mut total_drops = 0usize;
     let mut drops_tx_verification = 0usize;
     let mut drops_duplicate_tx = 0usize;
-    let mut drops_protocol_violation = 0usize;
     let mut drops_other = 0usize;
     let mut drops_by_node: HashMap<String, usize> = HashMap::new();
 
@@ -164,7 +161,6 @@ fn analyze_connection_stability(log_data: &HashMap<String, NodeLogData>) -> Conn
             match drop.reason.as_str() {
                 "tx_verification_failed" => drops_tx_verification += 1,
                 "duplicate_tx" => drops_duplicate_tx += 1,
-                "protocol_violation" => drops_protocol_violation += 1,
                 _ => drops_other += 1,
             }
         }
@@ -194,7 +190,6 @@ fn analyze_connection_stability(log_data: &HashMap<String, NodeLogData>) -> Conn
         total_drops,
         drops_tx_verification,
         drops_duplicate_tx,
-        drops_protocol_violation,
         drops_other,
         drops_by_node,
         average_connection_duration_sec,
@@ -216,40 +211,13 @@ fn analyze_request_response(log_data: &HashMap<String, NodeLogData>) -> RequestR
         }
     }
 
-    // Estimate fulfilled requests based on ratio of hash announcements to TX observations
-    // In v2, we expect: hash_announcement -> request -> TX delivery
-    // So if v2 is working, we should see observations following announcements
-    let total_hash_announcements: usize = log_data
-        .values()
-        .map(|d| d.tx_hash_announcements.len())
-        .sum();
-
-    let total_tx_observations: usize = log_data
-        .values()
-        .map(|d| d.tx_observations.len())
-        .sum();
-
-    // If v2 is being used, fulfilled ~ min(requests_sent, tx_observations)
-    let requests_fulfilled = if requests_sent > 0 {
-        requests_sent.min(total_tx_observations)
-    } else {
-        0
-    };
-
-    let fulfillment_ratio = if requests_sent > 0 {
-        requests_fulfilled as f64 / requests_sent as f64
-    } else if total_hash_announcements > 0 {
-        // v2 is active but no explicit requests tracked - estimate from observations
-        1.0 // Assume working if we have observations
-    } else {
-        0.0
-    };
-
+    // NOTE: A genuine request->response fulfillment ratio is not derivable from
+    // the parsed logs: outgoing v2 requests carry neither a tx hash nor a target
+    // peer, so a request cannot be matched to the receipt it produced. We only
+    // report the raw request counts rather than a fabricated fulfillment metric.
     RequestResponseMetrics {
         requests_sent,
         requests_received,
-        requests_fulfilled,
-        fulfillment_ratio,
     }
 }
 
@@ -258,7 +226,6 @@ fn generate_assessment(
     protocol_usage: &ProtocolUsageStats,
     delivery_analysis: &TxDeliveryAnalysis,
     connection_stability: &ConnectionStabilityMetrics,
-    request_response: &RequestResponseMetrics,
 ) -> TxRelayAssessment {
     let mut health_score: u32 = 100;
     let mut findings: Vec<String> = Vec::new();
@@ -347,25 +314,6 @@ fn generate_assessment(
             findings.push(format!(
                 "Duplicate TX detection caused {} connection drops",
                 connection_stability.drops_duplicate_tx
-            ));
-        }
-    }
-
-    // Check v2 request fulfillment
-    if v2_active && request_response.requests_sent > 0 {
-        if request_response.fulfillment_ratio < 0.9 {
-            health_score = health_score.saturating_sub(10);
-            findings.push(format!(
-                "V2 request fulfillment ratio is low: {:.1}%",
-                request_response.fulfillment_ratio * 100.0
-            ));
-            recommendations.push(
-                "Check if peers are responding to NOTIFY_REQUEST_TX_POOL_TXS correctly".to_string(),
-            );
-        } else {
-            findings.push(format!(
-                "V2 request fulfillment is good: {:.1}%",
-                request_response.fulfillment_ratio * 100.0
             ));
         }
     }

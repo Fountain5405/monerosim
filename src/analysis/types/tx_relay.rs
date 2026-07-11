@@ -24,8 +24,6 @@ pub struct TxDeliveryAnalysis {
     pub total_txs_created: usize,
     /// Transactions that reached all nodes
     pub txs_fully_propagated: usize,
-    /// Transactions that were included in blocks
-    pub txs_in_blocks: usize,
     /// Transactions that may have been lost (created but never observed)
     pub txs_potentially_lost: Vec<String>,
     /// Per-node delivery rate
@@ -43,8 +41,6 @@ pub struct ConnectionStabilityMetrics {
     pub drops_tx_verification: usize,
     /// Drops due to duplicate TX
     pub drops_duplicate_tx: usize,
-    /// Drops due to protocol violations
-    pub drops_protocol_violation: usize,
     /// Drops with other/unknown reasons
     pub drops_other: usize,
     /// Per-node drop counts
@@ -60,10 +56,6 @@ pub struct RequestResponseMetrics {
     pub requests_sent: usize,
     /// Total TX requests received (from peers)
     pub requests_received: usize,
-    /// Estimated fulfilled requests (TX received after request)
-    pub requests_fulfilled: usize,
-    /// Request fulfillment ratio
-    pub fulfillment_ratio: f64,
 }
 
 /// Full TX relay v2 comparison report

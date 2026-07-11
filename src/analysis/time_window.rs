@@ -312,18 +312,132 @@ pub fn welch_t_test(sample1: &[f64], sample2: &[f64]) -> Option<f64> {
     let df_denom = (var1 / n1).powi(2) / (n1 - 1.0) + (var2 / n2).powi(2) / (n2 - 1.0);
     let df = df_num / df_denom;
 
-    // Approximate p-value using normal distribution for large df
-    // (For small df, we'd need a proper t-distribution CDF)
-    if df > 30.0 {
-        // Use normal approximation
-        let p = 2.0 * (1.0 - standard_normal_cdf(t));
-        Some(p)
+    // Two-tailed p-value from the Student's t distribution, computed exactly via
+    // the regularized incomplete beta function. For large df we fall back to the
+    // normal approximation as a fast path (the two distributions coincide there).
+    let p = if df > 100.0 {
+        2.0 * (1.0 - standard_normal_cdf(t))
     } else {
-        // For small sample sizes, use a conservative approximation
-        // In production, you'd want a proper t-distribution implementation
-        let p = 2.0 * (1.0 - standard_normal_cdf(t * 0.9)); // Conservative adjustment
-        Some(p)
+        student_t_two_tailed_p(t, df)
+    };
+    Some(p)
+}
+
+/// Two-tailed p-value for a Student's t statistic with `df` degrees of freedom.
+///
+/// Uses the identity P(|T| > t) = I_x(df/2, 1/2) with x = df / (df + t^2),
+/// where I_x is the regularized incomplete beta function.
+fn student_t_two_tailed_p(t: f64, df: f64) -> f64 {
+    if df <= 0.0 {
+        return f64::NAN;
     }
+    let t = t.abs();
+    let x = df / (df + t * t);
+    regularized_incomplete_beta(df / 2.0, 0.5, x)
+}
+
+/// Regularized incomplete beta function I_x(a, b).
+///
+/// Numerical Recipes `betai`: uses the continued-fraction expansion (`betacf`)
+/// together with the symmetry relation I_x(a, b) = 1 - I_{1-x}(b, a) for fast
+/// convergence.
+fn regularized_incomplete_beta(a: f64, b: f64, x: f64) -> f64 {
+    if x <= 0.0 {
+        return 0.0;
+    }
+    if x >= 1.0 {
+        return 1.0;
+    }
+
+    // Beta prefactor bt = x^a * (1-x)^b / B(a, b), computed in log space.
+    let ln_bt = ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b)
+        + a * x.ln()
+        + b * (1.0 - x).ln();
+    let bt = ln_bt.exp();
+
+    if x < (a + 1.0) / (a + b + 2.0) {
+        bt * betacf(a, b, x) / a
+    } else {
+        1.0 - bt * betacf(b, a, 1.0 - x) / b
+    }
+}
+
+/// Continued-fraction evaluation for the incomplete beta function
+/// (Numerical Recipes `betacf`, Lentz's algorithm).
+fn betacf(a: f64, b: f64, x: f64) -> f64 {
+    const MAXIT: usize = 200;
+    const EPS: f64 = 3.0e-12;
+    const FPMIN: f64 = 1.0e-300;
+
+    let qab = a + b;
+    let qap = a + 1.0;
+    let qam = a - 1.0;
+    let mut c = 1.0;
+    let mut d = 1.0 - qab * x / qap;
+    if d.abs() < FPMIN {
+        d = FPMIN;
+    }
+    d = 1.0 / d;
+    let mut h = d;
+
+    for m in 1..=MAXIT {
+        let m = m as f64;
+        let m2 = 2.0 * m;
+
+        // Even step of the recurrence.
+        let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        d = 1.0 + aa * d;
+        if d.abs() < FPMIN {
+            d = FPMIN;
+        }
+        c = 1.0 + aa / c;
+        if c.abs() < FPMIN {
+            c = FPMIN;
+        }
+        d = 1.0 / d;
+        h *= d * c;
+
+        // Odd step of the recurrence.
+        let aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        d = 1.0 + aa * d;
+        if d.abs() < FPMIN {
+            d = FPMIN;
+        }
+        c = 1.0 + aa / c;
+        if c.abs() < FPMIN {
+            c = FPMIN;
+        }
+        d = 1.0 / d;
+        let del = d * c;
+        h *= del;
+        if (del - 1.0).abs() < EPS {
+            break;
+        }
+    }
+
+    h
+}
+
+/// Natural log of the gamma function (Numerical Recipes `gammln`, Lanczos).
+fn ln_gamma(xx: f64) -> f64 {
+    const COF: [f64; 6] = [
+        76.18009172947146,
+        -86.50532032941677,
+        24.01409824083091,
+        -1.231739572450155,
+        0.1208650973866179e-2,
+        -0.5395239384953e-5,
+    ];
+
+    let x = xx;
+    let mut y = xx;
+    let tmp = x + 5.5 - (x + 0.5) * (x + 5.5).ln();
+    let mut ser = 1.000000000190015;
+    for c in COF.iter() {
+        y += 1.0;
+        ser += c / y;
+    }
+    -tmp + (2.5066282746310005 * ser / x).ln()
 }
 
 /// Standard normal CDF approximation (Abramowitz and Stegun)
@@ -394,6 +508,17 @@ mod tests {
         let (mean, std) = calculate_stats(&values);
         assert!((mean.unwrap() - 3.0).abs() < 0.001);
         assert!((std.unwrap() - 1.5811).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_student_t_two_tailed_p() {
+        // Reference two-tailed p-values from the Student's t distribution.
+        assert!((student_t_two_tailed_p(2.228, 10.0) - 0.050).abs() < 1e-3);
+        assert!((student_t_two_tailed_p(2.0, 10.0) - 0.0734).abs() < 1e-3);
+        assert!((student_t_two_tailed_p(1.0, 5.0) - 0.363).abs() < 1e-3);
+        assert!((student_t_two_tailed_p(12.706, 1.0) - 0.050).abs() < 1e-3);
+        // Large df converges to the normal distribution.
+        assert!((student_t_two_tailed_p(1.96, 1000.0) - 0.0501).abs() < 1e-3);
     }
 
     #[test]

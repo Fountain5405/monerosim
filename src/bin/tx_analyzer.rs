@@ -560,7 +560,6 @@ fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
     println!("  Total drops: {}", report.connection_stability.total_drops);
     println!("    TX verification failures: {}", report.connection_stability.drops_tx_verification);
     println!("    Duplicate TX: {}", report.connection_stability.drops_duplicate_tx);
-    println!("    Protocol violations: {}", report.connection_stability.drops_protocol_violation);
     println!("    Other: {}", report.connection_stability.drops_other);
     println!("  Avg connection duration: {:.1}s", report.connection_stability.average_connection_duration_sec);
     println!();
@@ -569,7 +568,6 @@ fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
         println!("V2 Request/Response:");
         println!("  Requests sent: {}", report.request_response.requests_sent);
         println!("  Requests received: {}", report.request_response.requests_received);
-        println!("  Fulfillment ratio: {:.1}%", report.request_response.fulfillment_ratio * 100.0);
         println!();
     }
 
