@@ -28,7 +28,6 @@ import json
 import os
 import re
 import sys
-import requests
 from collections import defaultdict, Counter
 from pathlib import Path
 from typing import Dict, List, Set, Tuple, Optional
@@ -48,8 +47,6 @@ DEFAULT_BASE_DIR = str(Path(__file__).resolve().parent.parent)
 # for portability (PORTABILITY.md F-FS-3 — sibling to MONEROSIM_SHARED_DIR).
 DEFAULT_LOGS_DIR = os.environ.get("MONEROSIM_LOGS_DIR", "/tmp")
 DEFAULT_OUTPUT_DIR = str(Path(DEFAULT_BASE_DIR) / "analysis_results")
-IPAPI_TIMEOUT = 5
-MAX_RETRIES = 3
 
 
 def find_latest_shadow_data(base_dir: str = DEFAULT_BASE_DIR) -> Path:
@@ -434,31 +431,27 @@ class NetworkConnectivityAnalyzer:
         return comparison
 
     def _get_ip_geolocation(self, ip: str) -> Optional[dict]:
-        """Get geolocation data for an IP address."""
+        """Return a static placeholder for IP "geolocation".
+
+        Every IP in a Shadow simulation is synthetic (Shadow assigns simulated
+        addresses, e.g. 11.x/27.x, which don't fall in the private ranges
+        below) — there's no real-world location to look up, so this returns a
+        static placeholder instead of making external HTTP calls to a
+        geolocation service.
+        """
         # Skip private IPs
         if ip.startswith(('10.', '192.168.', '172.', '127.', '169.254.')):
             return {'type': 'private', 'note': 'Private IP address - no public geolocation available'}
 
-        try:
-            # Use ipapi.co for geolocation
-            response = requests.get(f'http://ipapi.co/{ip}/json/', timeout=IPAPI_TIMEOUT)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('error'):
-                    return {'error': data['error']}
-                return {
-                    'country': data.get('country_name'),
-                    'region': data.get('region'),
-                    'city': data.get('city'),
-                    'org': data.get('org'),
-                    'asn': data.get('asn'),
-                    'latitude': data.get('latitude'),
-                    'longitude': data.get('longitude')
-                }
-        except Exception as e:
-            log_warning("NetworkConnectivityAnalyzer", f"Could not get geolocation for {ip}: {e}")
-
-        return None
+        return {
+            'country': 'simulated',
+            'region': 'simulated',
+            'city': 'simulated',
+            'org': 'Shadow simulated network',
+            'asn': None,
+            'latitude': None,
+            'longitude': None
+        }
 
     def analyze_ip_usage(self) -> dict:
         """Analyze IP address usage in the simulation."""

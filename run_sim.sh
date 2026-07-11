@@ -1179,7 +1179,7 @@ archive_blockchain_snapshots() {
     local all_dirs
     all_dirs=$(grep -oP 'data-dir=\K/tmp/monero-[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
     local total
-    total=$(echo "$all_dirs" | grep -c . || echo 0)
+    total=$(echo "$all_dirs" | grep -c . || true)
 
     if [[ $total -eq 0 ]]; then
         log_warn "No blockchain data directories found"
@@ -1347,7 +1347,13 @@ run_analysis() {
 
     if [[ -n "$analysis_script" ]]; then
         log_info "Running: $analysis_script"
-        bash "$analysis_script" > "$ARCHIVE_DIR/analysis.log" 2>&1 || true
+        if [[ "$analysis_script" == "$SCRIPT_DIR/scripts/post_run_analysis.sh" ]]; then
+            # Pass the config path through so analyze_network_connectivity.py's
+            # required --config can be wired up instead of skipped.
+            bash "$analysis_script" "$CONFIG" > "$ARCHIVE_DIR/analysis.log" 2>&1 || true
+        else
+            bash "$analysis_script" > "$ARCHIVE_DIR/analysis.log" 2>&1 || true
+        fi
         log_ok "Analysis complete (see $ARCHIVE_DIR/analysis.log)"
     else
         log_warn "No analysis script found (analyze_scaling_test.sh or scripts/post_run_analysis.sh)"
