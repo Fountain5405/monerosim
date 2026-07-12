@@ -149,10 +149,10 @@ breaks, because no session ever ran the combinations.
   (`monero_rpc.py:146`) — no jitter.
 - `regular_user.py:6`: "Currently a placeholder implementation that will be
   extended in future tasks" — atop 507 lines of finished implementation.
-- `AUDIT.md` + `RELEASE_PLAN.md` frozen at 2026-05-12 at repo root, describing a
-  codebase that no longer exists (AUDIT.md claims "no committed tests at all";
-  flags files since deleted). AUDIT.md even brags AI tells "have largely been
-  pruned".
+- `AUDIT.md` + `RELEASE_PLAN.md` frozen at 2026-05-12 at repo root (since moved
+  to `attic/`), describing a codebase that no longer exists (AUDIT.md claims
+  "no committed tests at all"; flags files since deleted). AUDIT.md even
+  brags AI tells "have largely been pruned".
 - Commit `a7cb2b89`: *"the transaction finally sent"*.
 
 ### 2.7 Nothing is allowed to fail
@@ -304,8 +304,9 @@ review session transcript. The items promoted to the fix list are in §6.
   disk-space confirm: blocks indefinitely on a tty, EOF-aborts when stdin is
   closed — either way an unattended run dies exactly when disk is tight).
 - Hygiene: CHANGELOG stale (no v0.2.0 entry); `AUDIT.md`/`RELEASE_PLAN.md`
-  frozen and misleading; 18 old config YAMLs tracked inside gitignored
-  `archived_runs/`; `miner-0*|miner-1*|…|miner-9*` where `miner-[0-9]*` does it.
+  frozen and misleading (since moved to `attic/`); 18 old config YAMLs
+  tracked inside gitignored `archived_runs/`; `miner-0*|miner-1*|…|miner-9*`
+  where `miner-[0-9]*` does it.
 - **Good**: `set -euo pipefail` everywhere with a written justification at every
   deliberate `-e` omission; containment-checked `rm -rf` (readlink -f against
   project tree + /tmp); the setsid-detached ramdisk-cleanup watchdog registered

@@ -6,8 +6,10 @@ environment, run the test tiers, and submit changes.
 ## Project status
 
 Monerosim is in 0.x public beta. The codebase is mid-cleanup; some
-rough edges are documented in [AUDIT.md](AUDIT.md). PRs that close
-items from that audit are especially welcome.
+rough edges (as of 2026-05-12, since moved to attic/) are documented in
+[AUDIT.md](attic/AUDIT_20260512.md). Treat it as historical context, not
+a current TODO list — see `docs/20260711_code_quality_review.md` for a
+more recent pass.
 
 ## Dev environment
 

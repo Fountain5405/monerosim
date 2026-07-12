@@ -480,8 +480,9 @@ but **deliberately not faithful at the mining-economics level**.
 
 - `.unwrap()` density in Rust paths is higher than ideal; some error
   conditions will surface as panics rather than user-facing context.
-  See [AUDIT.md](AUDIT.md) for the full list of identified-but-deferred
-  cleanup items.
+  See [AUDIT.md](attic/AUDIT_20260512.md) (frozen 2026-05-12, since moved
+  to attic/) for the historical list of identified-but-deferred cleanup
+  items.
 
 ## Contributing
 

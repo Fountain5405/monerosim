@@ -41,3 +41,13 @@ PYTHONPATH=. python attic/log_processor.py --help
   monitor agent wasn't active.
 - `sync_check.py` — checks that nodes have synchronized blockchains and are at
   the same height; uses dynamic agent discovery from the shared state directory.
+- `AUDIT_20260512.md` — full-codebase audit, frozen 2026-05-12. Describes a
+  pre-v0.1.0 snapshot of the code (e.g. claims "no committed tests at all";
+  flags files since deleted). Kept for history; do not trust its claims about
+  the current codebase.
+- `RELEASE_PLAN_v0.1.0.md` — release-readiness plan for v0.1.0, frozen
+  2026-05-12. Also describes a pre-v0.1.0 snapshot. Kept for history; do not
+  trust its claims about the current codebase.
+- `old_test_configs/` — retired scenario/config YAML pairs, moved from
+  `archived_runs/_old_test_configs`. Superseded by whatever's current in
+  `test_configs/`; kept for reference only.

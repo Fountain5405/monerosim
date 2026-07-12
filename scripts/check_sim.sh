@@ -102,7 +102,7 @@ if [ -n "${SHADOW_PID:-}" ]; then
     fi
 fi
 # Also check the most recent directory in common run-log locations
-for _logbase in "$HOME/scale_run_logs" "$HOME/monerosim_runs" "$(dirname "$HOSTS_DIR")/../../.."; do
+for _logbase in "$HOME/monerosim_runs" "$(dirname "$HOSTS_DIR")/../../.."; do
     if [ -d "$_logbase" ]; then
         _newest=$(ls -td "$_logbase"/*/ 2>/dev/null | head -1)
         if [ -n "$_newest" ]; then

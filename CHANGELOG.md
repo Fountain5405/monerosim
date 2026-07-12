@@ -1,5 +1,47 @@
 # Changelog
 
+## [Unreleased]
+
+- **Full-codebase quality review**: `docs/20260711_code_quality_review.md` —
+  AI-tell taxonomy, per-subsystem grades, prioritized fix list.
+- **P0 fixes**: discarded print-loop side effect pinned all miner IPs to
+  node 0's /24; `agent_registry.json` torn-read race between writer and
+  readers; fabricated `t*0.9` significance fudge replaced with a real
+  Student's t-test; structurally-~100% tx-relay fulfillment metric deleted
+  (not derivable from logs) along with its phantom fallback fields;
+  upgrade wizard emitting N+5 hosts for "N agents".
+- **P1 fixes**: `start_here.sh` passing a rejected `--full-monero` flag;
+  `post_run_analysis.sh` launching an analyzer without its required
+  `--config`; `update.sh` missing RAM-capped build jobs and un-pinning
+  setup.sh's ref pin; live geolocation lookups on simulated IPs replaced
+  with a static placeholder; simulation-monitor metrics silently reading
+  the wrong keys (always-0 counters, cycles miscounted as txs).
+- Golden output-equivalence tests regenerated for `d21f971b`
+  (max-connections-per-ip floor) — had been red since June.
+- **P2 hygiene cleanup**: dead code removed, fallback chains hardened,
+  parser fixes, and root-level doc/script hygiene (orphaned scripts
+  deleted, stale session artifacts and config graveyard retired to
+  `attic/`, CHANGELOG brought current).
+
+## [0.2.0] — 2026-06-27
+
+- **`--reachable` knob** models mainnet's NAT-unreachable majority instead
+  of the previous all-reachable default.
+- **Peer turnover**: relays and users cycle offline/online during a run,
+  with a `native_preemption` fix for the LMDB-resize livelock it exposed.
+- **Turnover-robust Rucknium parser** — the prior xmrpeers-based parser
+  crashed on restarted logs.
+- **`max-connections-per-ip` floored at 4** and surfaced as a documented,
+  overridable default (the old default-1 caused P2P reconnect loops at
+  small/dense scale).
+- **Network topology realism study**:
+  [docs/20260620_network_topology_study.md](docs/20260620_network_topology_study.md)
+  — reachability + turnover reproduce mainnet connection-duration stats.
+- **Rucknium review response v2** — verified mechanisms, replication, and
+  corrected scope.
+- `setup.sh` prompts to reinstall when `shadowformonero` is stale or wrong.
+- `run_sim.sh` gains `--no-archive` and `--no-clean` flags.
+
 ## [0.1.0] — 2026-05-12
 
 **First public beta of monerosim.** Monerosim runs Monero network

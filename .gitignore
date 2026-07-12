@@ -56,6 +56,7 @@ shadow_template/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 venv/
 .venv/
 sim_venv/
