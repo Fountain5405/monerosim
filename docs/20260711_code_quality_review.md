@@ -61,16 +61,21 @@ breaks, because no session ever ran the combinations.
 
 ### 2.2 Reimplement-instead-of-reuse, then drift
 
-- **Duration parsing ≥4 implementations that disagree**:
-  `config_generation/timeline.py:241` (single-unit only),
-  `ai_config/validator.py:17` (mangles `"2.5h"`→25 s),
-  `smoke_assertions.py:44` + `append_run_history.py:75` (compound), plus Rust
-  `utils/duration.rs` (mis-parses `"5m30s"`→5 s) — while `humantime-serde` sits
-  unused in Cargo.toml.
-- **Stats helpers 5×** across `src/analysis/` with **three incompatible median
-  conventions**; Gini implemented twice (`mod.rs:36` vs `metrics.rs:243`).
-- **Four hand-rolled retry loops** in `agents/` with four backoff conventions,
-  next to the shared `retry_with_backoff` helper (used twice in the package).
+- **Duration parsing ≥4 implementations that disagree** (all behaviors below
+  verified by execution): `config_generation/timeline.py:241` (single-unit
+  only — `"1h30m"` raises), `ai_config/validator.py:17` (silently mangles
+  `"2.5h"`→18000 s, treating it as "5h"; bare `"2.5"`→25 s via the re.sub
+  fallback), `smoke_assertions.py:44` + `append_run_history.py:75` (compound
+  OK, but drift: unparseable input returns `0` in one, `None` in the other),
+  plus Rust `utils/duration.rs` (mis-parses `"5m30s"`→5 s) — while
+  `humantime-serde` sits unused in Cargo.toml.
+- **Stats helpers 5×** across `src/analysis/` with **two incompatible median
+  conventions** (even-length-averaged vs bare `[len/2]`; the review originally
+  said three — verification found two of the "different" sites byte-identical);
+  Gini implemented twice (`mod.rs:36` vs `metrics.rs:243`).
+- **Four hand-rolled retry loops** in `agents/` with four backoff conventions
+  (one loop mixes `5*(attempt+1)` and `2**attempt` formulas), next to the
+  shared `retry_with_backoff` helper (3 call sites in the package).
 - **Three shell logging vocabularies** (`log_step/…`, `print_status/…`,
   `say/info/ok/…`) over one properly shared `colors.sh`.
 - The "emit a Python agent wrapper script" pipeline exists 5–6× in the Rust
@@ -95,9 +100,10 @@ breaks, because no session ever ran the combinations.
   grep -c . || echo 0)` — `grep -c` prints `0` *and* exits 1 on no match, so the
   fallback appends a second `0` → `"0\n0"` → arithmetic syntax error → snapshot
   archiving fails. The safety fallback *causes* the failure. Five unreachable
-  `[[ $? -eq 0 ]]` checks under `set -e` in `setup.sh` (544, 803, 910, 929,
-  1022). Loop caps on already-terminating stem walks (100 in one copy, 50 in
-  the other).
+  `$?` checks under `set -e` in `setup.sh` (544, 803, 910, 929, 1022 — two
+  `-eq 0`, three `-ne 0`; all five error branches dead either way). Loop caps
+  on already-terminating stem walks (100 in one copy, 50 in the other —
+  termination via the `used` set was verified).
 
 ### 2.4 Fabricated rigor (most damning for a research tool)
 
@@ -191,8 +197,9 @@ review session transcript. The items promoted to the fix list are in §6.
 - Dead data plumbed three layers deep: `--stop-time` built from an
   environment key never inserted, defaulted to magic `"1800"`, pushed into
   args, then `retain`-ed away 40 lines later (`agent_scripts.rs:42-92`).
-- Stringly-typed dispatch: 26 `.contains(` sites routing agents by substring of
-  ID/script path.
+- Stringly-typed dispatch: agents routed by substring of ID/script path
+  (`id.contains("miner_distributor")` etc.; ~13 clear role-dispatch sites,
+  more counting script-path module dispatch).
 - Space-joined unquoted args interpolated into bash wrappers while
   `shell_quote_args` exists and is used two lines away.
 - 8.3k lines of `cargo fmt --check` drift; visible refactor indentation scar in
@@ -268,7 +275,8 @@ review session transcript. The items promoted to the fix list are in §6.
   handler per instantiation and writes `monerosim_errors.log` to CWD (the
   stray files at repo root).
 - Two rival YAML emitters in one pipeline (hand-rolled `yaml_emit.py` never
-  escapes embedded single quotes → invalid YAML possible; `--from` path uses
+  escapes embedded single quotes → a quoted value containing `'` yields
+  invalid YAML, verified: `"don't: panic"` → `ParserError`; `--from` path uses
   `yaml.dump`).
 - 637-line `main()` in `generate_config.py`; 415-line `expand_scenario`;
   dual-import `try/except ImportError` boilerplate pasted 5×.
@@ -293,7 +301,8 @@ review session transcript. The items promoted to the fix list are in §6.
   process suffix — silently stops preserving crashed users when numbering
   shifts.
 - Interactive prompts with no non-interactive escape (`run_sim.sh:601`
-  disk-space confirm hangs unattended runs exactly when disk is tight).
+  disk-space confirm: blocks indefinitely on a tty, EOF-aborts when stdin is
+  closed — either way an unattended run dies exactly when disk is tight).
 - Hygiene: CHANGELOG stale (no v0.2.0 entry); `AUDIT.md`/`RELEASE_PLAN.md`
   frozen and misleading; 18 old config YAMLs tracked inside gitignored
   `archived_runs/`; `miner-0*|miner-1*|…|miner-9*` where `miner-[0-9]*` does it.
@@ -388,7 +397,42 @@ Smoke tests for `scripts/` (duration parsing, config generation round-trip);
 split the 600-line `main()`s; single YAML emitter; report consumers read
 `final_report.json` directly instead of regex-parsing `summary.txt`.
 
-## 7. Regression protocol used for the fixes
+## 7. Adversarial verification pass (2026-07-12)
+
+Every claim in §2/§3 that was not already independently re-verified during the
+P0/P1 fixes was re-checked by five verifier agents instructed to **refute**,
+with behavioral claims executed rather than eyeballed (duration parsers run on
+real inputs, YAML emitter fed quote-bearing values, logger double-instantiated
+and output counted, a wheel actually built to prove the packaging gap,
+IP-substring matching evaluated live). ~85 sub-claims checked against the
+reviewed commit (`704cb098`) and HEAD.
+
+**Result: zero claims fully refuted.** Corrections applied inline above:
+
+- Median conventions: **two**, not three (two "different" sites were
+  byte-identical) — §2.2.
+- `ai_config` duration mangle: `"2.5h"`→**18000 s** (read as "5h"), not 25 s;
+  the 25 s path fires on bare `"2.5"` — §2.2.
+- `setup.sh` dead `$?` checks: 2× `-eq 0` + 3× `-ne 0`, not five `-eq 0`;
+  all five branches dead regardless — §2.3.
+- `retry_with_backoff`: 3 call sites, not 2 — §2.2.
+- `.contains(` dispatch: ~13 clear role-dispatch sites; "26" was
+  definition-dependent — §3.1.
+- The two-binary-resolver tilde divergence (`[2..]` vs `[1..]`) is
+  compensating, not divergent, for well-formed `~/` paths — though the PathBuf
+  variant panics on a bare `"~"`.
+- `simulation_monitor/log_parser.py`: one "kept for parity" regex, not two.
+- Minor line-ref drift in a handful of citations (≤6 lines, from post-review
+  fixes); substance unaffected.
+
+Two findings came back **stronger** than written: (1) the dead discovery
+layer — the orchestrator pre-populates every agent's registry entry, so
+`_register_self`'s found-branch means the `type` key is normally **never
+written at all**, not merely never `"miner"`; (2) `smoke_assertions.py` vs
+`append_run_history.py` twin parsers have a live behavioral drift
+(unparseable wall-time → `0` vs `None`).
+
+## 8. Regression protocol used for the fixes
 
 1. Baseline before any change: `cargo test` (incl. golden output-equivalence
    tests) + `pytest -q` (87 tests) recorded.
