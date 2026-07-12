@@ -16,7 +16,7 @@ import random
 import time
 from typing import Dict, Any, Optional, List
 
-from ..base_agent import BaseAgent
+from ..base_agent import BaseAgent, retry_with_backoff
 from ..constants import (
     DEFAULT_SIMULATION_SEED,
     MAX_REASONABLE_TX_XMR,
@@ -56,7 +56,6 @@ class MinerDistributorAgent(BaseAgent):
         self.miner_selection_strategy = "weighted"
         self.transaction_priority = 1
         self.max_retries = 5
-        self.recipient_selection = "random"
 
         # Miner distributor transaction parameters (all prefixed with md_)
         # NOTE: transfer_split is used to automatically split large transactions,
@@ -74,9 +73,7 @@ class MinerDistributorAgent(BaseAgent):
 
         # Runtime state
         self.miners = []
-        self.selected_miner = None
         self.last_transaction_time = 0
-        self.recipient_index = 0
         self.startup_time = time.time()
         self.waiting_for_maturity = True
         self.last_balance_check = 0
@@ -122,7 +119,6 @@ class MinerDistributorAgent(BaseAgent):
             'miner_selection_strategy': ('choice', 'miner_selection_strategy', 'weighted', ['weighted', 'balance', 'random']),
             'transaction_priority': ('int_range', 'transaction_priority', 1, 0, 3),
             'max_retries': ('int_min', 'max_retries', 5, 1),
-            'recipient_selection': ('choice', 'recipient_selection', 'random', ['random', 'round_robin']),
             'balance_check_interval': ('int_min', 'balance_check_interval', 30, 1),
             'max_wait_time': ('time_duration', 'max_wait_time', 7200),
             'md_n_recipients': ('int_min', 'md_n_recipients', 8, 1),
@@ -223,7 +219,7 @@ class MinerDistributorAgent(BaseAgent):
         self.miners = []
         for agent in agent_registry.get("agents", []):
             # Check if this agent is a miner
-            if agent.get("attributes", {}).get("is_miner") == "true":
+            if self.parse_bool(agent.get("attributes", {}).get("is_miner")):
                 agent_id = agent.get("id")
 
                 # Find corresponding miner in miner registry
@@ -1059,67 +1055,6 @@ class MinerDistributorAgent(BaseAgent):
         """Select a miner with the highest balance"""
         return select_miner_by_balance(miners, self.logger)
 
-    def _select_recipient(self) -> Optional[Dict[str, Any]]:
-        """
-        Select a recipient for the transaction based on can_receive_distributions attribute.
-
-        Returns:
-            Recipient information or None if no suitable recipient found
-        """
-        # Read agent registry to find all agents with wallets
-        agent_registry = self.read_shared_state("agent_registry.json")
-        if not agent_registry:
-            self.logger.warning("Agent registry not found")
-            return None
-
-        # Find all agents with wallets that are not the selected miner
-        potential_recipients = []
-        distribution_enabled_recipients = []
-
-        for agent in agent_registry.get("agents", []):
-            # Skip if this is the selected miner
-            if self.selected_miner and agent.get("id") == self.selected_miner.get("agent_id"):
-                continue
-
-            # Only consider agents with wallets
-            if not agent.get("wallet_rpc_port"):
-                continue
-
-            # Check if agent can receive distributions
-            can_receive = self.parse_bool(
-                agent.get("attributes", {}).get("can_receive_distributions", "false")
-            )
-
-            potential_recipients.append(agent)
-            if can_receive:
-                distribution_enabled_recipients.append(agent)
-
-        # Use distribution-enabled recipients if available, otherwise fall back to all recipients
-        recipients_to_use = distribution_enabled_recipients if distribution_enabled_recipients else potential_recipients
-
-        if not recipients_to_use:
-            self.logger.warning("No potential recipients found")
-            return None
-
-        # Sort recipients by agent ID for deterministic selection
-        recipients_to_use.sort(key=lambda r: r.get("id", ""))
-
-        # Log which recipient pool we're using
-        if distribution_enabled_recipients:
-            self.logger.info(f"Selecting from {len(distribution_enabled_recipients)} distribution-enabled recipients")
-        else:
-            self.logger.info("No distribution-enabled recipients found, falling back to all wallet agents")
-
-        # Apply recipient selection strategy
-        if self.recipient_selection == "round_robin":
-            # Round-robin selection
-            recipient = recipients_to_use[self.recipient_index % len(recipients_to_use)]
-            self.recipient_index += 1
-            return recipient
-        else:  # random
-            # Random selection
-            return random.choice(recipients_to_use)
-
     def _validate_transaction_params(self, address: str, amount: float, skip_max_check: bool = False) -> bool:
         """
         Validate transaction parameters before sending.
@@ -1201,52 +1136,36 @@ class MinerDistributorAgent(BaseAgent):
             self.logger.debug(f"Using cached address from user_info.json for {recipient_id}")
             return address
 
-        # 3. Fall back to wallet RPC connection
+        # 3. Fall back to wallet RPC connection. Retry transient RPC errors
+        # with exponential backoff (5 attempts, delays 3/6/12/24s — same
+        # schedule as before). The address-validity check stays out of the
+        # retried callable so an invalid address returns None immediately
+        # (unchanged behavior) rather than being retried.
         self.logger.debug(f"No cached address for {recipient_id}, connecting to wallet RPC")
-        max_retries = 5
-        retry_delay = 3
 
-        for attempt in range(max_retries):
-            try:
-                rpc = WalletRPC(host=recipient['ip_addr'], port=recipient['wallet_rpc_port'])
+        def _fetch_address() -> str:
+            rpc = WalletRPC(host=recipient['ip_addr'], port=recipient['wallet_rpc_port'])
+            rpc.wait_until_ready(max_wait=180, check_interval=2)
+            return rpc.get_address()
 
-                # Wait for wallet to be ready
-                rpc.wait_until_ready(max_wait=180, check_interval=2)
+        try:
+            address = retry_with_backoff(
+                _fetch_address,
+                max_retries=5,
+                initial_delay=3.0,
+                backoff_factor=2.0,
+                logger=self.logger,
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to get address for recipient {recipient_id} after 5 attempts: {e}")
+            return None
 
-                # Get address with error handling
-                address = rpc.get_address()
+        if not is_valid_monero_address(address):
+            self.logger.error(f"Invalid address for recipient {recipient_id}: {address}")
+            return None
 
-                if not is_valid_monero_address(address):
-                    self.logger.error(f"Invalid address for recipient {recipient_id}: {address}")
-                    return None
-
-                self.logger.debug(f"Retrieved address via RPC for recipient {recipient_id}: {address}")
-                return address
-
-            except Exception as e:
-                self.logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to get address for recipient {recipient_id}: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    self.logger.error(f"Failed to get address for recipient {recipient_id} after {max_retries} attempts: {e}")
-                    return None
-
-    def _send_transaction(self, miner: Dict[str, Any], recipient: Dict[str, Any]) -> bool:
-        """
-        Send a transaction from the selected miner to a single recipient.
-        Uses md_out_per_tx outputs of md_output_amount each.
-
-        Args:
-            miner: Miner information including wallet details
-            recipient: Recipient information including address
-
-        Returns:
-            True if transaction was sent successfully, False otherwise
-        """
-        # Delegate to batch transaction with single recipient (uses md_ defaults)
-        success, _, _ = self._send_batch_transaction(miner, [recipient])
-        return success
+        self.logger.debug(f"Retrieved address via RPC for recipient {recipient_id}: {address}")
+        return address
 
     def _send_batch_transaction(
         self,

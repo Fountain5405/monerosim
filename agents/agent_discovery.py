@@ -170,26 +170,6 @@ class AgentDiscovery:
                         else:
                             self.logger.warning(f"Unexpected data format in miners: {type(data)}")
                             registry["miners"] = {}
-                    elif filename == "wallets":
-                        # Handle both dictionary and list formats
-                        if isinstance(data, dict):
-                            registry["wallets"] = data
-                        elif isinstance(data, list):
-                            # Convert list to dictionary with indices as keys
-                            registry["wallets"] = {str(i): wallet for i, wallet in enumerate(data)}
-                        else:
-                            self.logger.warning(f"Unexpected data format in wallets: {type(data)}")
-                            registry["wallets"] = {}
-                    elif filename == "block_controller":
-                        # Handle both dictionary and list formats
-                        if isinstance(data, dict):
-                            registry["block_controllers"] = data
-                        elif isinstance(data, list):
-                            # Convert list to dictionary with indices as keys
-                            registry["block_controllers"] = {str(i): controller for i, controller in enumerate(data)}
-                        else:
-                            self.logger.warning(f"Unexpected data format in block_controller: {type(data)}")
-                            registry["block_controllers"] = {}
                     else:
                         # Handle other registry files
                         if filename not in registry:
@@ -244,25 +224,17 @@ class AgentDiscovery:
             self.logger.debug(f"Processing {len(agents)} agents to find type '{agent_type}'")
             
             matching_agents = []
-            
-            # Handle both list and dictionary formats
-            if isinstance(agents, list):
-                self.logger.debug(f"Processing agents as list with {len(agents)} items")
-                for agent_data in agents:
-                    if agent_data.get("type") == agent_type:
-                        agent_copy = agent_data.copy()
-                        # Ensure ID is present
-                        if "id" not in agent_copy and "agent_id" in agent_copy:
-                            agent_copy["id"] = agent_copy["agent_id"]
-                        matching_agents.append(agent_copy)
-            elif isinstance(agents, dict):
-                self.logger.debug(f"Processing agents as dict with {len(agents)} items")
-                for agent_id, agent_data in agents.items():
-                    if agent_data.get("type") == agent_type:
-                        agent_copy = agent_data.copy()
-                        agent_copy["id"] = agent_id
-                        matching_agents.append(agent_copy)
-            
+
+            # `agents` is guaranteed to be a list here (dicts were converted to
+            # a values-list above, and non-list/non-dict returned early).
+            for agent_data in agents:
+                if agent_data.get("type") == agent_type:
+                    agent_copy = agent_data.copy()
+                    # Ensure ID is present
+                    if "id" not in agent_copy and "agent_id" in agent_copy:
+                        agent_copy["id"] = agent_copy["agent_id"]
+                    matching_agents.append(agent_copy)
+
             self.logger.info(f"Found {len(matching_agents)} agents of type '{agent_type}'")
             return matching_agents
             
@@ -291,6 +263,9 @@ class AgentDiscovery:
         Raises:
             AgentDiscoveryError: If the registry cannot be loaded.
         """
+        # NOTE: attribute values are stored as strings in the registry (e.g.
+        # "true"/"false"), so pass a string here — comparing against a bool
+        # such as True will never match.
         self.logger.debug(f"Finding agents by attribute: {attribute_name}={attribute_value}")
         
         try:
@@ -346,53 +321,51 @@ class AgentDiscovery:
             return self._caches['miner_agents']['data']
             
         try:
-            # Try to find miners by type first
-            miners = self.find_agents_by_type("miner", force_refresh)
-            
-            # If no miners found by type, try to find by attribute
-            if not miners:
-                miners = self.find_agents_by_attribute("is_miner", True, force_refresh=force_refresh)
-            
-            # Also check the dedicated miners registry
-            if not miners:
-                registry = self.get_agent_registry(force_refresh)
-                miners_data = registry.get("miners", {})
-                
-                self.logger.debug(f"Miners data type: {type(miners_data)}")
-                
-                # Handle the case where miners_data is a dict with a 'miners' key
-                if isinstance(miners_data, dict) and "miners" in miners_data:
-                    miners_list = miners_data["miners"]
-                    self.logger.debug(f"Processing miners list with {len(miners_list)} items")
-                    if isinstance(miners_list, list):
-                        for i, miner_data in enumerate(miners_list):
-                            if isinstance(miner_data, dict):
-                                miner_copy = miner_data.copy()
-                                # Ensure ID is present
-                                if "id" not in miner_copy and "agent_id" in miner_copy:
-                                    miner_copy["id"] = miner_copy["agent_id"]
-                                elif "id" not in miner_copy:
-                                    miner_copy["id"] = f"miner_{i}"
-                                miners.append(miner_copy)
-                # Handle both list and dictionary formats
-                elif isinstance(miners_data, list):
-                    self.logger.debug(f"Processing miners as list with {len(miners_data)} items")
-                    for i, miner_data in enumerate(miners_data):
-                        miner_copy = miner_data.copy()
-                        # Ensure ID is present
-                        if "id" not in miner_copy and "agent_id" in miner_copy:
-                            miner_copy["id"] = miner_copy["agent_id"]
-                        elif "id" not in miner_copy:
-                            miner_copy["id"] = f"miner_{i}"
-                        miners.append(miner_copy)
-                elif isinstance(miners_data, dict):
-                    self.logger.debug(f"Processing miners as dict with {len(miners_data)} items")
-                    for miner_id, miner_data in miners_data.items():
-                        miner_copy = miner_data.copy()
-                        miner_copy["id"] = miner_id
-                        miners.append(miner_copy)
-                else:
-                    self.logger.warning(f"Unexpected miners data type: {type(miners_data)}")
+            # miners.json (written by the orchestrator) is the primary miner
+            # source. The former find_agents_by_type("miner") and
+            # find_agents_by_attribute("is_miner", True) layers were dead: the
+            # registry "type" key is never "miner" (class-derived types are
+            # autonomous_miner/regular_user/...) and attribute values are
+            # stored as the string "true", never the bool True.
+            miners: List[Dict[str, Any]] = []
+            registry = self.get_agent_registry(force_refresh)
+            miners_data = registry.get("miners", {})
+
+            self.logger.debug(f"Miners data type: {type(miners_data)}")
+
+            # Handle the case where miners_data is a dict with a 'miners' key
+            if isinstance(miners_data, dict) and "miners" in miners_data:
+                miners_list = miners_data["miners"]
+                self.logger.debug(f"Processing miners list with {len(miners_list)} items")
+                if isinstance(miners_list, list):
+                    for i, miner_data in enumerate(miners_list):
+                        if isinstance(miner_data, dict):
+                            miner_copy = miner_data.copy()
+                            # Ensure ID is present
+                            if "id" not in miner_copy and "agent_id" in miner_copy:
+                                miner_copy["id"] = miner_copy["agent_id"]
+                            elif "id" not in miner_copy:
+                                miner_copy["id"] = f"miner_{i}"
+                            miners.append(miner_copy)
+            # Handle both list and dictionary formats
+            elif isinstance(miners_data, list):
+                self.logger.debug(f"Processing miners as list with {len(miners_data)} items")
+                for i, miner_data in enumerate(miners_data):
+                    miner_copy = miner_data.copy()
+                    # Ensure ID is present
+                    if "id" not in miner_copy and "agent_id" in miner_copy:
+                        miner_copy["id"] = miner_copy["agent_id"]
+                    elif "id" not in miner_copy:
+                        miner_copy["id"] = f"miner_{i}"
+                    miners.append(miner_copy)
+            elif isinstance(miners_data, dict):
+                self.logger.debug(f"Processing miners as dict with {len(miners_data)} items")
+                for miner_id, miner_data in miners_data.items():
+                    miner_copy = miner_data.copy()
+                    miner_copy["id"] = miner_id
+                    miners.append(miner_copy)
+            else:
+                self.logger.warning(f"Unexpected miners data type: {type(miners_data)}")
             
             # If we still don't have miners, look for agents with is_miner attribute in the main agents list
             if not miners:
@@ -561,237 +534,6 @@ class AgentDiscovery:
             self.logger.error(error_msg)
             raise AgentDiscoveryError(error_msg)
     
-    def get_block_controllers(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
-        """
-        Return all block controller agents.
-        
-        Args:
-            force_refresh: If True, bypass the cache and reload from disk.
-            
-        Returns:
-            List of block controller agent dictionaries.
-            
-        Raises:
-            AgentDiscoveryError: If the registry cannot be loaded.
-        """
-        self.logger.debug("Getting block controller agents")
-        
-        try:
-            # Try to find block controllers by type first
-            controllers = self.find_agents_by_type("block_controller", force_refresh)
-            
-            # If no controllers found by type, check the dedicated registry
-            if not controllers:
-                registry = self.get_agent_registry(force_refresh)
-                controllers_data = registry.get("block_controllers", {})
-                
-                for controller_id, controller_data in controllers_data.items():
-                    controller_copy = controller_data.copy()
-                    controller_copy["id"] = controller_id
-                    controllers.append(controller_copy)
-            
-            self.logger.info(f"Found {len(controllers)} block controller agents")
-            return controllers
-            
-        except Exception as e:
-            error_msg = f"Failed to get block controller agents: {e}"
-            self.logger.error(error_msg)
-            raise AgentDiscoveryError(error_msg)
-    
-    def get_agent_by_id(self, agent_id: str, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
-        """
-        Get a specific agent by its ID.
-        
-        Args:
-            agent_id: The ID of the agent to retrieve.
-            force_refresh: If True, bypass the cache and reload from disk.
-            
-        Returns:
-            Agent dictionary if found, None otherwise.
-            
-        Raises:
-            AgentDiscoveryError: If the registry cannot be loaded.
-        """
-        self.logger.debug(f"Getting agent by ID: {agent_id}")
-        
-        try:
-            registry = self.get_agent_registry(force_refresh)
-            agents = registry.get("agents", [])
-            
-            # Handle both list and dictionary formats
-            if isinstance(agents, list):
-                for agent_data in agents:
-                    if agent_data.get("id") == agent_id:
-                        return agent_data.copy()
-            elif isinstance(agents, dict):
-                if agent_id in agents:
-                    agent_data = agents[agent_id].copy()
-                    agent_data["id"] = agent_id
-                    return agent_data
-            
-            # Check other registries if not found in main agents registry
-            for registry_name, registry_data in registry.items():
-                if registry_name != "agents":
-                    if isinstance(registry_data, dict):
-                        if agent_id in registry_data:
-                            agent_data = registry_data[agent_id].copy()
-                            agent_data["id"] = agent_id
-                            return agent_data
-                    elif isinstance(registry_data, list):
-                        for agent_data in registry_data:
-                            if agent_data.get("id") == agent_id:
-                                return agent_data.copy()
-            
-            self.logger.warning(f"Agent with ID '{agent_id}' not found")
-            return None
-            
-        except Exception as e:
-            error_msg = f"Failed to get agent by ID '{agent_id}': {e}"
-            self.logger.error(error_msg)
-            raise AgentDiscoveryError(error_msg)
-    
-    def refresh_cache(self) -> Dict[str, Any]:
-        """
-        Force refresh the agent registry cache.
-        
-        Returns:
-            Updated agent registry.
-            
-        Raises:
-            AgentDiscoveryError: If the registry cannot be loaded.
-        """
-        self.logger.info("Forcing cache refresh")
-        return self.get_agent_registry(force_refresh=True)
-    
-    def get_registry_stats(self, force_refresh: bool = False) -> Dict[str, Any]:
-        """
-        Get statistics about the agent registry.
-        
-        Args:
-            force_refresh: If True, bypass the cache and reload from disk.
-            
-        Returns:
-            Dictionary containing registry statistics.
-            
-        Raises:
-            AgentDiscoveryError: If the registry cannot be loaded.
-        """
-        self.logger.debug("Getting registry statistics")
-        
-        try:
-            registry = self.get_agent_registry(force_refresh)
-            
-            # Get agents and handle both list and dictionary formats
-            agents = registry.get("agents", [])
-            if isinstance(agents, dict):
-                agents = list(agents.values())
-            
-            # Get miners and handle both list and dictionary formats
-            miners = registry.get("miners", [])
-            if isinstance(miners, dict):
-                miners = list(miners.values())
-            
-            # Get wallets and handle both list and dictionary formats
-            wallets = registry.get("wallets", [])
-            if isinstance(wallets, dict):
-                wallets = list(wallets.values())
-            
-            # Get block controllers and handle both list and dictionary formats
-            block_controllers = registry.get("block_controllers", [])
-            if isinstance(block_controllers, dict):
-                block_controllers = list(block_controllers.values())
-            
-            stats = {
-                "total_agents": len(agents),
-                "total_miners": len(miners),
-                "total_wallets": len(wallets),
-                "total_block_controllers": len(block_controllers),
-                "last_updated": registry.get("last_updated", 0),
-                "cache_time": self._caches['registry']['time'],
-                "cache_valid": self._is_cache_valid('registry')
-            }
-            
-            # Count agents by type
-            agent_types = {}
-            for agent_data in agents:
-                agent_type = agent_data.get("type", "unknown")
-                agent_types[agent_type] = agent_types.get(agent_type, 0) + 1
-            
-            stats["agent_types"] = agent_types
-            
-            self.logger.info(f"Registry stats: {stats}")
-            return stats
-            
-        except Exception as e:
-            error_msg = f"Failed to get registry stats: {e}"
-            self.logger.error(error_msg)
-            raise AgentDiscoveryError(error_msg)
-    
-    def get_distribution_recipients(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
-        """
-        Return all agents that can receive distributions.
-        
-        This method filters agents based on the can_receive_distributions attribute
-        and implements fallback behavior when no agents have the attribute.
-        
-        Args:
-            force_refresh: If True, bypass the cache and reload from disk.
-            
-        Returns:
-            List of agent dictionaries that can receive distributions.
-            
-        Raises:
-            AgentDiscoveryError: If the registry cannot be loaded.
-        """
-        self.logger.debug("Getting distribution recipients")
-        
-        # Return cached data if valid and not forcing refresh
-        if not force_refresh and self._caches['distribution_recipients']['data'] is not None and self._is_cache_valid('distribution_recipients'):
-            self.logger.debug("Returning cached distribution recipients")
-            return self._caches['distribution_recipients']['data']
-        
-        try:
-            # Get all wallet agents
-            wallet_agents = self.get_wallet_agents(force_refresh)
-            
-            # Filter agents based on can_receive_distributions attribute
-            distribution_enabled_recipients = []
-            potential_recipients = []
-            
-            for agent in wallet_agents:
-                # Check if agent can receive distributions
-                attributes = agent.get("attributes", {})
-                can_receive_value = attributes.get("can_receive_distributions", "false")
-                can_receive = BaseAgent.parse_bool(can_receive_value)
-                
-                potential_recipients.append(agent)
-                if can_receive:
-                    distribution_enabled_recipients.append(agent)
-                    self.logger.debug(f"Agent {agent.get('id')} can receive distributions")
-                else:
-                    self.logger.debug(f"Agent {agent.get('id')} cannot receive distributions")
-            
-            # Use distribution-enabled recipients if available, otherwise fall back to all recipients
-            recipients_to_use = distribution_enabled_recipients if distribution_enabled_recipients else potential_recipients
-            
-            # Log which recipient pool we're using
-            if distribution_enabled_recipients:
-                self.logger.info(f"Found {len(distribution_enabled_recipients)} distribution-enabled recipients")
-            else:
-                self.logger.info("No distribution-enabled recipients found, falling back to all wallet agents")
-                self.logger.info(f"Using {len(potential_recipients)} potential recipients")
-            
-            # Update cache
-            self._caches['distribution_recipients']['data'] = recipients_to_use
-            self._caches['distribution_recipients']['time'] = time.time()
-            
-            return recipients_to_use
-
-        except Exception as e:
-            error_msg = f"Failed to get distribution recipients: {e}"
-            self.logger.error(error_msg)
-            raise AgentDiscoveryError(error_msg)
-
     def get_public_nodes(
         self,
         status_filter: Optional[str] = "available",
@@ -877,14 +619,6 @@ if __name__ == "__main__":
         # Get wallet agents
         wallets = discovery.get_wallet_agents()
         print(f"Wallets: {json.dumps(wallets, indent=2)}")
-        
-        # Get distribution recipients
-        distribution_recipients = discovery.get_distribution_recipients()
-        print(f"Distribution recipients: {json.dumps(distribution_recipients, indent=2)}")
-        
-        # Get registry stats
-        stats = discovery.get_registry_stats()
-        print(f"Stats: {json.dumps(stats, indent=2)}")
-        
+
     except Exception as e:
         print(f"Error: {e}")

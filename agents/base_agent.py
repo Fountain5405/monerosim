@@ -721,7 +721,8 @@ class BaseAgent(ABC):
         self.logger.info(f"Successfully registered agent {self.agent_id} in agent registry")
         
     # Utility methods
-    
+
+    # Unused by current agents — kept as BaseAgent utility surface.
     def wait_for_height(self, target_height: int, timeout: int = 300):
         """Wait for blockchain to reach target height"""
         if not self.daemon_rpc:

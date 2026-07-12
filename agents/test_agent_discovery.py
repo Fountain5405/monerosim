@@ -146,14 +146,6 @@ def test_find_agents_by_type_returns_matches_only(shared_dir):
     assert [a["id"] for a in users] == ["u1"]
 
 
-def test_get_agent_by_id_returns_none_for_unknown(shared_dir):
-    """Unknown agent IDs return None instead of raising."""
-    _write_registry(shared_dir, "agent_registry",
-                    {"agents": [{"id": "a1", "type": "miner"}]})
-    discovery = AgentDiscovery(shared_state_dir=str(shared_dir))
-    assert discovery.get_agent_by_id("does-not-exist") is None
-
-
 # ---------------------------------------------------------------------------
 # get_public_nodes file-shape contract
 # ---------------------------------------------------------------------------

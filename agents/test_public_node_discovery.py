@@ -2,9 +2,7 @@
 
 Covers the constructor, missing/present registry handling, daemon-selection
 strategies (random/first/round_robin), and the parse_selection_strategy
-helper. We exercise `select_daemon` directly rather than the convenience
-free-function `get_daemon_address`, because the latter just wraps the same
-code path with extra argument plumbing.
+helper. We exercise `select_daemon` directly.
 """
 import json
 

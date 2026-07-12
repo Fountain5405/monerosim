@@ -205,7 +205,7 @@ class SimulationMonitorAgent(BaseAgent):
             agent_registry = self.discovery.get_agent_registry(force_refresh=True)
             for agent in agent_registry.get("agents", []):
                 agent_id = agent.get("id")
-                is_miner = agent.get("attributes", {}).get("is_miner") == "true"
+                is_miner = self.parse_bool(agent.get("attributes", {}).get("is_miner"))
 
                 if is_miner and agent_id not in self.miner_registry:
                     self.miner_registry[agent_id] = {
@@ -1100,7 +1100,7 @@ class SimulationMonitorAgent(BaseAgent):
             # Determine node type based on miner registry
             is_miner = node_id in self.miner_registry
             if not is_miner:
-                is_miner = agent_info.get("attributes", {}).get("is_miner") == "true"
+                is_miner = self.parse_bool(agent_info.get("attributes", {}).get("is_miner"))
             node_type = "miner" if is_miner else "user"
 
             # Format values

@@ -213,34 +213,6 @@ class PublicNodeDiscovery:
         self._cache_time = 0
 
 
-def get_daemon_address(
-    strategy: str = "random",
-    shared_dir: str = _DEFAULT_SHARED_DIR,
-    exclude_self: Optional[str] = None
-) -> Optional[str]:
-    """
-    Convenience function to get a daemon address for wallet-only agents.
-
-    Args:
-        strategy: Selection strategy ("random", "first", "round_robin")
-        shared_dir: Path to shared directory
-        exclude_self: Agent ID to exclude (typically the calling agent's ID)
-
-    Returns:
-        Daemon address in "ip:port" format, or None if unavailable
-    """
-    discovery = PublicNodeDiscovery(Path(shared_dir))
-
-    try:
-        strategy_enum = DaemonSelectionStrategy(strategy.lower())
-    except ValueError:
-        logging.warning(f"Unknown strategy '{strategy}', defaulting to random")
-        strategy_enum = DaemonSelectionStrategy.RANDOM
-
-    exclude_ids = [exclude_self] if exclude_self else None
-    return discovery.select_daemon(strategy_enum, exclude_ids)
-
-
 def parse_selection_strategy(strategy_str: Optional[str]) -> DaemonSelectionStrategy:
     """
     Parse a strategy string into a DaemonSelectionStrategy enum.

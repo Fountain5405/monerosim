@@ -22,7 +22,6 @@ def test_constructor_does_not_raise(shared_dir):
     assert agent.miner_selection_strategy == "weighted"
     assert agent.transaction_priority == 1
     assert agent.max_retries == 5
-    assert agent.recipient_selection == "random"
     assert agent.md_n_recipients == 8
     assert agent.md_out_per_tx == 2
     assert agent.md_output_amount == pytest.approx(5.0)
@@ -37,7 +36,6 @@ def test_parse_configuration_handles_all_types(shared_dir):
         ["miner_selection_strategy", "balance"],     # choice
         ["transaction_priority", "2"],               # int_range (0..3)
         ["max_retries", "7"],                        # int_min (>=1)
-        ["recipient_selection", "round_robin"],      # choice
         ["balance_check_interval", "15"],            # int_min
         ["max_wait_time", "1h"],                     # time_duration
         ["md_n_recipients", "4"],                    # int_min
@@ -57,7 +55,6 @@ def test_parse_configuration_handles_all_types(shared_dir):
     assert agent.miner_selection_strategy == "balance"
     assert agent.transaction_priority == 2
     assert agent.max_retries == 7
-    assert agent.recipient_selection == "round_robin"
     assert agent.balance_check_interval == 15
     assert agent.max_wait_time == 3600  # 1h in seconds
     assert agent.md_n_recipients == 4

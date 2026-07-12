@@ -24,32 +24,19 @@ _BLOCK_ADDED_PATTERN = re.compile(
     re.IGNORECASE
 )
 
-# Pattern 3: Block ID/hash after successful add (kept for parity with the
-# original, even though it isn't currently consulted by the parser)
-_BLOCK_ID_PATTERN = re.compile(
-    r'id:\s*<([0-9a-f]{64})>',
-    re.IGNORECASE
-)
-
-# Pattern 4: Height from block info
+# Pattern 3: Height from block info
 _HEIGHT_PATTERN = re.compile(
     r'HEIGHT\s+(\d+)',
     re.IGNORECASE
 )
 
-# Pattern 5: PoW indicator (present in all blocks, not just mined ones)
-_POW_PATTERN = re.compile(
-    r'PoW:\s*<([0-9a-f]{64})>',
-    re.IGNORECASE
-)
-
-# Pattern 6: Received block from network (means NOT locally mined)
+# Pattern 4: Received block from network (means NOT locally mined)
 _RECEIVED_BLOCK_PATTERN = re.compile(
     r'Received NOTIFY_NEW_FLUFFY_BLOCK|NOTIFY_NEW_BLOCK',
     re.IGNORECASE
 )
 
-# Pattern 7: generateblocks RPC call (means locally mined via RPC)
+# Pattern 5: generateblocks RPC call (means locally mined via RPC)
 _GENERATEBLOCKS_PATTERN = re.compile(
     r'generateblocks',
     re.IGNORECASE

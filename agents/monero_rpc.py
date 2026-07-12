@@ -172,7 +172,8 @@ class MoneroRPC(BaseRPC):
         """Get total number of peer connections (incoming + outgoing)."""
         info = self.get_info()
         return info.get("incoming_connections_count", 0) + info.get("outgoing_connections_count", 0)
-        
+
+    # Unused in current agents — kept as client API surface (1:1 with monerod/wallet-rpc endpoints).
     def get_peer_list(self) -> Dict[str, Any]:
         """Get list of peers"""
         return self._make_request("get_peer_list")
@@ -219,6 +220,7 @@ class MoneroRPC(BaseRPC):
                 raise MethodNotAvailableError("mining_status method not available")
             raise
         
+    # Unused in current agents — kept as client API surface (1:1 with monerod/wallet-rpc endpoints).
     def get_block_count(self) -> int:
         """Get block count"""
         result = self._make_request("get_block_count")
@@ -450,40 +452,6 @@ class WalletRPC(BaseRPC):
 
         raise WalletError("Failed to get wallet address after multiple retries.")
     
-    def ensure_wallet_exists(self, filename: str, password: str = "") -> bool:
-        """
-        Ensure a wallet exists and is open, creating it if necessary.
-        This method tries to open the wallet first, and only creates it if it doesn't exist.
-        
-        Args:
-            filename: Wallet filename
-            password: Wallet password
-            
-        Returns:
-            True if wallet is successfully opened or created
-            
-        Raises:
-            WalletError: If wallet cannot be opened or created
-        """
-        try:
-            self.logger.info(f"Attempting to open wallet '{filename}'")
-            self.open_wallet(filename, password)
-            self.logger.info(f"Successfully opened wallet '{filename}'")
-            return True
-        except WalletError as e:
-            if "not found" in str(e).lower():
-                try:
-                    self.logger.info(f"Wallet '{filename}' not found, creating it")
-                    self.create_wallet(filename, password)
-                    self.logger.info(f"Successfully created wallet '{filename}'")
-                    return True
-                except WalletError as create_err:
-                    self.logger.error(f"Failed to create wallet '{filename}': {create_err}")
-                    raise
-            else:
-                self.logger.error(f"Failed to open wallet '{filename}': {e}")
-                raise
-        
     def get_balance(self, account_index: int = 0) -> Dict[str, Any]:
         """Get wallet balance"""
         params = {"account_index": account_index}
@@ -552,6 +520,7 @@ class WalletRPC(BaseRPC):
         }
         return self._make_request("get_transfers", params)
         
+    # Unused in current agents — kept as client API surface (1:1 with monerod/wallet-rpc endpoints).
     def incoming_transfers(self, transfer_type: str = "all") -> Dict[str, Any]:
         """Get incoming transfers"""
         params = {"transfer_type": transfer_type}

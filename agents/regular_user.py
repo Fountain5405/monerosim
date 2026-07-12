@@ -3,7 +3,8 @@
 Regular User Agent for Monerosim
 
 This agent simulates regular users in the Monero network who perform transactions.
-Currently a placeholder implementation that will be extended in future tasks.
+It sets up a wallet, registers itself in shared state, and periodically sends
+transactions to other agents (and serves the passive miner role when is_miner is set).
 """
 
 import logging
@@ -215,8 +216,9 @@ class RegularUserAgent(BaseAgent):
         Returns:
             float: The recommended time to sleep (in seconds) before the next iteration.
         """
-        # Mining functionality is primarily handled by the block controller
-        # Miners just need to ensure they're available and registered
+        # Block production is driven by the dedicated autonomous_miner agent
+        # (generateblocks RPC); a miner in this agent only monitors its wallet
+        # balance and keeps its miner registration fresh.
         self.logger.debug("Miner running iteration - checking status")
         
         # Check if wallet is still available
