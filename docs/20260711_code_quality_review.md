@@ -383,14 +383,22 @@ lines) *before* any fix landed, so every fix above was validated against a
 green baseline. Post-fix suite: cargo 78 passed / 0 failed, pytest 88 passed
 (87 baseline + 1 new pin), `bash -n` clean on all touched scripts.
 
-### P2 — debt (not this pass; tracked)
+### P2 — debt — **DONE 2026-07-12** (commits `4bdb5161..d2c2941a`)
 
-Dead code deletion (~500 LOC Rust pub items, ~200 LOC agents methods, dead
-discovery layers, orphaned `check_shadow_status.sh`/`archive_simulation.sh`);
-consolidate duration parsers / stats helpers / retry loops; retire
-`AUDIT.md`/`RELEASE_PLAN.md` to `attic/`; CHANGELOG v0.2.0 entry; `cargo fmt`
-(as its own commit); IP-fallback chains → hard errors; binary-resolution
-fallback → hard error; unify truthiness parsing.
+Dead code deleted (Rust −624 LOC net incl. `ip_utils.rs`, dead pub API, dead
+window filters; agents −533/+104 incl. discovery-layer collapse, producerless
+registry handling; orphaned `check_shadow_status.sh`/`archive_simulation.sh`
+removed). **Maintainer-directed exception**: `monero_rpc`'s 8 unused endpoint
+wrappers and `BaseAgent.wait_for_*` kept as deliberate client-API surface,
+marked as such. Duration parsers fixed everywhere they were silently wrong
+(behavior matrices executed before/after); stats helpers consolidated into
+`analysis/stats.rs`; retries consolidated where the shared helper can express
+the semantics (1 of 3 — the other two documented as intentionally bespoke).
+`AUDIT.md`/`RELEASE_PLAN.md` retired to `attic/`; CHANGELOG has `[0.2.0]` +
+`[Unreleased]`; `cargo fmt` applied as its own commit; IP-fallback duplicate
+path, octet overflow, and binary-resolution fallback are now hard errors;
+truthiness unified on `parse_bool`. Suite after: cargo 78 (0 warnings, goldens
+byte-identical), pytest 87.
 
 ### P3 — structural
 
