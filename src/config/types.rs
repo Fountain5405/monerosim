@@ -165,14 +165,19 @@ impl Config {
         // Validate general settings
         if self.general.stop_time.is_empty() {
             return Err(ValidationError::InvalidGeneral(
-                "stop_time cannot be empty".to_string()
+                "stop_time cannot be empty".to_string(),
             ));
         }
 
         // Validate network settings
         if let Some(network) = &self.network {
             match network {
-                Network::Gml { path, peer_mode, seed_nodes, .. } => {
+                Network::Gml {
+                    path,
+                    peer_mode,
+                    seed_nodes,
+                    ..
+                } => {
                     if path.is_empty() {
                         return Err(ValidationError::InvalidNetwork(
                             "GML path cannot be empty".to_string(),
@@ -180,7 +185,12 @@ impl Config {
                     }
                     Self::validate_peer_config(peer_mode, seed_nodes)?;
                 }
-                Network::Switch { network_type, peer_mode, seed_nodes, .. } => {
+                Network::Switch {
+                    network_type,
+                    peer_mode,
+                    seed_nodes,
+                    ..
+                } => {
                     if network_type.is_empty() {
                         return Err(ValidationError::InvalidNetwork(
                             "Network type cannot be empty for Switch".to_string(),
@@ -195,14 +205,18 @@ impl Config {
     }
 
     /// Validate peer configuration based on peer mode
-    fn validate_peer_config(peer_mode: &Option<PeerMode>, seed_nodes: &Option<Vec<String>>) -> Result<(), ValidationError> {
+    fn validate_peer_config(
+        peer_mode: &Option<PeerMode>,
+        seed_nodes: &Option<Vec<String>>,
+    ) -> Result<(), ValidationError> {
         if let Some(mode) = peer_mode {
             match mode {
                 PeerMode::Hardcoded | PeerMode::Hybrid => {
                     if !seed_nodes.as_ref().is_some_and(|n| !n.is_empty()) {
-                        return Err(ValidationError::InvalidNetwork(
-                            format!("seed_nodes must be provided and non-empty for peer_mode {:?}", mode)
-                        ));
+                        return Err(ValidationError::InvalidNetwork(format!(
+                            "seed_nodes must be provided and non-empty for peer_mode {:?}",
+                            mode
+                        )));
                     }
                 }
                 PeerMode::Dynamic => {
@@ -215,14 +229,13 @@ impl Config {
         if let Some(nodes) = seed_nodes {
             if nodes.is_empty() {
                 return Err(ValidationError::InvalidNetwork(
-                    "seed_nodes cannot be an empty list".to_string()
+                    "seed_nodes cannot be an empty list".to_string(),
                 ));
             }
         }
 
         Ok(())
     }
-
 }
 
 /// Shared general configuration
@@ -492,11 +505,11 @@ impl Default for GeneralConfig {
             shadow_log_level: default_shadow_log_level(),
             runahead: None,
             bootstrap_end_time: None,
-            progress: Some(true),  // Default to showing progress
-            process_threads: Some(1),  // Default to single-threaded for determinism
+            progress: Some(true),     // Default to showing progress
+            process_threads: Some(1), // Default to single-threaded for determinism
             native_preemption: None,  // Shadow default (false) applies when unset
-            daemon_defaults: None,  // No daemon defaults by default
-            wallet_defaults: None,  // No wallet defaults by default
+            daemon_defaults: None,    // No daemon defaults by default
+            wallet_defaults: None,    // No wallet defaults by default
             shared_dir: default_shared_dir(),
             daemon_data_dir: default_daemon_data_dir(),
             fallback_seeds: FallbackSeedsMode::default(),

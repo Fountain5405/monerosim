@@ -72,7 +72,10 @@ fn resolve_fallback_ips(repo_dir: &Path) -> Vec<String> {
             "Could not locate Monero source tree (set MONERO_SRC_DIR or place source at <repo>/sibling_repos/monero); using hardcoded fallback IP list"
         );
     }
-    MONERO_FALLBACK_SEED_IPS.iter().map(|s| s.to_string()).collect()
+    MONERO_FALLBACK_SEED_IPS
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
 }
 
 fn prepare_auto(
@@ -94,7 +97,9 @@ fn prepare_auto(
             if let Err(e) = ip_registry.register_pre_allocated_ip(ip, &agent_id) {
                 log::warn!(
                     "Could not pin fallback IP {} to user-declared {}: {}",
-                    ip, agent_id, e
+                    ip,
+                    agent_id,
+                    e
                 );
                 continue;
             }
@@ -109,7 +114,9 @@ fn prepare_auto(
         if let Err(e) = ip_registry.register_pre_allocated_ip(ip, &agent_id) {
             log::warn!(
                 "Could not reserve fallback IP {} for {}: {}. Skipping.",
-                ip, agent_id, e
+                ip,
+                agent_id,
+                e
             );
             continue;
         }
@@ -120,7 +127,8 @@ fn prepare_auto(
     if pinned > 0 {
         log::info!(
             "Auto-injected {} Monero fallback-seed hosts (monero-seed-001..{:03})",
-            pinned, pinned
+            pinned,
+            pinned
         );
     }
     (agents, pinned)
@@ -143,10 +151,7 @@ fn prepare_custom(
             continue;
         };
         if let Err(e) = ip_registry.register_pre_allocated_ip(ip, &agent_id) {
-            log::warn!(
-                "Could not pin fallback IP {} to {}: {}",
-                ip, agent_id, e
-            );
+            log::warn!("Could not pin fallback IP {} to {}: {}", ip, agent_id, e);
             continue;
         }
         mark_as_seed_node(cfg);
@@ -213,7 +218,9 @@ fn build_seed_agent(seed_index: usize) -> AgentConfig {
 
 fn clone_agent_definitions(src: &AgentDefinitions) -> AgentDefinitions {
     AgentDefinitions {
-        agents: src.agents.iter()
+        agents: src
+            .agents
+            .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect::<BTreeMap<_, _>>(),
     }

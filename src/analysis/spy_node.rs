@@ -14,10 +14,8 @@ pub fn analyze_spy_vulnerability(
     agents: &[AnalysisAgentInfo],
 ) -> SpyNodeReport {
     // Build IP-to-agent mapping
-    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> = agents
-        .iter()
-        .map(|a| (a.ip_addr.as_str(), a))
-        .collect();
+    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> =
+        agents.iter().map(|a| (a.ip_addr.as_str(), a)).collect();
 
     // Build TX hash to observations mapping
     let mut tx_observations: HashMap<String, Vec<&TxObservation>> = HashMap::new();
@@ -74,7 +72,11 @@ fn analyze_single_tx(
 ) -> SpyNodeTxAnalysis {
     // Sort observations by timestamp
     let mut sorted_obs: Vec<&TxObservation> = observations.to_vec();
-    sorted_obs.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_obs.sort_by(|a, b| {
+        a.timestamp
+            .partial_cmp(&b.timestamp)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let first_timestamp = sorted_obs.first().map(|o| o.timestamp).unwrap_or(0.0);
     let last_timestamp = sorted_obs.last().map(|o| o.timestamp).unwrap_or(0.0);
@@ -110,11 +112,8 @@ fn analyze_single_tx(
     };
 
     // Calculate correlation confidence
-    let correlation_confidence = calculate_correlation_confidence(
-        &first_seen_by,
-        timing_spread_ms,
-        &inferred_originator_ip,
-    );
+    let correlation_confidence =
+        calculate_correlation_confidence(&first_seen_by, timing_spread_ms, &inferred_originator_ip);
 
     SpyNodeTxAnalysis {
         tx_hash: tx.tx_hash.clone(),
@@ -241,7 +240,10 @@ fn find_vulnerable_senders(analyses: &[SpyNodeTxAnalysis]) -> Vec<VulnerableSend
                 return None;
             }
 
-            let correct = high_confidence.iter().filter(|a| a.inference_correct).count();
+            let correct = high_confidence
+                .iter()
+                .filter(|a| a.inference_correct)
+                .count();
             let accuracy = correct as f64 / high_confidence.len() as f64;
 
             Some(VulnerableSender {
@@ -253,7 +255,10 @@ fn find_vulnerable_senders(analyses: &[SpyNodeTxAnalysis]) -> Vec<VulnerableSend
         .collect();
 
     // Sort by number of high-confidence inferences
-    vulnerable.sort_by(|a, b| b.high_confidence_inferences.cmp(&a.high_confidence_inferences));
+    vulnerable.sort_by(|a, b| {
+        b.high_confidence_inferences
+            .cmp(&a.high_confidence_inferences)
+    });
     vulnerable.truncate(10);
 
     vulnerable

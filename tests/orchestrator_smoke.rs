@@ -19,7 +19,10 @@ fn normalize(yaml: &str) -> String {
         .replace_all(yaml, "TMPDIR/")
         .into_owned();
     // The repo's absolute path embeds in wrapper script / data-dir paths.
-    let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+    let cwd = std::env::current_dir()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
     let yaml = yaml.replace(&cwd, "REPO_ROOT");
     // The user's $HOME embeds in resolved monerod / wallet paths.
     if let Ok(home) = std::env::var("HOME") {
@@ -56,9 +59,8 @@ fn smoke_fixture_yaml_matches_golden() {
         return;
     }
 
-    let expected = std::fs::read_to_string(golden_path).expect(
-        "tests/golden/smoke.yaml exists; run with UPDATE_GOLDEN=1 to refresh",
-    );
+    let expected = std::fs::read_to_string(golden_path)
+        .expect("tests/golden/smoke.yaml exists; run with UPDATE_GOLDEN=1 to refresh");
     assert_eq!(
         actual, expected,
         "Generated shadow_agents.yaml diverged from tests/golden/smoke.yaml.\n\

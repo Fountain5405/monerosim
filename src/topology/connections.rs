@@ -50,8 +50,16 @@ pub fn generate_topology_connections(
             // Ring topology: connect to previous and next agents in ring
             let mut connections = Vec::new();
             if !seed_agents.is_empty() {
-                let prev_index = if agent_index == 0 { seed_agents.len() - 1 } else { agent_index - 1 };
-                let next_index = if agent_index == seed_agents.len() - 1 { 0 } else { agent_index + 1 };
+                let prev_index = if agent_index == 0 {
+                    seed_agents.len() - 1
+                } else {
+                    agent_index - 1
+                };
+                let next_index = if agent_index == seed_agents.len() - 1 {
+                    0
+                } else {
+                    agent_index + 1
+                };
 
                 if prev_index < seed_agents.len() {
                     let prev_seed = &seed_agents[prev_index];
@@ -85,4 +93,3 @@ pub fn generate_topology_connections(
         }
     }
 }
-

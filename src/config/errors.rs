@@ -11,10 +11,7 @@ pub enum PhaseValidationError {
     },
 
     #[error("Missing path for {phase_type} phase {phase_num}")]
-    MissingPath {
-        phase_num: u32,
-        phase_type: String,
-    },
+    MissingPath { phase_num: u32, phase_type: String },
 
     #[error("Missing timing for {phase_type} phase {phase_num}: {detail}")]
     MissingTiming {
@@ -24,10 +21,7 @@ pub enum PhaseValidationError {
     },
 
     #[error("Mixed configuration for {phase_type}: {detail}")]
-    MixedConfig {
-        phase_type: String,
-        detail: String,
-    },
+    MixedConfig { phase_type: String, detail: String },
 
     #[error("Insufficient gap between {phase_type} phases {phase_num} and {next_phase_num}: stop={stop_time}, start={start_time}, need at least {min_gap}s gap")]
     GapTooSmall {

@@ -18,7 +18,10 @@ fn normalize(yaml: &str) -> String {
         .replace_all(yaml, "TMPDIR/")
         .into_owned();
     // Repo absolute path embeds in wrapper scripts / data-dir paths.
-    let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+    let cwd = std::env::current_dir()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
     let yaml = yaml.replace(&cwd, "REPO_ROOT");
     // $HOME embeds in resolved monerod / wallet paths.
     if let Ok(home) = std::env::var("HOME") {
@@ -52,9 +55,8 @@ fn quickstart_fixture_yaml_matches_golden() {
         return;
     }
 
-    let expected = std::fs::read_to_string(golden_path).expect(
-        "tests/golden/quickstart.yaml exists; run with UPDATE_GOLDEN=1 to refresh",
-    );
+    let expected = std::fs::read_to_string(golden_path)
+        .expect("tests/golden/quickstart.yaml exists; run with UPDATE_GOLDEN=1 to refresh");
     assert_eq!(
         actual, expected,
         "Generated shadow_agents.yaml diverged from tests/golden/quickstart.yaml.\n\

@@ -53,14 +53,11 @@ pub fn analyze_dandelion(
 
     for tx in transactions {
         if let Some(observations) = tx_observations.get(&tx.tx_hash) {
-            if let Some(path) = reconstruct_path(
-                tx,
-                observations,
-                &ip_to_node,
-                &node_to_ip,
-            ) {
+            if let Some(path) = reconstruct_path(tx, observations, &ip_to_node, &node_to_ip) {
                 // Update node statistics
-                *node_originator_counts.entry(path.originator.clone()).or_default() += 1;
+                *node_originator_counts
+                    .entry(path.originator.clone())
+                    .or_default() += 1;
 
                 for (pos, hop) in path.stem_path.iter().enumerate() {
                     if pos > 0 {
@@ -214,7 +211,10 @@ fn reconstruct_path(
 
     // First, find the first observation that came from the originator
     let first_hop_idx = sorted_obs.iter().position(|obs| {
-        originator_ip.as_ref().map(|ip| &obs.source_ip == ip).unwrap_or(false)
+        originator_ip
+            .as_ref()
+            .map(|ip| &obs.source_ip == ip)
+            .unwrap_or(false)
     });
 
     // Seed the stem path with the first hop and set the sender for the chain walk.
@@ -293,7 +293,10 @@ fn reconstruct_path(
 
         // Single relay (stem phase) - take the first/earliest one
         let (next_idx, next_obs) = from_current[0];
-        let prev_timestamp = stem_path.last().map(|h| h.timestamp).unwrap_or(next_obs.timestamp);
+        let prev_timestamp = stem_path
+            .last()
+            .map(|h| h.timestamp)
+            .unwrap_or(next_obs.timestamp);
 
         stem_path.push(StemHop {
             node_id: next_obs.node_id.clone(),
@@ -373,7 +376,8 @@ fn assess_privacy(paths: &[DandelionPath], _total_txs: usize) -> DandelionPrivac
             "Very short stem paths (avg {:.1} hops) - transactions often fluff immediately",
             avg_stem_length
         ));
-        recommendations.push("Short stems reduce anonymity. Check Dandelion++ configuration.".to_string());
+        recommendations
+            .push("Short stems reduce anonymity. Check Dandelion++ configuration.".to_string());
     } else if avg_stem_length < 4.0 {
         privacy_score = privacy_score.saturating_sub(10);
         findings.push(format!(
@@ -430,14 +434,18 @@ fn assess_privacy(paths: &[DandelionPath], _total_txs: usize) -> DandelionPrivac
             top_fluff_node, max_fluff_pct
         ));
         recommendations.push(
-            "Fluff points are concentrated - this node could correlate many transactions".to_string(),
+            "Fluff points are concentrated - this node could correlate many transactions"
+                .to_string(),
         );
     }
 
     let effective_anonymity = privacy_score >= 70 && trivially_deanonymizable_pct < 10.0;
 
     if effective_anonymity {
-        findings.insert(0, "Dandelion++ is providing EFFECTIVE anonymity".to_string());
+        findings.insert(
+            0,
+            "Dandelion++ is providing EFFECTIVE anonymity".to_string(),
+        );
     } else if privacy_score >= 50 {
         findings.insert(0, "Dandelion++ is providing MODERATE anonymity".to_string());
     } else {

@@ -5,8 +5,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::types::*;
 use super::stats::gini;
+use super::types::*;
 
 /// Analyze network resilience based on connection topology
 pub fn analyze_resilience(
@@ -257,9 +257,7 @@ fn find_bridge_nodes(graph: &HashMap<String, HashSet<String>>) -> Vec<String> {
 
                 // Check if n1 and n2 are connected (excluding through node_id)
                 let n1_neighbors = graph.get(n1);
-                let connected = n1_neighbors
-                    .map(|ns| ns.contains(n2))
-                    .unwrap_or(false);
+                let connected = n1_neighbors.map(|ns| ns.contains(n2)).unwrap_or(false);
 
                 if !connected {
                     unconnected_pairs += 1;

@@ -5,22 +5,8 @@
 pub mod types;
 
 pub use types::{
-    MinerInfo,
-    MinerRegistry,
-    AgentInfo,
-    AgentRegistry,
-    PublicNodeInfo,
-    PublicNodeRegistry,
-    ShadowConfig,
-    ShadowGeneral,
-    ShadowExperimental,
-    ShadowNetwork,
-    ShadowGraph,
-    ShadowFileSource,
-    ShadowNetworkNode,
-    ShadowNetworkEdge,
-    ShadowHost,
+    AgentInfo, AgentRegistry, ExpectedFinalState, MinerInfo, MinerRegistry, ProcessArgs,
+    PublicNodeInfo, PublicNodeRegistry, ShadowConfig, ShadowExperimental, ShadowFileSource,
+    ShadowGeneral, ShadowGraph, ShadowHost, ShadowNetwork, ShadowNetworkEdge, ShadowNetworkNode,
     ShadowProcess,
-    ProcessArgs,
-    ExpectedFinalState,
 };

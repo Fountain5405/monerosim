@@ -2,10 +2,10 @@
 //! flat-phase-field parsing helpers used to populate `daemon_phases` and
 //! `wallet_phases` from YAML keys like `daemon_0`, `daemon_0_args`, etc.
 
+use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
-use regex::Regex;
 
 use crate::utils::duration::parse_duration_to_seconds;
 
@@ -23,17 +23,14 @@ where
     let value: Option<serde_yaml::Value> = Option::deserialize(deserializer)?;
     match value {
         None => Ok(None),
-        Some(serde_yaml::Value::Number(n)) => {
-            n.as_u64()
-                .and_then(|v| u32::try_from(v).ok())
-                .map(Some)
-                .ok_or_else(|| de::Error::custom(format!("invalid u32 value: {n}")))
-        }
-        Some(serde_yaml::Value::String(s)) => {
-            parse_duration_to_seconds(&s)
-                .map(|v| Some(v as u32))
-                .map_err(|e| de::Error::custom(e))
-        }
+        Some(serde_yaml::Value::Number(n)) => n
+            .as_u64()
+            .and_then(|v| u32::try_from(v).ok())
+            .map(Some)
+            .ok_or_else(|| de::Error::custom(format!("invalid u32 value: {n}"))),
+        Some(serde_yaml::Value::String(s)) => parse_duration_to_seconds(&s)
+            .map(|v| Some(v as u32))
+            .map_err(|e| de::Error::custom(e)),
         Some(other) => Err(de::Error::custom(format!(
             "expected number or duration string, got: {other:?}"
         ))),
@@ -44,16 +41,38 @@ where
 // `.expect()` is safe here: the literal patterns are syntactically valid Rust
 // regex and tested at startup via LazyLock — if these ever fail, it's a code
 // bug, not user input.
-static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)$").expect("invariant: DAEMON_RE pattern is a valid regex"));
-static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_args$").expect("invariant: DAEMON_ARGS_RE pattern is a valid regex"));
-static DAEMON_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_env$").expect("invariant: DAEMON_ENV_RE pattern is a valid regex"));
-static DAEMON_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_start$").expect("invariant: DAEMON_START_RE pattern is a valid regex"));
-static DAEMON_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^daemon_(\d+)_stop$").expect("invariant: DAEMON_STOP_RE pattern is a valid regex"));
-static WALLET_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)$").expect("invariant: WALLET_RE pattern is a valid regex"));
-static WALLET_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_args$").expect("invariant: WALLET_ARGS_RE pattern is a valid regex"));
-static WALLET_ENV_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_env$").expect("invariant: WALLET_ENV_RE pattern is a valid regex"));
-static WALLET_START_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_start$").expect("invariant: WALLET_START_RE pattern is a valid regex"));
-static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^wallet_(\d+)_stop$").expect("invariant: WALLET_STOP_RE pattern is a valid regex"));
+static DAEMON_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^daemon_(\d+)$").expect("invariant: DAEMON_RE pattern is a valid regex")
+});
+static DAEMON_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^daemon_(\d+)_args$").expect("invariant: DAEMON_ARGS_RE pattern is a valid regex")
+});
+static DAEMON_ENV_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^daemon_(\d+)_env$").expect("invariant: DAEMON_ENV_RE pattern is a valid regex")
+});
+static DAEMON_START_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^daemon_(\d+)_start$")
+        .expect("invariant: DAEMON_START_RE pattern is a valid regex")
+});
+static DAEMON_STOP_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^daemon_(\d+)_stop$").expect("invariant: DAEMON_STOP_RE pattern is a valid regex")
+});
+static WALLET_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^wallet_(\d+)$").expect("invariant: WALLET_RE pattern is a valid regex")
+});
+static WALLET_ARGS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^wallet_(\d+)_args$").expect("invariant: WALLET_ARGS_RE pattern is a valid regex")
+});
+static WALLET_ENV_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^wallet_(\d+)_env$").expect("invariant: WALLET_ENV_RE pattern is a valid regex")
+});
+static WALLET_START_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^wallet_(\d+)_start$")
+        .expect("invariant: WALLET_START_RE pattern is a valid regex")
+});
+static WALLET_STOP_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^wallet_(\d+)_stop$").expect("invariant: WALLET_STOP_RE pattern is a valid regex")
+});
 
 /// Flexible option value for daemon/wallet flags
 /// Supports bool, string, and number types for YAML flexibility
@@ -222,7 +241,10 @@ impl AgentConfig {
 
     /// Check if this is a script-only agent
     pub fn is_script_only(&self) -> bool {
-        !self.has_local_daemon() && !self.has_remote_daemon() && !self.has_wallet() && self.has_script()
+        !self.has_local_daemon()
+            && !self.has_remote_daemon()
+            && !self.has_wallet()
+            && self.has_script()
     }
 
     /// Check if this agent has daemon phases
@@ -265,14 +287,17 @@ impl AgentConfig {
 
     /// Check if this agent is configured as a public node
     pub fn is_public_node(&self) -> bool {
-        self.attributes.as_ref()
+        self.attributes
+            .as_ref()
             .and_then(|attrs| attrs.get("is_public_node"))
             .map_or(false, |v| v.to_lowercase() == "true")
     }
 
     /// Check if this is a daemon-only (relay) agent: has daemon but no wallet or script
     pub fn is_daemon_only(&self) -> bool {
-        (self.has_local_daemon() || self.has_daemon_phases()) && !self.has_wallet() && !self.has_script()
+        (self.has_local_daemon() || self.has_daemon_phases())
+            && !self.has_wallet()
+            && !self.has_script()
     }
 }
 
@@ -421,7 +446,8 @@ fn parse_typed_phases<P: Phase>(
             Err(e) => {
                 log::warn!(
                     "Ignoring phase key '{}': phase number does not fit in u32 ({})",
-                    key, e
+                    key,
+                    e
                 );
                 None
             }
@@ -430,34 +456,50 @@ fn parse_typed_phases<P: Phase>(
 
     for (key, value) in extra {
         if let Some(caps) = re_path.captures(key) {
-            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
-            phases.entry(phase_num).or_default()
+            let Some(phase_num) = parse_phase_num(&caps, key) else {
+                continue;
+            };
+            phases
+                .entry(phase_num)
+                .or_default()
                 .set_path(value.as_str().unwrap_or_default().to_string());
         } else if let Some(caps) = re_args.captures(key) {
-            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
+            let Some(phase_num) = parse_phase_num(&caps, key) else {
+                continue;
+            };
             if let Some(args) = value.as_sequence() {
-                let args: Vec<String> = args.iter()
+                let args: Vec<String> = args
+                    .iter()
                     .filter_map(|v| v.as_str().map(String::from))
                     .collect();
                 phases.entry(phase_num).or_default().set_args(args);
             }
         } else if let Some(caps) = re_env.captures(key) {
-            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
+            let Some(phase_num) = parse_phase_num(&caps, key) else {
+                continue;
+            };
             if let Some(env_map) = value.as_mapping() {
-                let env: BTreeMap<String, String> = env_map.iter()
-                    .filter_map(|(k, v)| {
-                        Some((k.as_str()?.to_string(), v.as_str()?.to_string()))
-                    })
+                let env: BTreeMap<String, String> = env_map
+                    .iter()
+                    .filter_map(|(k, v)| Some((k.as_str()?.to_string(), v.as_str()?.to_string())))
                     .collect();
                 phases.entry(phase_num).or_default().set_env(env);
             }
         } else if let Some(caps) = re_start.captures(key) {
-            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
-            phases.entry(phase_num).or_default()
+            let Some(phase_num) = parse_phase_num(&caps, key) else {
+                continue;
+            };
+            phases
+                .entry(phase_num)
+                .or_default()
                 .set_start(value.as_str().unwrap_or_default().to_string());
         } else if let Some(caps) = re_stop.captures(key) {
-            let Some(phase_num) = parse_phase_num(&caps, key) else { continue };
-            phases.entry(phase_num).or_default()
+            let Some(phase_num) = parse_phase_num(&caps, key) else {
+                continue;
+            };
+            phases
+                .entry(phase_num)
+                .or_default()
                 .set_stop(value.as_str().unwrap_or_default().to_string());
         }
     }
@@ -470,10 +512,20 @@ fn parse_phase_fields(
     extra: &BTreeMap<String, serde_yaml::Value>,
 ) -> (BTreeMap<u32, DaemonPhase>, BTreeMap<u32, WalletPhase>) {
     let daemon_phases = parse_typed_phases(
-        extra, &DAEMON_RE, &DAEMON_ARGS_RE, &DAEMON_ENV_RE, &DAEMON_START_RE, &DAEMON_STOP_RE,
+        extra,
+        &DAEMON_RE,
+        &DAEMON_ARGS_RE,
+        &DAEMON_ENV_RE,
+        &DAEMON_START_RE,
+        &DAEMON_STOP_RE,
     );
     let wallet_phases = parse_typed_phases(
-        extra, &WALLET_RE, &WALLET_ARGS_RE, &WALLET_ENV_RE, &WALLET_START_RE, &WALLET_STOP_RE,
+        extra,
+        &WALLET_RE,
+        &WALLET_ARGS_RE,
+        &WALLET_ENV_RE,
+        &WALLET_START_RE,
+        &WALLET_STOP_RE,
     );
     (daemon_phases, wallet_phases)
 }
@@ -490,11 +542,21 @@ trait Phase: Default {
 macro_rules! impl_phase {
     ($t:ty) => {
         impl Phase for $t {
-            fn set_path(&mut self, path: String) { self.path = path; }
-            fn set_args(&mut self, args: Vec<String>) { self.args = Some(args); }
-            fn set_env(&mut self, env: BTreeMap<String, String>) { self.env = Some(env); }
-            fn set_start(&mut self, start: String) { self.start = Some(start); }
-            fn set_stop(&mut self, stop: String) { self.stop = Some(stop); }
+            fn set_path(&mut self, path: String) {
+                self.path = path;
+            }
+            fn set_args(&mut self, args: Vec<String>) {
+                self.args = Some(args);
+            }
+            fn set_env(&mut self, env: BTreeMap<String, String>) {
+                self.env = Some(env);
+            }
+            fn set_start(&mut self, start: String) {
+                self.start = Some(start);
+            }
+            fn set_stop(&mut self, stop: String) {
+                self.stop = Some(stop);
+            }
         }
     };
 }

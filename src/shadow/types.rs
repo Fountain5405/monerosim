@@ -311,9 +311,7 @@ impl serde::Serialize for ExpectedFinalState {
                 map.serialize_entry("signaled", signal)?;
                 map.end()
             }
-            ExpectedFinalState::Running => {
-                serializer.serialize_str("running")
-            }
+            ExpectedFinalState::Running => serializer.serialize_str("running"),
         }
     }
 }
@@ -352,15 +350,21 @@ impl serde::Serialize for ProcessArgs {
 }
 
 impl From<String> for ProcessArgs {
-    fn from(s: String) -> Self { ProcessArgs::Str(s) }
+    fn from(s: String) -> Self {
+        ProcessArgs::Str(s)
+    }
 }
 
 impl From<&str> for ProcessArgs {
-    fn from(s: &str) -> Self { ProcessArgs::Str(s.to_string()) }
+    fn from(s: &str) -> Self {
+        ProcessArgs::Str(s.to_string())
+    }
 }
 
 impl From<Vec<String>> for ProcessArgs {
-    fn from(v: Vec<String>) -> Self { ProcessArgs::List(v) }
+    fn from(v: Vec<String>) -> Self {
+        ProcessArgs::List(v)
+    }
 }
 
 /// Shadow process definition.

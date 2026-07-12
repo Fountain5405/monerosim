@@ -5,8 +5,8 @@
 
 use std::collections::HashMap;
 
-use super::types::*;
 use super::stats::{mean, median, percentile};
+use super::types::*;
 
 /// Analyze propagation timing for all transactions
 pub fn analyze_propagation(
@@ -104,7 +104,9 @@ fn analyze_single_tx_propagation(
     // Sort observations by timestamp
     let mut sorted_obs: Vec<&TxObservation> = observations.to_vec();
     sorted_obs.sort_by(|a, b| {
-        a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal)
+        a.timestamp
+            .partial_cmp(&b.timestamp)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let first_seen_time = sorted_obs.first().map(|o| o.timestamp);
@@ -123,10 +125,7 @@ fn analyze_single_tx_propagation(
 
     // Calculate confirmation delay
     let (block_inclusion_time, confirmation_delay_sec) = match block_info {
-        Some((_, block_time)) => (
-            Some(block_time),
-            Some(block_time - tx.timestamp),
-        ),
+        Some((_, block_time)) => (Some(block_time), Some(block_time - tx.timestamp)),
         None => (None, None),
     };
 
@@ -212,4 +211,3 @@ fn identify_bottlenecks(
 
     bottlenecks
 }
-

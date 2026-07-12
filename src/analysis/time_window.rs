@@ -72,8 +72,8 @@ pub fn load_upgrade_manifest(path: &Path) -> Result<UpgradeManifest> {
         .with_context(|| format!("Failed to read upgrade manifest: {}", path.display()))?;
 
     // Parse the JSON structure
-    let data: serde_json::Value = serde_json::from_str(&content)
-        .with_context(|| "Failed to parse upgrade manifest JSON")?;
+    let data: serde_json::Value =
+        serde_json::from_str(&content).with_context(|| "Failed to parse upgrade manifest JSON")?;
 
     let mut manifest = UpgradeManifest {
         pre_upgrade_version: data
@@ -133,10 +133,7 @@ pub fn load_upgrade_manifest(path: &Path) -> Result<UpgradeManifest> {
 /// Windows before upgrade_start get "pre-upgrade" label.
 /// Windows during upgrade get "transition" label.
 /// Windows after upgrade_end get "post-upgrade" label.
-pub fn label_windows_by_upgrade(
-    windows: &mut [TimeWindow],
-    manifest: &UpgradeManifest,
-) {
+pub fn label_windows_by_upgrade(windows: &mut [TimeWindow], manifest: &UpgradeManifest) {
     let upgrade_start = manifest.upgrade_start.unwrap_or(f64::MAX);
     let upgrade_end = manifest.upgrade_end.unwrap_or(f64::MAX);
 
@@ -259,9 +256,7 @@ fn regularized_incomplete_beta(a: f64, b: f64, x: f64) -> f64 {
     }
 
     // Beta prefactor bt = x^a * (1-x)^b / B(a, b), computed in log space.
-    let ln_bt = ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b)
-        + a * x.ln()
-        + b * (1.0 - x).ln();
+    let ln_bt = ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b) + a * x.ln() + b * (1.0 - x).ln();
     let bt = ln_bt.exp();
 
     if x < (a + 1.0) / (a + b + 2.0) {

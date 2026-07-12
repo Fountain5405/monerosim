@@ -5,10 +5,10 @@
 //! across the network. Miner distributors typically start after block maturity
 //! to handle reward distribution.
 
-use crate::config::{AgentDefinitions, AgentConfig, PeerMode};
+use crate::config::{AgentConfig, AgentDefinitions, PeerMode};
 use crate::gml_parser::GmlGraph;
+use crate::ip::{get_agent_ip, AgentType, AsSubnetManager, GlobalIpRegistry};
 use crate::shadow::ShadowHost;
-use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::utils::script::write_wrapper_script;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -30,17 +30,30 @@ pub fn process_miner_distributor(
     scripts_dir: &Path,
 ) -> color_eyre::eyre::Result<()> {
     // Find miner_distributor agent in the named agents map
-    let miner_distributor: Option<(&String, &AgentConfig)> = agents.agents.iter()
-        .find(|(id, config)| {
-            id.contains("miner_distributor") ||
-            config.script.as_ref().map_or(false, |s| s.contains("miner_distributor"))
+    let miner_distributor: Option<(&String, &AgentConfig)> =
+        agents.agents.iter().find(|(id, config)| {
+            id.contains("miner_distributor")
+                || config
+                    .script
+                    .as_ref()
+                    .map_or(false, |s| s.contains("miner_distributor"))
         });
 
     if let Some((agent_id, miner_distributor_config)) = miner_distributor {
         let miner_distributor_id = agent_id.as_str();
         // Assign miner distributor to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
-        let miner_distributor_ip = get_agent_ip(AgentType::MinerDistributor, miner_distributor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, None)?;
+        let miner_distributor_ip = get_agent_ip(
+            AgentType::MinerDistributor,
+            miner_distributor_id,
+            agent_offset,
+            network_node_id,
+            gml_graph,
+            using_gml_topology,
+            subnet_manager,
+            ip_registry,
+            None,
+        )?;
         let mut processes = Vec::new();
 
         let mut agent_args = vec![
@@ -79,20 +92,28 @@ pub fn process_miner_distributor(
         }
 
         // `exec` so bash is replaced by python3 — see add_user_agent_process.
-        let script = miner_distributor_config.script.clone()
+        let script = miner_distributor_config
+            .script
+            .clone()
             .unwrap_or_else(|| "agents.miner_distributor".to_string());
-        let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
+        let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\')
+        {
             format!("exec python3 -m {} {}", script, agent_args.join(" "))
         } else {
             format!("exec python3 {} {}", script, agent_args.join(" "))
         };
 
         // Resolve HOME for fully-qualified paths (no shell expansion needed)
-        let home_dir = environment.get("HOME").cloned()
+        let home_dir = environment
+            .get("HOME")
+            .cloned()
             .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
         // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
-        let venv_sp = environment.get("VENV_SITE_PACKAGES").map(String::as_str).unwrap_or("");
+        let venv_sp = environment
+            .get("VENV_SITE_PACKAGES")
+            .map(String::as_str)
+            .unwrap_or("");
 
         // Create wrapper script with fully-resolved paths
         let wrapper_script = format!(
@@ -103,11 +124,7 @@ export PATH="$PATH:{}/.monerosim/bin"
 
 {} 2>&1
 "#,
-            current_dir,
-            current_dir,
-            venv_sp,
-            home_dir,
-            python_cmd
+            current_dir, current_dir, venv_sp, home_dir, python_cmd
         );
 
         // Determine execution start time from config's wait_time field
@@ -126,13 +143,16 @@ export PATH="$PATH:{}/.monerosim/bin"
         )?;
         processes.push(process);
 
-        hosts.insert(miner_distributor_id.to_string(), ShadowHost {
-            network_node_id, // Use the assigned GML node with bandwidth info
-            ip_addr: Some(miner_distributor_ip),
-            processes,
-            bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
-            bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
-        });
+        hosts.insert(
+            miner_distributor_id.to_string(),
+            ShadowHost {
+                network_node_id, // Use the assigned GML node with bandwidth info
+                ip_addr: Some(miner_distributor_ip),
+                processes,
+                bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+                bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
+            },
+        );
         // Note: next_ip is already incremented in get_agent_ip function
     }
 

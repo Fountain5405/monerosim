@@ -11,8 +11,8 @@ use super::types::*;
 
 /// Generate JSON report
 pub fn generate_json_report(report: &FullAnalysisReport, output_path: &Path) -> Result<()> {
-    let json = serde_json::to_string_pretty(report)
-        .context("Failed to serialize report to JSON")?;
+    let json =
+        serde_json::to_string_pretty(report).context("Failed to serialize report to JSON")?;
 
     fs::write(output_path, json)
         .with_context(|| format!("Failed to write JSON report to {}", output_path.display()))?;
@@ -32,10 +32,19 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
     lines.push(String::new());
 
     // Metadata
-    lines.push(format!("Analysis Date: {}", report.metadata.analysis_timestamp));
-    lines.push(format!("Data Directory: {}", report.metadata.simulation_data_dir));
+    lines.push(format!(
+        "Analysis Date: {}",
+        report.metadata.analysis_timestamp
+    ));
+    lines.push(format!(
+        "Data Directory: {}",
+        report.metadata.simulation_data_dir
+    ));
     lines.push(format!("Nodes Analyzed: {}", report.metadata.total_nodes));
-    lines.push(format!("Transactions: {}", report.metadata.total_transactions));
+    lines.push(format!(
+        "Transactions: {}",
+        report.metadata.total_transactions
+    ));
     lines.push(format!("Blocks: {}", report.metadata.total_blocks));
     lines.push(String::new());
 
@@ -50,7 +59,10 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
             "Overall Inference Accuracy: {:.1}%",
             spy.inference_accuracy * 100.0
         ));
-        lines.push("  A spy node observing first-seen timing could correctly identify the sender".to_string());
+        lines.push(
+            "  A spy node observing first-seen timing could correctly identify the sender"
+                .to_string(),
+        );
         lines.push(format!(
             "  for {} out of {} transactions.",
             (spy.inference_accuracy * spy.analyzable_transactions as f64).round() as usize,
@@ -87,8 +99,13 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
             lines.push(String::new());
         }
 
-        lines.push("RECOMMENDATION: Transaction timing correlation is viable in this topology.".to_string());
-        lines.push("Consider implementing Dandelion++ or similar origin-hiding protocols.".to_string());
+        lines.push(
+            "RECOMMENDATION: Transaction timing correlation is viable in this topology."
+                .to_string(),
+        );
+        lines.push(
+            "Consider implementing Dandelion++ or similar origin-hiding protocols.".to_string(),
+        );
         lines.push(String::new());
     }
 
@@ -105,7 +122,10 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
             prop.average_propagation_ms
         ));
         lines.push(format!("  Median: {:.1}ms", prop.median_propagation_ms));
-        lines.push(format!("  95th percentile: {:.1}ms", prop.p95_propagation_ms));
+        lines.push(format!(
+            "  95th percentile: {:.1}ms",
+            prop.p95_propagation_ms
+        ));
         lines.push(String::new());
 
         lines.push("Block Confirmation Delays:".to_string());
@@ -138,10 +158,7 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
         lines.push(String::new());
 
         lines.push("Connectivity:".to_string());
-        lines.push(format!(
-            "  Total nodes: {}",
-            res.connectivity.total_nodes
-        ));
+        lines.push(format!("  Total nodes: {}", res.connectivity.total_nodes));
         lines.push(format!(
             "  Average peer count: {:.1}",
             res.connectivity.average_peer_count
@@ -193,7 +210,10 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
             lines.push("RECOMMENDATION: Network shows significant centralization.".to_string());
             lines.push("This creates potential surveillance points.".to_string());
         } else if gini > 0.2 {
-            lines.push("RECOMMENDATION: Network has moderate centralization around some nodes.".to_string());
+            lines.push(
+                "RECOMMENDATION: Network has moderate centralization around some nodes."
+                    .to_string(),
+            );
         } else {
             lines.push("RECOMMENDATION: Network appears well-distributed.".to_string());
         }
@@ -220,7 +240,10 @@ pub fn print_summary(report: &FullAnalysisReport) {
 
     if let Some(ref spy) = report.spy_node_analysis {
         println!("\nSpy Node Vulnerability:");
-        println!("  Inference accuracy: {:.1}%", spy.inference_accuracy * 100.0);
+        println!(
+            "  Inference accuracy: {:.1}%",
+            spy.inference_accuracy * 100.0
+        );
         println!(
             "  High vulnerability TXs: {}",
             spy.timing_spread_distribution.high_vulnerability_count
@@ -237,7 +260,10 @@ pub fn print_summary(report: &FullAnalysisReport) {
     if let Some(ref res) = report.resilience_analysis {
         println!("\nNetwork Resilience:");
         println!("  Avg peers: {:.1}", res.connectivity.average_peer_count);
-        println!("  Gini coefficient: {:.2}", res.centralization.first_seen_gini);
+        println!(
+            "  Gini coefficient: {:.2}",
+            res.centralization.first_seen_gini
+        );
         println!("  Components: {}", res.partition_risk.connected_components);
     }
 

@@ -160,7 +160,9 @@ pub fn calculate_region_boundaries(total_nodes: usize) -> [RegionBoundary; 6] {
             // Last region gets all remaining nodes to avoid rounding errors
             total_nodes.saturating_sub(1)
         } else {
-            (start + count).saturating_sub(1).min(total_nodes.saturating_sub(1))
+            (start + count)
+                .saturating_sub(1)
+                .min(total_nodes.saturating_sub(1))
         };
         boundaries[i] = (*region, start, end);
         start = end + 1;
@@ -224,7 +226,7 @@ impl AsSubnetManager {
 
         // Calculate offset within the region for subnet variation
         let region_offset = match region {
-            AsRegion::NorthAmerica => as_num,                    // 0-199
+            AsRegion::NorthAmerica => as_num,                     // 0-199
             AsRegion::Europe => as_num.saturating_sub(200),       // 0-299
             AsRegion::Asia => as_num.saturating_sub(500),         // 0-299
             AsRegion::SouthAmerica => as_num.saturating_sub(800), // 0-199
@@ -235,14 +237,13 @@ impl AsSubnetManager {
 
         // Map to region-appropriate IP ranges based on real RIR allocations
         // Each region cycles through multiple first octets for diversity
-        let offset = region_offset as usize;  // Convert to usize for array indexing
+        let offset = region_offset as usize; // Convert to usize for array indexing
         let subnet = match region {
             AsRegion::NorthAmerica => {
                 // ARIN allocations per IANA registry
                 // Source: https://www.iana.org/assignments/ipv4-address-space
                 const NA_OCTETS: [u8; 20] = [
-                    3, 4, 6, 7, 8, 9, 13, 15, 16, 18,
-                    20, 23, 24, 50, 63, 64, 65, 66, 67, 68
+                    3, 4, 6, 7, 8, 9, 13, 15, 16, 18, 20, 23, 24, 50, 63, 64, 65, 66, 67, 68,
                 ];
                 let first = NA_OCTETS[offset % NA_OCTETS.len()];
                 let second = (offset / NA_OCTETS.len()) % 256;
@@ -253,8 +254,7 @@ impl AsSubnetManager {
                 // RIPE NCC allocations per IANA registry
                 // Source: https://www.iana.org/assignments/ipv4-address-space
                 const EU_OCTETS: [u8; 20] = [
-                    2, 5, 25, 31, 37, 46, 51, 62, 77, 78,
-                    79, 80, 81, 82, 83, 84, 85, 86, 87, 88
+                    2, 5, 25, 31, 37, 46, 51, 62, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
                 ];
                 let first = EU_OCTETS[offset % EU_OCTETS.len()];
                 let second = (offset / EU_OCTETS.len()) % 256;
@@ -265,8 +265,8 @@ impl AsSubnetManager {
                 // APNIC allocations per IANA registry
                 // Source: https://www.iana.org/assignments/ipv4-address-space
                 const ASIA_OCTETS: [u8; 20] = [
-                    1, 14, 27, 36, 39, 42, 43, 49, 58, 59,
-                    60, 61, 101, 103, 110, 111, 112, 113, 114, 115
+                    1, 14, 27, 36, 39, 42, 43, 49, 58, 59, 60, 61, 101, 103, 110, 111, 112, 113,
+                    114, 115,
                 ];
                 let first = ASIA_OCTETS[offset % ASIA_OCTETS.len()];
                 let second = (offset / ASIA_OCTETS.len()) % 256;
@@ -276,9 +276,7 @@ impl AsSubnetManager {
             AsRegion::SouthAmerica => {
                 // LACNIC allocations per IANA registry
                 // Source: https://www.iana.org/assignments/ipv4-address-space
-                const SA_OCTETS: [u8; 10] = [
-                    177, 179, 181, 186, 187, 189, 190, 191, 200, 201
-                ];
+                const SA_OCTETS: [u8; 10] = [177, 179, 181, 186, 187, 189, 190, 191, 200, 201];
                 let first = SA_OCTETS[offset % SA_OCTETS.len()];
                 let second = (offset / SA_OCTETS.len()) % 256;
                 let third = (offset / (SA_OCTETS.len() * 256)) % 256;
@@ -305,7 +303,8 @@ impl AsSubnetManager {
             AsRegion::Unknown => {
                 // Fallback to diverse range
                 let as_usize = as_num as usize;
-                format!("{}.{}.{}",
+                format!(
+                    "{}.{}.{}",
                     100 + (as_usize % 50),
                     (as_usize / 50) % 256,
                     (as_usize / (50 * 256)) % 256
@@ -324,7 +323,10 @@ impl AsSubnetManager {
         let subnet_base = Self::get_subnet_base(as_number)?;
 
         // Get or initialize the host counter for this AS (start at 10)
-        let counter = self.host_counters.entry(as_number.to_string()).or_insert(10);
+        let counter = self
+            .host_counters
+            .entry(as_number.to_string())
+            .or_insert(10);
 
         // Check if we've exhausted the subnet (max 254 for last octet).
         // Counter is u8 and increments via saturating_add(1), so 255 is
@@ -374,7 +376,10 @@ impl AsSubnetManager {
             }
         }
 
-        stats.push_str(&format!("  Unique ASes used: {}\n", self.host_counters.len()));
+        stats.push_str(&format!(
+            "  Unique ASes used: {}\n",
+            self.host_counters.len()
+        ));
         stats
     }
 
@@ -397,22 +402,40 @@ mod tests {
     #[test]
     fn test_subnet_base_calculation() {
         // AS 0 (North America, offset 0) -> ARIN first octet 3
-        assert_eq!(AsSubnetManager::get_subnet_base("0"), Some("3.0.0".to_string()));
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("0"),
+            Some("3.0.0".to_string())
+        );
 
         // AS 1 (North America, offset 1) -> ARIN first octet 4
-        assert_eq!(AsSubnetManager::get_subnet_base("1"), Some("4.0.0".to_string()));
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("1"),
+            Some("4.0.0".to_string())
+        );
 
         // AS 255 (Europe, offset 55) -> RIPE octet 84, second=2
-        assert_eq!(AsSubnetManager::get_subnet_base("255"), Some("84.2.0".to_string()));
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("255"),
+            Some("84.2.0".to_string())
+        );
 
         // AS 256 (Europe, offset 56) -> RIPE octet 85, second=2
-        assert_eq!(AsSubnetManager::get_subnet_base("256"), Some("85.2.0".to_string()));
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("256"),
+            Some("85.2.0".to_string())
+        );
 
         // AS 1199 (Oceania, offset 99) -> APNIC/OC octet 122, second=12
-        assert_eq!(AsSubnetManager::get_subnet_base("1199"), Some("122.12.0".to_string()));
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("1199"),
+            Some("122.12.0".to_string())
+        );
 
         // AS 65535 (Unknown) -> fallback: 100+(65535%50)=135, 65535/50%256=30, 65535/12800%256=5
-        assert_eq!(AsSubnetManager::get_subnet_base("65535"), Some("135.30.5".to_string()));
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("65535"),
+            Some("135.30.5".to_string())
+        );
     }
 
     #[test]
@@ -453,8 +476,8 @@ mod tests {
         let mut manager = AsSubnetManager::new();
 
         // Assign IPs across different regions
-        manager.assign_as_aware_ip("0");   // North America
-        manager.assign_as_aware_ip("50");  // North America
+        manager.assign_as_aware_ip("0"); // North America
+        manager.assign_as_aware_ip("50"); // North America
         manager.assign_as_aware_ip("200"); // Europe
         manager.assign_as_aware_ip("500"); // Asia
 

@@ -89,14 +89,18 @@ pub fn add_user_agent_process(args: UserAgentProcessArgs<'_>) {
     // `exec` so bash is replaced by python3 — Shadow's SIGTERM at shutdown
     // then goes directly to the agent (which has its own SIGTERM handler in
     // base_agent.py) instead of being absorbed by an idle bash parent.
-    let python_cmd = if args.script.contains('.') && !args.script.contains('/') && !args.script.contains('\\') {
-        format!("exec python3 -m {} {}", args.script, agent_args.join(" "))
-    } else {
-        format!("exec python3 {} {}", args.script, agent_args.join(" "))
-    };
+    let python_cmd =
+        if args.script.contains('.') && !args.script.contains('/') && !args.script.contains('\\') {
+            format!("exec python3 -m {} {}", args.script, agent_args.join(" "))
+        } else {
+            format!("exec python3 {} {}", args.script, agent_args.join(" "))
+        };
 
     // Resolve HOME for fully-qualified paths (no shell expansion needed)
-    let home_dir = args.environment.get("HOME").cloned()
+    let home_dir = args
+        .environment
+        .get("HOME")
+        .cloned()
         .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
     // Create wrapper script with fully-resolved paths.
@@ -113,7 +117,11 @@ pub fn add_user_agent_process(args: UserAgentProcessArgs<'_>) {
     };
 
     // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
-    let venv_sp = args.environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+    let venv_sp = args
+        .environment
+        .get("VENV_SITE_PACKAGES")
+        .cloned()
+        .unwrap_or_default();
 
     let wrapper_content = format!(
         r#"#!/bin/bash
@@ -123,12 +131,7 @@ export PATH="$PATH:{}/.monerosim/bin"
 {}
 {} 2>&1
 "#,
-        args.current_dir,
-        args.current_dir,
-        venv_sp,
-        home_dir,
-        wallet_export,
-        python_cmd
+        args.current_dir, args.current_dir, venv_sp, home_dir, wallet_export, python_cmd
     );
 
     // Determine start time
@@ -152,7 +155,11 @@ export PATH="$PATH:{}/.monerosim/bin"
         Some(crate::shadow::ExpectedFinalState::Running),
     ) {
         Ok(process) => args.processes.push(process),
-        Err(e) => log::error!("Failed to write wrapper script for agent {}: {}", args.agent_id, e),
+        Err(e) => log::error!(
+            "Failed to write wrapper script for agent {}: {}",
+            args.agent_id,
+            e
+        ),
     }
 }
 
@@ -201,14 +208,28 @@ pub fn create_mining_agent_process(args: MiningAgentProcessArgs<'_>) -> Vec<Shad
     }
 
     // `exec` so bash is replaced by python3 (see add_user_agent_process).
-    let python_cmd = if args.mining_script.contains('.') && !args.mining_script.contains('/') && !args.mining_script.contains('\\') {
-        format!("exec python3 -m {} {}", args.mining_script, script_args.join(" "))
+    let python_cmd = if args.mining_script.contains('.')
+        && !args.mining_script.contains('/')
+        && !args.mining_script.contains('\\')
+    {
+        format!(
+            "exec python3 -m {} {}",
+            args.mining_script,
+            script_args.join(" ")
+        )
     } else {
-        format!("exec python3 {} {}", args.mining_script, script_args.join(" "))
+        format!(
+            "exec python3 {} {}",
+            args.mining_script,
+            script_args.join(" ")
+        )
     };
 
     // Resolve HOME for fully-qualified paths (no shell expansion needed)
-    let home_dir = args.environment.get("HOME").cloned()
+    let home_dir = args
+        .environment
+        .get("HOME")
+        .cloned()
         .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
     // Create wrapper script with fully-resolved paths.
@@ -222,7 +243,11 @@ pub fn create_mining_agent_process(args: MiningAgentProcessArgs<'_>) -> Vec<Shad
     };
 
     // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
-    let venv_sp = args.environment.get("VENV_SITE_PACKAGES").cloned().unwrap_or_default();
+    let venv_sp = args
+        .environment
+        .get("VENV_SITE_PACKAGES")
+        .cloned()
+        .unwrap_or_default();
 
     let wrapper_content = format!(
         r#"#!/bin/bash
@@ -232,12 +257,7 @@ export PATH="$PATH:{}/.monerosim/bin"
 {}
 {} 2>&1
 "#,
-        args.current_dir,
-        args.current_dir,
-        venv_sp,
-        home_dir,
-        wallet_export,
-        python_cmd
+        args.current_dir, args.current_dir, venv_sp, home_dir, wallet_export, python_cmd
     );
 
     // Determine start time
@@ -262,7 +282,11 @@ export PATH="$PATH:{}/.monerosim/bin"
     ) {
         Ok(process) => vec![process],
         Err(e) => {
-            log::error!("Failed to write wrapper script for mining agent {}: {}", args.agent_id, e);
+            log::error!(
+                "Failed to write wrapper script for mining agent {}: {}",
+                args.agent_id,
+                e
+            );
             Vec::new()
         }
     }

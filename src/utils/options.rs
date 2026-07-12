@@ -33,7 +33,10 @@ pub fn translate_daemon_log_level(opts: &mut BTreeMap<String, OptionValue>) {
         _ => None,
     };
     if let Some(cat_string) = translated {
-        opts.insert("log-level".to_string(), OptionValue::String(cat_string.to_string()));
+        opts.insert(
+            "log-level".to_string(),
+            OptionValue::String(cat_string.to_string()),
+        );
     }
 }
 
@@ -64,14 +67,15 @@ pub fn translate_wallet_log_level(opts: &mut BTreeMap<String, OptionValue>) {
 /// see `shell_quote_args` for that path (currently the `WALLET_RPC_CMD`
 /// env var consumed by `restart_wallet_rpc()` via `subprocess.Popen(..., shell=True)`).
 pub fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
-    options.iter().filter_map(|(key, value)| {
-        match value {
+    options
+        .iter()
+        .filter_map(|(key, value)| match value {
             OptionValue::Bool(true) => Some(format!("--{}", key)),
             OptionValue::Bool(false) => None,
             OptionValue::String(s) => Some(format!("--{}={}", key, s)),
             OptionValue::Number(n) => Some(format!("--{}={}", key, n)),
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 /// Join argv-style elements into a single shell command string, quoting
@@ -80,7 +84,10 @@ pub fn options_to_args(options: &BTreeMap<String, OptionValue>) -> Vec<String> {
 /// (e.g. `WALLET_RPC_CMD`); for direct Shadow process launches, prefer
 /// passing the `Vec<String>` itself as `ProcessArgs::List`.
 pub fn shell_quote_args(args: &[String]) -> String {
-    args.iter().map(|a| shell_quote(a)).collect::<Vec<_>>().join(" ")
+    args.iter()
+        .map(|a| shell_quote(a))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// POSIX-shell-quote a single argument: wrap in single quotes, escaping

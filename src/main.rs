@@ -8,8 +8,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 // Use modules from the library instead of redeclaring them
-use monerosim::orchestrator::generate_agent_shadow_config;
 use monerosim::config_loader;
+use monerosim::orchestrator::generate_agent_shadow_config;
 
 /// Recursively fix permissions on a directory tree to allow deletion.
 /// This handles cases where monero-wallet-rpc creates directories with
@@ -50,7 +50,7 @@ struct Args {
     /// Path to the simulation configuration YAML file
     #[arg(short, long)]
     config: PathBuf,
-    
+
     /// Output directory for Shadow configuration and simulation files
     #[arg(short, long, default_value = "shadow_output")]
     output: PathBuf,
@@ -85,7 +85,7 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Args::parse();
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    
+
     info!("Starting MoneroSim configuration parser v2");
     info!("Configuration file: {:?}", args.config);
     info!("Output directory: {:?}", args.output);
@@ -99,24 +99,40 @@ fn main() -> Result<()> {
         if !(0.0..=1.0).contains(&r) {
             color_eyre::eyre::bail!("--reachable must be in [0.0, 1.0], got {}", r);
         }
-        info!("CLI override: reachable_fraction = {} (was {})", r, new_config.general.reachable_fraction);
+        info!(
+            "CLI override: reachable_fraction = {} (was {})",
+            r, new_config.general.reachable_fraction
+        );
         new_config.general.reachable_fraction = r;
     }
 
     // CLI: --turnover-* enable or override peer turnover. Any of these flags
     // switches turnover on (with defaults) when the config has no [general.turnover].
-    if args.turnover_session.is_some() || args.turnover_downtime.is_some() || args.turnover_max_session.is_some() {
-        let c = new_config.general.turnover.get_or_insert_with(|| monerosim::config::TurnoverConfig {
-            mean_session: "2h".to_string(),
-            mean_downtime: "30m".to_string(),
-            fraction: 1.0,
-            min_session: None,
-            max_session: None,
-            min_downtime: None,
-        });
-        if let Some(s) = args.turnover_session { c.mean_session = s; }
-        if let Some(d) = args.turnover_downtime { c.mean_downtime = d; }
-        if let Some(m) = args.turnover_max_session { c.max_session = Some(m); }
+    if args.turnover_session.is_some()
+        || args.turnover_downtime.is_some()
+        || args.turnover_max_session.is_some()
+    {
+        let c =
+            new_config
+                .general
+                .turnover
+                .get_or_insert_with(|| monerosim::config::TurnoverConfig {
+                    mean_session: "2h".to_string(),
+                    mean_downtime: "30m".to_string(),
+                    fraction: 1.0,
+                    min_session: None,
+                    max_session: None,
+                    min_downtime: None,
+                });
+        if let Some(s) = args.turnover_session {
+            c.mean_session = s;
+        }
+        if let Some(d) = args.turnover_downtime {
+            c.mean_downtime = d;
+        }
+        if let Some(m) = args.turnover_max_session {
+            c.max_session = Some(m);
+        }
         info!(
             "CLI turnover: mean_session={} mean_downtime={} max_session={:?} fraction={}",
             c.mean_session, c.mean_downtime, c.max_session, c.fraction
@@ -124,25 +140,30 @@ fn main() -> Result<()> {
     }
 
     // Determine output directory and final config path
-    let (output_dir, shadow_config_path) = if args.output.extension().map_or(false, |ext| ext == "yaml") {
-        (
-            args.output.parent().unwrap_or_else(|| Path::new(".")).to_path_buf(),
-            args.output.clone(),
-        )
-    } else {
-        (
-            args.output.clone(),
-            args.output.join("shadow_agents.yaml"),
-        )
-    };
+    let (output_dir, shadow_config_path) =
+        if args.output.extension().map_or(false, |ext| ext == "yaml") {
+            (
+                args.output
+                    .parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .to_path_buf(),
+                args.output.clone(),
+            )
+        } else {
+            (args.output.clone(), args.output.join("shadow_agents.yaml"))
+        };
 
     // Clean up previous simulation state
     info!("Cleaning up previous simulation state");
     if output_dir.exists() {
         // Only clean if it's not the current directory
         if output_dir != Path::new(".") {
-            remove_dir_with_permissions(&output_dir)
-                .wrap_err_with(|| format!("Failed to remove output directory '{}'", output_dir.display()))?;
+            remove_dir_with_permissions(&output_dir).wrap_err_with(|| {
+                format!(
+                    "Failed to remove output directory '{}'",
+                    output_dir.display()
+                )
+            })?;
         }
     }
     let shared_dir = Path::new(&new_config.general.shared_dir);
@@ -157,26 +178,46 @@ fn main() -> Result<()> {
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
             if name_str.starts_with("monero-") {
-                info!("Removing stale daemon data directory: {}/{}", daemon_data_dir.display(), name_str);
-                remove_dir_with_permissions(&entry.path())
-                    .unwrap_or_else(|e| warn!("Failed to remove {}/{}: {}", daemon_data_dir.display(), name_str, e));
+                info!(
+                    "Removing stale daemon data directory: {}/{}",
+                    daemon_data_dir.display(),
+                    name_str
+                );
+                remove_dir_with_permissions(&entry.path()).unwrap_or_else(|e| {
+                    warn!(
+                        "Failed to remove {}/{}: {}",
+                        daemon_data_dir.display(),
+                        name_str,
+                        e
+                    )
+                });
             }
         }
     }
 
     // Create fresh directories
-    fs::create_dir_all(&output_dir)
-        .wrap_err_with(|| format!("Failed to create output directory '{}'", output_dir.display()))?;
+    fs::create_dir_all(&output_dir).wrap_err_with(|| {
+        format!(
+            "Failed to create output directory '{}'",
+            output_dir.display()
+        )
+    })?;
     fs::create_dir_all(shared_dir).wrap_err("Failed to create shared directory")?;
 
     // Generate agent-based Shadow configuration
     info!("Running in agent-based simulation mode");
     generate_agent_shadow_config(&new_config, &shadow_config_path)?;
 
-    info!("Generated Agent-based Shadow configuration: {:?}", shadow_config_path);
-    
-    info!("Ready to run Shadow simulation with: shadow {:?}", shadow_config_path);
-    
+    info!(
+        "Generated Agent-based Shadow configuration: {:?}",
+        shadow_config_path
+    );
+
+    info!(
+        "Ready to run Shadow simulation with: shadow {:?}",
+        shadow_config_path
+    );
+
     info!("Configuration parsing completed successfully");
     Ok(())
 }

@@ -5,10 +5,10 @@
 //! track simulation state, performance metrics, and can trigger alerts based on
 //! configurable conditions.
 
-use crate::config::{AgentDefinitions, AgentConfig};
+use crate::config::{AgentConfig, AgentDefinitions};
 use crate::gml_parser::GmlGraph;
+use crate::ip::{get_agent_ip, AgentType, AsSubnetManager, GlobalIpRegistry};
 use crate::shadow::ShadowHost;
-use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
 use crate::utils::script::write_wrapper_script;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -50,17 +50,30 @@ pub fn process_simulation_monitor(
     scripts_dir: &Path,
 ) -> color_eyre::eyre::Result<()> {
     // Find simulation_monitor agent in the named agents map
-    let simulation_monitor: Option<(&String, &AgentConfig)> = agents.agents.iter()
-        .find(|(id, config)| {
-            id.contains("simulation_monitor") ||
-            config.script.as_ref().map_or(false, |s| s.contains("simulation_monitor"))
+    let simulation_monitor: Option<(&String, &AgentConfig)> =
+        agents.agents.iter().find(|(id, config)| {
+            id.contains("simulation_monitor")
+                || config
+                    .script
+                    .as_ref()
+                    .map_or(false, |s| s.contains("simulation_monitor"))
         });
 
     if let Some((agent_id, simulation_monitor_config)) = simulation_monitor {
         let simulation_monitor_id = agent_id.as_str();
         // Assign simulation monitor to node 0 (which has bandwidth info in GML)
         let network_node_id = 0;
-        let simulation_monitor_ip = get_agent_ip(AgentType::PureScriptAgent, simulation_monitor_id, agent_offset, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, None)?;
+        let simulation_monitor_ip = get_agent_ip(
+            AgentType::PureScriptAgent,
+            simulation_monitor_id,
+            agent_offset,
+            network_node_id,
+            gml_graph,
+            using_gml_topology,
+            subnet_manager,
+            ip_registry,
+            None,
+        )?;
         let mut processes = Vec::new();
 
         // Convert output_dir to absolute path string
@@ -85,11 +98,18 @@ pub fn process_simulation_monitor(
                 agent_args.push(format!("--status-file {}", status_file));
             } else {
                 // Relative path - put in shared directory
-                agent_args.push(format!("--status-file {}/{}", shared_dir.to_string_lossy(), status_file));
+                agent_args.push(format!(
+                    "--status-file {}/{}",
+                    shared_dir.to_string_lossy(),
+                    status_file
+                ));
             }
         } else {
             // Default status file in shared directory
-            agent_args.push(format!("--status-file {}/monerosim_monitor.log", shared_dir.to_string_lossy()));
+            agent_args.push(format!(
+                "--status-file {}/monerosim_monitor.log",
+                shared_dir.to_string_lossy()
+            ));
         }
 
         if simulation_monitor_config.enable_alerts.unwrap_or(false) {
@@ -108,22 +128,30 @@ pub fn process_simulation_monitor(
         }
 
         // Get script path
-        let script = simulation_monitor_config.script.clone()
+        let script = simulation_monitor_config
+            .script
+            .clone()
             .unwrap_or_else(|| "agents.simulation_monitor".to_string());
 
         // `exec` so bash is replaced by python3 — see add_user_agent_process.
-        let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\') {
+        let python_cmd = if script.contains('.') && !script.contains('/') && !script.contains('\\')
+        {
             format!("exec python3 -m {} {}", script, agent_args.join(" "))
         } else {
             format!("exec python3 {} {}", script, agent_args.join(" "))
         };
 
         // Resolve HOME for fully-qualified paths (no shell expansion needed)
-        let home_dir = environment.get("HOME").cloned()
+        let home_dir = environment
+            .get("HOME")
+            .cloned()
             .unwrap_or_else(|| std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()));
 
         // Include venv site-packages in PYTHONPATH so pip-installed deps (e.g. requests) are found
-        let venv_sp = environment.get("VENV_SITE_PACKAGES").map(String::as_str).unwrap_or("");
+        let venv_sp = environment
+            .get("VENV_SITE_PACKAGES")
+            .map(String::as_str)
+            .unwrap_or("");
 
         // Create wrapper script with fully-resolved paths
         let wrapper_script = format!(
@@ -134,11 +162,7 @@ export PATH="$PATH:{}/.monerosim/bin"
 
 {} 2>&1
 "#,
-            current_dir,
-            current_dir,
-            venv_sp,
-            home_dir,
-            python_cmd
+            current_dir, current_dir, venv_sp, home_dir, python_cmd
         );
 
         let process = write_wrapper_script(
@@ -152,13 +176,16 @@ export PATH="$PATH:{}/.monerosim/bin"
         )?;
         processes.push(process);
 
-        hosts.insert(simulation_monitor_id.to_string(), ShadowHost {
-            network_node_id, // Use the assigned GML node with bandwidth info
-            ip_addr: Some(simulation_monitor_ip),
-            processes,
-            bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
-            bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
-        });
+        hosts.insert(
+            simulation_monitor_id.to_string(),
+            ShadowHost {
+                network_node_id, // Use the assigned GML node with bandwidth info
+                ip_addr: Some(simulation_monitor_ip),
+                processes,
+                bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
+                bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
+            },
+        );
         // Note: next_ip is already incremented in get_agent_ip function
     }
 

@@ -1,6 +1,6 @@
+use color_eyre::eyre::{eyre, Result};
 use std::collections::HashMap;
 use std::fs;
-use color_eyre::eyre::{Result, eyre};
 
 /// Represents a node in a GML graph
 #[derive(Debug, Clone)]
@@ -34,7 +34,6 @@ impl GmlNode {
     }
 }
 
-
 /// Parse IP address from GML node attributes
 ///
 /// Extracts IP from GML node attributes and validates format.
@@ -50,7 +49,11 @@ fn parse_ip(attributes: &HashMap<String, String>) -> Option<String> {
             if cleaned_value.parse::<std::net::Ipv4Addr>().is_ok() {
                 return Some(cleaned_value.to_string());
             } else {
-                log::warn!("Invalid IP address '{}' in attribute '{}'", cleaned_value, key);
+                log::warn!(
+                    "Invalid IP address '{}' in attribute '{}'",
+                    cleaned_value,
+                    key
+                );
             }
         }
     }
@@ -152,7 +155,7 @@ impl Lexer {
     fn read_string(&mut self) -> Result<String> {
         let mut result = String::new();
         self.advance(); // Skip opening quote
-        
+
         while let Some(ch) = self.current_char {
             if ch == '"' {
                 self.advance(); // Skip closing quote
@@ -179,13 +182,13 @@ impl Lexer {
                 self.advance();
             }
         }
-        
+
         Err(eyre!("Unterminated string literal"))
     }
 
     fn read_identifier_or_number(&mut self) -> String {
         let mut result = String::new();
-        
+
         while let Some(ch) = self.current_char {
             if ch.is_alphanumeric() || ch == '_' || ch == '.' || ch == '-' || ch == '+' {
                 result.push(ch);
@@ -194,14 +197,14 @@ impl Lexer {
                 break;
             }
         }
-        
+
         result
     }
 
     fn next_token(&mut self) -> Result<Token> {
         loop {
             self.skip_whitespace();
-            
+
             match self.current_char {
                 None => return Ok(Token::Eof),
                 Some('#') => {
@@ -262,7 +265,11 @@ impl Parser {
                 self.advance()?;
                 Ok(())
             }
-            _ => Err(eyre!("Expected identifier '{}', found {:?}", expected, self.current_token)),
+            _ => Err(eyre!(
+                "Expected identifier '{}', found {:?}",
+                expected,
+                self.current_token
+            )),
         }
     }
 
@@ -297,7 +304,6 @@ impl Parser {
         }
     }
 
-
     fn parse_node(&mut self) -> Result<GmlNode> {
         self.expect_identifier("node")?;
         self.expect_left_bracket()?;
@@ -315,8 +321,11 @@ impl Parser {
 
                     match key.as_str() {
                         "id" => {
-                            id = Some(value.parse::<u32>()
-                                .map_err(|_| eyre!("Invalid node id: {}", value))?);
+                            id = Some(
+                                value
+                                    .parse::<u32>()
+                                    .map_err(|_| eyre!("Invalid node id: {}", value))?,
+                            );
                         }
                         "label" => {
                             label = Some(value);
@@ -326,7 +335,12 @@ impl Parser {
                         }
                     }
                 }
-                _ => return Err(eyre!("Expected attribute name in node, found {:?}", self.current_token)),
+                _ => {
+                    return Err(eyre!(
+                        "Expected attribute name in node, found {:?}",
+                        self.current_token
+                    ))
+                }
             }
         }
 
@@ -350,26 +364,32 @@ impl Parser {
     fn parse_edge(&mut self) -> Result<GmlEdge> {
         self.expect_identifier("edge")?;
         self.expect_left_bracket()?;
-        
+
         let mut source = None;
         let mut target = None;
         let mut attributes = HashMap::new();
-        
+
         while self.current_token != Token::RightBracket {
             match &self.current_token {
                 Token::Identifier(key) => {
                     let key = key.clone();
                     self.advance()?;
                     let value = self.parse_value()?;
-                    
+
                     match key.as_str() {
                         "source" => {
-                            source = Some(value.parse::<u32>()
-                                .map_err(|_| eyre!("Invalid edge source: {}", value))?);
+                            source = Some(
+                                value
+                                    .parse::<u32>()
+                                    .map_err(|_| eyre!("Invalid edge source: {}", value))?,
+                            );
                         }
                         "target" => {
-                            target = Some(value.parse::<u32>()
-                                .map_err(|_| eyre!("Invalid edge target: {}", value))?);
+                            target = Some(
+                                value
+                                    .parse::<u32>()
+                                    .map_err(|_| eyre!("Invalid edge target: {}", value))?,
+                            );
                         }
                         _ => {
                             // Special handling for packet_loss: convert percentage strings to floats
@@ -387,15 +407,20 @@ impl Parser {
                         }
                     }
                 }
-                _ => return Err(eyre!("Expected attribute name in edge, found {:?}", self.current_token)),
+                _ => {
+                    return Err(eyre!(
+                        "Expected attribute name in edge, found {:?}",
+                        self.current_token
+                    ))
+                }
             }
         }
-        
+
         self.expect_right_bracket()?;
-        
+
         let source = source.ok_or_else(|| eyre!("Edge missing required 'source' attribute"))?;
         let target = target.ok_or_else(|| eyre!("Edge missing required 'target' attribute"))?;
-        
+
         Ok(GmlEdge {
             source,
             target,
@@ -406,11 +431,11 @@ impl Parser {
     fn parse_graph(&mut self) -> Result<GmlGraph> {
         self.expect_identifier("graph")?;
         self.expect_left_bracket()?;
-        
+
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
         let mut attributes = HashMap::new();
-        
+
         while self.current_token != Token::RightBracket {
             match &self.current_token {
                 Token::Identifier(keyword) => {
@@ -430,12 +455,17 @@ impl Parser {
                         }
                     }
                 }
-                _ => return Err(eyre!("Expected keyword in graph, found {:?}", self.current_token)),
+                _ => {
+                    return Err(eyre!(
+                        "Expected keyword in graph, found {:?}",
+                        self.current_token
+                    ))
+                }
             }
         }
-        
+
         self.expect_right_bracket()?;
-        
+
         Ok(GmlGraph {
             nodes,
             edges,
@@ -446,12 +476,12 @@ impl Parser {
 
 /// Parse a GML file and return a GmlGraph object
 pub fn parse_gml_file(path: &str) -> Result<GmlGraph> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| eyre!("Failed to read GML file '{}': {}", path, e))?;
-    
+    let content =
+        fs::read_to_string(path).map_err(|e| eyre!("Failed to read GML file '{}': {}", path, e))?;
+
     let lexer = Lexer::new(&content);
     let mut parser = Parser::new(lexer)?;
-    
+
     parser.parse_graph()
 }
 
@@ -461,8 +491,15 @@ pub fn get_autonomous_systems(graph: &GmlGraph) -> Vec<Vec<u32>> {
     let mut nodes_without_as = Vec::new();
 
     for node in &graph.nodes {
-        if let Some(as_number) = node.attributes.get("AS").or_else(|| node.attributes.get("as")) {
-            as_groups.entry(as_number.clone()).or_insert_with(Vec::new).push(node.id);
+        if let Some(as_number) = node
+            .attributes
+            .get("AS")
+            .or_else(|| node.attributes.get("as"))
+        {
+            as_groups
+                .entry(as_number.clone())
+                .or_insert_with(Vec::new)
+                .push(node.id);
         } else {
             nodes_without_as.push(node.id);
         }
@@ -487,22 +524,28 @@ pub fn validate_topology(graph: &GmlGraph) -> Result<(), String> {
             return Err(format!("Duplicate node ID: {}", node.id));
         }
     }
-    
+
     // Check that all edges reference valid nodes
     for edge in &graph.edges {
         if !node_ids.contains(&edge.source) {
-            return Err(format!("Edge references non-existent source node: {}", edge.source));
+            return Err(format!(
+                "Edge references non-existent source node: {}",
+                edge.source
+            ));
         }
         if !node_ids.contains(&edge.target) {
-            return Err(format!("Edge references non-existent target node: {}", edge.target));
+            return Err(format!(
+                "Edge references non-existent target node: {}",
+                edge.target
+            ));
         }
     }
-    
+
     // Check for basic connectivity (at least one edge if there are multiple nodes)
     if graph.nodes.len() > 1 && graph.edges.is_empty() {
         return Err("Graph has multiple nodes but no edges - network is disconnected".to_string());
     }
-    
+
     Ok(())
 }
 
@@ -521,12 +564,12 @@ mod tests {
                 edge [ source 0 target 1 ]
             ]
         "#;
-        
+
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", gml_content).unwrap();
-        
+
         let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
-        
+
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges.len(), 1);
         assert_eq!(graph.nodes[0].id, 0);
@@ -546,17 +589,29 @@ mod tests {
                 edge [ source 0 target 1 weight 10 latency "5ms" ]
             ]
         "#;
-        
+
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", gml_content).unwrap();
-        
+
         let graph = parse_gml_file(temp_file.path().to_str().unwrap()).unwrap();
-        
+
         assert_eq!(graph.attributes.get("directed"), Some(&"1".to_string()));
-        assert_eq!(graph.nodes[0].attributes.get("AS"), Some(&"65001".to_string()));
-        assert_eq!(graph.nodes[0].attributes.get("bandwidth"), Some(&"1000".to_string()));
-        assert_eq!(graph.edges[0].attributes.get("weight"), Some(&"10".to_string()));
-        assert_eq!(graph.edges[0].attributes.get("latency"), Some(&"5ms".to_string()));
+        assert_eq!(
+            graph.nodes[0].attributes.get("AS"),
+            Some(&"65001".to_string())
+        );
+        assert_eq!(
+            graph.nodes[0].attributes.get("bandwidth"),
+            Some(&"1000".to_string())
+        );
+        assert_eq!(
+            graph.edges[0].attributes.get("weight"),
+            Some(&"10".to_string())
+        );
+        assert_eq!(
+            graph.edges[0].attributes.get("latency"),
+            Some(&"5ms".to_string())
+        );
     }
 
     #[test]
@@ -564,20 +619,26 @@ mod tests {
         // Test parsing the actual testnet.gml file if it exists
         if std::path::Path::new("testnet.gml").exists() {
             let graph = parse_gml_file("testnet.gml").unwrap();
-            
+
             println!("Successfully parsed testnet.gml!");
             println!("Nodes: {}", graph.nodes.len());
             for node in &graph.nodes {
-                println!("  Node {}: label={:?}, attributes={:?}", node.id, node.label, node.attributes);
+                println!(
+                    "  Node {}: label={:?}, attributes={:?}",
+                    node.id, node.label, node.attributes
+                );
             }
             println!("Edges: {}", graph.edges.len());
             for edge in &graph.edges {
-                println!("  Edge {} -> {}: attributes={:?}", edge.source, edge.target, edge.attributes);
+                println!(
+                    "  Edge {} -> {}: attributes={:?}",
+                    edge.source, edge.target, edge.attributes
+                );
             }
-            
+
             // Test validation
             validate_topology(&graph).unwrap();
-            
+
             // Test autonomous systems
             let as_groups = get_autonomous_systems(&graph);
             println!("Autonomous systems: {} groups", as_groups.len());
@@ -596,21 +657,48 @@ mod tests {
     fn test_get_autonomous_systems() {
         let graph = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
-                GmlNode { id: 1, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65001".to_string())].iter().cloned().collect() },
-                GmlNode { id: 2, label: None, ip: None, region: None, attributes: [("AS".to_string(), "65002".to_string())].iter().cloned().collect() },
+                GmlNode {
+                    id: 0,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: [("AS".to_string(), "65001".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                },
+                GmlNode {
+                    id: 1,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: [("AS".to_string(), "65001".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                },
+                GmlNode {
+                    id: 2,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: [("AS".to_string(), "65002".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                },
             ],
             edges: vec![],
             attributes: HashMap::new(),
         };
-        
+
         let as_groups = get_autonomous_systems(&graph);
         assert_eq!(as_groups.len(), 2);
-        
+
         // Check that nodes 0 and 1 are in the same AS
         let as1 = as_groups.iter().find(|group| group.contains(&0)).unwrap();
         assert!(as1.contains(&1));
-        
+
         // Check that node 2 is in a different AS
         let as2 = as_groups.iter().find(|group| group.contains(&2)).unwrap();
         assert_eq!(as2.len(), 1);
@@ -620,12 +708,26 @@ mod tests {
     fn test_validate_topology() {
         let graph = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
-                GmlNode { id: 1, label: None, ip: None, region: None, attributes: HashMap::new() },
+                GmlNode {
+                    id: 0,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: HashMap::new(),
+                },
+                GmlNode {
+                    id: 1,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: HashMap::new(),
+                },
             ],
-            edges: vec![
-                GmlEdge { source: 0, target: 1, attributes: HashMap::new() },
-            ],
+            edges: vec![GmlEdge {
+                source: 0,
+                target: 1,
+                attributes: HashMap::new(),
+            }],
             attributes: HashMap::new(),
         };
 
@@ -634,8 +736,20 @@ mod tests {
         // Test duplicate node ID
         let invalid_graph = GmlGraph {
             nodes: vec![
-                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
-                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
+                GmlNode {
+                    id: 0,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: HashMap::new(),
+                },
+                GmlNode {
+                    id: 0,
+                    label: None,
+                    ip: None,
+                    region: None,
+                    attributes: HashMap::new(),
+                },
             ],
             edges: vec![],
             attributes: HashMap::new(),
@@ -645,12 +759,18 @@ mod tests {
 
         // Test invalid edge reference
         let invalid_graph2 = GmlGraph {
-            nodes: vec![
-                GmlNode { id: 0, label: None, ip: None, region: None, attributes: HashMap::new() },
-            ],
-            edges: vec![
-                GmlEdge { source: 0, target: 999, attributes: HashMap::new() },
-            ],
+            nodes: vec![GmlNode {
+                id: 0,
+                label: None,
+                ip: None,
+                region: None,
+                attributes: HashMap::new(),
+            }],
+            edges: vec![GmlEdge {
+                source: 0,
+                target: 999,
+                attributes: HashMap::new(),
+            }],
             attributes: HashMap::new(),
         };
 
@@ -673,7 +793,8 @@ mod tests {
         assert!(!node.has_ip());
 
         // Add IP with "ip" key
-        node.attributes.insert("ip".to_string(), "192.168.1.1".to_string());
+        node.attributes
+            .insert("ip".to_string(), "192.168.1.1".to_string());
         // Note: get_ip() now returns from dedicated field, not attributes
         assert_eq!(node.get_ip(), None); // Should be None since dedicated field is None
 
@@ -683,7 +804,10 @@ mod tests {
             label: None,
             ip: None,
             region: None,
-            attributes: [("ip_addr".to_string(), "10.0.0.1".to_string())].iter().cloned().collect(),
+            attributes: [("ip_addr".to_string(), "10.0.0.1".to_string())]
+                .iter()
+                .cloned()
+                .collect(),
         };
         assert_eq!(node2.get_ip(), None);
 
@@ -692,7 +816,10 @@ mod tests {
             label: None,
             ip: None,
             region: None,
-            attributes: [("address".to_string(), "172.16.0.1".to_string())].iter().cloned().collect(),
+            attributes: [("address".to_string(), "172.16.0.1".to_string())]
+                .iter()
+                .cloned()
+                .collect(),
         };
         assert_eq!(node3.get_ip(), None);
 
@@ -702,11 +829,13 @@ mod tests {
             label: None,
             ip: None,
             region: None,
-            attributes: [("ip".to_string(), "invalid.ip".to_string())].iter().cloned().collect(),
+            attributes: [("ip".to_string(), "invalid.ip".to_string())]
+                .iter()
+                .cloned()
+                .collect(),
         };
         assert!(node4.get_ip().is_none());
     }
-
 
     #[test]
     fn test_gml_node_is_valid_ip() {
@@ -824,7 +953,10 @@ mod tests {
         assert_eq!(node.ip, Some("192.168.1.1".to_string()));
         assert_eq!(node.region, Some("North America".to_string()));
         assert_eq!(node.attributes.get("AS"), Some(&"65001".to_string()));
-        assert_eq!(node.attributes.get("bandwidth"), Some(&"1000Mbit".to_string()));
+        assert_eq!(
+            node.attributes.get("bandwidth"),
+            Some(&"1000Mbit".to_string())
+        );
     }
 
     #[test]

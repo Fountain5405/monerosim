@@ -103,9 +103,12 @@ pub fn build_peer_topology(
 
     for (i, (agent_id, agent_config)) in user_agents.iter().enumerate() {
         let is_miner = agent_config.is_miner();
-        let is_seed_node = is_miner || agent_config.attributes.as_ref()
-            .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
-            .unwrap_or(false);
+        let is_seed_node = is_miner
+            || agent_config
+                .attributes
+                .as_ref()
+                .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
+                .unwrap_or(false);
 
         let network_node_id = if i < agent_node_assignments.len() {
             agent_node_assignments[i]
@@ -113,10 +116,21 @@ pub fn build_peer_topology(
             0
         };
 
-        let subnet_group = user_agents.iter()
+        let subnet_group = user_agents
+            .iter()
             .find(|(id, _)| id.as_str() == *agent_id)
             .and_then(|(_, config)| config.subnet_group.as_deref());
-        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group)?;
+        let agent_ip = get_agent_ip(
+            AgentType::UserAgent,
+            agent_id,
+            i,
+            network_node_id,
+            gml_graph,
+            using_gml_topology,
+            subnet_manager,
+            ip_registry,
+            subnet_group,
+        )?;
         let agent_port = crate::MONERO_P2P_PORT;
 
         all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
@@ -138,8 +152,11 @@ pub fn build_peer_topology(
         }
 
         agent_info.push(AgentEntry {
-            index: i, is_seed_node,
-            id: agent_id.to_string(), ip: agent_ip, port: agent_port,
+            index: i,
+            is_seed_node,
+            id: agent_id.to_string(),
+            ip: agent_ip,
+            port: agent_port,
         });
     }
 
@@ -159,7 +176,11 @@ pub fn build_peer_topology(
     }
 
     // Build seed_agents list from actual miner IPs (Dynamic mode) or promoted seed_nodes
-    let seed_source = if matches!(peer_mode, PeerMode::Dynamic) { &miners } else { &seed_nodes };
+    let seed_source = if matches!(peer_mode, PeerMode::Dynamic) {
+        &miners
+    } else {
+        &seed_nodes
+    };
     for entry in seed_source {
         seed_agents.push(format!("{}:{}", entry.ip, entry.port));
     }

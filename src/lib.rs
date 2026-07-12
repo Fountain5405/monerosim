@@ -21,16 +21,14 @@
 /// Override on hardened RHEL/SUSE installs where `/tmp` may have noexec,
 /// SELinux contexts, or aggressive cleanup.
 pub fn shared_dir() -> String {
-    std::env::var("MONEROSIM_SHARED_DIR")
-        .unwrap_or_else(|_| "/tmp/monerosim_shared".to_string())
+    std::env::var("MONEROSIM_SHARED_DIR").unwrap_or_else(|_| "/tmp/monerosim_shared".to_string())
 }
 
 /// Default base directory for per-agent monerod data directories.
 ///
 /// Reads `MONEROSIM_DAEMON_DATA_DIR` env var; defaults to `/tmp`.
 pub fn default_daemon_data_dir() -> String {
-    std::env::var("MONEROSIM_DAEMON_DATA_DIR")
-        .unwrap_or_else(|_| "/tmp".to_string())
+    std::env::var("MONEROSIM_DAEMON_DATA_DIR").unwrap_or_else(|_| "/tmp".to_string())
 }
 
 /// Shadow simulation epoch: 2000-01-01 00:00:00 UTC as Unix timestamp.
@@ -93,14 +91,14 @@ pub fn fallback_seed_agent_id(seed_index: usize) -> String {
     format!("monero-seed-{:03}", seed_index)
 }
 
+pub mod agent;
+pub mod analysis;
 pub mod config;
 pub mod config_loader;
 pub mod gml_parser;
-pub mod shadow;
 pub mod ip;
-pub mod topology;
-pub mod agent;
-pub mod process;
-pub mod utils;
 pub mod orchestrator;
-pub mod analysis;
+pub mod process;
+pub mod shadow;
+pub mod topology;
+pub mod utils;

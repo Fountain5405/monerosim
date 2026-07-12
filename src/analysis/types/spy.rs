@@ -40,9 +40,9 @@ pub struct SpyNodeReport {
 /// Distribution of timing spreads
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimingDistribution {
-    pub high_vulnerability_count: usize,   // < 100ms
+    pub high_vulnerability_count: usize,     // < 100ms
     pub moderate_vulnerability_count: usize, // 100-500ms
-    pub low_vulnerability_count: usize,    // > 500ms
+    pub low_vulnerability_count: usize,      // > 500ms
 }
 
 /// A sender that is particularly vulnerable to deanonymization

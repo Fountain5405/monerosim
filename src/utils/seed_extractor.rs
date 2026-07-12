@@ -3,16 +3,16 @@
 //! Extracts hardcoded seed node IPs from monerod source code.
 //! This allows the simulation to use the same IPs that monerod expects.
 
+use regex::Regex;
+use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
-use std::fs;
-use std::env;
-use regex::Regex;
 
-static IP_PATTERN: LazyLock<Regex> = LazyLock::new(||
+static IP_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"full_addrs\.insert\("(\d+\.\d+\.\d+\.\d+):(\d+)"\)"#)
         .expect("invariant: IP_PATTERN is a valid regex")
-);
+});
 
 /// Mainnet seed node info
 #[derive(Debug, Clone)]
@@ -106,7 +106,8 @@ pub fn extract_mainnet_seed_ips_from_repo(monerosim_repo_dir: &Path) -> Option<V
 /// ```
 fn parse_mainnet_seed_ips(content: &str) -> Result<Vec<SeedNode>, String> {
     // Find the get_ip_seed_nodes function
-    let func_start = content.find("get_ip_seed_nodes()")
+    let func_start = content
+        .find("get_ip_seed_nodes()")
         .ok_or("Could not find get_ip_seed_nodes() function")?;
 
     // Get the content after the function definition

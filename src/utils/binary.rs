@@ -59,7 +59,9 @@ pub fn resolve_binary_path(name_or_path: &str) -> Result<PathBuf, BinaryError> {
         Ok(home_dir.join(rest))
     } else if name_or_path.starts_with('~') {
         // Bare "~" or "~user" - unsupported (no username expansion)
-        Err(BinaryError::InvalidPath { path: name_or_path.to_string() })
+        Err(BinaryError::InvalidPath {
+            path: name_or_path.to_string(),
+        })
     } else if name_or_path.contains('/') {
         // Explicit path, no expansion needed
         Ok(PathBuf::from(name_or_path))
@@ -81,7 +83,9 @@ pub fn resolve_binary_path_for_shadow(name_or_path: &str) -> Result<String, Bina
         Ok(format!("{}/{}", home_str, rest))
     } else if name_or_path.starts_with('~') {
         // Bare "~" or "~user" - unsupported (no username expansion)
-        Err(BinaryError::InvalidPath { path: name_or_path.to_string() })
+        Err(BinaryError::InvalidPath {
+            path: name_or_path.to_string(),
+        })
     } else if name_or_path.contains('/') {
         // Explicit path, already absolute or relative - use as-is
         Ok(name_or_path.to_string())

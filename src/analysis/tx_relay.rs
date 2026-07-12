@@ -17,11 +17,8 @@ pub fn analyze_tx_relay_v2(
     let delivery_analysis = analyze_tx_delivery(transactions, log_data, agents);
     let connection_stability = analyze_connection_stability(log_data);
     let request_response = analyze_request_response(log_data);
-    let assessment = generate_assessment(
-        &protocol_usage,
-        &delivery_analysis,
-        &connection_stability,
-    );
+    let assessment =
+        generate_assessment(&protocol_usage, &delivery_analysis, &connection_stability);
 
     TxRelayV2Report {
         protocol_usage,
@@ -142,7 +139,9 @@ fn analyze_tx_delivery(
 }
 
 /// Analyze connection stability metrics
-fn analyze_connection_stability(log_data: &HashMap<String, NodeLogData>) -> ConnectionStabilityMetrics {
+fn analyze_connection_stability(
+    log_data: &HashMap<String, NodeLogData>,
+) -> ConnectionStabilityMetrics {
     let mut total_drops = 0usize;
     let mut drops_tx_verification = 0usize;
     let mut drops_duplicate_tx = 0usize;
@@ -277,7 +276,8 @@ fn generate_assessment(
             "Low propagation coverage: {:.1}% average",
             delivery_analysis.average_propagation_coverage * 100.0
         ));
-        recommendations.push("Check network connectivity - transactions not reaching all nodes".to_string());
+        recommendations
+            .push("Check network connectivity - transactions not reaching all nodes".to_string());
     } else {
         findings.push(format!(
             "Good propagation coverage: {:.1}% average",
@@ -305,9 +305,8 @@ fn generate_assessment(
                 "TX verification failures caused {} connection drops",
                 connection_stability.drops_tx_verification
             ));
-            recommendations.push(
-                "TX verification drops may indicate v1/v2 protocol mismatch".to_string(),
-            );
+            recommendations
+                .push("TX verification drops may indicate v1/v2 protocol mismatch".to_string());
         }
 
         if connection_stability.drops_duplicate_tx > 0 {
@@ -340,10 +339,7 @@ fn generate_assessment(
 }
 
 /// Generate a comparison report between two simulation runs (v1 vs v2)
-pub fn compare_runs(
-    v1_report: &TxRelayV2Report,
-    v2_report: &TxRelayV2Report,
-) -> Vec<String> {
+pub fn compare_runs(v1_report: &TxRelayV2Report, v2_report: &TxRelayV2Report) -> Vec<String> {
     let mut comparison: Vec<String> = Vec::new();
 
     comparison.push("=== TX RELAY V1 vs V2 COMPARISON ===".to_string());

@@ -4,8 +4,10 @@
 //! for monero-wallet-rpc instances.
 
 use crate::config::OptionValue;
-use crate::shadow::{ShadowProcess, ProcessArgs};
-use crate::utils::options::{options_to_args, merge_options, shell_quote_args, translate_wallet_log_level};
+use crate::shadow::{ProcessArgs, ShadowProcess};
+use crate::utils::options::{
+    merge_options, options_to_args, shell_quote_args, translate_wallet_log_level,
+};
 use std::collections::BTreeMap;
 
 /// Build wallet command-line arguments common to both local and remote daemon modes.
@@ -65,14 +67,20 @@ fn build_wallet_args(
 /// public node.
 /// `Remote(Some(addr))` for an explicit address → `http://addr`.
 pub enum DaemonAddress<'a> {
-    Local { agent_ip: &'a str, daemon_rpc_port: u16 },
+    Local {
+        agent_ip: &'a str,
+        daemon_rpc_port: u16,
+    },
     Remote(Option<&'a str>),
 }
 
 impl DaemonAddress<'_> {
     fn format(&self) -> String {
         match self {
-            DaemonAddress::Local { agent_ip, daemon_rpc_port } => {
+            DaemonAddress::Local {
+                agent_ip,
+                daemon_rpc_port,
+            } => {
                 format!("http://{}:{}", agent_ip, daemon_rpc_port)
             }
             DaemonAddress::Remote(Some(addr)) if *addr != "auto" => {
@@ -106,8 +114,15 @@ pub struct WalletProcessArgs<'a> {
 pub fn add_wallet_process(args: WalletProcessArgs<'_>) -> String {
     let daemon_address = args.daemon.format();
     let wallet_args = build_wallet_args(
-        args.agent_id, args.agent_ip, &daemon_address, args.wallet_rpc_port,
-        args.environment, args.custom_args, args.wallet_defaults, args.wallet_options, args.shared_dir,
+        args.agent_id,
+        args.agent_ip,
+        &daemon_address,
+        args.wallet_rpc_port,
+        args.environment,
+        args.custom_args,
+        args.wallet_defaults,
+        args.wallet_options,
+        args.shared_dir,
     );
 
     // Shell-quoted command string for the WALLET_RPC_CMD env var consumed

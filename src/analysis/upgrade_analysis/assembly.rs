@@ -128,9 +128,21 @@ pub(super) fn create_period_summary(
         std_gini: std_gini,
         std_stem_length: std_stem,
         std_stem_length_by_gap_threshold: std_stem_by_threshold,
-        total_bytes_sent: if total_bytes_sent > 0 { Some(total_bytes_sent) } else { None },
-        total_bytes_received: if total_bytes_received > 0 { Some(total_bytes_received) } else { None },
-        total_bandwidth: if total_bandwidth > 0 { Some(total_bandwidth) } else { None },
+        total_bytes_sent: if total_bytes_sent > 0 {
+            Some(total_bytes_sent)
+        } else {
+            None
+        },
+        total_bytes_received: if total_bytes_received > 0 {
+            Some(total_bytes_received)
+        } else {
+            None
+        },
+        total_bandwidth: if total_bandwidth > 0 {
+            Some(total_bandwidth)
+        } else {
+            None
+        },
         mean_bandwidth_per_window: mean_bw,
         std_bandwidth_per_window: std_bw,
         windows: windows.iter().map(|w| (*w).clone()).collect(),
@@ -138,7 +150,10 @@ pub(super) fn create_period_summary(
 }
 
 /// Compare pre and post upgrade periods.
-pub(super) fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics) -> Vec<MetricChange> {
+pub(super) fn compare_periods(
+    pre: &AggregatedMetrics,
+    post: &AggregatedMetrics,
+) -> Vec<MetricChange> {
     let mut changes = Vec::new();
 
     // Helper to create a metric change with explicit sample extraction
@@ -200,7 +215,14 @@ pub(super) fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics)
         let (pre_v, post_v) = (pre_val?, post_val?);
         let pre_samples: Vec<f64> = pre.windows.iter().filter_map(extract).collect();
         let post_samples: Vec<f64> = post.windows.iter().filter_map(extract).collect();
-        Some(build_change(name, pre_v, post_v, pre_samples, post_samples, higher_is_better))
+        Some(build_change(
+            name,
+            pre_v,
+            post_v,
+            pre_samples,
+            post_samples,
+            higher_is_better,
+        ))
     };
 
     // Per-visibility-level spy accuracy comparisons (lower is better)
@@ -210,7 +232,9 @@ pub(super) fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics)
         &post.mean_spy_accuracy_by_visibility,
     ) {
         for (level_idx, &vis) in visibility_levels.iter().enumerate() {
-            if let (Some(&pre_v), Some(&post_v)) = (pre_means.get(level_idx), post_means.get(level_idx)) {
+            if let (Some(&pre_v), Some(&post_v)) =
+                (pre_means.get(level_idx), post_means.get(level_idx))
+            {
                 let name = format!("Spy Acc ({}% vis)", (vis * 100.0) as u32);
                 let pre_samples: Vec<f64> = pre
                     .windows
@@ -230,7 +254,14 @@ pub(super) fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics)
                             .and_then(|v| v.get(level_idx).copied())
                     })
                     .collect();
-                changes.push(build_change(&name, pre_v, post_v, pre_samples, post_samples, false));
+                changes.push(build_change(
+                    &name,
+                    pre_v,
+                    post_v,
+                    pre_samples,
+                    post_samples,
+                    false,
+                ));
             }
         }
     }
@@ -305,7 +336,14 @@ pub(super) fn compare_periods(pre: &AggregatedMetrics, post: &AggregatedMetrics)
                             .and_then(|v| v.get(t_idx).copied())
                     })
                     .collect();
-                changes.push(build_change(&name, pre_v, post_v, pre_samples, post_samples, true));
+                changes.push(build_change(
+                    &name,
+                    pre_v,
+                    post_v,
+                    pre_samples,
+                    post_samples,
+                    true,
+                ));
             }
         }
     }
@@ -350,29 +388,47 @@ fn generate_interpretation(
     match metric_name {
         name if name.starts_with("Spy Acc (") => format!(
             "Privacy {} - {} inference {} by {:.1}%",
-            impact_word, name, direction, percent_change.abs()
+            impact_word,
+            name,
+            direction,
+            percent_change.abs()
         ),
         "Avg Propagation (ms)" => format!(
             "Network speed {} - propagation time {} by {:.1}%",
-            impact_word, direction, percent_change.abs()
+            impact_word,
+            direction,
+            percent_change.abs()
         ),
         "Avg Peer Count" => format!(
             "Connectivity {} - average peer count {} by {:.1}%",
-            impact_word, direction, percent_change.abs()
+            impact_word,
+            direction,
+            percent_change.abs()
         ),
         "Gini Coefficient" => format!(
             "Centralization {} - Gini coefficient {} by {:.1}%",
-            impact_word, direction, percent_change.abs()
+            impact_word,
+            direction,
+            percent_change.abs()
         ),
         name if name == "Avg Stem Length" || name.starts_with("Stem Len (") => format!(
             "Dandelion++ privacy {} - stem length {} by {:.1}%",
-            impact_word, direction, percent_change.abs()
+            impact_word,
+            direction,
+            percent_change.abs()
         ),
         "Bandwidth per Window" => format!(
             "Bandwidth efficiency {} - data usage {} by {:.1}%",
-            impact_word, direction, percent_change.abs()
+            impact_word,
+            direction,
+            percent_change.abs()
         ),
-        _ => format!("{} {} by {:.1}%", metric_name, direction, percent_change.abs()),
+        _ => format!(
+            "{} {} by {:.1}%",
+            metric_name,
+            direction,
+            percent_change.abs()
+        ),
     }
 }
 
@@ -409,16 +465,19 @@ pub(super) fn generate_assessment(
     // Determine verdict
     let verdict = if pre.is_none() || post.is_none() {
         recommendations.push(
-            "Provide upgrade manifest or manual timestamps to identify pre/post periods".to_string(),
+            "Provide upgrade manifest or manual timestamps to identify pre/post periods"
+                .to_string(),
         );
         UpgradeVerdict::Inconclusive
     } else if degraded > 0 && improved == 0 {
-        recommendations.push("Consider reverting upgrade or investigating degraded metrics".to_string());
+        recommendations
+            .push("Consider reverting upgrade or investigating degraded metrics".to_string());
         UpgradeVerdict::Negative
     } else if improved > 0 && degraded == 0 {
         UpgradeVerdict::Positive
     } else if improved > 0 && degraded > 0 {
-        recommendations.push("Investigate trade-offs between improved and degraded metrics".to_string());
+        recommendations
+            .push("Investigate trade-offs between improved and degraded metrics".to_string());
         UpgradeVerdict::Mixed
     } else {
         findings.push("No significant changes detected in measured metrics".to_string());

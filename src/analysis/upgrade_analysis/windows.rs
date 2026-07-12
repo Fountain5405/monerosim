@@ -66,10 +66,7 @@ pub(super) fn prepartition_data<'a>(
         .collect();
     bw_pairs.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-    let bw_sorted: Vec<BwRef> = bw_pairs
-        .iter()
-        .map(|(e, _)| BwRef { event: e })
-        .collect();
+    let bw_sorted: Vec<BwRef> = bw_pairs.iter().map(|(e, _)| BwRef { event: e }).collect();
 
     let bw_window_ranges: Vec<(usize, usize)> = windows
         .iter()
@@ -84,9 +81,7 @@ pub(super) fn prepartition_data<'a>(
     // Sort all connection events globally by timestamp
     let mut all_conn_events: Vec<(&ConnectionEvent, &str)> = log_data
         .iter()
-        .flat_map(|(nid, nd)| {
-            nd.connection_events.iter().map(move |e| (e, nid.as_str()))
-        })
+        .flat_map(|(nid, nd)| nd.connection_events.iter().map(move |e| (e, nid.as_str())))
         .collect();
     all_conn_events.sort_by(|a, b| {
         a.0.timestamp
@@ -153,9 +148,9 @@ pub(super) fn build_spy_trial_sets(
     trials_per_level: usize,
     base_seed: u64,
 ) -> SpyTrialSets {
+    use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
-    use rand::rngs::StdRng;
 
     let mut trial_sets = Vec::with_capacity(visibility_levels.len());
     for (level_idx, &visibility) in visibility_levels.iter().enumerate() {
@@ -166,10 +161,16 @@ pub(super) fn build_spy_trial_sets(
             let mut rng = StdRng::seed_from_u64(seed);
             let mut shuffled = node_ids.to_vec();
             shuffled.shuffle(&mut rng);
-            let monitored: HashSet<String> = shuffled[..n_monitored].iter().map(|s| s.to_string()).collect();
+            let monitored: HashSet<String> = shuffled[..n_monitored]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
             level_trials.push(monitored);
         }
         trial_sets.push(level_trials);
     }
-    SpyTrialSets { visibility_levels: visibility_levels.to_vec(), trial_sets }
+    SpyTrialSets {
+        visibility_levels: visibility_levels.to_vec(),
+        trial_sets,
+    }
 }

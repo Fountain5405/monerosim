@@ -26,8 +26,8 @@ pub use agent_config::{AgentConfig, OptionValue};
 pub use errors::{PhaseValidationError, ValidationError};
 pub use phases::{DaemonPhase, WalletPhase, MIN_PHASE_GAP_SECONDS};
 pub use types::{
-    AgentDefinitions, TurnoverConfig, Config, DaemonConfig, DaemonSelectionStrategy, Distribution,
-    DistributionStrategy, FallbackSeedsMode, GeneralConfig, Network, PeerMode,
-    PerformanceConfig, RegionWeights, Topology,
+    AgentDefinitions, Config, DaemonConfig, DaemonSelectionStrategy, Distribution,
+    DistributionStrategy, FallbackSeedsMode, GeneralConfig, Network, PeerMode, PerformanceConfig,
+    RegionWeights, Topology, TurnoverConfig,
 };
 pub use validation::validate_daemon_phases;

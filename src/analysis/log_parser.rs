@@ -153,8 +153,8 @@ impl Default for ParseState {
 
 /// Parse a single log file
 pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
-    let file = File::open(path)
-        .with_context(|| format!("Failed to open log file: {}", path.display()))?;
+    let file =
+        File::open(path).with_context(|| format!("Failed to open log file: {}", path.display()))?;
     let reader = BufReader::with_capacity(64 * 1024, file);
 
     let mut data = NodeLogData::new(node_id.to_string());
@@ -173,25 +173,36 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for TX notification (sets up context for following TX hash lines)
         if let Some(caps) = PATTERNS.tx_notification.captures(&line) {
-            let source_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-            let source_port: u16 = caps.get(2)
+            let source_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+            let source_port: u16 = caps
+                .get(2)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
             let direction = parse_direction(caps.get(3).map(|m| m.as_str()).unwrap_or(""));
-            let tx_count: u32 = caps.get(4)
+            let tx_count: u32 = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
 
             if tx_count > 0 {
-                state.pending_tx_notification = Some((source_ip, source_port, direction, state.last_timestamp));
+                state.pending_tx_notification =
+                    Some((source_ip, source_port, direction, state.last_timestamp));
             }
             continue;
         }
 
         // Check for TX hash (immediately follows notification)
         if let Some(caps) = PATTERNS.tx_hash.captures(&line) {
-            if let Some((ref source_ip, source_port, direction, timestamp)) = state.pending_tx_notification {
-                let tx_hash = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            if let Some((ref source_ip, source_port, direction, timestamp)) =
+                state.pending_tx_notification
+            {
+                let tx_hash = caps
+                    .get(1)
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default();
                 data.tx_observations.push(TxObservation {
                     tx_hash,
                     node_id: node_id.to_string(),
@@ -212,11 +223,18 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for connection open
         if let Some(caps) = PATTERNS.connection_open.captures(&line) {
-            let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-            let peer_port: u16 = caps.get(2)
+            let peer_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+            let peer_port: u16 = caps
+                .get(2)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
-            let connection_id = caps.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let connection_id = caps
+                .get(3)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             let direction = parse_direction(caps.get(4).map(|m| m.as_str()).unwrap_or(""));
 
             data.connection_events.push(ConnectionEvent {
@@ -232,11 +250,18 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for connection close
         if let Some(caps) = PATTERNS.connection_close.captures(&line) {
-            let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-            let peer_port: u16 = caps.get(2)
+            let peer_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+            let peer_port: u16 = caps
+                .get(2)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
-            let connection_id = caps.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let connection_id = caps
+                .get(3)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             let direction = parse_direction(caps.get(4).map(|m| m.as_str()).unwrap_or(""));
 
             data.connection_events.push(ConnectionEvent {
@@ -253,8 +278,12 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
         // Check for block received
         if let Some(caps) = PATTERNS.block_received.captures(&line) {
             let source_ip = caps.get(1).map(|m| m.as_str().to_string());
-            let block_hash = caps.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
-            let height: u64 = caps.get(4)
+            let block_hash = caps
+                .get(3)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+            let height: u64 = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
 
@@ -278,7 +307,8 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
         // Check for block height (follows block mined)
         if state.pending_block_mined {
             if let Some(caps) = PATTERNS.block_height_line.captures(&line) {
-                let height: u64 = caps.get(1)
+                let height: u64 = caps
+                    .get(1)
                     .and_then(|m| m.as_str().parse().ok())
                     .unwrap_or(0);
 
@@ -300,9 +330,13 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for TX pool hash announcement (v2)
         if let Some(caps) = PATTERNS.tx_pool_hash.captures(&line) {
-            let source_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let source_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             let direction = parse_direction(caps.get(3).map(|m| m.as_str()).unwrap_or(""));
-            let tx_count: usize = caps.get(4)
+            let tx_count: usize = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
 
@@ -319,8 +353,12 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for TX pool request received (v2)
         if let Some(caps) = PATTERNS.tx_pool_request_received.captures(&line) {
-            let source_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-            let tx_count: usize = caps.get(4)
+            let source_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+            let tx_count: usize = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
 
@@ -336,7 +374,8 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for TX pool request sent (v2)
         if let Some(caps) = PATTERNS.tx_pool_request_sent.captures(&line) {
-            let tx_count: usize = caps.get(1)
+            let tx_count: usize = caps
+                .get(1)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
 
@@ -353,7 +392,10 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
         // Check for connection drops with reasons
         if PATTERNS.drop_tx_verification.is_match(&line) {
             if let Some(caps) = PATTERNS.drop_connection.captures(&line) {
-                let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+                let peer_ip = caps
+                    .get(1)
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default();
                 data.connection_drops.push(ConnectionDrop {
                     timestamp: state.last_timestamp,
                     node_id: node_id.to_string(),
@@ -366,7 +408,10 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         if PATTERNS.drop_duplicate_tx.is_match(&line) {
             if let Some(caps) = PATTERNS.drop_connection.captures(&line) {
-                let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+                let peer_ip = caps
+                    .get(1)
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default();
                 data.connection_drops.push(ConnectionDrop {
                     timestamp: state.last_timestamp,
                     node_id: node_id.to_string(),
@@ -379,7 +424,10 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Generic dropping connection
         if let Some(caps) = PATTERNS.drop_connection.captures(&line) {
-            let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let peer_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             data.connection_drops.push(ConnectionDrop {
                 timestamp: state.last_timestamp,
                 node_id: node_id.to_string(),
@@ -391,16 +439,24 @@ pub fn parse_log_file(path: &Path, node_id: &str) -> Result<NodeLogData> {
 
         // Check for bandwidth log entry
         if let Some(caps) = PATTERNS.bandwidth.captures(&line) {
-            let peer_ip = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-            let peer_port: u16 = caps.get(2)
+            let peer_ip = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+            let peer_port: u16 = caps
+                .get(2)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
             let direction = parse_direction(caps.get(3).map(|m| m.as_str()).unwrap_or(""));
-            let bytes: u64 = caps.get(4)
+            let bytes: u64 = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
             let is_sent = caps.get(5).map(|m| m.as_str() == "sent").unwrap_or(false);
-            let command_category = caps.get(6).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let command_category = caps
+                .get(6)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             let initiated_by_us = caps.get(7).map(|m| m.as_str() == "us").unwrap_or(false);
 
             data.bandwidth_events.push(BandwidthEvent {
@@ -455,12 +511,13 @@ fn find_daemon_log_files(node_dir: &Path) -> Vec<std::path::PathBuf> {
                                     if reader.read_line(&mut buffer).unwrap_or(0) == 0 {
                                         break;
                                     }
-                                    if buffer.contains("Cryptonote protocol") ||
-                                       buffer.contains("[INC]") ||
-                                       buffer.contains("[OUT]") ||
-                                       buffer.contains("NOTIFY_NEW_TRANSACTIONS") ||
-                                       buffer.contains("bytes sent for category") ||
-                                       buffer.contains("bytes received for category") {
+                                    if buffer.contains("Cryptonote protocol")
+                                        || buffer.contains("[INC]")
+                                        || buffer.contains("[OUT]")
+                                        || buffer.contains("NOTIFY_NEW_TRANSACTIONS")
+                                        || buffer.contains("bytes sent for category")
+                                        || buffer.contains("bytes received for category")
+                                    {
                                         daemon_logs.push(path);
                                         break;
                                     }
@@ -487,7 +544,11 @@ pub fn parse_all_logs(
     log_dir: &Path,
     agents: &[AnalysisAgentInfo],
 ) -> Result<HashMap<String, NodeLogData>> {
-    log::info!("Parsing logs for {} agents from {}...", agents.len(), log_dir.display());
+    log::info!(
+        "Parsing logs for {} agents from {}...",
+        agents.len(),
+        log_dir.display()
+    );
 
     let results: Vec<(String, NodeLogData)> = agents
         .par_iter()
@@ -527,10 +588,14 @@ pub fn parse_all_logs(
                     match parse_log_file(log_path, &agent.id) {
                         Ok(data) => {
                             merged_data.tx_observations.extend(data.tx_observations);
-                            merged_data.tx_hash_announcements.extend(data.tx_hash_announcements);
+                            merged_data
+                                .tx_hash_announcements
+                                .extend(data.tx_hash_announcements);
                             merged_data.tx_requests.extend(data.tx_requests);
                             merged_data.connection_events.extend(data.connection_events);
-                            merged_data.block_observations.extend(data.block_observations);
+                            merged_data
+                                .block_observations
+                                .extend(data.block_observations);
                             merged_data.connection_drops.extend(data.connection_drops);
                             merged_data.bandwidth_events.extend(data.bandwidth_events);
                         }
@@ -541,9 +606,21 @@ pub fn parse_all_logs(
                 }
 
                 // Sort by timestamp after merging
-                merged_data.tx_observations.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
-                merged_data.connection_events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
-                merged_data.bandwidth_events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
+                merged_data.tx_observations.sort_by(|a, b| {
+                    a.timestamp
+                        .partial_cmp(&b.timestamp)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+                merged_data.connection_events.sort_by(|a, b| {
+                    a.timestamp
+                        .partial_cmp(&b.timestamp)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+                merged_data.bandwidth_events.sort_by(|a, b| {
+                    a.timestamp
+                        .partial_cmp(&b.timestamp)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
 
                 log::debug!(
                     "Parsed {} ({} log files): {} TX observations, {} connection events",
@@ -560,7 +637,11 @@ pub fn parse_all_logs(
 
     let node_count = results.len();
     let total_tx_obs: usize = results.iter().map(|(_, d)| d.tx_observations.len()).sum();
-    log::info!("Parsed {} nodes, {} total TX observations", node_count, total_tx_obs);
+    log::info!(
+        "Parsed {} nodes, {} total TX observations",
+        node_count,
+        total_tx_obs
+    );
 
     Ok(results.into_iter().collect())
 }

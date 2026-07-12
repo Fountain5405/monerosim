@@ -46,8 +46,7 @@ pub(super) fn calculate_window_metrics_fast(
     }
 
     // Build TX hash -> observations mapping from the pre-windowed slice
-    let window_tx_hashes: HashSet<&str> =
-        window_txs.iter().map(|tx| tx.tx_hash.as_str()).collect();
+    let window_tx_hashes: HashSet<&str> = window_txs.iter().map(|tx| tx.tx_hash.as_str()).collect();
 
     let mut tx_observations: HashMap<String, Vec<&TxObservation>> = HashMap::new();
     for &obs in tx_obs_slice {
@@ -66,8 +65,7 @@ pub(super) fn calculate_window_metrics_fast(
     metrics.spy_analyzable_txs = spy_analyzable;
 
     // Propagation analysis
-    let (avg_prop, median_prop, p95_prop) =
-        calculate_propagation_for_window(&tx_observations);
+    let (avg_prop, median_prop, p95_prop) = calculate_propagation_for_window(&tx_observations);
     metrics.avg_propagation_ms = avg_prop;
     metrics.median_propagation_ms = median_prop;
     metrics.p95_propagation_ms = p95_prop;
@@ -79,8 +77,12 @@ pub(super) fn calculate_window_metrics_fast(
     metrics.gini_coefficient = calculate_gini_for_window(&tx_observations);
 
     // Dandelion analysis (gap-based fluff detection, multiple thresholds)
-    let (avg_stem, paths_count, stem_by_threshold) =
-        calculate_dandelion_for_window(window_txs, &tx_observations, ip_to_agent, FLUFF_GAP_THRESHOLDS_MS);
+    let (avg_stem, paths_count, stem_by_threshold) = calculate_dandelion_for_window(
+        window_txs,
+        &tx_observations,
+        ip_to_agent,
+        FLUFF_GAP_THRESHOLDS_MS,
+    );
     metrics.avg_stem_length = avg_stem;
     metrics.stem_length_by_gap_threshold = stem_by_threshold;
     metrics.paths_reconstructed = paths_count;
@@ -250,13 +252,11 @@ fn calculate_gini_for_window(
         }
 
         // Find the node that saw this TX first
-        let first_obs = observations
-            .iter()
-            .min_by(|a, b| {
-                a.timestamp
-                    .partial_cmp(&b.timestamp)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let first_obs = observations.iter().min_by(|a, b| {
+            a.timestamp
+                .partial_cmp(&b.timestamp)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         if let Some(obs) = first_obs {
             *first_seen_counts.entry(&obs.node_id).or_insert(0) += 1;
@@ -299,9 +299,7 @@ fn trace_stem_with_threshold(
         used.insert(idx);
         stem_length = 1;
 
-        let mut current_sender_ip = node_to_ip
-            .get(sorted_obs[idx].node_id.as_str())
-            .copied();
+        let mut current_sender_ip = node_to_ip.get(sorted_obs[idx].node_id.as_str()).copied();
 
         for _ in 0..50 {
             if current_sender_ip.is_none() {
@@ -378,8 +376,8 @@ fn calculate_dandelion_for_window(
                 continue;
             }
 
-            let originator_ip =
-                originator_ip.expect("invariant: originator_ip.is_none() handled by continue above");
+            let originator_ip = originator_ip
+                .expect("invariant: originator_ip.is_none() handled by continue above");
 
             // Sort observations once
             let mut sorted_obs: Vec<&TxObservation> = observations.iter().copied().collect();
@@ -426,7 +424,8 @@ fn calculate_dandelion_for_window(
         .collect();
 
     // Representative value: use the middle threshold (2000ms) for backward compat
-    let representative_idx = REPRESENTATIVE_THRESHOLD_IDX.min(threshold_avgs.len().saturating_sub(1));
+    let representative_idx =
+        REPRESENTATIVE_THRESHOLD_IDX.min(threshold_avgs.len().saturating_sub(1));
     let avg_stem = threshold_avgs.get(representative_idx).copied();
 
     (avg_stem, paths_count, Some(threshold_avgs))

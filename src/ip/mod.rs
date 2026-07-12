@@ -2,10 +2,10 @@
 //!
 //! Handles switch-based (round-robin) and GML-based (AS-aware) allocation.
 
-pub mod registry;
-pub mod as_manager;
 pub mod allocator;
+pub mod as_manager;
+pub mod registry;
 
-pub use registry::{AgentType, GlobalIpRegistry};
-pub use as_manager::AsSubnetManager;
 pub use allocator::get_agent_ip;
+pub use as_manager::AsSubnetManager;
+pub use registry::{AgentType, GlobalIpRegistry};

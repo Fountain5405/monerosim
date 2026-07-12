@@ -1,7 +1,7 @@
-use crate::config::{Config, validate_daemon_phases};
-use crate::utils::validation::{validate_mining_config, validate_agent_daemon_config};
-use color_eyre::Result;
+use crate::config::{validate_daemon_phases, Config};
+use crate::utils::validation::{validate_agent_daemon_config, validate_mining_config};
 use color_eyre::eyre::{eyre, WrapErr};
+use color_eyre::Result;
 use log::info;
 use std::fs::File;
 use std::path::Path;
@@ -37,8 +37,9 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
     for (agent_id, agent_config) in &config.agents.agents {
         if let Some(phases) = &agent_config.daemon_phases {
             if !phases.is_empty() {
-                validate_daemon_phases(agent_id, phases)
-                    .map_err(|e| eyre!("Phase configuration error in agent '{}': {}", agent_id, e))?;
+                validate_daemon_phases(agent_id, phases).map_err(|e| {
+                    eyre!("Phase configuration error in agent '{}': {}", agent_id, e)
+                })?;
             }
         }
     }

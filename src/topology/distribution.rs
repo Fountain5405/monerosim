@@ -10,8 +10,8 @@
 //! The distribution ensures agents are spread across the simulated Internet
 //! rather than clustering in a single region.
 
-use std::path::Path;
 use log::{debug, info, warn};
+use std::path::Path;
 
 use crate::config::{DistributionStrategy, RegionWeights};
 use crate::ip::as_manager::calculate_region_boundaries;
@@ -41,8 +41,12 @@ pub fn distribute_agents_across_topology(
 
     match topology_path {
         Some(path) => {
-            info!("Distributing {} agents across GML topology '{}' using {:?} strategy",
-                  agent_count, path.display(), strategy);
+            info!(
+                "Distributing {} agents across GML topology '{}' using {:?} strategy",
+                agent_count,
+                path.display(),
+                strategy
+            );
             distribute_agents_gml(agent_count, total_nodes, strategy, weights)
         }
         None => {
@@ -95,9 +99,7 @@ fn distribute_agents_gml(
 /// Sequential distribution: assign agents to nodes 0, 1, 2, ...
 /// This is the legacy behavior that clusters agents in the first region.
 fn distribute_sequential(agent_count: usize, total_nodes: usize) -> Vec<Option<usize>> {
-    (0..agent_count)
-        .map(|i| Some(i % total_nodes))
-        .collect()
+    (0..agent_count).map(|i| Some(i % total_nodes)).collect()
 }
 
 /// Global distribution: spread agents proportionally across all 6 regions.
@@ -183,7 +185,8 @@ fn distribute_weighted(
     // Adjust for rounding errors
     while assigned < agent_count {
         // Add to the largest region
-        let max_idx = region_weights.iter()
+        let max_idx = region_weights
+            .iter()
             .enumerate()
             .max_by_key(|(_, &w)| w)
             .map(|(i, _)| i)
@@ -193,7 +196,8 @@ fn distribute_weighted(
     }
     while assigned > agent_count {
         // Remove from the smallest non-zero region
-        let min_idx = agents_per_region.iter()
+        let min_idx = agents_per_region
+            .iter()
             .enumerate()
             .filter(|(_, &c)| c > 0)
             .min_by_key(|(_, &c)| c)
@@ -226,7 +230,10 @@ fn distribute_weighted(
     info!("Weighted distribution summary:");
     for (i, (region, _, _)) in boundaries.iter().enumerate() {
         if agents_per_region[i] > 0 {
-            info!("  {:?}: {} agents (weight {})", region, agents_per_region[i], region_weights[i]);
+            info!(
+                "  {:?}: {} agents (weight {})",
+                region, agents_per_region[i], region_weights[i]
+            );
         }
     }
 
@@ -290,8 +297,8 @@ mod tests {
     #[test]
     fn test_weighted_distribution() {
         let weights = RegionWeights {
-            north_america: Some(50),  // 50% to North America
-            europe: Some(50),         // 50% to Europe
+            north_america: Some(50), // 50% to North America
+            europe: Some(50),        // 50% to Europe
             asia: Some(0),
             south_america: Some(0),
             africa: Some(0),

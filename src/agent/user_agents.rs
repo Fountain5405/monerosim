@@ -5,18 +5,22 @@
 //! It manages peer discovery, IP allocation, and process configuration for
 //! user agents within the Shadow network simulator environment.
 
-use crate::config::{AgentDefinitions, AgentConfig, DaemonConfig, PeerMode, OptionValue};
+use crate::config::{AgentConfig, AgentDefinitions, DaemonConfig, OptionValue, PeerMode};
 use crate::gml_parser::GmlGraph;
-use crate::shadow::{ShadowHost, ExpectedFinalState};
-use crate::topology::{distribute_agents_across_topology, Topology, generate_topology_connections, build_peer_topology, PeerTopology};
-use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::options::{options_to_args, merge_options, translate_daemon_log_level, translate_wallet_log_level};
-use crate::utils::binary::resolve_binary_path_for_shadow;
-use crate::ip::{GlobalIpRegistry, AsSubnetManager};
+use crate::ip::{AsSubnetManager, GlobalIpRegistry};
 use crate::process::{
-    add_wallet_process, DaemonAddress, WalletProcessArgs,
-    add_user_agent_process, UserAgentProcessArgs,
-    create_mining_agent_process, MiningAgentProcessArgs,
+    add_user_agent_process, add_wallet_process, create_mining_agent_process, DaemonAddress,
+    MiningAgentProcessArgs, UserAgentProcessArgs, WalletProcessArgs,
+};
+use crate::shadow::{ExpectedFinalState, ShadowHost};
+use crate::topology::{
+    build_peer_topology, distribute_agents_across_topology, generate_topology_connections,
+    PeerTopology, Topology,
+};
+use crate::utils::binary::resolve_binary_path_for_shadow;
+use crate::utils::duration::parse_duration_to_seconds;
+use crate::utils::options::{
+    merge_options, options_to_args, translate_daemon_log_level, translate_wallet_log_level,
 };
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
@@ -222,14 +226,26 @@ fn build_turnover_schedule(
     let mut t = start_secs;
     let mut k = 0usize;
     loop {
-        let s = exp_draw(seed, &format!("cs:{}:{}", id, k), mean_session, min_session, max_session);
+        let s = exp_draw(
+            seed,
+            &format!("cs:{}:{}", id, k),
+            mean_session,
+            min_session,
+            max_session,
+        );
         let end = t.saturating_add(s.round() as u64);
         if end >= stop_secs || k + 1 >= MAX_SESSIONS {
             out.push((t, None)); // final session runs to the end
             break;
         }
         out.push((t, Some(end)));
-        let d = exp_draw(seed, &format!("cd:{}:{}", id, k), mean_downtime, min_downtime, f64::INFINITY);
+        let d = exp_draw(
+            seed,
+            &format!("cd:{}:{}", id, k),
+            mean_downtime,
+            min_downtime,
+            f64::INFINITY,
+        );
         t = end.saturating_add(d.round() as u64);
         k += 1;
         if t >= stop_secs {
@@ -273,8 +289,12 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
-    let user_agents: Vec<(&String, &AgentConfig)> = agents.agents.iter()
-        .filter(|(_, config)| config.has_local_daemon() || config.has_remote_daemon() || config.has_wallet())
+    let user_agents: Vec<(&String, &AgentConfig)> = agents
+        .agents
+        .iter()
+        .filter(|(_, config)| {
+            config.has_local_daemon() || config.has_remote_daemon() || config.has_wallet()
+        })
         .collect();
 
     // Get agent distribution across GML nodes if available AND we're actually using GML topology
@@ -291,8 +311,15 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             if using_gml_topology {
                 // Extract AS numbers from GML node attributes for distribution
                 // The AS attribute contains the synthetic AS number (0 to N-1)
-                let as_numbers = gml.nodes.iter()
-                    .map(|node| node.attributes.get("AS").or_else(|| node.attributes.get("as")).cloned())
+                let as_numbers = gml
+                    .nodes
+                    .iter()
+                    .map(|node| {
+                        node.attributes
+                            .get("AS")
+                            .or_else(|| node.attributes.get("as"))
+                            .cloned()
+                    })
                     .collect::<Vec<Option<String>>>();
                 distribute_agents_across_topology(
                     Some(Path::new("")),
@@ -301,9 +328,9 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     distribution_strategy,
                     distribution_weights,
                 )
-                    .into_iter()
-                    .map(|opt_idx| opt_idx.map_or(0, |idx| idx as u32))
-                    .collect()
+                .into_iter()
+                .map(|opt_idx| opt_idx.map_or(0, |idx| idx as u32))
+                .collect()
             } else {
                 // If we're not using GML topology (fallback to switch), all agents go to node 0
                 vec![0; user_agents.len()]
@@ -372,28 +399,37 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     };
     let turnover_params: Option<(f64, f64, f64, f64, f64)> = match turnover {
         Some(c) => {
-            let mean_session = parse_duration_to_seconds(&c.mean_session)
-                .map_err(|e| color_eyre::eyre::eyre!("turnover.mean_session '{}': {}", c.mean_session, e))?
-                as f64;
-            let mean_downtime = parse_duration_to_seconds(&c.mean_downtime)
-                .map_err(|e| color_eyre::eyre::eyre!("turnover.mean_downtime '{}': {}", c.mean_downtime, e))?
-                as f64;
+            let mean_session = parse_duration_to_seconds(&c.mean_session).map_err(|e| {
+                color_eyre::eyre::eyre!("turnover.mean_session '{}': {}", c.mean_session, e)
+            })? as f64;
+            let mean_downtime = parse_duration_to_seconds(&c.mean_downtime).map_err(|e| {
+                color_eyre::eyre::eyre!("turnover.mean_downtime '{}': {}", c.mean_downtime, e)
+            })? as f64;
             let min_session = match &c.min_session {
                 Some(s) => parse_duration_to_seconds(s)
-                    .map_err(|e| color_eyre::eyre::eyre!("turnover.min_session '{}': {}", s, e))? as f64,
+                    .map_err(|e| color_eyre::eyre::eyre!("turnover.min_session '{}': {}", s, e))?
+                    as f64,
                 None => 300.0,
             };
             let max_session = match &c.max_session {
                 Some(s) => parse_duration_to_seconds(s)
-                    .map_err(|e| color_eyre::eyre::eyre!("turnover.max_session '{}': {}", s, e))? as f64,
+                    .map_err(|e| color_eyre::eyre::eyre!("turnover.max_session '{}': {}", s, e))?
+                    as f64,
                 None => f64::INFINITY,
             };
             let min_downtime = match &c.min_downtime {
                 Some(s) => parse_duration_to_seconds(s)
-                    .map_err(|e| color_eyre::eyre::eyre!("turnover.min_downtime '{}': {}", s, e))? as f64,
+                    .map_err(|e| color_eyre::eyre::eyre!("turnover.min_downtime '{}': {}", s, e))?
+                    as f64,
                 None => 30.0,
             };
-            Some((mean_session, mean_downtime, min_session, max_session, min_downtime))
+            Some((
+                mean_session,
+                mean_downtime,
+                min_session,
+                max_session,
+                min_downtime,
+            ))
         }
         None => None,
     };
@@ -414,9 +450,12 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     for (i, (agent_id, user_agent_config)) in user_agents.iter().enumerate() {
         // Determine agent type and start time
         let is_miner = user_agent_config.is_miner();
-        let is_seed_node = is_miner || user_agent_config.attributes.as_ref()
-            .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
-            .unwrap_or(false);
+        let is_seed_node = is_miner
+            || user_agent_config
+                .attributes
+                .as_ref()
+                .map(|attrs| attrs.get("is_seed_node").map_or(false, |v| v == "true"))
+                .unwrap_or(false);
 
         // Parse start_time if present (e.g., "2h", "7200s", "30m"). We
         // keep this as Option so we can distinguish "user explicitly
@@ -441,299 +480,321 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             },
         };
 
-            let base_start_time_seconds = if matches!(peer_mode, PeerMode::Dynamic) {
-                if is_miner {
-                    if i == 0 { 0u64 } else { 1 + i as u64 }
+        let base_start_time_seconds = if matches!(peer_mode, PeerMode::Dynamic) {
+            if is_miner {
+                if i == 0 {
+                    0u64
                 } else {
-                    let user_index = i.saturating_sub(miners.len());
-                    crate::BLOCK_MATURITY_SECONDS + user_index as u64
+                    1 + i as u64
                 }
             } else {
-                if is_miner {
-                    i as u64
-                } else if is_seed_node || seed_nodes.iter().any(|e| e.is_seed_node && e.index == i) {
-                    crate::BLOCK_MATURITY_SECONDS
-                } else {
-                    let user_index = regular_agents.iter().position(|e| e.index == i).unwrap_or(0);
-                    crate::BLOCK_MATURITY_SECONDS + user_index as u64
-                }
-            };
+                let user_index = i.saturating_sub(miners.len());
+                crate::BLOCK_MATURITY_SECONDS + user_index as u64
+            }
+        } else {
+            if is_miner {
+                i as u64
+            } else if is_seed_node || seed_nodes.iter().any(|e| e.is_seed_node && e.index == i) {
+                crate::BLOCK_MATURITY_SECONDS
+            } else {
+                let user_index = regular_agents
+                    .iter()
+                    .position(|e| e.index == i)
+                    .unwrap_or(0);
+                crate::BLOCK_MATURITY_SECONDS + user_index as u64
+            }
+        };
 
-            // Honor any explicit start_time, including 0. Only fall
-            // through to the calculated default when the user didn't
-            // supply one at all (or it failed to parse — see warning above).
-            let effective_start_time = explicit_start_time.unwrap_or(base_start_time_seconds);
-            let start_time_daemon = format!("{}s", effective_start_time);
+        // Honor any explicit start_time, including 0. Only fall
+        // through to the calculated default when the user didn't
+        // supply one at all (or it failed to parse — see warning above).
+        let effective_start_time = explicit_start_time.unwrap_or(base_start_time_seconds);
+        let start_time_daemon = format!("{}s", effective_start_time);
 
-            // Wallet starts after daemon; agent starts after wallet
-            let wallet_start_time = if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
+        // Wallet starts after daemon; agent starts after wallet
+        let wallet_start_time =
+            if let Ok(daemon_seconds) = parse_duration_to_seconds(&start_time_daemon) {
                 format!("{}s", daemon_seconds + crate::WALLET_STARTUP_DELAY_SECS)
             } else {
                 format!("{}s", crate::WALLET_STARTUP_DELAY_SECS + i as u64)
             };
 
-            let agent_start_time = if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
+        let agent_start_time =
+            if let Ok(wallet_seconds) = parse_duration_to_seconds(&wallet_start_time) {
                 format!("{}s", wallet_seconds + crate::AGENT_STARTUP_DELAY_SECS)
             } else {
-                format!("{}s", crate::WALLET_STARTUP_DELAY_SECS + crate::AGENT_STARTUP_DELAY_SECS + i as u64)
+                format!(
+                    "{}s",
+                    crate::WALLET_STARTUP_DELAY_SECS + crate::AGENT_STARTUP_DELAY_SECS + i as u64
+                )
             };
 
-            // Reuse the agent IP from the first pass (stored in agent_info)
-            // This avoids calling get_agent_ip twice which would increment the host counter
-            let agent_ip = agent_info[i].ip.clone();
-            // Use standard Monero ports (mainnet ports for FAKECHAIN/regtest)
-            // Since each agent has its own IP address, they can all use the same ports
-            let daemon_rpc_port = crate::MONERO_RPC_PORT;
-            let wallet_rpc_port = crate::MONERO_WALLET_RPC_PORT;
-            let p2p_port = crate::MONERO_P2P_PORT;
+        // Reuse the agent IP from the first pass (stored in agent_info)
+        // This avoids calling get_agent_ip twice which would increment the host counter
+        let agent_ip = agent_info[i].ip.clone();
+        // Use standard Monero ports (mainnet ports for FAKECHAIN/regtest)
+        // Since each agent has its own IP address, they can all use the same ports
+        let daemon_rpc_port = crate::MONERO_RPC_PORT;
+        let wallet_rpc_port = crate::MONERO_WALLET_RPC_PORT;
+        let p2p_port = crate::MONERO_P2P_PORT;
 
-            let mut processes = Vec::new();
+        let mut processes = Vec::new();
 
-            // Determine agent type
-            let has_local_daemon = user_agent_config.has_local_daemon();
-            let has_remote_daemon = user_agent_config.has_remote_daemon();
-            let has_wallet = user_agent_config.has_wallet();
-            let has_daemon_phases = user_agent_config.has_daemon_phases();
-            let has_wallet_phases = user_agent_config.has_wallet_phases();
+        // Determine agent type
+        let has_local_daemon = user_agent_config.has_local_daemon();
+        let has_remote_daemon = user_agent_config.has_remote_daemon();
+        let has_wallet = user_agent_config.has_wallet();
+        let has_daemon_phases = user_agent_config.has_daemon_phases();
+        let has_wallet_phases = user_agent_config.has_wallet_phases();
 
-            // Get process_threads from environment (convenience setting)
-            let process_threads: u32 = monero_environment.get("PROCESS_THREADS")
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0);
+        // Get process_threads from environment (convenience setting)
+        let process_threads: u32 = monero_environment
+            .get("PROCESS_THREADS")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
 
-            // Merge daemon_defaults with per-agent daemon_options
-            let mut merged_daemon_options = merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
-            // Expand symbolic log-level values (e.g., "monitor") into the
-            // equivalent monerod category string before they reach the CLI.
-            translate_daemon_log_level(&mut merged_daemon_options);
+        // Merge daemon_defaults with per-agent daemon_options
+        let mut merged_daemon_options =
+            merge_options(daemon_defaults, user_agent_config.daemon_options.as_ref());
+        // Expand symbolic log-level values (e.g., "monitor") into the
+        // equivalent monerod category string before they reach the CLI.
+        translate_daemon_log_level(&mut merged_daemon_options);
 
-            // monerosim baseline: lift --max-connections-per-ip off monerod's
-            // default of 1 (the cap counts simultaneous INCOMING connections
-            // per remote IP, enforced at accept). In small/dense scenarios —
-            // where node pairs hold mutual connections and exchange try_ping
-            // reachability back-pings — a second incoming from the same IP is
-            // routine and gets refused at cap 1, preventing a stable mesh
-            // (quickstart-15: 31,180 refusals/run, no mesh; 0 with the floor).
-            // At large sparse scale the default is nearly harmless, and this
-            // floor was verified to change nothing measurable at 1000 nodes.
-            // 4 = data conn + back-ping + headroom for cleanup races.
-            // See docs/20260605_max_connections_per_ip_bug.md.
-            //
-            // This is a floor, not a force: merge_options() above has already
-            // applied daemon_defaults and per-agent daemon_options, so entry()
-            // only fills the value in when the user hasn't set it themselves.
+        // monerosim baseline: lift --max-connections-per-ip off monerod's
+        // default of 1 (the cap counts simultaneous INCOMING connections
+        // per remote IP, enforced at accept). In small/dense scenarios —
+        // where node pairs hold mutual connections and exchange try_ping
+        // reachability back-pings — a second incoming from the same IP is
+        // routine and gets refused at cap 1, preventing a stable mesh
+        // (quickstart-15: 31,180 refusals/run, no mesh; 0 with the floor).
+        // At large sparse scale the default is nearly harmless, and this
+        // floor was verified to change nothing measurable at 1000 nodes.
+        // 4 = data conn + back-ping + headroom for cleanup races.
+        // See docs/20260605_max_connections_per_ip_bug.md.
+        //
+        // This is a floor, not a force: merge_options() above has already
+        // applied daemon_defaults and per-agent daemon_options, so entry()
+        // only fills the value in when the user hasn't set it themselves.
+        merged_daemon_options
+            .entry("max-connections-per-ip".to_string())
+            .or_insert(OptionValue::Number(4));
+
+        // Mainnet-realism: if this node was selected as unreachable,
+        // inject --hide-my-port (advertise my_port=0). The node still
+        // binds/listens and forms its own outbound peers, but is never
+        // inserted into anyone's peerlist (white-listing is gated on a
+        // successful back-ping, which requires my_port != 0), so it
+        // accepts ~no inbound — exactly a NAT'd mainnet leaf. A user who
+        // sets hide-my-port explicitly per-agent still wins (or_insert).
+        if unreachable_agents.contains(agent_id.as_str()) {
             merged_daemon_options
-                .entry("max-connections-per-ip".to_string())
-                .or_insert(OptionValue::Number(4));
+                .entry("hide-my-port".to_string())
+                .or_insert(OptionValue::Bool(true));
+        }
 
-            // Mainnet-realism: if this node was selected as unreachable,
-            // inject --hide-my-port (advertise my_port=0). The node still
-            // binds/listens and forms its own outbound peers, but is never
-            // inserted into anyone's peerlist (white-listing is gated on a
-            // successful back-ping, which requires my_port != 0), so it
-            // accepts ~no inbound — exactly a NAT'd mainnet leaf. A user who
-            // sets hide-my-port explicitly per-agent still wins (or_insert).
-            if unreachable_agents.contains(agent_id.as_str()) {
-                merged_daemon_options
-                    .entry("hide-my-port".to_string())
-                    .or_insert(OptionValue::Bool(true));
+        let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
+            // Start with required/injected flags that cannot be overridden.
+            //
+            // --log-file: vanilla monerod's default is ~/.bitmonero/bitmonero.log
+            // (per `monerod --help`), NOT <data-dir>/bitmonero.log. The
+            // shadowformonero patches we used to apply pinned it to data-dir,
+            // but those were dropped in 641bc5a6 (Apr 21 2026). Without an
+            // explicit --log-file, monerod silently writes nothing — the
+            // monitor's daemon-log discovery and run_sim.sh's archive step
+            // both glob /tmp/monero-*/bitmonero.log and turn up empty,
+            // leaving the post-run summary reporting "0 nodes / 0 blocks"
+            // even on a healthy sim.
+            let data_dir = format!("{}/monero-{}", daemon_data_dir, agent_id);
+            let mut args = vec![
+                format!("--data-dir={}", data_dir),
+                format!("--log-file={}/bitmonero.log", data_dir),
+                "--regtest".to_string(),
+                "--keep-fakechain".to_string(),
+            ];
+
+            // Add process_threads flags if set and not overridden in daemon_defaults
+            if process_threads > 0 {
+                if !merged_daemon_options.contains_key("prep-blocks-threads") {
+                    args.push(format!("--prep-blocks-threads={}", process_threads));
+                }
+                if !merged_daemon_options.contains_key("max-concurrency") {
+                    args.push(format!("--max-concurrency={}", process_threads));
+                }
             }
 
-            let build_daemon_args_base = |phase_args: Option<&Vec<String>>| -> Vec<String> {
-                // Start with required/injected flags that cannot be overridden.
-                //
-                // --log-file: vanilla monerod's default is ~/.bitmonero/bitmonero.log
-                // (per `monerod --help`), NOT <data-dir>/bitmonero.log. The
-                // shadowformonero patches we used to apply pinned it to data-dir,
-                // but those were dropped in 641bc5a6 (Apr 21 2026). Without an
-                // explicit --log-file, monerod silently writes nothing — the
-                // monitor's daemon-log discovery and run_sim.sh's archive step
-                // both glob /tmp/monero-*/bitmonero.log and turn up empty,
-                // leaving the post-run summary reporting "0 nodes / 0 blocks"
-                // even on a healthy sim.
-                let data_dir = format!("{}/monero-{}", daemon_data_dir, agent_id);
-                let mut args = vec![
-                    format!("--data-dir={}", data_dir),
-                    format!("--log-file={}/bitmonero.log", data_dir),
-                    "--regtest".to_string(),
-                    "--keep-fakechain".to_string(),
-                ];
+            // Add configurable options from merged daemon_defaults + daemon_options
+            args.extend(options_to_args(&merged_daemon_options));
 
-                // Add process_threads flags if set and not overridden in daemon_defaults
-                if process_threads > 0 {
-                    if !merged_daemon_options.contains_key("prep-blocks-threads") {
-                        args.push(format!("--prep-blocks-threads={}", process_threads));
-                    }
-                    if !merged_daemon_options.contains_key("max-concurrency") {
-                        args.push(format!("--max-concurrency={}", process_threads));
+            // Add required network binding flags (always injected, use agent-specific values)
+            args.extend(vec![
+                format!("--rpc-bind-ip={}", agent_ip),
+                format!("--rpc-bind-port={}", daemon_rpc_port),
+                "--confirm-external-bind".to_string(),
+                "--rpc-access-control-origins=*".to_string(),
+                format!("--p2p-bind-ip={}", agent_ip),
+                format!("--p2p-bind-port={}", p2p_port),
+            ]);
+
+            // Add DNS and seed node settings
+            if !enable_dns_server {
+                args.push("--disable-dns-checkpoints".to_string());
+            }
+            if is_miner && !enable_dns_server {
+                args.push("--disable-seed-nodes".to_string());
+            }
+
+            // Add initial fixed connections
+            if is_miner {
+                if let Some(conns) = miner_connections.get(*agent_id) {
+                    for conn in conns {
+                        args.push(conn.clone());
                     }
                 }
-
-                // Add configurable options from merged daemon_defaults + daemon_options
-                args.extend(options_to_args(&merged_daemon_options));
-
-                // Add required network binding flags (always injected, use agent-specific values)
-                args.extend(vec![
-                    format!("--rpc-bind-ip={}", agent_ip),
-                    format!("--rpc-bind-port={}", daemon_rpc_port),
-                    "--confirm-external-bind".to_string(),
-                    "--rpc-access-control-origins=*".to_string(),
-                    format!("--p2p-bind-ip={}", agent_ip),
-                    format!("--p2p-bind-port={}", p2p_port),
-                ]);
-
-                // Add DNS and seed node settings
-                if !enable_dns_server {
-                    args.push("--disable-dns-checkpoints".to_string());
-                }
-                if is_miner && !enable_dns_server {
-                    args.push("--disable-seed-nodes".to_string());
-                }
-
-                // Add initial fixed connections
-                if is_miner {
-                    if let Some(conns) = miner_connections.get(*agent_id) {
-                        for conn in conns {
-                            args.push(conn.clone());
-                        }
+            } else if is_seed_node || seed_nodes.iter().any(|e| e.is_seed_node && e.index == i) {
+                if let Some(conns) = seed_connections.get(*agent_id) {
+                    for conn in conns {
+                        args.push(conn.clone());
                     }
-                } else if is_seed_node || seed_nodes.iter().any(|e| e.is_seed_node && e.index == i) {
-                    if let Some(conns) = seed_connections.get(*agent_id) {
-                        for conn in conns {
-                            args.push(conn.clone());
+                }
+            }
+
+            // Add peer connections for regular agents
+            let is_actual_seed_node = seed_nodes.iter().any(|e| e.index == i);
+            if !is_miner && !is_actual_seed_node {
+                for seed_node in seed_agents.iter() {
+                    if !seed_node.starts_with(&format!("{}:", agent_ip)) {
+                        let peer_arg = if matches!(peer_mode, PeerMode::Dynamic) {
+                            format!("--seed-node={}", seed_node)
+                        } else {
+                            format!("--add-priority-node={}", seed_node)
+                        };
+                        args.push(peer_arg);
+                    }
+                }
+                if matches!(peer_mode, PeerMode::Hybrid) {
+                    if let Some(topo) = topology {
+                        let topology_connections =
+                            generate_topology_connections(topo, i, &all_agent_ips, &agent_ip);
+                        for conn in topology_connections {
+                            args.push(conn);
                         }
                     }
                 }
+            }
 
-                // Add peer connections for regular agents
-                let is_actual_seed_node = seed_nodes.iter().any(|e| e.index == i);
-                if !is_miner && !is_actual_seed_node {
-                    for seed_node in seed_agents.iter() {
-                        if !seed_node.starts_with(&format!("{}:", agent_ip)) {
-                            let peer_arg = if matches!(peer_mode, PeerMode::Dynamic) {
-                                format!("--seed-node={}", seed_node)
-                            } else {
-                                format!("--add-priority-node={}", seed_node)
-                            };
-                            args.push(peer_arg);
-                        }
-                    }
-                    if matches!(peer_mode, PeerMode::Hybrid) {
-                        if let Some(topo) = topology {
-                            let topology_connections = generate_topology_connections(topo, i, &all_agent_ips, &agent_ip);
-                            for conn in topology_connections {
-                                args.push(conn);
-                            }
-                        }
-                    }
+            // Add phase-specific args
+            if let Some(custom_args) = phase_args {
+                for arg in custom_args {
+                    args.push(arg.clone());
                 }
+            }
 
-                // Add phase-specific args
-                if let Some(custom_args) = phase_args {
-                    for arg in custom_args {
-                        args.push(arg.clone());
-                    }
-                }
+            args
+        };
 
-                args
-            };
+        // Add Monero daemon process(es) - either simple or phase-based
+        if has_daemon_phases {
+            // Phase-based daemon configuration (upgrade scenario).
+            // `has_daemon_phases` already verified daemon_phases is Some and non-empty.
+            let phases = user_agent_config
+                .daemon_phases
+                .as_ref()
+                .expect("invariant: has_daemon_phases() == true implies daemon_phases.is_some()");
+            let phase_count = phases.len();
 
-            // Add Monero daemon process(es) - either simple or phase-based
-            if has_daemon_phases {
-                // Phase-based daemon configuration (upgrade scenario).
-                // `has_daemon_phases` already verified daemon_phases is Some and non-empty.
-                let phases = user_agent_config
-                    .daemon_phases
-                    .as_ref()
-                    .expect("invariant: has_daemon_phases() == true implies daemon_phases.is_some()");
-                let phase_count = phases.len();
+            for (phase_num, phase) in phases {
+                let daemon_args = build_daemon_args_base(phase.args.as_ref());
 
-                for (phase_num, phase) in phases {
-                    let daemon_args = build_daemon_args_base(phase.args.as_ref());
-
-                    // Resolve binary path for this phase
-                    let daemon_binary_path = resolve_binary_path_for_shadow(&phase.path)
-                        .map_err(|e| color_eyre::eyre::eyre!(
+                // Resolve binary path for this phase
+                let daemon_binary_path =
+                    resolve_binary_path_for_shadow(&phase.path).map_err(|e| {
+                        color_eyre::eyre::eyre!(
                             "Agent '{}': failed to resolve daemon phase binary path '{}': {}",
-                            agent_id, phase.path, e
-                        ))?;
-
-                    // Build environment for this phase
-                    let mut daemon_env = monero_environment.clone();
-                    if let Some(custom_env) = &phase.env {
-                        for (key, value) in custom_env {
-                            daemon_env.insert(key.clone(), value.clone());
-                        }
-                    }
-
-                    // Determine start time
-                    let start_time = if let Some(start) = &phase.start {
-                        start.clone()
-                    } else if *phase_num == 0 {
-                        start_time_daemon.clone()
-                    } else {
-                        // Should have been caught by validation
-                        start_time_daemon.clone()
-                    };
-
-                    // Determine shutdown time and expected final state
-                    let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1) {
-                        // Not the last phase - needs shutdown
-                        // Shadow sends SIGTERM at shutdown_time; monerod handles it gracefully
-                        // and exits with code 0 (not killed by signal)
-                        (
-                            phase.stop.clone(),
-                            Some(ExpectedFinalState::Exited(0)),
+                            agent_id,
+                            phase.path,
+                            e
                         )
-                    } else {
-                        // Last phase - runs until simulation end
-                        (None, Some(ExpectedFinalState::Running))
-                    };
+                    })?;
 
-                    // Direct launch — Shadow execs monerod itself, so SIGTERM at
-                    // shutdown_time goes straight to it. Data directory cleanup
-                    // is handled pre-simulation by main.rs.
-                    processes.push(crate::shadow::ShadowProcess {
-                        path: daemon_binary_path,
-                        args: crate::shadow::ProcessArgs::List(daemon_args),
-                        environment: daemon_env,
-                        start_time,
-                        shutdown_time,
-                        shutdown_signal: None,
-                        expected_final_state,
-                    });
-                }
-            } else if has_local_daemon {
-                // Simple daemon configuration (single binary)
-                let daemon_args = build_daemon_args_base(user_agent_config.daemon_args.as_ref());
-
-                // Get daemon binary path from config, fall back to default
-                let daemon_binary_path = match &user_agent_config.daemon {
-                    Some(DaemonConfig::Local(path)) => {
-                        resolve_binary_path_for_shadow(path).map_err(|e| color_eyre::eyre::eyre!(
-                            "Agent '{}': failed to resolve daemon binary path '{}': {}",
-                            agent_id, path, e
-                        ))?
-                    }
-                    _ => monerod_path.to_string(),
-                };
-
-                // Merge custom environment from config with base environment
+                // Build environment for this phase
                 let mut daemon_env = monero_environment.clone();
-                if let Some(custom_env) = &user_agent_config.daemon_env {
+                if let Some(custom_env) = &phase.env {
                     for (key, value) in custom_env {
                         daemon_env.insert(key.clone(), value.clone());
                     }
                 }
 
-                // Turnover: if this relay was selected to cycle offline/online,
-                // emit one ShadowProcess per online session (each a fresh
-                // monerod on the SAME data-dir, so chain state survives the
-                // restart). Non-final sessions stop via shutdown_time
-                // (SIGTERM → monerod exits 0, mirroring the upgrade path); the
-                // final open-ended session runs to simulation end. Otherwise
-                // (no turnover) emit the single always-on daemon as before.
-                let turnover_schedule = match (&turnover_params, turnover_set.contains(agent_id.as_str())) {
+                // Determine start time
+                let start_time = if let Some(start) = &phase.start {
+                    start.clone()
+                } else if *phase_num == 0 {
+                    start_time_daemon.clone()
+                } else {
+                    // Should have been caught by validation
+                    start_time_daemon.clone()
+                };
+
+                // Determine shutdown time and expected final state
+                let (shutdown_time, expected_final_state) = if *phase_num < (phase_count as u32 - 1)
+                {
+                    // Not the last phase - needs shutdown
+                    // Shadow sends SIGTERM at shutdown_time; monerod handles it gracefully
+                    // and exits with code 0 (not killed by signal)
+                    (phase.stop.clone(), Some(ExpectedFinalState::Exited(0)))
+                } else {
+                    // Last phase - runs until simulation end
+                    (None, Some(ExpectedFinalState::Running))
+                };
+
+                // Direct launch — Shadow execs monerod itself, so SIGTERM at
+                // shutdown_time goes straight to it. Data directory cleanup
+                // is handled pre-simulation by main.rs.
+                processes.push(crate::shadow::ShadowProcess {
+                    path: daemon_binary_path,
+                    args: crate::shadow::ProcessArgs::List(daemon_args),
+                    environment: daemon_env,
+                    start_time,
+                    shutdown_time,
+                    shutdown_signal: None,
+                    expected_final_state,
+                });
+            }
+        } else if has_local_daemon {
+            // Simple daemon configuration (single binary)
+            let daemon_args = build_daemon_args_base(user_agent_config.daemon_args.as_ref());
+
+            // Get daemon binary path from config, fall back to default
+            let daemon_binary_path = match &user_agent_config.daemon {
+                Some(DaemonConfig::Local(path)) => {
+                    resolve_binary_path_for_shadow(path).map_err(|e| {
+                        color_eyre::eyre::eyre!(
+                            "Agent '{}': failed to resolve daemon binary path '{}': {}",
+                            agent_id,
+                            path,
+                            e
+                        )
+                    })?
+                }
+                _ => monerod_path.to_string(),
+            };
+
+            // Merge custom environment from config with base environment
+            let mut daemon_env = monero_environment.clone();
+            if let Some(custom_env) = &user_agent_config.daemon_env {
+                for (key, value) in custom_env {
+                    daemon_env.insert(key.clone(), value.clone());
+                }
+            }
+
+            // Turnover: if this relay was selected to cycle offline/online,
+            // emit one ShadowProcess per online session (each a fresh
+            // monerod on the SAME data-dir, so chain state survives the
+            // restart). Non-final sessions stop via shutdown_time
+            // (SIGTERM → monerod exits 0, mirroring the upgrade path); the
+            // final open-ended session runs to simulation end. Otherwise
+            // (no turnover) emit the single always-on daemon as before.
+            let turnover_schedule =
+                match (&turnover_params, turnover_set.contains(agent_id.as_str())) {
                     (Some((ms, md, mins, maxs, mind)), true) => Some(build_turnover_schedule(
                         simulation_seed,
                         agent_id,
@@ -747,223 +808,249 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     )),
                     _ => None,
                 };
-                match turnover_schedule {
-                    Some(schedule) => {
-                        for (start, stop_opt) in schedule {
-                            let (shutdown_time, expected_final_state) = match stop_opt {
-                                Some(stop) => (
-                                    Some(format!("{}s", stop)),
-                                    Some(ExpectedFinalState::Exited(0)),
-                                ),
-                                None => (None, Some(ExpectedFinalState::Running)),
-                            };
-                            processes.push(crate::shadow::ShadowProcess {
-                                path: daemon_binary_path.clone(),
-                                args: crate::shadow::ProcessArgs::List(daemon_args.clone()),
-                                environment: daemon_env.clone(),
-                                start_time: format!("{}s", start),
-                                shutdown_time,
-                                shutdown_signal: None,
-                                expected_final_state,
-                            });
-                        }
-                    }
-                    None => {
-                        // Direct launch — see phase-daemon comment above.
+            match turnover_schedule {
+                Some(schedule) => {
+                    for (start, stop_opt) in schedule {
+                        let (shutdown_time, expected_final_state) = match stop_opt {
+                            Some(stop) => (
+                                Some(format!("{}s", stop)),
+                                Some(ExpectedFinalState::Exited(0)),
+                            ),
+                            None => (None, Some(ExpectedFinalState::Running)),
+                        };
                         processes.push(crate::shadow::ShadowProcess {
-                            path: daemon_binary_path,
-                            args: crate::shadow::ProcessArgs::List(daemon_args),
-                            environment: daemon_env,
-                            start_time: start_time_daemon.clone(),
-                            shutdown_time: None,
+                            path: daemon_binary_path.clone(),
+                            args: crate::shadow::ProcessArgs::List(daemon_args.clone()),
+                            environment: daemon_env.clone(),
+                            start_time: format!("{}s", start),
+                            shutdown_time,
                             shutdown_signal: None,
-                            expected_final_state: Some(ExpectedFinalState::Running),
+                            expected_final_state,
                         });
                     }
                 }
-            } // End of daemon configuration
-
-            // Add wallet process based on agent type
-            // Merge wallet_defaults with per-agent wallet_options
-            let mut merged_wallet_options = merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
-            translate_wallet_log_level(&mut merged_wallet_options);
-
-            // Track wallet-rpc command for restart capability
-            let mut wallet_rpc_cmd: Option<String> = None;
-
-            if has_wallet_phases {
-                // Phase-based wallet configuration (upgrade scenario).
-                // `has_wallet_phases` already verified wallet_phases is Some and non-empty.
-                let phases = user_agent_config
-                    .wallet_phases
-                    .as_ref()
-                    .expect("invariant: has_wallet_phases() == true implies wallet_phases.is_some()");
-                let phase_count = phases.len();
-
-                // Build base wallet args
-                let build_wallet_args = |phase_args: Option<&Vec<String>>| -> Vec<String> {
-                    let mut args = vec![
-                        format!("--daemon-address=http://{}:{}", agent_ip, daemon_rpc_port),
-                        format!("--rpc-bind-port={}", wallet_rpc_port),
-                        format!("--rpc-bind-ip={}", agent_ip),
-                        "--disable-rpc-login".to_string(),
-                        "--trusted-daemon".to_string(),
-                        format!("--wallet-dir={}/{}_wallet", shared_dir.to_string_lossy(), agent_id),
-                        // Per-agent ringdb path — without this, all wallets fall
-                        // back to a single shared LMDB and serialize on its writer
-                        // mutex, deadlocking under Shadow at scale (see commit
-                        // c4d45d15 for the simple-wallet fix that this mirrors).
-                        format!("--shared-ringdb-dir={}/{}_ringdb", shared_dir.to_string_lossy(), agent_id),
-                        "--confirm-external-bind".to_string(),
-                        "--allow-mismatched-daemon-version".to_string(),
-                    ];
-
-                    // Note: we intentionally do NOT set --max-concurrency on wallet-rpc.
-                    // See wallet.rs for details on the deadlock this causes.
-
-                    // Add configurable options from merged wallet_defaults + wallet_options
-                    args.extend(options_to_args(&merged_wallet_options));
-
-                    args.push("--daemon-ssl-allow-any-cert".to_string());
-
-                    // Add custom phase args
-                    if let Some(custom_args) = phase_args {
-                        for arg in custom_args {
-                            args.push(arg.clone());
-                        }
-                    }
-
-                    args
-                };
-
-                for (phase_num, phase) in phases {
-                    let wallet_args = build_wallet_args(phase.args.as_ref());
-
-                    // Resolve binary path for this phase
-                    let wallet_binary_path = resolve_binary_path_for_shadow(&phase.path)
-                        .map_err(|e| color_eyre::eyre::eyre!(
-                            "Agent '{}': failed to resolve wallet phase binary path '{}': {}",
-                            agent_id, phase.path, e
-                        ))?;
-
-                    // Build environment for this phase
-                    let mut wallet_env = environment.clone();
-                    if let Some(custom_env) = &phase.env {
-                        for (key, value) in custom_env {
-                            wallet_env.insert(key.clone(), value.clone());
-                        }
-                    }
-
-                    // Determine start time
-                    let start_time = if let Some(start) = &phase.start {
-                        start.clone()
-                    } else if *phase_num == 0 {
-                        wallet_start_time.clone()
-                    } else {
-                        // Should have been caught by validation
-                        wallet_start_time.clone()
-                    };
-
-                    // Determine shutdown time, signal, and expected final state.
-                    //
-                    // Non-final wallet phases use SIGKILL rather than the default
-                    // SIGTERM. monero-wallet-rpc can deadlock during normal
-                    // operation, and a deadlocked wallet ignores SIGTERM
-                    // indefinitely — holding port 18082 past shutdown_time and
-                    // blocking the next-phase binary from binding. SIGKILL is
-                    // safe in the upgrade context (chain rebuilds wallet state
-                    // on the next phase's first refresh). Full rationale,
-                    // tradeoffs, and an escalation-wrapper alternative are in
-                    // docs/UPGRADE_WALLET_SIGKILL.md.
-                    let (shutdown_time, shutdown_signal, expected_final_state) =
-                        if *phase_num < (phase_count as u32 - 1) {
-                            (
-                                phase.stop.clone(),
-                                Some("SIGKILL".to_string()),
-                                Some(ExpectedFinalState::Signaled("SIGKILL".to_string())),
-                            )
-                        } else {
-                            // Last phase - runs until simulation end
-                            (None, None, Some(ExpectedFinalState::Running))
-                        };
-
-                    // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
-
-                    // Shell-quoted form for the WALLET_RPC_CMD env var (consumed
-                    // by restart_wallet_rpc() via subprocess.Popen(shell=True)).
-                    // The Shadow process below uses ProcessArgs::List directly.
-                    let wallet_cmd = format!(
-                        "{} {}",
-                        crate::utils::options::shell_quote_args(&[wallet_binary_path.clone()]),
-                        crate::utils::options::shell_quote_args(&wallet_args),
-                    );
-
+                None => {
+                    // Direct launch — see phase-daemon comment above.
                     processes.push(crate::shadow::ShadowProcess {
-                        path: wallet_binary_path,
-                        args: crate::shadow::ProcessArgs::List(wallet_args),
-                        environment: wallet_env,
-                        start_time,
-                        shutdown_time,
-                        shutdown_signal,
-                        expected_final_state,
+                        path: daemon_binary_path,
+                        args: crate::shadow::ProcessArgs::List(daemon_args),
+                        environment: daemon_env,
+                        start_time: start_time_daemon.clone(),
+                        shutdown_time: None,
+                        shutdown_signal: None,
+                        expected_final_state: Some(ExpectedFinalState::Running),
                     });
-
-                    // Keep the last phase's command for the agent restart env var
-                    wallet_rpc_cmd = Some(wallet_cmd);
-                }
-            } else if has_wallet {
-                // Simple wallet configuration (single binary)
-                let wallet_binary_path = if let Some(wallet_spec) = &user_agent_config.wallet {
-                    resolve_binary_path_for_shadow(wallet_spec).map_err(|e| color_eyre::eyre::eyre!(
-                        "Agent '{}': failed to resolve wallet binary path '{}': {}",
-                        agent_id, wallet_spec, e
-                    ))?
-                } else {
-                    wallet_path.to_string()
-                };
-
-                let daemon = if has_local_daemon || has_daemon_phases {
-                    Some(DaemonAddress::Local { agent_ip: &agent_ip, daemon_rpc_port })
-                } else if has_remote_daemon {
-                    Some(DaemonAddress::Remote(user_agent_config.remote_daemon_address()))
-                } else {
-                    None
-                };
-                if let Some(daemon) = daemon {
-                    wallet_rpc_cmd = Some(add_wallet_process(WalletProcessArgs {
-                        processes: &mut processes,
-                        agent_id: &agent_id,
-                        agent_ip: &agent_ip,
-                        daemon,
-                        wallet_rpc_port,
-                        wallet_binary_path: &wallet_binary_path,
-                        environment,
-                        wallet_start_time: &wallet_start_time,
-                        custom_args: user_agent_config.wallet_args.as_ref(),
-                        custom_env: user_agent_config.wallet_env.as_ref(),
-                        wallet_defaults,
-                        wallet_options: user_agent_config.wallet_options.as_ref(),
-                        shared_dir: &shared_dir.to_string_lossy(),
-                    }));
                 }
             }
+        } // End of daemon configuration
 
-            // Add agent scripts (skip entirely for daemon-only relay agents)
-            if !user_agent_config.is_daemon_only() {
-            let script = user_agent_config.script.clone()
+        // Add wallet process based on agent type
+        // Merge wallet_defaults with per-agent wallet_options
+        let mut merged_wallet_options =
+            merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
+        translate_wallet_log_level(&mut merged_wallet_options);
+
+        // Track wallet-rpc command for restart capability
+        let mut wallet_rpc_cmd: Option<String> = None;
+
+        if has_wallet_phases {
+            // Phase-based wallet configuration (upgrade scenario).
+            // `has_wallet_phases` already verified wallet_phases is Some and non-empty.
+            let phases = user_agent_config
+                .wallet_phases
+                .as_ref()
+                .expect("invariant: has_wallet_phases() == true implies wallet_phases.is_some()");
+            let phase_count = phases.len();
+
+            // Build base wallet args
+            let build_wallet_args = |phase_args: Option<&Vec<String>>| -> Vec<String> {
+                let mut args = vec![
+                    format!("--daemon-address=http://{}:{}", agent_ip, daemon_rpc_port),
+                    format!("--rpc-bind-port={}", wallet_rpc_port),
+                    format!("--rpc-bind-ip={}", agent_ip),
+                    "--disable-rpc-login".to_string(),
+                    "--trusted-daemon".to_string(),
+                    format!(
+                        "--wallet-dir={}/{}_wallet",
+                        shared_dir.to_string_lossy(),
+                        agent_id
+                    ),
+                    // Per-agent ringdb path — without this, all wallets fall
+                    // back to a single shared LMDB and serialize on its writer
+                    // mutex, deadlocking under Shadow at scale (see commit
+                    // c4d45d15 for the simple-wallet fix that this mirrors).
+                    format!(
+                        "--shared-ringdb-dir={}/{}_ringdb",
+                        shared_dir.to_string_lossy(),
+                        agent_id
+                    ),
+                    "--confirm-external-bind".to_string(),
+                    "--allow-mismatched-daemon-version".to_string(),
+                ];
+
+                // Note: we intentionally do NOT set --max-concurrency on wallet-rpc.
+                // See wallet.rs for details on the deadlock this causes.
+
+                // Add configurable options from merged wallet_defaults + wallet_options
+                args.extend(options_to_args(&merged_wallet_options));
+
+                args.push("--daemon-ssl-allow-any-cert".to_string());
+
+                // Add custom phase args
+                if let Some(custom_args) = phase_args {
+                    for arg in custom_args {
+                        args.push(arg.clone());
+                    }
+                }
+
+                args
+            };
+
+            for (phase_num, phase) in phases {
+                let wallet_args = build_wallet_args(phase.args.as_ref());
+
+                // Resolve binary path for this phase
+                let wallet_binary_path =
+                    resolve_binary_path_for_shadow(&phase.path).map_err(|e| {
+                        color_eyre::eyre::eyre!(
+                            "Agent '{}': failed to resolve wallet phase binary path '{}': {}",
+                            agent_id,
+                            phase.path,
+                            e
+                        )
+                    })?;
+
+                // Build environment for this phase
+                let mut wallet_env = environment.clone();
+                if let Some(custom_env) = &phase.env {
+                    for (key, value) in custom_env {
+                        wallet_env.insert(key.clone(), value.clone());
+                    }
+                }
+
+                // Determine start time
+                let start_time = if let Some(start) = &phase.start {
+                    start.clone()
+                } else if *phase_num == 0 {
+                    wallet_start_time.clone()
+                } else {
+                    // Should have been caught by validation
+                    wallet_start_time.clone()
+                };
+
+                // Determine shutdown time, signal, and expected final state.
+                //
+                // Non-final wallet phases use SIGKILL rather than the default
+                // SIGTERM. monero-wallet-rpc can deadlock during normal
+                // operation, and a deadlocked wallet ignores SIGTERM
+                // indefinitely — holding port 18082 past shutdown_time and
+                // blocking the next-phase binary from binding. SIGKILL is
+                // safe in the upgrade context (chain rebuilds wallet state
+                // on the next phase's first refresh). Full rationale,
+                // tradeoffs, and an escalation-wrapper alternative are in
+                // docs/UPGRADE_WALLET_SIGKILL.md.
+                let (shutdown_time, shutdown_signal, expected_final_state) =
+                    if *phase_num < (phase_count as u32 - 1) {
+                        (
+                            phase.stop.clone(),
+                            Some("SIGKILL".to_string()),
+                            Some(ExpectedFinalState::Signaled("SIGKILL".to_string())),
+                        )
+                    } else {
+                        // Last phase - runs until simulation end
+                        (None, None, Some(ExpectedFinalState::Running))
+                    };
+
+                // Note: wallet directory cleanup is handled pre-simulation by the orchestrator.
+
+                // Shell-quoted form for the WALLET_RPC_CMD env var (consumed
+                // by restart_wallet_rpc() via subprocess.Popen(shell=True)).
+                // The Shadow process below uses ProcessArgs::List directly.
+                let wallet_cmd = format!(
+                    "{} {}",
+                    crate::utils::options::shell_quote_args(&[wallet_binary_path.clone()]),
+                    crate::utils::options::shell_quote_args(&wallet_args),
+                );
+
+                processes.push(crate::shadow::ShadowProcess {
+                    path: wallet_binary_path,
+                    args: crate::shadow::ProcessArgs::List(wallet_args),
+                    environment: wallet_env,
+                    start_time,
+                    shutdown_time,
+                    shutdown_signal,
+                    expected_final_state,
+                });
+
+                // Keep the last phase's command for the agent restart env var
+                wallet_rpc_cmd = Some(wallet_cmd);
+            }
+        } else if has_wallet {
+            // Simple wallet configuration (single binary)
+            let wallet_binary_path = if let Some(wallet_spec) = &user_agent_config.wallet {
+                resolve_binary_path_for_shadow(wallet_spec).map_err(|e| {
+                    color_eyre::eyre::eyre!(
+                        "Agent '{}': failed to resolve wallet binary path '{}': {}",
+                        agent_id,
+                        wallet_spec,
+                        e
+                    )
+                })?
+            } else {
+                wallet_path.to_string()
+            };
+
+            let daemon = if has_local_daemon || has_daemon_phases {
+                Some(DaemonAddress::Local {
+                    agent_ip: &agent_ip,
+                    daemon_rpc_port,
+                })
+            } else if has_remote_daemon {
+                Some(DaemonAddress::Remote(
+                    user_agent_config.remote_daemon_address(),
+                ))
+            } else {
+                None
+            };
+            if let Some(daemon) = daemon {
+                wallet_rpc_cmd = Some(add_wallet_process(WalletProcessArgs {
+                    processes: &mut processes,
+                    agent_id: &agent_id,
+                    agent_ip: &agent_ip,
+                    daemon,
+                    wallet_rpc_port,
+                    wallet_binary_path: &wallet_binary_path,
+                    environment,
+                    wallet_start_time: &wallet_start_time,
+                    custom_args: user_agent_config.wallet_args.as_ref(),
+                    custom_env: user_agent_config.wallet_env.as_ref(),
+                    wallet_defaults,
+                    wallet_options: user_agent_config.wallet_options.as_ref(),
+                    shared_dir: &shared_dir.to_string_lossy(),
+                }));
+            }
+        }
+
+        // Add agent scripts (skip entirely for daemon-only relay agents)
+        if !user_agent_config.is_daemon_only() {
+            let script = user_agent_config
+                .script
+                .clone()
                 .unwrap_or_else(|| "agents.regular_user".to_string());
 
             if is_miner && script.contains("autonomous_miner") {
                 // HYBRID APPROACH for miners: Run both regular_user (for wallet) AND mining_script
 
                 // Build merged attributes that include typed fields (hashrate, is_miner, can_receive_distributions)
-                let mut merged_attributes = user_agent_config.attributes.clone().unwrap_or_default();
+                let mut merged_attributes =
+                    user_agent_config.attributes.clone().unwrap_or_default();
                 merged_attributes.insert("is_miner".to_string(), "true".to_string());
                 if let Some(hashrate) = user_agent_config.hashrate {
                     merged_attributes.insert("hashrate".to_string(), hashrate.to_string());
                 }
                 if user_agent_config.can_receive_distributions() {
-                    merged_attributes.insert("can_receive_distributions".to_string(), "true".to_string());
+                    merged_attributes
+                        .insert("can_receive_distributions".to_string(), "true".to_string());
                 }
 
                 // Step 1: Run regular_user.py first for wallet creation and address registration
@@ -971,29 +1058,47 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     processes: &mut processes,
                     agent_id,
                     agent_ip: &agent_ip,
-                    daemon_rpc_port: if has_local_daemon { Some(daemon_rpc_port) } else { None },
-                    wallet_rpc_port: if has_wallet { Some(wallet_rpc_port) } else { None },
-                    p2p_port: if has_local_daemon { Some(p2p_port) } else { None },
+                    daemon_rpc_port: if has_local_daemon {
+                        Some(daemon_rpc_port)
+                    } else {
+                        None
+                    },
+                    wallet_rpc_port: if has_wallet {
+                        Some(wallet_rpc_port)
+                    } else {
+                        None
+                    },
+                    p2p_port: if has_local_daemon {
+                        Some(p2p_port)
+                    } else {
+                        None
+                    },
                     script: "agents.regular_user",
                     attributes: Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
                     index: i,
-                    stop_time: environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    stop_time: environment
+                        .get("stop_time")
+                        .map(|s| s.as_str())
+                        .unwrap_or("1800"),
                     custom_start_time: Some(&agent_start_time),
                     remote_daemon: user_agent_config.remote_daemon_address(),
-                    daemon_selection_strategy: user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    daemon_selection_strategy: user_agent_config
+                        .daemon_selection_strategy()
+                        .map(|s| s.as_str()),
                     scripts_dir,
                     wallet_rpc_cmd: wallet_rpc_cmd.as_deref(),
                 });
 
                 // Step 2: Run mining_script (autonomous_miner.py)
-                let mining_start_time = if let Ok(agent_seconds) = parse_duration_to_seconds(&agent_start_time) {
-                    format!("{}s", agent_seconds + 10)
-                } else {
-                    format!("{}s", 75 + i * 2)
-                };
+                let mining_start_time =
+                    if let Ok(agent_seconds) = parse_duration_to_seconds(&agent_start_time) {
+                        format!("{}s", agent_seconds + 10)
+                    } else {
+                        format!("{}s", 75 + i * 2)
+                    };
 
                 let mining_wallet_port = if user_agent_config.wallet.is_some() {
                     Some(wallet_rpc_port)
@@ -1020,58 +1125,86 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             } else if !script.is_empty() {
                 // Regular user agent script
                 // Build merged attributes that include typed config fields
-                let mut merged_attributes = user_agent_config.attributes.clone().unwrap_or_default();
+                let mut merged_attributes =
+                    user_agent_config.attributes.clone().unwrap_or_default();
                 if let Some(activity_start_time) = user_agent_config.activity_start_time {
-                    merged_attributes.insert("activity_start_time".to_string(), activity_start_time.to_string());
+                    merged_attributes.insert(
+                        "activity_start_time".to_string(),
+                        activity_start_time.to_string(),
+                    );
                 }
                 if let Some(transaction_interval) = user_agent_config.transaction_interval {
-                    merged_attributes.insert("transaction_interval".to_string(), transaction_interval.to_string());
+                    merged_attributes.insert(
+                        "transaction_interval".to_string(),
+                        transaction_interval.to_string(),
+                    );
                 }
                 if user_agent_config.can_receive_distributions() {
-                    merged_attributes.insert("can_receive_distributions".to_string(), "true".to_string());
+                    merged_attributes
+                        .insert("can_receive_distributions".to_string(), "true".to_string());
                 }
 
                 add_user_agent_process(UserAgentProcessArgs {
                     processes: &mut processes,
                     agent_id,
                     agent_ip: &agent_ip,
-                    daemon_rpc_port: if has_local_daemon { Some(daemon_rpc_port) } else { None },
-                    wallet_rpc_port: if has_wallet { Some(wallet_rpc_port) } else { None },
-                    p2p_port: if has_local_daemon { Some(p2p_port) } else { None },
+                    daemon_rpc_port: if has_local_daemon {
+                        Some(daemon_rpc_port)
+                    } else {
+                        None
+                    },
+                    wallet_rpc_port: if has_wallet {
+                        Some(wallet_rpc_port)
+                    } else {
+                        None
+                    },
+                    p2p_port: if has_local_daemon {
+                        Some(p2p_port)
+                    } else {
+                        None
+                    },
                     script: &script,
                     attributes: Some(&merged_attributes),
                     environment,
                     shared_dir,
                     current_dir,
                     index: i,
-                    stop_time: environment.get("stop_time").map(|s| s.as_str()).unwrap_or("1800"),
+                    stop_time: environment
+                        .get("stop_time")
+                        .map(|s| s.as_str())
+                        .unwrap_or("1800"),
                     custom_start_time: Some(&agent_start_time),
                     remote_daemon: user_agent_config.remote_daemon_address(),
-                    daemon_selection_strategy: user_agent_config.daemon_selection_strategy().map(|s| s.as_str()),
+                    daemon_selection_strategy: user_agent_config
+                        .daemon_selection_strategy()
+                        .map(|s| s.as_str()),
                     scripts_dir,
                     wallet_rpc_cmd: wallet_rpc_cmd.as_deref(),
                 });
             }
-            } // end daemon-only guard
+        } // end daemon-only guard
 
-            // Only add the host if it has any processes
-            if !processes.is_empty() {
-                // Determine network node ID based on GML assignment or fallback
-                let network_node_id = if i < agent_node_assignments.len() {
-                    agent_node_assignments[i]
-                } else {
-                    0 // Fallback to node 0 for switch-based networks
-                };
+        // Only add the host if it has any processes
+        if !processes.is_empty() {
+            // Determine network node ID based on GML assignment or fallback
+            let network_node_id = if i < agent_node_assignments.len() {
+                agent_node_assignments[i]
+            } else {
+                0 // Fallback to node 0 for switch-based networks
+            };
 
-                hosts.insert(agent_id.to_string(), ShadowHost {
+            hosts.insert(
+                agent_id.to_string(),
+                ShadowHost {
                     network_node_id,
                     ip_addr: Some(agent_ip.clone()),
                     processes,
                     bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
                     bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
-                });
-                // Note: next_ip is already incremented in get_agent_ip function
-            }
+                },
+            );
+            // Note: next_ip is already incremented in get_agent_ip function
+        }
     }
 
     Ok(())
@@ -1092,8 +1225,15 @@ mod turnover_tests {
         let vals: Vec<f64> = (0..64)
             .map(|k| seeded_unit(42, &format!("cs:relay-001:{k}")))
             .collect();
-        let distinct = vals.iter().map(|v| (v * 1e6) as u64).collect::<Set<_>>().len();
-        assert!(distinct >= 60, "expected ~all distinct draws, got {distinct}/64");
+        let distinct = vals
+            .iter()
+            .map(|v| (v * 1e6) as u64)
+            .collect::<Set<_>>()
+            .len();
+        assert!(
+            distinct >= 60,
+            "expected ~all distinct draws, got {distinct}/64"
+        );
         let mean = vals.iter().sum::<f64>() / vals.len() as f64;
         assert!((0.3..0.7).contains(&mean), "mean {mean} not ~0.5");
     }
@@ -1109,9 +1249,21 @@ mod turnover_tests {
     #[test]
     fn turnover_schedule_sessions_vary_and_are_ordered() {
         let sched = build_turnover_schedule(
-            12345, "relay-001", 1200, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0,
+            12345,
+            "relay-001",
+            1200,
+            57600,
+            7200.0,
+            1800.0,
+            300.0,
+            f64::INFINITY,
+            30.0,
         );
-        assert!(sched.len() >= 2, "expected multiple sessions, got {}", sched.len());
+        assert!(
+            sched.len() >= 2,
+            "expected multiple sessions, got {}",
+            sched.len()
+        );
         // Final session is open-ended (runs to sim end); earlier ones bounded.
         assert_eq!(sched.last().unwrap().1, None);
         // Time-ordered, non-overlapping, with a real downtime gap between.
@@ -1126,29 +1278,68 @@ mod turnover_tests {
             .map(|(s, e)| e.unwrap() - s)
             .collect();
         if lens.len() >= 2 {
-            assert!(lens.iter().collect::<Set<_>>().len() >= 2, "lengths flat: {lens:?}");
+            assert!(
+                lens.iter().collect::<Set<_>>().len() >= 2,
+                "lengths flat: {lens:?}"
+            );
         }
     }
 
     #[test]
     fn turnover_schedule_is_deterministic() {
-        let a = build_turnover_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
-        let b = build_turnover_schedule(99, "relay-042", 0, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+        let a = build_turnover_schedule(
+            99,
+            "relay-042",
+            0,
+            57600,
+            7200.0,
+            1800.0,
+            300.0,
+            f64::INFINITY,
+            30.0,
+        );
+        let b = build_turnover_schedule(
+            99,
+            "relay-042",
+            0,
+            57600,
+            7200.0,
+            1800.0,
+            300.0,
+            f64::INFINITY,
+            30.0,
+        );
         assert_eq!(a, b);
     }
 
     #[test]
     fn turnover_schedule_no_cycle_when_start_past_end() {
-        let s = build_turnover_schedule(1, "x", 60000, 57600, 7200.0, 1800.0, 300.0, f64::INFINITY, 30.0);
+        let s = build_turnover_schedule(
+            1,
+            "x",
+            60000,
+            57600,
+            7200.0,
+            1800.0,
+            300.0,
+            f64::INFINITY,
+            30.0,
+        );
         assert_eq!(s, vec![(60000, None)]);
     }
 
     #[test]
     fn turnover_schedule_respects_max_session_ceiling() {
-        let sched = build_turnover_schedule(7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0);
+        let sched = build_turnover_schedule(
+            7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0,
+        );
         for (s, e) in &sched {
             if let Some(end) = e {
-                assert!(end - s <= 14400, "session {} exceeds the 4h ceiling", end - s);
+                assert!(
+                    end - s <= 14400,
+                    "session {} exceeds the 4h ceiling",
+                    end - s
+                );
             }
         }
     }

@@ -12,7 +12,10 @@ use color_eyre::eyre::{Context, Result};
 
 use monerosim::analysis::{
     self,
-    types::{AnalysisAgentInfo, AnalysisMetadata, BlockInfo, FullAnalysisReport, NodeLogData, Transaction},
+    types::{
+        AnalysisAgentInfo, AnalysisMetadata, BlockInfo, FullAnalysisReport, NodeLogData,
+        Transaction,
+    },
 };
 
 #[derive(Parser)]
@@ -204,7 +207,10 @@ fn main() -> Result<()> {
         // Auto-detect: check /tmp for monero-* dirs first, then fall back to shadow.data/hosts
         let tmp_dir = PathBuf::from("/tmp");
         let has_tmp_logs = agents.iter().any(|a| {
-            tmp_dir.join(format!("monero-{}", a.id)).join("bitmonero.log").exists()
+            tmp_dir
+                .join(format!("monero-{}", a.id))
+                .join("bitmonero.log")
+                .exists()
         });
         if has_tmp_logs {
             log::info!("Auto-detected daemon logs in /tmp");
@@ -221,7 +227,10 @@ fn main() -> Result<()> {
 
     let log_data = if !cli.no_cache {
         if let Some(cached) = try_load_cache(&cache_path, &log_dir) {
-            log::info!("Loaded parsed logs from cache in {:.1}s", start.elapsed().as_secs_f64());
+            log::info!(
+                "Loaded parsed logs from cache in {:.1}s",
+                start.elapsed().as_secs_f64()
+            );
             cached
         } else {
             log::info!("Parsing logs from {}...", log_dir.display());
@@ -233,15 +242,25 @@ fn main() -> Result<()> {
             data
         }
     } else {
-        log::info!("Parsing logs from {} (cache disabled)...", log_dir.display());
+        log::info!(
+            "Parsing logs from {} (cache disabled)...",
+            log_dir.display()
+        );
         let data = analysis::parse_all_logs(&log_dir, &agents)?;
-        log::info!("Parsed logs in {:.1}s (cache disabled)", start.elapsed().as_secs_f64());
+        log::info!(
+            "Parsed logs in {:.1}s (cache disabled)",
+            start.elapsed().as_secs_f64()
+        );
         data
     };
 
     // Create output directory
-    fs::create_dir_all(&cli.output)
-        .with_context(|| format!("Failed to create output directory: {}", cli.output.display()))?;
+    fs::create_dir_all(&cli.output).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            cli.output.display()
+        )
+    })?;
 
     // Run requested analysis
     match cli.command {
@@ -268,7 +287,9 @@ fn main() -> Result<()> {
             // Filter by confidence if requested
             let filtered_report = if min_confidence > 0.0 {
                 let mut report = spy_report;
-                report.per_tx_analysis.retain(|a| a.correlation_confidence >= min_confidence);
+                report
+                    .per_tx_analysis
+                    .retain(|a| a.correlation_confidence >= min_confidence);
                 report
             } else {
                 spy_report
@@ -348,23 +369,30 @@ fn main() -> Result<()> {
             println!("Agents: {}", agents.len());
             println!(
                 "  Miners: {}",
-                agents.iter().filter(|a| a.script_type.contains("miner")).count()
+                agents
+                    .iter()
+                    .filter(|a| a.script_type.contains("miner"))
+                    .count()
             );
             println!(
                 "  Users: {}",
-                agents.iter().filter(|a| a.script_type.contains("user")).count()
+                agents
+                    .iter()
+                    .filter(|a| a.script_type.contains("user"))
+                    .count()
             );
             println!();
             println!("Transactions: {}", transactions.len());
             println!("Blocks: {}", blocks.len());
             println!();
-            println!(
-                "Log data parsed: {} nodes",
-                log_data.len()
-            );
+            println!("Log data parsed: {} nodes", log_data.len());
             let total_tx_obs: usize = log_data.values().map(|d| d.tx_observations.len()).sum();
-            let total_conn_events: usize = log_data.values().map(|d| d.connection_events.len()).sum();
-            let total_v2_announcements: usize = log_data.values().map(|d| d.tx_hash_announcements.len()).sum();
+            let total_conn_events: usize =
+                log_data.values().map(|d| d.connection_events.len()).sum();
+            let total_v2_announcements: usize = log_data
+                .values()
+                .map(|d| d.tx_hash_announcements.len())
+                .sum();
             let total_v2_requests: usize = log_data.values().map(|d| d.tx_requests.len()).sum();
             let total_drops: usize = log_data.values().map(|d| d.connection_drops.len()).sum();
             println!("  TX observations (v1): {}", total_tx_obs);
@@ -374,7 +402,10 @@ fn main() -> Result<()> {
             println!("  Connection drops: {}", total_drops);
             println!();
         }
-        Commands::TxRelayV2 { compare_with, compare_shared } => {
+        Commands::TxRelayV2 {
+            compare_with,
+            compare_shared,
+        } => {
             log::info!("Analyzing TX relay v2 protocol behavior...");
 
             // Run v2 analysis on primary data
@@ -386,11 +417,17 @@ fn main() -> Result<()> {
             // Save primary report
             let json = serde_json::to_string_pretty(&v2_report)?;
             fs::write(cli.output.join("tx_relay_v2_report.json"), &json)?;
-            log::info!("V2 report written to {}", cli.output.join("tx_relay_v2_report.json").display());
+            log::info!(
+                "V2 report written to {}",
+                cli.output.join("tx_relay_v2_report.json").display()
+            );
 
             // If comparison requested, load and analyze second dataset
             if let (Some(compare_dir), Some(compare_shared_dir)) = (compare_with, compare_shared) {
-                log::info!("Loading comparison data from {}...", compare_shared_dir.display());
+                log::info!(
+                    "Loading comparison data from {}...",
+                    compare_shared_dir.display()
+                );
 
                 let compare_agents = load_agent_registry(&compare_shared_dir)?;
                 let compare_transactions = load_transactions(&compare_shared_dir)?;
@@ -406,7 +443,11 @@ fn main() -> Result<()> {
                 };
                 let compare_log_data = analysis::parse_all_logs(&compare_log_dir, &compare_agents)?;
 
-                let compare_report = analysis::analyze_tx_relay_v2(&compare_transactions, &compare_log_data, &compare_agents);
+                let compare_report = analysis::analyze_tx_relay_v2(
+                    &compare_transactions,
+                    &compare_log_data,
+                    &compare_agents,
+                );
 
                 // Print comparison
                 println!("\n");
@@ -417,15 +458,24 @@ fn main() -> Result<()> {
 
                 // Save comparison report
                 let compare_json = serde_json::to_string_pretty(&compare_report)?;
-                fs::write(cli.output.join("tx_relay_v2_comparison_report.json"), &compare_json)?;
+                fs::write(
+                    cli.output.join("tx_relay_v2_comparison_report.json"),
+                    &compare_json,
+                )?;
 
                 // Save comparison summary
                 let comparison_text = comparison.join("\n");
                 fs::write(cli.output.join("tx_relay_comparison.txt"), &comparison_text)?;
-                log::info!("Comparison written to {}", cli.output.join("tx_relay_comparison.txt").display());
+                log::info!(
+                    "Comparison written to {}",
+                    cli.output.join("tx_relay_comparison.txt").display()
+                );
             }
         }
-        Commands::Dandelion { detailed, short_stems } => {
+        Commands::Dandelion {
+            detailed,
+            short_stems,
+        } => {
             log::info!("Analyzing Dandelion++ stem paths...");
 
             let dandelion_report = analysis::analyze_dandelion(&transactions, &log_data, &agents);
@@ -436,9 +486,15 @@ fn main() -> Result<()> {
             // Save JSON report
             let json = serde_json::to_string_pretty(&dandelion_report)?;
             fs::write(cli.output.join("dandelion_report.json"), &json)?;
-            log::info!("Dandelion report written to {}", cli.output.join("dandelion_report.json").display());
+            log::info!(
+                "Dandelion report written to {}",
+                cli.output.join("dandelion_report.json").display()
+            );
         }
-        Commands::NetworkGraph { dot, expected_outbound: _ } => {
+        Commands::NetworkGraph {
+            dot,
+            expected_outbound: _,
+        } => {
             log::info!("Analyzing network P2P topology...");
 
             let graph_report = analysis::analyze_network_graph(&log_data, &agents, None);
@@ -449,13 +505,20 @@ fn main() -> Result<()> {
             // Save JSON report
             let json = serde_json::to_string_pretty(&graph_report)?;
             fs::write(cli.output.join("network_graph_report.json"), &json)?;
-            log::info!("Network graph report written to {}", cli.output.join("network_graph_report.json").display());
+            log::info!(
+                "Network graph report written to {}",
+                cli.output.join("network_graph_report.json").display()
+            );
 
             // Export DOT if requested
             if dot {
-                let dot_content = analysis::network_graph::generate_dot(&graph_report.final_state, &agents);
+                let dot_content =
+                    analysis::network_graph::generate_dot(&graph_report.final_state, &agents);
                 fs::write(cli.output.join("network_graph.dot"), &dot_content)?;
-                log::info!("GraphViz DOT file written to {}", cli.output.join("network_graph.dot").display());
+                log::info!(
+                    "GraphViz DOT file written to {}",
+                    cli.output.join("network_graph.dot").display()
+                );
                 println!("\nTo visualize: dot -Tpng network_graph.dot -o network_graph.png");
             }
         }
@@ -465,7 +528,10 @@ fn main() -> Result<()> {
             pre_upgrade_end,
             post_upgrade_start,
         } => {
-            log::info!("Analyzing upgrade impact with {}s time windows...", window_size);
+            log::info!(
+                "Analyzing upgrade impact with {}s time windows...",
+                window_size
+            );
 
             let config = analysis::upgrade_analysis::UpgradeAnalysisConfig {
                 window_size_sec: window_size as f64,
@@ -490,12 +556,18 @@ fn main() -> Result<()> {
             // Save text report
             let txt_path = cli.output.join("upgrade_analysis_report.txt");
             fs::write(&txt_path, &text_report)?;
-            log::info!("Upgrade analysis text report written to {}", txt_path.display());
+            log::info!(
+                "Upgrade analysis text report written to {}",
+                txt_path.display()
+            );
 
             // Save JSON report
             let json = serde_json::to_string_pretty(&upgrade_report)?;
             fs::write(cli.output.join("upgrade_analysis.json"), &json)?;
-            log::info!("Upgrade analysis written to {}", cli.output.join("upgrade_analysis.json").display());
+            log::info!(
+                "Upgrade analysis written to {}",
+                cli.output.join("upgrade_analysis.json").display()
+            );
         }
 
         Commands::Bandwidth {
@@ -511,7 +583,8 @@ fn main() -> Result<()> {
 
             // Calculate time series if requested
             if let Some(window_size) = time_series {
-                report.bandwidth_over_time = analysis::bandwidth_time_series(&log_data, window_size as f64);
+                report.bandwidth_over_time =
+                    analysis::bandwidth_time_series(&log_data, window_size as f64);
             }
 
             // Print report
@@ -520,7 +593,10 @@ fn main() -> Result<()> {
             // Save JSON report
             let json = serde_json::to_string_pretty(&report)?;
             fs::write(cli.output.join("bandwidth_report.json"), &json)?;
-            log::info!("Bandwidth report written to {}", cli.output.join("bandwidth_report.json").display());
+            log::info!(
+                "Bandwidth report written to {}",
+                cli.output.join("bandwidth_report.json").display()
+            );
         }
     }
 
@@ -534,48 +610,114 @@ fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
     println!("================================================================================\n");
 
     println!("Protocol Usage:");
-    println!("  V1 broadcasts (NOTIFY_NEW_TRANSACTIONS): {}", report.protocol_usage.v1_tx_broadcasts);
-    println!("  V2 hash announcements (NOTIFY_TX_POOL_HASH): {}", report.protocol_usage.v2_hash_announcements);
-    println!("  V2 requests (NOTIFY_REQUEST_TX_POOL_TXS): {}", report.protocol_usage.v2_tx_requests);
-    println!("  V2 usage ratio: {:.1}%", report.protocol_usage.v2_usage_ratio * 100.0);
+    println!(
+        "  V1 broadcasts (NOTIFY_NEW_TRANSACTIONS): {}",
+        report.protocol_usage.v1_tx_broadcasts
+    );
+    println!(
+        "  V2 hash announcements (NOTIFY_TX_POOL_HASH): {}",
+        report.protocol_usage.v2_hash_announcements
+    );
+    println!(
+        "  V2 requests (NOTIFY_REQUEST_TX_POOL_TXS): {}",
+        report.protocol_usage.v2_tx_requests
+    );
+    println!(
+        "  V2 usage ratio: {:.1}%",
+        report.protocol_usage.v2_usage_ratio * 100.0
+    );
     println!();
 
     println!("TX Delivery:");
-    println!("  Transactions created: {}", report.delivery_analysis.total_txs_created);
-    println!("  Fully propagated: {}", report.delivery_analysis.txs_fully_propagated);
-    println!("  Potentially lost: {}", report.delivery_analysis.txs_potentially_lost.len());
-    println!("  Average propagation coverage: {:.1}%", report.delivery_analysis.average_propagation_coverage * 100.0);
+    println!(
+        "  Transactions created: {}",
+        report.delivery_analysis.total_txs_created
+    );
+    println!(
+        "  Fully propagated: {}",
+        report.delivery_analysis.txs_fully_propagated
+    );
+    println!(
+        "  Potentially lost: {}",
+        report.delivery_analysis.txs_potentially_lost.len()
+    );
+    println!(
+        "  Average propagation coverage: {:.1}%",
+        report.delivery_analysis.average_propagation_coverage * 100.0
+    );
     if !report.delivery_analysis.txs_potentially_lost.is_empty() {
         println!("  Lost TX hashes:");
-        for (i, tx) in report.delivery_analysis.txs_potentially_lost.iter().take(5).enumerate() {
+        for (i, tx) in report
+            .delivery_analysis
+            .txs_potentially_lost
+            .iter()
+            .take(5)
+            .enumerate()
+        {
             println!("    {}. {}...", i + 1, &tx[..16.min(tx.len())]);
         }
         if report.delivery_analysis.txs_potentially_lost.len() > 5 {
-            println!("    ... and {} more", report.delivery_analysis.txs_potentially_lost.len() - 5);
+            println!(
+                "    ... and {} more",
+                report.delivery_analysis.txs_potentially_lost.len() - 5
+            );
         }
     }
     println!();
 
     println!("Connection Stability:");
     println!("  Total drops: {}", report.connection_stability.total_drops);
-    println!("    TX verification failures: {}", report.connection_stability.drops_tx_verification);
-    println!("    Duplicate TX: {}", report.connection_stability.drops_duplicate_tx);
+    println!(
+        "    TX verification failures: {}",
+        report.connection_stability.drops_tx_verification
+    );
+    println!(
+        "    Duplicate TX: {}",
+        report.connection_stability.drops_duplicate_tx
+    );
     println!("    Other: {}", report.connection_stability.drops_other);
-    println!("  Avg connection duration: {:.1}s", report.connection_stability.average_connection_duration_sec);
+    println!(
+        "  Avg connection duration: {:.1}s",
+        report.connection_stability.average_connection_duration_sec
+    );
     println!();
 
     if report.protocol_usage.v2_tx_requests > 0 {
         println!("V2 Request/Response:");
         println!("  Requests sent: {}", report.request_response.requests_sent);
-        println!("  Requests received: {}", report.request_response.requests_received);
+        println!(
+            "  Requests received: {}",
+            report.request_response.requests_received
+        );
         println!();
     }
 
     println!("Assessment:");
     println!("  Health score: {}/100", report.assessment.health_score);
-    println!("  V2 active: {}", if report.assessment.v2_active { "YES" } else { "NO" });
-    println!("  Lost TXs: {}", if report.assessment.has_lost_txs { "YES" } else { "NO" });
-    println!("  Stability issues: {}", if report.assessment.has_stability_issues { "YES" } else { "NO" });
+    println!(
+        "  V2 active: {}",
+        if report.assessment.v2_active {
+            "YES"
+        } else {
+            "NO"
+        }
+    );
+    println!(
+        "  Lost TXs: {}",
+        if report.assessment.has_lost_txs {
+            "YES"
+        } else {
+            "NO"
+        }
+    );
+    println!(
+        "  Stability issues: {}",
+        if report.assessment.has_stability_issues {
+            "YES"
+        } else {
+            "NO"
+        }
+    );
     println!();
     println!("Findings:");
     for finding in &report.assessment.findings {
@@ -592,7 +734,11 @@ fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
 }
 
 /// Print Dandelion++ analysis report to stdout
-fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: bool, short_stems: Option<usize>) {
+fn print_dandelion_report(
+    report: &analysis::types::DandelionReport,
+    detailed: bool,
+    short_stems: Option<usize>,
+) {
     println!("\n================================================================================");
     println!("                    DANDELION++ STEM PATH ANALYSIS");
     println!("================================================================================\n");
@@ -600,11 +746,14 @@ fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: b
     println!("Overview:");
     println!("  Total transactions: {}", report.total_transactions);
     println!("  Paths reconstructed: {}", report.paths_reconstructed);
-    println!("  Originator confirmed: {} ({:.1}%)",
+    println!(
+        "  Originator confirmed: {} ({:.1}%)",
         report.originator_confirmed_count,
         if report.paths_reconstructed > 0 {
             (report.originator_confirmed_count as f64 / report.paths_reconstructed as f64) * 100.0
-        } else { 0.0 }
+        } else {
+            0.0
+        }
     );
     println!();
 
@@ -637,8 +786,18 @@ fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: b
 
     println!("Privacy Assessment:");
     println!("  Score: {}/100", report.privacy_assessment.privacy_score);
-    println!("  Effective anonymity: {}", if report.privacy_assessment.effective_anonymity { "YES" } else { "NO" });
-    println!("  Trivially deanonymizable: {:.1}%", report.privacy_assessment.trivially_deanonymizable_pct);
+    println!(
+        "  Effective anonymity: {}",
+        if report.privacy_assessment.effective_anonymity {
+            "YES"
+        } else {
+            "NO"
+        }
+    );
+    println!(
+        "  Trivially deanonymizable: {:.1}%",
+        report.privacy_assessment.trivially_deanonymizable_pct
+    );
     println!();
     println!("Findings:");
     for finding in &report.privacy_assessment.findings {
@@ -655,12 +814,20 @@ fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: b
 
     // Show detailed paths if requested
     if detailed || short_stems.is_some() {
-        println!("================================================================================");
+        println!(
+            "================================================================================"
+        );
         println!("                         TRANSACTION PATHS");
-        println!("================================================================================\n");
+        println!(
+            "================================================================================\n"
+        );
 
         let paths_to_show: Vec<_> = if let Some(max_len) = short_stems {
-            report.paths.iter().filter(|p| p.stem_length <= max_len).collect()
+            report
+                .paths
+                .iter()
+                .filter(|p| p.stem_length <= max_len)
+                .collect()
         } else {
             report.paths.iter().collect()
         };
@@ -673,13 +840,19 @@ fn print_dandelion_report(report: &analysis::types::DandelionReport, detailed: b
                 println!("  Originator: {}", path.originator);
                 println!("  Stem length: {} hops", path.stem_length);
                 println!("  Stem duration: {:.1}ms", path.stem_duration_ms);
-                println!("  Fluff node: {}", path.fluff_node.as_deref().unwrap_or("unknown"));
+                println!(
+                    "  Fluff node: {}",
+                    path.fluff_node.as_deref().unwrap_or("unknown")
+                );
                 println!("  Fluff recipients: {}", path.fluff_recipients);
                 println!("  Path: {}", analysis::dandelion::format_stem_path(path));
                 println!();
             }
             if paths_to_show.len() > 50 {
-                println!("  ... and {} more paths (see JSON report for full details)", paths_to_show.len() - 50);
+                println!(
+                    "  ... and {} more paths (see JSON report for full details)",
+                    paths_to_show.len() - 50
+                );
             }
         }
     }
@@ -693,14 +866,22 @@ fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
 
     println!("Overview:");
     println!("  Daemon nodes: {}", report.total_daemon_nodes);
-    println!("  Unique connections observed: {}", report.total_unique_connections);
-    println!("  Analysis duration: {:.1}s ({:.1}h)",
+    println!(
+        "  Unique connections observed: {}",
+        report.total_unique_connections
+    );
+    println!(
+        "  Analysis duration: {:.1}s ({:.1}h)",
         report.analysis_duration_sec,
-        report.analysis_duration_sec / 3600.0);
+        report.analysis_duration_sec / 3600.0
+    );
     println!();
 
     println!("Final Network State ({}):", report.final_state.time_label);
-    println!("  Active connections: {}", report.final_state.total_connections);
+    println!(
+        "  Active connections: {}",
+        report.final_state.total_connections
+    );
     println!("  Avg outbound: {:.1}", report.final_state.avg_outbound);
     println!("  Avg inbound: {:.1}", report.final_state.avg_inbound);
     if !report.final_state.isolated_nodes.is_empty() {
@@ -709,32 +890,64 @@ fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
     println!();
 
     println!("Degree Distribution (final state):");
-    println!("  Outbound: min={}, max={}, mean={:.1}, median={:.1}",
+    println!(
+        "  Outbound: min={}, max={}, mean={:.1}, median={:.1}",
         report.degree_distribution.outbound_stats.min,
         report.degree_distribution.outbound_stats.max,
         report.degree_distribution.outbound_stats.mean,
-        report.degree_distribution.outbound_stats.median);
-    println!("  Inbound:  min={}, max={}, mean={:.1}, median={:.1}",
+        report.degree_distribution.outbound_stats.median
+    );
+    println!(
+        "  Inbound:  min={}, max={}, mean={:.1}, median={:.1}",
         report.degree_distribution.inbound_stats.min,
         report.degree_distribution.inbound_stats.max,
         report.degree_distribution.inbound_stats.mean,
-        report.degree_distribution.inbound_stats.median);
+        report.degree_distribution.inbound_stats.median
+    );
     println!();
 
     println!("Connection Churn:");
     println!("  Total opens: {}", report.churn_stats.total_opens);
     println!("  Total closes: {}", report.churn_stats.total_closes);
-    println!("  Avg connection duration: {:.1}s", report.churn_stats.avg_duration_sec);
-    println!("  Median duration: {:.1}s", report.churn_stats.median_duration_sec);
-    println!("  Long-lived (still active): {}", report.churn_stats.long_lived_connections);
-    println!("  Short-lived (<60s): {}", report.churn_stats.short_lived_connections);
+    println!(
+        "  Avg connection duration: {:.1}s",
+        report.churn_stats.avg_duration_sec
+    );
+    println!(
+        "  Median duration: {:.1}s",
+        report.churn_stats.median_duration_sec
+    );
+    println!(
+        "  Long-lived (still active): {}",
+        report.churn_stats.long_lived_connections
+    );
+    println!(
+        "  Short-lived (<60s): {}",
+        report.churn_stats.short_lived_connections
+    );
     println!();
 
-    println!("Validation (expected max outbound: {}):", report.validation.expected_max_outbound);
-    println!("  Actual max outbound: {}", report.validation.actual_max_outbound);
-    println!("  Within limits: {}", if report.validation.outbound_valid { "YES" } else { "NO" });
+    println!(
+        "Validation (expected max outbound: {}):",
+        report.validation.expected_max_outbound
+    );
+    println!(
+        "  Actual max outbound: {}",
+        report.validation.actual_max_outbound
+    );
+    println!(
+        "  Within limits: {}",
+        if report.validation.outbound_valid {
+            "YES"
+        } else {
+            "NO"
+        }
+    );
     if !report.validation.nodes_exceeding_outbound.is_empty() {
-        println!("  Nodes exceeding limit: {:?}", report.validation.nodes_exceeding_outbound);
+        println!(
+            "  Nodes exceeding limit: {:?}",
+            report.validation.nodes_exceeding_outbound
+        );
     }
     println!();
 
@@ -748,11 +961,13 @@ fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
     if report.snapshots.len() > 1 {
         println!("Network Evolution:");
         for snapshot in &report.snapshots {
-            println!("  {}: {} connections, {:.1} out / {:.1} in avg",
+            println!(
+                "  {}: {} connections, {:.1} out / {:.1} in avg",
                 snapshot.time_label,
                 snapshot.total_connections,
                 snapshot.avg_outbound,
-                snapshot.avg_inbound);
+                snapshot.avg_inbound
+            );
         }
         println!();
     }
@@ -762,12 +977,14 @@ fn print_network_graph_report(report: &analysis::NetworkGraphReport) {
     let mut node_degrees: Vec<_> = report.final_state.node_degrees.values().collect();
     node_degrees.sort_by(|a, b| b.total.cmp(&a.total));
     for (i, degree) in node_degrees.iter().take(10).enumerate() {
-        println!("  {}. {}: {} out, {} in ({} total)",
+        println!(
+            "  {}. {}: {} out, {} in ({} total)",
             i + 1,
             degree.node_id,
             degree.outbound,
             degree.inbound,
-            degree.total);
+            degree.total
+        );
     }
     if node_degrees.len() > 10 {
         println!("  ... and {} more nodes", node_degrees.len() - 10);
@@ -780,25 +997,43 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
     use std::fmt::Write;
     let mut out = String::new();
 
-    writeln!(out, "\n================================================================================").expect("write to String is infallible");
-    writeln!(out, "                      UPGRADE IMPACT ANALYSIS").expect("write to String is infallible");
-    writeln!(out, "================================================================================\n").expect("write to String is infallible");
+    writeln!(
+        out,
+        "\n================================================================================"
+    )
+    .expect("write to String is infallible");
+    writeln!(out, "                      UPGRADE IMPACT ANALYSIS")
+        .expect("write to String is infallible");
+    writeln!(
+        out,
+        "================================================================================\n"
+    )
+    .expect("write to String is infallible");
 
     // Metadata
-    writeln!(out, "Simulation Duration: {:.1}s - {:.1}s ({:.1}s total)",
+    writeln!(
+        out,
+        "Simulation Duration: {:.1}s - {:.1}s ({:.1}s total)",
         report.metadata.simulation_start,
         report.metadata.simulation_end,
-        report.metadata.simulation_end - report.metadata.simulation_start).expect("write to String is infallible");
-    writeln!(out, "Window Size: {}s ({} windows)",
-        report.metadata.window_size_sec as u64,
-        report.metadata.total_windows).expect("write to String is infallible");
+        report.metadata.simulation_end - report.metadata.simulation_start
+    )
+    .expect("write to String is infallible");
+    writeln!(
+        out,
+        "Window Size: {}s ({} windows)",
+        report.metadata.window_size_sec as u64, report.metadata.total_windows
+    )
+    .expect("write to String is infallible");
     writeln!(out).expect("write to String is infallible");
 
     // Upgrade info
     if let Some(ref upgrade_info) = report.upgrade_info {
         if let (Some(start), Some(end)) = (upgrade_info.upgrade_start, upgrade_info.upgrade_end) {
-            writeln!(out, "Upgrade Period: {:.1}s - {:.1}s", start, end).expect("write to String is infallible");
-            writeln!(out, "Nodes Upgraded: {}", upgrade_info.node_upgrades.len()).expect("write to String is infallible");
+            writeln!(out, "Upgrade Period: {:.1}s - {:.1}s", start, end)
+                .expect("write to String is infallible");
+            writeln!(out, "Nodes Upgraded: {}", upgrade_info.node_upgrades.len())
+                .expect("write to String is infallible");
             let mut version_line = String::new();
             if let Some(ref pre) = upgrade_info.pre_upgrade_version {
                 write!(version_line, "  {} ", pre).expect("write to String is infallible");
@@ -812,96 +1047,185 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
     }
 
     // Period summaries
-    if let (Some(ref pre), Some(ref post)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
+    if let (Some(ref pre), Some(ref post)) =
+        (&report.pre_upgrade_summary, &report.post_upgrade_summary)
+    {
         writeln!(out).expect("write to String is infallible");
-        writeln!(out, "Pre-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
-            pre.start, pre.end, pre.window_count).expect("write to String is infallible");
-        writeln!(out, "Post-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
-            post.start, post.end, post.window_count).expect("write to String is infallible");
+        writeln!(
+            out,
+            "Pre-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
+            pre.start, pre.end, pre.window_count
+        )
+        .expect("write to String is infallible");
+        writeln!(
+            out,
+            "Post-Upgrade Period: {:.1}s - {:.1}s ({} windows)",
+            post.start, post.end, post.window_count
+        )
+        .expect("write to String is infallible");
     }
     writeln!(out).expect("write to String is infallible");
 
     // Metric comparison table
     if !report.changes.is_empty() {
-        writeln!(out, "================================================================================").expect("write to String is infallible");
-        writeln!(out, "                         METRIC COMPARISON").expect("write to String is infallible");
-        writeln!(out, "================================================================================\n").expect("write to String is infallible");
+        writeln!(
+            out,
+            "================================================================================"
+        )
+        .expect("write to String is infallible");
+        writeln!(out, "                         METRIC COMPARISON")
+            .expect("write to String is infallible");
+        writeln!(
+            out,
+            "================================================================================\n"
+        )
+        .expect("write to String is infallible");
 
-        writeln!(out, "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
-            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").expect("write to String is infallible");
-        writeln!(out, "{:-<25}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
-            "", "", "", "", "").expect("write to String is infallible");
+        writeln!(
+            out,
+            "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
+            "Metric", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant"
+        )
+        .expect("write to String is infallible");
+        writeln!(
+            out,
+            "{:-<25}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
+            "", "", "", "", ""
+        )
+        .expect("write to String is infallible");
 
         for change in &report.changes {
-            let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
+            let sig_marker = if change.statistically_significant {
+                "YES *"
+            } else {
+                "NO"
+            };
 
             let (pre_str, post_str, change_str) = if change.metric_name.contains("accuracy")
                 || change.metric_name.contains("coverage")
                 || change.metric_name.contains("ratio")
-                || change.metric_name.starts_with("Spy Acc (") {
-                (format!("{:.1}%", change.pre_value * 100.0),
-                 format!("{:.1}%", change.post_value * 100.0),
-                 format!("{:+.1}%", change.percent_change))
-            } else if change.metric_name.contains("propagation") || change.metric_name.contains("ms") {
-                (format!("{:.0}ms", change.pre_value),
-                 format!("{:.0}ms", change.post_value),
-                 format!("{:+.1}%", change.percent_change))
-            } else if change.metric_name.contains("gini") || change.metric_name.contains("coefficient") {
-                (format!("{:.3}", change.pre_value),
-                 format!("{:.3}", change.post_value),
-                 format!("{:+.1}%", change.percent_change))
-            } else if change.metric_name.contains("Bandwidth") || change.metric_name.contains("bandwidth") {
-                (analysis::bandwidth::format_bytes(change.pre_value as u64),
-                 analysis::bandwidth::format_bytes(change.post_value as u64),
-                 format!("{:+.1}%", change.percent_change))
+                || change.metric_name.starts_with("Spy Acc (")
+            {
+                (
+                    format!("{:.1}%", change.pre_value * 100.0),
+                    format!("{:.1}%", change.post_value * 100.0),
+                    format!("{:+.1}%", change.percent_change),
+                )
+            } else if change.metric_name.contains("propagation")
+                || change.metric_name.contains("ms")
+            {
+                (
+                    format!("{:.0}ms", change.pre_value),
+                    format!("{:.0}ms", change.post_value),
+                    format!("{:+.1}%", change.percent_change),
+                )
+            } else if change.metric_name.contains("gini")
+                || change.metric_name.contains("coefficient")
+            {
+                (
+                    format!("{:.3}", change.pre_value),
+                    format!("{:.3}", change.post_value),
+                    format!("{:+.1}%", change.percent_change),
+                )
+            } else if change.metric_name.contains("Bandwidth")
+                || change.metric_name.contains("bandwidth")
+            {
+                (
+                    analysis::bandwidth::format_bytes(change.pre_value as u64),
+                    analysis::bandwidth::format_bytes(change.post_value as u64),
+                    format!("{:+.1}%", change.percent_change),
+                )
             } else {
-                (format!("{:.1}", change.pre_value),
-                 format!("{:.1}", change.post_value),
-                 format!("{:+.1}%", change.percent_change))
+                (
+                    format!("{:.1}", change.pre_value),
+                    format!("{:.1}", change.post_value),
+                    format!("{:+.1}%", change.percent_change),
+                )
             };
 
-            writeln!(out, "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
-                change.metric_name, pre_str, post_str, change_str, sig_marker).expect("write to String is infallible");
+            writeln!(
+                out,
+                "{:<25} | {:>12} | {:>12} | {:>10} | {:>10}",
+                change.metric_name, pre_str, post_str, change_str, sig_marker
+            )
+            .expect("write to String is infallible");
         }
         writeln!(out).expect("write to String is infallible");
-        writeln!(out, "* Statistically significant at p < 0.05").expect("write to String is infallible");
+        writeln!(out, "* Statistically significant at p < 0.05")
+            .expect("write to String is infallible");
         writeln!(out).expect("write to String is infallible");
     }
 
     // Synthetic Spy Node Analysis section
     if let (Some(_), Some(_)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
-        let spy_changes: Vec<_> = report.changes.iter()
+        let spy_changes: Vec<_> = report
+            .changes
+            .iter()
             .filter(|c| c.metric_name.starts_with("Spy Acc ("))
             .collect();
         if !spy_changes.is_empty() {
-            writeln!(out, "================================================================================").expect("write to String is infallible");
-            writeln!(out, "                    SYNTHETIC SPY NODE ANALYSIS").expect("write to String is infallible");
+            writeln!(
+                out,
+                "================================================================================"
+            )
+            .expect("write to String is infallible");
+            writeln!(out, "                    SYNTHETIC SPY NODE ANALYSIS")
+                .expect("write to String is infallible");
             writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
-            writeln!(out, "Methodology: For each visibility level, {} random trials select that fraction",
-                report.metadata.spy_trials_per_level).expect("write to String is infallible");
-            writeln!(out, "of nodes as \"monitored\". The spy infers the originator of each TX from the").expect("write to String is infallible");
-            writeln!(out, "earliest observation at a monitored node (source_ip = inferred sender).\n").expect("write to String is infallible");
+            writeln!(
+                out,
+                "Methodology: For each visibility level, {} random trials select that fraction",
+                report.metadata.spy_trials_per_level
+            )
+            .expect("write to String is infallible");
+            writeln!(
+                out,
+                "of nodes as \"monitored\". The spy infers the originator of each TX from the"
+            )
+            .expect("write to String is infallible");
+            writeln!(
+                out,
+                "earliest observation at a monitored node (source_ip = inferred sender).\n"
+            )
+            .expect("write to String is infallible");
 
-            writeln!(out, "{:<12} | {:>17} | {:>18} | {:>9} | {:>11}",
-                "Visibility", "Pre-Upgrade Acc", "Post-Upgrade Acc", "Change", "Significant").expect("write to String is infallible");
-            writeln!(out, "{:-<12}-+-{:-^17}-+-{:-^18}-+-{:-^9}-+-{:-^11}",
-                "", "", "", "", "").expect("write to String is infallible");
+            writeln!(
+                out,
+                "{:<12} | {:>17} | {:>18} | {:>9} | {:>11}",
+                "Visibility", "Pre-Upgrade Acc", "Post-Upgrade Acc", "Change", "Significant"
+            )
+            .expect("write to String is infallible");
+            writeln!(
+                out,
+                "{:-<12}-+-{:-^17}-+-{:-^18}-+-{:-^9}-+-{:-^11}",
+                "", "", "", "", ""
+            )
+            .expect("write to String is infallible");
 
             for change in &spy_changes {
-                let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
+                let sig_marker = if change.statistically_significant {
+                    "YES *"
+                } else {
+                    "NO"
+                };
                 // Extract the visibility label from the metric name e.g. "Spy Acc (5% vis)" -> "5%"
-                let vis_label = change.metric_name
+                let vis_label = change
+                    .metric_name
                     .trim_start_matches("Spy Acc (")
                     .trim_end_matches(" vis)")
                     .to_string();
 
-                writeln!(out, "{:>12} | {:>16.1}% | {:>17.1}% | {:>8.1}% | {:>11}",
+                writeln!(
+                    out,
+                    "{:>12} | {:>16.1}% | {:>17.1}% | {:>8.1}% | {:>11}",
                     vis_label,
                     change.pre_value * 100.0,
                     change.post_value * 100.0,
                     change.percent_change,
-                    sig_marker).expect("write to String is infallible");
+                    sig_marker
+                )
+                .expect("write to String is infallible");
             }
             writeln!(out).expect("write to String is infallible");
         }
@@ -909,37 +1233,73 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
 
     // Stem Length by Fluff Gap Threshold section
     if let (Some(_), Some(_)) = (&report.pre_upgrade_summary, &report.post_upgrade_summary) {
-        let stem_changes: Vec<_> = report.changes.iter()
+        let stem_changes: Vec<_> = report
+            .changes
+            .iter()
             .filter(|c| c.metric_name.starts_with("Stem Len ("))
             .collect();
         if !stem_changes.is_empty() {
-            writeln!(out, "================================================================================").expect("write to String is infallible");
-            writeln!(out, "                  STEM LENGTH BY FLUFF GAP THRESHOLD").expect("write to String is infallible");
+            writeln!(
+                out,
+                "================================================================================"
+            )
+            .expect("write to String is infallible");
+            writeln!(out, "                  STEM LENGTH BY FLUFF GAP THRESHOLD")
+                .expect("write to String is infallible");
             writeln!(out, "================================================================================\n").expect("write to String is infallible");
 
-            writeln!(out, "Methodology: A fluff broadcast sends to 3+ peers in a tight time cluster.").expect("write to String is infallible");
-            writeln!(out, "The gap threshold controls how tight: smaller thresholds only detect very").expect("write to String is infallible");
-            writeln!(out, "fast broadcasts, larger thresholds tolerate more scheduling jitter.\n").expect("write to String is infallible");
+            writeln!(
+                out,
+                "Methodology: A fluff broadcast sends to 3+ peers in a tight time cluster."
+            )
+            .expect("write to String is infallible");
+            writeln!(
+                out,
+                "The gap threshold controls how tight: smaller thresholds only detect very"
+            )
+            .expect("write to String is infallible");
+            writeln!(
+                out,
+                "fast broadcasts, larger thresholds tolerate more scheduling jitter.\n"
+            )
+            .expect("write to String is infallible");
 
-            writeln!(out, "{:<16} | {:>13} | {:>14} | {:>9} | {:>11}",
-                "Gap Threshold", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant").expect("write to String is infallible");
-            writeln!(out, "{:-<16}-+-{:-^13}-+-{:-^14}-+-{:-^9}-+-{:-^11}",
-                "", "", "", "", "").expect("write to String is infallible");
+            writeln!(
+                out,
+                "{:<16} | {:>13} | {:>14} | {:>9} | {:>11}",
+                "Gap Threshold", "Pre-Upgrade", "Post-Upgrade", "Change", "Significant"
+            )
+            .expect("write to String is infallible");
+            writeln!(
+                out,
+                "{:-<16}-+-{:-^13}-+-{:-^14}-+-{:-^9}-+-{:-^11}",
+                "", "", "", "", ""
+            )
+            .expect("write to String is infallible");
 
             for change in &stem_changes {
-                let sig_marker = if change.statistically_significant { "YES *" } else { "NO" };
+                let sig_marker = if change.statistically_significant {
+                    "YES *"
+                } else {
+                    "NO"
+                };
                 // Extract the threshold label from the metric name e.g. "Stem Len (500ms gap)" -> "500ms"
-                let threshold_label = change.metric_name
+                let threshold_label = change
+                    .metric_name
                     .trim_start_matches("Stem Len (")
                     .trim_end_matches(" gap)")
                     .to_string();
 
-                writeln!(out, "{:>16} | {:>13.1} | {:>14.1} | {:>8.1}% | {:>11}",
+                writeln!(
+                    out,
+                    "{:>16} | {:>13.1} | {:>14.1} | {:>8.1}% | {:>11}",
                     threshold_label,
                     change.pre_value,
                     change.post_value,
                     change.percent_change,
-                    sig_marker).expect("write to String is infallible");
+                    sig_marker
+                )
+                .expect("write to String is infallible");
             }
             writeln!(out).expect("write to String is infallible");
         }
@@ -947,35 +1307,57 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
 
     // Interpretation
     if !report.changes.is_empty() {
-        writeln!(out, "================================================================================").expect("write to String is infallible");
-        writeln!(out, "                          INTERPRETATION").expect("write to String is infallible");
-        writeln!(out, "================================================================================\n").expect("write to String is infallible");
+        writeln!(
+            out,
+            "================================================================================"
+        )
+        .expect("write to String is infallible");
+        writeln!(out, "                          INTERPRETATION")
+            .expect("write to String is infallible");
+        writeln!(
+            out,
+            "================================================================================\n"
+        )
+        .expect("write to String is infallible");
 
-        let positive: Vec<_> = report.changes.iter()
+        let positive: Vec<_> = report
+            .changes
+            .iter()
             .filter(|c| c.statistically_significant && !c.interpretation.is_empty())
-            .filter(|c| c.interpretation.to_lowercase().contains("improved")
-                || c.interpretation.to_lowercase().contains("increased")
-                || c.interpretation.to_lowercase().contains("better"))
+            .filter(|c| {
+                c.interpretation.to_lowercase().contains("improved")
+                    || c.interpretation.to_lowercase().contains("increased")
+                    || c.interpretation.to_lowercase().contains("better")
+            })
             .collect();
 
-        let negative: Vec<_> = report.changes.iter()
+        let negative: Vec<_> = report
+            .changes
+            .iter()
             .filter(|c| c.statistically_significant && !c.interpretation.is_empty())
-            .filter(|c| c.interpretation.to_lowercase().contains("degraded")
-                || c.interpretation.to_lowercase().contains("decreased")
-                || c.interpretation.to_lowercase().contains("worse")
-                || c.interpretation.to_lowercase().contains("concern"))
+            .filter(|c| {
+                c.interpretation.to_lowercase().contains("degraded")
+                    || c.interpretation.to_lowercase().contains("decreased")
+                    || c.interpretation.to_lowercase().contains("worse")
+                    || c.interpretation.to_lowercase().contains("concern")
+            })
             .collect();
 
-        let neutral: Vec<_> = report.changes.iter()
-            .filter(|c| !c.statistically_significant ||
-                (!positive.iter().any(|p| p.metric_name == c.metric_name) &&
-                 !negative.iter().any(|n| n.metric_name == c.metric_name)))
+        let neutral: Vec<_> = report
+            .changes
+            .iter()
+            .filter(|c| {
+                !c.statistically_significant
+                    || (!positive.iter().any(|p| p.metric_name == c.metric_name)
+                        && !negative.iter().any(|n| n.metric_name == c.metric_name))
+            })
             .collect();
 
         if !positive.is_empty() {
             writeln!(out, "POSITIVE CHANGES:").expect("write to String is infallible");
             for change in &positive {
-                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).expect("write to String is infallible");
+                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation)
+                    .expect("write to String is infallible");
             }
             writeln!(out).expect("write to String is infallible");
         }
@@ -983,7 +1365,8 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
         if !negative.is_empty() {
             writeln!(out, "CONCERNS:").expect("write to String is infallible");
             for change in &negative {
-                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).expect("write to String is infallible");
+                writeln!(out, "  - {}: {}", change.metric_name, change.interpretation)
+                    .expect("write to String is infallible");
             }
             writeln!(out).expect("write to String is infallible");
         }
@@ -992,9 +1375,15 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
             writeln!(out, "NEUTRAL/NO CHANGE:").expect("write to String is infallible");
             for change in &neutral {
                 if !change.interpretation.is_empty() {
-                    writeln!(out, "  - {}: {}", change.metric_name, change.interpretation).expect("write to String is infallible");
+                    writeln!(out, "  - {}: {}", change.metric_name, change.interpretation)
+                        .expect("write to String is infallible");
                 } else {
-                    writeln!(out, "  - {}: No significant change detected", change.metric_name).expect("write to String is infallible");
+                    writeln!(
+                        out,
+                        "  - {}: No significant change detected",
+                        change.metric_name
+                    )
+                    .expect("write to String is infallible");
                 }
             }
             writeln!(out).expect("write to String is infallible");
@@ -1002,16 +1391,26 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
     }
 
     // Assessment
-    writeln!(out, "================================================================================").expect("write to String is infallible");
+    writeln!(
+        out,
+        "================================================================================"
+    )
+    .expect("write to String is infallible");
     writeln!(out, "                            ASSESSMENT").expect("write to String is infallible");
-    writeln!(out, "================================================================================\n").expect("write to String is infallible");
+    writeln!(
+        out,
+        "================================================================================\n"
+    )
+    .expect("write to String is infallible");
 
     let verdict_str = match report.assessment.verdict {
         analysis::types::UpgradeVerdict::Positive => "POSITIVE - Upgrade improved network behavior",
         analysis::types::UpgradeVerdict::Negative => "NEGATIVE - Upgrade degraded network behavior",
         analysis::types::UpgradeVerdict::Mixed => "MIXED - Upgrade had mixed effects",
         analysis::types::UpgradeVerdict::Neutral => "NEUTRAL - No significant changes detected",
-        analysis::types::UpgradeVerdict::Inconclusive => "INCONCLUSIVE - Insufficient data for assessment",
+        analysis::types::UpgradeVerdict::Inconclusive => {
+            "INCONCLUSIVE - Insufficient data for assessment"
+        }
     };
     writeln!(out, "Verdict: {}", verdict_str).expect("write to String is infallible");
     writeln!(out).expect("write to String is infallible");
@@ -1042,50 +1441,82 @@ fn format_upgrade_report(report: &analysis::types::UpgradeAnalysisReport) -> Str
 
     // Time series summary
     if !report.time_series.is_empty() {
-        writeln!(out, "================================================================================").expect("write to String is infallible");
-        writeln!(out, "                       TIME SERIES SUMMARY").expect("write to String is infallible");
-        writeln!(out, "================================================================================\n").expect("write to String is infallible");
+        writeln!(
+            out,
+            "================================================================================"
+        )
+        .expect("write to String is infallible");
+        writeln!(out, "                       TIME SERIES SUMMARY")
+            .expect("write to String is infallible");
+        writeln!(
+            out,
+            "================================================================================\n"
+        )
+        .expect("write to String is infallible");
 
-        writeln!(out, "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
-            "Window", "TXs", "Spy 20%", "Avg Prop", "Stem Len", "Peer Cnt").expect("write to String is infallible");
-        writeln!(out, "{:-<20}-+-{:-^8}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
-            "", "", "", "", "", "").expect("write to String is infallible");
+        writeln!(
+            out,
+            "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
+            "Window", "TXs", "Spy 20%", "Avg Prop", "Stem Len", "Peer Cnt"
+        )
+        .expect("write to String is infallible");
+        writeln!(
+            out,
+            "{:-<20}-+-{:-^8}-+-{:-^12}-+-{:-^12}-+-{:-^10}-+-{:-^10}",
+            "", "", "", "", "", ""
+        )
+        .expect("write to String is infallible");
 
         for window in &report.time_series {
             let label = window.window.label.as_deref().unwrap_or("");
-            let label_display = format!("{:.0}s-{:.0}s {}",
+            let label_display = format!(
+                "{:.0}s-{:.0}s {}",
                 window.window.start,
                 window.window.end,
-                if !label.is_empty() { format!("({})", label) } else { String::new() });
+                if !label.is_empty() {
+                    format!("({})", label)
+                } else {
+                    String::new()
+                }
+            );
 
             // Show 20% visibility level (index 2) as representative
-            let spy_str = window.spy_accuracy_by_visibility
+            let spy_str = window
+                .spy_accuracy_by_visibility
                 .as_ref()
                 .and_then(|v| v.get(2))
                 .map(|v| format!("{:.1}%", v * 100.0))
                 .unwrap_or_else(|| "-".to_string());
-            let prop_str = window.avg_propagation_ms
+            let prop_str = window
+                .avg_propagation_ms
                 .map(|v| format!("{:.0}ms", v))
                 .unwrap_or_else(|| "-".to_string());
-            let stem_str = window.avg_stem_length
+            let stem_str = window
+                .avg_stem_length
                 .map(|v| format!("{:.1}", v))
                 .unwrap_or_else(|| "-".to_string());
-            let peer_str = window.avg_peer_count
+            let peer_str = window
+                .avg_peer_count
                 .map(|v| format!("{:.1}", v))
                 .unwrap_or_else(|| "-".to_string());
 
-            writeln!(out, "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
+            writeln!(
+                out,
+                "{:<20} | {:>8} | {:>12} | {:>12} | {:>10} | {:>10}",
                 &label_display[..label_display.len().min(20)],
                 window.tx_count,
                 spy_str,
                 prop_str,
                 stem_str,
-                peer_str).expect("write to String is infallible");
+                peer_str
+            )
+            .expect("write to String is infallible");
         }
         writeln!(out).expect("write to String is infallible");
     }
 
-    writeln!(out, "(See upgrade_analysis.json for full time-series data)").expect("write to String is infallible");
+    writeln!(out, "(See upgrade_analysis.json for full time-series data)")
+        .expect("write to String is infallible");
     writeln!(out).expect("write to String is infallible");
 
     out
@@ -1104,29 +1535,49 @@ fn print_bandwidth_report(
 
     // Network totals
     println!("Network Totals:");
-    println!("  Total Data:     {} ({} sent, {} received)",
+    println!(
+        "  Total Data:     {} ({} sent, {} received)",
         analysis::format_bytes(report.total_bytes),
         analysis::format_bytes(report.total_bytes_sent),
-        analysis::format_bytes(report.total_bytes_received));
+        analysis::format_bytes(report.total_bytes_received)
+    );
     println!("  Total Messages: {}", report.total_messages);
     println!("  Nodes:          {}", report.per_node_stats.len());
     println!();
 
     // Per-node summary
     println!("Per-Node Statistics:");
-    println!("  Average:  {}/node", analysis::format_bytes(report.avg_bytes_per_node as u64));
-    println!("  Median:   {}/node", analysis::format_bytes(report.median_bytes_per_node as u64));
-    println!("  Max:      {} ({})", analysis::format_bytes(report.max_bytes_node.1), report.max_bytes_node.0);
-    println!("  Min:      {} ({})", analysis::format_bytes(report.min_bytes_node.1), report.min_bytes_node.0);
+    println!(
+        "  Average:  {}/node",
+        analysis::format_bytes(report.avg_bytes_per_node as u64)
+    );
+    println!(
+        "  Median:   {}/node",
+        analysis::format_bytes(report.median_bytes_per_node as u64)
+    );
+    println!(
+        "  Max:      {} ({})",
+        analysis::format_bytes(report.max_bytes_node.1),
+        report.max_bytes_node.0
+    );
+    println!(
+        "  Min:      {} ({})",
+        analysis::format_bytes(report.min_bytes_node.1),
+        report.min_bytes_node.0
+    );
     println!();
 
     // By category table
     if show_by_category && !report.bytes_by_category.is_empty() {
         println!("Bandwidth by Message Type:");
-        println!("{:<20} | {:>12} | {:>12} | {:>12} | {:>10}",
-            "Category", "Sent", "Received", "Total", "Messages");
-        println!("{:-<20}-+-{:-^12}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
-            "", "", "", "", "");
+        println!(
+            "{:<20} | {:>12} | {:>12} | {:>12} | {:>10}",
+            "Category", "Sent", "Received", "Total", "Messages"
+        );
+        println!(
+            "{:-<20}-+-{:-^12}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
+            "", "", "", "", ""
+        );
 
         // Sort categories by total bytes
         let mut categories: Vec<_> = report.bytes_by_category.values().collect();
@@ -1138,12 +1589,14 @@ fn print_bandwidth_report(
 
         for cat in categories {
             let total = cat.bytes_sent + cat.bytes_received;
-            println!("{:<20} | {:>12} | {:>12} | {:>12} | {:>10}",
+            println!(
+                "{:<20} | {:>12} | {:>12} | {:>12} | {:>10}",
                 cat.category_name,
                 analysis::format_bytes(cat.bytes_sent),
                 analysis::format_bytes(cat.bytes_received),
                 analysis::format_bytes(total),
-                cat.message_count);
+                cat.message_count
+            );
         }
         println!();
     }
@@ -1152,20 +1605,26 @@ fn print_bandwidth_report(
     let nodes_to_show = top_n.min(report.per_node_stats.len());
     if nodes_to_show > 0 {
         println!("Top {} Nodes by Bandwidth:", nodes_to_show);
-        println!("{:>4} | {:<15} | {:>12} | {:>12} | {:>12} | {:>10}",
-            "Rank", "Node", "Total", "Sent", "Received", "Messages");
-        println!("{:-^4}-+-{:-^15}-+-{:-^12}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
-            "", "", "", "", "", "");
+        println!(
+            "{:>4} | {:<15} | {:>12} | {:>12} | {:>12} | {:>10}",
+            "Rank", "Node", "Total", "Sent", "Received", "Messages"
+        );
+        println!(
+            "{:-^4}-+-{:-^15}-+-{:-^12}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
+            "", "", "", "", "", ""
+        );
 
         for (i, stats) in report.per_node_stats.iter().take(nodes_to_show).enumerate() {
             let total_msgs = stats.message_count_sent + stats.message_count_received;
-            println!("{:>4} | {:<15} | {:>12} | {:>12} | {:>12} | {:>10}",
+            println!(
+                "{:>4} | {:<15} | {:>12} | {:>12} | {:>12} | {:>10}",
                 i + 1,
                 &stats.node_id[..stats.node_id.len().min(15)],
                 analysis::format_bytes(stats.total_bytes),
                 analysis::format_bytes(stats.total_bytes_sent),
                 analysis::format_bytes(stats.total_bytes_received),
-                total_msgs);
+                total_msgs
+            );
         }
         println!();
     }
@@ -1173,17 +1632,20 @@ fn print_bandwidth_report(
     // Per-node detailed breakdown
     if show_per_node && !report.per_node_stats.is_empty() {
         println!("All Nodes:");
-        println!("{:<20} | {:>12} | {:>12} | {:>12}",
-            "Node", "Total", "Sent", "Received");
-        println!("{:-<20}-+-{:-^12}-+-{:-^12}-+-{:-^12}",
-            "", "", "", "");
+        println!(
+            "{:<20} | {:>12} | {:>12} | {:>12}",
+            "Node", "Total", "Sent", "Received"
+        );
+        println!("{:-<20}-+-{:-^12}-+-{:-^12}-+-{:-^12}", "", "", "", "");
 
         for stats in &report.per_node_stats {
-            println!("{:<20} | {:>12} | {:>12} | {:>12}",
+            println!(
+                "{:<20} | {:>12} | {:>12} | {:>12}",
                 &stats.node_id[..stats.node_id.len().min(20)],
                 analysis::format_bytes(stats.total_bytes),
                 analysis::format_bytes(stats.total_bytes_sent),
-                analysis::format_bytes(stats.total_bytes_received));
+                analysis::format_bytes(stats.total_bytes_received)
+            );
         }
         println!();
     }
@@ -1191,18 +1653,25 @@ fn print_bandwidth_report(
     // Time series (if available)
     if !report.bandwidth_over_time.is_empty() {
         println!("Bandwidth Over Time:");
-        println!("{:<15} | {:>12} | {:>12} | {:>10}",
-            "Time Range", "Sent", "Received", "Messages");
-        println!("{:-<15}-+-{:-^12}-+-{:-^12}-+-{:-^10}",
-            "", "", "", "");
+        println!(
+            "{:<15} | {:>12} | {:>12} | {:>10}",
+            "Time Range", "Sent", "Received", "Messages"
+        );
+        println!("{:-<15}-+-{:-^12}-+-{:-^12}-+-{:-^10}", "", "", "", "");
 
         for window in &report.bandwidth_over_time {
-            let time_range = format!("{:.0}s-{:.0}s", window.start - 946684800.0, window.end - 946684800.0);
-            println!("{:<15} | {:>12} | {:>12} | {:>10}",
+            let time_range = format!(
+                "{:.0}s-{:.0}s",
+                window.start - 946684800.0,
+                window.end - 946684800.0
+            );
+            println!(
+                "{:<15} | {:>12} | {:>12} | {:>10}",
                 time_range,
                 analysis::format_bytes(window.bytes_sent),
                 analysis::format_bytes(window.bytes_received),
-                window.message_count);
+                window.message_count
+            );
         }
         println!();
     }
@@ -1226,14 +1695,23 @@ fn run_full_analysis(
 
     let spy_report = if run_spy {
         log::info!("Analyzing spy node vulnerability...");
-        Some(analysis::analyze_spy_vulnerability(transactions, log_data, agents))
+        Some(analysis::analyze_spy_vulnerability(
+            transactions,
+            log_data,
+            agents,
+        ))
     } else {
         None
     };
 
     let prop_report = if run_propagation {
         log::info!("Analyzing propagation timing...");
-        Some(analysis::analyze_propagation(transactions, blocks, log_data, agents.len()))
+        Some(analysis::analyze_propagation(
+            transactions,
+            blocks,
+            log_data,
+            agents.len(),
+        ))
     } else {
         None
     };
@@ -1259,7 +1737,10 @@ fn run_full_analysis(
     // Print summary
     analysis::report::print_summary(&report);
 
-    log::info!("Analysis complete. Reports written to {}", output_dir.display());
+    log::info!(
+        "Analysis complete. Reports written to {}",
+        output_dir.display()
+    );
 
     Ok(())
 }
@@ -1397,7 +1878,10 @@ fn load_transactions(shared_dir: &PathBuf) -> Result<Vec<Transaction>> {
                 .unwrap_or("")
                 .to_string();
             let amount = value.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let timestamp = value.get("timestamp").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let timestamp = value
+                .get("timestamp")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
 
             transactions.push(Transaction {
                 tx_hash: tx_hash.to_string(),
@@ -1436,7 +1920,10 @@ fn try_load_cache(cache_path: &Path, hosts_dir: &Path) -> Option<HashMap<String,
                     if let Ok(meta) = file.metadata() {
                         if let Ok(mtime) = meta.modified() {
                             if mtime > cache_mtime {
-                                log::info!("Cache stale: {} is newer than cache", file.path().display());
+                                log::info!(
+                                    "Cache stale: {} is newer than cache",
+                                    file.path().display()
+                                );
                                 return None;
                             }
                         }
@@ -1471,18 +1958,20 @@ fn save_cache(cache_path: &Path, data: &HashMap<String, NodeLogData>) -> Result<
     let file = fs::File::create(&tmp_path)
         .with_context(|| format!("Failed to create cache tmp file: {}", tmp_path.display()))?;
     // zstd level 3 is a good balance of speed and compression
-    let mut encoder = zstd::Encoder::new(file, 3)
-        .context("Failed to create zstd encoder")?;
+    let mut encoder = zstd::Encoder::new(file, 3).context("Failed to create zstd encoder")?;
     bincode::serialize_into(&mut encoder, data)
         .context("Failed to serialize log data to bincode+zstd")?;
-    encoder.finish()
+    encoder
+        .finish()
         .context("Failed to finish zstd compression")?;
-    let compressed_size = fs::metadata(&tmp_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let compressed_size = fs::metadata(&tmp_path).map(|m| m.len()).unwrap_or(0);
     fs::rename(&tmp_path, cache_path)
         .with_context(|| format!("Failed to rename cache file to {}", cache_path.display()))?;
-    log::info!("Wrote cache: {} ({:.1} MB)", cache_path.display(), compressed_size as f64 / 1_048_576.0);
+    log::info!(
+        "Wrote cache: {} ({:.1} MB)",
+        cache_path.display(),
+        compressed_size as f64 / 1_048_576.0
+    );
     Ok(())
 }
 
@@ -1490,7 +1979,10 @@ fn load_blocks(shared_dir: &PathBuf) -> Result<Vec<BlockInfo>> {
     let path = shared_dir.join("blocks_with_transactions.json");
 
     if !path.exists() {
-        log::warn!("No blocks_with_transactions.json found at {}", path.display());
+        log::warn!(
+            "No blocks_with_transactions.json found at {}",
+            path.display()
+        );
         return Ok(Vec::new());
     }
 

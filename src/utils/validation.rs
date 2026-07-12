@@ -3,8 +3,8 @@
 //! This module provides validation functions for configuration
 //! parameters and consistency checks.
 
+use crate::config::{AgentConfig, Topology};
 use crate::gml_parser::{GmlGraph, GmlNode};
-use crate::config::{Topology, AgentConfig};
 use std::collections::BTreeMap;
 
 /// Validate GML topology for IP conflicts and inconsistencies
@@ -51,7 +51,10 @@ pub fn validate_gml_ip_consistency(gml_graph: &GmlGraph) -> Result<(), String> {
 
             // Check for duplicates
             if !assigned_ips.insert(ip.to_string()) {
-                return Err(format!("Duplicate IP address '{}' found in GML file (nodes have conflicting IPs)", ip));
+                return Err(format!(
+                    "Duplicate IP address '{}' found in GML file (nodes have conflicting IPs)",
+                    ip
+                ));
             }
 
             nodes_with_ips += 1;
@@ -64,8 +67,12 @@ pub fn validate_gml_ip_consistency(gml_graph: &GmlGraph) -> Result<(), String> {
     let total_nodes = gml_graph.nodes.len();
     if nodes_with_ips > 0 {
         let coverage_percentage = (nodes_with_ips as f64 / total_nodes as f64 * 100.0).round();
-        log::info!("GML IP assignment: {} nodes with pre-allocated IPs, {} nodes without ({}% coverage)",
-                  nodes_with_ips, nodes_without_ips, coverage_percentage);
+        log::info!(
+            "GML IP assignment: {} nodes with pre-allocated IPs, {} nodes without ({}% coverage)",
+            nodes_with_ips,
+            nodes_without_ips,
+            coverage_percentage
+        );
 
         if nodes_without_ips > 0 && nodes_with_ips > 0 {
             log::warn!("Inconsistent IP assignment in GML file: {} nodes have IPs, {} nodes don't. This may cause unpredictable IP assignment behavior.",
@@ -165,10 +172,12 @@ pub fn validate_mining_config(agents: &BTreeMap<String, AgentConfig>) -> Result<
         }
 
         // Validate hashrate exists for miners
-        let hashrate = agent.hashrate.ok_or_else(|| format!(
-            "Mining agent '{}' must have 'hashrate' field (percentage of network hashrate)",
-            agent_id
-        ))?;
+        let hashrate = agent.hashrate.ok_or_else(|| {
+            format!(
+                "Mining agent '{}' must have 'hashrate' field (percentage of network hashrate)",
+                agent_id
+            )
+        })?;
 
         // Validate hashrate is in valid range
         if hashrate == 0 || hashrate > 100 {
@@ -185,7 +194,8 @@ pub fn validate_mining_config(agents: &BTreeMap<String, AgentConfig>) -> Result<
     if mining_agent_count > 0 && total_hashrate != 100 {
         log::warn!(
             "Total mining hashrate is {}% (expected 100%). Found {} mining agent(s).",
-            total_hashrate, mining_agent_count
+            total_hashrate,
+            mining_agent_count
         );
     }
 
@@ -272,7 +282,8 @@ pub fn validate_agent_daemon_config(agents: &BTreeMap<String, AgentConfig>) -> R
     if has_auto_discovery && !has_public_node {
         return Err(
             "Wallet-only agents with 'auto' daemon address require at least one public node. \
-            Add 'is_public_node: true' attribute to a daemon-enabled agent.".to_string()
+            Add 'is_public_node: true' attribute to a daemon-enabled agent."
+                .to_string(),
         );
     }
 
@@ -295,7 +306,10 @@ pub fn validate_agent_daemon_config(agents: &BTreeMap<String, AgentConfig>) -> R
 /// # Returns
 /// * `Ok(())` if diversity is sufficient
 /// * Logs warnings if diversity is low but still usable
-pub fn validate_ip_subnet_diversity(ip_addresses: &[String], agent_count: usize) -> Result<(), String> {
+pub fn validate_ip_subnet_diversity(
+    ip_addresses: &[String],
+    agent_count: usize,
+) -> Result<(), String> {
     use std::collections::HashSet;
 
     if ip_addresses.is_empty() || agent_count == 0 {
@@ -327,8 +341,11 @@ pub fn validate_ip_subnet_diversity(ip_addresses: &[String], agent_count: usize)
 
     log::info!("IP Diversity Analysis:");
     log::info!("  Total agents: {}", agent_count);
-    log::info!("  Unique /24 subnets: {} ({:.1}% of agents)",
-              unique_subnets, subnet_ratio * 100.0);
+    log::info!(
+        "  Unique /24 subnets: {} ({:.1}% of agents)",
+        unique_subnets,
+        subnet_ratio * 100.0
+    );
     log::info!("  Unique first octets: {}", unique_octets);
 
     // Monero's /24 deduplication means low subnet diversity can cause issues
@@ -347,7 +364,8 @@ pub fn validate_ip_subnet_diversity(ip_addresses: &[String], agent_count: usize)
         log::warn!(
             "LIMITED IP RANGE: Only {} unique first octets for {} agents. \
              Real Internet traffic comes from diverse IP ranges.",
-            unique_octets, agent_count
+            unique_octets,
+            agent_count
         );
     }
 
@@ -357,7 +375,9 @@ pub fn validate_ip_subnet_diversity(ip_addresses: &[String], agent_count: usize)
             "CRITICAL: Only {} unique /24 subnets for {} agents ({:.1}%). \
              This will severely impact Monero P2P connectivity simulation. \
              Consider increasing topology node count or reducing agent count.",
-            unique_subnets, agent_count, subnet_ratio * 100.0
+            unique_subnets,
+            agent_count,
+            subnet_ratio * 100.0
         );
     }
 
@@ -661,7 +681,9 @@ mod tests {
 
         let result = validate_agent_daemon_config(&single_agent("miner-001", agent));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("miners require a local daemon"));
+        assert!(result
+            .unwrap_err()
+            .contains("miners require a local daemon"));
     }
 
     #[test]
@@ -677,7 +699,9 @@ mod tests {
 
         let result = validate_agent_daemon_config(&single_agent("public-001", agent));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("is_public_node attribute requires a local daemon"));
+        assert!(result
+            .unwrap_err()
+            .contains("is_public_node attribute requires a local daemon"));
     }
 
     #[test]
@@ -694,7 +718,9 @@ mod tests {
 
         let result = validate_agent_daemon_config(&single_agent("wallet-001", agent));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("require at least one public node"));
+        assert!(result
+            .unwrap_err()
+            .contains("require at least one public node"));
     }
 
     #[test]
@@ -716,7 +742,8 @@ mod tests {
 
         let result = validate_agent_daemon_config(&single_agent("wallet-001", agent));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("wallet without local daemon requires remote daemon configuration"));
+        assert!(result
+            .unwrap_err()
+            .contains("wallet without local daemon requires remote daemon configuration"));
     }
-
 }

@@ -17,7 +17,11 @@ pub struct TimeWindow {
 
 impl TimeWindow {
     pub fn new(start: SimTime, end: SimTime) -> Self {
-        Self { start, end, label: None }
+        Self {
+            start,
+            end,
+            label: None,
+        }
     }
 
     pub fn contains(&self, timestamp: SimTime) -> bool {

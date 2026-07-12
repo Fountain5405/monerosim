@@ -3,24 +3,26 @@
 //! This module coordinates the overall configuration generation process,
 //! managing the flow from configuration parsing through Shadow YAML generation.
 
+use crate::agent::{
+    prepare_fallback_seeds, process_miner_distributor, process_pure_script_agents,
+    process_simulation_monitor, process_user_agents, UserAgentProcessContext,
+};
 use crate::config::{Config, DistributionStrategy, Network, PeerMode, RegionWeights};
-use crate::gml_parser::{self, GmlGraph, validate_topology, get_autonomous_systems};
+use crate::gml_parser::{self, get_autonomous_systems, validate_topology, GmlGraph};
+use crate::ip::{get_agent_ip, AgentType, AsSubnetManager, GlobalIpRegistry};
 use crate::shadow::{
-    MinerInfo, MinerRegistry, AgentInfo, AgentRegistry,
-    PublicNodeInfo, PublicNodeRegistry,
-    ShadowConfig, ShadowGeneral, ShadowExperimental, ShadowNetwork, ShadowGraph,
-    ShadowFileSource, ShadowHost,
+    AgentInfo, AgentRegistry, MinerInfo, MinerRegistry, PublicNodeInfo, PublicNodeRegistry,
+    ShadowConfig, ShadowExperimental, ShadowFileSource, ShadowGeneral, ShadowGraph, ShadowHost,
+    ShadowNetwork,
 };
 use crate::topology::Topology;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::validation::{validate_gml_ip_consistency, validate_topology_config};
-use crate::ip::{GlobalIpRegistry, AsSubnetManager, AgentType, get_agent_ip};
-use crate::agent::{process_user_agents, UserAgentProcessContext, process_miner_distributor, process_pure_script_agents, process_simulation_monitor, prepare_fallback_seeds};
 use serde_json;
 use serde_yaml;
 use std::collections::BTreeMap;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
 /// Convert a bandwidth string like "10Gbit" or "500Mbit" to a numeric Mbit string.
 /// Passes through values that are already plain numbers.
@@ -55,16 +57,25 @@ fn detect_venv_site_packages(base_dir: &str) -> Option<String> {
 }
 
 /// Generate Shadow network configuration from GML graph
-pub fn generate_gml_network_config(gml_graph: &GmlGraph, _gml_path: &str, output_dir: &Path) -> color_eyre::eyre::Result<ShadowGraph> {
+pub fn generate_gml_network_config(
+    gml_graph: &GmlGraph,
+    _gml_path: &str,
+    output_dir: &Path,
+) -> color_eyre::eyre::Result<ShadowGraph> {
     // Validate the topology first
-    validate_topology(gml_graph).map_err(|e| color_eyre::eyre::eyre!("Invalid GML topology: {}", e))?;
+    validate_topology(gml_graph)
+        .map_err(|e| color_eyre::eyre::eyre!("Invalid GML topology: {}", e))?;
 
     // Validate IP consistency
-    validate_gml_ip_consistency(gml_graph).map_err(|e| color_eyre::eyre::eyre!("GML IP validation failed: {}", e))?;
+    validate_gml_ip_consistency(gml_graph)
+        .map_err(|e| color_eyre::eyre::eyre!("GML IP validation failed: {}", e))?;
 
     // Create a GML file with converted attributes (e.g., packet_loss percentages to floats)
     // Place in output directory alongside the Shadow config for locality and cleanup
-    let temp_gml_path = output_dir.join("topology.gml").to_string_lossy().to_string();
+    let temp_gml_path = output_dir
+        .join("topology.gml")
+        .to_string_lossy()
+        .to_string();
 
     let mut gml_content = String::new();
     gml_content.push_str("graph [\n");
@@ -148,20 +159,46 @@ fn compose_base_environment(
     gml_graph: Option<&GmlGraph>,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-) -> color_eyre::eyre::Result<(BTreeMap<String, String>, BTreeMap<String, String>, Option<String>, String)> {
+) -> color_eyre::eyre::Result<(
+    BTreeMap<String, String>,
+    BTreeMap<String, String>,
+    Option<String>,
+    String,
+)> {
     // Common environment variables
     let mut environment: BTreeMap<String, String> = [
         ("HOME".to_string(), home_dir.to_string()), // Required for $HOME expansion in binary paths
-        ("MALLOC_MMAP_THRESHOLD_".to_string(), crate::MALLOC_THRESHOLD.to_string()),
-        ("MALLOC_TRIM_THRESHOLD_".to_string(), crate::MALLOC_THRESHOLD.to_string()),
-        ("GLIBC_TUNABLES".to_string(), "glibc.malloc.arena_max=1".to_string()),
+        (
+            "MALLOC_MMAP_THRESHOLD_".to_string(),
+            crate::MALLOC_THRESHOLD.to_string(),
+        ),
+        (
+            "MALLOC_TRIM_THRESHOLD_".to_string(),
+            crate::MALLOC_THRESHOLD.to_string(),
+        ),
+        (
+            "GLIBC_TUNABLES".to_string(),
+            "glibc.malloc.arena_max=1".to_string(),
+        ),
         ("MALLOC_ARENA_MAX".to_string(), "1".to_string()),
         ("PYTHONUNBUFFERED".to_string(), "1".to_string()), // Ensure Python output is unbuffered
         ("PYTHONHASHSEED".to_string(), "0".to_string()), // Deterministic Python hash() for reproducibility
-        ("SIMULATION_SEED".to_string(), config.general.simulation_seed.to_string()), // Add simulation seed for all agents
-        ("DIFFICULTY_CACHE_TTL".to_string(), config.general.difficulty_cache_ttl.to_string()), // TTL for miner difficulty caching
-        ("PROCESS_THREADS".to_string(), config.general.process_threads.unwrap_or(1).to_string()), // Thread count for monerod/wallet-rpc
-    ].iter().cloned().collect();
+        (
+            "SIMULATION_SEED".to_string(),
+            config.general.simulation_seed.to_string(),
+        ), // Add simulation seed for all agents
+        (
+            "DIFFICULTY_CACHE_TTL".to_string(),
+            config.general.difficulty_cache_ttl.to_string(),
+        ), // TTL for miner difficulty caching
+        (
+            "PROCESS_THREADS".to_string(),
+            config.general.process_threads.unwrap_or(1).to_string(),
+        ), // Thread count for monerod/wallet-rpc
+    ]
+    .iter()
+    .cloned()
+    .collect();
 
     // Add MONEROSIM_LOG_LEVEL if specified in config
     if let Some(log_level) = &config.general.log_level {
@@ -195,13 +232,13 @@ fn compose_base_environment(
         let dns_ip = get_agent_ip(
             AgentType::Infrastructure,
             "dnsserver",
-            0,  // agent index
-            0,  // network_node_id 0
+            0, // agent index
+            0, // network_node_id 0
             gml_graph,
-            gml_graph.is_some(),  // using_gml_topology
+            gml_graph.is_some(), // using_gml_topology
             subnet_manager,
             ip_registry,
-            None,  // No subnet_group for infrastructure
+            None, // No subnet_group for infrastructure
         )?;
         Some(dns_ip)
     } else {
@@ -217,7 +254,12 @@ fn compose_base_environment(
         monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     }
 
-    Ok((environment, monero_environment, dns_server_ip, venv_site_packages))
+    Ok((
+        environment,
+        monero_environment,
+        dns_server_ip,
+        venv_site_packages,
+    ))
 }
 
 /// Extract peer mode, configured seed-node list, topology, and GML
@@ -226,9 +268,21 @@ fn compose_base_environment(
 /// distribution overrides).
 fn extract_network_topology_config(
     config: &Config,
-) -> (PeerMode, Vec<String>, Option<Topology>, Option<DistributionStrategy>, Option<RegionWeights>) {
+) -> (
+    PeerMode,
+    Vec<String>,
+    Option<Topology>,
+    Option<DistributionStrategy>,
+    Option<RegionWeights>,
+) {
     match &config.network {
-        Some(Network::Gml { peer_mode, seed_nodes, topology, distribution, .. }) => {
+        Some(Network::Gml {
+            peer_mode,
+            seed_nodes,
+            topology,
+            distribution,
+            ..
+        }) => {
             let mode = peer_mode.as_ref().unwrap_or(&PeerMode::Dynamic).clone();
             let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
             let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
@@ -239,7 +293,12 @@ fn extract_network_topology_config(
             };
             (mode, seeds, Some(topo), strategy, weights)
         }
-        Some(Network::Switch { peer_mode, seed_nodes, topology, .. }) => {
+        Some(Network::Switch {
+            peer_mode,
+            seed_nodes,
+            topology,
+            ..
+        }) => {
             let mode = peer_mode.as_ref().unwrap_or(&PeerMode::Dynamic).clone();
             let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
             let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
@@ -248,7 +307,13 @@ fn extract_network_topology_config(
         }
         None => {
             // Default to Dynamic mode with no seed nodes and DAG topology
-            (PeerMode::Dynamic, Vec::new(), Some(Topology::Dag), None, None)
+            (
+                PeerMode::Dynamic,
+                Vec::new(),
+                Some(Topology::Dag),
+                None,
+                None,
+            )
         }
     }
 }
@@ -266,13 +331,15 @@ fn emit_dns_server_host(
     environment: &BTreeMap<String, String>,
     hosts: &mut BTreeMap<String, ShadowHost>,
 ) -> color_eyre::eyre::Result<()> {
-    let dns_agent_id = "dnsserver";  // No underscore - Shadow requires RFC-compliant hostnames
+    let dns_agent_id = "dnsserver"; // No underscore - Shadow requires RFC-compliant hostnames
 
     // Create DNS server process
     let dns_script = "agents.dns_server";
     let dns_args = format!(
         "--id {} --bind-ip {} --port 53 --shared-dir {} --log-level DEBUG",
-        dns_agent_id, dns_ip, shared_dir_path.to_string_lossy()
+        dns_agent_id,
+        dns_ip,
+        shared_dir_path.to_string_lossy()
     );
 
     // `exec` so bash is replaced by python3 — see add_user_agent_process.
@@ -287,11 +354,7 @@ export PATH="$PATH:{}/.monerosim/bin"
 
 {} 2>&1
 "#,
-        current_dir,
-        current_dir,
-        venv_site_packages,
-        home_dir,
-        dns_python_cmd
+        current_dir, current_dir, venv_site_packages, home_dir, dns_python_cmd
     );
 
     let dns_process = crate::utils::script::write_wrapper_script(
@@ -305,13 +368,16 @@ export PATH="$PATH:{}/.monerosim/bin"
     )?;
     let dns_processes = vec![dns_process];
 
-    hosts.insert(dns_agent_id.to_string(), ShadowHost {
-        network_node_id: 0, // DNS server on first network node
-        ip_addr: Some(dns_ip.to_string()),
-        processes: dns_processes,
-        bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
-        bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
-    });
+    hosts.insert(
+        dns_agent_id.to_string(),
+        ShadowHost {
+            network_node_id: 0, // DNS server on first network node
+            ip_addr: Some(dns_ip.to_string()),
+            processes: dns_processes,
+            bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
+            bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
+        },
+    );
 
     log::info!("Created DNS server at {}", dns_ip);
     Ok(())
@@ -325,9 +391,7 @@ fn build_agent_registry(
     effective_agents: &crate::config::AgentDefinitions,
     hosts: &BTreeMap<String, ShadowHost>,
 ) -> AgentRegistry {
-    let mut agent_registry = AgentRegistry {
-        agents: Vec::new(),
-    };
+    let mut agent_registry = AgentRegistry { agents: Vec::new() };
 
     // Populate agent registry from all agent types
     // Extract IPs from the already created hosts instead of generating new ones
@@ -337,10 +401,14 @@ fn build_agent_registry(
     // and other consumers read this file).
     for (agent_id, agent_config) in effective_agents.agents.iter() {
         // Get IP from the corresponding host that was already created
-        let agent_ip = hosts.get(agent_id)
+        let agent_ip = hosts
+            .get(agent_id)
             .and_then(|host| host.ip_addr.clone())
             .unwrap_or_else(|| {
-                log::warn!("Agent '{}' has no host entry with an IP address; using placeholder 0.0.0.0", agent_id);
+                log::warn!(
+                    "Agent '{}' has no host entry with an IP address; using placeholder 0.0.0.0",
+                    agent_id
+                );
                 "0.0.0.0".to_string()
             });
 
@@ -363,13 +431,15 @@ fn build_agent_registry(
         // Determine agent type characteristics
         let has_local_daemon = agent_config.has_local_daemon();
         let has_wallet = agent_config.has_wallet();
-        let is_public_node = attributes.get("is_public_node")
+        let is_public_node = attributes
+            .get("is_public_node")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(false);
 
         // Get remote daemon info for wallet-only agents
         let remote_daemon = agent_config.remote_daemon_address().map(|s| s.to_string());
-        let daemon_selection_strategy = agent_config.daemon_selection_strategy()
+        let daemon_selection_strategy = agent_config
+            .daemon_selection_strategy()
             .map(|s| format!("{:?}", s).to_lowercase());
 
         let agent_info = AgentInfo {
@@ -379,8 +449,16 @@ fn build_agent_registry(
             wallet: has_wallet,
             user_script: agent_config.script.clone(),
             attributes,
-            wallet_rpc_port: if has_wallet { Some(crate::MONERO_WALLET_RPC_PORT) } else { None },
-            daemon_rpc_port: if has_local_daemon { Some(crate::MONERO_RPC_PORT) } else { None },
+            wallet_rpc_port: if has_wallet {
+                Some(crate::MONERO_WALLET_RPC_PORT)
+            } else {
+                None
+            },
+            daemon_rpc_port: if has_local_daemon {
+                Some(crate::MONERO_RPC_PORT)
+            } else {
+                None
+            },
             is_public_node: if is_public_node { Some(true) } else { None },
             remote_daemon,
             daemon_selection_strategy,
@@ -427,27 +505,33 @@ fn build_miner_registry(
     config_agents: &crate::config::AgentDefinitions,
     agent_registry: &AgentRegistry,
 ) -> MinerRegistry {
-    let mut miner_registry = MinerRegistry {
-        miners: Vec::new(),
-    };
+    let mut miner_registry = MinerRegistry { miners: Vec::new() };
 
     // Populate miner registry from agents that are miners
     for (agent_id, agent_config) in config_agents.agents.iter() {
         if agent_config.is_miner() {
             // Find the IP address from the already populated agent_registry
-            let agent_ip = agent_registry.agents.iter()
+            let agent_ip = agent_registry
+                .agents
+                .iter()
                 .find(|a| a.id == *agent_id)
                 .map(|a| a.ip_addr.clone())
                 .unwrap_or_else(|| {
-                    log::warn!("Miner '{}' not found in agent registry; using placeholder 0.0.0.0", agent_id);
+                    log::warn!(
+                        "Miner '{}' not found in agent registry; using placeholder 0.0.0.0",
+                        agent_id
+                    );
                     "0.0.0.0".to_string()
                 });
 
             // Determine miner weight (hashrate)
             // Use hashrate field if available, otherwise check attributes, default to 10
-            let weight = agent_config.hashrate
+            let weight = agent_config
+                .hashrate
                 .or_else(|| {
-                    agent_config.attributes.as_ref()
+                    agent_config
+                        .attributes
+                        .as_ref()
                         .and_then(|attrs| attrs.get("hashrate"))
                         .and_then(|h| h.parse::<u32>().ok())
                 })
@@ -465,7 +549,9 @@ fn build_miner_registry(
 
     // Validate the miner registry before writing
     if miner_registry.miners.is_empty() {
-        println!("Warning: No miners were found in the configuration. Mining will not work correctly.");
+        println!(
+            "Warning: No miners were found in the configuration. Mining will not work correctly."
+        );
     } else {
         // Calculate total weight to ensure it's positive
         let total_weight: u32 = miner_registry.miners.iter().map(|m| m.weight).sum();
@@ -476,8 +562,11 @@ fn build_miner_registry(
                 miner.weight = 10;
             }
         } else {
-            println!("Mining weight distribution: {} miners with total weight {}",
-                     miner_registry.miners.len(), total_weight);
+            println!(
+                "Mining weight distribution: {} miners with total weight {}",
+                miner_registry.miners.len(),
+                total_weight
+            );
         }
     }
 
@@ -508,7 +597,7 @@ fn build_shadow_network_graph(
                     edges: None,
                 }
             }
-        },
+        }
         Some(Network::Switch { network_type, .. }) => ShadowGraph {
             graph_type: network_type.clone(),
             file: None,
@@ -538,7 +627,10 @@ fn log_generation_summary(
     agent_registry_path: &Path,
     miner_registry_path: &Path,
 ) -> color_eyre::eyre::Result<()> {
-    println!("Generated Agent-based Shadow configuration at {:?}", output_path);
+    println!(
+        "Generated Agent-based Shadow configuration at {:?}",
+        output_path
+    );
     println!("  - Simulation time: {}", config.general.stop_time);
     println!("  - Total hosts: {}", shadow_config.hosts.len());
 
@@ -546,8 +638,12 @@ fn log_generation_summary(
     match &config.network {
         Some(Network::Gml { path, .. }) => {
             if let Some(gml) = gml_graph {
-                println!("  - Network topology: GML from '{}' ({} nodes, {} edges)",
-                         path, gml.nodes.len(), gml.edges.len());
+                println!(
+                    "  - Network topology: GML from '{}' ({} nodes, {} edges)",
+                    path,
+                    gml.nodes.len(),
+                    gml.edges.len()
+                );
 
                 // Show autonomous systems if available
                 let as_groups = get_autonomous_systems(gml);
@@ -555,10 +651,10 @@ fn log_generation_summary(
                     println!("  - Autonomous systems: {} groups", as_groups.len());
                 }
             }
-        },
+        }
         Some(Network::Switch { network_type, .. }) => {
             println!("  - Network topology: Switch ({})", network_type);
-        },
+        }
         None => {
             println!("  - Network topology: Default switch (1_gbit_switch)");
         }
@@ -603,9 +699,14 @@ pub fn generate_agent_shadow_config(
     // Load and validate GML graph if specified
     let gml_graph = if let Some(Network::Gml { path, .. }) = &config.network {
         let graph = gml_parser::parse_gml_file(path)?;
-        validate_topology(&graph).map_err(|e| color_eyre::eyre::eyre!("GML validation failed: {}", e))?;
-        println!("Loaded GML topology from '{}' with {} nodes and {} edges",
-                 path, graph.nodes.len(), graph.edges.len());
+        validate_topology(&graph)
+            .map_err(|e| color_eyre::eyre::eyre!("GML validation failed: {}", e))?;
+        println!(
+            "Loaded GML topology from '{}' with {} nodes and {} edges",
+            path,
+            graph.nodes.len(),
+            graph.edges.len()
+        );
         Some(graph)
     } else {
         None
@@ -655,7 +756,10 @@ pub fn generate_agent_shadow_config(
 
     // Validate topology configuration
     // Count user agents (agents with daemon or wallet)
-    let user_agent_count = config.agents.agents.iter()
+    let user_agent_count = config
+        .agents
+        .agents
+        .iter()
         .filter(|(_, cfg)| cfg.has_local_daemon() || cfg.has_remote_daemon() || cfg.has_wallet())
         .count();
 
@@ -673,17 +777,25 @@ pub fn generate_agent_shadow_config(
     // network node 0, pinning all miners into node 0's subnet regardless of
     // their GML placement (docs/20260711_code_quality_review.md, P0 #1).
     if seed_node_list.is_empty() {
-        let miner_ids: Vec<&String> = config.agents.agents.iter()
+        let miner_ids: Vec<&String> = config
+            .agents
+            .agents
+            .iter()
             .filter(|(_, cfg)| cfg.is_miner())
             .map(|(agent_id, _)| agent_id)
             .collect();
-        println!("Using {} miners as seed sources (IPs assigned at host emission): {:?}", miner_ids.len(), miner_ids);
+        println!(
+            "Using {} miners as seed sources (IPs assigned at host emission): {:?}",
+            miner_ids.len(),
+            miner_ids
+        );
     } else {
         println!("Using configured seed nodes: {:?}", seed_node_list);
     }
 
     // Create scripts directory for wrapper scripts (used by all agent types)
-    let scripts_dir = output_path.parent()
+    let scripts_dir = output_path
+        .parent()
         .ok_or_else(|| color_eyre::eyre::eyre!("Output path has no parent directory"))?
         .join("scripts");
     fs::create_dir_all(&scripts_dir)
@@ -746,11 +858,17 @@ pub fn generate_agent_shadow_config(
         simulation_seed: config.general.simulation_seed,
         reachable_fraction: config.general.reachable_fraction,
         reachable_by_role: config.general.reachable_by_role.as_ref(),
-        simulation_stop_secs: parse_duration_to_seconds(&config.general.stop_time)
-            .map_err(|e| color_eyre::eyre::eyre!("Failed to parse stop_time '{}': {}", config.general.stop_time, e))?,
+        simulation_stop_secs: parse_duration_to_seconds(&config.general.stop_time).map_err(
+            |e| {
+                color_eyre::eyre::eyre!(
+                    "Failed to parse stop_time '{}': {}",
+                    config.general.stop_time,
+                    e
+                )
+            },
+        )?,
         turnover: config.general.turnover.as_ref(),
     })?;
-
 
     // Calculate offset for script agents to avoid IP collisions
     // Use a larger offset to ensure clear separation between agent types
@@ -793,7 +911,8 @@ pub fn generate_agent_shadow_config(
 
     // Get output directory from output_path (parent of output file)
     // Ensure it's an absolute path so the monitor can find it regardless of working directory
-    let output_dir = output_path.parent()
+    let output_dir = output_path
+        .parent()
         .ok_or_else(|| color_eyre::eyre::eyre!("Output path has no parent directory"))?;
     let output_dir = if output_dir.is_absolute() {
         output_dir.to_path_buf()
@@ -830,15 +949,24 @@ pub fn generate_agent_shadow_config(
 
     // DEBUG: Log registry structure before writing
     log::info!("Agent registry has {} agents", agent_registry.agents.len());
-    log::info!("Agent registry JSON preview (first {} chars): {}",
-               crate::REGISTRY_PREVIEW_CHARS,
-               &agent_registry_json.chars().take(crate::REGISTRY_PREVIEW_CHARS).collect::<String>());
+    log::info!(
+        "Agent registry JSON preview (first {} chars): {}",
+        crate::REGISTRY_PREVIEW_CHARS,
+        &agent_registry_json
+            .chars()
+            .take(crate::REGISTRY_PREVIEW_CHARS)
+            .collect::<String>()
+    );
 
     std::fs::write(&agent_registry_path, &agent_registry_json)?;
 
     // DEBUG: Verify file was written
     let written_size = std::fs::metadata(&agent_registry_path)?.len();
-    log::info!("Wrote agent registry to {:?}, size: {} bytes", agent_registry_path, written_size);
+    log::info!(
+        "Wrote agent registry to {:?}, size: {} bytes",
+        agent_registry_path,
+        written_size
+    );
 
     // Build public-node registry from the agent registry (wallet-only agents
     // are excluded — they have no daemon to advertise).
@@ -848,8 +976,11 @@ pub fn generate_agent_shadow_config(
     let public_nodes_path = shared_dir_path.join("public_nodes.json");
     let public_nodes_json = serde_json::to_string_pretty(&public_node_registry)?;
     std::fs::write(&public_nodes_path, &public_nodes_json)?;
-    log::info!("Wrote public node registry to {:?} with {} nodes",
-               public_nodes_path, public_node_registry.nodes.len());
+    log::info!(
+        "Wrote public node registry to {:?} with {} nodes",
+        public_nodes_path,
+        public_node_registry.nodes.len()
+    );
 
     // Build + validate the miner registry from agents flagged as miners.
     let miner_registry = build_miner_registry(&config.agents, &agent_registry);
@@ -867,8 +998,9 @@ pub fn generate_agent_shadow_config(
     for (agent_id, agent_config) in config.agents.agents.iter() {
         if agent_config.has_wallet() || agent_config.has_wallet_phases() {
             let wallet_dir = shared_dir_path.join(format!("{}_wallet", agent_id));
-            fs::create_dir_all(&wallet_dir)
-                .map_err(|e| color_eyre::eyre::eyre!("Failed to create wallet dir {:?}: {}", wallet_dir, e))?;
+            fs::create_dir_all(&wallet_dir).map_err(|e| {
+                color_eyre::eyre::eyre!("Failed to create wallet dir {:?}: {}", wallet_dir, e)
+            })?;
             // Set permissions explicitly (monero-wallet-rpc can create files with restrictive perms)
             let mut perms = fs::metadata(&wallet_dir)?.permissions();
             use std::os::unix::fs::PermissionsExt;
@@ -886,27 +1018,33 @@ pub fn generate_agent_shadow_config(
     // BTreeMap is already sorted by key, ensuring consistent ordering in output
 
     // Parse stop_time to seconds
-    let stop_time_seconds = parse_duration_to_seconds(&config.general.stop_time)
-        .map_err(|e| color_eyre::eyre::eyre!("Failed to parse stop_time '{}': {}", config.general.stop_time, e))?;
+    let stop_time_seconds = parse_duration_to_seconds(&config.general.stop_time).map_err(|e| {
+        color_eyre::eyre::eyre!(
+            "Failed to parse stop_time '{}': {}",
+            config.general.stop_time,
+            e
+        )
+    })?;
 
     // Build Shadow's network graph from the configured network block.
-    let shadow_graph = build_shadow_network_graph(&config.network, gml_graph.as_ref(), &output_dir)?;
+    let shadow_graph =
+        build_shadow_network_graph(&config.network, gml_graph.as_ref(), &output_dir)?;
 
     // Create final Shadow configuration
     let shadow_config = ShadowConfig {
         general: ShadowGeneral {
             stop_time: stop_time_seconds,
-            seed: config.general.simulation_seed,  // Shadow uses this to seed all RNGs for determinism
-            parallelism: config.general.parallelism,  // 0=auto, 1=deterministic, N=N threads
+            seed: config.general.simulation_seed, // Shadow uses this to seed all RNGs for determinism
+            parallelism: config.general.parallelism, // 0=auto, 1=deterministic, N=N threads
             model_unblocked_syscall_latency: config.performance.model_unblocked_syscall_latency,
-            log_level: config.general.shadow_log_level.clone(),  // Use shadow_log_level (default: "info")
-            bootstrap_end_time: config.general.bootstrap_end_time.clone(),  // High bandwidth period for network settling
-            progress: config.general.progress.unwrap_or(true),  // Show simulation progress on stderr (default: true)
+            log_level: config.general.shadow_log_level.clone(), // Use shadow_log_level (default: "info")
+            bootstrap_end_time: config.general.bootstrap_end_time.clone(), // High bandwidth period for network settling
+            progress: config.general.progress.unwrap_or(true), // Show simulation progress on stderr (default: true)
         },
         experimental: ShadowExperimental {
-            runahead: config.general.runahead.clone(),  // Optional runahead for performance tuning
+            runahead: config.general.runahead.clone(), // Optional runahead for performance tuning
             use_dynamic_runahead: true,
-            native_preemption_enabled: config.general.native_preemption,  // Pass through config (Shadow default false when unset)
+            native_preemption_enabled: config.general.native_preemption, // Pass through config (Shadow default false when unset)
         },
         network: ShadowNetwork {
             graph: shadow_graph,

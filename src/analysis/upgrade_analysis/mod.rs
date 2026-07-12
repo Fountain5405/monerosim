@@ -87,12 +87,18 @@ pub fn analyze_upgrade_impact(
 
     // Create time windows
     let mut windows = create_time_windows(sim_start, sim_end, config.window_size_sec);
-    log::info!("Created {} time windows of {}s each", windows.len(), config.window_size_sec);
+    log::info!(
+        "Created {} time windows of {}s each",
+        windows.len(),
+        config.window_size_sec
+    );
 
     // Label windows based on upgrade timing
     if let Some(ref m) = manifest {
         label_windows_by_upgrade(&mut windows, m);
-    } else if let (Some(pre_end), Some(post_start)) = (config.pre_upgrade_end, config.post_upgrade_start) {
+    } else if let (Some(pre_end), Some(post_start)) =
+        (config.pre_upgrade_end, config.post_upgrade_start)
+    {
         // Use manual overrides
         let manual_manifest = UpgradeManifest {
             pre_upgrade_version: None,
@@ -113,7 +119,10 @@ pub fn analyze_upgrade_impact(
     });
 
     // Pre-partition all observation data (one-time O(N*O*log) cost)
-    log::info!("Pre-partitioning observation data for {} windows...", windows.len());
+    log::info!(
+        "Pre-partitioning observation data for {} windows...",
+        windows.len()
+    );
     let prepartitioned = prepartition_data(log_data, &windows);
     log::info!(
         "Pre-partitioned: {} TX observations, {} bandwidth events",
@@ -122,17 +131,16 @@ pub fn analyze_upgrade_impact(
     );
 
     // Build IP-to-agent mapping (shared across all windows)
-    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> = agents
-        .iter()
-        .map(|a| (a.ip_addr.as_str(), a))
-        .collect();
+    let ip_to_agent: HashMap<&str, &AnalysisAgentInfo> =
+        agents.iter().map(|a| (a.ip_addr.as_str(), a)).collect();
 
     // Pre-compute synthetic spy trial sets (shared read-only across parallel windows)
     const SPY_VISIBILITY_LEVELS: &[f64] = &[0.05, 0.10, 0.20, 0.30, 0.50];
     const SPY_TRIALS_PER_LEVEL: usize = 3;
 
     let node_ids: Vec<&str> = log_data.keys().map(|s| s.as_str()).collect();
-    let spy_trials = build_spy_trial_sets(&node_ids, SPY_VISIBILITY_LEVELS, SPY_TRIALS_PER_LEVEL, 42);
+    let spy_trials =
+        build_spy_trial_sets(&node_ids, SPY_VISIBILITY_LEVELS, SPY_TRIALS_PER_LEVEL, 42);
 
     // Process all windows in parallel using rayon
     let windowed_metrics: Vec<WindowedMetrics> = windows

@@ -25,7 +25,11 @@ pub fn command_name(category: &str) -> &'static str {
 }
 
 /// Calculate per-node bandwidth statistics
-fn calculate_node_stats(node_id: &str, events: &[BandwidthEvent], top_peers_count: usize) -> NodeBandwidthStats {
+fn calculate_node_stats(
+    node_id: &str,
+    events: &[BandwidthEvent],
+    top_peers_count: usize,
+) -> NodeBandwidthStats {
     let mut total_bytes_sent: u64 = 0;
     let mut total_bytes_received: u64 = 0;
     let mut message_count_sent: u64 = 0;
@@ -43,15 +47,15 @@ fn calculate_node_stats(node_id: &str, events: &[BandwidthEvent], top_peers_coun
         }
 
         // Aggregate by category
-        let cat = by_category.entry(event.command_category.clone()).or_insert_with(|| {
-            CategoryBandwidth {
+        let cat = by_category
+            .entry(event.command_category.clone())
+            .or_insert_with(|| CategoryBandwidth {
                 category: event.command_category.clone(),
                 category_name: command_name(&event.command_category).to_string(),
                 bytes_sent: 0,
                 bytes_received: 0,
                 message_count: 0,
-            }
-        });
+            });
         if event.is_sent {
             cat.bytes_sent += event.bytes;
         } else {
@@ -60,14 +64,14 @@ fn calculate_node_stats(node_id: &str, events: &[BandwidthEvent], top_peers_coun
         cat.message_count += 1;
 
         // Aggregate by peer
-        let peer = by_peer.entry(event.peer_ip.clone()).or_insert_with(|| {
-            PeerBandwidth {
+        let peer = by_peer
+            .entry(event.peer_ip.clone())
+            .or_insert_with(|| PeerBandwidth {
                 peer_ip: event.peer_ip.clone(),
                 bytes_sent: 0,
                 bytes_received: 0,
                 message_count: 0,
-            }
-        });
+            });
         if event.is_sent {
             peer.bytes_sent += event.bytes;
         } else {
@@ -115,15 +119,15 @@ pub fn analyze_bandwidth(
 
         // Aggregate categories into network-wide totals
         for (cat_id, cat_stats) in &stats.bytes_by_category {
-            let net_cat = network_by_category.entry(cat_id.clone()).or_insert_with(|| {
-                CategoryBandwidth {
+            let net_cat = network_by_category
+                .entry(cat_id.clone())
+                .or_insert_with(|| CategoryBandwidth {
                     category: cat_id.clone(),
                     category_name: command_name(cat_id).to_string(),
                     bytes_sent: 0,
                     bytes_received: 0,
                     message_count: 0,
-                }
-            });
+                });
             net_cat.bytes_sent += cat_stats.bytes_sent;
             net_cat.bytes_received += cat_stats.bytes_received;
             net_cat.message_count += cat_stats.message_count;
@@ -139,7 +143,8 @@ pub fn analyze_bandwidth(
     let total_bytes_sent: u64 = per_node_stats.iter().map(|s| s.total_bytes_sent).sum();
     let total_bytes_received: u64 = per_node_stats.iter().map(|s| s.total_bytes_received).sum();
     let total_bytes = total_bytes_sent + total_bytes_received;
-    let total_messages: u64 = per_node_stats.iter()
+    let total_messages: u64 = per_node_stats
+        .iter()
         .map(|s| s.message_count_sent + s.message_count_received)
         .sum();
 
@@ -165,11 +170,13 @@ pub fn analyze_bandwidth(
     };
 
     // Find max/min nodes
-    let max_bytes_node = per_node_stats.first()
+    let max_bytes_node = per_node_stats
+        .first()
         .map(|s| (s.node_id.clone(), s.total_bytes))
         .unwrap_or_else(|| ("".to_string(), 0));
 
-    let min_bytes_node = per_node_stats.last()
+    let min_bytes_node = per_node_stats
+        .last()
         .map(|s| (s.node_id.clone(), s.total_bytes))
         .unwrap_or_else(|| ("".to_string(), 0));
 
@@ -206,8 +213,14 @@ pub fn bandwidth_time_series(
     }
 
     // Find time range
-    let min_time = all_events.iter().map(|e| e.timestamp).fold(f64::MAX, f64::min);
-    let max_time = all_events.iter().map(|e| e.timestamp).fold(f64::MIN, f64::max);
+    let min_time = all_events
+        .iter()
+        .map(|e| e.timestamp)
+        .fold(f64::MAX, f64::min);
+    let max_time = all_events
+        .iter()
+        .map(|e| e.timestamp)
+        .fold(f64::MIN, f64::max);
 
     if min_time >= max_time {
         return Vec::new();

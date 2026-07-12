@@ -12,7 +12,7 @@ pub enum AgentType {
     UserAgent,
     MinerDistributor,
     PureScriptAgent,
-    Infrastructure,  // DNS servers, monitors, and other infrastructure agents
+    Infrastructure, // DNS servers, monitors, and other infrastructure agents
 }
 
 /// Global IP Registry for centralized IP management across all agent types
@@ -69,7 +69,12 @@ impl GlobalIpRegistry {
     pub fn assign_ip(&mut self, _agent_type: AgentType, agent_id: &str) -> Result<String, String> {
         fn trailing_num(s: &str) -> u32 {
             let digits: String = s.chars().rev().take_while(|c| c.is_ascii_digit()).collect();
-            digits.chars().rev().collect::<String>().parse().unwrap_or(0)
+            digits
+                .chars()
+                .rev()
+                .collect::<String>()
+                .parse()
+                .unwrap_or(0)
         }
 
         let agent_number = if agent_id == "miner-distributor" {
@@ -110,13 +115,13 @@ impl GlobalIpRegistry {
         let region = agent_number % 6;
         let subnet_offset = agent_number / 6;
         let (octet1, octet2, _region_name) = match region {
-            0 => (24,  subnet_offset % 256, "North America"),
-            1 => (80,  subnet_offset % 256, "Europe"),
+            0 => (24, subnet_offset % 256, "North America"),
+            1 => (80, subnet_offset % 256, "Europe"),
             2 => (203, subnet_offset % 256, "Asia"),
             3 => (200, subnet_offset % 256, "South America"),
             4 => (197, subnet_offset % 256, "Africa"),
             5 => (202, subnet_offset % 256, "Oceania"),
-            _ => (24,  0,                   "Default"),
+            _ => (24, 0, "Default"),
         };
 
         // Create unique subnet and host
@@ -146,11 +151,14 @@ impl GlobalIpRegistry {
                         agent_id, fallback_octet
                     ));
                 }
-                let fallback_ip = format!("{}.{}.{}.{}", octet1, octet2, subnet_octet3, fallback_octet);
+                let fallback_ip =
+                    format!("{}.{}.{}.{}", octet1, octet2, subnet_octet3, fallback_octet);
                 if !self.used_ips.contains(&fallback_ip) {
                     self.used_ips.insert(fallback_ip.clone());
-                    self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());
-                    self.agent_to_ip.insert(agent_id.to_string(), fallback_ip.clone());
+                    self.assigned_ips
+                        .insert(fallback_ip.clone(), agent_id.to_string());
+                    self.agent_to_ip
+                        .insert(agent_id.to_string(), fallback_ip.clone());
                     Ok(fallback_ip)
                 } else {
                     Err(format!("Could not assign unique IP for agent {}", agent_id))
@@ -169,15 +177,20 @@ impl GlobalIpRegistry {
         if self.used_ips.contains(ip) {
             if let Some(existing_agent) = self.assigned_ips.get(ip) {
                 if existing_agent != agent_id {
-                    return Err(format!("IP {} already assigned to agent {}", ip, existing_agent));
+                    return Err(format!(
+                        "IP {} already assigned to agent {}",
+                        ip, existing_agent
+                    ));
                 }
             }
             // If same agent, it's OK
             Ok(())
         } else {
             self.used_ips.insert(ip.to_string());
-            self.assigned_ips.insert(ip.to_string(), agent_id.to_string());
-            self.agent_to_ip.insert(agent_id.to_string(), ip.to_string());
+            self.assigned_ips
+                .insert(ip.to_string(), agent_id.to_string());
+            self.agent_to_ip
+                .insert(agent_id.to_string(), ip.to_string());
             Ok(())
         }
     }
@@ -210,16 +223,25 @@ impl GlobalIpRegistry {
     /// Subnet groups use 100.64.x.0/24 (RFC 6598 shared address space — public per
     /// epee::is_ip_local, so monerod doesn't need --allow-local-ip to peer with them).
     /// `x` is assigned sequentially.
-    pub fn assign_subnet_group_ip(&mut self, subnet_group: &str, agent_id: &str) -> Result<String, String> {
+    pub fn assign_subnet_group_ip(
+        &mut self,
+        subnet_group: &str,
+        agent_id: &str,
+    ) -> Result<String, String> {
         // Get or create subnet allocation for this group
-        let (subnet_prefix, next_host) = self.subnet_groups
+        let (subnet_prefix, next_host) = self
+            .subnet_groups
             .entry(subnet_group.to_string())
             .or_insert_with(|| {
                 let subnet_id = self.next_subnet_group_id;
                 self.next_subnet_group_id = self.next_subnet_group_id.wrapping_add(1);
                 // RFC 6598 (CGNAT) — public per epee, plenty of /24 capacity.
                 let prefix = format!("100.64.{}", subnet_id);
-                log::info!("Created new subnet group '{}' with prefix {}.0/24", subnet_group, prefix);
+                log::info!(
+                    "Created new subnet group '{}' with prefix {}.0/24",
+                    subnet_group,
+                    prefix
+                );
                 (prefix, 10) // Start host IPs at .10
             });
 
@@ -241,8 +263,10 @@ impl GlobalIpRegistry {
                 let try_ip = format!("{}.{}", subnet_prefix, try_host);
                 if !self.used_ips.contains(&try_ip) {
                     self.used_ips.insert(try_ip.clone());
-                    self.assigned_ips.insert(try_ip.clone(), agent_id.to_string());
-                    self.agent_to_ip.insert(agent_id.to_string(), try_ip.clone());
+                    self.assigned_ips
+                        .insert(try_ip.clone(), agent_id.to_string());
+                    self.agent_to_ip
+                        .insert(agent_id.to_string(), try_ip.clone());
                     // Update next_host for future allocations
                     if let Some((_, next)) = self.subnet_groups.get_mut(subnet_group) {
                         *next = try_host + 1;
@@ -270,6 +294,8 @@ impl GlobalIpRegistry {
 
     /// Get the subnet prefix for a given subnet group (if it exists)
     pub fn get_subnet_group_prefix(&self, subnet_group: &str) -> Option<&str> {
-        self.subnet_groups.get(subnet_group).map(|(prefix, _)| prefix.as_str())
+        self.subnet_groups
+            .get(subnet_group)
+            .map(|(prefix, _)| prefix.as_str())
     }
 }

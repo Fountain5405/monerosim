@@ -6,8 +6,8 @@
 //! - Time-based topology snapshots
 //! - GraphViz DOT output for visualization
 
-use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 use super::types::*;
 
@@ -151,10 +151,7 @@ pub fn analyze_network_graph(
         .map(|a| (a.ip_addr.as_str(), a.id.as_str()))
         .collect();
 
-    let daemon_node_ids: HashSet<&str> = daemon_agents
-        .iter()
-        .map(|a| a.id.as_str())
-        .collect();
+    let daemon_node_ids: HashSet<&str> = daemon_agents.iter().map(|a| a.id.as_str()).collect();
 
     // Collect all connection events sorted by time
     let mut all_events: Vec<(SimTime, &str, &ConnectionEvent)> = Vec::new();
@@ -223,7 +220,9 @@ pub fn analyze_network_graph(
             total_opens += 1;
 
             // Resolve peer IP to node ID
-            let peer_node = ip_to_node.get(event.peer_ip.as_str()).map(|s| s.to_string());
+            let peer_node = ip_to_node
+                .get(event.peer_ip.as_str())
+                .map(|s| s.to_string());
 
             // Only track connections to other daemon nodes
             if peer_node.is_some() {
@@ -301,12 +300,15 @@ fn create_snapshot(
 
     // Initialize all daemon nodes
     for &node_id in daemon_nodes {
-        node_degrees.insert(node_id.to_string(), NodeDegree {
-            node_id: node_id.to_string(),
-            outbound: 0,
-            inbound: 0,
-            total: 0,
-        });
+        node_degrees.insert(
+            node_id.to_string(),
+            NodeDegree {
+                node_id: node_id.to_string(),
+                outbound: 0,
+                inbound: 0,
+                total: 0,
+            },
+        );
     }
 
     // Count connections per node
@@ -420,8 +422,12 @@ fn calculate_stats(values: &[usize]) -> DegreeStats {
     let mut sorted = values.to_vec();
     sorted.sort();
 
-    let min = *sorted.first().expect("invariant: sorted is non-empty (checked above)");
-    let max = *sorted.last().expect("invariant: sorted is non-empty (checked above)");
+    let min = *sorted
+        .first()
+        .expect("invariant: sorted is non-empty (checked above)");
+    let max = *sorted
+        .last()
+        .expect("invariant: sorted is non-empty (checked above)");
     let floats: Vec<f64> = sorted.iter().map(|&v| v as f64).collect();
     let mean = super::stats::mean(&floats);
     let median = super::stats::median(&floats);
@@ -460,10 +466,7 @@ fn calculate_churn_stats(
     let median_duration_sec = super::stats::median(durations);
 
     // Count connections still active at end (long-lived)
-    let long_lived: usize = final_state
-        .values()
-        .map(|conns| conns.len())
-        .sum();
+    let long_lived: usize = final_state.values().map(|conns| conns.len()).sum();
 
     // Count short-lived connections (< 60 seconds)
     let short_lived = durations.iter().filter(|&&d| d < 60.0).count();
@@ -540,7 +543,10 @@ pub fn generate_dot(snapshot: &NetworkSnapshot, _agents: &[AnalysisAgentInfo]) -
     dot.push_str("digraph MoneroNetwork {\n");
     dot.push_str("    rankdir=LR;\n");
     dot.push_str("    node [shape=circle];\n");
-    dot.push_str(&format!("    label=\"Network at {}\";\n", snapshot.time_label));
+    dot.push_str(&format!(
+        "    label=\"Network at {}\";\n",
+        snapshot.time_label
+    ));
     dot.push_str("    labelloc=t;\n\n");
 
     // Create node labels with degree info
@@ -555,11 +561,7 @@ pub fn generate_dot(snapshot: &NetworkSnapshot, _agents: &[AnalysisAgentInfo]) -
 
         dot.push_str(&format!(
             "    \"{}\" [label=\"{}\\n({}/{})\", fillcolor={}, style=filled];\n",
-            node_id,
-            node_id,
-            degree.outbound,
-            degree.inbound,
-            color
+            node_id, node_id, degree.outbound, degree.inbound, color
         ));
     }
 
