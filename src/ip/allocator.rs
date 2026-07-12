@@ -30,12 +30,12 @@ pub fn get_agent_ip(
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
     subnet_group: Option<&str>,
-) -> String {
+) -> color_eyre::eyre::Result<String> {
     // Priority 0: Honor any IP that was pre-registered for this agent before
     // the main allocation loop ran (e.g., Monero fallback seed IP pinning).
     if let Some(pre_registered) = ip_registry.get_ip_for_agent(agent_id).cloned() {
         log::debug!("Using pre-registered IP {} for agent {}", pre_registered, agent_id);
-        return pre_registered;
+        return Ok(pre_registered);
     }
 
     // Priority 1: If subnet_group is specified, use subnet group allocation
@@ -43,7 +43,7 @@ pub fn get_agent_ip(
         match ip_registry.assign_subnet_group_ip(group, agent_id) {
             Ok(ip) => {
                 log::info!("Assigned subnet group IP {} to agent {} (group: {})", ip, agent_id, group);
-                return ip;
+                return Ok(ip);
             }
             Err(e) => {
                 log::warn!("Failed to assign subnet group IP for agent {}: {}. Falling back to default allocation.", agent_id, e);
@@ -70,7 +70,7 @@ pub fn get_agent_ip(
                                 // Continue to fallback instead of panicking
                             } else {
                                 log::debug!("Using pre-allocated IP {} for agent {} (node {})", pre_allocated_ip, agent_id, network_node_id);
-                                return pre_allocated_ip.to_string();
+                                return Ok(pre_allocated_ip.to_string());
                             }
                         } else {
                             // Register this IP in our central registry
@@ -79,7 +79,7 @@ pub fn get_agent_ip(
                                 // Continue to fallback
                             } else {
                                 log::info!("Assigned pre-allocated IP {} to agent {} (node {})", pre_allocated_ip, agent_id, network_node_id);
-                                return pre_allocated_ip.to_string();
+                                return Ok(pre_allocated_ip.to_string());
                             }
                         }
                     }
@@ -94,7 +94,7 @@ pub fn get_agent_ip(
                                 log::warn!("AS-aware IP {} for agent {} conflicts with existing assignment to {}", as_ip, agent_id, conflicting_agent);
                             } else {
                                 log::debug!("Using AS-aware IP {} for agent {} (AS {}, node {})", as_ip, agent_id, as_number, network_node_id);
-                                return as_ip;
+                                return Ok(as_ip);
                             }
                         } else {
                             // Register this IP in our central registry
@@ -103,7 +103,7 @@ pub fn get_agent_ip(
                                 // Continue to fallback
                             } else {
                                 log::info!("Assigned AS-aware IP {} to agent {} (AS {}, node {})", as_ip, agent_id, as_number, network_node_id);
-                                return as_ip;
+                                return Ok(as_ip);
                             }
                         }
                     }
@@ -118,7 +118,7 @@ pub fn get_agent_ip(
     match ip_registry.assign_ip(agent_type, agent_id) {
         Ok(ip) => {
             log::info!("Assigned dynamic IP {} to agent {} using global registry", ip, agent_id);
-            ip
+            Ok(ip)
         },
         Err(error) => {
             // Fallback to legacy assignment if centralized registry fails
@@ -134,18 +134,24 @@ pub fn get_agent_ip(
                 AgentType::Infrastructure => format!("198.18.40.{}", 10 + (agent_index % 245)),
             };
 
-            // Try to register the fallback IP
+            // Try to register the fallback IP. If it's already owned by a
+            // *different* agent, returning it would assign one IP to two
+            // hosts — that is a hard error rather than a silent duplicate.
             if let Some(conflicting_agent) = ip_registry.get_agent_for_ip(&fallback_ip) {
                 if conflicting_agent != agent_id {
-                    log::error!("Fallback IP {} conflicts with existing assignment to {}", fallback_ip, conflicting_agent);
+                    return Err(color_eyre::eyre::eyre!(
+                        "Cannot assign a unique IP to agent '{}': geographic fallback {} is already assigned to agent '{}' (registry error: {})",
+                        agent_id, fallback_ip, conflicting_agent, error
+                    ));
                 }
+                // Same agent already owns it — safe to reuse.
             } else {
-                // Use the public method to register
+                // Newly-free IP: register it (cannot conflict, just checked).
                 let _ = ip_registry.register_pre_allocated_ip(&fallback_ip, agent_id);
             }
 
             log::info!("Assigned fallback IP {} to agent {}", fallback_ip, agent_id);
-            fallback_ip
+            Ok(fallback_ip)
         }
     }
 }

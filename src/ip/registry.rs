@@ -15,15 +15,6 @@ pub enum AgentType {
     Infrastructure,  // DNS servers, monitors, and other infrastructure agents
 }
 
-/// Subnet allocation configuration
-#[derive(Debug)]
-pub struct SubnetAllocation {
-    pub base_subnet: String,
-    pub start_ip: u8,
-    pub end_ip: u8,
-    pub spacing: u8, // Minimum spacing between agent types
-}
-
 /// Global IP Registry for centralized IP management across all agent types
 #[derive(Debug)]
 pub struct GlobalIpRegistry {
@@ -145,8 +136,17 @@ impl GlobalIpRegistry {
             if self.assigned_ips.get(&ip) == Some(&agent_id.to_string()) {
                 Ok(ip)
             } else {
-                // Fallback: try a different host IP
-                let fallback_ip = format!("{}.{}.{}.{}", octet1, octet2, subnet_octet3, host_octet4 + 100);
+                // Fallback: try a different host IP in the same /24. host_octet4
+                // is at most 254, so +100 can push the octet past 255 (an
+                // invalid IPv4 octet). Reject rather than emit a malformed IP.
+                let fallback_octet = host_octet4 + 100;
+                if fallback_octet > 254 {
+                    return Err(format!(
+                        "Could not assign unique IP for agent {}: fallback host octet {} exceeds 254",
+                        agent_id, fallback_octet
+                    ));
+                }
+                let fallback_ip = format!("{}.{}.{}.{}", octet1, octet2, subnet_octet3, fallback_octet);
                 if !self.used_ips.contains(&fallback_ip) {
                     self.used_ips.insert(fallback_ip.clone());
                     self.assigned_ips.insert(fallback_ip.clone(), agent_id.to_string());

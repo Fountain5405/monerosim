@@ -229,12 +229,10 @@ fn calculate_propagation_for_window(
         return (None, None, None);
     }
 
-    all_propagation_times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let avg = all_propagation_times.iter().sum::<f64>() / all_propagation_times.len() as f64;
-    let median = all_propagation_times[all_propagation_times.len() / 2];
-    let p95_idx = (all_propagation_times.len() as f64 * 0.95) as usize;
-    let p95 = all_propagation_times.get(p95_idx).copied().unwrap_or(median);
+    // stats:: helpers sort internally and average even-length medians.
+    let avg = crate::analysis::stats::mean(&all_propagation_times);
+    let median = crate::analysis::stats::median(&all_propagation_times);
+    let p95 = crate::analysis::stats::percentile(&all_propagation_times, 95.0);
 
     (Some(avg), Some(median), Some(p95))
 }
@@ -269,23 +267,9 @@ fn calculate_gini_for_window(
         return None;
     }
 
-    // Calculate Gini coefficient
-    let mut values: Vec<f64> = first_seen_counts.values().map(|&v| v as f64).collect();
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let n = values.len() as f64;
-    let sum: f64 = values.iter().sum();
-
-    if sum == 0.0 {
-        return Some(0.0);
-    }
-
-    let mut gini_sum = 0.0;
-    for (i, v) in values.iter().enumerate() {
-        gini_sum += (2.0 * (i + 1) as f64 - n - 1.0) * v;
-    }
-
-    Some(gini_sum / (n * sum))
+    // Calculate Gini coefficient over the per-node first-seen counts.
+    let values: Vec<f64> = first_seen_counts.values().map(|&v| v as f64).collect();
+    Some(crate::analysis::stats::gini(&values))
 }
 
 /// Trace stem length for a single TX with a given fluff gap threshold.

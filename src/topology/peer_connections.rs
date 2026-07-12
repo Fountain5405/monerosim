@@ -94,7 +94,7 @@ pub fn build_peer_topology(
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
     seed_agents: &mut Vec<String>,
-) -> PeerTopology {
+) -> color_eyre::eyre::Result<PeerTopology> {
     let mut agent_info: Vec<AgentEntry> = Vec::new();
     let mut all_agent_ips = Vec::new();
     let mut miners: Vec<AgentEntry> = Vec::new();
@@ -116,7 +116,7 @@ pub fn build_peer_topology(
         let subnet_group = user_agents.iter()
             .find(|(id, _)| id.as_str() == *agent_id)
             .and_then(|(_, config)| config.subnet_group.as_deref());
-        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group);
+        let agent_ip = get_agent_ip(AgentType::UserAgent, agent_id, i, network_node_id, gml_graph, using_gml_topology, subnet_manager, ip_registry, subnet_group)?;
         let agent_port = crate::MONERO_P2P_PORT;
 
         all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
@@ -193,7 +193,7 @@ pub fn build_peer_topology(
         seed_conns
     };
 
-    PeerTopology {
+    Ok(PeerTopology {
         agent_info,
         miners,
         seed_nodes,
@@ -201,5 +201,5 @@ pub fn build_peer_topology(
         all_agent_ips,
         miner_connections,
         seed_connections,
-    }
+    })
 }

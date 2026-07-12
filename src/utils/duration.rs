@@ -14,9 +14,12 @@
 /// # Arguments
 /// * `duration` - The duration string to parse
 ///
+/// Compound forms (e.g. `"5m30s"`) are NOT supported and are rejected with an
+/// error rather than being silently mis-parsed — use a single unit instead.
+///
 /// # Returns
 /// * `Ok(u64)` - The duration in seconds if parsing succeeds
-/// * `Err(String)` - An error message if parsing fails
+/// * `Err(String)` - An error message if the string cannot be fully parsed
 ///
 /// # Examples
 /// ```
@@ -26,41 +29,39 @@
 /// assert_eq!(parse_duration_to_seconds("30m"), Ok(1800));
 /// assert_eq!(parse_duration_to_seconds("5h"), Ok(18000));
 /// assert!(parse_duration_to_seconds("invalid").is_err());
+/// assert!(parse_duration_to_seconds("5m30s").is_err());
 /// ```
 pub fn parse_duration_to_seconds(duration: &str) -> Result<u64, String> {
     let duration = duration.trim();
 
-    // Check for unit suffixes first (check longer suffixes before shorter ones)
-    // Hours
-    if duration.ends_with("hours") || duration.ends_with("hour") || duration.ends_with("hrs") || duration.ends_with("hr") || duration.ends_with("h") {
-        let num_str = extract_number_part(duration);
-        if let Ok(hours) = num_str.parse::<f64>() {
-            return Ok((hours * 3600.0) as u64);
+    // Split into a leading numeric part and a trailing unit suffix. Anything
+    // left over that is neither (e.g. the "30s" in "5m30s") makes the whole
+    // string invalid — we refuse to guess rather than return a wrong value.
+    let num_str = extract_number_part(duration);
+    let unit = &duration[num_str.len()..];
+
+    // The numeric part must be present and fully valid.
+    let value: f64 = num_str.parse().map_err(|_| {
+        format!(
+            "Invalid duration format: '{}' (expected a single value with an optional unit, e.g. '30s', '5m', '2h')",
+            duration
+        )
+    })?;
+
+    let seconds = match unit {
+        "" => value, // raw seconds
+        "s" | "sec" | "secs" | "second" | "seconds" => value,
+        "m" | "min" | "mins" | "minute" | "minutes" => value * 60.0,
+        "h" | "hr" | "hrs" | "hour" | "hours" => value * 3600.0,
+        other => {
+            return Err(format!(
+                "Invalid duration '{}': unrecognized unit '{}'. Use a single unit like '30s', '5m', or '2h'; compound forms such as '5m30s' are not supported.",
+                duration, other
+            ));
         }
-    }
+    };
 
-    // Minutes
-    if duration.ends_with("minutes") || duration.ends_with("minute") || duration.ends_with("mins") || duration.ends_with("min") || duration.ends_with("m") {
-        let num_str = extract_number_part(duration);
-        if let Ok(minutes) = num_str.parse::<f64>() {
-            return Ok((minutes * 60.0) as u64);
-        }
-    }
-
-    // Seconds
-    if duration.ends_with("seconds") || duration.ends_with("second") || duration.ends_with("secs") || duration.ends_with("sec") || duration.ends_with("s") {
-        let num_str = extract_number_part(duration);
-        if let Ok(seconds) = num_str.parse::<f64>() {
-            return Ok(seconds as u64);
-        }
-    }
-
-    // Only try raw seconds parsing if no unit suffix is found
-    if let Ok(seconds) = duration.parse::<u64>() {
-        return Ok(seconds);
-    }
-
-    Err(format!("Invalid duration format: {}", duration))
+    Ok(seconds as u64)
 }
 
 /// Extract the numeric part from a duration string by finding the first non-numeric character.
@@ -124,11 +125,22 @@ mod tests {
         assert_eq!(parse_duration_to_seconds("1h"), Ok(3600));
         assert_eq!(parse_duration_to_seconds("1s"), Ok(1));
 
+        // Single-unit forms parse cleanly.
+        assert_eq!(parse_duration_to_seconds("30s"), Ok(30));
+        assert_eq!(parse_duration_to_seconds("5m"), Ok(300));
+        assert_eq!(parse_duration_to_seconds("2h"), Ok(7200));
+
         // Test invalid formats
         assert!(parse_duration_to_seconds("").is_err());
         assert!(parse_duration_to_seconds("invalid").is_err());
+        assert!(parse_duration_to_seconds("abc").is_err());
         assert!(parse_duration_to_seconds("5x").is_err());
         assert!(parse_duration_to_seconds("5minutesx").is_err());
+
+        // Compound forms must be rejected, not silently mis-parsed
+        // ("5m30s" previously returned 5 via the ends_with cascade).
+        assert!(parse_duration_to_seconds("5m30s").is_err());
+        assert!(parse_duration_to_seconds("1h30m").is_err());
     }
 
     #[test]

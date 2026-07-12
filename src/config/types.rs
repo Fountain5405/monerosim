@@ -223,11 +223,6 @@ impl Config {
         Ok(())
     }
 
-    /// Get the general configuration
-    pub fn general(&self) -> &GeneralConfig {
-        &self.general
-    }
-
 }
 
 /// Shared general configuration
@@ -447,42 +442,6 @@ pub enum DaemonConfig {
         #[serde(skip_serializing_if = "Option::is_none")]
         strategy: Option<DaemonSelectionStrategy>,
     },
-}
-
-impl DaemonConfig {
-    /// Check if this is a local daemon configuration
-    pub fn is_local(&self) -> bool {
-        matches!(self, DaemonConfig::Local(_))
-    }
-
-    /// Check if this is a remote daemon configuration
-    pub fn is_remote(&self) -> bool {
-        matches!(self, DaemonConfig::Remote { .. })
-    }
-
-    /// Get the local daemon name if this is a local config
-    pub fn local_name(&self) -> Option<&str> {
-        match self {
-            DaemonConfig::Local(name) => Some(name),
-            _ => None,
-        }
-    }
-
-    /// Get the remote address if this is a remote config
-    pub fn remote_address(&self) -> Option<&str> {
-        match self {
-            DaemonConfig::Remote { address, .. } => Some(address),
-            _ => None,
-        }
-    }
-
-    /// Get the selection strategy if this is a remote config with auto discovery
-    pub fn selection_strategy(&self) -> Option<&DaemonSelectionStrategy> {
-        match self {
-            DaemonConfig::Remote { strategy, .. } => strategy.as_ref(),
-            _ => None,
-        }
-    }
 }
 
 /// Network configuration, supporting different topology types

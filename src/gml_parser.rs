@@ -508,7 +508,6 @@ pub fn validate_topology(graph: &GmlGraph) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-use crate::utils::ip_utils;
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -708,98 +707,6 @@ use crate::utils::ip_utils;
         assert!(node4.get_ip().is_none());
     }
 
-
-    #[test]
-    fn test_ip_utils_validation() {
-        // Test valid IPs
-        assert!(ip_utils::is_valid_ip("192.168.1.1"));
-        assert!(ip_utils::is_valid_ip("10.0.0.1"));
-        assert!(ip_utils::is_valid_ip("::1"));
-        assert!(ip_utils::is_valid_ip("2001:db8::1"));
-        assert!(ip_utils::is_valid_ipv4("192.168.1.1"));
-        assert!(ip_utils::is_valid_ipv6("::1"));
-        assert!(!ip_utils::is_valid_ipv4("::1"));
-        assert!(!ip_utils::is_valid_ipv6("192.168.1.1"));
-
-        // Test invalid IPs
-        assert!(!ip_utils::is_valid_ip("invalid.ip"));
-        assert!(!ip_utils::is_valid_ip("256.1.1.1"));
-        assert!(!ip_utils::is_valid_ip("192.168.1.256"));
-        assert!(!ip_utils::is_valid_ipv4("invalid.ip"));
-        assert!(!ip_utils::is_valid_ipv6("invalid:ip"));
-    }
-
-    #[test]
-    fn test_ip_utils_extract_valid_ips() {
-        let values = vec![
-            "192.168.1.1".to_string(),
-            "invalid.ip".to_string(),
-            "10.0.0.1".to_string(),
-            "not an ip".to_string(),
-            "::1".to_string(),
-        ];
-
-        let valid_ips = ip_utils::extract_valid_ips(&values);
-        assert_eq!(valid_ips.len(), 3);
-        assert!(valid_ips.contains(&"192.168.1.1".to_string()));
-        assert!(valid_ips.contains(&"10.0.0.1".to_string()));
-        assert!(valid_ips.contains(&"::1".to_string()));
-    }
-
-    #[test]
-    fn test_ip_utils_format_with_subnet() {
-        // Test IPv4
-        assert_eq!(ip_utils::format_with_subnet("192.168.1.1").unwrap(), "192.168.1.1/24");
-
-        // Test IPv6
-        assert_eq!(ip_utils::format_with_subnet("::1").unwrap(), "::1/64");
-
-        // Test invalid IP
-        assert!(ip_utils::format_with_subnet("invalid.ip").is_err());
-    }
-
-    #[test]
-    fn test_ip_utils_is_private_ip() {
-        // Test private IPv4 addresses
-        assert!(ip_utils::is_private_ip("10.0.0.1").unwrap());
-        assert!(ip_utils::is_private_ip("172.16.0.1").unwrap());
-        assert!(ip_utils::is_private_ip("192.168.1.1").unwrap());
-
-        // Test public IPv4 addresses
-        assert!(!ip_utils::is_private_ip("8.8.8.8").unwrap());
-        assert!(!ip_utils::is_private_ip("203.0.113.1").unwrap());
-
-        // Test private IPv6 addresses
-        assert!(ip_utils::is_private_ip("fc00::1").unwrap());
-        assert!(ip_utils::is_private_ip("fd00::1").unwrap());
-
-        // Test public IPv6 addresses
-        assert!(!ip_utils::is_private_ip("2001:db8::1").unwrap());
-
-        // Test invalid IP
-        assert!(ip_utils::is_private_ip("invalid.ip").is_err());
-    }
-
-    #[test]
-    fn test_ip_utils_generate_ip_range() {
-        // Test IPv4 range
-        let range = ip_utils::generate_ip_range("192.168.1.1", 5).unwrap();
-        assert_eq!(range.len(), 5);
-        assert_eq!(range[0], "192.168.1.1");
-        assert_eq!(range[1], "192.168.1.2");
-        assert_eq!(range[2], "192.168.1.3");
-        assert_eq!(range[3], "192.168.1.4");
-        assert_eq!(range[4], "192.168.1.5");
-
-        // Test range that would exceed 255
-        assert!(ip_utils::generate_ip_range("192.168.1.254", 5).is_err());
-
-        // Test invalid start IP
-        assert!(ip_utils::generate_ip_range("invalid.ip", 5).is_err());
-
-        // Test IPv6 (should return error)
-        assert!(ip_utils::generate_ip_range("::1", 5).is_err());
-    }
 
     #[test]
     fn test_gml_node_is_valid_ip() {

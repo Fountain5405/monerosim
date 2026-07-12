@@ -208,8 +208,6 @@ fn reconstruct_path(
     // In fluff phase, one sender broadcasts to many nodes simultaneously
 
     let mut stem_path: Vec<StemHop> = Vec::new();
-    #[allow(unused_assignments)]
-    let mut current_sender_ip = originator_ip.clone();
     let mut used_observations: std::collections::HashSet<usize> = std::collections::HashSet::new();
     let mut fluff_node: Option<String> = None;
     let mut fluff_recipients = 0usize;
@@ -219,7 +217,8 @@ fn reconstruct_path(
         originator_ip.as_ref().map(|ip| &obs.source_ip == ip).unwrap_or(false)
     });
 
-    if let Some(idx) = first_hop_idx {
+    // Seed the stem path with the first hop and set the sender for the chain walk.
+    let mut current_sender_ip = if let Some(idx) = first_hop_idx {
         // Start building chain from first hop
         let first_obs = &sorted_obs[idx];
         stem_path.push(StemHop {
@@ -230,7 +229,7 @@ fn reconstruct_path(
             delta_ms: 0.0,
         });
         used_observations.insert(idx);
-        current_sender_ip = node_to_ip.get(&first_obs.node_id).cloned();
+        node_to_ip.get(&first_obs.node_id).cloned()
     } else {
         // Originator not found in observations, start from first observation
         let first_obs = &sorted_obs[0];
@@ -243,8 +242,8 @@ fn reconstruct_path(
             delta_ms: 0.0,
         });
         used_observations.insert(0);
-        current_sender_ip = node_to_ip.get(&first_obs.node_id).cloned();
-    }
+        node_to_ip.get(&first_obs.node_id).cloned()
+    };
 
     // Follow the chain: find next observation where source_ip matches current node's IP
     let mut max_iterations = 100; // Prevent infinite loops
@@ -346,43 +345,6 @@ fn reconstruct_path(
         fluff_recipients,
         originator_confirmed,
     })
-}
-
-/// Find the index where fluff (broadcast) begins
-/// Returns the index of the first observation that's part of the fluff
-#[allow(dead_code)]
-fn find_fluff_point(
-    sorted_obs: &[TxObservation],
-    _ip_to_node: &HashMap<String, String>,
-) -> Option<usize> {
-    if sorted_obs.len() < FLUFF_MIN_RECIPIENTS + 1 {
-        return None;
-    }
-
-    // Look for a point where multiple nodes receive from the same source
-    // with observations clustered within the gap threshold (genuine fluff).
-    for i in 0..sorted_obs.len() {
-        let base_source = &sorted_obs[i].source_ip;
-        let base_time = sorted_obs[i].timestamp;
-
-        // Collect observations from same source
-        let same_source: Vec<&TxObservation> = sorted_obs[i..]
-            .iter()
-            .filter(|obs| &obs.source_ip == base_source)
-            .collect();
-
-        if same_source.len() >= FLUFF_MIN_RECIPIENTS {
-            // Check time gap between 1st and 3rd observation
-            let third_time = same_source[2].timestamp;
-            let gap_ms = (third_time - base_time) * 1000.0;
-
-            if gap_ms <= FLUFF_GAP_THRESHOLD_MS {
-                return Some(i);
-            }
-        }
-    }
-
-    None
 }
 
 /// Assess privacy based on Dandelion++ behavior

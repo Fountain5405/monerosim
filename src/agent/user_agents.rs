@@ -339,7 +339,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         subnet_manager,
         ip_registry,
         seed_agents,
-    );
+    )?;
 
     // Regular agents will use seed nodes for --seed-node
 
@@ -653,7 +653,10 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
 
                     // Resolve binary path for this phase
                     let daemon_binary_path = resolve_binary_path_for_shadow(&phase.path)
-                        .unwrap_or_else(|_| monerod_path.to_string());
+                        .map_err(|e| color_eyre::eyre::eyre!(
+                            "Agent '{}': failed to resolve daemon phase binary path '{}': {}",
+                            agent_id, phase.path, e
+                        ))?;
 
                     // Build environment for this phase
                     let mut daemon_env = monero_environment.clone();
@@ -707,7 +710,10 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 // Get daemon binary path from config, fall back to default
                 let daemon_binary_path = match &user_agent_config.daemon {
                     Some(DaemonConfig::Local(path)) => {
-                        resolve_binary_path_for_shadow(path).unwrap_or_else(|_| monerod_path.to_string())
+                        resolve_binary_path_for_shadow(path).map_err(|e| color_eyre::eyre::eyre!(
+                            "Agent '{}': failed to resolve daemon binary path '{}': {}",
+                            agent_id, path, e
+                        ))?
                     }
                     _ => monerod_path.to_string(),
                 };
@@ -835,7 +841,10 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
 
                     // Resolve binary path for this phase
                     let wallet_binary_path = resolve_binary_path_for_shadow(&phase.path)
-                        .unwrap_or_else(|_| wallet_path.to_string());
+                        .map_err(|e| color_eyre::eyre::eyre!(
+                            "Agent '{}': failed to resolve wallet phase binary path '{}': {}",
+                            agent_id, phase.path, e
+                        ))?;
 
                     // Build environment for this phase
                     let mut wallet_env = environment.clone();
@@ -905,7 +914,10 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             } else if has_wallet {
                 // Simple wallet configuration (single binary)
                 let wallet_binary_path = if let Some(wallet_spec) = &user_agent_config.wallet {
-                    resolve_binary_path_for_shadow(wallet_spec).unwrap_or_else(|_| wallet_path.to_string())
+                    resolve_binary_path_for_shadow(wallet_spec).map_err(|e| color_eyre::eyre::eyre!(
+                        "Agent '{}': failed to resolve wallet binary path '{}': {}",
+                        agent_id, wallet_spec, e
+                    ))?
                 } else {
                     wallet_path.to_string()
                 };

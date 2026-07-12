@@ -6,6 +6,6 @@ pub mod registry;
 pub mod as_manager;
 pub mod allocator;
 
-pub use registry::{AgentType, SubnetAllocation, GlobalIpRegistry};
+pub use registry::{AgentType, GlobalIpRegistry};
 pub use as_manager::AsSubnetManager;
 pub use allocator::get_agent_ip;

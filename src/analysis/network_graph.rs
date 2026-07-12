@@ -422,23 +422,18 @@ fn calculate_stats(values: &[usize]) -> DegreeStats {
 
     let min = *sorted.first().expect("invariant: sorted is non-empty (checked above)");
     let max = *sorted.last().expect("invariant: sorted is non-empty (checked above)");
-    let sum: usize = sorted.iter().sum();
-    let mean = sum as f64 / sorted.len() as f64;
+    let floats: Vec<f64> = sorted.iter().map(|&v| v as f64).collect();
+    let mean = super::stats::mean(&floats);
+    let median = super::stats::median(&floats);
 
-    let median = if sorted.len() % 2 == 0 {
-        (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) as f64 / 2.0
-    } else {
-        sorted[sorted.len() / 2] as f64
-    };
-
-    let variance: f64 = sorted
+    let variance: f64 = floats
         .iter()
         .map(|&v| {
-            let diff = v as f64 - mean;
+            let diff = v - mean;
             diff * diff
         })
         .sum::<f64>()
-        / sorted.len() as f64;
+        / floats.len() as f64;
 
     let std_dev = variance.sqrt();
 
@@ -459,19 +454,10 @@ fn calculate_churn_stats(
     final_state: &HashMap<String, HashMap<String, ActiveConnection>>,
     _sim_duration: f64,
 ) -> ConnectionChurnStats {
-    let avg_duration_sec = if durations.is_empty() {
-        0.0
-    } else {
-        durations.iter().sum::<f64>() / durations.len() as f64
-    };
-
-    let median_duration_sec = if durations.is_empty() {
-        0.0
-    } else {
-        let mut sorted = durations.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        sorted[sorted.len() / 2]
-    };
+    let avg_duration_sec = super::stats::mean(durations);
+    // Even-length inputs are now averaged (the previous bare `[len / 2]`
+    // returned the upper-middle element).
+    let median_duration_sec = super::stats::median(durations);
 
     // Count connections still active at end (long-lived)
     let long_lived: usize = final_state

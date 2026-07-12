@@ -148,7 +148,7 @@ fn compose_base_environment(
     gml_graph: Option<&GmlGraph>,
     subnet_manager: &mut AsSubnetManager,
     ip_registry: &mut GlobalIpRegistry,
-) -> (BTreeMap<String, String>, BTreeMap<String, String>, Option<String>, String) {
+) -> color_eyre::eyre::Result<(BTreeMap<String, String>, BTreeMap<String, String>, Option<String>, String)> {
     // Common environment variables
     let mut environment: BTreeMap<String, String> = [
         ("HOME".to_string(), home_dir.to_string()), // Required for $HOME expansion in binary paths
@@ -202,7 +202,7 @@ fn compose_base_environment(
             subnet_manager,
             ip_registry,
             None,  // No subnet_group for infrastructure
-        );
+        )?;
         Some(dns_ip)
     } else {
         None
@@ -217,7 +217,7 @@ fn compose_base_environment(
         monero_environment.insert("MONERO_DISABLE_DNS".to_string(), "1".to_string());
     }
 
-    (environment, monero_environment, dns_server_ip, venv_site_packages)
+    Ok((environment, monero_environment, dns_server_ip, venv_site_packages))
 }
 
 /// Extract peer mode, configured seed-node list, topology, and GML
@@ -632,7 +632,7 @@ pub fn generate_agent_shadow_config(
             gml_graph.as_ref(),
             &mut subnet_manager,
             &mut ip_registry,
-        );
+        )?;
     let enable_dns_server = config.general.enable_dns_server.unwrap_or(false);
 
     // Fully-resolved binary paths (installed to ~/.monerosim/bin by setup.sh)

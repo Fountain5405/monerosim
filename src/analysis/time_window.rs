@@ -66,97 +66,6 @@ pub fn find_simulation_time_range(log_data: &HashMap<String, NodeLogData>) -> (S
     }
 }
 
-/// Filter transactions to those created within a time window.
-pub fn filter_transactions_by_window<'a>(
-    transactions: &'a [Transaction],
-    window: &TimeWindow,
-) -> Vec<&'a Transaction> {
-    transactions
-        .iter()
-        .filter(|tx| window.contains(tx.timestamp))
-        .collect()
-}
-
-/// Filter TX observations to those within a time window.
-pub fn filter_tx_observations_by_window(
-    log_data: &HashMap<String, NodeLogData>,
-    window: &TimeWindow,
-) -> HashMap<String, Vec<TxObservation>> {
-    let mut filtered: HashMap<String, Vec<TxObservation>> = HashMap::new();
-
-    for (node_id, node_data) in log_data {
-        let obs: Vec<TxObservation> = node_data
-            .tx_observations
-            .iter()
-            .filter(|o| window.contains(o.timestamp))
-            .cloned()
-            .collect();
-
-        if !obs.is_empty() {
-            filtered.insert(node_id.clone(), obs);
-        }
-    }
-
-    filtered
-}
-
-/// Get connection state at a specific point in time.
-///
-/// Replays connection events up to `at_time` and returns the active connections.
-pub fn get_connection_state_at(
-    log_data: &HashMap<String, NodeLogData>,
-    at_time: SimTime,
-) -> HashMap<String, Vec<String>> {
-    let mut connections: HashMap<String, HashMap<String, bool>> = HashMap::new();
-
-    for (node_id, node_data) in log_data {
-        let node_connections = connections.entry(node_id.clone()).or_default();
-
-        for event in &node_data.connection_events {
-            if event.timestamp > at_time {
-                break; // Events are assumed sorted by time
-            }
-
-            let peer_key = format!("{}:{}", event.peer_ip, event.connection_id);
-            if event.is_open {
-                node_connections.insert(peer_key, true);
-            } else {
-                node_connections.remove(&peer_key);
-            }
-        }
-    }
-
-    // Convert to peer IP list
-    connections
-        .into_iter()
-        .map(|(node_id, peers)| {
-            let peer_ips: Vec<String> = peers
-                .keys()
-                .map(|k| k.split(':').next().unwrap_or("").to_string())
-                .collect();
-            (node_id, peer_ips)
-        })
-        .collect()
-}
-
-/// Filter block observations to those within a time window.
-pub fn filter_block_observations_by_window(
-    log_data: &HashMap<String, NodeLogData>,
-    window: &TimeWindow,
-) -> Vec<BlockObservation> {
-    let mut blocks = Vec::new();
-
-    for node_data in log_data.values() {
-        for obs in &node_data.block_observations {
-            if window.contains(obs.timestamp) {
-                blocks.push(obs.clone());
-            }
-        }
-    }
-
-    blocks
-}
-
 /// Load upgrade manifest from JSON file.
 pub fn load_upgrade_manifest(path: &Path) -> Result<UpgradeManifest> {
     let content = fs::read_to_string(path)
@@ -271,7 +180,7 @@ pub fn calculate_stats(values: &[Option<f64>]) -> (Option<f64>, Option<f64>) {
     }
 
     let n = valid.len() as f64;
-    let mean = valid.iter().sum::<f64>() / n;
+    let mean = super::stats::mean(&valid);
 
     let std = if valid.len() > 1 {
         let variance = valid.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (n - 1.0);
@@ -463,22 +372,6 @@ pub fn is_significant(p_value: Option<f64>) -> bool {
     p_value.map(|p| p < 0.05).unwrap_or(false)
 }
 
-/// Calculate coefficient of variation (CV) for detecting steady state.
-/// Low CV (< 0.1) indicates stable, steady-state behavior.
-pub fn coefficient_of_variation(values: &[f64]) -> Option<f64> {
-    if values.len() < 2 {
-        return None;
-    }
-
-    let mean = values.iter().sum::<f64>() / values.len() as f64;
-    if mean == 0.0 {
-        return None;
-    }
-
-    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
-    Some(variance.sqrt() / mean.abs())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -519,18 +412,5 @@ mod tests {
         assert!((student_t_two_tailed_p(12.706, 1.0) - 0.050).abs() < 1e-3);
         // Large df converges to the normal distribution.
         assert!((student_t_two_tailed_p(1.96, 1000.0) - 0.0501).abs() < 1e-3);
-    }
-
-    #[test]
-    fn test_coefficient_of_variation() {
-        // Low CV = stable
-        let stable = vec![100.0, 101.0, 99.0, 100.0, 100.0];
-        let cv = coefficient_of_variation(&stable).unwrap();
-        assert!(cv < 0.1);
-
-        // High CV = variable
-        let variable = vec![50.0, 150.0, 25.0, 200.0, 75.0];
-        let cv = coefficient_of_variation(&variable).unwrap();
-        assert!(cv > 0.5);
     }
 }

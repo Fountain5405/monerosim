@@ -21,49 +21,6 @@ pub struct SeedNode {
     pub port: u16,
 }
 
-/// Extract mainnet seed IPs from monerod source code.
-///
-/// This reads the net_node.inl file and parses the hardcoded IP addresses
-/// from the `get_ip_seed_nodes()` function's else (mainnet) case.
-///
-/// # Arguments
-/// * `monerod_path` - Path to the monerod binary (used to derive source path)
-///
-/// # Returns
-/// Vector of SeedNode structs containing IP and port
-pub fn extract_mainnet_seed_ips(monerod_path: &str) -> Result<Vec<SeedNode>, String> {
-    // Derive source path from monerod binary path
-    // Example: /path/to/monero-shadow/build/Linux/release/bin/monerod
-    //       -> /path/to/monero-shadow/src/p2p/net_node.inl
-
-    let monerod_path = Path::new(monerod_path);
-
-    // Navigate up from bin/monerod to find the source directory
-    // Try to find the monero source root by looking for src/p2p/net_node.inl
-    let mut current = monerod_path.parent(); // bin/
-    let mut source_path = None;
-
-    // Walk up the directory tree looking for the source
-    for _ in 0..10 {
-        if let Some(dir) = current {
-            let potential_source = dir.join("src/p2p/net_node.inl");
-            if potential_source.exists() {
-                source_path = Some(potential_source);
-                break;
-            }
-            current = dir.parent();
-        } else {
-            break;
-        }
-    }
-
-    let net_node_path = source_path.ok_or_else(|| {
-        format!("Could not find net_node.inl relative to monerod path: {}", monerod_path.display())
-    })?;
-
-    extract_seed_ips_from_file(&net_node_path)
-}
-
 /// Extract seed IPs directly from a net_node.inl file path
 pub fn extract_seed_ips_from_file(file_path: &Path) -> Result<Vec<SeedNode>, String> {
     let content = fs::read_to_string(file_path)

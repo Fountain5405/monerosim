@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::types::*;
-use super::calculate_gini;
+use super::stats::gini;
 
 /// Analyze network resilience based on connection topology
 pub fn analyze_resilience(
@@ -146,7 +146,7 @@ fn analyze_centralization(
 
     // Calculate Gini coefficient
     let counts: Vec<f64> = first_seen_counts.values().map(|&c| c as f64).collect();
-    let first_seen_gini = calculate_gini(&counts);
+    let first_seen_gini = gini(&counts);
 
     // Find dominant observers (>15% of first-sees)
     let total_txs = tx_first_seen.len();

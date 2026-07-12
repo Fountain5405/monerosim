@@ -20,14 +20,6 @@ impl TimeWindow {
         Self { start, end, label: None }
     }
 
-    pub fn with_label(start: SimTime, end: SimTime, label: &str) -> Self {
-        Self { start, end, label: Some(label.to_string()) }
-    }
-
-    pub fn duration_sec(&self) -> f64 {
-        self.end - self.start
-    }
-
     pub fn contains(&self, timestamp: SimTime) -> bool {
         timestamp >= self.start && timestamp < self.end
     }
