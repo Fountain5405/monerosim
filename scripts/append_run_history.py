@@ -72,8 +72,13 @@ COLUMNS = [
 ]
 
 
+# keep in sync with scripts/smoke_assertions.py:parse_wall_time (byte-identical)
 def parse_wall_time(s: str) -> Optional[int]:
-    """Convert e.g. '14m 48s' or '1h 2m 3s' to total seconds."""
+    """Convert e.g. '14m 48s' or '1h 2m 3s' to total seconds.
+
+    Returns None (not 0) if `s` contains no parseable h/m/s tokens, so an
+    unparseable/missing wall time can't be mistaken for a real 0s measurement.
+    """
     total = 0
     matched = False
     for n, u in re.findall(r"(\d+)([hms])", s):

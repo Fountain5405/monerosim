@@ -14,31 +14,52 @@ from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 
 
+_TIME_TOKEN_RE = re.compile(r'(\d+(?:\.\d+)?)(h|m|s)')
+
+
 def parse_time_to_seconds(time_str: str) -> int:
-    """Parse time string like '3h', '30m', '3h30s', '18000s', '18000' to seconds."""
+    """Parse a time string to seconds.
+
+    Accepts:
+      - bare digit strings, interpreted as seconds ('18000' -> 18000)
+      - a single unit, with optional decimal: '3h', '2.5h', '30m', '45s'
+      - compound forms (units concatenated, no separators): '3h30s',
+        '1h30m', '6h6m'
+
+    Raises ValueError if the string cannot be parsed (e.g. unknown unit,
+    garbage characters, or an empty string) instead of silently guessing.
+    """
     if isinstance(time_str, (int, float)):
         return int(time_str)
 
+    original = time_str
     time_str = str(time_str).strip()
+
+    if not time_str:
+        raise ValueError(f"Empty time value: {original!r}")
 
     # Pure number (assume seconds)
     if time_str.isdigit():
         return int(time_str)
 
-    total = 0
-    # Match patterns like 3h, 30m, 45s
-    patterns = [
-        (r'(\d+)h', 3600),
-        (r'(\d+)m', 60),
-        (r'(\d+)s', 1),
-    ]
+    total = 0.0
+    pos = 0
+    for match in _TIME_TOKEN_RE.finditer(time_str):
+        if match.start() != pos:
+            # Gap between tokens (or before the first token) -> garbage input.
+            break
+        value = float(match.group(1))
+        unit = match.group(2)
+        total += value * {'h': 3600, 'm': 60, 's': 1}[unit]
+        pos = match.end()
 
-    for pattern, multiplier in patterns:
-        match = re.search(pattern, time_str)
-        if match:
-            total += int(match.group(1)) * multiplier
+    if pos != len(time_str):
+        raise ValueError(
+            f"Invalid time value: {original!r} "
+            "(expected forms like '3h', '2.5h', '30m', '1h30m', or plain seconds like '18000')"
+        )
 
-    return total if total > 0 else int(re.sub(r'[^\d]', '', time_str) or 0)
+    return int(total)
 
 
 def seconds_to_human(seconds: int) -> str:
@@ -293,11 +314,18 @@ class ConfigValidator:
         # Parse general section
         general = config.get('general', {})
         if 'stop_time' in general:
-            report.stop_time_s = parse_time_to_seconds(general['stop_time'])
+            try:
+                report.stop_time_s = parse_time_to_seconds(general['stop_time'])
+            except ValueError as e:
+                report.errors.append(f"Invalid 'stop_time' in general section: {e}")
         else:
             report.errors.append("Missing 'stop_time' in general section")
 
-        report.bootstrap_end_time_s = parse_time_to_seconds(general.get('bootstrap_end_time', '4h'))
+        try:
+            report.bootstrap_end_time_s = parse_time_to_seconds(general.get('bootstrap_end_time', '4h'))
+        except ValueError as e:
+            report.errors.append(f"Invalid 'bootstrap_end_time' in general section: {e}")
+
         report.simulation_seed = general.get('simulation_seed')
 
         # Parse network section
@@ -318,7 +346,7 @@ class ConfigValidator:
             if not isinstance(agent_config, dict):
                 continue
 
-            info = self._parse_agent(agent_id, agent_config)
+            info = self._parse_agent(agent_id, agent_config, report.errors)
             report.agents.append(info)
 
             if info.agent_type == 'miner':
@@ -367,8 +395,13 @@ class ConfigValidator:
 
         return report
 
-    def _parse_agent(self, agent_id: str, config: Dict[str, Any]) -> AgentInfo:
-        """Parse a single agent configuration."""
+    def _parse_agent(self, agent_id: str, config: Dict[str, Any], errors: List[str]) -> AgentInfo:
+        """Parse a single agent configuration.
+
+        Unparseable time fields are appended to `errors` (matching the
+        error-reporting style used by `validate()`) rather than raised, so a
+        single bad agent doesn't abort validation of the rest of the config.
+        """
         info = AgentInfo(agent_id=agent_id, agent_type='unknown')
 
         # Determine agent type
@@ -412,12 +445,18 @@ class ConfigValidator:
         info.daemon = config.get('daemon')
         info.wallet = config.get('wallet')
         info.script = script
-        info.start_time_s = parse_time_to_seconds(config.get('start_time', '0s'))
+        try:
+            info.start_time_s = parse_time_to_seconds(config.get('start_time', '0s'))
+        except ValueError as e:
+            errors.append(f"Agent '{agent_id}': invalid 'start_time' - {e}")
         info.hashrate = config.get('hashrate')
         info.transaction_interval = config.get('transaction_interval')
 
         if 'activity_start_time' in config:
-            info.activity_start_time_s = parse_time_to_seconds(config['activity_start_time'])
+            try:
+                info.activity_start_time_s = parse_time_to_seconds(config['activity_start_time'])
+            except ValueError as e:
+                errors.append(f"Agent '{agent_id}': invalid 'activity_start_time' - {e}")
 
         # Phase switching
         if 'daemon_0' in config:
@@ -426,11 +465,20 @@ class ConfigValidator:
             info.daemon_1 = config.get('daemon_1')
 
             if 'daemon_0_start' in config:
-                info.daemon_0_start_s = parse_time_to_seconds(config['daemon_0_start'])
+                try:
+                    info.daemon_0_start_s = parse_time_to_seconds(config['daemon_0_start'])
+                except ValueError as e:
+                    errors.append(f"Agent '{agent_id}': invalid 'daemon_0_start' - {e}")
             if 'daemon_0_stop' in config:
-                info.daemon_0_stop_s = parse_time_to_seconds(config['daemon_0_stop'])
+                try:
+                    info.daemon_0_stop_s = parse_time_to_seconds(config['daemon_0_stop'])
+                except ValueError as e:
+                    errors.append(f"Agent '{agent_id}': invalid 'daemon_0_stop' - {e}")
             if 'daemon_1_start' in config:
-                info.daemon_1_start_s = parse_time_to_seconds(config['daemon_1_start'])
+                try:
+                    info.daemon_1_start_s = parse_time_to_seconds(config['daemon_1_start'])
+                except ValueError as e:
+                    errors.append(f"Agent '{agent_id}': invalid 'daemon_1_start' - {e}")
 
             if info.daemon_0_stop_s is not None and info.daemon_1_start_s is not None:
                 info.phase_gap_s = info.daemon_1_start_s - info.daemon_0_stop_s

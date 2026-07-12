@@ -68,21 +68,35 @@ fi
 
 # Parse duration and calculate default timeout if not specified
 # Convert duration like "6h", "2h30m", "90m" to seconds
+# mirrors run_sim.sh:parse_duration_to_seconds — keep in sync
 parse_duration_to_seconds() {
     local dur="$1"
     local total=0
-    # Extract hours if present
+
+    # Handle pure integer (seconds)
+    if [[ "$dur" =~ ^[0-9]+$ ]]; then
+        echo "$dur"
+        return
+    fi
+
+    # Handle decimal hours like "2.5h"
+    if [[ "$dur" =~ ^([0-9]+\.?[0-9]*)h$ ]]; then
+        total=$(python3 -c "print(int(float('${BASH_REMATCH[1]}') * 3600))")
+        echo "$total"
+        return
+    fi
+
+    # Handle compound like "6h30m"
     if [[ "$dur" =~ ([0-9]+)h ]]; then
         total=$((total + ${BASH_REMATCH[1]} * 3600))
     fi
-    # Extract minutes if present
     if [[ "$dur" =~ ([0-9]+)m ]]; then
         total=$((total + ${BASH_REMATCH[1]} * 60))
     fi
-    # If just a number, assume seconds
-    if [[ "$dur" =~ ^[0-9]+$ ]]; then
-        total=$dur
+    if [[ "$dur" =~ ([0-9]+)s$ ]]; then
+        total=$((total + ${BASH_REMATCH[1]}))
     fi
+
     echo "$total"
 }
 

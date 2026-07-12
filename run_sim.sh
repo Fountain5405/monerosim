@@ -240,6 +240,7 @@ log_info() {
 }
 
 # Convert duration strings like "2.5h", "90m", "6h30m", or raw seconds to seconds
+# mirrored at scripts/scaling_test.sh:parse_duration_to_seconds — keep in sync
 parse_duration_to_seconds() {
     local dur="$1"
     local total=0
@@ -697,7 +698,7 @@ run_simulation() {
     # under the project tree ($SCRIPT_DIR) or under /tmp. A user who passes
     # --data-dir /scratch/foo might be pointing us at a real directory of
     # theirs; we shouldn't silently wipe it without intent. The same path
-    # gets archived intact by archive_simulation() at end-of-run, so a real
+    # gets archived intact by archive_results() at end-of-run, so a real
     # workflow should already be safe; this guard catches typos.
     log_info "Cleaning previous simulation data..."
     if [[ -d "$DATA_DIR" ]]; then

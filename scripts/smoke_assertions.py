@@ -41,10 +41,17 @@ EXIT_NO_BASELINE = 3
 # Parsing summary.txt
 # ----------------------------------------------------------------------
 
-def parse_wall_time(s: str) -> int:
-    """Convert e.g. '14m 48s' or '1h 2m 3s' to total seconds."""
+# keep in sync with scripts/append_run_history.py:parse_wall_time (byte-identical)
+def parse_wall_time(s: str) -> Optional[int]:
+    """Convert e.g. '14m 48s' or '1h 2m 3s' to total seconds.
+
+    Returns None (not 0) if `s` contains no parseable h/m/s tokens, so an
+    unparseable/missing wall time can't be mistaken for a real 0s measurement.
+    """
     total = 0
+    matched = False
     for n, u in re.findall(r"(\d+)([hms])", s):
+        matched = True
         n = int(n)
         if u == "h":
             total += n * 3600
@@ -52,14 +59,16 @@ def parse_wall_time(s: str) -> int:
             total += n * 60
         elif u == "s":
             total += n
-    return total
+    return total if matched else None
 
 
 def parse_summary(summary_path: Path) -> Dict[str, Any]:
     """Parse archived summary.txt into a dict. Robust to small format drift.
 
     Returns keys (all optional, fail-soft):
-        wall_time_seconds: int
+        wall_time_seconds: Optional[int] (None if the "Wall time:" line was
+            present but unparseable; key absent entirely if the line was
+            never found)
         exit_code: int
         success_criteria: dict[str, bool]   (4 sub-criteria)
         all_success_criteria_pass: bool
@@ -202,12 +211,21 @@ def assert_metrics(parsed: Dict[str, Any], expected: Dict[str, Any], a: Assertio
     # wall_time_seconds_max
     if "wall_time_seconds_max" in expected:
         actual = parsed.get("wall_time_seconds", -1)
-        ok = actual <= expected["wall_time_seconds_max"]
-        a.check(
-            "wall_time_seconds_max",
-            ok,
-            f"wall_time={actual}s <= {expected['wall_time_seconds_max']}s",
-        )
+        if actual is None:
+            # "Wall time:" line was present but unparseable - don't let a
+            # bogus 0 masquerade as "finished instantly"; fail explicitly.
+            a.check(
+                "wall_time_seconds_max",
+                False,
+                f"wall_time unparseable (raw={parsed.get('wall_time_str')!r})",
+            )
+        else:
+            ok = actual <= expected["wall_time_seconds_max"]
+            a.check(
+                "wall_time_seconds_max",
+                ok,
+                f"wall_time={actual}s <= {expected['wall_time_seconds_max']}s",
+            )
 
     # block_height_min
     if "block_height_min" in expected:

@@ -7,6 +7,7 @@ upgrade staggers and activity-stagger times. None of them touch
 """
 
 import random
+import re
 import sys
 from typing import Dict, List, Tuple
 
@@ -238,19 +239,50 @@ def calculate_bootstrap_timing(num_users: int, stagger_interval_s: int) -> tuple
     return (bootstrap_end_time_s, activity_start_time_s, last_user_spawn_s)
 
 
+_DURATION_TOKEN_RE = re.compile(r'(\d+(?:\.\d+)?)(h|m|s)')
+
+
 def parse_duration(duration_str: str) -> int:
-    """Parse duration string like '4h', '30m', '45s' to seconds."""
+    """Parse duration string to seconds.
+
+    Accepts bare digit strings ('5400' -> 5400 seconds), a single unit with
+    optional decimal ('4h', '2.5h', '30m', '45s'), and compound forms with
+    units concatenated and no separators ('1h30m', '3h30m'). This is a
+    user-facing path (scenario YAML fields like stop_time/bootstrap_end_time
+    flow through scenario_parser.py, and CLI args/interactive prompts flow
+    through generate_config.py and configure_upgrade.py) and
+    docs/SCENARIO_FORMAT.md documents compound forms as supported, so this
+    matches the semantics of scripts/ai_config/validator.py:parse_time_to_seconds.
+
+    Raises ValueError if the string cannot be parsed.
+    """
+    original = duration_str
     duration_str = duration_str.strip().lower()
 
-    if duration_str.endswith('h'):
-        return int(duration_str[:-1]) * 3600
-    elif duration_str.endswith('m'):
-        return int(duration_str[:-1]) * 60
-    elif duration_str.endswith('s'):
-        return int(duration_str[:-1])
-    else:
-        # Assume seconds if no unit
+    if not duration_str:
+        raise ValueError(f"Empty duration value: {original!r}")
+
+    # Pure number (assume seconds)
+    if duration_str.isdigit():
         return int(duration_str)
+
+    total = 0.0
+    pos = 0
+    for match in _DURATION_TOKEN_RE.finditer(duration_str):
+        if match.start() != pos:
+            break
+        value = float(match.group(1))
+        unit = match.group(2)
+        total += value * {'h': 3600, 'm': 60, 's': 1}[unit]
+        pos = match.end()
+
+    if pos != len(duration_str):
+        raise ValueError(
+            f"Invalid duration value: {original!r} "
+            "(expected forms like '4h', '2.5h', '30m', '1h30m', or plain seconds like '5400')"
+        )
+
+    return int(total)
 
 
 def format_time_offset(seconds: int, for_config: bool = True) -> str:
