@@ -86,8 +86,19 @@ Treat this table as the regression reference for future Shadow bumps.
 
 ## 6. Follow-ups
 
-- The fork's `main` branch should be moved to the rebased history (or the
-  borrow-panic fix `6d34f160a` back-ported to it) — the bug is live there.
-- Squash the WIP trio next time the fork history is touched.
+- ✅ Fork `main` force-moved to the rebased history (old history preserved at
+  `archive/main-pre-v3.3.0`); the borrow-panic fix now lives on `main`.
+- ✅ The "WIP trio" (localhost fast-path) was investigated: its functional
+  part was already reverted during the sync (`a7949246f`); the dead
+  stragglers (an unreferenced `is_localhost_addr` carrying a latent, never-fired
+  IPv6 over-read) were removed in **fork v0.2.1** (`6f9605fdf`). Pin bumped
+  v0.2.0 → v0.2.1 accordingly.
 - Four benign `unused_mut` warnings in fork code (`resource.rs:208-210`,
-  `socket.rs:1182`) — trivial `cargo fix` fodder.
+  `socket.rs:1182`) — trivial `cargo fix` fodder, still open.
+
+## 7. Addendum — v0.2.1 (2026-07-14)
+
+Behavior-neutral cleanup on top of v0.2.0: removed the dead localhost
+fast-path shim stragglers from `src/lib/shim/shim_sys.c` (see §6). Shim
+rebuilds clean; no re-validation needed (dead-code removal, nothing called
+it). Installed binary + sibling checkout advanced to v0.2.1.
