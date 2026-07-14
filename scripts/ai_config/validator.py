@@ -26,6 +26,10 @@ def parse_time_to_seconds(time_str: str) -> int:
       - compound forms (units concatenated, no separators): '3h30s',
         '1h30m', '6h6m'
 
+    Unit letters are case-insensitive ('2H' == '2h'), matching
+    config_generation/timeline.py:parse_duration so the two sibling parsers
+    stay in agreement (a scenario author shouldn't be tripped by '2H').
+
     Raises ValueError if the string cannot be parsed (e.g. unknown unit,
     garbage characters, or an empty string) instead of silently guessing.
     """
@@ -33,7 +37,7 @@ def parse_time_to_seconds(time_str: str) -> int:
         return int(time_str)
 
     original = time_str
-    time_str = str(time_str).strip()
+    time_str = str(time_str).strip().lower()
 
     if not time_str:
         raise ValueError(f"Empty time value: {original!r}")

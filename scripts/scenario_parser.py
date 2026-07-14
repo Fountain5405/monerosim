@@ -442,19 +442,55 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
     overrides = scenario.timing_overrides
     user_spawn_start_s = parse_duration(overrides.user_spawn_start) if overrides.user_spawn_start else None
 
-    # Total simulated-network node count used for scale-aware interval
-    # calibration (passed to compute_stagger / compute_safe_interval).
-    # Only count agents that actually run monerod — script-only singletons
-    # like miner-distributor / simulation-monitor are not tx-propagation
-    # targets and should not inflate the node count.
+    # Phase pipeline (see the _* helpers below). Each phase owns one natural
+    # section of the original monolithic expand_scenario; the orchestrator just
+    # threads the shared state between them.
+    total_nodes = _count_total_nodes(scenario)
+    agents, bootstrap_participant_start_times = _expand_agent_groups(
+        scenario, total_nodes, user_spawn_start_s, seed
+    )
+    _add_singleton_agents(scenario, agents)
+    bootstrap_end_s, md_start_s, activity_start_s = _resolve_timing(
+        scenario, overrides, bootstrap_participant_start_times, user_spawn_start_s
+    )
+    general = _resolve_general_section(scenario, total_nodes, bootstrap_end_s)
+    _resolve_auto_agent_values(
+        scenario, agents, total_nodes, activity_start_s, md_start_s,
+        respect_safe_tx_interval
+    )
+
+    # Build final config
+    config['general'] = general
+    config['network'] = scenario.network
+    if scenario.performance:
+        config['performance'] = scenario.performance
+    config['agents'] = agents
+
+    return config
+
+
+def _count_total_nodes(scenario: ScenarioConfig) -> int:
+    """Count agents that actually run monerod (scale-aware calibration input).
+
+    Only daemon-running agents are tx-propagation targets; script-only
+    singletons like miner-distributor / simulation-monitor must not inflate
+    the node count used by compute_stagger / compute_safe_interval.
+    """
     def _runs_daemon(props: Dict[str, Any]) -> bool:
         return any(k in props for k in ('daemon', 'daemon_0', 'daemon_1'))
 
-    total_nodes = (
+    return (
         sum(g.count for g in scenario.agent_groups if _runs_daemon(g.properties))
         + sum(1 for p in scenario.singleton_agents.values() if _runs_daemon(p))
     )
 
+
+def _expand_agent_groups(scenario: ScenarioConfig, total_nodes: int,
+                         user_spawn_start_s, seed: int):
+    """First pass: expand every agent group into individual agent entries.
+
+    Returns ``(agents, bootstrap_participant_start_times)``.
+    """
     # Track global stagger offsets for upgrade phases (continue across groups).
     # Daemon and wallet upgrades may happen at different times, so each tracks
     # its own offset.
@@ -645,6 +681,14 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                 if is_bootstrap_participant:
                     bootstrap_participant_start_times.append(start_time_s)
 
+    return agents, bootstrap_participant_start_times
+
+
+def _add_singleton_agents(scenario: ScenarioConfig, agents) -> None:
+    """Add script-only singleton agents (miner-distributor, monitors, ...).
+
+    Mutates ``agents`` in place, converting u32 duration-string fields to ints.
+    """
     # Add singleton agents (with u32 duration conversion)
     u32_time_fields = {'transaction_interval', 'activity_start_time', 'wait_time',
                        'poll_interval'}
@@ -655,6 +699,15 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                 agent_config[key] = parse_duration(val)
         agents[agent_id] = agent_config
 
+
+def _resolve_timing(scenario: ScenarioConfig, overrides,
+                    bootstrap_participant_start_times, user_spawn_start_s):
+    """Resolve bootstrap-end / md-start / activity-start times.
+
+    Priority: explicit timing override > general-section value > auto-calc.
+    Records the derived times on ``scenario.timing`` for the CLI summary and
+    returns ``(bootstrap_end_s, md_start_s, activity_start_s)``.
+    """
     # Calculate timing with override support
     # Priority: explicit override > auto-calculated
     last_bootstrap_spawn_s = max(bootstrap_participant_start_times) if bootstrap_participant_start_times else 0
@@ -690,6 +743,15 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
         'user_spawn_start_s': user_spawn_start_s,
     }
 
+    return bootstrap_end_s, md_start_s, activity_start_s
+
+
+def _resolve_general_section(scenario: ScenarioConfig, total_nodes: int,
+                             bootstrap_end_s: int) -> Dict[str, Any]:
+    """Resolve 'auto' in the general section and auto-enable native_preemption.
+
+    Returns a resolved copy of ``scenario.general`` (the original is not mutated).
+    """
     # Resolve 'auto' values in general section
     general = scenario.general.copy()
     if general.get('bootstrap_end_time') == 'auto':
@@ -705,6 +767,19 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
               f"Set general.native_preemption: false to override.")
         general['native_preemption'] = True
 
+    return general
+
+
+def _resolve_auto_agent_values(scenario: ScenarioConfig, agents, total_nodes: int,
+                               activity_start_s: int, md_start_s: int,
+                               respect_safe_tx_interval: bool) -> None:
+    """Resolve auto/derived per-agent values (mutates ``agents`` in place).
+
+    Handles transaction_interval auto-resolution and the calibrated safe-minimum
+    bump, staggered activity_start_time, auto poll_interval, the wall-time/cap
+    guardrail warnings, and resolution of the remaining 'auto' phase fields
+    (wait_time, daemon_/wallet_ start times).
+    """
     # Collect user agents with auto activity_start_time for staggering.
     # Treat transaction_interval: 'auto' as a request to use the calibrator's
     # recommended minimum for this user count.
@@ -837,15 +912,6 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                 stop_s = stop_time
             agent_config['wallet_1_start'] = f"{stop_s + DEFAULT_WALLET_RESTART_GAP_S}s"
 
-    # Build final config
-    config['general'] = general
-    config['network'] = scenario.network
-    if scenario.performance:
-        config['performance'] = scenario.performance
-    config['agents'] = agents
-
-    return config
-
 
 def format_time(seconds: int) -> str:
     """Format seconds to human-readable time string."""
@@ -912,8 +978,14 @@ if __name__ == "__main__":
 
     plain_config = to_plain_dict(config)
 
+    # Use the shared hand-rolled emitter (same serializer generate_config uses)
+    # so scenario expansion has ONE emitter regardless of entry point.
+    try:
+        from config_generation.yaml_emit import config_to_yaml
+    except ImportError:
+        from .config_generation.yaml_emit import config_to_yaml
     with open(args.output, 'w') as f:
-        yaml.dump(plain_config, f, default_flow_style=False, sort_keys=False)
+        f.write(config_to_yaml(plain_config) + "\n")
 
     # Read actual values from the generated config (not auto-calc timing)
     bootstrap_end_val = config['general'].get('bootstrap_end_time', '')

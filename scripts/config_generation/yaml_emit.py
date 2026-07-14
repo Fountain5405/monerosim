@@ -8,6 +8,8 @@ mis-interpret as numbers / booleans / etc.
 
 from typing import Any, Dict
 
+import yaml
+
 
 def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:
     """Convert config dict to YAML string manually for clean output."""
@@ -52,21 +54,52 @@ def config_to_yaml(config: Dict[str, Any], indent: int = 0) -> str:
     return "\n".join(lines)
 
 
+def _single_quote(value: str) -> str:
+    """Wrap a string in single quotes, YAML-escaping inner single quotes.
+
+    Per the YAML spec, a literal single quote inside a single-quoted scalar is
+    written by doubling it (``'` -> `''``). Without this, a value containing an
+    apostrophe closes the quote early and produces invalid YAML.
+    """
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _roundtrips_unquoted(value: str) -> bool:
+    """True if the bare (unquoted) string re-reads as the same string.
+
+    Safety net that catches scalars the explicit rules below miss — e.g.
+    hex/octal-style strings like ``0x10`` (float() can't parse them, so the
+    "looks like a number" guard skips them, yet YAML re-reads them as ints).
+    Only ever used to ADD quoting, never to remove it.
+    """
+    if value == "":
+        return False
+    try:
+        parsed = yaml.safe_load(value)
+    except yaml.YAMLError:
+        return False
+    return isinstance(parsed, str) and parsed == value
+
+
 def format_yaml_value(value: Any) -> str:
     """Format a value for YAML output."""
     if isinstance(value, str):
         # Quote strings that might be parsed as other types
         if value.lower() in ('true', 'false', 'yes', 'no', 'on', 'off', 'null', 'none'):
-            return f"'{value}'"
+            return _single_quote(value)
         # Quote strings with special characters
         if any(c in value for c in ':{}[]&*#?|-<>=!%@\\'):
-            return f"'{value}'"
+            return _single_quote(value)
         # Quote strings that look like numbers
         try:
             float(value)
-            return f"'{value}'"
+            return _single_quote(value)
         except ValueError:
             pass
+        # Final safety net: quote anything else YAML would not read back as the
+        # same string (hex/octal-style ints, empty string, etc.).
+        if not _roundtrips_unquoted(value):
+            return _single_quote(value)
         return value
     elif isinstance(value, bool):
         return str(value).lower()

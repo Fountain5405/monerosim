@@ -754,7 +754,13 @@ def generate_upgrade_config(
     return generate_config(cfg)
 
 
-def main():
+def build_arg_parser() -> argparse.ArgumentParser:
+    """Build the generate_config.py CLI argument parser.
+
+    Extracted from main() so the large flag block lives in one focused place
+    and main() reads as a thin dispatcher. Flags, defaults, help text, and the
+    epilog are unchanged.
+    """
     parser = argparse.ArgumentParser(
         description="Generate monerosim configs for scaling tests",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1083,6 +1089,11 @@ Timeline (verified bootstrap for Monero regtest):
         help="Skip auto-calibration even if no calibration data exists"
     )
 
+    return parser
+
+
+def main():
+    parser = build_arg_parser()
     args = parser.parse_args()
 
     if args.no_calibrate:
@@ -1096,65 +1107,85 @@ Timeline (verified bootstrap for Monero regtest):
         else:
             args.output = "monerosim.expanded.yaml"
 
-    # Handle --from scenario.yaml mode
     if args.from_scenario:
-        from scenario_parser import (
-            parse_scenario, expand_scenario, format_time,
-            DEFAULT_AUTO_THRESHOLD, calculate_batched_schedule
-        )
+        expand_from_scenario(args)
+        return
 
-        print(f"Expanding scenario: {args.from_scenario}", file=sys.stderr)
+    run_direct_generation(args)
 
-        with open(args.from_scenario) as f:
-            scenario = parse_scenario(f.read())
 
-        # Expand with seed from args (or scenario if specified)
-        seed = scenario.general.get('simulation_seed', args.seed)
-        config = expand_scenario(scenario, seed=seed,
-                                  respect_safe_tx_interval=not args.no_safe_tx_interval)
+def expand_from_scenario(args) -> None:
+    """Expand a --from scenario.yaml into a full expanded config.
 
-        # Convert to YAML
-        def to_plain_dict(obj):
-            if hasattr(obj, 'items'):
-                return {k: to_plain_dict(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [to_plain_dict(i) for i in obj]
-            return obj
+    Reads the compact scenario, expands it via scenario_parser.expand_scenario,
+    and writes the result with the shared config_to_yaml emitter. Prints the
+    same stderr summary as before.
+    """
+    from scenario_parser import (
+        parse_scenario, expand_scenario, format_time,
+        DEFAULT_AUTO_THRESHOLD, calculate_batched_schedule
+    )
 
-        plain_config = to_plain_dict(config)
+    print(f"Expanding scenario: {args.from_scenario}", file=sys.stderr)
 
-        # Count agents for summary
-        agent_count = len(config['agents'])
+    with open(args.from_scenario) as f:
+        scenario = parse_scenario(f.read())
 
-        # Read actual values from the generated config (not auto-calc timing)
-        bootstrap_end_val = config['general'].get('bootstrap_end_time', '')
-        if isinstance(bootstrap_end_val, str) and any(bootstrap_end_val.endswith(u) for u in ['s', 'm', 'h']):
-            bootstrap_end_s = parse_duration(bootstrap_end_val)
-        else:
-            bootstrap_end_s = scenario.timing['bootstrap_end_s']
+    # Expand with seed from args (or scenario if specified)
+    seed = scenario.general.get('simulation_seed', args.seed)
+    config = expand_scenario(scenario, seed=seed,
+                              respect_safe_tx_interval=not args.no_safe_tx_interval)
 
-        # Find the earliest activity_start_time across user agents
-        activity_start_times = []
-        for agent_config in config['agents'].values():
-            ast = agent_config.get('activity_start_time')
-            if ast is not None:
-                if isinstance(ast, str) and any(ast.endswith(u) for u in ['s', 'm', 'h']):
-                    activity_start_times.append(parse_duration(ast))
-                elif isinstance(ast, (int, float)):
-                    activity_start_times.append(int(ast))
-        activity_start_s = min(activity_start_times) if activity_start_times else scenario.timing['activity_start_s']
+    # Convert to YAML
+    def to_plain_dict(obj):
+        if hasattr(obj, 'items'):
+            return {k: to_plain_dict(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [to_plain_dict(i) for i in obj]
+        return obj
 
-        # Write output
-        import yaml as yaml_module
-        with open(args.output, 'w') as f:
-            yaml_module.dump(plain_config, f, default_flow_style=False, sort_keys=False)
+    plain_config = to_plain_dict(config)
 
-        print(f"Expanded {args.from_scenario} -> {args.output}", file=sys.stderr)
-        print(f"  Agents: {agent_count}", file=sys.stderr)
-        print(f"  Bootstrap ends: {format_time(bootstrap_end_s)}", file=sys.stderr)
-        print(f"  Activity starts: {format_time(activity_start_s)}", file=sys.stderr)
-        sys.exit(0)
+    # Count agents for summary
+    agent_count = len(config['agents'])
 
+    # Read actual values from the generated config (not auto-calc timing)
+    bootstrap_end_val = config['general'].get('bootstrap_end_time', '')
+    if isinstance(bootstrap_end_val, str) and any(bootstrap_end_val.endswith(u) for u in ['s', 'm', 'h']):
+        bootstrap_end_s = parse_duration(bootstrap_end_val)
+    else:
+        bootstrap_end_s = scenario.timing['bootstrap_end_s']
+
+    # Find the earliest activity_start_time across user agents
+    activity_start_times = []
+    for agent_config in config['agents'].values():
+        ast = agent_config.get('activity_start_time')
+        if ast is not None:
+            if isinstance(ast, str) and any(ast.endswith(u) for u in ['s', 'm', 'h']):
+                activity_start_times.append(parse_duration(ast))
+            elif isinstance(ast, (int, float)):
+                activity_start_times.append(int(ast))
+    activity_start_s = min(activity_start_times) if activity_start_times else scenario.timing['activity_start_s']
+
+    # Write output using the shared hand-rolled emitter (same serializer
+    # the direct-flags path uses), so there is ONE emitter across modes.
+    with open(args.output, 'w') as f:
+        f.write(config_to_yaml(plain_config) + "\n")
+
+    print(f"Expanded {args.from_scenario} -> {args.output}", file=sys.stderr)
+    print(f"  Agents: {agent_count}", file=sys.stderr)
+    print(f"  Bootstrap ends: {format_time(bootstrap_end_s)}", file=sys.stderr)
+    print(f"  Activity starts: {format_time(activity_start_s)}", file=sys.stderr)
+
+
+def run_direct_generation(args) -> None:
+    """Generate a config from direct CLI flags (the non-``--from`` path).
+
+    Validates flags, applies determinism overrides, builds the
+    GenerationConfig (or upgrade config), renders the commented header via
+    render_header(), and writes the file plus the stdout summary. Output bytes
+    and exit codes are unchanged.
+    """
     # Validate CLI args (only if not using --from)
     if args.agents is None:
         print("Error: --agents is required when not using --from", file=sys.stderr)
@@ -1272,6 +1303,40 @@ Timeline (verified bootstrap for Monero regtest):
     # Convert to YAML
     yaml_content = config_to_yaml(config)
 
+    header = render_header(args, timing_info, num_users)
+
+    # Write output
+    with open(args.output, 'w') as f:
+        f.write(header + yaml_content + "\n")
+
+    # Print summary
+    actual_duration = format_time_offset(timing_info['duration_s'], for_config=False)
+    duration_extended = timing_info['duration_s'] > timing_info['requested_duration_s']
+    fast_msg = " (fast mode)" if args.fast else ""
+    threads_msg = f", threads={process_threads}" if process_threads != 1 else ""
+    deterministic_msg = " [close-to-deterministic]" if args.close_to_deterministic else ""
+    preemption_msg = ", native_preemption=true" if native_preemption is True else ""
+    duration_msg = f", duration extended to {actual_duration}" if duration_extended else ""
+
+    if args.scenario == "upgrade":
+        relay_summary = f" + {args.relay_nodes} relays" if args.relay_nodes > 0 else ""
+        print(f"Generated upgrade scenario config with {num_users} user agents (+ 5 miners{relay_summary}){fast_msg}{threads_msg}{preemption_msg}{deterministic_msg}{duration_msg}")
+        print(f"  Binary v1: {args.upgrade_binary_v1} -> v2: {args.upgrade_binary_v2}")
+        print(f"  Upgrade order: {args.upgrade_order}, stagger: {args.upgrade_stagger}")
+        print(f"  Output: {args.output}")
+    else:
+        relay_summary = f" + {args.relay_nodes} relays" if args.relay_nodes > 0 else ""
+        print(f"Generated config with {num_users} user agents (+ 5 miners{relay_summary}){fast_msg}{threads_msg}{preemption_msg}{deterministic_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
+
+
+def render_header(args, timing_info, num_users) -> str:
+    """Render the commented YAML header (timeline + scenario summary).
+
+    Pure string builder extracted from main(): given the parsed args, the
+    timing_info dict returned by generate_config()/generate_upgrade_config(),
+    and the user count, produce the exact header text (including the fast-mode
+    note and trailing newline) that precedes the emitted YAML body.
+    """
     # Format timing values (human-readable for header comments)
     bootstrap_end = format_time_offset(timing_info['bootstrap_end_time_s'], for_config=False)
     activity_start = format_time_offset(timing_info['activity_start_time_s'], for_config=False)
@@ -1371,26 +1436,7 @@ Timeline (verified bootstrap for Monero regtest):
 """
     header += "\n"
 
-    # Write output
-    with open(args.output, 'w') as f:
-        f.write(header + yaml_content + "\n")
-
-    # Print summary
-    fast_msg = " (fast mode)" if args.fast else ""
-    threads_msg = f", threads={process_threads}" if process_threads != 1 else ""
-    deterministic_msg = " [close-to-deterministic]" if args.close_to_deterministic else ""
-    preemption_msg = ", native_preemption=true" if native_preemption is True else ""
-    duration_msg = f", duration extended to {actual_duration}" if duration_extended else ""
-
-    if args.scenario == "upgrade":
-        relay_summary = f" + {relay_nodes} relays" if relay_nodes > 0 else ""
-        print(f"Generated upgrade scenario config with {num_users} user agents (+ 5 miners{relay_summary}){fast_msg}{threads_msg}{preemption_msg}{deterministic_msg}{duration_msg}")
-        print(f"  Binary v1: {args.upgrade_binary_v1} -> v2: {args.upgrade_binary_v2}")
-        print(f"  Upgrade order: {args.upgrade_order}, stagger: {args.upgrade_stagger}")
-        print(f"  Output: {args.output}")
-    else:
-        relay_summary = f" + {relay_nodes} relays" if relay_nodes > 0 else ""
-        print(f"Generated config with {num_users} user agents (+ 5 miners{relay_summary}){fast_msg}{threads_msg}{preemption_msg}{deterministic_msg}{duration_msg}, GML: {args.gml} -> {args.output}")
+    return header
 
 
 if __name__ == "__main__":
