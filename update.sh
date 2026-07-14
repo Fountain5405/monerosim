@@ -111,7 +111,7 @@ export BUILD_JOBS
 # SHADOWFORMONERO_REF). Must be bumped in lock-step with that value —
 # update.sh checks out this tag rather than pulling the branch tip so a
 # rebuild here never silently un-pins the fork commit setup.sh installed.
-SHADOWFORMONERO_REF="v0.1.0"
+SHADOWFORMONERO_REF="v0.2.0"
 
 # Function to update a repository
 update_repo() {
