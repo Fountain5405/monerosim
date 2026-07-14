@@ -13,13 +13,8 @@
 
 set -euo pipefail
 
-# Colors for output
-source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"
-
-print_status() { echo -e "${BLUE}[INFO]${NC} $1"; }
-print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# Colors + shared logging vocabulary
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
 
 # Store script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,7 +77,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            print_error "Unknown option: $1"
+            log_err "Unknown option: $1"
             echo "Use --help for usage information"
             exit 1
             ;;
@@ -125,22 +120,22 @@ update_repo() {
     local branch=$3
 
     if [[ ! -d "$path" ]]; then
-        print_warning "$name not found at $path - skipping"
+        log_warn "$name not found at $path - skipping"
         return 1
     fi
 
     if [[ ! -d "$path/.git" ]]; then
-        print_warning "$name at $path is not a git repository - skipping"
+        log_warn "$name at $path is not a git repository - skipping"
         return 1
     fi
 
-    print_status "Updating $name..."
+    log_info "Updating $name..."
     cd "$path"
 
     # Check current branch
     local current_branch=$(git branch --show-current)
     if [[ "$current_branch" != "$branch" ]]; then
-        print_warning "$name is on branch '$current_branch', expected '$branch'"
+        log_warn "$name is on branch '$current_branch', expected '$branch'"
         read -p "  Switch to $branch? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -150,15 +145,15 @@ update_repo() {
 
     # Check for local changes
     if ! git diff --quiet || ! git diff --cached --quiet; then
-        print_warning "$name has uncommitted changes"
+        log_warn "$name has uncommitted changes"
         git status --short
         read -p "  Stash changes and continue? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git stash
-            print_status "Changes stashed (use 'git stash pop' to restore)"
+            log_info "Changes stashed (use 'git stash pop' to restore)"
         else
-            print_warning "Skipping $name update"
+            log_warn "Skipping $name update"
             cd "$SCRIPT_DIR"
             return 1
         fi
@@ -172,7 +167,7 @@ update_repo() {
 
     if [[ "$before_hash" != "$after_hash" ]]; then
         local commit_count=$(git rev-list --count "$before_hash".."$after_hash")
-        print_success "$name updated ($commit_count new commits)"
+        log_ok "$name updated ($commit_count new commits)"
         git log --oneline "$before_hash".."$after_hash" | head -5
         if [[ $commit_count -gt 5 ]]; then
             echo "  ... and $((commit_count - 5)) more"
@@ -180,7 +175,7 @@ update_repo() {
         cd "$SCRIPT_DIR"
         return 0  # Updated
     else
-        print_success "$name is already up to date"
+        log_ok "$name is already up to date"
         cd "$SCRIPT_DIR"
         return 2  # No changes
     fi
@@ -193,29 +188,29 @@ update_shadowformonero_pinned() {
     local path="$DEPS_DIR/shadowformonero"
 
     if [[ ! -d "$path" ]]; then
-        print_warning "shadowformonero not found at $path - skipping"
+        log_warn "shadowformonero not found at $path - skipping"
         return 1
     fi
 
     if [[ ! -d "$path/.git" ]]; then
-        print_warning "shadowformonero at $path is not a git repository - skipping"
+        log_warn "shadowformonero at $path is not a git repository - skipping"
         return 1
     fi
 
-    print_status "Updating shadowformonero (pinned to $SHADOWFORMONERO_REF)..."
+    log_info "Updating shadowformonero (pinned to $SHADOWFORMONERO_REF)..."
     cd "$path"
 
     # Check for local changes
     if ! git diff --quiet || ! git diff --cached --quiet; then
-        print_warning "shadowformonero has uncommitted changes"
+        log_warn "shadowformonero has uncommitted changes"
         git status --short
         read -p "  Stash changes and continue? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git stash
-            print_status "Changes stashed (use 'git stash pop' to restore)"
+            log_info "Changes stashed (use 'git stash pop' to restore)"
         else
-            print_warning "Skipping shadowformonero update"
+            log_warn "Skipping shadowformonero update"
             cd "$SCRIPT_DIR"
             return 1
         fi
@@ -228,11 +223,11 @@ update_shadowformonero_pinned() {
     local after_hash=$(git rev-parse HEAD)
 
     if [[ "$before_hash" != "$after_hash" ]]; then
-        print_success "shadowformonero updated to $SHADOWFORMONERO_REF"
+        log_ok "shadowformonero updated to $SHADOWFORMONERO_REF"
         cd "$SCRIPT_DIR"
         return 0  # Updated
     else
-        print_success "shadowformonero is already at $SHADOWFORMONERO_REF"
+        log_ok "shadowformonero is already at $SHADOWFORMONERO_REF"
         cd "$SCRIPT_DIR"
         return 2  # No changes
     fi
@@ -240,10 +235,10 @@ update_shadowformonero_pinned() {
 
 # Function to rebuild monerosim
 rebuild_monerosim() {
-    print_status "Rebuilding monerosim..."
+    log_info "Rebuilding monerosim..."
     cd "$SCRIPT_DIR"
     cargo build --release
-    print_success "monerosim rebuilt"
+    log_ok "monerosim rebuilt"
 }
 
 # Function to rebuild monero binaries
@@ -252,11 +247,11 @@ rebuild_monero() {
     local name=$2
 
     if [[ ! -d "$monero_dir" ]]; then
-        print_warning "$name directory not found - skipping rebuild"
+        log_warn "$name directory not found - skipping rebuild"
         return 1
     fi
 
-    print_status "Rebuilding $name (this may take several minutes)..."
+    log_info "Rebuilding $name (this may take several minutes)..."
     cd "$monero_dir"
 
     # Update submodules if needed
@@ -270,11 +265,11 @@ rebuild_monero() {
     # Install to ~/.monerosim/bin
     if [[ -f "bin/monerod" ]]; then
         cp bin/monerod "$MONEROSIM_BIN/monerod"
-        print_success "Installed monerod to $MONEROSIM_BIN/"
+        log_ok "Installed monerod to $MONEROSIM_BIN/"
     fi
     if [[ -f "bin/monero-wallet-rpc" ]]; then
         cp bin/monero-wallet-rpc "$MONEROSIM_BIN/monero-wallet-rpc"
-        print_success "Installed monero-wallet-rpc to $MONEROSIM_BIN/"
+        log_ok "Installed monero-wallet-rpc to $MONEROSIM_BIN/"
     fi
 
     cd "$SCRIPT_DIR"
@@ -285,15 +280,15 @@ rebuild_shadow() {
     local shadow_dir="$DEPS_DIR/shadowformonero"
 
     if [[ ! -d "$shadow_dir" ]]; then
-        print_warning "shadowformonero directory not found - skipping rebuild"
+        log_warn "shadowformonero directory not found - skipping rebuild"
         return 1
     fi
 
-    print_status "Rebuilding shadowformonero (this may take 10-20 minutes)..."
+    log_info "Rebuilding shadowformonero (this may take 10-20 minutes)..."
     cd "$shadow_dir"
     ./setup build --jobs "$BUILD_JOBS" --prefix "$MONEROSIM_HOME"
     ./setup install
-    print_success "shadowformonero rebuilt and installed"
+    log_ok "shadowformonero rebuilt and installed"
     cd "$SCRIPT_DIR"
 }
 
@@ -331,7 +326,7 @@ fi
 # Rebuild if requested or if there were updates
 echo ""
 if [[ "$REBUILD" == "true" ]]; then
-    print_status "Rebuilding as requested..."
+    log_info "Rebuilding as requested..."
 
     if [[ "$MONEROSIM_UPDATED" == "true" ]] || [[ "$UPDATE_ALL" == "true" ]]; then
         rebuild_monerosim
@@ -348,8 +343,8 @@ if [[ "$REBUILD" == "true" ]]; then
     fi
 elif [[ "$MONEROSIM_UPDATED" == "true" ]] || [[ "$SHADOW_UPDATED" == "true" ]] || [[ "$MONERO_UPDATED" == "true" ]]; then
     echo ""
-    print_warning "Some repositories were updated. Consider running with --rebuild to update binaries."
+    log_warn "Some repositories were updated. Consider running with --rebuild to update binaries."
 fi
 
 echo ""
-print_success "Update complete!"
+log_ok "Update complete!"

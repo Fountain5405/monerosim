@@ -22,14 +22,8 @@ if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f "$PROJECT_ROOT/venv/bin/activate" ]]; th
     source "$PROJECT_ROOT/venv/bin/activate"
 fi
 
-# Colors
-source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
-
-header() { echo -e "\n${BOLD}${CYAN}=== $1 ===${NC}"; }
-ok()     { echo -e "  ${GREEN}$1${NC}"; }
-warn()   { echo -e "  ${YELLOW}$1${NC}"; }
-err()    { echo -e "  ${RED}$1${NC}"; }
-info()   { echo -e "  $1"; }
+# Colors + shared logging vocabulary
+source "$(dirname "${BASH_SOURCE[0]}")/log_lib.sh"
 
 SIM_EPOCH=946684800  # 2000-01-01 00:00:00 UTC (Shadow epoch)
 
@@ -58,7 +52,7 @@ find_hosts_dir() {
 }
 
 if [ -n "${1:-}" ]; then
-    find_hosts_dir "$1" || { err "No shadow.data/hosts found at $1"; exit 1; }
+    find_hosts_dir "$1" || { log_err "No shadow.data/hosts found at $1"; exit 1; }
     LOG_SOURCE="specified"
 else
     # Auto-detect: check for running Shadow process
@@ -76,9 +70,9 @@ else
         LOG_SOURCE="live (CWD)"
     else
         # Fallback: look for CWD-relative input_config or run dir
-        err "Could not find shadow.data/hosts."
-        info "Pass a path:  $0 /path/to/shadow.data"
-        info "         or:  $0 /path/to/archived_run_dir"
+        log_err "Could not find shadow.data/hosts."
+        log_info "Pass a path:  $0 /path/to/shadow.data"
+        log_info "         or:  $0 /path/to/archived_run_dir"
         exit 1
     fi
 fi
@@ -194,31 +188,31 @@ fi
 # ============================================================
 # Process Status
 # ============================================================
-header "Process Status"
+log_header "Process Status"
 if [[ "$LOG_SOURCE" != "specified" ]]; then
     SHADOW_PID=$(pgrep -xf ".*/shadow .*\\.yaml" 2>/dev/null | head -1 || true)
     if [ -n "$SHADOW_PID" ]; then
-        ok "Shadow running (PID $SHADOW_PID)"
+        log_ok "Shadow running (PID $SHADOW_PID)"
         ELAPSED=$(ps -o etime= -p "$SHADOW_PID" 2>/dev/null | xargs)
-        info "Wall-clock elapsed: ${ELAPSED:-unknown}"
+        log_info "Wall-clock elapsed: ${ELAPSED:-unknown}"
     else
-        warn "Shadow not running"
+        log_warn "Shadow not running"
     fi
 else
-    info "Viewing archived run"
+    log_info "Viewing archived run"
 fi
-info "Hosts dir: $HOSTS_DIR ($LOG_SOURCE)"
+log_info "Hosts dir: $HOSTS_DIR ($LOG_SOURCE)"
 if [ -n "$CONFIG_FILE" ]; then
-    info "Config: $CONFIG_FILE"
+    log_info "Config: $CONFIG_FILE"
     if [ -n "${SCENARIO:-}" ]; then
-        info "Scenario: $SCENARIO | Config agents: ${CFG_MINERS:-?} miners + ${CFG_USERS:-?} users = ${CFG_TOTAL:-?}"
+        log_info "Scenario: $SCENARIO | Config agents: ${CFG_MINERS:-?} miners + ${CFG_USERS:-?} users = ${CFG_TOTAL:-?}"
     fi
 fi
 
 # ============================================================
 # Simulation Time & Phase
 # ============================================================
-header "Simulation Time"
+log_header "Simulation Time"
 
 # Get sim time from daemon logs (bitmonero.log) or legacy shadow.data stdout files.
 SIM_HOURS=""
@@ -262,9 +256,9 @@ dt = datetime.strptime('$LATEST_TS', '%Y-%m-%d %H:%M:%S')
 epoch = datetime(2000, 1, 1)
 print(f'{(dt - epoch).total_seconds() / 3600:.2f}')
 " 2>/dev/null || true)
-    info "Sim time: $LATEST_TS (${SIM_HOURS}h)"
+    log_info "Sim time: $LATEST_TS (${SIM_HOURS}h)"
 else
-    warn "No timestamps found in agent logs"
+    log_warn "No timestamps found in agent logs"
 fi
 
 # Phase detection (uses config timeline if available)
@@ -296,7 +290,7 @@ elif hours >= 1:
 else:
     print('Initializing')
 " 2>/dev/null || echo "unknown")
-    info "Phase:      $PHASE"
+    log_info "Phase:      $PHASE"
 fi
 
 # ============================================================
@@ -342,7 +336,7 @@ NUM_USERS=${#USER_DIRS[@]}
 # ============================================================
 # Miners
 # ============================================================
-header "Miners ($NUM_MINERS)"
+log_header "Miners ($NUM_MINERS)"
 for miner_dir in "${MINER_DIRS[@]}"; do
     miner=$(basename "$miner_dir")
     # Find the mining agent log by content
@@ -356,19 +350,19 @@ for miner_dir in "${MINER_DIRS[@]}"; do
     if [ -n "$agent_log" ]; then
         last_height=$(grep -oE "New height: [0-9]+" "$agent_log" 2>/dev/null | awk '{print $3}' | tail -1)
         if [ -n "$last_height" ]; then
-            ok "$miner: height $last_height"
+            log_ok "$miner: height $last_height"
         else
-            info "$miner: active (no height yet)"
+            log_info "$miner: active (no height yet)"
         fi
     else
-        info "$miner: no agent log"
+        log_info "$miner: no agent log"
     fi
 done
 
 # ============================================================
 # Miner Distributor
 # ============================================================
-header "Miner Distributor"
+log_header "Miner Distributor"
 if [ -n "$DIST_DIR" ] && [ -d "$DIST_DIR" ]; then
     DIST_LOG=""
     for f in "$DIST_DIR"/bash.*.stdout; do
@@ -381,19 +375,19 @@ if [ -n "$DIST_DIR" ] && [ -d "$DIST_DIR" ]; then
         BATCHES_OK=$(grep -c "Batch transaction sent successfully\|batch.*success" "$DIST_LOG" 2>/dev/null || true)
         BATCHES_FAIL=$(grep -c "Batch.*failed\|Failed to send batch\|real output" "$DIST_LOG" 2>/dev/null || true)
         LAST_TS=$(grep -oE "2000-01-[0-9]+ [0-9]+:[0-9]+:[0-9]+" "$DIST_LOG" 2>/dev/null | tail -1)
-        ok "Active (last: ${LAST_TS:-unknown})"
-        info "Successful batches: ${BATCHES_OK:-0} | Failed: ${BATCHES_FAIL:-0}"
+        log_ok "Active (last: ${LAST_TS:-unknown})"
+        log_info "Successful batches: ${BATCHES_OK:-0} | Failed: ${BATCHES_FAIL:-0}"
     else
-        warn "Not started yet (no agent log with content)"
+        log_warn "Not started yet (no agent log with content)"
     fi
 else
-    info "No miner-distributor host found"
+    log_info "No miner-distributor host found"
 fi
 
 # ============================================================
 # User Transactions
 # ============================================================
-header "User Transactions ($NUM_USERS users)"
+log_header "User Transactions ($NUM_USERS users)"
 if [ "$NUM_USERS" -gt 0 ]; then
     # Auto-detect the agent log filename by sampling the first user
     FIRST_USER="${USER_DIRS[0]}"
@@ -406,9 +400,9 @@ if [ "$NUM_USERS" -gt 0 ]; then
     done
 
     if [ -z "$AGENT_FILE" ]; then
-        warn "Could not identify user agent log file (users may not have started)"
+        log_warn "Could not identify user agent log file (users may not have started)"
     else
-        info "Agent log file: $AGENT_FILE"
+        log_info "Agent log file: $AGENT_FILE"
         echo ""
 
         USERS_SENT=$(grep -rl "Sent transaction:" "$HOSTS_DIR"/user-*/"$AGENT_FILE" 2>/dev/null | wc -l)
@@ -418,28 +412,28 @@ if [ "$NUM_USERS" -gt 0 ]; then
         USERS_NOT_ENOUGH=$(grep -rl "not enough.*money" "$HOSTS_DIR"/user-*/"$AGENT_FILE" 2>/dev/null | wc -l)
 
         if [ "$USERS_SENT" -gt 0 ]; then
-            ok "Users who sent >= 1 tx:        $USERS_SENT / $NUM_USERS"
+            log_ok "Users who sent >= 1 tx:        $USERS_SENT / $NUM_USERS"
         else
-            info "Users who sent >= 1 tx:        $USERS_SENT / $NUM_USERS"
+            log_info "Users who sent >= 1 tx:        $USERS_SENT / $NUM_USERS"
         fi
-        [ "$USERS_REAL_OUTPUT" -gt 0 ] && warn "Users with 'real output' err:  $USERS_REAL_OUTPUT"
+        [ "$USERS_REAL_OUTPUT" -gt 0 ] && log_warn "Users with 'real output' err:  $USERS_REAL_OUTPUT"
         [ "$USERS_TIMEOUT" -gt 0 ]     && err  "Users with timeout errors:     $USERS_TIMEOUT"
         [ "$USERS_RING_SIZE" -gt 0 ]   && err  "Users with ring size errors:   $USERS_RING_SIZE"
-        [ "$USERS_NOT_ENOUGH" -gt 0 ]  && warn "Users with 'not enough money': $USERS_NOT_ENOUGH"
+        [ "$USERS_NOT_ENOUGH" -gt 0 ]  && log_warn "Users with 'not enough money': $USERS_NOT_ENOUGH"
 
         TOTAL_SENT=$(grep -rh "Sent transaction:" "$HOSTS_DIR"/user-*/"$AGENT_FILE" 2>/dev/null | wc -l)
         TOTAL_FAILED=$(grep -rh "Failed to send" "$HOSTS_DIR"/user-*/"$AGENT_FILE" 2>/dev/null | wc -l)
         echo ""
-        info "Total sent: $TOTAL_SENT | Total failed: $TOTAL_FAILED"
+        log_info "Total sent: $TOTAL_SENT | Total failed: $TOTAL_FAILED"
     fi
 else
-    info "No user hosts found"
+    log_info "No user hosts found"
 fi
 
 # ============================================================
 # Chain Health (scan miner daemon logs)
 # ============================================================
-header "Chain Health"
+log_header "Chain Health"
 if [ "$NUM_MINERS" -gt 0 ]; then
     ALT_BLOCKS=0
     REORGS=0
@@ -464,28 +458,28 @@ if [ "$NUM_MINERS" -gt 0 ]; then
         fi
     done
     [ "$REORGS" -gt 0 ]     && err  "Chain reorgs (miners): $REORGS"
-    [ "$ALT_BLOCKS" -gt 0 ] && warn "Alternative blocks (miners): $ALT_BLOCKS"
-    [ "$REORGS" -eq 0 ] && [ "$ALT_BLOCKS" -eq 0 ] && ok "No forks detected in miner logs"
+    [ "$ALT_BLOCKS" -gt 0 ] && log_warn "Alternative blocks (miners): $ALT_BLOCKS"
+    [ "$REORGS" -eq 0 ] && [ "$ALT_BLOCKS" -eq 0 ] && log_ok "No forks detected in miner logs"
 else
-    info "No miner hosts to check"
+    log_info "No miner hosts to check"
 fi
 
 # ============================================================
 # Resources
 # ============================================================
-header "Resources"
+log_header "Resources"
 if [ -n "${RUN_DIR:-}" ]; then
     MEM_FILE="$RUN_DIR/memory_samples.csv"
     if [ -f "$MEM_FILE" ] && [ -s "$MEM_FILE" ]; then
         LAST_MEM=$(tail -1 "$MEM_FILE")
-        info "Latest memory sample: $LAST_MEM"
+        log_info "Latest memory sample: $LAST_MEM"
     fi
 fi
 if [ -n "${SHADOW_PID:-}" ]; then
     RSS=$(ps -o rss= -p "$SHADOW_PID" 2>/dev/null | xargs || true)
     if [ -n "${RSS:-}" ]; then
         RSS_GB=$(python3 -c "print(f'{int($RSS) / 1048576:.1f}')" 2>/dev/null || echo "?")
-        info "Shadow RSS: ${RSS_GB} GB"
+        log_info "Shadow RSS: ${RSS_GB} GB"
     fi
 fi
 

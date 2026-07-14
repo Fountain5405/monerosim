@@ -14,8 +14,8 @@ SIM_EPOCH=946684800  # 2000-01-01 00:00:00 UTC (Shadow epoch)
 MONITOR_INTERVAL=30  # seconds between progress refreshes
 MEMORY_SAMPLE_INTERVAL=30
 
-# Colors
-source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"
+# Colors + shared logging vocabulary (log_step/log_ok/log_warn/log_err/log_info)
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
 
 # Script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -218,26 +218,7 @@ SHARED_DIR="/tmp/monerosim_shared"
 # ============================================================
 # Utility functions
 # ============================================================
-log_step() {
-    echo ""
-    echo -e "${BOLD}${CYAN}==> $1${NC}"
-}
-
-log_ok() {
-    echo -e "  ${GREEN}$1${NC}"
-}
-
-log_warn() {
-    echo -e "  ${YELLOW}WARNING: $1${NC}"
-}
-
-log_err() {
-    echo -e "  ${YELLOW}ERROR: $1${NC}"
-}
-
-log_info() {
-    echo -e "  $1"
-}
+# log_step/log_ok/log_warn/log_err/log_info now come from scripts/log_lib.sh
 
 # Convert duration strings like "2.5h", "90m", "6h30m", or raw seconds to seconds
 # mirrored at scripts/scaling_test.sh:parse_duration_to_seconds — keep in sync

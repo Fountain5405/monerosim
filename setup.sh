@@ -2,35 +2,12 @@
 
 set -euo pipefail
 
-# Colors for output
-source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"
+# Colors + shared logging vocabulary
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
 
 # MoneroSim installation directory
 MONEROSIM_HOME="$HOME/.monerosim"
 MONEROSIM_BIN="$MONEROSIM_HOME/bin"
-
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-print_header() {
-    echo -e "\n${BLUE}================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}================================${NC}"
-}
 
 # Store the script directory for reliable navigation
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,7 +37,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            print_error "Unknown option: $1"
+            log_err "Unknown option: $1"
             echo "Use --help for usage information"
             exit 1
             ;;
@@ -69,8 +46,8 @@ done
 
 # Check if we're in the right directory
 if [[ ! -f "Cargo.toml" ]] || [[ ! -d "src" ]]; then
-    print_error "Please run this script from the monerosim project directory"
-    print_error "Expected files: Cargo.toml, src/ directory"
+    log_err "Please run this script from the monerosim project directory"
+    log_err "Expected files: Cargo.toml, src/ directory"
     exit 1
 fi
 
@@ -96,7 +73,7 @@ fi
 export BUILD_JOBS
 
 # Display welcome message and what the script will do
-print_header "Welcome to MoneroSim Setup"
+log_header "Welcome to MoneroSim Setup"
 echo ""
 echo "This script will:"
 echo ""
@@ -126,38 +103,38 @@ echo ""
 read -r -t 0.1 -N 1000 _ 2>/dev/null || true
 read -p "Proceed with setup? (Y/n): " -r
 if [[ $REPLY =~ ^[Nn]$ ]]; then
-    print_status "Setup cancelled."
+    log_info "Setup cancelled."
     exit 0
 fi
 echo ""
 
 # Clean up previous artifacts if requested
 if [[ "$CLEAN_START" == "true" ]]; then
-    print_header "Cleaning Previous Setup"
+    log_header "Cleaning Previous Setup"
     if [[ -d "$SCRIPT_DIR/venv" ]]; then
-        print_status "Removing venv/..."
+        log_info "Removing venv/..."
         rm -rf "$SCRIPT_DIR/venv"
     fi
     if [[ -d "$SCRIPT_DIR/shadow_output" ]]; then
-        print_status "Removing shadow_output/..."
+        log_info "Removing shadow_output/..."
         rm -rf "$SCRIPT_DIR/shadow_output"
     fi
     if [[ -d "$SCRIPT_DIR/target" ]]; then
-        print_status "Removing target/..."
+        log_info "Removing target/..."
         rm -rf "$SCRIPT_DIR/target"
     fi
-    print_success "Cleanup complete"
+    log_ok "Cleanup complete"
 fi
 
-print_header "MoneroSim Setup Script"
-print_status "Setting up MoneroSim from scratch..."
-print_status "Binaries will be installed to: $MONEROSIM_BIN"
+log_header "MoneroSim Setup Script"
+log_info "Setting up MoneroSim from scratch..."
+log_info "Binaries will be installed to: $MONEROSIM_BIN"
 
 # Create the monerosim directories
 mkdir -p "$MONEROSIM_BIN"
 
 # Step 1: Check system dependencies
-print_header "Step 1: Checking System Dependencies"
+log_header "Step 1: Checking System Dependencies"
 
 # Check for required tools
 MISSING_DEPS=()
@@ -165,15 +142,15 @@ MISSING_DEPS=()
 check_command() {
     if ! command -v "$1" &> /dev/null; then
         MISSING_DEPS+=("$1")
-        print_warning "$1 is not installed"
+        log_warn "$1 is not installed"
     else
-        print_success "$1 is available"
+        log_ok "$1 is available"
     fi
     # Always return 0 - we track missing deps in MISSING_DEPS array
     return 0
 }
 
-print_status "Checking required system tools..."
+log_info "Checking required system tools..."
 check_command "git"
 check_command "cmake"
 check_command "make"
@@ -191,7 +168,7 @@ BULK_INSTALL_NEEDED=false
 if command -v pkg-config &> /dev/null; then
     # If any core dev headers are missing, force the bulk install.
     if ! pkg-config --exists openssl libsodium libzmq libunbound 2>/dev/null; then
-        print_warning "One or more core dev headers (openssl/libsodium/libzmq/libunbound) missing"
+        log_warn "One or more core dev headers (openssl/libsodium/libzmq/libunbound) missing"
         BULK_INSTALL_NEEDED=true
     fi
 else
@@ -212,7 +189,7 @@ if [[ "$BULK_INSTALL_NEEDED" == "false" ]]; then
         ; then
         # All three lookups silenced; if none returned a path, we need the bulk install.
         if ! find /usr/lib /usr/lib64 -maxdepth 3 -name 'libboost_filesystem.so' 2>/dev/null | grep -q .; then
-            print_warning "Boost component libraries (libboost_filesystem.so) not found — bulk install will run"
+            log_warn "Boost component libraries (libboost_filesystem.so) not found — bulk install will run"
             BULK_INSTALL_NEEDED=true
         fi
     fi
@@ -240,34 +217,34 @@ version_gte() {
 NEED_RUST=false
 if ! command -v rustc &> /dev/null || ! command -v cargo &> /dev/null; then
     NEED_RUST=true
-    print_warning "Rust toolchain is not installed"
+    log_warn "Rust toolchain is not installed"
 else
     RUST_VERSION=$(rustc --version)
     if version_gte "$RUST_VERSION" "$MIN_RUST_VERSION"; then
-        print_success "Rust is available: $RUST_VERSION (>= $MIN_RUST_VERSION)"
+        log_ok "Rust is available: $RUST_VERSION (>= $MIN_RUST_VERSION)"
     else
         NEED_RUST=true
-        print_warning "Rust version too old: $RUST_VERSION (need >= $MIN_RUST_VERSION)"
+        log_warn "Rust version too old: $RUST_VERSION (need >= $MIN_RUST_VERSION)"
     fi
 fi
 
 # Install or update Rust if needed (no sudo required)
 if [[ "$NEED_RUST" == "true" ]]; then
     if command -v rustup &> /dev/null; then
-        print_status "Updating Rust toolchain via rustup..."
+        log_info "Updating Rust toolchain via rustup..."
         rustup update stable
     else
-        print_status "Installing Rust toolchain (no sudo required)..."
+        log_info "Installing Rust toolchain (no sudo required)..."
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     fi
     source ~/.cargo/env
 
     RUST_VERSION=$(rustc --version 2>/dev/null)
     if [[ -n "$RUST_VERSION" ]] && version_gte "$RUST_VERSION" "$MIN_RUST_VERSION"; then
-        print_success "Rust ready: $RUST_VERSION"
+        log_ok "Rust ready: $RUST_VERSION"
     else
-        print_error "Failed to install/update Rust to >= $MIN_RUST_VERSION"
-        print_error "Current version: $RUST_VERSION"
+        log_err "Failed to install/update Rust to >= $MIN_RUST_VERSION"
+        log_err "Current version: $RUST_VERSION"
         exit 1
     fi
 fi
@@ -277,12 +254,12 @@ fi
 # is empty — handles the "gcc present, dev headers missing" case.
 if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
     if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
-        print_warning "Missing system dependencies: ${MISSING_DEPS[*]}"
+        log_warn "Missing system dependencies: ${MISSING_DEPS[*]}"
     fi
     if [[ "$BULK_INSTALL_NEEDED" == "true" ]]; then
-        print_warning "Bulk dev-libs install needed (missing pkg-config-detectable dev headers)"
+        log_warn "Bulk dev-libs install needed (missing pkg-config-detectable dev headers)"
     fi
-    print_status "Attempting to install missing dependencies (requires sudo)..."
+    log_info "Attempting to install missing dependencies (requires sudo)..."
 
     # Detect package manager
     # Note: dnf is checked before yum because on modern RHEL/Fedora both may
@@ -310,12 +287,12 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
         UPDATE_CMD="sudo zypper refresh"
         INSTALL_CMD="sudo zypper install -y --no-recommends"
     else
-        print_error "Could not detect package manager (apt-get, dnf, yum, pacman, or zypper)"
-        print_error "Please install the following dependencies manually: ${MISSING_DEPS[*]}"
+        log_err "Could not detect package manager (apt-get, dnf, yum, pacman, or zypper)"
+        log_err "Please install the following dependencies manually: ${MISSING_DEPS[*]}"
         exit 1
     fi
 
-    print_status "Using package manager: $PKG_MANAGER"
+    log_info "Using package manager: $PKG_MANAGER"
 
     # RHEL family (RHEL/CentOS/Rocky/Alma) splits dev headers across the default
     # repos plus EPEL (Extra Packages for Enterprise Linux) and CRB / PowerTools
@@ -328,7 +305,7 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
         . /etc/os-release
         case "$ID" in
             rhel|centos|rocky|almalinux)
-                print_status "Enabling EPEL and CRB/PowerTools for RHEL-family Monero deps..."
+                log_info "Enabling EPEL and CRB/PowerTools for RHEL-family Monero deps..."
                 $INSTALL_CMD dnf-plugins-core epel-release || true
                 sudo dnf config-manager --set-enabled crb 2>/dev/null \
                     || sudo dnf config-manager --enable crb 2>/dev/null \
@@ -340,7 +317,7 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
     fi
 
     # Update package lists
-    print_status "Updating package lists..."
+    log_info "Updating package lists..."
     $UPDATE_CMD
 
     # Install single-package dependencies via the per-dep loop.
@@ -349,7 +326,7 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
     for dep in "${MISSING_DEPS[@]}"; do
         case $dep in
             "git"|"cmake"|"make"|"curl"|"pkg-config"|"jq")
-                print_status "Installing $dep..."
+                log_info "Installing $dep..."
                 $INSTALL_CMD $dep
                 ;;
             "gcc"|"g++")
@@ -365,7 +342,7 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 || "$BULK_INSTALL_NEEDED" == "true" ]]; then
     # libssl-dev/libsodium-dev/etc. would silently skip the bulk install and hit
     # cryptic linker errors during the Shadow/Monero compile.
     if [[ "$BULK_TRIGGERED" == "true" || "$BULK_INSTALL_NEEDED" == "true" ]]; then
-        print_status "Installing build-essential/development tools..."
+        log_info "Installing build-essential/development tools..."
         if [[ $PKG_MANAGER == "apt-get" ]]; then
             $INSTALL_CMD build-essential libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libexpat1-dev libpgm-dev qttools5-dev-tools libhidapi-dev libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libudev-dev libboost-chrono-dev libboost-date-time-dev libboost-filesystem-dev libboost-locale-dev libboost-program-options-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev python3 python3-venv ccache
         elif [[ $PKG_MANAGER == "yum" || $PKG_MANAGER == "dnf" ]]; then
@@ -411,7 +388,7 @@ fi
 export PATH="$MONEROSIM_BIN:$PATH"
 
 # Step 2: Install Python dependencies
-print_header "Step 2: Installing Python Dependencies"
+log_header "Step 2: Installing Python Dependencies"
 
 check_command "python3"
 
@@ -436,8 +413,8 @@ if [[ -z "$PYTHON_BIN" ]] && [[ -f /etc/os-release ]]; then
     . /etc/os-release
     case "${ID:-}:${VERSION_ID:-}" in
         rhel:[89]*|centos:[89]*|rocky:[89]*|almalinux:[89]*)
-            print_warning "System python3 is older than 3.10 (default on EL${VERSION_ID%%.*})."
-            print_status "Installing python3.11 from AppStream..."
+            log_warn "System python3 is older than 3.10 (default on EL${VERSION_ID%%.*})."
+            log_info "Installing python3.11 from AppStream..."
             if command -v dnf &>/dev/null; then
                 sudo dnf install -y python3.11 || true
             elif command -v yum &>/dev/null; then
@@ -449,56 +426,56 @@ if [[ -z "$PYTHON_BIN" ]] && [[ -f /etc/os-release ]]; then
 fi
 
 if [[ -z "$PYTHON_BIN" ]]; then
-    print_error "Python 3.10+ is required but no usable interpreter was found."
-    print_error "Tried: python3, python3.13, python3.12, python3.11, python3.10."
-    print_error "Install one for your distro, e.g.:"
-    print_error "  Debian/Ubuntu: sudo apt install python3.11"
-    print_error "  Rocky/Alma 9:  sudo dnf install python3.11"
-    print_error "  Fedora:        default python3 is already >= 3.10 (reinstall if missing)"
-    print_error "  Arch:          sudo pacman -S python"
+    log_err "Python 3.10+ is required but no usable interpreter was found."
+    log_err "Tried: python3, python3.13, python3.12, python3.11, python3.10."
+    log_err "Install one for your distro, e.g.:"
+    log_err "  Debian/Ubuntu: sudo apt install python3.11"
+    log_err "  Rocky/Alma 9:  sudo dnf install python3.11"
+    log_err "  Fedora:        default python3 is already >= 3.10 (reinstall if missing)"
+    log_err "  Arch:          sudo pacman -S python"
     exit 1
 fi
 
 PYTHON_VERSION=$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-print_status "Python version check passed: $PYTHON_VERSION (using $PYTHON_BIN)"
+log_info "Python version check passed: $PYTHON_VERSION (using $PYTHON_BIN)"
 
 # Check if python3-venv/ensurepip is available (venv module exists but ensurepip may not)
 if ! "$PYTHON_BIN" -c "import ensurepip" &>/dev/null; then
-    print_warning "$PYTHON_BIN venv (ensurepip) is not available"
-    print_status "Attempting to install the venv module (requires sudo)..."
+    log_warn "$PYTHON_BIN venv (ensurepip) is not available"
+    log_info "Attempting to install the venv module (requires sudo)..."
 
     if command -v apt-get &> /dev/null; then
         # On Debian/Ubuntu the package name is e.g. python3.11-venv.
-        print_status "Installing ${PYTHON_BIN}-venv..."
+        log_info "Installing ${PYTHON_BIN}-venv..."
         sudo apt-get update && sudo apt-get install -y "${PYTHON_BIN}-venv"
     elif command -v dnf &> /dev/null; then
-        print_error "On RHEL/Fedora, the venv module ships with the main python3 package;"
-        print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo dnf reinstall python3\`)"
+        log_err "On RHEL/Fedora, the venv module ships with the main python3 package;"
+        log_err "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo dnf reinstall python3\`)"
         exit 1
     elif command -v yum &> /dev/null; then
-        print_error "On RHEL/CentOS, the venv module ships with the main python3 package;"
-        print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo yum reinstall python3\`)"
+        log_err "On RHEL/CentOS, the venv module ships with the main python3 package;"
+        log_err "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo yum reinstall python3\`)"
         exit 1
     elif command -v pacman &> /dev/null; then
-        print_error "On Arch, the venv module ships with the main python package;"
-        print_error "if ensurepip is missing, try reinstalling python (e.g. \`sudo pacman -S python\`)"
+        log_err "On Arch, the venv module ships with the main python package;"
+        log_err "if ensurepip is missing, try reinstalling python (e.g. \`sudo pacman -S python\`)"
         exit 1
     elif command -v zypper &> /dev/null; then
-        print_error "On openSUSE, the venv module ships with the main python3 package;"
-        print_error "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo zypper install -f python3\`)"
+        log_err "On openSUSE, the venv module ships with the main python3 package;"
+        log_err "if ensurepip is missing, try reinstalling python3 (e.g. \`sudo zypper install -f python3\`)"
         exit 1
     else
-        print_error "Could not install python3-venv automatically"
-        print_error "Please install it manually and re-run setup.sh"
+        log_err "Could not install python3-venv automatically"
+        log_err "Please install it manually and re-run setup.sh"
         exit 1
     fi
 
     # Verify it worked
     if ! "$PYTHON_BIN" -c "import ensurepip" &>/dev/null; then
-        print_error "Failed to install the venv module for $PYTHON_BIN"
+        log_err "Failed to install the venv module for $PYTHON_BIN"
         exit 1
     fi
-    print_success "venv module for $PYTHON_BIN installed successfully"
+    log_ok "venv module for $PYTHON_BIN installed successfully"
 fi
 
 # Check if we have a valid virtual environment
@@ -506,69 +483,69 @@ VENV_DIR="$SCRIPT_DIR/venv"
 if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
     # Remove incomplete venv if it exists
     if [[ -d "$VENV_DIR" ]]; then
-        print_warning "Found incomplete virtual environment, recreating..."
+        log_warn "Found incomplete virtual environment, recreating..."
         rm -rf "$VENV_DIR"
     fi
-    print_status "Creating Python virtual environment with $PYTHON_BIN..."
+    log_info "Creating Python virtual environment with $PYTHON_BIN..."
     "$PYTHON_BIN" -m venv "$VENV_DIR"
     if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
-        print_error "Failed to create Python virtual environment"
-        print_error "Please ensure python3-venv is installed and try again"
+        log_err "Failed to create Python virtual environment"
+        log_err "Please ensure python3-venv is installed and try again"
         exit 1
     fi
 fi
 
 # Activate the virtual environment
-print_status "Activating virtual environment..."
+log_info "Activating virtual environment..."
 source "$VENV_DIR/bin/activate"
 
 # Upgrade pip within the virtual environment
-print_status "Upgrading pip..."
+log_info "Upgrading pip..."
 pip install --upgrade pip
 
-print_status "Installing Python packages from scripts/requirements.txt..."
+log_info "Installing Python packages from scripts/requirements.txt..."
 if pip install -r scripts/requirements.txt; then
-    print_success "Python dependencies installed successfully"
+    log_ok "Python dependencies installed successfully"
 else
-    print_error "Failed to install Python dependencies"
-    print_error "Please check your pip installation and scripts/requirements.txt"
+    log_err "Failed to install Python dependencies"
+    log_err "Please check your pip installation and scripts/requirements.txt"
     exit 1
 fi
 
 # Step 3: Build MoneroSim
-print_header "Step 3: Building MoneroSim"
+log_header "Step 3: Building MoneroSim"
 
-print_status "Building MoneroSim with cargo..."
+log_info "Building MoneroSim with cargo..."
 cargo build --release
 
 if [[ $? -eq 0 ]]; then
-    print_success "MoneroSim built successfully"
+    log_ok "MoneroSim built successfully"
 else
-    print_error "Failed to build MoneroSim"
+    log_err "Failed to build MoneroSim"
     exit 1
 fi
 
 # Step 4: Install Shadow Simulator
-print_header "Step 4: Installing Shadow Simulator"
+log_header "Step 4: Installing Shadow Simulator"
 
 # Check for Shadow's build dependencies
 SHADOW_DEPS_NEEDED=false
 
 # Check glib-2.0
 if ! pkg-config --exists "glib-2.0 >= 2.58" 2>/dev/null; then
-    print_warning "glib-2.0 development library not found"
+    log_warn "glib-2.0 development library not found"
     SHADOW_DEPS_NEEDED=true
 fi
 
 # Check clang (required for bindgen)
 if ! command -v clang &>/dev/null; then
-    print_warning "clang not found (required for Shadow's bindgen)"
+    log_warn "clang not found (required for Shadow's bindgen)"
     SHADOW_DEPS_NEEDED=true
 fi
 
 # Install Shadow dependencies if needed
 if [[ "$SHADOW_DEPS_NEEDED" == "true" ]]; then
-    print_status "Installing Shadow build dependencies..."
+    log_info "Installing Shadow build dependencies..."
 
     if command -v apt-get &> /dev/null; then
         sudo apt-get update && sudo apt-get install -y libglib2.0-dev clang libclang-dev
@@ -581,21 +558,21 @@ if [[ "$SHADOW_DEPS_NEEDED" == "true" ]]; then
     elif command -v zypper &> /dev/null; then
         sudo zypper install -y --no-recommends glib2-devel clang clang-devel pkg-config
     else
-        print_error "Could not install Shadow dependencies automatically"
-        print_error "Please install libglib2.0-dev, clang, libclang-dev and re-run setup.sh"
+        log_err "Could not install Shadow dependencies automatically"
+        log_err "Please install libglib2.0-dev, clang, libclang-dev and re-run setup.sh"
         exit 1
     fi
 
     # Verify
     if ! pkg-config --exists "glib-2.0 >= 2.58" 2>/dev/null; then
-        print_error "Failed to install glib-2.0 development library"
+        log_err "Failed to install glib-2.0 development library"
         exit 1
     fi
     if ! command -v clang &>/dev/null; then
-        print_error "Failed to install clang"
+        log_err "Failed to install clang"
         exit 1
     fi
-    print_success "Shadow build dependencies installed"
+    log_ok "Shadow build dependencies installed"
 fi
 
 # Pin shadowformonero to the tag matching this monerosim release.
@@ -616,12 +593,12 @@ install_shadowformonero() {
 
     # Clone shadowformonero if not present
     if [[ -d "$SHADOWFORMONERO_DIR" ]] && [[ -d "$SHADOWFORMONERO_DIR/.git" ]]; then
-        print_status "Found local shadowformonero repository; syncing to $SHADOWFORMONERO_REF"
+        log_info "Found local shadowformonero repository; syncing to $SHADOWFORMONERO_REF"
         cd "$SHADOWFORMONERO_DIR"
         git fetch origin --tags
         git checkout "$SHADOWFORMONERO_REF"
     else
-        print_status "Cloning shadowformonero repository (pinned to $SHADOWFORMONERO_REF)..."
+        log_info "Cloning shadowformonero repository (pinned to $SHADOWFORMONERO_REF)..."
         if [[ -d "$SHADOWFORMONERO_DIR" ]]; then
             rm -rf "$SHADOWFORMONERO_DIR"
         fi
@@ -633,7 +610,7 @@ install_shadowformonero() {
     fi
 
     # Install shadowformonero to ~/.monerosim
-    print_status "Building and installing shadowformonero to $MONEROSIM_HOME (using -j${BUILD_JOBS}, capped by RAM=${RAM_GB}GB)..."
+    log_info "Building and installing shadowformonero to $MONEROSIM_HOME (using -j${BUILD_JOBS}, capped by RAM=${RAM_GB}GB)..."
     ./setup build --jobs "$BUILD_JOBS" --prefix "$MONEROSIM_HOME"
     ./setup install
 
@@ -647,7 +624,7 @@ install_shadowformonero() {
 # Check if Shadow is already installed in our location
 if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
     SHADOW_VERSION=$("$MONEROSIM_BIN/shadow" --version 2>&1 | head -n1)
-    print_success "Shadow already installed: $SHADOW_VERSION"
+    log_ok "Shadow already installed: $SHADOW_VERSION"
 
     # Decide whether the install matches what this monerosim release
     # expects. Three cases warrant a reinstall prompt:
@@ -667,34 +644,34 @@ if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
         if [[ "$INSTALLED_REF" != "$SHADOWFORMONERO_REF" ]]; then
             REINSTALL_REASON="installed shadowformonero is $INSTALLED_REF; this monerosim release expects $SHADOWFORMONERO_REF"
         else
-            print_success "shadowformonero $INSTALLED_REF matches pinned ref"
+            log_ok "shadowformonero $INSTALLED_REF matches pinned ref"
         fi
     fi
 
     if [[ -n "$REINSTALL_REASON" ]]; then
-        print_warning ""
-        print_warning "shadowformonero install needs attention:"
-        print_warning "  $REINSTALL_REASON"
-        print_warning ""
-        print_warning "Reinstalling will rebuild from source and takes 10-20 minutes."
+        log_warn ""
+        log_warn "shadowformonero install needs attention:"
+        log_warn "  $REINSTALL_REASON"
+        log_warn ""
+        log_warn "Reinstalling will rebuild from source and takes 10-20 minutes."
         # Drain stdin so a stray keypress during earlier phases doesn't auto-answer.
         read -r -t 0.1 -N 1000 _ 2>/dev/null || true
         read -p "Reinstall shadowformonero now? (Y/n): " -r
         if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            print_status "Reinstalling shadowformonero..."
+            log_info "Reinstalling shadowformonero..."
             install_shadowformonero
         else
-            print_warning "Keeping existing shadowformonero install. Simulations may fail or behave unexpectedly."
+            log_warn "Keeping existing shadowformonero install. Simulations may fail or behave unexpectedly."
         fi
     fi
 elif command -v shadow &> /dev/null; then
     # Shadow exists elsewhere - check version and offer to install to our location
     SHADOW_VERSION=$(shadow --version 2>&1 | head -n1)
-    print_warning "Shadow found at $(which shadow): $SHADOW_VERSION"
-    print_status ""
-    print_status "MoneroSim requires shadowformonero installed to $MONEROSIM_BIN"
-    print_status ""
-    print_status "Choose an option:"
+    log_warn "Shadow found at $(which shadow): $SHADOW_VERSION"
+    log_info ""
+    log_info "MoneroSim requires shadowformonero installed to $MONEROSIM_BIN"
+    log_info ""
+    log_info "Choose an option:"
     echo "  y/Y - Install shadowformonero to $MONEROSIM_BIN (recommended)"
     echo "  n/N - Skip (you'll need shadow installed at ~/.monerosim/bin/shadow)"
     echo ""
@@ -703,28 +680,28 @@ elif command -v shadow &> /dev/null; then
     read -p "Install shadowformonero? (Y/n): " -r
 
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        print_status "Installing shadowformonero..."
-        print_status "This will take 10-20 minutes..."
+        log_info "Installing shadowformonero..."
+        log_info "This will take 10-20 minutes..."
         install_shadowformonero
     else
-        print_warning "Skipping Shadow installation"
-        print_warning "Make sure shadow is installed at ~/.monerosim/bin/shadow"
+        log_warn "Skipping Shadow installation"
+        log_warn "Make sure shadow is installed at ~/.monerosim/bin/shadow"
     fi
 else
-    print_status "Shadow not found - installing shadowformonero..."
-    print_status "This will take 10-20 minutes..."
+    log_info "Shadow not found - installing shadowformonero..."
+    log_info "This will take 10-20 minutes..."
     install_shadowformonero
 fi
 
 # Verify Shadow installation
 if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
     SHADOW_VERSION=$("$MONEROSIM_BIN/shadow" --version 2>&1 | head -n1)
-    print_success "shadowformonero installed successfully: $SHADOW_VERSION"
+    log_ok "shadowformonero installed successfully: $SHADOW_VERSION"
 elif command -v shadow &> /dev/null; then
-    print_success "Shadow available in PATH: $(which shadow)"
+    log_ok "Shadow available in PATH: $(which shadow)"
 else
-    print_error "Shadow not found"
-    print_error "Please install shadowformonero manually to ~/.monerosim/bin/"
+    log_err "Shadow not found"
+    log_err "Please install shadowformonero manually to ~/.monerosim/bin/"
     exit 1
 fi
 
@@ -734,7 +711,7 @@ MONEROSIM_LIB="$MONEROSIM_HOME/lib"
 LOCAL_LIB="$HOME/.local/lib"
 
 if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
-    print_status "Verifying Shadow library configuration..."
+    log_info "Verifying Shadow library configuration..."
     mkdir -p "$MONEROSIM_LIB"
 
     # List of required Shadow libraries
@@ -750,25 +727,25 @@ if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
         if [[ ! -e "$MONEROSIM_LIB/$lib" ]]; then
             # Check if library exists in ~/.local/lib (common alternate location)
             if [[ -e "$LOCAL_LIB/$lib" ]]; then
-                print_status "Symlinking $lib from $LOCAL_LIB to $MONEROSIM_LIB"
+                log_info "Symlinking $lib from $LOCAL_LIB to $MONEROSIM_LIB"
                 ln -sf "$LOCAL_LIB/$lib" "$MONEROSIM_LIB/$lib"
             else
-                print_warning "Shadow library not found: $lib"
+                log_warn "Shadow library not found: $lib"
             fi
         fi
     done
 
     # Verify shadow can find its libraries
     if "$MONEROSIM_BIN/shadow" --version &>/dev/null; then
-        print_success "Shadow libraries configured correctly"
+        log_ok "Shadow libraries configured correctly"
     else
-        print_error "Shadow cannot find required libraries"
-        print_error "Please check $MONEROSIM_LIB for missing .so files"
+        log_err "Shadow cannot find required libraries"
+        log_err "Please check $MONEROSIM_LIB for missing .so files"
     fi
 fi
 
 # Step 5: Clone Monero Source Code
-print_header "Step 5: Setting Up Monero Source Code"
+log_header "Step 5: Setting Up Monero Source Code"
 
 # Setup directory for Monero
 MONERO_DIR="$SCRIPT_DIR/sibling_repos/monero"
@@ -776,21 +753,21 @@ MONERO_REPO="https://github.com/monero-project/monero.git"
 
 mkdir -p "$SCRIPT_DIR/sibling_repos"
 
-print_status "Setting up official Monero source..."
+log_info "Setting up official Monero source..."
 
 # Check if monero directory already exists
 if [[ -d "$MONERO_DIR" ]] && [[ -d "$MONERO_DIR/.git" ]]; then
-    print_status "Found existing Monero repository"
+    log_info "Found existing Monero repository"
     cd "$MONERO_DIR"
 
     # Update to latest
-    print_status "Pulling latest changes..."
-    git pull origin master || git pull origin main || print_warning "Could not pull latest changes"
+    log_info "Pulling latest changes..."
+    git pull origin master || git pull origin main || log_warn "Could not pull latest changes"
 
     cd "$SCRIPT_DIR"
 else
-    print_status "Cloning official Monero repository..."
-    print_status "This may take a few minutes..."
+    log_info "Cloning official Monero repository..."
+    log_info "This may take a few minutes..."
 
     # Remove any existing incomplete directory
     if [[ -d "$MONERO_DIR" ]]; then
@@ -801,34 +778,34 @@ else
     git clone --recursive "$MONERO_REPO" "$MONERO_DIR"
 
     if [[ $? -ne 0 ]]; then
-        print_error "Failed to clone Monero repository"
-        print_error "Please check your internet connection and try again"
+        log_err "Failed to clone Monero repository"
+        log_err "Please check your internet connection and try again"
         exit 1
     fi
 
-    print_success "Successfully cloned official Monero repository"
+    log_ok "Successfully cloned official Monero repository"
 fi
 
 # Initialize/update submodules
-print_status "Initializing Monero submodules..."
+log_info "Initializing Monero submodules..."
 cd "$MONERO_DIR"
 git submodule update --init --recursive
 
 # Return to monerosim directory explicitly
 cd "$SCRIPT_DIR"
-print_success "Monero source ready"
+log_ok "Monero source ready"
 
 # Step 6: Build Monero Binaries
-print_header "Step 6: Building Monero Binaries"
+log_header "Step 6: Building Monero Binaries"
 
 # Check for Monero build dependencies
-print_status "Checking Monero build dependencies..."
+log_info "Checking Monero build dependencies..."
 MONERO_DEPS_MISSING=false
 
 # Check key libraries using pkg-config
 check_pkg() {
     if ! pkg-config --exists "$1" 2>/dev/null; then
-        print_warning "Missing: $1"
+        log_warn "Missing: $1"
         MONERO_DEPS_MISSING=true
     fi
 }
@@ -840,7 +817,7 @@ check_pkg "openssl"
 
 # Install if needed
 if [[ "$MONERO_DEPS_MISSING" == "true" ]]; then
-    print_status "Installing Monero build dependencies..."
+    log_info "Installing Monero build dependencies..."
 
     if command -v apt-get &> /dev/null; then
         sudo apt-get update && sudo apt-get install -y \
@@ -881,19 +858,19 @@ if [[ "$MONERO_DEPS_MISSING" == "true" ]]; then
             libhidapi-devel libusb-1_0-devel libprotobuf-devel protobuf-devel \
             libudev-devel boost-devel
     else
-        print_error "Could not install Monero dependencies automatically"
-        print_error "Please install libunbound-dev, libsodium-dev, libzmq3-dev, libboost-all-dev"
+        log_err "Could not install Monero dependencies automatically"
+        log_err "Please install libunbound-dev, libsodium-dev, libzmq3-dev, libboost-all-dev"
         exit 1
     fi
-    print_success "Monero build dependencies installed"
+    log_ok "Monero build dependencies installed"
 fi
 
 if [[ "$FULL_MONERO_COMPILE" == "true" ]]; then
-    print_status "Building ALL Monero binaries..."
-    print_status "This will take 15-30 minutes depending on system..."
+    log_info "Building ALL Monero binaries..."
+    log_info "This will take 15-30 minutes depending on system..."
 else
-    print_status "Building Monero binaries (monerod and monero-wallet-rpc only)..."
-    print_status "This will take 5-15 minutes depending on system..."
+    log_info "Building Monero binaries (monerod and monero-wallet-rpc only)..."
+    log_info "This will take 5-15 minutes depending on system..."
 fi
 
 # Navigate to monero directory
@@ -904,11 +881,11 @@ mkdir -p build/release
 cd build/release
 
 # Configure with CMake
-print_status "Configuring Monero build..."
+log_info "Configuring Monero build..."
 cmake -DCMAKE_BUILD_TYPE=Release ../..
 
 if [[ $? -ne 0 ]]; then
-    print_error "Failed to configure Monero with CMake"
+    log_err "Failed to configure Monero with CMake"
     exit 1
 fi
 
@@ -917,21 +894,21 @@ fi
 # cc1plus on low-memory machines. blockchain.cpp + bulletproofs_plus.cc
 # can each peak at ~2GB during compile.
 if [[ "$FULL_MONERO_COMPILE" == "true" ]]; then
-    print_status "Compiling ALL Monero binaries (--full-monero-compile enabled, -j${BUILD_JOBS})..."
+    log_info "Compiling ALL Monero binaries (--full-monero-compile enabled, -j${BUILD_JOBS})..."
     make -j"$BUILD_JOBS"
 else
     # Build only the binaries we need (daemon and wallet_rpc_server)
     # This is much faster than building everything
-    print_status "Compiling monerod and monero-wallet-rpc only (use --full-monero-compile for all, -j${BUILD_JOBS})..."
+    log_info "Compiling monerod and monero-wallet-rpc only (use --full-monero-compile for all, -j${BUILD_JOBS})..."
     make -j"$BUILD_JOBS" daemon wallet_rpc_server
 fi
 
 if [[ $? -ne 0 ]]; then
-    print_error "Failed to build Monero binaries"
+    log_err "Failed to build Monero binaries"
     exit 1
 fi
 
-print_success "Monero binaries built successfully"
+log_ok "Monero binaries built successfully"
 
 # Return to script directory
 cd "$SCRIPT_DIR"
@@ -940,16 +917,16 @@ cd "$SCRIPT_DIR"
 MONEROD_BINARIES=()
 if [[ -f "$MONERO_DIR/build/release/bin/monerod" ]]; then
     MONEROD_BINARIES+=("$MONERO_DIR/build/release/bin/monerod")
-    print_success "Found Monero binary: $MONERO_DIR/build/release/bin/monerod"
+    log_ok "Found Monero binary: $MONERO_DIR/build/release/bin/monerod"
 else
     # Check for other possible locations
     FOUND_BINARY=$(find "$MONERO_DIR" -name monerod -type f -executable 2>/dev/null | head -n1)
     if [[ -n "$FOUND_BINARY" ]]; then
         MONEROD_BINARIES+=("$FOUND_BINARY")
-        print_success "Found Monero binary: $FOUND_BINARY"
+        log_ok "Found Monero binary: $FOUND_BINARY"
     else
-        print_error "No Monero binaries found after build"
-        print_error "Build may have failed - check the CMake and make output above"
+        log_err "No Monero binaries found after build"
+        log_err "Build may have failed - check the CMake and make output above"
         exit 1
     fi
 fi
@@ -958,71 +935,71 @@ fi
 MONERO_WALLET_BINARIES=()
 if [[ -f "$MONERO_DIR/build/release/bin/monero-wallet-rpc" ]]; then
     MONERO_WALLET_BINARIES+=("$MONERO_DIR/build/release/bin/monero-wallet-rpc")
-    print_success "Found Monero wallet binary: $MONERO_DIR/build/release/bin/monero-wallet-rpc"
+    log_ok "Found Monero wallet binary: $MONERO_DIR/build/release/bin/monero-wallet-rpc"
 else
     # Check for other possible locations
     FOUND_WALLET_BINARY=$(find "$MONERO_DIR" -name monero-wallet-rpc -type f -executable 2>/dev/null | head -n1)
     if [[ -n "$FOUND_WALLET_BINARY" ]]; then
         MONERO_WALLET_BINARIES+=("$FOUND_WALLET_BINARY")
-        print_success "Found Monero wallet binary: $FOUND_WALLET_BINARY"
+        log_ok "Found Monero wallet binary: $FOUND_WALLET_BINARY"
     else
-        print_warning "No Monero wallet binary found after build"
+        log_warn "No Monero wallet binary found after build"
     fi
 fi
 
 # Step 7: Install Monero binaries to ~/.monerosim/bin
-print_header "Step 7: Installing Monero Binaries"
+log_header "Step 7: Installing Monero Binaries"
 
-print_status "Installing Monero binaries to $MONEROSIM_BIN..."
+log_info "Installing Monero binaries to $MONEROSIM_BIN..."
 
 # Install the monerod binary
 MAIN_BINARY="${MONEROD_BINARIES[0]}"
-print_status "Installing monerod binary: $MAIN_BINARY -> $MONEROSIM_BIN/monerod"
+log_info "Installing monerod binary: $MAIN_BINARY -> $MONEROSIM_BIN/monerod"
 cp "$MAIN_BINARY" "$MONEROSIM_BIN/monerod"
 chmod +x "$MONEROSIM_BIN/monerod"
 
 # Install monero-wallet-rpc if found
 if [[ ${#MONERO_WALLET_BINARIES[@]} -gt 0 ]]; then
     MAIN_WALLET_BINARY="${MONERO_WALLET_BINARIES[0]}"
-    print_status "Installing monero-wallet-rpc binary: $MAIN_WALLET_BINARY -> $MONEROSIM_BIN/monero-wallet-rpc"
+    log_info "Installing monero-wallet-rpc binary: $MAIN_WALLET_BINARY -> $MONEROSIM_BIN/monero-wallet-rpc"
     cp "$MAIN_WALLET_BINARY" "$MONEROSIM_BIN/monero-wallet-rpc"
     chmod +x "$MONEROSIM_BIN/monero-wallet-rpc"
 fi
 
 # Verify the binaries work
 if "$MONEROSIM_BIN/monerod" --version >/dev/null 2>&1; then
-    print_success "Successfully installed monerod to $MONEROSIM_BIN/"
+    log_ok "Successfully installed monerod to $MONEROSIM_BIN/"
 else
-    print_error "monerod installation may have issues"
+    log_err "monerod installation may have issues"
 fi
 
 # Verify the wallet binary works if installed
 if [[ -f "$MONEROSIM_BIN/monero-wallet-rpc" ]] && "$MONEROSIM_BIN/monero-wallet-rpc" --version >/dev/null 2>&1; then
-    print_success "Successfully installed monero-wallet-rpc to $MONEROSIM_BIN/"
+    log_ok "Successfully installed monero-wallet-rpc to $MONEROSIM_BIN/"
 else
-    print_warning "monero-wallet-rpc installation may have issues"
+    log_warn "monero-wallet-rpc installation may have issues"
 fi
 
 # Step 8: Generate Shadow configuration
-print_header "Step 8: Generating Shadow Configuration"
+log_header "Step 8: Generating Shadow Configuration"
 
-print_status "Generating Shadow configuration from test_configs/quickstart.yaml..."
+log_info "Generating Shadow configuration from test_configs/quickstart.yaml..."
 
 # Ensure we're in the right directory and the binary exists
 cd "$SCRIPT_DIR"
 if [[ ! -f "./target/release/monerosim" ]]; then
-    print_error "MoneroSim binary not found at ./target/release/monerosim"
-    print_error "Current directory: $(pwd)"
-    print_error "Please ensure MoneroSim was built successfully"
+    log_err "MoneroSim binary not found at ./target/release/monerosim"
+    log_err "Current directory: $(pwd)"
+    log_err "Please ensure MoneroSim was built successfully"
     exit 1
 fi
 
 ./target/release/monerosim --config test_configs/quickstart.yaml --output shadow_output
 
 if [[ $? -eq 0 ]] && [[ -f "shadow_output/shadow_agents.yaml" ]]; then
-    print_success "Shadow configuration generated successfully"
+    log_ok "Shadow configuration generated successfully"
 else
-    print_error "Failed to generate Shadow configuration"
+    log_err "Failed to generate Shadow configuration"
     exit 1
 fi
 
@@ -1032,23 +1009,23 @@ fi
 # guardrail to predict wall time and warn if a scenario won't fit.
 # If we don't do it here, it will run lazily (with ~30 s pause) the
 # first time someone generates/expands a scenario.
-print_header "Step 9: Calibrating Crypto Timing"
-print_status "Measuring crypto verification time (~30 s)..."
+log_header "Step 9: Calibrating Crypto Timing"
+log_info "Measuring crypto verification time (~30 s)..."
 if python3 -m scripts.calibrate; then
-    print_success "Calibration saved to ~/.monerosim/calibration.json"
+    log_ok "Calibration saved to ~/.monerosim/calibration.json"
 else
-    print_warning "Calibration failed — will retry lazily on first config expansion."
-    print_warning "Auto-config will fall back to pessimistic defaults until then."
+    log_warn "Calibration failed — will retry lazily on first config expansion."
+    log_warn "Auto-config will fall back to pessimistic defaults until then."
 fi
 
 # Step 10: Optional Test Simulation
-print_header "Step 10: Optional Test Simulation"
+log_header "Step 10: Optional Test Simulation"
 
-print_status "Setup is complete! You can now run a test simulation to verify everything works."
-print_warning "The test simulation (test_configs/quickstart.yaml) runs for 6 hours simulated time"
-print_warning "This is a quickstart test with 10 agents (~10-15 min wall clock)"
-print_status ""
-print_status "Choose an option:"
+log_info "Setup is complete! You can now run a test simulation to verify everything works."
+log_warn "The test simulation (test_configs/quickstart.yaml) runs for 6 hours simulated time"
+log_warn "This is a quickstart test with 10 agents (~10-15 min wall clock)"
+log_info ""
+log_info "Choose an option:"
 echo "  y/Y - Run the full test simulation"
 echo "  n/N - Skip test simulation and exit setup"
 echo ""
@@ -1057,43 +1034,43 @@ read -r -t 0.1 -N 1000 _ 2>/dev/null || true
 read -p "Run test simulation? (y/N): " -r
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_status "Delegating to ./run_sim.sh — the same path users run day-to-day."
-    print_status "run_sim.sh handles preflight, ramdisk, archiving, OOM detection,"
-    print_status "and live progress display. Scroll up after it finishes for the summary."
+    log_info "Delegating to ./run_sim.sh — the same path users run day-to-day."
+    log_info "run_sim.sh handles preflight, ramdisk, archiving, OOM detection,"
+    log_info "and live progress display. Scroll up after it finishes for the summary."
     echo ""
 
     if ./run_sim.sh --config test_configs/quickstart.yaml; then
-        print_success "Test simulation completed successfully."
-        print_status "Per-host logs and run summary archived under archived_runs/<latest>/."
-        print_status "For deeper validation: ./scripts/smoke_test.sh quickstart"
+        log_ok "Test simulation completed successfully."
+        log_info "Per-host logs and run summary archived under archived_runs/<latest>/."
+        log_info "For deeper validation: ./scripts/smoke_test.sh quickstart"
     else
-        print_error "Test simulation failed (run_sim.sh exited non-zero)."
-        print_status "Check archived_runs/<latest>/ for shadow.log, monerosim.log, and per-host stdout."
+        log_err "Test simulation failed (run_sim.sh exited non-zero)."
+        log_info "Check archived_runs/<latest>/ for shadow.log, monerosim.log, and per-host stdout."
         exit 1
     fi
 else
-    print_status "Skipping test simulation as requested."
+    log_info "Skipping test simulation as requested."
 fi
 
 # Final success message
-print_header "Setup Complete!"
-print_success "MoneroSim is now ready to use!"
+log_header "Setup Complete!"
+log_ok "MoneroSim is now ready to use!"
 echo ""
-print_status "Verify installation:"
+log_info "Verify installation:"
 echo "  ~/.monerosim/bin/shadow --version      # shadowformonero version"
 echo "  ~/.monerosim/bin/monerod --version     # Monero daemon version"
 echo "  ./target/release/monerosim --help      # monerosim CLI usage"
 echo ""
-print_status "Run your first simulation:"
+log_info "Run your first simulation:"
 echo "  ./run_sim.sh --config test_configs/quickstart.yaml           # Quick test (~10-15 min)"
 echo ""
-print_status "Monitor a running simulation:"
+log_info "Monitor a running simulation:"
 echo "  tail shadow.log                        # Shadow progress"
 echo "  ./scripts/check_sim.sh                 # Detailed status dashboard"
 echo ""
-print_status "Installed binaries: $MONEROSIM_BIN/"
+log_info "Installed binaries: $MONEROSIM_BIN/"
 echo "  - shadow"
 echo "  - monerod"
 echo "  - monero-wallet-rpc"
 echo ""
-print_success "Happy simulating!"
+log_ok "Happy simulating!"

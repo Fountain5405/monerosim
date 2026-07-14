@@ -14,13 +14,13 @@
 set -uo pipefail
 
 # ---------- pretty output ----------
-source "$(dirname "${BASH_SOURCE[0]}")/scripts/colors.sh"
+# Colors + shared logging vocabulary (log_info/log_ok/log_warn/log_err).
+# say/hr stay local: they're plain prose/rule primitives for the wizard's
+# screens, not semantic log levels, so they aren't part of the shared
+# vocabulary being consolidated here.
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
 
 say()  { printf "%b\n" "$*"; }
-info() { printf "${CYAN}%s${NC}\n" "$*"; }
-ok()   { printf "${GREEN}%s${NC}\n" "$*"; }
-warn() { printf "${YELLOW}%s${NC}\n" "$*"; }
-err()  { printf "${RED}%s${NC}\n" "$*"; }
 hr()   { printf "${DIM}%s${NC}\n" "----------------------------------------------------------------------"; }
 
 # Clear + title bar — every screen starts with this so terminals don't fill up.
@@ -65,10 +65,10 @@ prompt_run_setup() {
         ./setup.sh
         local rc=$?
         if [[ $rc -ne 0 ]]; then
-            err "setup.sh exited with code $rc. Re-run this wizard once it completes."
+            log_err "setup.sh exited with code $rc. Re-run this wizard once it completes."
             exit $rc
         fi
-        ok "Setup done."
+        log_ok "Setup done."
         # setup.sh's Step 10 optionally runs the quickstart simulation, which
         # ends by printing a Simulation Results summary box that the user
         # almost certainly wants to read. Block on Enter rather than auto-
@@ -79,7 +79,7 @@ prompt_run_setup() {
         pause "Press Enter to see the menu (scroll up first to review the setup + quickstart output)..."
     else
         say ""
-        info "When ready: ./setup.sh    then: ./start_here.sh"
+        log_info "When ready: ./setup.sh    then: ./start_here.sh"
         exit 0
     fi
 }
@@ -93,12 +93,12 @@ open_in_editor() {
         elif command -v vim  >/dev/null 2>&1; then ed=vim
         elif command -v vi   >/dev/null 2>&1; then ed=vi
         else
-            warn "No editor found. Set \$EDITOR or open this file yourself:"
+            log_warn "No editor found. Set \$EDITOR or open this file yourself:"
             say  "  $file"
             return 1
         fi
     fi
-    info "Opening $file in $ed..."
+    log_info "Opening $file in $ed..."
     "$ed" "$file"
 }
 
@@ -172,12 +172,12 @@ run_ai_config() {
     say ""
     say "Output: a ${BOLD}scenario.yaml${NC} + expanded ${BOLD}config.yaml${NC}."
     say ""
-    warn "Default LLM backend runs on an old GPU — ~5 min per scenario."
+    log_warn "Default LLM backend runs on an old GPU — ~5 min per scenario."
     say ""
     read -r -p "Press Enter to launch, or Ctrl-C to cancel... " _
     ./smart_config_tool.sh
     say ""
-    ok "AI tool finished. Press Enter to return to the menu..."
+    log_ok "AI tool finished. Press Enter to return to the menu..."
     read -r _
 }
 
@@ -189,18 +189,18 @@ run_scenario_template() {
     say ""
     read -r -p "Name for your new scenario (no extension, e.g. 'myrun'): " name
     if [[ -z "$name" ]]; then
-        err "No name given."
+        log_err "No name given."
         pause
         return 1
     fi
     local out="test_configs/${name}.scenario.yaml"
     if [[ -e "$out" ]]; then
-        warn "$out already exists."
+        log_warn "$out already exists."
         read -r -p "Overwrite? [y/N] " ans
         [[ "$ans" =~ ^[Yy] ]] || { pause; return 1; }
     fi
     cp "$SCENARIO_TEMPLATE" "$out"
-    ok "Created $out"
+    log_ok "Created $out"
     say ""
     say "The template comments explain every field. Tweak agent counts,"
     say "hashrates, durations — or replace ${BOLD}auto${NC} with explicit values."
@@ -216,16 +216,16 @@ run_scenario_template() {
         # shellcheck disable=SC1091
         source venv/bin/activate
         if ! python -m scripts.scenario_parser "$out" -o "$expanded"; then
-            err "Expansion failed. Fix the scenario and re-run:"
+            log_err "Expansion failed. Fix the scenario and re-run:"
             say "  python -m scripts.scenario_parser $out -o $expanded"
             pause
             return 1
         fi
-        ok "Expanded → $expanded"
+        log_ok "Expanded → $expanded"
         offer_run "$expanded"
     else
         say ""
-        info "When ready:"
+        log_info "When ready:"
         say  "  python -m scripts.scenario_parser $out -o $expanded"
         say  "  ./run_sim.sh --config $expanded"
         pause
@@ -240,18 +240,18 @@ run_config_template() {
     say ""
     read -r -p "Name for your new config (no extension, e.g. 'myrun'): " name
     if [[ -z "$name" ]]; then
-        err "No name given."
+        log_err "No name given."
         pause
         return 1
     fi
     local out="test_configs/${name}.yaml"
     if [[ -e "$out" ]]; then
-        warn "$out already exists."
+        log_warn "$out already exists."
         read -r -p "Overwrite? [y/N] " ans
         [[ "$ans" =~ ^[Yy] ]] || { pause; return 1; }
     fi
     cp "$CONFIG_TEMPLATE" "$out"
-    ok "Created $out"
+    log_ok "Created $out"
     pause "Press Enter to open the editor..."
     open_in_editor "$out"
     offer_run "$out"
@@ -267,11 +267,11 @@ offer_run() {
     if [[ "$ans" =~ ^[Yy] ]]; then
         ./run_sim.sh --config "$cfg"
         say ""
-        ok "Simulation finished. Press Enter to return to the menu..."
+        log_ok "Simulation finished. Press Enter to return to the menu..."
         read -r _
     else
         say ""
-        info "When ready: ./run_sim.sh --config $cfg"
+        log_info "When ready: ./run_sim.sh --config $cfg"
         pause
     fi
 }
@@ -285,14 +285,14 @@ run_prune_archives() {
     screen "Prune archived runs"
 
     if [[ ! -d archived_runs ]] || [[ -z "$(ls -A archived_runs 2>/dev/null)" ]]; then
-        warn "No archives in ./archived_runs/."
+        log_warn "No archives in ./archived_runs/."
         pause
         return
     fi
 
     # Build a sized, indexed list. du is slow on big trees, so show a
     # one-line "scanning…" hint while it runs.
-    info "Scanning archive sizes..."
+    log_info "Scanning archive sizes..."
     mapfile -t lines < <(
         du -sb archived_runs/*/ 2>/dev/null \
             | sort -rn \
@@ -307,7 +307,7 @@ run_prune_archives() {
     )
 
     if [[ ${#lines[@]} -eq 0 ]]; then
-        warn "No archives found."
+        log_warn "No archives found."
         pause
         return
     fi
@@ -359,14 +359,14 @@ run_prune_archives() {
                 if [[ "$p" =~ ^[0-9]+$ ]] && (( p >= 1 && p <= ${#paths[@]} )); then
                     chosen+=("${paths[$((p - 1))]}")
                 else
-                    warn "Skipping invalid entry: $p"
+                    log_warn "Skipping invalid entry: $p"
                 fi
             done
             ;;
     esac
 
     if [[ ${#chosen[@]} -eq 0 ]]; then
-        warn "Nothing selected."
+        log_warn "Nothing selected."
         pause
         return
     fi
@@ -377,7 +377,7 @@ run_prune_archives() {
     say ""
     read -r -p "Proceed? [y/N] " ans
     if [[ ! "$ans" =~ ^[Yy] ]]; then
-        info "Cancelled."
+        log_info "Cancelled."
         pause
         return
     fi
@@ -388,14 +388,14 @@ run_prune_archives() {
         before=$(du -sb "$c" 2>/dev/null | awk '{print $1}')
         before_total=$((before_total + before))
         say ""
-        info "Pruning ${c##*/}..."
+        log_info "Pruning ${c##*/}..."
         if scripts/prune_archives.sh "$c"; then
             local after
             after=$(du -sb "$c" 2>/dev/null | awk '{print $1}')
             after_total=$((after_total + after))
-            ok "Done."
+            log_ok "Done."
         else
-            err "prune_archives.sh failed for $c. Skipping rest."
+            log_err "prune_archives.sh failed for $c. Skipping rest."
             break
         fi
     done
@@ -420,12 +420,12 @@ run_delete_archives() {
     screen "Delete archived runs"
 
     if [[ ! -d archived_runs ]] || [[ -z "$(ls -A archived_runs 2>/dev/null)" ]]; then
-        warn "No archives in ./archived_runs/."
+        log_warn "No archives in ./archived_runs/."
         pause
         return
     fi
 
-    info "Scanning archive sizes..."
+    log_info "Scanning archive sizes..."
     mapfile -t lines < <(
         du -sb archived_runs/*/ 2>/dev/null \
             | sort -rn \
@@ -439,7 +439,7 @@ run_delete_archives() {
     )
 
     if [[ ${#lines[@]} -eq 0 ]]; then
-        warn "No archives found."
+        log_warn "No archives found."
         pause
         return
     fi
@@ -479,14 +479,14 @@ run_delete_archives() {
                 if [[ "$p" =~ ^[0-9]+$ ]] && (( p >= 1 && p <= ${#paths[@]} )); then
                     chosen+=("${paths[$((p - 1))]}")
                 else
-                    warn "Skipping invalid entry: $p"
+                    log_warn "Skipping invalid entry: $p"
                 fi
             done
             ;;
     esac
 
     if [[ ${#chosen[@]} -eq 0 ]]; then
-        warn "Nothing selected."
+        log_warn "Nothing selected."
         pause
         return
     fi
@@ -508,7 +508,7 @@ run_delete_archives() {
     say "${BOLD}${RED}This cannot be undone.${NC}"
     read -r -p "Type ${BOLD}DELETE${NC} (uppercase) to confirm, anything else to cancel: " ans
     if [[ "$ans" != "DELETE" ]]; then
-        info "Cancelled."
+        log_info "Cancelled."
         pause
         return
     fi
@@ -516,12 +516,12 @@ run_delete_archives() {
     local deleted=0
     for c in "${chosen[@]}"; do
         say ""
-        info "Deleting ${c##*/}..."
+        log_info "Deleting ${c##*/}..."
         if rm -rf -- "$c"; then
             deleted=$((deleted + 1))
-            ok "Done."
+            log_ok "Done."
         else
-            err "rm -rf failed for $c. Skipping rest."
+            log_err "rm -rf failed for $c. Skipping rest."
             break
         fi
     done
@@ -542,7 +542,7 @@ run_rust_analysis() {
 
     local bin="./target/release/tx-analyzer"
     if [[ ! -x "$bin" ]]; then
-        err "tx-analyzer binary not found at $bin."
+        log_err "tx-analyzer binary not found at $bin."
         say "Build it with: ${DIM}cargo build --release${NC}"
         pause
         return
@@ -571,7 +571,7 @@ run_rust_analysis() {
     fi
 
     if [[ ${#targets[@]} -eq 0 ]]; then
-        warn "No shadow.data/ in cwd and no entries in archived_runs/."
+        log_warn "No shadow.data/ in cwd and no entries in archived_runs/."
         say "Run a simulation first, then come back."
         pause
         return
@@ -592,7 +592,7 @@ run_rust_analysis() {
         m|"") return ;;
     esac
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || (( sel < 1 || sel > ${#targets[@]} )); then
-        err "Invalid selection."
+        log_err "Invalid selection."
         pause
         return
     fi
@@ -610,7 +610,7 @@ run_rust_analysis() {
         log_dir="$target/daemon_logs"
         out_dir="$target/analysis_output"
         if [[ ! -d "$data_dir" ]] || [[ ! -d "$log_dir" ]]; then
-            err "Archive missing shadow.data/ or daemon_logs/ — was it pruned?"
+            log_err "Archive missing shadow.data/ or daemon_logs/ — was it pruned?"
             pause
             return
         fi
@@ -647,7 +647,7 @@ run_rust_analysis() {
         9)     cmd="upgrade-analysis" ;;
         10)    cmd="tx-relay-v2" ;;
         m)     return ;;
-        *)     err "Invalid selection."; pause; return ;;
+        *)     log_err "Invalid selection."; pause; return ;;
     esac
 
     # ----- run it -----
@@ -661,12 +661,12 @@ run_rust_analysis() {
     say ""
     if "$bin" "${args[@]}"; then
         say ""
-        ok "Analysis complete."
+        log_ok "Analysis complete."
         say "Output: ${BOLD}$out_dir/${NC}"
     else
         local rc=$?
         say ""
-        err "tx-analyzer exited with code $rc."
+        log_err "tx-analyzer exited with code $rc."
     fi
     pause
 }
@@ -692,7 +692,7 @@ run_setup_again() {
     say "  • Recreates the Python venv"
     say "  • Installs everything to ${DIM}~/.monerosim/${NC}"
     say ""
-    warn "Takes 30-60 minutes on a typical laptop. Don't close the terminal."
+    log_warn "Takes 30-60 minutes on a typical laptop. Don't close the terminal."
     say ""
     say "${BOLD}Pick a mode${NC}"
     say "  ${BOLD}1)${NC} Normal     — skips Monero rebuild if binaries already exist"
@@ -706,24 +706,24 @@ run_setup_again() {
         ""|1) ;;
         2)    flags+=(--full-monero-compile) ;;
         3)
-            warn "${BOLD}Clean mode wipes venv/, shadow_output/, and target/${NC} — it does not touch ${DIM}~/.monerosim/${NC} or your installed binaries."
+            log_warn "${BOLD}Clean mode wipes venv/, shadow_output/, and target/${NC} — it does not touch ${DIM}~/.monerosim/${NC} or your installed binaries."
             read -r -p "Are you sure? [y/N] " ans
-            [[ "$ans" =~ ^[Yy] ]] || { info "Cancelled."; pause; return; }
+            [[ "$ans" =~ ^[Yy] ]] || { log_info "Cancelled."; pause; return; }
             flags+=(--clean)
             ;;
         M)    return ;;
-        *)    err "Invalid choice."; pause; return ;;
+        *)    log_err "Invalid choice."; pause; return ;;
     esac
     say ""
-    info "Launching: ${DIM}./setup.sh ${flags[*]}${NC}"
+    log_info "Launching: ${DIM}./setup.sh ${flags[*]}${NC}"
     say ""
     if ./setup.sh "${flags[@]}"; then
         say ""
-        ok "Setup finished."
+        log_ok "Setup finished."
     else
         local rc=$?
         say ""
-        err "setup.sh exited with code $rc. Scroll up for the failing step."
+        log_err "setup.sh exited with code $rc. Scroll up for the failing step."
     fi
     pause
 }
@@ -761,18 +761,18 @@ run_update() {
         3)    flags+=(--all) ;;
         4)    flags+=(--all --rebuild) ;;
         M)    return ;;
-        *)    err "Invalid choice."; pause; return ;;
+        *)    log_err "Invalid choice."; pause; return ;;
     esac
     say ""
-    info "Launching: ${DIM}./update.sh ${flags[*]}${NC}"
+    log_info "Launching: ${DIM}./update.sh ${flags[*]}${NC}"
     say ""
     if ./update.sh "${flags[@]}"; then
         say ""
-        ok "Update finished."
+        log_ok "Update finished."
     else
         local rc=$?
         say ""
-        err "update.sh exited with code $rc. Scroll up for details."
+        log_err "update.sh exited with code $rc. Scroll up for details."
     fi
     pause
 }
@@ -796,7 +796,7 @@ advanced_menu() {
             U)    run_update ;;
             S)    run_setup_again ;;
             M|"") return ;;
-            *)    warn "Please choose R, P, D, U, S, or M."; sleep 1 ;;
+            *)    log_warn "Please choose R, P, D, U, S, or M."; sleep 1 ;;
         esac
     done
 }
@@ -816,7 +816,7 @@ create_menu() {
             B) run_scenario_template ;;
             C) run_config_template ;;
             M|"") return ;;
-            *)   warn "Please choose A, B, C, or M."; sleep 1 ;;
+            *)   log_warn "Please choose A, B, C, or M."; sleep 1 ;;
         esac
     done
 }
@@ -841,7 +841,7 @@ top_menu() {
             C) create_menu ;;
             A) advanced_menu ;;
             Q|"") say "OK, exiting. Run ./start_here.sh anytime."; return ;;
-            *)   warn "Please choose L, C, A, or Q."; sleep 1 ;;
+            *)   log_warn "Please choose L, C, A, or Q."; sleep 1 ;;
         esac
     done
 }
