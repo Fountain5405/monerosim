@@ -86,7 +86,9 @@ pub fn generate_text_report(report: &FullAnalysisReport, output_path: &Path) -> 
         lines.push(String::new());
 
         if !spy.vulnerable_senders.is_empty() {
-            lines.push("Most Observable Senders:".to_string());
+            lines.push(
+                "Most Observable Senders (heuristic confidence; unvalidated weights):".to_string(),
+            );
             for (i, sender) in spy.vulnerable_senders.iter().take(5).enumerate() {
                 lines.push(format!(
                     "  {}. {}: {} high-confidence inferences ({:.0}% accurate)",

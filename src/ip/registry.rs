@@ -6,6 +6,23 @@
 
 use std::collections::{HashMap, HashSet};
 
+/// First octet per geographic region for the dynamic/fallback IP path in
+/// `assign_ip`, indexed by `agent_number % 6`
+/// (0=NA, 1=Europe, 2=Asia, 3=South America, 4=Africa, 5=Oceania).
+///
+/// INVARIANT: every octet here MUST be absent from all of `as_manager.rs`'s
+/// per-region octet tables (NA/EU/ASIA/SA/AF/OC_OCTETS) and distinct from each
+/// other. The two IP-realism systems run side by side in GML+Dynamic mode; a
+/// shared first octet lets them mint the same /24 for different agents (a
+/// collision that today is silently diverted to a fallback host). Enforced by
+/// the `region_octet_tables_are_pairwise_disjoint` test in `as_manager.rs`.
+///
+/// All octets are public (outside epee::is_ip_local's 10/8, 172.16/12,
+/// 192.168/16) and avoid the /8s of Monero's hardcoded fallback seeds
+/// (5, 37, 88, 176, 192.99), so no --allow-local-ip is needed and the
+/// dedicated seed hosts never collide with these geographic assignments.
+pub(crate) const REGISTRY_REGION_OCTETS: [u8; 6] = [72, 91, 116, 45, 156, 210];
+
 /// Agent type classification for IP allocation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AgentType {
@@ -93,36 +110,15 @@ impl GlobalIpRegistry {
             0
         };
 
-        // Global IP distribution - simulate different geographic regions across multiple /16 subnets.
-        //
-        // All ranges below are public (not in epee::is_ip_local, which
-        // covers 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16). Using
-        // public ranges means we don't need monerod's --allow-local-ip
-        // flag, which is the default-off "debug" escape hatch.
-        //
-        // We also avoid /8s where Monero's hardcoded fallback seed IPs
-        // live (5.x, 37.x, 88.x, 176.x, 192.99.x) so that the dedicated
-        // monero-seed-NNN hosts don't risk collision with geographic
-        // assignments.
-        //
-        // North America: 24.x.x.x (ARIN)
-        // Europe:        80.x.x.x (RIPE)
-        // Asia:          203.x.x.x (APNIC)
-        // South America: 200.x.x.x (LACNIC)
-        // Africa:        197.x.x.x (AFRINIC)
-        // Oceania:       202.x.x.x (APNIC)
-
-        let region = agent_number % 6;
+        // Global IP distribution - simulate different geographic regions across
+        // multiple /16 subnets. The per-region first octet comes from
+        // REGISTRY_REGION_OCTETS (see that const for the public-range and
+        // disjoint-with-as_manager rationale):
+        //   0 NA=72  1 EU=91  2 Asia=116  3 SA=45  4 Africa=156  5 Oceania=210
+        let region = (agent_number % 6) as usize; // always 0..=5
         let subnet_offset = agent_number / 6;
-        let (octet1, octet2, _region_name) = match region {
-            0 => (24, subnet_offset % 256, "North America"),
-            1 => (80, subnet_offset % 256, "Europe"),
-            2 => (203, subnet_offset % 256, "Asia"),
-            3 => (200, subnet_offset % 256, "South America"),
-            4 => (197, subnet_offset % 256, "Africa"),
-            5 => (202, subnet_offset % 256, "Oceania"),
-            _ => (24, 0, "Default"),
-        };
+        let octet1 = REGISTRY_REGION_OCTETS[region];
+        let octet2 = subnet_offset % 256;
 
         // Create unique subnet and host
         let subnet_octet3 = agent_number % 256;

@@ -13,7 +13,7 @@ experimental:
 hosts:
   miner-001:
     network_node_id: 0
-    ip_addr: 202.166.233.13
+    ip_addr: 210.166.233.13
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -24,11 +24,11 @@ hosts:
       - --prep-blocks-threads=1
       - --max-concurrency=1
       - --max-connections-per-ip=4
-      - --rpc-bind-ip=202.166.233.13
+      - --rpc-bind-ip=210.166.233.13
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=202.166.233.13
+      - --p2p-bind-ip=210.166.233.13
       - --p2p-bind-port=18080
       - --disable-dns-checkpoints
       - --disable-seed-nodes
@@ -50,9 +50,9 @@ hosts:
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
       args:
-      - --daemon-address=http://202.166.233.13:18081
+      - --daemon-address=http://210.166.233.13:18081
       - --rpc-bind-port=18082
-      - --rpc-bind-ip=202.166.233.13
+      - --rpc-bind-ip=210.166.233.13
       - --disable-rpc-login
       - --trusted-daemon
       - --wallet-dir=TMPDIR/shared/miner-001_wallet
@@ -112,7 +112,7 @@ hosts:
     bandwidth_up: '1000000000'
   monitor:
     network_node_id: 0
-    ip_addr: 24.0.0.10
+    ip_addr: 72.0.0.10
     processes:
     - path: /bin/bash
       args:
@@ -135,7 +135,7 @@ hosts:
     bandwidth_up: '1000000000'
   user-001:
     network_node_id: 0
-    ip_addr: 80.0.1.10
+    ip_addr: 91.0.1.10
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -146,14 +146,14 @@ hosts:
       - --prep-blocks-threads=1
       - --max-concurrency=1
       - --max-connections-per-ip=4
-      - --rpc-bind-ip=80.0.1.10
+      - --rpc-bind-ip=91.0.1.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=80.0.1.10
+      - --p2p-bind-ip=91.0.1.10
       - --p2p-bind-port=18080
       - --disable-dns-checkpoints
-      - --seed-node=202.166.233.13:18080
+      - --seed-node=210.166.233.13:18080
       environment:
         DIFFICULTY_CACHE_TTL: '30'
         GLIBC_TUNABLES: glibc.malloc.arena_max=1
@@ -172,9 +172,9 @@ hosts:
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
       args:
-      - --daemon-address=http://80.0.1.10:18081
+      - --daemon-address=http://91.0.1.10:18081
       - --rpc-bind-port=18082
-      - --rpc-bind-ip=80.0.1.10
+      - --rpc-bind-ip=91.0.1.10
       - --disable-rpc-login
       - --trusted-daemon
       - --wallet-dir=TMPDIR/shared/user-001_wallet

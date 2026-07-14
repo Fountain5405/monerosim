@@ -220,7 +220,15 @@ fn analyze_request_response(log_data: &HashMap<String, NodeLogData>) -> RequestR
     }
 }
 
-/// Generate overall assessment of TX relay health
+/// Generate overall assessment of TX relay health.
+///
+/// HEURISTIC — the score starts at 100 and the point deductions below
+/// (2 per % of lost TXs, 10 for low coverage, 15 for a high drop rate) plus
+/// the verdict bands (>=90 NORMALLY, >=70 MINOR, >=50 MODERATE, else SEVERE)
+/// and the 0.8 coverage / 0.1 drop-rate cutoffs are ALL INVENTED. They have no
+/// empirical calibration and are not derived from any model of relay health.
+/// Treat `health_score` and the verdict as an unvalidated indicator, not a
+/// measurement. See docs/ANALYSIS_TOOLS.md ("0% human-verified validity").
 fn generate_assessment(
     protocol_usage: &ProtocolUsageStats,
     delivery_analysis: &TxDeliveryAnalysis,
@@ -317,15 +325,27 @@ fn generate_assessment(
         }
     }
 
-    // Summary
+    // Summary (heuristic verdict — bands are invented, see generate_assessment)
     if health_score >= 90 {
-        findings.insert(0, "TX relay is functioning NORMALLY".to_string());
+        findings.insert(
+            0,
+            "TX relay is functioning NORMALLY (heuristic verdict)".to_string(),
+        );
     } else if health_score >= 70 {
-        findings.insert(0, "TX relay has MINOR issues".to_string());
+        findings.insert(
+            0,
+            "TX relay has MINOR issues (heuristic verdict)".to_string(),
+        );
     } else if health_score >= 50 {
-        findings.insert(0, "TX relay has MODERATE issues".to_string());
+        findings.insert(
+            0,
+            "TX relay has MODERATE issues (heuristic verdict)".to_string(),
+        );
     } else {
-        findings.insert(0, "TX relay has SEVERE issues".to_string());
+        findings.insert(
+            0,
+            "TX relay has SEVERE issues (heuristic verdict)".to_string(),
+        );
     }
 
     TxRelayAssessment {
@@ -393,8 +413,8 @@ pub fn compare_runs(v1_report: &TxRelayV2Report, v2_report: &TxRelayV2Report) ->
     ));
     comparison.push(String::new());
 
-    // Health score comparison
-    comparison.push("Health Assessment:".to_string());
+    // Health score comparison (heuristic; unvalidated weights — see generate_assessment)
+    comparison.push("Health Assessment (heuristic; unvalidated weights):".to_string());
     comparison.push(format!(
         "  V1 run - score: {}/100",
         v1_report.assessment.health_score
@@ -405,7 +425,7 @@ pub fn compare_runs(v1_report: &TxRelayV2Report, v2_report: &TxRelayV2Report) ->
     ));
     comparison.push(String::new());
 
-    // Summary
+    // Summary (heuristic verdict derived from the invented health-score bands)
     let score_diff =
         v2_report.assessment.health_score as i32 - v1_report.assessment.health_score as i32;
     let lost_diff = v2_report.delivery_analysis.txs_potentially_lost.len() as i32
@@ -413,11 +433,11 @@ pub fn compare_runs(v1_report: &TxRelayV2Report, v2_report: &TxRelayV2Report) ->
 
     comparison.push("Summary:".to_string());
     if score_diff > 5 {
-        comparison.push("  V2 protocol shows IMPROVEMENT over V1".to_string());
+        comparison.push("  V2 protocol shows IMPROVEMENT over V1 (heuristic verdict)".to_string());
     } else if score_diff < -5 {
-        comparison.push("  V2 protocol shows REGRESSION from V1".to_string());
+        comparison.push("  V2 protocol shows REGRESSION from V1 (heuristic verdict)".to_string());
     } else {
-        comparison.push("  V2 protocol is EQUIVALENT to V1".to_string());
+        comparison.push("  V2 protocol is EQUIVALENT to V1 (heuristic verdict)".to_string());
     }
 
     if lost_diff > 0 {

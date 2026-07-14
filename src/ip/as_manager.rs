@@ -119,6 +119,48 @@ pub const DEFAULT_REGION_PROPORTIONS: [(AsRegion, f64); 6] = [
     (AsRegion::Oceania, 8.33),
 ];
 
+// -----------------------------------------------------------------------------
+// Per-region first-octet tables for AS-aware /24 allocation.
+//
+// INVARIANT: these six tables MUST be pairwise DISJOINT (no first octet may
+// appear in more than one region) AND must not share any octet with
+// `registry::REGISTRY_REGION_OCTETS` (the separate dynamic/fallback IP path).
+// If two systems mint the same first octet they can produce the same /24 for
+// different agents, silently diverting allocations. The invariant is enforced
+// by the `region_octet_tables_are_pairwise_disjoint` test below; keep it green
+// when editing any table here or the registry map.
+//
+// Octets are drawn from real RIR (IANA) allocations so IPs look
+// geographically plausible; realism is secondary to the disjointness invariant.
+// -----------------------------------------------------------------------------
+
+/// ARIN (North America). Must stay disjoint with the other region tables and
+/// `registry::REGISTRY_REGION_OCTETS`.
+const NA_OCTETS: [u8; 20] = [
+    3, 4, 6, 7, 8, 9, 13, 15, 16, 18, 20, 23, 24, 50, 63, 64, 65, 66, 67, 68,
+];
+/// RIPE NCC (Europe). Must stay disjoint with the other region tables and
+/// `registry::REGISTRY_REGION_OCTETS`.
+const EU_OCTETS: [u8; 20] = [
+    2, 5, 25, 31, 37, 46, 51, 62, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
+];
+/// APNIC (Asia). Must stay disjoint with the other region tables and
+/// `registry::REGISTRY_REGION_OCTETS`. 101/103 live here (not Oceania, which
+/// is also APNIC) — Oceania was moved off them to keep the tables disjoint.
+const ASIA_OCTETS: [u8; 20] = [
+    1, 14, 27, 36, 39, 42, 43, 49, 58, 59, 60, 61, 101, 103, 110, 111, 112, 113, 114, 115,
+];
+/// LACNIC (South America). Must stay disjoint with the other region tables and
+/// `registry::REGISTRY_REGION_OCTETS`.
+const SA_OCTETS: [u8; 10] = [177, 179, 181, 186, 187, 189, 190, 191, 200, 201];
+/// AFRINIC (Africa). Must stay disjoint with the other region tables and
+/// `registry::REGISTRY_REGION_OCTETS`.
+const AF_OCTETS: [u8; 6] = [41, 102, 105, 154, 196, 197];
+/// APNIC/Oceania. Must stay disjoint with the other region tables and
+/// `registry::REGISTRY_REGION_OCTETS`. 101/103 previously overlapped Asia
+/// (both are APNIC) and were replaced with 120/123 to keep the tables disjoint.
+const OC_OCTETS: [u8; 8] = [120, 123, 121, 122, 139, 144, 202, 203];
+
 /// Calculate region boundaries proportionally for any topology size.
 ///
 /// This function divides the node range 0..total_nodes into 6 geographic
@@ -209,17 +251,10 @@ impl AsSubnetManager {
 
     /// Get the /24 subnet base for an AS number.
     ///
-    /// Maps AS numbers to region-appropriate IP ranges to simulate a realistic
-    /// global Internet with diverse IP addresses:
-    ///
-    /// - North America (AS 0-199):     10.x.x.x or 192.168.x.x
-    /// - Europe (AS 200-499):          172.16-31.x.x
-    /// - Asia (AS 500-799):            203.x.x.x
-    /// - South America (AS 800-999):   200.x.x.x
-    /// - Africa (AS 1000-1099):        197.x.x.x
-    /// - Oceania (AS 1100-1199):       202.x.x.x
-    ///
-    /// Each AS gets its own /24 subnet within its region's IP range.
+    /// Maps AS numbers to region-appropriate IP ranges (see the `*_OCTETS`
+    /// tables above) to simulate a realistic global Internet with diverse IP
+    /// addresses. Each region cycles through its RIR-derived first octets;
+    /// each AS gets its own /24 subnet within its region's IP range.
     pub fn get_subnet_base(as_number: &str) -> Option<String> {
         let as_num = Self::parse_as_number(as_number)?;
         let region = AsRegion::from_as_number(as_num);
@@ -238,63 +273,41 @@ impl AsSubnetManager {
         // Map to region-appropriate IP ranges based on real RIR allocations
         // Each region cycles through multiple first octets for diversity
         let offset = region_offset as usize; // Convert to usize for array indexing
+                                             // Cycle the region's first octets; second/third octets extend capacity
+                                             // beyond one /24 per region. Tables are the module-level `*_OCTETS`
+                                             // consts (kept disjoint across regions — see the invariant note above).
         let subnet = match region {
             AsRegion::NorthAmerica => {
-                // ARIN allocations per IANA registry
-                // Source: https://www.iana.org/assignments/ipv4-address-space
-                const NA_OCTETS: [u8; 20] = [
-                    3, 4, 6, 7, 8, 9, 13, 15, 16, 18, 20, 23, 24, 50, 63, 64, 65, 66, 67, 68,
-                ];
                 let first = NA_OCTETS[offset % NA_OCTETS.len()];
                 let second = (offset / NA_OCTETS.len()) % 256;
                 let third = (offset / (NA_OCTETS.len() * 256)) % 256;
                 format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Europe => {
-                // RIPE NCC allocations per IANA registry
-                // Source: https://www.iana.org/assignments/ipv4-address-space
-                const EU_OCTETS: [u8; 20] = [
-                    2, 5, 25, 31, 37, 46, 51, 62, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
-                ];
                 let first = EU_OCTETS[offset % EU_OCTETS.len()];
                 let second = (offset / EU_OCTETS.len()) % 256;
                 let third = (offset / (EU_OCTETS.len() * 256)) % 256;
                 format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Asia => {
-                // APNIC allocations per IANA registry
-                // Source: https://www.iana.org/assignments/ipv4-address-space
-                const ASIA_OCTETS: [u8; 20] = [
-                    1, 14, 27, 36, 39, 42, 43, 49, 58, 59, 60, 61, 101, 103, 110, 111, 112, 113,
-                    114, 115,
-                ];
                 let first = ASIA_OCTETS[offset % ASIA_OCTETS.len()];
                 let second = (offset / ASIA_OCTETS.len()) % 256;
                 let third = (offset / (ASIA_OCTETS.len() * 256)) % 256;
                 format!("{}.{}.{}", first, second, third)
             }
             AsRegion::SouthAmerica => {
-                // LACNIC allocations per IANA registry
-                // Source: https://www.iana.org/assignments/ipv4-address-space
-                const SA_OCTETS: [u8; 10] = [177, 179, 181, 186, 187, 189, 190, 191, 200, 201];
                 let first = SA_OCTETS[offset % SA_OCTETS.len()];
                 let second = (offset / SA_OCTETS.len()) % 256;
                 let third = (offset / (SA_OCTETS.len() * 256)) % 256;
                 format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Africa => {
-                // AFRINIC allocations per IANA registry
-                // Source: https://www.iana.org/assignments/ipv4-address-space
-                const AF_OCTETS: [u8; 6] = [41, 102, 105, 154, 196, 197];
                 let first = AF_OCTETS[offset % AF_OCTETS.len()];
                 let second = (offset / AF_OCTETS.len()) % 256;
                 let third = (offset / (AF_OCTETS.len() * 256)) % 256;
                 format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Oceania => {
-                // APNIC/Oceania allocations per IANA registry
-                // Source: https://www.iana.org/assignments/ipv4-address-space
-                const OC_OCTETS: [u8; 8] = [101, 103, 121, 122, 139, 144, 202, 203];
                 let first = OC_OCTETS[offset % OC_OCTETS.len()];
                 let second = (offset / OC_OCTETS.len()) % 256;
                 let third = (offset / (OC_OCTETS.len() * 256)) % 256;
@@ -457,6 +470,60 @@ mod tests {
         // First agent in AS 500 (Asia, offset 0) -> APNIC octet 1
         let ip4 = manager.assign_as_aware_ip("500").unwrap();
         assert_eq!(ip4, "1.0.0.10");
+    }
+
+    #[test]
+    fn region_octet_tables_are_pairwise_disjoint() {
+        // Invariant guard: the six AS-aware region tables must not share a
+        // first octet with each other or with the registry dynamic-path map,
+        // or the two IP-realism systems can mint the same /24 for different
+        // agents (silent collision). See the invariant note above the tables.
+        let tables: [(&str, &[u8]); 6] = [
+            ("NA", &NA_OCTETS),
+            ("EU", &EU_OCTETS),
+            ("ASIA", &ASIA_OCTETS),
+            ("SA", &SA_OCTETS),
+            ("AF", &AF_OCTETS),
+            ("OC", &OC_OCTETS),
+        ];
+
+        for i in 0..tables.len() {
+            for j in (i + 1)..tables.len() {
+                for &octet in tables[i].1 {
+                    assert!(
+                        !tables[j].1.contains(&octet),
+                        "octet {} shared between {} and {} region tables",
+                        octet,
+                        tables[i].0,
+                        tables[j].0
+                    );
+                }
+            }
+        }
+
+        // Registry dynamic/fallback path octets must avoid every table too.
+        let registry = crate::ip::registry::REGISTRY_REGION_OCTETS;
+        for (name, table) in tables {
+            for &r in &registry {
+                assert!(
+                    !table.contains(&r),
+                    "registry octet {} collides with as_manager {} region table",
+                    r,
+                    name
+                );
+            }
+        }
+
+        // Registry octets must also be internally distinct so different
+        // dynamic-path regions can't share a /24 either.
+        for i in 0..registry.len() {
+            for j in (i + 1)..registry.len() {
+                assert_ne!(
+                    registry[i], registry[j],
+                    "registry region octets must be distinct"
+                );
+            }
+        }
     }
 
     #[test]

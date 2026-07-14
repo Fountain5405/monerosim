@@ -693,7 +693,10 @@ fn print_v2_report(report: &analysis::types::TxRelayV2Report) {
     }
 
     println!("Assessment:");
-    println!("  Health score: {}/100", report.assessment.health_score);
+    println!(
+        "  Health score (heuristic; unvalidated weights): {}/100",
+        report.assessment.health_score
+    );
     println!(
         "  V2 active: {}",
         if report.assessment.v2_active {
@@ -784,10 +787,13 @@ fn print_dandelion_report(
         println!();
     }
 
-    println!("Privacy Assessment:");
-    println!("  Score: {}/100", report.privacy_assessment.privacy_score);
+    println!("Privacy Assessment (heuristic; unvalidated weights):");
     println!(
-        "  Effective anonymity: {}",
+        "  Score (heuristic): {}/100",
+        report.privacy_assessment.privacy_score
+    );
+    println!(
+        "  Effective anonymity (heuristic verdict): {}",
         if report.privacy_assessment.effective_anonymity {
             "YES"
         } else {

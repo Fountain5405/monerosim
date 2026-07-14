@@ -12,9 +12,16 @@ use std::collections::BTreeMap;
 
 /// Build wallet command-line arguments common to both local and remote daemon modes.
 ///
+/// Single source of truth for the wallet-rpc argument list: used by
+/// `add_wallet_process` (simple wallets) and by the phase-based wallet path in
+/// `agent::user_agents` (upgrade scenarios). The only things that differ between
+/// call sites are parameterized here — `daemon_address`, ports, wallet/ringdb
+/// dir (derived from `shared_dir` + `agent_id`), and the phase-specific
+/// `custom_args`.
+///
 /// Returns argv-style strings (one element per arg); join later if a shell
 /// string is needed (see `shell_quote_args`).
-fn build_wallet_args(
+pub fn build_wallet_args(
     agent_id: &str,
     agent_ip: &str,
     daemon_address: &str,
@@ -75,7 +82,7 @@ pub enum DaemonAddress<'a> {
 }
 
 impl DaemonAddress<'_> {
-    fn format(&self) -> String {
+    pub fn format(&self) -> String {
         match self {
             DaemonAddress::Local {
                 agent_ip,

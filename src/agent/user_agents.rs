@@ -9,8 +9,8 @@ use crate::config::{AgentConfig, AgentDefinitions, DaemonConfig, OptionValue, Pe
 use crate::gml_parser::GmlGraph;
 use crate::ip::{AsSubnetManager, GlobalIpRegistry};
 use crate::process::{
-    add_user_agent_process, add_wallet_process, create_mining_agent_process, DaemonAddress,
-    MiningAgentProcessArgs, UserAgentProcessArgs, WalletProcessArgs,
+    add_user_agent_process, add_wallet_process, build_wallet_args, create_mining_agent_process,
+    DaemonAddress, MiningAgentProcessArgs, UserAgentProcessArgs, WalletProcessArgs,
 };
 use crate::shadow::{ExpectedFinalState, ShadowHost};
 use crate::topology::{
@@ -19,9 +19,7 @@ use crate::topology::{
 };
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::utils::duration::parse_duration_to_seconds;
-use crate::utils::options::{
-    merge_options, options_to_args, translate_daemon_log_level, translate_wallet_log_level,
-};
+use crate::utils::options::{merge_options, options_to_args, translate_daemon_log_level};
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
@@ -844,11 +842,10 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             }
         } // End of daemon configuration
 
-        // Add wallet process based on agent type
-        // Merge wallet_defaults with per-agent wallet_options
-        let mut merged_wallet_options =
-            merge_options(wallet_defaults, user_agent_config.wallet_options.as_ref());
-        translate_wallet_log_level(&mut merged_wallet_options);
+        // Add wallet process based on agent type.
+        // Wallet-arg construction (defaults merge, log-level translation, and
+        // the full flag list) lives in the shared `build_wallet_args` — see
+        // both the phase path below and `add_wallet_process`.
 
         // Track wallet-rpc command for restart capability
         let mut wallet_rpc_cmd: Option<String> = None;
@@ -862,52 +859,28 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 .expect("invariant: has_wallet_phases() == true implies wallet_phases.is_some()");
             let phase_count = phases.len();
 
-            // Build base wallet args
-            let build_wallet_args = |phase_args: Option<&Vec<String>>| -> Vec<String> {
-                let mut args = vec![
-                    format!("--daemon-address=http://{}:{}", agent_ip, daemon_rpc_port),
-                    format!("--rpc-bind-port={}", wallet_rpc_port),
-                    format!("--rpc-bind-ip={}", agent_ip),
-                    "--disable-rpc-login".to_string(),
-                    "--trusted-daemon".to_string(),
-                    format!(
-                        "--wallet-dir={}/{}_wallet",
-                        shared_dir.to_string_lossy(),
-                        agent_id
-                    ),
-                    // Per-agent ringdb path — without this, all wallets fall
-                    // back to a single shared LMDB and serialize on its writer
-                    // mutex, deadlocking under Shadow at scale (see commit
-                    // c4d45d15 for the simple-wallet fix that this mirrors).
-                    format!(
-                        "--shared-ringdb-dir={}/{}_ringdb",
-                        shared_dir.to_string_lossy(),
-                        agent_id
-                    ),
-                    "--confirm-external-bind".to_string(),
-                    "--allow-mismatched-daemon-version".to_string(),
-                ];
-
-                // Note: we intentionally do NOT set --max-concurrency on wallet-rpc.
-                // See wallet.rs for details on the deadlock this causes.
-
-                // Add configurable options from merged wallet_defaults + wallet_options
-                args.extend(options_to_args(&merged_wallet_options));
-
-                args.push("--daemon-ssl-allow-any-cert".to_string());
-
-                // Add custom phase args
-                if let Some(custom_args) = phase_args {
-                    for arg in custom_args {
-                        args.push(arg.clone());
-                    }
-                }
-
-                args
-            };
+            // Phase-based wallets always run against the co-located local
+            // daemon; the per-phase args are the only thing that varies.
+            let phase_daemon_address = DaemonAddress::Local {
+                agent_ip: &agent_ip,
+                daemon_rpc_port,
+            }
+            .format();
 
             for (phase_num, phase) in phases {
-                let wallet_args = build_wallet_args(phase.args.as_ref());
+                // Shared wallet-arg builder (single source of truth — see
+                // process::wallet::build_wallet_args).
+                let wallet_args = build_wallet_args(
+                    agent_id,
+                    &agent_ip,
+                    &phase_daemon_address,
+                    wallet_rpc_port,
+                    environment,
+                    phase.args.as_ref(),
+                    wallet_defaults,
+                    user_agent_config.wallet_options.as_ref(),
+                    &shared_dir.to_string_lossy(),
+                );
 
                 // Resolve binary path for this phase
                 let wallet_binary_path =

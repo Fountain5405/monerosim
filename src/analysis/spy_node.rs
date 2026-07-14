@@ -158,7 +158,16 @@ fn infer_originator(observations: &[&TxObservation]) -> Option<String> {
         .map(|(ip, _)| ip.to_string())
 }
 
-/// Calculate confidence in origin inference
+/// Calculate confidence in origin inference.
+///
+/// HEURISTIC — the weights below (0.3 / 0.15 for timing bands, 0.4 for source
+/// consistency, 0.3 / 0.15 for observer count) and the 100ms/500ms timing
+/// thresholds are INVENTED. They have no empirical calibration against a known
+/// ground-truth dataset and were not derived from any model of the adversary.
+/// The resulting 0..1 "confidence" and everything downstream of it
+/// (`high_confidence_inferences`, "Most Observable Senders") should be read as
+/// an unvalidated indicator, not a probability. See docs/ANALYSIS_TOOLS.md
+/// ("0% human-verified validity").
 fn calculate_correlation_confidence(
     first_seen: &[FirstSeenEntry],
     timing_spread_ms: f64,

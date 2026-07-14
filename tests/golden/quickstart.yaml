@@ -850,7 +850,7 @@ hosts:
     bandwidth_up: '1000000000'
   relay-001:
     network_node_id: 1101
-    ip_addr: 103.0.0.10
+    ip_addr: 123.0.0.10
     processes:
     - path: HOME/.monerosim/bin/monerod
       args:
@@ -864,11 +864,11 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-bind-ip=103.0.0.10
+      - --rpc-bind-ip=123.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
       - --rpc-access-control-origins=*
-      - --p2p-bind-ip=103.0.0.10
+      - --p2p-bind-ip=123.0.0.10
       - --p2p-bind-port=18080
       - --seed-node=3.0.0.11:18080
       - --seed-node=2.0.0.10:18080

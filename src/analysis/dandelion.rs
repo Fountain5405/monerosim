@@ -350,7 +350,16 @@ fn reconstruct_path(
     })
 }
 
-/// Assess privacy based on Dandelion++ behavior
+/// Assess privacy based on Dandelion++ behavior.
+///
+/// HEURISTIC — the score starts at 100 and the point deductions below
+/// (30 for very-short stems, 10 for moderate, 25 for >20% trivially
+/// deanonymizable, 15 for a concentrated fluff point) plus the verdict
+/// thresholds (>=70 EFFECTIVE, >=50 MODERATE, else WEAK; the <10% trivial
+/// gate) are ALL INVENTED. They have no empirical calibration and are not
+/// derived from any anonymity model. Treat `privacy_score` and
+/// `effective_anonymity` as an unvalidated indicator, not a measurement.
+/// See docs/ANALYSIS_TOOLS.md ("0% human-verified validity").
 fn assess_privacy(paths: &[DandelionPath], _total_txs: usize) -> DandelionPrivacyAssessment {
     let mut findings: Vec<String> = Vec::new();
     let mut recommendations: Vec<String> = Vec::new();
@@ -441,15 +450,22 @@ fn assess_privacy(paths: &[DandelionPath], _total_txs: usize) -> DandelionPrivac
 
     let effective_anonymity = privacy_score >= 70 && trivially_deanonymizable_pct < 10.0;
 
+    // Heuristic verdict — thresholds are invented, see assess_privacy.
     if effective_anonymity {
         findings.insert(
             0,
-            "Dandelion++ is providing EFFECTIVE anonymity".to_string(),
+            "Dandelion++ is providing EFFECTIVE anonymity (heuristic verdict)".to_string(),
         );
     } else if privacy_score >= 50 {
-        findings.insert(0, "Dandelion++ is providing MODERATE anonymity".to_string());
+        findings.insert(
+            0,
+            "Dandelion++ is providing MODERATE anonymity (heuristic verdict)".to_string(),
+        );
     } else {
-        findings.insert(0, "Dandelion++ is providing WEAK anonymity".to_string());
+        findings.insert(
+            0,
+            "Dandelion++ is providing WEAK anonymity (heuristic verdict)".to_string(),
+        );
     }
 
     DandelionPrivacyAssessment {
