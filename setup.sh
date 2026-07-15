@@ -581,7 +581,7 @@ fi
 # install_shadowformonero() stamps this into
 # $MONEROSIM_HOME/SHADOWFORMONERO_VERSION so subsequent runs can detect
 # a stale install and prompt for reinstall.
-SHADOWFORMONERO_REF="v0.2.1"
+SHADOWFORMONERO_REF="v0.2.2"
 
 # Helper function to install shadowformonero
 install_shadowformonero() {
