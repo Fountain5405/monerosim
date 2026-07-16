@@ -107,11 +107,16 @@ if [[ -z "${BUILD_JOBS:-}" ]]; then
 fi
 export BUILD_JOBS
 
-# Pin shadowformonero to the same ref setup.sh installs (setup.sh:607's
-# SHADOWFORMONERO_REF). Must be bumped in lock-step with that value —
-# update.sh checks out this tag rather than pulling the branch tip so a
-# rebuild here never silently un-pins the fork commit setup.sh installed.
-SHADOWFORMONERO_REF="v0.2.2"
+# Pin shadowformonero to the same ref setup.sh installs. Single source of
+# truth: shadowformonero.pin at the repo root (also read by setup.sh and
+# run_sim.sh's preflight version check). update.sh checks out this tag
+# rather than pulling the branch tip so a rebuild here never silently
+# un-pins the fork commit setup.sh installed.
+if [[ ! -f "$SCRIPT_DIR/shadowformonero.pin" ]]; then
+    log_err "shadowformonero.pin not found at the repo root — cannot determine the pinned fork version"
+    exit 1
+fi
+SHADOWFORMONERO_REF="$(tr -d '[:space:]' < "$SCRIPT_DIR/shadowformonero.pin")"
 
 # Function to update a repository
 update_repo() {
@@ -288,7 +293,10 @@ rebuild_shadow() {
     cd "$shadow_dir"
     ./setup build --jobs "$BUILD_JOBS" --prefix "$MONEROSIM_HOME"
     ./setup install
-    log_ok "shadowformonero rebuilt and installed"
+    # Stamp the installed ref so setup.sh's drift detection stays accurate
+    # (mirrors install_shadowformonero() in setup.sh).
+    echo "$SHADOWFORMONERO_REF" > "$MONEROSIM_HOME/SHADOWFORMONERO_VERSION"
+    log_ok "shadowformonero rebuilt and installed ($SHADOWFORMONERO_REF)"
     cd "$SCRIPT_DIR"
 }
 

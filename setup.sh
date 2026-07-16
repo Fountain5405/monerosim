@@ -576,12 +576,20 @@ if [[ "$SHADOW_DEPS_NEEDED" == "true" ]]; then
 fi
 
 # Pin shadowformonero to the tag matching this monerosim release.
-# Bump in lock-step with monerosim's own tag so a given monerosim
-# version always installs the exact fork commit it was tested against.
+# Single source of truth: shadowformonero.pin at the repo root (also read
+# by update.sh and run_sim.sh's preflight version check), so the pin
+# travels with each monerosim commit. Bump the pin file in lock-step with
+# monerosim's own tag so a given monerosim version always installs the
+# exact fork commit it was tested against.
 # install_shadowformonero() stamps this into
 # $MONEROSIM_HOME/SHADOWFORMONERO_VERSION so subsequent runs can detect
 # a stale install and prompt for reinstall.
-SHADOWFORMONERO_REF="v0.2.2"
+SHADOWFORMONERO_PIN_FILE="$SCRIPT_DIR/shadowformonero.pin"
+if [[ ! -f "$SHADOWFORMONERO_PIN_FILE" ]]; then
+    log_err "shadowformonero.pin not found at the repo root — cannot determine the pinned fork version"
+    exit 1
+fi
+SHADOWFORMONERO_REF="$(tr -d '[:space:]' < "$SHADOWFORMONERO_PIN_FILE")"
 
 # Helper function to install shadowformonero
 install_shadowformonero() {

@@ -466,6 +466,35 @@ preflight_checks() {
     fi
     log_ok "Shadow binary: $SHADOW_BIN"
 
+    # Verify the installed shadowformonero matches this checkout's pinned
+    # fork version (shadowformonero.pin — single source of truth, also read
+    # by setup.sh and update.sh). We check the binary's own git-describe
+    # ("v0.2.2-0-g<hash>") rather than the install stamp because the binary
+    # can't go stale the way a stamp file can. Without this, `git pull`-ing
+    # monerosim after a pin bump would silently run sims on the old fork.
+    # Dev override (e.g. deliberately testing another fork ref):
+    #   MONEROSIM_SKIP_SHADOW_CHECK=1 ./run_sim.sh ...
+    local pin_file="$SCRIPT_DIR/shadowformonero.pin"
+    if [[ "${MONEROSIM_SKIP_SHADOW_CHECK:-0}" == "1" ]]; then
+        log_warn "MONEROSIM_SKIP_SHADOW_CHECK=1 — skipping shadowformonero version check"
+    elif [[ -f "$pin_file" ]]; then
+        local shadow_pin shadow_ver
+        shadow_pin=$(tr -d '[:space:]' < "$pin_file")
+        shadow_ver=$("$SHADOW_BIN" --version 2>&1 | head -n1)
+        if [[ "$shadow_ver" == *"${shadow_pin}-0-g"* ]]; then
+            log_ok "shadowformonero matches pin: $shadow_pin"
+        else
+            log_err "Installed shadow does not match this monerosim's pinned fork version"
+            log_err "  installed: $shadow_ver"
+            log_err "  pinned:    $shadow_pin  (shadowformonero.pin)"
+            log_info "Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild)"
+            log_info "Dev override: MONEROSIM_SKIP_SHADOW_CHECK=1"
+            exit 1
+        fi
+    else
+        log_warn "shadowformonero.pin missing — skipping fork version check"
+    fi
+
     # Check config file
     if [[ ! -f "$CONFIG" ]]; then
         log_err "Config file not found: $CONFIG"
