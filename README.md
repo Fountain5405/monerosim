@@ -1,10 +1,23 @@
 # Monerosim
 
-**Status:** 0.1.0 — public beta. Config formats and CLI behavior may
-change between minor versions (0.1.x → 0.2.0); patch releases
-(0.1.0 → 0.1.1) are bug-fix only and config-compatible. Production
+**Status:** 0.2.0 — public beta. Config formats and CLI behavior may
+change between minor versions (0.2.x → 0.3.0); patch releases
+(0.2.0 → 0.2.1) are bug-fix only and config-compatible. Production
 use is discouraged. Pin to a tagged release if you need stability.
 See [Known limitations](#known-limitations) below before relying on it.
+
+**Versioning:** monerosim and its Shadow fork
+([shadowformonero](https://github.com/Fountain5405/shadowformonero)) are
+versioned **independently** — fork tags bump only when the fork itself
+changes. The pairing is recorded per-commit in
+[`shadowformonero.pin`](shadowformonero.pin): `setup.sh`/`update.sh`
+install exactly that fork ref, and `run_sim.sh` refuses to run against a
+mismatched install (override: `MONEROSIM_SKIP_SHADOW_CHECK=1`). To see
+which fork any release uses: `git show <tag>:shadowformonero.pin`
+(releases also state it in their notes). History: tags up to and
+including monerosim v0.2.0 predate the pin file and embed the ref in
+`setup.sh` (`SHADOWFORMONERO_REF`) instead — monerosim v0.2.0 pairs with
+fork v0.1.0, the last pre-upstream-sync fork.
 
 A tool for running Monero cryptocurrency network simulations inside the [Shadow](https://shadow.github.io/) network simulator. Monerosim generates Shadow configuration files from a concise YAML description of your desired network, then Shadow executes the simulation using real Monero binaries in a virtual network.
 
