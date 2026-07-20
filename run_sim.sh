@@ -495,6 +495,33 @@ preflight_checks() {
         log_warn "shadowformonero.pin missing — skipping fork version check"
     fi
 
+    # Verify the installed monerod matches this checkout's pinned monero
+    # version (monero.pin). Same rationale as the shadow check: a pin bump
+    # after `git pull` must not silently run sims on the old daemon.
+    # Dev override: MONEROSIM_SKIP_MONERO_CHECK=1 ./run_sim.sh ...
+    local monerod_bin="$HOME/.monerosim/bin/monerod"
+    local monero_pin_file="$SCRIPT_DIR/monero.pin"
+    if [[ "${MONEROSIM_SKIP_MONERO_CHECK:-0}" == "1" ]]; then
+        log_warn "MONEROSIM_SKIP_MONERO_CHECK=1 — skipping monero version check"
+    elif [[ -f "$monero_pin_file" && -x "$monerod_bin" ]]; then
+        local monero_pin monero_ver
+        monero_pin=$(tr -d '[:space:]' < "$monero_pin_file")
+        monero_ver=$("$monerod_bin" --version 2>&1 | head -n1)
+        # monero.pin is a tag ("v0.18.5.1"); monerod prints "... (v0.18.5.1-<hash>)"
+        if [[ "$monero_ver" == *"${monero_pin}"* ]]; then
+            log_ok "monero matches pin: $monero_pin"
+        else
+            log_err "Installed monerod does not match this monerosim's pinned monero version"
+            log_err "  installed: $monero_ver"
+            log_err "  pinned:    $monero_pin  (monero.pin)"
+            log_info "Fix: ./setup.sh  (or: ./update.sh --monero --rebuild)"
+            log_info "Dev override: MONEROSIM_SKIP_MONERO_CHECK=1"
+            exit 1
+        fi
+    elif [[ ! -f "$monero_pin_file" ]]; then
+        log_warn "monero.pin missing — skipping monero version check"
+    fi
+
     # Check config file
     if [[ ! -f "$CONFIG" ]]; then
         log_err "Config file not found: $CONFIG"

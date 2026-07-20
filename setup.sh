@@ -759,22 +759,36 @@ log_header "Step 5: Setting Up Monero Source Code"
 MONERO_DIR="$SCRIPT_DIR/sibling_repos/monero"
 MONERO_REPO="https://github.com/monero-project/monero.git"
 
+# Pin monero to the tag in monero.pin (single source of truth, like
+# shadowformonero.pin). Both a fresh clone and an existing checkout land on
+# exactly this tag, so the daemon version is reproducible per monerosim commit
+# rather than "whatever master happened to be at clone time".
+if [[ ! -f "$SCRIPT_DIR/monero.pin" ]]; then
+    log_err "monero.pin not found at the repo root — cannot determine the pinned monero version"
+    exit 1
+fi
+MONERO_REF="$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")"
+
 mkdir -p "$SCRIPT_DIR/sibling_repos"
 
 log_info "Setting up official Monero source..."
 
 # Check if monero directory already exists
 if [[ -d "$MONERO_DIR" ]] && [[ -d "$MONERO_DIR/.git" ]]; then
-    log_info "Found existing Monero repository"
+    log_info "Found existing Monero repository; syncing to $MONERO_REF"
     cd "$MONERO_DIR"
 
-    # Update to latest
-    log_info "Pulling latest changes..."
-    git pull origin master || git pull origin main || log_warn "Could not pull latest changes"
+    # Check out the pinned tag (fetch tags first in case it's newer than the
+    # local clone). Not `git pull master` — that would silently un-pin.
+    git fetch --tags --force origin
+    if ! git checkout "$MONERO_REF"; then
+        log_err "Could not checkout monero $MONERO_REF (see monero.pin)"
+        exit 1
+    fi
 
     cd "$SCRIPT_DIR"
 else
-    log_info "Cloning official Monero repository..."
+    log_info "Cloning official Monero repository (pinned to $MONERO_REF)..."
     log_info "This may take a few minutes..."
 
     # Remove any existing incomplete directory
@@ -782,8 +796,8 @@ else
         rm -rf "$MONERO_DIR"
     fi
 
-    # Clone official Monero repository
-    git clone --recursive "$MONERO_REPO" "$MONERO_DIR"
+    # Clone official Monero repository at the pinned tag
+    git clone --branch "$MONERO_REF" --recursive "$MONERO_REPO" "$MONERO_DIR"
 
     if [[ $? -ne 0 ]]; then
         log_err "Failed to clone Monero repository"

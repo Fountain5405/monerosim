@@ -118,6 +118,14 @@ if [[ ! -f "$SCRIPT_DIR/shadowformonero.pin" ]]; then
 fi
 SHADOWFORMONERO_REF="$(tr -d '[:space:]' < "$SCRIPT_DIR/shadowformonero.pin")"
 
+# Pin monero the same way (monero.pin — single source of truth, also read by
+# setup.sh and run_sim.sh's preflight). Pinned checkout, never a master pull.
+if [[ ! -f "$SCRIPT_DIR/monero.pin" ]]; then
+    log_err "monero.pin not found at the repo root — cannot determine the pinned monero version"
+    exit 1
+fi
+MONERO_REF="$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")"
+
 # Function to update a repository
 update_repo() {
     local name=$1
@@ -325,9 +333,28 @@ if [[ "$UPDATE_ALL" == "true" ]] || [[ "$UPDATE_SHADOW" == "true" ]]; then
 fi
 
 if [[ "$UPDATE_ALL" == "true" ]] || [[ "$UPDATE_MONERO" == "true" ]]; then
-    IFS=':' read -r path branch <<< "${REPOS[monero]}"
-    if update_repo "monero" "$path" "$branch"; then
-        MONERO_UPDATED=true
+    # Pinned checkout (monero.pin), not a master pull — mirrors
+    # update_shadowformonero_pinned so `update.sh` can never un-pin monero.
+    monero_path="$DEPS_DIR/monero"
+    if [[ -d "$monero_path/.git" ]]; then
+        log_info "Updating monero (pinned to $MONERO_REF)..."
+        cd "$monero_path"
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            log_warn "monero has uncommitted changes; skipping monero update"
+        else
+            monero_before=$(git rev-parse HEAD)
+            git fetch --tags --force origin
+            if git checkout "$MONERO_REF"; then
+                git submodule update --init --recursive
+                [[ "$(git rev-parse HEAD)" != "$monero_before" ]] && MONERO_UPDATED=true
+                log_ok "monero at $MONERO_REF"
+            else
+                log_warn "Could not checkout monero $MONERO_REF (see monero.pin)"
+            fi
+        fi
+        cd "$SCRIPT_DIR"
+    else
+        log_warn "monero not found at $monero_path - skipping"
     fi
 fi
 
