@@ -289,7 +289,9 @@ Monerosim does not register itself as a system service. ✅
   redefine.
   - Effort: **small** — change to `export PATH="$PATH:{}/.monerosim/bin"`.
 
-**F-FS-3 · `/tmp/monerosim_shared`**
+**F-FS-3 · `/tmp/monerosim_shared`** — **IMPLEMENTED** (the `MONEROSIM_SHARED_DIR`
+env var already existed; `run_sim.sh` now also namespaces it per-run, as of
+2026-07-21 — see `docs/20260721_per_run_tmp_namespacing.md`)
 - `src/lib.rs:19, 22`, `src/config/defaults.rs:20`, `src/bin/tx_analyzer.rs:37`,
   `agents/base_agent.py:24`, `agents/agent_discovery.py:2,28`,
   `agents/public_node_discovery.py:22`, `scripts/...` — Hardcoded `/tmp/...`
@@ -301,8 +303,12 @@ Monerosim does not register itself as a system service. ✅
     Monerosim's runs are typically short; not seen in practice.
   - SELinux contexts on RHEL/Fedora may restrict `/tmp` access between
     confined processes — flag for testing.
-  - Effort: **small** — make configurable via `MONEROSIM_SHARED_DIR` env var
-    with `/tmp/monerosim_shared` as default; document.
+  - Effort: **done** — configurable via the `MONEROSIM_SHARED_DIR` env var
+    (`/tmp/monerosim_shared` remains the default when unset and the generator
+    is run standalone). `run_sim.sh` additionally mints a per-run id and
+    exports `MONEROSIM_SHARED_DIR=/tmp/monerosim-<runid>/shared` (and
+    `MONEROSIM_DAEMON_DATA_DIR=/tmp/monerosim-<runid>`) before invoking the
+    generator, so concurrent runs on one box no longer collide.
 
 **F-FS-4 · `~/.monerosim/bin/` install location**
 - `setup.sh`, `run_sim.sh`, README, QUICKSTART — All install binaries under
@@ -348,7 +354,9 @@ Monerosim does not register itself as a system service. ✅
 code or config.
 
 **Caveat (testing-only finding):** SELinux in enforcing mode on RHEL/Fedora may
-restrict child processes from sharing files in `/tmp/monerosim_shared` or
+restrict child processes from sharing files in the shared-state directory
+(default `/tmp/monerosim_shared`, per-run `/tmp/monerosim-<runid>/shared`
+under `run_sim.sh`, `MONEROSIM_SHARED_DIR`-configurable per F-FS-3) or
 spawning RPC ports — needs validation under enforcing mode. If issues arise,
 the fix is either an SELinux policy module or rebasing the shared dir under
 `$HOME` (per F-FS-3). Effort: **medium** if it surfaces.
@@ -548,9 +556,14 @@ don't drift.
    - Drop `shell=True`; pass list args. Eliminates a portability *and*
      security concern (command-injection surface).
 
-5. **Make `/tmp/monerosim_shared` configurable** (F-FS-3):
-   - Read `MONEROSIM_SHARED_DIR` env var; fall back to `/tmp/monerosim_shared`.
-   - Document for users on noexec-`/tmp` or hardened SELinux systems.
+5. **Make `/tmp/monerosim_shared` configurable** (F-FS-3) — **DONE**:
+   - `MONEROSIM_SHARED_DIR` env var is read, falling back to
+     `/tmp/monerosim_shared` when unset. `run_sim.sh` now sets it (and
+     `MONEROSIM_DAEMON_DATA_DIR`) per-run as of 2026-07-21, namespacing both
+     under `/tmp/monerosim-<runid>/` so concurrent runs don't collide — see
+     `docs/20260721_per_run_tmp_namespacing.md`.
+   - Still open: explicit documentation for users on noexec-`/tmp` or
+     hardened SELinux systems.
 
 6. **Refresh `QUICKSTART.md`** to reflect the expanded distro list once
    F-PKG-1 + Wave 2.1 land (F-DOC-2).

@@ -195,6 +195,18 @@ fn compose_base_environment(
             "PROCESS_THREADS".to_string(),
             config.general.process_threads.unwrap_or(1).to_string(),
         ), // Thread count for monerod/wallet-rpc
+        // Resolved run paths, so in-sim agents (base_agent.DEFAULT_SHARED_DIR,
+        // simulation_monitor's daemon-log discovery) see the same namespaced
+        // dirs the generator baked into args. Without these, agents fall back
+        // to the legacy global /tmp paths and cross-read a concurrent run.
+        (
+            "MONEROSIM_SHARED_DIR".to_string(),
+            config.general.shared_dir.clone(),
+        ),
+        (
+            "MONEROSIM_DAEMON_DATA_DIR".to_string(),
+            config.general.daemon_data_dir.clone(),
+        ),
     ]
     .iter()
     .cloned()

@@ -43,11 +43,11 @@ Monerosim is a Rust-based configuration generator that produces configurations f
                     +---------------+---------------+
                                     |
                                     v
-                    +-------------------------------+
-                    | Simulation Output             |
-                    |  - shadow.data/hosts/*/       |
-                    |  - /tmp/monerosim_shared/     |
-                    +---------------+---------------+
+                    +-----------------------------------+
+                    | Simulation Output                 |
+                    |  - shadow.data/hosts/*/           |
+                    |  - /tmp/monerosim-<runid>/shared/ |
+                    +---------------+-------------------+
                                     |
                                     v
                     +-------------------------------+
@@ -106,7 +106,7 @@ Agents are autonomous participants that run inside Shadow alongside monerod and 
 **Agent communication** is decentralized, using shared state files:
 
 ```
-/tmp/monerosim_shared/
+/tmp/monerosim-<runid>/shared/
   agent_registry.json      # All agents and their attributes
   miners.json              # Miner hashrate weights
   transactions.json        # Transaction log
@@ -214,7 +214,7 @@ shadow_output/
   shadow_agents.yaml      # Main Shadow configuration
   scripts/                # Pre-written wrapper scripts for all Python agents
 
-/tmp/monerosim_shared/
+/tmp/monerosim-<runid>/shared/
   agent_registry.json     # Agent metadata for discovery
   miners.json             # Miner hashrate distribution
   public_nodes.json       # Public node registry

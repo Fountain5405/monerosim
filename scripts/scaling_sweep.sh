@@ -150,7 +150,9 @@ sweep_one() {
         return
     fi
 
-    # Clean state between runs
+    # Clean LEGACY global state between runs (pre-namespacing leftovers only —
+    # run_sim.sh now namespaces each run under /tmp/monerosim-<runid>/ and
+    # cleans up after itself, including crashed-run dirs via its stale sweep).
     rm -rf /tmp/monero-* /tmp/monerosim_shared 2>/dev/null || true
 
     local start=$SECONDS

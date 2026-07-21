@@ -108,10 +108,15 @@ else
     # Parse timeout if given in flexible format
     TIMEOUT=$(parse_duration_to_seconds "$TIMEOUT")
 fi
-SHARED_DIR="/tmp/monerosim_shared"
 MONEROSIM_BIN="./target/release/monerosim"
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
-TEMP_DIR="/tmp/monerosim_scaling_test"
+# Per-invocation namespace (PID-suffixed) so a scaling test can't collide
+# with a concurrent run_sim.sh run or another scaling test. The exported
+# env vars steer the generator's default shared_dir/daemon_data_dir.
+TEMP_DIR="/tmp/monerosim_scaling_test_$$"
+export MONEROSIM_SHARED_DIR="${MONEROSIM_SHARED_DIR:-$TEMP_DIR/shared}"
+export MONEROSIM_DAEMON_DATA_DIR="${MONEROSIM_DAEMON_DATA_DIR:-$TEMP_DIR/daemons}"
+SHARED_DIR="$MONEROSIM_SHARED_DIR"
 
 # Colors for output
 source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
@@ -397,9 +402,12 @@ main() {
 
     check_prerequisites
 
-    # Create temp directory
+    # Create temp directory (PID-suffixed, so no pre-clean of others needed).
+    # On exit, drop the bulky daemon data dirs and shared state but keep the
+    # small logs/samples for inspection (the summary prints their path).
     rm -rf "$TEMP_DIR"
     mkdir -p "$TEMP_DIR"
+    trap 'rm -rf "$TEMP_DIR/daemons" "$TEMP_DIR/shared" 2>/dev/null' EXIT
 
     # Write results header
     get_system_info > "$RESULTS"

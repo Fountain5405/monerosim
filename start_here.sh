@@ -601,8 +601,16 @@ run_rust_analysis() {
     local data_dir log_dir out_dir
     if [[ "$target" == "LIVE" ]]; then
         data_dir="shadow.data"
-        # Live runs write daemon logs to /tmp/monero-<host>/. tx-analyzer
-        # defaults to /tmp when --log-dir is omitted, so leave it unset.
+        # Live runs write daemon logs to <run-tmp>/monero-<host>/ where
+        # <run-tmp> is the per-run namespace run_sim.sh breadcrumbs in
+        # shadow_output/run_env.sh. Export the breadcrumbed paths so
+        # tx-analyzer's env-based defaults (--log-dir omitted, --shared-dir
+        # default) resolve to the live run instead of the legacy /tmp.
+        if [[ -f "shadow_output/run_env.sh" ]]; then
+            # shellcheck source=/dev/null
+            source "shadow_output/run_env.sh"
+            export MONEROSIM_DAEMON_DATA_DIR MONEROSIM_SHARED_DIR
+        fi
         log_dir=""
         out_dir="analysis_output"
     else

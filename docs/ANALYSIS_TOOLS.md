@@ -8,7 +8,7 @@ Monerosim includes a Rust analyzer (`tx-analyzer`) for examining transaction rou
 
 Before running analysis, you need:
 1. A completed Shadow simulation with logs in `shadow.data/`
-2. Shared state files in `/tmp/monerosim_shared/` (created automatically during simulation)
+2. Shared state files — for a live run, at `$MONEROSIM_SHARED_DIR` (`/tmp/monerosim-<runid>/shared/`, breadcrumbed in `shadow_output/run_env.sh`; legacy default `/tmp/monerosim_shared/` when run outside `run_sim.sh`), created automatically during simulation. If the run has already been archived, look under `transaction_registry/` in the archive directory instead.
 
 ## Quick Start
 
@@ -54,6 +54,8 @@ cargo build --release --bin tx-analyzer
 # Common options (apply to all commands)
 -d, --data-dir <PATH>     Shadow data directory [default: shadow.data]
 -s, --shared-dir <PATH>   Shared state directory [default: /tmp/monerosim_shared]
+                          (default follows $MONEROSIM_SHARED_DIR when set, e.g. the
+                          per-run /tmp/monerosim-<runid>/shared/ from run_sim.sh)
 -o, --output <PATH>       Output directory [default: analysis_output]
 -j, --threads <N>         Parallel workers (0=auto) [default: 0]
 
@@ -420,7 +422,7 @@ cat analysis_output/upgrade_analysis.json | python3 -m json.tool
 ## Troubleshooting
 
 ### "Agent registry not found"
-Ensure simulation completed and `/tmp/monerosim_shared/agent_registry.json` exists.
+Ensure simulation completed and `agent_registry.json` exists in the shared-state directory (`$MONEROSIM_SHARED_DIR` if set — the per-run `/tmp/monerosim-<runid>/shared/` from `run_sim.sh` — otherwise the legacy default `/tmp/monerosim_shared/`).
 
 ### "No transactions found"
 Check that transactions were actually sent during simulation. Look for `transactions.json` in the shared directory.

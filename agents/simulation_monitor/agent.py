@@ -221,10 +221,11 @@ class SimulationMonitorAgent(BaseAgent):
     def _discover_daemon_log_files(self):
         """
         Discover daemon log files (bitmonero.log) for all nodes.
-        Searches /tmp/monero-*/bitmonero.log for live simulation logs.
+        Searches {MONEROSIM_DAEMON_DATA_DIR:-/tmp}/monero-*/bitmonero.log for
+        live simulation logs (run_sim.sh namespaces the base dir per run).
         """
         try:
-            tmp_dir = Path("/tmp")
+            tmp_dir = Path(os.environ.get("MONEROSIM_DAEMON_DATA_DIR", "/tmp"))
             for node_dir in sorted(tmp_dir.glob("monero-*")):
                 if not node_dir.is_dir():
                     continue

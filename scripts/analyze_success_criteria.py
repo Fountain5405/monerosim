@@ -194,20 +194,25 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
     """
     Analyze all host logs in the directory using multi-threading.
     Returns aggregated data and success report.
-    If log_dir is None, auto-detects logs from /tmp/monero-* or shadow.data/hosts/.
+    If log_dir is None, auto-detects logs from the daemon data base dir
+    ({MONEROSIM_DAEMON_DATA_DIR:-/tmp}/monero-*; run_sim.sh namespaces the
+    base per run) or shadow.data/hosts/.
     """
     if log_dir is None:
-        # Auto-detect: try /tmp first (live run), then shadow.data/hosts (legacy)
-        tmp_logs = list(Path("/tmp").glob("monero-*/bitmonero.log"))
+        # Auto-detect: try the daemon data base first (live run), then
+        # shadow.data/hosts (legacy)
+        daemon_base = Path(os.environ.get("MONEROSIM_DAEMON_DATA_DIR", "/tmp"))
+        tmp_logs = list(daemon_base.glob("monero-*/bitmonero.log"))
         if tmp_logs:
-            log_path = Path("/tmp")
+            log_path = daemon_base
         else:
             workspace = Path('.')
             current_shadow_path = workspace / 'shadow.data' / 'hosts'
             if current_shadow_path.exists():
                 log_path = current_shadow_path
             else:
-                raise ValueError("No daemon logs found in /tmp/monero-* or shadow.data/hosts/")
+                raise ValueError(
+                    f"No daemon logs found in {daemon_base}/monero-* or shadow.data/hosts/")
     else:
         log_path = Path(log_dir)
         # Handle legacy shadow.data path

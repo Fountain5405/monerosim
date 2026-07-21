@@ -90,6 +90,9 @@ segfaults. The corruption's *origin* is upstream in the refresh/RPC path
    `BlockchainLMDB::close()` (captured 3×, byte-identical). **Consequence:
    parallel runs on one box are invalid** — worth documenting or fixing via
    run-id-namespaced dirs (`/tmp/monero-<runid>-<host>`).
+   **FIXED 2026-07-21:** run_sim.sh now namespaces each run under
+   `/tmp/monerosim-<runid>/`; concurrent runs (one per checkout) are
+   supported. See `docs/20260721_per_run_tmp_namespacing.md`.
 
 ## 4. The capture kit (reusable; archived in basement)
 

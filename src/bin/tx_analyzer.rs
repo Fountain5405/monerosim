@@ -200,12 +200,15 @@ fn main() -> Result<()> {
         blocks.len()
     );
 
-    // Determine log directory: --log-dir flag, or auto-detect from /tmp or shadow.data/hosts
+    // Determine log directory: --log-dir flag, or auto-detect from the
+    // daemon data base dir (MONEROSIM_DAEMON_DATA_DIR, default /tmp; run_sim.sh
+    // namespaces this per-run) or shadow.data/hosts
     let log_dir = if let Some(ref dir) = cli.log_dir {
         dir.clone()
     } else {
-        // Auto-detect: check /tmp for monero-* dirs first, then fall back to shadow.data/hosts
-        let tmp_dir = PathBuf::from("/tmp");
+        // Auto-detect: check the daemon data base for monero-* dirs first,
+        // then fall back to shadow.data/hosts
+        let tmp_dir = PathBuf::from(monerosim::default_daemon_data_dir());
         let has_tmp_logs = agents.iter().any(|a| {
             tmp_dir
                 .join(format!("monero-{}", a.id))
@@ -213,10 +216,13 @@ fn main() -> Result<()> {
                 .exists()
         });
         if has_tmp_logs {
-            log::info!("Auto-detected daemon logs in /tmp");
+            log::info!("Auto-detected daemon logs in {}", tmp_dir.display());
             tmp_dir
         } else {
-            log::info!("No daemon logs in /tmp, falling back to shadow.data/hosts");
+            log::info!(
+                "No daemon logs in {}, falling back to shadow.data/hosts",
+                tmp_dir.display()
+            );
             cli.data_dir.join("hosts")
         }
     };

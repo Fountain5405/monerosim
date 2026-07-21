@@ -8,8 +8,9 @@
 #   - Path to an archived run directory (containing shadow.data/)
 #   - No argument: auto-detect from running Shadow process or CWD
 #
-# Also reads input_config.yaml (if found) for timeline/phase info,
-# and /tmp/monerosim_shared/monitoring/ for live monitoring data.
+# Also reads input_config.yaml (if found) for timeline/phase info.
+# Live daemon logs are found via the per-run /tmp namespace breadcrumbed by
+# run_sim.sh in shadow_output/run_env.sh (legacy global /tmp as fallback).
 
 # Status checker: -e omitted so individual diagnostic checks (grep, ps,
 # wc) can fail without aborting the dashboard.
@@ -26,6 +27,16 @@ fi
 source "$(dirname "${BASH_SOURCE[0]}")/log_lib.sh"
 
 SIM_EPOCH=946684800  # 2000-01-01 00:00:00 UTC (Shadow epoch)
+
+# Live-run daemon data base: run_sim.sh namespaces it per run
+# (/tmp/monerosim-<runid>) and breadcrumbs the resolved paths in
+# shadow_output/run_env.sh. Fall back to the legacy global /tmp.
+DAEMON_DATA_BASE="/tmp"
+if [[ -f "$PROJECT_ROOT/shadow_output/run_env.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$PROJECT_ROOT/shadow_output/run_env.sh"
+    DAEMON_DATA_BASE="${MONEROSIM_DAEMON_DATA_DIR:-/tmp}"
+fi
 
 # ============================================================
 # Locate shadow.data/hosts and run directory
@@ -220,12 +231,12 @@ LATEST_TS=""
 
 _sample_logs=()
 # Try bitmonero.log files first (new format)
-for f in /tmp/monero-miner-0*/bitmonero.log; do
+for f in "$DAEMON_DATA_BASE"/monero-miner-0*/bitmonero.log; do
     [ -s "$f" ] && _sample_logs+=("$f")
     [ "${#_sample_logs[@]}" -ge 2 ] && break
 done
 # Also sample a user daemon log
-for f in /tmp/monero-user-0*/bitmonero.log; do
+for f in "$DAEMON_DATA_BASE"/monero-user-0*/bitmonero.log; do
     [ -s "$f" ] && _sample_logs+=("$f") && break
 done
 
@@ -440,7 +451,7 @@ if [ "$NUM_MINERS" -gt 0 ]; then
     for miner_dir in "${MINER_DIRS[@]}"; do
         miner_name=$(basename "$miner_dir")
         # Try bitmonero.log first (new format), then legacy bash.*.stdout
-        daemon_log="/tmp/monero-${miner_name}/bitmonero.log"
+        daemon_log="$DAEMON_DATA_BASE/monero-${miner_name}/bitmonero.log"
         if [ ! -s "$daemon_log" ]; then
             daemon_log=""
             for f in "$miner_dir"/bash.*.stdout; do

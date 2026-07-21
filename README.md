@@ -42,7 +42,7 @@ Monerosim simulations proceed in two stages:
 
 **Stage 1** - You write a YAML config describing the network: how many miners, users, what topology, how long to run. Monerosim's Rust engine parses this and generates Shadow configuration files.
 
-**Stage 2** - shadowformonero runs the simulation. Most agents are a triple of `monerod` + `monero-wallet-rpc` + a Python script on a virtual host; some are daemon-only (**relay nodes** — `monerod` only, for P2P realism) or script-only (the support agents `miner-distributor` and `simulation-monitor`). Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to `/tmp/monero-*/bitmonero.log` (daemon logs), `shadow.data/` (agent stdout), and `/tmp/monerosim_shared/` (shared state).
+**Stage 2** - shadowformonero runs the simulation. Most agents are a triple of `monerod` + `monero-wallet-rpc` + a Python script on a virtual host; some are daemon-only (**relay nodes** — `monerod` only, for P2P realism) or script-only (the support agents `miner-distributor` and `simulation-monitor`). Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to a per-run namespace `/tmp/monerosim-<runid>/` (daemon logs at `monero-*/bitmonero.log`, shared state under `shared/`) and to `shadow.data/` (agent stdout); the resolved paths are breadcrumbed in `shadow_output/run_env.sh`. The per-run namespace means concurrent runs on one box don't collide — one run per checkout (`docs/20260721_per_run_tmp_namespacing.md`).
 
 ## Quick Start
 

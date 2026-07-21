@@ -40,7 +40,7 @@ hosts:
       # 1. monerod daemon (direct launch, args as YAML list)
       - path: "/home/user/.monerosim/bin/monerod"
         args:
-          - "--data-dir=/tmp/monero-miner-001"
+          - "--data-dir=/tmp/monerosim-<runid>/monero-miner-001"
           - "--regtest"
           - "..."
         start_time: "0s"
@@ -69,7 +69,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:/home/user/.monerosim/bin
 
 python3 -m agents.autonomous_miner --id miner-001 \
     --rpc-host 10.0.0.10 --agent-rpc-port 18081 \
-    --wallet-rpc-port 18082 --shared-dir /tmp/monerosim_shared \
+    --wallet-rpc-port 18082 --shared-dir /tmp/monerosim-<runid>/shared \
     --attributes is_miner true --attributes hashrate 50 2>&1
 ```
 
@@ -84,9 +84,11 @@ Shadow creates a virtual network, assigns each host its IP, and launches process
 Before generating the Shadow configuration, `main.rs` cleans up all state from previous runs:
 
 1. **Output directory** (`shadow_output/`) -- removed and recreated
-2. **Shared state** (`/tmp/monerosim_shared/`) -- removed and recreated
-3. **Daemon data directories** (`/tmp/monero-*`) -- glob-matched and removed
+2. **Shared state** (`$MONEROSIM_SHARED_DIR`, default `/tmp/monerosim_shared/`) -- removed and recreated
+3. **Daemon data directories** (`$MONEROSIM_DAEMON_DATA_DIR/monero-*`, default `/tmp/monero-*`) -- glob-matched and removed
 4. **Wallet directories** -- recreated fresh with correct permissions (755) by the orchestrator
+
+Since `run_sim.sh` mints a fresh per-run namespace (`/tmp/monerosim-<runid>/`) for every invocation, this cleanup is normally a no-op there -- it mainly matters when the generator is run standalone against the legacy global paths, where a previous run's leftovers could still be present.
 
 This centralized cleanup replaces the per-agent bash cleanup processes that previously ran inside the simulation. The benefit is fewer Shadow processes and simpler generated YAML.
 
@@ -157,7 +159,7 @@ Geographic distribution cycles agents across continents:
 
 ## Agent Communication via Shared Filesystem
 
-Shadow isolates each host's network, but `/tmp` is shared across all hosts. Monerosim uses `/tmp/monerosim_shared/` as a coordination bus:
+Shadow isolates each host's network, but `/tmp` is shared across all hosts. Monerosim uses `/tmp/monerosim-<runid>/shared/` as a coordination bus (legacy default `/tmp/monerosim_shared/` when run outside `run_sim.sh`):
 
 | File | Written by | Read by | Content |
 |------|-----------|---------|---------|
@@ -235,7 +237,7 @@ The full generation pipeline in `src/orchestrator.rs`:
    - Generate wallet arguments (daemon address, wallet directory)
    - Generate agent wrapper script content
    - Create the ShadowHost with 3 processes (daemon, wallet, agent)
-6. **Generate registries** (agent, miner, public node) as JSON to `/tmp/monerosim_shared/`
+6. **Generate registries** (agent, miner, public node) as JSON to `/tmp/monerosim-<runid>/shared/` (legacy default `/tmp/monerosim_shared/` when run outside `run_sim.sh`)
 7. **Pre-create wallet directories** with correct permissions (755)
 8. **Write wrapper scripts** to `shadow_output/scripts/` and rewrite Shadow host processes to reference them
 9. **Serialize** the complete ShadowConfig to `shadow_output/shadow_agents.yaml`
@@ -262,7 +264,7 @@ shadow_output/
     simulation-monitor_wrapper.sh
     ...
 
-/tmp/monerosim_shared/
+/tmp/monerosim-<runid>/shared/    # legacy default: /tmp/monerosim_shared/ when run outside run_sim.sh
   agent_registry.json     # Agent metadata for discovery
   miners.json             # Miner hashrate distribution
   public_nodes.json       # Public node registry

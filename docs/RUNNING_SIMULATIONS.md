@@ -18,8 +18,10 @@ If you haven't set up the environment yet, run `./setup.sh` first. It will insta
 
 This parses your YAML configuration and generates:
 - `shadow_output/shadow_agents.yaml` - the Shadow configuration
-- `/tmp/monerosim_shared/agent_registry.json` - agent metadata
-- `/tmp/monerosim_shared/miners.json` - miner hashrate distribution
+- `<shared-dir>/agent_registry.json` - agent metadata
+- `<shared-dir>/miners.json` - miner hashrate distribution
+
+`<shared-dir>` defaults to `/tmp/monerosim_shared/` when the generator is run standalone, as above. When invoked through `run_sim.sh` (the recommended workflow, see Step 2), each run instead gets its own namespaced directory, `/tmp/monerosim-<runid>/shared/`, so concurrent runs on one box don't collide. The resolved paths for a given run are breadcrumbed to `shadow_output/run_env.sh` — `source` it to get `$MONEROSIM_DAEMON_DATA_DIR` and `$MONEROSIM_SHARED_DIR`. See [docs/20260721_per_run_tmp_namespacing.md](20260721_per_run_tmp_namespacing.md) for details.
 
 The `--output` flag defaults to `shadow_output` if omitted.
 
@@ -71,14 +73,17 @@ A simulation with a typical configuration (8h simulation time, 25 agents) takes 
 ### Quick verification
 
 ```bash
-# Check if daemons started (logs in /tmp/monero-*/bitmonero.log)
-grep "RPC server initialized OK" /tmp/monero-*/bitmonero.log
+# Load this run's paths (breadcrumbed by run_sim.sh)
+source shadow_output/run_env.sh
+
+# Check if daemons started
+grep "RPC server initialized OK" "$MONEROSIM_DAEMON_DATA_DIR"/monero-*/bitmonero.log
 
 # Check P2P connections
-grep "Connected success" /tmp/monero-*/bitmonero.log
+grep "Connected success" "$MONEROSIM_DAEMON_DATA_DIR"/monero-*/bitmonero.log
 
 # Check agent discovery
-cat /tmp/monerosim_shared/agent_registry.json
+cat "$MONEROSIM_SHARED_DIR"/agent_registry.json
 ```
 
 ### Analysis tools (LLM-generated, unverified)
@@ -90,9 +95,11 @@ There is an LLM-generated analysis tool (`tx-analyzer`, the Rust binary at `targ
 | Log | Path |
 |-----|------|
 | Shadow main log | `shadow.log` |
-| Daemon logs | `/tmp/monero-[agent]/bitmonero.log` |
+| Daemon logs | `$MONEROSIM_DAEMON_DATA_DIR/monero-[agent]/bitmonero.log` |
 | Agent logs (Python) | `shadow.data/hosts/[hostname]/bash.*.stdout` |
-| Shared state | `/tmp/monerosim_shared/*.json` |
+| Shared state | `$MONEROSIM_SHARED_DIR/*.json` |
+
+`$MONEROSIM_DAEMON_DATA_DIR` and `$MONEROSIM_SHARED_DIR` are per-run paths under `/tmp/monerosim-<runid>/`; run `source shadow_output/run_env.sh` to load them (see Step 1). The legacy global defaults (`/tmp/monero-[agent]/`, `/tmp/monerosim_shared/`) only apply when the generator is run standalone, outside `run_sim.sh`.
 
 ## Interpreting Logs
 
@@ -115,19 +122,19 @@ If any of the following appear, the simulation likely has a real problem:
 
 - **Non-zero exit code from `run_sim.sh`** — Shadow itself crashed.
 - **`[ERROR]` lines (not `[WARN]`) in `shadow.log`** — Shadow recorded an error condition. Read surrounding context.
-- **`Killed` or signal-related shutdowns of monerod processes mid-sim** — typically OOM, or a crash. Check `/tmp/monero-[agent]/bitmonero.log` for the cause.
+- **`Killed` or signal-related shutdowns of monerod processes mid-sim** — typically OOM, or a crash. Check `$MONEROSIM_DAEMON_DATA_DIR/monero-[agent]/bitmonero.log` for the cause.
 - **`shadow.data/hosts/*/monerod.*.stdout` empty or missing for many agents** at end of sim — many daemons failed to start or were killed.
 - **`./scripts/check_sim.sh` reporting 0 P2P connections** after the bootstrap window — peer discovery failed; check `peer_mode` and seed nodes.
 - **Non-zero exit from `./scripts/smoke_test.sh`** — Tier 2 baselines (block-height floor, transaction floors, disallowed log patterns from `tests/baselines/`) failed. Indicates a real regression.
 
-For real errors, start with the relevant per-agent log at `/tmp/monero-[agent]/bitmonero.log` — that has the actual failure context, while `shadow.log` aggregates Shadow-level events.
+For real errors, start with the relevant per-agent log at `$MONEROSIM_DAEMON_DATA_DIR/monero-[agent]/bitmonero.log` — that has the actual failure context, while `shadow.log` aggregates Shadow-level events.
 
 ## Testing Approaches
 
 ### Post-simulation analysis (recommended)
 
 1. Wait for the simulation to complete
-2. Use grep on raw logs (e.g., `/tmp/monero-*/bitmonero.log`) for detailed investigation
+2. Use grep on raw logs (e.g., `"$MONEROSIM_DAEMON_DATA_DIR"/monero-*/bitmonero.log`, after `source shadow_output/run_env.sh`) for detailed investigation
 3. Run `./target/release/tx-analyzer` for transaction-flow analysis (see [ANALYSIS_TOOLS.md](ANALYSIS_TOOLS.md))
 
 ### In-simulation monitoring

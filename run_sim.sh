@@ -46,9 +46,9 @@ RAMDISK_PATH=""           # set by mount_ramdisk() if mount succeeds
 RAMDISK_MOUNTED=false     # cleared once watchdog has taken over
 PREFLIGHT_ONLY=false      # if true, exit after preflight without touching shadow.data or /tmp
 NO_ARCHIVE=false          # if true, skip the post-sim archive step (shadow.data, daemon logs,
-                          # blockchain snapshots, summary report). Still cleans /tmp/monero-*
-                          # unless --no-clean is also set.
-NO_CLEAN=false            # if true, skip the /tmp/monero-* cleanup so the user can dig
+                          # blockchain snapshots, summary report). Still cleans the run's
+                          # daemon data dirs unless --no-clean is also set.
+NO_CLEAN=false            # if true, skip the daemon-data-dir cleanup so the user can dig
                           # through raw blockchain DBs / config files / etc. by hand.
 
 usage() {
@@ -89,17 +89,22 @@ Options:
                          simulation.
   --no-archive           Skip the post-simulation archive step. shadow.data/,
                          daemon bitmonero.log files, blockchain snapshots,
-                         and summary.txt are NOT preserved. /tmp/monero-*
-                         is still cleaned (unless --no-clean is also set).
-                         Pre-run artifacts (input_config.yaml,
+                         and summary.txt are NOT preserved. The run's daemon
+                         data dirs are still cleaned (unless --no-clean is
+                         also set). Pre-run artifacts (input_config.yaml,
                          shadow_agents.yaml, build.log, monerosim.log,
                          shadow_run.log) are still kept under archive_runs/.
-  --no-clean             Skip the /tmp/monero-*/ cleanup. The raw daemon
+  --no-clean             Skip the daemon-data-dir cleanup. The raw daemon
                          data directories (blockchain LMDB, monerod config,
                          and — with --no-archive also — bitmonero.log files)
-                         remain in /tmp for you to inspect by hand. Can
-                         occupy tens of GB; remember to clean up manually
-                         when you're done.
+                         remain under the run's /tmp/monerosim-<runid>/ dir
+                         for you to inspect by hand. Can occupy tens of GB;
+                         remember to clean up manually when you're done.
+
+Concurrency: each run gets its own /tmp/monerosim-<runid>/ namespace for
+daemon data dirs and the shared registry, so multiple monerosim instances
+can run on one box WITHOUT colliding — as long as each runs from its own
+checkout/worktree (shadow.data/ and shadow_output/ are per-checkout).
   --help                 Show help
 
 Examples:
@@ -213,7 +218,16 @@ fi
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 MONEROSIM_BIN="$SCRIPT_DIR/target/release/monerosim"
 SHADOW_OUTPUT="$SCRIPT_DIR/shadow_output"
+# Per-run /tmp namespace. Resolved in build_and_generate(): everything mutable
+# that historically lived at the GLOBAL /tmp/monero-<agent>/ and
+# /tmp/monerosim_shared/ goes under one per-run dir (/tmp/monerosim-<runid>/)
+# so concurrent monerosim instances on one box can't collide — shared LMDB
+# data dirs cause mdb_txn_begin=EAGAIN → monerod error-path crashes (see
+# docs/20260717_wallet_crash_root_cause.md §3). Values below are the legacy
+# fallbacks, only used if generation is skipped.
 SHARED_DIR="/tmp/monerosim_shared"
+DAEMON_DATA_BASE="/tmp"
+RUN_TMP_DIR=""
 
 # ============================================================
 # Utility functions
@@ -594,13 +608,13 @@ check_disk_space() {
         --num-relays "$num_relays" \
         --num-hosts "$num_hosts" \
         --sim-hours "$sim_hours" \
-        2>/tmp/monerosim_disk_est_info.txt)
+        2>"/tmp/monerosim_disk_est_info_$$.txt")
 
     # Read rate info
     local rate_info=""
-    if [[ -f /tmp/monerosim_disk_est_info.txt ]]; then
-        rate_info=$(cat /tmp/monerosim_disk_est_info.txt)
-        rm -f /tmp/monerosim_disk_est_info.txt
+    if [[ -f "/tmp/monerosim_disk_est_info_$$.txt" ]]; then
+        rate_info=$(cat "/tmp/monerosim_disk_est_info_$$.txt")
+        rm -f "/tmp/monerosim_disk_est_info_$$.txt"
     fi
     local source="default estimates"
     if [[ "$rate_info" == *"learned from previous run"* ]]; then
@@ -659,6 +673,48 @@ build_and_generate() {
     ARCHIVE_DIR="$ARCHIVE_BASE/${TIMESTAMP}_${RUN_NAME}"
     mkdir -p "$ARCHIVE_DIR"
     log_ok "Archive directory: $ARCHIVE_DIR"
+
+    # Per-run /tmp namespace (see comment at the SHARED_DIR definition).
+    # The generator reads MONEROSIM_DAEMON_DATA_DIR / MONEROSIM_SHARED_DIR as
+    # the defaults for general.daemon_data_dir / general.shared_dir, so
+    # exporting them here bakes the namespaced paths into every generated
+    # daemon arg, wrapper script, and agent environment. Pre-set env vars win
+    # so users can still pin custom locations.
+    RUN_ID="${TIMESTAMP}_${RUN_NAME}"
+    RUN_TMP_DIR="/tmp/monerosim-${RUN_ID}"
+    export MONEROSIM_DAEMON_DATA_DIR="${MONEROSIM_DAEMON_DATA_DIR:-$RUN_TMP_DIR}"
+    export MONEROSIM_SHARED_DIR="${MONEROSIM_SHARED_DIR:-$RUN_TMP_DIR/shared}"
+    DAEMON_DATA_BASE="$MONEROSIM_DAEMON_DATA_DIR"
+    SHARED_DIR="$MONEROSIM_SHARED_DIR"
+
+    # Sweep run dirs left behind by CRASHED runs (owner PID dead). Live
+    # concurrent runs are untouched — that's the point of the namespacing.
+    # Dirs without an .owner_pid breadcrumb are skipped (could be a manual
+    # generator invocation we can't reason about).
+    local stale opid
+    for stale in /tmp/monerosim-*/; do
+        [[ -d "$stale" ]] || continue
+        [[ "${stale%/}" == "$RUN_TMP_DIR" ]] && continue
+        opid=$(cat "${stale}.owner_pid" 2>/dev/null || true)
+        if [[ -z "$opid" ]]; then
+            log_warn "Leaving ${stale} (no .owner_pid — not created by run_sim.sh; remove manually if stale)"
+        elif kill -0 "$opid" 2>/dev/null; then
+            log_info "Leaving ${stale} (owner pid $opid alive — concurrent run)"
+        else
+            log_info "Removing stale run dir ${stale} (owner pid $opid gone)"
+            rm -rf "$stale" 2>/dev/null || true
+        fi
+    done
+    if compgen -G "/tmp/monero-*" > /dev/null 2>&1; then
+        log_warn "Legacy /tmp/monero-* leftovers found (pre-namespacing run?)."
+        log_warn "Remove with 'rm -rf /tmp/monero-*' if no old-version run is live."
+    fi
+
+    mkdir -p "$DAEMON_DATA_BASE" "$SHARED_DIR"
+    if [[ "$DAEMON_DATA_BASE" == "$RUN_TMP_DIR" ]]; then
+        echo $$ > "$RUN_TMP_DIR/.owner_pid" 2>/dev/null || true
+    fi
+    log_ok "Run tmp dir: $DAEMON_DATA_BASE (shared: $SHARED_DIR)"
 
     # Build
     if [[ "$DO_BUILD" == true ]]; then
@@ -722,6 +778,28 @@ build_and_generate() {
         log_err "shadow_agents.yaml not generated!"
         exit 1
     fi
+
+    # Resolve the ACTUAL paths the generator baked in — a YAML config that
+    # sets general.daemon_data_dir/shared_dir explicitly, or --ramdisk's
+    # config rewrite, overrides our env defaults. Then breadcrumb them for
+    # out-of-band tools (check_sim.sh sources run_env.sh from shadow_output/).
+    local actual_path
+    actual_path=$(grep -oPm1 'data-dir=\K[^ "]+' "$SHADOW_OUTPUT/shadow_agents.yaml" || true)
+    [[ -n "$actual_path" ]] && DAEMON_DATA_BASE=$(dirname "$actual_path")
+    # Shared dir: wallet dirs in the YAML are {shared_dir}/<agent>_wallet;
+    # wallet-less configs fall back to --shared-dir in the wrapper scripts.
+    actual_path=$(grep -oPm1 -- '--wallet-dir=\K[^ "]+' "$SHADOW_OUTPUT/shadow_agents.yaml" || true)
+    if [[ -n "$actual_path" ]]; then
+        SHARED_DIR=$(dirname "$actual_path")
+    else
+        actual_path=$(grep -rhoPm1 -- '--shared-dir \K[^ "]+' "$SHADOW_OUTPUT/scripts/" 2>/dev/null | head -1 || true)
+        [[ -n "$actual_path" ]] && SHARED_DIR="$actual_path"
+    fi
+    {
+        echo "MONEROSIM_RUN_ID=\"$RUN_ID\""
+        echo "MONEROSIM_DAEMON_DATA_DIR=\"$DAEMON_DATA_BASE\""
+        echo "MONEROSIM_SHARED_DIR=\"$SHARED_DIR\""
+    } > "$SHADOW_OUTPUT/run_env.sh"
 }
 
 # ============================================================
@@ -866,7 +944,7 @@ start_memory_monitor() {
 live_progress_monitor() {
     local shadow_pid=$1
     local shadow_log=$2
-    local prev_sizes_file="/tmp/monerosim_monitor_sizes.tmp"
+    local prev_sizes_file="/tmp/monerosim_monitor_sizes_$$.tmp"
     local display_lines=0
 
     # Clean previous sizes file
@@ -1046,7 +1124,7 @@ exit 0' INT
                     fi
                 fi
             fi
-        done < <(find /tmp -maxdepth 4 -path '*/monero-*/fake/lmdb/data.mdb' -print0 2>/dev/null)
+        done < <(find "$DAEMON_DATA_BASE" -maxdepth 4 -path '*/monero-*/fake/lmdb/data.mdb' -print0 2>/dev/null)
 
         # Save current sizes for next cycle
         echo -e "$current_sizes" > "$prev_sizes_file"
@@ -1077,7 +1155,7 @@ exit 0' INT
         # surface the live block height, rolling rate, time since the last
         # block, and a run-cumulative interval histogram. Cheap (tail-only
         # reads + small JSON state file inside shadow.data/).
-        local miner_log="/tmp/monero-miner-001/bitmonero.log"
+        local miner_log="$DAEMON_DATA_BASE/monero-miner-001/bitmonero.log"
         if [[ -f "$miner_log" ]]; then
             local LAST_HEIGHT="" LAST_BLOCK_AGO_SEC=""
             local RECENT_RATE_PER_MIN="" RECENT_MIN_PER_BLOCK=""
@@ -1167,6 +1245,10 @@ archive_results() {
     if [[ "$RUN_ANALYZE" == true ]]; then
         run_analysis || log_warn "Post-simulation analysis failed"
     fi
+
+    # Everything of value has been moved/copied into the archive; remove the
+    # daemon data dirs and (if namespaced) the whole per-run /tmp dir.
+    cleanup_tmp_monero --full
 }
 
 generate_summary_report() {
@@ -1215,7 +1297,7 @@ archive_blockchain_snapshots() {
 
     # Extract all data-dir paths
     local all_dirs
-    all_dirs=$(grep -oP 'data-dir=\K/tmp/monero-[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
+    all_dirs=$(grep -oP 'data-dir=\K[^ "]+' "$shadow_agents" 2>/dev/null | sort -u || true)
     local total
     total=$(echo "$all_dirs" | grep -c . || true)
 
@@ -1273,23 +1355,34 @@ copy_blockchain_snapshot() {
 }
 
 cleanup_tmp_monero() {
-    # Always-safe cleanup: removes /tmp/monero-*/ leftovers regardless of
+    # Always-safe cleanup: removes this run's daemon data dirs regardless of
     # whether the archive step ran. Called from archive_daemon_logs() in the
-    # normal path, and standalone from main() in the --no-archive path.
+    # normal path (pass --full there: shared-dir contents were archived, so
+    # the whole run dir can go), and standalone from main() in the
+    # --no-archive path (daemon dirs only; shared/ kept, matching the old
+    # behavior of leaving /tmp/monerosim_shared in place).
     # Skipped entirely with --no-clean so users can dig through raw data.
+    local full=false
+    [[ "${1:-}" == "--full" ]] && full=true
     if [[ "$NO_CLEAN" == true ]]; then
         local tmp_size
-        tmp_size=$(du -shc /tmp/monero-* 2>/dev/null | tail -1 | cut -f1)
-        log_warn "Skipping /tmp/monero-*/ cleanup (--no-clean). "
-        log_warn "${tmp_size:-?} left in /tmp/monero-*/ for inspection."
-        log_warn "Remember to 'rm -rf /tmp/monero-*' when you're done."
+        tmp_size=$(du -shc "$DAEMON_DATA_BASE"/monero-* 2>/dev/null | tail -1 | cut -f1 || true)
+        log_warn "Skipping daemon-dir cleanup (--no-clean). "
+        log_warn "${tmp_size:-?} left in $DAEMON_DATA_BASE/monero-*/ for inspection."
+        log_warn "Remember to 'rm -rf ${RUN_TMP_DIR:-$DAEMON_DATA_BASE/monero-*}' when you're done."
         return
     fi
-    log_info "Cleaning up /tmp/monero-*/ leftovers..."
+    log_info "Cleaning up $DAEMON_DATA_BASE/monero-*/ leftovers..."
     local tmp_size
-    tmp_size=$(du -shc /tmp/monero-* 2>/dev/null | tail -1 | cut -f1)
-    rm -rf /tmp/monero-* 2>/dev/null || true
-    log_ok "Freed ~${tmp_size:-0} from /tmp/monero-*/"
+    tmp_size=$(du -shc "$DAEMON_DATA_BASE"/monero-* 2>/dev/null | tail -1 | cut -f1 || true)
+    rm -rf "$DAEMON_DATA_BASE"/monero-* 2>/dev/null || true
+    # Namespaced run dir: with --full everything of value has been moved or
+    # copied into the archive, so remove the whole per-run dir.
+    if [[ "$full" == true && -n "$RUN_TMP_DIR" && -d "$RUN_TMP_DIR" \
+          && "$DAEMON_DATA_BASE" == "$RUN_TMP_DIR" ]]; then
+        rm -rf "$RUN_TMP_DIR" 2>/dev/null || true
+    fi
+    log_ok "Freed ~${tmp_size:-0} from $DAEMON_DATA_BASE/monero-*/"
 }
 
 archive_daemon_logs() {
@@ -1299,7 +1392,7 @@ archive_daemon_logs() {
     mkdir -p "$logs_dir"
 
     local count=0
-    for log_file in /tmp/monero-*/bitmonero.log; do
+    for log_file in "$DAEMON_DATA_BASE"/monero-*/bitmonero.log; do
         [[ -f "$log_file" ]] || continue
         local node_dir
         node_dir=$(dirname "$log_file")
@@ -1318,14 +1411,12 @@ archive_daemon_logs() {
         total_size=$(du -sh "$logs_dir" 2>/dev/null | cut -f1)
         log_ok "Daemon logs: $count bitmonero.log files archived ($total_size total)"
     else
-        log_warn "No bitmonero.log files found in /tmp/monero-*/"
+        log_warn "No bitmonero.log files found in $DAEMON_DATA_BASE/monero-*/"
     fi
-
-    # Clean up the leftover /tmp/monero-*/ directories (blockchain DBs, config,
-    # lock files, etc. — everything that isn't bitmonero.log, which we moved
-    # above). Can run into tens of GB on a 1000-node sim. Skipped under
-    # --no-clean.
-    cleanup_tmp_monero
+    # NOTE: the daemon data dirs themselves (blockchain DBs, config, lock
+    # files — tens of GB on a 1000-node sim) are cleaned by the
+    # cleanup_tmp_monero --full call at the END of archive_results(), after
+    # the registry/wallet archiving and summary report have read shared/.
 }
 
 archive_transaction_registry() {
@@ -1422,7 +1513,11 @@ print_summary() {
     echo ""
 
     # --- Simulation results from monitor final report ---
-    local report_file="$SHARED_DIR/monitoring/final_report.json"
+    # Prefer the archived copy: the per-run /tmp namespace (incl. shared/)
+    # is removed by cleanup_tmp_monero --full before we get here. The
+    # shared-dir fallback covers --no-archive, where shared/ is kept.
+    local report_file="$ARCHIVE_DIR/monitoring/final_report.json"
+    [[ -f "$report_file" ]] || report_file="$SHARED_DIR/monitoring/final_report.json"
     if [[ -f "$report_file" ]]; then
         local sim_results
         sim_results=$(python3 scripts/run_sim_helpers.py print-summary-kv \
@@ -1485,9 +1580,10 @@ print_summary() {
         echo -e "  ${DIM}(No simulation monitor report found)${NC}"
         echo ""
 
-        # Try to get basic stats from shadow log
+        # Try to get basic stats from shadow log (|| true: no matches must
+        # not abort the summary under set -euo pipefail)
         local final_height
-        final_height=$(grep -oP 'height \K\d+' "$SHADOW_LOG" 2>/dev/null | sort -n | tail -1)
+        final_height=$(grep -oP 'height \K\d+' "$SHADOW_LOG" 2>/dev/null | sort -n | tail -1 || true)
         if [[ -n "$final_height" ]]; then
             echo "  Block height: $final_height (from daemon logs)"
             echo ""
