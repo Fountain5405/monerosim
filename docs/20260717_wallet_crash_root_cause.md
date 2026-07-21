@@ -1,7 +1,9 @@
 # The Intermittent wallet-rpc Crash: Root Cause
 
 **Date:** 2026-07-17
-**Status:** root cause captured and identified; remediation decision pending.
+**Status:** RESOLVED — fixed by bumping monero v0.18.1.0 → v0.18.5.1
+(pinned in `monero.pin`, commit 48a34bf1); validated 2026-07-20/21 with 12/12
+clean gdb-instrumented solo runs (§5.1).
 **TL;DR:** the rare `monero-wallet-rpc` crash that intermittently fails
 `refactor_gate` (exit 1, "1 managed process in unexpected final state") is a
 **monero v0.18.1.0 wallet bug**: an allocation inside EasyLogging++'s log
@@ -119,7 +121,7 @@ overnight run); `pkill -f <pattern>` can self-match the invoking shell.
 Impact today: ~1 in 4 refactor_gate runs lose one wallet out of 105 and
 exit 1; simulation *results* are unaffected; smoke exit-code is flaky.
 
-Options (decision pending):
+Options (option 1 was chosen and validated — see §5.1):
 
 1. **Bump monero** to a later v0.18.x (or current) where upstream likely
    fixed the corruption. Correct fix; heavy validation cost (new binaries =
@@ -133,6 +135,28 @@ Options (decision pending):
    Low effort, low expected return.
 4. **Do nothing**: keep treating exit-1-with-healthy-metrics as a manual
    judgment call.
+
+### 5.1 Resolution and validation (2026-07-20/21)
+
+Option 1 executed: monero bumped v0.18.1.0 → **v0.18.5.1** (latest stable),
+pinned via the new `monero.pin` and enforced by the `run_sim.sh` preflight
+(commit 48a34bf1). The v0.18.5.x line carries wallet2 refresh hardening
+(upstream PRs #10773/#10776) and a txpool use-after-free fix (#10710);
+EasyLogging++ itself is unchanged, so validation had to be empirical.
+
+Validation protocol: 12 consecutive **solo** `refactor_gate`-config runs
+(the only valid draw type — see §3 on the /tmp collision), every wallet-rpc
+under a gdb with the same REAL-FAULT-HIT-gated capture script that caught
+the original crash, plus a continuous sweeper for late-spawned processes.
+
+Result: **12/12 clean** — zero gdb captures, zero `Signaled` processes in
+any `shadow.log`, all sims completed. At the old ~1/4-per-run crash rate,
+12 clean runs would occur with probability ~0.75¹² ≈ 3% — the bump fixed
+it with ~97% confidence. Post-bump gates: quickstart smoke 19/19 PASS
+(exit 0), cargo goldens PASS, both pin preflights MATCH.
+
+Old v0.18.1.0 binaries preserved in
+`~/basement_monerosim/20260720_monero_v0.18.1.0_binaries_pre_bump/`.
 
 ## 6. Evidence
 
