@@ -8,3 +8,4 @@ run_id,date,commit_hash,scenario,smoke_result,wall_seconds,exit_code,success_cri
 20260715_142415_refactor_gate,2026-07-15,212c0a5c,refactor_gate,FAIL,3720,1,False,15,0,354,0,0.0000,5,,0,3,9,6,,,
 20260715_152654_refactor_gate,2026-07-15,212c0a5c,refactor_gate,FAIL,3062,1,False,13,12,237,0,0.0000,0,100.0000,16,2,5,4,,,
 20260715_161804_refactor_gate,2026-07-15,212c0a5c,refactor_gate,FAIL,2688,1,False,46,45,469,0,0.0000,7,22.7286,426,1,8,4,10,122,50
+20260721_121242_refactor_gate,2026-07-21,0ae05625,refactor_gate,PASS,5340,0,True,185,184,1546,1285,0.8312,8,100.0000,511,8,17,12,32,93,60
