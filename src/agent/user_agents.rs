@@ -53,6 +53,8 @@ pub struct UserAgentProcessContext<'a> {
     pub reachable_fraction: f64,
     /// Per-role overrides for `reachable_fraction` (override semantics).
     pub reachable_by_role: Option<&'a BTreeMap<String, f64>>,
+    /// Global fraction of non-seed nodes that run `--hide-my-port` (0.0 = none).
+    pub hidden_fraction: f64,
     /// Simulation stop time in seconds — bounds turnover session generation.
     pub simulation_stop_secs: u64,
     /// Peer-turnover config (None = no turnover; relays stay always-on).
@@ -282,6 +284,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         simulation_seed,
         reachable_fraction,
         reachable_by_role,
+        hidden_fraction,
         simulation_stop_secs,
         turnover,
     } = ctx;
@@ -368,9 +371,10 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
 
     // Regular agents will use seed nodes for --seed-node
 
-    // Deterministically select which non-seed nodes are UNREACHABLE
-    // (advertise my_port=0 via --hide-my-port), to mimic mainnet's NAT
-    // majority. Seeds and miners are always reachable (bootstrap backbone).
+    // Deterministically select which non-seed nodes are UNREACHABLE, i.e.
+    // firewalled: their P2P port gets blocked via Shadow's
+    // blocked_inbound_ports, to mimic mainnet's NAT majority. Seeds and
+    // miners are always reachable (bootstrap backbone).
     // See docs/20260618_mainnet_topology_targets.md.
     let unreachable_agents = compute_unreachable_set(
         &user_agents,
@@ -380,12 +384,24 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     );
     if !unreachable_agents.is_empty() {
         log::info!(
-            "Reachability: {} node(s) marked unreachable via --hide-my-port \
+            "Reachability: {} node(s) marked unreachable via blocked_inbound_ports \
              (global reachable_fraction={}; seeds + miners always reachable)",
             unreachable_agents.len(),
             reachable_fraction
         );
     }
+
+    // Nodes that additionally run --hide-my-port. compute_unreachable_set
+    // returns the first (1 - reachable) agents by seeded hash, so passing
+    // (1 - hidden_fraction) selects the first `hidden_fraction` of them in the
+    // SAME order — hence hidden ⊆ firewalled when hidden_fraction ≤
+    // 1 - reachable_fraction. Default hidden_fraction 0.0 => empty set.
+    let hidden_agents = compute_unreachable_set(
+        &user_agents,
+        simulation_seed,
+        1.0 - hidden_fraction,
+        None,
+    );
 
     // Deterministically select which NODES cycle offline/online (turnover) and
     // pre-parse the turnover timing knobs once. See compute_turnover_set + the
@@ -577,14 +593,14 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             .entry("max-connections-per-ip".to_string())
             .or_insert(OptionValue::Number(4));
 
-        // Mainnet-realism: if this node was selected as unreachable,
-        // inject --hide-my-port (advertise my_port=0). The node still
-        // binds/listens and forms its own outbound peers, but is never
-        // inserted into anyone's peerlist (white-listing is gated on a
-        // successful back-ping, which requires my_port != 0), so it
-        // accepts ~no inbound — exactly a NAT'd mainnet leaf. A user who
-        // sets hide-my-port explicitly per-agent still wins (or_insert).
-        if unreachable_agents.contains(agent_id.as_str()) {
+        // Mainnet-realism: if this node was selected as hidden, inject
+        // --hide-my-port (advertise my_port=0). The node still binds/listens
+        // and forms its own outbound peers, but is never inserted into
+        // anyone's peerlist (white-listing is gated on a successful
+        // back-ping, which requires my_port != 0), so it accepts ~no
+        // inbound. A user who sets hide-my-port explicitly per-agent still
+        // wins (or_insert).
+        if hidden_agents.contains(agent_id.as_str()) {
             merged_daemon_options
                 .entry("hide-my-port".to_string())
                 .or_insert(OptionValue::Bool(true));
@@ -1171,6 +1187,11 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 ShadowHost {
                     network_node_id,
                     ip_addr: Some(agent_ip.clone()),
+                    blocked_inbound_ports: if unreachable_agents.contains(agent_id.as_str()) {
+                        Some(vec![crate::MONERO_P2P_PORT])
+                    } else {
+                        None
+                    },
                     processes,
                     bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
                     bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),

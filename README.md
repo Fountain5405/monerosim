@@ -317,6 +317,7 @@ monerosim/
 - [How It Works](docs/FLOW.md) - Detailed mechanics of how monerosim interfaces with Shadow
 - [Determinism Fixes](docs/DETERMINISM_FIXES.md) - Sources of non-determinism and fixes
 - [AI Config Generator](docs/AI_CONFIG_GENERATOR.md) - LLM-based configuration generation
+- [Node Reachability: Firewall vs. Hidden](docs/20260722_node_reachability_firewall.md) - Modelling unreachable/NAT nodes. **Breaking change:** `reachable_fraction` now drives a physical inbound firewall (`blocked_inbound_ports`, needs shadowformonero v0.2.4); `--hide-my-port` moved to the new `hidden_fraction`
 
 ## Requirements
 

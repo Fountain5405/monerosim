@@ -148,6 +148,7 @@ export PATH="$PATH:{}/.monerosim/bin"
             ShadowHost {
                 network_node_id, // Use the assigned GML node with bandwidth info
                 ip_addr: Some(miner_distributor_ip),
+                blocked_inbound_ports: None,
                 processes,
                 bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
                 bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s

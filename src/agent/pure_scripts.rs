@@ -131,6 +131,7 @@ echo "Starting pure script agent {}..."
             ShadowHost {
                 network_node_id, // Use the assigned GML node with bandwidth info
                 ip_addr: Some(script_ip),
+                blocked_inbound_ports: None,
                 processes: vec![process],
                 bandwidth_down: Some("1000000000".to_string()), // 1 Gbit/s
                 bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s

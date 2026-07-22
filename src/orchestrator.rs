@@ -385,6 +385,7 @@ export PATH="$PATH:{}/.monerosim/bin"
         ShadowHost {
             network_node_id: 0, // DNS server on first network node
             ip_addr: Some(dns_ip.to_string()),
+            blocked_inbound_ports: None,
             processes: dns_processes,
             bandwidth_down: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
             bandwidth_up: Some(crate::DEFAULT_BANDWIDTH_BPS.to_string()),
@@ -870,6 +871,7 @@ pub fn generate_agent_shadow_config(
         simulation_seed: config.general.simulation_seed,
         reachable_fraction: config.general.reachable_fraction,
         reachable_by_role: config.general.reachable_by_role.as_ref(),
+        hidden_fraction: config.general.hidden_fraction,
         simulation_stop_secs: parse_duration_to_seconds(&config.general.stop_time).map_err(
             |e| {
                 color_eyre::eyre::eyre!(

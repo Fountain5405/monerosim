@@ -264,6 +264,11 @@ pub struct ShadowHost {
     /// IP address assigned to this host
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ip_addr: Option<String>,
+    /// Inbound TCP ports on which this host drops NEW connections (SYN) — a
+    /// synthetic firewall / NAT. Maps to Shadow's `blocked_inbound_ports`
+    /// host option. `None` = no filtering.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_inbound_ports: Option<Vec<u16>>,
     /// List of processes to run on this host
     pub processes: Vec<ShadowProcess>,
     /// Download bandwidth for this host

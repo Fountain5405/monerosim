@@ -55,11 +55,13 @@ struct Args {
     #[arg(short, long, default_value = "shadow_output")]
     output: PathBuf,
 
-    /// Fraction of non-seed nodes that are reachable (advertise their P2P
-    /// port), in [0.0, 1.0]. 1.0 = all reachable (default / perfect network);
-    /// lower = mainnet-like NAT majority, with the complement getting
-    /// --hide-my-port. Overrides `general.reachable_fraction` from the config.
-    /// Seeds and miners are always reachable regardless.
+    /// Fraction of non-seed nodes that are reachable through the physical
+    /// inbound firewall, in [0.0, 1.0]. 1.0 = all reachable (default /
+    /// perfect network); lower = mainnet-like NAT majority, with the
+    /// complement having their P2P port blocked (Shadow
+    /// `blocked_inbound_ports`), simulating a NAT/firewall that drops
+    /// unsolicited inbound connections. Overrides `general.reachable_fraction`
+    /// from the config. Seeds and miners are always reachable regardless.
     #[arg(long)]
     reachable: Option<f64>,
 

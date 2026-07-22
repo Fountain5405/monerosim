@@ -343,6 +343,16 @@ pub struct GeneralConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reachable_by_role: Option<BTreeMap<String, f64>>,
 
+    /// Fraction of non-seed/miner nodes that run `--hide-my-port` (the daemon
+    /// flag: monerod stops advertising its P2P port, but still accepts inbound
+    /// if dialed). Independent of `reachable_fraction` (which is now the
+    /// physical firewall). Default 0.0 = nobody hidden. Hidden nodes are drawn
+    /// from the same seeded ordering as the firewalled set, so when
+    /// `hidden_fraction <= 1 - reachable_fraction` every hidden node is also
+    /// firewalled (a node hides because it is unreachable).
+    #[serde(default = "default_hidden_fraction")]
+    pub hidden_fraction: f64,
+
     /// Peer-turnover configuration. When present, eligible relay nodes cycle
     /// offline/online during the run: the daemon is stopped via Shadow
     /// `shutdown_time` (SIGTERM → graceful exit) and a fresh daemon is
@@ -367,6 +377,11 @@ pub struct GeneralConfig {
 /// Default reachable fraction: 1.0 = all nodes reachable (perfect network).
 fn default_reachable_fraction() -> f64 {
     1.0
+}
+
+/// Default hidden fraction: 0.0 = no node runs --hide-my-port.
+fn default_hidden_fraction() -> f64 {
+    0.0
 }
 
 /// Peer-turnover parameters (see `GeneralConfig::turnover`). Online sessions and
@@ -515,6 +530,7 @@ impl Default for GeneralConfig {
             fallback_seeds: FallbackSeedsMode::default(),
             reachable_fraction: default_reachable_fraction(),
             reachable_by_role: None,
+            hidden_fraction: default_hidden_fraction(),
             turnover: None,
         }
     }
