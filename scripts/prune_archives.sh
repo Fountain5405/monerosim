@@ -22,6 +22,9 @@
 
 set -euo pipefail
 
+# shellcheck source=run_dir_lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/run_dir_lib.sh"
+
 # ---------- defaults ----------
 TOP_USERS=4
 SAMPLE_FAILED=3
@@ -43,7 +46,7 @@ Options:
   --top-users N             Keep top-N users by tx count from summary (default: 4)
   --sample-failed N         Keep N additional failed-user samples (default: 3)
   --keep USER[,USER...]     Extra agent IDs to always keep (comma-separated, e.g. user-001,user-042)
-  --force                   Prune even if summary.txt is missing (incomplete runs)
+  --force                   Prune even if summary.txt is missing (incomplete runs) or the run is still live
   -h, --help                Show this help
 
 Always keeps (in addition to anything above):
@@ -110,6 +113,11 @@ prune_one() {
     local archive="$1"
     archive="${archive%/}"
     [[ -d "$archive" ]] || { echo "Not a directory: $archive" >&2; return 1; }
+
+    if run_dir_is_live "$archive" && [[ "$FORCE" == "false" ]]; then
+        echo "Refusing $archive: run is LIVE (owner pid $(cat "$archive/.owner_pid")); use --force to prune anyway" >&2
+        return 1
+    fi
 
     local summary="$archive/summary.txt"
     if [[ ! -f "$summary" ]] && [[ "$FORCE" == "false" ]]; then
