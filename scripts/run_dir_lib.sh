@@ -44,11 +44,19 @@ run_dir_state() {
 }
 
 # newest_run_dir [BASE] -> echo the lexically greatest YYYYmmdd_HHMMSS_* dir; rc 1 if none
+# Filters to directories BEFORE sorting/picking the max (parity with run_dirs.py,
+# which does the same p.is_dir() filter before sorting names) -- a same-named
+# regular file must not shadow a real, older run directory.
 newest_run_dir() {
-    local base="${1:-$(run_dir_archive_base)}" name
+    local base="${1:-$(run_dir_archive_base)}" d name
     [[ -d "$base" ]] || return 1
-    name=$(ls -1 "$base" 2>/dev/null | grep -E '^[0-9]{8}_[0-9]{6}_' | sort | tail -1)
-    [[ -n "$name" && -d "$base/$name" ]] || return 1
+    name=$(
+        for d in "$base"/*/; do
+            [[ -d "$d" ]] || continue
+            basename "$d"
+        done | grep -E '^[0-9]{8}_[0-9]{6}_' | LC_ALL=C sort | tail -1
+    )
+    [[ -n "$name" ]] || return 1
     echo "$base/$name"
 }
 
@@ -75,12 +83,20 @@ resolve_run_dir() {
 # allocate_run_dir BASE NAME -> mkdir BASE/<ts>_NAME atomically (suffix _2.._99
 # on collision), write .owner_pid = $$ (the sourcing shell), echo the run id.
 # rc 1 after 99 collisions. MONEROSIM_RUN_TS overrides the timestamp (tests).
+# A failed mkdir counts as a collision only if the target now exists; any other
+# mkdir failure (unwritable BASE, disk full, ...) is reported and returns 1
+# immediately rather than being misreported as 99 collisions.
 allocate_run_dir() {
     local base="$1" name="$2" ts candidate n=1
+    [[ -n "$base" ]] || { echo "allocate_run_dir: empty BASE" >&2; return 1; }
     ts="${MONEROSIM_RUN_TS:-$(date '+%Y%m%d_%H%M%S')}"
-    mkdir -p "$base"
+    mkdir -p "$base" || { echo "allocate_run_dir: cannot create $base" >&2; return 1; }
     candidate="${ts}_${name}"
     until mkdir "$base/$candidate" 2>/dev/null; do
+        if [[ ! -e "$base/$candidate" ]]; then
+            echo "allocate_run_dir: mkdir failed for $base/$candidate" >&2
+            return 1
+        fi
         n=$((n + 1))
         if (( n > 99 )); then
             echo "allocate_run_dir: 99 collisions for $base/${ts}_${name}" >&2

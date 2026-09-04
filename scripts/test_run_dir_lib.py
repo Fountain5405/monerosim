@@ -52,6 +52,12 @@ def test_newest_run_dir(tmp_path):
     assert bash(f"newest_run_dir '{tmp_path / 'empty'}'")[0] == 1
 
 
+def test_newest_run_dir_ignores_non_directory(tmp_path):
+    b = _mk_run(tmp_path, "20260904_130000_b")
+    (tmp_path / "20260904_140000_file").write_text("not a run dir\n")
+    assert bash(f"newest_run_dir '{tmp_path}'")[1] == str(b)
+
+
 def test_resolve_order_explicit_env_newest(tmp_path):
     a = _mk_run(tmp_path, "20260904_120000_a", complete=True)
     b = _mk_run(tmp_path, "20260904_130000_b")
@@ -87,3 +93,18 @@ def test_allocate_run_dir_gives_up_after_99(tmp_path):
         (tmp_path / f"20260904_120000_q_{n}").mkdir()
     rc, out, err = bash(f"allocate_run_dir '{tmp_path}' q", env=env)
     assert rc == 1 and out == "" and "99 collisions" in err
+
+
+def test_allocate_run_dir_reports_mkdir_error_not_collisions(tmp_path):
+    readonly_parent = tmp_path / "readonly"
+    readonly_parent.mkdir()
+    readonly_parent.chmod(0o500)
+    base = readonly_parent / "sub"
+    env = {"MONEROSIM_RUN_TS": "20260904_120000"}
+    try:
+        rc, out, err = bash(f"allocate_run_dir '{base}' q", env=env)
+        assert rc == 1 and out == ""
+        assert "cannot create" in err
+        assert "99 collisions" not in err
+    finally:
+        readonly_parent.chmod(0o700)
