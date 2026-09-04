@@ -666,6 +666,41 @@ check_disk_space() {
     local archive_free_kb
     archive_free_kb=$(df -k "$archive_dir" | tail -1 | awk '{print $4}')
 
+    # Other live runs on this box. Their projected remaining growth is
+    # reserved out of free space so one launch cannot fill the disk that
+    # all of them share. Runs known only from /tmp (another checkout or
+    # archive base) have no estimate and are reported as such.
+    local nproc_n
+    nproc_n=$(nproc 2>/dev/null || echo 0)
+    local live_tsv other_remaining_kb=0 other_unknown=0 other_count=0 other_parallelism=0
+    live_tsv=$(python3 scripts/run_sim_helpers.py live-runs \
+        --archive-base "$archive_dir" --exclude-pid $$ 2>/dev/null || true)
+    if [[ -n "$live_tsv" ]]; then
+        log_info "Other live runs on this box:"
+        local rid pid elapsed daemons used est rem src par el_txt est_txt
+        while IFS=$'\t' read -r rid pid elapsed daemons used est rem src par; do
+            [[ -n "$rid" ]] || continue
+            other_count=$((other_count + 1))
+            el_txt="?"; [[ "$elapsed" -ge 0 ]] && el_txt=$(format_duration "$elapsed")
+            if [[ "$rem" != "-" ]]; then
+                other_remaining_kb=$((other_remaining_kb + rem))
+                est_txt="est. total $(format_kb "$est"), remaining $(format_kb "$rem")"
+            else
+                other_unknown=$((other_unknown + 1))
+                est_txt="no estimate"
+            fi
+            [[ "$par" == "-" ]] && par=0
+            (( par == 0 )) && par=$nproc_n
+            other_parallelism=$((other_parallelism + par))
+            log_info "  $rid  pid $pid  up $el_txt  $daemons daemons  used $(format_kb "$used")  ($est_txt) [$src]"
+        done <<< "$live_tsv"
+        log_info "  Reserving $(format_kb "$other_remaining_kb") for their projected growth ($other_unknown of $other_count with no estimate)"
+    else
+        log_info "Other live runs on this box: none"
+    fi
+    local effective_free_kb=$((free_kb - other_remaining_kb))
+    (( effective_free_kb < 0 )) && effective_free_kb=0
+
     # Estimate disk usage using per-node-type rates from previous runs,
     # falling back to defaults if no history exists.
     local num_miners="${CFG_MINERS:-0}"
@@ -703,16 +738,17 @@ check_disk_space() {
     log_info "Estimated disk usage: $(format_kb "$estimated_kb") ($source)"
     log_info "  ${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays x ${sim_hours}h"
     log_info "Free disk space: $(format_kb "$free_kb") (on $data_parent)"
+    (( other_remaining_kb > 0 )) && log_info "Effective free space: $(format_kb "$effective_free_kb") after reserving other live runs' growth"
     if [[ "$data_dev" != "$archive_dev" ]]; then
         log_info "Archive disk space: $(format_kb "$archive_free_kb") (on $archive_dir)"
     fi
 
-    if [[ "$estimated_kb" -gt "$free_kb" ]]; then
+    if [[ "$estimated_kb" -gt "$effective_free_kb" ]]; then
         echo ""
         log_warn "Not enough disk space for this simulation!"
         log_info "  Estimated: $(format_kb "$estimated_kb")"
-        log_info "  Available: $(format_kb "$free_kb")"
-        log_info "  Shortfall: $(format_kb "$((estimated_kb - free_kb))")"
+        log_info "  Available: $(format_kb "$effective_free_kb") (free $(format_kb "$free_kb") minus $(format_kb "$other_remaining_kb") reserved for $other_count live runs)"
+        log_info "  Shortfall: $(format_kb "$((estimated_kb - effective_free_kb))")"
         echo ""
         echo "  Tips:"
         echo "    - Delete old runs: rm -rf archived_runs/<run_name>"
@@ -732,10 +768,22 @@ check_disk_space() {
             echo "Aborted."
             exit 1
         fi
-    elif [[ "$((estimated_kb * 2))" -gt "$free_kb" ]]; then
-        log_warn "Disk space is tight (estimated $(format_kb "$estimated_kb"), free $(format_kb "$free_kb"))"
+    elif [[ "$((estimated_kb * 2))" -gt "$effective_free_kb" ]]; then
+        log_warn "Disk space is tight (estimated $(format_kb "$estimated_kb"), free $(format_kb "$effective_free_kb"))"
     else
-        log_ok "Disk space: $(format_kb "$free_kb") free (estimated need: $(format_kb "$estimated_kb"))"
+        log_ok "Disk space: $(format_kb "$effective_free_kb") free (estimated need: $(format_kb "$estimated_kb"))"
+    fi
+
+    # Informational: Shadow worker threads across all live runs vs cores.
+    # 0 (auto) counts as every core. Never blocks: contention slows wall
+    # clock but leaves simulation results unchanged.
+    local this_par="${CFG_PARALLELISM:-0}"
+    (( this_par == 0 )) && this_par=$nproc_n
+    local total_par=$((this_par + other_parallelism))
+    if (( nproc_n > 0 && total_par > nproc_n )); then
+        log_warn "Shadow worker threads: this run $this_par + other live runs $other_parallelism = $total_par > $nproc_n cores (wall clock will suffer; results unaffected)"
+    else
+        log_info "Shadow worker threads: this run $this_par + other live runs $other_parallelism = $total_par of $nproc_n cores"
     fi
 }
 
