@@ -26,10 +26,16 @@ The script is pure stdlib (argparse, json, re, pathlib). No external deps.
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from scripts.run_dirs import RunDirNotFound, announce, resolve_run_dir
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -415,9 +421,10 @@ def main() -> int:
     )
     p.add_argument(
         "--run-dir",
-        required=True,
-        type=Path,
-        help="Path to the archived run directory (e.g. archived_runs/<TS>_<scenario>/).",
+        required=False,
+        default=None,
+        type=str,
+        help="Run directory (default: $MONEROSIM_RUN_DIR, else newest under archived_runs/).",
     )
     p.add_argument(
         "--baseline",
@@ -430,7 +437,12 @@ def main() -> int:
     )
     args = p.parse_args()
 
-    run_dir: Path = args.run_dir.resolve()
+    try:
+        run_dir: Path = resolve_run_dir(args.run_dir)
+    except RunDirNotFound as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return EXIT_NO_SUMMARY
+    announce(run_dir)
     summary_path = run_dir / "summary.txt"
     if not summary_path.is_file():
         print(

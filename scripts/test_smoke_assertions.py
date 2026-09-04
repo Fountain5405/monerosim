@@ -191,3 +191,15 @@ def test_parse_real_archived_summary():
     assert len(d["per_agent_tx"]) == 205
     # 1011 nodes in the final status table.
     assert len(d["per_node_height"]) == 1011
+
+
+def test_main_resolves_run_dir_from_env(tmp_path, monkeypatch, capsys):
+    """--run-dir is optional: $MONEROSIM_RUN_DIR is used, and the chosen run is announced."""
+    from scripts.smoke_assertions import main, EXIT_NO_SUMMARY
+    run = tmp_path / "20260904_120000_x"
+    run.mkdir()
+    monkeypatch.setenv("MONEROSIM_RUN_DIR", str(run))
+    monkeypatch.setattr("sys.argv", ["smoke_assertions.py"])
+    assert main() == EXIT_NO_SUMMARY
+    err = capsys.readouterr().err
+    assert f"run: {run.resolve()} (incomplete)" in err and "missing summary.txt" in err

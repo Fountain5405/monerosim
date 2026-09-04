@@ -39,6 +39,7 @@ from networkx.readwrite import graphml
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.monero_verification import log_error, log_info, log_warning
 from agents.agent_discovery import AgentDiscovery
+from scripts.run_dirs import RunDirNotFound, announce, daemon_log_dir, resolve_run_dir
 
 # Constants
 DEFAULT_BASE_DIR = str(Path(__file__).resolve().parent.parent)
@@ -91,12 +92,13 @@ def find_latest_shadow_config(base_dir: str = DEFAULT_BASE_DIR) -> Path:
 class NetworkConnectivityAnalyzer:
     """Analyzes Monero P2P network connectivity from Shadow logs."""
 
-    def __init__(self, config_file: str, logs_dir: str, output_dir: str):
+    def __init__(self, config_file: str, logs_dir: str, output_dir: str, shadow_config: Optional[Path] = None):
         self.config_file = Path(config_file)
         self.logs_dir = Path(logs_dir)
         # Create output directory in monerosim root
         self.output_dir = Path(output_dir) if os.path.isabs(output_dir) else Path(DEFAULT_BASE_DIR) / output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.shadow_config = shadow_config
 
         # Load configuration
         self.config = self._load_config()
@@ -214,7 +216,7 @@ class NetworkConnectivityAnalyzer:
 
     def _load_shadow_config(self) -> dict:
         """Load the Shadow configuration file."""
-        shadow_config_path = find_latest_shadow_config()
+        shadow_config_path = self.shadow_config or find_latest_shadow_config()
         try:
             import yaml
             with open(shadow_config_path, 'r') as f:
@@ -628,16 +630,29 @@ Top 10 Most Used IP Addresses:
 def main():
     parser = argparse.ArgumentParser(description="Analyze Monero P2P network connectivity from Shadow logs")
     parser.add_argument('--config', required=True, help='Path to simulation config file')
-    parser.add_argument('--logs', default=DEFAULT_LOGS_DIR, help='Path to daemon log directory (default: /tmp)')
-    parser.add_argument('--output', help='Output directory (default: analysis_results subfolder)')
-
+    parser.add_argument('--run-dir', default=None,
+                        help='Run directory (default: $MONEROSIM_RUN_DIR, else newest under archived_runs/). '
+                             'Supplies --logs, --output and the generated shadow_agents.yaml unless overridden.')
+    parser.add_argument('--logs', default=None, help='Path to daemon log directory (default: from --run-dir)')
+    parser.add_argument('--output', help='Output directory (default: <run>/analysis_output/network_connectivity)')
     args = parser.parse_args()
 
-    # Use provided output dir or default to analysis_results
-    output_dir = args.output if args.output else 'analysis_results'
-    analyzer = NetworkConnectivityAnalyzer(args.config, args.logs, output_dir)
+    logs, output, shadow_config = args.logs, args.output, None
+    if logs is None or output is None:
+        try:
+            run_dir = resolve_run_dir(args.run_dir)
+        except RunDirNotFound as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 2
+        announce(run_dir)
+        logs = logs or str(daemon_log_dir(run_dir) or DEFAULT_LOGS_DIR)
+        output = output or str(run_dir / 'analysis_output' / 'network_connectivity')
+        candidate = run_dir / 'shadow_agents.yaml'
+        shadow_config = candidate if candidate.is_file() else None
+    analyzer = NetworkConnectivityAnalyzer(args.config, logs, output, shadow_config)
     analyzer.run_analysis()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

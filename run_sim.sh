@@ -1627,7 +1627,7 @@ run_analysis() {
         if [[ "$analysis_script" == "$SCRIPT_DIR/scripts/post_run_analysis.sh" ]]; then
             # Pass the config path through so analyze_network_connectivity.py's
             # required --config can be wired up instead of skipped.
-            bash "$analysis_script" "$CONFIG" > "$ARCHIVE_DIR/analysis.log" 2>&1 || true
+            bash "$analysis_script" "$CONFIG" "$ARCHIVE_DIR" > "$ARCHIVE_DIR/analysis.log" 2>&1 || true
         else
             bash "$analysis_script" > "$ARCHIVE_DIR/analysis.log" 2>&1 || true
         fi

@@ -14,6 +14,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.monero_verification import log_info
+from scripts.run_dirs import RunDirNotFound, announce, daemon_log_dir, resolve_run_dir
 
 # Define data structures
 Block = Tuple[int, str]  # (height, hash)
@@ -190,7 +191,19 @@ def get_wall_clock_time(shadow_data_dir: Path) -> Dict:
     return result
 
 
-def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKERS) -> Dict:
+def resolve_run_paths(run_dir: Path) -> Tuple[Path, Path, Path]:
+    """(log_dir, shadow_data_dir, out_dir) for a run directory.
+
+    log_dir: <run>/daemon_logs (archived) > live /tmp namespace from
+    shadow_output/run_env.sh (while the run is live) > shadow.data/hosts.
+    All analysis outputs go under <run>/analysis_output/ so concurrent runs
+    never write into the checkout root.
+    """
+    log_dir = daemon_log_dir(run_dir) or (run_dir / 'shadow.data' / 'hosts')
+    return log_dir, run_dir / 'shadow.data', run_dir / 'analysis_output'
+
+
+def analyze_simulation(log_dir=None, max_workers=DEFAULT_MAX_WORKERS, shadow_data_dir=None) -> Dict:
     """
     Analyze all host logs in the directory using multi-threading.
     Returns aggregated data and success report.
@@ -291,11 +304,13 @@ def analyze_simulation(log_dir: str = None, max_workers: int = DEFAULT_MAX_WORKE
         node_data[host_name] = events
 
     # Get wall clock time
-    # Derive shadow.data dir: log_path is either /tmp or shadow.data/hosts/
-    shadow_data_dir = Path('shadow.data')
-    if log_path.name == 'hosts' and log_path.parent.name == 'shadow.data':
-        shadow_data_dir = log_path.parent
-    wall_clock = get_wall_clock_time(shadow_data_dir)
+    # Shadow metadata (processed-config.yaml, sim-stats.json) lives in the
+    # run's shadow.data/; derive it from log_path only for legacy calls.
+    if shadow_data_dir is None:
+        shadow_data_dir = Path('shadow.data')
+        if log_path.name == 'hosts' and log_path.parent.name == 'shadow.data':
+            shadow_data_dir = log_path.parent
+    wall_clock = get_wall_clock_time(Path(shadow_data_dir))
 
     # Verify success criteria
     report = {
@@ -527,17 +542,35 @@ def main():
                        help='Output filename for determinism fingerprint')
     parser.add_argument('--log-dir', type=str, default=None,
                        help='Path to daemon log directory (default: auto-detect from /tmp or shadow.data)')
+    parser.add_argument('--run-dir', type=str, default=None,
+                       help='Run directory (default: $MONEROSIM_RUN_DIR, else newest under archived_runs/). '
+                            'Ignored when --log-dir is given.')
     args = parser.parse_args()
+
+    shadow_data_dir = None
+    out_dir = Path('.')
+    log_dir = args.log_dir
+    if log_dir is None:
+        try:
+            run_dir = resolve_run_dir(args.run_dir)
+        except RunDirNotFound as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return {'success': False, 'error': str(e)}
+        announce(run_dir)
+        log_dir, shadow_data_dir, out_dir = resolve_run_paths(run_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        log_dir = str(log_dir)
 
     try:
         print("Starting simulation analysis with multi-threading support...")
-        analysis = analyze_simulation(log_dir=args.log_dir, max_workers=DEFAULT_MAX_WORKERS)
+        analysis = analyze_simulation(log_dir=log_dir, max_workers=DEFAULT_MAX_WORKERS, shadow_data_dir=shadow_data_dir)
         report = analysis['report']
         node_data = analysis['node_data']
 
         # Always generate determinism fingerprint
         fingerprint = generate_determinism_fingerprint(node_data, report)
-        fingerprint_file = save_determinism_fingerprint(fingerprint, args.fingerprint_file)
+        fingerprint_file = save_determinism_fingerprint(
+            fingerprint, args.fingerprint_file or str(out_dir / f"determinism_fingerprint_{datetime.now():%Y%m%d_%H%M%S}.json"))
 
         if args.fingerprint_only:
             # Only output fingerprint for determinism comparison
@@ -552,17 +585,19 @@ def main():
         print("\n" + summary)
 
         # Save summary report to file
-        summary_file = save_summary_report(report)
+        summary_file = save_summary_report(
+            report, str(out_dir / f"simulation_summary_report_{datetime.now():%Y%m%d_%H%M%S}.txt"))
 
         # Save detailed report to JSON (maintain existing functionality)
-        with open('success_analysis_report.json', 'w') as f:
+        report_json = out_dir / 'success_analysis_report.json'
+        with open(report_json, 'w') as f:
             json.dump(analysis, f, indent=2, default=str)
-        print(f"\nDetailed report saved to success_analysis_report.json")
+        print(f"\nDetailed report saved to {report_json}")
 
         return {
             'success': True,
             'summary_file': summary_file,
-            'detailed_file': 'success_analysis_report.json',
+            'detailed_file': str(report_json),
             'fingerprint_file': fingerprint_file,
             'overall_success': report['overall_success']
         }
