@@ -29,6 +29,14 @@ import re
 import sys
 from typing import Iterable
 
+from datetime import datetime
+from pathlib import Path
+
+try:  # imported as scripts.run_sim_helpers (tests)
+    from scripts import run_dirs
+except ImportError:  # invoked as `python3 scripts/run_sim_helpers.py`
+    import run_dirs  # type: ignore
+
 
 # ============================================================
 # Helpers: ramdisk math
@@ -247,6 +255,52 @@ def cmd_estimate_disk_mb(args: argparse.Namespace) -> int:
     )
     print(f'{est:.0f}')
     print(f'RATES:{json.dumps(rates)}|SOURCE:{source}', file=sys.stderr)
+    return 0
+
+
+def cmd_live_runs(args: argparse.Namespace) -> int:
+    """One TSV line per live run_sim.sh run on this box other than --exclude-pid.
+
+    run_id  pid  elapsed_s  daemons  used_kb  est_total_kb|-  remaining_kb|-  source  parallelism|-
+
+    Consumed by check_disk_space() in run_sim.sh to reserve the other runs'
+    projected growth before comparing free space with this run's estimate.
+    """
+    runs = run_dirs.list_live_runs(
+        Path(args.archive_base), tmp_root=Path(args.tmp_root), exclude_pid=args.exclude_pid,
+    )
+    now = datetime.now()
+
+    def fmt(v):
+        return '-' if v is None else f'{v:.1f}'
+
+    for r in runs:
+        elapsed = int((now - r.started).total_seconds()) if r.started else -1
+        daemons = len(list(r.tmp_dir.glob('monero-*'))) if r.tmp_dir else 0
+        used_kb = 0.0
+        if r.run_dir:
+            used_kb += _disk_kb(str(r.run_dir))
+        if r.tmp_dir:
+            used_kb += _disk_kb(str(r.tmp_dir))
+        est_kb = rem_kb = par = None
+        cfg_path = r.run_dir / 'input_config.yaml' if r.run_dir else None
+        if cfg_path and cfg_path.is_file():
+            try:
+                c = config_counts(str(cfg_path))
+                hosts = c['total'] + c['fb_seeds']
+                est_mb, _, _ = estimate_disk_mb(
+                    args.archive_base, c['miners'], c['users'], c['relays'], hosts,
+                    max(1.0, c['sim_hours']),
+                )
+                est_kb = est_mb * 1024
+                rem_kb = max(0.0, est_kb - used_kb)
+                par = c['parallelism']
+            except Exception:
+                est_kb = rem_kb = par = None
+        print('\t'.join([
+            r.run_id, str(r.pid), str(elapsed), str(daemons), f'{used_kb:.0f}',
+            fmt(est_kb), fmt(rem_kb), r.source, '-' if par is None else str(par),
+        ]))
     return 0
 
 
@@ -784,6 +838,16 @@ def build_parser() -> argparse.ArgumentParser:
     # See estimate-ramdisk-mb: sim-hours can be a float ("6.0").
     p_disk.add_argument('--sim-hours', type=float, required=True)
     p_disk.set_defaults(func=cmd_estimate_disk_mb)
+
+    # live-runs
+    p_lr = sub.add_parser(
+        'live-runs',
+        help='TSV of other live run_sim.sh runs on this box (for the concurrency-aware preflight).',
+    )
+    p_lr.add_argument('--archive-base', required=True)
+    p_lr.add_argument('--exclude-pid', type=int, default=None)
+    p_lr.add_argument('--tmp-root', default='/tmp')
+    p_lr.set_defaults(func=cmd_live_runs)
 
     # hms-to-seconds
     p_hms = sub.add_parser(

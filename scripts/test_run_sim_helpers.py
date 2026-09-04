@@ -348,3 +348,39 @@ def test_estimate_disk_mb_defaults_without_history(tmp_path):
     est_mb, rates, source = estimate_disk_mb(str(tmp_path), 1, 1, 1, 3, 1.0)
     assert source == "default estimates"
     assert est_mb == pytest.approx((4.0 + 2.0 + 1.25) * 1.2)
+
+
+def test_live_runs_tsv(tmp_path, capsys, monkeypatch):
+    import scripts.run_sim_helpers as helpers
+    base = tmp_path / "archived_runs"
+    tmp_root = tmp_path / "tmp"
+    proc = tmp_path / "proc"
+    (proc / "4242").mkdir(parents=True)
+    # Live run with a parseable config: 1 miner, 2h, parallelism 2, 1 MB used.
+    run = base / "20260904_120000_a"
+    (run / "shadow.data" / "hosts").mkdir(parents=True)
+    (run / "big.bin").write_bytes(b"x" * 1024 * 1024)
+    (run / ".owner_pid").write_text("4242")
+    (run / "input_config.yaml").write_text(
+        "general:\n  stop_time: 2h\n  parallelism: 2\n  fallback_seeds: \"off\"\nagents:\n  miner-001: {}\n"
+    )
+    ns = tmp_root / "monerosim-20260904_120000_a"
+    (ns / "monero-miner-001").mkdir(parents=True)
+    (ns / ".owner_pid").write_text("4242")
+    # Live run known only from /tmp (other checkout): no estimate.
+    other = tmp_root / "monerosim-20260904_130000_other"
+    other.mkdir()
+    (other / ".owner_pid").write_text("4242")
+
+    monkeypatch.setattr(helpers.run_dirs, "pid_alive", lambda pid, proc_root=None: (proc / str(pid)).exists())
+    _, out = _run(capsys, ["live-runs", "--archive-base", str(base), "--exclude-pid", "1",
+                           "--tmp-root", str(tmp_root)])
+    rows = [line.split("\t") for line in out.strip().splitlines()]
+    assert [r[0] for r in rows] == ["20260904_120000_a", "20260904_130000_other"]
+    a, o = rows
+    assert a[1] == "4242" and int(a[2]) >= 0 and a[3] == "1" and a[7] == "archive" and a[8] == "2"
+    used_kb, est_kb, rem_kb = float(a[4]), float(a[5]), float(a[6])
+    assert used_kb >= 1024                                  # the 1 MB file
+    assert est_kb == pytest.approx(4.0 * 2 * 1.2 * 1024)   # default miner rate, 2h, margin
+    assert rem_kb == pytest.approx(max(0.0, est_kb - used_kb))
+    assert o[3] == "0" and o[5] == "-" and o[6] == "-" and o[7] == "tmp" and o[8] == "-"
