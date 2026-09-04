@@ -17,6 +17,9 @@ MEMORY_SAMPLE_INTERVAL=30
 # Colors + shared logging vocabulary (log_step/log_ok/log_warn/log_err/log_info)
 source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
 
+# shellcheck source=scripts/run_dir_lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/run_dir_lib.sh"
+
 # Script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -31,6 +34,8 @@ fi
 # ============================================================
 CONFIG=""
 RUN_NAME=""
+DATA_BASE=""              # --data-dir: base under which <run_id>/shadow.data is placed (scratch volume)
+RUN_DIR=""                # == ARCHIVE_DIR; the run's only home for its whole life
 ARCHIVE_BASE=""
 REACHABLE=""              # "" = use config default; else fraction in [0,1] passed to monerosim --reachable
 TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 1h) -> monerosim --turnover-session
@@ -71,8 +76,9 @@ Options:
                          session/(session+downtime).
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
   --archive-dir <dir>    Archive location (default: archived_runs)
-  --data-dir <dir>       Shadow data output directory (default: shadow.data in cwd)
-                         Use this to write simulation data to a different volume
+  --data-dir <base>      Put this run's Shadow data at <base>/<run_id>/shadow.data
+                         instead of archived_runs/<run_id>/shadow.data (e.g. a
+                         scratch volume); it is moved into the run dir at the end.
   --ramdisk [SIZE]       Mount tmpfs for monerod data dirs (faster LMDB I/O).
                          Mounts at /tmp/monerosim_ramdisk_<pid>/ and overrides
                          general.daemon_data_dir. SIZE optional (e.g. 8G, 16G);
@@ -84,12 +90,12 @@ Options:
   --no-build             Skip cargo build (use existing binary)
   --archive-blockchain N   Archive N% of blockchains (default: 1 per type)
   --preflight-only       Run only Phase 1 (config inspection, disk estimate)
-                         and exit. Does NOT touch shadow.data, /tmp, or
+                         and exit. Creates no run directory, touches nothing in /tmp, does not
                          spawn shadow. Safe to run alongside an in-flight
                          simulation.
   --no-archive           Skip the post-simulation archive step. shadow.data/,
                          daemon bitmonero.log files, blockchain snapshots,
-                         and summary.txt are NOT preserved. The run's daemon
+                         and summary.txt are NOT preserved (<run_dir>/shadow.data is deleted at the end). The run's daemon
                          data dirs are still cleaned (unless --no-clean is
                          also set). Pre-run artifacts (input_config.yaml,
                          shadow_agents.yaml, build.log, monerosim.log,
@@ -101,10 +107,10 @@ Options:
                          for you to inspect by hand. Can occupy tens of GB;
                          remember to clean up manually when you're done.
 
-Concurrency: each run gets its own /tmp/monerosim-<runid>/ namespace for
-daemon data dirs and the shared registry, so multiple monerosim instances
-can run on one box WITHOUT colliding — as long as each runs from its own
-checkout/worktree (shadow.data/ and shadow_output/ are per-checkout).
+Concurrency: every run lives in its own archived_runs/<run_id>/ (shadow.data,
+shadow_output, logs) and its own /tmp/monerosim-<run_id>/ daemon namespace, so
+any number of runs can be launched concurrently FROM THIS CHECKOUT. Preflight
+lists the other live runs and reserves their projected disk growth.
   --help                 Show help
 
 Examples:
@@ -175,7 +181,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --data-dir)
-            DATA_DIR="$2"
+            DATA_BASE="$2"
             shift 2
             ;;
         --ramdisk)
@@ -213,11 +219,11 @@ if [[ -z "$RUN_NAME" ]]; then
     RUN_NAME=$(basename "$CONFIG" .yaml)
 fi
 
-[[ -z "$DATA_DIR" ]] && DATA_DIR="$SCRIPT_DIR/shadow.data"
+DATA_DIR=""               # set in build_and_generate(): $RUN_DIR/shadow.data (Shadow creates it)
 
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 MONEROSIM_BIN="$SCRIPT_DIR/target/release/monerosim"
-SHADOW_OUTPUT="$SCRIPT_DIR/shadow_output"
+SHADOW_OUTPUT=""          # set in build_and_generate(): $RUN_DIR/shadow_output
 # Per-run /tmp namespace. Resolved in build_and_generate(): everything mutable
 # that historically lived at the GLOBAL /tmp/monero-<agent>/ and
 # /tmp/monerosim_shared/ goes under one per-run dir (/tmp/monerosim-<runid>/)
@@ -647,13 +653,11 @@ preflight_checks() {
 check_disk_space() {
     local archive_dir="$1"
 
-    # Create dirs if needed (for df check)
+    # Create the archive base if needed (for df). The run dir itself is only
+    # created in build_and_generate(), so --preflight-only leaves no trace.
     mkdir -p "$archive_dir"
-    mkdir -p "$(dirname "$DATA_DIR")"
-
-    # Check free space on the DATA_DIR filesystem (where shadow.data goes)
-    local data_parent
-    data_parent="$(dirname "$DATA_DIR")"
+    local data_parent="${DATA_BASE:-$archive_dir}"
+    [[ -n "$DATA_BASE" ]] && mkdir -p "$DATA_BASE"
     local free_kb
     free_kb=$(df -k "$data_parent" | tail -1 | awk '{print $4}')
 
@@ -700,7 +704,7 @@ check_disk_space() {
 
     log_info "Estimated disk usage: $(format_kb "$estimated_kb") ($source)"
     log_info "  ${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays x ${sim_hours}h"
-    log_info "Free disk space: $(format_kb "$free_kb") (on $(dirname "$DATA_DIR"))"
+    log_info "Free disk space: $(format_kb "$free_kb") (on $data_parent)"
     if [[ "$data_dev" != "$archive_dev" ]]; then
         log_info "Archive disk space: $(format_kb "$archive_free_kb") (on $archive_dir)"
     fi
@@ -743,11 +747,29 @@ check_disk_space() {
 build_and_generate() {
     log_step "Phase 2: Build & Generate"
 
-    # Create archive directory with timestamp
-    TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-    ARCHIVE_DIR="$ARCHIVE_BASE/${TIMESTAMP}_${RUN_NAME}"
-    mkdir -p "$ARCHIVE_DIR"
-    log_ok "Archive directory: $ARCHIVE_DIR"
+    # Allocate the run directory: the run's only home for its whole life
+    # (shadow_output/, shadow.data/, logs, and the archive phase's copies).
+    # Atomic mkdir with _2.._99 suffixes so two launches in the same second
+    # never share a directory; .owner_pid marks it live for other tools.
+    RUN_ID=$(allocate_run_dir "$ARCHIVE_BASE" "$RUN_NAME") || {
+        log_err "Could not allocate a run directory under $ARCHIVE_BASE"
+        exit 1
+    }
+    RUN_DIR="$ARCHIVE_BASE/$RUN_ID"
+    ARCHIVE_DIR="$RUN_DIR"
+    SHADOW_OUTPUT="$RUN_DIR/shadow_output"
+    if [[ -n "$DATA_BASE" ]]; then
+        DATA_DIR="$DATA_BASE/$RUN_ID/shadow.data"
+        mkdir -p "$DATA_BASE/$RUN_ID"
+        if [[ -e "$DATA_DIR" ]]; then
+            log_err "Scratch data dir already exists: $DATA_DIR (Shadow refuses an existing -d path)"
+            exit 1
+        fi
+    else
+        DATA_DIR="$RUN_DIR/shadow.data"
+    fi
+    export MONEROSIM_RUN_DIR="$RUN_DIR"
+    log_ok "Run directory: $RUN_DIR"
 
     # Per-run /tmp namespace (see comment at the SHARED_DIR definition).
     # The generator reads MONEROSIM_DAEMON_DATA_DIR / MONEROSIM_SHARED_DIR as
@@ -755,7 +777,6 @@ build_and_generate() {
     # exporting them here bakes the namespaced paths into every generated
     # daemon arg, wrapper script, and agent environment. Pre-set env vars win
     # so users can still pin custom locations.
-    RUN_ID="${TIMESTAMP}_${RUN_NAME}"
     RUN_TMP_DIR="/tmp/monerosim-${RUN_ID}"
     export MONEROSIM_DAEMON_DATA_DIR="${MONEROSIM_DAEMON_DATA_DIR:-$RUN_TMP_DIR}"
     export MONEROSIM_SHARED_DIR="${MONEROSIM_SHARED_DIR:-$RUN_TMP_DIR/shared}"
@@ -872,6 +893,9 @@ build_and_generate() {
     fi
     {
         echo "MONEROSIM_RUN_ID=\"$RUN_ID\""
+        echo "MONEROSIM_RUN_DIR=\"$(readlink -f "$RUN_DIR")\""
+        echo "MONEROSIM_SHADOW_DATA_DIR=\"$(readlink -f "$(dirname "$DATA_DIR")")/shadow.data\""
+        echo "MONEROSIM_SHADOW_OUTPUT_DIR=\"$(readlink -f "$SHADOW_OUTPUT")\""
         echo "MONEROSIM_DAEMON_DATA_DIR=\"$DAEMON_DATA_BASE\""
         echo "MONEROSIM_SHARED_DIR=\"$SHARED_DIR\""
     } > "$SHADOW_OUTPUT/run_env.sh"
@@ -882,28 +906,6 @@ build_and_generate() {
 # ============================================================
 run_simulation() {
     log_step "Phase 3: Starting Simulation"
-
-    # Clean old simulation data.
-    # Safety guard: refuse to recursively delete $DATA_DIR unless it lives
-    # under the project tree ($SCRIPT_DIR) or under /tmp. A user who passes
-    # --data-dir /scratch/foo might be pointing us at a real directory of
-    # theirs; we shouldn't silently wipe it without intent. The same path
-    # gets archived intact by archive_results() at end-of-run, so a real
-    # workflow should already be safe; this guard catches typos.
-    log_info "Cleaning previous simulation data..."
-    if [[ -d "$DATA_DIR" ]]; then
-        data_abs="$(readlink -f "$DATA_DIR")"
-        script_abs="$(readlink -f "$SCRIPT_DIR")"
-        if [[ "$data_abs" != "$script_abs"/* && "$data_abs" != /tmp/* ]]; then
-            log_err "Refusing to 'rm -rf' $DATA_DIR — path is outside the"
-            log_err "project tree ($SCRIPT_DIR) and outside /tmp."
-            log_err "If you really want to delete it, remove it manually"
-            log_err "before re-running, or pick a --data-dir inside the"
-            log_err "project tree or /tmp."
-            exit 1
-        fi
-    fi
-    rm -rf "$DATA_DIR" shadow.log
 
     # Start Shadow in its own process group (via setsid) so Ctrl+C won't reach it
     SHADOW_LOG="$ARCHIVE_DIR/shadow_run.log"
@@ -1034,7 +1036,7 @@ live_progress_monitor() {
     trap 'echo ""
 echo -e "${YELLOW}Monitor stopped. Simulation still running (PID: $shadow_pid).${NC}"
 echo "Resume monitoring: tail -f $shadow_log"
-echo "Check status:      ./scripts/check_sim.sh"
+echo "Check status:      ./scripts/check_sim.sh $ARCHIVE_DIR"
 echo "Kill simulation:   kill $shadow_pid"
 kill "$MONITOR_PID" 2>/dev/null || true
 rm -f "$prev_sizes_file"
@@ -1289,13 +1291,20 @@ exit 0' INT
 archive_results() {
     log_step "Phase 5: Archiving Results"
 
-    # 5a. Shadow data
-    if [[ -d "$DATA_DIR" ]]; then
-        log_info "Moving $DATA_DIR to archive..."
-        mv "$DATA_DIR" "$ARCHIVE_DIR/shadow.data/"
-        log_ok "shadow.data archived"
+    # 5a. Shadow data: already in the run dir unless --data-dir put it on a
+    # scratch volume, in which case move it home (cross-fs move = copy).
+    if [[ "$DATA_DIR" != "$RUN_DIR/shadow.data" ]]; then
+        if [[ -d "$DATA_DIR" ]]; then
+            log_info "Moving $DATA_DIR into the run dir..."
+            mv "$DATA_DIR" "$RUN_DIR/shadow.data"
+            rmdir "$(dirname "$DATA_DIR")" 2>/dev/null || true
+            DATA_DIR="$RUN_DIR/shadow.data"
+            log_ok "shadow.data moved into run dir"
+        else
+            log_warn "$DATA_DIR not found"
+        fi
     else
-        log_warn "$DATA_DIR not found"
+        log_ok "shadow.data already in run dir"
     fi
 
     # Copy monitoring data (generated by simulation-monitor agent)
@@ -1735,6 +1744,11 @@ main() {
         log_warn "Pre-run artifacts (input_config.yaml, shadow_agents.yaml,"
         log_warn "monerosim.log, shadow_run.log, build.log, memory_samples.csv)"
         log_warn "remain in $ARCHIVE_DIR."
+        rm -rf "$RUN_DIR/shadow.data"
+        if [[ "$DATA_DIR" != "$RUN_DIR/shadow.data" && -d "$DATA_DIR" ]]; then
+            rm -rf "$DATA_DIR"
+            rmdir "$(dirname "$DATA_DIR")" 2>/dev/null || true
+        fi
         cleanup_tmp_monero  # internally respects --no-clean
     else
         archive_results
