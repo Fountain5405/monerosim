@@ -77,20 +77,35 @@ def cmd_extract_stop_time(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_config_summary(args: argparse.Namespace) -> int:
-    """Print agent counts as a single space-separated line.
+_STOP_TIME_RE = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*([hms]?)\s*$')
 
-    Format (consumed by `read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS CFG_FALLBACK_SEEDS`):
-        <total> <miners> <users> <relays> <fb_seeds>
 
-    Replaces the heredoc in `preflight_checks()` (CONFIG_SUMMARY lookup).
+def parse_stop_time_hours(value) -> float:
+    """'6h' -> 6.0, '90m' -> 1.5, '23400s' -> 6.5, bare number = seconds; else 0.0."""
+    m = _STOP_TIME_RE.match(str(value if value is not None else ''))
+    if not m:
+        return 0.0
+    n, unit = float(m.group(1)), m.group(2)
+    if unit == 'h':
+        return n
+    if unit == 'm':
+        return n / 60
+    return n / 3600
+
+
+def config_counts(config_path: str) -> dict:
+    """Agent counts + Shadow parallelism + sim hours from a config YAML.
+
+    Keys: total, miners, users, relays, fb_seeds, parallelism (0 = unset/auto),
+    sim_hours (0.0 if stop_time is missing or unparseable).
     """
     import yaml
-    with open(args.config) as f:
-        cfg = yaml.safe_load(f)
-    meta = cfg.get('metadata', {})
-    agents_meta = meta.get('agents', {})
-    agents = cfg.get('agents', {})
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f) or {}
+    general = cfg.get('general', {}) or {}
+    meta = cfg.get('metadata', {}) or {}
+    agents_meta = meta.get('agents', {}) or {}
+    agents = cfg.get('agents', {}) or {}
     miners = agents_meta.get(
         'miners',
         sum(1 for a in agents if a.startswith('miner-0') or a.startswith('miner-1')),
@@ -98,7 +113,7 @@ def cmd_config_summary(args: argparse.Namespace) -> int:
     users = agents_meta.get('users', sum(1 for a in agents if a.startswith('user-')))
     total = agents_meta.get('total', len(agents))
     relays = sum(1 for a in agents if a.startswith('relay-'))
-    fb_mode = (cfg.get('general', {}).get('fallback_seeds') or 'auto').lower()
+    fb_mode = (general.get('fallback_seeds') or 'auto').lower()
     custom_seeds = sum(1 for a in agents if a.startswith('monero-seed-'))
     if fb_mode == 'off':
         fb_seeds = 0
@@ -106,7 +121,26 @@ def cmd_config_summary(args: argparse.Namespace) -> int:
         fb_seeds = custom_seeds
     else:
         fb_seeds = 6
-    print(f'{total} {miners} {users} {relays} {fb_seeds}')
+    try:
+        parallelism = int(general.get('parallelism') or 0)
+    except (TypeError, ValueError):
+        parallelism = 0
+    return {
+        'total': total, 'miners': miners, 'users': users, 'relays': relays,
+        'fb_seeds': fb_seeds, 'parallelism': parallelism,
+        'sim_hours': parse_stop_time_hours(general.get('stop_time', '')),
+    }
+
+
+def cmd_config_summary(args: argparse.Namespace) -> int:
+    """Print agent counts as a single space-separated line.
+
+    Format (consumed by run_sim.sh:
+    `read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS CFG_FALLBACK_SEEDS CFG_PARALLELISM`):
+        <total> <miners> <users> <relays> <fb_seeds> <parallelism>
+    """
+    c = config_counts(args.config)
+    print(f"{c['total']} {c['miners']} {c['users']} {c['relays']} {c['fb_seeds']} {c['parallelism']}")
     return 0
 
 
@@ -129,35 +163,19 @@ def _disk_kb(path: str) -> float:
     return total / 1024
 
 
-def cmd_estimate_disk_mb(args: argparse.Namespace) -> int:
-    """Estimate disk usage (MB) for the upcoming run.
+def estimate_disk_mb(archive_dir: str, num_miners: int, num_users: int,
+                     num_relays: int, num_hosts: int, sim_hours: float) -> tuple[float, dict, str]:
+    """Estimate disk usage (MB) for a run; returns (estimate_mb, rates, source).
 
-    Walks `archive_dir` to learn per-host-type rates from the most recent
-    completed run. Falls back to conservative defaults if no history exists.
-
-    Prints estimated MB to stdout (consumed by run_sim.sh as `$(...)`).
-    Prints `RATES:<json>|SOURCE:<text>` to stderr for the log message.
-
-    Replaces the heredoc in `check_disk_space()` of run_sim.sh.
+    Learns per-host-type MB/hour rates from the most recent COMPLETE archive
+    under `archive_dir` (one that has summary.txt — live and crashed runs
+    are never samples), aggregating shadow.data/hosts, daemon_logs and the
+    sampled blockchain snapshots. Falls back to conservative defaults.
     """
-    # Default rates (MB/host/hr) — conservative estimates that include logs +
-    # blockchain. monerod at log-level=monitor on a 1k-node net writes ~10-30 MB
-    # of bitmonero.log per host-day; LMDB grows ~50 MB/host-day at chain tip.
     defaults = {'miner': 4.0, 'user': 2.0, 'relay': 1.25, 'other': 0.5}
-
-    # Try to learn rates from previous runs. We aggregate per-host disk usage
-    # across THREE archive subdirs:
-    #   1. shadow.data/hosts/<host>/             (shadow shim/stderr/stdout)
-    #   2. daemon_logs/monero-<host>/            (bitmonero.log — usually dominant)
-    #   3. blockchain/monero-<host>/             (LMDB snapshot — sampled hosts only)
-    # Without (2) and (3) the estimate is ~5-10x too low.
-    archive_dir = args.archive_dir
     learned: dict[str, float] = {}
-    sample_hours = 0
     listing: Iterable[str] = (
-        sorted(os.listdir(archive_dir), reverse=True)
-        if os.path.isdir(archive_dir)
-        else []
+        sorted(os.listdir(archive_dir), reverse=True) if os.path.isdir(archive_dir) else []
     )
     for run_name in listing:
         run_path = os.path.join(archive_dir, run_name)
@@ -165,29 +183,19 @@ def cmd_estimate_disk_mb(args: argparse.Namespace) -> int:
         daemon_logs_dir = os.path.join(run_path, 'daemon_logs')
         blockchain_dir = os.path.join(run_path, 'blockchain')
         cfg_path = os.path.join(run_path, 'input_config.yaml')
+        if not os.path.isfile(os.path.join(run_path, 'summary.txt')):
+            continue  # live or crashed run: partial footprint would skew the rate
         if not os.path.isdir(hosts_dir) or not os.path.isfile(cfg_path):
             continue
-        # Get sim duration from config
         try:
             import yaml
             with open(cfg_path) as f:
-                cfg = yaml.safe_load(f)
-            st = cfg.get('general', {}).get('stop_time', '')
-            # Parse duration
-            h = 0
-            m = re.match(r'(\d+)h', str(st))
-            if m:
-                h = int(m.group(1))
-            m2 = re.match(r'(\d+)$', str(st))
-            if m2:
-                h = int(m2.group(1)) / 3600
+                cfg = yaml.safe_load(f) or {}
+            h = parse_stop_time_hours((cfg.get('general', {}) or {}).get('stop_time', ''))
             if h <= 0:
                 continue
         except Exception:
             continue
-        # Measure per-type rates. shadow.data + daemon_logs are always per-host;
-        # blockchain is sampled (only a few hosts archived per --archive-blockchain),
-        # so we average separately and add a per-host blockchain rate by type.
         by_type_log: dict[str, list[float]] = {}
         by_type_chain: dict[str, list[float]] = {}
         for host in os.listdir(hosts_dir):
@@ -195,14 +203,11 @@ def cmd_estimate_disk_mb(args: argparse.Namespace) -> int:
             if not os.path.isdir(host_path):
                 continue
             size_kb = _disk_kb(host_path)
-            # bitmonero.log lives under daemon_logs/monero-<host>/ post-archive
             log_path = os.path.join(daemon_logs_dir, 'monero-' + host)
             if os.path.isdir(log_path):
                 size_kb += _disk_kb(log_path)
-            # LMDB only archived for sampled hosts
             chain_path = os.path.join(blockchain_dir, 'monero-' + host)
             chain_kb = _disk_kb(chain_path) if os.path.isdir(chain_path) else None
-
             if host.startswith('miner-'):
                 t = 'miner'
             elif host.startswith('user-'):
@@ -214,38 +219,33 @@ def cmd_estimate_disk_mb(args: argparse.Namespace) -> int:
             by_type_log.setdefault(t, []).append(size_kb)
             if chain_kb is not None:
                 by_type_chain.setdefault(t, []).append(chain_kb)
-
         for t, sizes in by_type_log.items():
             avg_mb = (sum(sizes) / len(sizes)) / 1024
-            # Add per-type blockchain average if we have any sampled hosts of this type
             chain_sizes = by_type_chain.get(t, [])
             if chain_sizes:
                 avg_mb += (sum(chain_sizes) / len(chain_sizes)) / 1024
             rate = avg_mb / h
-            if t not in learned or len(sizes) > 10:  # prefer runs with more samples
+            if t not in learned or len(sizes) > 10:
                 learned[t] = rate
-        sample_hours = h
-        break  # use most recent run
+        break  # most recent complete run only
 
     rates = {**defaults, **learned}
     source = 'learned from previous run' if learned else 'default estimates'
-
-    miners = args.num_miners
-    users = args.num_users
-    relays = args.num_relays
-    others = max(0, args.num_hosts - miners - users - relays)
-    hours = args.sim_hours
-    margin = 1.2
-
+    others = max(0, num_hosts - num_miners - num_users - num_relays)
     est = (
-        miners * rates['miner']
-        + users * rates['user']
-        + relays * rates['relay']
-        + others * rates['other']
-    ) * hours * margin
-    print(f'{est:.0f}')
+        num_miners * rates['miner'] + num_users * rates['user']
+        + num_relays * rates['relay'] + others * rates['other']
+    ) * sim_hours * 1.2
+    return est, rates, source
 
-    # Print breakdown to stderr for the log message
+
+def cmd_estimate_disk_mb(args: argparse.Namespace) -> int:
+    """Print estimated MB to stdout; `RATES:<json>|SOURCE:<text>` to stderr."""
+    est, rates, source = estimate_disk_mb(
+        args.archive_dir, args.num_miners, args.num_users, args.num_relays,
+        args.num_hosts, args.sim_hours,
+    )
+    print(f'{est:.0f}')
     print(f'RATES:{json.dumps(rates)}|SOURCE:{source}', file=sys.stderr)
     return 0
 
@@ -766,7 +766,7 @@ def build_parser() -> argparse.ArgumentParser:
     # config-summary
     p_cs = sub.add_parser(
         'config-summary',
-        help='Print "<total> <miners> <users> <relays> <fb_seeds>" from config YAML.',
+        help='Print "<total> <miners> <users> <relays> <fb_seeds> <parallelism>" from config YAML.',
     )
     p_cs.add_argument('config')
     p_cs.set_defaults(func=cmd_config_summary)

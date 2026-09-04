@@ -18,6 +18,9 @@ from scripts.run_sim_helpers import (
     _histogram_axis_label,
     HIST_WIDTH,
     SUBCOLS_PER_MIN,
+    parse_stop_time_hours,
+    config_counts,
+    estimate_disk_mb,
 )
 
 
@@ -117,7 +120,7 @@ def test_config_summary_counts(tmp_path, capsys):
     )
     _, out = _run(capsys, ["config-summary", str(cfg)])
     # total=5, miners=2 (miner-0*), users=1, relays=1, fb_seeds=6 (auto).
-    assert out.strip() == "5 2 1 1 6"
+    assert out.strip() == "5 2 1 1 6 0"
 
 
 def test_config_summary_fallback_seeds_off(tmp_path, capsys):
@@ -130,8 +133,8 @@ def test_config_summary_fallback_seeds_off(tmp_path, capsys):
         'general:\n  fallback_seeds: "off"\nagents:\n  miner-001: {}\n  user-001: {}\n'
     )
     _, out = _run(capsys, ["config-summary", str(cfg)])
-    total, miners, users, relays, fb = out.strip().split()
-    assert (total, miners, users, relays, fb) == ("2", "1", "1", "0", "0")
+    total, miners, users, relays, fb, par = out.strip().split()
+    assert (total, miners, users, relays, fb, par) == ("2", "1", "1", "0", "0", "0")
 
 
 def test_extract_stop_time(tmp_path, capsys):
@@ -290,3 +293,58 @@ def test_write_summary_report_roundtrips_through_parse_summary(report_file, tmp_
     assert parsed["all_success_criteria_pass"] is False
     assert parsed["per_agent_tx"] == {"miner-001": 10, "user-001": 5}
     assert parsed["per_node_height"] == {"miner-001": 265, "user-001": 272}
+
+
+# ---------------------------------------------------------------------------
+# stop-time parsing, config_counts, completeness-gated disk learner
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("raw, hours", [
+    ("6h", 6.0), ("90m", 1.5), ("23400s", 6.5), ("21600", 6.0), (21600, 6.0),
+    ("", 0.0), ("soon", 0.0), (None, 0.0),
+])
+def test_parse_stop_time_hours(raw, hours):
+    assert parse_stop_time_hours(raw) == pytest.approx(hours)
+
+
+def test_config_counts_includes_parallelism_and_hours(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        "general:\n  stop_time: 6h\n  parallelism: 4\n  fallback_seeds: auto\n"
+        "agents:\n  miner-001: {}\n  user-001: {}\n  relay-001: {}\n"
+    )
+    c = config_counts(str(cfg))
+    assert (c["total"], c["miners"], c["users"], c["relays"], c["fb_seeds"]) == (3, 1, 1, 1, 6)
+    assert c["parallelism"] == 4 and c["sim_hours"] == 6.0
+
+
+def test_config_counts_parallelism_defaults_to_zero(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("general:\n  stop_time: 1h\nagents:\n  miner-001: {}\n")
+    assert config_counts(str(cfg))["parallelism"] == 0
+
+
+def _archive(base, name, *, hours="2h", complete=True, host_kb=1024):
+    run = base / name
+    (run / "shadow.data" / "hosts" / "miner-001").mkdir(parents=True)
+    (run / "shadow.data" / "hosts" / "miner-001" / "bash.1000.stdout").write_bytes(b"x" * host_kb * 1024)
+    (run / "input_config.yaml").write_text(f"general:\n  stop_time: {hours}\nagents:\n  miner-001: {{}}\n")
+    if complete:
+        (run / "summary.txt").write_text("Exit code: 0\n")
+    return run
+
+
+def test_estimate_disk_mb_learns_only_from_complete_runs(tmp_path):
+    # Newest archive is a LIVE/incomplete run with a tiny partial footprint;
+    # the learner must skip it and use the older complete run instead.
+    _archive(tmp_path, "20260904_120000_complete", host_kb=2048)   # 2 MB over 2h -> 1 MB/h
+    _archive(tmp_path, "20260904_130000_live", complete=False, host_kb=1)
+    est_mb, rates, source = estimate_disk_mb(str(tmp_path), 1, 0, 0, 1, 10.0)
+    assert source == "learned from previous run"
+    assert rates["miner"] == pytest.approx(1.0, rel=0.05)
+    assert est_mb == pytest.approx(1.0 * 10 * 1.2, rel=0.05)
+
+
+def test_estimate_disk_mb_defaults_without_history(tmp_path):
+    est_mb, rates, source = estimate_disk_mb(str(tmp_path), 1, 1, 1, 3, 1.0)
+    assert source == "default estimates"
+    assert est_mb == pytest.approx((4.0 + 2.0 + 1.25) * 1.2)

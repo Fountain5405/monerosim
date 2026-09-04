@@ -637,7 +637,7 @@ preflight_checks() {
     # `off` -> 0 seeds.
     CONFIG_SUMMARY=$(python3 scripts/run_sim_helpers.py config-summary "$CONFIG" 2>/dev/null)
 
-    read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS CFG_FALLBACK_SEEDS <<< "$CONFIG_SUMMARY"
+    read -r CFG_TOTAL CFG_MINERS CFG_USERS CFG_RELAYS CFG_FALLBACK_SEEDS CFG_PARALLELISM <<< "$CONFIG_SUMMARY"
     log_ok "Agents: ${CFG_TOTAL} total (${CFG_MINERS} miners, ${CFG_USERS} users, ${CFG_RELAYS} relays, ${CFG_FALLBACK_SEEDS} fallback seeds)"
 
     # Disk space check
