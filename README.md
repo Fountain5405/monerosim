@@ -42,7 +42,7 @@ Monerosim simulations proceed in two stages:
 
 **Stage 1** - You write a YAML config describing the network: how many miners, users, what topology, how long to run. Monerosim's Rust engine parses this and generates Shadow configuration files.
 
-**Stage 2** - shadowformonero runs the simulation. Most agents are a triple of `monerod` + `monero-wallet-rpc` + a Python script on a virtual host; some are daemon-only (**relay nodes** — `monerod` only, for P2P realism) or script-only (the support agents `miner-distributor` and `simulation-monitor`). Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to a per-run namespace `/tmp/monerosim-<runid>/` (daemon logs at `monero-*/bitmonero.log`, shared state under `shared/`) and to `shadow.data/` (agent stdout); the resolved paths are breadcrumbed in `shadow_output/run_env.sh`. The per-run namespace means concurrent runs on one box don't collide — one run per checkout (`docs/20260721_per_run_tmp_namespacing.md`).
+**Stage 2** - shadowformonero runs the simulation. Most agents are a triple of `monerod` + `monero-wallet-rpc` + a Python script on a virtual host; some are daemon-only (**relay nodes** — `monerod` only, for P2P realism) or script-only (the support agents `miner-distributor` and `simulation-monitor`). Miners generate blocks autonomously using Poisson-distributed timing. Users send transactions. Agents discover each other through shared state files. Simulation output is written to a per-run namespace `/tmp/monerosim-<runid>/` (daemon logs at `monero-*/bitmonero.log`, shared state under `shared/`) and to `archived_runs/<run_id>/shadow.data/` (agent stdout); the resolved paths are breadcrumbed in `archived_runs/<run_id>/shadow_output/run_env.sh`. The per-run namespace and per-run directory mean concurrent runs on one box don't collide, and any number of runs can run from one checkout (`docs/20260904_per_run_directories.md`).
 
 ## Quick Start
 
@@ -173,7 +173,7 @@ python3 -m scripts.scenario_parser my.scenario.yaml -o my.yaml
 ./run_sim.sh --config my.yaml          # pass the EXPANDED .yaml, not the .scenario.yaml
 ```
 
-`run_sim.sh` does not auto-expand the compact format — always pass the expanded `.yaml`. (You can also invoke the orchestrator directly with `target/release/monerosim --config my.yaml --output shadow_output`, then `~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml`; `run_sim.sh` is a wrapper that does both.)
+`run_sim.sh` does not auto-expand the compact format — always pass the expanded `.yaml`. (You can also invoke the orchestrator directly, but use a directory of your own rather than the checkout root; `run_sim.sh` itself now runs each simulation from its own `archived_runs/<run_id>/`, see `docs/20260904_per_run_directories.md`: `target/release/monerosim --config my.yaml --output my_run/shadow_output`, then `~/.monerosim/bin/shadow -d my_run/shadow.data my_run/shadow_output/shadow_agents.yaml`, then `./scripts/check_sim.sh my_run` for status; `run_sim.sh` is a wrapper that does all of this for you.)
 
 Every working config in `test_configs/` ships as a `.scenario.yaml` (compact, hand-edited) and matching `.yaml` (expanded, generated). See [docs/SCENARIO_FORMAT.md](docs/SCENARIO_FORMAT.md) for the full syntax — range expansion, stagger modes (`auto`/`5s`/`batched`/`range`), `auto` timing fields, activity batching, and the `timing:` overrides section.
 

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- **Per-run directories**: any number of `run_sim.sh` instances can now run
+  concurrently from one checkout: each run gets its own
+  `archived_runs/<run_id>/`, allocated before Shadow starts, instead of
+  sharing `<checkout>/shadow.data` and `<checkout>/shadow_output`. Preflight
+  reports other live runs on the box and reserves their projected disk
+  growth. See `docs/20260904_per_run_directories.md`.
+  **Breaking:** `--data-dir` now takes a base directory (the run's scratch
+  data lands at `<base>/<run_id>/shadow.data`, then moves home unless
+  `--no-archive`); `run_env.sh` moved from `<checkout>/shadow_output/` to
+  `<run_dir>/shadow_output/`; analysers now write into
+  `<run>/analysis_output/`; `run_sim_helpers.py config-summary` prints a
+  sixth field (`parallelism`).
 - **Full-codebase quality review**: `docs/20260711_code_quality_review.md` —
   AI-tell taxonomy, per-subsystem grades, prioritized fix list.
 - **P0 fixes**: discarded print-loop side effect pinned all miner IPs to

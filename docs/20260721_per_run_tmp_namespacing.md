@@ -4,8 +4,9 @@
 **TL;DR:** every `run_sim.sh` invocation now gets a private
 `/tmp/monerosim-<runid>/` namespace for its monerod data dirs and shared
 registry, so **concurrent monerosim runs on one box no longer collide**.
-One run per checkout/worktree; the paths are breadcrumbed for tooling in
-`shadow_output/run_env.sh`.
+Any number of runs per checkout since 2026-09-04 (see
+`docs/20260904_per_run_directories.md`); the paths are breadcrumbed in
+`<run_dir>/shadow_output/run_env.sh`.
 
 ## 1. Why
 
@@ -86,6 +87,11 @@ before live-run analysis; for manual digging,
   and reported with a manual-removal hint, never auto-deleted.
 
 ## 4. The concurrency contract
+
+> **Superseded 2026-09-04.** Runs no longer need one checkout each: `shadow.data/`
+> and `shadow_output/` now live under `archived_runs/<run_id>/`. See
+> `docs/20260904_per_run_directories.md`. The rest of this section describes the
+> July 2026 state.
 
 Multiple simultaneous runs on one box are supported with:
 

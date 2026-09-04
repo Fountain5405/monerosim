@@ -97,13 +97,13 @@ introduced as an alias with the same value and used in new code.
 
 ### 3.3 Phase changes
 
-- **Preflight** computes a *provisional* `RUN_ID` (needed for messages and
-  for the concurrency report) but creates no directory. The id becomes final
-  only when Phase 2's `mkdir` succeeds (possibly with a suffix); `RUN_TMP_DIR`
-  and everything derived from the id are set after that point, as today. `check_disk_space` measures
-  `ARCHIVE_BASE` and, when `--data-dir` is given, that base; it no longer
-  `mkdir -p`s the data directory's parent. `--preflight-only` therefore still
-  creates nothing.
+- **Preflight** creates no directory and needs no `RUN_ID`: the concurrency
+  report (section 5) excludes this invocation by pid, not by id. `RUN_ID`
+  becomes final only when Phase 2's `mkdir` succeeds (possibly with a
+  suffix); `RUN_TMP_DIR` and everything derived from the id are set after
+  that point, as today. `check_disk_space` measures `ARCHIVE_BASE` and, when
+  `--data-dir` is given, that base; it no longer `mkdir -p`s the data
+  directory's parent. `--preflight-only` therefore still creates nothing.
 - **Phase 2** creates `RUN_DIR` as in 3.1, writes `.owner_pid`, exports
   `MONEROSIM_RUN_DIR`, and calls the generator with `--output "$SHADOW_OUTPUT"`.
   The existing `cp shadow_agents.yaml "$ARCHIVE_DIR/"` stays.
@@ -175,7 +175,7 @@ exits 2 with a message naming the three sources.
 | `start_here.sh` | same treatment for its status/inspection paths (lines 559-617) |
 | `scripts/analyze_success_criteria.py` | `--run-dir`; replaces the hardcoded `shadow.data` paths at lines 210-296 |
 | `scripts/analyze_network_connectivity.py` | `--run-dir`; replaces lines 55-68 |
-| `scripts/smoke_assertions.py` | `--run-dir`; replaces line 341 |
+| `scripts/smoke_assertions.py` | makes `--run-dir` optional, defaulting per 4.1 (it already read `<run>/shadow.data/hosts`) |
 | `scripts/post_run_analysis.sh` | passes `--run-dir "$MONEROSIM_RUN_DIR"` (or its own first argument) to both analysers |
 | `scripts/run_sim_helpers.py` disk-rate learner (lines 157-170) | additionally requires `summary.txt`; live and crashed runs are never samples |
 | `scripts/prune_archives.sh` | refuses an archive whose `.owner_pid` is alive unless `--force` |
@@ -191,7 +191,7 @@ A new `run_sim_helpers.py live-runs --archive-base B --exclude RUN_ID`
 subcommand prints one TSV line per live run other than this one:
 
 ```
-run_id  pid  elapsed_s  daemons  used_kb  est_total_kb|-  remaining_kb|-  source
+run_id  pid  elapsed_s  daemons  used_kb  est_total_kb|-  remaining_kb|-  source  parallelism|-
 ```
 
 - Live runs are discovered from `B/*/.owner_pid` and `/tmp/monerosim-*/.owner_pid`

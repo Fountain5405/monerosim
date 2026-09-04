@@ -55,21 +55,26 @@ The quickest way to verify everything works end-to-end:
 ./run_sim.sh --config test_configs/quickstart.yaml
 ```
 
-Or run the steps manually:
+This creates its own `archived_runs/<run_id>/` directory for the run (see
+`docs/20260904_per_run_directories.md`), so you can launch more than one
+simulation at a time from the same checkout.
+
+Or run the steps manually. `run_sim.sh` does this for you under
+`archived_runs/<run_id>/`; if you drive the generator and Shadow directly,
+use a directory of your own instead of the checkout root:
 
 ```bash
-# Generate Shadow configuration
-./target/release/monerosim --config test_configs/quickstart.yaml --output shadow_output
+# Generate Shadow configuration into a directory of your own
+./target/release/monerosim --config test_configs/quickstart.yaml --output my_run/shadow_output
 
 # Run the simulation
-rm -rf shadow.data shadow.log
-nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+nohup ~/.monerosim/bin/shadow -d my_run/shadow.data my_run/shadow_output/shadow_agents.yaml > my_run/shadow_run.log 2>&1 &
 
 # Check progress
-tail shadow.log
+tail my_run/shadow_run.log
 
 # Real-time status dashboard
-./scripts/check_sim.sh
+./scripts/check_sim.sh my_run
 ```
 
 ## Customizing
@@ -112,12 +117,18 @@ agents:
 
 Note: Monero wallets need ~60 blocks (~2 hours at 120s block time) to mature before spending. Set `activity_start_time` accordingly.
 
-Then generate and run:
+Then run it:
 
 ```bash
-./target/release/monerosim --config your_config.yaml --output shadow_output
-rm -rf shadow.data shadow.log
-nohup ~/.monerosim/bin/shadow shadow_output/shadow_agents.yaml > shadow.log 2>&1 &
+./run_sim.sh --config your_config.yaml
+```
+
+Or, generating and running manually (again, use a directory of your own,
+not the checkout root):
+
+```bash
+./target/release/monerosim --config your_config.yaml --output my_run/shadow_output
+nohup ~/.monerosim/bin/shadow -d my_run/shadow.data my_run/shadow_output/shadow_agents.yaml > my_run/shadow_run.log 2>&1 &
 ```
 
 For large-scale simulations (100+ agents), use the config generator:
@@ -139,7 +150,7 @@ source venv/bin/activate
 ./target/release/tx-analyzer full
 ```
 
-Check analysis output in `analysis_output/` and processed logs in `shadow.data/hosts/*/`.
+Check analysis output in `archived_runs/<run_id>/analysis_output/` (or `<your_dir>/analysis_output/` if you ran things manually) and processed logs in `archived_runs/<run_id>/shadow.data/hosts/*/`.
 
 ## Troubleshooting
 
@@ -149,7 +160,7 @@ Check analysis output in `analysis_output/` and processed logs in `shadow.data/h
 
 **"Python 3.10+ is required"**: Install a newer Python version. On Ubuntu/Debian: `sudo apt install python3.10`. On Fedora: `sudo dnf install python3.10`. On Arch: `sudo pacman -S python`. On openSUSE: `sudo zypper install python310`.
 
-**Simulation seems stuck**: This is normal. Check `tail shadow.log` for progress. Simulations run slower than real time. Use `./scripts/check_sim.sh` for a detailed status dashboard.
+**Simulation seems stuck**: This is normal. Check `tail archived_runs/<run_id>/shadow_run.log` for progress (or your own run's log if you ran things manually). Simulations run slower than real time. Use `./scripts/check_sim.sh` (no argument for the newest run, or `./scripts/check_sim.sh archived_runs/<run_id>` for a specific one) for a detailed status dashboard.
 
 **"N managed processes in unexpected final state"**: This is normal. Shadow terminates all processes when simulation time expires.
 
