@@ -78,6 +78,12 @@ wait "$PID_B" || { log_err "run B exited non-zero (see $LOG_B)"; status=1; }
 (( status == 0 )) || exit 1
 
 log_step "Assertions"
+# Concurrent runs share the cores, so wall time is judged against the
+# *_parallel baseline (relaxed wall-time ceiling, identical correctness
+# metrics); fall back to the solo baseline if no parallel variant exists.
+base="tests/baselines/$(basename "$CONFIG" .yaml)"
+baseline="${base}_parallel_metrics.json"
+[[ -f "$baseline" ]] || baseline="${base}_metrics.json"
 for R in "$RUN_A" "$RUN_B"; do
     [[ -f "$R/summary.txt" ]] || fail "$R has no summary.txt"
     [[ "$(run_dir_state "$R")" == "complete" ]] || fail "$R is not complete"
@@ -85,10 +91,7 @@ for R in "$RUN_A" "$RUN_B"; do
     (( $(ls "$R/shadow.data/hosts" | wc -l) > 0 )) || fail "$R: empty shadow.data/hosts"
     [[ -f "$R/shadow_output/run_env.sh" ]] || fail "$R: no run_env.sh"
     grep -q "MONEROSIM_RUN_DIR=\"$(readlink -f "$R")\"" "$R/shadow_output/run_env.sh" || fail "$R: run_env.sh names another run"
-    # $R's name is par_{a,b}_<stamp>, not <ts>_<scenario>, so
-    # smoke_assertions.py's name-derived default baseline lookup would miss;
-    # point it at the baseline for the config we actually ran instead.
-    python3 scripts/smoke_assertions.py --run-dir "$R" --baseline "tests/baselines/$(basename "$CONFIG" .yaml)_metrics.json" || fail "$R: smoke assertions failed"
+    python3 scripts/smoke_assertions.py --run-dir "$R" --baseline "$baseline" || fail "$R: smoke assertions failed (baseline $baseline)"
     log_ok "$R: complete, exit 0, smoke assertions pass"
 done
 root_after=$(ls -A "$ROOT" | sort)
