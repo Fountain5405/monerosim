@@ -45,7 +45,7 @@ SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
 BLOCKCHAIN_ARCHIVE_PCT=""
-DATA_DIR=""
+DATA_DIR=""               # set in build_and_generate(): $RUN_DIR/shadow.data (Shadow creates it)
 RAMDISK_REQUEST=""        # "" = off, "auto" = size from estimate, else explicit (e.g. "8G")
 RAMDISK_PATH=""           # set by mount_ramdisk() if mount succeeds
 RAMDISK_MOUNTED=false     # cleared once watchdog has taken over
@@ -75,7 +75,7 @@ Options:
   --turnover-downtime <dur> Mean OFFLINE gap for turnover (e.g. 1h). Average uptime =
                          session/(session+downtime).
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
-  --archive-dir <dir>    Archive location (default: archived_runs)
+  --archive-dir <dir>    Archive location (default: $MONEROSIM_ARCHIVE_BASE or archived_runs)
   --data-dir <base>      Put this run's Shadow data at <base>/<run_id>/shadow.data
                          instead of archived_runs/<run_id>/shadow.data (e.g. a
                          scratch volume); it is moved into the run dir at the end.
@@ -213,13 +213,11 @@ if [[ -z "$CONFIG" ]]; then
 fi
 
 # Defaults
-[[ -z "$ARCHIVE_BASE" ]] && ARCHIVE_BASE="$SCRIPT_DIR/archived_runs"
+[[ -z "$ARCHIVE_BASE" ]] && ARCHIVE_BASE="${MONEROSIM_ARCHIVE_BASE:-$SCRIPT_DIR/archived_runs}"
 if [[ -z "$RUN_NAME" ]]; then
     # Derive from config filename: test_configs/20260305.yaml -> 20260305
     RUN_NAME=$(basename "$CONFIG" .yaml)
 fi
-
-DATA_DIR=""               # set in build_and_generate(): $RUN_DIR/shadow.data (Shadow creates it)
 
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
 MONEROSIM_BIN="$SCRIPT_DIR/target/release/monerosim"
@@ -763,6 +761,8 @@ build_and_generate() {
         mkdir -p "$DATA_BASE/$RUN_ID"
         if [[ -e "$DATA_DIR" ]]; then
             log_err "Scratch data dir already exists: $DATA_DIR (Shadow refuses an existing -d path)"
+            rmdir "$DATA_BASE/$RUN_ID" 2>/dev/null || true
+            rm -f "$RUN_DIR/.owner_pid"; rmdir "$RUN_DIR" 2>/dev/null || true
             exit 1
         fi
     else
@@ -1299,6 +1299,8 @@ archive_results() {
             mv "$DATA_DIR" "$RUN_DIR/shadow.data"
             rmdir "$(dirname "$DATA_DIR")" 2>/dev/null || true
             DATA_DIR="$RUN_DIR/shadow.data"
+            # Keep the breadcrumb tracking where the data currently lives.
+            sed -i "s|^MONEROSIM_SHADOW_DATA_DIR=.*|MONEROSIM_SHADOW_DATA_DIR=\"$(readlink -f "$DATA_DIR")\"|" "$SHADOW_OUTPUT/run_env.sh"
             log_ok "shadow.data moved into run dir"
         else
             log_warn "$DATA_DIR not found"
@@ -1744,10 +1746,17 @@ main() {
         log_warn "Pre-run artifacts (input_config.yaml, shadow_agents.yaml,"
         log_warn "monerosim.log, shadow_run.log, build.log, memory_samples.csv)"
         log_warn "remain in $ARCHIVE_DIR."
-        rm -rf "$RUN_DIR/shadow.data"
-        if [[ "$DATA_DIR" != "$RUN_DIR/shadow.data" && -d "$DATA_DIR" ]]; then
-            rm -rf "$DATA_DIR"
-            rmdir "$(dirname "$DATA_DIR")" 2>/dev/null || true
+        if [[ "$NO_CLEAN" == true ]]; then
+            log_warn "shadow.data is being kept for inspection under $RUN_DIR (--no-clean)"
+            if [[ "$DATA_DIR" != "$RUN_DIR/shadow.data" ]]; then
+                log_warn "(and the scratch path $DATA_DIR)"
+            fi
+        else
+            rm -rf "$RUN_DIR/shadow.data"
+            if [[ "$DATA_DIR" != "$RUN_DIR/shadow.data" && -d "$DATA_DIR" ]]; then
+                rm -rf "$DATA_DIR"
+                rmdir "$(dirname "$DATA_DIR")" 2>/dev/null || true
+            fi
         fi
         cleanup_tmp_monero  # internally respects --no-clean
     else
