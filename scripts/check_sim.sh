@@ -1,16 +1,13 @@
 #!/bin/bash
 # check_sim.sh - Quick status check for a MoneroSim simulation
 #
-# Usage: ./check_sim.sh [SHADOW_DATA_DIR]
+# Usage: ./check_sim.sh [RUN_DIR]
 #
-# Accepts one of:
-#   - Path to a shadow.data/ directory (live or archived)
-#   - Path to an archived run directory (containing shadow.data/)
-#   - No argument: auto-detect from running Shadow process or CWD
-#
-# Also reads input_config.yaml (if found) for timeline/phase info.
-# Live daemon logs are found via the per-run /tmp namespace breadcrumbed by
-# run_sim.sh in shadow_output/run_env.sh (legacy global /tmp as fallback).
+# RUN_DIR resolves as: explicit argument > $MONEROSIM_RUN_DIR > newest under
+# archived_runs/ ($MONEROSIM_ARCHIVE_BASE). A shadow.data/ path is accepted
+# too. The chosen run is echoed as "run: <dir> (live|complete|incomplete)".
+# Daemon logs come from <run>/daemon_logs/ (archived) or the live /tmp
+# namespace breadcrumbed in <run>/shadow_output/run_env.sh.
 
 # Status checker: -e omitted so individual diagnostic checks (grep, ps,
 # wc) can fail without aborting the dashboard.
@@ -28,111 +25,49 @@ source "$(dirname "${BASH_SOURCE[0]}")/log_lib.sh"
 
 SIM_EPOCH=946684800  # 2000-01-01 00:00:00 UTC (Shadow epoch)
 
-# Live-run daemon data base: run_sim.sh namespaces it per run
-# (/tmp/monerosim-<runid>) and breadcrumbs the resolved paths in
-# shadow_output/run_env.sh. Fall back to the legacy global /tmp.
-DAEMON_DATA_BASE="/tmp"
-if [[ -f "$PROJECT_ROOT/shadow_output/run_env.sh" ]]; then
+# shellcheck source=run_dir_lib.sh
+source "$SCRIPT_DIR/run_dir_lib.sh"
+
+# ============================================================
+# Resolve the run directory
+# ============================================================
+ARG="${1:-}"
+if [[ -n "$ARG" && -d "$ARG/hosts" && "$(basename "$(readlink -f "$ARG")")" == "shadow.data" ]]; then
+    ARG="$(dirname "$(readlink -f "$ARG")")"
+fi
+RUN_DIR=$(resolve_run_dir "$ARG") || {
+    log_info "Pass a run directory:  $0 archived_runs/<run_id>"
+    exit 1
+}
+RUN_STATE=$(run_dir_state "$RUN_DIR")
+LOG_SOURCE="$RUN_STATE"
+
+# Breadcrumbs written by run_sim.sh (absent for hand-run Shadow invocations).
+if [[ -f "$RUN_DIR/shadow_output/run_env.sh" ]]; then
     # shellcheck source=/dev/null
-    source "$PROJECT_ROOT/shadow_output/run_env.sh"
+    source "$RUN_DIR/shadow_output/run_env.sh"
+fi
+SHADOW_DATA_DIR="${MONEROSIM_SHADOW_DATA_DIR:-$RUN_DIR/shadow.data}"
+[[ -d "$SHADOW_DATA_DIR/hosts" ]] || SHADOW_DATA_DIR="$RUN_DIR/shadow.data"
+HOSTS_DIR="$SHADOW_DATA_DIR/hosts"
+if [[ ! -d "$HOSTS_DIR" ]]; then
+    log_err "No shadow.data/hosts under $RUN_DIR (not started yet, pruned, or --no-archive)"
+    exit 1
+fi
+HOSTS_DIR=$(readlink -f "$HOSTS_DIR")
+
+# Daemon logs: archived copy, else the live namespace, else legacy /tmp.
+if [[ -d "$RUN_DIR/daemon_logs" ]]; then
+    DAEMON_DATA_BASE="$RUN_DIR/daemon_logs"
+else
     DAEMON_DATA_BASE="${MONEROSIM_DAEMON_DATA_DIR:-/tmp}"
 fi
 
-# ============================================================
-# Locate shadow.data/hosts and run directory
-# ============================================================
-HOSTS_DIR=""
-RUN_DIR=""
-LOG_SOURCE=""
-
-find_hosts_dir() {
-    local candidate="$1"
-
-    # Direct shadow.data/hosts path
-    if [ -d "$candidate/hosts" ]; then
-        HOSTS_DIR="$candidate/hosts"
-        return 0
-    fi
-    # shadow.data directory
-    if [ -d "$candidate/shadow.data/hosts" ]; then
-        HOSTS_DIR="$candidate/shadow.data/hosts"
-        RUN_DIR="$candidate"
-        return 0
-    fi
-    return 1
-}
-
-if [ -n "${1:-}" ]; then
-    find_hosts_dir "$1" || { log_err "No shadow.data/hosts found at $1"; exit 1; }
-    LOG_SOURCE="specified"
-else
-    # Auto-detect: check for running Shadow process
-    SHADOW_CWD=""
-    SHADOW_PID=$(pgrep -xf ".*/shadow .*\\.yaml" 2>/dev/null | head -1 || true)
-    if [ -n "$SHADOW_PID" ]; then
-        SHADOW_CWD=$(readlink -f "/proc/$SHADOW_PID/cwd" 2>/dev/null || true)
-    fi
-
-    if [ -n "$SHADOW_CWD" ] && [ -d "$SHADOW_CWD/shadow.data/hosts" ]; then
-        HOSTS_DIR="$SHADOW_CWD/shadow.data/hosts"
-        LOG_SOURCE="live (from running Shadow PID $SHADOW_PID)"
-    elif [ -d "./shadow.data/hosts" ]; then
-        HOSTS_DIR="./shadow.data/hosts"
-        LOG_SOURCE="live (CWD)"
-    else
-        # Fallback: look for CWD-relative input_config or run dir
-        log_err "Could not find shadow.data/hosts."
-        log_info "Pass a path:  $0 /path/to/shadow.data"
-        log_info "         or:  $0 /path/to/archived_run_dir"
-        exit 1
-    fi
-fi
-
-HOSTS_DIR=$(readlink -f "$HOSTS_DIR")
-
-# Try to find input_config.yaml for timeline info
 CONFIG_FILE=""
-# Build list of candidate locations
-_config_candidates=(
-    "$(dirname "$HOSTS_DIR")/../input_config.yaml"       # shadow.data/../input_config.yaml
-    "$(dirname "$HOSTS_DIR")/../../input_config.yaml"     # run_dir/input_config.yaml
-    "${RUN_DIR:-.}/input_config.yaml"
-)
-# If we detected a Shadow process, also check near its YAML arg
-if [ -n "${SHADOW_PID:-}" ]; then
-    _yaml_arg=$(cat "/proc/$SHADOW_PID/cmdline" 2>/dev/null | xargs -0 printf '%s\n' | grep -E '\.yaml$' | head -1 || true)
-    if [ -n "$_yaml_arg" ]; then
-        _config_candidates+=("$(dirname "$_yaml_arg")/input_config.yaml")
-        _config_candidates+=("$(dirname "$(dirname "$_yaml_arg")")/input_config.yaml")
-    fi
-fi
-# Also check the most recent directory in common run-log locations
-for _logbase in "$HOME/monerosim_runs" "$(dirname "$HOSTS_DIR")/../../.."; do
-    if [ -d "$_logbase" ]; then
-        _newest=$(ls -td "$_logbase"/*/ 2>/dev/null | head -1)
-        if [ -n "$_newest" ]; then
-            _config_candidates+=("${_newest}input_config.yaml")
-        fi
-    fi
-done
-for candidate in "${_config_candidates[@]}"; do
-    if [ -f "$candidate" ]; then
-        CONFIG_FILE=$(readlink -f "$candidate")
-        break
-    fi
-done
+[[ -f "$RUN_DIR/input_config.yaml" ]] && CONFIG_FILE=$(readlink -f "$RUN_DIR/input_config.yaml")
 
-# Try to find the run directory (for memory_samples.csv etc)
-if [ -z "$RUN_DIR" ] && [ -n "$CONFIG_FILE" ]; then
-    RUN_DIR=$(dirname "$CONFIG_FILE")
-elif [ -z "$RUN_DIR" ]; then
-    # Walk up from hosts dir
-    candidate=$(dirname "$HOSTS_DIR")  # shadow.data
-    candidate=$(dirname "$candidate")  # run dir
-    if [ -f "$candidate/input_config.yaml" ]; then
-        RUN_DIR="$candidate"
-    fi
-fi
+# THIS run's Shadow process (runs are concurrent: never "any shadow on the box").
+SHADOW_PID=$(pgrep -u "$(id -u)" -f -- "shadow -d $SHADOW_DATA_DIR " 2>/dev/null | head -1 || true)
 
 # ============================================================
 # Parse config for timeline milestones (if available)
@@ -200,18 +135,16 @@ fi
 # Process Status
 # ============================================================
 log_header "Process Status"
-if [[ "$LOG_SOURCE" != "specified" ]]; then
-    SHADOW_PID=$(pgrep -xf ".*/shadow .*\\.yaml" 2>/dev/null | head -1 || true)
-    if [ -n "$SHADOW_PID" ]; then
-        log_ok "Shadow running (PID $SHADOW_PID)"
-        ELAPSED=$(ps -o etime= -p "$SHADOW_PID" 2>/dev/null | xargs)
-        log_info "Wall-clock elapsed: ${ELAPSED:-unknown}"
-    else
-        log_warn "Shadow not running"
-    fi
+if [ -n "$SHADOW_PID" ]; then
+    log_ok "Shadow running (PID $SHADOW_PID)"
+    ELAPSED=$(ps -o etime= -p "$SHADOW_PID" 2>/dev/null | xargs)
+    log_info "Wall-clock elapsed: ${ELAPSED:-unknown}"
+elif [[ "$RUN_STATE" == "live" ]]; then
+    log_warn "run_sim.sh is alive (pid $(cat "$RUN_DIR/.owner_pid")) but no Shadow process for this run (starting up or archiving?)"
 else
-    log_info "Viewing archived run"
+    log_info "Viewing $RUN_STATE run"
 fi
+log_info "Run dir:   $RUN_DIR ($RUN_STATE)"
 log_info "Hosts dir: $HOSTS_DIR ($LOG_SOURCE)"
 if [ -n "$CONFIG_FILE" ]; then
     log_info "Config: $CONFIG_FILE"

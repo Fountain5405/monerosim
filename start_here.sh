@@ -19,6 +19,7 @@ set -uo pipefail
 # screens, not semantic log levels, so they aren't part of the shared
 # vocabulary being consolidated here.
 source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/run_dir_lib.sh"
 
 say()  { printf "%b\n" "$*"; }
 hr()   { printf "${DIM}%s${NC}\n" "----------------------------------------------------------------------"; }
@@ -556,22 +557,17 @@ run_rust_analysis() {
     local -a targets=()
     local -a labels=()
 
-    if [[ -d shadow.data ]] && [[ -d shadow.data/hosts ]]; then
-        targets+=("LIVE")
-        labels+=("(live) shadow.data/  — most recent run still in the working dir")
-    fi
-
     if [[ -d archived_runs ]]; then
         while IFS= read -r -d '' path; do
             path="${path%/}"
             targets+=("$path")
-            labels+=("${path##*/}")
+            labels+=("${path##*/}  ($(run_dir_state "$path"))")
         done < <(find archived_runs -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null \
                    | sort -rz)
     fi
 
     if [[ ${#targets[@]} -eq 0 ]]; then
-        log_warn "No shadow.data/ in cwd and no entries in archived_runs/."
+        log_warn "No entries in archived_runs/."
         say "Run a simulation first, then come back."
         pause
         return
@@ -599,29 +595,25 @@ run_rust_analysis() {
 
     local target="${targets[$((sel - 1))]}"
     local data_dir log_dir out_dir
-    if [[ "$target" == "LIVE" ]]; then
-        data_dir="shadow.data"
-        # Live runs write daemon logs to <run-tmp>/monero-<host>/ where
-        # <run-tmp> is the per-run namespace run_sim.sh breadcrumbs in
-        # shadow_output/run_env.sh. Export the breadcrumbed paths so
-        # tx-analyzer's env-based defaults (--log-dir omitted, --shared-dir
-        # default) resolve to the live run instead of the legacy /tmp.
-        if [[ -f "shadow_output/run_env.sh" ]]; then
+    data_dir="$target/shadow.data"
+    out_dir="$target/analysis_output"
+    if [[ "$(run_dir_state "$target")" == "live" ]] && [[ ! -d "$target/daemon_logs" ]]; then
+        # Live run: daemon logs are still in the /tmp namespace breadcrumbed
+        # by run_sim.sh. Export it so tx-analyzer's env-based defaults
+        # (--log-dir omitted, --shared-dir default) resolve to this run.
+        if [[ -f "$target/shadow_output/run_env.sh" ]]; then
             # shellcheck source=/dev/null
-            source "shadow_output/run_env.sh"
+            source "$target/shadow_output/run_env.sh"
             export MONEROSIM_DAEMON_DATA_DIR MONEROSIM_SHARED_DIR
         fi
         log_dir=""
-        out_dir="analysis_output"
     else
-        data_dir="$target/shadow.data"
         log_dir="$target/daemon_logs"
-        out_dir="$target/analysis_output"
-        if [[ ! -d "$data_dir" ]] || [[ ! -d "$log_dir" ]]; then
-            log_err "Archive missing shadow.data/ or daemon_logs/ — was it pruned?"
-            pause
-            return
-        fi
+    fi
+    if [[ ! -d "$data_dir" ]] || { [[ -n "$log_dir" ]] && [[ ! -d "$log_dir" ]]; }; then
+        log_err "Run missing shadow.data/ or daemon_logs/ — not started yet, pruned, or --no-archive?"
+        pause
+        return
     fi
 
     # ----- pick which analysis to run -----
