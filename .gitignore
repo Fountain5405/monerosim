@@ -108,3 +108,6 @@ sibling_repos/
 archived_runs/
 scaling_sweep_results*.csv
 .claude/
+
+# Default output dir of scripts/analyze_network_connectivity.py
+analysis_results/
