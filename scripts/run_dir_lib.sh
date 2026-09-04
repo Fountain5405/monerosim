@@ -8,7 +8,8 @@
 # A run lives for its whole life in <archive base>/<run_id>/ where
 # run_id = YYYYmmdd_HHMMSS_<name>[_N]. Resolution order (resolve_run_dir):
 #   1. explicit argument   2. $MONEROSIM_RUN_DIR   3. newest under the base.
-# State (run_dir_state): live (.owner_pid names a process that exists),
+# State (run_dir_state): live (.owner_pid names a process that exists AND,
+# when a start-time token is present, still has that start time),
 # complete (summary.txt present), incomplete (neither).
 
 # Guard against double-sourcing.
@@ -24,12 +25,40 @@ run_dir_archive_base() {
     echo "${MONEROSIM_ARCHIVE_BASE:-$_run_dir_lib_root/archived_runs}"
 }
 
+# proc_starttime PID -> echo field 22 of /proc/PID/stat (process start time in
+# clock ticks since boot); nothing if PID or its stat file doesn't exist.
+# comm (field 2) is parenthesized and may itself contain ") ", so the safe
+# parse is to split on the LAST ") " in the line, per proc(5); starttime is
+# then the 20th field of what remains (fields 3..22 overall = 20 fields).
+proc_starttime() {
+    local pid="$1" stat_line rest
+    stat_line=$(cat "/proc/$pid/stat" 2>/dev/null) || return 0
+    rest="${stat_line##*) }"
+    # shellcheck disable=SC2086
+    set -- $rest
+    [[ $# -ge 20 ]] && echo "${20}"
+}
+
+# write_owner_pid FILE -> write "<pid> <starttime>" for the calling shell
+# ($$) into FILE. Shared by allocate_run_dir and run_sim.sh's /tmp
+# namespace writer so both breadcrumbs use the same pid-reuse-proof form.
+write_owner_pid() {
+    echo "$$ $(proc_starttime "$$")" > "$1"
+}
+
 # run_dir_is_live DIR -> 0 iff DIR/.owner_pid names a process that exists.
-# /proc rather than `kill -0` so another user's run counts as live.
+# /proc rather than `kill -0` so another user's run counts as live. A second
+# token (process start time, field 22 of /proc/<pid>/stat) guards against
+# pid reuse: when present, the pid must ALSO still have that exact start
+# time. Legacy single-token files fall back to existence-only.
 run_dir_is_live() {
-    local pid
-    pid=$(cat "$1/.owner_pid" 2>/dev/null) || return 1
-    [[ "$pid" =~ ^[0-9]+$ ]] && [[ -d "/proc/$pid" ]]
+    local line pid start
+    line=$(cat "$1/.owner_pid" 2>/dev/null) || return 1
+    read -r pid start <<< "$line"
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    [[ -d "/proc/$pid" ]] || return 1
+    [[ -n "$start" ]] || return 0
+    [[ "$(proc_starttime "$pid")" == "$start" ]]
 }
 
 # run_dir_state DIR -> echo live | complete | incomplete
@@ -81,7 +110,8 @@ resolve_run_dir() {
 }
 
 # allocate_run_dir BASE NAME -> mkdir BASE/<ts>_NAME atomically (suffix _2.._99
-# on collision), write .owner_pid = $$ (the sourcing shell), echo the run id.
+# on collision), write .owner_pid = "$$ <starttime>" (the sourcing shell),
+# echo the run id.
 # rc 1 after 99 collisions. MONEROSIM_RUN_TS overrides the timestamp (tests).
 # A failed mkdir counts as a collision only if the target now exists; any other
 # mkdir failure (unwritable BASE, disk full, ...) is reported and returns 1
@@ -104,6 +134,6 @@ allocate_run_dir() {
         fi
         candidate="${ts}_${name}_${n}"
     done
-    echo $$ > "$base/$candidate/.owner_pid"
+    write_owner_pid "$base/$candidate/.owner_pid"
     echo "$candidate"
 }

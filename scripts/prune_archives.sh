@@ -115,7 +115,7 @@ prune_one() {
     [[ -d "$archive" ]] || { echo "Not a directory: $archive" >&2; return 1; }
 
     if run_dir_is_live "$archive" && [[ "$FORCE" == "false" ]]; then
-        echo "Refusing $archive: run is LIVE (owner pid $(cat "$archive/.owner_pid")); use --force to prune anyway" >&2
+        echo "Refusing $archive: run is LIVE (owner pid $(cat "$archive/.owner_pid" | awk '{print $1}')); use --force to prune anyway" >&2
         return 1
     fi
 

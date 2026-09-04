@@ -22,7 +22,7 @@ def _fixture_run(tmp_path, *, live=True):
         f'MONEROSIM_RUN_ID="20260904_120000_fx"\nMONEROSIM_RUN_DIR="{run}"\n'
         f'MONEROSIM_SHADOW_DATA_DIR="{run}/shadow.data"\nMONEROSIM_DAEMON_DATA_DIR="{live_ns}"\n'
     )
-    (run / ".owner_pid").write_text(str(os.getpid() if live else 2**22 - 1))
+    (run / ".owner_pid").write_text(str(os.getpid() if live else 2**31 - 1))
     return run
 
 

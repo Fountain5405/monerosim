@@ -372,7 +372,7 @@ def test_live_runs_tsv(tmp_path, capsys, monkeypatch):
     other.mkdir()
     (other / ".owner_pid").write_text("4242")
 
-    monkeypatch.setattr(helpers.run_dirs, "pid_alive", lambda pid, proc_root=None: (proc / str(pid)).exists())
+    monkeypatch.setattr(helpers.run_dirs, "pid_alive", lambda pid, proc_root=None, start=None: (proc / str(pid)).exists())
     _, out = _run(capsys, ["live-runs", "--archive-base", str(base), "--exclude-pid", "1",
                            "--tmp-root", str(tmp_root)])
     rows = [line.split("\t") for line in out.strip().splitlines()]

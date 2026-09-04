@@ -11,7 +11,9 @@ Out-of-band tools resolve "which run" through resolve_run_dir():
        ($MONEROSIM_ARCHIVE_BASE, default <checkout>/archived_runs).
 
 A run's state comes from two breadcrumbs run_sim.sh leaves:
-    .owner_pid   -> "live" while /proc/<pid> exists
+    .owner_pid   -> "live" while /proc/<pid> exists AND, when .owner_pid's
+                    second token (process start time) is present, that pid
+                    still has that exact start time (guards against pid reuse)
     summary.txt  -> "complete" (run_sim.sh writes it last)
     neither      -> "incomplete" (crashed, killed, or --no-archive)
 
@@ -52,22 +54,71 @@ def default_archive_base(env: Mapping[str, str] = os.environ) -> Path:
     return Path(__file__).resolve().parent.parent / "archived_runs"
 
 
-def pid_alive(pid: int, proc_root: Path = Path("/proc")) -> bool:
+def proc_start_time(pid: int, proc_root: Path = Path("/proc")) -> Optional[int]:
+    """Field 22 of /proc/<pid>/stat (process start time in clock ticks since
+    boot), or None if the pid or its stat file doesn't exist. comm (field 2)
+    is parenthesized and may itself contain ") ", so the safe parse (per
+    proc(5)) is to split on the LAST ") " in the line; starttime is then the
+    20th field of what remains (fields 3..22 overall = 20 fields)."""
+    try:
+        text = (proc_root / str(pid) / "stat").read_text()
+    except OSError:
+        return None
+    rest = text.rpartition(") ")[2]
+    fields = rest.split()
+    if len(fields) < 20:
+        return None
+    try:
+        return int(fields[19])
+    except ValueError:
+        return None
+
+
+def pid_alive(pid: int, proc_root: Path = Path("/proc"), start: Optional[int] = None) -> bool:
     """True if a process with this pid exists. /proc rather than os.kill so a
-    process owned by another user (EPERM) still counts as alive."""
-    return (proc_root / str(pid)).exists()
+    process owned by another user (EPERM) still counts as alive. When `start`
+    is given (the recorded process start time), the pid must ALSO still have
+    that exact start time -- guards against pid reuse; an unreadable stat
+    file counts as dead in that case."""
+    if not (proc_root / str(pid)).exists():
+        return False
+    if start is None:
+        return True
+    return proc_start_time(pid, proc_root) == start
 
 
 def owner_pid(run_dir: Path) -> Optional[int]:
     try:
-        return int((run_dir / OWNER_PID_FILE).read_text().strip())
-    except (OSError, ValueError):
+        text = (run_dir / OWNER_PID_FILE).read_text().strip()
+    except OSError:
+        return None
+    tokens = text.split()
+    if not tokens:
+        return None
+    try:
+        return int(tokens[0])
+    except ValueError:
+        return None
+
+
+def owner_start(run_dir: Path) -> Optional[int]:
+    """The recorded process start time (second token of .owner_pid), or None
+    for legacy single-token files or an unreadable/malformed one."""
+    try:
+        tokens = (run_dir / OWNER_PID_FILE).read_text().split()
+    except OSError:
+        return None
+    if len(tokens) < 2:
+        return None
+    try:
+        return int(tokens[1])
+    except ValueError:
         return None
 
 
 def run_state(run_dir: Path, proc_root: Path = Path("/proc")) -> str:
     pid = owner_pid(run_dir)
-    if pid is not None and pid_alive(pid, proc_root):
+    if pid is not None and pid_alive(pid, proc_root, owner_start(run_dir)):
         return STATE_LIVE
     if (run_dir / COMPLETE_MARKER).is_file():
         return STATE_COMPLETE
@@ -186,7 +237,7 @@ def list_live_runs(
             if not d.is_dir() or not is_run_dir_name(d.name):
                 continue
             pid = owner_pid(d)
-            if pid is None or pid == exclude_pid or not pid_alive(pid, proc_root):
+            if pid is None or pid == exclude_pid or not pid_alive(pid, proc_root, owner_start(d)):
                 continue
             tmp = tmp_root / f"{TMP_PREFIX}{d.name}"
             found[d.name] = LiveRun(d.name, pid, "archive", d, tmp if tmp.is_dir() else None,
@@ -197,7 +248,7 @@ def list_live_runs(
             if run_id in found or not d.is_dir():
                 continue
             pid = owner_pid(d)
-            if pid is None or pid == exclude_pid or not pid_alive(pid, proc_root):
+            if pid is None or pid == exclude_pid or not pid_alive(pid, proc_root, owner_start(d)):
                 continue
             found[run_id] = LiveRun(run_id, pid, "tmp", None, d, run_id_started(run_id))
     return [found[k] for k in sorted(found)]

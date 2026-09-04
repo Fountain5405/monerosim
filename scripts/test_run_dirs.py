@@ -12,6 +12,9 @@ from scripts.run_dirs import (
     daemon_log_dir,
     list_live_runs,
     newest_run_dir,
+    owner_start,
+    pid_alive,
+    proc_start_time,
     read_run_env,
     resolve_run_dir,
     run_id_started,
@@ -26,6 +29,18 @@ def proc(tmp_path):
     p.mkdir()
     (p / "4242").mkdir()  # alive
     return p
+
+
+def _write_stat(proc_root, pid, starttime):
+    """Fake /proc/<pid>/stat with a known field-22 (starttime). comm is
+    given a ") " inside it to exercise the last-") " parse."""
+    d = proc_root / str(pid)
+    d.mkdir(exist_ok=True)
+    # fields after comm: state ppid pgrp session tty tpgid flags minflt
+    # cminflt majflt cmajflt utime stime cutime cstime priority nice
+    # num_threads itrealvalue starttime  (20 fields; starttime is the 20th)
+    rest = "S 1 1 1 0 -1 4194304 0 0 0 0 0 0 0 0 20 0 1 0 " + str(starttime)
+    (d / "stat").write_text(f"{pid} (weird) comm) {rest}\n")
 
 
 def _mk_run(base, name, *, owner=None, complete=False):
@@ -52,6 +67,62 @@ def test_run_state_incomplete_otherwise(tmp_path, proc):
     d = _mk_run(tmp_path, "20260904_120000_a", owner=9999)
     assert run_state(d, proc) == "incomplete"
     assert run_state(_mk_run(tmp_path, "20260904_120001_b"), proc) == "incomplete"
+
+
+def test_pid_alive_matching_start(tmp_path, proc):
+    _write_stat(proc, 4242, 1000)
+    assert pid_alive(4242, proc, start=1000) is True
+
+
+def test_pid_alive_mismatched_start_is_dead(tmp_path, proc):
+    # Simulates pid reuse: /proc/4242 exists but belongs to a different
+    # process than the one that wrote the recorded start time.
+    _write_stat(proc, 4242, 1000)
+    assert pid_alive(4242, proc, start=999) is False
+
+
+def test_pid_alive_unreadable_stat_with_start_is_dead(tmp_path, proc):
+    # proc/4242 exists (bare dir, no stat file) -- an unreadable stat with a
+    # given start counts as dead, not "unknown -> alive".
+    assert pid_alive(4242, proc, start=1000) is False
+
+
+def test_pid_alive_without_start_is_existence_only(tmp_path, proc):
+    assert pid_alive(4242, proc) is True
+    assert pid_alive(9999, proc) is False
+
+
+def test_owner_start_legacy_single_token_is_none(tmp_path):
+    d = _mk_run(tmp_path, "20260904_120000_a", owner=4242)
+    assert owner_start(d) is None
+
+
+def test_owner_start_two_token_form(tmp_path):
+    d = _mk_run(tmp_path, "20260904_120000_a", owner="4242 1000")
+    assert owner_start(d) == 1000
+
+
+def test_proc_start_time_parses_field_22_past_last_paren(tmp_path, proc):
+    _write_stat(proc, 4242, 999999)
+    assert proc_start_time(4242, proc) == 999999
+    assert proc_start_time(1234567, proc) is None
+
+
+def test_run_state_live_with_matching_recorded_start(tmp_path, proc):
+    _write_stat(proc, 4242, 1000)
+    d = _mk_run(tmp_path, "20260904_120000_a", owner="4242 1000", complete=True)
+    assert run_state(d, proc) == "live"
+
+
+def test_run_state_not_live_when_start_mismatches_reused_pid(tmp_path, proc):
+    _write_stat(proc, 4242, 1000)
+    d = _mk_run(tmp_path, "20260904_120000_a", owner="4242 999", complete=True)
+    assert run_state(d, proc) == "complete"
+
+
+def test_run_state_live_with_legacy_single_token_file(tmp_path, proc):
+    d = _mk_run(tmp_path, "20260904_120000_a", owner=4242, complete=True)
+    assert run_state(d, proc) == "live"
 
 
 def test_newest_run_dir_is_lexically_greatest_run_name(tmp_path):
@@ -136,6 +207,18 @@ def test_list_live_runs_merges_archive_and_tmp_and_skips_dead(tmp_path, proc):
     assert runs[0].tmp_dir == tmp_root / "monerosim-20260904_120000_a"
     assert runs[0].started == datetime(2026, 9, 4, 12, 0, 0)
     assert runs[1].run_dir is None and runs[1].tmp_dir == t
+
+
+def test_list_live_runs_uses_recorded_start_to_reject_reused_pid(tmp_path, proc):
+    _write_stat(proc, 4242, 1000)
+    base = tmp_path / "archived_runs"
+    tmp_root = tmp_path / "tmp"
+    tmp_root.mkdir()
+    _mk_run(base, "20260904_120000_live", owner="4242 1000")
+    _mk_run(base, "20260904_121000_reused", owner="4242 999")
+
+    runs = list_live_runs(base, tmp_root=tmp_root, proc_root=proc)
+    assert [r.run_id for r in runs] == ["20260904_120000_live"]
 
 
 def test_read_run_env_and_daemon_log_dir_prefers_archive(tmp_path):

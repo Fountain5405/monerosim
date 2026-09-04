@@ -37,7 +37,7 @@ if [[ -n "$ARG" && -d "$ARG/hosts" && "$(basename "$(readlink -f "$ARG")")" == "
 fi
 RUN_DIR=$(resolve_run_dir "$ARG") || {
     log_info "Pass a run directory:  $0 archived_runs/<run_id>"
-    exit 1
+    exit 2
 }
 RUN_STATE=$(run_dir_state "$RUN_DIR")
 LOG_SOURCE="$RUN_STATE"
@@ -140,7 +140,7 @@ if [ -n "$SHADOW_PID" ]; then
     ELAPSED=$(ps -o etime= -p "$SHADOW_PID" 2>/dev/null | xargs)
     log_info "Wall-clock elapsed: ${ELAPSED:-unknown}"
 elif [[ "$RUN_STATE" == "live" ]]; then
-    log_warn "run_sim.sh is alive (pid $(cat "$RUN_DIR/.owner_pid")) but no Shadow process for this run (starting up or archiving?)"
+    log_warn "run_sim.sh is alive (pid $(cat "$RUN_DIR/.owner_pid" | awk '{print $1}')) but no Shadow process for this run (starting up or archiving?)"
 else
     log_info "Viewing $RUN_STATE run"
 fi

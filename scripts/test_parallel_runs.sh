@@ -24,18 +24,27 @@ NAME_A="par_a_$STAMP"
 NAME_B="par_b_$STAMP"
 LOG_A="/tmp/monerosim_partest_$$_a.log"
 LOG_B="/tmp/monerosim_partest_$$_b.log"
-fail() { log_err "$*"; exit 1; }
+fail() {
+    log_err "$*"
+    kill -0 "${PID_A:-}" 2>/dev/null && kill "$PID_A" 2>/dev/null
+    kill -0 "${PID_B:-}" 2>/dev/null && kill "$PID_B" 2>/dev/null
+    exit 1
+}
 
-root_before=$(ls -A "$ROOT" | sort)
+mkdir -p "$ROOT/.superpowers"
+marker="$ROOT/.superpowers/partest_marker_$$"
+touch "$marker"
+cleanup_marker() { rm -f "$marker"; }
+trap cleanup_marker EXIT
 
 log_step "Build once (both runs use --no-build)"
 cargo build --release --quiet
 
 log_step "Launch two runs concurrently from $ROOT"
-nice ./run_sim.sh --config "$CONFIG" --name "$NAME_A" --no-build --no-monitor > "$LOG_A" 2>&1 &
+nice ./run_sim.sh --config "$CONFIG" --name "$NAME_A" --no-build --no-monitor > "$LOG_A" 2>&1 </dev/null &
 PID_A=$!
 sleep 1
-nice ./run_sim.sh --config "$CONFIG" --name "$NAME_B" --no-build --no-monitor > "$LOG_B" 2>&1 &
+nice ./run_sim.sh --config "$CONFIG" --name "$NAME_B" --no-build --no-monitor > "$LOG_B" 2>&1 </dev/null &
 PID_B=$!
 log_info "run_sim.sh pids: $PID_A $PID_B"
 
@@ -94,9 +103,19 @@ for R in "$RUN_A" "$RUN_B"; do
     python3 scripts/smoke_assertions.py --run-dir "$R" --baseline "$baseline" || fail "$R: smoke assertions failed (baseline $baseline)"
     log_ok "$R: complete, exit 0, smoke assertions pass"
 done
-root_after=$(ls -A "$ROOT" | sort)
-if [[ "$root_before" != "$root_after" ]]; then
-    diff <(echo "$root_before") <(echo "$root_after") || true
+# Excludes cover both the directory itself and its contents: creating or
+# removing an entry inside a directory (a new run dir under archived_runs/,
+# a lock file git takes and releases, ...) bumps that directory's OWN mtime
+# even though its contents are separately excluded, so the bare directory
+# path must be excluded too or it false-flags as "changed".
+changed=$(find "$ROOT" -newer "$marker" \
+    -not -path "$ROOT/archived_runs" -not -path "$ROOT/archived_runs/*" \
+    -not -path "$ROOT/target" -not -path "$ROOT/target/*" \
+    -not -path "$ROOT/.superpowers" -not -path "$ROOT/.superpowers/*" \
+    -not -path "$ROOT/.git" -not -path "$ROOT/.git/*" \
+    -not -path "$ROOT/.pytest_cache" -not -path "$ROOT/.pytest_cache/*")
+if [[ -n "$changed" ]]; then
+    echo "$changed"
     fail "checkout root changed during the runs"
 fi
 log_ok "checkout root unchanged"

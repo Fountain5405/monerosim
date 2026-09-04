@@ -214,9 +214,31 @@ fi
 
 # Defaults
 [[ -z "$ARCHIVE_BASE" ]] && ARCHIVE_BASE="${MONEROSIM_ARCHIVE_BASE:-$SCRIPT_DIR/archived_runs}"
+# Canonicalise now (not just when the run directory is created): every
+# downstream consumer (MONEROSIM_RUN_DIR, the run_env.sh breadcrumb, Shadow's
+# -d argv) is then built from an already-absolute, symlink-resolved base, so
+# check_sim.sh's scoped `pgrep -f "shadow -d $SHADOW_DATA_DIR "` actually
+# matches the running process's argv instead of a raw/relative variant of
+# the same path. --preflight-only creating these (empty) base directories is
+# acceptable; check_disk_space already did so.
+mkdir -p "$ARCHIVE_BASE"
+ARCHIVE_BASE=$(readlink -f "$ARCHIVE_BASE")
+if [[ -n "$DATA_BASE" ]]; then
+    mkdir -p "$DATA_BASE"
+    DATA_BASE=$(readlink -f "$DATA_BASE")
+fi
 if [[ -z "$RUN_NAME" ]]; then
     # Derive from config filename: test_configs/20260305.yaml -> 20260305
     RUN_NAME=$(basename "$CONFIG" .yaml)
+fi
+# Sanitise: RUN_NAME feeds the /tmp namespace name, the pgrep -f pattern
+# (check_sim.sh) and a sed -i replacement (the run_env.sh breadcrumb
+# rewrite) -- characters special to any of those (|, &, \, /, ...) would
+# corrupt or break them.
+_sanitized_run_name="${RUN_NAME//[^A-Za-z0-9._-]/_}"
+if [[ "$_sanitized_run_name" != "$RUN_NAME" ]]; then
+    log_warn "Run name sanitised: '$RUN_NAME' -> '$_sanitized_run_name'"
+    RUN_NAME="$_sanitized_run_name"
 fi
 
 SHADOW_BIN="$HOME/.monerosim/bin/shadow"
@@ -672,9 +694,9 @@ check_disk_space() {
     # archive base) have no estimate and are reported as such.
     local nproc_n
     nproc_n=$(nproc 2>/dev/null || echo 0)
-    local live_tsv other_remaining_kb=0 other_unknown=0 other_count=0 other_parallelism=0
+    local live_tsv live_rc=0 other_remaining_kb=0 other_unknown=0 other_count=0 other_parallelism=0
     live_tsv=$(python3 scripts/run_sim_helpers.py live-runs \
-        --archive-base "$archive_dir" --exclude-pid $$ 2>/dev/null || true)
+        --archive-base "$archive_dir" --exclude-pid $$ 2>/dev/null) || live_rc=$?
     if [[ -n "$live_tsv" ]]; then
         log_info "Other live runs on this box:"
         local rid pid elapsed daemons used est rem src par el_txt est_txt
@@ -682,6 +704,9 @@ check_disk_space() {
             [[ -n "$rid" ]] || continue
             other_count=$((other_count + 1))
             el_txt="?"; [[ "$elapsed" -ge 0 ]] && el_txt=$(format_duration "$elapsed")
+            # A malformed/missing field must not abort the launch under set -e.
+            [[ "$rem" =~ ^[0-9]+$ ]] || rem="-"
+            [[ "$par" =~ ^[0-9]+$ ]] || par="-"
             if [[ "$rem" != "-" ]]; then
                 other_remaining_kb=$((other_remaining_kb + rem))
                 est_txt="est. total $(format_kb "$est"), remaining $(format_kb "$rem")"
@@ -695,6 +720,8 @@ check_disk_space() {
             log_info "  $rid  pid $pid  up $el_txt  $daemons daemons  used $(format_kb "$used")  ($est_txt) [$src]"
         done <<< "$live_tsv"
         log_info "  Reserving $(format_kb "$other_remaining_kb") for their projected growth ($other_unknown of $other_count with no estimate)"
+    elif (( live_rc != 0 )); then
+        log_info "Other live runs on this box: unavailable (helper failed)"
     else
         log_info "Other live runs on this box: none"
     fi
@@ -840,9 +867,10 @@ build_and_generate() {
         [[ -d "$stale" ]] || continue
         [[ "${stale%/}" == "$RUN_TMP_DIR" ]] && continue
         opid=$(cat "${stale}.owner_pid" 2>/dev/null || true)
+        opid="${opid%% *}"    # first token (pid) only, for display
         if [[ -z "$opid" ]]; then
             log_warn "Leaving ${stale} (no .owner_pid — not created by run_sim.sh; remove manually if stale)"
-        elif kill -0 "$opid" 2>/dev/null; then
+        elif run_dir_is_live "${stale%/}"; then
             log_info "Leaving ${stale} (owner pid $opid alive — concurrent run)"
         else
             log_info "Removing stale run dir ${stale} (owner pid $opid gone)"
@@ -854,10 +882,26 @@ build_and_generate() {
         log_warn "Remove with 'rm -rf /tmp/monero-*' if no old-version run is live."
     fi
 
-    mkdir -p "$DAEMON_DATA_BASE" "$SHARED_DIR"
+    # RUN_ID is only unique per ARCHIVE_BASE; a same-second launch under a
+    # different --archive-dir/MONEROSIM_ARCHIVE_BASE (or from another
+    # checkout) can pick the same RUN_TMP_DIR. Plain mkdir (no -p) makes that
+    # a hard EEXIST instead of a silent shared namespace.
     if [[ "$DAEMON_DATA_BASE" == "$RUN_TMP_DIR" ]]; then
-        echo $$ > "$RUN_TMP_DIR/.owner_pid" 2>/dev/null || true
+        if ! mkdir "$RUN_TMP_DIR" 2>/dev/null; then
+            if run_dir_is_live "$RUN_TMP_DIR"; then
+                log_err "Another live run (a different checkout or archive base) already owns $RUN_TMP_DIR; relaunch, or pass a different --name."
+            else
+                log_err "A leftover $RUN_TMP_DIR exists with no live owner; remove it manually and relaunch."
+            fi
+            rm -f "$RUN_DIR/.owner_pid"; rmdir "$RUN_DIR" 2>/dev/null || true
+            [[ -n "$DATA_BASE" ]] && rmdir "$DATA_BASE/$RUN_ID" 2>/dev/null || true
+            exit 1
+        fi
+        write_owner_pid "$RUN_TMP_DIR/.owner_pid"
+    else
+        mkdir -p "$DAEMON_DATA_BASE"
     fi
+    mkdir -p "$SHARED_DIR"
     log_ok "Run tmp dir: $DAEMON_DATA_BASE (shared: $SHARED_DIR)"
 
     # Build

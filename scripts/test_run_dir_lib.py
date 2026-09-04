@@ -30,14 +30,43 @@ def _mk_run(base, name, *, owner=None, complete=False):
     return d
 
 
+def _own_starttime():
+    """Field 22 of /proc/<this test process>/stat, parsed the same way
+    run_dir_lib.sh's proc_starttime does (split on the LAST ") ")."""
+    stat = Path(f"/proc/{os.getpid()}/stat").read_text()
+    rest = stat.rpartition(") ")[2]
+    return rest.split()[19]
+
+
 def test_state_live_uses_proc(tmp_path):
+    # Legacy single-token .owner_pid: existence-only fallback.
     d = _mk_run(tmp_path, "20260904_120000_a", owner=os.getpid(), complete=True)
     assert bash(f"run_dir_state '{d}'")[1] == "live"
     assert bash(f"run_dir_is_live '{d}'")[0] == 0
 
 
+def test_proc_starttime_returns_a_digit(tmp_path):
+    rc, out, err = bash("proc_starttime $$")
+    assert rc == 0 and out.isdigit()
+
+
+def test_state_live_with_matching_recorded_start(tmp_path):
+    start = _own_starttime()
+    d = _mk_run(tmp_path, "20260904_120000_a", owner=f"{os.getpid()} {start}", complete=True)
+    assert bash(f"run_dir_is_live '{d}'")[0] == 0
+    assert bash(f"run_dir_state '{d}'")[1] == "live"
+
+
+def test_state_not_live_when_start_mismatches_reused_pid(tmp_path):
+    # Same (real, alive) pid but a start time that does not match --
+    # simulates the pid having been reused by an unrelated process.
+    d = _mk_run(tmp_path, "20260904_120000_a", owner=f"{os.getpid()} 1", complete=True)
+    assert bash(f"run_dir_is_live '{d}'")[0] == 1
+    assert bash(f"run_dir_state '{d}'")[1] == "complete"
+
+
 def test_state_complete_and_incomplete(tmp_path):
-    c = _mk_run(tmp_path, "20260904_120000_a", owner=2**22 - 1, complete=True)
+    c = _mk_run(tmp_path, "20260904_120000_a", owner=2**31 - 1, complete=True)
     i = _mk_run(tmp_path, "20260904_120001_b")
     assert bash(f"run_dir_state '{c}'")[1] == "complete"
     assert bash(f"run_dir_state '{i}'")[1] == "incomplete"
@@ -82,8 +111,8 @@ def test_allocate_run_dir_suffixes_on_collision(tmp_path):
     ids = [bash(f"allocate_run_dir '{tmp_path}' quick", env=env)[1] for _ in range(3)]
     assert ids == ["20260904_120000_quick", "20260904_120000_quick_2", "20260904_120000_quick_3"]
     for rid in ids:
-        pid = (tmp_path / rid / ".owner_pid").read_text().strip()
-        assert pid.isdigit()
+        tokens = (tmp_path / rid / ".owner_pid").read_text().split()
+        assert len(tokens) == 2 and tokens[0].isdigit() and tokens[1].isdigit()
 
 
 def test_allocate_run_dir_gives_up_after_99(tmp_path):

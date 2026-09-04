@@ -33,6 +33,6 @@ def test_live_run_pruned_with_force(tmp_path):
 
 
 def test_dead_owner_is_pruned_normally(tmp_path):
-    a = _archive(tmp_path, owner=2**22 - 1)
+    a = _archive(tmp_path, owner=2**31 - 1)
     r = _run(["--dry-run", str(a)])
     assert "WOULD DELETE" in r.stdout and "LIVE" not in r.stderr
