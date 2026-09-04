@@ -88,7 +88,7 @@ introduced as an alias with the same value and used in new code.
 
 | Variable | Value | Notes |
 |---|---|---|
-| `ARCHIVE_BASE` | `--archive-dir` or `<checkout>/archived_runs` | unchanged |
+| `ARCHIVE_BASE` | `--archive-dir`, else `$MONEROSIM_ARCHIVE_BASE`, else `<checkout>/archived_runs` | `run_sim.sh` honours the same `MONEROSIM_ARCHIVE_BASE` environment variable the out-of-band tools use as their default archive base, so a run launched this way lands where the tools already look for it |
 | `RUN_DIR` / `ARCHIVE_DIR` | `$ARCHIVE_BASE/$RUN_ID` | created in Phase 2, never in preflight |
 | `SHADOW_OUTPUT` | `$RUN_DIR/shadow_output` | was `<checkout>/shadow_output` |
 | `DATA_DIR` | `$RUN_DIR/shadow.data` | was `<checkout>/shadow.data`; Shadow creates it |
@@ -119,6 +119,9 @@ introduced as an alias with the same value and used in new code.
   in the `--data-dir` case, the scratch copy) after the run so that its
   documented "not preserved" promise holds and tens of gigabytes are not
   left in the run directory. The small pre-run artifacts remain, as today.
+  When `--no-clean` is also given, that deletion is skipped instead:
+  `shadow.data` (and the scratch copy, if any) is kept under the run
+  directory for inspection, and a warning is logged saying so.
 - **Launch banner** prints `Run directory: <RUN_DIR>` and
   `Check status: ./scripts/check_sim.sh <RUN_DIR>` (replacing the fixed
   `./scripts/check_sim.sh` line at `run_sim.sh:1037`).
@@ -138,6 +141,11 @@ MONEROSIM_SHADOW_OUTPUT_DIR="<abs SHADOW_OUTPUT>"
 child it launches after Phase 2 (generator, Shadow, post-run analysis), so
 tools invoked by the script resolve the right run without arguments.
 
+When Phase 5 step 5a moves a `--data-dir` run's scratch data into
+`$RUN_DIR/shadow.data`, `run_env.sh`'s `MONEROSIM_SHADOW_DATA_DIR` line is
+rewritten to the final path, so the breadcrumb always names where the data
+currently lives rather than the scratch location it started at.
+
 ## 4. The run-directory contract for tools
 
 ### 4.1 Resolution
@@ -153,9 +161,11 @@ Every out-of-band tool resolves its run directory in this order:
    is chronological.
 
 The tool prints one line to stderr: `run: <dir> (<state>)` where state is
-`live` (`.owner_pid` exists and `kill -0` succeeds), `complete`
-(`summary.txt` exists) or `incomplete` (neither). If nothing resolves it
-exits 2 with a message naming the three sources.
+`live` (`.owner_pid` exists and the process it names exists, checked
+through `/proc/<pid>` rather than `kill -0` so another user's live run is
+still detected on a shared box), `complete` (`summary.txt` exists) or
+`incomplete` (neither). If nothing resolves it exits 2 with a message
+naming the three sources.
 
 ### 4.2 Helpers
 
@@ -194,10 +204,13 @@ subcommand prints one TSV line per live run other than this one:
 run_id  pid  elapsed_s  daemons  used_kb  est_total_kb|-  remaining_kb|-  source  parallelism|-
 ```
 
+Numeric columns are whole KB (`run_sim.sh` does integer arithmetic on them).
+
 - Live runs are discovered from `B/*/.owner_pid` and `/tmp/monerosim-*/.owner_pid`
-  (deduplicated by run id, pid must answer `kill -0`). A run known only from
-  its `/tmp` namespace (another checkout or archive base) has `source=tmp`
-  and no estimate.
+  (deduplicated by run id, pid must exist under `/proc/<pid>`, not answer
+  `kill -0`, which reports another user's process as dead (EPERM) on a
+  shared box). A run known only from its `/tmp` namespace (another checkout
+  or archive base) has `source=tmp` and no estimate.
 - `elapsed_s` = now minus the timestamp parsed from the run id.
 - `daemons` = count of `monero-*` entries in the namespace.
 - `used_kb` = `du -sk` of the run directory plus its namespace.

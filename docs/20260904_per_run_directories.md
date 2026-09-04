@@ -114,8 +114,10 @@ run: <dir> (<state>)
 
 `<state>` is one of:
 
-- **`live`**: `<dir>/.owner_pid` exists and its pid answers `kill -0`
-  (the owning `run_sim.sh` is still running);
+- **`live`**: `<dir>/.owner_pid` exists and the process it names exists
+  (the owning `run_sim.sh` is still running). This is checked through
+  `/proc/<pid>` rather than `kill -0`, because `kill -0` reports another
+  user's process as dead (`EPERM`) and this box is shared;
 - **`complete`**: `<dir>/summary.txt` exists (`run_sim.sh` writes it last,
   after everything else);
 - **`incomplete`**: neither file is present (crashed, killed, or a
