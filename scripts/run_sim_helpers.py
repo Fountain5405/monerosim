@@ -265,6 +265,7 @@ def cmd_live_runs(args: argparse.Namespace) -> int:
 
     Consumed by check_disk_space() in run_sim.sh to reserve the other runs'
     projected growth before comparing free space with this run's estimate.
+    Numeric columns are whole KB (run_sim.sh does integer arithmetic on them).
     """
     runs = run_dirs.list_live_runs(
         Path(args.archive_base), tmp_root=Path(args.tmp_root), exclude_pid=args.exclude_pid,
@@ -272,7 +273,7 @@ def cmd_live_runs(args: argparse.Namespace) -> int:
     now = datetime.now()
 
     def fmt(v):
-        return '-' if v is None else f'{v:.1f}'
+        return '-' if v is None else f'{v:.0f}'
 
     for r in runs:
         elapsed = int((now - r.started).total_seconds()) if r.started else -1

@@ -381,6 +381,6 @@ def test_live_runs_tsv(tmp_path, capsys, monkeypatch):
     assert a[1] == "4242" and int(a[2]) >= 0 and a[3] == "1" and a[7] == "archive" and a[8] == "2"
     used_kb, est_kb, rem_kb = float(a[4]), float(a[5]), float(a[6])
     assert used_kb >= 1024                                  # the 1 MB file
-    assert est_kb == pytest.approx(4.0 * 2 * 1.2 * 1024)   # default miner rate, 2h, margin
-    assert rem_kb == pytest.approx(max(0.0, est_kb - used_kb))
+    assert est_kb == pytest.approx(4.0 * 2 * 1.2 * 1024, abs=1.0)   # default miner rate, 2h, margin
+    assert rem_kb == pytest.approx(max(0.0, est_kb - used_kb), abs=1.0)
     assert o[3] == "0" and o[5] == "-" and o[6] == "-" and o[7] == "tmp" and o[8] == "-"
