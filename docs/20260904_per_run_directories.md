@@ -221,6 +221,32 @@ config earlier the same day (`archived_runs/20260904_170732_layout_check`)
 took 16m 2s: running two at once costs roughly two extra minutes of wall
 clock each, not a doubling, on this box.
 
+### Scale check (2026-09-05)
+
+Three concurrent runs of a generated 105-agent config (5 miners, 100 users
+with wallets, 7 simulated hours; `test_configs/par100_6h.yaml`) from this
+checkout, with a `--data-dir` quickstart run launched alongside them:
+
+- all three completed with exit code 0, all success criteria passing,
+  111 nodes online, zero alerts, zero agent tracebacks, 209 blocks each,
+  transaction counts within 0.15% of one another (3390 / 3395 / 3394);
+  wall time 8h 41m to 9h 30m at load ~192 on 256 cores;
+- the archived chain snapshots were not byte-identical, unlike the
+  quickstart pairs. The config enables `native_preemption: true` (the
+  generator turns it on at 100+ agents), and preemption fires on real CPU
+  time, so under that load transaction timing jitters between runs while
+  the block schedule stays identical. The acceptance script therefore
+  asserts chain identity only when preemption is off and equal block
+  counts always;
+- the `--data-dir` run's preflight listed all three live runs with
+  estimates, reserved 16.1 GB for their growth and warned about 1024
+  worker threads on 256 cores; during the run the scratch path held the
+  data and the breadcrumb named it, `check_sim.sh` found the run's own
+  Shadow process, and after completion the data was moved home, the
+  breadcrumb rewritten, the scratch directory emptied, and 19/19 smoke
+  assertions passed;
+- nothing at the checkout root changed during any of it.
+
 ## 6. Compatibility
 
 - Archives created before this change are untouched and still readable;

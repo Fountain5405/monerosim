@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- **Acceptance test at scale**: `scripts/test_parallel_runs.sh [CONFIG] [N]` now
+  launches N concurrent runs (and `--check CONFIG RUN_DIR...` re-asserts on
+  finished ones), asserts equal block counts across runs and byte-identical
+  chain snapshots when native preemption is off. Validated with three
+  concurrent 105-agent runs (`test_configs/par100_6h.yaml`) plus a
+  `--data-dir` run alongside them; see `docs/20260904_per_run_directories.md`.
+
 ## [0.3.0] — 2026-09-05
 
 - **Per-run directories**: any number of `run_sim.sh` instances can now run
