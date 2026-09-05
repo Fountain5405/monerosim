@@ -58,6 +58,8 @@ run_dir_is_live() {
     [[ "$pid" =~ ^[0-9]+$ ]] || return 1
     [[ -d "/proc/$pid" ]] || return 1
     [[ -n "$start" ]] || return 0
+    # Malformed start token: fall back to existence-only (parity with run_dirs.py).
+    [[ "$start" =~ ^[0-9]+$ ]] || return 0
     [[ "$(proc_starttime "$pid")" == "$start" ]]
 }
 

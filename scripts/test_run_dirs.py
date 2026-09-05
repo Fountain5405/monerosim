@@ -240,3 +240,9 @@ def test_daemon_log_dir_none_without_breadcrumb_or_logs(tmp_path):
     run = _mk_run(tmp_path, "20260904_120000_a")
     assert daemon_log_dir(run) is None
     assert read_run_env(run) == {}
+
+
+def test_run_state_malformed_start_token_is_existence_only(tmp_path, proc):
+    d = _mk_run(tmp_path, "20260904_120000_a", owner=4242)
+    (d / ".owner_pid").write_text("4242 bogus\n")
+    assert run_state(d, proc) == "live"

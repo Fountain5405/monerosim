@@ -57,7 +57,7 @@ A run lives in one directory for its whole life:
 
 ```
 archived_runs/<RUN_ID>/            RUN_DIR  (== ARCHIVE_DIR, same variable)
-  .owner_pid                       pid of the run_sim.sh that owns it
+  .owner_pid                       "<pid> <starttime>" of the run_sim.sh that owns it
   input_config.yaml                copied at launch (unchanged)
   build.log, monerosim.log,        as today
   shadow_run.log
@@ -161,9 +161,11 @@ Every out-of-band tool resolves its run directory in this order:
    is chronological.
 
 The tool prints one line to stderr: `run: <dir> (<state>)` where state is
-`live` (`.owner_pid` exists and the process it names exists, checked
-through `/proc/<pid>` rather than `kill -0` so another user's live run is
-still detected on a shared box), `complete` (`summary.txt` exists) or
+`live` (`.owner_pid` holds `<pid> <starttime>`, the process exists under
+`/proc/<pid>` and its `/proc/<pid>/stat` start time matches, so a recycled
+pid cannot make a crashed run look live; a legacy single-token file falls
+back to existence only; `/proc` rather than `kill -0` so another user's
+live run is still detected on a shared box), `complete` (`summary.txt` exists) or
 `incomplete` (neither). If nothing resolves it exits 2 with a message
 naming the three sources.
 

@@ -137,3 +137,11 @@ def test_allocate_run_dir_reports_mkdir_error_not_collisions(tmp_path):
         assert "99 collisions" not in err
     finally:
         readonly_parent.chmod(0o700)
+
+
+def test_malformed_start_token_falls_back_to_existence(tmp_path):
+    """Parity with run_dirs.py: a non-numeric start token is ignored, not treated as dead."""
+    d = _mk_run(tmp_path, "20260904_120000_a")
+    (d / ".owner_pid").write_text(f"{os.getpid()} bogus\n")
+    assert bash(f"run_dir_is_live '{d}'")[0] == 0
+    assert bash(f"run_dir_state '{d}'")[1] == "live"

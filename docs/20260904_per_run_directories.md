@@ -40,7 +40,7 @@ Since this change, a run lives in one directory for its whole life:
 
 ```
 archived_runs/<RUN_ID>/            RUN_DIR  (== ARCHIVE_DIR, same variable)
-  .owner_pid                       pid of the run_sim.sh that owns it
+  .owner_pid                       "<pid> <starttime>" of the run_sim.sh that owns it
   input_config.yaml                copied at launch (unchanged)
   build.log, monerosim.log,        as today
   shadow_run.log
@@ -114,10 +114,13 @@ run: <dir> (<state>)
 
 `<state>` is one of:
 
-- **`live`**: `<dir>/.owner_pid` exists and the process it names exists
-  (the owning `run_sim.sh` is still running). This is checked through
-  `/proc/<pid>` rather than `kill -0`, because `kill -0` reports another
-  user's process as dead (`EPERM`) and this box is shared;
+- **`live`**: `<dir>/.owner_pid` holds `<pid> <starttime>` (the pid of the
+  owning `run_sim.sh` and field 22 of its `/proc/<pid>/stat`), and a
+  process with that pid exists whose start time matches. The start time
+  is what stops a recycled pid from making a crashed run look live; older
+  single-token files fall back to existence only. Existence is checked
+  through `/proc/<pid>` rather than `kill -0`, because `kill -0` reports
+  another user's process as dead (`EPERM`) and this box is shared;
 - **`complete`**: `<dir>/summary.txt` exists (`run_sim.sh` writes it last,
   after everything else);
 - **`incomplete`**: neither file is present (crashed, killed, or a
