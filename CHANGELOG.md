@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-05
+
 - **Per-run directories**: any number of `run_sim.sh` instances can now run
   concurrently from one checkout: each run gets its own
   `archived_runs/<run_id>/`, allocated before Shadow starts, instead of
@@ -14,6 +16,12 @@
   `<run_dir>/shadow_output/`; analysers now write into
   `<run>/analysis_output/`; `run_sim_helpers.py config-summary` prints a
   sixth field (`parallelism`).
+
+## [0.2.0] — 2026-06-27
+
+_The v0.2.0 tag was re-cut on 2026-08-23 and also contains the July work below,
+which had been listed as unreleased._
+
 - **Full-codebase quality review**: `docs/20260711_code_quality_review.md` —
   AI-tell taxonomy, per-subsystem grades, prioritized fix list.
 - **P0 fixes**: discarded print-loop side effect pinned all miner IPs to
@@ -34,8 +42,6 @@
   parser fixes, and root-level doc/script hygiene (orphaned scripts
   deleted, stale session artifacts and config graveyard retired to
   `attic/`, CHANGELOG brought current).
-
-## [0.2.0] — 2026-06-27
 
 - **`--reachable` knob** models mainnet's NAT-unreachable majority instead
   of the previous all-reachable default.

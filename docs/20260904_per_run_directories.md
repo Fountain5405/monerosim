@@ -227,6 +227,12 @@ clock each, not a doubling, on this box.
   hand at the checkout root, which is no longer the recommended way) are
   inert leftovers. They are not read or written by anything anymore and are
   safe to delete.
+- `--data-dir` changed meaning: it used to be the exact Shadow data path and
+  now names a base directory; the run's scratch data lands at
+  `<base>/<run_id>/shadow.data` and is moved into the run directory at the
+  end (unless `--no-archive`).
+- `run_sim_helpers.py config-summary` prints a sixth field, `parallelism`;
+  anything parsing its output must read six values.
 - `run_env.sh` moved: it used to live at `<checkout>/shadow_output/run_env.sh`
   and now lives at `<run_dir>/shadow_output/run_env.sh`. Anything that
   sourced the old fixed path needs to source the new per-run one instead

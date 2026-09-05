@@ -10,7 +10,7 @@ receives security fixes — older 0.x.y tags will not be back-patched.
 | 0.1.x   | ✅        |
 | < 0.1   | ❌        |
 
-When 0.2.0 ships, 0.1.x stops receiving fixes.
+When 0.3.0 ships, 0.2.x stops receiving fixes.
 
 ## Reporting a vulnerability
 
