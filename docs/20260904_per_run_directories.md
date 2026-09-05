@@ -247,6 +247,38 @@ checkout, with a `--data-dir` quickstart run launched alongside them:
   assertions passed;
 - nothing at the checkout root changed during any of it.
 
+### Remaining branches (2026-09-05, batch of seven concurrent quickstart-scale runs)
+
+- **Cross-checkout same-second collision** (deterministic, no simulation):
+  with the timestamp pinned and `/tmp/monerosim-<run_id>` pre-created, a
+  launch aborts with "Another live run ... already owns ..." when the
+  owner is alive and "A leftover ... exists with no live owner; remove it
+  manually" when it is not; neither leaves a run directory behind or
+  touches the foreign namespace.
+- **Same-second, same-name launches from one checkout** produce
+  `<ts>_<name>` and `<ts>_<name>_2`, both live, both completing.
+- **`--no-archive`** deletes `<run>/shadow.data`, keeps the pre-run
+  artifacts, writes no `summary.txt` (state `incomplete`, as documented);
+  **`--no-archive --no-clean`** keeps `shadow.data` and the daemon data
+  dirs with a "kept for inspection" warning.
+- **`--data-dir` on a different filesystem** (`/dev/shm`): data lives on
+  the tmpfs during the run, the breadcrumb names it, the copy home
+  succeeds, the breadcrumb is rewritten, the tmpfs base is left empty;
+  19/19 smoke assertions.
+- **`MONEROSIM_ARCHIVE_BASE`** set for a full run: the run lands under
+  the custom base, `check_sim.sh` with no argument resolves it through
+  the same variable and finds its Shadow process, the run completes with
+  19/19 smoke assertions, and from the default base the preflight report
+  sees it only through its `/tmp` namespace (`[tmp]`, no estimate), which
+  is the report's other-checkout branch.
+- **Scenario configs through the layout**: a hard-fork micro run
+  (`hf_micro_2node.yaml`), a cuprate co-located-wallet run
+  (`cuprate_local_wallet.yaml`) and a quickstart with 1h/1h turnover all
+  complete with exit 0 (the turnover run's final sync figure is lower
+  because some daemons are in a downtime window when the monitor snapshots).
+- the interactive picker in `start_here.sh`, driven with scripted input, lists runs newest first labelled with their state, for example `1) 20260905_145438_turnover  (complete)`.
+- Nothing at the checkout root changed during any of it.
+
 ## 6. Compatibility
 
 - Archives created before this change are untouched and still readable;

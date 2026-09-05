@@ -7,7 +7,10 @@
   finished ones), asserts equal block counts across runs and byte-identical
   chain snapshots when native preemption is off. Validated with three
   concurrent 105-agent runs (`test_configs/par100_6h.yaml`) plus a
-  `--data-dir` run alongside them; see `docs/20260904_per_run_directories.md`.
+  `--data-dir` run alongside them, then a batch covering the collision
+  aborts, same-second launches, `--no-archive`/`--no-clean`, a
+  cross-filesystem `--data-dir`, a custom archive base and the hard-fork,
+  cuprate and turnover scenarios; see `docs/20260904_per_run_directories.md`.
 
 ## [0.3.0] — 2026-09-05
 
