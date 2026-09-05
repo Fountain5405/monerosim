@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-09-05
+
+- **Liveness check parity**: the bash resolver (`scripts/run_dir_lib.sh`)
+  now treats a malformed start-time token in `.owner_pid` the same way the
+  Python resolver does (existence-only fallback) instead of reporting the
+  run dead; the user doc and design spec now describe the two-token
+  `<pid> <starttime>` owner file and the start-time match that defeats
+  pid reuse.
 - **Acceptance test at scale**: `scripts/test_parallel_runs.sh [CONFIG] [N]` now
   launches N concurrent runs (and `--check CONFIG RUN_DIR...` re-asserts on
   finished ones), asserts equal block counts across runs and byte-identical
