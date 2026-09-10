@@ -1,0 +1,49 @@
+# Native mining micro gate (docs/NATIVE_MINING.md §validation).
+# Two miners declare LITERAL hashrates (20 + 5 = 25 h/s) -> monerod's own LWMA
+# should settle near 120 x 25 = 3000; miner-001 should win ~80% of blocks; the
+# two stock relays validate every block with real PoW. No Python Poisson
+# scheduler, no synthetic DAA: the daemon mines.
+general:
+  stop_time: 3h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 20
+    start_time: 0s
+  miner-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 5
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
