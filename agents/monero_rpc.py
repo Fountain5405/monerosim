@@ -337,36 +337,25 @@ class MoneroRPC(BaseRPC):
     
     def ensure_mining(self, wallet_address: str, threads: int = 1) -> Dict[str, Any]:
         """
-        Ensure mining is active using available methods.
-        This method tries different mining approaches based on what's available.
-        
+        Generate one block via generateblocks. start_mining is deliberately
+        NOT used here: on a stock daemon it launches an unthrottled hash
+        loop that stalls simulated time; native mining calls start_mining
+        explicitly instead.
+
         Args:
             wallet_address: The wallet address to mine to
             threads: Number of mining threads
-            
+
         Returns:
             Dictionary with mining status
-            
+
         Raises:
             MethodNotAvailableError: If no mining methods are available
         """
         # Check if we've already detected available methods
         if not self.available_methods:
             self.detect_available_methods(self.mining_methods)
-        
-        # Try start_mining first if available
-        if self.available_methods.get("start_mining", True):
-            try:
-                self.logger.info(f"Attempting to start mining using start_mining method")
-                result = self.start_mining(wallet_address, threads)
-                self.logger.info(f"Mining started successfully with start_mining")
-                return {"status": "OK", "method": "start_mining", "result": result}
-            except MethodNotAvailableError:
-                self.logger.warning("start_mining method not available, trying alternatives")
-            except RPCError as e:
-                self.logger.warning(f"start_mining failed: {e}, trying alternatives")
-        
-        # Try generateblocks if start_mining is not available or failed
+
         if self.available_methods.get("generateblocks", True):
             try:
                 self.logger.info(f"Attempting to generate blocks using generateblocks method")
@@ -382,7 +371,7 @@ class MoneroRPC(BaseRPC):
                 self.logger.warning(f"generateblocks failed: {e}")
         
         # If we get here, no mining methods are available
-        error_msg = "No mining methods available (tried: start_mining, generateblocks)"
+        error_msg = "No mining methods available (tried: generateblocks)"
         self.logger.error(error_msg)
         raise MethodNotAvailableError(error_msg)
 

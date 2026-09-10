@@ -132,6 +132,33 @@ def test_mining_status_posts_empty_body_to_legacy_endpoint(mocker):
     assert result == {"active": True, "speed": 10}
 
 
+def test_ensure_mining_never_calls_start_mining(mocker):
+    """ensure_mining (generateblocks mode) must never hit start_mining: on a
+    stock daemon that launches an unthrottled RandomX loop that stalls
+    simulated time under Shadow. It should post exactly one generateblocks
+    json_rpc request and nothing to /start_mining."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    # Skip detection so this test isolates ensure_mining's own call, not
+    # detect_available_methods' probing.
+    rpc.available_methods = {"generateblocks": True}
+    post = mocker.patch.object(rpc.session, "post")
+    post.return_value = _fake_post_response(
+        {"result": {"status": "OK", "height": 11, "blocks": ["deadbeef"]}}
+    )
+
+    result = rpc.ensure_mining("4Axxxaddress")
+
+    assert result["method"] == "generateblocks"
+    assert post.call_count == 1
+    args, kwargs = post.call_args
+    url = args[0] if args else kwargs.get("url")
+    assert url.endswith("/json_rpc")
+    payload = kwargs["json"]
+    assert payload["method"] == "generateblocks"
+    posted_urls = [c.args[0] if c.args else c.kwargs.get("url") for c in post.call_args_list]
+    assert not any(u.endswith("/start_mining") for u in posted_urls)
+
+
 def test_legacy_request_transport_failure_becomes_rpc_error(mocker):
     """A RequestException from the session on a legacy endpoint becomes RPCError."""
     rpc = MoneroRPC("127.0.0.1", 18081)
