@@ -51,7 +51,7 @@ Spike (throwaway patch, v0.18.5.1, 2 patched miners at 10 and 2.5 h/s, 2 stock r
 ## 3. Architecture
 
 ```
-YAML  general.mining {mode, total_hashrate}          per-miner hashrate weight
+YAML  general.mining {mode, rx_full_dataset}        per-miner hashrate = hashes/second
         │                                                   │
         ▼                                                   ▼
 orchestrator (Rust) ── derives --sim-hash-interval-ms per miner ──▶ monerod-sim (patched)
@@ -85,7 +85,7 @@ New daemon options, registered once in `miner::init_options`:
 | Option | Type | Default | Effect |
 |---|---|---|---|
 | `--sim-hash-interval-ms N` | uint64 | 0 | `N > 0` enables sim mining: one `sleep_no_w(N)` before every hash attempt; forces a single mining thread (in `start()` and for `--mining-threads`); skips `rx_set_miner_thread` so the miner hashes in RandomX light mode (no 2 GB dataset). `0` = byte-for-byte stock behaviour. |
-| `--sim-rx-full-dataset` | bool | false | With sim mining, call `rx_set_miner_thread` anyway: ~1–2 ms/hash instead of ~20 ms at +2 GB RSS per miner. Measured in phase 1 (§8e); may become the default later. |
+| `--sim-rx-full-dataset` | bool | false | With sim mining, call `rx_set_miner_thread` anyway: ~1–2 ms/hash instead of ~20 ms at +2 GB RSS per miner. The daemon default is off (stock-shaped); the **orchestrator default is on** (§6.1), because literal hashrates make light mode too slow (§7). Measured in phase 1 (§11e). |
 
 Behaviour kept stock on purpose: template refresh (5 s / on chain update), the found-block
 path (`handle_block_found` → relay), `mining_status.speed` (truthful: counts real
@@ -127,27 +127,31 @@ One patched build carrying both vendored patches, each flag-gated and stock when
 general:
   mining:
     mode: native            # native | generateblocks   (default: generateblocks)
-    total_hashrate: 10.0    # hashes/second across all miners (default 10.0; native only)
+    rx_full_dataset: true   # native only; default true (2 GB RSS per miner, ~1–2 ms/hash)
 agents:
   miner-001:
-    hashrate: 80            # weight, unchanged meaning
+    hashrate: 20            # native mode: LITERAL hashes per second for this miner
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
 ```
 
 `general.mining` is optional; absent = today's behaviour exactly.
 
+`hashrate` keeps its type (integer ≥ 1) and its `generateblocks`-mode meaning (weight,
+sum-to-100 warning). In native mode it is read literally as hashes per second and the
+sum-to-100 warning is suppressed. A 20/20/20/20/20 config therefore mines at 100 h/s
+total, and the chain settles near `D_eq ≈ 120 × Σ hashrate = 12 000`. The user chose
+literal semantics deliberately, to watch monerod's difficulty algorithm respond to
+declared hashrate directly.
+
 ### 6.2 Interval derivation (pure function, unit-tested)
 
 ```
-H_i          = total_hashrate × weight_i / Σ weights          (normalisation, so weights
-                                                              that do not sum to 100 still work;
-                                                              equals weight/100 when they do)
-interval_ms  = max(1, round(1000 / H_i))
+interval_ms = max(1, round(1000 / hashrate_i))          hashrate_i ≥ 1 → interval ≤ 1000 ms
 ```
 
-Equilibrium difficulty `D_eq ≈ 120 × total_hashrate` is printed at generation time so the
-operator sees what the chain will settle to.
+`D_eq ≈ 120 × Σ hashrate` is printed at generation time so the operator sees what the
+chain will settle to.
 
 ### 6.3 Binary selection for miners in native mode
 
@@ -158,8 +162,9 @@ operator sees what the chain will settle to.
 | explicit path | used; must pass the probe |
 | cuprate-eligible node | error (cuprate cannot mine; existing `can_mine` cap) |
 
-Rendered args add `--sim-hash-interval-ms=<n>` (and `--sim-rx-full-dataset` when
-`general.mining.rx_full_dataset: true`). Non-miner nodes are untouched.
+Rendered args add `--sim-hash-interval-ms=<n>` and, unless
+`general.mining.rx_full_dataset: false`, `--sim-rx-full-dataset`. Non-miner nodes are
+untouched.
 
 ### 6.4 Preflight guards (hard errors, in `user_agents.rs` next to the hard-fork guards)
 
@@ -181,6 +186,15 @@ Why opt-in this release: native mode changes wall cost (§7) and the meaning of 
 The orchestrator passes `mining_mode` and `hash_interval_ms` to the miner agent
 alongside the existing `hashrate` attribute.
 
+### 6.6 Why literal hashes per second (decision record)
+
+Considered: weights plus a `total_hashrate` scale knob (bounded cost regardless of how
+configs are written). Chosen: literal, because the operator wants declared hashrate to
+map one-to-one onto what monerod's difficulty algorithm sees, and full-dataset mode
+makes the cost acceptable. The trade-off is that configs written with large weights
+now imply large hashrates; the printed `D_eq` and the cost note in the doc make that
+visible.
+
 ## 7. Cost model (documented for operators)
 
 Each miner hashes serially; miners run in parallel across Shadow workers. So
@@ -191,11 +205,13 @@ t_hash     ≈ 20 ms   light mode (measured, spike)
            ≈ 1–2 ms  full dataset (to measure, §8e), +2 GB RSS per miner
 ```
 
-Total hashes are `total_hashrate × sim_seconds`, independent of difficulty. Levers:
-lower `total_hashrate` (difficulty scales with it; the statistics do not change),
-spread weight across miners, or enable the full dataset. Default 10 h/s gives
-`D_eq ≈ 1200`; a 16-hour sim with a dominant 8 h/s miner costs ~2.5 wall-hours extra in
-light mode.
+Total hashes are `Σ hashrate × sim_seconds`, independent of difficulty. With literal
+hashrates a typical 20 h/s miner would cost `20 × 20 ms = 0.4` wall-seconds per
+sim-second in light mode (a 16-hour sim ≥ 6.4 wall-hours), which is why the full
+dataset is the orchestrator default: at ~1.5 ms/hash the same miner costs ~3 % of
+sim-time (~30 min over 16 hours) for +2 GB RSS. Levers: lower the declared hashrates
+(difficulty scales with them; the statistics do not change), or accept light mode on
+RAM-constrained boxes via `rx_full_dataset: false`.
 
 Fidelity note to document: the stock window grows to 720 blocks, so difficulty retargets
 over hours, as on mainnet, not over 30 blocks like the Python replay. Partition and
@@ -251,13 +267,14 @@ Ship gates for phase 1 (all must pass):
 
 - a. **Micro** (`test_configs/native_micro.yaml`, the spike config formalised with the
   Python agent): cadence 120 s ± 15 % over the last 30 blocks, difficulty within
-  ± 25 % of `120 × total_hashrate`, split within ± 5 points of weights, 0 PoW
-  rejections on stock relays, summary.txt success criteria pass.
+  ± 25 % of `120 × Σ hashrate`, block share within ± 5 points of each miner's hashrate
+  share, 0 PoW rejections on stock relays, summary.txt success criteria pass.
 - b. **Determinism A/A**: two runs, same seed → identical block hash sequence.
 - c. **Mixed implementation**: a cuprate relay accepts every natively mined block.
 - d. **Existing suites**: `cargo test`, Python tests, generation smoke, hard-fork micro
   config still passes on `monerod-sim` via the `monerod-hf` alias.
-- e. **Cost measurement**: light vs full dataset, wall and RSS, recorded in the doc.
+- e. **Cost measurement**: light vs full dataset, wall and RSS, recorded in the doc;
+  confirms (or overturns) the full-dataset default.
 
 Follow-up gate before flipping the default (not required to ship): f. 1000-node run in
 native mode vs the generateblocks baseline, comparing block interval distribution,
