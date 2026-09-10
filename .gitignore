@@ -111,3 +111,6 @@ scaling_sweep_results*.csv
 
 # Default output dir of scripts/analyze_network_connectivity.py
 analysis_results/
+
+# superpowers SDD scratch (ledger, briefs, review packages)
+.superpowers/
