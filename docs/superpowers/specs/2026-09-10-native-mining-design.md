@@ -21,6 +21,23 @@ call the `generateblocks` RPC on a synthetic Poisson schedule. "Natively" means:
 Non-goals for phase 1: adversarial controls, cuprate mining, replacing `generateblocks`
 as the default (§6.4), upstreaming the patch.
 
+### 1.1 The three operating modes (contract)
+
+The user picks one of three setups; all three must keep working, and each is a
+supported, tested combination:
+
+| Mode | Miner binary | Block production | Hard forks | Use |
+|---|---|---|---|---|
+| 1. Vanilla | stock `monerod` | `generateblocks` (Python Poisson + LWMA replay) | no | default; byte-for-byte upstream daemon |
+| 2. Fork-capable, fast | `monerod-sim` (alias `monerod-hf`) with `fakechain-hard-forks` | `generateblocks` | yes | very long simulations at minimum wall cost |
+| 3. Native PoW | `monerod-sim` with `general.mining.mode: native` | monerod's own miner thread, real RandomX, real LWMA | optional | PoW / difficulty / mining-behaviour studies |
+
+One patched build serves modes 2 and 3 because every patch is flag-gated and stock when
+its flag is absent: the mining knob is injected **only** in native mode, and the fork
+knob only when a schedule is configured. Mode 2 is therefore today's hard-fork feature
+unchanged, and mode 3 does not require a fork schedule. Gate §11d covers modes 1 and 2
+explicitly (existing suites, hard-fork micro on the alias); §11a–c cover mode 3.
+
 ## 2. Why this works: the spike
 
 The historic blocker (docs/20260512_how_pow_works.md) is Shadow's scheduling model:
