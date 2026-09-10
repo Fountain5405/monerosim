@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- **Native mining (opt-in)**: `general.mining.mode: native` makes miners run
+  `monerod-sim`, whose miner thread mines with real RandomX throttled by
+  `--sim-hash-interval-ms` (patches/monero-sim-mining.patch, plus
+  `--sim-rx-full-dataset` by default for the full-speed RandomX dataset);
+  monerod's own difficulty algorithm drives block timing and `hashrate` is
+  read as literal hashes/second (not a weight, as in `generateblocks` mode).
+  Validators need no patch. Default stays `generateblocks`.
+  See `docs/NATIVE_MINING.md`.
+  **Change:** `./setup.sh --hardfork` now builds `monerod-sim` (hard-fork +
+  mining patches) and installs `monerod-hf` as a symlink alias; `--sim-binary`
+  is the new spelling.
+
 ## [0.3.1] — 2026-09-05
 
 - **Liveness check parity**: the bash resolver (`scripts/run_dir_lib.sh`)

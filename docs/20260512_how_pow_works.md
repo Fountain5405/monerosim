@@ -220,10 +220,13 @@ with Shadow's scheduler correctly.
 
 ### Aside: the `mininghook` branch (alternative approach, requires patching monerod)
 
-monerosim deliberately avoids patching monerod — every
-Shadow-compatibility patch lives in `shadowformonero`, never in
-monero source itself. But if that constraint were relaxed, there's an
-alternative architecture worth flagging.
+> **Update 2026-09:** monerosim now ships an alternative, `general.mining.mode: native`
+> (docs/NATIVE_MINING.md): a vendored patch makes monerod's own miner thread sleep
+> before every hash attempt, so the stock loop's "no syscalls" problem described above
+> goes away while PoW and verification stay real. The socket-based `mininghook` branch
+> described below was evaluated and rejected in favour of that design
+> (docs/superpowers/specs/2026-09-10-native-mining-design.md §9). The table is kept for
+> history.
 
 The `mininghook` branch on
 [Fountain5405/monero-shadow](https://github.com/Fountain5405/monero-shadow/tree/mininghook)
@@ -238,7 +241,7 @@ bypasses PoW verification when this mode is active.
 
 Side-by-side with the current approach:
 
-| | `generateblocks` (current) | `--mininghook` (hypothetical) |
+| | `generateblocks` (current) | `--mininghook` (rejected alternative) |
 |---|---|---|
 | Code path | One-shot RPC, agent calls per block | Normal `start_mining` lifecycle, miner thread driven by external socket |
 | Real PoW computed | Yes (at regtest difficulty) | No — miner thread skips hashing entirely (nonce comes from the agent over the socket); validator still computes the longhash but discards it without checking against difficulty |

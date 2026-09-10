@@ -74,9 +74,13 @@ genuinely build different transactions on each side. 15→16 is near-ceremony.
 ## 3. Install
 
 ```bash
-./setup.sh --hardfork            # build + install ~/.monerosim/bin/monerod-hf
-./update.sh --hardfork --rebuild # explicit rebuild
+./setup.sh --sim-binary          # build + install ~/.monerosim/bin/monerod-sim (alias monerod-hf)
+./update.sh --sim-binary --rebuild
 ```
+
+`monerod-hf` is now a symlink to `monerod-sim`, which also carries the
+native-mining patch (docs/NATIVE_MINING.md); `daemon: monerod-hf` keeps
+working. `--hardfork` is accepted as a synonym for `--sim-binary`.
 
 - Built in a **detached worktree** of the pinned checkout; the patch never
   touches the main monero tree. `git apply --check` is the tripwire: when

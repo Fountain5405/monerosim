@@ -319,6 +319,7 @@ monerosim/
 - [AI Config Generator](docs/AI_CONFIG_GENERATOR.md) - LLM-based configuration generation
 - [Cuprate Integration](docs/CUPRATE_INTEGRATION.md) - Running cuprate (`cuprated`) nodes alongside monerod: install (`./setup.sh --cuprate`), how nodes are selected, what gets rendered, version pinning, and log/analysis differences
 - [Hard Fork Testing](docs/HARDFORK_TESTING.md) — simulate network upgrades: fork at a chosen height with n% of nodes left behind (`monerod-hf`, `--fakechain-hard-forks`)
+- **Native mining** — monerod mines for real under Shadow (opt-in): docs/NATIVE_MINING.md
 - [Node Reachability: Firewall vs. Hidden](docs/20260722_node_reachability_firewall.md) - Modelling unreachable/NAT nodes. **Breaking change:** `reachable_fraction` now drives a physical inbound firewall (`blocked_inbound_ports`, needs shadowformonero v0.2.4); `--hide-my-port` moved to the new `hidden_fraction`
 - [Cuprate at Scale](docs/20260724_cuprate_scale_experiment.md) - 300-node monerod vs monerod+cuprate experiment: functional equivalence, ~2× faster tx propagation, and why
 - [Cuprate Upstream Merge](docs/20260802_cuprate_upstream_merge.md) - cuprate 0.1.0-preview; our `seed_nodes` patch merged upstream (`e3a869d`), so **no cuprate fork is needed** — see `cuprate.pin`
