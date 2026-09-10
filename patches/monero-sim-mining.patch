@@ -1,0 +1,112 @@
+diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
+index fd13ff74d..74845ce13 100644
+--- a/src/cryptonote_basic/miner.cpp
++++ b/src/cryptonote_basic/miner.cpp
+@@ -100,6 +100,15 @@ namespace cryptonote
+     const command_line::arg_descriptor<uint64_t>    arg_bg_mining_min_idle_interval_seconds =  {"bg-mining-min-idle-interval", "Specify min lookback interval in seconds for determining idle state", miner::BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS, true};
+     const command_line::arg_descriptor<uint16_t>     arg_bg_mining_idle_threshold_percentage =  {"bg-mining-idle-threshold", "Specify minimum avg idle percentage over lookback interval", miner::BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE, true};
+     const command_line::arg_descriptor<uint16_t>     arg_bg_mining_miner_target_percentage =  {"bg-mining-miner-target", "Specify maximum percentage cpu use by miner(s)", miner::BACKGROUND_MINING_DEFAULT_MINING_TARGET_PERCENTAGE, true};
++    // Simulation mining (monerosim patch). Under a discrete-event network simulator
++    // (Shadow) simulated time only advances when a process makes a blocking syscall;
++    // the stock hash loop makes none, so it freezes the clock. sim-hash-interval-ms
++    // inserts one blocking sleep before every hash attempt, turning the miner into a
++    // geometric clock with a declared virtual hashrate of 1000/N hashes per second.
++    // PoW itself is unchanged: every block still carries a real RandomX hash that
++    // meets the real difficulty target, so unpatched peers validate it normally.
++    const command_line::arg_descriptor<uint64_t>    arg_sim_hash_interval_ms =  {"sim-hash-interval-ms", "Simulation only: sleep this many milliseconds before every hash attempt (0 = stock miner). Throttles the miner to a virtual hashrate so a discrete-event simulator sees a syscall per hash; forces a single mining thread and RandomX light mode unless --sim-rx-full-dataset is set.", 0, true};
++    const command_line::arg_descriptor<bool>        arg_sim_rx_full_dataset =   {"sim-rx-full-dataset", "Simulation only, with --sim-hash-interval-ms: allocate the full RandomX dataset (~2 GB, fast hashing) instead of light mode.", false, true};
+   }
+ 
+ 
+@@ -126,7 +135,9 @@ namespace cryptonote
+     m_idle_threshold(BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE),
+     m_mining_target(BACKGROUND_MINING_DEFAULT_MINING_TARGET_PERCENTAGE),
+     m_miner_extra_sleep(BACKGROUND_MINING_DEFAULT_MINER_EXTRA_SLEEP_MILLIS),
+-    m_block_reward(0)
++    m_block_reward(0),
++    m_sim_hash_interval_ms(0),
++    m_sim_rx_full_dataset(false)
+   {
+     m_attrs.set_stack_size(THREAD_STACK_SIZE);
+   }
+@@ -292,6 +303,8 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_bg_mining_min_idle_interval_seconds);
+     command_line::add_arg(desc, arg_bg_mining_idle_threshold_percentage);
+     command_line::add_arg(desc, arg_bg_mining_miner_target_percentage);
++    command_line::add_arg(desc, arg_sim_hash_interval_ms);
++    command_line::add_arg(desc, arg_sim_rx_full_dataset);
+   }
+   //-----------------------------------------------------------------------------------------------------
+   bool miner::init(const boost::program_options::variables_map& vm, network_type nettype)
+@@ -337,6 +350,14 @@ namespace cryptonote
+       }
+     }
+ 
++    if(command_line::has_arg(vm, arg_sim_hash_interval_ms))
++      m_sim_hash_interval_ms = command_line::get_arg(vm, arg_sim_hash_interval_ms);
++    if(command_line::has_arg(vm, arg_sim_rx_full_dataset))
++      m_sim_rx_full_dataset = command_line::get_arg(vm, arg_sim_rx_full_dataset);
++    if(m_sim_hash_interval_ms)
++      MGINFO_YELLOW("*** SIMULATION MINING: throttled to one hash attempt every " << m_sim_hash_interval_ms
++        << " ms (single thread, RandomX " << (m_sim_rx_full_dataset ? "full dataset" : "light mode") << ") ***");
++
+     // Background mining parameters
+     // Let init set all parameters even if background mining is not enabled, they can start later with params set
+     if(command_line::has_arg(vm, arg_bg_mining_enable))
+@@ -378,6 +399,13 @@ namespace cryptonote
+       m_threads_autodetect.push_back({epee::misc_utils::get_ns_count(), m_total_hashes});
+       m_threads_total = 1;
+     }
++    if (m_sim_hash_interval_ms)
++    {
++      // Simulation mining is a single geometric clock; extra threads would
++      // multiply the declared hashrate.
++      m_threads_autodetect.clear();
++      m_threads_total = 1;
++    }
+     m_starter_nonce = crypto::rand<uint32_t>();
+     CRITICAL_REGION_LOCAL(m_threads_lock);
+     if(is_mining())
+@@ -576,13 +604,19 @@ namespace cryptonote
+       b.nonce = nonce;
+       crypto::hash h;
+ 
+-      if ((b.major_version >= RX_BLOCK_VERSION) && !rx_set)
++      if ((b.major_version >= RX_BLOCK_VERSION) && !rx_set && (!m_sim_hash_interval_ms || m_sim_rx_full_dataset))
+       {
+         // Must be non-zero value because 0 means "not a miner thread, run with secure JIT" in rx-slow-hash.c
+         crypto::rx_set_miner_thread(th_local_index + 1, tools::get_max_concurrency());
+         rx_set = true;
+       }
+ 
++      // Simulation throttle: one blocking sleep per hash attempt. Under a
++      // discrete-event simulator this is what advances simulated time; the
++      // stock loop makes no syscalls and would freeze the clock.
++      if (m_sim_hash_interval_ms)
++        misc_utils::sleep_no_w(m_sim_hash_interval_ms);
++
+       m_gbh(b, height, NULL, tools::get_max_concurrency(), h);
+ 
+       if(check_hash(h, local_diff))
+@@ -594,6 +628,8 @@ namespace cryptonote
+         if(!m_phandler->handle_block_found(b, bvc) || !bvc.m_added_to_main_chain)
+         {
+           --m_config.current_extra_message_index;
++          if (m_sim_hash_interval_ms)
++            MGINFO("Simulation mining: found block at height " << height << " was not added to the main chain (stale template or lost race)");
+         }else
+         {
+           //success update, lets update config
+diff --git a/src/cryptonote_basic/miner.h b/src/cryptonote_basic/miner.h
+index 72dc12762..8595d0c2c 100644
+--- a/src/cryptonote_basic/miner.h
++++ b/src/cryptonote_basic/miner.h
+@@ -175,5 +175,8 @@ namespace cryptonote
+     static uint8_t get_percent_of_total(uint64_t some_time, uint64_t total_time);
+     static boost::logic::tribool on_battery_power();
+     std::atomic<uint64_t> m_block_reward;
++    // Simulation mining (monerosim patch): 0 = stock miner.
++    uint64_t m_sim_hash_interval_ms;
++    bool m_sim_rx_full_dataset;
+   };
+ }
