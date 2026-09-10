@@ -178,6 +178,61 @@ def test_native_scans_found_blocks_incrementally(shared_dir, tmp_path):
     assert agent.last_block_height == 6
 
 
+def test_native_scan_resets_offset_when_log_shrinks(shared_dir, tmp_path):
+    """A shrunk log (rotation/truncation) is a fresh tail from 0, not a
+    seek-past-the-end no-op."""
+    rpc = _FakeDaemonRPC(start_answers=[{"status": "OK"}], status_answers=[{"active": True}] * 3)
+    agent, log = _native_agent(shared_dir, tmp_path, rpc)
+    agent._native_run_iteration()
+    log.write_text(
+        "2000-01-01 00:10:00.000\tI Found block abc123 at height 5 for difficulty: 1200\n"
+        "2000-01-01 00:10:01.000\tI Found block def456 at height 6 for difficulty: 1250\n"
+    )
+    assert agent._native_scan_found_blocks() == 2
+    assert agent.blocks_generated == 2
+    assert agent._native_log_offset > 0
+
+    # Daemon restarted / log rotated: file is now smaller than our offset.
+    log.write_text(
+        "2000-01-01 00:20:00.000\tI Found block ghi789 at height 1 for difficulty: 1000\n"
+    )
+    assert agent._native_scan_found_blocks() == 1
+    assert agent.blocks_generated == 3
+
+
+def test_native_scan_leaves_partial_line_for_next_poll(shared_dir, tmp_path):
+    """A trailing line without a newline is not consumed until it is
+    newline-terminated on a later poll."""
+    rpc = _FakeDaemonRPC(start_answers=[{"status": "OK"}], status_answers=[{"active": True}] * 3)
+    agent, log = _native_agent(shared_dir, tmp_path, rpc)
+    agent._native_run_iteration()
+
+    with open(log, "a") as f:
+        f.write("2000-01-01 00:10:00.000\tI Found block abc123 at height 5 for difficulty: 1200")
+    assert agent._native_scan_found_blocks() == 0
+    assert agent.blocks_generated == 0
+
+    with open(log, "a") as f:
+        f.write("\n")
+    assert agent._native_scan_found_blocks() == 1
+    assert agent.blocks_generated == 1
+
+
+def test_native_scan_decrements_on_stale_template(shared_dir, tmp_path):
+    """A block this miner found but that lost the race (stale template) is
+    reported by the patched daemon and its earlier +1 is undone."""
+    rpc = _FakeDaemonRPC(start_answers=[{"status": "OK"}], status_answers=[{"active": True}] * 3)
+    agent, log = _native_agent(shared_dir, tmp_path, rpc)
+    agent._native_run_iteration()
+    log.write_text(
+        "2000-01-01 00:10:00.000\tI Found block abc123 at height 5 for difficulty: 1200\n"
+        "2000-01-01 00:10:01.000\tI Simulation mining: found block at height 5 was not "
+        "added to the main chain (stale template or lost race)\n"
+    )
+    assert agent._native_scan_found_blocks() == 1
+    assert agent.blocks_generated == 0
+
+
 def test_native_cleanup_stops_mining(shared_dir, tmp_path):
     rpc = _FakeDaemonRPC(start_answers=[{"status": "OK"}], status_answers=[{"active": True}])
     agent, _ = _native_agent(shared_dir, tmp_path, rpc)

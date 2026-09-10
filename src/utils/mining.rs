@@ -12,7 +12,10 @@ pub const SIM_RX_FULL_DATASET_KNOB: &str = "sim-rx-full-dataset";
 const DIFFICULTY_TARGET_SECS: u64 = 120;
 
 /// Sleep between hash attempts for a miner declaring `hashrate_hs` hashes per
-/// second: round(1000 / H), floored at 1 ms.
+/// second: round(1000 / H), floored at 1 ms. Contract: `hashrate_hs` must be
+/// in `1..=1000` (enforced by `validate_mining_config` in native mode) —
+/// above 1000 this floor silently caps the miner at 1000 h/s while the
+/// logged `D_eq` still reports the larger declared value.
 pub fn hash_interval_ms(hashrate_hs: u32) -> u64 {
     if hashrate_hs == 0 {
         return 1000;

@@ -170,6 +170,9 @@ interval_ms = max(1, round(1000 / hashrate_i))          hashrate_i ≥ 1 → int
 `D_eq ≈ 120 × Σ hashrate` is printed at generation time so the operator sees what the
 chain will settle to.
 
+Amendment 2026-09-10: `hashrate_i` must be in `1..=1000` (the daemon knob floors at
+1 ms); validation rejects larger values.
+
 ### 6.3 Binary selection for miners in native mode
 
 | miner `daemon:` | Result |
@@ -253,6 +256,9 @@ at stop − 120 s:             stop_mining (existing SIGTERM hook point)
 Not touched in native mode: the Poisson scheduler, the LWMA replay, `generateblocks`.
 The `generateblocks` mode is byte-for-byte today's code path.
 
+Amendment 2026-09-10: registry output is the existing cleanup summary JSON; no
+per-poll registry records are written.
+
 ## 9. Alternatives rejected
 
 - **Socket mining hook** (monero-shadow `mininghook`, commit 0d6028981): external agent
@@ -286,6 +292,9 @@ Ship gates for phase 1 (all must pass):
   Python agent): cadence 120 s ± 15 % over the last 30 blocks, difficulty within
   ± 25 % of `120 × Σ hashrate`, block share within ± 5 points of each miner's hashrate
   share, 0 PoW rejections on stock relays, summary.txt success criteria pass.
+  Amendment 2026-09-10: tolerances are `max(fixed floor, 2.5σ)` — binomial σ for
+  shares, `120/√k` for the cadence mean — because the fixed ±5 points / ±15 % fail
+  ~20 % of honest runs at ~100 blocks (see `scripts/native_mining_check.py`).
 - b. **Determinism A/A**: two runs, same seed → identical block hash sequence.
 - c. **Mixed implementation**: a cuprate relay accepts every natively mined block.
 - d. **Existing suites**: `cargo test`, Python tests, generation smoke, hard-fork micro

@@ -148,7 +148,9 @@ pub fn validate_topology_config(topology: &Topology, total_agents: usize) -> Res
 /// In `Native` mode, checks:
 /// - Mining agents have wallet field (required for reward address)
 /// - Mining agents have hashrate field (literal hashes per second)
-/// - Hashrate values are >= 1 (no upper bound)
+/// - Hashrate values are in 1..=1000 (--sim-hash-interval-ms floors at 1 ms;
+///   larger values would silently mine at 1000 h/s while D_eq logging still
+///   reports the declared value)
 /// - At least one miner is configured
 ///
 /// # Arguments
@@ -193,6 +195,12 @@ pub fn validate_mining_config(
                 return Err(format!(
                     "Mining agent '{}': hashrate must be >= 1 hash/second in native mode",
                     agent_id
+                ));
+            }
+            if hashrate > 1000 {
+                return Err(format!(
+                    "Mining agent '{}': hashrate {} h/s exceeds 1000 in native mode (--sim-hash-interval-ms cannot go below 1 ms)",
+                    agent_id, hashrate
                 ));
             }
         } else if hashrate == 0 || hashrate > 100 {
@@ -793,6 +801,16 @@ mod tests {
         use crate::config::MiningMode;
         assert!(validate_mining_config(&single_agent("m", miner(150)), MiningMode::Native).is_ok());
         assert!(validate_mining_config(&single_agent("m", miner(0)), MiningMode::Native).is_err());
+    }
+
+    #[test]
+    fn native_mode_hashrate_upper_bound() {
+        use crate::config::MiningMode;
+        assert!(validate_mining_config(&single_agent("m", miner(1000)), MiningMode::Native).is_ok());
+        let err = validate_mining_config(&single_agent("m", miner(1001)), MiningMode::Native).unwrap_err();
+        assert!(err.contains("exceeds 1000"), "{err}");
+        // Still rejected in generateblocks mode by the existing 1-100 rule.
+        assert!(validate_mining_config(&single_agent("m", miner(1001)), MiningMode::Generateblocks).is_err());
     }
 
     #[test]

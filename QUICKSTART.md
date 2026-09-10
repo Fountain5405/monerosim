@@ -173,4 +173,5 @@ Check analysis output in `archived_runs/<run_id>/analysis_output/` (or `<your_di
 - See [docs/SCENARIO_FORMAT.md](docs/SCENARIO_FORMAT.md) for the compact `.scenario.yaml` format (range expansion, staggers, `auto` timing) — what you'll actually want to write for anything bigger than 10 agents
 - See [docs/RUNNING_SIMULATIONS.md](docs/RUNNING_SIMULATIONS.md) for detailed workflow
 - See [docs/NETWORK_SCALING_GUIDE.md](docs/NETWORK_SCALING_GUIDE.md) for large-scale simulations
+- Native mining (monerod mines for real under Shadow, opt-in): [docs/NATIVE_MINING.md](docs/NATIVE_MINING.md)
 - Check [test_configs/](test_configs/) for more configuration examples (larger scenarios, upgrade flows)

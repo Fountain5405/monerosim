@@ -85,6 +85,12 @@ class AutonomousMinerAgent(BaseAgent):
         self._native_polls = 0
         self._found_block_re = re.compile(
             r"Found block ([0-9a-f]{64}|\S+) at height (\d+) for difficulty: (\d+)")
+        # Patched daemon (patches/monero-sim-mining.patch): the block this
+        # miner found lost the race / templated against a stale tip and was
+        # not added to the main chain, so the earlier +1 attribution must be
+        # undone.
+        self._stale_block_re = re.compile(
+            r"found block at height (\d+) was not added to the main chain")
 
         # Statistics
         self.blocks_generated = 0
@@ -589,24 +595,53 @@ class AutonomousMinerAgent(BaseAgent):
     def _native_scan_found_blocks(self) -> int:
         """Tail the daemon log for 'Found block' lines written by the miner
         thread; count each once and mirror the generateblocks log line so
-        log-based tooling keeps working. Returns the number of new blocks."""
+        log-based tooling keeps working. Returns the number of new blocks.
+
+        Rotation/truncation-safe: if the file is now smaller than our
+        offset, the daemon rotated or truncated the log (e.g. restart), so
+        the tail restarts from 0. Partial-line-safe: only newline-terminated
+        lines are consumed; the offset only advances past the last '\n'
+        seen, leaving a trailing partial line for the next poll. Also
+        decrements attribution when the patched daemon reports that a block
+        this miner found was a stale-template loss (never added to the main
+        chain), so an earlier premature +1 is undone.
+        """
         if not self.daemon_log_path:
             return 0
         new_blocks = 0
         try:
+            size = os.path.getsize(self.daemon_log_path)
+            if size < self._native_log_offset:
+                self.logger.info(
+                    "daemon log shrank (rotated or truncated); restarting tail from 0")
+                self._native_log_offset = 0
             with open(self.daemon_log_path, 'r', errors='replace') as f:
                 f.seek(self._native_log_offset)
-                for line in f:
-                    m = self._found_block_re.search(line)
-                    if not m:
+                chunk = f.read()
+                last_nl = chunk.rfind("\n")
+                if last_nl == -1:
+                    return 0
+                complete = chunk[:last_nl + 1]
+                for line in complete.split("\n"):
+                    if not line:
                         continue
-                    block_hash, height, difficulty = m.group(1), int(m.group(2)), int(m.group(3))
-                    self.blocks_generated += 1
-                    self.last_block_height = max(self.last_block_height, height)
-                    new_blocks += 1
-                    self.logger.info(f"Block generated: {block_hash}")
-                    self.logger.info(f"New height: {height}, difficulty: {difficulty}")
-                self._native_log_offset = f.tell()
+                    m = self._found_block_re.search(line)
+                    if m:
+                        block_hash, height, difficulty = m.group(1), int(m.group(2)), int(m.group(3))
+                        self.blocks_generated += 1
+                        self.last_block_height = max(self.last_block_height, height)
+                        new_blocks += 1
+                        self.logger.info(f"Block generated: {block_hash}")
+                        self.logger.info(f"New height: {height}, difficulty: {difficulty}")
+                        continue
+                    stale = self._stale_block_re.search(line)
+                    if stale:
+                        stale_height = int(stale.group(1))
+                        self.blocks_generated = max(0, self.blocks_generated - 1)
+                        self.logger.info(
+                            f"found block at height {stale_height} was not added "
+                            "(stale template); attribution decremented")
+                self._native_log_offset += len(complete.encode('utf-8', 'replace'))
         except OSError as e:
             self.logger.debug(f"Cannot read daemon log {self.daemon_log_path}: {e}")
         return new_blocks

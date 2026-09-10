@@ -110,7 +110,10 @@ Native mining: 5 miner(s), total hashrate 100 h/s, equilibrium difficulty ~12000
 **Interval derivation** (`src/utils/mining.rs`, unit-tested): for a miner
 declaring `H` hashes/second, the sleep between hash attempts is
 `interval_ms = max(1, round(1000 / H))`, so `H ≥ 1` gives an interval
-≤ 1000 ms.
+≤ 1000 ms. `H` must be in `1..=1000`: the knob floors at 1 ms, so a larger
+declared hashrate would silently mine at 1000 h/s while the logged `D_eq`
+still reports the declared value; validation rejects `H > 1000` with an
+error naming the miner and the bound.
 
 **Binary selection.** In native mode:
 
@@ -160,24 +163,36 @@ loop is a lifecycle driver, not a block producer:
    code, unchanged).
 2. Issue `start_mining` (one thread) until the daemon accepts it; retry on
    `BUSY` / "not synchronized" every 5 s.
-3. On each poll: `mining_status` + `get_info` written to the registry
-   (`mining_mode`, `hash_interval_ms`, `active`, `speed`, `height`,
-   `difficulty`); if mining isn't active, `start_mining` is reissued.
+3. On each poll: `mining_status` + `get_info` are logged (`mining_mode`,
+   `hash_interval_ms`, `active`, `speed`, `height`, `difficulty`) — no
+   registry write happens here, in either mining mode; if mining isn't
+   active, `start_mining` is reissued.
 4. Own found blocks are picked up by tailing the daemon's log file
    (`bitmonero.log`, host-local — the "Found block `<hash>` at height N"
-   line, `net.p2p.msg`/miner category, which the `monitor` log level
-   already emits) rather than by the RPC return, and written into the same
-   registry block-record schema `generateblocks` mode uses today.
+   line, `global` category INFO level, which the `monitor` log level
+   already emits) rather than by the RPC return, and mirrored into the
+   agent's own log so log-based tooling keeps working. The tailer is
+   rotation/truncation-safe (resets to offset 0 if the file shrinks) and
+   only consumes newline-terminated lines; it also decrements attribution
+   when the patched daemon reports that a found block was a stale-template
+   loss (never added to the main chain).
 5. At stop − 120 s, `stop_mining` is called (existing SIGTERM hook point).
+   At shutdown, `_cleanup_agent` writes the registry artifact this feature
+   produces: `<agent_id>_mining_summary.json`, the same summary the
+   `generateblocks` path has always written at cleanup (native mode
+   produces it too because `_native_try_start` sets `mining_start_time`,
+   which gates the write). No per-block or per-poll registry records are
+   written in either mode.
 
 Nothing about the Poisson scheduler, the LWMA replay, or `generateblocks`
 mode changes; that code path is untouched and still byte-for-byte what it
 was before this feature.
 
-`agents/monero_rpc.py`'s `_make_legacy_request` helper (used by
-`start_mining`/`stop_mining`/`mining_status`, monerod's older
-positional-params RPC style) is unchanged by this feature — native mode
-calls the same stock RPC methods every other daemon exposes.
+`agents/monero_rpc.py`'s `_make_legacy_request` helper (`start_mining`/
+`stop_mining`/`mining_status`, monerod's older positional-params RPC
+style) was added by this feature — native mode calls the same stock RPC
+methods every other daemon exposes, but monerosim's RPC client didn't have
+a caller for them before.
 
 ## 6. Cost model
 
@@ -227,7 +242,10 @@ and `120/√k` for the cadence mean over `k` steady-state intervals. At the
 tolerance fails roughly 1 in 5 statistically-healthy runs; the 2.5σ floor
 avoids that false-failure rate while leaving the underlying targets
 (120 s cadence, `D_eq = 120 × Σhashrate`, declared hashrate share)
-unchanged. Implemented in `scripts/native_mining_check.py`.
+unchanged. In fact both gate runs below originally failed the fixed
+±5-point share tolerance (micro: 86.7/13.3 vs 80/20; split: 26.2 vs 20)
+before the statistical rule was adopted — the targets were not changed,
+only the tolerance. Implemented in `scripts/native_mining_check.py`.
 
 ### Micro (`test_configs/native_micro.yaml`, 2 miners at 20/5 h/s, 3 sim-hours)
 
