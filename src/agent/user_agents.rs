@@ -785,12 +785,12 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 .unwrap_or(false);
         if sim_in_options || sim_in_raw_args {
             return Err(color_eyre::eyre::eyre!(
-                "Agent '{}': {} is set directly in daemon options/args. It is derived from \
-                 general.mining (mode: native) and the agent's hashrate; remove it.",
-                agent_id, SIM_HASH_INTERVAL_KNOB
+                "Agent '{}': {} / {} is set directly in daemon options/args. It is derived \
+                 from general.mining (mode: native) and the agent's hashrate; remove it.",
+                agent_id, SIM_HASH_INTERVAL_KNOB, SIM_RX_FULL_DATASET_KNOB
             ));
         }
-        if native_mining && is_miner && user_agent_config.has_daemon_phases() {
+        if native_mining && is_miner && has_daemon_phases {
             return Err(color_eyre::eyre::eyre!(
                 "Agent '{}': native mining does not support daemon phases on miners in this \
                  release (the mining knob is injected into the single daemon launch only).",

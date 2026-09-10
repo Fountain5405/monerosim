@@ -27,12 +27,14 @@ pub fn equilibrium_difficulty(total_hashrate_hs: u64) -> u64 {
     DIFFICULTY_TARGET_SECS * total_hashrate_hs
 }
 
-/// True if any raw daemon arg sets --sim-hash-interval-ms (legacy
-/// `daemon_args` or per-phase `daemon_N_args`).
+/// True if any raw daemon arg sets --sim-hash-interval-ms OR
+/// --sim-rx-full-dataset (legacy `daemon_args` or per-phase `daemon_N_args`).
 pub fn args_mention_sim_knob(args: Option<&Vec<String>>) -> bool {
     args.map(|v| {
-        v.iter()
-            .any(|a| a.contains(&format!("--{}", SIM_HASH_INTERVAL_KNOB)))
+        v.iter().any(|a| {
+            a.contains(&format!("--{}", SIM_HASH_INTERVAL_KNOB))
+                || a.contains(&format!("--{}", SIM_RX_FULL_DATASET_KNOB))
+        })
     })
     .unwrap_or(false)
 }
@@ -90,6 +92,8 @@ mod tests {
     fn raw_args_detection() {
         let v = vec!["--sim-hash-interval-ms=50".to_string()];
         assert!(args_mention_sim_knob(Some(&v)));
+        let u = vec!["--sim-rx-full-dataset".to_string()];
+        assert!(args_mention_sim_knob(Some(&u)));
         let w = vec!["--log-level=1".to_string()];
         assert!(!args_mention_sim_knob(Some(&w)));
         assert!(!args_mention_sim_knob(None));
