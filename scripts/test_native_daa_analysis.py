@@ -21,6 +21,7 @@ from scripts.native_daa_analysis import (
     derive_join_time,
     assign_regimes,
     per_regime_miner_table,
+    make_verdicts,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -172,6 +173,42 @@ def test_per_regime_miner_table_skewed_share_fails():
     assert rows["m2"]["share"] == pytest.approx(0.0)
     assert rows["m1"]["verdict"] == "FAIL"
     assert rows["m2"]["verdict"] == "FAIL"
+
+
+# ---------------------------------------------------------------------------
+# end-difficulty verdict: +/-25% tolerance, not a hard 1.0x ceiling
+# ---------------------------------------------------------------------------
+def _find_verdict(verdicts, name_substr):
+    for name, status, detail in verdicts:
+        if name_substr in name:
+            return status, detail
+    raise AssertionError(f"no verdict matched {name_substr!r}")
+
+
+def test_end_difficulty_verdict_allows_a_few_percent_overshoot():
+    d_eq = 12000.0
+    diffcp = {"checkpoints": {"at_end": None}, "d_pre_eq": d_eq, "d_post_eq": d_eq}
+    windows = {"pre_h1_4": [], "first20": None, "last2h": []}
+    miners = {"m1": {"hashrate": 100, "start_s": 0.0}}
+
+    # D_end = 1.01 x D_eq: a real LWMA overshoot within +/-25%, must PASS
+    # (the old hard 1.0x ceiling would have failed this).
+    accepted_high = [{"height": 1, "sim_time_s": 0.0, "miner": "m1",
+                       "difficulty": d_eq * 1.01, "interval_s": None, "regime": "n/a"}]
+    status, detail = _find_verdict(
+        make_verdicts(accepted_high, miners, None, diffcp, windows, {}, 0),
+        "end difficulty",
+    )
+    assert status == "PASS", detail
+
+    # D_end = 0.70 x D_eq: outside +/-25%, must FAIL.
+    accepted_low = [{"height": 1, "sim_time_s": 0.0, "miner": "m1",
+                      "difficulty": d_eq * 0.70, "interval_s": None, "regime": "n/a"}]
+    status, detail = _find_verdict(
+        make_verdicts(accepted_low, miners, None, diffcp, windows, {}, 0),
+        "end difficulty",
+    )
+    assert status == "FAIL", detail
 
 
 # ---------------------------------------------------------------------------

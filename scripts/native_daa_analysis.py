@@ -420,16 +420,19 @@ def make_verdicts(accepted, miners, join_time, diffcp, windows, regime_table, re
             status, detail = "N/A", "no post-join blocks"
         v.append(("post-join burst: mean of first 20 post-join intervals < 90s", status, detail))
 
-    # 4. end difficulty vs post equilibrium
+    # 4. end difficulty vs post equilibrium (LWMA legitimately overshoots
+    # its target by a few percent in either direction, so this uses the
+    # same +/-25% tolerance as the pre-join plateau rule rather than a
+    # hard 1.0x ceiling).
     d_post_eq = diffcp["d_post_eq"]
     if accepted and d_post_eq > 0:
         d_end = accepted[-1]["difficulty"]
-        lo, hi = 0.7 * d_post_eq, 1.0 * d_post_eq
+        lo, hi = 0.75 * d_post_eq, 1.25 * d_post_eq
         status = "PASS" if lo <= d_end <= hi else "FAIL"
         detail = f"D_end={d_end} range=[{lo:.0f},{hi:.0f}]"
     else:
         status, detail = "N/A", "no blocks"
-    v.append(("end difficulty in [0.7, 1.0] x D_post_eq", status, detail))
+    v.append(("end difficulty in [0.75, 1.25] x D_post_eq", status, detail))
 
     # 5. last-2h mean interval
     k2 = len(windows["last2h"])
