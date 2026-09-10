@@ -151,11 +151,23 @@ def get_llm_config(args):
     base_url = args.base_url or os.environ.get('OPENAI_BASE_URL') or file_config.get('base_url')
     model = args.model or os.environ.get('AI_CONFIG_MODEL') or file_config.get('model')
 
+    # Request extras (e.g. z.ai's `{"thinking": {"type": "disabled"}}`):
+    # env var is a JSON string, config file is a plain YAML mapping.
+    from .generator import _load_request_extras
+    env_extras = os.environ.get('AI_CONFIG_REQUEST_EXTRAS')
+    if env_extras:
+        request_extras = _load_request_extras(env_extras)
+    elif isinstance(file_config.get('request_extras'), dict):
+        request_extras = file_config['request_extras']
+    else:
+        request_extras = None
+
     if api_key and base_url:
         return {
             'api_key': api_key,
             'base_url': base_url,
-            'model': model or 'qwen3:8b-16k'
+            'model': model or 'qwen3:8b-16k',
+            'request_extras': request_extras,
         }
 
     return None
@@ -184,6 +196,7 @@ def run_interactive_mode(args):
     provider = LLMProvider(
         model=config.get('model'),
         base_url=config.get('base_url'),
+        request_extras=config.get('request_extras'),
     )
 
     generator = ConfigGenerator(
@@ -232,6 +245,7 @@ def run_direct_mode(args):
         model=config.get('model'),
         base_url=config.get('base_url'),
         api_key=config.get('api_key'),
+        request_extras=config.get('request_extras'),
     )
 
     # Create generator

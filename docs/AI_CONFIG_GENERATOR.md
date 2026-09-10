@@ -76,6 +76,21 @@ python3 -m scripts.ai_config --model your-model-name
 
 **Note:** Local models smaller than 14B parameters may struggle with complex scenarios.
 
+### Option 5: z.ai (GLM)
+
+```bash
+export OPENAI_BASE_URL=https://api.z.ai/api/paas/v4
+export OPENAI_API_KEY="$(cat ~/.keys/zai.key)"     # keep the key file outside the repo; never commit it
+export AI_CONFIG_MODEL=glm-4.5-flash                 # lowest tier; glm-4.5-air / glm-4.6 are stronger
+export AI_CONFIG_REQUEST_EXTRAS='{"thinking":{"type":"disabled"}}'   # GLM "thinking" otherwise consumes the reply budget
+```
+
+GLM models support a "thinking" mode that, left enabled, spends the reply's
+token budget on hidden reasoning instead of the YAML output — verified: with
+thinking enabled, a 20-token reply came back empty. `AI_CONFIG_REQUEST_EXTRAS`
+takes any JSON object and merges it into the request body (extras win over
+built-in fields), so it also works for other provider-specific knobs.
+
 ## Example Prompts
 
 **Basic simulation:**

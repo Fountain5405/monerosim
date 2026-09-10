@@ -103,6 +103,7 @@ under `general:`, NOT under `daemon_defaults:` or `wallet_defaults:`.
 | `node_implementations` | (omit) | OPTIONAL, for MIXED-implementation networks only. `{cuprated: <fraction>}` runs that fraction of ELIGIBLE nodes on cuprate (the Rust Monero node) instead of monerod. Eligible = relay and user nodes ONLY — miners and seed nodes are always monerod, because cuprate cannot mine. So the fraction applies to relays+users, NOT to the total agent count. Must be paired with `experimental_cuprate_boot: true`. **Omit this key entirely unless the user explicitly asks for cuprate.** |
 | `experimental_cuprate_boot` | (omit) | Required opt-in gate whenever `node_implementations` is present. Pointless on its own — never emit it without `node_implementations`, and never emit either unless cuprate was requested. |
 | `daemon_defaults.fakechain-hard-forks` | (omit) | OPTIONAL, HARD FORK scenarios only (request mentions "hard fork" / "network upgrade" / "fork at height"). A custom fork schedule string `"1:0,14:1,15:H"` where H is the activation height: **H = round(minutes_until_fork / 2.0)** (block cadence is ~2.0 min since v0.2.0). Requires EVERY daemon to run the patched binary `monerod-hf` and the six `monero-seed-NNN` agents to be declared explicitly (see the hard fork example). Nodes that DON'T upgrade get a per-agent `daemon_options` override with the shorter schedule `"1:0,14:1"`. Never combine with `node_implementations` (cuprate cannot follow custom schedules). **Omit entirely unless a hard fork / network upgrade was requested.** |
+| `mining` | (omit) | OPTIONAL, real-PoW / native-mining scenarios only (request mentions "native mining" / "real PoW" / "let monerod mine" / difficulty algorithm / mining behaviour — not just the word "mining", every scenario already has miners). `{mode: native, rx_full_dataset: true}` makes monerod's own miner thread mine with real RandomX and real LWMA difficulty, instead of the default `generateblocks` Poisson scheduler. In this mode, per-miner `hashrate` becomes a LITERAL integer hashes/second in `1..=1000` — NOT a percentage, and it does NOT need to sum to 100. Settling difficulty is ≈ `120 × Σ hashrate` (e.g. five miners at 20 h/s each settles near 12000). Keep `daemon: monerod` (or omit `daemon:`) on miners — the orchestrator substitutes `monerod-sim` automatically; never write `monerod-sim` yourself. Never hand-set `sim-hash-interval-ms` / `sim-rx-full-dataset` anywhere — they are always derived. Native miners cannot use `daemon_N` phase keys. May be combined with a hard fork schedule (the row above); then ALL hard-fork rules still apply, including `monerod-hf` on every daemon — `monerod-hf` is an alias of the same patched binary, so it works for native miners too. **Omit this key entirely unless native mining was explicitly requested.** |
 
 IMPORTANT: `runahead`, `process_threads`, and `native_preemption` are Shadow simulator
 settings that go directly under `general:`. They are NOT daemon options and must NEVER
@@ -181,7 +182,8 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
    - Miner distributor should start early (before bootstrap ends) for funding buffer
    - Users should start transacting at the same time bootstrap ends (no funding gap)
 
-6. **Initial miners**: MINIMUM 5 miners required, hashrates MUST sum to exactly 100
+6. **Initial miners**: MINIMUM 5 miners required, hashrates MUST sum to exactly
+   100 in generateblocks mode (the default)
    - Every simulation MUST have at least 5 initial miners (for network stability)
    - If user asks for fewer miners (e.g., "2 miners"), use 5 miners instead
    - 5 miners: [20, 20, 20, 20, 20]
@@ -190,6 +192,9 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
    - 10 miners: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
    - 15 miners: [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6]
    - Late-joining miners can add extra hashrate (not bound by 100)
+   - In native mode (`general.mining.mode: native`, see the mining schema
+     row) hashrate is literal hashes/second instead, and does NOT need to
+     sum to 100 — see the native mining example
 
 7. **Binaries for upgrades**: Use `monerod` for the standard daemon and
    `monero-wallet-rpc` for the standard wallet. For upgrade scenarios use
@@ -220,7 +225,8 @@ See docs/PERFORMANCE_AND_SCALE.md for the full methodology and empirical data.
 **Miners** (agents.autonomous_miner):
 - Mine blocks, need hashrate field
 - MINIMUM 5 initial miners required for every simulation
-- Initial miners: hashrates sum to exactly 100
+- Initial miners: hashrates sum to exactly 100 in generateblocks mode (the
+  default); literal hashes/second, no sum rule, in native mode
 - Late-joining miners: can add extra hashrate
 
 **Users** (agents.regular_user):
@@ -1041,6 +1047,78 @@ agents:
     poll_interval: 300
 ```
 
+---
+USER: "native mining: 5 miners at 20 hashes per second each, 10 users, 6 hours"
+
+SCENARIO:
+```yaml
+# === SIMULATION SETTINGS ===
+general:
+  stop_time: 6h                       # Total simulation duration
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true
+  # --- Native mining: monerod's own miner thread mines real RandomX PoW
+  #     instead of the default generateblocks Poisson scheduler. Difficulty
+  #     settles near 120 x total hashrate = 120 x 100 = 12000. The
+  #     orchestrator substitutes monerod-sim for miners automatically — keep
+  #     daemon: monerod below, do NOT write monerod-sim yourself, and never
+  #     hand-set sim-hash-interval-ms / sim-rx-full-dataset. ---
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+# === NETWORK TOPOLOGY ===
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+# === AGENTS ===
+agents:
+  # --- 5 Miners: hashrate is LITERAL hashes/second in native mode (not a
+  #     percentage) — 20 h/s each, total 100 h/s, no sum-to-100 rule ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]    # 20 h/s each; total 100 h/s -> difficulty settles near 12000
+    can_receive_distributions: true
+
+  # --- 10 Users ---
+  user-{001..010}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: 5s
+    transaction_interval: 120
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- Support ---
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
+```
+
 ## Final pre-output checklist (read before emitting)
 
 1. **Stagger rule for large groups.** Every range group whose count is 50 or
@@ -1079,6 +1157,22 @@ agents:
    `monerod-v2`, ...) in a hard fork scenario — non-upgrading nodes use the
    SAME `daemon: monerod-hf` with only the `daemon_options` schedule
    differing. Phase keys are for binary-swap scenarios, which this is not.
+7. **Native mining is opt-in and off by default.** Do NOT emit
+   `general.mining` unless the request explicitly asks for native mining,
+   real PoW, "let monerod mine", the difficulty algorithm, or mining
+   behaviour specifically — not just the word "mining" in general, since
+   every scenario already has miners. An ordinary scenario has no `mining:`
+   key. When native mining IS requested: (a) `general.mining.mode: native`;
+   (b) per-miner `hashrate` becomes a LITERAL integer hashes/second in
+   `1..=1000`, and does NOT need to sum to 100; (c) keep `daemon: monerod`
+   (or omit `daemon:`) on miners — never write `daemon: monerod-sim`
+   yourself, the orchestrator substitutes it automatically; (d) NEVER
+   hand-set `sim-hash-interval-ms` or `sim-rx-full-dataset` in
+   `daemon_defaults`, `daemon_options`, or raw args — they are always
+   derived; (e) NEVER give a native miner `daemon_N` phase keys; (f) if the
+   request ALSO wants a hard fork, keep every hard-fork rule from rule 6
+   too — `monerod-hf` on every daemon including native miners, since
+   `monerod-hf` is the same patched binary as `monerod-sim`.
 
 ## Output Format
 

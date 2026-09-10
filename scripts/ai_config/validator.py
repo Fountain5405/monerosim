@@ -139,6 +139,9 @@ class ValidationReport:
     # Hard fork scenario: general.daemon_defaults carries fakechain-hard-forks
     has_hardfork_schedule: bool = False
 
+    # Native mining scenario: general.mining.mode == 'native'
+    has_native_mining: bool = False
+
     # General settings
     stop_time_s: int = 0
     bootstrap_end_time_s: int = 0
@@ -335,6 +338,17 @@ class ConfigValidator:
 
         report.simulation_seed = general.get('simulation_seed')
 
+        # Mining mode (docs/NATIVE_MINING.md). Absent = generateblocks
+        # (historical behaviour). Computed early so later checks (hashrate
+        # sum-to-100) can gate on it.
+        mining_cfg = general.get('mining') or {}
+        mining_mode = mining_cfg.get('mode', 'generateblocks')
+        if mining_mode not in ('native', 'generateblocks'):
+            report.is_valid = False
+            report.errors.append(
+                f"general.mining.mode must be 'native' or 'generateblocks' (got '{mining_mode}')")
+        report.has_native_mining = (mining_mode == 'native')
+
         # Parse network section
         network = config.get('network', {})
         report.network_type = network.get('type') or network.get('path', 'default')
@@ -397,7 +411,10 @@ class ConfigValidator:
         if report.user_count > 0 and not report.has_distributor:
             report.warnings.append("Users exist but no miner-distributor to fund them")
 
-        if report.total_hashrate != 100 and report.miner_count > 0:
+        # Sum-to-100 only makes sense in generateblocks mode; native mode
+        # hashrates are literal hashes/second and are checked separately.
+        if (report.total_hashrate != 100 and report.miner_count > 0
+                and not report.has_native_mining):
             report.warnings.append(f"Total hashrate is {report.total_hashrate}, not 100")
 
         # Hard fork consistency — mirrors the orchestrator's preflight guards
@@ -456,6 +473,59 @@ class ConfigValidator:
             if hf_errors:
                 report.is_valid = False
                 report.errors.extend(hf_errors)
+
+        # Native mining consistency — mirrors src/utils/validation.rs and the
+        # user_agents.rs guards (docs/NATIVE_MINING.md) so the LLM correction
+        # loop can fix these deterministically.
+        SIM_KNOBS = ('sim-hash-interval-ms', 'sim-rx-full-dataset')
+
+        def _dict_has_sim_knob(d):
+            return bool(d) and any(k in d for k in SIM_KNOBS)
+
+        def _args_have_sim_knob(args):
+            if not args:
+                return False
+            return any(any(knob in str(a) for knob in SIM_KNOBS) for a in args)
+
+        native_errors = []
+
+        # These knobs are always derived from general.mining + hashrate;
+        # hand-setting them is rejected in ANY mode, not just native.
+        if _dict_has_sim_knob(general.get('daemon_defaults')):
+            native_errors.append(
+                "general.daemon_defaults sets sim-hash-interval-ms / "
+                "sim-rx-full-dataset directly. These are derived from "
+                "general.mining and each miner's hashrate; remove them.")
+        for aid, cfg in agent_cfgs.items():
+            if _dict_has_sim_knob(cfg.get('daemon_options')) or _args_have_sim_knob(cfg.get('daemon_args')):
+                native_errors.append(
+                    f"Agent '{aid}': sim-hash-interval-ms / sim-rx-full-dataset is set "
+                    "directly in daemon options/args. It is derived from general.mining "
+                    "(mode: native) and the agent's hashrate; remove it.")
+
+        if report.has_native_mining:
+            agent_info_by_id = {a.agent_id: a for a in report.agents}
+            miner_ids = [aid for aid, info in agent_info_by_id.items() if info.agent_type == 'miner']
+            if not miner_ids:
+                native_errors.append(
+                    "general.mining.mode is native but the config has no miners "
+                    "(an agent with a hashrate field)")
+            for aid in miner_ids:
+                hr = agent_info_by_id[aid].hashrate
+                if hr is not None and not (1 <= hr <= 1000):
+                    native_errors.append(
+                        f"Agent '{aid}': hashrate {hr} h/s is out of range 1..=1000 "
+                        "for native mode (--sim-hash-interval-ms cannot go below 1 ms)")
+                phase_keys = [k for k in agent_cfgs.get(aid, {}) if re.fullmatch(r'daemon_\d+', str(k))]
+                if phase_keys:
+                    native_errors.append(
+                        f"Agent '{aid}': native mining does not support daemon phases on "
+                        f"miners ('{phase_keys[0]}') in this release (the mining knob is "
+                        "injected into the single daemon launch only)")
+
+        if native_errors:
+            report.is_valid = False
+            report.errors.extend(native_errors)
 
         return report
 

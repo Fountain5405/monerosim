@@ -13,6 +13,10 @@
   **Change:** `./setup.sh --hardfork` now builds `monerod-sim` (hard-fork +
   mining patches) and installs `monerod-hf` as a symlink alias; `--sim-binary`
   is the new spelling.
+  AI config generator: understands `general.mining.mode: native` (literal
+  hashes/second, mirror guards, worked example); request extras via
+  `AI_CONFIG_REQUEST_EXTRAS` (e.g. z.ai GLM thinking off); Ollama-only body
+  fields sent only to local endpoints.
 
 ## [0.3.1] — 2026-09-05
 

@@ -33,6 +33,7 @@ class ParsedRequest:
     duration_hours: Optional[float] = None
     is_upgrade: bool = False
     is_hardfork: bool = False
+    is_native_mining: bool = False
     has_late_joiners: bool = False
 
 
@@ -105,6 +106,15 @@ def parse_user_request(request: str) -> ParsedRequest:
         r'hard.?fork|consensus upgrade|network upgrade|fork (at|height)', request_lower))
     if parsed.is_hardfork:
         parsed.is_upgrade = False
+
+    # Native mining (docs/NATIVE_MINING.md): monerod's own miner thread mines
+    # real RandomX PoW instead of the default generateblocks Poisson
+    # scheduler. Opt-in only — don't trip on the word "mining" alone, since
+    # every scenario already has miners.
+    parsed.is_native_mining = bool(re.search(
+        r'native.?min|real (pow|proof.of.work)|let monerod mine|'
+        r'difficulty algorithm|mining behaviou?r|pow stud',
+        request_lower))
 
     # Check for late-joining nodes
     late_keywords = ['join', 'later', 'halfway', 'after', 'new.*come', 'additional']
@@ -260,24 +270,69 @@ class GenerationResult:
             self.errors = []
 
 
+_LOCAL_BASE_URL_MARKERS = ('localhost', '127.0.0.1', ':11434')
+
+
+def _is_local_base_url(base_url: str) -> bool:
+    """True for Ollama-style local endpoints, which understand num_ctx/
+    keep_alive. Remote OpenAI-compatible APIs (Groq, z.ai, OpenAI) don't
+    accept those fields, so they must be omitted for anything else."""
+    base_url = (base_url or '').lower()
+    return any(marker in base_url for marker in _LOCAL_BASE_URL_MARKERS)
+
+
+def _load_request_extras(raw: Optional[str]) -> Dict[str, Any]:
+    """Parse the AI_CONFIG_REQUEST_EXTRAS env value (or an equivalent raw
+    JSON string from the config file) into a dict merged into the request
+    body. Empty/None -> {}. Invalid JSON fails fast at startup, not mid-run.
+    """
+    if not raw:
+        return {}
+    try:
+        extras = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"AI_CONFIG_REQUEST_EXTRAS is not valid JSON: {e}") from e
+    if not isinstance(extras, dict):
+        raise ValueError(
+            "AI_CONFIG_REQUEST_EXTRAS must be a JSON object, "
+            'e.g. \'{"thinking": {"type": "disabled"}}\'')
+    return extras
+
+
 class LLMProvider:
     """OpenAI-compatible LLM provider."""
 
-    def __init__(self, model: str = None, api_key: str = None, base_url: str = None):
+    def __init__(self, model: str = None, api_key: str = None, base_url: str = None,
+                 request_extras: Optional[Dict[str, Any]] = None):
         self.model = model or os.environ.get('AI_CONFIG_MODEL', 'gpt-4o-mini')
         self.api_key = api_key or os.environ.get('OPENAI_API_KEY', '')
         self.base_url = base_url or os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')
+        if request_extras is None:
+            request_extras = _load_request_extras(os.environ.get('AI_CONFIG_REQUEST_EXTRAS'))
+        self.request_extras = request_extras
 
-    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.3) -> LLMResponse:
-        """Send a chat completion request."""
-        data = json.dumps({
+    def _build_body(self, messages: List[Dict[str, str]], temperature: float = 0.3) -> Dict[str, Any]:
+        """Build the chat-completion request body (no network I/O; testable).
+
+        num_ctx/keep_alive (Ollama-only fields) are included only for local
+        endpoints. AI_CONFIG_REQUEST_EXTRAS is merged last, so extras win.
+        """
+        body: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": 8192,
-            "num_ctx": 16384,  # Ollama: context window size (match model's capacity)
-            "keep_alive": "30m",  # Ollama: keep model loaded between requests
-        }).encode()
+        }
+        if _is_local_base_url(self.base_url):
+            body["num_ctx"] = 16384  # Ollama: context window size (match model's capacity)
+            body["keep_alive"] = "30m"  # Ollama: keep model loaded between requests
+        if self.request_extras:
+            body.update(self.request_extras)
+        return body
+
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.3) -> LLMResponse:
+        """Send a chat completion request."""
+        data = json.dumps(self._build_body(messages, temperature)).encode()
 
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
@@ -595,8 +650,10 @@ class ConfigGenerator:
         if report.user_count > 0 and not report.has_distributor:
             issues.append("Missing miner-distributor (required when users exist)")
 
-        # Check hashrate for initial miners only (those starting in first 60s)
-        if report.miner_count > 0:
+        # Check hashrate for initial miners only (those starting in first 60s).
+        # Only applies in generateblocks mode (the default) — in native mode
+        # hashrate is a literal hashes/second value and is not bound to 100.
+        if report.miner_count > 0 and not report.has_native_mining:
             initial_hashrate = sum(
                 a.hashrate for a in report.agents
                 if a.agent_type == "miner" and a.hashrate and a.start_time_s < 60
@@ -649,6 +706,16 @@ class ConfigGenerator:
                 'knob in daemon_defaults ("1:0,14:1,15:H"), daemon: monerod-hf on every '
                 "agent, monero-seed-{001..006} declared, non-upgrading agents via "
                 "daemon_options — and NO daemon phases")
+
+        # Check native mining scenario (opt-in both ways — never contradict
+        # the validator's own has_native_mining checks)
+        if expected.is_native_mining and not report.has_native_mining:
+            issues.append(
+                "Request asks for native mining but general.mining.mode is not 'native'")
+        if report.has_native_mining and not expected.is_native_mining:
+            issues.append(
+                "general.mining was emitted but the request did not ask for native "
+                "mining — remove it")
 
         # Check upgrade scenario timing (hard failure for gap violations)
         if report.upgrade.enabled:
