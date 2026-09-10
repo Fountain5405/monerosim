@@ -2,6 +2,7 @@
 
 pub mod binary;
 pub mod duration;
+pub mod mining;
 pub mod options;
 pub mod script;
 pub mod seed_extractor;
