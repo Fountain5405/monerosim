@@ -139,31 +139,40 @@ pub fn validate_topology_config(topology: &Topology, total_agents: usize) -> Res
 
 /// Validate mining configuration
 ///
-/// Checks mining agent configuration for:
+/// In `Generateblocks` mode, checks mining agent configuration for:
 /// - Mining agents have wallet field (required for reward address)
 /// - Mining agents have hashrate field (percentage of network hashrate)
-/// - Hashrate values are valid (0-100)
+/// - Hashrate values are valid percentages (1-100)
 /// - Total hashrate equals 100% (warning if not)
+///
+/// In `Native` mode, checks:
+/// - Mining agents have wallet field (required for reward address)
+/// - Mining agents have hashrate field (literal hashes per second)
+/// - Hashrate values are >= 1 (no upper bound)
+/// - At least one miner is configured
 ///
 /// # Arguments
 /// * `agents` - Map of agent_id to AgentConfig
+/// * `mode` - Mining mode (Generateblocks or Native)
 ///
 /// # Returns
 /// * `Ok(())` if validation succeeds
 /// * `Err(String)` with an error message if validation fails
-pub fn validate_mining_config(agents: &BTreeMap<String, AgentConfig>) -> Result<(), String> {
-    let mut total_hashrate = 0u32;
+pub fn validate_mining_config(
+    agents: &BTreeMap<String, AgentConfig>,
+    mode: crate::config::MiningMode,
+) -> Result<(), String> {
+    use crate::config::MiningMode;
+    let native = mode == MiningMode::Native;
+    let mut total_hashrate = 0u64;
     let mut mining_agent_count = 0;
 
     for (agent_id, agent) in agents.iter() {
-        // Skip non-mining agents (miners have hashrate or script containing "miner")
         if !agent.is_miner() {
             continue;
         }
-
         mining_agent_count += 1;
 
-        // Validate wallet is present for mining agents
         if !agent.has_wallet() {
             return Err(format!(
                 "Mining agent '{}' must have 'wallet' field for reward address",
@@ -171,27 +180,38 @@ pub fn validate_mining_config(agents: &BTreeMap<String, AgentConfig>) -> Result<
             ));
         }
 
-        // Validate hashrate exists for miners
         let hashrate = agent.hashrate.ok_or_else(|| {
             format!(
-                "Mining agent '{}' must have 'hashrate' field (percentage of network hashrate)",
-                agent_id
+                "Mining agent '{}' must have 'hashrate' field ({})",
+                agent_id,
+                if native { "hashes per second" } else { "percentage of network hashrate" }
             )
         })?;
 
-        // Validate hashrate is in valid range
-        if hashrate == 0 || hashrate > 100 {
+        if native {
+            if hashrate == 0 {
+                return Err(format!(
+                    "Mining agent '{}': hashrate must be >= 1 hash/second in native mode",
+                    agent_id
+                ));
+            }
+        } else if hashrate == 0 || hashrate > 100 {
             return Err(format!(
                 "Mining agent '{}': hashrate {}% out of valid range (must be 1-100)",
                 agent_id, hashrate
             ));
         }
 
-        total_hashrate += hashrate;
+        total_hashrate += hashrate as u64;
     }
 
-    // Warn if total doesn't equal 100 (but don't fail - this is recoverable)
-    if mining_agent_count > 0 && total_hashrate != 100 {
+    if native && mining_agent_count == 0 {
+        return Err("general.mining.mode is native but the config has no miners \
+                    (an agent with a hashrate field)"
+            .to_string());
+    }
+
+    if !native && mining_agent_count > 0 && total_hashrate != 100 {
         log::warn!(
             "Total mining hashrate is {}% (expected 100%). Found {} mining agent(s).",
             total_hashrate,
@@ -503,6 +523,7 @@ mod tests {
 
     #[test]
     fn test_validate_mining_config_valid() {
+        use crate::config::MiningMode;
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
@@ -511,11 +532,12 @@ mod tests {
             ..base_agent()
         };
 
-        assert!(validate_mining_config(&single_agent("miner-001", agent)).is_ok());
+        assert!(validate_mining_config(&single_agent("miner-001", agent), MiningMode::Generateblocks).is_ok());
     }
 
     #[test]
     fn test_validate_mining_config_missing_wallet() {
+        use crate::config::MiningMode;
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: None,
@@ -524,13 +546,14 @@ mod tests {
             ..base_agent()
         };
 
-        let result = validate_mining_config(&single_agent("miner-001", agent));
+        let result = validate_mining_config(&single_agent("miner-001", agent), MiningMode::Generateblocks);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("must have 'wallet' field"));
     }
 
     #[test]
     fn test_validate_mining_config_non_miner_script_ok() {
+        use crate::config::MiningMode;
         // Script with "miner" in name but no hashrate is NOT a miner
         // (e.g., miner_distributor distributes rewards, doesn't mine)
         let agent = AgentConfig {
@@ -542,11 +565,12 @@ mod tests {
         };
 
         // Should pass - not identified as a miner without hashrate
-        assert!(validate_mining_config(&single_agent("distributor-001", agent)).is_ok());
+        assert!(validate_mining_config(&single_agent("distributor-001", agent), MiningMode::Generateblocks).is_ok());
     }
 
     #[test]
     fn test_validate_mining_config_zero_hashrate() {
+        use crate::config::MiningMode;
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
@@ -554,13 +578,14 @@ mod tests {
             ..base_agent()
         };
 
-        let result = validate_mining_config(&single_agent("miner-001", agent));
+        let result = validate_mining_config(&single_agent("miner-001", agent), MiningMode::Generateblocks);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("out of valid range"));
     }
 
     #[test]
     fn test_validate_mining_config_hashrate_over_100() {
+        use crate::config::MiningMode;
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
@@ -568,13 +593,14 @@ mod tests {
             ..base_agent()
         };
 
-        let result = validate_mining_config(&single_agent("miner-001", agent));
+        let result = validate_mining_config(&single_agent("miner-001", agent), MiningMode::Generateblocks);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("out of valid range"));
     }
 
     #[test]
     fn test_validate_mining_config_skips_non_miners() {
+        use crate::config::MiningMode;
         // Non-mining agent without hashrate should be skipped
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
@@ -583,7 +609,7 @@ mod tests {
             ..base_agent()
         };
 
-        assert!(validate_mining_config(&single_agent("user-001", agent)).is_ok());
+        assert!(validate_mining_config(&single_agent("user-001", agent), MiningMode::Generateblocks).is_ok());
     }
 
     // Tests for validate_agent_daemon_config
@@ -745,5 +771,35 @@ mod tests {
         assert!(result
             .unwrap_err()
             .contains("wallet without local daemon requires remote daemon configuration"));
+    }
+
+    fn miner(hashrate: u32) -> AgentConfig {
+        let mut a = base_agent();
+        a.hashrate = Some(hashrate);
+        a.wallet = Some("monero-wallet-rpc".to_string());
+        a.daemon = Some(DaemonConfig::Local("monerod".to_string()));
+        a
+    }
+
+    #[test]
+    fn generateblocks_mode_keeps_percentage_range() {
+        use crate::config::MiningMode;
+        assert!(validate_mining_config(&single_agent("m", miner(150)), MiningMode::Generateblocks).is_err());
+        assert!(validate_mining_config(&single_agent("m", miner(100)), MiningMode::Generateblocks).is_ok());
+    }
+
+    #[test]
+    fn native_mode_accepts_literal_hashrates_above_100() {
+        use crate::config::MiningMode;
+        assert!(validate_mining_config(&single_agent("m", miner(150)), MiningMode::Native).is_ok());
+        assert!(validate_mining_config(&single_agent("m", miner(0)), MiningMode::Native).is_err());
+    }
+
+    #[test]
+    fn native_mode_requires_at_least_one_miner() {
+        use crate::config::MiningMode;
+        let err = validate_mining_config(&single_agent("r", base_agent()), MiningMode::Native).unwrap_err();
+        assert!(err.contains("no miners"), "{err}");
+        assert!(validate_mining_config(&single_agent("r", base_agent()), MiningMode::Generateblocks).is_ok());
     }
 }

@@ -30,7 +30,7 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
     validate_agent_daemon_config(&config.agents.agents)
         .map_err(|e| eyre!("Agent configuration error: {}", e))?;
 
-    validate_mining_config(&config.agents.agents)
+    validate_mining_config(&config.agents.agents, config.general.mining.mode)
         .map_err(|e| eyre!("Mining configuration error: {}", e))?;
 
     // Validate daemon phase timing for agents with phases
