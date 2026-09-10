@@ -324,10 +324,16 @@ Exit 0 = PASS, 1 = FAIL; it prints the comparison table either way.
   from `generateblocks` mode's Python LWMA replay, which uses a 30-block
   window. Partition and heal experiments tuned to the replay's fast
   retarget will behave differently in native mode.
-- **Warm-up transient.** The first few blocks are not representative:
-  difficulty at heights 1–4 runs `1, 1, 120`, with one overshoot, before
-  settling toward `D_eq`. Don't read early-block cadence as the converged
-  behaviour.
+- **Warm-up transient.** The first few blocks are not representative. In
+  the pre-gate spike run (2026-09-10, 12.5 h/s total, throwaway patch of
+  the same design, `archived_runs/20260910_033731_spike_native_mining3`),
+  difficulty went `1, 1, 120`, then overshot to `14520` at height 4, before
+  settling into the 1300–1600 band (theory 1500) by about height 6. The
+  shipped Task 8/9 gates were not instrumented to record per-height
+  difficulty for heights 1–4, but converged to theory by the last block in
+  both cases (3031 vs 3000 target in the micro gate; 11952 vs 12000 in the
+  split gate — §7). Don't read cadence or difficulty from the first few
+  blocks of a native-mining run as the converged behaviour.
 - **No daemon phases on native miners.** The mining knob is injected into
   the single daemon launch only; a miner with `daemon_phases` configured
   and native mode enabled is a hard error (§4).
