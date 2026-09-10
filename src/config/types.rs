@@ -391,6 +391,11 @@ pub struct GeneralConfig {
     /// cuprate is rejected at generation time with a clear error.
     #[serde(default)]
     pub experimental_cuprate_boot: bool,
+
+    /// Block-production mode. Absent = `generateblocks` (historical). See
+    /// docs/NATIVE_MINING.md and docs/superpowers/specs/2026-09-10-native-mining-design.md.
+    #[serde(default)]
+    pub mining: MiningConfig,
 }
 
 /// Default reachable fraction: 1.0 = all nodes reachable (perfect network).
@@ -435,6 +440,57 @@ pub struct TurnoverConfig {
 /// Default turnover participation fraction: 1.0 = every eligible node cycles.
 fn default_turnover_fraction() -> f64 {
     1.0
+}
+
+/// Block-production mode (see docs/NATIVE_MINING.md).
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum MiningMode {
+    /// A Python agent per miner fires the `generateblocks` RPC on a seeded
+    /// Poisson schedule (historical behaviour; `hashrate` is a weight).
+    Generateblocks,
+    /// monerod's own miner thread mines, throttled by
+    /// `--sim-hash-interval-ms` (patches/monero-sim-mining.patch); `hashrate`
+    /// is LITERAL hashes per second and monerod's difficulty algorithm drives
+    /// block timing. Miners run `monerod-sim`.
+    Native,
+}
+
+impl Default for MiningMode {
+    fn default() -> Self {
+        MiningMode::Generateblocks
+    }
+}
+
+/// `general.mining` — how blocks get produced.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct MiningConfig {
+    #[serde(default)]
+    pub mode: MiningMode,
+    /// Native mode only: allocate the full ~2 GB RandomX dataset per miner
+    /// (~1-2 ms/hash) instead of light mode (~20 ms/hash). Default true —
+    /// with literal hashrates light mode is too slow (spec §7).
+    #[serde(default = "default_rx_full_dataset")]
+    pub rx_full_dataset: bool,
+}
+
+fn default_rx_full_dataset() -> bool {
+    true
+}
+
+impl Default for MiningConfig {
+    fn default() -> Self {
+        Self {
+            mode: MiningMode::default(),
+            rx_full_dataset: default_rx_full_dataset(),
+        }
+    }
+}
+
+impl MiningConfig {
+    pub fn is_native(&self) -> bool {
+        self.mode == MiningMode::Native
+    }
 }
 
 /// Agent definitions - named map of agents
@@ -553,6 +609,7 @@ impl Default for GeneralConfig {
             turnover: None,
             node_implementations: BTreeMap::new(),
             experimental_cuprate_boot: false,
+            mining: MiningConfig::default(),
         }
     }
 }
@@ -567,5 +624,34 @@ impl Default for Network {
             seed_nodes: None,
             topology: Some(Topology::Dag), // Default to DAG for backward compatibility
         }
+    }
+}
+
+#[cfg(test)]
+mod mining_config_tests {
+    use super::*;
+
+    #[test]
+    fn mining_defaults_to_generateblocks_with_full_dataset() {
+        let yaml = "stop_time: 1h\n";
+        let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(g.mining.mode, MiningMode::Generateblocks);
+        assert!(g.mining.rx_full_dataset);
+        assert!(!g.mining.is_native());
+    }
+
+    #[test]
+    fn mining_native_parses_and_overrides_dataset() {
+        let yaml = "stop_time: 1h\nmining:\n  mode: native\n  rx_full_dataset: false\n";
+        let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(g.mining.mode, MiningMode::Native);
+        assert!(!g.mining.rx_full_dataset);
+        assert!(g.mining.is_native());
+    }
+
+    #[test]
+    fn mining_rejects_unknown_mode() {
+        let yaml = "stop_time: 1h\nmining:\n  mode: socket\n";
+        assert!(serde_yaml::from_str::<GeneralConfig>(yaml).is_err());
     }
 }
