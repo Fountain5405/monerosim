@@ -66,6 +66,8 @@ pub struct UserAgentProcessContext<'a> {
     pub simulation_stop_secs: u64,
     /// Peer-turnover config (None = no turnover; relays stay always-on).
     pub turnover: Option<&'a crate::config::TurnoverConfig>,
+    /// Block-production mode (generateblocks vs native monerod-sim mining).
+    pub mining: crate::config::MiningConfig,
 }
 
 /// Process user agents
@@ -407,6 +409,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         experimental_cuprate_boot,
         simulation_stop_secs,
         turnover,
+        mining,
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
@@ -577,6 +580,28 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     }
     // Probe results for binary_supports_hf_schedule, shared across all agents.
     let mut hf_capability_cache: HashMap<String, bool> = HashMap::new();
+
+    // Native mining: monerod's own miner thread mines, throttled by
+    // --sim-hash-interval-ms, instead of a Python agent firing generateblocks.
+    // See docs/NATIVE_MINING.md.
+    use crate::utils::mining::{
+        args_mention_sim_knob, binary_supports_sim_mining, equilibrium_difficulty,
+        hash_interval_ms, SIM_HASH_INTERVAL_KNOB, SIM_RX_FULL_DATASET_KNOB,
+    };
+    let native_mining = mining.is_native();
+    let mut sim_capability_cache: HashMap<String, bool> = HashMap::new();
+    if native_mining {
+        let total: u64 = user_agents
+            .iter()
+            .filter_map(|(_, cfg)| cfg.hashrate.map(|h| h as u64))
+            .sum();
+        log::info!(
+            "Native mining: {} miner(s), total hashrate {} h/s, equilibrium difficulty ~{}",
+            user_agents.iter().filter(|(_, c)| c.is_miner()).count(),
+            total,
+            equilibrium_difficulty(total)
+        );
+    }
     let turnover_params: Option<(f64, f64, f64, f64, f64)> = match turnover {
         Some(c) => {
             let mean_session = parse_duration_to_seconds(&c.mean_session).map_err(|e| {
@@ -745,6 +770,45 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         // both emitted, and monerod (boost::program_options) aborts on a
         // duplicated scalar option.
         let hf_in_options = merged_daemon_options.contains_key(HF_SCHEDULE_KNOB);
+
+        // The sim-mining knobs are derived (mode + hashrate), never set by
+        // the user directly, and native mining doesn't support daemon
+        // phases on miners yet (the knob is injected into the single
+        // daemon launch only).
+        let sim_in_options = merged_daemon_options.contains_key(SIM_HASH_INTERVAL_KNOB)
+            || merged_daemon_options.contains_key(SIM_RX_FULL_DATASET_KNOB);
+        let sim_in_raw_args = args_mention_sim_knob(user_agent_config.daemon_args.as_ref())
+            || user_agent_config
+                .daemon_phases
+                .as_ref()
+                .map(|phases| phases.values().any(|p| args_mention_sim_knob(p.args.as_ref())))
+                .unwrap_or(false);
+        if sim_in_options || sim_in_raw_args {
+            return Err(color_eyre::eyre::eyre!(
+                "Agent '{}': {} is set directly in daemon options/args. It is derived from \
+                 general.mining (mode: native) and the agent's hashrate; remove it.",
+                agent_id, SIM_HASH_INTERVAL_KNOB
+            ));
+        }
+        if native_mining && is_miner && user_agent_config.has_daemon_phases() {
+            return Err(color_eyre::eyre::eyre!(
+                "Agent '{}': native mining does not support daemon phases on miners in this \
+                 release (the mining knob is injected into the single daemon launch only).",
+                agent_id
+            ));
+        }
+        if native_mining && is_miner {
+            let hs = user_agent_config.hashrate.unwrap_or(1);
+            merged_daemon_options.insert(
+                SIM_HASH_INTERVAL_KNOB.to_string(),
+                OptionValue::Number(hash_interval_ms(hs) as i64),
+            );
+            if mining.rx_full_dataset {
+                merged_daemon_options
+                    .insert(SIM_RX_FULL_DATASET_KNOB.to_string(), OptionValue::Bool(true));
+            }
+        }
+
         let hf_in_raw_args = args_mention_hf_knob(user_agent_config.daemon_args.as_ref())
             || user_agent_config
                 .daemon_phases
@@ -1032,13 +1096,42 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     },
                 )?
             } else {
+                let is_native_miner = native_mining && is_miner;
                 match &user_agent_config.daemon {
+                    // Native miners on an unnamed/stock daemon run the patched build.
+                    Some(DaemonConfig::Local(path)) if is_native_miner && (path == "monerod") => {
+                        log::info!(
+                            "Agent '{}': native mining -> daemon monerod-sim (was '{}')",
+                            agent_id,
+                            path
+                        );
+                        resolve_binary_path_for_shadow("monerod-sim").map_err(|e| {
+                            color_eyre::eyre::eyre!(
+                                "Agent '{}': failed to resolve monerod-sim: {}",
+                                agent_id,
+                                e
+                            )
+                        })?
+                    }
                     Some(DaemonConfig::Local(path)) => {
                         resolve_binary_path_for_shadow(path).map_err(|e| {
                             color_eyre::eyre::eyre!(
                                 "Agent '{}': failed to resolve daemon binary path '{}': {}",
                                 agent_id,
                                 path,
+                                e
+                            )
+                        })?
+                    }
+                    _ if is_native_miner => {
+                        log::info!(
+                            "Agent '{}': native mining -> daemon monerod-sim (was unset)",
+                            agent_id
+                        );
+                        resolve_binary_path_for_shadow("monerod-sim").map_err(|e| {
+                            color_eyre::eyre::eyre!(
+                                "Agent '{}': failed to resolve monerod-sim: {}",
+                                agent_id,
                                 e
                             )
                         })?
@@ -1058,6 +1151,19 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     "Agent '{}': fakechain-hard-forks is set but '{}' does not support it \
                      (stock monerod exits on unknown options). Build the patched binary \
                      with ./setup.sh --hardfork and set daemon: monerod-hf for this agent.",
+                    agent_id,
+                    daemon_binary_path
+                ));
+            }
+
+            if native_mining
+                && is_miner
+                && !binary_supports_sim_mining(&daemon_binary_path, &mut sim_capability_cache)
+            {
+                return Err(color_eyre::eyre::eyre!(
+                    "Agent '{}': general.mining.mode is native but '{}' does not support \
+                     --sim-hash-interval-ms. Build the patched daemon with ./setup.sh --sim-binary \
+                     (miners default to monerod-sim; an explicit daemon: must point at it).",
                     agent_id,
                     daemon_binary_path
                 ));
@@ -1326,6 +1432,19 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 if user_agent_config.can_receive_distributions() {
                     merged_attributes
                         .insert("can_receive_distributions".to_string(), "true".to_string());
+                }
+                if native_mining {
+                    merged_attributes.insert("mining_mode".to_string(), "native".to_string());
+                    if let Some(hs) = user_agent_config.hashrate {
+                        merged_attributes.insert(
+                            "hash_interval_ms".to_string(),
+                            hash_interval_ms(hs).to_string(),
+                        );
+                    }
+                    merged_attributes.insert(
+                        "daemon_log_path".to_string(),
+                        format!("{}/monero-{}/bitmonero.log", daemon_data_dir, agent_id),
+                    );
                 }
 
                 // Step 1: Run regular_user.py first for wallet creation and address registration
