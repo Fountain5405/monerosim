@@ -6,7 +6,7 @@ We mock the underlying ``requests.Session.post`` so no network is touched.
 import requests
 import pytest
 
-from agents.monero_rpc import BaseRPC, RPCError
+from agents.monero_rpc import BaseRPC, MoneroRPC, RPCError
 
 
 def _fake_post_response(json_payload, status_code=200):
@@ -94,3 +94,49 @@ def test_is_ready_false_on_request_exception(mocker):
     post.side_effect = requests.exceptions.ConnectionError("connection refused")
 
     assert rpc.is_ready() is False
+
+
+def test_start_mining_posts_to_legacy_endpoint(mocker):
+    """start_mining POSTs to /start_mining (not /json_rpc) with miner_address
+    and threads_count, and returns the flat reply as-is."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    post = mocker.patch.object(rpc.session, "post")
+    post.return_value = _fake_post_response({"status": "OK"})
+
+    result = rpc.start_mining("4Axxxaddress", threads=2)
+
+    assert post.call_count == 1
+    args, kwargs = post.call_args
+    url = args[0] if args else kwargs.get("url")
+    assert url.endswith("/start_mining")
+    assert not url.endswith("/json_rpc/start_mining")
+    payload = kwargs["json"]
+    assert payload["miner_address"] == "4Axxxaddress"
+    assert payload["threads_count"] == 2
+    assert result == {"status": "OK"}
+
+
+def test_mining_status_posts_empty_body_to_legacy_endpoint(mocker):
+    """mining_status POSTs to /mining_status with an empty JSON body."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    post = mocker.patch.object(rpc.session, "post")
+    post.return_value = _fake_post_response({"active": True, "speed": 10})
+
+    result = rpc.mining_status()
+
+    assert post.call_count == 1
+    args, kwargs = post.call_args
+    url = args[0] if args else kwargs.get("url")
+    assert url.endswith("/mining_status")
+    assert kwargs["json"] == {}
+    assert result == {"active": True, "speed": 10}
+
+
+def test_legacy_request_transport_failure_becomes_rpc_error(mocker):
+    """A RequestException from the session on a legacy endpoint becomes RPCError."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    post = mocker.patch.object(rpc.session, "post")
+    post.side_effect = requests.exceptions.ConnectionError("connection refused")
+
+    with pytest.raises(RPCError, match="connection refused"):
+        rpc.mining_status()

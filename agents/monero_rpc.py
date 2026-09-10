@@ -81,7 +81,7 @@ class BaseRPC:
             
         except requests.exceptions.RequestException as e:
             raise RPCError(f"Request failed: {str(e)}")
-            
+
     def is_ready(self) -> bool:
         """Check if the RPC service is ready"""
         try:
@@ -109,8 +109,10 @@ class BaseRPC:
                 # Make a minimal request to check if the method exists
                 # We use empty params or minimal required params
                 if method == "start_mining":
-                    # start_mining requires wallet_address
-                    self._make_request(method, {"wallet_address": "dummy", "threads_count": 1})
+                    # start_mining is a legacy (non-json_rpc) endpoint; probe
+                    # via mining_status instead, which is cheap and has no
+                    # side effects, to confirm the legacy transport works.
+                    self._make_legacy_request("mining_status")
                 elif method == "generateblocks":
                     # generateblocks requires wallet_address and amount_of_blocks
                     self._make_request(method, {"wallet_address": "dummy", "amount_of_blocks": 1})
@@ -121,7 +123,7 @@ class BaseRPC:
             except RPCError as e:
                 # Check if the error indicates method not found vs other errors
                 error_str = str(e).lower()
-                if "method not found" in error_str or "unknown method" in error_str:
+                if "method not found" in error_str or "unknown method" in error_str or "404" in error_str:
                     result[method] = False
                 else:
                     # If we get other errors, the method exists but had parameter issues
@@ -158,7 +160,29 @@ class MoneroRPC(BaseRPC):
         super().__init__(host, port, timeout)
         # Initialize with common methods to check
         self.mining_methods = ["start_mining", "stop_mining", "mining_status", "generateblocks"]
-        
+
+    def _make_legacy_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """POST to a non-json_rpc daemon endpoint (e.g. /start_mining).
+
+        Legacy endpoints answer with a flat object carrying "status"
+        ("OK", "BUSY", "Failed, ...") instead of a json_rpc envelope.
+        Raises RPCError on transport failure or a non-JSON reply.
+        """
+        url = self.url.replace("/json_rpc", f"/{endpoint}")
+        try:
+            response = self.session.post(
+                url,
+                json=params or {},
+                timeout=self.timeout,
+                headers={"Content-Type": "application/json"},
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            raise RPCError(f"Request to /{endpoint} failed: {e}")
+        except ValueError as e:
+            raise RPCError(f"Non-JSON reply from /{endpoint}: {e}")
+
     def get_info(self) -> Dict[str, Any]:
         """Get general daemon information"""
         return self._make_request("get_info")
@@ -179,15 +203,15 @@ class MoneroRPC(BaseRPC):
         return self._make_request("get_peer_list")
         
     def start_mining(self, wallet_address: str, threads: int = 1) -> Dict[str, Any]:
-        """Start mining"""
+        """Start mining. Legacy endpoint, not json_rpc: POST /start_mining."""
         params = {
-            "wallet_address": wallet_address,
+            "miner_address": wallet_address,
             "threads_count": threads,
             "do_background_mining": False,
             "ignore_battery": True
         }
         try:
-            return self._make_request("start_mining", params)
+            return self._make_legacy_request("start_mining", params)
         except RPCError as e:
             error_str = str(e).lower()
             if "method not found" in error_str or "unknown method" in error_str:
@@ -195,11 +219,11 @@ class MoneroRPC(BaseRPC):
                 self.available_methods["start_mining"] = False
                 raise MethodNotAvailableError("start_mining method not available")
             raise
-        
+
     def stop_mining(self) -> Dict[str, Any]:
-        """Stop mining"""
+        """Stop mining. Legacy endpoint, not json_rpc: POST /stop_mining."""
         try:
-            return self._make_request("stop_mining")
+            return self._make_legacy_request("stop_mining")
         except RPCError as e:
             error_str = str(e).lower()
             if "method not found" in error_str or "unknown method" in error_str:
@@ -207,11 +231,11 @@ class MoneroRPC(BaseRPC):
                 self.available_methods["stop_mining"] = False
                 raise MethodNotAvailableError("stop_mining method not available")
             raise
-        
+
     def mining_status(self) -> Dict[str, Any]:
-        """Get mining status"""
+        """Get mining status. Legacy endpoint, not json_rpc: POST /mining_status."""
         try:
-            return self._make_request("mining_status")
+            return self._make_legacy_request("mining_status")
         except RPCError as e:
             error_str = str(e).lower()
             if "method not found" in error_str or "unknown method" in error_str:

@@ -12,6 +12,7 @@ import time
 import math
 import random
 import os
+import re
 import fcntl
 import logging
 from typing import Optional, Dict, Any
@@ -71,7 +72,20 @@ class AutonomousMinerAgent(BaseAgent):
 
         # Mining control
         self.mining_active = False
-        
+
+        # Native mining (docs/NATIVE_MINING.md): monerod's own miner thread,
+        # throttled by --sim-hash-interval-ms, does the mining; this agent
+        # only drives the lifecycle. Set by the orchestrator via attributes.
+        self.native_mode = self.attributes.get('mining_mode') == 'native'
+        self.hash_interval_ms = int(self.attributes.get('hash_interval_ms', '0') or 0)
+        self.daemon_log_path = self.attributes.get('daemon_log_path')
+        self.native_started = False
+        self.native_poll_interval = float(os.getenv('NATIVE_POLL_INTERVAL', '30'))
+        self._native_log_offset = 0
+        self._native_polls = 0
+        self._found_block_re = re.compile(
+            r"Found block ([0-9a-f]{64}|\S+) at height (\d+) for difficulty: (\d+)")
+
         # Statistics
         self.blocks_generated = 0
         self.total_mining_time = 0.0
@@ -126,9 +140,14 @@ class AutonomousMinerAgent(BaseAgent):
         self.mining_active = True
         self.mining_start_time = time.time()
         self.logger.info(f"Mining activated with hashrate weight {self.hashrate_pct}")
-        self.logger.info(f"Using difficulty-only mode: timing scales with LWMA difficulty adjustments")
-        self.logger.info(f"Base expected block time: {120.0 / (self.hashrate_pct / 100.0):.1f}s "
-                        f"(at baseline difficulty {self.baseline_difficulty})")
+        if self.native_mode:
+            self.logger.info(
+                f"Native mining mode: monerod mines at {self.hashrate_pct:.0f} h/s "
+                f"(hash interval {self.hash_interval_ms} ms); agent drives start/stop only")
+        else:
+            self.logger.info("Using difficulty-only mode: timing scales with LWMA difficulty adjustments")
+            self.logger.info(f"Base expected block time: {120.0 / (self.hashrate_pct / 100.0):.1f}s "
+                             f"(at baseline difficulty {self.baseline_difficulty})")
         
     def _get_mining_address(self) -> Optional[str]:
         """
@@ -543,7 +562,75 @@ class AutonomousMinerAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Unexpected error during block generation: {e}", exc_info=True)
             return False
-            
+
+    # ------------------------------------------------------------------
+    # Native mining mode
+    # ------------------------------------------------------------------
+    def _native_try_start(self) -> bool:
+        """Issue start_mining once the daemon accepts it.
+
+        monerod answers BUSY (or raises) until it considers itself
+        synchronized, which needs at least one peer; keep retrying.
+        """
+        try:
+            result = self.daemon_rpc.start_mining(self.wallet_address, threads=1)
+        except RPCError as e:
+            self.logger.info(f"start_mining not accepted yet ({e}); retrying")
+            return False
+        status = (result or {}).get('status', '')
+        if status == 'OK':
+            self.native_started = True
+            self.mining_start_time = self.mining_start_time or time.time()
+            self.logger.info("Native mining started (start_mining OK)")
+            return True
+        self.logger.info(f"start_mining returned status '{status}'; retrying")
+        return False
+
+    def _native_scan_found_blocks(self) -> int:
+        """Tail the daemon log for 'Found block' lines written by the miner
+        thread; count each once and mirror the generateblocks log line so
+        log-based tooling keeps working. Returns the number of new blocks."""
+        if not self.daemon_log_path:
+            return 0
+        new_blocks = 0
+        try:
+            with open(self.daemon_log_path, 'r', errors='replace') as f:
+                f.seek(self._native_log_offset)
+                for line in f:
+                    m = self._found_block_re.search(line)
+                    if not m:
+                        continue
+                    block_hash, height, difficulty = m.group(1), int(m.group(2)), int(m.group(3))
+                    self.blocks_generated += 1
+                    self.last_block_height = max(self.last_block_height, height)
+                    new_blocks += 1
+                    self.logger.info(f"Block generated: {block_hash}")
+                    self.logger.info(f"New height: {height}, difficulty: {difficulty}")
+                self._native_log_offset = f.tell()
+        except OSError as e:
+            self.logger.debug(f"Cannot read daemon log {self.daemon_log_path}: {e}")
+        return new_blocks
+
+    def _native_run_iteration(self) -> float:
+        """One poll of the native mining lifecycle."""
+        if not self.native_started:
+            return self.native_poll_interval if self._native_try_start() else 5.0
+        try:
+            status = self.daemon_rpc.mining_status()
+        except RPCError as e:
+            self.logger.warning(f"mining_status failed: {e}")
+            return self.native_poll_interval
+        if not status.get('active', False):
+            self.logger.warning("Daemon reports mining inactive; restarting")
+            self.native_started = False
+            self._native_try_start()
+            return 5.0
+        self._native_scan_found_blocks()
+        self._native_polls += 1
+        if self._native_polls % 10 == 0:
+            self._update_statistics()
+        return self.native_poll_interval
+
     def _update_statistics(self):
         """Update and log mining statistics"""
         current_time = time.time()
@@ -587,7 +674,10 @@ class AutonomousMinerAgent(BaseAgent):
         if not self.mining_active:
             self.logger.debug("Mining not active, sleeping 60s")
             return 60.0  # Check every minute if not mining
-            
+
+        if self.native_mode:
+            return self._native_run_iteration()
+
         # Calculate time until next block attempt
         next_block_time = self._calculate_next_block_time()
 
@@ -648,7 +738,15 @@ class AutonomousMinerAgent(BaseAgent):
     def _cleanup_agent(self):
         """Clean up autonomous miner resources and log final statistics"""
         self.logger.info("Autonomous miner shutting down...")
-        
+
+        if self.native_mode and self.daemon_rpc is not None:
+            try:
+                self._native_scan_found_blocks()
+                self.daemon_rpc.stop_mining()
+                self.logger.info("Native mining stopped (stop_mining)")
+            except (RPCError, MethodNotAvailableError, OSError) as e:
+                self.logger.warning(f"stop_mining during cleanup failed: {e}")
+
         # Log final statistics
         self._update_statistics()
         
