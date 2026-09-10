@@ -610,38 +610,49 @@ preflight_checks() {
         fi
     fi
 
-    # monerod-hf: conditional capability gate, same philosophy as the cuprate
-    # gate above — only fires when the config looks like a hard fork scenario
-    # (names monerod-hf or sets fakechain-hard-forks), so a stale or absent
-    # monerod-hf never blocks an ordinary run. The --help probe is the real
-    # check: a vanilla rebuild copied over monerod-hf would print the SAME
-    # version string, but cannot know the flag.
-    # Dev override: MONEROSIM_SKIP_HARDFORK_CHECK=1 ./run_sim.sh ...
-    local hf_bin="$HOME/.monerosim/bin/monerod-hf"
-    if [[ "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
-        log_warn "MONEROSIM_SKIP_HARDFORK_CHECK=1 — skipping monerod-hf check"
-    elif grep -qE 'monerod-hf|fakechain-hard-forks' "$CONFIG" 2>/dev/null; then
-        if [[ ! -x "$hf_bin" ]]; then
-            log_err "Config uses a hard fork schedule but no monerod-hf at $hf_bin"
-            log_info "Build it: ./setup.sh --hardfork"
+    # monerod-sim: conditional capability gate, same philosophy as the cuprate
+    # gate above — only fires when the config needs a patched daemon (names
+    # monerod-sim/monerod-hf, sets fakechain-hard-forks, or enables native
+    # mining), so a stale or absent monerod-sim never blocks an ordinary run.
+    # The --help probe is the real check: a vanilla rebuild copied over
+    # monerod-sim would print the SAME version string, but cannot know the flags.
+    # Dev override: MONEROSIM_SKIP_SIM_BINARY_CHECK=1 (MONEROSIM_SKIP_HARDFORK_CHECK=1 still honoured).
+    local sim_bin="$HOME/.monerosim/bin/monerod-sim"
+    [[ -x "$sim_bin" ]] || sim_bin="$HOME/.monerosim/bin/monerod-hf"
+    local needs_hf=0 needs_native=0
+    grep -qE 'monerod-hf|monerod-sim|fakechain-hard-forks' "$CONFIG" 2>/dev/null && needs_hf=1
+    grep -qE '^[[:space:]]*mode:[[:space:]]*native([[:space:]]|$)' "$CONFIG" 2>/dev/null && needs_native=1
+    if [[ "${MONEROSIM_SKIP_SIM_BINARY_CHECK:-0}" == "1" || "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
+        log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping monerod-sim check"
+    elif [[ $needs_hf == 1 || $needs_native == 1 ]]; then
+        if [[ ! -x "$sim_bin" ]]; then
+            log_err "Config needs the patched daemon but no monerod-sim at $HOME/.monerosim/bin/monerod-sim"
+            log_info "Build it: ./setup.sh --sim-binary"
             exit 1
         fi
         if [[ -f "$SCRIPT_DIR/monero.pin" ]]; then
-            local hf_ver hf_pin
-            hf_pin=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
-            hf_ver=$("$hf_bin" --version 2>&1 | head -n1)
-            if [[ "$hf_ver" != *"${hf_pin}"* ]]; then
-                log_err "monerod-hf is built from '$hf_ver', not pinned $hf_pin"
-                log_info "Fix: ./update.sh --hardfork --rebuild"
+            local sim_ver sim_pin
+            sim_pin=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
+            sim_ver=$("$sim_bin" --version 2>&1 | head -n1)
+            if [[ "$sim_ver" != *"${sim_pin}"* ]]; then
+                log_err "monerod-sim is built from '$sim_ver', not pinned $sim_pin"
+                log_info "Fix: ./update.sh --sim-binary --rebuild"
                 exit 1
             fi
         fi
-        if ! "$hf_bin" --help 2>/dev/null | grep -q 'fakechain-hard-forks'; then
-            log_err "monerod-hf does not carry the hard fork schedule patch (vanilla binary?)"
-            log_info "Fix: ./setup.sh --hardfork"
+        local sim_help
+        sim_help=$("$sim_bin" --help 2>/dev/null)
+        if [[ $needs_hf == 1 ]] && ! grep -q 'fakechain-hard-forks' <<< "$sim_help"; then
+            log_err "monerod-sim does not carry the hard fork schedule patch (vanilla binary?)"
+            log_info "Fix: ./setup.sh --sim-binary"
             exit 1
         fi
-        log_ok "monerod-hf matches pin and carries --fakechain-hard-forks"
+        if [[ $needs_native == 1 ]] && ! grep -q 'sim-hash-interval-ms' <<< "$sim_help"; then
+            log_err "monerod-sim does not carry the sim-mining patch (old monerod-hf build?)"
+            log_info "Fix: ./setup.sh --sim-binary"
+            exit 1
+        fi
+        log_ok "monerod-sim matches pin and carries the flags this config needs"
     fi
 
     # Parse stop_time from config

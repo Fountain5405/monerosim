@@ -36,7 +36,7 @@ REBUILD=false
 UPDATE_SHADOW=false
 UPDATE_MONERO=false
 UPDATE_CUPRATE=false
-UPDATE_HARDFORK=false
+UPDATE_SIM_BINARY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -60,8 +60,8 @@ while [[ $# -gt 0 ]]; do
             UPDATE_CUPRATE=true
             shift
             ;;
-        --hardfork)
-            UPDATE_HARDFORK=true
+        --sim-binary|--hardfork)
+            UPDATE_SIM_BINARY=true
             shift
             ;;
         -h|--help)
@@ -75,9 +75,11 @@ while [[ $# -gt 0 ]]; do
             echo "  --shadow        Update shadowformonero only"
             echo "  --monero        Update monero only"
             echo "  --cuprate       Update cuprate only (optional dep; skipped if not installed)"
-            echo "  --hardfork      Rebuild monerod-hf (vanilla monero.pin + hard fork schedule"
-            echo "                  patch) with --rebuild. Also rebuilt automatically whenever"
-            echo "                  monero is rebuilt and a monerod-hf is installed."
+            echo "  --sim-binary    Rebuild monerod-sim (vanilla monero.pin + hard fork schedule"
+            echo "                  and native-mining patches, aliased as monerod-hf) with"
+            echo "                  --rebuild. Also rebuilt automatically whenever monero is"
+            echo "                  rebuilt and a monerod-sim/monerod-hf is installed."
+            echo "  --hardfork      Synonym for --sim-binary."
             echo "  -h, --help      Show this help message"
             echo ""
             echo "Examples:"
@@ -324,52 +326,87 @@ rebuild_shadow() {
     cd "$SCRIPT_DIR"
 }
 
-rebuild_hardfork() {
-    # Rebuild monerod-hf: a detached worktree of the pinned monero checkout
-    # plus patches/monero-fakechain-hardforks.patch. Recreated from scratch so
-    # no stale patch state survives a pin bump; the main checkout stays vanilla.
+rebuild_sim_binary() {
+    # monerod-sim = vanilla monero (monero.pin) + every vendored patch, each
+    # flag-gated and stock when its flag is absent:
+    #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
+    #   patches/monero-sim-mining.patch           --sim-hash-interval-ms / --sim-rx-full-dataset
+    # One build serves the fork-schedule and native-mining features; monerod-hf
+    # is kept as a symlink alias so existing fork configs keep working.
     local monero_dir="$1"
-    local patch_file="$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
-    local hf_build_dir="$MONEROSIM_HOME/build/monero-hf"
-    if [[ ! -f "$patch_file" ]]; then
-        log_err "Patch not found: $patch_file — skipping monerod-hf rebuild"
+    local patches=(
+        "$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
+        "$SCRIPT_DIR/patches/monero-sim-mining.patch"
+    )
+    local p
+    for p in "${patches[@]}"; do
+        if [[ ! -f "$p" ]]; then
+            log_err "Patch not found: $p"
+            return
+        fi
+    done
+    if [[ ! -d "$monero_dir/.git" ]]; then
+        log_err "Monero checkout not found at $monero_dir (run the main setup first)"
         return
     fi
     local monero_ref
     monero_ref=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
-    log_info "Rebuilding monerod-hf ($monero_ref + hard fork schedule patch)..."
+    log_info "Rebuilding monerod-sim ($monero_ref + vendored patches)..."
+
+    # Build in a DETACHED WORKTREE of the pinned checkout. The patches are
+    # applied there and only there: the main checkout — and the primary
+    # monerod built from it — stays byte-for-byte vanilla. Recreated from
+    # scratch every run so no stale patch state can survive; ccache keeps the
+    # rebuild cheap.
+    local sim_build_dir="$MONEROSIM_HOME/build/monero-sim"
     mkdir -p "$MONEROSIM_HOME/build"
-    if [[ -d "$hf_build_dir" ]]; then
-        git -C "$monero_dir" worktree remove --force "$hf_build_dir" 2>/dev/null || rm -rf "$hf_build_dir"
-        git -C "$monero_dir" worktree prune 2>/dev/null || true
-    fi
+    local d
+    for d in "$sim_build_dir" "$MONEROSIM_HOME/build/monero-hf"; do
+        if [[ -d "$d" ]]; then
+            git -C "$monero_dir" worktree remove --force "$d" 2>/dev/null || rm -rf "$d"
+        fi
+    done
+    git -C "$monero_dir" worktree prune 2>/dev/null || true
     git -C "$monero_dir" fetch --tags --force origin >/dev/null 2>&1 || true
-    if ! git -C "$monero_dir" worktree add --detach "$hf_build_dir" "$monero_ref"; then
-        log_err "Could not create monero worktree at $monero_ref — monerod-hf NOT rebuilt"
+    if ! git -C "$monero_dir" worktree add --detach "$sim_build_dir" "$monero_ref"; then
+        log_err "Could not create monero worktree at $monero_ref (see monero.pin)"
         return
     fi
-    if ! git -C "$hf_build_dir" apply --check "$patch_file"; then
-        log_err "patches/monero-fakechain-hardforks.patch no longer applies to monero $monero_ref"
-        log_err "The patch must be rebased onto the new pin — monerod-hf NOT rebuilt"
+
+    # Tripwire: when monero.pin moves past what a patch applies to, fail
+    # loudly here instead of drifting silently. Applied in order.
+    for p in "${patches[@]}"; do
+        if ! git -C "$sim_build_dir" apply --check "$p"; then
+            log_err "$(basename "$p") no longer applies to monero $monero_ref"
+            log_err "The patch must be rebased onto the new pin (or upstreamed)."
+            return
+        fi
+        git -C "$sim_build_dir" apply "$p"
+    done
+    (cd "$sim_build_dir" && git submodule update --init --recursive)
+
+    log_info "Building patched monerod (monerod-sim, -j${BUILD_JOBS}) — this takes a while..."
+    if ! (cd "$sim_build_dir" && mkdir -p build/release && cd build/release \
+          && cmake -DCMAKE_BUILD_TYPE=Release ../.. > cmake.log 2>&1 \
+          && nice -n10 make -j"$BUILD_JOBS" daemon); then
+        log_err "monerod-sim build failed (see $sim_build_dir/build/release/cmake.log)"
         return
     fi
-    git -C "$hf_build_dir" apply "$patch_file"
-    (cd "$hf_build_dir" && git submodule update --init --recursive)
-    if (cd "$hf_build_dir" && mkdir -p build/release && cd build/release \
-        && cmake -DCMAKE_BUILD_TYPE=Release ../.. > cmake.log 2>&1 \
-        && nice -n10 make -j"$BUILD_JOBS" daemon); then
-        cp -f "$hf_build_dir/build/release/bin/monerod" "$MONEROSIM_BIN/monerod-hf"
-        {
-            echo "binary: monerod-hf"
-            echo "base: $monero_ref (monero.pin)"
-            echo "patch: patches/monero-fakechain-hardforks.patch"
-            echo "patch_sha256: $(sha256sum "$patch_file" | cut -d' ' -f1)"
-            echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        } > "$MONEROSIM_BIN/monerod-hf.provenance"
-        log_ok "monerod-hf rebuilt and installed to $MONEROSIM_BIN/monerod-hf"
-    else
-        log_err "monerod-hf build failed (see $hf_build_dir/build/release/cmake.log)"
-    fi
+
+    cp -f "$sim_build_dir/build/release/bin/monerod" "$MONEROSIM_BIN/monerod-sim"
+    # Alias for configs that predate the combined build (daemon: monerod-hf).
+    ln -sfn monerod-sim "$MONEROSIM_BIN/monerod-hf"
+    rm -f "$MONEROSIM_BIN/monerod-hf.provenance"
+    {
+        echo "binary: monerod-sim (alias: monerod-hf)"
+        echo "base: $monero_ref (monero.pin)"
+        for p in "${patches[@]}"; do
+            echo "patch: patches/$(basename "$p")"
+            echo "patch_sha256: $(sha256sum "$p" | cut -d' ' -f1)"
+        done
+        echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } > "$MONEROSIM_BIN/monerod-sim.provenance"
+    log_ok "Installed monerod-sim to $MONEROSIM_BIN/monerod-sim (alias monerod-hf)"
     cd "$SCRIPT_DIR"
 }
 
@@ -495,15 +532,16 @@ if [[ "$REBUILD" == "true" ]]; then
         fi
     fi
 
-    # monerod-hf goes stale whenever monero moves: rebuild it when explicitly
-    # asked (--hardfork) OR whenever monero was rebuilt and a monerod-hf is
-    # already installed (otherwise fork sims would silently run an old base).
-    if [[ "$UPDATE_HARDFORK" == "true" ]] \
-        || { [[ -x "$MONEROSIM_BIN/monerod-hf" ]] && { [[ "$MONERO_UPDATED" == "true" ]] || [[ "$UPDATE_MONERO" == "true" ]]; }; }; then
+    # monerod-sim goes stale whenever monero moves: rebuild it when explicitly
+    # asked (--sim-binary / --hardfork) OR whenever monero was rebuilt and a
+    # monerod-sim or monerod-hf is already installed (otherwise fork/native
+    # sims would silently run an old base).
+    if [[ "$UPDATE_SIM_BINARY" == "true" ]] \
+        || { [[ -x "$MONEROSIM_BIN/monerod-sim" || -x "$MONEROSIM_BIN/monerod-hf" ]] && { [[ "$MONERO_UPDATED" == "true" ]] || [[ "$UPDATE_MONERO" == "true" ]]; }; }; then
         if [[ -d "$DEPS_DIR/monero/.git" ]]; then
-            rebuild_hardfork "$DEPS_DIR/monero"
+            rebuild_sim_binary "$DEPS_DIR/monero"
         else
-            log_warn "monero checkout not found at $DEPS_DIR/monero — cannot rebuild monerod-hf"
+            log_warn "monero checkout not found at $DEPS_DIR/monero — cannot rebuild monerod-sim"
         fi
     fi
 elif [[ "$MONEROSIM_UPDATED" == "true" ]] || [[ "$SHADOW_UPDATED" == "true" ]] || [[ "$MONERO_UPDATED" == "true" ]] || [[ "$CUPRATE_UPDATED" == "true" ]]; then
