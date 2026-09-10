@@ -3,10 +3,18 @@
 
 Reads every miner's daemon stdout under <run_dir>/shadow.data/hosts/<miner>/
 and asserts: cadence, difficulty, block share, zero PoW rejections on relays.
+Tolerances for the cadence and per-miner share checks are statistical, not
+fixed: each is max(fixed floor, 2.5 sigma) where sigma is the sampling
+standard deviation implied by the number of blocks/intervals actually
+observed (binomial for share, 1/sqrt(k) for cadence). The fixed --*-tol
+values act as a floor so tiny sample sizes don't get an unbounded pass
+window; targets themselves are unchanged. Difficulty tolerance and the
+zero-rejections check stay fixed (not sample-size dependent).
 Exit 0 = PASS, 1 = FAIL. Prints a table either way.
 """
 import argparse
 import glob
+import math
 import re
 import statistics
 import sys
@@ -54,30 +62,36 @@ def main():
         nonlocal ok
         good = abs(value - target) <= tol
         ok &= good
-        rows.append((name, fmt.format(value), fmt.format(target), "PASS" if good else "FAIL"))
+        rows.append((name, fmt.format(value), fmt.format(target), "±" + fmt.format(tol), "PASS" if good else "FAIL"))
 
     n = len(all_blocks)
-    rows.append(("blocks found (all miners)", str(n), ">= %d" % (a.last + 5), "PASS" if n >= a.last + 5 else "FAIL"))
+    rows.append(("blocks found (all miners)", str(n), ">= %d" % (a.last + 5), "", "PASS" if n >= a.last + 5 else "FAIL"))
     ok &= n >= a.last + 5
     if n >= a.last + 5:
         tail = all_blocks[-a.last:]
         intervals = [(t2 - t1).total_seconds() for (_, t1, _), (_, t2, _) in zip(tail, tail[1:])]
-        check("mean interval, last %d (s)" % a.last, statistics.mean(intervals), 120.0, 120.0 * a.cadence_tol)
+        k = len(intervals)
+        cadence_tol = max(120.0 * a.cadence_tol, 2.5 * 120.0 / math.sqrt(k))
+        check("mean interval, last %d (s)" % a.last, statistics.mean(intervals), 120.0, cadence_tol)
         d_eq = 120 * total_hs
         check("difficulty, last block", tail[-1][2], d_eq, d_eq * a.difficulty_tol, "{:.0f}")
         for mid, hs in miners.items():
             share = 100.0 * len(per_miner[mid]) / n
-            check(f"share {mid} (%)", share, 100.0 * hs / total_hs, a.share_tol)
+            p = hs / total_hs
+            sigma_share = 100.0 * math.sqrt(p * (1 - p) / n)
+            share_tol = max(a.share_tol, 2.5 * sigma_share)
+            check(f"share {mid} (%)", share, 100.0 * hs / total_hs, share_tol)
     rejects = 0
     for f in glob.glob(f"{a.run_dir}/shadow.data/hosts/relay-*/monerod*.stdout"):
         with open(f, errors="replace") as fh:
             rejects += sum(1 for line in fh if REJECT.search(line))
-    rows.append(("PoW rejections on relays", str(rejects), "0", "PASS" if rejects == 0 else "FAIL"))
+    rows.append(("PoW rejections on relays", str(rejects), "0", "", "PASS" if rejects == 0 else "FAIL"))
     ok &= rejects == 0
 
-    w = max(len(r[0]) for r in rows)
+    wn = max(len(r[0]) for r in rows)
+    wt = max(len(r[3]) for r in rows)
     for r in rows:
-        print(f"{r[0]:<{w}}  {r[1]:>10}  {r[2]:>10}  {r[3]}")
+        print(f"{r[0]:<{wn}}  {r[1]:>10}  {r[2]:>10}  {r[3]:>{wt}}  {r[4]}")
     print("RESULT:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
 
