@@ -135,14 +135,17 @@ def test_validator_rejects_hand_set_knob_in_daemon_args():
 
 # --- Validator: daemon_N phases on native miners ----------------------------
 
-def test_validator_rejects_daemon_phases_on_native_miner():
+@pytest.mark.parametrize("extra", [
+    {"daemon_0": "monerod", "daemon_1": "monerod"},
+    # A lone suffix key (no bare daemon_0) still creates a phase entry in
+    # the orchestrator (src/config/agent_config.rs parse_typed_phases /
+    # has_daemon_phases) — the validator must catch this too.
+    {"daemon_0_start": "0s"},
+])
+def test_validator_rejects_daemon_phases_on_native_miner(extra):
     config = _config(
         _base_general({"mode": "native"}),
-        {
-            "miner-001": _miner(
-                extra={"daemon_0": "monerod", "daemon_1": "monerod"}
-            )
-        },
+        {"miner-001": _miner(extra=extra)},
     )
     report = ConfigValidator().validate(config)
     assert not report.is_valid
@@ -323,3 +326,26 @@ def test_load_request_extras_helper_empty_and_none():
 def test_load_request_extras_helper_rejects_non_object():
     with pytest.raises(ValueError):
         _load_request_extras("[1, 2, 3]")
+
+
+# --- CLI: malformed AI_CONFIG_REQUEST_EXTRAS surfaces as a clean error -----
+
+def test_cli_main_reports_clear_error_for_invalid_request_extras(monkeypatch, capsys):
+    """main() must not let get_llm_config()'s ValueError escape as a raw
+    traceback; it should print 'Error: ...' and return 1, with no network
+    call (the malformed env var is resolved before any LLMProvider/
+    ConfigGenerator is constructed)."""
+    import sys
+    from scripts.ai_config import __main__ as ai_config_main
+
+    monkeypatch.setenv("OPENAI_API_KEY", "x")
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://x")
+    monkeypatch.setenv("AI_CONFIG_REQUEST_EXTRAS", "{not valid json")
+    monkeypatch.setattr(sys, "argv", ["ai_config", "5 miners, 10 users, 2 hours"])
+
+    exit_code = ai_config_main.main()
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Error:" in captured.err
+    assert "Traceback" not in captured.err

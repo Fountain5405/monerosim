@@ -516,7 +516,13 @@ class ConfigValidator:
                     native_errors.append(
                         f"Agent '{aid}': hashrate {hr} h/s is out of range 1..=1000 "
                         "for native mode (--sim-hash-interval-ms cannot go below 1 ms)")
-                phase_keys = [k for k in agent_cfgs.get(aid, {}) if re.fullmatch(r'daemon_\d+', str(k))]
+                # Matches daemon_N and any of its four suffix variants
+                # (_start/_stop/_args/_env) — src/config/agent_config.rs's
+                # parse_typed_phases() creates a phase entry from any one of
+                # these alone (has_daemon_phases() doesn't require the bare
+                # daemon_N key to also be present).
+                phase_keys = [k for k in agent_cfgs.get(aid, {})
+                              if re.fullmatch(r'daemon_\d+(_(start|stop|args|env))?', str(k))]
                 if phase_keys:
                     native_errors.append(
                         f"Agent '{aid}': native mining does not support daemon phases on "

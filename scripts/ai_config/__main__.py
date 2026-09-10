@@ -123,10 +123,17 @@ Examples:
         sys.stdout.isatty()
     )
 
-    if use_interactive:
-        return run_interactive_mode(args)
-    else:
-        return run_direct_mode(args)
+    try:
+        if use_interactive:
+            return run_interactive_mode(args)
+        else:
+            return run_direct_mode(args)
+    except ValueError as e:
+        # get_llm_config() (called early by both modes) raises ValueError
+        # for a malformed AI_CONFIG_REQUEST_EXTRAS; surface it as a clear
+        # startup error instead of a raw traceback.
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 def get_llm_config(args):
