@@ -285,6 +285,117 @@ RESULT: PASS
 Same `Blocks created`/`Blocks propagated` PASS, `Transactions *` FAIL
 (expected, no transaction agents).
 
+### 300-node difficulty-adjustment run (`test_configs/native_daa_300_10h.yaml`, 10 sim-hours)
+
+The scale gate for this feature: 306 hosts (5 miners at 20 h/s, 245 stock
+`monerod` relays, 6 seeds, 50 transacting users, distributor, monitor) with
+a sixth miner of 200 h/s joining at 4h, so the network steps from 100 h/s
+to 300 h/s. Every validator is vanilla `monerod`; only the six miners run
+`monerod-sim`. Two runs were made with the same seed (20260910):
+
+| Run | Directory | Outcome |
+|---|---|---|
+| 1 | `archived_runs/20260910_195633_native_daa_300_10h` | froze at sim 5h56m (Shadow deadlock in the agents' blocking `flock`, see below); partial data through 5h56m, 6/7 checks pass, the seventh has no data |
+| 2 | `archived_runs/20260911_025410_native_daa_300_10h_r2` | complete: 10 sim-hours in 7h52m wall, 307 nodes online, 100% sync, 406 blocks, 6114 transactions created / 6047 included, 0 PoW rejections, **7/7 checks pass** |
+
+Run 2 had one failed process: user-028's `monero-wallet-rpc` died with
+`std::bad_alloc` during a refresh at sim 4h26m. That is the crash class
+described in `docs/20260717_wallet_crash_root_cause.md`, believed fixed by
+the v0.18.5.1 bump; it is now rare rather than extinct. It costs one of
+fifty transacting users and does not touch mining.
+
+Checker: `scripts/native_daa_analysis.py <run_dir> --join-time 4h --png`
+(outputs `report.md`, `blocks.csv` and a difficulty/interval figure; copies
+are in each run directory under `analysis/`). Run 2 verdicts:
+
+| Check | Measured | Verdict |
+|---|---|---|
+| pre-join plateau within 25% of 120 × 100 h/s = 12000 | D = 11231 at 4h | PASS |
+| hours 1-4 mean interval within `120/√k` of 120 s | 116.5 s, k = 123 | PASS |
+| burst: mean of first 20 post-join intervals < 90 s | 42.4 s | PASS |
+| end difficulty within ±25% of monerod's window formula | 26783 vs 26364, ratio 1.02 | PASS |
+| last-2h block count within 2.5σ of the window formula | 89 vs 85.5 expected (80.0 s vs 84.2 s mean interval) | PASS |
+| miner-006 post-join share within 2.5σ of 66.7% | 65.2% (212 of 325), σ = 2.6 | PASS |
+| PoW rejections on any relay | 0 | PASS |
+
+Difficulty at the checkpoints, measured against the formula derived below:
+
+| Checkpoint | Measured | Formula | Ratio |
+|---|---|---|---|
+| at join (4h) | 11231 | 12000 | 0.94 |
+| join + 1h | 16453 | 16792 | 0.98 |
+| join + 2h | 20686 | 19974 | 1.04 |
+| join + 3h | 23432 | 22172 | 1.06 |
+| end (10h) | 26783 | 26364 | 1.02 |
+
+Run 1's partial data gives the same picture (join 0.89, +1h 1.00, +2h
+1.02), so the agreement is not a one-run accident.
+
+Per-hour production in run 2 shows the plateau, the burst and the
+recovery:
+
+| Sim hour | Blocks | Mean interval | Difficulty at hour end |
+|---|---|---|---|
+| 1 | 40 | 91.4 s | 12064 |
+| 2 | 30 | 113.6 s | 12376 |
+| 3 | 24 | 155.0 s | 11223 |
+| 4 | 30 | 121.4 s | 11231 |
+| 5 | 81 | 44.9 s | 16453 |
+| 6 | 67 | 53.3 s | 20686 |
+| 7 | 53 | 64.6 s | 23432 |
+| 8 | 35 | 106.8 s | 23912 |
+| 9 | 49 | 73.5 s | 25864 |
+| 10 | 40 | 88.0 s | 26783 |
+
+Pre-join shares were 24.2 / 16.9 / 17.7 / 21.0 / 20.2% for the five equal
+miners (σ = 3.6 points); post-join the five kept 5.2-8.3% each against an
+expected 6.7% (σ = 1.4). Four stale finds occurred, all in the first four
+warm-up blocks, none afterwards.
+
+**What the run taught about monerod's difficulty algorithm.** The
+expectations pre-registered in the config header assumed the difficulty
+would converge toward the new equilibrium (120 × 300 h/s = 36000) within
+the run. It does not, and the reason is the algorithm, not the simulator:
+`next_difficulty` takes the last 735 blocks, drops the 15 newest, cuts 60
+outliers from each end of the remaining 720, and divides the summed work
+in the window by its time span. Until 600 blocks exist there is no cut and
+no lag: the window is the whole chain since block 1. The summed work of
+the blocks found in a span equals, in expectation, the hashes spent in
+that span, so the difficulty is simply 120 × the time-averaged hashrate
+since block 1: 16800 at 5h, 20000 at 6h, 26400 at 10h, and the last two
+hours run at about D/300 ≈ 84 s per block rather than 120 s. This was
+derived at sim 5h56m of run 1, before it ended, and recorded as a dated
+addendum in the config header; `scripts/native_daa_analysis.py` computes
+every difficulty expectation from that window formula (it also handles
+the cut and lag once a chain passes 600 and 735 blocks). The convergence
+to 36000 happens only once the window holds nothing but post-join blocks,
+about 720 blocks or 24 hours after the join, which is the same response
+time mainnet has to a hashrate step.
+
+**Why run 1 froze.** At sim 5h56m the whole simulation stopped advancing
+with every managed thread asleep and all 63 Shadow workers spinning. A
+`gdb` backtrace showed one worker blocked inside a native `flock()` made
+on behalf of a user agent, on `shared/transactions.lock`. Every user
+agent appended its sent transaction to `transactions.json` under a
+blocking exclusive `flock`; Shadow executes `flock` natively on its worker
+thread, so once native preemption paused the lock holder mid-rewrite (by
+then a 2597-entry, 862 KB file), the next agent's `flock` parked Shadow's
+worker in the kernel and the holder could never be scheduled to release.
+Nothing about native mining is involved; any long run with many
+transacting users can hit it. The fix (`agents/file_locking.py`, merged
+here) polls with `LOCK_NB` and sleeps between attempts, which yields
+simulated time. Run 2 logged zero lock-wait timeouts in ten sim-hours. A
+follow-up design that removes the shared lock entirely is in
+`docs/superpowers/specs/2026-09-11-per-writer-jsonl-transaction-log-design.md`.
+
+**Wall cost at this scale.** Run 2 took 7h52m of wall time for 10
+sim-hours; the same topology in `generateblocks` mode does 8 sim-hours in
+about 2.5 wall-hours. The bootstrap phase (all 300 daemons starting) is
+identical in both modes; the difference is the RandomX work, 300 hashes
+per sim-second after the join at roughly 1.5 ms each with the full
+dataset, which is serialised per miner. Before the join the run advanced
+about 1.4 sim-hours per wall-hour, after it about 1.25.
+
 ### A/A determinism
 
 Two same-seed runs of `native_micro.yaml`, compared on the sorted
@@ -334,6 +445,13 @@ e.g. `python3 scripts/native_mining_check.py archived_runs/<run> --miners miner-
 Run this after any native-mining run to check cadence, difficulty, per-miner
 block share, and PoW rejections against the tolerances described above.
 Exit 0 = PASS, 1 = FAIL; it prints the comparison table either way.
+
+The 300-node difficulty run (about 8 wall-hours, ~130 GB RAM):
+
+```bash
+nice -n10 ./run_sim.sh --config test_configs/native_daa_300_10h.yaml --name native_daa_300_10h --no-monitor
+python3 scripts/native_daa_analysis.py archived_runs/<run_id> --join-time 4h --png   # --png needs matplotlib
+```
 
 ## 8. Fidelity notes and limits
 

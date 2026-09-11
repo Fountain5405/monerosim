@@ -10,6 +10,10 @@
   read as literal hashes/second (not a weight, as in `generateblocks` mode).
   Validators need no patch. Default stays `generateblocks`.
   See `docs/NATIVE_MINING.md`.
+  Validated at 300 nodes over 10 sim-hours with a 200 h/s miner joining at
+  4h: difficulty follows monerod's own window formula within 6% at every
+  checkpoint, late-joiner share 65.2% vs 66.7% expected, 0 PoW rejections
+  (`docs/NATIVE_MINING.md` §7).
   **Change:** `./setup.sh --hardfork` now builds `monerod-sim` (hard-fork +
   mining patches) and installs `monerod-hf` as a symlink alias; `--sim-binary`
   is the new spelling.
