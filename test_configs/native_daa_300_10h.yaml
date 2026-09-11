@@ -11,6 +11,13 @@
 #   blocks, so the retarget takes hours); last-2h interval 90-130 s; miner-006 share ~66.7%
 #   from 4h on; 100% sync, 0 PoW rejections, 0 failed processes; txs created + included.
 # Every validator is vanilla monerod: the run also tests stock daemons accepting native blocks.
+# Addendum 2026-09-11 (written at sim-time 5h56m of run 1, before it ended; derived from monerod's
+# algorithm, not fitted to data): the "D 25000-36000 by 10h" and "last-2h interval 90-130 s" lines above
+# were mis-derived. With fewer than 600 blocks, next_difficulty spans the WHOLE history, so
+# D(t) = 120 x time-averaged hashrate since block 1: 16800 at 5h, 20000 at 6h, 26400 at 10h, and the
+# expected last-2h spacing is ~80-88 s (D/300). Run 1 measured 16840 at 5h and 20136 at 6h, then froze
+# at 5h56m on the agents' blocking-flock deadlock (fixed: agents/file_locking.py). The analysis script
+# (scripts/native_daa_analysis.py) now derives every difficulty expectation from the window formula.
 general:
   stop_time: 10h
   simulation_seed: 20260910
