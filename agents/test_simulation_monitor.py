@@ -5,11 +5,14 @@ records initial transaction-tracking state. We patch AgentDiscovery to a
 no-op for hermetic isolation, then exercise the constructor's expected
 shape and the status-file initializer.
 """
+import json
 import os
 
 import pytest
 
+from agents.shared_records import RecordWriter
 from agents.simulation_monitor import SimulationMonitorAgent
+from agents.simulation_monitor.agent import summarize_transaction_records
 
 
 @pytest.fixture(autouse=True)
@@ -117,3 +120,74 @@ def test_transaction_status_pool_delta_reads_nested_key(shared_dir):
     out = buf.getvalue()
     # With the bug (top-level lookup -> curr_pool=0) this line read "10".
     assert "Transactions Processed: 7" in out
+
+
+# ---------------------------------------------------------------------------
+# _read_transaction_data: per-writer directory, legacy array fallback
+# ---------------------------------------------------------------------------
+
+def test_summarize_transaction_records_counts_unique_hashes_and_per_node():
+    """Pure function: two writers, a hash duplicated across their records,
+    and one record using the legacy singular ``tx_hash`` field."""
+    records = [
+        {"tx_hashes": ["hash-a"], "sender_id": "user-1",
+         "writer_id": "user-1", "seq": 1},
+        {"tx_hashes": ["hash-a"], "sender_id": "user-2",
+         "writer_id": "user-2", "seq": 1},
+        {"tx_hash": "hash-b", "sender_id": "user-2",
+         "writer_id": "user-2", "seq": 2},
+    ]
+
+    unique_hashes, tx_created_by_node, total_created = \
+        summarize_transaction_records(records)
+
+    assert unique_hashes == {"hash-a", "hash-b"}
+    assert tx_created_by_node == {"user-1": 1, "user-2": 2}
+    assert total_created == 3
+
+
+def test_read_transaction_data_prefers_directory_over_legacy_array(shared_dir):
+    """When both layouts are present, the transactions/ directory wins."""
+    writer = RecordWriter(shared_dir, "transactions", "dir-writer")
+    writer.append({
+        "tx_hashes": ["dir-hash"], "sender_id": "dir-writer",
+        "recipients": [], "total_amount": 1.0, "timestamp": 1.0,
+    })
+    writer.close()
+
+    (shared_dir / "transactions.json").write_text(json.dumps([{
+        "tx_hashes": ["legacy-hash"], "sender_id": "legacy-writer",
+        "recipients": [], "total_amount": 1.0, "timestamp": 1.0,
+    }]))
+
+    agent = SimulationMonitorAgent(
+        agent_id="simulation-monitor", shared_dir=shared_dir, attributes=[],
+    )
+    # SimulationMonitorAgent.__init__ doesn't forward shared_dir to
+    # BaseAgent (pre-existing, unrelated bug); pin it via the setter so
+    # this test exercises _read_transaction_data against our temp dir.
+    agent.shared_dir = shared_dir
+    agent._read_transaction_data()
+
+    assert agent.transaction_stats["unique_tx_hashes"] == {"dir-hash"}
+    assert agent.transaction_stats["tx_created_by_node"] == {"dir-writer": 1}
+    assert agent.transaction_stats["total_created"] == 1
+
+
+def test_read_transaction_data_legacy_array_fallback(shared_dir):
+    """No transactions/ directory: fall back to the legacy JSON array."""
+    (shared_dir / "transactions.json").write_text(json.dumps([{
+        "tx_hashes": ["legacy-hash"], "sender_id": "legacy-writer",
+        "recipients": [], "total_amount": 1.0, "timestamp": 1.0,
+    }]))
+
+    agent = SimulationMonitorAgent(
+        agent_id="simulation-monitor", shared_dir=shared_dir, attributes=[],
+    )
+    # See the "prefers directory" test above for why this is needed.
+    agent.shared_dir = shared_dir
+    agent._read_transaction_data()
+
+    assert agent.transaction_stats["unique_tx_hashes"] == {"legacy-hash"}
+    assert agent.transaction_stats["tx_created_by_node"] == {"legacy-writer": 1}
+    assert agent.transaction_stats["total_created"] == 1
