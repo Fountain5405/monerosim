@@ -98,7 +98,8 @@ class SimulationMonitorAgent(BaseAgent):
             log_level: Logging level
             **kwargs: Additional arguments passed to BaseAgent
         """
-        super().__init__(agent_id=agent_id, log_level=log_level, **kwargs)
+        super().__init__(agent_id=agent_id, shared_dir=shared_dir,
+                         log_level=log_level, **kwargs)
 
         self.poll_interval = poll_interval
         self.output_dir = Path(output_dir) if output_dir else None

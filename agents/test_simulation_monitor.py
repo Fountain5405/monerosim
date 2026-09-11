@@ -40,6 +40,18 @@ def test_constructor_does_not_raise(shared_dir):
     assert agent.max_historical_entries == 1000
 
 
+def test_constructor_forwards_shared_dir(shared_dir):
+    """An explicit shared_dir must reach BaseAgent; it used to be dropped,
+    leaving the monitor on the MONEROSIM_SHARED_DIR default."""
+    agent = SimulationMonitorAgent(
+        agent_id="simulation-monitor",
+        shared_dir=shared_dir,
+        poll_interval=60,
+        attributes=[],
+    )
+    assert agent.shared_dir == shared_dir
+
+
 def test_transaction_stats_initial_shape(shared_dir):
     """The per-iteration tracking dict has all the expected keys at startup."""
     agent = SimulationMonitorAgent(
