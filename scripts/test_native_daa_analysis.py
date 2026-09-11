@@ -22,6 +22,11 @@ from scripts.native_daa_analysis import (
     assign_regimes,
     per_regime_miner_table,
     make_verdicts,
+    hashes_in,
+    active_hashrate,
+    monerod_window,
+    theory_difficulty_at_time,
+    expected_blocks,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -176,6 +181,81 @@ def test_per_regime_miner_table_skewed_share_fails():
 
 
 # ---------------------------------------------------------------------------
+# monerod difficulty-window theory: hashes_in / active_hashrate /
+# monerod_window / theory_difficulty_at_time / expected_blocks
+# ---------------------------------------------------------------------------
+def test_hashes_in():
+    miners = {"a": {"hashrate": 100.0, "start_s": 0.0}, "b": {"hashrate": 200.0, "start_s": 14400.0}}
+    assert hashes_in(miners, 0, 36000) == pytest.approx(100 * 36000 + 200 * 21600)
+    assert hashes_in(miners, 0, 10000) == pytest.approx(100 * 10000)
+    assert hashes_in(miners, 20000, 10000) == 0.0
+
+
+def test_active_hashrate():
+    miners = {"a": {"hashrate": 100.0, "start_s": 0.0}, "b": {"hashrate": 200.0, "start_s": 14400.0}}
+    assert active_hashrate(miners, 0) == pytest.approx(100.0)
+    assert active_hashrate(miners, 14399) == pytest.approx(100.0)
+    assert active_hashrate(miners, 14400) == pytest.approx(300.0)
+
+
+def _height_list(n, spacing=120.0):
+    """N synthetic blocks at heights 1..N, spaced `spacing` seconds apart
+    (only "height" and "sim_time_s" matter to monerod_window)."""
+    return [{"height": i + 1, "sim_time_s": (i + 1) * spacing} for i in range(n)]
+
+
+@pytest.mark.parametrize("n,h,expected", [
+    (50, 51, (0, 50)),
+    (700, 701, (50, 650)),
+    (800, 801, (125, 725)),
+])
+def test_monerod_window(n, h, expected):
+    accepted = _height_list(n)
+    assert monerod_window(accepted, h) == expected
+
+
+def _step_scenario_chain():
+    """Reference late-joiner scenario: miner 'a' at 100 h/s from t=0, miner
+    'b' joins at t=14400 (4h) with 200 h/s. Blocks every 120s pre-join and
+    every 60s post-join (both consistent with 120 * active hashrate at
+    equilibrium) so the block count stays under 600 for the whole 10h run.
+    """
+    accepted = []
+    h, t = 1, 120.0
+    while t <= 14400.0 + 1e-9:
+        accepted.append({"height": h, "sim_time_s": t, "miner": "a",
+                          "difficulty": 12000, "interval_s": 120.0, "regime": "pre"})
+        h += 1
+        t += 120.0
+    t = 14460.0
+    while t <= 36000.0 + 1e-9:
+        accepted.append({"height": h, "sim_time_s": t, "miner": "b",
+                          "difficulty": 20000, "interval_s": 60.0, "regime": "post"})
+        h += 1
+        t += 60.0
+    miners = {"a": {"hashrate": 100.0, "start_s": 0.0}, "b": {"hashrate": 200.0, "start_s": 14400.0}}
+    return accepted, miners
+
+
+def test_theory_difficulty_at_time_constant_hashrate():
+    accepted = _height_list(300)  # 300 * 120s = 36000s
+    miners = {"a": {"hashrate": 100.0, "start_s": 0.0}}
+    assert theory_difficulty_at_time(accepted, miners, 36000.0) == pytest.approx(12000.0, rel=0.01)
+
+
+def test_theory_difficulty_at_time_step_scenario():
+    accepted, miners = _step_scenario_chain()
+    assert theory_difficulty_at_time(accepted, miners, 18000.0) == pytest.approx(16800.0, rel=0.01)
+    assert theory_difficulty_at_time(accepted, miners, 36000.0) == pytest.approx(26400.0, rel=0.01)
+
+
+def test_expected_blocks_constant_hashrate():
+    accepted = _height_list(300)  # 300 * 120s = 36000s
+    miners = {"a": {"hashrate": 100.0, "start_s": 0.0}}
+    assert expected_blocks(accepted, miners, 28800.0, 36000.0) == pytest.approx(60.0, rel=0.02)
+
+
+# ---------------------------------------------------------------------------
 # end-difficulty verdict: +/-25% tolerance, not a hard 1.0x ceiling
 # ---------------------------------------------------------------------------
 def _find_verdict(verdicts, name_substr):
@@ -185,27 +265,30 @@ def _find_verdict(verdicts, name_substr):
     raise AssertionError(f"no verdict matched {name_substr!r}")
 
 
-def test_end_difficulty_verdict_allows_a_few_percent_overshoot():
-    d_eq = 12000.0
-    diffcp = {"checkpoints": {"at_end": None}, "d_pre_eq": d_eq, "d_post_eq": d_eq}
-    windows = {"pre_h1_4": [], "first20": None, "last2h": []}
-    miners = {"m1": {"hashrate": 100, "start_s": 0.0}}
+def test_end_difficulty_verdict_uses_theory_centre_not_old_band():
+    # The verdict's tolerance band is still +/-25%, but its centre is now
+    # monerod's own difficulty-window theory (theory_end, computed below
+    # from the step scenario), not the fixed post-join equilibrium D_post_eq
+    # used previously. 40000 sits inside the *old* band ([0.75, 1.25] x
+    # d_post_eq=36000 -> [27000, 45000]) but outside the new theory band,
+    # so it now FAILs; that is the point of the model change.
+    accepted, miners = _step_scenario_chain()
+    theory_end = theory_difficulty_at_time(accepted, miners, accepted[-1]["sim_time_s"])
+    assert theory_end == pytest.approx(26400.0, rel=0.01)
+    diffcp = {"checkpoints": {"at_end_theory": theory_end}, "d_pre_eq": 12000.0, "d_post_eq": 36000.0}
+    windows = {"pre_h1_4": [], "first20": None, "last2h": [], "run_end": accepted[-1]["sim_time_s"]}
 
-    # D_end = 1.01 x D_eq: a real LWMA overshoot within +/-25%, must PASS
-    # (the old hard 1.0x ceiling would have failed this).
-    accepted_high = [{"height": 1, "sim_time_s": 0.0, "miner": "m1",
-                       "difficulty": d_eq * 1.01, "interval_s": None, "regime": "n/a"}]
+    accepted_pass = accepted[:-1] + [dict(accepted[-1], difficulty=26400)]
     status, detail = _find_verdict(
-        make_verdicts(accepted_high, miners, None, diffcp, windows, {}, 0),
+        make_verdicts(accepted_pass, miners, None, diffcp, windows, {}, 0),
         "end difficulty",
     )
     assert status == "PASS", detail
 
-    # D_end = 0.70 x D_eq: outside +/-25%, must FAIL.
-    accepted_low = [{"height": 1, "sim_time_s": 0.0, "miner": "m1",
-                      "difficulty": d_eq * 0.70, "interval_s": None, "regime": "n/a"}]
+    # 40000 > 1.25 x 26400, even though it is inside the old [27000, 45000] band.
+    accepted_fail = accepted[:-1] + [dict(accepted[-1], difficulty=40000)]
     status, detail = _find_verdict(
-        make_verdicts(accepted_low, miners, None, diffcp, windows, {}, 0),
+        make_verdicts(accepted_fail, miners, None, diffcp, windows, {}, 0),
         "end difficulty",
     )
     assert status == "FAIL", detail

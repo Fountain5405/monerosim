@@ -11,6 +11,13 @@ mining (docs/NATIVE_MINING.md). See the module docstring in
 scripts/native_mining_check.py for the underlying log-format assumptions;
 this script reuses its FOUND/REJECT regexes.
 
+The end-difficulty and last-2h cadence verdicts (4 and 5) compare the run
+against monerod's own get_difficulty_for_next_block window formula (120 x
+hashes performed inside that window / window time-span), not a fixed
+post-join-equilibrium band, because that window has not converged to
+120*sum(hashrate) after only a few hundred blocks. See theory_difficulty_at
+/ theory_difficulty_at_time / expected_blocks below.
+
 Usage:
     python3 scripts/native_daa_analysis.py <run_dir> [--join-time 4h]
         [--out <dir>] [--png]
@@ -47,6 +54,14 @@ STALE = re.compile(r"found block at height (\d+) was not added to the main chain
 _SIM_EPOCH = datetime(2000, 1, 1)
 _DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([smh]?)\s*$")
 _DURATION_MULT = {"s": 1.0, "m": 60.0, "h": 3600.0}
+
+# monerod's next_difficulty window (src/cryptonote_basic/difficulty.cpp,
+# blockchain.cpp get_difficulty_for_next_block).
+DIFFICULTY_TARGET = 120.0
+DIFFICULTY_WINDOW = 720
+DIFFICULTY_CUT = 60
+DIFFICULTY_LAG = 15
+DIFFICULTY_BLOCKS_COUNT = 735
 
 
 # ----------------------------------------------------------------------
@@ -328,6 +343,117 @@ def difficulty_value_at(accepted: list, t: float):
     return candidates[-1]["difficulty"] if candidates else None
 
 
+# ----------------------------------------------------------------------
+# monerod difficulty-window theory
+#
+# In expectation, the sum of the difficulties of the blocks found inside a
+# time interval equals the number of hashes performed in that interval
+# (each hash succeeds with probability 1/D and contributes D). Modelling
+# monerod's own next_difficulty window (see DIFFICULTY_* above) this way
+# gives a difficulty prediction that tracks a not-yet-converged run
+# (join-time hashrate steps, still-growing window) instead of assuming the
+# fixed post-join equilibrium 120 * sum(all hashrate).
+# ----------------------------------------------------------------------
+def hashes_in(miners: dict, a: float, b: float) -> float:
+    """Expected number of hashes performed by `miners` during [a, b)."""
+    if b <= a:
+        return 0.0
+    total = 0.0
+    for info in miners.values():
+        total += info["hashrate"] * max(0.0, b - max(a, info["start_s"]))
+    return total
+
+
+def active_hashrate(miners: dict, t: float) -> float:
+    """Sum of hashrate of miners already started (start_s <= t) at time t."""
+    return sum(info["hashrate"] for info in miners.values() if info["start_s"] <= t)
+
+
+def monerod_window(accepted: list, h: int):
+    """(index_begin, index_end_exclusive) into `accepted` for the blocks
+    monerod's next_difficulty would use to compute the difficulty of height
+    h, applying the 735 / 720 / 600 rules (see module docstring). Returns
+    None if fewer than 2 blocks are available for the window.
+
+    accepted[i] is assumed to hold height i+1 (genesis, height 0, is never
+    in the accepted list - verified against build_accepted's FOUND-based
+    heights, which start at 1).
+    """
+    n = len(accepted)
+    if n < 2 or h < 2:
+        return None
+    lo_h = max(1, h - DIFFICULTY_BLOCKS_COUNT)
+    hi_h = h - 1
+    if hi_h < lo_h:
+        return None
+    hi_h = min(hi_h, n)  # can't use blocks that don't exist yet
+    begin = lo_h - 1  # index of height lo_h
+    end = hi_h  # exclusive end index (index of height hi_h is hi_h - 1)
+    if end - begin > DIFFICULTY_WINDOW:
+        end = begin + DIFFICULTY_WINDOW  # keep the oldest 720, drop the DIFFICULTY_LAG=15 newest
+    length = end - begin
+    if length < 2:
+        return None
+    cut = DIFFICULTY_WINDOW - 2 * DIFFICULTY_CUT  # 600
+    if length <= cut:
+        cut_begin, cut_end = 0, length
+    else:
+        cut_begin = (length - cut + 1) // 2
+        cut_end = cut_begin + cut
+    idx_begin, idx_end = begin + cut_begin, begin + cut_end
+    if idx_end - idx_begin < 2:
+        return None
+    return (idx_begin, idx_end)
+
+
+def theory_difficulty_at(accepted: list, miners: dict, h: int):
+    """D_theory(h) = 120 * hashes_in(window) / window span, using monerod's
+    own difficulty window for height h. None if the window is unavailable
+    or its span is 0.
+    """
+    window = monerod_window(accepted, h)
+    if window is None:
+        return None
+    idx_begin, idx_end = window
+    a = accepted[idx_begin]["sim_time_s"]
+    b = accepted[idx_end - 1]["sim_time_s"]
+    span = b - a
+    if span <= 0:
+        return None
+    return DIFFICULTY_TARGET * hashes_in(miners, a, b) / span
+
+
+def theory_difficulty_at_time(accepted: list, miners: dict, t: float):
+    """D_theory for the next block after the last accepted block with
+    sim_time_s <= t. None if there is no such block or the theory window
+    is unavailable.
+    """
+    candidates = [r for r in accepted if r["sim_time_s"] <= t]
+    if not candidates:
+        return None
+    h = candidates[-1]["height"] + 1
+    return theory_difficulty_at(accepted, miners, h)
+
+
+def expected_blocks(accepted: list, miners: dict, t0: float, t1: float, step_s: float = 60.0) -> float:
+    """Numerical integral of active_hashrate(t) / theory_difficulty_at_time(t)
+    over [t0, t1] (a step's contribution is skipped where the theory is
+    unavailable). Each step is sampled at its midpoint.
+    """
+    if t1 <= t0:
+        return 0.0
+    total = 0.0
+    t = t0
+    while t < t1:
+        seg_end = min(t + step_s, t1)
+        mid = (t + seg_end) / 2.0
+        theory = theory_difficulty_at_time(accepted, miners, mid)
+        if theory:
+            total += active_hashrate(miners, mid) / theory * (seg_end - t)
+        t = seg_end
+    return total
+
+
 def difficulty_checkpoints(accepted: list, join_time, miners: dict) -> dict:
     if join_time is None:
         pre_hashrate = sum(info["hashrate"] for info in miners.values())
@@ -336,11 +462,18 @@ def difficulty_checkpoints(accepted: list, join_time, miners: dict) -> dict:
     post_hashrate = sum(info["hashrate"] for info in miners.values())
     checkpoints = {}
     if join_time is not None:
-        checkpoints["at_join"] = difficulty_value_at(accepted, join_time)
-        checkpoints["join+1h"] = difficulty_value_at(accepted, join_time + 3600)
-        checkpoints["join+2h"] = difficulty_value_at(accepted, join_time + 2 * 3600)
-        checkpoints["join+3h"] = difficulty_value_at(accepted, join_time + 3 * 3600)
+        for name, t in (
+            ("at_join", join_time),
+            ("join+1h", join_time + 3600),
+            ("join+2h", join_time + 2 * 3600),
+            ("join+3h", join_time + 3 * 3600),
+        ):
+            checkpoints[name] = difficulty_value_at(accepted, t)
+            checkpoints[f"{name}_theory"] = theory_difficulty_at_time(accepted, miners, t)
     checkpoints["at_end"] = accepted[-1]["difficulty"] if accepted else None
+    checkpoints["at_end_theory"] = (
+        theory_difficulty_at_time(accepted, miners, accepted[-1]["sim_time_s"]) if accepted else None
+    )
     return {
         "checkpoints": checkpoints,
         "d_pre_eq": 120.0 * pre_hashrate,
@@ -420,30 +553,46 @@ def make_verdicts(accepted, miners, join_time, diffcp, windows, regime_table, re
             status, detail = "N/A", "no post-join blocks"
         v.append(("post-join burst: mean of first 20 post-join intervals < 90s", status, detail))
 
-    # 4. end difficulty vs post equilibrium (LWMA legitimately overshoots
-    # its target by a few percent in either direction, so this uses the
-    # same +/-25% tolerance as the pre-join plateau rule rather than a
-    # hard 1.0x ceiling).
+    # 4. end difficulty vs monerod's own difficulty-window theory (LWMA
+    # legitimately overshoots its target by a few percent in either
+    # direction, so this keeps the same +/-25% tolerance as the pre-join
+    # plateau rule rather than a hard 1.0x ceiling - just centred on the
+    # theory value instead of the fixed post-join equilibrium, since the
+    # window has not converged to that equilibrium within this run).
     d_post_eq = diffcp["d_post_eq"]
-    if accepted and d_post_eq > 0:
+    theory_end = diffcp["checkpoints"].get("at_end_theory")
+    if accepted and theory_end:
         d_end = accepted[-1]["difficulty"]
-        lo, hi = 0.75 * d_post_eq, 1.25 * d_post_eq
+        lo, hi = 0.75 * theory_end, 1.25 * theory_end
         status = "PASS" if lo <= d_end <= hi else "FAIL"
-        detail = f"D_end={d_end} range=[{lo:.0f},{hi:.0f}]"
+        ratio = d_end / theory_end
+        detail = (f"D_end={d_end} theory={theory_end:.0f} ratio={ratio:.2f} "
+                  f"(asymptote D_post_eq={d_post_eq:.0f})")
     else:
-        status, detail = "N/A", "no blocks"
-    v.append(("end difficulty in [0.75, 1.25] x D_post_eq", status, detail))
+        status, detail = "N/A", "no blocks" if not accepted else "theory unavailable"
+    v.append(("end difficulty within [0.75, 1.25] x theory", status, detail))
 
-    # 5. last-2h mean interval
-    k2 = len(windows["last2h"])
-    if k2 >= 3:
-        mean_l2 = statistics.mean(windows["last2h"])
-        tol2 = max(0.25 * 120.0, 2.5 * 120.0 / math.sqrt(k2))
-        status = "PASS" if abs(mean_l2 - 120.0) <= tol2 else "FAIL"
-        detail = f"mean={mean_l2:.1f}s n={k2} (tol ±{tol2:.1f}s)"
+    # 5. last-2h block count vs monerod's own difficulty-window theory (a
+    # Poisson count test, since the expected block interval is not 120s
+    # while the window is still filling from a hashrate step).
+    run_end = windows["run_end"]
+    if run_end < 7200:
+        status, detail = "N/A", "run shorter than 2h"
     else:
-        status, detail = "N/A", f"only {k2} interval(s)"
-    v.append(("last-2h mean interval within tol of 120s", status, detail))
+        lo2h = run_end - 7200
+        n2h = len([r for r in accepted if lo2h <= r["sim_time_s"] <= run_end])
+        expected = expected_blocks(accepted, miners, lo2h, run_end)
+        if not expected:
+            status, detail = "N/A", "theory unavailable"
+        else:
+            sigma = math.sqrt(expected)
+            tol2 = max(3, 2.5 * sigma)
+            status = "PASS" if abs(n2h - expected) <= tol2 else "FAIL"
+            mean_l2 = statistics.mean(windows["last2h"]) if windows["last2h"] else None
+            theory_mean = 7200.0 / expected
+            detail = (f"n={n2h} expected={expected:.1f} "
+                      f"(mean interval {fmt(mean_l2, 1)}s, theory mean {theory_mean:.1f}s)")
+    v.append(("last-2h block count within 2.5 sigma of theory", status, detail))
 
     # 6. late miner share
     if join_time is None:
@@ -568,30 +717,45 @@ def render_report(run_id, cfg, join_time, join_source, hour_rows, regime_table,
     # (c) difficulty checkpoints
     lines.append("## (c) Difficulty checkpoints")
     cp = diffcp["checkpoints"]
+
+    def _cp_row(label, name):
+        measured, theory = cp.get(name), cp.get(f"{name}_theory")
+        ratio = measured / theory if measured is not None and theory else None
+        return [label, fmt(measured, 0), fmt(theory, 0), fmt(ratio, 2)]
+
     cp_rows = []
     if join_time is not None:
-        cp_rows.append(["at join", fmt(cp.get("at_join"), 0)])
-        cp_rows.append(["join +1h", fmt(cp.get("join+1h"), 0)])
-        cp_rows.append(["join +2h", fmt(cp.get("join+2h"), 0)])
-        cp_rows.append(["join +3h", fmt(cp.get("join+3h"), 0)])
-    cp_rows.append(["at end", fmt(cp.get("at_end"), 0)])
-    lines.append(md_table(["checkpoint", "difficulty"], cp_rows))
+        cp_rows.append(_cp_row("at join", "at_join"))
+        cp_rows.append(_cp_row("join +1h", "join+1h"))
+        cp_rows.append(_cp_row("join +2h", "join+2h"))
+        cp_rows.append(_cp_row("join +3h", "join+3h"))
+    cp_rows.append(_cp_row("at end", "at_end"))
+    lines.append(md_table(["checkpoint", "difficulty", "theory", "measured/theory"], cp_rows))
     lines.append("")
+    lines.append("Theory = 120 x hashes in monerod's difficulty window / window span (window = "
+                 "whole history until 600 blocks); D_post_eq = 36000-style asymptote once the "
+                 "window holds only post-join blocks.")
     lines.append(f"Expected pre-join equilibrium (120 x sum(pre hashrate)): {diffcp['d_pre_eq']:.0f}")
     lines.append(f"Expected post-join equilibrium (120 x sum(all hashrate)): {diffcp['d_post_eq']:.0f}")
     lines.append("")
 
     # (d) block intervals
     lines.append("## (d) Block interval windows")
+    run_end = windows["run_end"]
+    theory_last2h_mean = None
+    if run_end >= 7200:
+        exp_blocks = expected_blocks(accepted, miners, run_end - 7200, run_end)
+        if exp_blocks:
+            theory_last2h_mean = 7200.0 / exp_blocks
     d_rows = [
         ["pre-join hours 1-4", fmt(statistics.mean(windows["pre_h1_4"]) if windows["pre_h1_4"] else None, 1, "s"),
-         str(len(windows["pre_h1_4"]))],
+         str(len(windows["pre_h1_4"])), "N/A"],
         ["first 20 post-join", fmt(statistics.mean(windows["first20"]) if windows["first20"] else None, 1, "s"),
-         str(len(windows["first20"])) if windows["first20"] is not None else "N/A"],
+         str(len(windows["first20"])) if windows["first20"] is not None else "N/A", "N/A"],
         ["last 2h", fmt(statistics.mean(windows["last2h"]) if windows["last2h"] else None, 1, "s"),
-         str(len(windows["last2h"]))],
+         str(len(windows["last2h"])), fmt(theory_last2h_mean, 1, "s")],
     ]
-    lines.append(md_table(["window", "mean interval", "n"], d_rows))
+    lines.append(md_table(["window", "mean interval", "n", "theory mean interval"], d_rows))
     lines.append("")
 
     # (e) relay PoW rejections
@@ -627,7 +791,7 @@ def rolling_mean(values, window):
     return out
 
 
-def make_plot(accepted, join_time, diffcp, out_path, run_id) -> None:
+def make_plot(accepted, join_time, diffcp, out_path, run_id, miners) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -638,6 +802,20 @@ def make_plot(accepted, join_time, diffcp, out_path, run_id) -> None:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
     ax1.step(hours, diffs, where="post", color="tab:blue", label="difficulty")
+
+    theory_hours, theory_vals = [], []
+    if accepted:
+        t, t_end = accepted[0]["sim_time_s"], accepted[-1]["sim_time_s"]
+        while t <= t_end:
+            val = theory_difficulty_at_time(accepted, miners, t)
+            if val is not None:
+                theory_hours.append(t / 3600.0)
+                theory_vals.append(val)
+            t += 60.0
+    if theory_vals:
+        ax1.plot(theory_hours, theory_vals, color="tab:green", linestyle="--",
+                 label="theory (monerod window)")
+
     d_pre_eq, d_post_eq = diffcp["d_pre_eq"], diffcp["d_post_eq"]
     if d_pre_eq:
         ax1.axhline(d_pre_eq, color="gray", linestyle="--", label=f"pre eq ({d_pre_eq:.0f})")
@@ -743,7 +921,7 @@ def main() -> int:
 
     if args.png:
         try:
-            make_plot(accepted, join_time, diffcp, out_dir / "difficulty_and_intervals.png", run_dir.name)
+            make_plot(accepted, join_time, diffcp, out_dir / "difficulty_and_intervals.png", run_dir.name, miners)
         except ImportError:
             print("warning: matplotlib not available; skipping difficulty_and_intervals.png", file=sys.stderr)
 
