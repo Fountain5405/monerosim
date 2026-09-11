@@ -1631,6 +1631,20 @@ archive_transaction_registry() {
         log_warn "No registry files found in $SHARED_DIR"
     fi
 
+    # Per-writer transaction ledger (agents/shared_records.py): one
+    # append-only <writer_id>.jsonl per writer under transactions/, no
+    # lock. Copy the directory as-is, then materialize the legacy
+    # transactions.json array for tools that still expect a single array.
+    if [[ -d "$SHARED_DIR/transactions" ]]; then
+        cp -r "$SHARED_DIR/transactions" "$tx_dir/transactions"
+        local tx_record_count
+        if tx_record_count=$(python3 agents/shared_records.py materialize "$SHARED_DIR" transactions "$tx_dir/transactions.json"); then
+            log_ok "Transaction ledger: $tx_record_count records materialized from per-writer JSONL"
+        else
+            log_warn "Failed to materialize transaction ledger from $SHARED_DIR/transactions"
+        fi
+    fi
+
     # Per-agent wallet state (keys, balance, tx history) and ringdb state.
     # Useful for post-run forensics (spin up wallet-rpc against the archived
     # wallet + a preserved daemon, query balances, etc.).
@@ -1798,7 +1812,7 @@ print_summary() {
     fi
     if [[ -d "$ARCHIVE_DIR/transaction_registry" ]]; then
         local tx_file_count
-        tx_file_count=$(ls -1 "$ARCHIVE_DIR/transaction_registry/"*.json 2>/dev/null | wc -l)
+        tx_file_count=$(find "$ARCHIVE_DIR/transaction_registry" -maxdepth 2 \( -name '*.json' -o -name '*.jsonl' \) 2>/dev/null | wc -l)
         echo "  Tx registry:  $tx_file_count files"
     fi
 
