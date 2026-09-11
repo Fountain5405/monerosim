@@ -1,6 +1,6 @@
 # Per-writer JSONL transaction log — design
 
-**Status:** implemented 2026-09-11 (this plan). Follow-up to the Shadow flock
+**Status:** implemented 2026-09-11 (plan `docs/superpowers/plans/2026-09-11-per-writer-jsonl-transaction-log.md`). Acceptance: quickstart.yaml seed 12345 before (`archived_runs/20260911_110213_jsonl_before`) vs after (`archived_runs/20260911_113847_jsonl_after`): 178 blocks both, 191 transactions in blocks both, 168 ledger records both, all summary checks PASS both; after-run archive has 4 per-writer files, 168 newline-terminated lines, materialized array of 168, no `transactions.lock`.
 deadlock fixed in `agents/file_locking.py` (branch `fix/shadow-safe-flock`).
 **Scope:** the shared transaction ledger only. The agent registry keeps its
 lock (see §8).
