@@ -13,6 +13,15 @@
   between attempts (sleep yields simulated time), timing out after 120 s
   (`agents/file_locking.py`).
 
+### Changed
+
+- Transactions ledger is now one append-only `shared/transactions/<agent_id>.jsonl`
+  per writer (fields unchanged plus `writer_id`, `seq`), with no file lock; the
+  monitor and `tx_analyzer` read the directory and fall back to the old array; the
+  archive still contains `transaction_registry/transactions.json` (materialized at
+  archive time). Only tools that read `transactions.json` from the **live** shared
+  directory during a run are affected.
+
 ## [0.3.1] — 2026-09-05
 
 - **Liveness check parity**: the bash resolver (`scripts/run_dir_lib.sh`)

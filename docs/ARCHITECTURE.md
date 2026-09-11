@@ -109,9 +109,19 @@ Agents are autonomous participants that run inside Shadow alongside monerod and 
 /tmp/monerosim-<runid>/shared/
   agent_registry.json      # All agents and their attributes
   miners.json              # Miner hashrate weights
-  transactions.json        # Transaction log
+  transactions/            # Transaction log: one append-only <agent_id>.jsonl
+                           #   per writer, no lock (agents/shared_records.py);
+                           #   global order is (timestamp, writer_id, seq)
   [agent]_stats.json       # Per-agent statistics
 ```
+
+The live `shared/` directory has no single `transactions.json` — each agent
+appends to its own `transactions/<agent_id>.jsonl` file, so readers (the
+simulation monitor, `tx_analyzer`) load the whole directory and tolerate a
+torn last line (an append in progress). `run_sim.sh` archives the directory
+as-is under `transaction_registry/transactions/` and additionally
+materializes the legacy single-array `transaction_registry/transactions.json`
+at archive time, for tools that still expect that shape.
 
 ### 3. shadowformonero Integration
 

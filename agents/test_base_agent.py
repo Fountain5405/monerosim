@@ -111,3 +111,41 @@ def test_shared_state_round_trip(shared_dir):
 def test_shared_state_read_missing_returns_none(shared_dir):
     agent = _MinimalAgent(agent_id="t2", shared_dir=shared_dir)
     assert agent.read_shared_state("does_not_exist.json") is None
+
+
+# ---------------------------------------------------------------------------
+# append_shared_record: per-writer JSONL, replaces append_shared_list
+# ---------------------------------------------------------------------------
+
+def test_append_shared_record_writes_per_writer_jsonl(shared_dir):
+    agent = _MinimalAgent(agent_id="t3", shared_dir=shared_dir)
+    tx_record = {"tx_hashes": ["abc"], "sender_id": "t3"}
+
+    first = agent.append_shared_record("transactions", tx_record)
+    second = agent.append_shared_record("transactions", tx_record)
+
+    path = shared_dir / "transactions" / "t3.jsonl"
+    assert path.exists()
+    lines = path.read_text().splitlines()
+    assert len(lines) == 2
+    assert first["seq"] == 1
+    assert second["seq"] == 2
+    assert first["writer_id"] == "t3"
+    assert second["writer_id"] == "t3"
+    # append_shared_record must not mutate the caller's dict.
+    assert tx_record == {"tx_hashes": ["abc"], "sender_id": "t3"}
+
+
+def test_append_shared_list_removed():
+    assert not hasattr(BaseAgent, "append_shared_list")
+
+
+def test_cleanup_closes_record_writers(shared_dir, mocker):
+    from agents.shared_records import RecordWriter
+    close_spy = mocker.spy(RecordWriter, "close")
+
+    agent = _MinimalAgent(agent_id="t4", shared_dir=shared_dir)
+    agent.append_shared_record("transactions", {"sender_id": "t4"})
+    agent.cleanup()
+
+    close_spy.assert_called_once()

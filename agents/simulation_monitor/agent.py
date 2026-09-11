@@ -15,16 +15,56 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Set, Tuple
 
 from ..base_agent import BaseAgent, DEFAULT_SHARED_DIR
 from ..agent_discovery import AgentDiscovery
 from ..monero_rpc import MoneroRPC, WalletRPC, RPCError
+from ..shared_records import load_records, records_dir
 
 from .alerts import check_alerts, write_alerts
 from .log_parser import parse_mining_events
 from .metadata import get_git_commit_hash, get_config_metadata
 from .status_paths import find_shadow_data_hosts
+
+
+def summarize_transaction_records(
+    records: List[Dict[str, Any]],
+) -> Tuple[Set[str], Dict[str, int], int]:
+    """Extract on-chain tx-hash counts from a list of ledger records.
+
+    Pure/stateless (no agent instance needed) so it's unit-testable on its
+    own. Records come from either the per-writer ``transactions/`` JSONL
+    directory or the legacy ``transactions.json`` array -- both decode to
+    the same list-of-dict shape. Current schema is one entry per logical
+    transfer with a ``tx_hashes`` list (issues #6/#7); legacy entries with
+    a single ``tx_hash`` are still accepted.
+
+    Returns (unique_tx_hashes, tx_created_by_node, total_created).
+    """
+    unique_hashes: Set[str] = set()
+    tx_created_by_node: Dict[str, int] = {}
+    total_created = 0
+
+    for tx in records:
+        if not isinstance(tx, dict):
+            continue
+        hashes = tx.get("tx_hashes")
+        if not isinstance(hashes, list):
+            legacy = tx.get("tx_hash")
+            if isinstance(legacy, dict) and "tx_hash" in legacy:
+                legacy = legacy["tx_hash"]
+            hashes = [legacy] if isinstance(legacy, str) else []
+        hashes = [h for h in hashes if isinstance(h, str)]
+        total_created += len(hashes)
+        unique_hashes.update(hashes)
+
+        # Track transactions created per sender node
+        if "sender_id" in tx:
+            sender = tx["sender_id"]
+            tx_created_by_node[sender] = tx_created_by_node.get(sender, 0) + (len(hashes) or 1)
+
+    return unique_hashes, tx_created_by_node, total_created
 
 
 class SimulationMonitorAgent(BaseAgent):
@@ -948,45 +988,32 @@ class SimulationMonitorAgent(BaseAgent):
         self.transaction_stats["total_in_blocks"] = len(self.transaction_stats["included_txs"])
 
     def _read_transaction_data(self):
-        """Read transaction data from the shared state file."""
+        """Read transaction data from the shared transactions ledger.
+
+        Prefers the per-writer ``transactions/`` JSONL directory; falls
+        back to the legacy ``transactions.json`` array when the directory
+        is absent (old runs, mixed versions).
+        """
         try:
-            transactions_file = self.shared_dir / "transactions.json"
-            if transactions_file.exists():
-                with open(transactions_file, 'r') as f:
+            transactions_dir = records_dir(self.shared_dir, "transactions")
+            legacy_file = self.shared_dir / "transactions.json"
+            if transactions_dir.exists():
+                transactions = load_records(self.shared_dir, "transactions")
+            elif legacy_file.exists():
+                with open(legacy_file, 'r') as f:
                     transactions = json.load(f)
+            else:
+                return
 
-                # Reset per-node creation counts
-                self.transaction_stats["tx_created_by_node"] = {}
+            unique_hashes, tx_created_by_node, total_created = \
+                summarize_transaction_records(transactions)
 
-                # Count ON-CHAIN transactions (each transfer_split part is a
-                # real chain tx), so "Created" is comparable to "In blocks".
-                # Current schema: one entry per logical transfer with a
-                # tx_hashes list (issues #6/#7). Legacy entries with a single
-                # tx_hash are still accepted.
-                total_created = 0
-                for tx in transactions:
-                    if not isinstance(tx, dict):
-                        continue
-                    hashes = tx.get("tx_hashes")
-                    if not isinstance(hashes, list):
-                        legacy = tx.get("tx_hash")
-                        if isinstance(legacy, dict) and "tx_hash" in legacy:
-                            legacy = legacy["tx_hash"]
-                        hashes = [legacy] if isinstance(legacy, str) else []
-                    hashes = [h for h in hashes if isinstance(h, str)]
-                    total_created += len(hashes)
-                    self.transaction_stats["unique_tx_hashes"].update(hashes)
+            # Reset per-node creation counts (full rescan every cycle).
+            self.transaction_stats["tx_created_by_node"] = tx_created_by_node
+            self.transaction_stats["unique_tx_hashes"].update(unique_hashes)
+            self.transaction_stats["total_created"] = total_created
 
-                    # Track transactions created per sender node
-                    if "sender_id" in tx:
-                        sender = tx["sender_id"]
-                        if sender not in self.transaction_stats["tx_created_by_node"]:
-                            self.transaction_stats["tx_created_by_node"][sender] = 0
-                        self.transaction_stats["tx_created_by_node"][sender] += len(hashes) or 1
-
-                self.transaction_stats["total_created"] = total_created
-
-                self.logger.debug(f"Read {len(transactions)} transactions from shared state")
+            self.logger.debug(f"Read {len(transactions)} transactions from shared state")
 
         except Exception as e:
             self.logger.error(f"Error reading transaction data: {e}")
