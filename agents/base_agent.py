@@ -21,6 +21,7 @@ from typing import Dict, Any, Optional, List
 from .file_locking import acquire_flock, release_flock
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 from .public_node_discovery import PublicNodeDiscovery, DaemonSelectionStrategy, parse_selection_strategy
+from .shared_records import RecordWriter
 
 # Shared constants
 # MONEROSIM_SHARED_DIR overrides the default for portability (e.g. when /tmp
@@ -118,7 +119,11 @@ class BaseAgent(ABC):
             shared_dir = Path(DEFAULT_SHARED_DIR)
         self._shared_dir = shared_dir
         self._shared_dir.mkdir(mode=0o700, exist_ok=True)
-        
+
+        # Per-stream RecordWriters for append_shared_record, opened lazily
+        # on first use and closed in cleanup().
+        self._record_writers: Dict[str, RecordWriter] = {}
+
         # Initialize RPC connections first (required for logging context)
         self.daemon_rpc: Optional[MoneroRPC] = None
         self.wallet_rpc: Optional[WalletRPC] = None
@@ -317,7 +322,16 @@ class BaseAgent(ABC):
                 
         # Call agent-specific cleanup
         self._cleanup_agent()
-        
+
+        # Close every append_shared_record writer (base class concern, not
+        # _cleanup_agent, since subclasses override _cleanup_agent without
+        # calling super()).
+        for stream, writer in self._record_writers.items():
+            try:
+                writer.close()
+            except Exception as e:
+                self.logger.warning(f"Error closing record writer for {stream}: {e}")
+
         self.logger.info("Agent shutdown complete")
         
     def _cleanup_agent(self):
@@ -627,43 +641,22 @@ class BaseAgent(ABC):
             self.logger.error(f"Failed to read shared state {filename}: {e}")
             return None
 
-    def append_shared_list(self, filename: str, item: Any):
-        """Append item to a shared list file with locking to prevent race conditions.
+    def append_shared_record(self, stream: str, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Append one record to this agent's own append-only JSONL file.
 
-        Uses exclusive locking to ensure atomic read-modify-write operations.
+        Lazily creates (and caches) one ``RecordWriter`` per stream, keyed
+        by ``self.agent_id`` as the writer id. No lock: each writer owns
+        its own file (``<shared_dir>/<stream>/<agent_id>.jsonl``), so
+        nothing can interleave. See ``agents.shared_records`` for the
+        format. Returns the record actually written (a copy, with
+        ``writer_id``/``seq`` added).
         """
-        filepath = self.shared_dir / filename
-        lock_path = filepath.with_suffix('.lock')
-        temp_filepath = filepath.with_suffix('.tmp')
+        writer = self._record_writers.get(stream)
+        if writer is None:
+            writer = RecordWriter(self.shared_dir, stream, self.agent_id)
+            self._record_writers[stream] = writer
+        return writer.append(record)
 
-        try:
-            with open(lock_path, 'w') as lock_f:
-                acquire_flock(lock_f, fcntl.LOCK_EX)
-                try:
-                    # Read current data
-                    if filepath.exists():
-                        with open(filepath, 'r') as f:
-                            data = json.load(f)
-                        if not isinstance(data, list):
-                            data = []
-                    else:
-                        data = []
-
-                    # Append new item
-                    data.append(item)
-
-                    # Write atomically
-                    with open(temp_filepath, 'w') as f:
-                        json.dump(data, f, indent=2)
-                    temp_filepath.rename(filepath)
-                finally:
-                    release_flock(lock_f)
-            self.logger.debug(f"Appended item to {filename}")
-        except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
-            # OSError: open()/rename(); JSONDecodeError: corrupt prior file; TypeError/ValueError: json.dump.
-            self.logger.error(f"Failed to append to shared list {filename}: {e}")
-            raise
-        
     def read_shared_list(self, filename: str) -> List[Any]:
         """Read a shared list file"""
         data = self.read_shared_state(filename)
@@ -677,7 +670,7 @@ class BaseAgent(ABC):
         acquire -- so concurrent registrations are serialised. The updated
         registry is written to a temp file in the same directory and then
         atomically renamed into place, so even unlocked readers never observe
-        a truncated/partial file (mirrors write_shared_state/append_shared_list).
+        a truncated/partial file (mirrors write_shared_state).
         """
         registry_path = self.shared_dir / "agent_registry.json"
         lock_path = self.shared_dir / "agent_registry.lock"

@@ -479,7 +479,7 @@ class RegularUserAgent(BaseAgent):
             'timestamp': time.time()
         }
 
-        self.append_shared_list('transactions.json', tx_record)
+        self.append_shared_record("transactions", tx_record)
         
     def _cleanup_agent(self):
         """Agent-specific cleanup logic"""
