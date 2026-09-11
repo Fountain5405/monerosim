@@ -1,6 +1,6 @@
 # Per-writer JSONL transaction log — design
 
-**Status:** implemented 2026-09-11 (plan `docs/superpowers/plans/2026-09-11-per-writer-jsonl-transaction-log.md`). Acceptance: quickstart.yaml seed 12345 before (`archived_runs/20260911_110213_jsonl_before`) vs after (`archived_runs/20260911_113847_jsonl_after`): 178 blocks both, 191 transactions in blocks both, 168 ledger records both, all summary checks PASS both; after-run archive has 4 per-writer files, 168 newline-terminated lines, materialized array of 168, no `transactions.lock`.
+**Status:** implemented 2026-09-11 (plan `docs/superpowers/plans/2026-09-11-per-writer-jsonl-transaction-log.md`). Acceptance: quickstart.yaml seed 12345 before (`archived_runs/20260911_110213_jsonl_before`) vs after (`archived_runs/20260911_113847_jsonl_after`): 178 blocks both, 191 transactions in blocks both, 168 ledger records both, all summary checks PASS both; after-run archive has 4 per-writer files, 168 newline-terminated lines, materialized array of 168, no `transactions.lock`. Scale test `archived_runs/20260911_161754_jsonl_par100` (par100_6h.yaml: 100 users + distributor, native preemption on, 7 sim-h in 6h25m wall): ALL CHECKS PASSED, 111 nodes 100% sync, 209 blocks, 101 writer files / 3460 records all newline-terminated, materialized array 3460, monitor tracked 3244 into blocks with no errors, 0 lock timeouts, tx-analyzer 3501 transactions.
 deadlock fixed in `agents/file_locking.py` (branch `fix/shadow-safe-flock`).
 **Scope:** the shared transaction ledger only. The agent registry keeps its
 lock (see §8).
