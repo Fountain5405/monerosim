@@ -425,7 +425,15 @@ cat analysis_output/upgrade_analysis.json | python3 -m json.tool
 Ensure simulation completed and `agent_registry.json` exists in the shared-state directory (`$MONEROSIM_SHARED_DIR` if set — the per-run `/tmp/monerosim-<runid>/shared/` from `run_sim.sh` — otherwise the legacy default `/tmp/monerosim_shared/`).
 
 ### "No transactions found"
-Check that transactions were actually sent during simulation. Look for `transactions.json` in the shared directory.
+Check that transactions were actually sent during simulation. For a live run,
+look for the per-writer ledger at `transactions/<agent_id>.jsonl` in the
+shared directory (one append-only file per agent, no lock; global order is
+`(timestamp, writer_id, seq)`; a torn last line with no trailing newline is
+an append still in flight, not a corrupt record). The analyzer falls back to
+a legacy `transactions.json` array if the `transactions/` directory is
+absent. For an archived run, `run_sim.sh` materializes both: the per-writer
+files under `transaction_registry/transactions/` and the legacy array at
+`transaction_registry/transactions.json`.
 
 ### Different results between runs
 Both implementations use deterministic tie-breaking. If results differ, ensure you're analyzing the same `shadow.data/` directory.

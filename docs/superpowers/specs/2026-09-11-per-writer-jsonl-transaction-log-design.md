@@ -1,6 +1,6 @@
 # Per-writer JSONL transaction log — design
 
-**Status:** designed 2026-09-11, not scheduled. Follow-up to the Shadow flock
+**Status:** implemented 2026-09-11 (this plan). Follow-up to the Shadow flock
 deadlock fixed in `agents/file_locking.py` (branch `fix/shadow-safe-flock`).
 **Scope:** the shared transaction ledger only. The agent registry keeps its
 lock (see §8).
