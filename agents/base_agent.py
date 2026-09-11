@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
+from .file_locking import acquire_flock, release_flock
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError
 from .public_node_discovery import PublicNodeDiscovery, DaemonSelectionStrategy, parse_selection_strategy
 
@@ -578,14 +579,14 @@ class BaseAgent(ABC):
             if use_lock:
                 # Use lock file to prevent race conditions
                 with open(lock_path, 'w') as lock_f:
-                    fcntl.flock(lock_f, fcntl.LOCK_EX)
+                    acquire_flock(lock_f, fcntl.LOCK_EX)
                     try:
                         with open(temp_filepath, 'w') as f:
                             json.dump(data, f, indent=2)
                         # Atomic rename
                         temp_filepath.rename(filepath)
                     finally:
-                        fcntl.flock(lock_f, fcntl.LOCK_UN)
+                        release_flock(lock_f)
             else:
                 with open(temp_filepath, 'w') as f:
                     json.dump(data, f, indent=2)
@@ -611,12 +612,12 @@ class BaseAgent(ABC):
             if filepath.exists():
                 if use_lock:
                     with open(lock_path, 'w') as lock_f:
-                        fcntl.flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
+                        acquire_flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
                         try:
                             with open(filepath, 'r') as f:
                                 return json.load(f)
                         finally:
-                            fcntl.flock(lock_f, fcntl.LOCK_UN)
+                            release_flock(lock_f)
                 else:
                     with open(filepath, 'r') as f:
                         return json.load(f)
@@ -637,7 +638,7 @@ class BaseAgent(ABC):
 
         try:
             with open(lock_path, 'w') as lock_f:
-                fcntl.flock(lock_f, fcntl.LOCK_EX)
+                acquire_flock(lock_f, fcntl.LOCK_EX)
                 try:
                     # Read current data
                     if filepath.exists():
@@ -656,7 +657,7 @@ class BaseAgent(ABC):
                         json.dump(data, f, indent=2)
                     temp_filepath.rename(filepath)
                 finally:
-                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    release_flock(lock_f)
             self.logger.debug(f"Appended item to {filename}")
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
             # OSError: open()/rename(); JSONDecodeError: corrupt prior file; TypeError/ValueError: json.dump.
@@ -687,7 +688,7 @@ class BaseAgent(ABC):
         try:
             with open(lock_path, "w") as lock_f:
                 self.logger.debug(f"Acquiring lock on {lock_path}")
-                fcntl.flock(lock_f, fcntl.LOCK_EX)
+                acquire_flock(lock_f, fcntl.LOCK_EX)
                 self.logger.debug(f"Acquired lock on {lock_path}")
                 try:
                     # Read current registry, tolerating a missing/empty file.
@@ -729,7 +730,7 @@ class BaseAgent(ABC):
                     temp_path.rename(registry_path)
                 finally:
                     self.logger.debug(f"Releasing lock on {lock_path}")
-                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    release_flock(lock_f)
         except (OSError, json.JSONDecodeError) as e:
             # OSError: open()/flock()/rename(); JSONDecodeError: corrupt registry contents.
             self.logger.error(f"Failed to lock and update registry file: {e}", exc_info=True)
