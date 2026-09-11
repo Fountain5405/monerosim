@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Agents' shared-file locks (transactions.json, node registry, user/miner info, DNS
+  records) no longer take a blocking `flock`. Under Shadow a blocking flock runs
+  natively on the simulator's worker thread and deadlocks the whole simulation when
+  the lock holder is a descheduled host — observed 2026-09-11 at sim-time 5h56m of a
+  300-node native-mining run with `native_preemption: true` (gdb: one shadow-worker in
+  `regularfile_flock`, 62 spinning). Locks now poll with `LOCK_NB` and sleep 50 ms
+  between attempts (sleep yields simulated time), timing out after 120 s
+  (`agents/file_locking.py`).
+
 ## [0.3.1] — 2026-09-05
 
 - **Liveness check parity**: the bash resolver (`scripts/run_dir_lib.sh`)

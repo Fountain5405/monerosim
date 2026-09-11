@@ -18,6 +18,7 @@ from typing import Optional, Dict, Any
 
 from .base_agent import BaseAgent
 from .constants import TARGET_BLOCK_TIME_SECS, DEFAULT_SIMULATION_SEED
+from .file_locking import acquire_flock, release_flock
 from .monero_rpc import MoneroRPC, WalletRPC, RPCError, MethodNotAvailableError
 from .shared_utils import make_deterministic_seed
 
@@ -179,12 +180,12 @@ class AutonomousMinerAgent(BaseAgent):
                 lock_path = Path(self.shared_dir) / "agent_registry.lock"
                 try:
                     with open(lock_path, 'w') as lock_f:
-                        fcntl.flock(lock_f, fcntl.LOCK_SH)
+                        acquire_flock(lock_f, fcntl.LOCK_SH)
                         try:
                             with open(agent_registry_file, 'r') as f:
                                 registry = json.load(f)
                         finally:
-                            fcntl.flock(lock_f, fcntl.LOCK_UN)
+                            release_flock(lock_f)
                     for agent in registry.get("agents", []):
                         if agent.get("id") == self.agent_id:
                             if "wallet_address" in agent:

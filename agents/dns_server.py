@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from .base_agent import BaseAgent, DEFAULT_SHARED_DIR
+from .file_locking import acquire_flock, release_flock
 
 try:
     from dnslib import DNSRecord, DNSHeader, RR, QTYPE, A, TXT, RCODE
@@ -86,12 +87,12 @@ class MoneroResolver(BaseResolver):
         try:
             # Use file locking for deterministic reads (consistent with base_agent.py)
             with open(lock_path, 'w') as lock_f:
-                fcntl.flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
+                acquire_flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
                 try:
                     with open(registry_path, 'r') as f:
                         registry = json.load(f)
                 finally:
-                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    release_flock(lock_f)
 
             # Prefer dedicated seed-node hosts (the in-sim equivalent of
             # the public seed servers DNS seed domains resolve to in
@@ -139,12 +140,12 @@ class MoneroResolver(BaseResolver):
         try:
             # Use file locking for deterministic reads
             with open(lock_path, 'w') as lock_f:
-                fcntl.flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
+                acquire_flock(lock_f, fcntl.LOCK_SH)  # Shared lock for reading
                 try:
                     with open(checkpoint_path, 'r') as f:
                         data = json.load(f)
                 finally:
-                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    release_flock(lock_f)
             self.checkpoints = {int(k): v for k, v in data.items()}
             self.logger.info(f"Loaded {len(self.checkpoints)} checkpoints")
         except Exception as e:
