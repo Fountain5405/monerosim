@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from enum import Enum
 
+from .file_locking import acquire_flock, release_flock
 from .shared_utils import PUBLIC_NODES_REGISTRY_FILENAME, load_public_nodes_registry
 
 
@@ -165,7 +166,7 @@ class PublicNodeDiscovery:
             lock_path.touch(exist_ok=True)
 
             with open(lock_path, "w") as lock_f:
-                fcntl.flock(lock_f, fcntl.LOCK_EX)
+                acquire_flock(lock_f, fcntl.LOCK_EX)
                 try:
                     # Read existing registry
                     if registry_path.exists():
@@ -201,7 +202,7 @@ class PublicNodeDiscovery:
                     return True
 
                 finally:
-                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    release_flock(lock_f)
 
         except Exception as e:
             self.logger.error(f"Failed to update public node status: {e}")
