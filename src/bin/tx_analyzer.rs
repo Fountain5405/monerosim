@@ -1858,20 +1858,105 @@ fn load_agent_registry(shared_dir: &PathBuf) -> Result<Vec<AnalysisAgentInfo>> {
     Ok(agents)
 }
 
-fn load_transactions(shared_dir: &PathBuf) -> Result<Vec<Transaction>> {
-    let path = shared_dir.join("transactions.json");
+/// Sort key `(timestamp, writer_id, seq)` for per-writer JSONL records, so
+/// this loader and Python's `agents/shared_records.load_records` agree on
+/// global order (see the per-writer JSONL transaction log design doc).
+fn transaction_sort_key(value: &serde_json::Value) -> (f64, String, u64) {
+    (
+        value.get("timestamp").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        value
+            .get("writer_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        value.get("seq").and_then(|v| v.as_u64()).unwrap_or(0),
+    )
+}
 
-    if !path.exists() {
-        log::warn!("No transactions.json found at {}", path.display());
-        return Ok(Vec::new());
+/// Read every `*.jsonl` file in `dir` in sorted filename order, yielding one
+/// `serde_json::Value` per complete line. A final line with no trailing
+/// newline is an in-flight write and is skipped; a complete line that fails
+/// to parse is skipped and counted, logged once for the whole call.
+fn load_jsonl_records(dir: &Path) -> Result<Vec<serde_json::Value>> {
+    let mut paths: Vec<PathBuf> = fs::read_dir(dir)
+        .with_context(|| format!("Failed to read directory {}", dir.display()))?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("jsonl"))
+        .collect();
+    paths.sort();
+
+    let mut records = Vec::new();
+    let mut skipped_lines = 0usize;
+    let mut skipped_files: Vec<String> = Vec::new();
+
+    for path in &paths {
+        let content = fs::read_to_string(path)
+            .with_context(|| format!("Failed to read {}", path.display()))?;
+        if content.is_empty() {
+            continue;
+        }
+        // Drop the trailing element from the split: either the empty string
+        // after a final "\n" (every real line is complete) or an in-flight
+        // last line with no trailing newline yet (a torn write, skipped per
+        // the design's torn-line rule).
+        let mut lines: Vec<&str> = content.split('\n').collect();
+        lines.pop();
+
+        for line in lines {
+            if line.is_empty() {
+                continue;
+            }
+            match serde_json::from_str::<serde_json::Value>(line) {
+                Ok(v) => records.push(v),
+                Err(_) => {
+                    skipped_lines += 1;
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if !skipped_files.iter().any(|f| f == name) {
+                            skipped_files.push(name.to_string());
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    let content = fs::read_to_string(&path)
-        .with_context(|| format!("Failed to read transactions from {}", path.display()))?;
+    if skipped_lines > 0 {
+        log::warn!(
+            "Skipped {} unparseable line(s) in {}",
+            skipped_lines,
+            skipped_files.join(", ")
+        );
+    }
 
-    // Parse as array of generic JSON values first to handle malformed entries
-    let values: Vec<serde_json::Value> =
-        serde_json::from_str(&content).context("Failed to parse transactions JSON")?;
+    Ok(records)
+}
+
+fn load_transactions(shared_dir: &PathBuf) -> Result<Vec<Transaction>> {
+    let records_dir = shared_dir.join("transactions");
+
+    let values: Vec<serde_json::Value> = if records_dir.is_dir() {
+        let mut values = load_jsonl_records(&records_dir)?;
+        values.sort_by(|a, b| {
+            transaction_sort_key(a)
+                .partial_cmp(&transaction_sort_key(b))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        values
+    } else {
+        let path = shared_dir.join("transactions.json");
+
+        if !path.exists() {
+            log::warn!("No transactions.json found at {}", path.display());
+            return Ok(Vec::new());
+        }
+
+        let content = fs::read_to_string(&path)
+            .with_context(|| format!("Failed to read transactions from {}", path.display()))?;
+
+        // Parse as array of generic JSON values first to handle malformed entries
+        serde_json::from_str(&content).context("Failed to parse transactions JSON")?
+    };
 
     let mut transactions = Vec::new();
     let mut skipped = 0;
@@ -2041,4 +2126,62 @@ fn load_blocks(shared_dir: &PathBuf) -> Result<Vec<BlockInfo>> {
         serde_json::from_str(&content).context("Failed to parse blocks JSON")?;
 
     Ok(blocks)
+}
+
+#[cfg(test)]
+mod load_transactions_tests {
+    use super::*;
+    use std::fs;
+
+    fn write_file(path: &Path, contents: &str) {
+        fs::write(path, contents).unwrap();
+    }
+
+    #[test]
+    fn load_transactions_reads_per_writer_jsonl_in_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let shared_dir = dir.path().to_path_buf();
+        let tx_dir = shared_dir.join("transactions");
+        fs::create_dir_all(&tx_dir).unwrap();
+
+        // a.jsonl: two complete records, the second with two tx_hashes.
+        let a = concat!(
+            r#"{"tx_hashes":["h1"],"sender_id":"s1","recipients":[{"id":"r1"}],"total_amount":1.0,"timestamp":2.0,"writer_id":"a","seq":1}"#,
+            "\n",
+            r#"{"tx_hashes":["h2","h3"],"sender_id":"s1","recipients":[{"id":"r1"}],"total_amount":2.0,"timestamp":3.0,"writer_id":"a","seq":2}"#,
+            "\n",
+        );
+        write_file(&tx_dir.join("a.jsonl"), a);
+
+        // b.jsonl: one complete record with an earlier timestamp, plus a
+        // torn trailing line with no newline yet -- must be skipped.
+        let b = concat!(
+            r#"{"tx_hashes":["h0"],"sender_id":"s2","recipients":[{"id":"r2"}],"total_amount":5.0,"timestamp":1.0,"writer_id":"b","seq":1}"#,
+            "\n",
+            r#"{"tx_hashes":["h9"#,
+        );
+        write_file(&tx_dir.join("b.jsonl"), b);
+
+        let transactions = load_transactions(&shared_dir).unwrap();
+
+        let hashes: Vec<&str> = transactions.iter().map(|t| t.tx_hash.as_str()).collect();
+        assert_eq!(hashes, vec!["h0", "h1", "h2", "h3"]);
+    }
+
+    #[test]
+    fn load_transactions_legacy_array_fallback_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let shared_dir = dir.path().to_path_buf();
+
+        let legacy = r#"[
+            {"tx_hashes":["h1"],"sender_id":"s1","recipients":[{"id":"r1"}],"total_amount":1.0,"timestamp":2.0},
+            {"tx_hash":"h0","sender_id":"s2","recipient_id":"r2","amount":5.0,"timestamp":1.0}
+        ]"#;
+        write_file(&shared_dir.join("transactions.json"), legacy);
+
+        let transactions = load_transactions(&shared_dir).unwrap();
+
+        let hashes: Vec<&str> = transactions.iter().map(|t| t.tx_hash.as_str()).collect();
+        assert_eq!(hashes, vec!["h1", "h0"]);
+    }
 }
