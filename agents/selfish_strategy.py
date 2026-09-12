@@ -28,12 +28,20 @@ class ReleaseDecision:
 
 
 class SelfishStrategy:
-    def __init__(self, name: str, start_height: int):
-        if name not in ("honest", "eyal_sirer"):
+    def __init__(self, name: str, start_height: int, trail_depth: int = 1):
+        if name not in (
+            "honest",
+            "eyal_sirer",
+            "trail_stubborn",
+            "equal_fork_stubborn",
+            "lead_stubborn",
+        ):
             raise ValueError(f"unknown strategy: {name}")
         self.name = name
         self.start_height = int(start_height)
         self.fork = int(start_height)
+        self.trail_depth = int(trail_depth)
+        self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
 
     def update(self, pub_height: int, priv_height: int) -> ReleaseDecision:
         # `old_fork` is the divergence point for THIS step's release range. Every
@@ -42,7 +50,7 @@ class SelfishStrategy:
         # post-update .fork would compute an empty release range (see review C1).
         old_fork = self.fork
 
-        # Honest, or eyal_sirer during warm-up: publish everything immediately.
+        # Honest, or any strategy during warm-up: publish everything immediately.
         if self.name == "honest" or pub_height < self.start_height:
             self.fork = pub_height
             return ReleaseDecision(
@@ -55,6 +63,18 @@ class SelfishStrategy:
         a = priv_height - old_fork   # private branch length
         h = pub_height - old_fork    # honest branch length since fork
 
+        if self.name == "eyal_sirer":
+            return self._eyal_sirer_decision(old_fork, pub_height, priv_height, a, h)
+        if self.name == "trail_stubborn":
+            return self._trail_stubborn_decision(old_fork, pub_height, priv_height, a, h)
+        if self.name == "equal_fork_stubborn":
+            return self._equal_fork_stubborn_decision(old_fork, pub_height, priv_height, a, h)
+        return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
+
+    def _eyal_sirer_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
+        """Textbook Eyal-Sirer decision body. Shared by the `eyal_sirer` strategy
+        itself and by the stubborn variants' `a >= h` / fallthrough arms (§4.2:
+        each stubborn variant is "like eyal_sirer except ...")."""
         # Honest overtook (or attacker has nothing on the branch): adopt public.
         if a < h or (h > 0 and a == 0):
             self.fork = pub_height
@@ -78,3 +98,48 @@ class SelfishStrategy:
 
         # a - h >= 2: still comfortably ahead; withhold.
         return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=None)
+
+    def _trail_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
+        """trail_stubborn(j): like eyal_sirer, but refuses to concede while
+        trailing by at most `trail_depth` (j), hoping to catch back up."""
+        # Behind by more than j, or nothing to trail with at all: concede.
+        if (a == 0 and h > 0) or (h - a > self.trail_depth):
+            self.fork = pub_height
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
+
+        # Trailing within tolerance: hold. Withhold the honest blocks past the
+        # fork from the miner too, so it keeps mining the private branch.
+        if 0 < h - a <= self.trail_depth:
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+
+        # a >= h: eyal_sirer rules.
+        return self._eyal_sirer_decision(old_fork, pub_height, priv_height, a, h)
+
+    def _equal_fork_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
+        """like eyal_sirer, but never concedes straight out of a tie: once it has
+        contested a tie, if honest only breaks the tie by one it holds one more
+        round instead of adopting, hoping to re-level."""
+        if a < h:
+            if self._was_tie and h - a == 1:
+                # Just fell out of a tie by one: hold instead of conceding.
+                return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+            self._was_tie = False
+            self.fork = pub_height
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
+
+        # a >= h: eyal_sirer rules; track whether this step is the tie contest
+        # itself so the next step knows whether a one-block honest lead is "out
+        # of a tie" (hold) or a plain overtake (adopt).
+        decision = self._eyal_sirer_decision(old_fork, pub_height, priv_height, a, h)
+        self._was_tie = a == h and a >= 1
+        return decision
+
+    def _lead_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
+        """like eyal_sirer, but on the override step (a - h == 1, h > 0) reveals
+        only up to the honest tip instead of its whole lead, keeping the top
+        private block hidden and mining (bets on gamma plus the hidden lead)."""
+        if h > 0 and a - h == 1:
+            return ReleaseDecision(release_from=old_fork, release_to=pub_height - 1, adopt_public=False, forward_to=None)
+
+        # All other states, including adopt (a < h): eyal_sirer rules.
+        return self._eyal_sirer_decision(old_fork, pub_height, priv_height, a, h)
