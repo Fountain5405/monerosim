@@ -1,0 +1,134 @@
+# Selfish-mining phase-2 stubborn-variant set: lead_stubborn (docs/SELFISH_MINING.md).
+# Same topology as fanout_6.yaml (6 publisher bridges at alpha=0.40) so the
+# stubborn variants are compared against the eyal_sirer fanout_6 run at
+# identical fan-out. strategy: lead_stubborn -- see docs/SELFISH_MINING.md section
+# 4.2 for the decision rule this variant implements.
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+  honest-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: lead_stubborn
+      bridges: "bridge-1,bridge-2,bridge-3,bridge-4,bridge-5,bridge-6"
+      attack_start_height: "0"
+      reaction_delay_ms: "50"
+  bridge-1:
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+  bridge-2:
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+  bridge-3:
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+  bridge-4:
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+  bridge-5:
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+  bridge-6:
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 40s
+  relay-003:
+    daemon: monerod
+    start_time: 50s
+  relay-004:
+    daemon: monerod
+    start_time: 60s
+  relay-005:
+    daemon: monerod
+    start_time: 70s
+  relay-006:
+    daemon: monerod
+    start_time: 80s
+  relay-007:
+    daemon: monerod
+    start_time: 90s
+  relay-008:
+    daemon: monerod
+    start_time: 100s
+  relay-009:
+    daemon: monerod
+    start_time: 110s
+  relay-010:
+    daemon: monerod
+    start_time: 120s
+  relay-011:
+    daemon: monerod
+    start_time: 130s
+  relay-012:
+    daemon: monerod
+    start_time: 140s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
