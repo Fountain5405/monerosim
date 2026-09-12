@@ -24,6 +24,13 @@ pub fn hash_interval_ms(hashrate_hs: u32) -> u64 {
     ms.max(1)
 }
 
+/// True if `script` is one of the native-mining agent scripts that need the
+/// miner wallet-hybrid path in user_agents.rs (autonomous or selfish miner).
+/// selfish_bridge is intentionally excluded — it is a relay, not a miner.
+pub fn is_native_miner_script(script: &str) -> bool {
+    script.contains("autonomous_miner") || script.contains("selfish_miner")
+}
+
 /// Difficulty monerod's LWMA converges to when the network declares
 /// `total_hashrate_hs` hashes per second and the target is 120 s.
 pub fn equilibrium_difficulty(total_hashrate_hs: u64) -> u64 {
@@ -107,5 +114,13 @@ mod tests {
         let mut cache = HashMap::new();
         assert!(!binary_supports_sim_mining("/nonexistent/monerod", &mut cache));
         assert_eq!(cache.get("/nonexistent/monerod"), Some(&false));
+    }
+
+    #[test]
+    fn native_miner_scripts_recognised() {
+        assert!(is_native_miner_script("agents.autonomous_miner"));
+        assert!(is_native_miner_script("agents.selfish_miner"));
+        assert!(!is_native_miner_script("agents.regular_user"));
+        assert!(!is_native_miner_script("agents.selfish_bridge"));
     }
 }

@@ -586,7 +586,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     // See docs/NATIVE_MINING.md.
     use crate::utils::mining::{
         args_mention_sim_knob, binary_supports_sim_mining, equilibrium_difficulty,
-        hash_interval_ms, SIM_HASH_INTERVAL_KNOB, SIM_RX_FULL_DATASET_KNOB,
+        hash_interval_ms, is_native_miner_script, SIM_HASH_INTERVAL_KNOB, SIM_RX_FULL_DATASET_KNOB,
     };
     let native_mining = mining.is_native();
     let mut sim_capability_cache: HashMap<String, bool> = HashMap::new();
@@ -1419,7 +1419,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     .map(|t| format!("{}s", t))
             };
 
-            if is_miner && script.contains("autonomous_miner") {
+            if is_miner && is_native_miner_script(&script) {
                 // HYBRID APPROACH for miners: Run both regular_user (for wallet) AND mining_script
 
                 // Build merged attributes that include typed fields (hashrate, is_miner, can_receive_distributions)
