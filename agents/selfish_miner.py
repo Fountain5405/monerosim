@@ -33,6 +33,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
         self._released_index = -1      # highest private block index released to the bridge
         self._forwarded_hashes = {}    # height -> hash last forwarded, for reorg detection (C3)
+        self._last_pub_tip_hash = None # honest tip hash last seen; gates the reorg rescan (C3)
         self._tx_warned = False        # C4: warn once if a block carries transactions
 
     # How many trailing honest blocks to re-check for reorgs each tick. Selfish
@@ -96,28 +97,41 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if h:
             self._forwarded_hashes[idx] = h
 
-    def _forward_public_blocks(self, pub_height: int) -> None:
+    def _forward_public_blocks(self, pub_height: int, tip_hash=None) -> None:
         """Forward honest blocks into the offline miner, reorg-aware (review C3).
 
-        New blocks above the high-water mark are forwarded once. A trailing
-        window is then re-checked: if the honest block at a height we already
-        forwarded now has a different hash, the honest chain reorged there, so
-        re-forward it — otherwise the miner would stay wedged on a dead honest
-        branch and mine a private chain that the network can never accept."""
-        for idx in range(self._forwarded_index + 1, pub_height):
+        Order matters: a reorg that raises the height (…,X1 → …,Y1,Y2) must
+        forward the new parent Y1 BEFORE its child Y2, or the miner orphans Y2
+        and never retries it, wedging on a dead branch. So on a tip change we
+        first find the lowest already-forwarded height whose hash changed, then
+        forward everything from there up to the tip in ascending (parent-first)
+        order; new blocks append the same way. The rescan is gated on the
+        honest tip hash, so idle ticks do no extra RPC."""
+        reorg = tip_hash is not None and tip_hash != self._last_pub_tip_hash
+        start = self._forwarded_index + 1          # default: only not-yet-forwarded heights
+        if reorg:
+            floor = max(1, pub_height - self.REORG_WINDOW)
+            hi = min(self._forwarded_index, pub_height - 1)
+            for idx in range(floor, hi + 1):
+                try:
+                    cur = self._block_hash(self.bridge_rpc.get_block(height=idx))
+                except RPCError as e:
+                    self.logger.debug(f"reorg rescan {idx}: {e}")
+                    cur = None
+                if self._forwarded_hashes.get(idx) != cur:
+                    self.logger.info(f"honest reorg at height {idx}; re-forwarding from there")
+                    start = idx                     # ascending from here => parent before child
+                    break
+            if self._forwarded_index >= pub_height:  # chain shrank below our high-water mark
+                start = min(start, floor)
+        for idx in range(start, pub_height):
             self._forward_one(idx)
-            self._forwarded_index = idx
-        floor = max(1, pub_height - self.REORG_WINDOW)
-        for idx in range(floor, pub_height):
-            try:
-                blk = self.bridge_rpc.get_block(height=idx)
-            except RPCError as e:
-                self.logger.debug(f"reorg recheck {idx}: {e}")
-                continue
-            h = self._block_hash(blk)
-            if h and self._forwarded_hashes.get(idx) != h:
-                self.logger.info(f"honest reorg detected at height {idx}; re-forwarding")
-                self._forward_one(idx, blk)
+        if pub_height > 0:
+            self._forwarded_index = pub_height - 1
+        for k in [k for k in self._forwarded_hashes if k >= pub_height]:
+            del self._forwarded_hashes[k]           # forget hashes above a shrunk tip
+        if tip_hash is not None:
+            self._last_pub_tip_hash = tip_hash
 
     def _release_up_to(self, release_from: int, release_index: int) -> None:
         """Submit the attacker's divergent private blocks to the bridge in order.
@@ -150,9 +164,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if self.bridge_rpc is None and not self._connect_bridge():
             return 1.0
 
-        # 3/4. Read both chain heights.
+        # 3/4. Read both chains (height + honest tip hash for reorg detection).
         try:
-            pub_height = int(self.bridge_rpc.get_info().get("height", 0))
+            pub_info = self.bridge_rpc.get_info()
+            pub_height = int(pub_info.get("height", 0))
+            pub_tip_hash = pub_info.get("top_block_hash")
             priv_height = int(self.daemon_rpc.get_info().get("height", 0))
         except RPCError as e:
             self.logger.warning(f"height read failed: {e}")
@@ -160,8 +176,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         self._ensure_strategy(self.attack_start_height)
 
-        # 5. Forward new honest blocks into the offline miner.
-        self._forward_public_blocks(pub_height)
+        # 5. Forward honest blocks into the offline miner (reorg-aware).
+        self._forward_public_blocks(pub_height, pub_tip_hash)
 
         # 6. Strategy decision -> release.
         decision = self.strategy.update(pub_height, priv_height)

@@ -115,9 +115,38 @@ def test_forwarder_reforwards_on_honest_reorg():
     hashes = {0: "x0", 1: "x1", 2: "x2"}
     a.bridge_rpc.get_block.side_effect = lambda height: {
         "blob": f"b{height}.{hashes[height]}", "block_header": {"hash": hashes[height]}}
-    a._forward_public_blocks(pub_height=3)   # forwards indexes 0,1,2
+    a._forward_public_blocks(3, tip_hash="x2")   # forwards indexes 0,1,2
     a.daemon_rpc.submit_block.reset_mock()
-    hashes[2] = "y2"                          # height 2 reorged
-    a._forward_public_blocks(pub_height=3)
+    hashes[2] = "y2"                              # height 2 reorged (same height)
+    a._forward_public_blocks(3, tip_hash="y2")
     submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
-    assert submitted == ["b2.y2"]             # only the reorged block re-forwarded
+    assert submitted == ["b2.y2"]                 # only the reorged block re-forwarded
+
+
+def test_forwarder_reorg_forwards_parent_before_child():
+    """Review C3 ordering (re-review): a reorg that RAISES the height
+    (…,X1 -> …,Y1,Y2) must forward the new parent Y1 before child Y2, or the
+    miner orphans Y2 and wedges. The pre-fix code forwarded Y2 first."""
+    a = _make_agent()
+    chain = {0: "g", 1: "X1"}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"b{height}.{chain[height]}", "block_header": {"hash": chain[height]}}
+    a._forward_public_blocks(2, tip_hash="X1")    # forward g, X1
+    a.daemon_rpc.submit_block.reset_mock()
+    chain = {0: "g", 1: "Y1", 2: "Y2"}            # reorg: X1 replaced AND height grows
+    a._forward_public_blocks(3, tip_hash="Y2")
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert submitted == ["b1.Y1", "b2.Y2"]        # parent Y1 strictly before child Y2
+
+
+def test_forwarder_idle_tick_does_no_rpc_when_tip_unchanged():
+    """The reorg rescan is gated on the tip hash, so a tick with no new block
+    and an unchanged tip must not fetch anything (review perf note)."""
+    a = _make_agent()
+    chain = {0: "g", 1: "X1"}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"b{height}.{chain[height]}", "block_header": {"hash": chain[height]}}
+    a._forward_public_blocks(2, tip_hash="X1")
+    a.bridge_rpc.get_block.reset_mock()
+    a._forward_public_blocks(2, tip_hash="X1")    # same tip, nothing new
+    a.bridge_rpc.get_block.assert_not_called()
