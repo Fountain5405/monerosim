@@ -118,12 +118,26 @@ saw first. The analysis reads, for each race, which parent the honest network's 
 extended, and reports the realised γ. Raising the attacker's connectivity — more bridges,
 more out-peers, better placement — raises γ, which is exactly the second experiment.
 
+**Why a single bridge gives γ ≈ 0 (and why that is the correct phase-1 baseline).** Stock
+`handle_block_found` relays a submitted block only when it enters the bridge's *main* chain
+(`bvc.m_added_to_main_chain`), and a reorg requires *strictly greater* cumulative difficulty.
+So a lead-≥2 release, submitted in order, tips the bridge over on its last block, reorgs, and
+propagates the whole private chain by the normal pull-sync — the attacker wins those. But a
+lead-1 *tie* block is an equal-height alt on the bridge (which already holds the honest block
+that the agent just detected there), so it is stored, not relayed, and never reaches the
+honest network. With one bridge the attacker therefore loses every tie: γ ≈ 0 by
+construction. That is precisely the Eyal–Sirer γ = 0 curve (profitable above α ≈ 1/3), a
+clean, well-defined baseline. Lifting γ needs the block to reach honest nodes *before* the
+honest block does, which requires a fast detector node plus publisher bridges positioned
+away from it — a multi-bridge apparatus, hence increment 2.
+
 ## 7. Metrics and analysis
 
 A new analysis script, `scripts/selfish_mining_analysis.py` (stdlib + the existing analysis
 deps), over the per-block ledger and each daemon's final chain:
 - attacker main-chain block share vs α, plotted against the Eyal–Sirer and stubborn revenue
-  curves evaluated at the γ measured in-sim;
+  curves evaluated at the γ measured in-sim (≈ 0 in the single-bridge phase-1 runs, so
+  phase 1 is compared against the γ = 0 curve);
 - realised γ per race and its distribution;
 - orphan / stale rate, reorg depth distribution, honest revenue loss;
 - a machine-readable summary and a verdict block for the gate.
@@ -142,8 +156,9 @@ deps), over the per-block ledger and each daemon's final chain:
   orphan rate stays at baseline. Proves the two-daemon apparatus adds no advantage by itself.
 - **b. Determinism A/A.** Two runs, same seed → identical block-hash sequence on the honest
   chain.
-- **c. Eyal–Sirer micro.** At a known α and a topology that pins γ near a known value,
-  realised attacker share matches the Eyal–Sirer curve within a stated band.
+- **c. Eyal–Sirer micro.** At a known α with the single bridge (γ ≈ 0), realised attacker
+  main-chain share matches the Eyal–Sirer γ = 0 curve within a stated band, and exceeds the
+  honest-baseline share at the same α.
 - **d. Existing suites.** `cargo test`, Python tests, generation smoke, and the native
   micro / 5-way configs still pass.
 
@@ -158,9 +173,10 @@ deps), over the per-block ledger and each daemon's final chain:
 
 ## 11. Scope split
 
-- **Increment 1 (this plan):** the two-daemon plumbing, the `--offline` orchestrator wiring,
-  the `SelfishMinerAgent` with honest + Eyal–Sirer policies, the honest-block forwarder, the
-  micro config, the revenue-vs-α experiment and its analysis, gates a/b/c/d.
+- **Increment 1 (this plan):** the two-daemon plumbing (one bridge, the γ → 0 regime), the
+  `--offline` orchestrator wiring, the `SelfishMinerAgent` with honest + Eyal–Sirer policies,
+  the honest-block forwarder, the micro config, the revenue-vs-α experiment and its analysis,
+  gates a/b/c/d.
 - **Increment 2 (next plan):** stubborn variants, multi-bridge γ lever, the γ-vs-position
   experiment, and the full knob surface.
 
