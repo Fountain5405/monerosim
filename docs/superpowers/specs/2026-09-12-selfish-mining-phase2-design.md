@@ -22,20 +22,70 @@ Phase 1 already has: the offline miner, one bridge, `SelfishMinerAgent`, `Selfis
 
 - **`SelfishMinerAgent` → multiple bridges.** `bridge_agent` (one id) becomes `bridges` (a comma-separated list of bridge agent ids). The agent connects to all of them via the registry. It reads the honest tip and forwards honest blocks using the first reachable bridge (they converge on the honest chain). On release it submits each block to *every* bridge. Everything else (the strategy, the forwarder, the offline miner) is unchanged.
 - **Bridge connectivity knobs.** Each bridge node in the config carries `daemon_options: {out-peers: N, hide-my-port: false}` and `daemon_args: ["--add-priority-node=<honest ip:port>", ...]` to pin its fan-out. (The attacker config author sets these; the orchestrator already renders them.)
-- **`SelfishStrategy` → stubborn variants.** Add `lead_stubborn`, `equal_fork_stubborn`, `trail_stubborn` to the existing `honest`/`eyal_sirer` policy. No new mechanism; these are different release/adopt rules over the same primitive.
+- **`SelfishStrategy` → stubborn variants** (`lead_stubborn`, `equal_fork_stubborn`, `trail_stubborn`). These need one new primitive, `forward_to` (§4.1): the strategy tells the agent how far to forward honest blocks into the miner, so the miner can be kept on a non-longest private chain. The agent's `_forward_public_blocks` caps forwarding at `forward_to` (default `None` = the honest tip, unchanged for honest/eyal_sirer).
 - **Analysis → γ + stubborn curves.** Add a realized-γ estimate and the stubborn revenue curves to `selfish_mining_analysis.py`.
 
 No monerod patch, no orchestrator change beyond what phase 1 already does (the multi-bridge wiring is config + the Python agent reading a list; priority-node/out-peers are existing daemon knobs). The one open item is whether the agent needs a richer way to learn honest-node IPs for the `--add-priority-node` lists; phase-1 bridges already join the honest mesh via seeds, so priority nodes are an *optional* amplifier, not required for correctness.
 
 ## 4. Stubborn-mining variants
 
-Defined over the same `(private lead a, honest progress h since fork)` state the phase-1 `eyal_sirer` uses (see `agents/selfish_strategy.py`). At γ>0 these differ from classic selfish mining:
+### 4.1 The mechanism they need: `forward_to`
 
-- **lead_stubborn:** never give up a lead of 1 — when honest draws even (a becomes 0 after a fork), keep mining on the private block rather than adopting, betting on γ. Publishes to match, never concedes a 1-block race.
-- **equal_fork_stubborn:** on a tie (a == h == 1 after the fork), always publish to contest and keep mining privately, never adopting the honest block first.
-- **trail_stubborn(j):** keep mining the private chain even when *behind* by up to `j` blocks, abandoning only when the honest lead exceeds `j`. `j` is a strategy parameter.
+Selfish mining (`eyal_sirer`) and honest both let the attacker's miner follow the
+longest chain: the agent forwards every honest block into the offline miner, which
+reorgs to honest whenever honest is longer. Stubborn strategies are different — they
+make the miner *keep mining a chain that is not the longest* (trailing behind, or holding
+a contested fork). monerod always follows the longest chain it knows, so the only way to
+keep the miner on a shorter private branch is to **not tell it about the honest lead**.
 
-Each is a branch in `SelfishStrategy.update`, selected by the `strategy` attribute, with parameters from the attributes (e.g. `trail_depth`). The γ=0 single-bridge regime makes all of them collapse toward the honest outcome (ties are lost), so stubborn variants are only interesting at the lifted-γ configs.
+So `SelfishStrategy.update` returns one new field, `forward_to`: the honest block height up
+to which the agent may forward honest blocks into the offline miner this step.
+
+- `forward_to = None` → forward everything up to the honest tip (miner follows longest;
+  this is honest/eyal_sirer, unchanged from phase 1).
+- `forward_to = <fork height>` → forward only the shared history; withhold the honest
+  competing branch, so the miner keeps mining its own (shorter) private branch.
+
+The strategy still reads the true honest height from the bridge, so it always knows how far
+behind it is; `forward_to` only controls what the *miner* sees. Conceding is simply setting
+`forward_to = None` (and moving the fork to the honest tip): the next forward feeds the
+honest branch and the miner reorgs onto it. This is the whole mechanism; it is backward
+compatible because selfish/honest always return `forward_to = None`.
+
+### 4.2 The three variants (precise rules)
+
+State, as in phase 1: `a = priv_height − fork` (attacker's private branch length),
+`h = pub_height − fork` (honest progress since the fork). γ>0 (multi-bridge, §3) is what
+makes these differ from selfish mining; at γ≈0 they all collapse toward the honest outcome
+because contested ties are lost.
+
+- **trail_stubborn(j)** — parameter `trail_depth = j` (default 1). Identical to `eyal_sirer`
+  **except** it refuses to concede while behind by at most `j`:
+  - `h − a > j` (behind by more than j), or `a == 0` with `h > 0`: **concede** — adopt public,
+    `forward_to = None`, `fork = pub_height`.
+  - `0 < h − a ≤ j` (trailing within the tolerance): **hold** — release nothing,
+    `forward_to = fork` (miner keeps mining its private branch to try to catch up).
+  - `a ≥ h`: exactly `eyal_sirer` (withhold / tie-contest / reveal-and-win), `forward_to = None`.
+  - `j = 0` reduces exactly to `eyal_sirer`.
+
+- **equal_fork_stubborn** — like `eyal_sirer`, but it never concedes *straight out of a tie*:
+  once it has contested a tie (`a == h ≥ 1`), if honest then breaks the tie by one
+  (`h − a == 1` with the previous step having been a tie), it **holds** one more round
+  (`forward_to = fork`, release nothing) rather than adopting, hoping to re-level. If it
+  falls 2+ behind it concedes. Implemented with a one-bit `was_tie` flag on the strategy.
+
+- **lead_stubborn** — like `eyal_sirer`, but on the "override" step where selfish would
+  reveal its whole lead to win (`a − h == 1`), it instead reveals **only up to the honest
+  tip height** (`release_to = pub_height − 1`) to contest via γ, keeps the top block hidden
+  (`fork` unchanged), and keeps mining — betting that γ plus its hidden lead wins more than
+  a guaranteed single-block override. `forward_to = None` throughout (it stays at or ahead of
+  honest, so honest blocks are never longer and never reorg the miner). Concedes only if
+  honest actually overtakes (`a < h`).
+
+Each is one branch in `SelfishStrategy.update`, selected by the `strategy` attribute
+(`trail_depth` read from attributes for the trail variant). A human can verify each against
+these rules from the unit tests, which assert the `(release_to, forward_to, adopt_public)`
+triple for every state transition.
 
 ## 5. γ measurement
 
@@ -63,11 +113,14 @@ The phase-1 micro (2 honest miners + 2 relays + 6 seeds, low latency) gives γ �
 
 ## 9. Deliverables
 
-- `agents/selfish_miner.py`: `bridges` list (multi-bridge connect + release-to-all); keep `bridge_agent` as a one-element alias for backward compatibility with phase-1 configs. Tests.
-- `agents/selfish_strategy.py`: the three stubborn variants + parameters. Tests for each transition.
+- `agents/selfish_miner.py`: `bridges` list (multi-bridge connect + release-to-all); honor the strategy's `forward_to` when forwarding; keep `bridge_agent` as a one-element alias for backward compatibility with phase-1 configs. Tests.
+- `agents/selfish_strategy.py`: `forward_to` on `ReleaseDecision`, and the three stubborn variants + parameters. Tests asserting the `(release_to, forward_to, adopt_public)` triple for every transition of every variant.
 - `scripts/selfish_mining_analysis.py`: realized-γ estimate, revenue-at-measured-γ, γ-vs-config table. Tests.
-- `test_configs/selfish_phase2/`: a larger honest-network base + a publisher-count sweep + a stubborn-variant set.
-- `docs/SELFISH_MINING.md`: a phase-2 section (multi-bridge, stubborn, γ measurement, the connectivity-not-position reframe). CHANGELOG entry.
+- `test_configs/selfish_phase2/`: a larger honest-network base + a publisher-count sweep + a stubborn-variant set (one config per strategy at a lifted-γ topology).
+- **Documentation for human verification (explicit goal).** Every artifact is written so a person can read the work and validate it without re-deriving it:
+  - `docs/SELFISH_MINING.md`: a phase-2 section (multi-bridge, the `forward_to` mechanism, each stubborn variant's rules, γ measurement, the connectivity-not-position reframe, how to run each experiment and read its output).
+  - `docs/20260912_selfish_mining_results.md`: a results-and-validation writeup covering every run performed — the phase-1 micro, the α-sweep (with the threshold finding and the idealized-curve-is-an-upper-bound gap at high α), the honest baseline, the 24h run, and the phase-2 γ and stubborn runs — each with the exact command to reproduce it, the run-directory id, the numbers obtained, and how to check them against theory. This is the human's entry point to validate the whole apparatus.
+  - CHANGELOG entry.
 
 ## 10. Scope and deferrals
 
