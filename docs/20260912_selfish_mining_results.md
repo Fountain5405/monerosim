@@ -88,7 +88,7 @@ bridges?):
 
 | run-dir | config | bridges | attacker share | realized γ (ties) | theory@γ | verdict |
 |---|---|---|---|---|---|---|
-| _pending_ | `fanout_1.yaml` | 1 | | | | |
+| `20260912_191118_p2_fanout_1` | `fanout_1.yaml` | 1 | 0.475 | 0.167 (12) | 0.498 | PASS |
 | _pending_ | `fanout_3.yaml` | 3 | | | | |
 | _pending_ | `fanout_6.yaml` | 6 | | | | |
 
