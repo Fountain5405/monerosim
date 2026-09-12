@@ -2,15 +2,18 @@
 
 Runs on the attacker's OFFLINE miner daemon (native throttled RandomX). Its
 own daemon (self.daemon_rpc) withholds by construction because it has no P2P.
-A separate, normally-connected bridge daemon (discovered from
-agent_registry.json by the `bridge_agent` attribute) is the read/write path to
-the honest network. Each tick this agent forwards new honest blocks into the
-offline miner and releases private blocks to the bridge per the SelfishStrategy
-decision. See docs/SELFISH_MINING.md.
+One or more separate, normally-connected bridge daemons (discovered from
+agent_registry.json by the `bridges` attribute) are the read/write path to
+the honest network: the first bridge is the read source, and on release every
+private block is submitted to EVERY bridge (this is what lifts gamma). Each
+tick this agent forwards new honest blocks into the offline miner and
+releases private blocks to the bridges per the SelfishStrategy decision. See
+docs/SELFISH_MINING.md.
 
 Attributes (via --attributes KEY VALUE):
     strategy            "honest" | "eyal_sirer"  (default "honest")
-    bridge_agent        agent id of the bridge node (required)
+    bridges             comma-separated bridge agent ids (required)
+    bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
     attack_start_height block count at which withholding begins (default 0)
     reaction_delay_ms   poll/reaction interval in ms (default 200)
 """
@@ -25,10 +28,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
     def __init__(self, agent_id: str, **kwargs):
         super().__init__(agent_id=agent_id, **kwargs)
         self.strategy_name = self.attributes.get("strategy", "honest")
-        self.bridge_agent_id = self.attributes.get("bridge_agent")
+        bridges_attr = self.attributes.get("bridges") or self.attributes.get("bridge_agent") or ""
+        self.bridge_agent_ids = [b.strip() for b in bridges_attr.split(",") if b.strip()]
+        self.bridge_rpcs = []
+        self.bridge_rpc = None
+        self._connected_ids = set()
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
-        self.bridge_rpc = None
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
         self._released_index = -1      # highest private block index released to the bridge
@@ -63,18 +69,26 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if self.strategy is None:
             self.strategy = SelfishStrategy(self.strategy_name, start_height)
 
-    def _connect_bridge(self) -> bool:
+    def _connect_bridges(self) -> bool:
+        """Connect any bridge in `bridge_agent_ids` not yet connected. Returns
+        True once every configured bridge has been connected at least once."""
         registry = self.read_shared_state("agent_registry.json") or {}
-        for agent in registry.get("agents", []):
-            if agent.get("id") == self.bridge_agent_id:
-                host = agent.get("ip_addr")
-                port = agent.get("daemon_rpc_port")
-                if host and port:
-                    self.bridge_rpc = MoneroRPC(host, int(port))
-                    self.logger.info(f"Bridge connected: {self.bridge_agent_id} at {host}:{port}")
-                    return True
-        self.logger.debug(f"Bridge {self.bridge_agent_id} not yet in registry")
-        return False
+        by_id = {agent.get("id"): agent for agent in registry.get("agents", [])}
+        for bid in self.bridge_agent_ids:
+            if bid in self._connected_ids:
+                continue
+            agent = by_id.get(bid)
+            host = agent.get("ip_addr") if agent else None
+            port = agent.get("daemon_rpc_port") if agent else None
+            if host and port:
+                self.bridge_rpcs.append(MoneroRPC(host, int(port)))
+                self._connected_ids.add(bid)
+                self.logger.info(f"Bridge connected: {bid} at {host}:{port}")
+            else:
+                self.logger.debug(f"Bridge {bid} not yet in registry")
+        if self.bridge_rpcs:
+            self.bridge_rpc = self.bridge_rpcs[0]
+        return len(self._connected_ids) == len(self.bridge_agent_ids) > 0
 
     def _forward_one(self, idx: int, blk=None) -> None:
         """Fetch honest block `idx` from the bridge and submit it into the
@@ -146,11 +160,16 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 blk = self.daemon_rpc.get_block(height=idx)
                 self._warn_if_has_txs(blk, idx, "private")
                 blob = blk.get("blob")
-                if blob:
-                    self.bridge_rpc.submit_block(blob)
             except RPCError as e:
-                # Expected for equal-height alts (gamma=0) and already-present blocks.
                 self.logger.debug(f"release private block {idx}: {e}")
+                blob = None
+            if blob:
+                for rpc in self.bridge_rpcs:
+                    try:
+                        rpc.submit_block(blob)
+                    except RPCError as e:
+                        # Expected for equal-height alts (gamma=0) and already-present blocks.
+                        self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
 
     def run_iteration(self) -> float:
@@ -160,8 +179,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         except RPCError as e:
             self.logger.warning(f"native mining iteration: {e}")
 
-        # 2. Ensure the bridge is connected.
-        if self.bridge_rpc is None and not self._connect_bridge():
+        # 2. Ensure all bridges are connected.
+        if len(self.bridge_rpcs) < len(self.bridge_agent_ids):
+            self._connect_bridges()
+        if not self.bridge_rpcs:
             return 1.0
 
         # 3/4. Read both chains (height + honest tip hash for reorg detection).

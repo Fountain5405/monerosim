@@ -16,6 +16,7 @@ def _make_agent(strategy="eyal_sirer", start_height=0, reaction_ms=200):
     # Own daemon (offline miner) and bridge daemon are mocked.
     a.daemon_rpc = MagicMock()
     a.bridge_rpc = MagicMock()
+    a.bridge_rpcs = [a.bridge_rpc]
     a.native_started = True            # skip real start_mining
     a._native_run_iteration = MagicMock(return_value=1.0)
     a._ensure_strategy(0)
@@ -25,7 +26,7 @@ def _make_agent(strategy="eyal_sirer", start_height=0, reaction_ms=200):
 def test_reads_attributes():
     a = _make_agent(strategy="eyal_sirer", start_height=5, reaction_ms=150)
     assert a.strategy_name == "eyal_sirer"
-    assert a.bridge_agent_id == "attacker-bridge"
+    assert a.bridge_agent_ids == ["attacker-bridge"]
     assert a.attack_start_height == 5
     assert abs(a._reaction_interval_s() - 0.15) < 1e-9
 
@@ -42,7 +43,7 @@ def test_connect_bridge_reads_registry(monkeypatch):
             {"id": "attacker-bridge", "ip_addr": "11.0.0.2", "daemon_rpc_port": 28082},
         ]
     })
-    assert a._connect_bridge() is True
+    assert a._connect_bridges() is True
     assert a.bridge_rpc.url == "http://11.0.0.2:28082/json_rpc"
 
 
@@ -51,8 +52,8 @@ def test_connect_bridge_missing_returns_false():
                           attributes=[["bridge_agent", "nope"]])
     a.logger = MagicMock()
     a.read_shared_state = MagicMock(return_value={"agents": []})
-    assert a._connect_bridge() is False
-    assert a.bridge_rpc is None
+    assert a._connect_bridges() is False
+    assert a.bridge_rpcs == []
 
 
 def test_forward_public_blocks_submits_new_honest_blocks():
@@ -71,6 +72,7 @@ def test_forward_public_blocks_submits_new_honest_blocks():
 def test_release_up_to_submits_private_blocks_to_bridge():
     a = _make_agent()
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"priv{height}"}
+    a.bridge_rpcs = [a.bridge_rpc]
     a._release_up_to(1, 3)   # release_from=1 -> indexes 1,2,3
     submitted = [c.args[0] for c in a.bridge_rpc.submit_block.call_args_list]
     assert submitted == ["priv1", "priv2", "priv3"]
@@ -81,6 +83,7 @@ def test_release_tolerates_rejected_alt():
     a = _make_agent()
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
     a.bridge_rpc.submit_block.side_effect = [RPCError("Block not accepted"), {"status": "OK"}]
+    a.bridge_rpcs = [a.bridge_rpc]
     a._release_up_to(0, 1)   # index 0 rejected (alt), index 1 accepted -> no raise
     assert a._released_index == 1
 
@@ -150,3 +153,49 @@ def test_forwarder_idle_tick_does_no_rpc_when_tip_unchanged():
     a.bridge_rpc.get_block.reset_mock()
     a._forward_public_blocks(2, tip_hash="X1")    # same tip, nothing new
     a.bridge_rpc.get_block.assert_not_called()
+
+
+def test_bridges_attribute_parsed_as_list():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1, b2 ,b3"]])
+    a.logger = MagicMock()
+    assert a.bridge_agent_ids == ["b1", "b2", "b3"]
+
+
+def test_bridge_agent_is_single_element_alias():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridge_agent", "only"]])
+    a.logger = MagicMock()
+    assert a.bridge_agent_ids == ["only"]
+
+
+def test_connect_bridges_all_and_read_source():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1,b2"]])
+    a.logger = MagicMock()
+    a.read_shared_state = MagicMock(return_value={"agents": [
+        {"id": "b1", "ip_addr": "10.0.0.1", "daemon_rpc_port": 28081},
+        {"id": "b2", "ip_addr": "10.0.0.2", "daemon_rpc_port": 28082}]})
+    assert a._connect_bridges() is True
+    assert [r.url for r in a.bridge_rpcs] == [
+        "http://10.0.0.1:28081/json_rpc", "http://10.0.0.2:28082/json_rpc"]
+    assert a.bridge_rpc.url == "http://10.0.0.1:28081/json_rpc"
+
+
+def test_connect_bridges_retries_missing():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1,b2"]])
+    a.logger = MagicMock()
+    a.read_shared_state = MagicMock(return_value={"agents": [
+        {"id": "b1", "ip_addr": "10.0.0.1", "daemon_rpc_port": 28081}]})
+    assert a._connect_bridges() is False and len(a.bridge_rpcs) == 1
+    a.read_shared_state = MagicMock(return_value={"agents": [
+        {"id": "b1", "ip_addr": "10.0.0.1", "daemon_rpc_port": 28081},
+        {"id": "b2", "ip_addr": "10.0.0.2", "daemon_rpc_port": 28082}]})
+    assert a._connect_bridges() is True and len(a.bridge_rpcs) == 2
+
+
+def test_release_submits_to_all_bridges():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1,b2"]])
+    a.logger = MagicMock(); a.daemon_rpc = MagicMock()
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
+    b1, b2 = MagicMock(), MagicMock(); a.bridge_rpcs = [b1, b2]; a.bridge_rpc = b1
+    a._release_up_to(0, 1)
+    assert [c.args[0] for c in b1.submit_block.call_args_list] == ["p0", "p1"]
+    assert [c.args[0] for c in b2.submit_block.call_args_list] == ["p0", "p1"]
