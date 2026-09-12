@@ -1,0 +1,66 @@
+# Selfish-mining tighter-statistics run (docs/SELFISH_MINING.md §7).
+# IDENTICAL to selfish_micro.yaml (alpha = 0.4, eyal_sirer) EXCEPT stop_time is
+# 24h: ~4x the canonical blocks of the 6h micro (~700 vs ~172), shrinking the
+# 1-sigma on the attacker-share estimate from ~0.037 to ~0.019 so the measured
+# share can be compared to the gamma=0 theory (0.484) more sharply.
+general:
+  stop_time: 24h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
