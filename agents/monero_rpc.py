@@ -298,6 +298,17 @@ class MoneroRPC(BaseRPC):
         result = self._make_request("get_block_header_by_height", params)
         return result.get("block_header", {})
 
+    def submit_block(self, block_blob: str) -> Dict[str, Any]:
+        """Submit a single mined block (hex blob) to the daemon.
+
+        submit_block's params is a POSITIONAL array of block blobs, unlike the
+        object-params of other json_rpc methods; _make_request forwards a list
+        verbatim. On success the daemon adds the block and (if it enters the
+        main chain) relays it to peers exactly as a P2P block. Raises RPCError
+        if the block is rejected.
+        """
+        return self._make_request("submit_block", [block_blob])
+
     def get_transaction_pool(self) -> Dict[str, Any]:
         """
         Get information about the transaction pool (mempool).
