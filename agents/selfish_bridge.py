@@ -9,6 +9,7 @@ this agent issues no blockchain RPCs.
 import logging
 
 from agents.base_agent import BaseAgent
+from agents.monero_rpc import RPCError
 
 BRIDGE_IDLE_INTERVAL_S = 60.0
 
@@ -26,6 +27,29 @@ class SelfishBridgeAgent(BaseAgent):
     def run_iteration(self) -> float:
         # Registered in setup(); nothing to do but stay alive.
         return BRIDGE_IDLE_INTERVAL_S
+
+    def _cleanup_agent(self):
+        """Record this honest node's final main chain (height -> hash) so the
+        selfish-mining analysis can attribute each canonical block to its
+        finder. At gamma=0 the bridge's main chain IS the honest canonical
+        chain. Best-effort: a failure here must not break shutdown."""
+        try:
+            height = int(self.daemon_rpc.get_info().get("height", 0))
+            chain = []
+            for h in range(1, height):   # skip genesis (height 0)
+                try:
+                    header = self.daemon_rpc.get_block_header_by_height(h)
+                except RPCError as e:
+                    self.logger.warning(f"canonical chain dump stopped at height {h}: {e}")
+                    break
+                block_hash = header.get("hash")
+                if block_hash:
+                    chain.append({"height": h, "hash": block_hash})
+            self.write_shared_state("canonical_chain.json",
+                                    {"observer": self.agent_id, "chain": chain})
+            self.logger.info(f"Canonical chain recorded: {len(chain)} blocks")
+        except RPCError as e:
+            self.logger.warning(f"canonical chain dump failed: {e}")
 
 
 def main():
