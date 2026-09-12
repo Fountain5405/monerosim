@@ -93,3 +93,37 @@ def test_realized_gamma_zero_when_no_ties():
     g, ties = realized_gamma([{"hash":"a1","height":1,"miner":"attacker-miner"}],
                              [{"height":1,"hash":"a1"}], {"attacker-miner"})
     assert ties == 0 and g == 0.0
+
+
+def test_realized_gamma_excludes_reorg_wins():
+    # Review C1: a fork the attacker's OWN chain extended (attacker-found
+    # canonical F+1) is a reorg win, NOT a gamma tie-break — must be excluded.
+    from scripts.selfish_mining_analysis import realized_gamma
+    found = [{"hash": "a2", "height": 2, "miner": "attacker-miner"},
+             {"hash": "h2", "height": 2, "miner": "honest-001"},
+             {"hash": "a3", "height": 3, "miner": "attacker-miner"}]
+    chain = [{"height": 2, "hash": "a2"}, {"height": 3, "hash": "a3"}]
+    g, events = realized_gamma(found, chain, {"attacker-miner"})
+    assert events == 0 and g == 0.0
+
+
+def test_realized_gamma_lost_tie_is_zero():
+    # Honest built F+1 on honest's F -> attacker lost the tie -> gamma 0.
+    from scripts.selfish_mining_analysis import realized_gamma
+    found = [{"hash": "a2", "height": 2, "miner": "attacker-miner"},
+             {"hash": "h2", "height": 2, "miner": "honest-001"},
+             {"hash": "h3", "height": 3, "miner": "honest-002"}]
+    chain = [{"height": 2, "hash": "h2"}, {"height": 3, "hash": "h3"}]
+    g, events = realized_gamma(found, chain, {"attacker-miner"})
+    assert events == 1 and g == 0.0
+
+
+def test_realized_gamma_won_tie_counts():
+    # Honest built F+1 on the ATTACKER's F -> gamma win.
+    from scripts.selfish_mining_analysis import realized_gamma
+    found = [{"hash": "a2", "height": 2, "miner": "attacker-miner"},
+             {"hash": "h2", "height": 2, "miner": "honest-001"},
+             {"hash": "h3", "height": 3, "miner": "honest-002"}]
+    chain = [{"height": 2, "hash": "a2"}, {"height": 3, "hash": "h3"}]
+    g, events = realized_gamma(found, chain, {"attacker-miner"})
+    assert events == 1 and g == 1.0

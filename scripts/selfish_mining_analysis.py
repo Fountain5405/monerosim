@@ -82,25 +82,41 @@ def orphan_stats(found: list, canonical_hashes: set, attacker_ids: set) -> dict:
 
 
 def realized_gamma(found: list, chain: list, attacker_ids: set) -> tuple:
-    """Fraction of tie heights (both an attacker- and honest-found block at
-    that height) the attacker won on the canonical chain, plus the tie count."""
-    by_height = {}
+    """Realized gamma: the honest network's tie-break bias toward the attacker.
+
+    A gamma EVENT is a fork at height F (both an attacker- and an honest-found
+    block exist at F) that the honest network RESOLVED by mining the canonical
+    block at F+1 on one of the two forks. gamma = fraction of such events where
+    the honest network extended the ATTACKER's fork (i.e. canonical[F] is
+    attacker-found).
+
+    Only forks resolved by an HONEST-found F+1 count: a fork where the
+    attacker's own chain overtook (attacker-found canonical F+1) is a reorg win,
+    not a tie-break, and is excluded. Counting every coexistence height, or
+    attributing by canonical[F] alone, over-reports gamma — the earlier version
+    read ~0.70 on a true-gamma~=0 run (review C1). Returns (gamma, num_events).
+    """
+    miner_by_hash = {}
+    miners_at_height = {}
     for e in found:
-        by_height.setdefault(e["height"], []).append(e)
-    canonical_hash_by_height = {b["height"]: b["hash"] for b in chain}
-    ties = 0
+        miner_by_hash[e["hash"]] = e["miner"]
+        miners_at_height.setdefault(e["height"], set()).add(e["miner"])
+    canon_hash = {b["height"]: b["hash"] for b in chain}
+    events = 0
     attacker_wins = 0
-    for height, entries in by_height.items():
-        has_attacker = any(e["miner"] in attacker_ids for e in entries)
-        has_honest = any(e["miner"] not in attacker_ids for e in entries)
-        if has_attacker and has_honest:
-            ties += 1
-            canon_hash = canonical_hash_by_height.get(height)
-            winner = next((e["miner"] for e in entries if e["hash"] == canon_hash), None)
-            if winner in attacker_ids:
-                attacker_wins += 1
-    gamma = (attacker_wins / ties) if ties else 0.0
-    return gamma, ties
+    for height, miners in miners_at_height.items():
+        has_attacker = any(m in attacker_ids for m in miners)
+        has_honest = any(m not in attacker_ids for m in miners)
+        if not (has_attacker and has_honest):
+            continue                                  # not a fork
+        resolver_miner = miner_by_hash.get(canon_hash.get(height + 1))
+        if resolver_miner is None or resolver_miner in attacker_ids:
+            continue                                  # unresolved, or attacker's own extension (reorg, not tie-break)
+        events += 1
+        if miner_by_hash.get(canon_hash.get(height)) in attacker_ids:
+            attacker_wins += 1                         # honest network extended the attacker's fork
+    gamma = (attacker_wins / events) if events else 0.0
+    return gamma, events
 
 
 def _attacker_ids(cfg):
