@@ -45,7 +45,7 @@ class SelfishBridgeAgent(BaseAgent):
                 block_hash = header.get("hash")
                 if block_hash:
                     chain.append({"height": h, "hash": block_hash})
-            self.write_shared_state("canonical_chain.json",
+            self.write_shared_state(f"canonical_chain_{self.agent_id}.json",
                                     {"observer": self.agent_id, "chain": chain})
             self.logger.info(f"Canonical chain recorded: {len(chain)} blocks")
         except RPCError as e:

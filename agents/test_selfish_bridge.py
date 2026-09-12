@@ -27,8 +27,9 @@ def test_cleanup_agent_dumps_canonical_chain():
     written = {}
     agent.write_shared_state = lambda name, data: written.__setitem__(name, data)
     agent._cleanup_agent()
-    assert written["canonical_chain.json"]["chain"] == [
+    # Per-agent filename (review C3): each bridge writes its own, no clobber.
+    assert written["canonical_chain_attacker-bridge.json"]["chain"] == [
         {"height": 1, "hash": "h1"},
         {"height": 2, "hash": "h2"},
     ]
-    assert written["canonical_chain.json"]["observer"] == "attacker-bridge"
+    assert written["canonical_chain_attacker-bridge.json"]["observer"] == "attacker-bridge"

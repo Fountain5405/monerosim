@@ -15,6 +15,7 @@ general:
   mining:
     mode: native
   daemon_defaults:
+    fixed-difficulty: 1200  # P1: pin difficulty (=120s/10h/s equilibrium) so >=2-block contests are propagation-decided, not timestamp-decided in <600-block runs
     log-level: monitor
     max-log-file-size: 0
     db-sync-mode: fastest

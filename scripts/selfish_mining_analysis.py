@@ -161,9 +161,12 @@ def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None) -> list:
 def _find_chain_file(run_dir, explicit):
     if explicit:
         return Path(explicit)
-    for cand in glob.glob(str(Path(run_dir) / "**" / "canonical_chain.json"), recursive=True):
-        return Path(cand)
-    return None
+    # Each bridge writes canonical_chain_<agent_id>.json (review C3: multiple
+    # bridges must not clobber one file); older single-bridge runs wrote
+    # canonical_chain.json. Match both; bridges converge on the honest chain,
+    # so any one is the canonical chain. Sorted for determinism.
+    cands = sorted(glob.glob(str(Path(run_dir) / "**" / "canonical_chain*.json"), recursive=True))
+    return Path(cands[0]) if cands else None
 
 
 def main() -> int:
