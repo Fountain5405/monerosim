@@ -35,6 +35,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self._connected_ids = set()
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
+        self.trail_depth = int(self.attributes.get("trail_depth", "1") or 1)  # trail_stubborn only
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
         self._released_index = -1      # highest private block index released to the bridge
@@ -67,7 +68,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
     def _ensure_strategy(self, start_height: int) -> None:
         if self.strategy is None:
-            self.strategy = SelfishStrategy(self.strategy_name, start_height)
+            self.strategy = SelfishStrategy(self.strategy_name, start_height, trail_depth=self.trail_depth)
 
     def _connect_bridges(self) -> bool:
         """Connect any bridge in `bridge_agent_ids` not yet connected. Returns

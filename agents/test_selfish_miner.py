@@ -210,3 +210,21 @@ def test_forward_to_caps_forwarding():
     submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
     assert submitted == ["h0", "h1"]          # indexes 0,1 only (forward_to=2 => heights <2)
     assert a._forwarded_index == 1
+
+
+def test_trail_depth_attribute_flows_to_strategy():
+    # Phase-2 gap fix: trail_depth from attributes must reach SelfishStrategy,
+    # else stub_trail.yaml's trail_depth is inert (defaults to 1).
+    a = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "trail_stubborn"], ["trail_depth", "2"], ["bridges", "b1"]])
+    a.logger = MagicMock()
+    assert a.trail_depth == 2
+    a._ensure_strategy(0)
+    assert a.strategy.trail_depth == 2 and a.strategy.name == "trail_stubborn"
+
+
+def test_trail_depth_defaults_to_one():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "trail_stubborn"], ["bridges", "b1"]])
+    a.logger = MagicMock()
+    assert a.trail_depth == 1
