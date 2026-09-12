@@ -272,9 +272,40 @@ verdicts (§4) are the exact operationalisation of this gate.
 
 ```bash
 venv/bin/python -m pytest agents/ scripts/test_selfish_configs.py scripts/test_selfish_mining_analysis.py -q
-MONEROSIM_SKIP_SIM_BINARY_CHECK=1 cargo test
+cargo test
 ```
 
 plus the generation smoke of `test_configs/selfish_micro.yaml` and the
 native-mining micro / 5-way split configs (`docs/NATIVE_MINING.md` §7) —
-none of which this feature touches.
+none of which this feature touches. Do not set
+`MONEROSIM_SKIP_SIM_BINARY_CHECK=1` globally for `cargo test`: the golden
+tests set it internally, and forcing it on breaks the sim-binary probe test.
+
+## 7. Caveats for interpreting results
+
+The phase-1 apparatus was reviewed; these residual limitations shape how you
+read a run and are not bugs to fix before experimenting:
+
+- **Attribution is ground truth, releases are fire-and-forget.** The agent
+  submits releases and moves on without confirming delivery. This is safe
+  because the attacker's share is measured from the bridge's recorded
+  canonical chain (`canonical_chain.json`), not from what the agent believes
+  it released. Under Shadow, RPC is deterministic and local, so a release
+  either lands or is a γ=0 alternative (expected).
+- **The offline attacker miner is still listed as a network seed.** Miners are
+  auto-assigned as seed/priority nodes, and the attacker's miner is offline, so
+  honest nodes log failed connection attempts to it. The shipped configs each
+  have two online honest miners as seeds, so the honest network bootstraps and
+  the bridge joins regardless. Excluding offline nodes from seed assignment is
+  a phase-2 orchestrator improvement.
+- **Statistical band.** A ~6 h micro run yields on the order of 180 canonical
+  blocks, so the attacker-share estimate has roughly a 0.037 standard
+  deviation; the analysis uses a ±0.10 verdict band. Treat a single micro run
+  as directional and use the α-sweep (and longer runs) for quantitative claims.
+- **Canonical snapshot timing.** The bridge records its chain at agent
+  shutdown (about two minutes before `stop_time`), so the final block or two
+  of a run may be outside `canonical_chain.json`. Negligible at experiment
+  scale.
+- **Startup edge.** With `attack_start_height: 0` the first withheld block is
+  published immediately (a single lost withholding opportunity at genesis),
+  negligible over a full run; set a small `attack_start_height` to warm up.
