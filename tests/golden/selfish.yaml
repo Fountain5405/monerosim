@@ -1,0 +1,647 @@
+general:
+  stop_time: 1800
+  seed: 12345
+  parallelism: 0
+  model_unblocked_syscall_latency: true
+  log_level: info
+  progress: true
+network:
+  graph:
+    type: gml
+    file:
+      path: TMPDIR/topology.gml
+  dns_server: 3.0.0.10
+experimental:
+  use_dynamic_runahead: true
+hosts:
+  attacker-bridge:
+    network_node_id: 0
+    ip_addr: 3.0.0.11
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-attacker-bridge
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=3.0.0.11
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=3.0.0.11
+      - --p2p-bind-port=18080
+      - --seed-node=2.0.0.10:18080
+      - --seed-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 0s
+      expected_final_state: running
+    - path: /bin/bash
+      args:
+      - TMPDIR/scripts/agent_attacker-bridge_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 5s
+      shutdown_time: 1680s
+      expected_final_state:
+        exited: 0
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  attacker-miner:
+    network_node_id: 200
+    ip_addr: 2.0.0.10
+    processes:
+    - path: HOME/.monerosim/bin/monerod-sim
+      args:
+      - --data-dir=/tmp/monero-attacker-miner
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --offline
+      - --sim-hash-interval-ms=250
+      - --sim-rx-full-dataset
+      - --rpc-bind-ip=2.0.0.10
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=2.0.0.10
+      - --p2p-bind-port=18080
+      - --add-priority-node=1.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 0s
+      expected_final_state: running
+    - path: HOME/.monerosim/bin/monero-wallet-rpc
+      args:
+      - --daemon-address=http://2.0.0.10:18081
+      - --rpc-bind-port=18082
+      - --rpc-bind-ip=2.0.0.10
+      - --disable-rpc-login
+      - --trusted-daemon
+      - --wallet-dir=TMPDIR/shared/attacker-miner_wallet
+      - --shared-ringdb-dir=TMPDIR/shared/attacker-miner_ringdb
+      - --confirm-external-bind
+      - --allow-mismatched-daemon-version
+      - --daemon-ssl-allow-any-cert
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 2s
+      expected_final_state: running
+    - path: /bin/bash
+      args:
+      - TMPDIR/scripts/agent_attacker-miner_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 5s
+      shutdown_time: 1680s
+      expected_final_state:
+        exited: 0
+    - path: /bin/bash
+      args:
+      - TMPDIR/scripts/mining_agent_attacker-miner_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 15s
+      shutdown_time: 1680s
+      expected_final_state:
+        exited: 0
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  dnsserver:
+    network_node_id: 0
+    ip_addr: 3.0.0.10
+    processes:
+    - path: /bin/bash
+      args:
+      - TMPDIR/scripts/dns_server_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 1s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  honest-001:
+    network_node_id: 500
+    ip_addr: 1.0.0.10
+    processes:
+    - path: HOME/.monerosim/bin/monerod-sim
+      args:
+      - --data-dir=/tmp/monero-honest-001
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --sim-hash-interval-ms=167
+      - --sim-rx-full-dataset
+      - --rpc-bind-ip=1.0.0.10
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=1.0.0.10
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=2.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 0s
+      expected_final_state: running
+    - path: HOME/.monerosim/bin/monero-wallet-rpc
+      args:
+      - --daemon-address=http://1.0.0.10:18081
+      - --rpc-bind-port=18082
+      - --rpc-bind-ip=1.0.0.10
+      - --disable-rpc-login
+      - --trusted-daemon
+      - --wallet-dir=TMPDIR/shared/honest-001_wallet
+      - --shared-ringdb-dir=TMPDIR/shared/honest-001_ringdb
+      - --confirm-external-bind
+      - --allow-mismatched-daemon-version
+      - --daemon-ssl-allow-any-cert
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 2s
+      expected_final_state: running
+    - path: /bin/bash
+      args:
+      - TMPDIR/scripts/agent_honest-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 5s
+      shutdown_time: 1680s
+      expected_final_state:
+        exited: 0
+    - path: /bin/bash
+      args:
+      - TMPDIR/scripts/mining_agent_honest-001_wrapper.sh
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 15s
+      shutdown_time: 1680s
+      expected_final_state:
+        exited: 0
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  monero-seed-001:
+    network_node_id: 800
+    ip_addr: 176.9.0.187
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-monero-seed-001
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=176.9.0.187
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=176.9.0.187
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 0s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  monero-seed-002:
+    network_node_id: 1000
+    ip_addr: 88.198.163.90
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-monero-seed-002
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=88.198.163.90
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=88.198.163.90
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 1s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  monero-seed-003:
+    network_node_id: 1100
+    ip_addr: 192.99.8.110
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-monero-seed-003
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=192.99.8.110
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=192.99.8.110
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 2s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  monero-seed-004:
+    network_node_id: 1
+    ip_addr: 37.187.74.171
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-monero-seed-004
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=37.187.74.171
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=37.187.74.171
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 3s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  monero-seed-005:
+    network_node_id: 201
+    ip_addr: 88.99.195.15
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-monero-seed-005
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=88.99.195.15
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=88.99.195.15
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 4s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  monero-seed-006:
+    network_node_id: 501
+    ip_addr: 5.104.84.64
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-monero-seed-006
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=5.104.84.64
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=5.104.84.64
+      - --p2p-bind-port=18080
+      - --add-priority-node=2.0.0.10:18080
+      - --add-priority-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 5s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
+  relay-001:
+    network_node_id: 801
+    ip_addr: 179.0.0.10
+    processes:
+    - path: HOME/.monerosim/bin/monerod
+      args:
+      - --data-dir=/tmp/monero-relay-001
+      - --log-file=TMPDIR/bitmonero.log
+      - --regtest
+      - --keep-fakechain
+      - --prep-blocks-threads=2
+      - --max-concurrency=2
+      - --log-level=*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL
+      - --max-connections-per-ip=4
+      - --no-zmq
+      - --non-interactive
+      - --rpc-bind-ip=179.0.0.10
+      - --rpc-bind-port=18081
+      - --confirm-external-bind
+      - --rpc-access-control-origins=*
+      - --p2p-bind-ip=179.0.0.10
+      - --p2p-bind-port=18080
+      - --seed-node=2.0.0.10:18080
+      - --seed-node=1.0.0.10:18080
+      environment:
+        DIFFICULTY_CACHE_TTL: '30'
+        DNS_PUBLIC: tcp://3.0.0.10
+        GLIBC_TUNABLES: glibc.malloc.arena_max=1
+        HOME: HOME
+        MALLOC_ARENA_MAX: '1'
+        MALLOC_MMAP_THRESHOLD_: '131072'
+        MALLOC_TRIM_THRESHOLD_: '131072'
+        MONEROSIM_DAEMON_DATA_DIR: /tmp
+        MONEROSIM_SHARED_DIR: TMPDIR/shared
+        MONERO_BLOCK_SYNC_SIZE: '1'
+        PROCESS_THREADS: '2'
+        PYTHONHASHSEED: '0'
+        PYTHONUNBUFFERED: '1'
+        SIMULATION_SEED: '12345'
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+      start_time: 30s
+      expected_final_state: running
+    bandwidth_down: '1000000000'
+    bandwidth_up: '1000000000'
