@@ -92,6 +92,60 @@ bridges?):
 | `20260912_211111_p2_fanout_3` | `fanout_3.yaml` | 3 | 0.425 | 0.083 (12) | 0.491 | PASS |
 | `20260912_201141_p2_fanout_6` | `fanout_6.yaml` | 6 | 0.545 | 0.000 (8) | 0.484 | PASS |
 
+### What the fan-out sweep shows
+
+**Fan-out does not lift γ.** Across 1, 3, and 6 publisher bridges the realized γ
+was 0.167, 0.083, 0.000 — but those are 2, 1, and 0 tie wins out of ~10
+honest-resolved ties each: small-count noise around γ = 0, not a trend. Attacker
+share (0.475, 0.425, 0.545; mean ≈ 0.48) sits on the Eyal–Sirer **γ = 0** curve
+(0.484) within the ~0.05 preemption noise at every fan-out level. Adding bridges
+bought the attacker no tie-breaking advantage.
+
+**Why — verified by forensic on the 6-bridge run.** In
+`20260912_201141_p2_fanout_6` the attacker produced 74 blocks, of which 8 were
+orphaned (never reached the 121-block canonical chain); **none of those 8
+orphaned blocks appears in any honest miner's daemon log**
+(`daemon_logs/monero-honest-00{1,2,3}/bitmonero.log`, grepped exhaustively). The
+attacker's losing tie-blocks never reached the honest network at all. The cause
+is structural, not a tuning problem: the attacker *learns* of a new honest block
+through its bridges (it polls them with `get_info`/`get_block`) and *publishes*
+its matching block through the same bridges. So its equal-height block is always
+submitted **after** the bridge has already received the honest block over P2P,
+adopted it as the main tip, and relayed it onward. Stock monerod re-floods only
+blocks that extend the main chain; an equal-height block arriving second is an
+**alt-block and is not relayed**. Every bridge independently hits this same "too
+late → alt-block → not relayed" outcome, so more bridges only make more
+un-relayed copies. Lowering the reaction delay cannot fix it: the attacker's
+release is *causally downstream* of the bridge adopting the honest block, so the
+tie-block is second by construction — at 50 ms or at 0 ms.
+
+**This agrees with the model; it is not a contradiction.** The γ = 0 Eyal–Sirer
+curve already prices in the attacker's non-tie gains — profitable withholding:
+releasing a strictly-longer private chain, which *does* extend the main chain,
+*is* relayed, and *does* trigger an honest reorg. The sweep confirms the attacker
+sits exactly on that γ = 0 curve and earns essentially nothing from ties, as
+expected when tie-blocks do not propagate.
+
+**Implication for the "γ vs network position" experiment.** Lifting γ requires
+the attacker's block to arrive *first* at some honest miners — a network-position
+advantage (publishers near part of the honest set; the honest finder far from
+it). monerosim uses a single global, deterministic scheduler with **no
+per-agent topology placement**, so that regime cannot be created by any number of
+bridges: fan-out is not a substitute for position. The honest conclusion is a
+**fidelity limitation** — the current simulator reproduces the α-threshold
+(phase 1) faithfully but *cannot* study γ as a function of network position,
+because it cannot place the attacker's publishers advantageously relative to
+honest miners. A real γ experiment would need per-agent topology/latency control
+(a Shadow topology with placed hosts) or a *preemptive-release* strategy that
+publishes the matching block on a timer rather than reactively. This is the main
+scientific finding of phase 2.
+
+*Reproduce the forensic:* the attacker's found-block hashes are in
+`daemon_logs/monero-attacker-miner/bitmonero.log`; the canonical hashes in
+`transaction_registry/canonical_chain_bridge-*.json` (all six identical, 121
+blocks); grep any orphaned attacker hash against
+`daemon_logs/monero-honest-*/bitmonero.log` — it will not appear.
+
 **Stubborn variants vs eyal_sirer** (all at fan-out 6, fixed difficulty; this is
 a *relative* comparison — our mechanism's renderings of the stubborn families do
 not have a closed-form theory curve here, see review P2):
