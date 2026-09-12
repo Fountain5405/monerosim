@@ -1517,7 +1517,7 @@ git commit -m "docs(selfish): SELFISH_MINING.md, changelog, native-mining pointe
 ## Final verification (run after all tasks)
 
 - [ ] Python suite: `venv/bin/python -m pytest agents/ scripts/test_selfish_configs.py scripts/test_selfish_mining_analysis.py -q` — all pass. (The `agents/` path already covers the selfish strategy, bridge, miner, and submit_block tests.)
-- [ ] Rust suite: `MONEROSIM_SKIP_SIM_BINARY_CHECK=1 cargo test` — all pass (native + selfish goldens, mining unit tests).
+- [ ] Rust suite: `cargo test` — all pass (native + selfish goldens, mining unit tests). Do NOT set `MONEROSIM_SKIP_SIM_BINARY_CHECK=1` globally here: the orchestrator golden tests set it internally, and forcing it on globally breaks `utils::mining::tests::probe_caches_and_handles_missing_binary` (which asserts the probe returns false for a missing binary).
 - [ ] Generation smoke: `test_configs/selfish_micro.yaml` generates without error.
 - [ ] Then hand to `superpowers:finishing-a-development-branch`. Do NOT merge or push; the branch stays local per the Global Constraints. A real micro simulation run (gates a/b/c, which needs the bridge's `canonical_chain.json` + the analysis) is executed by the user afterward, not in this plan.
 
