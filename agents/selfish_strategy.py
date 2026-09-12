@@ -23,6 +23,8 @@ class ReleaseDecision:
     release_from: int = 0              # lowest divergent block INDEX to release (the fork
                                        # BEFORE this step mutated it; the caller must use this,
                                        # not the post-update .fork, or the reveal submits nothing)
+    forward_to: Optional[int] = None   # cap on how far honest blocks may be forwarded into the
+                                       # offline miner (index-exclusive bound), or None = uncapped
 
 
 class SelfishStrategy:
@@ -47,6 +49,7 @@ class SelfishStrategy:
                 release_from=old_fork,
                 release_to=(priv_height - 1) if priv_height > 0 else None,
                 adopt_public=False,
+                forward_to=None,
             )
 
         a = priv_height - old_fork   # private branch length
@@ -55,23 +58,23 @@ class SelfishStrategy:
         # Honest overtook (or attacker has nothing on the branch): adopt public.
         if a < h or (h > 0 and a == 0):
             self.fork = pub_height
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True)
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
 
         # Honest has not moved since the fork: keep withholding.
         if h == 0:
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False)
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=None)
 
         # a >= h >= 1 from here.
         if a == h:
             # Tie/race: submit the whole private branch. At gamma=0 the
             # equal-height tip does not propagate; the attacker only wins if it
             # later extends (handled next tick as a-h==1). Fork is NOT moved.
-            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False)
+            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
 
         if a - h == 1:
             # Honest caught to within one: reveal all -> strictly longer -> win.
             self.fork = priv_height
-            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False)
+            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
 
         # a - h >= 2: still comfortably ahead; withhold.
-        return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False)
+        return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=None)

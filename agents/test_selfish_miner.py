@@ -199,3 +199,14 @@ def test_release_submits_to_all_bridges():
     a._release_up_to(0, 1)
     assert [c.args[0] for c in b1.submit_block.call_args_list] == ["p0", "p1"]
     assert [c.args[0] for c in b2.submit_block.call_args_list] == ["p0", "p1"]
+
+
+def test_forward_to_caps_forwarding():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1"]])
+    a.logger = MagicMock(); a.daemon_rpc = MagicMock(); a.bridge_rpc = MagicMock()
+    a.bridge_rpcs = [a.bridge_rpc]
+    a.bridge_rpc.get_block.side_effect = lambda height: {"blob": f"h{height}"}
+    a._forward_public_blocks(pub_height=5, tip_hash=None, forward_to=2)  # cap at index 1
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert submitted == ["h0", "h1"]          # indexes 0,1 only (forward_to=2 => heights <2)
+    assert a._forwarded_index == 1

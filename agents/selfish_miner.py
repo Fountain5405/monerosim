@@ -111,8 +111,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if h:
             self._forwarded_hashes[idx] = h
 
-    def _forward_public_blocks(self, pub_height: int, tip_hash=None) -> None:
+    def _forward_public_blocks(self, pub_height: int, tip_hash=None, forward_to=None) -> None:
         """Forward honest blocks into the offline miner, reorg-aware (review C3).
+
+        `forward_to` (from the strategy decision) caps how far honest blocks
+        may reach the miner: effective_tip = pub_height if forward_to is None
+        else min(pub_height, forward_to). A later stubborn strategy uses this
+        to keep the miner from seeing honest blocks past a chosen point.
 
         Order matters: a reorg that raises the height (…,X1 → …,Y1,Y2) must
         forward the new parent Y1 BEFORE its child Y2, or the miner orphans Y2
@@ -121,11 +126,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         forward everything from there up to the tip in ascending (parent-first)
         order; new blocks append the same way. The rescan is gated on the
         honest tip hash, so idle ticks do no extra RPC."""
+        effective_tip = pub_height if forward_to is None else min(pub_height, forward_to)
         reorg = tip_hash is not None and tip_hash != self._last_pub_tip_hash
         start = self._forwarded_index + 1          # default: only not-yet-forwarded heights
         if reorg:
-            floor = max(1, pub_height - self.REORG_WINDOW)
-            hi = min(self._forwarded_index, pub_height - 1)
+            floor = max(1, effective_tip - self.REORG_WINDOW)
+            hi = min(self._forwarded_index, effective_tip - 1)
             for idx in range(floor, hi + 1):
                 try:
                     cur = self._block_hash(self.bridge_rpc.get_block(height=idx))
@@ -136,13 +142,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                     self.logger.info(f"honest reorg at height {idx}; re-forwarding from there")
                     start = idx                     # ascending from here => parent before child
                     break
-            if self._forwarded_index >= pub_height:  # chain shrank below our high-water mark
+            if self._forwarded_index >= effective_tip:  # chain shrank below our high-water mark
                 start = min(start, floor)
-        for idx in range(start, pub_height):
+        for idx in range(start, effective_tip):
             self._forward_one(idx)
-        if pub_height > 0:
-            self._forwarded_index = pub_height - 1
-        for k in [k for k in self._forwarded_hashes if k >= pub_height]:
+        if effective_tip > 0:
+            self._forwarded_index = effective_tip - 1
+        for k in [k for k in self._forwarded_hashes if k >= effective_tip]:
             del self._forwarded_hashes[k]           # forget hashes above a shrunk tip
         if tip_hash is not None:
             self._last_pub_tip_hash = tip_hash
@@ -197,11 +203,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         self._ensure_strategy(self.attack_start_height)
 
-        # 5. Forward honest blocks into the offline miner (reorg-aware).
-        self._forward_public_blocks(pub_height, pub_tip_hash)
-
-        # 6. Strategy decision -> release.
+        # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height)
+
+        # 6. Forward honest blocks into the offline miner (reorg-aware, capped
+        #    by decision.forward_to).
+        self._forward_public_blocks(pub_height, pub_tip_hash, decision.forward_to)
+
+        # 7. Release per decision.
         if decision.release_to is not None:
             self._release_up_to(decision.release_from, decision.release_to)
 

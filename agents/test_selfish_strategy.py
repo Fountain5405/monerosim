@@ -68,3 +68,14 @@ def test_reveal_win_release_from_is_old_fork():
     assert d.release_to == 1
     assert d.release_from == 0                     # covers indexes 0..1, not empty
     assert s.fork == 2                             # fork advances only after the decision
+
+
+def test_eyal_sirer_forward_to_is_none():
+    s = SelfishStrategy("eyal_sirer", start_height=0)
+    for pub, priv in [(0, 2), (1, 2), (2, 2), (3, 2)]:
+        assert s.update(pub, priv).forward_to is None
+
+
+def test_honest_forward_to_is_none():
+    s = SelfishStrategy("honest", start_height=0)
+    assert s.update(5, 5).forward_to is None
