@@ -89,7 +89,7 @@ bridges?):
 | run-dir | config | bridges | attacker share | realized γ (ties) | theory@γ | verdict |
 |---|---|---|---|---|---|---|
 | `20260912_191118_p2_fanout_1` | `fanout_1.yaml` | 1 | 0.475 | 0.167 (12) | 0.498 | PASS |
-| _pending_ | `fanout_3.yaml` | 3 | | | | |
+| `20260912_211111_p2_fanout_3` | `fanout_3.yaml` | 3 | 0.425 | 0.083 (12) | 0.491 | PASS |
 | `20260912_201141_p2_fanout_6` | `fanout_6.yaml` | 6 | 0.545 | 0.000 (8) | 0.484 | PASS |
 
 **Stubborn variants vs eyal_sirer** (all at fan-out 6, fixed difficulty; this is
