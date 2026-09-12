@@ -5,6 +5,9 @@ determinism, cuprate relay, light-vs-full cost (§7). Default mode stays
 `generateblocks` this release; native mining is opt-in via
 `general.mining.mode: native`.
 
+For a block-withholding attacker built on top of this (phase 1: single
+bridge, γ≈0, Eyal–Sirer strategy), see `docs/SELFISH_MINING.md`.
+
 ## 1. What it is
 
 By default, monerosim doesn't let `monerod`'s own miner loop run under

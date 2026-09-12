@@ -22,6 +22,11 @@
   `AI_CONFIG_REQUEST_EXTRAS` (e.g. z.ai GLM thinking off); Ollama-only body
   fields sent only to local endpoints.
 
+- Selfish-mining apparatus (phase 1): an offline attacker miner + connected
+  bridge + `SelfishMinerAgent` running Eyal-Sirer withholding over stock RPCs
+  (no daemon patch); `scripts/selfish_mining_analysis.py` measures attacker
+  revenue share vs the gamma=0 theory curve. See docs/SELFISH_MINING.md.
+
 ### Fixed
 
 - Agents' shared-file locks (transactions.json, node registry, user/miner info, DNS
