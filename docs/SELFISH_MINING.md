@@ -1,12 +1,15 @@
-# Selfish Mining (Phase 1)
+# Selfish Mining
 
 **Status:** phase 1 shipped (opt-in) 2026-09-12: the single-bridge, γ≈0
 withholding apparatus, the Eyal–Sirer strategy, and the revenue-share
-analysis. Every task's unit and golden tests passed at commit time; the
-simulation-based validation gates (§6, a-c) require an actual run and are
-executed by the user, not as part of building this. Builds on native
-mining (`docs/NATIVE_MINING.md`); phase 2 (γ-lifting, stubborn variants,
-colluding pool) is not built — see §5.
+analysis. Phase 2 shipped (opt-in) 2026-09-12: multi-bridge γ-lifting, the
+`forward_to` mechanism, the three stubborn-mining variants, and the
+realized-γ estimator — see §8. Every task's unit and golden tests passed at
+commit time; the simulation-based validation gates (§6 a-c, §8.6 a-d)
+require an actual run and are executed by the user, not as part of building
+this. Builds on native mining (`docs/NATIVE_MINING.md`). Colluding pool,
+timestamp games, and precise topology-position control remain deferred —
+see §8.7.
 
 ## 1. What it is
 
@@ -40,7 +43,8 @@ once it enters the bridge's *main* chain, and an equal-height alt is stored,
 not relayed. So the attacker loses every tied race by construction. That is
 not a bug — it is the canonical Eyal–Sirer γ = 0 baseline (profitable above
 α ≈ 1/3), and it is the correct phase-1 comparison point. Raising γ needs
-more bridges positioned in the topology; that is phase 2 (§5).
+more bridges and fan-out (not topology position, §8.4); that is phase 2
+(§8).
 
 ## 2. How it works
 
@@ -222,14 +226,16 @@ only. Deferred to increment 2 (design spec §10 "Deferred" and §11 "Scope
 split"):
 
 - **γ-lifting.** Raising γ above 0 needs a released tie block to reach
-  honest nodes *before* the honest block does — a fast detector node plus
-  publisher bridges placed away from it. That is a multi-bridge apparatus
-  (the `bridges` knob, spec §5) and the γ-vs-position experiment (spec §8,
-  experiment 2); phase 1 ships exactly one bridge.
+  honest nodes *before* the honest block does. Phase 1 ships exactly one
+  bridge, so γ≈0 by construction; phase 2 (§8.1, §8.4) ships the multi-bridge
+  `bridges` attribute and lifts γ via fan-out/connectivity rather than the
+  originally-envisioned "detector placed away from publishers" position,
+  since monerosim assigns topology position globally, not per agent.
 - **Stubborn-mining variants** (`lead_stubborn`, `equal_fork_stubborn`,
-  `trail_stubborn(j)`) and the generic
-  `generic(lead_k, publish_n, trigger)` policy (spec §5) — the same
-  strategy-engine shape, just not implemented as named strategies yet.
+  `trail_stubborn(j)`) shipped in phase 2 — see §8.3. The generic
+  `generic(lead_k, publish_n, trigger)` policy that would parametrize all
+  three in one engine (spec §5) is still not implemented; each variant is
+  its own branch in `SelfishStrategy.update`.
 - **Colluding pool** (several miner daemons sharing one private tip) and
   **multiple independent attackers** (spec §10) — additive once needed,
   since the agent is already per-attacker.
@@ -238,7 +244,10 @@ split"):
 
 See `docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md`
 and `docs/superpowers/plans/2026-09-12-selfish-mining-apparatus.md` for the
-full design and task history.
+phase-1 design and task history, and
+`docs/superpowers/specs/2026-09-12-selfish-mining-phase2-design.md` /
+`docs/superpowers/plans/2026-09-12-selfish-mining-phase2.md` for phase 2
+(§8 below).
 
 ## 6. Validation gates
 
@@ -309,3 +318,231 @@ read a run and are not bugs to fix before experimenting:
 - **Startup edge.** With `attack_start_height: 0` the first withheld block is
   published immediately (a single lost withholding opportunity at genesis),
   negligible over a full run; set a small `attack_start_height` to warm up.
+
+## 8. Phase 2: raising γ and stubborn-mining variants
+
+**Status:** shipped (opt-in) 2026-09-12, on top of phase 1 above. Design:
+`docs/superpowers/specs/2026-09-12-selfish-mining-phase2-design.md`; plan:
+`docs/superpowers/plans/2026-09-12-selfish-mining-phase2.md`. As with phase
+1, unit and config tests passed at commit time; the simulation gates in
+§8.6 need an actual run, done by the operator, not part of building this.
+
+### 8.1 Multi-bridge attacker: the `bridges` attribute
+
+Phase 1's single bridge pins γ≈0 by construction (§1): a bridge only relays
+a block once it enters its *main* chain, and an equal-height alt is never
+relayed, so the attacker loses every tied race. Phase 2 lets the attacker
+run several bridges and flood a release to all of them at once — this is
+the entire γ-lifting mechanism.
+
+`SelfishMinerAgent.__init__` reads a `bridges` attribute — a comma-separated
+list of bridge agent ids — instead of a single `bridge_agent`:
+
+```python
+bridges_attr = self.attributes.get("bridges") or self.attributes.get("bridge_agent") or ""
+self.bridge_agent_ids = [b.strip() for b in bridges_attr.split(",") if b.strip()]
+```
+
+`bridge_agent` still works, as a **one-element alias** — this is what keeps
+phase-1 configs (`selfish_micro.yaml`, the α-sweep) running unchanged.
+`_connect_bridges()` (renamed from `_connect_bridge`) looks up every id in
+`agent_registry.json`, builds `self.bridge_rpcs: list[MoneroRPC]`, and keeps
+`self.bridge_rpc = bridge_rpcs[0]` as the read source for the honest tip
+height and for forwarding honest blocks (§2) — only *releases* go to every
+bridge. `_release_up_to` submits each divergent private block to every RPC
+in `bridge_rpcs`, each in its own try/except (a rejection on one bridge —
+e.g. the γ=0-style equal-height alt — does not stop the others). A bridge
+that has not yet received the honest block over P2P accepts the attacker's
+block into its own main chain instead and relays it onward, so with more
+publishers racing at submit time, a larger fraction of the honest network
+ends up building on the attacker's block instead of the honest one. A
+one-element `bridges` list is exactly the phase-1 code path (one connect,
+one submit target), so the phase-1 micro result (attacker share 0.471 at
+α=0.4, vs the γ=0 theory 0.484) is unchanged.
+
+Each bridge is still the do-nothing `SelfishBridgeAgent` from phase 1 (§2);
+phase-2 configs additionally pin its fan-out with
+`daemon_options: {out-peers: 16}` on every bridge node.
+
+### 8.2 `forward_to`: why stubborn strategies need it
+
+`honest` and `eyal_sirer` let the offline miner follow the longest chain:
+the agent forwards every honest block it sees, and the miner reorgs onto
+honest whenever honest is longer. Stubborn strategies need the opposite —
+they keep the miner mining a chain that is *not* the longest (trailing
+behind, or holding a contested fork). Since monerod always follows the
+longest chain it knows, the only way to keep it on a shorter private branch
+is to not tell it about the honest lead.
+
+So `SelfishStrategy.update()` returns one new field on `ReleaseDecision`,
+`forward_to: Optional[int]`: the honest block height up to which the agent
+may forward honest blocks into the offline miner this step. `honest` and
+`eyal_sirer` always return `forward_to=None` in every branch (forward
+everything up to the honest tip — unchanged from phase 1, required for
+backward compatibility). A stubborn variant instead returns
+`forward_to=old_fork` while holding, so the miner never sees the competing
+honest branch and keeps extending its own.
+
+The agent honors this in `_forward_public_blocks(pub_height, tip_hash,
+forward_to)`: `effective_tip = pub_height if forward_to is None else
+min(pub_height, forward_to)`, and every bound in the method (the forwarding
+loop, the reorg-rescan window, `_forwarded_index`) uses `effective_tip`
+instead of `pub_height`. `run_iteration` decides before forwarding
+(`decision = self.strategy.update(pub_height, priv_height)` runs first,
+then `_forward_public_blocks(..., decision.forward_to)`), since the cap has
+to be known before the forward happens.
+
+### 8.3 The three stubborn variants
+
+Implemented in `agents/selfish_strategy.py`, selected by the `strategy`
+attribute; a shared `_eyal_sirer_decision` helper backs each variant's
+`a >= h` / fallthrough arm so eyal_sirer's own logic isn't duplicated three
+times. State is the same as phase 1: `a = priv_height − fork` (attacker's
+private lead), `h = pub_height − fork` (honest progress since the fork).
+γ>0 (§8.1, §8.4) is what makes these strategies differ from plain selfish
+mining at all — at γ≈0 holding a tied or trailing position never pays off
+(a released tie never propagates), so all three collapse toward the honest
+outcome.
+
+- **`trail_stubborn` (`trail_depth` attribute, default 1).** Identical to
+  `eyal_sirer` except it refuses to concede while behind by at most
+  `trail_depth`: it holds (`forward_to=old_fork`, release nothing) while
+  `0 < h − a <= trail_depth`, and concedes (adopt public, `forward_to=None`)
+  once `h − a > trail_depth` (or the attacker has nothing to trail with:
+  `a == 0` while `h > 0`). At `a >= h` it is exactly `eyal_sirer`. It bets
+  that the honest lead is temporary and the private branch can catch back
+  up within the tolerance; `trail_depth=0` reduces exactly to `eyal_sirer`.
+- **`equal_fork_stubborn`.** Like `eyal_sirer`, but it never concedes
+  *straight out of a tie*: once it has contested a tie (`a == h >= 1`, the
+  `_was_tie` flag), if honest then breaks the tie by exactly one block, it
+  holds one more round (`forward_to=old_fork`, release nothing) instead of
+  adopting, betting it can re-level; falling two or more behind concedes as
+  usual.
+- **`lead_stubborn`.** Like `eyal_sirer`, but on the override step
+  (`a − h == 1`, where eyal_sirer would reveal its whole lead to win
+  outright) it instead reveals only up to the honest tip
+  (`release_to = pub_height − 1`, `forward_to=None`, fork unchanged),
+  keeping the top private block hidden and continuing to mine — betting
+  that γ plus the still-hidden lead wins more, over time, than a
+  guaranteed single-block override. It concedes only if honest actually
+  overtakes (`a < h`).
+
+Each variant is one bet that γ>0: without a network advantage, holding
+instead of conceding only accumulates orphaned blocks.
+`agents/test_selfish_strategy.py` asserts the full
+`(release_to, forward_to, adopt_public)` triple for the distinctive
+transition of each variant, so a reviewer can check the rules above
+against the tests directly rather than re-deriving them.
+
+### 8.4 γ is lifted by fan-out, not topology position
+
+The original idea was to place a "detector" node near the honest miners and
+publisher bridges far away in the topology, so a released tie reaches some
+of the network before the honest block does. monerosim doesn't support
+that: node placement on the GML graph is assigned globally by the
+distribution strategy (`src/topology/distribution.rs`), deterministically
+and identically for every agent — there is no per-agent position knob.
+
+What *is* per-agent controllable is connectivity: a bridge's outbound
+fan-out (`daemon_options: {out-peers: N}`). So phase 2 reframes the γ
+experiment as **γ vs. fan-out/connectivity** rather than γ vs. position:
+more publisher bridges, each racing to relay the attacker's block the
+moment it's released (§8.1), means a larger fraction of the honest network
+is already holding the attacker's block at the moment the honest block
+arrives over P2P — this is still γ as a *measured* network outcome, just
+produced by a different knob. γ is small on a small, low-latency network
+(the margins are sub-millisecond), which is why the phase-2 configs (§8.5)
+use a larger honest network — 3 miners + 12 relays spread across the GML
+topology — so inter-node latencies have enough spread for γ to be
+measurable at all.
+
+### 8.5 Configs, running the experiments, and reading the output
+
+`test_configs/selfish_phase2/` (all α=0.4, `simulation_seed: 12345`,
+`reaction_delay_ms: "50"`, the 3-miner/12-relay honest network of §8.4):
+
+| Config | Bridges | Strategy |
+|---|---|---|
+| `fanout_1.yaml` | 1 | `eyal_sirer` |
+| `fanout_3.yaml` | 3 | `eyal_sirer` |
+| `fanout_6.yaml` | 6 | `eyal_sirer` |
+| `stub_trail.yaml` | 6 (= `fanout_6` topology) | `trail_stubborn`, `trail_depth: "2"` |
+| `stub_equalfork.yaml` | 6 (= `fanout_6` topology) | `equal_fork_stubborn` |
+| `stub_lead.yaml` | 6 (= `fanout_6` topology) | `lead_stubborn` |
+
+`fanout_1/3/6.yaml` are the γ-vs-fan-out sweep at fixed α; the attacker's
+`bridges` attribute lists exactly its bridge agent ids (e.g.
+`"bridge-1,bridge-2,bridge-3"` for `fanout_3.yaml`). The three `stub_*.yaml`
+configs are copies of `fanout_6.yaml`'s topology with only `strategy` (and,
+for trail, `trail_depth`) changed, so each stubborn variant is compared
+against `eyal_sirer` at identical fan-out. `scripts/test_selfish_phase2_configs.py`
+asserts the bridge count, the `bridges` attribute, `--offline`, native
+mining mode, α≈0.4, and the strategy name for all six configs.
+
+To run one (shared box — `nice` it, as with any long simulation):
+
+```bash
+nice -n10 ./run_sim.sh --config test_configs/selfish_phase2/fanout_3.yaml --name fanout_3 --no-monitor
+```
+
+Then analyse it exactly as in §4:
+
+```bash
+venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run_id>
+```
+
+The analysis (§4) is unchanged in shape but now also reports, in
+`report.md` and on stdout:
+
+- **realized gamma** — `realized_gamma(found, chain, attacker_ids)`: over
+  every *tie* height (a height where both an attacker- and an honest-miner
+  found a block), the fraction the attacker's block won on the bridge's
+  recorded canonical chain. This is the γ the attacker actually achieved on
+  the network, not an assumption.
+- **num ties** — how many tie heights that estimate is based on; read it
+  alongside the number itself (a handful of ties makes the γ estimate
+  noisy).
+- **theory at measured gamma** — `es_revenue_share(alpha, gamma)` evaluated
+  at the *realized* γ above, rather than at γ=0; a third verdict checks the
+  measured share against this curve (±0.10, the same band as the γ=0
+  verdict).
+
+Reading a run: compare `realized gamma` across `fanout_1/3/6` (expect it to
+rise with bridge count — gate a below), and compare each `stub_*` run's
+measured share and verdicts against the `fanout_6.yaml` (`eyal_sirer`) run
+at the same γ regime.
+
+### 8.6 Validation gates
+
+Phase-2 design spec §8 defines four gates, alongside phase 1's own four
+(§6):
+
+- **a. γ lifts.** Realized γ at multi-bridge configs is measurably above
+  the single-bridge γ (≈0) at the same α, rising with bridge count across
+  `fanout_1` → `fanout_3` → `fanout_6`.
+- **b. Determinism A/A.** Same seed → identical honest chain (as §6.b).
+- **c. Stubborn sanity.** Each stubborn variant runs without wedging, and
+  its attacker share matches its theoretical curve at the measured γ
+  within the ±0.10 band; at γ≈0 none of them should beat honest.
+- **d. Existing suites still pass**, including the phase-1 micro
+  (unaffected by the multi-bridge/`forward_to` changes):
+
+```bash
+venv/bin/python -m pytest agents/ scripts/test_selfish_mining_analysis.py scripts/test_selfish_configs.py scripts/test_selfish_phase2_configs.py -q
+cargo test
+```
+
+### 8.7 What phase 2 still does not do
+
+Deferred to increment 3 (design spec §10):
+
+- **Colluding pool** (several miner daemons sharing one private tip) and
+  **multiple independent attackers**.
+- **Timestamp games** — needs a template-time offset, a daemon knob.
+- **Precise topology-position control** — would need an orchestrator
+  feature to pin agents to specific GML vertices; §8.4 is the reframe that
+  works without it.
+- The generic `generic(lead_k, publish_n, trigger)` policy that would
+  parametrize `trail_stubborn`/`equal_fork_stubborn`/`lead_stubborn` in one
+  engine (phase-1 design spec §5) is also not implemented; each variant is
+  its own branch.

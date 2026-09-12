@@ -27,6 +27,24 @@
   (no daemon patch); `scripts/selfish_mining_analysis.py` measures attacker
   revenue share vs the gamma=0 theory curve. See docs/SELFISH_MINING.md.
 
+- Selfish-mining apparatus (phase 2): the attacker now floods a release to
+  **every** bridge in a comma-separated `bridges` list (`bridge_agent` remains
+  a one-element alias), which lifts gamma above the phase-1 single-bridge
+  baseline by fan-out/connectivity rather than topology position (monerosim
+  has no per-agent position control). `SelfishStrategy.update` gained
+  `forward_to`, letting a strategy withhold the honest lead from the offline
+  miner so it stays on a non-longest private branch (`honest`/`eyal_sirer`
+  keep `forward_to=None`, unchanged); three stubborn variants use it:
+  `trail_stubborn` (holds while behind by at most `trail_depth`),
+  `equal_fork_stubborn` (never concedes straight out of a tie), and
+  `lead_stubborn` (reveals only to the honest tip on the override step,
+  keeping the top block hidden). `scripts/selfish_mining_analysis.py` now
+  reports realized gamma, num ties, and revenue vs the Eyal-Sirer theory
+  curve at that measured gamma, not just at gamma=0. New sweep/stubborn
+  configs: `test_configs/selfish_phase2/fanout_{1,3,6}.yaml` and
+  `stub_{trail,equalfork,lead}.yaml` (alpha=0.4, 3 miners + 12 relays so
+  gamma is measurable). See docs/SELFISH_MINING.md §8.
+
 ### Fixed
 
 - Agents' shared-file locks (transactions.json, node registry, user/miner info, DNS
