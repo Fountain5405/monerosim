@@ -26,7 +26,7 @@
 
 - `agents/monero_rpc.py` — **modify**: add `submit_block(block_blob)` to `MoneroRPC`.
 - `agents/selfish_strategy.py` — **create**: pure Eyal–Sirer state machine (no RPC, no I/O). One responsibility: given the two chain heights, decide what to release.
-- `agents/selfish_bridge.py` — **create**: trivial `BaseAgent` subclass that registers itself and idles, so the attacker's bridge daemon is discoverable.
+- `agents/selfish_bridge.py` — **create** (Task 3) then **extend** (Task 8): a `BaseAgent` subclass that registers itself and idles so the bridge daemon is discoverable, and at cleanup records its main chain (height→hash) to `canonical_chain.json` as the analysis's ground truth.
 - `agents/selfish_miner.py` — **create**: `SelfishMinerAgent(AutonomousMinerAgent)` wiring the strategy to RPC (bridge discovery, honest-block forwarder, release executor).
 - `src/agent/user_agents.rs` — **modify**: teach the miner wallet-hybrid path that `agents.selfish_miner` is a native-mining agent script.
 - `src/utils/mining.rs` — **modify**: add the `is_native_miner_script` helper + unit test.
@@ -34,7 +34,7 @@
 - `test_configs/selfish_sweep/alpha_*.yaml` — **create**: the α-sweep set.
 - `tests/fixtures/selfish.yaml`, `tests/golden/selfish.yaml`, `tests/orchestrator_selfish.rs` — **create**: orchestrator golden test for the attacker wiring.
 - `agents/test_selfish_strategy.py`, `agents/test_selfish_miner.py` — **create**: Python unit tests.
-- `scripts/selfish_mining_analysis.py`, `scripts/test_selfish_mining_analysis.py` — **create**: analysis + tests.
+- `scripts/selfish_mining_analysis.py`, `scripts/test_selfish_mining_analysis.py` — **create** (Task 9): attribution from the ground-truth `canonical_chain.json` joined with miners' found-block hashes; revenue share vs the γ=0 curve + tests.
 - `docs/SELFISH_MINING.md` — **create**; `CHANGELOG.md` — **modify**; `docs/NATIVE_MINING.md` — **modify** (pointer).
 
 ---
@@ -1094,7 +1094,91 @@ git commit -m "feat(selfish): micro + alpha-sweep configs with offline attacker 
 
 ---
 
-## Task 8: Analysis — attacker revenue share vs α
+## Task 8: Bridge records the canonical chain at cleanup
+
+**Files:**
+- Modify: `agents/selfish_bridge.py` (add a `_cleanup_agent` override)
+- Modify: `agents/test_selfish_bridge.py` (add one test)
+
+**Why (supersedes the original build_accepted approach):** attribution cannot reuse `scripts/native_daa_analysis.build_accepted`, which dedupes same-height races by **earliest timestamp**. A selfish attacker finds its blocks early and withholds them, so at γ≈0 a tie the attacker *lost* still has the earlier timestamp and would be wrongly credited to the attacker, inflating its measured share. The ground truth is an honest node's actual main chain. The bridge is a fully-connected honest node whose main chain, at γ≈0, equals the honest canonical chain (injected tie blocks stay alternatives and never enter its main chain; attacker reorg-wins enter it exactly as they enter every honest node). So the bridge records its own main chain (height→hash) at cleanup; the analysis (Task 9) joins those hashes with the miners' found-block hashes to attribute each canonical block to its finder.
+
+**Interfaces:**
+- Consumes: `BaseAgent.cleanup()` calls `self._cleanup_agent()` (agents/base_agent.py:322); `self.daemon_rpc.get_info()` → dict with `height`; `self.daemon_rpc.get_block_header_by_height(h)` (agents/monero_rpc.py:287) → dict with `hash`; `BaseAgent.write_shared_state(filename, data)` (verify its exact name/signature in base_agent.py — it is the writer paired with `read_shared_state`; if the signature differs, adapt the call, do not change base_agent.py); `RPCError` (agents/monero_rpc.py).
+- Produces: a shared file `canonical_chain.json` of the form `{"observer": "<agent_id>", "chain": [{"height": h, "hash": "<hex>"}, ...]}` covering heights `1..top` (genesis at height 0 skipped).
+
+- [ ] **Step 1: Add the failing test to `agents/test_selfish_bridge.py`**
+
+```python
+from unittest.mock import MagicMock
+
+def test_cleanup_agent_dumps_canonical_chain():
+    agent = SelfishBridgeAgent(agent_id="attacker-bridge")
+    agent.logger = MagicMock()
+    agent.daemon_rpc = MagicMock()
+    agent.daemon_rpc.get_info.return_value = {"height": 3}   # top index 2 -> heights 1,2
+    agent.daemon_rpc.get_block_header_by_height.side_effect = lambda h: {"hash": f"h{h}"}
+    written = {}
+    agent.write_shared_state = lambda name, data: written.__setitem__(name, data)
+    agent._cleanup_agent()
+    assert written["canonical_chain.json"]["chain"] == [
+        {"height": 1, "hash": "h1"},
+        {"height": 2, "hash": "h2"},
+    ]
+    assert written["canonical_chain.json"]["observer"] == "attacker-bridge"
+```
+(keep the existing two tests and the `from agents.selfish_bridge import SelfishBridgeAgent` import.)
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `venv/bin/python -m pytest agents/test_selfish_bridge.py -v`
+Expected: the new test FAILs (`_cleanup_agent` is the inherited no-op, writes nothing).
+
+- [ ] **Step 3: Implement the recorder in `agents/selfish_bridge.py`**
+
+Add the import at the top: `from agents.monero_rpc import RPCError`. Replace the existing no-op `_cleanup_agent` (if the bridge currently has none, add it; keep the `_setup_agent` no-op as is):
+
+```python
+    def _cleanup_agent(self):
+        """Record this honest node's final main chain (height -> hash) so the
+        selfish-mining analysis can attribute each canonical block to its
+        finder. At gamma=0 the bridge's main chain IS the honest canonical
+        chain. Best-effort: a failure here must not break shutdown."""
+        try:
+            height = int(self.daemon_rpc.get_info().get("height", 0))
+            chain = []
+            for h in range(1, height):   # skip genesis (height 0)
+                try:
+                    header = self.daemon_rpc.get_block_header_by_height(h)
+                except RPCError as e:
+                    self.logger.warning(f"canonical chain dump stopped at height {h}: {e}")
+                    break
+                block_hash = header.get("hash")
+                if block_hash:
+                    chain.append({"height": h, "hash": block_hash})
+            self.write_shared_state("canonical_chain.json",
+                                    {"observer": self.agent_id, "chain": chain})
+            self.logger.info(f"Canonical chain recorded: {len(chain)} blocks")
+        except RPCError as e:
+            self.logger.warning(f"canonical chain dump failed: {e}")
+```
+
+First confirm `write_shared_state` exists with signature `(self, filename, data)` by reading `agents/base_agent.py` (it is paired with `read_shared_state`); if the real name/signature differs, call the real one. Do not modify base_agent.py.
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `venv/bin/python -m pytest agents/test_selfish_bridge.py -v`
+Expected: PASS (3 passed).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add agents/selfish_bridge.py agents/test_selfish_bridge.py
+git commit -m "feat(selfish): bridge records canonical chain (height->hash) at cleanup"
+```
+
+---
+
+## Task 9: Analysis — attacker revenue share vs α
 
 **Files:**
 - Create: `scripts/selfish_mining_analysis.py`
@@ -1102,196 +1186,220 @@ git commit -m "feat(selfish): micro + alpha-sweep configs with offline attacker 
 
 **Interfaces:**
 - Consumes:
-  - `scripts.native_daa_analysis` helpers (already on this branch): `parse_all_miners(run_dir, miner_ids) -> list`, `build_accepted(raw_entries) -> list` (the canonical chain with races deduped and stale blocks excluded), `load_config(cfg_path) -> dict`. Import them; do not modify that module.
-  - The run archive layout: `<run_dir>/shadow.data/hosts/<miner>/monerod*.stdout` (miner daemon logs) and `<run_dir>/input_config.yaml`.
+  - `scripts.native_mining_check.FOUND` (a compiled regex; capture group 2 = block hash, group 3 = height) to parse each miner's daemon log for found blocks. Do not modify that module.
+  - `scripts.native_daa_analysis.load_config(cfg_path) -> dict` (reuse for `input_config.yaml`). Do not modify that module.
+  - `canonical_chain.json` written by the bridge (Task 8): `{"observer": ..., "chain": [{"height", "hash"}, ...]}`.
+  - The run archive: each miner's log at `<run_dir>/shadow.data/hosts/<miner>/monerod*.stdout`; the shared file at `<run_dir>/.../shared/canonical_chain.json` (searched for, or passed with `--chain`).
 - Produces:
   - `es_revenue_share(alpha: float, gamma: float) -> float` — Eyal–Sirer relative revenue.
-  - `attacker_share(accepted: list, attacker_ids: set) -> float` — fraction of canonical blocks mined by the attacker.
-  - `orphan_stats(raw_entries: list, accepted: list, attacker_ids: set) -> dict` — found vs canonical counts and orphan rate, overall and for the attacker.
-  - `make_verdicts(...) -> list` — verdict rows for the gate.
-  - a `main()` CLI: `python3 scripts/selfish_mining_analysis.py <run_dir> [--out <dir>]` writing `report.md` and exit code 0/1/2 (mirror `native_daa_analysis.main`).
+  - `parse_found_blocks(run_dir, miner_ids) -> list` of `{"hash", "height", "miner"}` (one per FOUND line).
+  - `found_by_hash(found: list) -> dict` mapping block hash → finder miner id.
+  - `attacker_share_from_chain(chain: list, hash_to_miner: dict, attacker_ids: set) -> float` — fraction of canonical blocks whose finder is an attacker.
+  - `orphan_stats(found: list, canonical_hashes: set, attacker_ids: set) -> dict` — found vs canonical counts and orphan rates (attacker + network).
+  - `make_verdicts(alpha, measured_share, stats) -> list`.
+  - a `main()` CLI: `python3 scripts/selfish_mining_analysis.py <run_dir> [--chain <path>] [--out <dir>]`, exit 0/1/2 (mirror `native_daa_analysis.main`).
 
-**Attribution:** `build_accepted` yields the canonical chain; each entry carries the `miner` id that found that block (from parsing each miner's own log). The attacker's miner id(s) come from the config (agents whose `script` is `agents.selfish_miner`). Attacker share = attacker canonical blocks / total canonical blocks. Compare to α (honest expectation) and to `es_revenue_share(α, 0)`.
+**Eyal–Sirer relative revenue:** `R(α,γ) = [ α(1-α)^2 (4α + γ(1-2α)) - α^3 ] / [ 1 - α(1 + (2-α)α) ]`.
 
-**Eyal–Sirer relative revenue (used for the theory curve):**
-`R(α,γ) = [ α(1-α)^2 (4α + γ(1-2α)) - α^3 ] / [ 1 - α(1 + (2-α)α) ]`
+**Attribution:** the canonical chain's block hashes come from `canonical_chain.json` (honest ground truth). Each hash is looked up in the hash→miner map built from all miners' FOUND logs (the attacker's offline-mined winning blocks carry the same hash on the bridge after the reorg, so they match). Attacker share = canonical blocks whose finder is an attacker / total canonical blocks. Orphans = found blocks whose hash is not in the canonical set.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
 # scripts/test_selfish_mining_analysis.py
-import math
 import pytest
-
 from scripts.selfish_mining_analysis import (
     es_revenue_share,
-    attacker_share,
+    found_by_hash,
+    attacker_share_from_chain,
     orphan_stats,
+    parse_found_blocks,
 )
 
 
-def test_es_revenue_share_equals_alpha_at_zero_hashrate_limit():
-    # As alpha -> 0, selfish revenue share -> 0.
+def test_es_revenue_share_small_alpha_near_zero():
     assert abs(es_revenue_share(1e-6, 0.0)) < 1e-4
 
 
 def test_es_revenue_share_crosses_alpha_near_one_third_at_gamma_zero():
-    # Below ~1/3 selfish underperforms honest; above it overperforms (gamma=0).
-    a_lo = 0.30
-    a_hi = 0.40
-    assert es_revenue_share(a_lo, 0.0) < a_lo
-    assert es_revenue_share(a_hi, 0.0) > a_hi
+    assert es_revenue_share(0.30, 0.0) < 0.30
+    assert es_revenue_share(0.40, 0.0) > 0.40
 
 
 def test_es_revenue_share_monotonic_in_gamma():
     assert es_revenue_share(0.35, 1.0) > es_revenue_share(0.35, 0.0)
 
 
-def test_attacker_share_counts_canonical_blocks():
-    accepted = [
-        {"height": 1, "miner": "honest-001"},
-        {"height": 2, "miner": "attacker-miner"},
-        {"height": 3, "miner": "attacker-miner"},
-        {"height": 4, "miner": "honest-002"},
+def test_found_by_hash_maps_hash_to_finder():
+    found = [
+        {"hash": "a1", "height": 1, "miner": "attacker-miner"},
+        {"hash": "h2", "height": 2, "miner": "honest-001"},
     ]
-    assert attacker_share(accepted, {"attacker-miner"}) == 0.5
+    assert found_by_hash(found) == {"a1": "attacker-miner", "h2": "honest-001"}
 
 
-def test_orphan_stats_computes_attacker_orphan_rate():
-    raw = [
-        {"height": 1, "miner": "attacker-miner", "hash": "a1"},
-        {"height": 2, "miner": "attacker-miner", "hash": "a2"},   # orphaned (lost tie)
-        {"height": 2, "miner": "honest-001", "hash": "h2"},
+def test_attacker_share_from_canonical_chain():
+    chain = [
+        {"height": 1, "hash": "h1"},
+        {"height": 2, "hash": "a2"},
+        {"height": 3, "hash": "a3"},
+        {"height": 4, "hash": "h4"},
     ]
-    accepted = [
-        {"height": 1, "miner": "attacker-miner", "hash": "a1"},
-        {"height": 2, "miner": "honest-001", "hash": "h2"},
+    h2m = {"h1": "honest-001", "a2": "attacker-miner", "a3": "attacker-miner", "h4": "honest-002"}
+    assert attacker_share_from_chain(chain, h2m, {"attacker-miner"}) == 0.5
+
+
+def test_orphan_stats_counts_lost_ties_as_orphans():
+    # attacker found a1 (canonical) and a2x (orphaned tie loss); honest h2 canonical
+    found = [
+        {"hash": "a1", "height": 1, "miner": "attacker-miner"},
+        {"hash": "a2x", "height": 2, "miner": "attacker-miner"},
+        {"hash": "h2", "height": 2, "miner": "honest-001"},
     ]
-    stats = orphan_stats(raw, accepted, {"attacker-miner"})
+    canonical_hashes = {"a1", "h2"}
+    stats = orphan_stats(found, canonical_hashes, {"attacker-miner"})
     assert stats["attacker_found"] == 2
     assert stats["attacker_canonical"] == 1
     assert abs(stats["attacker_orphan_rate"] - 0.5) < 1e-9
+
+
+def test_parse_found_blocks_reads_a_log(tmp_path):
+    host = tmp_path / "shadow.data" / "hosts" / "attacker-miner"
+    host.mkdir(parents=True)
+    (host / "monerod.stdout").write_text(
+        "2000-01-01 00:00:15.0\tI Found block <deadbeef> at height 1 for difficulty: 2\n"
+    )
+    found = parse_found_blocks(tmp_path, ["attacker-miner"])
+    assert found == [{"hash": "deadbeef", "height": 1, "miner": "attacker-miner"}]
 ```
 
 - [ ] **Step 2: Run to verify they fail**
 
-Run: `python3 -m pytest scripts/test_selfish_mining_analysis.py -v`
+Run: `venv/bin/python -m pytest scripts/test_selfish_mining_analysis.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'scripts.selfish_mining_analysis'`.
 
-- [ ] **Step 3: Implement the analysis (pure functions + CLI)**
+- [ ] **Step 3: Implement the analysis**
 
 ```python
 # scripts/selfish_mining_analysis.py
 #!/usr/bin/env python3
 """Selfish-mining analysis for a finished native-mining run.
 
-Reuses scripts/native_daa_analysis.py to parse each miner's daemon log and
-reconstruct the canonical chain (build_accepted). Attributes canonical blocks
-to the attacker vs the honest miners, computes the attacker's revenue share and
-orphan rate, and compares the share to the Eyal-Sirer relative-revenue curve at
-the gamma measured for this run (gamma ~= 0 for the single-bridge phase-1
-apparatus). See docs/SELFISH_MINING.md.
+Attribution uses an honest node's GROUND-TRUTH canonical chain recorded by the
+bridge (canonical_chain.json, Task 8) joined with the block hashes each miner
+logged finding. It deliberately does NOT reuse build_accepted, whose
+earliest-timestamp dedupe misattributes a selfish attacker's withheld, early-
+found, later-lost tie blocks. Computes attacker revenue share vs the
+Eyal-Sirer gamma=0 curve, plus orphan rates. See docs/SELFISH_MINING.md.
 
-Usage:
-    python3 scripts/selfish_mining_analysis.py <run_dir> [--out <dir>]
-
-Exit codes:
-    0  all verdicts PASS
-    1  a verdict FAILed
-    2  run_dir / input_config.yaml missing, or zero blocks found
+Usage: python3 scripts/selfish_mining_analysis.py <run_dir> [--chain <path>] [--out <dir>]
+Exit: 0 all verdicts pass; 1 a verdict failed; 2 inputs missing / empty.
 """
 import argparse
+import glob
+import json
 import os
 import sys
 from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from scripts.native_daa_analysis import (  # noqa: E402
-    parse_all_miners,
-    build_accepted,
-    load_config,
-)
+from scripts.native_mining_check import FOUND          # noqa: E402
+from scripts.native_daa_analysis import load_config      # noqa: E402
 
 
 def es_revenue_share(alpha: float, gamma: float) -> float:
-    """Eyal-Sirer relative revenue for a selfish miner of power alpha with
-    tie-break advantage gamma. Returns the attacker's fraction of main-chain
-    blocks."""
     num = alpha * (1 - alpha) ** 2 * (4 * alpha + gamma * (1 - 2 * alpha)) - alpha ** 3
     den = 1 - alpha * (1 + (2 - alpha) * alpha)
     return num / den
 
 
-def _attacker_ids(cfg: dict) -> set:
-    return {aid for aid, a in cfg.get("agents", {}).items()
-            if a.get("script") == "agents.selfish_miner"}
+def parse_found_blocks(run_dir, miner_ids) -> list:
+    run_dir = Path(run_dir)
+    out = []
+    for miner in miner_ids:
+        for log in sorted(glob.glob(str(run_dir / "shadow.data" / "hosts" / miner / "monerod*.stdout"))):
+            with open(log, "r", errors="replace") as f:
+                for line in f:
+                    m = FOUND.search(line)
+                    if m:
+                        out.append({"hash": m.group(2), "height": int(m.group(3)), "miner": miner})
+    return out
 
 
-def _honest_miner_ids(cfg: dict) -> set:
-    return {aid for aid, a in cfg.get("agents", {}).items()
-            if a.get("script") == "agents.autonomous_miner"}
+def found_by_hash(found: list) -> dict:
+    # First finder wins if a hash somehow repeats (it should not).
+    mapping = {}
+    for e in found:
+        mapping.setdefault(e["hash"], e["miner"])
+    return mapping
 
 
-def _alpha_from_config(cfg: dict) -> float:
-    agents = cfg.get("agents", {})
-    att = sum(a.get("hashrate", 0) for aid, a in agents.items()
-              if a.get("script") == "agents.selfish_miner")
-    honest = sum(a.get("hashrate", 0) for aid, a in agents.items()
-                 if a.get("script") == "agents.autonomous_miner")
-    total = att + honest
-    return (att / total) if total else 0.0
-
-
-def attacker_share(accepted: list, attacker_ids: set) -> float:
-    if not accepted:
+def attacker_share_from_chain(chain: list, hash_to_miner: dict, attacker_ids: set) -> float:
+    if not chain:
         return 0.0
-    att = sum(1 for b in accepted if b.get("miner") in attacker_ids)
-    return att / len(accepted)
+    att = sum(1 for b in chain if hash_to_miner.get(b["hash"]) in attacker_ids)
+    return att / len(chain)
 
 
-def orphan_stats(raw_entries: list, accepted: list, attacker_ids: set) -> dict:
-    canonical_hashes = {b.get("hash") for b in accepted}
-    att_found = sum(1 for e in raw_entries if e.get("miner") in attacker_ids)
-    att_canon = sum(1 for e in raw_entries
-                    if e.get("miner") in attacker_ids and e.get("hash") in canonical_hashes)
-    tot_found = len(raw_entries)
-    tot_canon = len(canonical_hashes)
+def orphan_stats(found: list, canonical_hashes: set, attacker_ids: set) -> dict:
+    att_found = sum(1 for e in found if e["miner"] in attacker_ids)
+    att_canon = sum(1 for e in found if e["miner"] in attacker_ids and e["hash"] in canonical_hashes)
+    tot_found = len(found)
+    tot_canon = sum(1 for e in found if e["hash"] in canonical_hashes)
     return {
         "attacker_found": att_found,
         "attacker_canonical": att_canon,
         "attacker_orphan_rate": (1 - att_canon / att_found) if att_found else 0.0,
         "total_found": tot_found,
-        "total_canonical": tot_canon,
         "network_orphan_rate": (1 - tot_canon / tot_found) if tot_found else 0.0,
     }
 
 
-def make_verdicts(alpha, measured_share, honest_expected, stats) -> list:
-    """Phase-1 verdicts (see spec section 9). Band is wide for micro runs."""
+def _attacker_ids(cfg):
+    return {aid for aid, a in cfg.get("agents", {}).items() if a.get("script") == "agents.selfish_miner"}
+
+
+def _honest_miner_ids(cfg):
+    return {aid for aid, a in cfg.get("agents", {}).items() if a.get("script") == "agents.autonomous_miner"}
+
+
+def _alpha_from_config(cfg):
+    agents = cfg.get("agents", {})
+    att = sum(a.get("hashrate", 0) for a in agents.values() if a.get("script") == "agents.selfish_miner")
+    honest = sum(a.get("hashrate", 0) for a in agents.values() if a.get("script") == "agents.autonomous_miner")
+    total = att + honest
+    return (att / total) if total else 0.0
+
+
+def make_verdicts(alpha, measured_share, stats) -> list:
     verdicts = []
     theory = es_revenue_share(alpha, 0.0)
-    # Verdict 1: measured share within a wide band of the gamma=0 theory.
-    band = 0.10
-    ok1 = abs(measured_share - theory) <= band
     verdicts.append({
         "name": "attacker share vs Eyal-Sirer gamma=0 curve",
-        "alpha": alpha, "measured": measured_share, "theory": theory,
-        "pass": ok1,
+        "measured": measured_share, "theory": theory,
+        "pass": abs(measured_share - theory) <= 0.10,
     })
-    # Verdict 2: above the ~1/3 threshold the attacker must beat its hashrate.
     if alpha > 0.34:
         verdicts.append({
             "name": "attacker beats honest baseline (share > alpha)",
-            "alpha": alpha, "measured": measured_share, "baseline": alpha,
+            "measured": measured_share, "baseline": alpha,
             "pass": measured_share > alpha,
         })
     return verdicts
 
 
+def _find_chain_file(run_dir, explicit):
+    if explicit:
+        return Path(explicit)
+    for cand in glob.glob(str(Path(run_dir) / "**" / "canonical_chain.json"), recursive=True):
+        return Path(cand)
+    return None
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run_dir")
+    ap.add_argument("--chain", default=None, help="path to canonical_chain.json (default: search run_dir)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -1304,36 +1412,41 @@ def main() -> int:
     attacker_ids = _attacker_ids(cfg)
     miner_ids = list(attacker_ids | _honest_miner_ids(cfg))
 
-    raw = parse_all_miners(run_dir, miner_ids)
-    accepted = build_accepted(raw)
-    if not accepted:
-        print("ERROR: zero blocks found", file=sys.stderr)
+    chain_path = _find_chain_file(run_dir, args.chain)
+    if not chain_path or not chain_path.exists():
+        print("ERROR: canonical_chain.json not found (bridge did not record it?)", file=sys.stderr)
+        return 2
+    chain = json.loads(chain_path.read_text()).get("chain", [])
+    if not chain:
+        print("ERROR: empty canonical chain", file=sys.stderr)
         return 2
 
+    found = parse_found_blocks(run_dir, miner_ids)
+    h2m = found_by_hash(found)
+    canonical_hashes = {b["hash"] for b in chain}
     alpha = _alpha_from_config(cfg)
-    share = attacker_share(accepted, attacker_ids)
-    stats = orphan_stats(raw, accepted, attacker_ids)
-    verdicts = make_verdicts(alpha, share, alpha, stats)
+    share = attacker_share_from_chain(chain, h2m, attacker_ids)
+    stats = orphan_stats(found, canonical_hashes, attacker_ids)
+    verdicts = make_verdicts(alpha, share, stats)
 
     out_dir = Path(args.out) if args.out else (run_dir / "analysis_output" / "selfish")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = _render_report(alpha, share, stats, verdicts)
+    report = _render(alpha, share, stats, verdicts)
     (out_dir / "report.md").write_text(report)
     print(report)
     return 0 if all(v["pass"] for v in verdicts) else 1
 
 
-def _render_report(alpha, share, stats, verdicts) -> str:
+def _render(alpha, share, stats, verdicts) -> str:
     lines = ["# Selfish-mining analysis", "",
-             f"- alpha (attacker hashrate fraction): {alpha:.3f}",
-             f"- attacker main-chain share (measured): {share:.3f}",
+             f"- alpha: {alpha:.3f}",
+             f"- attacker canonical share (measured): {share:.3f}",
              f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}",
              f"- attacker orphan rate: {stats['attacker_orphan_rate']:.3f}",
              f"- network orphan rate: {stats['network_orphan_rate']:.3f}",
              "", "## Verdicts", ""]
     for v in verdicts:
-        lines.append(f"- {'PASS' if v['pass'] else 'FAIL'}: {v['name']} "
-                     f"(measured {v['measured']:.3f})")
+        lines.append(f"- {'PASS' if v['pass'] else 'FAIL'}: {v['name']} (measured {v['measured']:.3f})")
     return "\n".join(lines) + "\n"
 
 
@@ -1341,23 +1454,21 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-Note: `build_accepted` entries must carry `miner` and `hash` keys. Confirm the exact key names by reading `scripts/native_daa_analysis.py:build_accepted` output; if it uses different keys (e.g. `block_hash`), adjust `orphan_stats`/`attacker_share` and the tests to match. Do not modify `native_daa_analysis.py`.
-
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `python3 -m pytest scripts/test_selfish_mining_analysis.py -v`
-Expected: PASS (5 passed).
+Run: `venv/bin/python -m pytest scripts/test_selfish_mining_analysis.py -v`
+Expected: PASS (7 passed).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add scripts/selfish_mining_analysis.py scripts/test_selfish_mining_analysis.py
-git commit -m "feat(selfish): revenue-share analysis vs Eyal-Sirer gamma=0 curve"
+git commit -m "feat(selfish): revenue-share analysis from ground-truth canonical chain"
 ```
 
 ---
 
-## Task 9: Documentation
+## Task 10: Documentation
 
 **Files:**
 - Create: `docs/SELFISH_MINING.md`
@@ -1405,15 +1516,16 @@ git commit -m "docs(selfish): SELFISH_MINING.md, changelog, native-mining pointe
 
 ## Final verification (run after all tasks)
 
-- [ ] Python suite: `python3 -m pytest agents/ scripts/test_selfish_strategy.py scripts/test_selfish_configs.py scripts/test_selfish_mining_analysis.py -q` — all pass.
+- [ ] Python suite: `venv/bin/python -m pytest agents/ scripts/test_selfish_configs.py scripts/test_selfish_mining_analysis.py -q` — all pass. (The `agents/` path already covers the selfish strategy, bridge, miner, and submit_block tests.)
 - [ ] Rust suite: `MONEROSIM_SKIP_SIM_BINARY_CHECK=1 cargo test` — all pass (native + selfish goldens, mining unit tests).
 - [ ] Generation smoke: `test_configs/selfish_micro.yaml` generates without error.
-- [ ] Then hand to `superpowers:finishing-a-development-branch`. Do NOT merge or push; the branch stays local per the Global Constraints. A real micro simulation run (gates a/b/c) is executed by the user afterward, not in this plan.
+- [ ] Then hand to `superpowers:finishing-a-development-branch`. Do NOT merge or push; the branch stays local per the Global Constraints. A real micro simulation run (gates a/b/c, which needs the bridge's `canonical_chain.json` + the analysis) is executed by the user afterward, not in this plan.
 
 ---
 
 ## Self-review notes (author)
 
-- **Spec coverage:** §2 no-patch → all tasks use stock RPC + `--offline` (Tasks 1,4,5,7). §3 architecture → Tasks 3,4,7. §4 data flow → Task 4 (forward/release). §5 strategy knobs → Tasks 2,4,7 (strategy, bridge_agent, attack_start_height, reaction_delay_ms). §6 γ≈0 → Tasks 2,8 (documented, tested). §7 metrics → Task 8. §8 experiment 1 (revenue vs α) → Tasks 7,8. §9 gates a–d → Task 4 (honest baseline), final verification (determinism/suites), Task 8 (Eyal–Sirer). §12 deliverables → all tasks. Phase-2 items (stubborn, multi-bridge γ, colluding) correctly excluded.
-- **Placeholder scan:** none — every code step has runnable code; the only "adjust to match real key names" notes (Tasks 4, 6, 8) are explicit verification instructions against named functions, not vague TODOs.
-- **Type consistency:** `SelfishStrategy(name, start_height)` / `.update(pub_height, priv_height) -> ReleaseDecision(release_to, adopt_public)` / `.fork` used identically in Tasks 2 and 4. `MoneroRPC.submit_block(blob)` defined in Task 1, used in Task 4. `is_native_miner_script` defined and used in Task 5. `es_revenue_share`/`attacker_share`/`orphan_stats` defined and tested together in Task 8. Attacker identified everywhere by `script == "agents.selfish_miner"` (Tasks 6,7,8).
+- **Spec coverage:** §2 no-patch → all tasks use stock RPC + `--offline` (Tasks 1,4,5,7). §3 architecture → Tasks 3,4,7,8. §4 data flow → Task 4 (forward/release). §5 strategy knobs → Tasks 2,4,7. §6 γ≈0 → Tasks 2,9 (documented, tested). §7 metrics → Task 9, sourced from the Task 8 recorder. §8 experiment 1 (revenue vs α) → Tasks 7,9. §9 gates a–d → Task 4 (honest baseline), final verification (determinism/suites), Task 9 (Eyal–Sirer). §12 deliverables → all tasks. Phase-2 items (stubborn, multi-bridge γ, colluding) correctly excluded.
+- **Attribution correctness (revised mid-plan):** the original Task 8 reused `build_accepted`, which dedupes races by earliest timestamp and so misattributes a selfish attacker's withheld, early-found, later-lost tie blocks. Replaced by: Task 8 records an honest node's ground-truth canonical chain (bridge `canonical_chain.json`), Task 9 attributes each canonical hash to its finder via the miners' FOUND logs. This is the faithful source at γ≈0.
+- **Placeholder scan:** none — every code step has runnable code; the "adjust to match real names" notes (Tasks 4, 6, 8) are explicit verification instructions against named functions, not vague TODOs.
+- **Type consistency:** `SelfishStrategy(name, start_height)` / `.update(pub_height, priv_height) -> ReleaseDecision(release_to, adopt_public)` / `.fork` used identically in Tasks 2 and 4. `MoneroRPC.submit_block(blob)` defined in Task 1, used in Task 4. `is_native_miner_script` defined and used in Task 5. `canonical_chain.json` produced by Task 8, consumed by Task 9. `es_revenue_share`/`attacker_share_from_chain`/`orphan_stats` defined and tested together in Task 9. Attacker identified everywhere by `script == "agents.selfish_miner"` (Tasks 6,7,9).
