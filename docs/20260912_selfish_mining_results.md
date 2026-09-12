@@ -90,7 +90,7 @@ bridges?):
 |---|---|---|---|---|---|---|
 | `20260912_191118_p2_fanout_1` | `fanout_1.yaml` | 1 | 0.475 | 0.167 (12) | 0.498 | PASS |
 | _pending_ | `fanout_3.yaml` | 3 | | | | |
-| _pending_ | `fanout_6.yaml` | 6 | | | | |
+| `20260912_201141_p2_fanout_6` | `fanout_6.yaml` | 6 | 0.545 | 0.000 (8) | 0.484 | PASS |
 
 **Stubborn variants vs eyal_sirer** (all at fan-out 6, fixed difficulty; this is
 a *relative* comparison — our mechanism's renderings of the stubborn families do
@@ -98,7 +98,7 @@ not have a closed-form theory curve here, see review P2):
 
 | run-dir | config | strategy | attacker share | realized γ | vs fanout_6 eyal_sirer |
 |---|---|---|---|---|---|
-| `20260912_..._p2_fanout_6` | `fanout_6.yaml` | eyal_sirer | _(baseline)_ | | — |
+| `20260912_201141_p2_fanout_6` | `fanout_6.yaml` | eyal_sirer | 0.545 | 0.000 | — (baseline) |
 | _pending_ | `stub_trail.yaml` | trail_stubborn(2) | | | |
 | _pending_ | `stub_equalfork.yaml` | equal_fork_stubborn | | | |
 | _pending_ | `stub_lead.yaml` | lead_stubborn | | | |
