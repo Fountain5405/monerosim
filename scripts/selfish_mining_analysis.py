@@ -18,9 +18,19 @@ import os
 import sys
 from pathlib import Path
 
+import yaml
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.native_mining_check import FOUND          # noqa: E402
-from scripts.native_daa_analysis import load_config      # noqa: E402
+
+
+def load_raw_config(cfg_path) -> dict:
+    """Load the RAW run config YAML, which carries the per-agent `agents` map
+    (script, hashrate). native_daa_analysis.load_config returns a transformed
+    dict with NO `agents` key, so using it here made the attacker/honest sets
+    empty and every verdict pass vacuously (review C2)."""
+    with open(cfg_path, "r") as f:
+        return yaml.safe_load(f) or {}
 
 
 def es_revenue_share(alpha: float, gamma: float) -> float:
@@ -124,7 +134,7 @@ def main() -> int:
     if not cfg_path.exists():
         print(f"ERROR: {cfg_path} missing", file=sys.stderr)
         return 2
-    cfg = load_config(cfg_path)
+    cfg = load_raw_config(cfg_path)
     attacker_ids = _attacker_ids(cfg)
     miner_ids = list(attacker_ids | _honest_miner_ids(cfg))
 

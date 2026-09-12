@@ -32,6 +32,28 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
         self._released_index = -1      # highest private block index released to the bridge
+        self._forwarded_hashes = {}    # height -> hash last forwarded, for reorg detection (C3)
+        self._tx_warned = False        # C4: warn once if a block carries transactions
+
+    # How many trailing honest blocks to re-check for reorgs each tick. Selfish
+    # and natural forks are shallow; a submit of an unchanged/already-present
+    # block is harmless (rejected).
+    REORG_WINDOW = 6
+
+    def _block_hash(self, blk) -> str:
+        return (blk.get("block_header") or {}).get("hash")
+
+    def _warn_if_has_txs(self, blk, idx: int, which: str) -> None:
+        """Phase 1 moves BARE block blobs; a block carrying tx hashes will be
+        rejected by submit_block ('tx not found in pool'). Phase-1 configs
+        generate no transactions, so this is latent — warn once if it ever is
+        not (review C4)."""
+        if blk.get("tx_hashes") and not self._tx_warned:
+            self.logger.warning(
+                f"block {idx} ({which}) carries {len(blk['tx_hashes'])} transaction(s); "
+                "phase-1 selfish mining relays bare block blobs only, so submit_block "
+                "may reject it. Phase-1 configs should generate no transactions.")
+            self._tx_warned = True
 
     def _reaction_interval_s(self) -> float:
         return max(self.reaction_delay_ms, 1) / 1000.0
@@ -53,23 +75,63 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.logger.debug(f"Bridge {self.bridge_agent_id} not yet in registry")
         return False
 
-    def _forward_public_blocks(self, pub_height: int) -> None:
-        """Submit honest blocks the offline miner has not seen yet."""
-        for idx in range(self._forwarded_index + 1, pub_height):
+    def _forward_one(self, idx: int, blk=None) -> None:
+        """Fetch honest block `idx` from the bridge and submit it into the
+        offline miner, recording its hash for reorg detection."""
+        try:
+            if blk is None:
+                blk = self.bridge_rpc.get_block(height=idx)
+        except RPCError as e:
+            self.logger.debug(f"forward honest block {idx}: fetch failed {e}")
+            return
+        self._warn_if_has_txs(blk, idx, "honest")
+        blob = blk.get("blob")
+        if blob:
             try:
-                blob = self.bridge_rpc.get_block(height=idx).get("blob")
-                if blob:
-                    self.daemon_rpc.submit_block(blob)
+                self.daemon_rpc.submit_block(blob)
             except RPCError as e:
-                self.logger.debug(f"forward honest block {idx}: {e}")
-            self._forwarded_index = idx
+                # Already-have / alt on the miner is expected and harmless.
+                self.logger.debug(f"forward honest block {idx}: submit {e}")
+        h = self._block_hash(blk)
+        if h:
+            self._forwarded_hashes[idx] = h
 
-    def _release_up_to(self, release_index: int) -> None:
-        """Submit the attacker's divergent private blocks to the bridge in order."""
-        start = max(self.strategy.fork, self._released_index + 1)
+    def _forward_public_blocks(self, pub_height: int) -> None:
+        """Forward honest blocks into the offline miner, reorg-aware (review C3).
+
+        New blocks above the high-water mark are forwarded once. A trailing
+        window is then re-checked: if the honest block at a height we already
+        forwarded now has a different hash, the honest chain reorged there, so
+        re-forward it — otherwise the miner would stay wedged on a dead honest
+        branch and mine a private chain that the network can never accept."""
+        for idx in range(self._forwarded_index + 1, pub_height):
+            self._forward_one(idx)
+            self._forwarded_index = idx
+        floor = max(1, pub_height - self.REORG_WINDOW)
+        for idx in range(floor, pub_height):
+            try:
+                blk = self.bridge_rpc.get_block(height=idx)
+            except RPCError as e:
+                self.logger.debug(f"reorg recheck {idx}: {e}")
+                continue
+            h = self._block_hash(blk)
+            if h and self._forwarded_hashes.get(idx) != h:
+                self.logger.info(f"honest reorg detected at height {idx}; re-forwarding")
+                self._forward_one(idx, blk)
+
+    def _release_up_to(self, release_from: int, release_index: int) -> None:
+        """Submit the attacker's divergent private blocks to the bridge in order.
+
+        `release_from` comes from the strategy decision (the fork BEFORE the
+        step mutated it); reading the post-update strategy.fork here would make
+        the reveal submit an empty range and the attacker could never win
+        (review C1)."""
+        start = max(release_from, self._released_index + 1)
         for idx in range(start, release_index + 1):
             try:
-                blob = self.daemon_rpc.get_block(height=idx).get("blob")
+                blk = self.daemon_rpc.get_block(height=idx)
+                self._warn_if_has_txs(blk, idx, "private")
+                blob = blk.get("blob")
                 if blob:
                     self.bridge_rpc.submit_block(blob)
             except RPCError as e:
@@ -104,7 +166,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         # 6. Strategy decision -> release.
         decision = self.strategy.update(pub_height, priv_height)
         if decision.release_to is not None:
-            self._release_up_to(decision.release_to)
+            self._release_up_to(decision.release_from, decision.release_to)
 
         return self._reaction_interval_s()
 

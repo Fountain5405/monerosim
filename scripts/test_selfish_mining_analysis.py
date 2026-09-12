@@ -62,3 +62,18 @@ def test_parse_found_blocks_reads_a_log(tmp_path):
     )
     found = parse_found_blocks(tmp_path, ["attacker-miner"])
     assert found == [{"hash": "deadbeef", "height": 1, "miner": "attacker-miner"}]
+
+
+def test_config_loader_sees_agents(tmp_path):
+    # Review C2: the analysis must read the RAW config (which has `agents`), so
+    # attacker/honest sets and alpha are non-trivial.
+    from scripts.selfish_mining_analysis import load_raw_config, _attacker_ids, _alpha_from_config
+    cfg_path = tmp_path / "input_config.yaml"
+    cfg_path.write_text(
+        "agents:\n"
+        "  honest-001: {script: agents.autonomous_miner, hashrate: 6}\n"
+        "  attacker-miner: {script: agents.selfish_miner, hashrate: 4}\n"
+    )
+    cfg = load_raw_config(cfg_path)
+    assert _attacker_ids(cfg) == {"attacker-miner"}
+    assert abs(_alpha_from_config(cfg) - 0.4) < 1e-9
