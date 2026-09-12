@@ -1,0 +1,67 @@
+# Selfish-mining alpha-sweep: alpha = 0.40 (docs/SELFISH_MINING.md).
+# Honest miners total 6 h/s (3 + 3); the attacker mines 4 h/s -> 4/10 = 0.40
+# on an OFFLINE monerod-sim (withholds by construction). Same shape and
+# simulation_seed as the rest of the sweep (identical to
+# test_configs/selfish_micro.yaml; alpha_0300.yaml, alpha_0450.yaml) so runs
+# are comparable across alpha.
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
