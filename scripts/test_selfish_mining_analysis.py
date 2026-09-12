@@ -77,3 +77,19 @@ def test_config_loader_sees_agents(tmp_path):
     cfg = load_raw_config(cfg_path)
     assert _attacker_ids(cfg) == {"attacker-miner"}
     assert abs(_alpha_from_config(cfg) - 0.4) < 1e-9
+
+
+def test_realized_gamma_counts_tie_wins():
+    from scripts.selfish_mining_analysis import realized_gamma
+    found = [{"hash":"a2","height":2,"miner":"attacker-miner"},{"hash":"h2","height":2,"miner":"honest-001"},
+             {"hash":"a3","height":3,"miner":"attacker-miner"},{"hash":"h3","height":3,"miner":"honest-002"},
+             {"hash":"h4","height":4,"miner":"honest-001"}]
+    chain = [{"height":2,"hash":"a2"},{"height":3,"hash":"h3"},{"height":4,"hash":"h4"}]
+    g, ties = realized_gamma(found, chain, {"attacker-miner"})
+    assert ties == 2 and abs(g - 0.5) < 1e-9
+
+def test_realized_gamma_zero_when_no_ties():
+    from scripts.selfish_mining_analysis import realized_gamma
+    g, ties = realized_gamma([{"hash":"a1","height":1,"miner":"attacker-miner"}],
+                             [{"height":1,"hash":"a1"}], {"attacker-miner"})
+    assert ties == 0 and g == 0.0

@@ -81,6 +81,28 @@ def orphan_stats(found: list, canonical_hashes: set, attacker_ids: set) -> dict:
     }
 
 
+def realized_gamma(found: list, chain: list, attacker_ids: set) -> tuple:
+    """Fraction of tie heights (both an attacker- and honest-found block at
+    that height) the attacker won on the canonical chain, plus the tie count."""
+    by_height = {}
+    for e in found:
+        by_height.setdefault(e["height"], []).append(e)
+    canonical_hash_by_height = {b["height"]: b["hash"] for b in chain}
+    ties = 0
+    attacker_wins = 0
+    for height, entries in by_height.items():
+        has_attacker = any(e["miner"] in attacker_ids for e in entries)
+        has_honest = any(e["miner"] not in attacker_ids for e in entries)
+        if has_attacker and has_honest:
+            ties += 1
+            canon_hash = canonical_hash_by_height.get(height)
+            winner = next((e["miner"] for e in entries if e["hash"] == canon_hash), None)
+            if winner in attacker_ids:
+                attacker_wins += 1
+    gamma = (attacker_wins / ties) if ties else 0.0
+    return gamma, ties
+
+
 def _attacker_ids(cfg):
     return {aid for aid, a in cfg.get("agents", {}).items() if a.get("script") == "agents.selfish_miner"}
 
@@ -97,7 +119,7 @@ def _alpha_from_config(cfg):
     return (att / total) if total else 0.0
 
 
-def make_verdicts(alpha, measured_share, stats) -> list:
+def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None) -> list:
     verdicts = []
     theory = es_revenue_share(alpha, 0.0)
     verdicts.append({
@@ -105,6 +127,12 @@ def make_verdicts(alpha, measured_share, stats) -> list:
         "measured": measured_share, "theory": theory,
         "pass": abs(measured_share - theory) <= 0.10,
     })
+    if theory_at_gamma is not None:
+        verdicts.append({
+            "name": "attacker share vs Eyal-Sirer theory at measured gamma",
+            "measured": measured_share, "theory": theory_at_gamma,
+            "pass": abs(measured_share - theory_at_gamma) <= 0.10,
+        })
     if alpha > 0.34:
         verdicts.append({
             "name": "attacker beats honest baseline (share > alpha)",
@@ -153,21 +181,28 @@ def main() -> int:
     alpha = _alpha_from_config(cfg)
     share = attacker_share_from_chain(chain, h2m, attacker_ids)
     stats = orphan_stats(found, canonical_hashes, attacker_ids)
-    verdicts = make_verdicts(alpha, share, stats)
+    gamma, n_ties = realized_gamma(found, chain, attacker_ids)
+    theory_at_gamma = es_revenue_share(alpha, gamma)
+    verdicts = make_verdicts(alpha, share, stats, theory_at_gamma)
 
     out_dir = Path(args.out) if args.out else (run_dir / "analysis_output" / "selfish")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = _render(alpha, share, stats, verdicts)
+    report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma)
     (out_dir / "report.md").write_text(report)
     print(report)
     return 0 if all(v["pass"] for v in verdicts) else 1
 
 
-def _render(alpha, share, stats, verdicts) -> str:
+def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=None) -> str:
+    if theory_at_gamma is None:
+        theory_at_gamma = es_revenue_share(alpha, gamma)
     lines = ["# Selfish-mining analysis", "",
              f"- alpha: {alpha:.3f}",
              f"- attacker canonical share (measured): {share:.3f}",
              f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}",
+             f"- realized gamma: {gamma:.3f}",
+             f"- num ties: {n_ties}",
+             f"- theory at measured gamma: {theory_at_gamma:.3f}",
              f"- attacker orphan rate: {stats['attacker_orphan_rate']:.3f}",
              f"- network orphan rate: {stats['network_orphan_rate']:.3f}",
              "", "## Verdicts", ""]
