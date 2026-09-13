@@ -154,7 +154,7 @@ not have a closed-form theory curve here, see review P2):
 |---|---|---|---|---|---|
 | `20260912_201141_p2_fanout_6` | `fanout_6.yaml` | eyal_sirer | 0.545 | 0.000 | — (baseline) |
 | `20260912_221005_p2_stub_trail` | `stub_trail.yaml` | trail_stubborn(2) | 0.658 | 0.000 | +0.113 (0.545→0.658) ⚠ |
-| _pending_ | `stub_equalfork.yaml` | equal_fork_stubborn | | | |
+| `20260912_230834_p2_stub_equalfork` | `stub_equalfork.yaml` | equal_fork_stubborn | 0.512 | 0.000 | −0.033 (0.545→0.512) |
 | _pending_ | `stub_lead.yaml` | lead_stubborn | | | |
 
 _Phase-2 rows are filled in as the runs complete; the driver runs them in the
