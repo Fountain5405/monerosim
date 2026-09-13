@@ -135,11 +135,34 @@ class SelfishStrategy:
         return decision
 
     def _lead_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
-        """like eyal_sirer, but on the override step (a - h == 1, h > 0) reveals
-        only up to the honest tip instead of its whole lead, keeping the top
-        private block hidden and mining (bets on gamma plus the hidden lead)."""
-        if h > 0 and a - h == 1:
-            return ReleaseDecision(release_from=old_fork, release_to=pub_height - 1, adopt_public=False, forward_to=None)
+        """like eyal_sirer, but it holds its top block back at the overtake
+        threshold. When honest catches to within one (h > 0, a - h == 1) -- where
+        eyal_sirer would reveal the whole branch and win by one -- lead_stubborn
+        instead reveals all BUT the top private block (a tie that bets on gamma)
+        and keeps the top hidden, fork unmoved. It cashes the moment it is >= 2
+        ahead of an *active* honest chain (h > 0, a - h >= 2): it reveals
+        everything and commits the strictly-longer overtake (fork = priv_height,
+        a real win).
 
-        # All other states, including adopt (a < h): eyal_sirer rules.
+        The a-h>=2 cash is the winning commit path and is load-bearing: without
+        it lead_stubborn only ever advances `fork` by conceding, so it can never
+        place a block on the canonical chain (realized share 0.000, attacker
+        orphan 1.000 -- the 2026-09-13 bug, see docs/20260912_selfish_mining_results.md).
+        The cash requires h > 0: while honest has not moved (h == 0) the attacker
+        must keep withholding its secret lead, not reveal it. At gamma~0 the held
+        tie never propagates, so lead_stubborn realizes at or below eyal_sirer;
+        the one-round hold only pays at gamma>0. (In the a-h==1 arm
+        priv_height == pub_height + 1, so release_to = priv_height - 2 ==
+        pub_height - 1: the same tie as before, only with the missing commit
+        restored via the a-h>=2 arm.)"""
+        if h > 0 and a - h == 1:
+            # Hold the top: reveal all but the top private block (a tie at gamma=0).
+            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 2, adopt_public=False, forward_to=None)
+
+        if h > 0 and a - h >= 2:
+            # Cash the lead: reveal the whole branch -> strictly longer -> win.
+            self.fork = priv_height
+            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
+
+        # h == 0 (withhold), a == h (tie), a < h (adopt): eyal_sirer rules.
         return self._eyal_sirer_decision(old_fork, pub_height, priv_height, a, h)

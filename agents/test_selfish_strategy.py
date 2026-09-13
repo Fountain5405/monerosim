@@ -115,3 +115,50 @@ def test_lead_stubborn_override_reveals_only_to_tip():
     s.update(0, 2)                         # lead 2, withhold
     d = s.update(1, 2)                     # a-h==1 override: reveal only to honest tip
     assert d.release_to == 0 and d.forward_to is None and s.fork == 0   # top (idx1) kept hidden
+
+
+def test_lead_stubborn_cashes_lead_when_two_ahead():
+    # Regression (2026-09-13 bug): lead_stubborn had no winning commit path and
+    # realized 0.000 share (attacker orphan 1.000). Once it is >=2 ahead of an
+    # active honest chain it must cash -- reveal the whole branch and advance fork
+    # (a strictly-longer overtake win).
+    s = SelfishStrategy("lead_stubborn", start_height=0)
+    s.update(0, 2)                         # lead 2, honest idle -> withhold
+    s.update(1, 2)                         # a-h==1 -> hold top (tie), fork stays 0
+    d = s.update(1, 3)                     # attacker extends: a=3,h=1 -> a-h>=2 -> CASH
+    assert d.release_to == 2               # reveal whole branch, indexes 0..2
+    assert d.release_from == 0
+    assert d.adopt_public is False
+    assert s.fork == 3                     # fork advances -> the attacker wins
+
+
+def test_lead_stubborn_withholds_while_honest_idle():
+    # The cash arm must require h>0: while honest has not moved (h==0), a >=2 lead
+    # stays secret (withhold), never revealed.
+    s = SelfishStrategy("lead_stubborn", start_height=0)
+    d = s.update(0, 3)                     # a=3,h=0 -> h==0 -> withhold, NOT cash
+    assert d.release_to is None and d.adopt_public is False and s.fork == 0
+
+
+def test_every_withholding_strategy_has_a_winning_commit_path():
+    # Regression for the 2026-09-13 lead_stubborn bug: a strategy that can only
+    # advance `fork` by conceding (adopt_public) never places a block on the
+    # canonical chain (realized 0.000 share, orphan 1.000). Over a favorable game
+    # -- attacker builds a 3-lead, then honest catches up -- every withholding
+    # strategy must commit at least one win (fork advances on a non-adopt step).
+    favorable = ["a", "a", "a", "h", "h"]
+    for name in ("eyal_sirer", "trail_stubborn", "equal_fork_stubborn", "lead_stubborn"):
+        s = SelfishStrategy(name, start_height=0)
+        pub = priv = 0
+        won = False
+        for ev in favorable:
+            if ev == "a":
+                priv += 1
+            else:
+                pub += 1
+            before = s.fork
+            d = s.update(pub, priv)
+            if s.fork > before and not d.adopt_public:
+                won = True
+                break
+        assert won, f"{name} has no winning commit path (only advances fork by conceding)"
