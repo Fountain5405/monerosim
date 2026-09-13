@@ -1,5 +1,5 @@
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index cca70497a..573c89a76 100644
+index cca70497a..a727747a8 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
 @@ -186,6 +186,16 @@ namespace cryptonote
@@ -43,7 +43,7 @@ index cca70497a..573c89a76 100644
      CHECK_AND_ASSERT_MES(!bvc.m_verifivation_failed, false, "mined block failed verification");
 -    if(bvc.m_added_to_main_chain)
 +    if(bvc.m_added_to_main_chain ||
-+       (m_sim_relay_alt_blocks && !bvc.m_verifivation_failed && !bvc.m_already_exists))
++       (m_sim_relay_alt_blocks && !bvc.m_verifivation_failed && !bvc.m_already_exists && !bvc.m_marked_as_orphaned))
      {
        cryptonote_connection_context exclude_context = {};
        NOTIFY_NEW_FLUFFY_BLOCK::request arg{};
