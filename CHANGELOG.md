@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- **Per-agent topology placement**: the `topology_node: <gml node id>` agent
+  attribute pins an agent to a specific GML topology node, overriding index-based
+  distribution (`src/topology/placement.rs`). Requires a GML topology; validated
+  against the GML node ids; co-location allowed. Enables γ-vs-network-position
+  selfish-mining experiments (the placement lever phase 2 lacked). See
+  `docs/superpowers/specs/2026-09-13-per-agent-topology-placement-design.md`.
+
 - **Native mining (opt-in)**: `general.mining.mode: native` makes miners run
   `monerod-sim`, whose miner thread mines with real RandomX throttled by
   `--sim-hash-interval-ms` (patches/monero-sim-mining.patch, plus

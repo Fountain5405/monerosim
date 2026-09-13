@@ -469,6 +469,19 @@ use a larger honest network — 3 miners + 12 relays spread across the GML
 topology — so inter-node latencies have enough spread for γ to be
 measurable at all.
 
+**Update (2026-09-13): a per-agent position knob now exists.** The
+`topology_node: <gml node id>` agent attribute pins an agent to a specific GML
+node, overriding the index-based distribution (`apply_topology_pins`,
+`src/topology/placement.rs`; validated against the GML node ids). This retracts
+the "no per-agent position knob" statement above: γ is now *addressable by
+position* — an experiment can place the attacker's detector and publisher
+bridges near a chosen honest subset while the honest finder is far. Lifting γ
+this way is still empirical (the attacker is reactive, so its block starts the
+propagation race late), but the placement lever the text above said was missing
+is now available. Design:
+`docs/superpowers/specs/2026-09-13-per-agent-topology-placement-design.md`;
+phase-3 results land in `docs/20260912_selfish_mining_results.md`.
+
 ### 8.5 Configs, running the experiments, and reading the output
 
 `test_configs/selfish_phase2/` (all α=0.4, `simulation_seed: 12345`,
