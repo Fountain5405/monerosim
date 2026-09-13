@@ -1133,11 +1133,13 @@ install_sim_monerod() {
     # flag-gated and stock when its flag is absent:
     #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
     #   patches/monero-sim-mining.patch           --sim-hash-interval-ms / --sim-rx-full-dataset
+    #   patches/monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)
     # One build serves the fork-schedule and native-mining features; monerod-hf
     # is kept as a symlink alias so existing fork configs keep working.
     local patches=(
         "$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
         "$SCRIPT_DIR/patches/monero-sim-mining.patch"
+        "$SCRIPT_DIR/patches/monero-sim-selfish-relay.patch"
     )
     local p
     for p in "${patches[@]}"; do
