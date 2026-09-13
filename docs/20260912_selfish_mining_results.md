@@ -138,7 +138,9 @@ because it cannot place the attacker's publishers advantageously relative to
 honest miners. A real γ experiment would need per-agent topology/latency control
 (a Shadow topology with placed hosts) or a *preemptive-release* strategy that
 publishes the matching block on a timer rather than reactively. This is the main
-scientific finding of phase 2.
+scientific finding of phase 2. (Phase 3 below adds exactly that per-agent
+placement and finds it *still* insufficient — the reactive attacker's block is
+second everywhere — which sharpens what a γ>0 setup actually requires.)
 
 *Reproduce the forensic:* the attacker's found-block hashes are in
 `daemon_logs/monero-attacker-miner/bitmonero.log`; the canonical hashes in
@@ -210,6 +212,64 @@ nothing — equal-fork ties eyal_sirer, and lead-stubborn (once its
 winning-commit-path bug was fixed) realizes *below* both eyal_sirer and its own
 hashrate because its γ-bet never pays when ties don't propagate. Tie-exploiting
 stubbornness needs γ>0, which this apparatus structurally cannot provide.
+
+## Phase 3 — γ vs network position (per-agent placement)
+
+Phase 2 concluded that lifting γ would need per-agent topology placement, which
+monerosim lacked. That knob now exists — `topology_node: <gml node id>` pins an
+agent to a chosen GML node (design:
+`docs/superpowers/specs/2026-09-13-per-agent-topology-placement-design.md`). Phase
+3 uses it to give γ its best shot and measures whether position lifts it.
+
+| run-dir | config | placement | attacker share | realized γ (ties) | result |
+|---|---|---|---|---|---|
+| `20260913_051102_p3_gamma_lift` | `selfish_phase3/gamma_lift.yaml` | honest miners spread to 3 distant regions; attacker detector central; 5 publishers spread near honest regions; reaction 10 ms | 0.411 | 0.000 (12) | γ **not** lifted |
+
+### What it shows
+
+**Position does not lift γ in this apparatus.** Despite the deliberate contrast —
+honest miners pinned far apart (GML nodes 100/500/900), the attacker's detector
+central (500), publisher bridges spread near each honest region
+(100/300/500/900/1100), and the reaction delay dropped from 50 ms to 10 ms —
+realized γ was **0.000** (0 of 12 honest-resolved ties won). Attacker share 0.411
+sits on the γ=0 Eyal–Sirer bound (0.484) and ≈ α within preemption noise: the
+attacker profits marginally from withholding but earns nothing from ties, exactly
+as in phase 2.
+
+**Why — the barrier is reactive timing, not position.** The attacker must *hear*
+the honest block (through its detector bridge), then react, then publish through
+its bridges. So its competing block starts the propagation race a fixed
+detection+reaction penalty behind, and then must cover ~the same network distance
+the honest block has already travelled — *everywhere*. Worse, its bridges relay
+the honest block first: a bridge that has already received the honest block treats
+the attacker's second-arriving equal-height block as an alt-block, which stock
+monerod does **not** re-flood (the same mechanism the phase-2 forensic found).
+Moving the bridges changes latencies but not this ordering — the attacker's
+tie-block is second at every node it can reach. (Network orphan fell to 0.245,
+below phase-2's co-located 0.31–0.38, confirming the honest network really was
+placed more spread out; the pins worked, they just don't help γ.)
+
+**What a γ>0 setup would actually require.** Placement is necessary but not
+sufficient. Lifting γ needs the attacker's block to arrive *first* at some honest
+miners, which requires one (ideally both) of:
+
+1. **One-hop peer dominance + near-zero reaction** — the attacker's publishers
+   directly peered with a chosen honest subset that is many hops from the finder,
+   so the attacker's one-hop delivery beats the honest multi-hop propagation
+   despite reacting late. This needs a *peer-pinning* knob (force specific
+   bridge↔honest peer links; `topology_node` sets position, not the peer graph,
+   which `peer_mode: Dynamic` discovers) plus the smallest possible reaction.
+2. **A daemon-level relay change** so the attacker's second-arriving equal-height
+   block is still adopted/relayed — i.e. the deliberately **rejected**
+   `--withholding`-style monerod patch. Out of scope by the project's no-daemon-
+   patch rule.
+
+So the honest conclusion of the γ line of work: **the reactive,
+publish-through-stock-bridges attacker cannot realize γ>0 by network position
+alone; γ in this apparatus is structurally ≈0.** The `topology_node` feature is a
+correct, general capability (useful for eclipse/partition/latency experiments) —
+it simply is not the missing piece for selfish-mining γ. A peer-pinning knob is
+the next lever if the γ question is pursued further.
 
 ## Verify it yourself
 
