@@ -458,6 +458,7 @@ mod tests {
             wallet_env: None,
             attributes: None,
             subnet_group: None,
+            topology_node: None,
         }
     }
 

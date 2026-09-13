@@ -213,6 +213,7 @@ fn build_seed_agent(seed_index: usize) -> AgentConfig {
         wallet_env: None,
         attributes: Some(attrs),
         subnet_group: None,
+        topology_node: None,
     }
 }
 

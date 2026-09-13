@@ -216,6 +216,13 @@ pub struct AgentConfig {
     /// Useful for simulating Sybil attacks where an attacker's nodes share infrastructure.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_group: Option<String>,
+
+    /// Pin this agent to a specific GML topology node (by node `id`), overriding
+    /// the index-based distribution. Its network position — and thus its latency
+    /// to every other agent — becomes that of the chosen node. Requires a GML
+    /// topology (`network:` GML section). Multiple agents may share a node.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topology_node: Option<u32>,
 }
 
 impl AgentConfig {
@@ -360,6 +367,8 @@ struct AgentConfigRaw {
     pub attributes: Option<BTreeMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_group: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topology_node: Option<u32>,
     /// Capture any extra fields for flat phase parsing
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_yaml::Value>,
@@ -418,6 +427,7 @@ impl<'de> Deserialize<'de> for AgentConfig {
             wallet_env: raw.wallet_env,
             attributes: raw.attributes,
             subnet_group: raw.subnet_group,
+            topology_node: raw.topology_node,
         })
     }
 }
@@ -563,3 +573,25 @@ macro_rules! impl_phase {
 
 impl_phase!(DaemonPhase);
 impl_phase!(WalletPhase);
+
+#[cfg(test)]
+mod topology_node_tests {
+    use super::AgentConfig;
+
+    // AgentConfig fields are all Option, so a partial YAML deserializes fine.
+    fn parse(yaml: &str) -> AgentConfig {
+        serde_yaml::from_str(yaml).expect("AgentConfig parses")
+    }
+
+    #[test]
+    fn topology_node_parses_when_present() {
+        let cfg = parse("script: agents.selfish_bridge\ntopology_node: 12\n");
+        assert_eq!(cfg.topology_node, Some(12));
+    }
+
+    #[test]
+    fn topology_node_defaults_to_none() {
+        let cfg = parse("script: agents.selfish_bridge\n");
+        assert_eq!(cfg.topology_node, None);
+    }
+}
