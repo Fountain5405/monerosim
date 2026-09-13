@@ -1,0 +1,61 @@
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+index cca70497a..573c89a76 100644
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -186,6 +186,16 @@ namespace cryptonote
+   , "Relay blocks as fluffy blocks (obsolete, now default)"
+   , true
+   };
++  // Simulation/research only (monerosim selfish-mining patch). Stock monerod never
++  // relays alternative (equal-height) blocks. This flag makes handle_block_found --
++  // reached ONLY from local submission (submit_block RPC / miner thread), never P2P
++  // -- relay a locally-submitted accepted alt-block, enabling gamma>0 selfish-mining
++  // experiments. Off by default; no effect on stock behavior when absent.
++  static const command_line::arg_descriptor<bool> arg_sim_relay_alt_blocks = {
++    "sim-relay-alt-blocks"
++  , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
++  , false
++  };
+   static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
+     "max-txpool-weight"
+   , "Set maximum txpool weight in bytes."
+@@ -328,6 +338,7 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_testnet_on);
+     command_line::add_arg(desc, arg_stagenet_on);
+     command_line::add_arg(desc, arg_regtest_on);
++    command_line::add_arg(desc, arg_sim_relay_alt_blocks);
+     command_line::add_arg(desc, arg_keep_fakechain);
+     command_line::add_arg(desc, arg_fixed_difficulty);
+     command_line::add_arg(desc, arg_fakechain_hard_forks);
+@@ -490,6 +501,9 @@ namespace cryptonote
+     bool prune_blockchain = command_line::get_arg(vm, arg_prune_blockchain);
+     bool keep_alt_blocks = command_line::get_arg(vm, arg_keep_alt_blocks);
+     bool keep_fakechain = command_line::get_arg(vm, arg_keep_fakechain);
++    m_sim_relay_alt_blocks = command_line::get_arg(vm, arg_sim_relay_alt_blocks);
++    if (m_sim_relay_alt_blocks)
++      MGINFO_RED("*** SIMULATION: --sim-relay-alt-blocks is ON. This daemon will relay locally-submitted alternative (equal-height) blocks. Simulation/research only. ***");
+ 
+     boost::filesystem::path folder(m_config_folder);
+     // --regtest already appends "fake" through arg_data_dir. Some tests set
+@@ -1391,7 +1405,8 @@ namespace cryptonote
+ 
+ 
+     CHECK_AND_ASSERT_MES(!bvc.m_verifivation_failed, false, "mined block failed verification");
+-    if(bvc.m_added_to_main_chain)
++    if(bvc.m_added_to_main_chain ||
++       (m_sim_relay_alt_blocks && !bvc.m_verifivation_failed && !bvc.m_already_exists))
+     {
+       cryptonote_connection_context exclude_context = {};
+       NOTIFY_NEW_FLUFFY_BLOCK::request arg{};
+diff --git a/src/cryptonote_core/cryptonote_core.h b/src/cryptonote_core/cryptonote_core.h
+index 19d9c6e65..99df370fe 100644
+--- a/src/cryptonote_core/cryptonote_core.h
++++ b/src/cryptonote_core/cryptonote_core.h
+@@ -1123,6 +1123,7 @@ namespace cryptonote
+      boost::mutex m_update_mutex;
+ 
+      bool m_offline;
++     bool m_sim_relay_alt_blocks = false; //!< simulation only: relay locally-submitted alternative (equal-height) blocks (monerosim selfish-mining patch)
+ 
+      std::shared_ptr<tools::Notify> m_block_rate_notify;
+    };
