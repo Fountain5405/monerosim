@@ -155,7 +155,7 @@ not have a closed-form theory curve here, see review P2):
 | `20260912_201141_p2_fanout_6` | `fanout_6.yaml` | eyal_sirer | 0.545 | 0.000 | — (baseline) |
 | `20260912_221005_p2_stub_trail` | `stub_trail.yaml` | trail_stubborn(2) | 0.658 | 0.000 | +0.113 (0.545→0.658) ⚠ |
 | `20260912_230834_p2_stub_equalfork` | `stub_equalfork.yaml` | equal_fork_stubborn | 0.512 | 0.000 | −0.033 (0.545→0.512) |
-| `20260913_000804_p2_stub_lead` | `stub_lead.yaml` | lead_stubborn | 0.000 | 0.000 | −0.545 ✗ BUG |
+| `20260913_024558_p2_stub_lead_fixed` | `stub_lead.yaml` | lead_stubborn | 0.297 | 0.000 | −0.248 (0.545→0.297) † |
 
 ### What the stubborn variants show
 
@@ -181,30 +181,35 @@ finding above:
   of a tie). Ties do not propagate here (γ≈0, shown above), so it has nothing to
   exploit and degrades to eyal_sirer within noise.
 
-- **lead_stubborn: 0.000 (attacker orphan 1.000) — an implementation bug, plus a
-  γ>0 dependence.** lead-stubborn is meant to bet on γ: on its override step
-  (`a − h == 1`) it reveals its branch only up to the honest tip
-  (`release_to = pub_height − 1`, a *tie*) and keeps its top block hidden
-  (`agents/selfish_strategy.py:137-142`). But that override *replaces*
-  eyal_sirer's winning commit (`a−h==1 → fork = priv_height`, reveal the whole
-  strictly-longer branch) **without providing any other path that advances
-  `fork`**. Tracing every branch, the only way lead_stubborn moves its fork
-  forward is `adopt_public` (conceding); it has **no winning commit path at
-  all**, so it can never place a block on the canonical chain — hence 0.000 and a
-  1.000 attacker-orphan rate (the 64 "ties" are its never-winning tie reveals).
-  This is two problems at once: (1) a strategy-completeness bug — no step ever
-  publishes the hidden top as a strictly-longer chain to cash the lead; and
-  (2) even with (1) fixed, lead-stubborn is inherently a γ>0 strategy, so it
-  should not be expected to beat eyal_sirer in this γ≈0 apparatus. Fixing it is a
-  delicate strategy change (the phase-1 review found strategy logic error-prone)
-  and needs its own test + re-run; **deferred as a follow-up, not a validated
-  result.**
+- **lead_stubborn: 0.000 → 0.297 after a bug fix — and still underperforms at
+  γ≈0, as a γ>0 strategy should.** The first run (`…_p2_stub_lead`) scored
+  **0.000** (attacker orphan 1.000, 64 losing "ties"). Cause: lead-stubborn's
+  override (`a−h==1`) revealed only to a tie and kept the top hidden, but it
+  *replaced* eyal_sirer's winning commit (`a−h==1 → fork = priv_height`, reveal
+  the whole strictly-longer branch) **without any other path that advances
+  `fork`** — so its only non-conceding move never committed, and it could never
+  place a block on the canonical chain (a genuine strategy-completeness bug, not
+  an analysis artifact: the attacker mined normally, every block orphaned).
+  **Fixed 2026-09-13** (commit `0a3151c6`, `agents/selfish_strategy.py`): keep
+  the distinctive a−h==1 hold-the-top (the γ-bet tie), and add the missing
+  **cash path** — when ≥2 ahead of an *active* honest chain (`h>0`, `a−h≥2`),
+  reveal the whole branch and commit the strictly-longer overtake; a regression
+  test now asserts every withholding strategy has a winning commit path. The
+  re-run (`20260913_024558_p2_stub_lead_fixed`) scores **0.297**: the attacker
+  now wins blocks, but earns *less than eyal_sirer (0.545) and even less than its
+  own 0.40 hashrate* (attacker orphan 0.380 — it burns its own blocks on losing
+  ties; network orphan 0.213, lower than the other runs since it reorgs honest
+  less). That is the correct γ≈0 outcome: lead-stubborn trades guaranteed
+  overtake wins for a γ-bet that never pays when ties don't propagate, so at γ≈0
+  it actively *hurts* the attacker. It is a γ>0 strategy, faithfully useless at
+  γ=0. († the −0.248 in the table is post-fix.)
 
 **Net:** at γ≈0, only the *reorg-persistence* family (trail-stubborn) helps, and
-only by exploiting honest fragmentation; the *tie-exploiting* families
-(equal-fork, and lead-stubborn's γ-bet) gain nothing — and lead-stubborn's
-implementation additionally has no winning path, a bug to fix before it can be
-evaluated on its merits.
+only by exploiting honest fragmentation; the *tie-exploiting* families gain
+nothing — equal-fork ties eyal_sirer, and lead-stubborn (once its
+winning-commit-path bug was fixed) realizes *below* both eyal_sirer and its own
+hashrate because its γ-bet never pays when ties don't propagate. Tie-exploiting
+stubbornness needs γ>0, which this apparatus structurally cannot provide.
 
 ## Verify it yourself
 
@@ -239,8 +244,9 @@ evaluated on its merits.
   curve (review P2): the apparatus's renderings of trail/equal-fork/lead stubborn
   are faithful to the spec (§4.2 of the phase-2 design) but are not the exact
   Nayak et al. Markov chains, so only a same-config eyal_sirer comparison is
-  meaningful. (lead-stubborn additionally has an implementation bug — no winning
-  commit path — so its 0.000 is not a meaningful strategy result; see the
+  meaningful. (lead-stubborn had an implementation bug — no winning commit path,
+  realizing 0.000 — fixed 2026-09-13 (commit `0a3151c6`); the re-run realizes
+  0.297, below eyal_sirer and below α, as a γ>0 strategy should at γ≈0. See the
   stubborn-variants section.)
 - **Phase-2's honest network is fragmented** (network orphan rate 0.31–0.38
   across every phase-2 run, vs ~0.27 in phase-1). With 3 honest miners on a small

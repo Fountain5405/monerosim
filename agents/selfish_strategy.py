@@ -1,16 +1,20 @@
 # agents/selfish_strategy.py
-"""Pure Eyal-Sirer selfish-mining state machine (no RPC, no I/O).
+"""Selfish-mining decision state machines (no RPC, no I/O).
 
 Heights are block COUNTS (monerod get_info 'height' = top index + 1). `fork`
 is the count of blocks common to both chains; the attacker's divergent block
 indexes are fork..priv_height-1. `release_to` in the returned decision is a
 block INDEX (the highest divergent index to submit to the bridge), or None.
 
-This is the gamma=0 regime: a single bridge cannot propagate an equal-height
-tie block, so the attacker loses every tie unless it extends its own branch.
-That is outcome-equivalent to textbook Eyal-Sirer at gamma=0; the
-lead-preserving partial reveal (which only matters at gamma>0) is deferred to
-phase 2. See docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md.
+`honest` is the neutral baseline and `eyal_sirer` the textbook Eyal-Sirer state
+machine. The phase-2 stubborn variants (`trail_stubborn`, `equal_fork_stubborn`,
+`lead_stubborn`) layer on top of eyal_sirer (§4.2 of the phase-2 design). This
+apparatus runs at gamma~0: a released equal-height tie block does not propagate
+(a reactive attacker publishing through its own bridges is always second), so the
+attacker loses every tie and the tie-exploiting variants realize at or below
+eyal_sirer -- they are built to pay off at gamma>0. See
+docs/20260912_selfish_mining_results.md and the specs under
+docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md (+ -phase2-design.md).
 """
 from dataclasses import dataclass
 from typing import Optional
