@@ -430,7 +430,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     // 1. Shadow requires sequential node IDs for efficient graph traversal
     // 2. Real AS numbers are sparse with huge gaps
     // 3. Simplifies region mapping without external AS-to-country databases
-    let agent_node_assignments = if let Some(gml) = gml_graph {
+    let mut agent_node_assignments = if let Some(gml) = gml_graph {
         if !user_agents.is_empty() {
             if using_gml_topology {
                 // Extract AS numbers from GML node attributes for distribution
@@ -467,6 +467,21 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     };
 
     // No phase validation needed for new AgentConfig (simpler structure)
+
+    // Per-agent topology pins override the index-based distribution. This must run
+    // before build_peer_topology / IP allocation consume agent_node_assignments,
+    // since those read the (now-overridden) node ids. See
+    // docs/superpowers/specs/2026-09-13-per-agent-topology-placement-design.md.
+    let valid_node_ids: std::collections::HashSet<u32> = gml_graph
+        .map(|gml| gml.nodes.iter().map(|n| n.id).collect())
+        .unwrap_or_default();
+    crate::topology::placement::apply_topology_pins(
+        &mut agent_node_assignments,
+        &user_agents,
+        &valid_node_ids,
+        using_gml_topology,
+    )
+    .map_err(|e| color_eyre::eyre::eyre!(e))?;
 
     // Classify user agents into miners / seed nodes / regular agents,
     // allocate per-agent IPs, and build the ring/cross-link
