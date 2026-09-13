@@ -6,6 +6,7 @@
 pub mod connections;
 pub mod distribution;
 pub mod peer_connections;
+pub mod placement;
 pub mod types;
 
 pub use connections::generate_topology_connections;
