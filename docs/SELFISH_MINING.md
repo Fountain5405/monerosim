@@ -418,17 +418,30 @@ outcome.
   holds one more round (`forward_to=old_fork`, release nothing) instead of
   adopting, betting it can re-level; falling two or more behind concedes as
   usual.
-- **`lead_stubborn`.** Like `eyal_sirer`, but on the override step
-  (`a − h == 1`, where eyal_sirer would reveal its whole lead to win
-  outright) it instead reveals only up to the honest tip
-  (`release_to = pub_height − 1`, `forward_to=None`, fork unchanged),
-  keeping the top private block hidden and continuing to mine — betting
-  that γ plus the still-hidden lead wins more, over time, than a
-  guaranteed single-block override. It concedes only if honest actually
-  overtakes (`a < h`).
+- **`lead_stubborn`.** Like `eyal_sirer`, but it holds its top block back at
+  the overtake threshold. On the override step (`a − h == 1`, where eyal_sirer
+  would reveal its whole lead to win outright) it reveals all but the top
+  private block (`release_to = priv_height − 2`, equivalently `pub_height − 1`;
+  `forward_to=None`, fork unchanged) — a tie that keeps the top hidden and bets
+  that γ plus the hidden lead wins more, over time, than a guaranteed
+  single-block override. It **cashes** the moment it is ≥2 ahead of an active
+  honest chain (`h > 0`, `a − h ≥ 2`): it reveals the whole branch and commits
+  the strictly-longer overtake (`fork = priv_height`), a real win. While honest
+  has not moved (`h == 0`) it withholds its secret lead as usual, and it
+  concedes if honest overtakes (`a < h`). The `a − h ≥ 2` cash is the *winning
+  commit path* and is load-bearing: without it (the state before the 2026-09-13
+  fix) lead_stubborn could only advance `fork` by conceding, so it never placed
+  a block on the canonical chain — realized share 0.000, attacker orphan 1.000
+  (see `docs/20260912_selfish_mining_results.md`). At γ≈0 the held tie never
+  propagates, so lead_stubborn realizes at or below `eyal_sirer`; the hold only
+  pays at γ>0.
 
-Each variant is one bet that γ>0: without a network advantage, holding
-instead of conceding only accumulates orphaned blocks.
+Each variant is one bet that pays only with a network advantage — γ>0, or a
+poorly-synchronized honest network. See
+`docs/20260912_selfish_mining_results.md` for how each actually realized at
+γ≈0: trail-stubborn gained (+0.113) via deep reorgs off a fragmented honest
+network; equal-fork ≈ eyal_sirer; lead-stubborn needed the 2026-09-13
+winning-commit-path fix before it could score at all.
 `agents/test_selfish_strategy.py` asserts the full
 `(release_to, forward_to, adopt_public)` triple for the distinctive
 transition of each variant, so a reviewer can check the rules above
