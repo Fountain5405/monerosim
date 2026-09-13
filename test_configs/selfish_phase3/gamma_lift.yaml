@@ -1,0 +1,155 @@
+# Selfish-mining PHASE 3: gamma vs NETWORK POSITION (uses the per-agent
+# topology_node knob, docs/superpowers/specs/2026-09-13-per-agent-topology-placement-design.md).
+#
+# Hypothesis: with per-agent placement we can position the attacker's DETECTOR
+# bridge + agent centrally (hears any honest block fast) and its PUBLISHER
+# bridges spread NEAR each honest miner, while the honest miners sit far apart.
+# Then a released tie-block might reach honest nodes that are far from the
+# block-finder before the finder's own block does -> realized gamma > 0.
+#
+# CAVEAT (see the results doc): the attacker is REACTIVE -- it must hear the
+# honest block (detector), then react, then publish -- so its block starts the
+# propagation race a fixed detection+reaction penalty behind, EVERYWHERE. Whether
+# placement overcomes that penalty for far-from-finder honest nodes is exactly
+# what this run measures. reaction_delay_ms is dropped to 10 (from phase-2's 50)
+# to give gamma its best shot.
+#
+# Placement (1200-node CAIDA GML, 6 regions of ~200 nodes each; node id == index):
+#   honest-001 -> 100 (region 0), honest-002 -> 500 (region 2), honest-003 -> 900 (region 4)  [spread far apart]
+#   attacker-miner + bridge-1 (the DETECTOR, = bridges[0], the agent's read RPC) -> 500 (central)
+#   bridge-2 -> 100, bridge-3 -> 900, bridge-4 -> 300, bridge-5 -> 1100  [publishers spread across regions]
+# Same alpha=0.40, fixed-difficulty:1200, eyal_sirer as phase 2, so gamma is the
+# only variable changed by position.
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    fixed-difficulty: 1200  # P1: pin difficulty so >=2-block contests are propagation-decided
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+    topology_node: 100
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+    topology_node: 500
+  honest-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+    topology_node: 900
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    topology_node: 500          # co-located with the detector bridge (bridge-1)
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridges: "bridge-1,bridge-2,bridge-3,bridge-4,bridge-5"
+      attack_start_height: "0"
+      reaction_delay_ms: "10"   # minimized (phase-2 used 50) for gamma's best shot
+  bridge-1:                      # DETECTOR: bridges[0], the agent's read RPC; central
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+    topology_node: 500
+  bridge-2:                      # publisher near honest-001
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+    topology_node: 100
+  bridge-3:                      # publisher near honest-003
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+    topology_node: 900
+  bridge-4:                      # publisher in region 1
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+    topology_node: 300
+  bridge-5:                      # publisher in region 5
+    daemon: monerod
+    script: agents.selfish_bridge
+    daemon_options:
+      out-peers: 16
+    start_time: 0s
+    topology_node: 1100
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 40s
+  relay-003:
+    daemon: monerod
+    start_time: 50s
+  relay-004:
+    daemon: monerod
+    start_time: 60s
+  relay-005:
+    daemon: monerod
+    start_time: 70s
+  relay-006:
+    daemon: monerod
+    start_time: 80s
+  relay-007:
+    daemon: monerod
+    start_time: 90s
+  relay-008:
+    daemon: monerod
+    start_time: 100s
+  relay-009:
+    daemon: monerod
+    start_time: 110s
+  relay-010:
+    daemon: monerod
+    start_time: 120s
+  relay-011:
+    daemon: monerod
+    start_time: 130s
+  relay-012:
+    daemon: monerod
+    start_time: 140s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
