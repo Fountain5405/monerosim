@@ -105,3 +105,37 @@ outbound peers into 12 distinct /24s) — is capped at ~1,200.
   ~999 distinct-/24 attackers — captures the Nyx mechanism at attacker scale).
 - Nothing is scheduled/armed. The detached launcher
   (`~/monerosim_work/eclipse_reproduction/scheduled/run_both.sh`) was stopped.
+
+---
+
+## FOLLOW-UP 2026-09-14 — NEW blocker found while testing the fix: memory blowup at ~2,200 hosts
+
+The IP-allocator fix above is confirmed working at scale (a 2,211-host
+`eclipse_nyx_full` run got past Shadow init: `relay-4000` = 177.13.1.10, all IPs
+valid, zero reserved/loopback, no DNS abort). **But the run OOMs the box almost
+immediately at Shadow startup**, distinct from the IP bug:
+
+- `memory_samples.csv` at T+3s: `system_free_mb ~1,004,950` (≈1,005 GB free),
+  `shadow_rss_mb 43`, `monerod_rss 0` — i.e. essentially idle, Shadow just
+  starting, only ~20 processes up (miners+seeds+target+first wave), sim-time ~1s.
+- Within **seconds** after that, available memory collapsed and the OOM guard
+  killed the run. This is NOT onboarding (batched; benign don't start until 10s+
+  and only the first tiny attacker wave is up at t=1s) and NOT the IP path.
+- For contrast, a 963-host run on the 1,200-node GML grows memory *gradually*
+  (~0.28 GB/host over the onboarding window) and never spikes at init.
+
+**So there is a fast, large memory allocation at Shadow init that scales with
+host count (963 fine, ~2,218 explodes) and/or with the 5,000-node directed
+topology.** A 51-host smoke on the same 5k GML was fine, so it tracks host count,
+not raw GML size. Hypotheses to check (scale/Shadow domain):
+- Shadow per-host-pair or per-host init structures scaling super-linearly at
+  ~2k hosts (O(hosts^2)?), possibly interacting with `process_threads: 128` and
+  256 worker threads.
+- Whether a right-sized topology (~2,300-node GML instead of 5,000) or fewer
+  worker/process threads changes the init footprint.
+
+**Practical ceiling right now:** ~2,200 hosts does not start on this 1 TB box.
+The largest *known-good* eclipse runs remain ≤ ~1,200 hosts
+(`eclipse_nyx_ceiling` at 1,193 works; the 963-host Moros paper-scale worked).
+Finding the real host ceiling (binary-search between ~1,200 and ~2,200) or fixing
+the init-time allocation is the next scale task.
