@@ -1,0 +1,83 @@
+# Eclipse-at-birth (Moros) at LARGE SCALE (~720 nodes).
+# Paper scale is 1,200, but ~1,150 real monerod instances exceed this shared
+# box's memory watchdog; 585 nodes ran safely, so this uses 700 attacker
+# listeners (~720 nodes total) — the largest size proven safe here. Moros reaches
+# a full 12/12 at any scale because a newborn victim is born eclipsed.
+#
+# The attacker network (700 listeners across distinct /24s + 3 injectors) comes
+# up first and saturates every peerlist including the honest seeds; the victim
+# joins as a NEWBORN (t=20m) with an empty peerlist and bootstraps into an
+# attacker-dominated view -> first 12 outbound are attacker-controlled.
+general:
+  stop_time: 45m
+  simulation_seed: 12345
+  bootstrap_end_time: 15m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 128
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  relay-{001..006}:
+    daemon: monerod
+    start_time: 20s
+    start_time_stagger: 1s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # 700 attacker listeners saturate the network (incl. honest seeds) first
+  relay-{101..800}:
+    daemon: monerod
+    start_time: 20s
+    start_time_stagger: 1s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  relay-{851..853}:
+    script: agents.eclipse_injector
+    start_time: 5m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "120"
+      trash_count: "0"
+
+  # NEWBORN victim joins the already-saturated network with an empty peerlist
+  relay-900:
+    daemon: monerod
+    start_time: 20m
+    attributes:
+      eclipse_role: target
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 16m
+    attributes:
+      poll_interval: "45"
+      benign_sample: "6"
