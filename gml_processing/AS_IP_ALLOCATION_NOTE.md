@@ -1,5 +1,30 @@
 # GML / IP-allocation limit — note for whoever fixes GML production
 
+> **RESOLVED 2026-09-14** — fix (1) below was applied in `src/ip/as_manager.rs`:
+> the AS ≥ 1200 fallback now cycles the union of the six region octet tables
+> (84 routable RIR first octets) with the third octet pinned to ≥ 1, so every AS
+> gets a distinct, non-reserved /24 (84·256·255 ≈ 5.5M of them) that cannot
+> collide with the AS 0–1199 /24s (third octet 0). Regression tests:
+> `subnets_beyond_region_tables_avoid_reserved_ranges` and
+> `subnets_are_distinct_across_large_as_range` (AS 0..=10000).
+>
+> The generator needed no change: sequential `AS` = node id is now safe for any N.
+> Regenerated `gml_processing/5000_nodes_caida_with_loops.gml` (5,000 nodes,
+> 72,586 edges, AS 0–4999) with it; the old
+> `test_5000_nodes_caida_undirected_selfloops.gml` (raw/garbled CAIDA AS values,
+> undirected) is superseded and `eclipse_nyx_full.scenario.yaml` now points at
+> the new file.
+>
+> Verified with `test_configs/eclipse_ipalloc_5k_smoke.scenario.yaml` (51 hosts
+> on the new 5k GML, 32 of them on AS ≥ 1200): every host got a distinct /24,
+> the reserved-range grep below matched nothing, and Shadow started with
+> `processes failed: 0`, ran its full 8 sim-min to "Shadow completed successfully"
+> in 18m54s wall, and the target (relay-4000) handshaked with peers on fallback
+> /24s such as 59.10.1.10 and 79.35.1.10 (run
+> `archived_runs/20260914_215237_eclipse_ipalloc_5k_smoke.expanded`).
+> Caveat: bootstrap on the 5k topology is slow (~1 sim-min per 10 wall-min for
+> 51 light hosts) — budget accordingly for `eclipse_nyx_full`.
+
 **Date:** 2026-09-14  ·  **Context:** trying to run a ~2,200-host eclipse
 simulation (1,199 benign + 1,000 distinct-/24 attackers + 1 target). Blocked by
 an IP-allocator limit. This note records exactly what the limit is, so the fix

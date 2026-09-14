@@ -1,8 +1,8 @@
-# !! DOES NOT RUN YET !! This config points at the 5,000-node GML, which triggers
-# the AS->loopback-IP allocator bug (Shadow DNS rejects 127.x). It will only work
-# after GML production / the IP allocator is fixed, OR with a hand-built GML that
-# pins the 1,000 attackers to AS 0-999 and shares AS 1000-1199 across the benign.
-# See gml_processing/AS_IP_ALLOCATION_NOTE.md. Until then use eclipse_nyx_ceiling.
+# Uses the regenerated 5,000-node GML (gml_processing/5000_nodes_caida_with_loops.gml,
+# sequential AS 0-4999). The AS->IP allocator fallback for AS >= 1200 was fixed
+# (src/ip/as_manager.rs) so every node gets a routable, distinct /24; verified by
+# test_configs/eclipse_ipalloc_5k_smoke. This full-scale run itself is still
+# UNTESTED at 2,211 hosts. See gml_processing/AS_IP_ALLOCATION_NOTE.md.
 #
 # FULL-FAITHFUL Nyx reproduction — the paper's actual structure at its actual
 # scale: 1,199 benign + 1 target + ~1,000 distinct-/24 attacker endpoints
@@ -47,7 +47,7 @@ general:
     non-interactive: true
 
 network:
-  path: gml_processing/test_5000_nodes_caida_undirected_selfloops.gml
+  path: gml_processing/5000_nodes_caida_with_loops.gml
   peer_mode: Dynamic
 
 agents:
