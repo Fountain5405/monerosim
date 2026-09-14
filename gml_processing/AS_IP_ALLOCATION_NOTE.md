@@ -139,3 +139,47 @@ The largest *known-good* eclipse runs remain ≤ ~1,200 hosts
 (`eclipse_nyx_ceiling` at 1,193 works; the 963-host Moros paper-scale worked).
 Finding the real host ceiling (binary-search between ~1,200 and ~2,200) or fixing
 the init-time allocation is the next scale task.
+
+---
+
+## FOLLOW-UP 2 (2026-09-14, later) — the "memory blowup" does NOT reproduce; it was almost certainly a false-positive task kill
+
+Re-tested the same 2,212-host `eclipse_nyx_full.expanded.yaml` (5k GML) with the
+run confined to a systemd cgroup (`systemd-run --user --scope -p MemoryMax=300G`)
+and a ~1 s sampler of `/proc/meminfo` + per-process RSS
+(`archived_runs/20260914_231801_eclipse_nyx_full.expanded/probe/`):
+
+- **Shadow alone** with 2,212 trivial `/bin/true` hosts on the 5k topology,
+  `parallelism 128`: init + run in 3.7 s, peak RSS **0.9 GB**. Shortest-path
+  routing at this scale is ~5M entries; nothing super-linear
+  (`probe/shadow_only_n2212.log`, `probe/gen.py`, `probe/probe.sh`).
+- **Real config, 15 min wall:** Shadow init passed, 43 monerods up, sim time
+  2:06, `processes failed: 0`. System MemAvailable never dropped below
+  **969.7 GB** (of 1,007); cgroup peak **3.4 GB** at 2 min, ~15 GB at 15 min;
+  monerod RSS ≈ **0.27 GB/host**, growing linearly with onboarding exactly like
+  the 963-host runs. Shadow RSS 0.79 GB. No spike at startup, no kill.
+- All 2,212 hosts got IPs, 2,204 distinct /24s, zero reserved.
+
+**What most likely killed the earlier run:** the Claude Code harness's
+background-task "system is running low on memory" guard. During this very
+probe it killed my own *waiter* task with that message while the box had
+978 GB available and the sim's cgroup was at 3.4 GB. A run launched as (or
+under) a Claude Code background task gets its process tree killed by that
+guard; run_sim's memory sampler dies with it, which is exactly why the
+earlier `memory_samples.csv` stopped at an idle T+3s row. The kernel OOM
+killer and systemd-oomd were not involved (oomd only watches
+`user@1006.service`, and sessions launched from a terminal live in
+`session-*.scope`).
+
+**Practical guidance:**
+- Launch long runs detached from the agent harness (`nohup`/`setsid` from a
+  shell the harness does not track, or `systemd-run --user --scope`), never as
+  a Claude Code background task.
+- The real memory budget is ~0.27 GB/host => ~600 GB at 2,211 hosts, as
+  originally estimated. Fits in 1 TB, but leaves little headroom for anything
+  else on the box.
+- The real constraint at this scale is **wall-clock**: 2 sim-min took 14 wall-min
+  with only 43 hosts up (~0.15x) and it slows further as hosts onboard. A
+  12 h sim is likely days of wall time. Consider a shorter stop_time or
+  fewer benign hosts before committing the box.
+
