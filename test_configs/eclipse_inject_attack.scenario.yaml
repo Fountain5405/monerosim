@@ -1,0 +1,81 @@
+# Injector reproduction — CAPSTONE.
+# 40 attacker LISTENERS (real monerod, distinct /24s) as connectable endpoints +
+# 3 py-levin injectors that flood every dialer with the listener records (N-I),
+# vs 10 benign relays. Enough distinct-/24 endpoints to fill the target's 12
+# /24-diverse outbound slots and keep its graylist populated with attacker
+# records. Expect benign whitelist OR ~100% and CTR -> near 12/12.
+general:
+  stop_time: 90m
+  simulation_seed: 12345
+  bootstrap_end_time: 6m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 64
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  # 10 benign reachable relays
+  relay-{001..010}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # 40 attacker LISTENERS (real monerod, distinct /24s) = connectable endpoints
+  relay-{101..140}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 1s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # the unreachable (firewalled) victim
+  relay-900:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target
+
+  # 3 py-levin injectors (script-only Levin amplifiers), NO trash
+  relay-{301..303}:
+    script: agents.eclipse_injector
+    start_time: 5m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "20"
+      trash_count: "0"
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 120s
+    attributes:
+      poll_interval: "45"
+      benign_sample: "10"

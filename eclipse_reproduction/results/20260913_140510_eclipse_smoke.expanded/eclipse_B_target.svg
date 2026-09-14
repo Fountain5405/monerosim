@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" font-family="sans-serif">
+<rect width="720" height="260" fill="white"/>
+<text x="48" y="24" font-size="15" font-weight="bold">Target graylist benign records (B) over time</text>
+<line x1="48" y1="212" x2="672" y2="212" stroke="#888"/>
+<line x1="48" y1="48" x2="48" y2="212" stroke="#888"/>
+<line x1="48" y1="212.0" x2="672" y2="212.0" stroke="#eee"/>
+<text x="6" y="215.0" font-size="10" fill="#555">0.00</text>
+<line x1="48" y1="171.0" x2="672" y2="171.0" stroke="#eee"/>
+<text x="6" y="174.0" font-size="10" fill="#555">1.00</text>
+<line x1="48" y1="130.0" x2="672" y2="130.0" stroke="#eee"/>
+<text x="6" y="133.0" font-size="10" fill="#555">2.00</text>
+<line x1="48" y1="89.0" x2="672" y2="89.0" stroke="#eee"/>
+<text x="6" y="92.0" font-size="10" fill="#555">3.00</text>
+<line x1="48" y1="48.0" x2="672" y2="48.0" stroke="#eee"/>
+<text x="6" y="51.0" font-size="10" fill="#555">4.00</text>
+<text x="48.0" y="228" font-size="10" fill="#555" text-anchor="middle">0m</text>
+<text x="204.0" y="228" font-size="10" fill="#555" text-anchor="middle">11m</text>
+<text x="360.0" y="228" font-size="10" fill="#555" text-anchor="middle">22m</text>
+<text x="516.0" y="228" font-size="10" fill="#555" text-anchor="middle">33m</text>
+<text x="672.0" y="228" font-size="10" fill="#555" text-anchor="middle">44m</text>
+<text x="360" y="254" font-size="10" fill="#555" text-anchor="middle">sim time</text>
+<path d="M48.0,48.0 L68.2,171.0 L75.7,171.0 L83.2,212.0 L90.6,212.0 L98.1,212.0 L105.5,212.0 L113.0,212.0 L120.4,212.0 L127.9,212.0 L135.4,212.0 L142.8,212.0 L150.3,212.0 L157.7,212.0 L165.2,212.0 L172.6,212.0 L180.1,212.0 L187.5,212.0 L195.0,212.0 L202.4,212.0 L209.9,212.0 L217.3,212.0 L224.8,212.0 L232.2,212.0 L239.7,212.0 L247.2,212.0 L254.6,212.0 L262.1,212.0 L269.5,212.0 L277.0,212.0 L284.4,212.0 L291.9,212.0 L299.3,212.0 L306.8,212.0 L314.2,212.0 L321.7,212.0 L329.1,212.0 L336.6,212.0 L344.1,212.0 L351.5,212.0 L359.0,212.0 L366.4,212.0 L373.9,212.0 L381.3,212.0 L388.8,212.0 L396.2,212.0 L403.7,212.0 L411.1,212.0 L418.6,212.0 L426.0,212.0 L433.5,212.0 L440.9,212.0 L448.4,212.0 L455.9,212.0 L463.3,212.0 L470.8,212.0 L478.2,212.0 L485.7,212.0 L493.1,212.0 L500.6,212.0 L508.0,212.0 L515.5,212.0 L522.9,212.0 L530.4,212.0 L537.8,212.0 L545.3,212.0 L552.7,212.0 L560.2,212.0 L567.7,212.0 L575.1,212.0 L582.6,212.0 L590.0,212.0 L597.5,212.0 L604.9,212.0 L612.4,212.0 L619.8,212.0 L627.3,212.0 L634.7,212.0 L642.2,212.0 L649.6,212.0 L657.1,212.0 L664.5,212.0 L672.0,212.0" fill="none" stroke="#8e44ad" stroke-width="2"/>
+<rect x="530" y="45" width="10" height="10" fill="#8e44ad"/>
+<text x="546" y="54" font-size="11">target graylist benign count B</text>
+</svg>

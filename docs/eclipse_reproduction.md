@@ -1,0 +1,150 @@
+# Reproducing the Monero unreachable-node eclipse attack (Nyx / Moros)
+
+This documents a reproduction, with monerosim, of the eclipse attack from
+**"Are Unreachable Nodes Truly Safe? Fully Eclipsing Monero's P2P Network!"**
+(Shi, Zeng, Lan, Zhang, Han, Luo, Jin, Du, Wang — ACM CCS 2026; arXiv:2609.10260).
+
+Because monerosim runs the real `monerod` daemon inside Shadow, the exact code
+the attack targets — the 1,000-slot whitelist, 5,000-slot graylist, 12 outbound
+slots, ~101 s `update_sync_search` connection refresh, and 60 s timed sync — is
+genuine, not modelled. All work was done on an isolated git worktree at tag
+**v0.3.1** running the pinned `monerod` v0.18.5.1 (paper used v0.18.4.3, the
+prior patch). Everything here is simulation only; no live Monero node was attacked.
+
+## The attack, in one paragraph
+
+The victim is behind NAT/firewall: it makes outbound connections but accepts
+none, so it depends entirely on its outbound peers for discovery. The attacker
+never contacts it. It (N-I) poisons reachable nodes' whitelists with
+attacker-controlled records; (N-II) those nodes relay the records into the
+victim's graylist during ordinary timed sync — the only path to a NAT'd node;
+(N-III) the victim's own `update_sync_search` drops ~one outbound peer every
+101 s and refills it graylist-first, from the now attacker-dominated pool. Over
+time all 12 outbound slots become attacker-controlled.
+
+## What this reproduction shows
+
+| Run | Nodes | Attacker endpoints | Final CTR | Honest whitelist OR | Victim graylist |
+|-----|------:|-------------------:|-----------|--------------------:|-----------------|
+| Control (no attackers)     |  36 |   0 | 0/12  | 0%     | —              |
+| Injector (16 endpoints)    |  39 |  16 | 5/12  | ~53%   | benign → 0     |
+| Injector (40 endpoints)    |  66 |  40 | 8/12  | ~69%   | benign → 0     |
+| Real-node attack           | 134 | 120 | 11/12 | 88%    | 100% attacker  |
+| Large-scale (Nyx)          | 585 | 550 | 9/12* | ~100%  | 97.8% attacker |
+| Eclipse-at-birth (Moros)   | 126 | 120 | **12/12** | 100% | 93% attacker  |
+
+CTR = connection-takeover rate (attacker outbound peers, of 12). OR = peerlist
+occupation rate (attacker fraction). \*The 585-node CTR was still climbing when
+the 3 h sim ended (see "Findings").
+
+**Full 12/12 eclipse is reached** against a newborn victim (eclipse-at-birth),
+with a time-to-eclipse of 30.8 min (paper: ~27). Against an established victim,
+takeover reaches 11/12, the last slot clinging to an honest hardcoded seed.
+
+## Findings
+
+1. **Core claim holds.** An unreachable node is eclipsed with no inbound access,
+   driven entirely by the protocol's own timed-sync + `update_sync_search`.
+2. **Eclipse completeness scales with distinct-/24 *connectable* endpoints**, not
+   with how many records are injected. A captured outbound slot requires a
+   *successful* connection to a real attacker endpoint, and Monero's /24 filter
+   forces the 12 outbound peers into 12 distinct /24s. Injecting unreachable
+   "trash" evicts honest entries but cannot become connections, so it *lowers*
+   takeover. Dose-response of final CTR vs endpoints: 0→0, 16→5, 40→8, 120→11.
+   This independently confirms the paper's load-bearing assumption of ~1,000 /24
+   subnets (also flagged by the manuscript reviewer).
+3. **At scale, takeover is convergence-rate-limited.** The 585-node run poisoned
+   as hard as the paper (graylist 97.8% attacker) but reached only 9/12 in 3 h
+   because `update_sync_search` replaces ~one peer per 101 s while always-reachable
+   seeds re-inject a trickle of honest records. Bigger networks propagate the
+   takeover more slowly; full 12/12 needs a longer run.
+4. **The clean 12/12 comes via eclipse-at-birth (Moros).** A newborn victim
+   joining the poisoned network never establishes honest connections to displace,
+   so its first 12 outbound are attacker-controlled from the start.
+
+## How to reproduce
+
+From the worktree root, with the venv active (`source venv/bin/activate`) and the
+pinned binaries installed in `~/.monerosim/bin` (`monerod` v0.18.5.1, Shadow fork
+v0.2.4 — `setup.sh` installs these):
+
+```bash
+# 1. Expand a scenario (run_sim.sh does NOT auto-expand .scenario.yaml here)
+python -m scripts.scenario_parser test_configs/eclipse_birth.scenario.yaml \
+    -o test_configs/eclipse_birth.expanded.yaml
+
+# 2. Run it (one at a time; the box is shared). --no-clean keeps the per-run
+#    shared dir so the metrics survive; --no-archive skips the bulky shadow.data.
+./run_sim.sh --config test_configs/eclipse_birth.expanded.yaml \
+    --no-build --no-monitor --no-clean --no-archive
+
+# 3. Analyse (finds the run's metrics from the run_sim stdout log, prints the
+#    paper-comparison table, writes CSV + SVG under eclipse_reproduction/results/)
+python eclipse_reproduction/analyze_run.py <path-to-run_sim-stdout.log>
+```
+
+Shadow is deterministic in virtual time and every scenario pins
+`simulation_seed: 12345`, so re-running the same config reproduces the same
+metrics exactly.
+
+## Scenarios (`test_configs/eclipse_*.scenario.yaml`)
+
+| Scenario | Purpose |
+|----------|---------|
+| `eclipse_smoke`         | Tiny pipeline validation (12 attacker vs 6 benign). |
+| `eclipse_baseline`      | Control: no attackers; CTR must stay 0/12. |
+| `eclipse_attack`        | Real-node Nyx attack (120 attacker vs 8 benign). |
+| `eclipse_inject_smoke`  | py-levin injector in Shadow (16 endpoints + 2 injectors). |
+| `eclipse_inject_attack` | Injector capstone (40 endpoints + 3 injectors). |
+| `eclipse_large`         | Large-scale Nyx (550 attacker, 585 nodes, 3 h). |
+| `eclipse_birth`         | Eclipse-at-birth / Moros — reaches 12/12. |
+| `eclipse_conv`          | Long convergence attempt (kept for reference; slow). |
+
+**Unreachable target, deterministically:** `general.reachable_fraction: 0.0`
+plus a per-node `daemon_options: {hide-my-port: false}` exemption on every other
+relay leaves exactly one host — the target — firewalled by Shadow
+(`blocked_inbound_ports: [18080]`). Seeds and miners are always reachable.
+
+## Agents (`agents/`)
+
+- **`eclipse_monitor.py`** — script-only measurement agent. Each poll it reads
+  the agent registry, classifies every node attacker/benign/target by its
+  `eclipse_role` attribute, and via RPC computes CTR (`get_connections` on the
+  target), whitelist/graylist occupation and benign count B (the direct
+  `/get_peer_list` endpoint), and benign-node OR. Writes `eclipse_metrics.jsonl`
+  to the shared dir.
+- **`eclipse_injector.py`** — the py-levin injector: a Monero Levin *responder*
+  that, when a daemon dials it, answers HANDSHAKE / TIMED_SYNC with a chosen
+  `local_peerlist_new` (attacker listener records, optional trash). Peers flow
+  responder→initiator in Monero, so the injector is a reachable node that others
+  dial; it then floods their graylists.
+- **`levin_lib.py`** — a minimal Monero Levin framing + epee portable-storage
+  codec (from the wire format up) used by the injector. Validated against a real
+  `monerod`: the daemon ingested every injected record via one genuine handshake.
+
+## Analysis harness (`eclipse_reproduction/`)
+
+- `analyze_run.py` — one-shot: parse a run_sim log → find metrics → print table +
+  write CSV/SVG. `analyze.py` — the underlying analyzer. `inspect_metrics.py`,
+  `locate_metrics.py` — debugging helpers. `verify_config.py` — pre-run check that
+  the firewall lands only on the target and roles/`/24`s are correct.
+  `test_codec.py` / `test_injector_standalone.py` — codec round-trip and the
+  standalone injector-vs-monerod validation. `chartdata.py` — emit chart series.
+- `report.html` — the published visual report.
+- `results/<run>/` — per-run `eclipse_metrics.jsonl`, `eclipse_timeseries.csv`,
+  and SVG figures.
+
+## Caveats / threats to validity
+
+- **Scale.** The paper ran 1,200 nodes; these runs are ~10²-node networks (real
+  daemons are memory-heavy and the host is shared). Absolute timings are not
+  expected to match; the mechanism and trends are what reproduce.
+- **Honest seeds.** monerosim injects 6 real hardcoded seeds, always reachable; a
+  persistent seed connection held the established-victim case at 11/12.
+- **/24 filter kept enabled.** The paper disabled it (its 1,000 IPs sat in few
+  /24s); here every attacker gets its own /24, so the stock filter stayed on — a
+  more conservative setting.
+- **Client version** v0.18.5.1 vs the paper's v0.18.4.3 (reviewer: attack is
+  marginally stronger on v0.18.5.x).
+- **No mainnet.** The paper's Moros was run against controlled mainnet targets;
+  this reproduction is entirely in simulation.

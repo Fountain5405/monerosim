@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" font-family="sans-serif">
+<rect width="720" height="260" fill="white"/>
+<text x="48" y="24" font-size="15" font-weight="bold">Nyx reproduction: takeover (CTR) and peerlist occupation (OR) over time</text>
+<line x1="48" y1="212" x2="672" y2="212" stroke="#888"/>
+<line x1="48" y1="48" x2="48" y2="212" stroke="#888"/>
+<line x1="48" y1="212.0" x2="672" y2="212.0" stroke="#eee"/>
+<text x="6" y="215.0" font-size="10" fill="#555">0.00</text>
+<line x1="48" y1="171.0" x2="672" y2="171.0" stroke="#eee"/>
+<text x="6" y="174.0" font-size="10" fill="#555">0.25</text>
+<line x1="48" y1="130.0" x2="672" y2="130.0" stroke="#eee"/>
+<text x="6" y="133.0" font-size="10" fill="#555">0.50</text>
+<line x1="48" y1="89.0" x2="672" y2="89.0" stroke="#eee"/>
+<text x="6" y="92.0" font-size="10" fill="#555">0.75</text>
+<line x1="48" y1="48.0" x2="672" y2="48.0" stroke="#eee"/>
+<text x="6" y="51.0" font-size="10" fill="#555">1.00</text>
+<text x="48.0" y="228" font-size="10" fill="#555" text-anchor="middle">0m</text>
+<text x="204.0" y="228" font-size="10" fill="#555" text-anchor="middle">43m</text>
+<text x="360.0" y="228" font-size="10" fill="#555" text-anchor="middle">87m</text>
+<text x="516.0" y="228" font-size="10" fill="#555" text-anchor="middle">130m</text>
+<text x="672.0" y="228" font-size="10" fill="#555" text-anchor="middle">173m</text>
+<text x="360" y="254" font-size="10" fill="#555" text-anchor="middle">sim time</text>
+<path d="M48.0,212.0 L55.1,212.0 L59.2,212.0 L77.2,212.0 L85.8,212.0 L103.8,212.0 L112.5,171.0 L130.4,171.0 L146.4,171.0 L160.8,157.3 L178.8,143.7 L193.2,143.7 L211.2,130.0 L225.6,143.7 L245.0,143.7 L259.4,143.7 L277.4,130.0 L291.8,130.0 L309.8,130.0 L324.2,137.5 L343.7,116.3 L358.1,102.7 L376.1,102.7 L390.4,102.7 L408.5,102.7 L422.9,102.7 L442.3,102.7 L456.7,102.7 L474.7,102.7 L489.1,102.7 L507.1,102.7 L521.5,89.0 L541.0,89.0 L555.3,102.7 L573.4,102.7 L587.7,89.0 L605.8,89.0 L620.1,89.0 L639.6,89.0 L654.0,89.0 L672.0,89.0" fill="none" stroke="#c0392b" stroke-width="2"/>
+<rect x="530" y="45" width="10" height="10" fill="#c0392b"/>
+<text x="546" y="54" font-size="11">target CTR (attacker outbound / 12)</text>
+<path d="M48.0,48.0 L55.1,165.1 L59.2,198.9 L77.2,212.0 L85.8,167.3 L103.8,104.9 L112.5,94.9 L130.4,87.2 L146.4,80.8 L160.8,78.2 L178.8,76.7 L193.2,72.1 L211.2,71.6 L225.6,68.9 L245.0,68.5 L259.4,66.1 L277.4,65.4 L291.8,64.8 L309.8,63.4 L324.2,62.9 L343.7,62.2 L358.1,61.8 L376.1,60.8 L390.4,60.6 L408.5,60.4 L422.9,59.7 L442.3,59.2 L456.7,59.3 L474.7,58.9 L489.1,58.5 L507.1,58.0 L521.5,58.0 L541.0,57.7 L555.3,57.4 L573.4,57.0 L587.7,57.1 L605.8,56.8 L620.1,56.7 L639.6,56.6 L654.0,56.6 L672.0,56.1" fill="none" stroke="#2980b9" stroke-width="2"/>
+<rect x="530" y="61" width="10" height="10" fill="#2980b9"/>
+<text x="546" y="70" font-size="11">benign whitelist OR (median)</text>
+<path d="M48.0,212.0 L55.1,212.0 L59.2,212.0 L77.2,203.8 L85.8,196.4 L103.8,183.5 L112.5,163.4 L146.4,137.0 L178.8,118.8 L211.2,107.9 L245.0,98.3 L277.4,91.9 L309.8,87.4 L343.7,84.9 L376.1,83.5 L408.5,80.5 L442.3,77.9 L474.7,75.8 L507.1,73.9 L541.0,72.3 L573.4,70.8 L605.8,69.5 L639.6,68.4 L672.0,67.3" fill="none" stroke="#27ae60" stroke-width="2"/>
+<rect x="530" y="77" width="10" height="10" fill="#27ae60"/>
+<text x="546" y="86" font-size="11">target whitelist OR</text>
+</svg>
