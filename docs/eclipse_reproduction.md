@@ -32,14 +32,21 @@ time all 12 outbound slots become attacker-controlled.
 | Real-node attack           | 134 | 120 | 11/12 | 88%    | 100% attacker  |
 | Large-scale (Nyx)          | 585 | 550 | 9/12* | ~100%  | 97.8% attacker |
 | Eclipse-at-birth (Moros)   | 126 | 120 | **12/12** | 100% | 93% attacker  |
+| Eclipse-at-birth · paper scale | 963 | 951 | **12/12** | 96% | 100% attacker |
 
 CTR = connection-takeover rate (attacker outbound peers, of 12). OR = peerlist
 occupation rate (attacker fraction). \*The 585-node CTR was still climbing when
 the 3 h sim ended (see "Findings").
 
 **Full 12/12 eclipse is reached** against a newborn victim (eclipse-at-birth),
-with a time-to-eclipse of 30.8 min (paper: ~27). Against an established victim,
-takeover reaches 11/12, the last slot clinging to an honest hardcoded seed.
+with a time-to-eclipse of 30.8 min (paper: ~27) in the 126-node run. Against an
+established victim, takeover reaches 11/12, the last slot clinging to an honest
+hardcoded seed. Scaled to the paper's size — a **963-node** run with **951 attacker
+endpoints** — the newborn victim was *born fully eclipsed*: on its first successful
+poll it already held all 12 outbound slots on attacker nodes (zero honest peers,
+zero inbound), and held a solid **12/12** across the entire 35-min observation
+window with no oscillation (measured; run `20260914_100749_eclipse_birth_paperscale`,
+0 processes failed).
 
 ## Findings
 
@@ -50,7 +57,8 @@ takeover reaches 11/12, the last slot clinging to an honest hardcoded seed.
    *successful* connection to a real attacker endpoint, and Monero's /24 filter
    forces the 12 outbound peers into 12 distinct /24s. Injecting unreachable
    "trash" evicts honest entries but cannot become connections, so it *lowers*
-   takeover. Dose-response of final CTR vs endpoints: 0→0, 16→5, 40→8, 120→11.
+   takeover. Dose-response of final CTR vs endpoints: 0→0, 16→5, 40→8, 120→11, 951→12 —
+   the curve reaches its 12/12 ceiling at ~950 endpoints, measured directly.
    This independently confirms the paper's load-bearing assumption of ~1,000 /24
    subnets (also flagged by the manuscript reviewer).
 3. **At scale, takeover is convergence-rate-limited.** The 585-node run poisoned
@@ -60,7 +68,10 @@ takeover reaches 11/12, the last slot clinging to an honest hardcoded seed.
    takeover more slowly; full 12/12 needs a longer run.
 4. **The clean 12/12 comes via eclipse-at-birth (Moros).** A newborn victim
    joining the poisoned network never establishes honest connections to displace,
-   so its first 12 outbound are attacker-controlled from the start.
+   so its first 12 outbound are attacker-controlled from the start. At paper scale
+   (951 attacker endpoints) this is even sharper than at 126 nodes: the victim is
+   born at 12/12 (no ramp) and never oscillates, because the honest peer pool it
+   could fall back to is vanishingly small.
 
 ## How to reproduce
 
@@ -98,6 +109,8 @@ metrics exactly.
 | `eclipse_inject_attack` | Injector capstone (40 endpoints + 3 injectors). |
 | `eclipse_large`         | Large-scale Nyx (550 attacker, 585 nodes, 3 h). |
 | `eclipse_birth`         | Eclipse-at-birth / Moros — reaches 12/12. |
+| `eclipse_birth_large`   | ~720-node Moros (batched onboarding, safe large). |
+| `eclipse_birth_paperscale` | ~963-node Moros at paper scale — clean 12/12 (12-24 h). |
 | `eclipse_conv`          | Long convergence attempt (kept for reference; slow). |
 
 **Unreachable target, deterministically:** `general.reachable_fraction: 0.0`
@@ -136,9 +149,13 @@ relay leaves exactly one host — the target — firewalled by Shadow
 
 ## Caveats / threats to validity
 
-- **Scale.** The paper ran 1,200 nodes; these runs are ~10²-node networks (real
-  daemons are memory-heavy and the host is shared). Absolute timings are not
-  expected to match; the mechanism and trends are what reproduce.
+- **Scale.** The paper ran 1,200 nodes; these runs span ~10² up to a **963-node**
+  network — approaching the paper's size, bounded by Shadow's documented ~1,000-host
+  scheduler cliff (`docs/PERFORMANCE_AND_SCALE.md`) and a shared, memory-heavy host.
+  Onboarding >~600 nodes uses batched staggering (`start_time_stagger: auto`) to
+  avoid the concurrent-startup memory spike that OOM-killed a naive 1,146-node/1 s
+  attempt. Absolute timings still need not match; the mechanism, trends, and the
+  full 12/12 at paper scale are what reproduce.
 - **Honest seeds.** monerosim injects 6 real hardcoded seeds, always reachable; a
   persistent seed connection held the established-victim case at 11/12.
 - **/24 filter kept enabled.** The paper disabled it (its 1,000 IPs sat in few

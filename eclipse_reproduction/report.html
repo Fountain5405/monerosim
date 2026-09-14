@@ -182,7 +182,7 @@
     run. Introduce an attacker-controlled majority of reachable nodes and the takeover unfolds
     exactly as the paper describes.</p>
   <div class="tiles">
-    <div class="tile"><div class="k">Full eclipse · CTR</div><div class="v crit" id="t-birth">12 / 12</div><div class="note">newborn victim, 100%</div></div>
+    <div class="tile"><div class="k">Full eclipse · CTR</div><div class="v crit" id="t-birth">12 / 12</div><div class="note">newborn &middot; 963 nodes</div></div>
     <div class="tile"><div class="k">Established takeover</div><div class="v crit" id="t-atk">11 / 12</div><div class="note">running victim</div></div>
     <div class="tile"><div class="k">Control · CTR</div><div class="v calm" id="t-base">0 / 12</div><div class="note">no attacker peers</div></div>
     <div class="tile"><div class="k">Time-to-eclipse</div><div class="v acc">~31 min</div><div class="note">paper: ~27 min</div></div>
@@ -230,8 +230,9 @@
     <svg id="chart-dose" viewBox="0 0 820 300" role="img"
       aria-label="Final takeover rate versus number of attacker endpoints, rising from zero toward twelve."></svg>
     <figcaption>Final connection-takeover rate versus the number of distinct-/24 attacker
-      endpoint hosts. Takeover climbs toward the full 12/12 as endpoints grow — which is precisely
-      why the paper's threat model assumes control of roughly 1,000 /24 subnets.</figcaption>
+      endpoint hosts (log scale). Takeover climbs to the full 12/12 by ~950 endpoints — measured
+      directly at paper scale — which is precisely why the paper's threat model assumes control of
+      roughly 1,000 /24 subnets.</figcaption>
   </figure>
   <p>A 585-node run confirmed the poisoning at paper scale: with 550 attacker endpoints the
     victim's graylist ran <b>97.8% attacker</b> (paper: ~97.1%) and honest whitelists were fully
@@ -241,7 +242,13 @@
     always-reachable seeds, so full convergence needs a longer run. The clean 12/12 above was
     instead reached the fast way — <b>eclipse-at-birth</b>: a newborn victim joining the poisoned
     network never establishes honest connections to displace, and reaches 12/12 in ~19 minutes of
-    its lifetime. That path also reproduces the paper's second attack (Moros).</p>
+    its lifetime. That path also reproduces the paper's second attack (Moros). Scaling it to the
+    paper's size &mdash; a <b>963-node</b> run with <b>951 attacker endpoints</b> &mdash; the newborn
+    victim was <b>born fully eclipsed</b>: on its first measurement it already held all 12 outbound
+    slots on attacker nodes, with zero honest peers and zero inbound, and stayed a solid
+    <b>12/12</b> across the entire 35-minute observation window with no oscillation. At ~950
+    endpoints the dose-response curve reaches its ceiling &mdash; the clean confirmation of the
+    paper's ~1,000-subnet assumption.</p>
   <div class="callout">
     <h3>Why this matters for the paper</h3>
     <p>The reproduction independently confirms that the attacker's control of ~1,000 /24 subnets
@@ -276,6 +283,8 @@
         <td><span class="chip crit">9 / 12</span></td><td class="num">~100%</td><td>97.8% attacker</td></tr>
       <tr><th>Eclipse-at-birth (Moros)</th><td class="num">126</td><td class="num">120</td>
         <td><span class="chip crit">12 / 12</span></td><td class="num">100%</td><td>93% attacker</td></tr>
+      <tr><th>Eclipse-at-birth · paper scale (Moros)</th><td class="num">963</td><td class="num">951</td>
+        <td><span class="chip crit">12 / 12</span></td><td class="num">96%</td><td>100% attacker</td></tr>
     </tbody>
   </table>
   </div>
@@ -285,9 +294,10 @@
   <p class="eyebrow">Honest differences</p>
   <h2>Scope and threats to validity</h2>
   <ul>
-    <li><b>Scale.</b> The paper ran 1,200 nodes; these runs are ~10²-node networks (real daemons
-      are memory-heavy and the host is shared). Absolute timings — the paper's ~27-minute
-      time-to-eclipse — are not expected to match; the mechanism and trends are what reproduce.</li>
+    <li><b>Scale.</b> The paper ran 1,200 nodes; these runs range from ~10² up to a <b>963-node</b>
+      network — approaching the paper's size — bounded by Shadow's ~1,000-host scheduler cliff and a
+      shared, memory-heavy host. Absolute timings still need not match the paper's ~27-minute
+      time-to-eclipse; the mechanism, the trends, and the full 12/12 at paper scale are what reproduce.</li>
     <li><b>Honest seeds &amp; anchors.</b> monerosim injects six real hardcoded seed nodes, always
       reachable. A persistent seed connection left the real-node run at 11/12 rather than 12/12 —
       consistent with the review's note on anchor/seed persistence.</li>
@@ -319,7 +329,7 @@
 
 <script>
 const DATA = {"baseline":{"ctr":[[0,0],[90,0]]},"attack":{"ctr":[[0.1,0],[3.3,0],[6.4,0],[9.5,0],[12.6,0],[15.7,0],[18.8,1],[21.9,2],[25.0,2],[27.1,2],[30.2,3],[33.3,5],[36.4,5],[39.5,6],[42.6,7],[45.7,7],[48.9,7],[50.9,8],[54.0,7],[57.1,7],[60.2,8],[63.3,8],[66.4,8],[69.6,8],[72.7,9],[74.7,9],[77.8,9],[80.9,8],[84.0,9],[87.1,9],[90.3,10],[93.4,10],[96.5,10],[98.5,9],[101.6,10],[104.7,10],[107.8,11],[111.0,11],[114.1,11],[117.2,11]]},"birth":{"ctr":[[12.8,9],[13.8,10],[15.9,10],[18.5,10],[21.0,10],[24.1,10],[26.7,10],[28.8,10],[29.8,11],[30.8,12],[32.4,12],[33.9,12],[34.4,12]]}};
-const DOSE = [[0,0],[16,5],[40,8],[120,11]];
+const DOSE = [[0,0],[16,5],[40,8],[120,11],[951,12]];
 
 function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 
@@ -355,8 +365,9 @@ function lineChart(id, seriesList, yMax, yLabel){
 function doseChart(id, pts){
   const svg=document.getElementById(id); if(!svg) return;
   const W=820,H=300,L=54,R=24,T=22,B=52;
-  const xMax=Math.max(...pts.map(p=>p[0]),10), yMax=12;
-  const sx=x=>L+(x/xMax)*(W-L-R), sy=y=>H-B-(y/yMax)*(H-T-B);
+  const xf=x=>Math.log10(x+1);
+  const xMax=Math.max(...pts.map(p=>xf(p[0])),xf(10)), yMax=12;
+  const sx=x=>L+(xf(x)/xMax)*(W-L-R), sy=y=>H-B-(y/yMax)*(H-T-B);
   let e=`<rect x="0" y="0" width="${W}" height="${H}" fill="var(--panel)"/>`;
   for(let i=0;i<=12;i+=3){e+=`<line class="chart-grid" x1="${L}" y1="${sy(i)}" x2="${W-R}" y2="${sy(i)}"/>`;
     e+=`<text class="chart-txt" x="${L-8}" y="${sy(i)+4}" text-anchor="end">${i}</text>`;}
