@@ -301,9 +301,10 @@
     <li><b>Honest seeds &amp; anchors.</b> monerosim injects six real hardcoded seed nodes, always
       reachable. A persistent seed connection left the real-node run at 11/12 rather than 12/12 —
       consistent with the review's note on anchor/seed persistence.</li>
-    <li><b>/24 filter kept on.</b> The paper disabled Monero's /24 outbound-diversity filter
-      because its 1,000 IPs sat in few /24s. Here every attacker node lands in its own /24, so the
-      stock filter stayed enabled — a more conservative setting.</li>
+    <li><b>/24 filter kept on — matching the paper.</b> Monero forces the 12 outbound peers into
+      12 distinct /24 subnets. The paper did <em>not</em> disable this filter; its attacker instead
+      controls 1,000 distinct /24 subnets, which satisfies it. This reproduction does the same —
+      every attacker node sits in its own /24 — so the stock filter stayed enabled throughout.</li>
     <li><b>Client version.</b> monerosim pins v0.18.5.1; the paper measured v0.18.4.3. The review
       notes the attack is, if anything, marginally stronger on v0.18.5.x.</li>
     <li><b>No mainnet.</b> The paper's second attack (eclipse-at-birth) was run against controlled
