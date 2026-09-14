@@ -1,0 +1,111 @@
+# !! DOES NOT RUN YET !! This config points at the 5,000-node GML, which triggers
+# the AS->loopback-IP allocator bug (Shadow DNS rejects 127.x). It will only work
+# after GML production / the IP allocator is fixed, OR with a hand-built GML that
+# pins the 1,000 attackers to AS 0-999 and shares AS 1000-1199 across the benign.
+# See gml_processing/AS_IP_ALLOCATION_NOTE.md. Until then use eclipse_nyx_ceiling.
+#
+# FULL-FAITHFUL Nyx reproduction — the paper's actual structure at its actual
+# scale: 1,199 benign + 1 target + ~1,000 distinct-/24 attacker endpoints
+# (~2,211 hosts + 6 seeds). Uses the 5,000-node CAIDA topology so host count is
+# not the constraint. monerosim assigns each host its own IP/(/24) at generation,
+# so 1,000 attacker hosts == 1,000 distinct /24s (the paper's assumption; the /24
+# outbound-diversity filter stays ON, as in the paper).
+#
+# STRUCTURE: the victim (relay-4000) is ESTABLISHED — starts at t=0 with the
+# network, builds a healthy peerlist from the 1,199 benign nodes + seeds, and is
+# then gradually taken over as the batched attacker fleet saturates the network
+# and poisons peerlists (incl. the seeds, via the injectors). This is the
+# paper's Nyx: watch the victim's graylist benign-count fall (paper: 717 -> 2)
+# and CTR climb toward 12/12 over update_sync_search rounds.
+#
+# SCALE REALITY (corrected): the ~1,000-host "cliff" in docs/PERFORMANCE_AND_SCALE
+# is for a TRANSACTION-HEAVY user workload; light relays scale far better (the
+# 963-host eclipse run held 0.6x). RAM is the real limit: ~0.28 GB/relay of
+# *available* memory => ~2,211 relays pulls ~620 GB, leaving ~360 GB headroom on
+# the 1 TB box. Wall-clock at this scale for light relays is UNMEASURED — could be
+# ~0.3x (~40h) or slower; treat as an experiment. This run monopolizes the box.
+#
+# RISK (not scale-related): a clean 12/12 is not guaranteed — the last outbound
+# slot tends to cling to an always-reachable honest SEED (anchor persistence).
+# Expect ~10-12/12 with a clear benign-displacement trajectory either way.
+general:
+  stop_time: 720m
+  simulation_seed: 12345
+  bootstrap_end_time: 210m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 128
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/test_5000_nodes_caida_undirected_selfloops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  # 1,199 reachable HONEST nodes — the population the victim initially peers with
+  # and whose records are displaced from its peerlist over the run. Modest stagger
+  # so they are all up (~80m) well before the attackers saturate (~200m), giving
+  # the victim a genuinely established, benign-dominated peerlist first.
+  relay-{2001..3199}:
+    daemon: monerod
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # ~1,000 attacker listeners across distinct /24s, BATCHED onboarding.
+  relay-{101..1100}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # 6 injectors — aggressive graylist flooding (the paper's "20 additional IPs
+  # for graylist"), incl. targeting the seeds to suppress honest re-injection.
+  relay-{3301..3306}:
+    script: agents.eclipse_injector
+    start_time: 45m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "120"
+      trash_count: "0"
+
+  # ESTABLISHED victim (outside all ranges). Unreachable: no hide-my-port
+  # exemption -> only this host gets inbound 18080 firewalled under
+  # reachable_fraction: 0.0.
+  relay-4000:
+    daemon: monerod
+    start_time: 0s
+    attributes:
+      eclipse_role: target
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 45m
+    attributes:
+      poll_interval: "60"
+      benign_sample: "30"
