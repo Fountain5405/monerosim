@@ -222,6 +222,13 @@ def main():
             return recs
 
         def _reachable_nodes(self):
+            """Targets for active whitelist poisoning (paper's N-I): the honest
+            reachable population (benign) AND the seed nodes (the paper points
+            all attacker IPs at the seeds so they become 'propaganda pipes' for
+            every node that bootstraps off them). Attacker nodes are SKIPPED --
+            no value in poisoning our own fleet, and skipping ~1,000 of them
+            keeps each dial cycle short so poisoning stays ahead of the benign
+            population's ~60s re-advertise."""
             out = []
             try:
                 reg = self._discovery.get_agent_registry(force_refresh=True)
@@ -230,7 +237,9 @@ def main():
                     agents = list(agents.values())
                 for a in agents:
                     role = (a.get("attributes") or {}).get("eclipse_role")
-                    if role in ("benign", "attacker") and a.get("ip_addr"):
+                    aid = a.get("id", "") or ""
+                    is_seed = aid.startswith("monero-seed")
+                    if (role == "benign" or is_seed) and a.get("ip_addr"):
                         out.append(a["ip_addr"])
             except Exception:  # noqa: BLE001
                 pass

@@ -1,0 +1,23 @@
+# Small smoke to validate the aggressive-injector (N-I) pipeline + the monitor
+# timeout fix before the multi-day run. ~100 hosts, 14m sim.
+general:
+  stop_time: 14m
+  simulation_seed: 12345
+  bootstrap_end_time: 6m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 48
+  reachable_fraction: 0.0
+  daemon_defaults: {log-level: 1, max-log-file-size: 0, db-sync-mode: fastest, no-zmq: true, non-interactive: true}
+network: {path: gml_processing/5000_nodes_caida_with_loops.gml, peer_mode: Dynamic}
+agents:
+  miner-{001..002}: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.autonomous_miner, start_time: 0s, start_time_stagger: 1s, hashrate: [50,50], can_receive_distributions: true}
+  relay-{2001..2030}: {daemon: monerod, start_time: 10s, start_time_stagger: 1s, attributes: {eclipse_role: benign}, daemon_options: {hide-my-port: false}}
+  relay-{101..160}: {daemon: monerod, start_time: 5s, start_time_stagger: 1s, attributes: {eclipse_role: attacker}, daemon_options: {hide-my-port: false}}
+  relay-{3301..3305}:
+    script: agents.eclipse_injector
+    start_time: 90s
+    attributes: {eclipse_role: injector, listen_port: "18080", dial_interval: "20", trash_count: "200"}
+  relay-4000: {daemon: monerod, start_time: 0s, attributes: {eclipse_role: target}}
+  eclipse-monitor: {script: agents.eclipse_monitor, start_time: 120s, attributes: {poll_interval: "30", benign_sample: "6"}}

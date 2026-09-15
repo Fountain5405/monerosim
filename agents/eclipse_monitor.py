@@ -132,7 +132,11 @@ class EclipseMonitorAgent(BaseAgent):
         The victim's raw monerod log still records peer/graylist events, so B/OR
         remain reconstructable post-hoc."""
         url = rpc.url.replace("/json_rpc", "/get_peer_list")
-        resp = rpc.session.post(url, json={}, timeout=rpc.timeout,
+        # Large-payload-safe timeout: at scale the graylist can hold thousands
+        # of entries; a fixed generous timeout lets the read complete instead of
+        # raising "Read timed out" (see KNOWN ISSUE above). Pair with a small
+        # benign_sample in the scenario to bound worst-case poll cost.
+        resp = rpc.session.post(url, json={}, timeout=90,
                                 headers={"Content-Type": "application/json"})
         resp.raise_for_status()
         return resp.json()
