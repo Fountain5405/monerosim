@@ -35,6 +35,11 @@ def main():
     parser.add_argument("--port_count", "--port-count", dest="port_count", type=int, default=50)
     parser.add_argument("--dial_interval", "--dial-interval", dest="dial_interval", type=int, default=30)
     parser.add_argument("--max_records", "--max-records", dest="max_records", type=int, default=250)
+    # How many honest targets to actively dial per cycle. -1 = dial ALL (smoke
+    # default). 0 = PURE LISTENER: dial nothing and rely on the eclipse_injector
+    # fleet for N-I poisoning -- required at scale, where 1000 fake peers each
+    # dialing ~1200 benign is O(N^2) and melts the sim. N>0 = dial a random N.
+    parser.add_argument("--dial_sample", "--dial-sample", dest="dial_sample", type=int, default=-1)
     args, _unknown = parser.parse_known_args()
 
     class FakePeerAgent(BaseAgent):
@@ -158,13 +163,19 @@ def main():
                 time.sleep(3)
 
         def run_iteration(self):
+            targets = self._poison_targets()
+            if args.dial_sample == 0:
+                targets = []  # pure listener: injectors handle N-I (scale)
+            elif args.dial_sample > 0 and len(targets) > args.dial_sample:
+                targets = random.sample(targets, args.dial_sample)
             dialed = 0
-            for ip in self._poison_targets():
+            for ip in targets:
                 # dial on our base port; the target will whitelist us and dial back
                 if dial_and_handshake(ip, self._ports[0], self._cfg, timeout=6):
                     dialed += 1
-            self.logger.info("fakepeer: dialed %d honest nodes; injected=%d conns=%d records=%d",
-                             dialed, self._cfg.injected, self._cfg.conns, len(self._fleet_records()))
+            self.logger.info("fakepeer: dialed %d/%d honest nodes; injected=%d conns=%d records=%d",
+                             dialed, len(targets), self._cfg.injected, self._cfg.conns,
+                             len(self._fleet_records()))
             return args.dial_interval
 
     agent = FakePeerAgent(
