@@ -60,6 +60,20 @@ def main():
                                  daemon=True).start()
             self.logger.info("FakePeerAgent listening on %d ports (%d..%d)",
                              len(self._ports), self._ports[0], self._ports[-1])
+            # SYNC-CREDIBILITY: present the GENESIS block as our top_id. When we
+            # report top_id == genesis hash, the victim's have_block(top_id) is
+            # TRUE, so process_payload_sync_data() forces the connection to
+            # state_normal (cryptonote_protocol_handler.inl:483) instead of
+            # state_synchronizing. Only state_synchronizing peers are subject to
+            # the idle-peer negative-score kick (inl:240, DROP_PEERS_ON_SCORE=-2
+            # after ~2x IDLE_PEER_KICK_TIME=240s), so as a state_normal peer the
+            # victim HOLDS us as a stable outbound peer. A null top_id (00..00) is
+            # never have_block -> state_synchronizing -> idle-kicked -> host
+            # blocked, which is exactly why the fleet churned out (5->2) and then
+            # got banned in the /24-fix-only smoke. Genesis is immutable, so once
+            # fetched we never refresh; height=1/top_version=1 still pass the
+            # handshake version check (skipped for hard-fork version < 6 at h=0).
+            threading.Thread(target=self._track_genesis, daemon=True).start()
 
         def _fleet_records(self):
             """Full port-diverse attacker set: every fake-peer/attacker host IP x
@@ -101,6 +115,47 @@ def main():
             except Exception:  # noqa: BLE001
                 pass
             return out
+
+        def _daemon_rpc_urls(self):
+            """RPC endpoints of real, synced nodes (miners/seeds) we can read the
+            genesis hash from. Attackers/fakepeers are skipped (they have no chain)."""
+            urls = []
+            try:
+                reg = self._discovery.get_agent_registry(force_refresh=True)
+                agents = reg.get("agents", [])
+                if isinstance(agents, dict):
+                    agents = list(agents.values())
+                for a in agents:
+                    aid = a.get("id", "") or ""
+                    ip = a.get("ip_addr")
+                    if ip and (aid.startswith("miner") or aid.startswith("monero-seed")):
+                        urls.append("http://%s:18081/json_rpc" % ip)
+            except Exception:  # noqa: BLE001
+                pass
+            return urls
+
+        def _track_genesis(self):
+            """Fetch the immutable genesis block hash from a real node and present
+            it as our top_id (see the state_normal note in _setup_agent). Genesis
+            never changes, so on the first success we stop; until then keep retrying
+            (a real node's RPC may not be up yet when we start)."""
+            import requests  # lazy: only the fakepeer needs an HTTP client
+            while not self._stop.is_set():
+                for url in self._daemon_rpc_urls():
+                    try:
+                        r = requests.post(url, json={
+                            "jsonrpc": "2.0", "id": "0",
+                            "method": "get_block_header_by_height",
+                            "params": {"height": 0}}, timeout=5)
+                        h = (((r.json() or {}).get("result") or {})
+                             .get("block_header") or {}).get("hash")
+                        if h and len(h) == 64:
+                            self._cfg.top_id = bytes.fromhex(h)
+                            self.logger.info("fakepeer: genesis top_id set (%s) via %s", h, url)
+                            return
+                    except Exception:  # noqa: BLE001
+                        continue
+                time.sleep(3)
 
         def run_iteration(self):
             dialed = 0
