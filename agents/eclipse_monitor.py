@@ -119,7 +119,18 @@ class EclipseMonitorAgent(BaseAgent):
     def _peer_list(self, rpc):
         """monerod exposes get_peer_list as a DIRECT endpoint (/get_peer_list),
         NOT a /json_rpc method, so MoneroRPC.get_peer_list() (which posts to
-        /json_rpc) returns -32601. POST to the direct endpoint instead."""
+        /json_rpc) returns -32601. POST to the direct endpoint instead.
+
+        KNOWN ISSUE / TODO (found in the 2,211-host nyx_full run, 2026-09-15):
+        at scale the graylist grows into the thousands, so this response gets
+        large and `timeout=rpc.timeout` (~10-30s) starts raising "Read timed
+        out" under Shadow latency — the graylist-B and occupation (OR) series
+        go blank from ~sim 66m on, while CTR (get_connections, tiny payload) is
+        unaffected. FIX for future runs: give this call its own generous timeout
+        (e.g. 60-120s), and cap wasted time on repeated failures (shrink
+        benign_sample and/or stop peerlist polls after N consecutive timeouts).
+        The victim's raw monerod log still records peer/graylist events, so B/OR
+        remain reconstructable post-hoc."""
         url = rpc.url.replace("/json_rpc", "/get_peer_list")
         resp = rpc.session.post(url, json={}, timeout=rpc.timeout,
                                 headers={"Content-Type": "application/json"})
