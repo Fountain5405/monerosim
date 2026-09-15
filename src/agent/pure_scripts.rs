@@ -51,8 +51,21 @@ pub fn process_pure_script_agents(
 
     for (i, (agent_id, pure_script_config)) in pure_scripts.iter().enumerate() {
         let script_id = agent_id.as_str();
-        // Assign pure scripts to node 0 (which has bandwidth info in GML)
-        let network_node_id = 0;
+        // Spread script agents across DISTINCT GML nodes so each gets a distinct
+        // AS -> distinct /24. The old code pinned EVERY script agent to node 0,
+        // i.e. one /24 (AS 0 -> 3.0.0.0/24); Monero's /24 outbound-diversity
+        // filter then caps the entire fleet at a SINGLE outbound connection, so a
+        // multi-IP attacker fleet (e.g. the eclipse fake peers) could never be
+        // held as outbound. `agent_offset` is already past every daemon/user
+        // agent and node ids are contiguous 0..N-1, so this yields distinct
+        // nodes -> distinct subnets. Host bandwidth is set explicitly below, so
+        // we no longer need node 0 just for its GML bandwidth attribute.
+        let network_node_id: u32 = match gml_graph {
+            Some(g) if using_gml_topology && !g.nodes.is_empty() => {
+                ((agent_offset + i) % g.nodes.len()) as u32
+            }
+            _ => 0,
+        };
         let script_ip = get_agent_ip(
             AgentType::PureScriptAgent,
             script_id,
@@ -129,7 +142,7 @@ echo "Starting pure script agent {}..."
         hosts.insert(
             script_id.to_string(),
             ShadowHost {
-                network_node_id, // Use the assigned GML node with bandwidth info
+                network_node_id, // distinct GML node per script agent (distinct AS/subnet)
                 ip_addr: Some(script_ip),
                 blocked_inbound_ports: None,
                 processes: vec![process],
