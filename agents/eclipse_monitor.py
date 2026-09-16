@@ -56,10 +56,19 @@ def _ip_of_address(addr):
 
 
 class EclipseMonitorAgent(BaseAgent):
-    def __init__(self, poll_interval=30, benign_sample=12, **kwargs):
+    def __init__(self, poll_interval=30, benign_sample=12,
+                 peerlist_every=4, peerlist_timeout=600, **kwargs):
         super().__init__(**kwargs)
         self._poll_interval = poll_interval
         self._benign_sample = benign_sample
+        # The full get_peer_list response is ~1 MB at scale (up to 6000 entries)
+        # and, though monerod builds it in ~3 ms, transmitting it over the sim
+        # network under load exceeds a short client timeout. So poll it only every
+        # Nth cycle with a generous timeout (for the attacker/benign breakdown ->
+        # B and malicious OR), while CTR (get_connections) and peerlist SIZES
+        # (get_info, tiny) are read cheaply every cycle.
+        self._peerlist_every = max(1, peerlist_every)
+        self._peerlist_timeout = peerlist_timeout
         self._discovery = None
         self._rpc_cache = {}
         self._metrics_path = None
@@ -86,6 +95,15 @@ class EclipseMonitorAgent(BaseAgent):
                 self._poll_interval = int(a["poll_interval"])
             except (TypeError, ValueError):
                 pass
+        for key, attr in (("peerlist_every", "_peerlist_every"),
+                          ("peerlist_timeout", "_peerlist_timeout"),
+                          ("benign_sample", "_benign_sample")):
+            if key in a:
+                try:
+                    setattr(self, attr, int(a[key]))
+                except (TypeError, ValueError):
+                    pass
+        self._peerlist_every = max(1, self._peerlist_every)
         shared = str(self.shared_dir) if self.shared_dir else None
         self._discovery = AgentDiscovery(shared) if shared else AgentDiscovery()
         self._metrics_path = (self.shared_dir / "eclipse_metrics.jsonl") if self.shared_dir else Path("eclipse_metrics.jsonl")
@@ -136,10 +154,17 @@ class EclipseMonitorAgent(BaseAgent):
         # of entries; a fixed generous timeout lets the read complete instead of
         # raising "Read timed out" (see KNOWN ISSUE above). Pair with a small
         # benign_sample in the scenario to bound worst-case poll cost.
-        resp = rpc.session.post(url, json={}, timeout=90,
+        resp = rpc.session.post(url, json={}, timeout=self._peerlist_timeout,
                                 headers={"Content-Type": "application/json"})
         resp.raise_for_status()
         return resp.json()
+
+    def _info(self, rpc):
+        """Cheap peerlist SIZES via get_info (tiny response), readable every cycle
+        even when the full get_peer_list is too large to fetch at scale. Returns
+        (white_peerlist_size, grey_peerlist_size)."""
+        info = rpc._make_request("get_info")
+        return info.get("white_peerlist_size"), info.get("grey_peerlist_size")
 
     # ----- per-node measurements --------------------------------------------
     def _occupation(self, entries, attacker_ips, benign_ips):
@@ -180,23 +205,30 @@ class EclipseMonitorAgent(BaseAgent):
             out_attacker=atk_out, out_benign=ben_out, out_other=oth_out,
             ctr=(atk_out / len(outgoing)) if outgoing else 0.0,
         )
-        # ---- peer list -> occupation, B_target ----
+        # ---- cheap peerlist SIZES via get_info (every cycle) ----
         try:
-            pl = self._peer_list(rpc)
-            if not self._logged_schema and (pl.get("white_list") or pl.get("gray_list")):
-                sample = (pl.get("white_list") or pl.get("gray_list"))[0]
-                self.logger.info("SAMPLE peer_entry=%s", json.dumps(sample)[:300])
-                self._logged_schema = True
-            wa, wb, wo = self._occupation(pl.get("white_list"), attacker_ips, benign_ips)
-            ga, gb, go = self._occupation(pl.get("gray_list"), attacker_ips, benign_ips)
-            out.update(
-                white_attacker=wa, white_benign=wb, white_other=wo, white_total=wa + wb + wo,
-                gray_attacker=ga, gray_benign=gb, gray_other=go, gray_total=ga + gb + go,
-                or_white=(wa / (wa + wb + wo)) if (wa + wb + wo) else 0.0,
-                B_target=gb,
-            )
+            wsz, gsz = self._info(rpc)
+            out.update(white_size=wsz, gray_size=gsz)
         except (RPCError, Exception) as e:  # noqa: BLE001
-            out["peerlist_err"] = str(e)[:120]
+            out["info_err"] = str(e)[:120]
+        # ---- full peer list -> occupation, B_target (periodic; ~1 MB payload) ----
+        if self._iter % self._peerlist_every == 0:
+            try:
+                pl = self._peer_list(rpc)
+                if not self._logged_schema and (pl.get("white_list") or pl.get("gray_list")):
+                    sample = (pl.get("white_list") or pl.get("gray_list"))[0]
+                    self.logger.info("SAMPLE peer_entry=%s", json.dumps(sample)[:300])
+                    self._logged_schema = True
+                wa, wb, wo = self._occupation(pl.get("white_list"), attacker_ips, benign_ips)
+                ga, gb, go = self._occupation(pl.get("gray_list"), attacker_ips, benign_ips)
+                out.update(
+                    white_attacker=wa, white_benign=wb, white_other=wo, white_total=wa + wb + wo,
+                    gray_attacker=ga, gray_benign=gb, gray_other=go, gray_total=ga + gb + go,
+                    or_white=(wa / (wa + wb + wo)) if (wa + wb + wo) else 0.0,
+                    B_target=gb,
+                )
+            except (RPCError, Exception) as e:  # noqa: BLE001
+                out["peerlist_err"] = str(e)[:120]
         return out
 
     def _benign_or(self, benign_nodes, attacker_ips, benign_ips):
@@ -255,7 +287,10 @@ class EclipseMonitorAgent(BaseAgent):
             "n_attacker": len(attacker_ips), "n_benign": len(benign_ips),
             "n_target": len(targets), "targets": [],
         }
-        rec.update(self._benign_or(benign_nodes, attacker_ips, benign_ips))
+        # benign whitelist OR (paper N-I) uses the large get_peer_list per node,
+        # so only sample it on the peerlist cadence to bound poll cost at scale.
+        if self._iter % self._peerlist_every == 0:
+            rec.update(self._benign_or(benign_nodes, attacker_ips, benign_ips))
 
         for tg in targets:
             host = tg.get("ip_addr")
@@ -304,6 +339,10 @@ def main():
                         type=int, default=30, help="seconds between polls")
     parser.add_argument("--benign_sample", "--benign-sample", dest="benign_sample",
                         type=int, default=12, help="benign relays sampled for OR")
+    parser.add_argument("--peerlist_every", "--peerlist-every", dest="peerlist_every",
+                        type=int, default=4, help="fetch full get_peer_list every Nth cycle")
+    parser.add_argument("--peerlist_timeout", "--peerlist-timeout", dest="peerlist_timeout",
+                        type=int, default=600, help="timeout (s) for the large get_peer_list")
     args, _unknown = parser.parse_known_args()
     agent = EclipseMonitorAgent(
         agent_id=args.id,
@@ -316,6 +355,8 @@ def main():
         attributes=args.attributes,
         poll_interval=args.poll_interval,
         benign_sample=args.benign_sample,
+        peerlist_every=args.peerlist_every,
+        peerlist_timeout=args.peerlist_timeout,
     )
     agent.run()
 

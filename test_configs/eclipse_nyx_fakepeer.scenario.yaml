@@ -72,9 +72,24 @@ agents:
     hashrate: [25, 25, 25, 25]
     can_receive_distributions: true
 
-  # 1,199 reachable HONEST nodes — the paper's benign population the victim
-  # initially peers with and whose records are displaced over the run.
-  relay-{2001..3199}:
+  # 30 OBSERVED benign relays: daemon + co-located RAW-DUMP sidecar
+  # (agents.eclipse_probe) for the paper's N-I whitelist-occupation sample. The
+  # sidecar reads its LOCAL daemon and dumps raw peerlists to shared storage, so
+  # the ~1 MB peerlist never crosses the sim network (which timed out the remote
+  # monitor at scale).
+  relay-{2001..2030}:
+    daemon: monerod
+    script: agents.eclipse_probe
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+      interval: "45"
+    daemon_options:
+      hide-my-port: false
+
+  # 1,169 plain benign relays — the rest of the honest population (no sidecar).
+  relay-{2031..3199}:
     daemon: monerod
     start_time: 10s
     start_time_stagger: 4s
@@ -84,40 +99,58 @@ agents:
       hide-my-port: false
 
   # 1,000 PORT-DIVERSITY fake-peer attackers: one distinct /24 each, 5 ports each
-  # (~5,000 records). Pure listeners (dial_sample 0); the injectors do the dialing.
+  # (~5,000 records). AGGRESSIVE N-I: each dials a bounded random sample of 16
+  # benign/seeds per cycle (dial_sample 16) so it gets whitelisted network-wide
+  # and evicts benign records -> drives graylist occupation toward the paper's
+  # ~99.96% and a PERMANENT 12/12 (the dial_sample 0 pure-listener run peaked
+  # 12/12 but oscillated ~10/12 because benign kept re-advertising). 1000x16 =
+  # ~16k bounded dials/cycle (not the O(N^2) dial-all storm).
   relay-{101..1100}:
     script: agents.eclipse_fakepeer
-    start_time: 30s
+    start_time: 600s          # attack begins after the target is ESTABLISHED (paper: "existing node")
     start_time_stagger: auto
     attributes:
       eclipse_role: attacker
       port_base: "18080"
       port_count: "5"
-      dial_sample: "0"
+      dial_sample: "-1"        # PAPER-EXACT: every attacker IP dials ALL reachable nodes
       dial_interval: "120"
 
-  # 6 injectors — N-I graylist flooding + seed-targeting: advertise the attacker
-  # fleet (fake-peer IPs) to benign + seeds so the victim learns records to dial.
-  relay-{3301..3306}:
+  # 20 TRASH-flooding IPs — the paper's "20 additional IPs for graylist filling"
+  # (separate from the 1000 connectable fleet). They dial reachable nodes to get
+  # whitelisted, then return ~250 non-connectable TRASH records per timed-sync so
+  # reachable nodes' GRAYLISTS fill with junk -> gray_peerlist_housekeeping()
+  # samples trash, the promotion handshake fails, and benign promotion is
+  # suppressed -> reachable WHITELISTS stay attacker-pure (paper N-I: OR->98.5%).
+  # trash_count high => responses are ~all trash; dial_interval 300s (dial to get
+  # whitelisted, then mostly hold) bounds dial load. Start with the fleet at 600s.
+  relay-{3301..3320}:
     script: agents.eclipse_injector
-    start_time: 45m
+    start_time: 600s
     attributes:
       eclipse_role: injector
       listen_port: "18080"
-      dial_interval: "120"
-      trash_count: "0"
+      dial_interval: "300"
+      trash_count: "5000"
 
   # ESTABLISHED victim (outside all ranges). Unreachable: no hide-my-port
   # exemption -> only this host gets inbound 18080 firewalled (reachable_fraction 0.0).
   relay-4000:
     daemon: monerod
+    script: agents.eclipse_probe   # co-located RAW-DUMP sidecar (local RPC -> shared FS)
     start_time: 0s
     attributes:
       eclipse_role: target
+      interval: "45"
 
+  # Live pulse only: get_connections (CTR) + get_info (peerlist sizes), both tiny
+  # over the wire. peerlist_every huge => it NEVER does the big over-the-wire
+  # get_peer_list (the co-located sidecars capture raw peerlists locally instead).
   eclipse-monitor:
     script: agents.eclipse_monitor
-    start_time: 45m
+    start_time: 60s           # early: capture the pre-attack baseline + live CTR through the attack
     attributes:
       poll_interval: "60"
-      benign_sample: "30"
+      benign_sample: "10"
+      peerlist_every: "100000"
+      peerlist_timeout: "600"
