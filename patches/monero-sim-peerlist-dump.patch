@@ -1,0 +1,136 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index 9f0e49f52..1dd04a912 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -160,6 +160,7 @@ namespace nodetool
+     const command_line::arg_descriptor<bool> arg_p2p_hide_my_port   =    {"hide-my-port", "Do not announce yourself as peerlist candidate", false, true};
+     const command_line::arg_descriptor<bool> arg_no_sync = {"no-sync", "Don't synchronize the blockchain with other peers", false};
+     const command_line::arg_descriptor<bool> arg_enable_dns_blocklist = {"enable-dns-blocklist", "Apply realtime blocklist from DNS", false};
++    const command_line::arg_descriptor<std::string> arg_peerlist_dump_file = {"peerlist-dump-file", "MEASUREMENT ONLY (Shadow eclipse reproduction): if set, periodically append the full white+gray peer list as JSONL to this file. Off by default; read-only w.r.t. peering.", ""};
+ 
+     const command_line::arg_descriptor<bool>        arg_no_igd  = {"no-igd", "Disable UPnP port mapping"};
+     const command_line::arg_descriptor<std::string> arg_igd = {"igd", "UPnP port mapping (disabled)", "disabled"};
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index d7cbaa567..80a7fe722 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -330,6 +330,7 @@ namespace nodetool
+     bool make_default_peer_id();
+     bool make_default_config();
+     bool store_config();
++    bool dump_peerlist_json();
+ 
+ 
+     //----------------- levin_commands_handler -------------------------------------------------------------
+@@ -462,6 +463,8 @@ namespace nodetool
+     epee::math_helper::once_a_time_seconds<P2P_DEFAULT_HANDSHAKE_INTERVAL> m_peer_handshake_idle_maker_interval;
+     epee::math_helper::once_a_time_seconds<1> m_connections_maker_interval;
+     epee::math_helper::once_a_time_seconds<60*30, false> m_peerlist_store_interval;
++    epee::math_helper::once_a_time_seconds<30, false> m_peerlist_dump_interval; // measurement-only peer-list JSONL dump (eclipse target)
++    std::string m_peerlist_dump_file; // set via --peerlist-dump-file; empty = disabled
+     epee::math_helper::once_a_time_seconds<60> m_gray_peerlist_housekeeping_interval;
+     epee::math_helper::once_a_time_seconds<3600, false> m_incoming_connections_interval;
+     epee::math_helper::once_a_time_seconds<7000> m_dns_blocklist_interval;
+@@ -543,6 +546,7 @@ namespace nodetool
+     extern const command_line::arg_descriptor<int64_t> arg_limit_rate;
+     extern const command_line::arg_descriptor<bool> arg_pad_transactions;
+     extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
++    extern const command_line::arg_descriptor<std::string> arg_peerlist_dump_file;
+ }
+ 
+ POP_WARNINGS
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index 91a54f43e..c665dd8c8 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -39,6 +39,9 @@
+ #include <boost/uuid/uuid_io.hpp>
+ #include <boost/algorithm/string.hpp>
+ #include <atomic>
++#include <ctime>
++#include <fstream>
++#include <sstream>
+ #include <functional>
+ #include <limits>
+ #include <memory>
+@@ -118,6 +121,7 @@ namespace nodetool
+     command_line::add_arg(desc, arg_p2p_hide_my_port);
+     command_line::add_arg(desc, arg_no_sync);
+     command_line::add_arg(desc, arg_enable_dns_blocklist);
++    command_line::add_arg(desc, arg_peerlist_dump_file);
+     command_line::add_arg(desc, arg_no_igd);
+     command_line::add_arg(desc, arg_igd);
+     command_line::add_arg(desc, arg_out_peers);
+@@ -440,6 +444,7 @@ namespace nodetool
+     public_zone.m_port_ipv6 = command_line::get_arg(vm, arg_p2p_bind_port_ipv6);
+     public_zone.m_can_pingback = true;
+     m_external_port = command_line::get_arg(vm, arg_p2p_external_port);
++    m_peerlist_dump_file = command_line::get_arg(vm, arg_peerlist_dump_file);
+     m_allow_local_ip = command_line::get_arg(vm, arg_p2p_allow_local_ip);
+     if (!command_line::is_arg_defaulted(vm, arg_igd)) {
+       MWARNING("UPnP port mapping support was removed. The --igd option is currently non-functional.");
+@@ -2107,12 +2112,64 @@ namespace nodetool
+   }
+   //-----------------------------------------------------------------------------------
+   template<class t_payload_net_handler>
++  bool node_server<t_payload_net_handler>::dump_peerlist_json()
++  {
++    // MEASUREMENT ONLY (Shadow eclipse reproduction, --peerlist-dump-file): append
++    // one JSONL snapshot of the full white+gray peer list to a plain file. This is
++    // read-only with respect to peer state (it only serializes the lists monerod
++    // already maintains) and is written to a file, NOT the network, so it cannot
++    // perturb peering/eclipse dynamics. Needed because Shadow's simulated TCP will
++    // not deliver the large un-chunked get_peer_list RPC response (see
++    // eclipse_reproduction/PEERLIST_DUMP_PATCH.md).
++    TRY_ENTRY();
++    if (m_peerlist_dump_file.empty())
++      return true;
++    std::vector<peerlist_entry> gray, white;
++    get_peerlist(gray, white);
++    std::ostringstream ss;
++    ss << "{\"t\":" << static_cast<int64_t>(time(NULL))
++       << ",\"white_n\":" << white.size() << ",\"gray_n\":" << gray.size()
++       << ",\"white\":[";
++    bool first = true;
++    for (const auto& pe : white)
++    {
++      if (!first) ss << ",";
++      first = false;
++      ss << "[\"" << pe.adr.str() << "\"," << pe.last_seen << "]";
++    }
++    ss << "],\"gray\":[";
++    first = true;
++    for (const auto& pe : gray)
++    {
++      if (!first) ss << ",";
++      first = false;
++      ss << "[\"" << pe.adr.str() << "\"," << pe.last_seen << "]";
++    }
++    ss << "]}\n";
++    // A relative path is resolved against the node's data dir (m_config_folder,
++    // where p2pstate.bin also lives) so a static config value yields a correct
++    // per-run path; an absolute path is honored as-is.
++    std::string path = m_peerlist_dump_file;
++    if (!path.empty() && path[0] != '/')
++      path = m_config_folder + "/" + path;
++    std::ofstream f(path.c_str(), std::ios::out | std::ios::app);
++    if (f.is_open())
++      f << ss.str();
++    else
++      MWARNING("peerlist-dump: cannot open " << path);
++    return true;
++    CATCH_ENTRY_L0("node_server::dump_peerlist_json", false);
++  }
++  //-----------------------------------------------------------------------------------
++  template<class t_payload_net_handler>
+   bool node_server<t_payload_net_handler>::idle_worker()
+   {
+     m_peer_handshake_idle_maker_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::peer_sync_idle_maker, this));
+     m_connections_maker_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::connections_maker, this));
+     m_gray_peerlist_housekeeping_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::gray_peerlist_housekeeping, this));
+     m_peerlist_store_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::store_config, this));
++    if (!m_peerlist_dump_file.empty())
++      m_peerlist_dump_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::dump_peerlist_json, this));
+     m_incoming_connections_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::check_incoming_connections, this));
+     m_dns_blocklist_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::update_dns_blocklist, this));
+     return true;

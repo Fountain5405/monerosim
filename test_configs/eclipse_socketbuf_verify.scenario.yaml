@@ -42,6 +42,6 @@ agents:
   # <data-dir>/peerlist_dump.jsonl every 30s (patched --peerlist-dump-file); the
   # sidecar keeps capturing CTR/info over RPC (small responses) but its RPC
   # get_peer_list is disabled (peerlist_interval huge) since it's redundant + fails.
-  relay-4000: {daemon: monerod, script: agents.eclipse_probe, start_time: 0s, daemon_options: {peerlist-dump-file: "peerlist_dump.jsonl"}, attributes: {eclipse_role: target, interval: "15", peerlist_interval: "100000"}}
+  relay-4000: {daemon: monerod-hf, script: agents.eclipse_probe, start_time: 0s, daemon_options: {peerlist-dump-file: "peerlist_dump.jsonl"}, attributes: {eclipse_role: target, interval: "15", peerlist_interval: "100000"}}
   # Live gray/white size + CTR pulse (get_info only; big peerlist disabled over the wire).
   eclipse-monitor: {script: agents.eclipse_monitor, start_time: 90s, attributes: {poll_interval: "30", benign_sample: "6", peerlist_every: "100000", peerlist_timeout: "600"}}

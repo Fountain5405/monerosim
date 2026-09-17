@@ -42,7 +42,7 @@ agents:
   # 30 OBSERVED benign: daemon + eclipse_probe sidecar + monerod peer-list dump
   # (benign whitelist OR sample). RPC get_peer_list disabled (peerlist_interval huge).
   relay-{2001..2030}:
-    daemon: monerod
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
     script: agents.eclipse_probe
     start_time: 10s
     start_time_stagger: 4s
@@ -84,7 +84,7 @@ agents:
       trash_count: "5000"
   # ESTABLISHED, UNREACHABLE target (no hide-my-port) + peer-list dump.
   relay-4000:
-    daemon: monerod
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
     script: agents.eclipse_probe
     start_time: 0s
     attributes:

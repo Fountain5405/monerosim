@@ -49,8 +49,9 @@ while [[ $# -gt 0 ]]; do
             echo "                         Pinned by cuprate.pin. Reuse an existing checkout with"
             echo "                         CUPRATE_DIR=/path/to/cuprate ./setup.sh --cuprate"
             echo "  --hardfork             Also build monerod-hf: vanilla monerod (monero.pin) plus"
-            echo "                         patches/monero-fakechain-hardforks.patch, which adds the"
-            echo "                         --fakechain-hard-forks option for network-upgrade sims."
+            echo "                         every patch under patches/ (each flag-gated, off by default):"
+            echo "                         monero-fakechain-hardforks.patch  --fakechain-hard-forks (network-upgrade sims)"
+            echo "                         monero-sim-peerlist-dump.patch    --peerlist-dump-file (eclipse measurement)"
             echo "                         Built in a worktree; the primary monerod stays vanilla."
             echo "  -h, --help             Show this help message"
             exit 0
@@ -1127,11 +1128,22 @@ else
 fi
 
 install_hardfork_monerod() {
-    local patch_file="$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
-    if [[ ! -f "$patch_file" ]]; then
-        log_err "Patch not found: $patch_file"
-        exit 1
-    fi
+    # monerod-hf = vanilla monero (monero.pin) + every vendored patch, each
+    # gated behind its own option so the binary is behaviourally vanilla
+    # unless a scenario opts in:
+    #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
+    #   patches/monero-sim-peerlist-dump.patch    --peerlist-dump-file (measurement only)
+    local patches=(
+        "$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
+        "$SCRIPT_DIR/patches/monero-sim-peerlist-dump.patch"
+    )
+    local p
+    for p in "${patches[@]}"; do
+        if [[ ! -f "$p" ]]; then
+            log_err "Patch not found: $p"
+            exit 1
+        fi
+    done
     if [[ ! -d "$MONERO_DIR/.git" ]]; then
         log_err "Monero checkout not found at $MONERO_DIR (run the main setup first)"
         exit 1
@@ -1155,14 +1167,17 @@ install_hardfork_monerod() {
         exit 1
     fi
 
-    # Tripwire: when monero.pin moves past what the patch applies to, fail
-    # loudly here instead of drifting silently.
-    if ! git -C "$hf_build_dir" apply --check "$patch_file"; then
-        log_err "patches/monero-fakechain-hardforks.patch no longer applies to monero $monero_ref"
-        log_err "The patch must be rebased onto the new pin (or upstreamed)."
-        exit 1
-    fi
-    git -C "$hf_build_dir" apply "$patch_file"
+    # Tripwire: when monero.pin moves past what a patch applies to, fail
+    # loudly here instead of drifting silently. Patches are applied in order,
+    # so each check runs against the tree with the earlier ones already in.
+    for p in "${patches[@]}"; do
+        if ! git -C "$hf_build_dir" apply --check "$p"; then
+            log_err "patches/$(basename "$p") no longer applies to monero $monero_ref"
+            log_err "The patch must be rebased onto the new pin (or upstreamed)."
+            exit 1
+        fi
+        git -C "$hf_build_dir" apply "$p"
+    done
     (cd "$hf_build_dir" && git submodule update --init --recursive)
 
     log_info "Building patched monerod (monerod-hf, -j${BUILD_JOBS}) — this takes a while..."
@@ -1177,8 +1192,10 @@ install_hardfork_monerod() {
     {
         echo "binary: monerod-hf"
         echo "base: $monero_ref (monero.pin)"
-        echo "patch: patches/monero-fakechain-hardforks.patch"
-        echo "patch_sha256: $(sha256sum "$patch_file" | cut -d' ' -f1)"
+        for p in "${patches[@]}"; do
+            echo "patch: patches/$(basename "$p")"
+            echo "patch_sha256: $(sha256sum "$p" | cut -d' ' -f1)"
+        done
         echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     } > "$MONEROSIM_BIN/monerod-hf.provenance"
     log_ok "Installed monerod-hf to $MONEROSIM_BIN/monerod-hf"
@@ -1186,7 +1203,7 @@ install_hardfork_monerod() {
 }
 
 if [[ "$INSTALL_HARDFORK" == true ]]; then
-    log_header "Step 9c: Installing monerod-hf (hard fork schedule patch)"
+    log_header "Step 9c: Installing monerod-hf (hard fork schedule + peerlist-dump patches)"
     install_hardfork_monerod
 else
     log_info "Skipping monerod-hf — pass --hardfork to build it for hard fork scenario configs"

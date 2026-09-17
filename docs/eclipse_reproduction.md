@@ -77,7 +77,12 @@ window with no oscillation (measured; run `20260914_100749_eclipse_birth_papersc
 
 From the worktree root, with the venv active (`source venv/bin/activate`) and the
 pinned binaries installed in `~/.monerosim/bin` (`monerod` v0.18.5.1, Shadow fork
-v0.2.4 — `setup.sh` installs these):
+v0.2.4 — `setup.sh` installs these). The Nyx scenarios that record the target's
+full peer list (`eclipse_nyx_*`, `eclipse_socketbuf_verify`) run their dumping
+nodes on `monerod-hf`, built by `./setup.sh --hardfork` from the pinned tag plus
+`patches/monero-sim-peerlist-dump.patch` (`--peerlist-dump-file`, measurement
+only; see `docs/PEERLIST_DUMP_PATCH.md`). The dump analyser is
+`analysis/eclipse/analyze_peerlist_dumps.py`.
 
 ```bash
 # 1. Expand a scenario (run_sim.sh does NOT auto-expand .scenario.yaml here)

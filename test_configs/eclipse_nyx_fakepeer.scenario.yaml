@@ -78,7 +78,7 @@ agents:
   # the ~1 MB peerlist never crosses the sim network (which timed out the remote
   # monitor at scale).
   relay-{2001..2030}:
-    daemon: monerod
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
     script: agents.eclipse_probe
     start_time: 10s
     start_time_stagger: 4s
@@ -138,7 +138,7 @@ agents:
   # ESTABLISHED victim (outside all ranges). Unreachable: no hide-my-port
   # exemption -> only this host gets inbound 18080 firewalled (reachable_fraction 0.0).
   relay-4000:
-    daemon: monerod
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
     script: agents.eclipse_probe   # co-located RAW-DUMP sidecar (local RPC -> shared FS)
     start_time: 0s
     attributes:
@@ -146,7 +146,7 @@ agents:
       interval: "45"
       peerlist_interval: "100000"   # RPC get_peer_list disabled (Shadow truncates the large response); full peerlist via the monerod file dump
     daemon_options:
-      peerlist-dump-file: "peerlist_dump.jsonl"   # patched monerod dumps full white+gray peerlist every 30s -> B / OR (see eclipse_reproduction/PEERLIST_DUMP_PATCH.md)
+      peerlist-dump-file: "peerlist_dump.jsonl"   # patched monerod dumps full white+gray peerlist every 30s -> B / OR (see docs/PEERLIST_DUMP_PATCH.md)
 
   # Live pulse only: get_connections (CTR) + get_info (peerlist sizes), both tiny
   # over the wire. peerlist_every huge => it NEVER does the big over-the-wire
