@@ -161,6 +161,38 @@ const AF_OCTETS: [u8; 6] = [41, 102, 105, 154, 196, 197];
 /// (both are APNIC) and were replaced with 120/123 to keep the tables disjoint.
 const OC_OCTETS: [u8; 8] = [120, 123, 121, 122, 139, 144, 202, 203];
 
+/// All six region tables, in region order. The AS >= 1200 fallback cycles
+/// through this union so out-of-region ASes still draw from real, routable,
+/// non-reserved RIR octets (and stay disjoint from the registry path).
+const ALL_REGION_OCTET_TABLES: [&[u8]; 6] = [
+    &NA_OCTETS,
+    &EU_OCTETS,
+    &ASIA_OCTETS,
+    &SA_OCTETS,
+    &AF_OCTETS,
+    &OC_OCTETS,
+];
+
+/// First AS number that falls outside the six hardcoded region ranges.
+const FALLBACK_AS_START: u32 = 1200;
+
+/// Number of first octets available to the fallback (union of all tables).
+fn fallback_octet_count() -> usize {
+    ALL_REGION_OCTET_TABLES.iter().map(|t| t.len()).sum()
+}
+
+/// The `i`-th first octet of the union of all region tables (`i` must be
+/// `< fallback_octet_count()`).
+fn fallback_octet(mut i: usize) -> u8 {
+    for table in ALL_REGION_OCTET_TABLES {
+        if i < table.len() {
+            return table[i];
+        }
+        i -= table.len();
+    }
+    unreachable!("fallback octet index out of range")
+}
+
 /// Calculate region boundaries proportionally for any topology size.
 ///
 /// This function divides the node range 0..total_nodes into 6 geographic
@@ -227,7 +259,8 @@ pub fn get_region_for_node(node_id: usize, total_nodes: usize) -> AsRegion {
 
 /// Dynamic AS-aware subnet manager for GML topologies.
 ///
-/// Handles any AS number by mapping it to a unique /24 subnet in the 10.0.0.0/8 range.
+/// Handles any AS number by mapping it to a unique, routable /24 subnet drawn
+/// from the region octet tables (AS 0-1199) or their union (AS >= 1200).
 #[derive(Debug)]
 pub struct AsSubnetManager {
     /// Maps AS number string to next available host number (1-254)
@@ -314,14 +347,19 @@ impl AsSubnetManager {
                 format!("{}.{}.{}", first, second, third)
             }
             AsRegion::Unknown => {
-                // Fallback to diverse range
-                let as_usize = as_num as usize;
-                format!(
-                    "{}.{}.{}",
-                    100 + (as_usize % 50),
-                    (as_usize / 50) % 256,
-                    (as_usize / (50 * 256)) % 256
-                )
+                // AS >= 1200 (GMLs larger than the hardcoded region ranges).
+                // Cycle the union of every region table so the first octet is
+                // always a routable RIR octet — never 127/8, 100.64/10 or any
+                // other reserved block — and pin the third octet to >= 1 so
+                // these /24s can never collide with the in-region /24s above,
+                // whose third octet is 0 for every AS below 1200. Each distinct
+                // AS still gets its own /24 (84 * 256 * 255 of them).
+                let n = fallback_octet_count();
+                let offset = as_num.saturating_sub(FALLBACK_AS_START) as usize;
+                let first = fallback_octet(offset % n);
+                let second = (offset / n) % 256;
+                let third = 1 + (offset / (n * 256)) % 255;
+                format!("{}.{}.{}", first, second, third)
             }
         };
 
@@ -444,11 +482,77 @@ mod tests {
             Some("122.12.0".to_string())
         );
 
-        // AS 65535 (Unknown) -> fallback: 100+(65535%50)=135, 65535/50%256=30, 65535/12800%256=5
+        // AS 1200 (first fallback AS, offset 0) -> union octet 0 (NA's 3),
+        // second 0, third pinned to 1 so it cannot collide with AS 0's 3.0.0.
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("1200"),
+            Some("3.0.1".to_string())
+        );
+
+        // AS 1227 used to map to loopback 127.24.0 (the >1200-node GML bug).
+        assert_eq!(
+            AsSubnetManager::get_subnet_base("1227"),
+            Some("62.0.1".to_string())
+        );
+
+        // AS 65535 (fallback, offset 64335): union octet 64335%84=75 (AF's 197),
+        // second (64335/84)%256=253, third 1+(64335/21504)%255=3
         assert_eq!(
             AsSubnetManager::get_subnet_base("65535"),
-            Some("135.30.5".to_string())
+            Some("197.253.3".to_string())
         );
+    }
+
+    /// Parse "a.b.c" into (a, b, c).
+    fn octets(subnet: &str) -> (u8, u8, u8) {
+        let v: Vec<u8> = subnet.split('.').map(|o| o.parse().unwrap()).collect();
+        assert_eq!(v.len(), 3, "subnet base must be three octets: {}", subnet);
+        (v[0], v[1], v[2])
+    }
+
+    /// True if the /24 lies in a block Shadow's DNS rejects or that is
+    /// otherwise reserved (RFC 1122/1918/3927/5737/6598, multicast, class E).
+    fn is_reserved(subnet: &str) -> bool {
+        let (a, b, c) = octets(subnet);
+        matches!(a, 0 | 10 | 127 | 224..=255)
+            || (a == 100 && (64..=127).contains(&b))
+            || (a == 169 && b == 254)
+            || (a == 172 && (16..=31).contains(&b))
+            || (a == 192 && b == 168)
+            || (a == 192 && b == 0 && (c == 0 || c == 2))
+            || (a == 198 && (b == 18 || b == 19))
+            || (a == 198 && b == 51 && c == 100)
+            || (a == 203 && b == 0 && c == 113)
+    }
+
+    #[test]
+    fn subnets_beyond_region_tables_avoid_reserved_ranges() {
+        // Regression: GMLs with >1200 nodes number AS 1200..N-1, which used to
+        // hit a fallback minting 127.x (loopback) and 100.64/10 (CGNAT) and
+        // killing the Shadow run at DNS registration. Every AS the generator
+        // can emit for a 10k-node topology must land in a routable /24.
+        for as_num in 0..=10_000u32 {
+            let subnet = AsSubnetManager::get_subnet_base(&as_num.to_string()).unwrap();
+            assert!(
+                !is_reserved(&subnet),
+                "AS {} mapped to reserved /24 {}",
+                as_num,
+                subnet
+            );
+        }
+    }
+
+    #[test]
+    fn subnets_are_distinct_across_large_as_range() {
+        // Every distinct AS must get its own /24 (the eclipse attacker fleet
+        // relies on /24 diversity), including across the 1199/1200 boundary.
+        let mut seen: HashMap<String, u32> = HashMap::new();
+        for as_num in 0..=10_000u32 {
+            let subnet = AsSubnetManager::get_subnet_base(&as_num.to_string()).unwrap();
+            if let Some(prev) = seen.insert(subnet.clone(), as_num) {
+                panic!("AS {} and AS {} share /24 {}", prev, as_num, subnet);
+            }
+        }
     }
 
     #[test]

@@ -1,0 +1,80 @@
+# Eclipse reproduction — CONVERGENCE run (drive an ESTABLISHED target to 12/12).
+# Moderate network converges fast; minimal honest floor (2 benign + 2 miners +
+# 6 seeds) so the honest re-injection that held the 585-node run at 9/12 is small;
+# 4h sim gives ~140 update_sync_search rounds to displace the last honest peer.
+# 200 attacker listeners (distinct /24s) + 2 injectors. Target established first.
+general:
+  stop_time: 4h
+  simulation_seed: 12345
+  bootstrap_end_time: 8m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 96
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..002}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [50, 50]
+    can_receive_distributions: true
+
+  # 2 benign relays only — a minimal honest floor
+  relay-{001..002}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 1s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # the unreachable (firewalled) victim; established FIRST
+  relay-900:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target
+
+  # 200 attacker LISTENERS (real monerod, distinct /24s), arriving after target
+  relay-{101..300}:
+    daemon: monerod
+    start_time: 5m
+    start_time_stagger: 1s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # 2 py-levin injectors (accelerate poisoning)
+  relay-{701..702}:
+    script: agents.eclipse_injector
+    start_time: 4m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "60"
+      trash_count: "0"
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 120s
+    attributes:
+      poll_interval: "45"
+      benign_sample: "2"

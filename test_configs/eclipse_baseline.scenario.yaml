@@ -1,0 +1,61 @@
+# Eclipse reproduction — BASELINE / CONTROL (no attackers).
+# Establishes the pre-attack state (paper Table 1): an unreachable (firewalled)
+# target forms 12 stable OUTGOING connections to benign reachable relays + seeds
+# and populates its peerlist. With no attacker nodes present, CTR must stay 0/12
+# and the target's outbound peers remain benign for the whole run. This is the
+# control the attack run is compared against.
+general:
+  stop_time: 90m
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 64              # capped: shared 256-core box, avoid memory/CPU spikes
+  native_preemption: true
+  reachable_fraction: 0.0          # only the (non-exempt) target is firewalled
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  # 30 benign reachable relays (the honest network around the victim)
+  relay-{001..030}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # the unreachable (firewalled, outbound-only) victim
+  relay-900:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 120s
+    attributes:
+      poll_interval: "60"
+      benign_sample: "20"

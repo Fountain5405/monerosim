@@ -155,11 +155,19 @@ impl NodeImplementation for MonerodImpl {
         }
 
         // Configurable options (merged daemon_defaults + per-agent daemon_options).
+        // Honor an explicit rpc-bind-ip override (e.g. 0.0.0.0 so a co-located
+        // sidecar can reach this node's RPC over the 127.0.0.1 loopback);
+        // otherwise bind the node's sim IP below. Skipping the hardcoded flag in
+        // that case avoids emitting --rpc-bind-ip twice (boost::program_options
+        // does not accept a duplicated single-value option).
+        let has_rpc_bind_ip = spec.daemon_options.contains_key("rpc-bind-ip");
         args.extend(options_to_args(spec.daemon_options));
 
         // Required network binding flags (agent-specific values).
+        if !has_rpc_bind_ip {
+            args.push(format!("--rpc-bind-ip={}", spec.agent_ip));
+        }
         args.extend(vec![
-            format!("--rpc-bind-ip={}", spec.agent_ip),
             format!("--rpc-bind-port={}", spec.rpc_port),
             "--confirm-external-bind".to_string(),
             "--rpc-access-control-origins=*".to_string(),

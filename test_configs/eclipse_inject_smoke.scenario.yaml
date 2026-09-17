@@ -1,0 +1,79 @@
+# Injector reproduction — SMOKE v2 (validate py-levin injector in Shadow).
+# 16 real attacker LISTENERS (distinct /24s, >=12 so the target's /24-diverse
+# outbound can be fully attacker) + 2 python injectors that flood dialers with
+# the listener records (NO trash). 8 benign relays. Firewalled target.
+general:
+  stop_time: 60m
+  simulation_seed: 12345
+  bootstrap_end_time: 5m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 48
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [34, 33, 33]
+    can_receive_distributions: true
+
+  # 8 benign reachable relays
+  relay-{001..008}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # 16 attacker LISTENERS (real monerod, distinct /24s) = stable endpoints
+  relay-{101..116}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # the unreachable (firewalled) victim
+  relay-900:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target
+
+  # 2 py-levin injectors (script-only Levin amplifiers), NO trash
+  relay-{301..302}:
+    script: agents.eclipse_injector
+    start_time: 5m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "20"
+      trash_count: "0"
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 120s
+    attributes:
+      poll_interval: "30"
+      benign_sample: "8"

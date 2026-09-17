@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" font-family="sans-serif">
+<rect width="720" height="260" fill="white"/>
+<text x="48" y="24" font-size="15" font-weight="bold">Target graylist benign records (B) over time</text>
+<line x1="48" y1="212" x2="672" y2="212" stroke="#888"/>
+<line x1="48" y1="48" x2="48" y2="212" stroke="#888"/>
+<line x1="48" y1="212.0" x2="672" y2="212.0" stroke="#eee"/>
+<text x="6" y="215.0" font-size="10" fill="#555">0.00</text>
+<line x1="48" y1="171.0" x2="672" y2="171.0" stroke="#eee"/>
+<text x="6" y="174.0" font-size="10" fill="#555">0.25</text>
+<line x1="48" y1="130.0" x2="672" y2="130.0" stroke="#eee"/>
+<text x="6" y="133.0" font-size="10" fill="#555">0.50</text>
+<line x1="48" y1="89.0" x2="672" y2="89.0" stroke="#eee"/>
+<text x="6" y="92.0" font-size="10" fill="#555">0.75</text>
+<line x1="48" y1="48.0" x2="672" y2="48.0" stroke="#eee"/>
+<text x="6" y="51.0" font-size="10" fill="#555">1.00</text>
+<text x="48.0" y="228" font-size="10" fill="#555" text-anchor="middle">13m</text>
+<text x="204.0" y="228" font-size="10" fill="#555" text-anchor="middle">18m</text>
+<text x="360.0" y="228" font-size="10" fill="#555" text-anchor="middle">24m</text>
+<text x="516.0" y="228" font-size="10" fill="#555" text-anchor="middle">29m</text>
+<text x="672.0" y="228" font-size="10" fill="#555" text-anchor="middle">35m</text>
+<text x="360" y="254" font-size="10" fill="#555" text-anchor="middle">sim time</text>
+<path d="M48.0,48.0 L62.8,48.0 L77.3,48.0 L91.8,48.0 L106.3,48.0 L120.8,48.0 L135.4,48.0 L149.9,48.0 L164.4,48.0 L178.9,48.0 L193.4,48.0 L207.9,48.0 L222.4,48.0 L236.9,48.0 L251.4,48.0 L265.9,48.0 L280.4,48.0 L294.9,48.0 L309.4,48.0 L323.9,48.0 L338.4,48.0 L352.9,48.0 L367.4,48.0 L381.9,48.0 L396.4,48.0 L410.9,48.0 L425.4,48.0 L439.9,48.0 L454.4,48.0 L468.9,48.0 L483.4,48.0 L498.0,48.0 L512.5,48.0 L527.0,48.0 L541.5,48.0 L556.0,48.0 L570.5,48.0 L585.0,48.0 L599.5,48.0 L614.0,48.0 L628.5,48.0 L643.0,48.0 L657.5,48.0 L672.0,48.0" fill="none" stroke="#8e44ad" stroke-width="2"/>
+<rect x="530" y="45" width="10" height="10" fill="#8e44ad"/>
+<text x="546" y="54" font-size="11">target graylist benign count B</text>
+</svg>

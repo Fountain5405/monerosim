@@ -1,0 +1,96 @@
+# Eclipse-at-birth (Moros) at FULL PAPER SCALE — ~1,190 hosts (the paper used
+# 1,200). This is BEYOND monerosim's previously validated ceiling (~1,011 hosts)
+# and past Shadow's documented ~1,000-host non-linear scheduler cliff
+# (docs/PERFORMANCE_AND_SCALE.md), so expect a slow wall-clock ratio (~0.2-0.28x
+# or worse) — this is a deliberately long run (est. ~20-30 h wall) meant to
+# capture the full picture: onboarding, eclipse-at-birth, AND an extended
+# steady-state window.
+#
+# Onboarding is BATCHED (start_time_stagger: auto) so the ~1,169 attacker monerods
+# come up in doubling waves (5,10,20,... max 200, 20m apart) rather than all at
+# once, avoiding the startup memory spike. All up by ~200-215m. The NEWBORN victim
+# (relay-900, overriding the attacker range) then joins at t=220m with an empty
+# peerlist and bootstraps into the (attacker-saturated) seeds -> first 12 outbound
+# attacker-controlled -> full 12/12 eclipse at paper scale. stop_time 320m leaves
+# ~100m of steady-state observation after birth to characterise the 11-12
+# oscillation the paper reports.
+#
+# Host budget (must stay <= 1200 GML nodes): 4 miners + 6 benign + 1170 relay
+# range (1169 attacker + relay-900 target override) + 2 injectors + 1 monitor
+# + 6 auto seeds = ~1189.
+general:
+  stop_time: 320m
+  simulation_seed: 12345
+  bootstrap_end_time: 225m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 128
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  relay-{001..006}:
+    daemon: monerod
+    start_time: 10s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # ~1,169 attacker listeners, BATCHED onboarding (doubling waves, 20m apart).
+  # relay-900 sits inside this range but is overridden below as the target.
+  relay-{101..1270}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # 2 injectors (light accelerators; population alone poisons the seeds at scale)
+  relay-{1301..1302}:
+    script: agents.eclipse_injector
+    start_time: 90m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "300"
+      trash_count: "0"
+
+  # NEWBORN victim joins the saturated ~1,169-node network with an empty peerlist
+  # (overrides the attacker-range entry for relay-900).
+  relay-900:
+    daemon: monerod
+    start_time: 220m
+    attributes:
+      eclipse_role: target
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 210m
+    attributes:
+      poll_interval: "60"
+      benign_sample: "6"

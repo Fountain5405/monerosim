@@ -1,0 +1,96 @@
+# Nyx with AGGRESSIVE network-wide peerlist poisoning (the paper's N-I/N-II/N-III,
+# what I loosely called "whistler-filling"). Same structure as eclipse_nyx_full
+# (1,199 benign + 1,000 distinct-/24 attackers + 1 ESTABLISHED victim on the 5k
+# GML) but the poisoning is turned up to emulate the paper:
+#   * 20 injectors (was 6), dial_interval 20s (was 120): they actively handshake
+#     every benign node AND the 6 seeds each cycle (seed targeting is the paper's
+#     N-I: seeds become "propaganda pipes"), inserting attacker records into
+#     honest whitelists, which then relay to the victim's graylist (N-II).
+#   * trash_count 4000: each injector's record pool is 1,000 real attacker
+#     endpoints + 4,000 trash, shuffled; responses fill honest+victim graylists
+#     toward the 5,000 cap, FIFO-EVICTING benign (the paper's B: 717 -> ~2).
+#   * stop_time 900m: trash makes update_sync_search waste attempts on
+#     unreachable records, so convergence is slower; give it a long window.
+#
+# KNOWN CEILING (documented honestly): the paper reaches 98.5% occupation / clean
+# 12/12 via PORT-DIVERSITY -- 1,000 IPs each announcing many (IP,port) entries =
+# ~5,000 *connectable* attacker records. Our attackers are real monerod on a
+# single port (18080), so we have at most ~1,000 connectable endpoints; the rest
+# of the graylist we can only fill with trash, which evicts benign but whose
+# picks fail to connect. So this run should climb well ABOVE the 7/12 organic
+# plateau and reproduce the benign-eviction (B->~0), but a clean 12/12 is not
+# architecturally reachable here. See gml_processing/AS_IP_ALLOCATION_NOTE.md
+# lineage + docs.
+general:
+  stop_time: 900m
+  simulation_seed: 12345
+  bootstrap_end_time: 210m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 128
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  relay-{2001..3199}:
+    daemon: monerod
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  relay-{101..1100}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # 20 injectors, aggressive: dial every benign + seed every 20s, flood graylists
+  # with 1,000 real endpoints + 4,000 trash (shuffled) to evict benign.
+  relay-{3301..3320}:
+    script: agents.eclipse_injector
+    start_time: 30m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "20"
+      trash_count: "4000"
+
+  relay-4000:
+    daemon: monerod
+    start_time: 0s
+    attributes:
+      eclipse_role: target
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 30m
+    attributes:
+      poll_interval: "60"
+      benign_sample: "10"

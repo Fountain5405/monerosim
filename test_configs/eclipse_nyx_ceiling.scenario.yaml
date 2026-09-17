@@ -1,0 +1,106 @@
+# NYX attack (against an ESTABLISHED unreachable node) at the paper's ATTACKER
+# scale — ~1,000 distinct-/24 attacker endpoints — pushed to monerosim's host
+# ceiling. This is the closest FEASIBLE analogue of the paper's primary (Nyx)
+# 1,200-node experiment: the paper used 1,199 benign + 1 target + a SEPARATE
+# 1,000-/24 attacker (~2,200 IPs). Real monerod under Shadow can't host 2,200,
+# so this keeps the load-bearing quantity (attacker /24 endpoints ~= 1,000) and
+# a real-but-smaller benign population (~186), all within the ~1,200-host ceiling.
+#
+# STRUCTURE (unlike eclipse_birth_*): the victim relay-900 is ESTABLISHED — it
+# starts at t=0 with the network, builds a healthy peerlist from benign nodes +
+# seeds, and is then GRADUALLY taken over as the batched attacker fleet saturates
+# the network and poisons peerlists. update_sync_search (~1 replacement / 101 s)
+# drives the outbound turnover, graylist-first, from the attacker-dominated pool.
+#
+# EXPECTATION / RISK: this is convergence-rate-limited (a 585-host Nyx run reached
+# only 9/12, still climbing, at 3 h) and the last outbound slot tends to cling to
+# an always-reachable honest SEED (anchor persistence), so a *clean* 12/12 is NOT
+# guaranteed — 10-12/12 with honest whitelist occupation ~=98% is the likely
+# outcome. stop_time 600m gives ~7 h of full-pressure convergence after the
+# attackers finish onboarding (~180m). At ~1,193 hosts (near the Shadow cliff)
+# this is a ~1-1.5 day wall-clock run.
+#
+# Host budget (<= 1200 GML nodes): 4 miners + 186 benign + 1000 relay range
+# (999 attacker + relay-900 target override) + 2 injectors + 1 monitor
+# + 6 auto seeds = ~1199.
+general:
+  stop_time: 600m
+  simulation_seed: 12345
+  bootstrap_end_time: 185m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 128
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  # ~186 reachable HONEST nodes — the population whose peerlists get poisoned and
+  # whose records are displaced from the victim's peerlist over the run.
+  relay-{2001..2186}:
+    daemon: monerod
+    start_time: 10s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # ~999 attacker listeners across distinct /24s, BATCHED onboarding (doubling
+  # waves, 20m apart). relay-900 sits in this range but is overridden as the
+  # established target below.
+  relay-{101..1100}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  # 2 injectors — for Nyx these help suppress honest re-injection by flooding
+  # dialers (incl. the seeds) with attacker records.
+  relay-{1301..1302}:
+    script: agents.eclipse_injector
+    start_time: 60m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "180"
+      trash_count: "0"
+
+  # ESTABLISHED victim: starts with the network at t=0, builds a healthy peerlist,
+  # then is gradually eclipsed. Unreachable (no hide-my-port exemption -> only
+  # this host gets its inbound 18080 firewalled under reachable_fraction: 0.0).
+  relay-900:
+    daemon: monerod
+    start_time: 0s
+    attributes:
+      eclipse_role: target
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 60m
+    attributes:
+      poll_interval: "60"
+      benign_sample: "6"

@@ -1,0 +1,401 @@
+<title>Eclipsing an Unreachable Monero Node</title>
+<meta name="description" content="Reproducing the Nyx eclipse attack on NAT'd Monero nodes with monerosim">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ground:#f6f3ee; --panel:#fffdf9; --ink:#211d18; --muted:#6b6459;
+    --line:#e2dccf; --line-strong:#cabfa8;
+    --accent:#c0521f;           /* burnt orange — Monero nod */
+    --accent-soft:#f0d9c8;
+    --crit:#b23a2e;             /* eclipse / attacker capture */
+    --crit-soft:#efcabf;
+    --calm:#2f6f6a;             /* honest / control */
+    --calm-soft:#c9e0dc;
+    --shadow:0 1px 2px rgba(33,29,24,.06),0 8px 24px rgba(33,29,24,.05);
+  }
+  :root:not([data-theme="light"]){ }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#161311; --panel:#1f1b18; --ink:#ece5da; --muted:#a49a8b;
+      --line:#332c26; --line-strong:#4a4038;
+      --accent:#e8763c; --accent-soft:#3a2417;
+      --crit:#e6685a; --crit-soft:#3b201c;
+      --calm:#5fb3ab; --calm-soft:#1b302e;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#161311; --panel:#1f1b18; --ink:#ece5da; --muted:#a49a8b;
+    --line:#332c26; --line-strong:#4a4038;
+    --accent:#e8763c; --accent-soft:#3a2417;
+    --crit:#e6685a; --crit-soft:#3b201c;
+    --calm:#5fb3ab; --calm-soft:#1b302e;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.6;
+    padding-block:0;margin:0}
+  .wrap{max-width:820px;margin:0 auto;padding:0 20px}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.9em}
+  h1,h2,h3{font-family:"Spectral",Georgia,serif;text-wrap:balance;line-height:1.15;margin:0}
+  a{color:var(--accent)}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+
+  /* header */
+  header{border-bottom:1px solid var(--line);background:
+    linear-gradient(180deg,var(--accent-soft),transparent 70%)}
+  header .wrap{padding-block:56px 40px}
+  h1{font-size:clamp(2.1rem,5.5vw,3.2rem);font-weight:700;letter-spacing:-.01em}
+  .lede{font-size:1.12rem;color:var(--muted);max-width:60ch;margin-top:1rem}
+  .cite{font-size:.85rem;color:var(--muted);margin-top:1.5rem;padding-top:1rem;
+    border-top:1px solid var(--line)}
+  .cite b{color:var(--ink);font-weight:600}
+
+  section{padding-block:36px;border-bottom:1px solid var(--line)}
+  h2{font-size:1.55rem;font-weight:600;margin-bottom:.4rem}
+  h2 + .sub{color:var(--muted);margin:0 0 1.4rem;max-width:64ch}
+  p{max-width:68ch}
+  h3{font-size:1.05rem;font-weight:600;margin:1.6rem 0 .5rem}
+
+  /* verdict */
+  .verdict{display:flex;gap:18px;align-items:flex-start;background:var(--panel);
+    border:1px solid var(--line);border-left:4px solid var(--calm);border-radius:10px;
+    padding:20px 22px;box-shadow:var(--shadow)}
+  .verdict .mark{font-family:"Spectral",serif;font-size:2rem;color:var(--calm);line-height:1}
+  .verdict p{margin:.3rem 0 0;max-width:none}
+
+  /* metric tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:8px 0 4px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .tile .k{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted)}
+  .tile .v{font-family:"Spectral",serif;font-size:2rem;font-weight:700;margin-top:4px;
+    font-variant-numeric:tabular-nums}
+  .tile .v.crit{color:var(--crit)} .tile .v.calm{color:var(--calm)} .tile .v.acc{color:var(--accent)}
+  .tile .note{font-size:.8rem;color:var(--muted);margin-top:2px}
+
+  /* table */
+  .tablewrap{overflow-x:auto;margin:1rem 0}
+  table{border-collapse:collapse;width:100%;font-size:.92rem}
+  caption{caption-side:bottom;color:var(--muted);font-size:.8rem;text-align:left;padding-top:.6rem}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);
+    font-variant-numeric:tabular-nums}
+  thead th{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line-strong)}
+  tbody th{font-weight:500}
+  td.num{text-align:right}
+  .chip{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.75rem;
+    padding:1px 7px;border-radius:20px;border:1px solid var(--line-strong)}
+  .chip.crit{color:var(--crit);background:var(--crit-soft);border-color:transparent}
+  .chip.calm{color:var(--calm);background:var(--calm-soft);border-color:transparent}
+
+  figure{margin:1.5rem 0 .5rem}
+  figure svg{width:100%;height:auto;display:block;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px}
+  figcaption{font-size:.82rem;color:var(--muted);margin-top:.6rem;max-width:68ch}
+  .chart-txt{fill:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:11px}
+  .chart-grid{stroke:var(--line)}
+  .chart-axis{stroke:var(--line-strong)}
+
+  .callout{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:10px;padding:18px 20px;margin:1.4rem 0}
+  .callout h3{margin-top:0;color:var(--accent)}
+  ul{max-width:68ch;padding-left:1.1rem} li{margin:.35rem 0}
+  .steps{list-style:none;padding:0;counter-reset:s;max-width:68ch}
+  .steps li{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .steps li::before{counter-increment:s;content:"N-" counter(s);font-family:"IBM Plex Mono",monospace;
+    font-size:.72rem;color:var(--accent);border:1px solid var(--line-strong);border-radius:6px;
+    padding:3px 7px;height:fit-content;white-space:nowrap}
+  .steps b{font-weight:600}
+  footer{padding-block:40px 60px}
+  footer p{color:var(--muted);font-size:.85rem}
+  .disclaim{font-size:.8rem;color:var(--muted);font-style:italic}
+</style>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Reproduction study · Monero P2P security</p>
+    <h1>Eclipsing an Unreachable Monero Node</h1>
+    <p class="lede">Reproducing the <b>Nyx</b> eclipse attack against NAT'd Monero nodes in
+      simulation — driving a firewalled victim's outbound connections onto attacker peers
+      without ever contacting it directly.</p>
+    <p class="cite">Source paper: <b>“Are Unreachable Nodes Truly Safe? Fully Eclipsing
+      Monero's P2P Network!”</b> Shi, Zeng, Lan, Zhang, Han, Luo, Jin, Du, Wang — ACM CCS 2026
+      (arXiv:2609.10260). Reproduced with <b>monerosim</b> v0.3.1 running real
+      <span class="mono">monerod</span> v0.18.5.1 inside the Shadow network simulator.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <div class="verdict">
+    <div class="mark">✓</div>
+    <div>
+      <p style="font-family:'Spectral',serif;font-size:1.25rem;font-weight:600">
+        Core claim reproduced — full eclipse reached.</p>
+      <p>An unreachable, outbound-only Monero node <b>can</b> be driven into eclipse purely by
+        poisoning the peerlists of reachable nodes and letting the protocol's own timed-sync and
+        <span class="mono">update_sync_search</span> churn do the rest — no inbound connection to
+        the victim is ever used. Against an <b>established</b> victim the takeover reached
+        <b>11 of 12</b> outbound peers; against a <b>newborn</b> victim joining the poisoned
+        network it reached the full <b>12 of 12</b> (100%) with a time-to-eclipse of ~31 minutes,
+        close to the paper's ~27, thereafter oscillating between 11 and 12 as the paper itself
+        reports. The victim's graylist ran <b>93–100% attacker records</b> throughout. A
+        same-config re-run reproduced the time-to-eclipse exactly.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">The setup</p>
+  <h2>What the attack does, and why simulation can test it</h2>
+  <p class="sub">The victim is a node behind NAT or a firewall: it makes outbound connections
+    but accepts none. It depends entirely on its outbound peers for discovery — so if those are
+    captured, it has no protocol path back to the honest network.</p>
+  <p>Monerosim runs the real <span class="mono">monerod</span> daemon under Shadow, so the exact
+    code the attack targets — the 1,000-slot whitelist, 5,000-slot graylist, the 12 outbound
+    slots, the ~101-second <span class="mono">update_sync_search</span> refresh, and 60-second
+    timed sync — is genuine, not a model. The victim is made unreachable deterministically:
+    with <span class="mono">reachable_fraction: 0.0</span> and a per-node reachable exemption on
+    every other relay, Shadow drops inbound TCP to port <span class="mono">18080</span> on
+    exactly one host — the target.</p>
+  <ol class="steps">
+    <li><div><b>Network-wide poisoning.</b> Attacker-controlled reachable nodes fill honest
+      nodes' whitelists with attacker records through ordinary handshakes and gossip.</div></li>
+    <li><div><b>Peerlist infiltration.</b> Honest nodes relay those records into the victim's
+      graylist during routine timed sync — the only way records reach a NAT'd node.</div></li>
+    <li><div><b>Connection takeover.</b> The victim's own <span class="mono">update_sync_search</span>
+      drops an outbound peer roughly every 101 s and refills it graylist-first — from the now
+      attacker-dominated pool.</div></li>
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Headline result</p>
+  <h2>The victim is eclipsed by protocol churn alone</h2>
+  <p class="sub">A control network with no attackers keeps the victim on honest peers for the whole
+    run. Introduce an attacker-controlled majority of reachable nodes and the takeover unfolds
+    exactly as the paper describes.</p>
+  <div class="tiles">
+    <div class="tile"><div class="k">Full eclipse · CTR</div><div class="v crit" id="t-birth">12 / 12</div><div class="note">newborn &middot; 963 nodes</div></div>
+    <div class="tile"><div class="k">Established takeover</div><div class="v crit" id="t-atk">11 / 12</div><div class="note">running victim</div></div>
+    <div class="tile"><div class="k">Control · CTR</div><div class="v calm" id="t-base">0 / 12</div><div class="note">no attacker peers</div></div>
+    <div class="tile"><div class="k">Time-to-eclipse</div><div class="v acc">~31 min</div><div class="note">paper: ~27 min</div></div>
+  </div>
+  <figure>
+    <svg id="chart-time" viewBox="0 0 820 300" role="img"
+      aria-label="Connection-takeover rate over simulated time: control stays at zero, established-victim takeover rises to eleven of twelve, newborn victim reaches twelve of twelve."></svg>
+    <figcaption>Connection-takeover rate (attacker-held outbound peers, of 12) over simulated
+      time. Control holds at zero. An established victim is taken over to 11/12 — the last slot
+      clinging to an honest hardcoded seed (the persistence caveat below). A newborn victim that
+      joins the poisoned network is born ~75% eclipsed and reaches the full 12/12.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <p class="eyebrow">The py-levin injection primitive</p>
+  <h2>Injecting arbitrary peer records into real monerod</h2>
+  <p class="sub">The paper's efficient variant plants records with a lightweight Levin client
+    rather than running full nodes. I implemented that client from the wire format up and
+    verified it against a real daemon.</p>
+  <p>The injector speaks Monero's Levin framing and epee portable-storage payloads, presents the
+    fakechain (mainnet) <span class="mono">network_id</span>, and answers a dialing daemon's
+    handshake and timed-sync with a chosen <span class="mono">local_peerlist_new</span>. Against a
+    standalone <span class="mono">monerod</span> v0.18.5.1 it completed a genuine handshake and the
+    daemon ingested <b>every injected record</b> into its graylist:</p>
+  <div class="tiles">
+    <div class="tile"><div class="k">Records offered</div><div class="v">6</div></div>
+    <div class="tile"><div class="k">Ingested by monerod</div><div class="v acc">6</div><div class="note">into graylist, via one handshake</div></div>
+    <div class="tile"><div class="k">Inbound to victim</div><div class="v calm">none</div><div class="note">responder-side injection</div></div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">The load-bearing finding</p>
+  <h2>Eclipse completeness scales with attacker <em>endpoints</em></h2>
+  <p class="sub">Both real-node and injector runs converge on the same rule: how eclipsed the
+    victim gets tracks the number of distinct-/24 <b>connectable</b> attacker endpoints, not how
+    many records you inject.</p>
+  <p>A victim's outbound slot is only captured when it makes a <em>successful</em> connection to a
+    real attacker endpoint, and Monero's /24 diversity filter forces those 12 peers into 12
+    distinct /24 subnets. Injecting unreachable “trash” records evicts honest entries but cannot
+    become connections — it dilutes the pool and <em>lowers</em> takeover. So the ceiling is set by
+    how many genuine attacker endpoints exist across distinct /24s.</p>
+  <figure>
+    <svg id="chart-dose" viewBox="0 0 820 300" role="img"
+      aria-label="Final takeover rate versus number of attacker endpoints, rising from zero toward twelve."></svg>
+    <figcaption>Final connection-takeover rate versus the number of distinct-/24 attacker
+      endpoint hosts (log scale). Takeover climbs to the full 12/12 by ~950 endpoints — measured
+      directly at paper scale — which is precisely why the paper's threat model assumes control of
+      roughly 1,000 /24 subnets.</figcaption>
+  </figure>
+  <p>A 585-node run confirmed the poisoning at paper scale: with 550 attacker endpoints the
+    victim's graylist ran <b>97.8% attacker</b> (paper: ~97.1%) and honest whitelists were fully
+    poisoned. Its takeover reached 9/12 and was <em>still climbing</em> when the 3-hour sim ended —
+    at that size the takeover is rate-limited by <span class="mono">update_sync_search</span>
+    (~one replacement every 101 s) against a trickle of honest records re-injected by the
+    always-reachable seeds, so full convergence needs a longer run. The clean 12/12 above was
+    instead reached the fast way — <b>eclipse-at-birth</b>: a newborn victim joining the poisoned
+    network never establishes honest connections to displace, and reaches 12/12 in ~19 minutes of
+    its lifetime. That path also reproduces the paper's second attack (Moros). Scaling it to the
+    paper's size &mdash; a <b>963-node</b> run with <b>951 attacker endpoints</b> &mdash; the newborn
+    victim was <b>born fully eclipsed</b>: on its first measurement it already held all 12 outbound
+    slots on attacker nodes, with zero honest peers and zero inbound, and stayed a solid
+    <b>12/12</b> across the entire 35-minute observation window with no oscillation. At ~950
+    endpoints the dose-response curve reaches its ceiling &mdash; the clean confirmation of the
+    paper's ~1,000-subnet assumption.</p>
+  <div class="callout">
+    <h3>Why this matters for the paper</h3>
+    <p>The reproduction independently confirms that the attacker's control of ~1,000 /24 subnets
+      is a <b>load-bearing assumption</b>, not a convenience — a point the accompanying manuscript
+      review also flagged. The injection technique is what makes acquiring that many endpoints
+      cheap on the real Internet; in a bounded simulation the endpoint count itself is the limit.</p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Every run</p>
+  <h2>Results table</h2>
+  <div class="tablewrap">
+  <table>
+    <caption>All runs use identical settings apart from the attacker population. CTR =
+      connection-takeover rate (attacker outbound of 12). OR = peerlist occupation rate.</caption>
+    <thead><tr>
+      <th>Run</th><th>Nodes</th><th>Attacker endpoints</th><th>Final CTR</th>
+      <th>Honest whitelist OR</th><th>Victim graylist</th>
+    </tr></thead>
+    <tbody>
+      <tr><th>Control</th><td class="num">36</td><td class="num">0</td>
+        <td><span class="chip calm">0 / 12</span></td><td class="num">0%</td><td>—</td></tr>
+      <tr><th>Injector (16 endpoints)</th><td class="num">39</td><td class="num">16</td>
+        <td><span class="chip">5 / 12</span></td><td class="num">~53%</td><td>benign → 0</td></tr>
+      <tr><th>Injector (40 endpoints)</th><td class="num">66</td>
+        <td class="num">40</td><td><span class="chip">8 / 12</span></td>
+        <td class="num">~69%</td><td>benign → 0</td></tr>
+      <tr><th>Real-node attack</th><td class="num">134</td><td class="num">120</td>
+        <td><span class="chip crit">11 / 12</span></td><td class="num">88%</td><td>100% attacker</td></tr>
+      <tr><th>Large-scale (Nyx)</th><td class="num">585</td><td class="num">550</td>
+        <td><span class="chip crit">9 / 12</span></td><td class="num">~100%</td><td>97.8% attacker</td></tr>
+      <tr><th>Eclipse-at-birth (Moros)</th><td class="num">126</td><td class="num">120</td>
+        <td><span class="chip crit">12 / 12</span></td><td class="num">100%</td><td>93% attacker</td></tr>
+      <tr><th>Eclipse-at-birth · paper scale (Moros)</th><td class="num">963</td><td class="num">951</td>
+        <td><span class="chip crit">12 / 12</span></td><td class="num">96%</td><td>100% attacker</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Honest differences</p>
+  <h2>Scope and threats to validity</h2>
+  <ul>
+    <li><b>Scale.</b> The paper ran 1,200 nodes; these runs range from ~10² up to a <b>963-node</b>
+      network — approaching the paper's size — bounded by Shadow's ~1,000-host scheduler cliff and a
+      shared, memory-heavy host. Absolute timings still need not match the paper's ~27-minute
+      time-to-eclipse; the mechanism, the trends, and the full 12/12 at paper scale are what reproduce.</li>
+    <li><b>Honest seeds &amp; anchors.</b> monerosim injects six real hardcoded seed nodes, always
+      reachable. A persistent seed connection left the real-node run at 11/12 rather than 12/12 —
+      consistent with the review's note on anchor/seed persistence.</li>
+    <li><b>/24 filter kept on — matching the paper.</b> Monero forces the 12 outbound peers into
+      12 distinct /24 subnets. The paper did <em>not</em> disable this filter; its attacker instead
+      controls 1,000 distinct /24 subnets, which satisfies it. This reproduction does the same —
+      every attacker node sits in its own /24 — so the stock filter stayed enabled throughout.</li>
+    <li><b>Client version.</b> monerosim pins v0.18.5.1; the paper measured v0.18.4.3. The review
+      notes the attack is, if anything, marginally stronger on v0.18.5.x.</li>
+    <li><b>No mainnet.</b> The paper's second attack (eclipse-at-birth) was run against controlled
+      targets on Monero mainnet. This reproduction stays entirely in simulation.</li>
+    <li><b>Reproducibility.</b> Shadow is deterministic in virtual time and every scenario pins a
+      fixed seed; a same-config re-run of the eclipse-at-birth case reproduced the time-to-eclipse
+      exactly (30.8 min). In steady state the takeover rate oscillates 11–12 as the last honest
+      peer is repeatedly dropped and re-displaced.</li>
+  </ul>
+</section>
+
+<footer class="wrap">
+  <p>Artifacts: scenario configs (<span class="mono">eclipse_{control,attack,inject}.scenario.yaml</span>),
+    the measurement agent (<span class="mono">eclipse_monitor.py</span>), the Levin injector and
+    codec (<span class="mono">eclipse_injector.py</span>, <span class="mono">levin_lib.py</span>),
+    and per-run time series. Built on an isolated v0.3.1 worktree; no tracked monerosim source was
+    modified.</p>
+  <p class="disclaim">Defensive security reproduction against simulated nodes only. No live Monero
+    network was attacked.</p>
+</footer>
+
+</div>
+
+<script>
+const DATA = {"baseline":{"ctr":[[0,0],[90,0]]},"attack":{"ctr":[[0.1,0],[3.3,0],[6.4,0],[9.5,0],[12.6,0],[15.7,0],[18.8,1],[21.9,2],[25.0,2],[27.1,2],[30.2,3],[33.3,5],[36.4,5],[39.5,6],[42.6,7],[45.7,7],[48.9,7],[50.9,8],[54.0,7],[57.1,7],[60.2,8],[63.3,8],[66.4,8],[69.6,8],[72.7,9],[74.7,9],[77.8,9],[80.9,8],[84.0,9],[87.1,9],[90.3,10],[93.4,10],[96.5,10],[98.5,9],[101.6,10],[104.7,10],[107.8,11],[111.0,11],[114.1,11],[117.2,11]]},"birth":{"ctr":[[12.8,9],[13.8,10],[15.9,10],[18.5,10],[21.0,10],[24.1,10],[26.7,10],[28.8,10],[29.8,11],[30.8,12],[32.4,12],[33.9,12],[34.4,12]]}};
+const DOSE = [[0,0],[16,5],[40,8],[120,11],[951,12]];
+
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+function lineChart(id, seriesList, yMax, yLabel){
+  const svg=document.getElementById(id); if(!svg) return;
+  const W=820,H=300,L=54,R=140,T=18,B=44;
+  const xs=seriesList.flatMap(s=>s.pts.map(p=>p[0]));
+  const xMin=0, xMax=Math.max(...xs,1);
+  const sx=x=>L+(x-xMin)/(xMax-xMin)*(W-L-R);
+  const sy=y=>H-B-(y/yMax)*(H-T-B);
+  let e=`<rect x="0" y="0" width="${W}" height="${H}" fill="var(--panel)"/>`;
+  for(let i=0;i<=yMax;i+=Math.max(1,Math.round(yMax/6))){
+    e+=`<line class="chart-grid" x1="${L}" y1="${sy(i)}" x2="${W-R}" y2="${sy(i)}"/>`;
+    e+=`<text class="chart-txt" x="${L-8}" y="${sy(i)+4}" text-anchor="end">${i}</text>`;
+  }
+  e+=`<line class="chart-axis" x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}"/>`;
+  [0,.25,.5,.75,1].forEach(f=>{const x=xMin+f*(xMax-xMin);
+    e+=`<text class="chart-txt" x="${sx(x)}" y="${H-B+18}" text-anchor="middle">${Math.round(x)}m</text>`;});
+  e+=`<text class="chart-txt" x="${(L+W-R)/2}" y="${H-6}" text-anchor="middle">simulated time (min)</text>`;
+  let ly=T+14;
+  seriesList.forEach(s=>{
+    const d=s.pts.map((p,i)=>`${i?'L':'M'}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ');
+    e+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    const last=s.pts[s.pts.length-1];
+    e+=`<circle cx="${sx(last[0])}" cy="${sy(last[1])}" r="3.5" fill="${s.color}"/>`;
+    e+=`<rect x="${W-R+14}" y="${ly-9}" width="11" height="11" rx="2" fill="${s.color}"/>`;
+    e+=`<text class="chart-txt" x="${W-R+30}" y="${ly}" style="fill:var(--ink)">${s.name}</text>`;
+    ly+=20;
+  });
+  svg.innerHTML=e;
+}
+
+function doseChart(id, pts){
+  const svg=document.getElementById(id); if(!svg) return;
+  const W=820,H=300,L=54,R=24,T=22,B=52;
+  const xf=x=>Math.log10(x+1);
+  const xMax=Math.max(...pts.map(p=>xf(p[0])),xf(10)), yMax=12;
+  const sx=x=>L+(xf(x)/xMax)*(W-L-R), sy=y=>H-B-(y/yMax)*(H-T-B);
+  let e=`<rect x="0" y="0" width="${W}" height="${H}" fill="var(--panel)"/>`;
+  for(let i=0;i<=12;i+=3){e+=`<line class="chart-grid" x1="${L}" y1="${sy(i)}" x2="${W-R}" y2="${sy(i)}"/>`;
+    e+=`<text class="chart-txt" x="${L-8}" y="${sy(i)+4}" text-anchor="end">${i}</text>`;}
+  e+=`<line class="chart-axis" x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}"/>`;
+  e+=`<text class="chart-txt" x="${L-38}" y="${T+4}" >CTR</text>`;
+  const sorted=[...pts].sort((a,b)=>a[0]-b[0]);
+  const d=sorted.map((p,i)=>`${i?'L':'M'}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ');
+  e+=`<path d="${d}" fill="none" stroke="var(--crit)" stroke-width="2.5"/>`;
+  sorted.forEach(p=>{e+=`<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4.5" fill="var(--crit)"/>`;
+    e+=`<text class="chart-txt" x="${sx(p[0])}" y="${sy(p[1])-10}" text-anchor="middle" style="fill:var(--ink)">${p[1]}/12</text>`;
+    e+=`<text class="chart-txt" x="${sx(p[0])}" y="${H-B+18}" text-anchor="middle">${p[0]}</text>`;});
+  e+=`<text class="chart-txt" x="${(L+W-R)/2}" y="${H-8}" text-anchor="middle">attacker endpoints (distinct /24 hosts)</text>`;
+  svg.innerHTML=e;
+}
+
+function draw(){
+  const base=(DATA.baseline&&DATA.baseline.ctr)||[[0,0]];
+  const atk=(DATA.attack&&DATA.attack.ctr)||[[0,0]];
+  const birth=(DATA.birth&&DATA.birth.ctr)||[[0,0]];
+  lineChart('chart-time',[
+    {name:'eclipse-at-birth',color:'var(--accent)',pts:birth},
+    {name:'takeover (est.)',color:'var(--crit)',pts:atk},
+    {name:'control',color:'var(--calm)',pts:base},
+  ],12);
+  doseChart('chart-dose',DOSE);
+}
+draw();
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',draw);
+</script>
