@@ -41,7 +41,7 @@
 # systemd-run --user (the harness memory-guard false-kills background tasks), and
 # CHECK shadow_run.log for "Failed to run" (run_sim.sh exits 0 even on init fail).
 general:
-  stop_time: 720m
+  stop_time: 840m   # onboard-first starts the attack ~110m later than the 10s-attack run (which hit 12/12 at sim 508m); ceiling raised for margin — harvest at CTR plateau
   simulation_seed: 12345
   bootstrap_end_time: 210m
   enable_dns_server: true
@@ -85,8 +85,10 @@ agents:
     attributes:
       eclipse_role: benign
       interval: "45"
+      peerlist_interval: "100000"   # RPC get_peer_list disabled (Shadow truncates it); full peerlist via the monerod file dump
     daemon_options:
       hide-my-port: false
+      peerlist-dump-file: "peerlist_dump.jsonl"   # patched monerod dumps full white+gray peerlist -> benign whitelist OR sample
 
   # 1,169 plain benign relays — the rest of the honest population (no sidecar).
   relay-{2031..3199}:
@@ -107,7 +109,7 @@ agents:
   # ~16k bounded dials/cycle (not the O(N^2) dial-all storm).
   relay-{101..1100}:
     script: agents.eclipse_fakepeer
-    start_time: 600s          # attack begins after the target is ESTABLISHED (paper: "existing node")
+    start_time: 120m          # ONBOARD-FIRST: attack starts only after all 1,199 benign onboard (~78m) + stabilize, so the target holds a full benign peerlist before eviction (paper's established victim; B 717->2)
     start_time_stagger: auto
     attributes:
       eclipse_role: attacker
@@ -126,7 +128,7 @@ agents:
   # whitelisted, then mostly hold) bounds dial load. Start with the fleet at 600s.
   relay-{3301..3320}:
     script: agents.eclipse_injector
-    start_time: 600s
+    start_time: 120m          # ONBOARD-FIRST: matches the fake-peer fleet start
     attributes:
       eclipse_role: injector
       listen_port: "18080"
@@ -142,6 +144,9 @@ agents:
     attributes:
       eclipse_role: target
       interval: "45"
+      peerlist_interval: "100000"   # RPC get_peer_list disabled (Shadow truncates the large response); full peerlist via the monerod file dump
+    daemon_options:
+      peerlist-dump-file: "peerlist_dump.jsonl"   # patched monerod dumps full white+gray peerlist every 30s -> B / OR (see eclipse_reproduction/PEERLIST_DUMP_PATCH.md)
 
   # Live pulse only: get_connections (CTR) + get_info (peerlist sizes), both tiny
   # over the wire. peerlist_every huge => it NEVER does the big over-the-wire

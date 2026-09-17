@@ -65,6 +65,16 @@ class EclipseProbeAgent(BaseAgent):
                 except (TypeError, ValueError):
                     pass
         self._role = a.get("eclipse_role", "?")
+        # Optional loopback: connect to the local daemon over 127.0.0.1 instead of
+        # this host's Shadow sim IP. A large RPC response (~650 KB get_peer_list)
+        # over the sim-IP path is truncated at ~128 KiB by Shadow's TCP delivery
+        # (IncompleteRead); the loopback interface bypasses that path. setup()
+        # already built self.daemon_rpc against the sim IP, so rebuild it here.
+        if str(a.get("loopback", "")).strip().lower() in ("1", "true", "yes", "on"):
+            self.rpc_host = "127.0.0.1"
+            self.daemon_rpc = MoneroRPC(self.rpc_host, self.daemon_rpc_port)
+            self.logger.info("EclipseProbe: loopback ON -> RPC via 127.0.0.1:%s",
+                             self.daemon_rpc_port)
         raw_dir = Path(self.shared_dir if self.shared_dir else ".") / "raw_probe"
         try:
             raw_dir.mkdir(parents=True, exist_ok=True)
@@ -95,18 +105,37 @@ class EclipseProbeAgent(BaseAgent):
 
     def _peerlist_loop(self):
         """Background: the big ~1 MB get_peer_list, own session + generous timeout,
-        so a slow/starved RPC never blocks the main connections/info capture."""
+        so a slow/starved RPC never blocks the main connections/info capture.
+        Streams the body and records bytes received, so a truncation or stall is
+        visible (bytes_recv vs content_length) rather than an opaque error."""
         url = self.daemon_rpc.url.replace("/json_rpc", "/get_peer_list")
         while not self._stop.is_set():
             sim_t = time.time() - SHADOW_EPOCH
+            t0 = time.time()
+            got = 0
+            clen = None
             try:
                 r = self._pl_rpc.session.post(
                     url, json={}, timeout=self._peerlist_timeout,
-                    headers={"Content-Type": "application/json"})
+                    headers={"Content-Type": "application/json"}, stream=True)
                 r.raise_for_status()
-                self._dump("peer_list", r.json(), sim_t)
+                clen = r.headers.get("Content-Length")
+                chunks = []
+                for chunk in r.iter_content(chunk_size=65536):
+                    if chunk:
+                        got += len(chunk)
+                        chunks.append(chunk)
+                data = json.loads(b"".join(chunks).decode("utf-8", "replace"))
+                self._dump("peer_list", data, sim_t)
+                self.logger.info("peer_list OK: %d bytes in %.1fs (clen=%s)",
+                                 got, time.time() - t0, clen)
             except Exception as e:  # noqa: BLE001
-                self._dump("peer_list_err", str(e)[:200], sim_t)
+                self._dump("peer_list_err",
+                           {"err": str(e)[:160], "bytes_recv": got,
+                            "content_length": clen,
+                            "elapsed_s": round(time.time() - t0, 1)}, sim_t)
+                self.logger.info("peer_list ERR after %.1fs, %d/%s bytes: %s",
+                                 time.time() - t0, got, clen, str(e)[:80])
             self._stop.wait(self._peerlist_interval)
 
     def run_iteration(self):
