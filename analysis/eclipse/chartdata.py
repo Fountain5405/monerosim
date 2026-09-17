@@ -3,7 +3,8 @@
 import json
 import sys
 
-RES = "/home/lever65/monerosim_work/eclipse_reproduction/results"
+import os
+RES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 RUNS = {
     "baseline": "20260913_141812_eclipse_baseline.expanded",
     "attack": "20260913_143528_eclipse_attack.expanded",

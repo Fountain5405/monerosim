@@ -104,7 +104,7 @@ outbound peers into 12 distinct /24s) — is capped at ~1,200.
   `eclipse_birth_stability` (963 hosts) and `eclipse_nyx_ceiling` (1,193 hosts,
   ~999 distinct-/24 attackers — captures the Nyx mechanism at attacker scale).
 - Nothing is scheduled/armed. The detached launcher
-  (`~/monerosim_work/eclipse_reproduction/scheduled/run_both.sh`) was stopped.
+  (`~/basement_monerosim/20260917_eclipse_reproduction/scheduled/run_both.sh`) was stopped.
 
 ---
 

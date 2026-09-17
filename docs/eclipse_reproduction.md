@@ -90,8 +90,8 @@ python -m scripts.scenario_parser test_configs/eclipse_birth.scenario.yaml \
     --no-build --no-monitor --no-clean --no-archive
 
 # 3. Analyse (finds the run's metrics from the run_sim stdout log, prints the
-#    paper-comparison table, writes CSV + SVG under eclipse_reproduction/results/)
-python eclipse_reproduction/analyze_run.py <path-to-run_sim-stdout.log>
+#    paper-comparison table, writes CSV + SVG under analysis/eclipse/results/)
+python analysis/eclipse/analyze_run.py <path-to-run_sim-stdout.log>
 ```
 
 Shadow is deterministic in virtual time and every scenario pins
@@ -135,7 +135,7 @@ relay leaves exactly one host — the target — firewalled by Shadow
   codec (from the wire format up) used by the injector. Validated against a real
   `monerod`: the daemon ingested every injected record via one genuine handshake.
 
-## Analysis harness (`eclipse_reproduction/`)
+## Analysis harness (`analysis/eclipse/`)
 
 - `analyze_run.py` — one-shot: parse a run_sim log → find metrics → print table +
   write CSV/SVG. `analyze.py` — the underlying analyzer. `inspect_metrics.py`,
