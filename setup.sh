@@ -1188,6 +1188,10 @@ install_hardfork_monerod() {
         exit 1
     fi
 
+    # Replace the slot rather than write through it: on a box where monerod-hf
+    # is a symlink alias (e.g. -> monerod-sim), a plain cp -f would silently
+    # overwrite the alias TARGET.
+    rm -f "$MONEROSIM_BIN/monerod-hf"
     cp -f "$hf_build_dir/build/release/bin/monerod" "$MONEROSIM_BIN/monerod-hf"
     {
         echo "binary: monerod-hf"
