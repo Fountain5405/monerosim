@@ -9,6 +9,7 @@ use crate::config::AgentDefinitions;
 use crate::gml_parser::GmlGraph;
 use crate::ip::{get_agent_ip, AgentType, AsSubnetManager, GlobalIpRegistry};
 use crate::shadow::ShadowHost;
+use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::script::write_wrapper_script;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -128,7 +129,21 @@ echo "Starting pure script agent {}..."
             current_dir, current_dir, venv_sp, home_dir, script_id, python_cmd
         );
 
-        let start_time = format!("{}s", 6 + i * 2);
+        // Honor the agent's configured start_time (the expanded config already
+        // carries each agent's final, staggered value) so pure-script agents can
+        // be scheduled like daemon/user agents — e.g. onboard-first eclipse
+        // attackers that must start only after the benign network is established.
+        // Fall back to the legacy stagger formula when no valid start_time is set.
+        let start_time = match pure_script_config
+            .start_time
+            .as_deref()
+            .and_then(|t| parse_duration_to_seconds(t).ok())
+        {
+            // Normalize to whole seconds ("Ns"), matching the daemon path, so a
+            // config value like "20m" becomes "1200s" (Shadow wants seconds here).
+            Some(secs) => format!("{}s", secs),
+            None => format!("{}s", 6 + i * 2),
+        };
         let process = write_wrapper_script(
             scripts_dir,
             &format!("{}_wrapper.sh", script_id),
