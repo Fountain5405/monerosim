@@ -2,8 +2,41 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Eclipse-attack reproduction (Nyx/Moros)**: replication of Shi et al., "Are
+  Unreachable Nodes Truly Safe? Fully Eclipsing Monero's P2P Network" (CCS 2026).
+  py-Levin fake-peer and trash-injector attackers (`agents/eclipse_fakepeer.py`,
+  `agents/eclipse_injector.py`, `agents/levin_lib.py`), the eclipse monitor/probe
+  agents, the `test_configs/eclipse_*.scenario.yaml` scenarios (54 to ~2,200 hosts)
+  and the analysis harness + derived per-run metrics under `analysis/eclipse/`.
+  Eclipse-at-birth measured 12/12 at 126 and 963 nodes; write-up in
+  `docs/eclipse_reproduction.md`. Raw run artifacts live outside the repo
+  (`~/basement_monerosim/20260917_eclipse_reproduction/`).
+- **`patches/monero-sim-peerlist-dump.patch`** (`--peerlist-dump-file`, off by
+  default, measurement only): monerod appends a JSONL snapshot of its own
+  white+gray peer list every 30 s, off the simulated network, because Shadow's
+  simulated TCP stalls the large un-chunked `get_peer_list` RPC response.
+  `./setup.sh --hardfork` now applies every vendored patch into `monerod-hf`
+  (per-patch tripwire + provenance); the primary `monerod` stays vanilla. The
+  eclipse scenarios run only their dumping nodes on `monerod-hf`. Rationale in
+  `docs/PEERLIST_DUMP_PATCH.md`.
+- `gml_processing/5000_nodes_caida_with_loops.gml`: regenerated 5,000-node CAIDA
+  topology (AS 0-4999) for >1,200-host runs.
+
 ### Fixed
 
+- Pure-script agents (script, no daemon/wallet) now honor their configured
+  `start_time` instead of a hardcoded `6+2i` s, so late-joining attackers and
+  monitors can be scheduled; unset falls back to the legacy formula. They are
+  also spread across distinct GML nodes/subnets rather than all on node 0.
+- A per-agent `rpc-bind-ip` in `daemon_options` no longer collides with the
+  orchestrator's hardcoded flag (a node can bind `0.0.0.0`).
+- AS numbers >= 1200 (GMLs with more than 1,200 nodes) mapped to loopback and
+  CGNAT first octets, which Shadow's DNS rejects at init. The fallback now cycles
+  the routable RIR octet tables and pins the third octet >= 1, so every AS gets
+  its own routable /24 disjoint from the AS 0-1199 subnets. IPs for AS < 1200
+  are unchanged (`gml_processing/AS_IP_ALLOCATION_NOTE.md`).
 - Agents' shared-file locks (transactions.json, node registry, user/miner info, DNS
   records) no longer take a blocking `flock`. Under Shadow a blocking flock runs
   natively on the simulator's worker thread and deadlocks the whole simulation when
