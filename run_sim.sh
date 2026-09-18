@@ -613,20 +613,21 @@ preflight_checks() {
     # monerod-sim: conditional capability gate, same philosophy as the cuprate
     # gate above — only fires when the config needs a patched daemon (names
     # monerod-sim/monerod-hf, sets fakechain-hard-forks, enables native mining,
-    # or dumps its peer list), so a stale or absent monerod-sim never blocks an
-    # ordinary run.
+    # dumps its peer list, or relays withheld blocks), so a stale or absent
+    # monerod-sim never blocks an ordinary run.
     # The --help probe is the real check: a vanilla rebuild copied over
     # monerod-sim would print the SAME version string, but cannot know the flags.
     # Dev override: MONEROSIM_SKIP_SIM_BINARY_CHECK=1 (MONEROSIM_SKIP_HARDFORK_CHECK=1 still honoured).
     local sim_bin="$HOME/.monerosim/bin/monerod-sim"
     [[ -x "$sim_bin" ]] || sim_bin="$HOME/.monerosim/bin/monerod-hf"
-    local needs_hf=0 needs_native=0 needs_peerlist=0
+    local needs_hf=0 needs_native=0 needs_peerlist=0 needs_relay=0
     grep -qE 'monerod-hf|monerod-sim|fakechain-hard-forks' "$CONFIG" 2>/dev/null && needs_hf=1
     grep -qE '^[[:space:]]*mode:[[:space:]]*native([[:space:]]|$)' "$CONFIG" 2>/dev/null && needs_native=1
     grep -qE '^[[:space:]]*peerlist-dump-file:' "$CONFIG" 2>/dev/null && needs_peerlist=1
+    grep -qE '^[[:space:]]*sim-relay-alt-blocks:' "$CONFIG" 2>/dev/null && needs_relay=1
     if [[ "${MONEROSIM_SKIP_SIM_BINARY_CHECK:-0}" == "1" || "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
         log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping monerod-sim check"
-    elif [[ $needs_hf == 1 || $needs_native == 1 || $needs_peerlist == 1 ]]; then
+    elif [[ $needs_hf == 1 || $needs_native == 1 || $needs_peerlist == 1 || $needs_relay == 1 ]]; then
         if [[ ! -x "$sim_bin" ]]; then
             log_err "Config needs the patched daemon but no monerod-sim at $HOME/.monerosim/bin/monerod-sim"
             log_info "Build it: ./setup.sh --sim-binary"
@@ -656,6 +657,13 @@ preflight_checks() {
         fi
         if [[ $needs_peerlist == 1 ]] && ! grep -q 'peerlist-dump-file' <<< "$sim_help"; then
             log_err "monerod-sim does not carry the peerlist-dump patch (pre-eclipse build?)"
+            log_info "Fix: ./setup.sh --sim-binary"
+            exit 1
+        fi
+        # Without the patch the attacker's withheld tie-block is never relayed, so
+        # the run would silently measure gamma~0 — a plausible-looking wrong result.
+        if [[ $needs_relay == 1 ]] && ! grep -q 'sim-relay-alt-blocks' <<< "$sim_help"; then
+            log_err "monerod-sim does not carry the selfish-relay patch (gamma would measure ~0)"
             log_info "Fix: ./setup.sh --sim-binary"
             exit 1
         fi
