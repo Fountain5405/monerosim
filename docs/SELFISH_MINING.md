@@ -447,7 +447,12 @@ winning-commit-path fix before it could score at all.
 transition of each variant, so a reviewer can check the rules above
 against the tests directly rather than re-deriving them.
 
-### 8.4 γ is lifted by fan-out, not topology position
+### 8.4 γ vs fan-out and topology position
+
+> **Heading corrected (2026-09-18).** This section was originally titled "γ is
+> lifted by fan-out, not topology position". The phase-2 measurement did **not**
+> find a fan-out lift, and phases 3 and 4 went on to refute position and relay as
+> well. See §9 for where the γ question actually landed.
 
 The original idea was to place a "detector" node near the honest miners and
 publisher bridges far away in the topology, so a released tie reaches some
@@ -565,10 +570,88 @@ Deferred to increment 3 (design spec §10):
 - **Colluding pool** (several miner daemons sharing one private tip) and
   **multiple independent attackers**.
 - **Timestamp games** — needs a template-time offset, a daemon knob.
-- **Precise topology-position control** — would need an orchestrator
-  feature to pin agents to specific GML vertices; §8.4 is the reframe that
-  works without it.
+- ~~**Precise topology-position control**~~ — shipped as `topology_node`
+  (§9.1); phase 3 measured it and it does not lift γ.
 - The generic `generic(lead_k, publish_n, trigger)` policy that would
   parametrize `trail_stubborn`/`equal_fork_stubborn`/`lead_stubborn` in one
   engine (phase-1 design spec §5) is also not implemented; each variant is
   its own branch.
+
+## 9. Phases 3–4: the γ levers, and why γ is structurally 0
+
+Phase 2 (§8) measured γ against bridge fan-out. Phases 3 and 4 built and measured
+the two levers that remained. **Both were built, both were measured, and neither
+lifts γ.** Numbers, tie tables and log forensics:
+`docs/20260912_selfish_mining_results.md`.
+
+### 9.1 Position — `topology_node` (phase 3)
+
+`topology_node: <gml node id>` pins an agent to a specific GML vertex, overriding
+index-based distribution (`src/topology/placement.rs`). Phase 3 gave γ its best
+shot with it: honest miners pinned far apart, the attacker's detector central,
+publisher bridges spread near each honest region, reaction dropped to 10 ms.
+Realized γ: **0.000 over 12 ties**. Position changes latencies, not arrival
+*order* — the reactive attacker's block is still second everywhere it lands.
+
+### 9.2 Relay — `--sim-relay-alt-blocks` (phase 4)
+
+Phase 3 hypothesised that a daemon-level relay change might be the missing piece,
+so `patches/monero-sim-selfish-relay.patch` provides one. Stock monerod relays a
+block it accepted onto the main chain; a locally-submitted block that lands as an
+equal-height *alternative* is accepted but never announced, so a withheld
+tie-block dies at the bridge that published it. The flag widens that relay
+condition.
+
+Properties, by design:
+
+- **Sim-only and default-off.** Absent the flag the daemon is byte-for-byte
+  stock in behaviour; the banner `*** SIMULATION: --sim-relay-alt-blocks is ON`
+  is logged at startup when it is set, so a run's logs always say which daemons
+  had it.
+- **Local-submission only.** It widens the relay condition solely for blocks the
+  daemon accepted from its own `submit_block` RPC or miner. A block received over
+  P2P is never re-relayed through this path, so a patched daemon cannot amplify
+  another node's alt-blocks and the change cannot cascade across the network.
+- **Orphans excluded.** The gate requires `!m_verifivation_failed &&
+  !m_already_exists && !m_marked_as_orphaned`, so a block whose parent is unknown
+  is not announced.
+- **Config-only wiring.** Set `daemon_options: {sim-relay-alt-blocks: true}` on
+  the agents that should publish; no code change per experiment.
+- **Requires `monerod-sim`.** Build with `./setup.sh --sim-binary`. `run_sim.sh`
+  preflight **fails the run** if a config sets the flag but the binary lacks the
+  patch — without that gate the tie-block would silently not relay and the run
+  would report γ ≈ 0, which is indistinguishable from the genuine result below.
+
+**Result: γ = 0.000 over 10 ties** — no movement at all versus phase 3. Verified
+in the logs rather than assumed: for 10/10 ties, all 3/3 honest nodes received
+the attacker's block (`Received NOTIFY_NEW_FLUFFY_BLOCK`) and accepted it
+(`BLOCK ADDED AS ALTERNATIVE`), then extended their own block anyway.
+
+**Why: relay is not adoption.** The patch changes what the *sender* announces.
+The tie-break lives in the *receiver*, which keeps whichever block it saw first
+at that height. Delivering the attacker's block faster or wider does not change
+the mind of a node that has already chosen.
+
+### 9.3 Running phase 4
+
+```bash
+./setup.sh --sim-binary                      # builds monerod-sim with all patches
+./run_sim.sh --config test_configs/selfish_phase4/gamma_relay.yaml --name p4_gamma_relay
+python3 scripts/selfish_mining_analysis.py archived_runs/<run_id>
+```
+
+The config is `selfish_phase3/gamma_lift.yaml` plus the flag on all five bridges,
+so relay is the only variable between the two runs.
+
+### 9.4 What would actually lift γ
+
+Only arrival order. The attacker's block must reach some honest miners *first*,
+which needs one-hop peer dominance over a chosen honest subset combined with
+near-zero reaction — i.e. a **peer-pinning** knob (`topology_node` sets position,
+not the peer graph, which `peer_mode: Dynamic` discovers). That knob does not
+exist yet and is the only remaining lever worth building for this question.
+
+The alternative — patching the *receiver* to prefer a later-arriving equal-height
+block — would lift γ by construction, but it changes consensus behaviour rather
+than relay plumbing, and a network running it would no longer be modelling
+Monero. It is deliberately not built.

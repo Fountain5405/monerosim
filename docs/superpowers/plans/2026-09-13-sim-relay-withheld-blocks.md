@@ -1,6 +1,18 @@
 # Sim-Only Relay of Withheld Blocks (γ>0 selfish mining) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **STATUS: COMPLETE (2026-09-18).** All tasks shipped. Tasks 1/2/4/5 landed
+> 2026-09-13 (commits 5e738591, 36c3bdd1, faa0c079, a07a65b1, plus the orphan-gate
+> fix 3eb76151); the checkboxes below were simply never ticked. Task 3's smoke and
+> Task 6's run/measure/document completed 2026-09-18 with run
+> `20260918_175657_p4_gamma_relay`.
+>
+> **Outcome: the flag works and does NOT lift γ** (0.000 over 10 ties; relay
+> verified reaching all honest nodes at 10/10 ties). Relay is not adoption — the
+> tie-break lives in the receiver. See §9 of `docs/SELFISH_MINING.md` and the
+> phase-4 section of `docs/20260912_selfish_mining_results.md`.
+
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a default-off `monerod-sim` flag `--sim-relay-alt-blocks` so an attacker's bridge daemon relays a *locally-submitted, equal-height* block (which stock monerod refuses to do), removing the last structural barrier to measuring γ>0 selfish mining.
 
@@ -97,7 +109,7 @@
 
 **⚠ RULING — deviation from spec §1 (documented, narrowing):** The spec's Design §1 lists a *second* change — skipping the `missed_txs` reorg early-return (line ~1324) for the alt-relay case. **This plan implements the gate relaxation only** and leaves the `missed_txs` guard and the `CHECK_AND_ASSERT_MES(!missed_txs.size(), ...)` untouched. Rationale: phase-4 attacker blocks are **empty** (no tx agents → `b.tx_hashes` empty → `missed_txs` empty), so both the guard (line 1324) and the assert (line 1329) are provable no-ops; the gate change alone fully enables the experiment. Relaxing *only* the guard (as §1 says) would not actually enable tx-bearing alt-block relay either, because the assert at line 1329 independently returns `false` when txs are missing — so the guard-skip is unobservable given empty blocks and incomplete given tx-bearing blocks. Gate-only is the minimal, smallest-blast-radius change. Tx-bearing alt-block relay is therefore explicitly **out of scope** (matching the spec's own "unvalidated caveat / risk" framing); enabling it later would require relaxing *both* the guard and the assert. Record this ruling in the SDD ledger.
 
-- [ ] **Step 1: Create the patch-generation worktree with fakechain+mining already applied**
+- [x] **Step 1: Create the patch-generation worktree with fakechain+mining already applied**
 
 The new patch must be diffed against source that already has the first two patches, because the fakechain patch also touches `cryptonote_core.cpp`; generating against vanilla could make patch #3 fail to apply after #1. Run:
 ```bash
@@ -112,7 +124,7 @@ echo "GEN=$GEN"   # note this path; used by later steps
 ```
 Expected: two clean `git apply`s and a commit. If either apply fails, the pin moved — stop and reconcile before continuing.
 
-- [ ] **Step 2: Edit A — declare the `arg_descriptor`** in `$GEN/src/cryptonote_core/cryptonote_core.cpp`
+- [x] **Step 2: Edit A — declare the `arg_descriptor`** in `$GEN/src/cryptonote_core/cryptonote_core.cpp`
 
 Find the existing `arg_fluffy_blocks` descriptor (a bool arg, ~line 177) and add the new descriptor immediately after it. Anchor:
 ```cpp
@@ -137,14 +149,14 @@ Insert after it:
   };
 ```
 
-- [ ] **Step 3: Edit B — register the arg in `init_options`** (same file)
+- [x] **Step 3: Edit B — register the arg in `init_options`** (same file)
 
 In `cryptonote::core::init_options(...)`, find the line `command_line::add_arg(desc, arg_regtest_on);` and add after it:
 ```cpp
     command_line::add_arg(desc, arg_sim_relay_alt_blocks);
 ```
 
-- [ ] **Step 4: Edit C — read the arg in `init`** (same file)
+- [x] **Step 4: Edit C — read the arg in `init`** (same file)
 
 In `cryptonote::core::init(...)`, find the line `bool keep_fakechain = command_line::get_arg(vm, arg_keep_fakechain);` and add after it:
 ```cpp
@@ -153,7 +165,7 @@ In `cryptonote::core::init(...)`, find the line `bool keep_fakechain = command_l
       MGINFO_RED("*** SIMULATION: --sim-relay-alt-blocks is ON. This daemon will relay locally-submitted alternative (equal-height) blocks. Simulation/research only. ***");
 ```
 
-- [ ] **Step 5: Edit D — declare the member** in `$GEN/src/cryptonote_core/cryptonote_core.h`
+- [x] **Step 5: Edit D — declare the member** in `$GEN/src/cryptonote_core/cryptonote_core.h`
 
 Find the private member `bool m_offline;` (~line 1125) and add after it (in-class default initializer, matching the file's style, e.g. `m_test_drop_download = true;` at line 1069):
 ```cpp
@@ -161,7 +173,7 @@ Find the private member `bool m_offline;` (~line 1125) and add after it (in-clas
 ```
 (Indentation is 5 leading spaces, matching `m_offline`.)
 
-- [ ] **Step 6: Edit E — relax the relay gate** in `$GEN/src/cryptonote_core/cryptonote_core.cpp`
+- [x] **Step 6: Edit E — relax the relay gate** in `$GEN/src/cryptonote_core/cryptonote_core.cpp`
 
 In `handle_block_found`, change the single gate line:
 ```cpp
@@ -174,7 +186,7 @@ to:
 ```
 (Preserve the typo `m_verifivation_failed` — it is the real field name. An accepted alt-block is signalled by *absence* of failure/exists, since there is no `m_added_to_alt_chain` field.)
 
-- [ ] **Step 7: Generate the patch**
+- [x] **Step 7: Generate the patch**
 ```bash
 git -C "$GEN" diff HEAD -- src/cryptonote_core/cryptonote_core.cpp src/cryptonote_core/cryptonote_core.h \
   > "$PWD/patches/monero-sim-selfish-relay.patch"
@@ -182,7 +194,7 @@ wc -l "$PWD/patches/monero-sim-selfish-relay.patch"   # sanity: non-empty, ~40-6
 ```
 Spot-read the patch: it must contain exactly the five edits above and nothing else (no fakechain/mining lines — those are in the baseline commit, so `diff HEAD` excludes them).
 
-- [ ] **Step 8: Verify it applies as patch #3 in the real order**
+- [x] **Step 8: Verify it applies as patch #3 in the real order**
 ```bash
 V=$(mktemp -d)/verify
 git -C sibling_repos/monero worktree add --detach "$V" "$PIN"
@@ -192,7 +204,7 @@ git -C "$V" apply --check "$PWD/patches/monero-sim-selfish-relay.patch"   && ech
 ```
 Expected: `PATCH #3 APPLIES CLEAN`. This is the same `git apply --check` the setup.sh tripwire runs, so a pass here means the build tripwire will pass.
 
-- [ ] **Step 9: Clean up the scratch worktrees**
+- [x] **Step 9: Clean up the scratch worktrees**
 ```bash
 git -C sibling_repos/monero worktree remove --force "$GEN"
 git -C sibling_repos/monero worktree remove --force "$V"
@@ -200,7 +212,7 @@ git -C sibling_repos/monero worktree prune
 git -C sibling_repos/monero status --short   # expect clean: sibling monero stays vanilla
 ```
 
-- [ ] **Step 10: Commit the patch**
+- [x] **Step 10: Commit the patch**
 ```bash
 git add patches/monero-sim-selfish-relay.patch
 git commit -m "feat(patch): sim-only --sim-relay-alt-blocks for gamma>0 selfish mining
@@ -223,7 +235,7 @@ left out of scope). Applies as patch #3 after fakechain+mining."
 - Consumes: `patches/monero-sim-selfish-relay.patch` (Task 1).
 - Produces: `install_sim_monerod` now applies three patches in order; the existing `git apply --check` tripwire (lines ~1178-1185) gates the new one automatically. Consumed by Task 3 (build).
 
-- [ ] **Step 1: Add the patch to the array**
+- [x] **Step 1: Add the patch to the array**
 
 Find (setup.sh ~line 1138):
 ```bash
@@ -241,7 +253,7 @@ Change to:
     )
 ```
 
-- [ ] **Step 2: Extend the comment block**
+- [x] **Step 2: Extend the comment block**
 
 Find (setup.sh ~line 1134-1135):
 ```bash
@@ -253,7 +265,7 @@ Add a third line after them:
     #   patches/monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)
 ```
 
-- [ ] **Step 3: Verify setup.sh still parses and the array is correct**
+- [x] **Step 3: Verify setup.sh still parses and the array is correct**
 ```bash
 cd /home/lever65/monerosim_scale/monerosim
 bash -n setup.sh && echo "SYNTAX OK"
@@ -262,7 +274,7 @@ grep -n "SCRIPT_DIR/patches/monero-sim-selfish-relay.patch" setup.sh
 ```
 Expected: `SYNTAX OK` and exactly one grep hit for the new patch line inside the array.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 ```bash
 git add setup.sh
 git commit -m "build(setup): apply monero-sim-selfish-relay.patch in install_sim_monerod
@@ -283,20 +295,20 @@ behavior change until a config opts in via --sim-relay-alt-blocks."
 - Consumes: the patched build pipeline (Tasks 1-2).
 - Produces: a `monerod-sim` whose `--help` lists `--sim-relay-alt-blocks` (plus the pre-existing `--sim-hash-interval-ms` / `--fakechain-hard-forks`). Consumed by Task 6 (the run).
 
-- [ ] **Step 1: Pre-flight — confirm the box is free of ALL live sims**
+- [x] **Step 1: Pre-flight — confirm the box is free of ALL live sims**
 ```bash
 pgrep -u lever65 -x shadow && echo "BUSY — do NOT rebuild" || echo "clear to build"
 ```
 Expected: `clear to build`. If BUSY (mine or the other lever65 agent's), STOP — wait or ask the user. Do not proceed.
 
-- [ ] **Step 2: Build (nice'd; the tripwire gates the patch)**
+- [x] **Step 2: Build (nice'd; the tripwire gates the patch)**
 ```bash
 cd /home/lever65/monerosim_scale/monerosim
 nice -n10 ./setup.sh --sim-binary 2>&1 | tail -40
 ```
 Expected: reaches `Installed monerod-sim to .../monerod-sim (alias monerod-hf)`. If a `git apply --check` tripwire fails for the new patch, Task 1's patch is stale — return to Task 1. (Build takes several minutes; ccache keeps it cheap.)
 
-- [ ] **Step 3: Smoke-test the flag on both the binary and the alias**
+- [x] **Step 3: Smoke-test the flag on both the binary and the alias**
 ```bash
 ~/.monerosim/bin/monerod-sim --help 2>&1 | grep -- "--sim-relay-alt-blocks" && echo "FLAG PRESENT (monerod-sim)"
 ~/.monerosim/bin/monerod-hf  --help 2>&1 | grep -- "--sim-relay-alt-blocks" && echo "FLAG PRESENT (monerod-hf symlink)"
@@ -318,7 +330,7 @@ Expected: all four echoes fire. (No commit — this task produces a binary, not 
 - Consumes: `config_loader::load_config(&Path) -> Result<Config>` and `orchestrator::generate_agent_shadow_config(&Config, &Path) -> Result<()>` (the same library APIs `tests/orchestrator_selfish.rs` uses); `config.general.shared_dir: String` (overridable field).
 - Produces: a passing test proving `daemon: monerod-hf` + `daemon_options: {sim-relay-alt-blocks: true}` emits `--sim-relay-alt-blocks` and the `monerod-hf` binary path in the generated Shadow YAML.
 
-- [ ] **Step 1: Create the fixture from the known-valid selfish fixture**
+- [x] **Step 1: Create the fixture from the known-valid selfish fixture**
 
 Copy `tests/fixtures/selfish.yaml` to `tests/fixtures/selfish_relay.yaml`, then edit the copy: for **every** agent whose `script:` is `agents.selfish_bridge`, set `daemon: monerod-hf` and add a `daemon_options:` entry `sim-relay-alt-blocks: true` (create the `daemon_options:` map if the bridge doesn't already have one; if it does, add the key alongside the existing options). Leave the miners (`agents.selfish_miner` / `agents.autonomous_miner`) and everything else untouched. Run:
 ```bash
@@ -330,7 +342,7 @@ grep -c "sim-relay-alt-blocks" tests/fixtures/selfish_relay.yaml  # == number of
 ```
 Expected: the two counts are equal and match the bridge count in the fixture.
 
-- [ ] **Step 2: Write the failing test** — create `tests/orchestrator_selfish_relay.rs`:
+- [x] **Step 2: Write the failing test** — create `tests/orchestrator_selfish_relay.rs`:
 ```rust
 // tests/orchestrator_selfish_relay.rs
 // Proves the config-only wiring for the sim-relay-alt-blocks flag: a bridge with
@@ -373,26 +385,26 @@ fn selfish_relay_bridge_emits_flag_and_patched_binary() {
 }
 ```
 
-- [ ] **Step 3: Run it to see it pass (wiring already exists in the orchestrator)**
+- [x] **Step 3: Run it to see it pass (wiring already exists in the orchestrator)**
 ```bash
 cargo test --test orchestrator_selfish_relay -- --nocapture
 ```
 Expected: PASS. The generic wiring (`options_to_args` → bare flag; `resolve_binary_path_for_shadow` → `~/.monerosim/bin/monerod-hf`) already exists, so this test should pass on first run. If it FAILS on the flag assertion, inspect the generated `shadow_agents.yaml` — a filter may be stripping `sim-*` flags (would need investigation, not expected). If it fails to load the fixture, revisit Step 1.
 
-- [ ] **Step 4: Confirm the four goldens are byte-identical (no regression)**
+- [x] **Step 4: Confirm the four goldens are byte-identical (no regression)**
 ```bash
 cargo test --test orchestrator_selfish --test orchestrator_native 2>&1 | tail -5
 cargo test smoke quickstart 2>&1 | tail -5
 ```
 Expected: all golden tests PASS (no `UPDATE_GOLDEN`). Because no production Rust changed and phase-4 uses a new config, the goldens cannot have changed.
 
-- [ ] **Step 5: Full suite green**
+- [x] **Step 5: Full suite green**
 ```bash
 cargo test 2>&1 | tail -15   # NOTE: no global MONEROSIM_SKIP_SIM_BINARY_CHECK
 ```
 Expected: all Rust tests pass, including `probe_caches_and_handles_missing_binary`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 ```bash
 git add tests/fixtures/selfish_relay.yaml tests/orchestrator_selfish_relay.rs
 git commit -m "test(selfish): config-gen test for --sim-relay-alt-blocks wiring
@@ -413,7 +425,7 @@ unchanged (config-only, opt-in)."
 - Consumes: the `topology_node` placement knob (already shipped); the relay flag wiring (Tasks 1-4); the 1200-node GML `gml_processing/1200_nodes_caida_with_loops.gml`.
 - Produces: a runnable phase-4 config combining relay + placement. Consumed by Task 6.
 
-- [ ] **Step 1: Author the config** — mirror `test_configs/selfish_phase3/gamma_lift.yaml` exactly, with ONE class of change: every bridge (`bridge-1`..`bridge-5`) gets `daemon: monerod-hf` and its `daemon_options` gains `sim-relay-alt-blocks: true` (keeping `out-peers: 16`). Miners, honest nodes, relays, topology_node placements, `reaction_delay_ms: 10`, `alpha`/hashrates, `fixed-difficulty: 1200`, `eyal_sirer`, seed, stop_time all stay identical to phase 3. Write:
+- [x] **Step 1: Author the config** — mirror `test_configs/selfish_phase3/gamma_lift.yaml` exactly, with ONE class of change: every bridge (`bridge-1`..`bridge-5`) gets `daemon: monerod-hf` and its `daemon_options` gains `sim-relay-alt-blocks: true` (keeping `out-peers: 16`). Miners, honest nodes, relays, topology_node placements, `reaction_delay_ms: 10`, `alpha`/hashrates, `fixed-difficulty: 1200`, `eyal_sirer`, seed, stop_time all stay identical to phase 3. Write:
 ```yaml
 # Selfish-mining PHASE 4: gamma vs RELAY (the sim-only --sim-relay-alt-blocks flag)
 # + per-agent placement (topology_node). Phase 3 proved placement alone can't lift
@@ -568,7 +580,7 @@ agents:
     poll_interval: 300
 ```
 
-- [ ] **Step 2: Validate it generates + carries the flag on exactly the bridges**
+- [x] **Step 2: Validate it generates + carries the flag on exactly the bridges**
 ```bash
 cd /home/lever65/monerosim_scale/monerosim
 cargo build --release 2>&1 | tail -3
@@ -583,7 +595,7 @@ grep -c ".monerosim/bin/monerod-sim" "$GENYAML"  # expect 5 (2 miners via native
 ```
 Expected: `--sim-relay-alt-blocks` appears exactly 5 times (bridges only); `monerod-hf` appears 5 times. NOTE: the bare binary may print a non-fatal error removing a pre-existing shared dir *after* generating — the YAML under `$OUT` is what matters (per the known monerosim-generate quirk); the `|| true` tolerates it. Do NOT point `--output` at a shared/default path on this shared box; the `mktemp -d` keeps it isolated.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 ```bash
 git add test_configs/selfish_phase4/gamma_relay.yaml
 git commit -m "exp(selfish): phase-4 config — relay flag + placement (gamma vs relay)
@@ -607,13 +619,13 @@ whether relay (barrier 2 removed) + placement lifts realized gamma above ~0."
 - Consumes: the built `monerod-sim` (Task 3), the phase-4 config (Task 5), `scripts/selfish_mining_analysis.py` (unchanged).
 - Produces: a realized-γ measurement + honest write-up.
 
-- [ ] **Step 1: Pre-flight**
+- [x] **Step 1: Pre-flight**
 ```bash
 pgrep -u lever65 -x shadow && echo "BUSY — wait" || echo "clear to run"
 ```
 Expected: `clear to run`. If another lever65 agent's sim is live, wait or ask before launching (co-tenancy just adds wall-clock noise to a running sim, but launching a heavy 1200-node run alongside theirs is a courtesy check).
 
-- [ ] **Step 2: Launch the run (nice'd, named, own run dir)**
+- [x] **Step 2: Launch the run (nice'd, named, own run dir)**
 ```bash
 cd /home/lever65/monerosim_scale/monerosim
 nice -n10 ./run_sim.sh --config test_configs/selfish_phase4/gamma_relay.yaml --name selfish_phase4_relay --analyze
@@ -622,22 +634,22 @@ ls -t archived_runs | head -1
 ```
 Run this in the background (it's long). Track the run via `archived_runs/<run_id>/.owner_pid` — manage ONLY that PID. Check progress via the run's own `monerosim.log` / `shadow_output/*.log` (backgrounded `| tail` may show nothing until exit).
 
-- [ ] **Step 3: Measure realized γ + attacker share**
+- [x] **Step 3: Measure realized γ + attacker share**
 ```bash
 RUN=$(ls -t archived_runs | head -1)
 python3 scripts/selfish_mining_analysis.py archived_runs/"$RUN"/... 2>&1 | tail -40
 ```
 (Use the same invocation phase-3 used; the analysis already computes attacker share + honest-resolved tie wins = realized γ. No analysis change.)
 
-- [ ] **Step 4: Forensic — did the withheld block actually reach honest daemons?**
+- [x] **Step 4: Forensic — did the withheld block actually reach honest daemons?**
 
 Phase-2's forensic found 0/8 tie-blocks reaching honest daemons (stock never relays). With the flag, the attacker's relayed alt-block should now appear in honest daemon logs. Grep honest daemon logs (honest-001/002/003) for the attacker's block hashes / alt-block acceptance around tie heights. Report the count reached (expect > 0 now).
 
-- [ ] **Step 5: Write it up honestly**
+- [x] **Step 5: Write it up honestly**
 
 In `docs/20260912_selfish_mining_results.md`, add a **Phase 4** section: the realized γ, attacker share vs the Eyal–Sirer γ curve, the forensic (blocks now reaching honest nodes), and the conclusion — whether relay + placement lifts γ above the phase-1/2/3 ≈0. **Report either outcome faithfully**: if relay works but the reactive attacker still can't win first-seen races, that itself is the result (relay necessary, timing still binds). In `docs/SELFISH_MINING.md`, document the `--sim-relay-alt-blocks` flag (what it does, default-off, sim-only, the local-submission-only safety property, config-only wiring).
 
-- [ ] **Step 6: Commit + update memory**
+- [x] **Step 6: Commit + update memory**
 ```bash
 git add docs/20260912_selfish_mining_results.md docs/SELFISH_MINING.md
 git commit -m "exp(selfish): phase-4 result — gamma vs relay (realized gamma = <VALUE>)

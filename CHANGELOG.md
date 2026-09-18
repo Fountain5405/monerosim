@@ -4,6 +4,16 @@
 
 ### Added
 
+- **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
+  default, sim-only): makes a daemon relay a **locally-submitted** block that was
+  accepted only as an equal-height alternative, which stock monerod drops silently.
+  Blocks received over P2P are never re-relayed through this path, so the change
+  cannot cascade. Enables γ>0 selfish-mining experiments; wired per-agent via
+  `daemon_options: {sim-relay-alt-blocks: true}` and gated at preflight so a config
+  that needs it cannot run against a binary without it. Measured result: it does
+  **not** lift γ (`docs/SELFISH_MINING.md` §9).
+- **Per-agent topology placement**: `topology_node: <gml node id>` pins an agent to
+  a chosen GML vertex (`src/topology/placement.rs`).
 - **Eclipse-attack reproduction (Nyx/Moros)**: replication of Shi et al., "Are
   Unreachable Nodes Truly Safe? Fully Eclipsing Monero's P2P Network" (CCS 2026).
   py-Levin fake-peer and trash-injector attackers (`agents/eclipse_fakepeer.py`,

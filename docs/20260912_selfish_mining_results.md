@@ -271,6 +271,67 @@ correct, general capability (useful for eclipse/partition/latency experiments) �
 it simply is not the missing piece for selfish-mining γ. A peer-pinning knob is
 the next lever if the γ question is pursued further.
 
+## Phase 4 — γ vs relay (the sim-only `--sim-relay-alt-blocks` flag)
+
+Phase 3 named two levers that could plausibly lift γ: (1) one-hop peer dominance
+with near-zero reaction, and (2) a daemon-level relay change so the attacker's
+second-arriving equal-height block is still adopted/relayed. Lever 2 was built as
+`patches/monero-sim-selfish-relay.patch` — a sim-only, default-off flag that makes
+a daemon relay a **locally-submitted** block even when it is accepted only as an
+alternative (equal-height) block. It never affects P2P-received blocks. Phase 4 is
+`gamma_lift.yaml` with that flag on the five bridges and nothing else changed, so
+relay is the only variable versus phase 3.
+
+| run-dir | config | change vs phase 3 | attacker share | realized γ (ties) | result |
+|---|---|---|---|---|---|
+| `20260918_175657_p4_gamma_relay` | `selfish_phase4/gamma_relay.yaml` | `sim-relay-alt-blocks: true` on all 5 bridges | 0.528 | 0.000 (10) | γ **not** lifted |
+
+### What it shows
+
+**Relay does not lift γ either.** Realized γ was **0.000** — 0 of 10
+honest-resolved ties won — identical to phase 3's 0.000 of 12, despite the
+attacker's tie-block now being actively relayed into the honest network.
+
+**This is a real measurement, not an untested code path.** That distinction
+matters for a negative result, so it was verified in the daemon logs rather than
+assumed. All five bridges logged the patch's startup banner (and only the
+bridges did). For every one of the **10/10** tie heights, all **3/3** honest
+nodes logged `Received NOTIFY_NEW_FLUFFY_BLOCK <attacker hash>` from a bridge IP
+and then `----- BLOCK ADDED AS ALTERNATIVE ON HEIGHT <n>` — the attacker's block
+arrived, verified, and was accepted as a valid alternative. No `Invalid`,
+`rejected`, `switched` or reorg line appears near any of those hashes. The run
+uses `log-level: monitor`, which maps to `net.p2p.msg:INFO` + `blockchain:INFO`
+— exactly the categories that emit those lines — so this is positive evidence,
+not an argument from silence.
+
+**Why it fails: relay is not adoption.** The patch changes what the *sender*
+does (relay a locally-submitted alt-block). The tie-break lives in the
+*receiver*: monerod keeps the block it saw first at a given height and files any
+later equal-height block on an alternative chain without switching. The honest
+nodes in this run did exactly that — accepted the attacker's block, cached it as
+an alt, and went on extending their own. Removing the relay barrier simply
+delivers the attacker's block to nodes that have already made up their minds.
+
+**This refines phase 3's conclusion rather than confirming it.** Phase 3 listed
+the relay change as one of two possibly-sufficient levers; phase 4 shows it is
+**not sufficient, and not even partially effective** — γ did not move by a single
+tie. The binding constraint is arrival *order*, which only lever 1 addresses. A
+patch that actually lifted γ would have to change the receiving node's tie-break
+rule, i.e. make honest nodes prefer a later-arriving equal-height block. That is
+consensus behaviour, not relay plumbing, and a network running it would no longer
+be modelling Monero — which is a good reason not to build it.
+
+**Side observation (unverified, small sample).** Attacker share rose from phase
+3's 0.411 to 0.528 and network orphan rate from 0.245 to 0.304, while γ stayed
+flat at 0.000. The plausible mechanism is fragmentation rather than tie-winning:
+honest nodes now hold a pre-validated copy of the attacker's branch, so a later
+reorg onto it is cheaper — the same family of effect as phase 2's trail-stubborn
+result. This is **a hypothesis, not a finding**: both runs measure ~142 blocks
+(10 and 12 ties), where the standard error on a share estimate is roughly ±0.04
+before accounting for reorg autocorrelation, so a 0.411→0.528 gap is suggestive
+at best. The phase-3 run directory is no longer on disk, so the two runs cannot
+be A/B'd at log level. Establishing this would need repeated seeds.
+
 ## Verify it yourself
 
 1. Pick any phase-1 row, re-run its analysis:
