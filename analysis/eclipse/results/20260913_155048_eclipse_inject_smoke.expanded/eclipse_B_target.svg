@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" font-family="sans-serif">
+<rect width="720" height="260" fill="white"/>
+<text x="48" y="24" font-size="15" font-weight="bold">Target graylist benign records (B) over time</text>
+<line x1="48" y1="212" x2="672" y2="212" stroke="#888"/>
+<line x1="48" y1="48" x2="48" y2="212" stroke="#888"/>
+<line x1="48" y1="212.0" x2="672" y2="212.0" stroke="#eee"/>
+<text x="6" y="215.0" font-size="10" fill="#555">0.00</text>
+<line x1="48" y1="171.0" x2="672" y2="171.0" stroke="#eee"/>
+<text x="6" y="174.0" font-size="10" fill="#555">2.00</text>
+<line x1="48" y1="130.0" x2="672" y2="130.0" stroke="#eee"/>
+<text x="6" y="133.0" font-size="10" fill="#555">4.00</text>
+<line x1="48" y1="89.0" x2="672" y2="89.0" stroke="#eee"/>
+<text x="6" y="92.0" font-size="10" fill="#555">6.00</text>
+<line x1="48" y1="48.0" x2="672" y2="48.0" stroke="#eee"/>
+<text x="6" y="51.0" font-size="10" fill="#555">8.00</text>
+<text x="48.0" y="228" font-size="10" fill="#555" text-anchor="middle">0m</text>
+<text x="204.0" y="228" font-size="10" fill="#555" text-anchor="middle">11m</text>
+<text x="360.0" y="228" font-size="10" fill="#555" text-anchor="middle">21m</text>
+<text x="516.0" y="228" font-size="10" fill="#555" text-anchor="middle">32m</text>
+<text x="672.0" y="228" font-size="10" fill="#555" text-anchor="middle">43m</text>
+<text x="360" y="254" font-size="10" fill="#555" text-anchor="middle">sim time</text>
+<path d="M48.0,48.0 L69.0,109.5 L77.2,150.5 L114.3,191.5 L156.3,191.5 L171.9,212.0 L201.8,212.0 L217.5,212.0 L247.3,212.0 L263.0,212.0 L292.9,212.0 L308.5,212.0 L338.5,212.0 L368.7,212.0 L401.1,212.0 L419.3,212.0 L451.7,212.0 L469.8,212.0 L502.2,212.0 L520.3,212.0 L552.7,212.0 L570.9,212.0 L603.3,212.0 L621.4,212.0 L653.8,212.0 L672.0,212.0" fill="none" stroke="#8e44ad" stroke-width="2"/>
+<rect x="530" y="45" width="10" height="10" fill="#8e44ad"/>
+<text x="546" y="54" font-size="11">target graylist benign count B</text>
+</svg>

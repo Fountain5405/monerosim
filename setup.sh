@@ -49,9 +49,12 @@ while [[ $# -gt 0 ]]; do
             echo "                         Pinned by cuprate.pin. Reuse an existing checkout with"
             echo "                         CUPRATE_DIR=/path/to/cuprate ./setup.sh --cuprate"
             echo "  --sim-binary           Also build monerod-sim: vanilla monerod (monero.pin) plus"
-            echo "                         patches/monero-fakechain-hardforks.patch (--fakechain-hard-forks,"
-            echo "                         network-upgrade sims) and patches/monero-sim-mining.patch"
-            echo "                         (--sim-hash-interval-ms, native PoW mining under Shadow)."
+            echo "                         every patch under patches/ (each flag-gated, off by default):"
+            echo "                         monero-fakechain-hardforks.patch  --fakechain-hard-forks (network-upgrade sims)"
+            echo "                         monero-sim-mining.patch           --sim-hash-interval-ms (native PoW under Shadow)"
+            echo "                         monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)"
+            echo "                         monero-sim-peerlist-dump.patch    --peerlist-dump-file (eclipse measurement)"
+            echo "                         Built in a worktree; the primary monerod stays vanilla."
             echo "                         Installs ~/.monerosim/bin/monerod-sim and the alias monerod-hf."
             echo "                         --hardfork is accepted as a synonym."
             echo "  -h, --help             Show this help message"
@@ -1134,12 +1137,15 @@ install_sim_monerod() {
     #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
     #   patches/monero-sim-mining.patch           --sim-hash-interval-ms / --sim-rx-full-dataset
     #   patches/monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)
-    # One build serves the fork-schedule and native-mining features; monerod-hf
-    # is kept as a symlink alias so existing fork configs keep working.
+    #   patches/monero-sim-peerlist-dump.patch    --peerlist-dump-file (measurement only)
+    # One build serves the fork-schedule, native-mining and eclipse-measurement
+    # features; monerod-hf is kept as a symlink alias so the hard fork and
+    # eclipse configs that name it keep working.
     local patches=(
         "$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
         "$SCRIPT_DIR/patches/monero-sim-mining.patch"
         "$SCRIPT_DIR/patches/monero-sim-selfish-relay.patch"
+        "$SCRIPT_DIR/patches/monero-sim-peerlist-dump.patch"
     )
     local p
     for p in "${patches[@]}"; do
@@ -1176,10 +1182,11 @@ install_sim_monerod() {
     fi
 
     # Tripwire: when monero.pin moves past what a patch applies to, fail
-    # loudly here instead of drifting silently. Applied in order.
+    # loudly here instead of drifting silently. Patches are applied in order,
+    # so each check runs against the tree with the earlier ones already in.
     for p in "${patches[@]}"; do
         if ! git -C "$sim_build_dir" apply --check "$p"; then
-            log_err "$(basename "$p") no longer applies to monero $monero_ref"
+            log_err "patches/$(basename "$p") no longer applies to monero $monero_ref"
             log_err "The patch must be rebased onto the new pin (or upstreamed)."
             exit 1
         fi
@@ -1195,8 +1202,12 @@ install_sim_monerod() {
         exit 1
     fi
 
+    # Replace the slot rather than write through it: if the path is ever a
+    # symlink alias, a plain cp -f would silently overwrite the alias TARGET.
+    rm -f "$MONEROSIM_BIN/monerod-sim"
     cp -f "$sim_build_dir/build/release/bin/monerod" "$MONEROSIM_BIN/monerod-sim"
-    # Alias for configs that predate the combined build (daemon: monerod-hf).
+    # Alias for configs that predate the combined build (daemon: monerod-hf) —
+    # the hard fork and eclipse scenarios both name it.
     ln -sfn monerod-sim "$MONEROSIM_BIN/monerod-hf"
     rm -f "$MONEROSIM_BIN/monerod-hf.provenance"
     {
@@ -1213,7 +1224,7 @@ install_sim_monerod() {
 }
 
 if [[ "$INSTALL_SIM_BINARY" == true ]]; then
-    log_header "Step 9c: Installing monerod-sim (hard fork schedule + native mining patches)"
+    log_header "Step 9c: Installing monerod-sim (hard fork + native mining + peerlist-dump patches)"
     install_sim_monerod
 else
     log_info "Skipping monerod-sim — pass --sim-binary to build it for hard fork / native mining scenario configs"
@@ -1277,7 +1288,7 @@ if [[ "$INSTALL_CUPRATE" == true ]]; then
     echo "  - cuprated"
 fi
 if [[ "$INSTALL_SIM_BINARY" == true ]]; then
-    echo "  - monerod-sim (vanilla + fakechain-hard-forks + sim-mining patches, alias monerod-hf)"
+    echo "  - monerod-sim (vanilla + fakechain-hard-forks + sim-mining + selfish-relay + peerlist-dump patches, alias monerod-hf)"
 fi
 echo ""
 log_ok "Happy simulating!"

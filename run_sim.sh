@@ -612,19 +612,21 @@ preflight_checks() {
 
     # monerod-sim: conditional capability gate, same philosophy as the cuprate
     # gate above — only fires when the config needs a patched daemon (names
-    # monerod-sim/monerod-hf, sets fakechain-hard-forks, or enables native
-    # mining), so a stale or absent monerod-sim never blocks an ordinary run.
+    # monerod-sim/monerod-hf, sets fakechain-hard-forks, enables native mining,
+    # or dumps its peer list), so a stale or absent monerod-sim never blocks an
+    # ordinary run.
     # The --help probe is the real check: a vanilla rebuild copied over
     # monerod-sim would print the SAME version string, but cannot know the flags.
     # Dev override: MONEROSIM_SKIP_SIM_BINARY_CHECK=1 (MONEROSIM_SKIP_HARDFORK_CHECK=1 still honoured).
     local sim_bin="$HOME/.monerosim/bin/monerod-sim"
     [[ -x "$sim_bin" ]] || sim_bin="$HOME/.monerosim/bin/monerod-hf"
-    local needs_hf=0 needs_native=0
+    local needs_hf=0 needs_native=0 needs_peerlist=0
     grep -qE 'monerod-hf|monerod-sim|fakechain-hard-forks' "$CONFIG" 2>/dev/null && needs_hf=1
     grep -qE '^[[:space:]]*mode:[[:space:]]*native([[:space:]]|$)' "$CONFIG" 2>/dev/null && needs_native=1
+    grep -qE '^[[:space:]]*peerlist-dump-file:' "$CONFIG" 2>/dev/null && needs_peerlist=1
     if [[ "${MONEROSIM_SKIP_SIM_BINARY_CHECK:-0}" == "1" || "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
         log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping monerod-sim check"
-    elif [[ $needs_hf == 1 || $needs_native == 1 ]]; then
+    elif [[ $needs_hf == 1 || $needs_native == 1 || $needs_peerlist == 1 ]]; then
         if [[ ! -x "$sim_bin" ]]; then
             log_err "Config needs the patched daemon but no monerod-sim at $HOME/.monerosim/bin/monerod-sim"
             log_info "Build it: ./setup.sh --sim-binary"
@@ -649,6 +651,11 @@ preflight_checks() {
         fi
         if [[ $needs_native == 1 ]] && ! grep -q 'sim-hash-interval-ms' <<< "$sim_help"; then
             log_err "monerod-sim does not carry the sim-mining patch (old monerod-hf build?)"
+            log_info "Fix: ./setup.sh --sim-binary"
+            exit 1
+        fi
+        if [[ $needs_peerlist == 1 ]] && ! grep -q 'peerlist-dump-file' <<< "$sim_help"; then
+            log_err "monerod-sim does not carry the peerlist-dump patch (pre-eclipse build?)"
             log_info "Fix: ./setup.sh --sim-binary"
             exit 1
         fi
@@ -1642,6 +1649,20 @@ archive_transaction_registry() {
         log_warn "No registry files found in $SHARED_DIR"
     fi
 
+    # Per-writer transaction ledger (agents/shared_records.py): one
+    # append-only <writer_id>.jsonl per writer under transactions/, no
+    # lock. Copy the directory as-is, then materialize the legacy
+    # transactions.json array for tools that still expect a single array.
+    if [[ -d "$SHARED_DIR/transactions" ]]; then
+        cp -r "$SHARED_DIR/transactions" "$tx_dir/transactions"
+        local tx_record_count
+        if tx_record_count=$(python3 agents/shared_records.py materialize "$SHARED_DIR" transactions "$tx_dir/transactions.json"); then
+            log_ok "Transaction ledger: $tx_record_count records materialized from per-writer JSONL"
+        else
+            log_warn "Failed to materialize transaction ledger from $SHARED_DIR/transactions"
+        fi
+    fi
+
     # Per-agent wallet state (keys, balance, tx history) and ringdb state.
     # Useful for post-run forensics (spin up wallet-rpc against the archived
     # wallet + a preserved daemon, query balances, etc.).
@@ -1809,7 +1830,7 @@ print_summary() {
     fi
     if [[ -d "$ARCHIVE_DIR/transaction_registry" ]]; then
         local tx_file_count
-        tx_file_count=$(ls -1 "$ARCHIVE_DIR/transaction_registry/"*.json 2>/dev/null | wc -l)
+        tx_file_count=$(find "$ARCHIVE_DIR/transaction_registry" -maxdepth 2 \( -name '*.json' -o -name '*.jsonl' \) 2>/dev/null | wc -l)
         echo "  Tx registry:  $tx_file_count files"
     fi
 

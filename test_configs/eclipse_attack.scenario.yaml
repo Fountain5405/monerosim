@@ -1,0 +1,79 @@
+# Eclipse reproduction — NYX ATTACK.
+# Attacker controls the large majority of the reachable population (120 attacker
+# relays vs 8 benign relays + 4 miners + 6 seeds), all real monerod nodes spread
+# across distinct /24s. The single firewalled/unreachable target (relay-900)
+# forms 12 outbound connections; attacker nodes join at t=10m, AFTER the target
+# has an established benign peerlist ("attack on an existing unreachable node").
+#
+# Eclipse emerges from real protocol behaviour with NO inbound to the target:
+#   N-I  attacker nodes dominate benign relays' whitelists (handshake + gossip)
+#   N-II benign relays relay attacker records into the target's graylist (timed sync)
+#   N-III the target's update_sync_search() rotates its 12 outbound onto attackers
+# Expected: benign whitelist OR -> ~attacker share, target graylist benign B -> ~0,
+# CTR -> near 12/12. Residual non-attacker peers (honest seeds) are analysed.
+general:
+  stop_time: 2h
+  simulation_seed: 12345
+  bootstrap_end_time: 8m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 64              # capped: shared 256-core box, avoid memory/CPU spikes
+  native_preemption: true
+  reachable_fraction: 0.0          # only the (non-exempt) target is firewalled
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  # 8 benign reachable relays (the honest network around the victim)
+  relay-{001..008}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # the unreachable (firewalled, outbound-only) victim; established first
+  relay-900:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target
+
+  # 120 attacker reachable relays ("malicious peers"), join after the target is
+  # established -> clean pre-attack window then takeover.
+  relay-{101..220}:
+    daemon: monerod
+    start_time: 10m
+    start_time_stagger: 1s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 120s
+    attributes:
+      poll_interval: "60"
+      benign_sample: "8"

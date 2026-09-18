@@ -1,0 +1,65 @@
+# IP-allocator regression smoke on the 5,000-node GML (fast, ~50 hosts).
+# Purpose: prove that hosts placed on GML nodes with AS >= 1200 get routable,
+# distinct /24 IPs and that Shadow starts cleanly. Before the as_manager.rs
+# fallback fix this config aborted at Shadow init with
+#   "loopback address '127.x.y.z' is invalid in DNS".
+# See gml_processing/AS_IP_ALLOCATION_NOTE.md. NOT a scientific run.
+#
+# Verify:
+#   grep "Assigned" <run>/monerosim.log | grep -E " (127|0|10|169\.254|192\.168|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7]))\." -> nothing
+#   <run>/shadow_run.log has no "Failed to run" and "processes failed: 0"
+general:
+  stop_time: 8m
+  simulation_seed: 12345
+  bootstrap_end_time: 3m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 0
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [34, 33, 33]
+    can_receive_distributions: true
+
+  relay-{101..140}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false
+
+  relay-{2001..2006}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 3s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  relay-4000:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target

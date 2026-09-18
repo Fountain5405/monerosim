@@ -1,0 +1,103 @@
+# Reduced-scale smoke (~255 hosts) of the WIRED paper-exact Nyx. Validates, before
+# the days-long full run:
+#   * the patched-monerod peer-list FILE DUMP on the target + 30 observed benign
+#     (31 concurrent dumps), each writing full white+gray snapshots to
+#     <data-dir>/fake/peerlist_dump.jsonl every 30s;
+#   * ONBOARD-FIRST timing: attack (fake peers + injectors) starts only AFTER all
+#     benign have onboarded, so the target holds a benign peerlist first (B peaks,
+#     then falls as the fleet evicts);
+#   * the end-to-end pipeline (generation, run, CTR via sidecar, dumps grow).
+# Structure mirrors eclipse_nyx_fakepeer.scenario.yaml, scaled: 1000->40 fake peers,
+# 20->5 injectors, 1199->200 benign. Timing scaled so onboarding (~14m) precedes
+# the attack (20m).
+general:
+  stop_time: 75m
+  simulation_seed: 12345
+  bootstrap_end_time: 20m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 64
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-{001..002}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [50, 50]
+    can_receive_distributions: true
+  # 30 OBSERVED benign: daemon + eclipse_probe sidecar + monerod peer-list dump
+  # (benign whitelist OR sample). RPC get_peer_list disabled (peerlist_interval huge).
+  relay-{2001..2030}:
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
+    script: agents.eclipse_probe
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+      interval: "30"
+      peerlist_interval: "100000"
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: "peerlist_dump.jsonl"
+  # 170 plain benign (no sidecar) — the rest of the honest population.
+  relay-{2031..2200}:
+    daemon: monerod
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+  # 40 port-diversity fake-peer attackers (5 ports each), ONBOARD-FIRST (start 20m).
+  relay-{101..140}:
+    script: agents.eclipse_fakepeer
+    start_time: 20m
+    start_time_stagger: auto
+    attributes:
+      eclipse_role: attacker
+      port_base: "18080"
+      port_count: "5"
+      dial_sample: "-1"
+      dial_interval: "120"
+  # 5 trash injectors, ONBOARD-FIRST (start 20m).
+  relay-{3301..3305}:
+    script: agents.eclipse_injector
+    start_time: 20m
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "300"
+      trash_count: "5000"
+  # ESTABLISHED, UNREACHABLE target (no hide-my-port) + peer-list dump.
+  relay-4000:
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
+    script: agents.eclipse_probe
+    start_time: 0s
+    attributes:
+      eclipse_role: target
+      interval: "15"
+      peerlist_interval: "100000"
+    daemon_options:
+      peerlist-dump-file: "peerlist_dump.jsonl"
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 60s
+    attributes:
+      poll_interval: "30"
+      benign_sample: "10"
+      peerlist_every: "100000"
+      peerlist_timeout: "600"

@@ -8,6 +8,17 @@ Steps:
 4. Renumber nodes to 0-N for Shadow.
 5. Generate GML with realistic latency/bandwidth based on geographic regions.
 
+Each node's ``AS`` attribute is its renumbered id (0..N-1). monerosim's
+AS-aware allocator (src/ip/as_manager.rs) maps every AS to its own routable
+/24: AS 0-1199 through the per-region RIR octet tables, AS >= 1200 through
+the union of those tables (third octet >= 1). Any N therefore works; there is
+no need to cap N at 1200 or to remap AS values.
+
+Example (5,000 nodes, the eclipse full-scale topology):
+    python3 gml_processing/create_caida_connected_with_loops.py \
+        gml_processing/cycle-aslinks.l7.t1.c008040.20200101.txt \
+        gml_processing/5000_nodes_caida_with_loops.gml --max_nodes 5000
+
 Region-based latencies are derived from well-known Internet measurement studies
 and approximate real-world RTT between continents. For more accurate AS-to-AS
 latencies, see TODO/ripe-atlas-as-latency.md.

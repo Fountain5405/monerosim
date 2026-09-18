@@ -1,0 +1,161 @@
+# FULL-FAITHFUL Nyx reproduction with the PORT-DIVERSITY fake-peer fleet.
+#
+# Same structure and scale as the paper (Shi et al., "Are Unreachable Nodes Truly
+# Safe?"): 1,199 benign + 1 ESTABLISHED, UNREACHABLE target + 1,000 distinct-/24
+# attackers, Monero's /24 outbound-diversity filter left ON. The difference from
+# eclipse_nyx_full (which used real monerod attackers and plateaued at 7/12,
+# graylist only ~45% attacker because 1,000 single-port /24s can't out-number
+# 1,199 benign /24s) is the attacker implementation:
+#
+#   * Attackers are py-Levin FAKE PEERS (agents.eclipse_fakepeer), one distinct
+#     /24 each -- enabled by 630e3d5b (script agents now spread across GML nodes;
+#     they were all pinned to node 0 == one /24 == capped at 1 outbound by the /24
+#     filter, which is why the fleet held 0 outbound before).
+#   * Each fake peer LISTENS ON 5 PORTS => 1,000 x 5 = ~5,000 connectable
+#     (IP,port) records ~= the victim's 5,000 graylist cap. This is the paper's
+#     PORT-DIVERSITY: 1,000 IPs contribute ~5,000 records, dominating the graylist
+#     (paper: ~98.5% occupation, benign graylist B 717 -> ~2) where single-port
+#     real nodes could not.
+#   * Fake peers present the GENESIS block as top_id (41023478): have_block(top_id)
+#     is TRUE at the victim, so process_payload_sync_data forces the connection to
+#     state_normal instead of state_synchronizing, and state_normal peers are never
+#     idle-score-kicked. Without this the fleet churned out (5->2) and got IP
+#     banned; with it the victim HOLDS them as outbound.
+#   * Fake peers are PURE LISTENERS here (dial_sample: 0): at 1,000 peers, having
+#     each dial ~1,200 benign is O(N^2) and melts the sim, so the 6 injectors do
+#     the N-I dialing/poisoning. The victim still learns fake-peer records from the
+#     injector-poisoned benign/seeds, dials them, and receives the full
+#     port-diverse fleet + genesis sync on connect.
+#
+# STRUCTURE: relay-4000 is ESTABLISHED (starts t=0, builds a benign peerlist first)
+# then gradually eclipsed as the fleet saturates. Watch the victim's graylist
+# benign-count fall (paper 717 -> 2) and CTR climb toward 12/12 over
+# update_sync_search rounds (paper TTE ~27min; slower in Shadow at this scale).
+#
+# VALIDATED at 64-host smoke (both fixes): CTR 0 -> 6/12 STABLE, dropping-idle
+# 44 -> 0, host-blocks 13 -> 0, attacker /24s 1 -> 40, out_other 8 -> 6.
+#
+# SCALE: fake peers are light (~40 MB Python vs ~270 MB monerod), so ~2,205 hosts
+# fits comfortably. Wall-clock at this scale is UNMEASURED (~0.1x => possibly
+# days); stop_time is a CEILING -- harvest when CTR plateaus. Launch DETACHED via
+# systemd-run --user (the harness memory-guard false-kills background tasks), and
+# CHECK shadow_run.log for "Failed to run" (run_sim.sh exits 0 even on init fail).
+general:
+  stop_time: 840m   # onboard-first starts the attack ~110m later than the 10s-attack run (which hit 12/12 at sim 508m); ceiling raised for margin — harvest at CTR plateau
+  simulation_seed: 12345
+  bootstrap_end_time: 210m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 128
+  native_preemption: true
+  reachable_fraction: 0.0
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..004}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [25, 25, 25, 25]
+    can_receive_distributions: true
+
+  # 30 OBSERVED benign relays: daemon + co-located RAW-DUMP sidecar
+  # (agents.eclipse_probe) for the paper's N-I whitelist-occupation sample. The
+  # sidecar reads its LOCAL daemon and dumps raw peerlists to shared storage, so
+  # the ~1 MB peerlist never crosses the sim network (which timed out the remote
+  # monitor at scale).
+  relay-{2001..2030}:
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
+    script: agents.eclipse_probe
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+      interval: "45"
+      peerlist_interval: "100000"   # RPC get_peer_list disabled (Shadow truncates it); full peerlist via the monerod file dump
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: "peerlist_dump.jsonl"   # patched monerod dumps full white+gray peerlist -> benign whitelist OR sample
+
+  # 1,169 plain benign relays — the rest of the honest population (no sidecar).
+  relay-{2031..3199}:
+    daemon: monerod
+    start_time: 10s
+    start_time_stagger: 4s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false
+
+  # 1,000 PORT-DIVERSITY fake-peer attackers: one distinct /24 each, 5 ports each
+  # (~5,000 records). AGGRESSIVE N-I: each dials a bounded random sample of 16
+  # benign/seeds per cycle (dial_sample 16) so it gets whitelisted network-wide
+  # and evicts benign records -> drives graylist occupation toward the paper's
+  # ~99.96% and a PERMANENT 12/12 (the dial_sample 0 pure-listener run peaked
+  # 12/12 but oscillated ~10/12 because benign kept re-advertising). 1000x16 =
+  # ~16k bounded dials/cycle (not the O(N^2) dial-all storm).
+  relay-{101..1100}:
+    script: agents.eclipse_fakepeer
+    start_time: 120m          # ONBOARD-FIRST: attack starts only after all 1,199 benign onboard (~78m) + stabilize, so the target holds a full benign peerlist before eviction (paper's established victim; B 717->2)
+    start_time_stagger: auto
+    attributes:
+      eclipse_role: attacker
+      port_base: "18080"
+      port_count: "5"
+      dial_sample: "-1"        # PAPER-EXACT: every attacker IP dials ALL reachable nodes
+      dial_interval: "120"
+
+  # 20 TRASH-flooding IPs — the paper's "20 additional IPs for graylist filling"
+  # (separate from the 1000 connectable fleet). They dial reachable nodes to get
+  # whitelisted, then return ~250 non-connectable TRASH records per timed-sync so
+  # reachable nodes' GRAYLISTS fill with junk -> gray_peerlist_housekeeping()
+  # samples trash, the promotion handshake fails, and benign promotion is
+  # suppressed -> reachable WHITELISTS stay attacker-pure (paper N-I: OR->98.5%).
+  # trash_count high => responses are ~all trash; dial_interval 300s (dial to get
+  # whitelisted, then mostly hold) bounds dial load. Start with the fleet at 600s.
+  relay-{3301..3320}:
+    script: agents.eclipse_injector
+    start_time: 120m          # ONBOARD-FIRST: matches the fake-peer fleet start
+    attributes:
+      eclipse_role: injector
+      listen_port: "18080"
+      dial_interval: "300"
+      trash_count: "5000"
+
+  # ESTABLISHED victim (outside all ranges). Unreachable: no hide-my-port
+  # exemption -> only this host gets inbound 18080 firewalled (reachable_fraction 0.0).
+  relay-4000:
+    daemon: monerod-hf   # patched build (patches/monero-sim-peerlist-dump.patch) for --peerlist-dump-file
+    script: agents.eclipse_probe   # co-located RAW-DUMP sidecar (local RPC -> shared FS)
+    start_time: 0s
+    attributes:
+      eclipse_role: target
+      interval: "45"
+      peerlist_interval: "100000"   # RPC get_peer_list disabled (Shadow truncates the large response); full peerlist via the monerod file dump
+    daemon_options:
+      peerlist-dump-file: "peerlist_dump.jsonl"   # patched monerod dumps full white+gray peerlist every 30s -> B / OR (see docs/PEERLIST_DUMP_PATCH.md)
+
+  # Live pulse only: get_connections (CTR) + get_info (peerlist sizes), both tiny
+  # over the wire. peerlist_every huge => it NEVER does the big over-the-wire
+  # get_peer_list (the co-located sidecars capture raw peerlists locally instead).
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 60s           # early: capture the pre-attack baseline + live CTR through the attack
+    attributes:
+      poll_interval: "60"
+      benign_sample: "10"
+      peerlist_every: "100000"
+      peerlist_timeout: "600"

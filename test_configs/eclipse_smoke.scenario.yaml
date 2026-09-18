@@ -1,0 +1,85 @@
+# Eclipse reproduction — SMOKE / pipeline validation (tiny, fast).
+# Purpose: prove build+run+firewall+RPC+eclipse_monitor all work end-to-end
+# before scaling. NOT a scientific run.
+#
+# Models the paper's setting minimally:
+#   - miners (always reachable) produce blocks so nodes SYNC -> update_sync_search()
+#     uses the graylist-first path (the connection-refresh the attack rides).
+#   - benign reachable relays  (relay-0xx, attribute eclipse_role=benign)
+#   - attacker  reachable relays (relay-1xx, attribute eclipse_role=attacker),
+#     the "malicious peers"; spread across IPs by the registry.
+#   - ONE unreachable target (relay-900, attribute eclipse_role=target): NOT
+#     exempted from the firewall, so Shadow blocks inbound TCP:18080 -> it is
+#     outbound-only (NAT/unreachable), exactly the paper's victim.
+#
+# reachable_fraction: 0.0 => every non-seed/miner node is firewalled UNLESS it
+# pins hide-my-port:false (documented always-reachable exemption). We exempt all
+# relays/attackers, leaving ONLY the target firewalled.
+general:
+  stop_time: 45m
+  simulation_seed: 12345
+  bootstrap_end_time: 5m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 0
+  native_preemption: true
+  reachable_fraction: 0.0          # firewall everyone non-exempt (only the target ends up firewalled)
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 3 miners: hashrates sum to 100; always reachable (bootstrap + block production) ---
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [34, 33, 33]
+    can_receive_distributions: true
+
+  # --- 6 benign reachable relays (the paper's "reachable nodes") ---
+  relay-{001..006}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 3s
+    attributes:
+      eclipse_role: benign
+    daemon_options:
+      hide-my-port: false          # exempt from firewall => reachable
+
+  # --- 12 attacker reachable relays (the "malicious peers") ---
+  relay-{101..112}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 2s
+    attributes:
+      eclipse_role: attacker
+    daemon_options:
+      hide-my-port: false          # reachable, like real public attacker nodes
+
+  # --- the unreachable (firewalled, outbound-only) victim ---
+  relay-900:
+    daemon: monerod
+    start_time: 60s
+    attributes:
+      eclipse_role: target
+    # NO hide-my-port:false -> with reachable_fraction 0.0 this node is firewalled
+    # (Shadow blocks inbound TCP:18080). It can only make outbound connections.
+
+  # --- my measurement agent (script-only, no daemon) ---
+  eclipse-monitor:
+    script: agents.eclipse_monitor
+    start_time: 90s
+    attributes:
+      poll_interval: "30"

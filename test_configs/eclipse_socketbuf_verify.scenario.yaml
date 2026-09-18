@@ -1,0 +1,47 @@
+# VERIFICATION SMOKE for the Shadow socket-buffer fix
+# (run_sim.sh now passes --socket-send-buffer/--socket-recv-buffer "4 MiB").
+#
+# GOAL: drive the target's GRAY list to the 5000-entry protocol cap so a full
+# get_peer_list response is ~650 KB, then confirm the co-located eclipse_probe
+# sidecar captures it INTACT with zero IncompleteRead. Before the fix, Shadow's
+# default 131072 B (128 KiB) socket send buffer truncated the response at ~131 KB.
+#
+# MECHANISM: 40 trash injectors (trash_count 5000). The target is unreachable
+# (reachable_fraction 0.0 => inbound blocked on relay-4000 only), so it dials OUT;
+# each injector it dials answers the handshake with ~250 fresh random trash records
+# (records flow responder->initiator). With 40 injectors on distinct /24s and only
+# 10 benign competing for the target's 12 outbound slots, gray floods to 5000 fast.
+# Small host count (~55) => sim runs quickly. This is a MEASUREMENT smoke, not a
+# faithful CTR/OR reproduction (injectors are not sync-credible, so occupation is
+# not the point here) -- the only success criterion is a full 5000-entry peer list
+# captured over the wire with no truncation.
+general:
+  stop_time: 12m   # gray saturates to 5000 by sim_t~245s; 12m gives a long steady window of get_peer_list attempts at full scale
+  simulation_seed: 12345
+  bootstrap_end_time: 6m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 48
+  reachable_fraction: 0.0
+  daemon_defaults: {log-level: 1, max-log-file-size: 0, db-sync-mode: fastest, no-zmq: true, non-interactive: true}
+network: {path: gml_processing/5000_nodes_caida_with_loops.gml, peer_mode: Dynamic}
+agents:
+  miner-{001..002}: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.autonomous_miner, start_time: 0s, start_time_stagger: 1s, hashrate: [50,50], can_receive_distributions: true}
+  # A few benign so the peer list is a realistic benign+trash mix (confirms B is capturable).
+  relay-{2001..2010}: {daemon: monerod, start_time: 10s, start_time_stagger: 1s, attributes: {eclipse_role: benign}, daemon_options: {hide-my-port: false}}
+  # 40 trash injectors -> flood the target's gray list to the 5000 cap.
+  relay-{3301..3340}:
+    script: agents.eclipse_injector
+    start_time: 60s
+    start_time_stagger: 1s
+    attributes: {eclipse_role: injector, listen_port: "18080", dial_interval: "120", trash_count: "5000"}
+  # Target: monerod + co-located RAW-DUMP sidecar. peerlist_interval 20s => ~100
+  # get_peer_list attempts across the run, many at gray=5000 (stress-tests the fix).
+  # C(i) file-dump test: monerod writes its full white+gray peer list to
+  # <data-dir>/peerlist_dump.jsonl every 30s (patched --peerlist-dump-file); the
+  # sidecar keeps capturing CTR/info over RPC (small responses) but its RPC
+  # get_peer_list is disabled (peerlist_interval huge) since it's redundant + fails.
+  relay-4000: {daemon: monerod-hf, script: agents.eclipse_probe, start_time: 0s, daemon_options: {peerlist-dump-file: "peerlist_dump.jsonl"}, attributes: {eclipse_role: target, interval: "15", peerlist_interval: "100000"}}
+  # Live gray/white size + CTR pulse (get_info only; big peerlist disabled over the wire).
+  eclipse-monitor: {script: agents.eclipse_monitor, start_time: 90s, attributes: {poll_interval: "30", benign_sample: "6", peerlist_every: "100000", peerlist_timeout: "600"}}

@@ -1,0 +1,26 @@
+# Smoke: validate the multi-port py-Levin fake-peer fleet end-to-end.
+# 40 fakepeer hosts (script agents, auto-reachable on 18080-18099) x 20 ports =
+# 800 connectable records vs 20 benign -> should dominate. Established victim.
+# Expect: victim connects to fakepeers (CTR climbs), occupation high, B evicted.
+general:
+  stop_time: 16m
+  simulation_seed: 12345
+  bootstrap_end_time: 6m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 48
+  reachable_fraction: 0.0
+  daemon_defaults: {log-level: 1, max-log-file-size: 0, db-sync-mode: fastest, no-zmq: true, non-interactive: true}
+network: {path: gml_processing/5000_nodes_caida_with_loops.gml, peer_mode: Dynamic}
+agents:
+  miner-{001..002}: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.autonomous_miner, start_time: 0s, start_time_stagger: 1s, hashrate: [50,50], can_receive_distributions: true}
+  relay-{2001..2020}: {daemon: monerod, start_time: 10s, start_time_stagger: 1s, attributes: {eclipse_role: benign}, daemon_options: {hide-my-port: false}}
+  # 40 multi-port fake peers (script agents -> auto-reachable on all ports)
+  relay-{101..140}:
+    script: agents.eclipse_fakepeer
+    start_time: 30s
+    start_time_stagger: 1s
+    attributes: {eclipse_role: attacker, port_base: "18080", port_count: "20", dial_interval: "20"}
+  relay-4000: {daemon: monerod, script: agents.eclipse_probe, start_time: 0s, attributes: {eclipse_role: target, interval: "15"}}
+  eclipse-monitor: {script: agents.eclipse_monitor, start_time: 120s, attributes: {poll_interval: "30", benign_sample: "6"}}
