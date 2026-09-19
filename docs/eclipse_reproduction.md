@@ -108,10 +108,28 @@ From the worktree root, with the venv active (`source venv/bin/activate`) and th
 pinned binaries installed in `~/.monerosim/bin` (`monerod` v0.18.5.1, Shadow fork
 v0.2.4 — `setup.sh` installs these). The Nyx scenarios that record the target's
 full peer list (`eclipse_nyx_*`, `eclipse_socketbuf_verify`) run their dumping
-nodes on `monerod-hf`, built by `./setup.sh --hardfork` from the pinned tag plus
-`patches/monero-sim-peerlist-dump.patch` (`--peerlist-dump-file`, measurement
-only; see `docs/PEERLIST_DUMP_PATCH.md`). The dump analyser is
+nodes on `monerod-hf`, which `./setup.sh --sim-binary` installs (`--hardfork` is
+accepted as a synonym).
+
+**What that binary is.** `--sim-binary` builds ONE daemon, `monerod-sim`: vanilla
+monerod at `monero.pin` plus every patch under `patches/`, each flag-gated and
+off by default — `fakechain-hard-forks`, `sim-hash-interval-ms` /
+`sim-rx-full-dataset`, `sim-relay-alt-blocks` and `peerlist-dump-file`. It then
+installs `monerod-hf` as a **symlink alias** to it, so scenarios naming either
+work. Carrying the other three patches does not affect these runs: with their
+flags absent the code is dormant and the daemon behaves as stock monerod (the
+reasoning is in `docs/PEERLIST_DUMP_PATCH.md` §4). The primary
+`~/.monerosim/bin/monerod` stays byte-for-byte vanilla, and every other node in
+these scenarios runs it. `run_sim.sh` preflight fails the run if a config asks
+for `--peerlist-dump-file` but the installed binary lacks the patch, so a missing
+build is a loud error rather than silently absent dumps. The dump analyser is
 `analysis/eclipse/analyze_peerlist_dumps.py`.
+
+**What the large runs cost.** The paper-scale and full-scale Nyx scenarios are
+not laptop-sized: budget roughly 0.28 GB of RAM per relay (so ~620 GB for the
+2,211-host runs) and ~13 h of wall clock for a 12 h sim. The 126-node
+`eclipse_birth` scenario reproduces the paper's time-to-eclipse figure on
+ordinary hardware and is the right starting point.
 
 ```bash
 # 1. Expand a scenario (run_sim.sh does NOT auto-expand .scenario.yaml here)
