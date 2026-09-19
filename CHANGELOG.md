@@ -34,6 +34,12 @@
   in `docs/PEERLIST_DUMP_PATCH.md`.
 - `gml_processing/5000_nodes_caida_with_loops.gml`: regenerated 5,000-node CAIDA
   topology (AS 0-4999) for >1,200-host runs.
+- **Full-scale fake-peer Nyx result committed**: `analysis/eclipse/results/
+  20260916_215526_nyx_onboardfirst/` (metrics + write-up) — 2,220 hosts, an
+  *established* unreachable victim taken to **12/12** (first full eclipse at 633 min,
+  seeds/miners displaced at 146 min, steady-state mean 11.45/12). Real-node Nyx at
+  the same scale plateaus at 7/12; port diversity is what flips graylist
+  domination. The run had previously existed only outside the repo.
 
 - **Per-agent topology placement**: the `topology_node: <gml node id>` agent
   attribute pins an agent to a specific GML topology node, overriding index-based

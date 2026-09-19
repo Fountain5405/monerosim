@@ -31,6 +31,9 @@ time all 12 outbound slots become attacker-controlled.
 | Injector (40 endpoints)    |  66 |  40 | 8/12  | ~69%   | benign → 0     |
 | Real-node attack           | 134 | 120 | 11/12 | 88%    | 100% attacker  |
 | Large-scale (Nyx)          | 585 | 550 | 9/12* | ~100%  | 97.8% attacker |
+| Real-node Nyx, full scale  | 2,211 | ~1,000 | 7/12 | — | ~45% attacker |
+| **Fake-peer Nyx (port diversity)** | 2,211 | 1,000 | **12/12** | — | graylist at 5,000 cap |
+| **Fake-peer Nyx, onboard-first**   | 2,220 | 1,020 | **12/12** | — | graylist at 5,000 cap |
 | Eclipse-at-birth (Moros)   | 126 | 120 | **12/12** | 100% | 93% attacker  |
 | Eclipse-at-birth · paper scale | 963 | 951 | **12/12** | 96% | 100% attacker |
 
@@ -47,6 +50,32 @@ poll it already held all 12 outbound slots on attacker nodes (zero honest peers,
 zero inbound), and held a solid **12/12** across the entire 35-min observation
 window with no oscillation (measured; run `20260914_100749_eclipse_birth_paperscale`,
 0 processes failed).
+
+### Full eclipse of an *established* unreachable node (the paper's Nyx)
+
+The rows above marked 12/12 at 2,200+ hosts are the paper's actual threat model:
+not a newborn, but an **established** unreachable victim that has already built a
+healthy benign peerlist and is then taken over. Reaching it needed two things the
+smaller runs lacked — the regenerated 5,000-node CAIDA GML
+(`gml_processing/5000_nodes_caida_with_loops.gml`; AS >= 1200 previously mapped to
+loopback/CGNAT octets Shadow's DNS rejects), and a **port-diversity fake-peer**
+attacker rather than real monerod attackers.
+
+That second point is the load-bearing one. Real-node Nyx at the same scale
+plateaued at **7/12** with the graylist only ~45% attacker: 1,000 single-port /24s
+simply cannot out-number 1,199 benign /24s. Presenting several ports per /24 puts
+~5,000 connectable (IP,port) records against the victim's 5,000-slot graylist cap,
+which flips graylist domination and completes the eclipse.
+
+The strongest run is `20260916_215526_nyx_onboardfirst` (2,220 hosts): seeds and
+miners displaced by 146 min, first 12/12 at **633 min**, ending at
+`out_attacker 12, out_benign 0, out_other 0`. It is a full eclipse but **not a hard
+lock** — across the 204 polls after first 12/12 the attacker held a mean of
+**11.45/12**, hitting exactly 12/12 in 46% of polls, with a trickle of benign peers
+(mean 0.56) briefly reclaiming isolated slots as 1,199 honest nodes keep
+re-advertising against the ~101 s `update_sync_search` rotation. Per-poll metrics
+and the full caveats are in
+`analysis/eclipse/results/20260916_215526_nyx_onboardfirst/`.
 
 ## Findings
 
@@ -117,6 +146,10 @@ metrics exactly.
 | `eclipse_birth_large`   | ~720-node Moros (batched onboarding, safe large). |
 | `eclipse_birth_paperscale` | ~963-node Moros at paper scale — clean 12/12 (12-24 h). |
 | `eclipse_conv`          | Long convergence attempt (kept for reference; slow). |
+| `eclipse_nyx_full`      | Full-scale Nyx with REAL monerod attackers (~2,211 hosts) — plateaus at 7/12. |
+| `eclipse_nyx_fakepeer`  | **Full-scale port-diversity fake-peer Nyx — reaches 12/12 against an established victim.** Onboard-first timing. 12 h+ sim, ~13 h wall. |
+| `eclipse_nyx_smoke_onboardfirst` | Fast smoke of the onboard-first sequencing (200 benign, 75 min). |
+| `eclipse_socketbuf_verify` | Verifies the peer-list file dump under a saturated 5,000-entry graylist. |
 
 **Unreachable target, deterministically:** `general.reachable_fraction: 0.0`
 plus a per-node `daemon_options: {hide-my-port: false}` exemption on every other
