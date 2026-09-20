@@ -32,6 +32,33 @@ truncation) and every line valid JSON. Each entry is `["<ip>:<port>",
 completely bypasses the Shadow TCP limit that defeated the RPC. **Blocker
 resolved.**
 
+### Where the dump ends up, and how to get it back
+
+monerod resolves the relative `--peerlist-dump-file` path against the chain
+subdirectory, so a fakechain node writes it to
+`<daemon-data-dir>/monero-<node>/fake/peerlist_dump.jsonl` — one level deeper
+than `bitmonero.log`.
+
+`archive_daemon_logs()` in `run_sim.sh` moves every dump it finds into
+`archived_runs/<run_id>/daemon_logs/<node>/peerlist_dump.jsonl`, beside that
+node's `bitmonero.log`. Run the analysis straight off the archive:
+
+```bash
+python analysis/eclipse/analyze_peerlist_dumps.py archived_runs/<run_id>
+```
+
+The analyser also still accepts a raw run directory (`/tmp/monerosim-<run_id>`
+or a preserved raw-data tree on the backup volume), where the dumps sit in
+`<node>/fake/` and the registry in `shared/`. It picks the layout itself.
+
+> **Before 2026-09-20 the dumps were not archived at all.** Only
+> `bitmonero.log` and the cuprate logs were collected, and
+> `cleanup_tmp_monero --full` then deleted the per-run daemon directories — so
+> a normally-archived run lost its dumps. Runs from the eclipse study survive
+> only because that workflow used `--no-clean --no-archive` and kept everything
+> in the raw `/tmp` tree. `--no-archive` still skips the collection step: pair
+> it with `--no-clean` (as the eclipse recipe does) or the dumps are lost.
+
 ---
 
 ## 1. What the experiment must measure, and why sizes aren't enough

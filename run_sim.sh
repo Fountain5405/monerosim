@@ -102,7 +102,8 @@ Options:
                          shadow_run.log) are still kept under archive_runs/.
   --no-clean             Skip the daemon-data-dir cleanup. The raw daemon
                          data directories (blockchain LMDB, monerod config,
-                         and — with --no-archive also — bitmonero.log files)
+                         and — with --no-archive also — bitmonero.log and
+                         peerlist_dump.jsonl files)
                          remain under the run's /tmp/monerosim-<runid>/ dir
                          for you to inspect by hand. Can occupy tens of GB;
                          remember to clean up manually when you're done.
@@ -1657,12 +1658,40 @@ archive_daemon_logs() {
         cup_count=$((cup_count + 1))
     done
 
+    # Measurement-only peer-list dumps (--peerlist-dump-file, eclipse study).
+    # These sit one level deeper than bitmonero.log: monerod resolves the
+    # relative dump path against the chain subdir, so a fakechain node writes
+    # <data-dir>/fake/peerlist_dump.jsonl. Neither glob above matches that, so
+    # before this loop the dumps were destroyed by the cleanup_tmp_monero
+    # --full call at the end of archive_results() and the only way to keep
+    # them was --no-clean plus a manual copy out of /tmp. Land each one beside
+    # that node's bitmonero.log; analysis/eclipse/analyze_peerlist_dumps.py
+    # reads this layout directly.
+    # The find is rooted at the monero-* dirs, not at $DAEMON_DATA_BASE: that
+    # base is normally this run's own /tmp/monerosim-<run_id>/, but a config
+    # may point daemon_data_dir at a shared /tmp, and we must never sweep up a
+    # concurrent run's dumps.
+    local dump_count=0
+    local dump_file dump_rel dump_node
+    while IFS= read -r dump_file; do
+        [[ -f "$dump_file" ]] || continue
+        dump_rel=${dump_file#"$DAEMON_DATA_BASE"/}
+        dump_node=${dump_rel%%/*}
+        [[ "$dump_node" == monero-* ]] || continue
+        mkdir -p "$logs_dir/$dump_node"
+        mv "$dump_file" "$logs_dir/$dump_node/"
+        dump_count=$((dump_count + 1))
+    done < <(find "$DAEMON_DATA_BASE"/monero-* -maxdepth 2 -name 'peerlist_dump.jsonl' -type f 2>/dev/null)
+
     if [[ $((count + cup_count)) -gt 0 ]]; then
         local total_size
         total_size=$(du -sh "$logs_dir" 2>/dev/null | cut -f1)
         log_ok "Daemon logs: $count monerod (bitmonero.log) + $cup_count cuprate log file(s) archived ($total_size total)"
     else
         log_warn "No daemon logs found in $DAEMON_DATA_BASE/monero-*/"
+    fi
+    if [[ $dump_count -gt 0 ]]; then
+        log_ok "Peer-list dumps: $dump_count peerlist_dump.jsonl archived into daemon_logs/<node>/"
     fi
     # NOTE: the daemon data dirs themselves (blockchain DBs, config, lock
     # files — tens of GB on a 1000-node sim) are cleaned by the
@@ -1906,8 +1935,9 @@ main() {
     run_simulation
     if [[ "$NO_ARCHIVE" == true ]]; then
         log_step "Phase 5: Archive skipped (--no-archive)"
-        log_warn "shadow.data/, daemon bitmonero.log files, blockchain snapshots,"
-        log_warn "monitoring data, and summary.txt are NOT being preserved."
+        log_warn "shadow.data/, daemon bitmonero.log files, peerlist_dump.jsonl,"
+        log_warn "blockchain snapshots, monitoring data, and summary.txt are NOT"
+        log_warn "being preserved. Pair with --no-clean to keep them in \$DAEMON_DATA_BASE."
         log_warn "Pre-run artifacts (input_config.yaml, shadow_agents.yaml,"
         log_warn "monerosim.log, shadow_run.log, build.log, memory_samples.csv)"
         log_warn "remain in $ARCHIVE_DIR."

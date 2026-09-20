@@ -13,9 +13,13 @@ full white+gray peer-list snapshots to <data-dir>/fake/peerlist_dump.jsonl
   OR     = attacker-controlled fraction of a WHITE list
            (attacker + injector + trash) / white_total
 
-Usage: analyze_peerlist_dumps.py <run_tmp_dir>
-  where <run_tmp_dir> is e.g. /tmp/monerosim-<run_id> (contains shared/ and
-  monero-relay-*/). Also accepts an explicit --registry <path> override.
+Usage: analyze_peerlist_dumps.py <run_dir>
+  <run_dir> may be either layout:
+    archived run  archived_runs/<run_id>/ -- dumps in daemon_logs/<node>/,
+                  registry in transaction_registry/agent_registry.json
+    raw/live dir  /tmp/monerosim-<run_id>/ or a preserved raw-data tree --
+                  dumps in <node>/fake/, registry in shared/
+  Also accepts an explicit --registry <path> override.
 """
 import sys, os, json, glob, gzip
 
@@ -26,9 +30,24 @@ if "--registry" in sys.argv:
     reg_override = sys.argv[sys.argv.index("--registry") + 1]
 
 # ---- registry: ip_addr -> role ----
-reg_path = reg_override or os.path.join(run, "shared", "agent_registry.json")
-if not os.path.exists(reg_path):
-    reg_path = os.path.join(run, "agent_registry.json")
+# run_sim.sh archives the registry to transaction_registry/; a live or
+# preserved raw run dir has it in shared/. Try every known home before failing,
+# so the same command works on an archive and on a backup-volume raw tree.
+REGISTRY_CANDIDATES = (
+    ("shared", "agent_registry.json"),               # live /tmp run dir, raw backup tree
+    ("transaction_registry", "agent_registry.json"), # archived_runs/<run_id>
+    ("agent_registry.json",),                        # hand-assembled dir
+)
+reg_path = reg_override
+if not reg_path:
+    for parts in REGISTRY_CANDIDATES:
+        cand = os.path.join(run, *parts)
+        if os.path.exists(cand):
+            reg_path = cand
+            break
+if not reg_path or not os.path.exists(reg_path):
+    sys.exit("no agent_registry.json under %s (looked in %s); pass --registry <path>"
+             % (run, ", ".join("/".join(c) for c in REGISTRY_CANDIDATES)))
 reg = json.load(open(reg_path))
 agents = reg["agents"] if isinstance(reg, dict) and "agents" in reg else reg
 ip_role = {}
@@ -80,8 +99,16 @@ def breakdown(entries):
 def atk(c):
     return sum(c.get(r, 0) for r in ATTACKER_ROLES)
 
+# ---- where the per-node dumps live ----
+# archive_daemon_logs() moves each dump to daemon_logs/<node>/peerlist_dump.jsonl;
+# in a raw run dir the node dirs sit at the top level and the dump is one deeper
+# (<node>/fake/). The recursive glob covers both once rooted correctly.
+node_root = os.path.join(run, "daemon_logs")
+if not os.path.isdir(node_root):
+    node_root = run
+
 # ---- TARGET B(t) + OR_white(t) ----
-tgt = glob.glob(os.path.join(run, "monero-relay-4000", "**", "peerlist_dump.jsonl"), recursive=True)
+tgt = glob.glob(os.path.join(node_root, "monero-relay-4000", "**", "peerlist_dump.jsonl"), recursive=True)
 print("\n=== TARGET relay-4000: B (benign gray) and whitelist OR over time ===")
 if tgt:
     snaps = load_dump(tgt[0])
@@ -99,11 +126,11 @@ if tgt:
         Bs = [breakdown(s.get("gray") or []).get("benign", 0) for s in snaps]
         print("  B trajectory: peak=%d  final=%d  (paper Nyx: 717 -> ~2)" % (max(Bs), Bs[-1]))
 else:
-    print("NO target dump found under %s/monero-relay-4000/" % run)
+    print("NO target dump found under %s/monero-relay-4000/" % node_root)
 
 # ---- OBSERVED BENIGN whitelist OR ----
 print("\n=== OBSERVED BENIGN whitelist OR (final snapshot per node) ===")
-allb = glob.glob(os.path.join(run, "monero-relay-*", "**", "peerlist_dump.jsonl"), recursive=True)
+allb = glob.glob(os.path.join(node_root, "monero-relay-*", "**", "peerlist_dump.jsonl"), recursive=True)
 benign_dumps = [p for p in allb if "relay-4000" not in p]
 ors = []
 for p in benign_dumps:
