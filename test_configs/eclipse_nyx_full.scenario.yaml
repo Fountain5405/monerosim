@@ -22,12 +22,34 @@
 # is for a TRANSACTION-HEAVY user workload; light relays scale far better (the
 # 963-host eclipse run held 0.6x). RAM is the real limit: ~0.28 GB/relay of
 # *available* memory => ~2,211 relays pulls ~620 GB, leaving ~360 GB headroom on
-# the 1 TB box. Wall-clock at this scale for light relays is UNMEASURED — could be
-# ~0.3x (~40h) or slower; treat as an experiment. This run monopolizes the box.
+# the 1 TB box. This run monopolizes the box.
 #
 # RISK (not scale-related): a clean 12/12 is not guaranteed — the last outbound
 # slot tends to cling to an always-reachable honest SEED (anchor persistence).
-# Expect ~10-12/12 with a clear benign-displacement trajectory either way.
+#
+# ---------------------------------------------------------------------------
+# MEASURED (2026-09-20, from run 20260914_234133_eclipse_nyx_full.expanded).
+# The two estimates above have since been run; both are superseded:
+#
+#   * WALL-CLOCK — was "UNMEASURED, could be ~0.3x (~40h) or slower".
+#     ACTUAL: 12h sim in 17h29m realtime (~0.69x), 0 processes failed.
+#     Slower than the fake-peer variant's ~13h because this config runs ~1,000
+#     REAL monerod attacker daemons where eclipse_nyx_fakepeer runs lightweight
+#     py-Levin listeners. Do not borrow that run's wall-clock for this one.
+#
+#   * OUTCOME — was "expect ~10-12/12".
+#     ACTUAL: peaked at 8/12 and ended at 5/12 (ctr 0.417, out_benign 7),
+#     with 1,006 attacker endpoints vs 1,199 benign over a 712-min sim.
+#
+# WHY it falls short, and what to run instead: 1,000 single-port /24 attackers
+# cannot out-number 1,199 benign /24s in the victim's 5,000-slot graylist, so
+# the graylist stays only ~45% attacker. test_configs/eclipse_nyx_fakepeer.yaml
+# fixes this with port diversity (several ports per /24 => ~5,000 records
+# against the 5,000 cap) and DOES reach 12/12. Prefer it for reproducing the
+# paper; this config is kept as the real-node comparison that establishes WHY
+# port diversity is the load-bearing ingredient.
+# Metrics: analysis/eclipse/results/20260914_234133_eclipse_nyx_full.expanded/
+# ---------------------------------------------------------------------------
 general:
   stop_time: 720m
   simulation_seed: 12345
