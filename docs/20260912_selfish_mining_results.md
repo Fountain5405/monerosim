@@ -329,8 +329,14 @@ reorg onto it is cheaper — the same family of effect as phase 2's trail-stubbo
 result. This is **a hypothesis, not a finding**: both runs measure ~142 blocks
 (10 and 12 ties), where the standard error on a share estimate is roughly ±0.04
 before accounting for reorg autocorrelation, so a 0.411→0.528 gap is suggestive
-at best. The phase-3 run directory is no longer on disk, so the two runs cannot
-be A/B'd at log level. Establishing this would need repeated seeds.
+at best. Establishing it would need repeated seeds.
+
+The phase-3 run **is** available for a direct comparison:
+`20260913_051102_p3_gamma_lift` is preserved on the backup volume
+(`/mnt/remote_spinny/monerosim_backups/20260915_backup/`), so the reorg-cost
+mechanism above can be tested at log level rather than left as a hypothesis.
+(An earlier revision of this section stated the phase-3 directory was gone; that
+was wrong — only `archived_runs/` and `~/basement_monerosim` had been checked.)
 
 ## Verify it yourself
 
