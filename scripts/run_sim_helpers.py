@@ -41,6 +41,52 @@ except ImportError:  # invoked as `python3 scripts/run_sim_helpers.py`
 # ============================================================
 # Helpers: ramdisk math
 # ============================================================
+
+NA_VALUES = ("n/a", "na", "not_applicable")
+
+
+def criterion_mark(value) -> str:
+    """Render a tri-state criterion value as PASS / FAIL / N/A."""
+    if isinstance(value, str) and value.strip().lower() in NA_VALUES:
+        return "N/A"
+    return "PASS" if value else "FAIL"
+
+
+def applicable_criteria(sc: dict) -> dict:
+    """Drop criteria marked not-applicable.
+
+    IMPORTANT: "n/a" is a truthy string, so a bare all(sc.values()) would count
+    a skipped criterion as a pass. Always filter through this first.
+    """
+    return {
+        k: v for k, v in sc.items()
+        if not (isinstance(v, str) and v.strip().lower() in NA_VALUES)
+    }
+
+
+def criteria_verdict(sc: dict) -> str:
+    """Overall verdict line, honest about skipped criteria."""
+    applicable = applicable_criteria(sc)
+    if not applicable:
+        return "NO APPLICABLE CHECKS"
+    if not all(applicable.values()):
+        return "SOME CHECKS FAILED"
+    return "ALL CHECKS PASSED" if len(applicable) == len(sc) else "ALL APPLICABLE CHECKS PASSED"
+
+
+CRITERIA_LABELS = {
+    "blocks_created": "Blocks created",
+    "nodes_funded": "Nodes funded",
+    "actual_blocks_propagated": "Blocks propagated (actual)",
+    "transactions_created_broadcast": "Transactions broadcast",
+    "transactions_in_blocks": "Transactions in blocks",
+    # Legacy only: reports archived before 2026-09-20 carry "blocks_propagated",
+    # which measured funded nodes rather than propagation. Kept so old runs still
+    # render, under its original label so existing parsers keep matching. The
+    # current monitor never emits this key.
+    "blocks_propagated": "Blocks propagated",
+}
+
 def cmd_estimate_ramdisk_mb(args: argparse.Namespace) -> int:
     """Estimate ramdisk size (MB) needed for monerod LMDBs over the sim duration.
 
@@ -622,23 +668,15 @@ def cmd_write_summary_report(args: argparse.Namespace) -> int:
     lines.append(f'Exit code:      {args.exit_code}')
     lines.append('')
 
-    # Success criteria
-    all_pass = all(sc.values()) if sc else False
+    # Success criteria (tri-state: PASS / FAIL / N/A)
     lines.append('SUCCESS CRITERIA')
     lines.append('-' * 40)
-    labels = {
-        'blocks_created': 'Blocks created',
-        'blocks_propagated': 'Blocks propagated',
-        'transactions_created_broadcast': 'Transactions broadcast',
-        'transactions_in_blocks': 'Transactions in blocks',
-    }
-    for key, label in labels.items():
-        status = 'PASS' if sc.get(key, False) else 'FAIL'
-        lines.append(f'  {label:30s} {status}')
+    for key, label in CRITERIA_LABELS.items():
+        if key not in sc:
+            continue
+        lines.append(f'  {label:30s} {criterion_mark(sc[key])}')
     lines.append('')
-    lines.append(
-        f'  Result: {"ALL CHECKS PASSED" if all_pass else "SOME CHECKS FAILED"}'
-    )
+    lines.append(f'  Result: {criteria_verdict(sc) if sc else "SOME CHECKS FAILED"}')
     lines.append('')
 
     # Network
@@ -730,19 +768,13 @@ def cmd_print_summary_kv(args: argparse.Namespace) -> int:
         tx_in_blocks = s.get('total_transactions_in_blocks', 0)
         alerts = s.get('alert_count', 0)
 
-        # Success criteria
-        all_pass = all(sc.values()) if sc else False
+        # Success criteria (tri-state: PASS / FAIL / N/A)
+        all_pass = bool(applicable_criteria(sc)) and all(applicable_criteria(sc).values())
         criteria_lines = []
-        labels = {
-            'blocks_created': 'Blocks created',
-            'blocks_propagated': 'Blocks propagated',
-            'transactions_created_broadcast': 'Transactions broadcast',
-            'transactions_in_blocks': 'Transactions in blocks',
-        }
-        for key, label in labels.items():
-            passed = sc.get(key, False)
-            mark = 'PASS' if passed else 'FAIL'
-            criteria_lines.append(f'{label}: {mark}')
+        for key, label in CRITERIA_LABELS.items():
+            if key not in sc:
+                continue
+            criteria_lines.append(f'{label}: {criterion_mark(sc[key])}')
 
         # Count wallets that received funds (balance > 0) from last monitoring cycle
         wallets_funded = 0

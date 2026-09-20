@@ -301,6 +301,16 @@ to 300 h/s. Every validator is vanilla `monerod`; only the six miners run
 | 1 | `archived_runs/20260910_195633_native_daa_300_10h` | froze at sim 5h56m (Shadow deadlock in the agents' blocking `flock`, see below); partial data through 5h56m, 6/7 checks pass, the seventh has no data |
 | 2 | `archived_runs/20260911_025410_native_daa_300_10h_r2` | complete: 10 sim-hours in 7h52m wall, 307 nodes online, 100% sync, 406 blocks, 6114 transactions created / 6047 included, 0 PoW rejections, **7/7 checks pass** |
 
+> **Note on the exit code (recorded 2026-09-20).** Run 2 above reports all four
+> summary success criteria PASS, but `run_sim.sh` **exited 1**. The signature
+> matches the known late `monero-wallet-rpc` `bad_alloc`/SIGABRT that takes
+> roughly one wallet in fifty a few hours into a 300-node run
+> (`docs/20260717_wallet_crash_root_cause.md`): the crash sets the exit code
+> without invalidating the simulation, whose chain, sync and difficulty results
+> are unaffected. Stated here so the discrepancy is not a surprise to anyone
+> auditing the result. Two other archived runs show the same
+> passing-criteria/non-zero-exit combination.
+
 Run 2 had one failed process: user-028's `monero-wallet-rpc` died with
 `std::bad_alloc` during a refresh at sim 4h26m. That is the crash class
 described in `docs/20260717_wallet_crash_root_cause.md`, believed fixed by

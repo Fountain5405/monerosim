@@ -891,6 +891,52 @@ class SimulationMonitorAgent(BaseAgent):
 
         return metrics
 
+
+    def _tx_workload_expected(self) -> bool:
+        """Does this run have any agent that could send transactions?
+
+        Heuristic: a wallet-bearing agent that is not a miner. Miners carry
+        wallets to receive block rewards, so their presence says nothing about a
+        transaction workload; a `regular_user` style agent is what does.
+
+        Errs toward True. If the registry cannot be read, the criteria are
+        evaluated normally, so this can never mask a genuine failure -- it only
+        suppresses criteria that are meaningless for the config.
+        """
+        try:
+            registry = self.discovery.get_agent_registry()
+            for agent in registry.get("agents", []):
+                if not agent.get("wallet_rpc_port"):
+                    continue
+                if self.parse_bool(agent.get("attributes", {}).get("is_miner")):
+                    continue
+                return True
+            return False
+        except Exception as e:  # pragma: no cover - defensive
+            self.logger.warning(
+                f"Could not determine transaction workload ({e}); "
+                "evaluating transaction criteria normally"
+            )
+            return True
+
+    def _actual_blocks_propagated(self):
+        """Did blocks actually reach nodes beyond their producer?
+
+        True when, in the most recent cycle with a usable reading, at least two
+        nodes are synced at a chain taller than genesis. Returns "n/a" for
+        single-node runs, where there is nothing to propagate to.
+        """
+        for entry in reversed(self.historical_data):
+            metrics = entry.get("network_metrics", {})
+            total = metrics.get("total_nodes", 0)
+            if total <= 0:
+                continue
+            if total < 2:
+                return "n/a"
+            if metrics.get("max_height", 0) > 1:
+                return metrics.get("synced_nodes", 0) >= 2
+        return False
+
     def _track_transactions_and_blocks(self, node_data: Dict[str, Any]):
         """
         Track transactions and blocks across the network by querying daemon RPC
@@ -1420,6 +1466,9 @@ class SimulationMonitorAgent(BaseAgent):
         if not self.historical_data:
             return {}
 
+        # Whether the transaction criteria apply to this run at all.
+        tx_workload_expected = self._tx_workload_expected()
+
         summary = {
             "total_nodes": 0,
             "avg_sync_percentage": 0,
@@ -1431,11 +1480,28 @@ class SimulationMonitorAgent(BaseAgent):
             "total_transactions_created": self.transaction_stats["total_created"],
             "total_transactions_in_blocks": self.transaction_stats["total_in_blocks"],
             "nodes_with_transactions": len(self.transaction_stats["nodes_with_balance"]),
+            # Criteria are TRI-STATE: True / False / "n/a".
+            # "n/a" means the criterion cannot apply to this run (e.g. transaction
+            # checks on a config with no transaction workload). It is NOT a pass:
+            # consumers must exclude "n/a" before computing an overall verdict.
             "success_criteria": {
                 "blocks_created": self.transaction_stats["blocks_mined"] > 0,
-                "blocks_propagated": len(self.transaction_stats["nodes_with_balance"]) > 0,
-                "transactions_created_broadcast": self.transaction_stats["total_created"] > 0,
-                "transactions_in_blocks": self.transaction_stats["total_in_blocks"] > 0
+                # Renamed from "blocks_propagated" (2026-09-20): this counts nodes
+                # observed holding a balance, which is wallet funding, not block
+                # propagation. The real check is "actual_blocks_propagated" below.
+                # The old key is deliberately NOT reused, so a consumer reading
+                # "blocks_propagated" fails loudly instead of silently comparing
+                # funded-node counts against propagation results.
+                "nodes_funded": len(self.transaction_stats["nodes_with_balance"]) > 0,
+                "actual_blocks_propagated": self._actual_blocks_propagated(),
+                "transactions_created_broadcast": (
+                    self.transaction_stats["total_created"] > 0
+                    if tx_workload_expected else "n/a"
+                ),
+                "transactions_in_blocks": (
+                    self.transaction_stats["total_in_blocks"] > 0
+                    if tx_workload_expected else "n/a"
+                )
             }
         }
 

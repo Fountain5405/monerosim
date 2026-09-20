@@ -93,6 +93,24 @@
 
 ### Fixed
 
+- **Success criteria are tri-state and no longer misreport mining-only runs.**
+  The monitor marked `transactions_created_broadcast` / `transactions_in_blocks`
+  FAIL on any config without a transaction workload — 36 of 111 clean runs in the
+  archive, every one of them a selfish-mining, eclipse or topology scenario that
+  never had a transaction to send. Criteria may now be `true`, `false` or
+  `"n/a"`, the verdict line reports `ALL APPLICABLE CHECKS PASSED`, and
+  applicability is derived from whether the run has a wallet-bearing non-miner
+  agent (erring toward evaluating, so a real failure can never be masked).
+- **`blocks_propagated` was measuring the wrong thing.** It was
+  `len(nodes_with_balance) > 0` — whether any wallet held a balance, not whether
+  blocks propagated — so a mining run with no wallets failed it despite perfect
+  propagation. The old check is renamed **`nodes_funded`**, and a real
+  **`actual_blocks_propagated`** (at least two nodes synced above genesis) is
+  added alongside. The `blocks_propagated` key is deliberately **not** reused, so
+  a consumer reading it finds it absent on new runs instead of silently comparing
+  funded-node counts against propagation results; it is still rendered for
+  archived pre-2026-09-20 reports. Consumers updated: `run_sim_helpers.py`,
+  `append_run_history.py`, `smoke_assertions.py`.
 - Pure-script agents (script, no daemon/wallet) now honor their configured
   `start_time` instead of a hardcoded `6+2i` s, so late-joining attackers and
   monitors can be scheduled; unset falls back to the legacy formula. They are

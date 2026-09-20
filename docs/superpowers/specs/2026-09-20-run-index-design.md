@@ -216,6 +216,21 @@ increment 4 requires only an endpoint, not a specific one.
    only read, so they are safe to land meanwhile.
 4. **Model layer.** NL → filter.
 
+## 7a. Do not add a third parser
+
+`scripts/smoke_assertions.py` and `scripts/append_run_history.py` already parse
+`summary.txt`, and the 2026-07-11 code-quality review recorded live behavioural
+drift between that pair. The index must consume or share their parsing rather
+than introduce a third copy. `append_run_history.py` is also direct prior art: it
+already appends one row per smoke run to
+`tests/baselines/<scenario>_run_history.csv`, and its field extraction is a
+starting point for the extractor rather than something to reinvent.
+
+Note also that criteria became tri-state (`true` / `false` / `"n/a"`) on
+2026-09-20, and that `blocks_propagated` was split into `nodes_funded` and
+`actual_blocks_propagated`. The extractor must handle both the legacy and current
+shapes, and must never treat `"n/a"` as a pass.
+
 ## 8. Testing
 
 Follows the repo's existing golden pattern: trimmed fixture run directories under

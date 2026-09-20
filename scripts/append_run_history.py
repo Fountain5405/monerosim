@@ -106,18 +106,24 @@ def parse_summary(summary_path: Path) -> Dict[str, Any]:
     if m:
         out["exit_code"] = int(m.group(1))
 
-    sc: Dict[str, bool] = {}
+    # Tri-state since 2026-09-20: N/A means the criterion does not apply to this
+    # run and is excluded from the verdict. "Blocks propagated" was split into
+    # "Nodes funded" (the old, mis-named check) and "Blocks propagated (actual)".
+    sc: Dict[str, object] = {}
     for label, key in [
         ("Blocks created", "blocks_created"),
-        ("Blocks propagated", "blocks_propagated"),
+        ("Nodes funded", "nodes_funded"),
+        ("Blocks propagated (actual)", "actual_blocks_propagated"),
+        ("Blocks propagated", "blocks_propagated"),  # legacy runs only
         ("Transactions broadcast", "transactions_created_broadcast"),
         ("Transactions in blocks", "transactions_in_blocks"),
     ]:
-        m = re.search(rf"^\s+{re.escape(label)}\s+(PASS|FAIL)$", text, re.MULTILINE)
+        m = re.search(rf"^\s+{re.escape(label)}\s+(PASS|FAIL|N/A)$", text, re.MULTILINE)
         if m:
-            sc[key] = m.group(1) == "PASS"
+            sc[key] = "n/a" if m.group(1) == "N/A" else (m.group(1) == "PASS")
     if sc:
-        out["all_success_criteria_pass"] = all(sc.values())
+        applicable = [v for v in sc.values() if not isinstance(v, str)]
+        out["all_success_criteria_pass"] = bool(applicable) and all(applicable)
 
     m = re.search(r"Nodes online:\s+(\d+)", text)
     if m:

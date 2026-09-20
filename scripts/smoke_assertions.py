@@ -102,16 +102,20 @@ def parse_summary(summary_path: Path) -> Dict[str, Any]:
     sc: Dict[str, bool] = {}
     for label, key in [
         ("Blocks created", "blocks_created"),
-        ("Blocks propagated", "blocks_propagated"),
+        ("Nodes funded", "nodes_funded"),
+        ("Blocks propagated (actual)", "actual_blocks_propagated"),
+        ("Blocks propagated", "blocks_propagated"),  # legacy runs only
         ("Transactions broadcast", "transactions_created_broadcast"),
         ("Transactions in blocks", "transactions_in_blocks"),
     ]:
-        m = re.search(rf"^\s+{re.escape(label)}\s+(PASS|FAIL)$", text, re.MULTILINE)
+        m = re.search(rf"^\s+{re.escape(label)}\s+(PASS|FAIL|N/A)$", text, re.MULTILINE)
         if m:
-            sc[key] = m.group(1) == "PASS"
+            sc[key] = ("n/a" if m.group(1) == "N/A" else m.group(1) == "PASS")
     if sc:
         out["success_criteria"] = sc
-        out["all_success_criteria_pass"] = all(sc.values())
+        # "n/a" is a truthy string: filter before deciding the verdict.
+        _applicable = [v for v in sc.values() if not isinstance(v, str)]
+        out["all_success_criteria_pass"] = bool(_applicable) and all(_applicable)
 
     m = re.search(r"Nodes online:\s+(\d+)", text)
     if m:
