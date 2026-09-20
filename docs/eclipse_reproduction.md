@@ -126,10 +126,18 @@ build is a loud error rather than silently absent dumps. The dump analyser is
 `analysis/eclipse/analyze_peerlist_dumps.py`.
 
 **What the large runs cost.** The paper-scale and full-scale Nyx scenarios are
-not laptop-sized: budget roughly 0.28 GB of RAM per relay (so ~620 GB for the
-2,211-host runs) and ~13 h of wall clock for a 12 h sim. The 126-node
-`eclipse_birth` scenario reproduces the paper's time-to-eclipse figure on
-ordinary hardware and is the right starting point.
+not laptop-sized. Measured: ~0.28 GB of *available* memory per relay, which puts
+the 2,211-host runs at **~620 GB** (`test_configs/eclipse_nyx_full.scenario.yaml`;
+the per-host figure comes from the 963-host run in
+`gml_processing/AS_IP_ALLOCATION_NOTE.md`), and **~13 h of wall clock for a 12 h
+sim** (commit `a6d2f261`, the 2,211-host run). A run at this scale monopolises the
+machine.
+
+The 126-node `eclipse_birth` scenario is the right starting point: it is the run
+that reproduces the paper's time-to-eclipse figure (30.8 min vs the paper's ~27).
+Its memory requirement has never been measured — extrapolating the same per-relay
+figure suggests roughly 35 GB, but treat that as an estimate rather than a
+documented number.
 
 ```bash
 # 1. Expand a scenario (run_sim.sh does NOT auto-expand .scenario.yaml here)
