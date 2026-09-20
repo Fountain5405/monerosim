@@ -328,12 +328,47 @@ monerosim/
 
 | Requirement | Minimum | Recommended |
 |-------------|---------|-------------|
-| OS | Linux (Ubuntu 20.04+) | Ubuntu 22.04+ |
+| OS | Linux (Ubuntu 20.04+, see note below) | Ubuntu 22.04+ |
 | CPU | 4 cores | 8+ cores |
 | RAM | 8 GB (bare minimum — runs the quickstart only, with memory pressure) | 16 GB for any real work (32 GB for 1000+ agents) — see [docs/PERFORMANCE_AND_SCALE.md](docs/PERFORMANCE_AND_SCALE.md) for the RAM-vs-agent-count table |
 | Storage | 30 GB free | 50+ GB |
 | Rust | 1.80+ | Latest stable |
 | Python | 3.10+ | 3.10+ |
+| cmake | 3.18.4+ | 3.2x (avoid 4.x) |
+| Linux kernel | 5.10+ | 5.15+ |
+
+> **Ubuntu 20.04 needs two things the distro does not provide.** Its stock
+> kernel is 5.4, but Shadow requires **Linux 5.10+** — it calls
+> `pidfd_open(PIDFD_NONBLOCK)`, added in 5.10, so on an older kernel every
+> simulation aborts with SIGABRT about 30s in and zero nodes online. Install
+> the HWE kernel and reboot (the distro stays on focal):
+>
+> ```bash
+> sudo apt-get install -y --install-recommends linux-generic-hwe-20.04
+> ```
+>
+> `run_sim.sh` refuses to start below 5.10; `setup.sh` only warns, so you can
+> build everything before the reboot.
+>
+> **If the host has ZFS pools, do a full release upgrade instead of the HWE
+> kernel.** On focal the HWE kernel ships a newer ZFS module than the archive's
+> `zfsutils-linux`, and the mismatch breaks `zfs send`/`receive` and snapshots
+> ([LP#1939210](https://bugs.launchpad.net/ubuntu/+source/zfs-linux/+bug/1939210)).
+> Ubuntu 22.04+ ships kernel 5.15+ with matched ZFS userspace, clearing both issues.
+>
+> **It also needs a cmake from outside the distro.** shadowformonero
+> requires cmake >= 3.18.4, but focal's repos only ever shipped 3.16.3 — it is
+> not an out-of-date package, there is simply no newer one, so `apt upgrade`
+> cannot fix it. Install one for your user only, no sudo and no system change:
+>
+> ```bash
+> uv tool install 'cmake<4'      # or: pip install --user 'cmake<4'
+> ```
+>
+> Then ensure `~/.local/bin` precedes `/usr/bin` in `PATH`. System-wide
+> alternative: the [Kitware APT repo](https://apt.kitware.com). `setup.sh`
+> checks this in preflight and tells you the same thing if it is unmet.
+> Avoid cmake 4.x: Monero declares a 3.5 minimum, which 4.x deprecates.
 
 ### Installation
 
