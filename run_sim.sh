@@ -498,6 +498,36 @@ setup_ramdisk() {
 preflight_checks() {
     log_step "Phase 1: Pre-flight Checks"
 
+    # Kernel gate. Shadow 3.3.0 calls pidfd_open(pid, PIDFD_NONBLOCK) in
+    # main/utility/childpid_watcher.rs for every managed process it spawns, and
+    # panics outright if it fails. PIDFD_NONBLOCK only exists from Linux 5.10;
+    # on an older kernel the syscall returns EINVAL, the shadow-worker thread
+    # panics while holding locks, and the run dies with SIGABRT (exit 134)
+    # about 30s in, with 0 nodes online and no daemon logs -- a failure whose
+    # message says nothing about kernels. Shadow documents 5.10 as its oldest
+    # supported kernel (docs/supported_platforms.md). Fail with the real reason.
+    MIN_KERNEL="5.10"
+    kernel_release=$(uname -r)
+    kernel_mm=$(printf '%s' "$kernel_release" | cut -d- -f1 | cut -d. -f1,2)
+    if [[ "${MONEROSIM_SKIP_KERNEL_CHECK:-}" == "1" ]]; then
+        log_warn "MONEROSIM_SKIP_KERNEL_CHECK=1 - skipping kernel check (kernel $kernel_release)"
+    elif [[ "$(printf '%s\n%s\n' "$MIN_KERNEL" "$kernel_mm" | sort -V | head -n1)" != "$MIN_KERNEL" ]]; then
+        log_err "Linux kernel $kernel_release is too old for Shadow (need >= $MIN_KERNEL)."
+        log_err "Shadow uses pidfd_open(PIDFD_NONBLOCK), which requires Linux 5.10."
+        log_err "Every run on this kernel aborts with SIGABRT (exit 134), 0 nodes online."
+        log_err ""
+        log_err "Ubuntu 20.04 (stock kernel is 5.4) - install the HWE kernel, then reboot:"
+        log_err "  sudo apt-get install -y --install-recommends linux-generic-hwe-20.04"
+        log_err "  (brings 5.15; the distro stays on focal)"
+        log_err "  NOTE: if this host has ZFS pools, prefer a full release upgrade -"
+        log_err "  focal's HWE kernel desyncs the zfs kmod from zfsutils (LP#1939210)."
+        log_err ""
+        log_err "To run anyway and see the abort: MONEROSIM_SKIP_KERNEL_CHECK=1"
+        exit 1
+    else
+        log_ok "Kernel: $kernel_release (>= $MIN_KERNEL)"
+    fi
+
     # Check shadow binary
     if [[ ! -x "$SHADOW_BIN" ]]; then
         log_err "Shadow binary not found at $SHADOW_BIN"
@@ -1058,6 +1088,7 @@ run_simulation() {
     # Shadow often exits with code 1 when processes are still running at stop time,
     # which is expected behavior, so we don't let set -e kill us here.
     SHADOW_EXIT=0
+    SIM_FAILED=false
     wait "$SHADOW_PID" 2>/dev/null || SHADOW_EXIT=$?
 
     # Stop memory monitor
@@ -1080,8 +1111,10 @@ run_simulation() {
     if [[ $SHADOW_EXIT -eq 0 ]] || [[ "$sim_finished" == true ]]; then
         log_ok "Simulation completed in $(format_duration $WALL_DURATION)"
     elif [[ $SHADOW_EXIT -eq 137 ]]; then
+        SIM_FAILED=true
         log_err "Simulation killed (OOM?) after $(format_duration $WALL_DURATION)"
     else
+        SIM_FAILED=true
         log_warn "Simulation exited with code $SHADOW_EXIT after $(format_duration $WALL_DURATION)"
     fi
 }
@@ -1895,6 +1928,14 @@ main() {
         archive_results
     fi
     print_summary
+
+    # Propagate simulation failure to the caller. run_sim.sh previously warned
+    # about a non-zero Shadow exit and then fell off the end returning 0, so
+    # setup.sh's `if ./run_sim.sh ...` printed "Test simulation completed
+    # successfully" after a SIGABRT, and CI or any automation saw a pass.
+    if [[ "${SIM_FAILED:-false}" == true ]]; then
+        exit 1
+    fi
 }
 
 main

@@ -411,6 +411,78 @@ fi
 # Add ~/.monerosim/bin to PATH for this setup session only
 export PATH="$MONEROSIM_BIN:$PATH"
 
+# cmake version gate. shadowformonero's CMakeLists.txt declares
+#   cmake_minimum_required(VERSION 3.18.4...3.18.4 FATAL_ERROR)
+# so an older cmake fails *inside* the Shadow build - minutes after the user has
+# answered the install prompt and been told "this will take 10-20 minutes" - with
+# a bare "CMake 3.18.4 or higher is required". Ubuntu 20.04 ships cmake 3.16.3,
+# so that was the default experience on the oldest OS the README claims to
+# support. check_command "cmake" above only proves the binary exists; this proves
+# it can actually build what we are about to build. Runs after the dependency
+# install so a user who simply had no cmake gets one from the package manager
+# first.
+MIN_CMAKE_VERSION="3.18.4"
+
+if ! command -v cmake &> /dev/null; then
+    log_err "cmake is still not available after the dependency install step."
+    log_err "Install cmake >= $MIN_CMAKE_VERSION, then re-run ./setup.sh"
+    exit 1
+fi
+
+CMAKE_VERSION_RAW=$(cmake --version 2>/dev/null | head -n1)
+
+if version_gte "$CMAKE_VERSION_RAW" "$MIN_CMAKE_VERSION"; then
+    log_ok "cmake is new enough: $CMAKE_VERSION_RAW (>= $MIN_CMAKE_VERSION)"
+    # Monero (see monero.pin) declares cmake_minimum_required(VERSION 3.5).
+    # CMake 4.x still accepts that but deprecates it, so warn rather than block.
+    if version_gte "$CMAKE_VERSION_RAW" "4.0.0"; then
+        log_warn "cmake 4.x detected. Monero declares a 3.5 minimum, which 4.x"
+        log_warn "deprecates. If the Monero build fails on that, install a 3.x"
+        log_warn "cmake (e.g. uv tool install 'cmake<4') and re-run."
+    fi
+else
+    log_err "cmake >= $MIN_CMAKE_VERSION is required, but found: $CMAKE_VERSION_RAW"
+    log_err "shadowformonero will not configure without it."
+    if command -v cmake3 &> /dev/null \
+        && version_gte "$(cmake3 --version 2>/dev/null | head -n1)" "$MIN_CMAKE_VERSION"; then
+        log_err ""
+        log_err "A newer 'cmake3' is installed, but the builds invoke 'cmake'."
+        log_err "Put the newer one first on PATH, e.g.:"
+        log_err "  mkdir -p ~/.local/bin && ln -sf \"\$(command -v cmake3)\" ~/.local/bin/cmake"
+    fi
+    log_err ""
+    log_err "To install a newer cmake for your user only (no sudo, no system change):"
+    log_err "  uv tool install 'cmake<4'        # if uv is installed"
+    log_err "  pip install --user 'cmake<4'     # otherwise"
+    log_err "Then make sure ~/.local/bin precedes /usr/bin in PATH."
+    log_err ""
+    log_err "Or system-wide:"
+    log_err "  Ubuntu/Debian: the Kitware APT repo - https://apt.kitware.com"
+    log_err "  Fedora/RHEL:   sudo dnf install cmake"
+    log_err ""
+    log_err "Note: Ubuntu 20.04 ships cmake 3.16.3 and always needs one of the above."
+    exit 1
+fi
+
+# Kernel advisory. Shadow needs Linux >= 5.10 (it calls pidfd_open with
+# PIDFD_NONBLOCK for every managed process); run_sim.sh gates on this hard.
+# Setup only WARNS, deliberately: the build products are perfectly good on an
+# older kernel, so a user can install everything now and reboot into a newer
+# kernel later. Failing here would block a build that is worth doing.
+MIN_KERNEL="5.10"
+KERNEL_RELEASE=$(uname -r)
+KERNEL_MM=$(printf '%s' "$KERNEL_RELEASE" | cut -d- -f1 | cut -d. -f1,2)
+if [[ "$(printf '%s\n%s\n' "$MIN_KERNEL" "$KERNEL_MM" | sort -V | head -n1)" != "$MIN_KERNEL" ]]; then
+    log_warn "Kernel $KERNEL_RELEASE is older than Shadow's minimum ($MIN_KERNEL)."
+    log_warn "Setup will finish, but simulations cannot run until you boot >= $MIN_KERNEL."
+    log_warn "Ubuntu 20.04: sudo apt-get install -y --install-recommends linux-generic-hwe-20.04"
+    log_warn "              then reboot (brings 5.15; the distro stays on focal)."
+    log_warn "              If this host has ZFS pools, do a full release upgrade instead:"
+    log_warn "              focal's HWE kernel desyncs zfs kmod from zfsutils (LP#1939210)."
+else
+    log_ok "Kernel: $KERNEL_RELEASE (>= $MIN_KERNEL)"
+fi
+
 # Step 2: Install Python dependencies
 log_header "Step 2: Installing Python Dependencies"
 
