@@ -111,18 +111,40 @@ Progress: 100% — simulated: 05:58:15.355/06:00:00, realtime: 04:22:00, process
 
 → `sim_achieved`, `sim_target`, `wall_clock`, `processes_failed`, `completed`.
 
-**Completion is never read from `monitoring/final_report.json`.** That file
-reports `status: "running"` on runs that finished cleanly; the monitor's last
-write never flips it. Keying completion off that field yields confidently wrong
-records.
+**Outcome is read from `summary.txt`, not `monitoring/final_report.json`.**
+Both carry the same fields, but `final_report.json` is ~43 MB (it embeds the full
+`historical_data` time series) while `summary.txt` is ~0.1 MB — a 400x I/O
+difference across 130 runs on a spinning NFS volume. `summary.txt` also carries
+`Exit code` and `Wall time` directly. Fall back to `final_report.json` only when
+`summary.txt` is absent.
+
+**Completion is never read from `final_report.json`'s `status` field.** It
+reports `running` on runs that finished cleanly; the monitor's last write never
+flips it.
 
 **Cost** — `peak_total_rss_mb`, `min_system_free_mb` from `memory_samples.csv`,
 plus derived `sim_wall_ratio` and `rss_per_agent_mb`. The last is the per-relay
 memory figure currently quoted by hand in config comments; computing it answers
 "can my machine run this?" directly.
 
-**Outcome** — the raw `success_criteria` dict, stored as-is, with **no single
-pass/fail field**. A run with no transaction workload reports
+**Outcome** — `exit_code`, the raw `success_criteria` dict stored as-is, and a
+derived `tx_workload` boolean (true when the run created any transactions), with
+**no single pass/fail field**.
+
+This is settled by measurement, not principle. Across the 115 post-cutoff runs
+carrying a `summary.txt`, the two signals disagree in **both** directions:
+
+- **36 of 111 clean-exit runs report a failed criterion.** Every one is the
+  transaction pair, and every one created exactly zero transactions — configs
+  with no transaction workload, where those criteria are meaningless. There are
+  zero cases of transactions being created and the criteria still failing.
+- **3 of the 4 non-zero-exit runs report ALL CHECKS PASSED**, including
+  `20260911_025410_native_daa_300_10h_r2`, the published 300-node DAA gate. A
+  late wallet crash takes the exit code without invalidating the simulation.
+
+`tx_workload` lets a query ignore the transaction criteria where they do not
+apply, so the tool can answer "passed every *applicable* criterion" instead of
+libelling a third of the corpus. A run with no transaction workload reports
 `transactions_created_broadcast: false` and prints "SOME CHECKS FAILED" while
 being a perfectly good run; the 2026-09-18 phase-4 selfish-mining run is exactly
 this case. "Ran to completion with zero process failures" and "passed every
@@ -202,6 +224,8 @@ Follows the repo's existing golden pattern: trimmed fixture run directories unde
 the happy path:
 
 - a run whose `final_report.json` says `status: "running"` after finishing
+- a clean-exit run whose transaction criteria FAIL with zero transactions created
+- a non-zero-exit run reporting ALL CHECKS PASSED (the DAA-gate case)
 - a run with no `monitoring/` directory (15 of 130 in the corpus)
 - a metrics-only run with no Shadow log at all
 - a gzipped basement-tier run
