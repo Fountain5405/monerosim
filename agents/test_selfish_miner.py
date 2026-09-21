@@ -241,6 +241,8 @@ def _make_island_agent():
     a._native_run_iteration = MagicMock(return_value=1.0)
     a.daemon_rpc.get_info.return_value = {"height": 0}
     i1, i2 = MagicMock(), MagicMock()
+    i1.get_info.return_value = {"height": 0}
+    i2.get_info.return_value = {"height": 0}
     a.island_rpcs = [i1, i2]
     a._connected_island_ids = {"i1", "i2"}
     a._island_pulled = [0, 0]
@@ -291,18 +293,18 @@ def test_pull_submits_island_main_chain_into_miner():
     a.daemon_rpc.get_info.return_value = {"height": 0}   # miner tip below island
     i1.get_info.return_value = {"height": 2}
     i2.get_info.return_value = {"height": 1}
-    i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
-    i2.get_block.side_effect = lambda height: {"blob": f"w{height}"}
+    i1.get_block.side_effect = lambda height: {"blob": f"v{height}", "block_header": {"hash": f"h{height}"}}
+    i2.get_block.side_effect = lambda height: {"blob": f"w{height}", "block_header": {"hash": f"g{height}"}}
     a._pull_island_blocks()
     submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
     assert submitted == ["v1", "v2", "w1"]
-    assert a._island_pulled == [2, 1]
-    # Next tick: only NEW heights are pulled
+    assert a._island_pulled == [1, 0]                    # watermark = height - 1
+    # Next tick: heights above the miner's tip are (re)submitted — the miner
+    # may not hold them (mock tip stays 0); below-tip seen blocks are not.
     a.daemon_rpc.submit_block.reset_mock()
     i1.get_info.return_value = {"height": 3}
-    i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
     a._pull_island_blocks()
-    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v3"]
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v2", "v3", "w1"]
 
 
 def test_run_iteration_pulls_islands_before_strategy_decision():
@@ -370,23 +372,56 @@ def test_island_cash_lead_attribute_default_and_override():
     assert b.island_cash_lead == 3
 
 
-def test_pull_is_extension_only_skipping_stale_heights():
-    # v4: island heights at or below the miner's tip are never submitted
-    # (first-seen would file them as alts and silently lose them); only
-    # strict extensions of the miner's main chain are pulled.
+def test_pull_submits_divergent_branch_heads_below_miner_tip():
+    # v5: a victim-led branch's FIRST block sits at a height the miner already
+    # holds its own block at. The v4 rule skipped it ("stale"), orphaning the
+    # whole branch; the divergence-aware rule submits it so monerod can adopt
+    # the branch when it is longer.
     a, i1, _ = _make_island_agent()
-    a.daemon_rpc.get_info.return_value = {"height": 3}    # miner tip 3
-    i1.get_info.return_value = {"height": 5}              # island ahead 4,5
-    i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
+    a.daemon_rpc.get_info.return_value = {"height": 3}   # miner tip 3
+    i1.get_info.return_value = {"height": 3}
+    i1.get_block.side_effect = lambda height: {"blob": f"x{height}", "block_header": {"hash": f"h{height}"}}
+    a._pull_island_blocks()
+    # first tick primes seen (below-tip submits are harmless already-haves)
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["x1", "x2", "x3"]
+    # island wins a height race at 4 with a victim branch 4,5 while the miner
+    # also has its own 4 (tip 4): the divergent head MUST be submitted
+    a.daemon_rpc.get_info.return_value = {"height": 4}
+    a.daemon_rpc.submit_block.reset_mock()
+    i1.get_info.return_value = {"height": 5}
+    def blk_at(height):
+        if height >= 4:                      # the victim branch diverges at 4
+            return {"blob": f"v{height}", "block_header": {"hash": f"vh{height}"}}
+        return {"blob": f"x{height}", "block_header": {"hash": f"h{height}"}}
+    i1.get_block.side_effect = blk_at
     a._pull_island_blocks()
     assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v4", "v5"]
-    assert a._island_pulled[0] == 5                       # watermark past skipped 1..3
-    # miner caught up to 5: further island work at 6 only
-    a.daemon_rpc.get_info.return_value = {"height": 5}
+    # steady state: the miner ADOPTED the branch (tip now 5) — nothing new,
+    # nothing above the tip, nothing resubmitted
     a.daemon_rpc.submit_block.reset_mock()
-    i1.get_info.return_value = {"height": 6}
+    a.daemon_rpc.get_info.return_value = {"height": 5}
     a._pull_island_blocks()
-    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v6"]
+    assert a.daemon_rpc.submit_block.call_args_list == []
+
+
+def test_pull_detects_island_reorg_via_tip_hash():
+    # The island's main flips to a different branch (mirror won a reorg
+    # there): the tip-hash change triggers a rescan and re-pull of the
+    # changed suffix, parent-first.
+    a, i1, _ = _make_island_agent()
+    a.daemon_rpc.get_info.return_value = {"height": 0}
+    chain = {1: "a1", 2: "a2", 3: "a3"}
+    i1.get_info.return_value = {"height": 3, "top_block_hash": "a3"}
+    i1.get_block.side_effect = lambda height: {"blob": f"b{height}.{chain[height]}",
+                                               "block_header": {"hash": chain[height]}}
+    a._pull_island_blocks()
+    # island reorgs: height 2's hash changes, tip becomes b3
+    chain[2] = "c2"
+    chain[3] = "c3"
+    a.daemon_rpc.submit_block.reset_mock()
+    i1.get_info.return_value = {"height": 3, "top_block_hash": "c3"}
+    a._pull_island_blocks()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["b2.c2", "b3.c3"]
 
 
 def test_mirror_is_extension_only_above_island_tip():

@@ -55,6 +55,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self._mirrored_index = 0    # highest own-chain height pushed to islands
         self._island_pulled = []    # per-island highest main-chain height pulled back
         self._island_heights = []   # per-island last-known main-chain height
+        self._island_seen = []      # per-island {height: hash} last pulled (reorg detection)
+        self._island_tiphash = []   # per-island last-seen island tip hash (reorg gate)
         self.island_cash_lead = int(self.attributes.get("island_cash_lead", "2") or 2)
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
@@ -169,23 +171,35 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self.logger.info(f"island mirror: pushed {pushed} block(s) through {priv_height}")
 
     def _pull_island_blocks(self) -> None:
-        """Pull each island's new main-chain blocks into the offline miner —
-        extension-only (v4): a block is submitted only at a height strictly
-        ABOVE the miner's current tip, so it extends the miner's main chain
-        and is adopted, never filed as an equal-height alt (monerod keeps
-        first-seen; a same-height island block would be silently lost — the
-        systematic v1–v3 stranding). Stale island heights (at or below the
-        miner's tip) are skipped: they are either already known or losing
-        alts nothing can do with. The per-island watermark still advances
-        past them."""
+        """Pull each island's main chain into the offline miner — divergence-
+        aware (v5), the same reorg-aware pattern _forward_public_blocks uses
+        for the honest feed, with the island as source and the offline miner
+        as sink. Per island: remember the hash seen at each height; on a new
+        island tip, walk parent-first from the first height whose hash
+        changed (or the first new height), and submit every block that is
+        EITHER above the miner's tip (an extension) OR a never-seen divergent
+        block at a height the miner already holds (the first block(s) of a
+        victim-led branch — submitting the whole branch lets monerod adopt it
+        when it is longer). The v4 rule skipped exactly those first divergent
+        blocks, orphaning every victim-led branch at birth: the majority-run
+        instrumentation showed pulls firing (34 ticks) yet zero victim blocks
+        ever entering the miner's chain."""
         try:
             miner_tip = int(self.daemon_rpc.get_info().get("height", 0))
         except RPCError as e:
             self.logger.debug(f"miner height read for pull: {e}")
             return
         for i, rpc in enumerate(self.island_rpcs):
+            while len(self._island_pulled) <= i:
+                self._island_pulled.append(0)
+            while len(self._island_seen) <= i:
+                self._island_seen.append({})
+            while len(self._island_tiphash) <= i:
+                self._island_tiphash.append(None)
             try:
-                island_height = int(rpc.get_info().get("height", 0))
+                info = rpc.get_info()
+                island_height = int(info.get("height", 0))
+                island_tip_hash = info.get("top_block_hash")
             except RPCError as e:
                 self.logger.debug(f"island {i} height read: {e}")
                 continue
@@ -193,28 +207,51 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 self._island_heights[i] = island_height
             else:
                 self._island_heights.append(island_height)
-            pulled = self._island_pulled[i] if i < len(self._island_pulled) else 0
+            seen = self._island_seen[i]
+            pulled = self._island_pulled[i]
+            reorg = island_tip_hash is not None and island_tip_hash != self._island_tiphash[i]
+            start = pulled + 1
+            if reorg:
+                floor = max(1, island_height - self.REORG_WINDOW)
+                hi = min(pulled, island_height - 1)
+                for idx in range(floor, hi + 1):
+                    try:
+                        cur = self._block_hash(rpc.get_block(height=idx))
+                    except RPCError as e:
+                        self.logger.debug(f"island {i} reorg rescan {idx}: {e}")
+                        cur = None
+                    if seen.get(idx) != cur:
+                        self.logger.info(f"island {i} reorg at height {idx}; re-pulling from there")
+                        start = idx
+                        break
+                if pulled >= island_height:          # island chain shrank
+                    start = min(start, floor)
             submitted = 0
-            for idx in range(pulled + 1, island_height + 1):
-                if idx <= miner_tip:
-                    continue                        # stale/known: skip, watermark advances
+            for idx in range(start, island_height + 1):
                 try:
                     blk = rpc.get_block(height=idx)
                     blob = blk.get("blob")
                 except RPCError as e:
                     self.logger.debug(f"pull island block {idx}: {e}")
                     break                           # retry next tick
-                if blob:
+                h = self._block_hash(blk)
+                if blob and (idx > miner_tip or seen.get(idx) != h):
+                    # extension, or the head of a divergent branch: submit;
+                    # monerod keeps whichever branch is longer from the fork.
                     try:
                         self.daemon_rpc.submit_block(blob)
                         submitted += 1
                     except RPCError as e:
                         self.logger.debug(f"pull island block {idx} into miner: {e}")
-                if i < len(self._island_pulled):
-                    self._island_pulled[i] = idx
+                if h:
+                    seen[idx] = h
+            for k in [k for k in seen if k > island_height]:
+                del seen[k]               # island main shrank: forget above the new tip
+            self._island_pulled[i] = island_height - 1 if island_height > 0 else 0
+            self._island_tiphash[i] = island_tip_hash
             if submitted:
-                self.logger.info(f"island {i}: pulled {submitted} extension(s) "
-                                 f"above miner tip {miner_tip}")
+                self.logger.info(f"island {i}: pulled {submitted} block(s) "
+                                 f"(miner tip was {miner_tip})")
 
     def _forward_one(self, idx: int, blk=None) -> None:
         """Fetch honest block `idx` from the bridge and submit it into the
