@@ -50,20 +50,20 @@ def test_island_relay_pushes_and_pulls(monkeypatch):
     a.daemon_rpc = MagicMock()
     a.read_shared_state = MagicMock(return_value={"agents": [
         {"id": "victim-001", "ip_addr": "10.0.0.5", "daemon_rpc_port": 18081}]})
-    a.daemon_rpc.get_info.return_value = {"height": 2}
+    a.daemon_rpc.get_info.return_value = {"height": 2}   # island count: indexes 0,1
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"i{height}"}
     v = MagicMock()
     v.get_info.side_effect = [{"height": 0}, {"height": 1}, {"height": 1}]
     a.victim_rpcs = [v]                  # injected: never a real HTTP client
     a._victim_connected = {"victim-001"}
     v.get_block.side_effect = lambda height: {"blob": f"v{height}"}
-    a.run_iteration()                     # connects + pushes island 1,2; victim at 0
+    a.run_iteration()                     # pushes island indexes 0,1; victim empty
     pushed = [c.args[0] for c in v.submit_block.call_args_list]
-    assert pushed == ["i1", "i2"]
+    assert pushed == ["i0", "i1"]
     assert a.daemon_rpc.submit_block.call_args_list == []   # nothing to pull yet
-    assert a.run_iteration() == 1.0       # relay cadence; victim now at 1
+    assert a.run_iteration() == 1.0       # relay cadence; victim now count 1
     island_got = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
-    assert island_got == ["v1"]           # victim's block pulled into the island
+    assert island_got == ["v0"]           # victim's block pulled into the island
     # steady state: nothing new either way
     v.submit_block.reset_mock()
     a.daemon_rpc.submit_block.reset_mock()
@@ -80,12 +80,12 @@ def test_island_relay_resets_watermarks_on_reorg():
     a.read_shared_state = MagicMock(return_value={"agents": [
         {"id": "victim-001", "ip_addr": "10.0.0.5", "daemon_rpc_port": 18081}]})
     a._pushed_index = 5
-    a.daemon_rpc.get_info.return_value = {"height": 4}    # island chain shrank
+    a.daemon_rpc.get_info.return_value = {"height": 4}    # island chain shrank: count 4
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"r{height}"}
     v = MagicMock()
     v.get_info.return_value = {"height": 0}
     a.victim_rpcs = [v]
     a._victim_connected = {"victim-001"}
     a.run_iteration()
-    # re-pushes 1..4 from genesis after the shrink
-    assert [c.args[0] for c in v.submit_block.call_args_list] == ["r1", "r2", "r3", "r4"]
+    # re-pushes indexes 0..3 from genesis after the shrink
+    assert [c.args[0] for c in v.submit_block.call_args_list] == ["r0", "r1", "r2", "r3"]

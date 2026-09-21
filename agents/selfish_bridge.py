@@ -72,7 +72,11 @@ class SelfishBridgeAgent(BaseAgent):
         if island_height < self._pushed_index:
             self._pushed_index = 0        # island reorg: re-push from genesis
         pushed = 0
-        for idx in range(self._pushed_index + 1, island_height + 1):
+        # HEIGHT CONVENTION: get_info heights are COUNTS (top index + 1);
+        # block indexes are 0-based. The victim at count V needs indexes V..;
+        # the island at count I supplies 0..I-1. (Asking for index I — one
+        # past the top — errors, and skipping an index orphans the rest.)
+        for idx in range(self._pushed_index, island_height):
             try:
                 blob = self.daemon_rpc.get_block(height=idx).get("blob")
             except RPCError as e:
@@ -85,7 +89,7 @@ class SelfishBridgeAgent(BaseAgent):
                         pushed += 1
                     except RPCError as e:
                         self.logger.debug(f"relay push {idx} to victim: {e}")
-            self._pushed_index = idx
+            self._pushed_index = idx + 1
         pulled = 0
         for i, rpc in enumerate(self.victim_rpcs):
             try:
@@ -95,7 +99,7 @@ class SelfishBridgeAgent(BaseAgent):
                 continue
             if victim_height < self._pulled_index[i]:
                 self._pulled_index[i] = 0    # victim reorg: re-pull
-            for idx in range(self._pulled_index[i] + 1, victim_height + 1):
+            for idx in range(self._pulled_index[i], victim_height):
                 try:
                     blob = rpc.get_block(height=idx).get("blob")
                 except RPCError as e:
@@ -107,7 +111,7 @@ class SelfishBridgeAgent(BaseAgent):
                         pulled += 1
                     except RPCError as e:
                         self.logger.debug(f"relay pull {idx} into island: {e}")
-                self._pulled_index[i] = idx
+                self._pulled_index[i] = idx + 1
         if pushed or pulled:
             self.logger.info(f"island relay: pushed {pushed}, pulled {pulled}")
 

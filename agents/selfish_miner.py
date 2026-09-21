@@ -53,7 +53,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.island_rpcs = []
         self._connected_island_ids = set()
         self._mirrored_index = 0    # highest own-chain height pushed to islands
-        self._island_pulled = []    # per-island highest main-chain height pulled back
+        self._island_pulled = []    # per-island next index the miner needs (counts: see _pull_island_blocks)
         self._island_heights = []   # per-island last-known main-chain height
         self._island_seen = []      # per-island {height: hash} last pulled (reorg detection)
         self._island_tiphash = []   # per-island last-seen island tip hash (reorg gate)
@@ -134,23 +134,29 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
     def _mirror_private_blocks(self, priv_height: int) -> None:
         """Push the offline miner's chain onto every island — extension-only
-        (v4): blocks are pushed at heights strictly ABOVE every island's
-        current tip, so a mirrored block can never collide with a block the
-        island already holds (monerod keeps first-seen; a colliding submit
-        lands as an alt and the victim's fork of that height is silently
-        lost). With this rule the island chain is only ever extended, never
-        forked, by the mirror."""
+        (v4): blocks are pushed only at indexes the island does not yet have,
+        so a mirrored block can never collide with a block the island holds
+        (monerod keeps first-seen; a colliding submit lands as an alt and the
+        victim's fork of that height is silently lost).
+
+        HEIGHT CONVENTION (the v8 off-by-one): get_info heights are COUNTS
+        (top index + 1); block indexes are 0-based. An island at count C
+        needs indexes C, C+1, ...; the miner at count M can supply indexes
+        0..M-1. Submitting index M (one past the top) asks for a block that
+        does not exist, and submitting index C+1 before C orphans it — monerod
+        answers orphaned submits with status OK, so both mistakes were
+        invisible until submit_block status checking landed."""
         if not self.island_rpcs:
             return
-        island_tip = min(self._island_heights) if self._island_heights else 0
-        if priv_height < self._mirrored_index or priv_height < island_tip:
+        island_count = min(self._island_heights) if self._island_heights else 0
+        if priv_height < self._mirrored_index:
             # Own reorg: heights can have changed anywhere above the new tip,
             # so re-mirror from genesis. Re-submits of unchanged blocks are
             # harmless already-have rejections at the islands.
             self._mirrored_index = 0
-        start = max(self._mirrored_index + 1, island_tip + 1)
+        start = max(self._mirrored_index, island_count)
         pushed = 0
-        for idx in range(start, priv_height + 1):
+        for idx in range(start, priv_height):
             try:
                 blk = self.daemon_rpc.get_block(height=idx)
                 blob = blk.get("blob")
@@ -165,10 +171,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         # shorter-than-island-main submissions (post-concession
                         # resyncs) can land as alts; harmless.
                         self.logger.debug(f"mirror private block {idx} to island: {e}")
-            self._mirrored_index = idx
+            self._mirrored_index = idx + 1
             pushed += 1
         if pushed:
-            self.logger.info(f"island mirror: pushed {pushed} block(s) through {priv_height}")
+            self.logger.info(f"island mirror: pushed {pushed} block(s), "
+                             f"island now needs index {self._mirrored_index}")
 
     def _pull_island_blocks(self) -> None:
         """Pull each island's main chain into the offline miner — divergence-
@@ -185,7 +192,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         instrumentation showed pulls firing (34 ticks) yet zero victim blocks
         ever entering the miner's chain."""
         try:
-            miner_tip = int(self.daemon_rpc.get_info().get("height", 0))
+            miner_count = int(self.daemon_rpc.get_info().get("height", 0))
         except RPCError as e:
             self.logger.debug(f"miner height read for pull: {e}")
             return
@@ -198,22 +205,22 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 self._island_tiphash.append(None)
             try:
                 info = rpc.get_info()
-                island_height = int(info.get("height", 0))
+                island_count = int(info.get("height", 0))
                 island_tip_hash = info.get("top_block_hash")
             except RPCError as e:
                 self.logger.debug(f"island {i} height read: {e}")
                 continue
             if i < len(self._island_heights):
-                self._island_heights[i] = island_height
+                self._island_heights[i] = island_count
             else:
-                self._island_heights.append(island_height)
+                self._island_heights.append(island_count)
             seen = self._island_seen[i]
-            pulled = self._island_pulled[i]
+            pulled = self._island_pulled[i]        # next island index the miner needs
             reorg = island_tip_hash is not None and island_tip_hash != self._island_tiphash[i]
-            start = pulled + 1
+            start = pulled
             if reorg:
-                floor = max(1, island_height - self.REORG_WINDOW)
-                hi = min(pulled, island_height - 1)
+                floor = max(1, island_count - self.REORG_WINDOW)
+                hi = min(pulled, island_count - 1)
                 for idx in range(floor, hi + 1):
                     try:
                         cur = self._block_hash(rpc.get_block(height=idx))
@@ -224,10 +231,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.info(f"island {i} reorg at height {idx}; re-pulling from there")
                         start = idx
                         break
-                if pulled >= island_height:          # island chain shrank
+                if pulled > island_count:          # island chain shrank
                     start = min(start, floor)
             submitted = 0
-            for idx in range(start, island_height + 1):
+            for idx in range(start, island_count):
                 try:
                     blk = rpc.get_block(height=idx)
                     blob = blk.get("blob")
@@ -235,9 +242,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                     self.logger.debug(f"pull island block {idx}: {e}")
                     break                           # retry next tick
                 h = self._block_hash(blk)
-                if blob and (idx > miner_tip or seen.get(idx) != h):
-                    # extension, or the head of a divergent branch: submit;
-                    # monerod keeps whichever branch is longer from the fork.
+                if blob and (idx >= miner_count or seen.get(idx) != h):
+                    # an extension of the miner's main chain (idx >= count),
+                    # or the head of a divergent branch: submit; monerod keeps
+                    # whichever branch is longer from the fork.
                     try:
                         self.daemon_rpc.submit_block(blob)
                         submitted += 1
@@ -245,13 +253,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.debug(f"pull island block {idx} into miner: {e}")
                 if h:
                     seen[idx] = h
-            for k in [k for k in seen if k > island_height]:
+            for k in [k for k in seen if k >= island_count]:
                 del seen[k]               # island main shrank: forget above the new tip
-            self._island_pulled[i] = island_height - 1 if island_height > 0 else 0
+            self._island_pulled[i] = island_count
             self._island_tiphash[i] = island_tip_hash
             if submitted:
                 self.logger.info(f"island {i}: pulled {submitted} block(s) "
-                                 f"(miner tip was {miner_tip})")
+                                 f"(miner count was {miner_count})")
 
     def _forward_one(self, idx: int, blk=None) -> None:
         """Fetch honest block `idx` from the bridge and submit it into the

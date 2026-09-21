@@ -269,11 +269,11 @@ def test_connect_islands_reads_registry():
 def test_mirror_pushes_own_chain_to_every_island():
     a, i1, i2 = _make_island_agent()
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
-    a._mirror_private_blocks(priv_height=2)
-    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p1", "p2"]
-    assert [c.args[0] for c in i2.submit_block.call_args_list] == ["p1", "p2"]
+    a._mirror_private_blocks(priv_height=2)            # count 2: indexes 0,1
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p0", "p1"]
+    assert [c.args[0] for c in i2.submit_block.call_args_list] == ["p0", "p1"]
     assert a._mirrored_index == 2
-    # Watermark: no re-push of already-mirrored heights
+    # Watermark: no re-push of already-mirrored indexes
     i1.submit_block.reset_mock()
     a._mirror_private_blocks(priv_height=2)
     assert i1.submit_block.call_args_list == []
@@ -283,28 +283,28 @@ def test_mirror_resets_watermark_on_own_reorg():
     a, i1, _ = _make_island_agent()
     a._mirrored_index = 3
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
-    a._mirror_private_blocks(priv_height=2)      # own chain shrank
+    a._mirror_private_blocks(priv_height=2)      # own chain shrank: count 2
     assert a._mirrored_index == 2
-    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p1", "p2"]
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p0", "p1"]
 
 
 def test_pull_submits_island_main_chain_into_miner():
+    # COUNT CONVENTION: get_info heights are counts; block indexes 0..count-1.
     a, i1, i2 = _make_island_agent()
-    a.daemon_rpc.get_info.return_value = {"height": 0}   # miner tip below island
-    i1.get_info.return_value = {"height": 2}
-    i2.get_info.return_value = {"height": 1}
+    a.daemon_rpc.get_info.return_value = {"height": 0}   # miner has nothing
+    i1.get_info.return_value = {"height": 2}             # island indexes 0,1
+    i2.get_info.return_value = {"height": 1}             # island indexes 0
     i1.get_block.side_effect = lambda height: {"blob": f"v{height}", "block_header": {"hash": f"h{height}"}}
     i2.get_block.side_effect = lambda height: {"blob": f"w{height}", "block_header": {"hash": f"g{height}"}}
     a._pull_island_blocks()
     submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
-    assert submitted == ["v1", "v2", "w1"]
-    assert a._island_pulled == [1, 0]                    # watermark = height - 1
-    # Next tick: heights above the miner's tip are (re)submitted — the miner
-    # may not hold them (mock tip stays 0); below-tip seen blocks are not.
+    assert submitted == ["v0", "v1", "w0"]
+    assert a._island_pulled == [2, 1]                    # next index needed per island
+    # Next tick with one new island block: only the new one moves.
     a.daemon_rpc.submit_block.reset_mock()
     i1.get_info.return_value = {"height": 3}
     a._pull_island_blocks()
-    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v2", "v3", "w1"]
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v2"]
 
 
 def test_run_iteration_pulls_islands_before_strategy_decision():
@@ -373,30 +373,30 @@ def test_island_cash_lead_attribute_default_and_override():
 
 
 def test_pull_submits_divergent_branch_heads_below_miner_tip():
-    # v5: a victim-led branch's FIRST block sits at a height the miner already
-    # holds its own block at. The v4 rule skipped it ("stale"), orphaning the
-    # whole branch; the divergence-aware rule submits it so monerod can adopt
-    # the branch when it is longer.
+    # v5/v8 (count convention): a victim-led branch's FIRST block sits at an
+    # index the miner already holds its own block at. The v4 rule skipped it
+    # ("stale"), orphaning the whole branch; the divergence-aware rule submits
+    # it so monerod can adopt the branch when it is longer.
     a, i1, _ = _make_island_agent()
-    a.daemon_rpc.get_info.return_value = {"height": 3}   # miner tip 3
+    a.daemon_rpc.get_info.return_value = {"height": 3}   # miner indexes 0-2
     i1.get_info.return_value = {"height": 3}
     i1.get_block.side_effect = lambda height: {"blob": f"x{height}", "block_header": {"hash": f"h{height}"}}
     a._pull_island_blocks()
-    # first tick primes seen (below-tip submits are harmless already-haves)
-    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["x1", "x2", "x3"]
-    # island wins a height race at 4 with a victim branch 4,5 while the miner
-    # also has its own 4 (tip 4): the divergent head MUST be submitted
+    # first tick primes seen (below-count submits are harmless already-haves)
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["x0", "x1", "x2"]
+    # island wins a race at index 3 with a victim branch 3,4 while the miner
+    # also has its own 3 (count 4): the divergent head MUST be submitted
     a.daemon_rpc.get_info.return_value = {"height": 4}
     a.daemon_rpc.submit_block.reset_mock()
     i1.get_info.return_value = {"height": 5}
     def blk_at(height):
-        if height >= 4:                      # the victim branch diverges at 4
+        if height >= 3:                      # the victim branch diverges at 3
             return {"blob": f"v{height}", "block_header": {"hash": f"vh{height}"}}
         return {"blob": f"x{height}", "block_header": {"hash": f"h{height}"}}
     i1.get_block.side_effect = blk_at
     a._pull_island_blocks()
-    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v4", "v5"]
-    # steady state: the miner ADOPTED the branch (tip now 5) — nothing new,
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v3", "v4"]
+    # steady state: the miner ADOPTED the branch (count now 5) — nothing new,
     # nothing above the tip, nothing resubmitted
     a.daemon_rpc.submit_block.reset_mock()
     a.daemon_rpc.get_info.return_value = {"height": 5}
@@ -410,29 +410,30 @@ def test_pull_detects_island_reorg_via_tip_hash():
     # changed suffix, parent-first.
     a, i1, _ = _make_island_agent()
     a.daemon_rpc.get_info.return_value = {"height": 0}
-    chain = {1: "a1", 2: "a2", 3: "a3"}
-    i1.get_info.return_value = {"height": 3, "top_block_hash": "a3"}
+    chain = {0: "a0", 1: "a1", 2: "a2"}
+    i1.get_info.return_value = {"height": 3, "top_block_hash": "a2"}
     i1.get_block.side_effect = lambda height: {"blob": f"b{height}.{chain[height]}",
                                                "block_header": {"hash": chain[height]}}
     a._pull_island_blocks()
-    # island reorgs: height 2's hash changes, tip becomes b3
+    # island reorgs: index 1's hash changes, tip becomes c2
+    chain[1] = "c1"
     chain[2] = "c2"
-    chain[3] = "c3"
     a.daemon_rpc.submit_block.reset_mock()
-    i1.get_info.return_value = {"height": 3, "top_block_hash": "c3"}
+    i1.get_info.return_value = {"height": 3, "top_block_hash": "c2"}
     a._pull_island_blocks()
-    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["b2.c2", "b3.c3"]
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["b1.c1", "b2.c2"]
 
 
-def test_mirror_is_extension_only_above_island_tip():
-    # v4: never push a block at a height the island already has — a
-    # colliding submit lands as an alt and the victim's block at that
-    # height is silently lost (the systematic v1-v3 stranding).
+def test_mirror_is_extension_only_from_island_count():
+    # v4/v8: never push an index the island already has (first-seen would
+    # file it as an alt and silently lose the victim's block there), and
+    # never SKIP the index the island needs next — a skip orphans every
+    # later block (monerod answers orphaned submits with status OK).
     a, i1, _ = _make_island_agent()
-    a._island_heights = [4]                               # island tip 4
+    a._island_heights = [4]                        # island count 4: needs index 4
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
-    a._mirror_private_blocks(priv_height=6)
-    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p5", "p6"]
+    a._mirror_private_blocks(priv_height=6)        # miner count 6: indexes 0-5
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p4", "p5"]
     assert a._mirrored_index == 6
 
 
