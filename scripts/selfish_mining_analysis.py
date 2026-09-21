@@ -164,8 +164,68 @@ def _release_lead_from_config(cfg) -> int:
     return 1
 
 
-def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None, release_lead=1) -> list:
+def _island_ids_from_config(cfg) -> set:
+    """Bridge agent ids acting as ISLANDS (eclipse composition): their recorded
+    chains follow the attacker's private view, never the honest network's, so
+    they must never be used as the canonical observer."""
+    ids = set()
+    for a in cfg.get("agents", {}).values():
+        if a.get("script") == "agents.selfish_miner":
+            for b in (a.get("attributes", {}).get("islands") or "").split(","):
+                if b.strip():
+                    ids.add(b.strip())
+    return ids
+
+
+def _eclipsed_miner_ids(cfg) -> set:
+    """Honest-miner agents the attacker has eclipsed (attributes.eclipsed).
+    Their hashrate mines whatever the island shows — during withholding that
+    is the attacker's private chain, so they count toward CONTROLLED share."""
+    return {aid for aid, a in cfg.get("agents", {}).items()
+            if a.get("script") == "agents.autonomous_miner"
+            and (a.get("attributes") or {}).get("eclipsed") == "true"}
+
+
+def _alpha_eff_from_config(cfg) -> float:
+    """Effective attacker share under eclipse composition: (attacker +
+    eclipsed victim hashrate) / total. With no eclipsed miners this equals
+    _alpha_from_config."""
+    agents = cfg.get("agents", {})
+    eclipsed = _eclipsed_miner_ids(cfg)
+    att = sum(a.get("hashrate", 0) for a in agents.values()
+              if a.get("script") == "agents.selfish_miner")
+    vic = sum(a.get("hashrate", 0) for aid, a in agents.items() if aid in eclipsed)
+    honest = sum(a.get("hashrate", 0) for aid, a in agents.items()
+                 if a.get("script") == "agents.autonomous_miner" and aid not in eclipsed)
+    total = att + vic + honest
+    return ((att + vic) / total) if total else 0.0
+
+
+def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None, release_lead=1,
+                  eclipse=None) -> list:
     verdicts = []
+    if eclipse:
+        # Eclipse composition: the headline is the CONTROLLED share (attacker
+        # + eclipsed victims' canonical blocks) against Eyal-Sirer evaluated
+        # at alpha_eff — recruited hashrate behaves like attacker hashrate,
+        # so the composed attack should sit on the curve at alpha_eff. The
+        # ES curve is only defined below the majority line; at alpha_eff >= 1/2
+        # the check degrades to "the composed attacker controls the majority".
+        controlled, alpha_eff = eclipse
+        if alpha_eff >= 0.5:
+            verdicts.append({
+                "name": f"controlled majority (alpha_eff={alpha_eff:.3f} >= 1/2)",
+                "measured": controlled, "theory": 0.5,
+                "pass": controlled > 0.5,
+            })
+            return verdicts
+        theory_eff = es_revenue_share(alpha_eff, 0.0)
+        verdicts.append({
+            "name": f"controlled share vs Eyal-Sirer at alpha_eff={alpha_eff:.3f}",
+            "measured": controlled, "theory": theory_eff,
+            "pass": abs(controlled - theory_eff) <= 0.10,
+        })
+        return verdicts
     if release_lead >= 2:
         # Conservative cash-out (Qubic's policy): Lee & Kim place the attacker
         # "between" their modified model and classical Eyal-Sirer, so the check
@@ -200,15 +260,25 @@ def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None, release_le
     return verdicts
 
 
-def _find_chain_file(run_dir, explicit):
+def _find_chain_file(run_dir, explicit, islands=frozenset()):
     if explicit:
         return Path(explicit)
     # Each bridge writes canonical_chain_<agent_id>.json (review C3: multiple
     # bridges must not clobber one file); older single-bridge runs wrote
     # canonical_chain.json. Match both; bridges converge on the honest chain,
-    # so any one is the canonical chain. Sorted for determinism.
+    # so any one is the canonical chain — EXCEPT islands (eclipse
+    # composition), whose chains follow the attacker's private view.
+    # Sorted for determinism.
     cands = sorted(glob.glob(str(Path(run_dir) / "**" / "canonical_chain*.json"), recursive=True))
-    return Path(cands[0]) if cands else None
+    for c in cands:
+        try:
+            observer = json.loads(Path(c).read_text()).get("observer")
+        except (OSError, ValueError):
+            observer = None
+        if observer in islands:
+            continue
+        return Path(c)
+    return None
 
 
 def main() -> int:
@@ -226,8 +296,10 @@ def main() -> int:
     cfg = load_raw_config(cfg_path)
     attacker_ids = _attacker_ids(cfg)
     miner_ids = list(attacker_ids | _honest_miner_ids(cfg))
+    islands = _island_ids_from_config(cfg)
+    eclipsed = _eclipsed_miner_ids(cfg)
 
-    chain_path = _find_chain_file(run_dir, args.chain)
+    chain_path = _find_chain_file(run_dir, args.chain, islands)
     if not chain_path or not chain_path.exists():
         print("ERROR: canonical_chain.json not found (bridge did not record it?)", file=sys.stderr)
         return 2
@@ -242,16 +314,19 @@ def main() -> int:
     alpha = _alpha_from_config(cfg)
     release_lead = _release_lead_from_config(cfg)
     share = attacker_share_from_chain(chain, h2m, attacker_ids)
+    controlled = attacker_share_from_chain(chain, h2m, attacker_ids | eclipsed)
+    alpha_eff = _alpha_eff_from_config(cfg)
     stats = orphan_stats(found, canonical_hashes, attacker_ids)
     gamma, n_ties = realized_gamma(found, chain, attacker_ids)
     theory_at_gamma = es_revenue_share(alpha, gamma)
-    verdicts = make_verdicts(alpha, share, stats, theory_at_gamma, release_lead)
+    eclipse = (controlled, alpha_eff) if eclipsed else None
+    verdicts = make_verdicts(alpha, share, stats, theory_at_gamma, release_lead, eclipse)
 
     out_dir = Path(args.out) if args.out else (run_dir / "analysis_output" / "selfish")
     out_dir.mkdir(parents=True, exist_ok=True)
     externality = _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes)
     report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma,
-                     release_lead, externality)
+                     release_lead, externality, eclipse)
     (out_dir / "report.md").write_text(report)
     print(report)
     return 0 if all(v["pass"] for v in verdicts) else 1
@@ -290,15 +365,21 @@ def _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes) -> d
 
 
 def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=None,
-            release_lead=1, externality=None) -> str:
+            release_lead=1, externality=None, eclipse=None) -> str:
     if theory_at_gamma is None:
         theory_at_gamma = es_revenue_share(alpha, gamma)
     lines = ["# Selfish-mining analysis", "",
              f"- alpha: {alpha:.3f}",
              f"- release_lead: {release_lead} ({'textbook Eyal-Sirer' if release_lead == 1 else 'conservative cash-out'})",
-             f"- attacker canonical share (measured): {share:.3f}",
-             f"- honest baseline (alpha): {alpha:.3f}",
-             f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}"]
+             f"- attacker canonical share (measured): {share:.3f}"]
+    if eclipse:
+        controlled, alpha_eff = eclipse
+        lines += [f"- eclipse composition: yes",
+                  f"- CONTROLLED canonical share (attacker + victims): {controlled:.3f}",
+                  f"- alpha_eff (attacker + victims / total): {alpha_eff:.3f}",
+                  f"- Eyal-Sirer gamma=0 theory at alpha_eff: {es_revenue_share(alpha_eff, 0.0):.3f}"]
+    lines += [f"- honest baseline (alpha): {alpha:.3f}",
+              f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}"]
     if release_lead >= 2:
         lines.append(f"- modified lead-2 theory gamma=0: {mod_revenue_share(alpha, 0.0):.3f}")
     lines += [f"- realized gamma: {gamma:.3f}",

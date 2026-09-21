@@ -72,3 +72,44 @@ def test_release2_config_is_micro_plus_release_lead():
         return d
     assert strip("test_configs/selfish_release2.yaml") == strip("test_configs/selfish_micro.yaml"), \
         "release2 differs from micro by more than the release_lead attribute"
+
+
+@pytest.mark.parametrize("path,expected_alpha", [
+    (Path("test_configs/selfish_sweep_release2/alpha_0300.yaml"), 0.30),
+    (Path("test_configs/selfish_sweep_release2/alpha_0400.yaml"), 0.40),
+    (Path("test_configs/selfish_sweep_release2/alpha_0450.yaml"), 0.45),
+], ids=["r2a030", "r2a040", "r2a045"])
+def test_release2_sweep_alpha_and_knob(path, expected_alpha):
+    # Each conservative-release sweep point is the matching ES sweep config
+    # plus release_lead: 2 — same seed, same shape, alpha arithmetic intact.
+    cfg = _load(path)
+    agents = cfg["agents"]
+    att = next(v for v in agents.values() if v.get("script") == "agents.selfish_miner")
+    honest = sum(v["hashrate"] for v in agents.values()
+                 if v.get("script") == "agents.autonomous_miner")
+    assert abs(att["hashrate"] / (att["hashrate"] + honest) - expected_alpha) < 0.01
+    assert att["attributes"].get("release_lead") == "2"
+    assert att.get("daemon_options", {}).get("offline") is True
+    assert cfg["general"]["mining"]["mode"] == "native"
+    assert cfg["general"]["simulation_seed"] == 12345
+
+
+def test_eclipse_config_pins_and_alpha_eff():
+    from scripts.selfish_mining_analysis import _alpha_eff_from_config, _alpha_from_config
+    cfg = _load(Path("test_configs/selfish_eclipse/gamma_eclipse.yaml"))
+    agents = cfg["agents"]
+    att = next(v for v in agents.values() if v.get("script") == "agents.selfish_miner")
+    victim = agents["victim-001"]
+    island = agents["attacker-island"]
+    assert att["attributes"]["islands"] == "attacker-island"
+    assert att.get("daemon_options", {}).get("offline") is True
+    assert cfg["general"]["mining"]["mode"] == "native"
+    assert victim["attributes"]["eclipsed"] == "true"
+    assert victim["peers"]["exclusive"] == ["attacker-island"]
+    assert victim["peers"]["in_peers"] == 0
+    assert island["attributes"]["eclipsed"] == "true"
+    # naive alpha far below the gamma=0 threshold; alpha_eff well inside the
+    # profitable regime but below the majority line (ES curve defined).
+    assert abs(_alpha_from_config(cfg) - 4 / 15) < 0.01
+    assert abs(_alpha_eff_from_config(cfg) - 7 / 15) < 0.01
+    assert cfg["general"]["simulation_seed"] == 12345

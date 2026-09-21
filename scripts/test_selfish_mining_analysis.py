@@ -175,3 +175,55 @@ def test_realized_gamma_won_tie_counts():
     chain = [{"height": 2, "hash": "a2"}, {"height": 3, "hash": "h3"}]
     g, events = realized_gamma(found, chain, {"attacker-miner"})
     assert events == 1 and g == 1.0
+
+
+def test_eclipse_config_helpers():
+    from scripts.selfish_mining_analysis import (
+        _island_ids_from_config, _eclipsed_miner_ids, _alpha_eff_from_config,
+    )
+    cfg = {
+        "agents": {
+            "honest-001": {"script": "agents.autonomous_miner", "hashrate": 6},
+            "victim-001": {"script": "agents.autonomous_miner", "hashrate": 3,
+                           "attributes": {"eclipsed": "true"}},
+            "attacker-miner": {"script": "agents.selfish_miner", "hashrate": 4,
+                               "attributes": {"islands": "attacker-island, "}},
+            "attacker-bridge": {"script": "agents.selfish_bridge"},
+            "attacker-island": {"script": "agents.selfish_bridge",
+                                "attributes": {"eclipsed": "true"}},
+        }
+    }
+    assert _island_ids_from_config(cfg) == {"attacker-island"}
+    assert _eclipsed_miner_ids(cfg) == {"victim-001"}
+    assert abs(_alpha_eff_from_config(cfg) - 7 / 13) < 1e-9    # (4+3)/(4+3+6)
+
+
+def test_eclipse_verdict_uses_controlled_share_vs_alpha_eff():
+    from scripts.selfish_mining_analysis import make_verdicts, es_revenue_share
+    # Sub-majority composition: alpha=4/15, alpha_eff=(4+3)/15=0.467,
+    # ES(0.467, gamma=0) ~ 0.73 — controlled 0.75 sits on the curve.
+    alpha, controlled, alpha_eff = 4 / 15, 0.75, 7 / 15
+    verdicts = make_verdicts(alpha, 0.30, {}, theory_at_gamma=None,
+                             eclipse=(controlled, alpha_eff))
+    assert len(verdicts) == 1
+    v = verdicts[0]
+    assert abs(v["theory"] - es_revenue_share(alpha_eff, 0.0)) < 1e-12
+    assert v["pass"] is True
+    # Majority composition degrades to a control check, not the (undefined)
+    # ES curve: alpha_eff=7/13 must not evaluate es_revenue_share.
+    maj = make_verdicts(alpha, 0.30, {}, theory_at_gamma=None,
+                        eclipse=(0.6, 7 / 13))
+    assert len(maj) == 1 and maj[0]["pass"] is True and maj[0]["theory"] == 0.5
+
+
+def test_chain_file_search_skips_island_observers(tmp_path):
+    from scripts.selfish_mining_analysis import _find_chain_file
+    (tmp_path / "canonical_chain_attacker-island.json").write_text(
+        '{"observer": "attacker-island", "chain": [{"height": 1, "hash": "priv"}]}')
+    (tmp_path / "canonical_chain_attacker-bridge.json").write_text(
+        '{"observer": "attacker-bridge", "chain": [{"height": 1, "hash": "hon"}]}')
+    picked = _find_chain_file(tmp_path, None, islands={"attacker-island"})
+    assert picked.name == "canonical_chain_attacker-bridge.json"
+    # without islands the deterministic sorted-first pick is unchanged
+    first = _find_chain_file(tmp_path, None)
+    assert first.name == "canonical_chain_attacker-bridge.json"

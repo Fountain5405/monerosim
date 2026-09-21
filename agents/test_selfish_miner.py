@@ -228,3 +228,102 @@ def test_trail_depth_defaults_to_one():
         ["strategy", "trail_stubborn"], ["bridges", "b1"]])
     a.logger = MagicMock()
     assert a.trail_depth == 1
+
+
+def _make_island_agent():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "eyal_sirer"], ["bridges", "b1"], ["islands", "i1,i2"]])
+    a.logger = MagicMock()
+    a.daemon_rpc = MagicMock()
+    a.bridge_rpc = MagicMock()
+    a.bridge_rpcs = [a.bridge_rpc]
+    a.native_started = True
+    a._native_run_iteration = MagicMock(return_value=1.0)
+    i1, i2 = MagicMock(), MagicMock()
+    a.island_rpcs = [i1, i2]
+    a._connected_island_ids = {"i1", "i2"}
+    a._island_pulled = [0, 0]
+    a._ensure_strategy(0)
+    return a, i1, i2
+
+
+def test_islands_attribute_parses():
+    a, _, _ = _make_island_agent()
+    assert a.island_agent_ids == ["i1", "i2"]
+
+
+def test_connect_islands_reads_registry():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1"], ["islands", "i1"]])
+    a.logger = MagicMock()
+    a.read_shared_state = MagicMock(return_value={"agents": [
+        {"id": "b1", "ip_addr": "10.0.0.1", "daemon_rpc_port": 28081},
+        {"id": "i1", "ip_addr": "10.0.0.9", "daemon_rpc_port": 28089}]})
+    assert a._connect_islands() is True
+    assert a.island_rpcs[0].url == "http://10.0.0.9:28089/json_rpc"
+    assert a._island_pulled == [0]
+
+
+def test_mirror_pushes_own_chain_to_every_island():
+    a, i1, i2 = _make_island_agent()
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
+    a._mirror_private_blocks(priv_height=2)
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p1", "p2"]
+    assert [c.args[0] for c in i2.submit_block.call_args_list] == ["p1", "p2"]
+    assert a._mirrored_index == 2
+    # Watermark: no re-push of already-mirrored heights
+    i1.submit_block.reset_mock()
+    a._mirror_private_blocks(priv_height=2)
+    assert i1.submit_block.call_args_list == []
+
+
+def test_mirror_resets_watermark_on_own_reorg():
+    a, i1, _ = _make_island_agent()
+    a._mirrored_index = 3
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
+    a._mirror_private_blocks(priv_height=2)      # own chain shrank
+    assert a._mirrored_index == 2
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p1", "p2"]
+
+
+def test_pull_submits_island_main_chain_into_miner():
+    a, i1, i2 = _make_island_agent()
+    i1.get_info.return_value = {"height": 2}
+    i2.get_info.return_value = {"height": 1}
+    i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
+    i2.get_block.side_effect = lambda height: {"blob": f"w{height}"}
+    a._pull_island_blocks()
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert submitted == ["v1", "v2", "w1"]
+    assert a._island_pulled == [2, 1]
+    # Next tick: only NEW heights are pulled
+    a.daemon_rpc.submit_block.reset_mock()
+    i1.get_info.return_value = {"height": 3}
+    i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
+    a._pull_island_blocks()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v3"]
+
+
+def test_run_iteration_pulls_islands_before_strategy_decision():
+    # Order matters: victim blocks pulled in BEFORE the strategy update grow
+    # the private lead the strategy reasons about.
+    from agents.selfish_strategy import ReleaseDecision
+    a, i1, _ = _make_island_agent()
+    calls = []
+
+    def fake_update(pub, priv):
+        calls.append(("strategy", pub, priv))
+        return ReleaseDecision()
+
+    a._pull_island_blocks = MagicMock(side_effect=lambda: calls.append("pull"))
+    a._mirror_private_blocks = MagicMock(side_effect=lambda h: calls.append("mirror"))
+    a._forward_public_blocks = MagicMock(side_effect=lambda *args, **kw: calls.append("forward"))
+    a.strategy.update = MagicMock(side_effect=fake_update)
+    a.bridge_rpc.get_info.return_value = {"height": 5, "top_block_hash": "t5"}
+    heights = iter([{"height": 3}, {"height": 4}])   # before pull, after pull
+    a.daemon_rpc.get_info.side_effect = lambda: next(heights)
+    a.run_iteration()
+    # pull victim blocks, mirror the merged chain out, THEN decide: the
+    # strategy must see the post-pull height (4), not the pre-pull one (3).
+    assert calls[0] == "pull" and calls[1] == "mirror"
+    assert calls[2] == ("strategy", 5, 4)
+    assert calls[3] == "forward"

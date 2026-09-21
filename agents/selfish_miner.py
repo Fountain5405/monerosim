@@ -10,10 +10,21 @@ tick this agent forwards new honest blocks into the offline miner and
 releases private blocks to the bridges per the SelfishStrategy decision. See
 docs/SELFISH_MINING.md.
 
+Eclipse composition (experiment 3): the `islands` attribute names ISLAND
+bridges — relays P2P-isolated from the honest network whose only peers are
+eclipsed victim miners pinned to them (orchestrator `peers:`/`eclipsed:`
+knobs). Each tick the agent MIRRORS its own daemon's chain onto every island
+(victims unknowingly extend the withheld private chain) and PULLS the
+islands' new main-chain blocks back into the offline miner (victim blocks
+join the private branch, so the existing release path cashes the combined
+chain and the strategy sees the recruited hashrate as its own lead).
+
 Attributes (via --attributes KEY VALUE):
     strategy            "honest" | "eyal_sirer"  (default "honest")
     bridges             comma-separated bridge agent ids (required)
     bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
+    islands             comma-separated ISLAND bridge agent ids (optional;
+                        eclipse-composition experiments only)
     attack_start_height block count at which withholding begins (default 0)
     reaction_delay_ms   poll/reaction interval in ms (default 200)
     release_lead        cash out the private chain once honest closes to within
@@ -37,6 +48,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.bridge_rpcs = []
         self.bridge_rpc = None
         self._connected_ids = set()
+        islands_attr = self.attributes.get("islands") or ""
+        self.island_agent_ids = [b.strip() for b in islands_attr.split(",") if b.strip()]
+        self.island_rpcs = []
+        self._connected_island_ids = set()
+        self._mirrored_index = 0    # highest own-chain height pushed to islands
+        self._island_pulled = []    # per-island highest main-chain height pulled back
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
         self.trail_depth = int(self.attributes.get("trail_depth", "1") or 1)  # trail_stubborn only
@@ -77,26 +94,95 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             trail_depth=self.trail_depth,
                                             release_lead=self.release_lead)
 
-    def _connect_bridges(self) -> bool:
-        """Connect any bridge in `bridge_agent_ids` not yet connected. Returns
-        True once every configured bridge has been connected at least once."""
+    def _lookup_agents(self, agent_ids, connected_ids, rpcs, what: str) -> None:
+        """Resolve agent ids to RPC endpoints from the shared registry,
+        appending any not yet connected (shared by bridges and islands)."""
         registry = self.read_shared_state("agent_registry.json") or {}
         by_id = {agent.get("id"): agent for agent in registry.get("agents", [])}
-        for bid in self.bridge_agent_ids:
-            if bid in self._connected_ids:
+        for bid in agent_ids:
+            if bid in connected_ids:
                 continue
             agent = by_id.get(bid)
             host = agent.get("ip_addr") if agent else None
             port = agent.get("daemon_rpc_port") if agent else None
             if host and port:
-                self.bridge_rpcs.append(MoneroRPC(host, int(port)))
-                self._connected_ids.add(bid)
-                self.logger.info(f"Bridge connected: {bid} at {host}:{port}")
+                rpcs.append(MoneroRPC(host, int(port)))
+                connected_ids.add(bid)
+                self.logger.info(f"{what} connected: {bid} at {host}:{port}")
             else:
-                self.logger.debug(f"Bridge {bid} not yet in registry")
+                self.logger.debug(f"{what} {bid} not yet in registry")
+
+    def _connect_bridges(self) -> bool:
+        """Connect any bridge in `bridge_agent_ids` not yet connected. Returns
+        True once every configured bridge has been connected at least once."""
+        self._lookup_agents(self.bridge_agent_ids, self._connected_ids, self.bridge_rpcs, "Bridge")
         if self.bridge_rpcs:
             self.bridge_rpc = self.bridge_rpcs[0]
         return len(self._connected_ids) == len(self.bridge_agent_ids) > 0
+
+    def _connect_islands(self) -> bool:
+        """Connect any island in `island_agent_ids` not yet connected."""
+        if self.island_agent_ids and not self._island_pulled:
+            self._island_pulled = [0] * len(self.island_agent_ids)
+        self._lookup_agents(self.island_agent_ids, self._connected_island_ids,
+                            self.island_rpcs, "Island")
+        return len(self._connected_island_ids) == len(self.island_agent_ids) > 0
+
+    def _mirror_private_blocks(self, priv_height: int) -> None:
+        """Push the offline miner's chain (heights above the watermark) onto
+        every island, so eclipsed victims always build on the attacker's
+        current main chain — including the WITHHELD private branch."""
+        if not self.island_rpcs:
+            return
+        if priv_height < self._mirrored_index:
+            # Own reorg: heights can have changed anywhere above the new tip,
+            # so re-mirror from genesis (re-submits of unchanged blocks are
+            # harmless already-have rejections at the islands).
+            self._mirrored_index = 0
+        for idx in range(self._mirrored_index + 1, priv_height + 1):
+            try:
+                blk = self.daemon_rpc.get_block(height=idx)
+                blob = blk.get("blob")
+            except RPCError as e:
+                self.logger.debug(f"mirror private block {idx}: {e}")
+                return                              # retry next tick
+            if blob:
+                for rpc in self.island_rpcs:
+                    try:
+                        rpc.submit_block(blob)
+                    except RPCError as e:
+                        # shorter-than-island-main submissions (post-concession
+                        # resyncs) can land as alts; harmless.
+                        self.logger.debug(f"mirror private block {idx} to island: {e}")
+            self._mirrored_index = idx
+
+    def _pull_island_blocks(self) -> None:
+        """Pull each island's new main-chain blocks into the offline miner.
+        Victim-mined extensions of the private branch enter the attacker's
+        chain this way, so the strategy's priv_height and the release path
+        both already see them. Submitting a block the miner already has is
+        rejected harmlessly."""
+        for i, rpc in enumerate(self.island_rpcs):
+            try:
+                island_height = int(rpc.get_info().get("height", 0))
+            except RPCError as e:
+                self.logger.debug(f"island {i} height read: {e}")
+                continue
+            pulled = self._island_pulled[i] if i < len(self._island_pulled) else 0
+            for idx in range(pulled + 1, island_height + 1):
+                try:
+                    blk = rpc.get_block(height=idx)
+                    blob = blk.get("blob")
+                except RPCError as e:
+                    self.logger.debug(f"pull island block {idx}: {e}")
+                    break                           # retry next tick
+                if blob:
+                    try:
+                        self.daemon_rpc.submit_block(blob)
+                    except RPCError as e:
+                        self.logger.debug(f"pull island block {idx} into miner: {e}")
+                if i < len(self._island_pulled):
+                    self._island_pulled[i] = idx
 
     def _forward_one(self, idx: int, blk=None) -> None:
         """Fetch honest block `idx` from the bridge and submit it into the
@@ -193,11 +279,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         except RPCError as e:
             self.logger.warning(f"native mining iteration: {e}")
 
-        # 2. Ensure all bridges are connected.
+        # 2. Ensure all bridges are connected (public read/publish path) and
+        #    islands too (eclipse composition, if configured).
         if len(self.bridge_rpcs) < len(self.bridge_agent_ids):
             self._connect_bridges()
         if not self.bridge_rpcs:
             return 1.0
+        if self.island_agent_ids and len(self.island_rpcs) < len(self.island_agent_ids):
+            self._connect_islands()
 
         # 3/4. Read both chains (height + honest tip hash for reorg detection).
         try:
@@ -209,6 +298,18 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self.logger.warning(f"height read failed: {e}")
             return self._reaction_interval_s()
 
+        # 4b. Eclipse composition: sync own chain with the islands BOTH ways
+        #     BEFORE the strategy looks at heights — victim blocks pulled in
+        #     here grow the private lead the strategy reasons about, and the
+        #     mirror keeps victims building on the attacker's current chain.
+        if self.island_rpcs:
+            self._pull_island_blocks()
+            try:
+                priv_height = int(self.daemon_rpc.get_info().get("height", 0))
+            except RPCError as e:
+                self.logger.warning(f"private height re-read failed: {e}")
+            self._mirror_private_blocks(priv_height)
+
         self._ensure_strategy(self.attack_start_height)
 
         # 5. Strategy decision first: forward_to (below) depends on it.
@@ -218,7 +319,9 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         #    by decision.forward_to).
         self._forward_public_blocks(pub_height, pub_tip_hash, decision.forward_to)
 
-        # 7. Release per decision.
+        # 7. Release per decision. The offline miner's chain already contains
+        #    victim blocks (pulled above), so the release cashes the combined
+        #    branch unchanged.
         if decision.release_to is not None:
             self._release_up_to(decision.release_from, decision.release_to)
 
