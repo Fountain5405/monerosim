@@ -1,6 +1,7 @@
 import pytest
 from scripts.selfish_mining_analysis import (
     es_revenue_share,
+    mod_revenue_share,
     found_by_hash,
     attacker_share_from_chain,
     orphan_stats,
@@ -10,6 +11,52 @@ from scripts.selfish_mining_analysis import (
 
 def test_es_revenue_share_small_alpha_near_zero():
     assert abs(es_revenue_share(1e-6, 0.0)) < 1e-4
+
+
+def test_mod_revenue_share_matches_lee_kim_2025_numbers():
+    # Paper values (Eq. 2): mod(0.2802, 0) = 0.1782 ("17.82%"), the modified
+    # model's revenue at Qubic's attack-period alpha; and mod(0.4, 0) = 0.364.
+    assert abs(mod_revenue_share(0.2802, 0.0) - 0.1782) < 0.001
+    assert abs(mod_revenue_share(0.4, 0.0) - 0.364) < 0.001
+
+
+def test_mod_revenue_share_below_eyal_sirer_and_honest_at_gamma_zero():
+    # The conservative lead-2 policy wastes less honest work than waiting for
+    # the catch-to-one, so at gamma=0 it sits under the ES curve; and both
+    # curves sit under honest at the sub-threshold alpha Qubic actually had.
+    for alpha in (0.25, 0.3, 0.4, 0.45):
+        assert mod_revenue_share(alpha, 0.0) < es_revenue_share(alpha, 0.0)
+
+
+def test_release_lead_detected_from_config(tmp_path):
+    from scripts.selfish_mining_analysis import _release_lead_from_config
+    import yaml
+    p = tmp_path / "input_config.yaml"
+    p.write_text(
+        "agents:\n"
+        "  honest-001: {script: agents.autonomous_miner, hashrate: 6}\n"
+        "  attacker-miner:\n"
+        "    script: agents.selfish_miner\n"
+        "    hashrate: 4\n"
+        "    attributes: {release_lead: '2'}\n"
+    )
+    with open(p) as f:
+        cfg = yaml.safe_load(f)
+    assert _release_lead_from_config(cfg) == 2
+    cfg["agents"]["attacker-miner"]["attributes"].pop("release_lead")
+    assert _release_lead_from_config(cfg) == 1
+
+
+def test_make_verdicts_conservative_uses_band_not_eyal_sirer_point():
+    from scripts.selfish_mining_analysis import make_verdicts
+    alpha, share = 0.4, 0.42
+    verdicts = make_verdicts(alpha, share, {}, theory_at_gamma=None, release_lead=2)
+    assert len(verdicts) == 1
+    v = verdicts[0]
+    assert "band" in v and v["pass"] is True           # 0.42 within 0.364-0.10 .. 0.484+0.10
+    # default release_lead keeps the point verdicts (and beats-honest at alpha>0.34)
+    defaults = make_verdicts(alpha, share, {}, theory_at_gamma=0.484, release_lead=1)
+    assert len(defaults) == 3
 
 
 def test_es_revenue_share_crosses_alpha_near_one_third_at_gamma_zero():

@@ -50,3 +50,25 @@ def test_sweep_alpha_matches_hashrate_split(path, expected_alpha):
                  if v.get("script") == "agents.autonomous_miner")
     alpha = att / (att + honest)
     assert abs(alpha - expected_alpha) < 0.01, f"{path}: alpha {alpha:.3f} != {expected_alpha}"
+
+
+def test_release2_config_is_micro_plus_release_lead():
+    # The release-lead experiment must be selfish_micro.yaml with ONLY the
+    # release_lead attribute (and header comments) different, so its result is
+    # directly comparable to the archived phase-1 micro runs.
+    cfg = _load(Path("test_configs/selfish_release2.yaml"))
+    base = _load(Path("test_configs/selfish_micro.yaml"))
+    att = next(v for v in cfg["agents"].values()
+               if v.get("script") == "agents.selfish_miner")
+    assert att["attributes"].get("release_lead") == "2", "release_lead: \"2\" set"
+    assert att["attributes"].get("strategy") == "eyal_sirer"
+    assert att.get("daemon_options", {}).get("offline") is True
+    assert cfg["general"]["mining"]["mode"] == "native"
+
+    def strip(path):
+        d = _load(Path(path))
+        for a in d["agents"].values():
+            a.get("attributes", {}).pop("release_lead", None)
+        return d
+    assert strip("test_configs/selfish_release2.yaml") == strip("test_configs/selfish_micro.yaml"), \
+        "release2 differs from micro by more than the release_lead attribute"

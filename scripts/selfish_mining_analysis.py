@@ -39,6 +39,18 @@ def es_revenue_share(alpha: float, gamma: float) -> float:
     return num / den
 
 
+def mod_revenue_share(alpha: float, gamma: float) -> float:
+    """Lee & Kim 2025 (arXiv:2512.01437) Eq. 2: revenue share of their
+    modified selfish-mining Markov model -- the conservative release-at-lead-2
+    policy Qubic ran on Monero (release while two clear instead of waiting for
+    honest to close to one). Lower bound to eyal_sirer at gamma=0; verified
+    against the paper: mod(0.28, 0) = 0.178, mod(0.4, 0) = 0.364."""
+    num = alpha * (alpha ** 3 * gamma - 3 * alpha ** 2 * gamma + alpha ** 2
+                   + 3 * alpha * gamma - 2 * alpha - gamma)
+    den = alpha ** 4 - 2 * alpha ** 3 + alpha - 1
+    return num / den
+
+
 def parse_found_blocks(run_dir, miner_ids) -> list:
     run_dir = Path(run_dir)
     out = []
@@ -135,8 +147,33 @@ def _alpha_from_config(cfg):
     return (att / total) if total else 0.0
 
 
-def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None) -> list:
+def _release_lead_from_config(cfg) -> int:
+    """The attacker's release_lead attribute (cash-out threshold); 1 = textbook
+    Eyal-Sirer, >=2 = the conservative variant the verdicts treat specially."""
+    for a in cfg.get("agents", {}).values():
+        if a.get("script") == "agents.selfish_miner":
+            try:
+                return int(a.get("attributes", {}).get("release_lead", "1") or 1)
+            except (TypeError, ValueError):
+                return 1
+    return 1
+
+
+def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None, release_lead=1) -> list:
     verdicts = []
+    if release_lead >= 2:
+        # Conservative cash-out (Qubic's policy): Lee & Kim place the attacker
+        # "between" their modified model and classical Eyal-Sirer, so the check
+        # is a band, not a point. The beats-honest verdict is deliberately not
+        # applied: the conservative policy is EXPECTED to realize below honest
+        # at gamma~0 (it trades honest waste for tie safety it cannot spend).
+        lo, hi = mod_revenue_share(alpha, 0.0), es_revenue_share(alpha, 0.0)
+        verdicts.append({
+            "name": f"attacker share within modified<->ES band (release_lead={release_lead})",
+            "measured": measured_share, "band": (lo, hi),
+            "pass": (lo - 0.10) <= measured_share <= (hi + 0.10),
+        })
+        return verdicts
     theory = es_revenue_share(alpha, 0.0)
     verdicts.append({
         "name": "attacker share vs Eyal-Sirer gamma=0 curve",
@@ -198,35 +235,44 @@ def main() -> int:
     h2m = found_by_hash(found)
     canonical_hashes = {b["hash"] for b in chain}
     alpha = _alpha_from_config(cfg)
+    release_lead = _release_lead_from_config(cfg)
     share = attacker_share_from_chain(chain, h2m, attacker_ids)
     stats = orphan_stats(found, canonical_hashes, attacker_ids)
     gamma, n_ties = realized_gamma(found, chain, attacker_ids)
     theory_at_gamma = es_revenue_share(alpha, gamma)
-    verdicts = make_verdicts(alpha, share, stats, theory_at_gamma)
+    verdicts = make_verdicts(alpha, share, stats, theory_at_gamma, release_lead)
 
     out_dir = Path(args.out) if args.out else (run_dir / "analysis_output" / "selfish")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma)
+    report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma, release_lead)
     (out_dir / "report.md").write_text(report)
     print(report)
     return 0 if all(v["pass"] for v in verdicts) else 1
 
 
-def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=None) -> str:
+def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=None, release_lead=1) -> str:
     if theory_at_gamma is None:
         theory_at_gamma = es_revenue_share(alpha, gamma)
     lines = ["# Selfish-mining analysis", "",
              f"- alpha: {alpha:.3f}",
+             f"- release_lead: {release_lead} ({'textbook Eyal-Sirer' if release_lead == 1 else 'conservative cash-out'})",
              f"- attacker canonical share (measured): {share:.3f}",
-             f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}",
-             f"- realized gamma: {gamma:.3f}",
-             f"- num ties: {n_ties}",
-             f"- theory at measured gamma: {theory_at_gamma:.3f}",
-             f"- attacker orphan rate: {stats['attacker_orphan_rate']:.3f}",
-             f"- network orphan rate: {stats['network_orphan_rate']:.3f}",
-             "", "## Verdicts", ""]
+             f"- honest baseline (alpha): {alpha:.3f}",
+             f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}"]
+    if release_lead >= 2:
+        lines.append(f"- modified lead-2 theory gamma=0: {mod_revenue_share(alpha, 0.0):.3f}")
+    lines += [f"- realized gamma: {gamma:.3f}",
+              f"- num ties: {n_ties}",
+              f"- theory at measured gamma: {theory_at_gamma:.3f}",
+              f"- attacker orphan rate: {stats['attacker_orphan_rate']:.3f}",
+              f"- network orphan rate: {stats['network_orphan_rate']:.3f}",
+              "", "## Verdicts", ""]
     for v in verdicts:
-        lines.append(f"- {'PASS' if v['pass'] else 'FAIL'}: {v['name']} (measured {v['measured']:.3f})")
+        detail = f"band {v['band'][0]:.3f}..{v['band'][1]:.3f}" if "band" in v \
+            else f"theory {v['theory']:.3f}" if "theory" in v \
+            else f"baseline {v['baseline']:.3f}" if "baseline" in v else ""
+        lines.append(f"- {'PASS' if v['pass'] else 'FAIL'}: {v['name']} (measured {v['measured']:.3f}"
+                     + (f", {detail})" if detail else ")"))
     return "\n".join(lines) + "\n"
 
 
