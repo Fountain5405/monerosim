@@ -74,7 +74,7 @@ agents:
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     hashrate: 3
-    start_time: 0s
+    start_time: 15m
     attributes:
       eclipsed: "true"
     peers:
