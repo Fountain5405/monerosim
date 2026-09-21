@@ -104,33 +104,29 @@ fn eclipse_fixture_pins_and_isolates() {
     let victim_ip = host_ip(&actual, "victim-001");
     assert!(!victim_ip.is_empty(), "victim host found");
 
-    // The victim: exclusive-pinned to the island's resolved ip:port, refuses
-    // inbound, still mines (mining knobs intact).
+    // The victim (v8): --offline (no P2P at all — the strongest isolation,
+    // and an offline daemon is synchronized immediately so it accepts the
+    // island relay's submit_block pushes; a peerless ONLINE daemon answers
+    // BUSY and silently drops them). Still mines (mining knobs intact).
     let victim_args = host_args(&actual, "victim-001");
-    assert!(
-        victim_args.contains(&format!("--add-exclusive-node={}:18080", island_ip)),
-        "victim exclusively dials the island, got: {victim_args}"
-    );
-    assert!(victim_args.contains("--in-peers=0"), "victim refuses inbound");
+    assert!(victim_args.contains("--offline"), "victim runs offline");
     assert!(
         actual.contains("--sim-hash-interval-ms=333"),
         "victim (3 h/s) still mines natively"
     );
     assert!(
-        !victim_args.contains("--seed-node="),
-        "victim gets no seed list"
-    );
-    assert!(
-        !victim_args.contains("--add-priority-node"),
-        "victim gets no ring/seed links"
+        !victim_args.contains("--seed-node=") && !victim_args.contains("--add-priority-node"),
+        "victim gets no seed list or ring links"
     );
 
-    // The island: bootstraps nowhere (no seed list, no pins of its own).
+    // The island (v8): offline too, for the same submit-acceptance reason.
     let island_args = host_args(&actual, "attacker-island");
+    assert!(island_args.contains("--offline"), "island runs offline");
     assert!(
         !island_args.contains("--seed-node=") && !island_args.contains("--add-priority-node"),
-        "island is P2P-isolated except for pinned victims' inbound, got: {island_args}"
+        "island bootstraps nowhere"
     );
+    let _ = island_ip;
 
     // Everyone else: relays' seed lists contain the two free-side miners but
     // NOT the eclipsed victim.

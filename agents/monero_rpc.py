@@ -304,10 +304,19 @@ class MoneroRPC(BaseRPC):
         submit_block's params is a POSITIONAL array of block blobs, unlike the
         object-params of other json_rpc methods; _make_request forwards a list
         verbatim. On success the daemon adds the block and (if it enters the
-        main chain) relays it to peers exactly as a P2P block. Raises RPCError
-        if the block is rejected.
+        main chain) relays it to peers exactly as a P2P block.
+
+        A rejection is NOT a json-rpc error: monerod answers with HTTP 200 and
+        the reason in `result.status` (BUSY while unsynchronized — the silent
+        failure mode that ate five eclipse-composition iterations; "Block not
+        accepted" for verbatim rejections). Treat any non-OK status as
+        RPCError so callers see failures instead of black holes.
         """
-        return self._make_request("submit_block", [block_blob])
+        result = self._make_request("submit_block", [block_blob])
+        status = (result or {}).get("status", "")
+        if status not in ("OK", ""):
+            raise RPCError(f"submit_block status: {status}")
+        return result
 
     def get_transaction_pool(self) -> Dict[str, Any]:
         """

@@ -105,9 +105,10 @@ def test_eclipse_config_pins_and_alpha_eff():
     assert att.get("daemon_options", {}).get("offline") is True
     assert cfg["general"]["mining"]["mode"] == "native"
     assert victim["attributes"]["eclipsed"] == "true"
-    assert victim["peers"]["exclusive"] == ["attacker-island"]
-    assert victim["peers"]["in_peers"] == 0
+    assert victim["daemon_options"]["offline"] is True   # v8: no P2P at all
+    assert victim["attributes"]["mine_after_height"] == "3"
     assert island["attributes"]["eclipsed"] == "true"
+    assert island["daemon_options"]["offline"] is True
     # naive alpha far below the gamma=0 threshold; alpha_eff well inside the
     # profitable regime but below the majority line (ES curve defined).
     assert abs(_alpha_from_config(cfg) - 4 / 15) < 0.01

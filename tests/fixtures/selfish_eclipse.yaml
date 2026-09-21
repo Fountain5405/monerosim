@@ -54,6 +54,8 @@ agents:
     daemon: monerod
     script: agents.selfish_bridge
     start_time: 0s
+    daemon_options:
+      offline: true
     attributes:
       eclipsed: "true"
   victim-001:
@@ -61,13 +63,12 @@ agents:
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     hashrate: 3
-    start_time: 0s
+    start_time: 15m
+    daemon_options:
+      offline: true
     attributes:
       eclipsed: "true"
-    peers:
-      exclusive:
-      - attacker-island
-      in_peers: 0
+      mine_after_height: "3"
   relay-001:
     daemon: monerod
     start_time: 30s

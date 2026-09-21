@@ -68,6 +68,8 @@ agents:
     daemon: monerod
     script: agents.selfish_bridge
     start_time: 0s
+    daemon_options:
+      offline: true
     attributes:
       eclipsed: "true"
       victims: "victim-001"
@@ -77,13 +79,11 @@ agents:
     script: agents.autonomous_miner
     hashrate: 3
     start_time: 15m
+    daemon_options:
+      offline: true
     attributes:
       eclipsed: "true"
       mine_after_height: "3"
-    peers:
-      exclusive:
-      - attacker-island
-      in_peers: 0
   relay-001:
     daemon: monerod
     start_time: 30s
