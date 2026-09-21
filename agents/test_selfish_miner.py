@@ -327,3 +327,42 @@ def test_run_iteration_pulls_islands_before_strategy_decision():
     assert calls[0] == "pull" and calls[1] == "mirror"
     assert calls[2] == ("strategy", 5, 4)
     assert calls[3] == "forward"
+
+
+def test_island_cash_out_fires_at_lead_and_commits():
+    a, i1, i2 = _make_island_agent()
+    a.strategy.fork = 10
+    a._island_heights = [14, 12]          # max island height 14, pub 12 -> lead 2
+    a._release_up_to = MagicMock()
+    fired = a._island_cash_out(pub_height=12, priv_height=14)
+    assert fired is True
+    a._release_up_to.assert_called_once_with(10, 13)   # [fork, priv-1]
+    assert a.strategy.fork == 14                        # the win commits
+
+
+def test_island_cash_out_holds_below_lead():
+    a, _, _ = _make_island_agent()
+    a.strategy.fork = 10
+    a._island_heights = [13]             # lead 1 < 2
+    a._release_up_to = MagicMock()
+    assert a._island_cash_out(pub_height=12, priv_height=13) is False
+    a._release_up_to.assert_not_called()
+    assert a.strategy.fork == 10
+
+
+def test_island_cash_out_noop_when_already_committed():
+    a, _, _ = _make_island_agent()
+    a.strategy.fork = 14                 # already at priv: nothing divergent
+    a._island_heights = [16]
+    a._release_up_to = MagicMock()
+    assert a._island_cash_out(pub_height=12, priv_height=14) is False
+    a._release_up_to.assert_not_called()
+
+
+def test_island_cash_lead_attribute_default_and_override():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["bridges", "b1"], ["islands", "i1"]])
+    assert a.island_cash_lead == 2
+    b = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["bridges", "b1"], ["islands", "i1"], ["island_cash_lead", "3"]])
+    b.logger = MagicMock()
+    assert b.island_cash_lead == 3

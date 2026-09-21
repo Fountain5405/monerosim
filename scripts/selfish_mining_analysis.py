@@ -206,11 +206,15 @@ def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None, release_le
     verdicts = []
     if eclipse:
         # Eclipse composition: the headline is the CONTROLLED share (attacker
-        # + eclipsed victims' canonical blocks) against Eyal-Sirer evaluated
-        # at alpha_eff — recruited hashrate behaves like attacker hashrate,
-        # so the composed attack should sit on the curve at alpha_eff. The
-        # ES curve is only defined below the majority line; at alpha_eff >= 1/2
-        # the check degrades to "the composed attacker controls the majority".
+        # + eclipsed victims' canonical blocks). With the v2 cash-on-lead
+        # lifecycle the composed attack banks every island branch at lead
+        # `island_cash_lead` (default 2) — conservative-release semantics —
+        # so the comparison curve is the modified model at alpha_eff
+        # (recruited hashrate behaves like attacker hashrate). v1 (no
+        # lifecycle) measured 0.161 against this ~0.48 prediction and the
+        # failure mode is documented in the results doc. Below the majority
+        # line the curve is undefined; there the check degrades to
+        # "the composed attacker controls the majority".
         controlled, alpha_eff = eclipse
         if alpha_eff >= 0.5:
             verdicts.append({
@@ -219,9 +223,9 @@ def make_verdicts(alpha, measured_share, stats, theory_at_gamma=None, release_le
                 "pass": controlled > 0.5,
             })
             return verdicts
-        theory_eff = es_revenue_share(alpha_eff, 0.0)
+        theory_eff = mod_revenue_share(alpha_eff, 0.0)
         verdicts.append({
-            "name": f"controlled share vs Eyal-Sirer at alpha_eff={alpha_eff:.3f}",
+            "name": f"controlled share vs modified model at alpha_eff={alpha_eff:.3f}",
             "measured": controlled, "theory": theory_eff,
             "pass": abs(controlled - theory_eff) <= 0.10,
         })
@@ -377,7 +381,7 @@ def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=
         lines += [f"- eclipse composition: yes",
                   f"- CONTROLLED canonical share (attacker + victims): {controlled:.3f}",
                   f"- alpha_eff (attacker + victims / total): {alpha_eff:.3f}",
-                  f"- Eyal-Sirer gamma=0 theory at alpha_eff: {es_revenue_share(alpha_eff, 0.0):.3f}"]
+                  f"- modified (cash-on-lead) theory at alpha_eff: {mod_revenue_share(alpha_eff, 0.0):.3f}"]
     lines += [f"- honest baseline (alpha): {alpha:.3f}",
               f"- Eyal-Sirer gamma=0 theory: {es_revenue_share(alpha, 0.0):.3f}"]
     if release_lead >= 2:

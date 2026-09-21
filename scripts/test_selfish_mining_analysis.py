@@ -199,18 +199,18 @@ def test_eclipse_config_helpers():
 
 
 def test_eclipse_verdict_uses_controlled_share_vs_alpha_eff():
-    from scripts.selfish_mining_analysis import make_verdicts, es_revenue_share
-    # Sub-majority composition: alpha=4/15, alpha_eff=(4+3)/15=0.467,
-    # ES(0.467, gamma=0) ~ 0.73 — controlled 0.75 sits on the curve.
-    alpha, controlled, alpha_eff = 4 / 15, 0.75, 7 / 15
+    from scripts.selfish_mining_analysis import make_verdicts, mod_revenue_share
+    # Sub-majority composition with the v2 cash-on-lead lifecycle:
+    # alpha=4/15, alpha_eff=(4+3)/15=0.467, mod(0.467, gamma=0) ~ 0.48.
+    alpha, controlled, alpha_eff = 4 / 15, 0.48, 7 / 15
     verdicts = make_verdicts(alpha, 0.30, {}, theory_at_gamma=None,
                              eclipse=(controlled, alpha_eff))
     assert len(verdicts) == 1
     v = verdicts[0]
-    assert abs(v["theory"] - es_revenue_share(alpha_eff, 0.0)) < 1e-12
+    assert abs(v["theory"] - mod_revenue_share(alpha_eff, 0.0)) < 1e-12
     assert v["pass"] is True
     # Majority composition degrades to a control check, not the (undefined)
-    # ES curve: alpha_eff=7/13 must not evaluate es_revenue_share.
+    # curve: alpha_eff=7/13 must not evaluate the revenue formula.
     maj = make_verdicts(alpha, 0.30, {}, theory_at_gamma=None,
                         eclipse=(0.6, 7 / 13))
     assert len(maj) == 1 and maj[0]["pass"] is True and maj[0]["theory"] == 0.5

@@ -54,6 +54,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self._connected_island_ids = set()
         self._mirrored_index = 0    # highest own-chain height pushed to islands
         self._island_pulled = []    # per-island highest main-chain height pulled back
+        self._island_heights = []   # per-island last-known main-chain height
+        self.island_cash_lead = int(self.attributes.get("island_cash_lead", "2") or 2)
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
         self.trail_depth = int(self.attributes.get("trail_depth", "1") or 1)  # trail_stubborn only
@@ -168,6 +170,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             except RPCError as e:
                 self.logger.debug(f"island {i} height read: {e}")
                 continue
+            if i < len(self._island_heights):
+                self._island_heights[i] = island_height
+            else:
+                self._island_heights.append(island_height)
             pulled = self._island_pulled[i] if i < len(self._island_pulled) else 0
             for idx in range(pulled + 1, island_height + 1):
                 try:
@@ -272,6 +278,28 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
 
+    def _island_cash_out(self, pub_height: int, priv_height: int) -> bool:
+        """Cash-on-lead island lifecycle (experiment 3 v2): the moment the
+        island branch is `island_cash_lead` blocks ahead of the honest public
+        chain, release the whole combined chain and commit the win. The
+        island never carries a lead honest could outgrow and strand — the v1
+        pathology (docs/20260921_selfish_eclipse_results.md) — and every
+        recruitment burst is banked while it is still strictly winnable.
+        Runs after the strategy's own decision, so an already-committed
+        release this tick makes the range empty (no-op)."""
+        if not self.island_rpcs or not self._island_heights or not self.strategy:
+            return False
+        if self.strategy.fork >= priv_height:
+            return False                      # nothing divergent to cash
+        lead = max(self._island_heights) - pub_height
+        if lead < self.island_cash_lead:
+            return False
+        self._release_up_to(self.strategy.fork, priv_height - 1)
+        self.strategy.fork = priv_height
+        self.logger.info(
+            f"Island cash-out at lead {lead}: committed through height {priv_height}")
+        return True
+
     def run_iteration(self) -> float:
         # 1. Keep the offline miner mining.
         try:
@@ -324,6 +352,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         #    branch unchanged.
         if decision.release_to is not None:
             self._release_up_to(decision.release_from, decision.release_to)
+
+        # 8. Island cash-out (v2 lifecycle): bank the combined branch the
+        #    moment it leads honest by `island_cash_lead`, regardless of the
+        #    strategy's own timing.
+        if self.island_rpcs:
+            self._island_cash_out(pub_height, priv_height)
 
         return self._reaction_interval_s()
 
