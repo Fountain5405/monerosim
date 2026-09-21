@@ -655,3 +655,29 @@ The alternative — patching the *receiver* to prefer a later-arriving equal-hei
 block — would lift γ by construction, but it changes consensus behaviour rather
 than relay plumbing, and a network running it would no longer be modelling
 Monero. It is deliberately not built.
+
+## 10. Experiment series (feat/selfish-mining-experiments)
+
+Branch for the post-phase-4 experiment programme. Literature context:
+`docs/20260920_selfish_mining_literature.md` (moneroresearch.info harvest —
+the Qubic campaign study independently measured γ ≈ 0.01–0.06 on real Monero,
+validating the structural finding above).
+
+1. **`release_lead` (shipped 2026-09-21).** eyal_sirer's reveal arm is
+   parametrized: cash out the private branch once honest closes to within
+   `release_lead` blocks (default 1 = textbook; 2 = Qubic's observed
+   conservative policy, Lee & Kim 2025). `scripts/selfish_mining_analysis.py`
+   adds `mod_revenue_share` (their Eq. 2) and a between-models band verdict
+   for release_lead ≥ 2 runs. Result (α=0.4 A/B, same seed): 0.463 → 0.309,
+   profit → loss, with network damage *shrinking* too (orphan rate 0.274 →
+   0.214, reorg depths collapse to length-1, MSB detectability drops
+   +6.94 → +3.98). Numbers and interpretation:
+   `docs/20260921_selfish_release2_results.md`.
+2. **Externality/detection metrics (shipped 2026-09-21).**
+   `scripts/selfish_externality.py`, rendered as the analysis report's
+   "Externality & detection" section: Lee & Kim's per-hour orphan series +
+   Alg. 1 attack-period detection + reorg-depth histogram + attacker
+   run-length/release-signature scatter; Li et al. 2020 MSB consecutive-wins
+   z-scores; Kawaguchi & Noda SpEC; Gervais stale-rate series.
+3. Eclipse×selfish composition — the γ lever the literature says is real
+   (harness: `analysis/eclipse/`). Planned.
