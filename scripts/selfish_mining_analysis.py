@@ -22,6 +22,10 @@ import yaml
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.native_mining_check import FOUND          # noqa: E402
+from scripts.selfish_externality import (              # noqa: E402
+    attacker_runs, detect_selfish_periods, hourly_series, msb_scores,
+    reorg_contest_depths, spec,
+)
 
 
 def load_raw_config(cfg_path) -> dict:
@@ -60,7 +64,8 @@ def parse_found_blocks(run_dir, miner_ids) -> list:
                 for line in f:
                     m = FOUND.search(line)
                     if m:
-                        out.append({"hash": m.group(2).strip("<>"), "height": int(m.group(3)), "miner": miner})
+                        out.append({"hash": m.group(2).strip("<>"), "height": int(m.group(3)),
+                                    "miner": miner, "time": m.group(1)})
     return out
 
 
@@ -244,13 +249,48 @@ def main() -> int:
 
     out_dir = Path(args.out) if args.out else (run_dir / "analysis_output" / "selfish")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma, release_lead)
+    externality = _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes)
+    report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma,
+                     release_lead, externality)
     (out_dir / "report.md").write_text(report)
     print(report)
     return 0 if all(v["pass"] for v in verdicts) else 1
 
 
-def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=None, release_lead=1) -> str:
+def _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes) -> dict:
+    """The literature-grounded externality/detection block (Lee & Kim 2025,
+    Li 2020, Kawaguchi & Noda 2021, Gervais 2016) — see
+    scripts/selfish_externality.py for each metric's source and meaning."""
+    hourly = hourly_series(found, canonical_hashes)
+    periods = detect_selfish_periods(hourly)
+    depths = reorg_contest_depths(found, h2m, canonical_hashes)
+    runs = attacker_runs(chain, h2m, attacker_ids, found, canonical_hashes)
+    depth_hist = {}
+    for d in depths:
+        depth_hist[d] = depth_hist.get(d, 0) + 1
+    sig1 = sum(1 for r in runs if r["length"] >= 2 and r["orphans"] == r["length"] - 1)
+    sig2 = sum(1 for r in runs if r["length"] >= 2 and r["orphans"] == r["length"] - 2)
+    run_hist = {}
+    for r in runs:
+        run_hist[r["length"]] = run_hist.get(r["length"], 0) + 1
+    return {
+        "hourly": hourly,
+        "periods": periods,
+        "depth_hist": depth_hist,
+        "multi_depth_share": (sum(1 for d in depths if d > 1) / len(depths)) if depths else 0.0,
+        "runs": runs,
+        "run_length_hist": run_hist,
+        "release_sig_lead1": sig1,
+        "release_sig_lead2": sig2,
+        "msb": msb_scores(chain, h2m),
+        "spec_finds": spec([h["finds"] for h in hourly]),
+        "spec_canonical": spec([h["canonical"] for h in hourly]),
+        "canonical_total": sum(h["canonical"] for h in hourly),
+    }
+
+
+def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=None,
+            release_lead=1, externality=None) -> str:
     if theory_at_gamma is None:
         theory_at_gamma = es_revenue_share(alpha, gamma)
     lines = ["# Selfish-mining analysis", "",
@@ -273,6 +313,24 @@ def _render(alpha, share, stats, verdicts, gamma=0.0, n_ties=0, theory_at_gamma=
             else f"baseline {v['baseline']:.3f}" if "baseline" in v else ""
         lines.append(f"- {'PASS' if v['pass'] else 'FAIL'}: {v['name']} (measured {v['measured']:.3f}"
                      + (f", {detail})" if detail else ")"))
+    if externality:
+        ex = externality
+        lines += ["", "## Externality & detection", "",
+                  f"- canonical blocks (total): {ex['canonical_total']}",
+                  f"- SpEC hourly finds (p5/mean): {ex['spec_finds']:.3f}",
+                  f"- SpEC hourly canonical throughput: {ex['spec_canonical']:.3f}",
+                  f"- selfish periods detected (Alg.1, tau=2/h): "
+                  f"{len(ex['periods'])} -> {ex['periods'] if ex['periods'] else 'none'}",
+                  f"- reorg contest depths: {ex['depth_hist']} "
+                  f"(multi-depth share {ex['multi_depth_share']:.2f})",
+                  f"- attacker runs: {len(ex['runs'])} (length hist {ex['run_length_hist']}); "
+                  f"release signature among runs >=2: "
+                  f"y=x-1 (lead-1): {ex['release_sig_lead1']}, "
+                  f"y=x-2 (lead-2): {ex['release_sig_lead2']}",
+                  "- MSB (consecutive-wins z-score, Li 2020; >2 flags withholding):"]
+        for m, s in sorted(ex["msb"].items()):
+            lines.append(f"  - {m}: observed {s['observed']} vs expected {s['expected']:.1f}"
+                         f" -> z = {s['z']:+.2f}")
     return "\n".join(lines) + "\n"
 
 

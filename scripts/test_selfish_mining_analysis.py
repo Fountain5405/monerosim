@@ -108,7 +108,8 @@ def test_parse_found_blocks_reads_a_log(tmp_path):
         "2000-01-01 00:00:15.0\tI Found block <deadbeef> at height 1 for difficulty: 2\n"
     )
     found = parse_found_blocks(tmp_path, ["attacker-miner"])
-    assert found == [{"hash": "deadbeef", "height": 1, "miner": "attacker-miner"}]
+    assert found == [{"hash": "deadbeef", "height": 1, "miner": "attacker-miner",
+                      "time": "2000-01-01 00:00:15.0"}]
 
 
 def test_config_loader_sees_agents(tmp_path):
