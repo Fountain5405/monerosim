@@ -668,16 +668,37 @@ validating the structural finding above).
    `release_lead` blocks (default 1 = textbook; 2 = Qubic's observed
    conservative policy, Lee & Kim 2025). `scripts/selfish_mining_analysis.py`
    adds `mod_revenue_share` (their Eq. 2) and a between-models band verdict
-   for release_lead ≥ 2 runs. Result (α=0.4 A/B, same seed): 0.463 → 0.309,
-   profit → loss, with network damage *shrinking* too (orphan rate 0.274 →
-   0.214, reorg depths collapse to length-1, MSB detectability drops
-   +6.94 → +3.98). Numbers and interpretation:
+   for release_lead ≥ 2 runs. Results: α=0.4 A/B 0.463 → 0.309 (profit →
+   loss) with network damage shrinking too (orphan rate 0.274 → 0.214, reorg
+   depths collapse to length-1, MSB detectability drops +6.94 → +3.98); the
+   α-sweep (0.30/0.40/0.45, `test_configs/selfish_sweep_release2/`) puts the
+   conservative policy's profitability crossover in (0.40, 0.45) and found
+   MSB over-flagging HONEST miners under heavy attack (their iid null needs
+   attack calibration). Numbers and interpretation:
    `docs/20260921_selfish_release2_results.md`.
 2. **Externality/detection metrics (shipped 2026-09-21).**
    `scripts/selfish_externality.py`, rendered as the analysis report's
    "Externality & detection" section: Lee & Kim's per-hour orphan series +
    Alg. 1 attack-period detection + reorg-depth histogram + attacker
    run-length/release-signature scatter; Li et al. 2020 MSB consecutive-wins
-   z-scores; Kawaguchi & Noda SpEC; Gervais stale-rate series.
-3. Eclipse×selfish composition — the γ lever the literature says is real
-   (harness: `analysis/eclipse/`). Planned.
+   z-scores; Kawaguchi & Noda SpEC; Gervais stale-rate series. The bridge's
+   canonical chain dump now records block timestamps (join-free bucketing).
+3. **Eclipse×selfish composition (experiment 3, v1 run 2026-09-21).** Two
+   orchestrator knobs — `peers:` (agent-id-resolved exclusive/priority peer
+   pins + in/out caps) and `attributes.eclipsed` (excluded from the miner
+   ring and all seed lists) — plus `islands` attacker attribute: isolated
+   island bridges that the agent mirrors its private chain onto (eclipsed
+   victims unknowingly extend it) and pulls blocks back from (victim blocks
+   join the private branch; the release path cashes the combined chain
+   unchanged). Analysis reports CONTROLLED share (attacker + victims) vs
+   Eyal–Sirer at α_eff, and never uses island chains as the canonical
+   observer. Config: `test_configs/selfish_eclipse/gamma_eclipse.yaml`
+   (α=4/15≈0.27 naive, α_eff=7/15≈0.47). **v1 result: hypothesis rejected —
+   0.161 controlled vs 0.733 predicted.** The composition has an
+   island-resync pathology: once the island branch outruns honest and honest
+   then overtakes, the island cannot be resynced (its main chain is longer),
+   victims mine a permanently dead branch, and 65% of attacker finds die
+   with them — while the network still eats a 0.43 orphan rate. Negative
+   result with mechanism and the v2 lifecycle designs (recruitment cap /
+   epochs / cash-on-lead):
+   `docs/20260921_selfish_eclipse_results.md`.
