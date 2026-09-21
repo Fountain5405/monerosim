@@ -63,7 +63,7 @@ as with Qubic, the attacker's loss coexists with public harm.
   miners" assumes the attacker can reset victims (new poisoning rounds);
   our v1 has no reset, and the cost of that omission is measured above.
 
-## v2 design (next increment)
+## v2 design (as specced after v1; implemented same day — outcome above)
 
 Island lifecycle management — pick one or more:
 1. **Recruitment cap**: pull victim blocks only while the combined branch
@@ -77,11 +77,91 @@ Island lifecycle management — pick one or more:
    branch is exactly k ahead of honest (never let it grow beyond k).
 
 (1) and (3) are strategy-layer changes in `SelfishMinerAgent`; (2) needs a
-per-epoch island state. All measurable with the existing analysis.
+per-epoch island state. v2 implemented (3) — it fixed the self-destruction
+but not the recruitment itself; see the v2/v3 section for why.
 
-## Caveats
+## v2 (cash-on-lead, same day) and v3 (late victims): better, still rejected — and the real mechanism surfaced
 
-- Single run, `native_preemption: true` (σ≈0.05) — the failure is ~11σ, not
-  noise.
+**v2** (`20260921_162235_gamma_eclipse_v2`, `_island_cash_out` at lead 2):
+controlled 0.161 → **0.291** (attacker alone 0.269 ≈ its honest 0.267).
+The attacker stopped self-destructing, but victims still banked ~nothing
+(~0.02). Network orphan rate ROSE to 0.490 — cash-outs orphan honest work,
+and the leftover strandings still burn. First-pass analysis read γ=0.270
+(our first nonzero!); corrected by excluding victim resolvers
+(commit `a5418f17`): the true γ is **0.000** over 25 ties — the structural
+result holds.
+
+**ω-sweep under v2 semantics** (attacker 4 h/s fixed, total 15):
+
+| Run | ω | α_eff | controlled | R_mod(α_eff) | verdict |
+|---|---|---|---|---|---|
+| `20260921_162236_ecl_sweep_omega0000` | 0 | 0.267 | 0.192 (attacker=controlled) | — | ES anchor PASSES (0.192 vs ES 0.220) |
+| `20260921_171216_ecl_sweep_omega0200` | 0.133 | 0.400 | 0.283 (victim share 0.000) | 0.364 | PASS (band) |
+| `20260921_171216_ecl_sweep_omega0300_3v` | 0.200 | 0.467 | 0.385 (victim share 0.000) | 0.485 | PASS (band) |
+
+The anomaly that cracked the case: **victim canonical share is EXACTLY
+zero in every run** while victims found 74–127 blocks each. Under v2 the
+composition behaves as eclipse-DoS + plain selfish mining against a
+smaller honest pool (attacker 0.385 at α=0.267 ≈ its 4/(4+8) share vs the
+free honest 8 h/s) — victims removed from the honest side, never
+recruited.
+
+**v3** (victims start at 15m — after the island mirrors the chain, fixing
+the height-1 first-seen race): `20260921_183612_gamma_eclipse_v3`,
+controlled **0.295**, victims STILL zero canonical. The honest-strategy
+control (`20260921_..._honest_baseline_v3`, attacker releases
+immediately) shows the same zero — proving it is plumbing, not strategy.
+
+**The v3 mechanism (from the run's own data):** the island chain tracked
+the full 176-block chain perfectly (mirror ✓, pull kept the miner synced ✓
+— the victim found 176 blocks, heights 1..176), yet no victim block is on
+the island's main chain at release time. monerod's first-seen rule bites
+at every level: when the mirror's copy of the attacker's block and the
+victim's own block land at the same island height, the island keeps
+whichever it saw first; the victim's daemon — which saw its OWN block
+first, locally — keeps extending the losing fork on its side of the P2P
+link. Those alt-branch blocks are invisible to `get_block` (main chain
+only), so the pull never sees them, and they die. The victim is
+effectively solo-mining against its own reflection of the attacker's
+chain.
+
+## What v1–v3 establish (negative results with mechanisms)
+
+1. Peer-pinned eclipse isolation is solid (6 h, zero leaks) and the
+   orchestrator/analysis plumbing is sound (γ metric needed one fix).
+2. Recruitment via naive mirror/pull loses to monerod's first-seen
+   semantics at the island: **hashrate capture requires the victim's
+   blocks to win first-seen at the island**, which the attacker cannot
+   arrange while also mining the same heights itself.
+3. Even so, eclipsing honest miners is immediately valuable to a selfish
+   attacker as pure DoS: removing ω=0.2 of hashrate from the honest side
+   moved the attacker's canonical share from 0.192 (ω=0 anchor) to 0.385 —
+   its effective α vs the free honest pool rose from 0.267 to 0.333.
+
+## v4 design directions
+
+- **Rest windows**: alternate phases — attacker stops mining (and mirrors
+  only the committed prefix) so victims' extensions win first-seen at the
+  island uncontested, then cashes the victim-extended branch; the victim
+  hashrate is recruited in pulses rather than continuously.
+- **Pull alt-chains**: monerod exposes no RPC for alternative blocks; a
+  sim-only patch (like --sim-relay-alt-blocks) could expose them, making
+  the pull whole — but that changes what a real attacker could observe,
+  so prefer the strategy-level fix first.
+- **Non-mining observer island**: keep the attacker's miner OFF the
+  island's competing heights entirely (island carries only committed
+  blocks + victim extensions).
+
+## Caveats (v1–v3)
+
+- Single run per configuration, `native_preemption: true` (σ≈0.05) — the
+  headline failures are 3–11σ, not noise; the ω-sweep's PASS points sit
+  within the band partly because the band is wide.
+- The ω-sweep points ran under v2 victim-start semantics (t=0); under v3
+  (15m start) the curve should be re-run once recruitment itself works
+  (v4) — the v2-semantics points remain valid as eclipse-DoS
+  characterizations.
+- One victim topology per point except omega_0300_3v (3×1 h/s); island
+  count fixed at one.
 - One victim, one island, α_eff 0.467; the pathology should be α_eff-driven
   (worse as α_eff → 1/2 from below), which v2 should confirm by sweep.
