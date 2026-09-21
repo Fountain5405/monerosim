@@ -25,6 +25,15 @@ BRIDGE_IDLE_INTERVAL_S = 60.0
 ISLAND_RELAY_INTERVAL_S = 1.0
 
 
+def _undelivered(e: Exception) -> bool:
+    """True when an RPCError is a TRANSPORT failure (request never reached
+    the daemon) rather than a daemon-side rejection. A rejected block was
+    processed (already-have / alt / invalid) and need not be retried; an
+    undelivered one MUST be, or the watermark skips it forever — exactly
+    what happened to every block mirrored while the victim was absent."""
+    return "Request failed" in str(e) or "Max retries" in str(e)
+
+
 class SelfishBridgeAgent(BaseAgent):
     def __init__(self, agent_id: str, **kwargs):
         super().__init__(agent_id=agent_id, **kwargs)
@@ -83,12 +92,17 @@ class SelfishBridgeAgent(BaseAgent):
                 self.logger.debug(f"relay push {idx}: {e}")
                 break
             if blob:
+                undelivered = False
                 for rpc in self.victim_rpcs:
                     try:
                         rpc.submit_block(blob)
                         pushed += 1
                     except RPCError as e:
                         self.logger.debug(f"relay push {idx} to victim: {e}")
+                        if _undelivered(e):
+                            undelivered = True
+                if undelivered:
+                    break                   # retry this index next tick
             self._pushed_index = idx + 1
         pulled = 0
         for i, rpc in enumerate(self.victim_rpcs):
@@ -111,6 +125,8 @@ class SelfishBridgeAgent(BaseAgent):
                         pulled += 1
                     except RPCError as e:
                         self.logger.debug(f"relay pull {idx} into island: {e}")
+                        if _undelivered(e):
+                            break           # retry this index next tick
                 self._pulled_index[i] = idx + 1
         if pushed or pulled:
             self.logger.info(f"island relay: pushed {pushed}, pulled {pulled}")

@@ -164,6 +164,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 self.logger.debug(f"mirror private block {idx}: {e}")
                 break                               # retry next tick
             if blob:
+                undelivered = False
                 for rpc in self.island_rpcs:
                     try:
                         rpc.submit_block(blob)
@@ -171,6 +172,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         # shorter-than-island-main submissions (post-concession
                         # resyncs) can land as alts; harmless.
                         self.logger.debug(f"mirror private block {idx} to island: {e}")
+                        if "Request failed" in str(e) or "Max retries" in str(e):
+                            undelivered = True
+                if undelivered:
+                    break                   # retry this index next tick
             self._mirrored_index = idx + 1
             pushed += 1
         if pushed:
