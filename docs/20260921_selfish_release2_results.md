@@ -92,12 +92,48 @@ modified↔ES band). Wall ≈ 25 min per 6 h sim on the 24-core/31 GB pilot box.
   fragmentation effects (phase-2's caveat) are minimal here, which is what
   makes this a clean strategy-only comparison.
 
+## α-sweep addendum (2026-09-21, later)
+
+`test_configs/selfish_sweep_release2/` ran the conservative policy across α
+(each config = the matching ES sweep config + `release_lead: 2`, same seed
+12345; the α=0.40 point is the original `selfish_release2.yaml` run above):
+
+| Run | α | measured | R_mod | ES γ=0 | honest (α) |
+|---|---|---|---|---|---|
+| `20260921_102229_r2_sweep_a0300` | 0.30 | **0.211** | 0.205 | 0.273 | 0.300 |
+| `20260921_020113_selfish_release2` | 0.40 | 0.309 | 0.364 | 0.484 | 0.400 |
+| `20260921_102230_r2_sweep_a0450` | 0.45 | **0.569** | 0.454 | 0.652 | 0.450 |
+
+All three PASS the between-models band verdict. What the sweep adds:
+
+1. **The conservative policy's profitability crossover sits in (0.40, 0.45)**
+   — well above Eyal–Sirer's ≈1/3. At α=0.30 the measured share lands almost
+   exactly on the modified curve (0.211 vs 0.205): at low α the attacker's
+   options are so constrained that the Markov model captures it essentially
+   exactly, and it is deeply unprofitable (−0.09 vs honest). At α=0.45 the
+   measured 0.569 beats honest by +0.12: conservatism delays profitability,
+   it does not remove it — Qubic at a *sustained* 45% would have profited
+   even while releasing early.
+2. **The α=0.40 point remains the worst fit to R_mod** (0.055 under; the
+   other two are within 0.015). Single-run noise (σ≈0.04–0.05) covers it,
+   but if it persists across repeats the mid-α region is where the drip-feed
+   tie behaviour (which our implementation replaces with full release)
+   matters most.
+3. **MSB false-positives on HONEST miners under heavy attack** (α=0.45:
+   honest z = +2.25 and +3.17, above the +2 flag line). Strong withholding
+   clusters everyone's canonical wins — honest miners mine freely while the
+   attacker holds, then get reorged in bursts — so the iid-shuffle null
+   behind Li et al.'s detector over-flags honest miners exactly when the
+   attack is worst. A deployed detector needs an attack-aware null; our
+   simulator can supply the calibrated one. (At α=0.30/0.40 honest z stayed
+   ≤ +0.86.)
+4. Realized γ: 0.111 (27 ties) at 0.30, 0.000 at 0.40/0.45 — small-count
+   noise, same as the archived ES sweep showed at 0.30.
+
 ## Next
 
-- α-sweep the conservative policy (0.30 / 0.40 / 0.45) + one repeat at 0.40
-  if quantitative claims are needed — the pilot box does each in ~25 min.
-- Experiment 3: eclipse×selfish composition (the γ lever the literature says
-  is real) — harness exists in `analysis/eclipse/`.
+- Experiment 3: eclipse×selfish composition — built (islands + peers/eclipsed
+  orchestrator knobs + controlled-share analysis), running next.
 
 ## Monerosim notes from this experiment
 
