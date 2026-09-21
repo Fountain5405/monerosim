@@ -98,7 +98,8 @@ def orphan_stats(found: list, canonical_hashes: set, attacker_ids: set) -> dict:
     }
 
 
-def realized_gamma(found: list, chain: list, attacker_ids: set) -> tuple:
+def realized_gamma(found: list, chain: list, attacker_ids: set,
+                   controlled_ids: set = None) -> tuple:
     """Realized gamma: the honest network's tie-break bias toward the attacker.
 
     A gamma EVENT is a fork at height F (both an attacker- and an honest-found
@@ -109,10 +110,15 @@ def realized_gamma(found: list, chain: list, attacker_ids: set) -> tuple:
 
     Only forks resolved by an HONEST-found F+1 count: a fork where the
     attacker's own chain overtook (attacker-found canonical F+1) is a reorg win,
-    not a tie-break, and is excluded. Counting every coexistence height, or
-    attributing by canonical[F] alone, over-reports gamma — the earlier version
-    read ~0.70 on a true-gamma~=0 run (review C1). Returns (gamma, num_events).
+    not a tie-break, and is excluded. Under eclipse composition,
+    CONTROLLED-found resolvers (eclipsed victims extending the attacker's
+    island chain) are attacker-side extensions too and are excluded — counting
+    them read gamma = 0.27 on a genuinely gamma~0 network (the v2 first-pass
+    artifact). Counting every coexistence height, or attributing by canonical[F]
+    alone, over-reports gamma — the earlier version read ~0.70 on a
+    true-gamma~=0 run (review C1). Returns (gamma, num_events).
     """
+    controlled = controlled_ids if controlled_ids is not None else attacker_ids
     miner_by_hash = {}
     miners_at_height = {}
     for e in found:
@@ -123,12 +129,12 @@ def realized_gamma(found: list, chain: list, attacker_ids: set) -> tuple:
     attacker_wins = 0
     for height, miners in miners_at_height.items():
         has_attacker = any(m in attacker_ids for m in miners)
-        has_honest = any(m not in attacker_ids for m in miners)
+        has_honest = any(m not in controlled for m in miners)
         if not (has_attacker and has_honest):
             continue                                  # not a fork
         resolver_miner = miner_by_hash.get(canon_hash.get(height + 1))
-        if resolver_miner is None or resolver_miner in attacker_ids:
-            continue                                  # unresolved, or attacker's own extension (reorg, not tie-break)
+        if resolver_miner is None or resolver_miner in controlled:
+            continue                                  # unresolved, or attacker-/victim-side extension (reorg, not tie-break)
         events += 1
         if miner_by_hash.get(canon_hash.get(height)) in attacker_ids:
             attacker_wins += 1                         # honest network extended the attacker's fork
@@ -321,7 +327,7 @@ def main() -> int:
     controlled = attacker_share_from_chain(chain, h2m, attacker_ids | eclipsed)
     alpha_eff = _alpha_eff_from_config(cfg)
     stats = orphan_stats(found, canonical_hashes, attacker_ids)
-    gamma, n_ties = realized_gamma(found, chain, attacker_ids)
+    gamma, n_ties = realized_gamma(found, chain, attacker_ids, attacker_ids | eclipsed)
     theory_at_gamma = es_revenue_share(alpha, gamma)
     eclipse = (controlled, alpha_eff) if eclipsed else None
     verdicts = make_verdicts(alpha, share, stats, theory_at_gamma, release_lead, eclipse)

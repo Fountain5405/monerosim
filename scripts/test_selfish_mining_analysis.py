@@ -227,3 +227,19 @@ def test_chain_file_search_skips_island_observers(tmp_path):
     # without islands the deterministic sorted-first pick is unchanged
     first = _find_chain_file(tmp_path, None)
     assert first.name == "canonical_chain_attacker-bridge.json"
+
+
+def test_realized_gamma_excludes_victim_resolvers():
+    # v2 first-pass artifact: an eclipsed victim extending the attacker's
+    # fork is an attacker-side extension, NOT an honest tie-break win.
+    from scripts.selfish_mining_analysis import realized_gamma
+    found = [{"hash": "a2", "height": 2, "miner": "attacker-miner"},
+             {"hash": "h2", "height": 2, "miner": "honest-001"},
+             {"hash": "v3", "height": 3, "miner": "victim-001"}]   # victim resolved it
+    chain = [{"height": 2, "hash": "a2"}, {"height": 3, "hash": "v3"}]
+    g, events = realized_gamma(found, chain, {"attacker-miner"},
+                               controlled_ids={"attacker-miner", "victim-001"})
+    assert events == 0 and g == 0.0                    # excluded, not a gamma win
+    # without controlled_ids (legacy call) the victim counts as honest: 1 event, gamma 1
+    g2, e2 = realized_gamma(found, chain, {"attacker-miner"})
+    assert e2 == 1 and g2 == 1.0
