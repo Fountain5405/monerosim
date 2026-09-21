@@ -22,6 +22,23 @@ def test_canonical_times_matches_by_hash():
     assert canonical_times(chain, found) == {1: 100.0, 2: 300.0}
 
 
+def test_canonical_times_fills_unjoined_from_calibrated_chain_timestamp():
+    # Block 3 has no miner-log match (relay-found); the bridge dump's block
+    # timestamp fills it, calibrated by the joined blocks' offset (here a
+    # constant +9000, i.e. unix-scale minus sim-epoch).
+    found = [_found("a", 1, "h1", 100), _found("b", 2, "h2", 300)]
+    chain = [{"height": 1, "hash": "h1", "timestamp": 9100},
+             {"height": 2, "hash": "h2", "timestamp": 9300},
+             {"height": 3, "hash": "r3", "timestamp": 9500}]
+    assert canonical_times(chain, found) == {1: 100.0, 2: 300.0, 3: 500.0}
+
+
+def test_canonical_times_skips_fill_without_calibration_points():
+    found = [_found("a", 1, "h1", 100)]
+    chain = [{"height": 1, "hash": "h1"}, {"height": 2, "hash": "r2", "timestamp": 9999}]
+    assert canonical_times(chain, found) == {1: 100.0}
+
+
 def test_hourly_series_counts_finds_orphans_and_canonical():
     # hour boundaries at 3600s/7200s: c1 in h0; c2+o1 in h1; c3 in h2
     found = [

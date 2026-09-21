@@ -23,13 +23,14 @@ def test_cleanup_agent_dumps_canonical_chain():
     agent.logger = MagicMock()
     agent.daemon_rpc = MagicMock()
     agent.daemon_rpc.get_info.return_value = {"height": 3}   # top index 2 -> heights 1,2
-    agent.daemon_rpc.get_block_header_by_height.side_effect = lambda h: {"hash": f"h{h}"}
+    agent.daemon_rpc.get_block_header_by_height.side_effect = lambda h: {"hash": f"h{h}", "timestamp": 1000 + h}
     written = {}
     agent.write_shared_state = lambda name, data: written.__setitem__(name, data)
     agent._cleanup_agent()
     # Per-agent filename (review C3): each bridge writes its own, no clobber.
+    # Each entry carries the block timestamp for join-free time bucketing.
     assert written["canonical_chain_attacker-bridge.json"]["chain"] == [
-        {"height": 1, "hash": "h1"},
-        {"height": 2, "hash": "h2"},
+        {"height": 1, "hash": "h1", "timestamp": 1001},
+        {"height": 2, "hash": "h2", "timestamp": 1002},
     ]
     assert written["canonical_chain_attacker-bridge.json"]["observer"] == "attacker-bridge"

@@ -37,11 +37,30 @@ def found_time_s(entry: dict) -> float:
 
 
 def canonical_times(chain: list, found: list) -> dict:
-    """height -> find-time (sim-s) of the canonical block, matched by hash
-    against the miners' Found-block logs (every canonical block in these
-    configs was found by a logged miner)."""
+    """height -> find-time (sim-s) of each canonical block. Primary source is
+    the exact find moment from the miners' Found-block logs (hash match);
+    blocks the bridge dump carries a `timestamp` for but no log matched
+    (e.g. found by an unlogged miner) are filled from that block timestamp,
+    calibrated onto the found-log sim clock by the median offset over the
+    matched blocks (chain timestamps are unix-scale; the found-log clock
+    starts at the sim epoch 2000-01-01). For a withholding attacker the block
+    timestamp is the private find time, which is the semantics we want."""
     t_by_hash = {e["hash"]: found_time_s(e) for e in found}
-    return {b["height"]: t_by_hash[b["hash"]] for b in chain if b["hash"] in t_by_hash}
+    joined = {b["height"]: t_by_hash[b["hash"]] for b in chain if b["hash"] in t_by_hash}
+    unjoined = [b for b in chain
+                if b["hash"] not in t_by_hash and isinstance(b.get("timestamp"), (int, float))]
+    if not unjoined:
+        return joined
+    offs = sorted(b["timestamp"] - t_by_hash[b["hash"]]
+                  for b in chain
+                  if b["hash"] in t_by_hash and isinstance(b.get("timestamp"), (int, float)))
+    if not offs:
+        return joined                      # no calibration points: skip, don't guess
+    offset = offs[len(offs) // 2]
+    out = dict(joined)
+    for b in unjoined:
+        out[b["height"]] = b["timestamp"] - offset
+    return out
 
 
 # ------------------------------------------------------------- hourly series

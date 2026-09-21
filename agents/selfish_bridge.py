@@ -44,7 +44,13 @@ class SelfishBridgeAgent(BaseAgent):
                     break
                 block_hash = header.get("hash")
                 if block_hash:
-                    chain.append({"height": h, "hash": block_hash})
+                    # Block timestamp (miner-declared, sim clock): lets
+                    # time-based analysis bucket canonical blocks without the
+                    # hash-join against miner logs, and covers blocks no
+                    # logged miner found. For a withholding attacker this is
+                    # the PRIVATE find time, not the public arrival time.
+                    chain.append({"height": h, "hash": block_hash,
+                                  "timestamp": header.get("timestamp")})
             self.write_shared_state(f"canonical_chain_{self.agent_id}.json",
                                     {"observer": self.agent_id, "chain": chain})
             self.logger.info(f"Canonical chain recorded: {len(chain)} blocks")
