@@ -163,5 +163,49 @@ chain.
   characterizations.
 - One victim topology per point except omega_0300_3v (3×1 h/s); island
   count fixed at one.
+
+## v4–v10 (2026-09-21/22): five real bugs, recruitment finally works, release side next
+
+The majority-regime validation loop (run → instrument → one probe per
+hypothesis) found five genuine defects, each independently confirmed by
+local two-daemon repro or run forensics:
+
+1. **v4 — extension-only feeds** introduced while fixing first-seen
+   collisions; correct idea, but (see 3) built on a misread height.
+2. **v5 — divergence-aware pull**: v4's rule skipped the FIRST block of
+   every victim-led branch (island T+1 vs the miner's own T+1 = "stale"),
+   orphaning the branch at birth. Ported the honest forwarder's
+   reorg-aware pattern to the island feed.
+3. **v8 — submit_block status checking + offline islands/victims**: a
+   local repro proved monerod answers rejected submits with HTTP 200 and
+   the reason in `result.status` ("BUSY" while unsynchronized) — our
+   client saw success. Every isolated-ONLINE daemon was a silent black
+   hole. Islands and victims now run `--offline` (synchronized
+   immediately, accepts submits — the attacker's own miner proved this
+   all along); `submit_block` raises on any non-OK status.
+4. **v8b — the count/index off-by-one**: monerod `get_info` height is a
+   COUNT (top+1), block indexes are 0-based — all three feeds treated it
+   as a top index. The mirror started one block past what the island
+   needed (every submit parent-unknown → orphaned submits still answer
+   OK), so **the mirror had never successfully fed any island in any
+   version** (masked because victims built the island chain themselves
+   over P2P). Convention now explicit at all three sites.
+5. **v8c — feeds must not skip undelivered blocks**: the relay's push
+   watermark advanced past blocks that failed while the victim daemon was
+   absent (start_time 15m) — the victim received zero blocks forever.
+   Transport failures now hold the watermark; daemon-side rejections
+   (processed) still advance.
+
+**v10 state (`20260921_*_gamma_eclipse_majority_v10`): recruitment
+works.** The victim receives the fed chain (75 submits early), mines on
+it (66+ finds in the first hour, properly extending the attacker's
+chain) — the island→victim→island loop is closed and correct for the
+first time. The composition still FAILs the majority verdict, but the
+failure INVERTED: the attacker banks 0.000 (orphan rate 1.000) while the
+victim mines happily — the residual is in the strategy/release side
+against the now-synced island chain (withholding decisions and cash-outs
+reason about a priv_height that now includes victim blocks; releases of
+long combined branches vs the honest network need timeline forensics —
+62 ties recorded). Next session starts there, with every feed verified.
 - One victim, one island, α_eff 0.467; the pathology should be α_eff-driven
   (worse as α_eff → 1/2 from below), which v2 should confirm by sweep.
