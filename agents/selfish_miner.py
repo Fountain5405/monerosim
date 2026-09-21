@@ -131,23 +131,30 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         return len(self._connected_island_ids) == len(self.island_agent_ids) > 0
 
     def _mirror_private_blocks(self, priv_height: int) -> None:
-        """Push the offline miner's chain (heights above the watermark) onto
-        every island, so eclipsed victims always build on the attacker's
-        current main chain — including the WITHHELD private branch."""
+        """Push the offline miner's chain onto every island — extension-only
+        (v4): blocks are pushed at heights strictly ABOVE every island's
+        current tip, so a mirrored block can never collide with a block the
+        island already holds (monerod keeps first-seen; a colliding submit
+        lands as an alt and the victim's fork of that height is silently
+        lost). With this rule the island chain is only ever extended, never
+        forked, by the mirror."""
         if not self.island_rpcs:
             return
-        if priv_height < self._mirrored_index:
+        island_tip = min(self._island_heights) if self._island_heights else 0
+        if priv_height < self._mirrored_index or priv_height < island_tip:
             # Own reorg: heights can have changed anywhere above the new tip,
-            # so re-mirror from genesis (re-submits of unchanged blocks are
-            # harmless already-have rejections at the islands).
+            # so re-mirror from genesis. Re-submits of unchanged blocks are
+            # harmless already-have rejections at the islands.
             self._mirrored_index = 0
-        for idx in range(self._mirrored_index + 1, priv_height + 1):
+        start = max(self._mirrored_index + 1, island_tip + 1)
+        pushed = 0
+        for idx in range(start, priv_height + 1):
             try:
                 blk = self.daemon_rpc.get_block(height=idx)
                 blob = blk.get("blob")
             except RPCError as e:
                 self.logger.debug(f"mirror private block {idx}: {e}")
-                return                              # retry next tick
+                break                               # retry next tick
             if blob:
                 for rpc in self.island_rpcs:
                     try:
@@ -157,13 +164,25 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         # resyncs) can land as alts; harmless.
                         self.logger.debug(f"mirror private block {idx} to island: {e}")
             self._mirrored_index = idx
+            pushed += 1
+        if pushed:
+            self.logger.info(f"island mirror: pushed {pushed} block(s) through {priv_height}")
 
     def _pull_island_blocks(self) -> None:
-        """Pull each island's new main-chain blocks into the offline miner.
-        Victim-mined extensions of the private branch enter the attacker's
-        chain this way, so the strategy's priv_height and the release path
-        both already see them. Submitting a block the miner already has is
-        rejected harmlessly."""
+        """Pull each island's new main-chain blocks into the offline miner —
+        extension-only (v4): a block is submitted only at a height strictly
+        ABOVE the miner's current tip, so it extends the miner's main chain
+        and is adopted, never filed as an equal-height alt (monerod keeps
+        first-seen; a same-height island block would be silently lost — the
+        systematic v1–v3 stranding). Stale island heights (at or below the
+        miner's tip) are skipped: they are either already known or losing
+        alts nothing can do with. The per-island watermark still advances
+        past them."""
+        try:
+            miner_tip = int(self.daemon_rpc.get_info().get("height", 0))
+        except RPCError as e:
+            self.logger.debug(f"miner height read for pull: {e}")
+            return
         for i, rpc in enumerate(self.island_rpcs):
             try:
                 island_height = int(rpc.get_info().get("height", 0))
@@ -175,7 +194,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             else:
                 self._island_heights.append(island_height)
             pulled = self._island_pulled[i] if i < len(self._island_pulled) else 0
+            submitted = 0
             for idx in range(pulled + 1, island_height + 1):
+                if idx <= miner_tip:
+                    continue                        # stale/known: skip, watermark advances
                 try:
                     blk = rpc.get_block(height=idx)
                     blob = blk.get("blob")
@@ -185,10 +207,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 if blob:
                     try:
                         self.daemon_rpc.submit_block(blob)
+                        submitted += 1
                     except RPCError as e:
                         self.logger.debug(f"pull island block {idx} into miner: {e}")
                 if i < len(self._island_pulled):
                     self._island_pulled[i] = idx
+            if submitted:
+                self.logger.info(f"island {i}: pulled {submitted} extension(s) "
+                                 f"above miner tip {miner_tip}")
 
     def _forward_one(self, idx: int, blk=None) -> None:
         """Fetch honest block `idx` from the bridge and submit it into the

@@ -113,3 +113,15 @@ def test_eclipse_config_pins_and_alpha_eff():
     assert abs(_alpha_from_config(cfg) - 4 / 15) < 0.01
     assert abs(_alpha_eff_from_config(cfg) - 7 / 15) < 0.01
     assert cfg["general"]["simulation_seed"] == 12345
+
+
+def test_eclipse_majority_config():
+    from scripts.selfish_mining_analysis import _alpha_eff_from_config
+    cfg = _load(Path("test_configs/selfish_eclipse/gamma_eclipse_majority.yaml"))
+    agents = cfg["agents"]
+    assert agents["victim-001"]["hashrate"] == 6
+    assert agents["victim-001"]["start_time"] == "15m"
+    honest = sum(v["hashrate"] for k, v in agents.items()
+                 if v.get("script") == "agents.autonomous_miner" and k != "victim-001")
+    assert honest == 5
+    assert abs(_alpha_eff_from_config(cfg) - 10 / 15) < 0.01   # majority regime

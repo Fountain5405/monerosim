@@ -1,0 +1,89 @@
+# Eclipse composition, v4 MECHANICS VALIDATION in the majority regime
+# (docs/20260921_selfish_eclipse_results.md "v4 design directions").
+# Attacker 4 h/s + ONE 6 h/s victim on the island vs 5 h/s free honest:
+# alpha_eff = 10/15 = 0.667 — the island branch outruns honest by
+# construction, so if the extension-only mirror/pull plumbing is sound the
+# victim's blocks MUST bank (controlled > 0.5, victim share > 0). Passing
+# this validates the mechanics; the sub-majority frontier (0.467) is the
+# scientifically hard regime probed afterwards.
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 2
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridges: attacker-bridge
+      islands: attacker-island
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+      island_cash_lead: "2"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  attacker-island:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+    attributes:
+      eclipsed: "true"
+  victim-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 6
+    start_time: 15m
+    attributes:
+      eclipsed: "true"
+    peers:
+      exclusive:
+      - attacker-island
+      in_peers: 0
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

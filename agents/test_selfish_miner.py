@@ -239,6 +239,7 @@ def _make_island_agent():
     a.bridge_rpcs = [a.bridge_rpc]
     a.native_started = True
     a._native_run_iteration = MagicMock(return_value=1.0)
+    a.daemon_rpc.get_info.return_value = {"height": 0}
     i1, i2 = MagicMock(), MagicMock()
     a.island_rpcs = [i1, i2]
     a._connected_island_ids = {"i1", "i2"}
@@ -287,6 +288,7 @@ def test_mirror_resets_watermark_on_own_reorg():
 
 def test_pull_submits_island_main_chain_into_miner():
     a, i1, i2 = _make_island_agent()
+    a.daemon_rpc.get_info.return_value = {"height": 0}   # miner tip below island
     i1.get_info.return_value = {"height": 2}
     i2.get_info.return_value = {"height": 1}
     i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
@@ -366,3 +368,34 @@ def test_island_cash_lead_attribute_default_and_override():
         ["bridges", "b1"], ["islands", "i1"], ["island_cash_lead", "3"]])
     b.logger = MagicMock()
     assert b.island_cash_lead == 3
+
+
+def test_pull_is_extension_only_skipping_stale_heights():
+    # v4: island heights at or below the miner's tip are never submitted
+    # (first-seen would file them as alts and silently lose them); only
+    # strict extensions of the miner's main chain are pulled.
+    a, i1, _ = _make_island_agent()
+    a.daemon_rpc.get_info.return_value = {"height": 3}    # miner tip 3
+    i1.get_info.return_value = {"height": 5}              # island ahead 4,5
+    i1.get_block.side_effect = lambda height: {"blob": f"v{height}"}
+    a._pull_island_blocks()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v4", "v5"]
+    assert a._island_pulled[0] == 5                       # watermark past skipped 1..3
+    # miner caught up to 5: further island work at 6 only
+    a.daemon_rpc.get_info.return_value = {"height": 5}
+    a.daemon_rpc.submit_block.reset_mock()
+    i1.get_info.return_value = {"height": 6}
+    a._pull_island_blocks()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v6"]
+
+
+def test_mirror_is_extension_only_above_island_tip():
+    # v4: never push a block at a height the island already has — a
+    # colliding submit lands as an alt and the victim's block at that
+    # height is silently lost (the systematic v1-v3 stranding).
+    a, i1, _ = _make_island_agent()
+    a._island_heights = [4]                               # island tip 4
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
+    a._mirror_private_blocks(priv_height=6)
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p5", "p6"]
+    assert a._mirrored_index == 6
