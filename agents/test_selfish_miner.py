@@ -434,3 +434,25 @@ def test_mirror_is_extension_only_above_island_tip():
     a._mirror_private_blocks(priv_height=6)
     assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p5", "p6"]
     assert a._mirrored_index == 6
+
+
+def test_mine_after_height_gates_native_start():
+    # v6: an eclipsed victim must not mine before its daemon has synced the
+    # island chain (any pre-sync block forks genesis and first-seen keeps
+    # that fork forever). Default 0 = ungated (every existing miner).
+    a = _make_agent()
+    a.native_started = False
+    a.wallet_address = "addr"
+    a.daemon_rpc.get_info.return_value = {"height": 1}
+    a.daemon_rpc.start_mining.return_value = {"status": "OK"}
+    a.attributes["mine_after_height"] = "3"
+    assert a._native_try_start() is False          # below the gate: no mining
+    a.daemon_rpc.start_mining.assert_not_called()
+    a.daemon_rpc.get_info.return_value = {"height": 3}
+    assert a._native_try_start() is True           # synced: mine away
+    a.daemon_rpc.start_mining.assert_called_once()
+    b = _make_agent()
+    b.native_started = False
+    b.wallet_address = "addr"
+    b.daemon_rpc.start_mining.return_value = {"status": "OK"}
+    assert b._native_try_start() is True           # default: ungated

@@ -578,7 +578,27 @@ class AutonomousMinerAgent(BaseAgent):
 
         monerod answers BUSY (or raises) until it considers itself
         synchronized, which needs at least one peer; keep retrying.
+
+        The `mine_after_height` attribute (default 0 = off) additionally
+        waits for the daemon to have SYNCED a chain of that height first.
+        An eclipsed victim needs this: monerod reports synchronized in
+        regtest before its exclusive-peer sync has delivered the island's
+        chain, and any block it mines pre-sync forks genesis — first-seen
+        then keeps that fork as the island's main FOREVER (the measured
+        v1–v5 zero-recruitment root cause: 161 victim blocks, 161 on the
+        island chain, 0 canonical).
         """
+        gate = int(self.attributes.get("mine_after_height", "0") or 0)
+        if gate > 0:
+            try:
+                height = int(self.daemon_rpc.get_info().get("height", 0))
+            except RPCError as e:
+                self.logger.info(f"mine_after_height check failed ({e}); retrying")
+                return False
+            if height < gate:
+                self.logger.info(
+                    f"mine_after_height={gate}: daemon at {height}; not mining yet")
+                return False
         try:
             result = self.daemon_rpc.start_mining(self.wallet_address, threads=1)
         except RPCError as e:
