@@ -66,6 +66,7 @@ agents:
     start_time: 0s
     attributes:
       eclipsed: "true"
+      victims: "victim-001"
   victim-001:
     daemon: monerod
     wallet: monero-wallet-rpc
