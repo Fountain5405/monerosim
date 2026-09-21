@@ -693,12 +693,16 @@ validating the structural finding above).
    unchanged). Analysis reports CONTROLLED share (attacker + victims) vs
    Eyal–Sirer at α_eff, and never uses island chains as the canonical
    observer. Config: `test_configs/selfish_eclipse/gamma_eclipse.yaml`
-   (α=4/15≈0.27 naive, α_eff=7/15≈0.47). **v1 result: hypothesis rejected —
-   0.161 controlled vs 0.733 predicted.** The composition has an
-   island-resync pathology: once the island branch outruns honest and honest
-   then overtakes, the island cannot be resynced (its main chain is longer),
-   victims mine a permanently dead branch, and 65% of attacker finds die
-   with them — while the network still eats a 0.43 orphan rate. Negative
-   result with mechanism and the v2 lifecycle designs (recruitment cap /
-   epochs / cash-on-lead):
-   `docs/20260921_selfish_eclipse_results.md`.
+   (α=4/15≈0.27 naive, α_eff=7/15≈0.47). **v1–v3 results: hypothesis
+   rejected at every iteration, each with its mechanism** — v1 (naive
+   mirror/pull) 0.161 controlled: island branches that outran honest cannot
+   be resynced; v2 (cash-on-lead lifecycle) 0.291: attacker stops
+   self-destructing but victims bank exactly zero; v3 (late victim start)
+   0.295 with an honest-strategy control proving the residual is plumbing —
+   monerod first-seen semantics make the victim extend its own losing fork
+   locally, invisible to the pull. Meanwhile eclipse-as-DoS alone moved the
+   attacker's share 0.192 → 0.385 (ω=0 anchor vs ω=0.2). ω-sweep, MSB
+   calibration (honest controls flag 0/6; honest false positives cluster at
+   α_eff ≥ 0.4), and the v4 designs (rest windows / non-competing island
+   heights): `docs/20260921_selfish_eclipse_results.md` and
+   `docs/msb_calibration_20260921.md`.
