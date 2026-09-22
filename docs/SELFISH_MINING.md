@@ -763,3 +763,28 @@ the v13 run (byte-identical report). End-to-end smoke on the real box:
 `test_configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
 the daemon_options overlay and the sim-binary preflight with a real
 flag-gated patch).
+
+## 12. Countermeasure patches (E4, 2026-09-22 —)
+
+The countermeasure campaign measures fork-choice-rule defenses as flag-gated
+`monerod-sim` patches, matrix-driven via §11. Sources and build ladder:
+`docs/20260920_selfish_mining_literature.md` Part F (MRL #144/#145/#146),
+design + pre-registered predictions:
+`docs/20260922_pop_countermeasure_design.md`.
+
+1. **`--sim-publish-or-perish`** (shipped as
+   `patches/monero-sim-pop.patch`): PoP's weighted fork-resolving policy —
+   late blocks (received > `--sim-pop-delay-s` [5] after the first block of
+   their height, measured per node in sim-ms) lose chain weight; reorgs
+   follow weight with a `--sim-pop-k` [3] longest-chain fail-safe and a
+   random (paper) or `--sim-pop-det-tie` (MRL #144) tie-break. Uncles are
+   deliberately not modeled in this first patch — the +uncles delta is a
+   planned measurement. Set on honest agents' `daemon_options` only (the
+   attacker's covert bridge keeps stock rules). Pilot:
+   `test_configs/matrix/pop_pilot.yaml`.
+2. **+uncles** (planned): coinbase `tx_extra` embedding per MRL #144 —
+   completes published PoP; A/B against core isolates the uncle term.
+3. **Share-or-Perish** (planned, MRL #146): workshares at 1/w difficulty,
+   l_b/l_w lateness pair, `version_minor`-serialized share mining.
+4. Lucky transactions (MRL #145): parked — transaction-weighted, and aimed
+   at 51% attacks rather than selfish mining.
