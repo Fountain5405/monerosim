@@ -296,8 +296,8 @@ Old 20260921_16-17h ω rows in the manuscript ledger ran v2-era code
 | `ecl13_frontier0467` (1×3) | 3 | 0.467 | 0.372 | 0.372 | 0.000 | 0.000 | 0.485 | FAIL (−0.113) |
 | `ecl13_omega0200` (1×2) | 2 | 0.40 | 0.258 | 0.297 | 0.039 | 0.000 | 0.364 | PASS (−0.067) |
 | `ecl13_majority0667_rep` (1×6) | 6 | 0.667 | 0.121 | **0.879** | 0.758 | 0.000 | 0.814 | PASS (+0.065) |
-| `ecl13_omega0000` (none) | 0 | 0.267 | *(running)* | — | — | | 0.220 | plain-selfish anchor |
-| `ecl13_frontier0467_rep` (1×3) | 3 | 0.467 | *(running)* | | | | 0.485 | repeat |
+| `ecl13_omega0000` (none) | 0 | 0.267 | 0.166 | — | — | 0.000 | 0.220 (ES) | anchor, PASS (−0.054) |
+| `ecl13_frontier0467_rep` (1×3) | 3 | 0.467 | 0.250 | 0.250 | 0.000 | 0.000 | 0.485 | FAIL (−0.235) |
 
 **Frontier finding (batch 1, two runs):** at α_eff = 0.467 recruitment is
 ZERO in both victim architectures. The mechanism falls straight out of the
@@ -335,3 +335,21 @@ smooth as the Nayak-style α_eff story predicts.** The 3-victim vs
 1-victim difference at fixed ω=3 (0.429 vs 0.372 controlled) is within
 single-run σ≈0.05; the repeats in flight will size the bar before any
 victim-count claim.
+
+**Sweep conclusion (6 runs, 2 repeats).** Controlled share rises with ω
+(0.166 → 0.297 → ~0.31±0.06 → majority) but tracks far below R_mod(α_eff)
+until the island out-hashes the free honest chain: the sub-majority
+frontier FAILS the composed-revenue band in both 1-victim repeats
+(−0.113, −0.235) because victim banking is zero below island/honest
+parity — R_mod's premise (recruited hash banked as one chain) simply does
+not hold there. The ω=0 anchor sits ON the plain ES curve (0.166 vs 0.220
+at α=0.267, within band; not even profitable), and the attacker's SOLO
+share climbs with ω (0.166 → 0.258–0.421) purely from eclipse-DoS
+de-hashing of honest competition. The 3-victim PASS (−0.056) vs
+1-victim FAILs is within the repeat spread (0.250–0.372 at fixed
+architecture) — no victim-count claim from single runs. Two-run majority
+repeats confirm the headline twice (0.559, 0.879 > 1/2) with a fat-variance
+internal split. Net: **the composition's payoff is thresholded at
+island-vs-honest hashrate parity, not smooth in α_eff — the Nayak-style
+α_eff aggregation over-predicts revenue exactly in the regime (sub-majority)
+where an attacker would actually operate.**
