@@ -100,9 +100,15 @@ question; that is precisely the measurement.
 
 ## Planned runs (E4 ladder)
 
-1. Pipeline smoke: 4 × 1 h cells (`test_configs/matrix/pipeline_smoke.yaml`
-   pattern) — honest-control with PoP on honest miners (P3/P4).
+1. ~~Pipeline smoke~~ ✅ done 2026-09-22 (`matrix_runs/pipeline_smoke/`,
+   4 × 1 h, 0 failures): matrix path validated end-to-end — honest control
+   share 0.409 ≈ α=0.4 with all verdicts PASS through the runner; the two
+   honest cells are statistically identical, consistent with relay being a
+   no-op without withholding. (This smoke exercised the daemon_options
+   overlay + preflight via the *relay* flag; the PoP overlay's end-to-end
+   cell is `honest_pop`/`es_pop` below.)
 2. Pilot A/B: `strategy × countermeasure` at α=0.4, 6 h, same seed
-   (P1) — `test_configs/matrix/pop_pilot.yaml`.
+   (P1) — `test_configs/matrix/pop_pilot.yaml` (4 cells: es_none/es_pop +
+   honest_none/honest_pop).
 3. Full matrix on senior: strategy {es, es_r2, honest} × countermeasure
    {none, pop, pop_det} × α {0.30, 0.40, 0.45} + later SoP.
