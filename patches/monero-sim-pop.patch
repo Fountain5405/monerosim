@@ -1,0 +1,249 @@
+diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
+index fcc92644a..1d969f47f 100644
+--- a/src/cryptonote_core/blockchain.cpp
++++ b/src/cryptonote_core/blockchain.cpp
+@@ -1857,6 +1857,104 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+ // if that chain is long enough to become the main chain and re-org accordingly
+ // if so.  If not, we need to hang on to the block in case it becomes part of
+ // a long forked chain eventually.
++//------------------------------------------------------------------
++// SIMULATION ONLY: Publish-or-Perish weighted fork-resolving policy
++// (patches/monero-sim-pop.patch). Inactive unless set_sim_pop() was called
++// (daemon flags --sim-publish-or-perish / --sim-pop-k / --sim-pop-delay-s /
++// --sim-pop-det-tie, wired in cryptonote_core.cpp); with the flag absent the
++// reorg decision below is byte-for-byte stock.
++//
++// A block is IN TIME (Zhang-Preneel CT-RSA 2017 Def. 1) when it was first
++// received by this node no later than m_sim_pop_delay_ms after the earliest
++// block this node has ever received at the same height -- a purely relative
++// measurement, no clock sync. Late blocks contribute zero to their chain's
++// in-time weight. Uncles (Def. 2/3's second term) are NOT modeled: this
++// patch measures the fork-choice core alone.
++void Blockchain::set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie)
++{
++  m_sim_pop_enabled = true;
++  m_sim_pop_k = k;
++  m_sim_pop_delay_ms = delay_ms;
++  m_sim_pop_det_tie = det_tie;
++  m_sim_pop_rng.seed(std::random_device{}());
++  MGINFO("*** SIMULATION: --sim-publish-or-perish is ON (k=" << k
++         << ", delay=" << delay_ms << "ms, "
++         << (det_tie ? "deterministic" : "random") << " tie-break; no uncles) ***");
++}
++
++// Earliest local receive time of ANY block (main or alt) at `height`.
++uint64_t Blockchain::sim_pop_first_seen(uint64_t height) const
++{
++  uint64_t first = std::numeric_limits<uint64_t>::max();
++  auto main_it = m_sim_recv.find(get_block_id_by_height(height));
++  if (main_it != m_sim_recv.end())
++    first = std::min(first, main_it->second);
++  m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
++      if (data.height == height)
++      {
++        auto it = m_sim_recv.find(alt_id);
++        if (it != m_sim_recv.end())
++          first = std::min(first, it->second);
++      }
++      return true;
++  });
++  return first;
++}
++
++bool Blockchain::sim_pop_in_time(const crypto::hash &id, uint64_t height) const
++{
++  auto it = m_sim_recv.find(id);
++  if (it == m_sim_recv.end())
++    return true;   // receive time unknown (never happens when enabled from init): permissive
++  const uint64_t first = sim_pop_first_seen(height);
++  if (first == std::numeric_limits<uint64_t>::max())
++    return true;   // the only block ever seen at this height
++  return it->second <= first + m_sim_pop_delay_ms;
++}
++
++// The PoP reorg decision, replacing the raw cumulative-difficulty comparison
++// for the alt block that just arrived (alt_chain already contains `bei`).
++bool Blockchain::sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei)
++{
++  const uint64_t top = m_db->height() - 1;              // main-chain top index
++  const uint64_t fork = alt_chain.front().height - 1;   // last common-ancestor index
++  const uint64_t alt_len = alt_chain.size();
++  const uint64_t main_len = top > fork ? top - fork : 0;
++
++  // Rule 1: longest-chain fail-safe -- a chain k+ blocks longer always wins,
++  // so network partitions always resolve (same k role as the paper / #144).
++  if (alt_len >= main_len + m_sim_pop_k)
++    return true;
++
++  // Rule 2: larger in-time weight over the divergent suffixes.
++  uint64_t w_alt = 0, w_main = 0;
++  for (const auto &e : alt_chain)
++    if (sim_pop_in_time(get_block_hash(e.bl), e.height))
++      ++w_alt;
++  for (uint64_t h = fork + 1; h <= top; ++h)
++    if (sim_pop_in_time(get_block_id_by_height(h), h))
++      ++w_main;
++
++  if (w_alt != w_main)
++  {
++    MINFO("SIM-PoP: fork " << fork << " alt " << w_alt << "/" << alt_len
++          << " vs main " << w_main << "/" << main_len
++          << " -> " << (w_alt > w_main ? "SWITCH" : "KEEP"));
++    return w_alt > w_main;
++  }
++
++  // Rule 3: exact weight tie -- uniform random (the paper) or deterministic
++  // tip-hash comparison (MRL #144's tweak, keeps the network consistent).
++  const bool sw = m_sim_pop_det_tie
++    ? bool(get_block_hash(bei.bl) < get_block_id_by_height(top))
++    : bool(m_sim_pop_rng() & 1);
++  MINFO("SIM-PoP: fork " << fork << " TIE " << w_alt << "/" << alt_len
++        << " vs " << w_main << "/" << main_len
++        << " -> " << (sw ? "SWITCH" : "KEEP") << " ("
++        << (m_sim_pop_det_tie ? "det" : "random") << " tie)");
++  return sw;
++}
++
+ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
+   block_verification_context& bvc, pool_supplement& extra_block_txs)
+ {
+@@ -2093,7 +2191,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+ 
+       return r;
+     }
+-    else if(main_chain_cumulative_difficulty < bei.cumulative_difficulty) //check if difficulty bigger then in main chain
++    else if(m_sim_pop_enabled
++        ? sim_pop_should_switch(alt_chain, bei)   // SIM: PoP weighted FRP
++        : main_chain_cumulative_difficulty < bei.cumulative_difficulty) //check if difficulty bigger then in main chain
+     {
+       //do reorganize!
+       MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
+@@ -4674,6 +4774,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+     return false;
+   }
+ 
++  // SIMULATION ONLY (Publish-or-Perish): remember when this node FIRST
++  // received this block id (ms since epoch; Shadow virtualizes the clock).
++  // emplace: re-submissions and P2P duplicates never move the timestamp.
++  if (m_sim_pop_enabled)
++    m_sim_recv.emplace(id, std::chrono::duration_cast<std::chrono::milliseconds>(
++        std::chrono::system_clock::now().time_since_epoch()).count());
++
+   //check that block refers to chain tail
+   if(!(bl.prev_id == get_tail_id()))
+   {
+diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
+index 0fd81f4ba..2ba731935 100644
+--- a/src/cryptonote_core/blockchain.h
++++ b/src/cryptonote_core/blockchain.h
+@@ -45,6 +45,7 @@
+ #include <atomic>
+ #include <functional>
+ #include <unordered_map>
++#include <random>
+ #include <unordered_set>
+ 
+ #include "span.h"
+@@ -887,6 +888,20 @@ namespace cryptonote
+      */
+     void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
+ 
++    /**
++     * @brief SIMULATION ONLY (monerosim patches/monero-sim-pop.patch): enable
++     * the Publish-or-Perish weighted fork-resolving policy
++     *
++     * Late blocks (received more than delay_ms after the first block this node
++     * ever received at the same height) stop contributing to their chain's
++     * in-time weight; the reorg decision then follows Zhang-Preneel
++     * CT-RSA 2017 with tevador's Monero parameters (MRL #144): a chain k+
++     * blocks longer always wins (partition recovery), else larger in-time
++     * weight wins, else the configured tie policy (random per the paper, or
++     * deterministic hash comparison per MRL #144). Uncles are not modeled.
++     */
++    void set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie);
++
+     /**
+      * @brief gets the hardfork voting state object
+      *
+@@ -1188,6 +1203,17 @@ namespace cryptonote
+     blockchain_db_sync_mode m_db_sync_mode;
+     bool m_fast_sync;
+     bool m_show_time_stats;
++
++    // SIMULATION ONLY (Publish-or-Perish, patches/monero-sim-pop.patch)
++    bool m_sim_pop_enabled = false;
++    uint64_t m_sim_pop_k = 3;              // rule-1 length fail-safe
++    uint64_t m_sim_pop_delay_ms = 5000;    // Def.1 lateness bound
++    bool m_sim_pop_det_tie = false;        // rule-3 tie policy
++    std::unordered_map<crypto::hash, uint64_t> m_sim_recv;  // block id -> first local receive time (ms)
++    std::mt19937_64 m_sim_pop_rng;         // rule-3 random tie-break
++    bool sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
++    uint64_t sim_pop_first_seen(uint64_t height) const;
++    bool sim_pop_in_time(const crypto::hash &id, uint64_t height) const;
+     bool m_db_default_sync;
+     bool m_db_sync_on_blocks;
+     uint64_t m_db_sync_threshold;
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+index a727747a8..390e029c1 100644
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -196,6 +196,32 @@ namespace cryptonote
+   , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
+   , false
+   };
++  // SIMULATION ONLY (monerosim patches/monero-sim-pop.patch): Publish-or-
++  // Perish fork choice (Zhang-Preneel CT-RSA 2017; Monero parameters per MRL
++  // #144). When enabled, late blocks (received more than --sim-pop-delay-s
++  // seconds after the first block of the same height) stop counting toward
++  // their chain's in-time weight, and reorgs follow the weighted rule with a
++  // k-block longest-chain fail-safe. Off by default; stock behavior otherwise.
++  static const command_line::arg_descriptor<bool> arg_sim_publish_or_perish = {
++    "sim-publish-or-perish"
++  , "Simulation only: enable the Publish-or-Perish weighted fork-resolving policy (late blocks lose chain weight). Off by default."
++  , false
++  };
++  static const command_line::arg_descriptor<uint64_t> arg_sim_pop_k = {
++    "sim-pop-k"
++  , "Simulation only: Publish-or-Perish rule-1 length fail-safe (a competing chain this many blocks longer always wins, for partition recovery)."
++  , 3
++  };
++  static const command_line::arg_descriptor<uint64_t> arg_sim_pop_delay_s = {
++    "sim-pop-delay-s"
++  , "Simulation only: Publish-or-Perish lateness bound in seconds (a block arriving this long after the first block of its height is late and loses weight)."
++  , 5
++  };
++  static const command_line::arg_descriptor<bool> arg_sim_pop_det_tie = {
++    "sim-pop-det-tie"
++  , "Simulation only: break exact-weight Publish-or-Perish ties deterministically (tip hash comparison) instead of the paper's uniform random choice. Off by default (random, per the paper)."
++  , false
++  };
+   static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
+     "max-txpool-weight"
+   , "Set maximum txpool weight in bytes."
+@@ -339,6 +365,10 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_stagenet_on);
+     command_line::add_arg(desc, arg_regtest_on);
+     command_line::add_arg(desc, arg_sim_relay_alt_blocks);
++  command_line::add_arg(desc, arg_sim_publish_or_perish);
++  command_line::add_arg(desc, arg_sim_pop_k);
++  command_line::add_arg(desc, arg_sim_pop_delay_s);
++  command_line::add_arg(desc, arg_sim_pop_det_tie);
+     command_line::add_arg(desc, arg_keep_fakechain);
+     command_line::add_arg(desc, arg_fixed_difficulty);
+     command_line::add_arg(desc, arg_fakechain_hard_forks);
+@@ -783,6 +813,15 @@ namespace cryptonote
+ 
+     bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
+     m_blockchain_storage.set_show_time_stats(show_time_stats);
++
++    // SIMULATION ONLY: forward the Publish-or-Perish knobs to the fork
++    // choice. Reading them here (after m_blockchain_storage.init) guarantees
++    // the receive-time recorder is armed before any block can arrive.
++    if (command_line::get_arg(vm, arg_sim_publish_or_perish))
++      m_blockchain_storage.set_sim_pop(
++          command_line::get_arg(vm, arg_sim_pop_k),
++          command_line::get_arg(vm, arg_sim_pop_delay_s) * 1000,
++          command_line::get_arg(vm, arg_sim_pop_det_tie));
+     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
+ 
+     block_sync_size = command_line::get_arg(vm, arg_block_sync_size);

@@ -128,6 +128,22 @@ def test_eclipse_majority_config():
     assert abs(_alpha_eff_from_config(cfg) - 10 / 15) < 0.01   # majority regime
 
 
+def test_pop_pilot_matrix_spec():
+    # The PoP pilot flags HONEST miners only (honest-network deployment; the
+    # attacker's covert bridge keeps stock rules). docs/20260922_pop_
+    # countermeasure_design.md pre-registers the predictions.
+    with open("test_configs/matrix/pop_pilot.yaml") as f:
+        spec = yaml.safe_load(f)
+    pop = spec["axes"]["countermeasure"]["pop"]
+    assert set(pop) == {"honest"}, "PoP must not reach the attacker or its bridge"
+    assert pop["honest"]["daemon_options"]["sim-publish-or-perish"] is True
+    assert spec["axes"]["strategy"]["es"]["attacker"]["attributes"]["strategy"] == "eyal_sirer"
+    base = _load(Path(spec["base"]))
+    honest = [k for k, v in base["agents"].items()
+              if v.get("script") == "agents.autonomous_miner"]
+    assert len(honest) >= 2, "overlay target population exists in the base"
+
+
 @pytest.mark.parametrize("path,omega,expected_alpha_eff", [
     (Path("test_configs/selfish_eclipse_sweep/omega_0000.yaml"), 0, 4 / 15),
     (Path("test_configs/selfish_eclipse_sweep/omega_0200.yaml"), 2, 6 / 15),

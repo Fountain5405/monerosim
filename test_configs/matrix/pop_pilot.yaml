@@ -1,0 +1,21 @@
+# E4 pilot: does PoP-core cut ES revenue at alpha 0.4? (design + predictions:
+# docs/20260922_pop_countermeasure_design.md)
+#
+# Cells (6 sim-hours, same seed => paired):
+#   es_none      vs es_pop      - the P1 A/B (attacker share drop >= 0.05?)
+#   honest_none  vs honest_pop  - the P3/P4 honest control (share ~ alpha,
+#                                 no reorg storms)
+# PoP flags go on the HONEST miners only (honest-network deployment; the
+# attacker's covert bridge keeps stock rules — an attacker does not upgrade).
+# Defaults per MRL #144: k=3, D=5s, random tie (the paper's rule 3); det-tie
+# is a later matrix axis.
+name: pop_pilot
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    none: {}
+    pop:  {honest: {daemon_options: {sim-publish-or-perish: true}}}
