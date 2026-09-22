@@ -660,8 +660,26 @@ preflight_checks() {
         log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping monerod-sim check"
     elif [[ $needs_hf == 1 || $needs_native == 1 || $needs_peerlist == 1 || $needs_relay == 1 ]]; then
         if [[ ! -x "$sim_bin" ]]; then
-            log_err "Config needs the patched daemon but no monerod-sim at $HOME/.monerosim/bin/monerod-sim"
-            log_info "Build it: ./setup.sh --sim-binary"
+            # Report BOTH candidates and why each failed. monerod-hf is normally
+            # a symlink to monerod-sim, so a missing monerod-sim leaves a
+            # dangling monerod-hf that `ls` still shows -- naming only
+            # monerod-sim here sent people hunting for the wrong thing.
+            local sim_dir="$HOME/.monerosim/bin" cand
+            log_err "Config needs the patched daemon; neither candidate is usable:"
+            for cand in monerod-sim monerod-hf; do
+                if [[ -L "$sim_dir/$cand" && ! -e "$sim_dir/$cand" ]]; then
+                    log_err "  $sim_dir/$cand -> $(readlink "$sim_dir/$cand") (dangling symlink)"
+                elif [[ -e "$sim_dir/$cand" ]]; then
+                    log_err "  $sim_dir/$cand exists but is not executable"
+                else
+                    log_err "  $sim_dir/$cand missing"
+                fi
+            done
+            log_info "Build it: ./setup.sh --sim-binary   (--hardfork is a synonym)"
+            log_info "A plain ./setup.sh does NOT build it -- the patched daemon is opt-in."
+            log_info "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 skips the CHECK, not the requirement:"
+            log_info "  a config naming monerod-hf/monerod-sim cannot resolve its daemon, and"
+            log_info "  vanilla monerod refuses to start on --peerlist-dump-file and friends."
             exit 1
         fi
         if [[ -f "$SCRIPT_DIR/monero.pin" ]]; then
