@@ -102,7 +102,8 @@ Options:
                          shadow_run.log) are still kept under archive_runs/.
   --no-clean             Skip the daemon-data-dir cleanup. The raw daemon
                          data directories (blockchain LMDB, monerod config,
-                         and — with --no-archive also — bitmonero.log files)
+                         and — with --no-archive also — bitmonero.log and
+                         peerlist_dump.jsonl files)
                          remain under the run's /tmp/monerosim-<runid>/ dir
                          for you to inspect by hand. Can occupy tens of GB;
                          remember to clean up manually when you're done.
@@ -640,73 +641,87 @@ preflight_checks() {
         fi
     fi
 
-    # monerod-sim: conditional capability gate, same philosophy as the cuprate
-    # gate above — only fires when the config needs a patched daemon (names
-    # monerod-sim/monerod-hf, sets fakechain-hard-forks, enables native mining,
-    # dumps its peer list, or relays withheld blocks), so a stale or absent
-    # monerod-sim never blocks an ordinary run.
-    # The --help probe is the real check: a vanilla rebuild copied over
-    # monerod-sim would print the SAME version string, but cannot know the flags.
+    # monerod capability gate. The binaries to probe come from the CONFIG, not
+    # from a fixed ~/.monerosim/bin path. A config may point any agent at its
+    # own monerod -- an eclipse countermeasure build, say -- and THAT binary is
+    # the one whose capabilities decide whether the run measures anything.
+    # Assuming ~/.monerosim/bin/monerod-sim used to hard-fail such a config and
+    # push the user to the blanket override, disabling every check at once.
+    # scripts/run_sim_helpers.py daemon-capabilities does the config walk (and
+    # is unit-tested); it mirrors the orchestrator, including native mining's
+    # substitution of monerod-sim for miners.
     # Dev override: MONEROSIM_SKIP_SIM_BINARY_CHECK=1 (MONEROSIM_SKIP_HARDFORK_CHECK=1 still honoured).
-    local sim_bin="$HOME/.monerosim/bin/monerod-sim"
-    [[ -x "$sim_bin" ]] || sim_bin="$HOME/.monerosim/bin/monerod-hf"
-    local needs_hf=0 needs_native=0 needs_peerlist=0 needs_relay=0 needs_pop=0
-    grep -qE 'monerod-hf|monerod-sim|fakechain-hard-forks' "$CONFIG" 2>/dev/null && needs_hf=1
-    grep -qE '^[[:space:]]*mode:[[:space:]]*native([[:space:]]|$)' "$CONFIG" 2>/dev/null && needs_native=1
-    grep -qE '^[[:space:]]*peerlist-dump-file:' "$CONFIG" 2>/dev/null && needs_peerlist=1
-    grep -qE '^[[:space:]]*sim-relay-alt-blocks:' "$CONFIG" 2>/dev/null && needs_relay=1
-    grep -qE '^[[:space:]]*sim-publish-or-perish:' "$CONFIG" 2>/dev/null && needs_pop=1
+    local sim_caps
+    sim_caps=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" daemon-capabilities --config "$CONFIG" 2>/dev/null)
     if [[ "${MONEROSIM_SKIP_SIM_BINARY_CHECK:-0}" == "1" || "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
-        log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping monerod-sim check"
-    elif [[ $needs_hf == 1 || $needs_native == 1 || $needs_peerlist == 1 || $needs_relay == 1 || $needs_pop == 1 ]]; then
-        if [[ ! -x "$sim_bin" ]]; then
-            log_err "Config needs the patched daemon but no monerod-sim at $HOME/.monerosim/bin/monerod-sim"
-            log_info "Build it: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        if [[ -f "$SCRIPT_DIR/monero.pin" ]]; then
-            local sim_ver sim_pin
-            sim_pin=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
-            sim_ver=$("$sim_bin" --version 2>&1 | head -n1)
-            if [[ "$sim_ver" != *"${sim_pin}"* ]]; then
-                log_err "monerod-sim is built from '$sim_ver', not pinned $sim_pin"
-                log_info "Fix: ./update.sh --sim-binary --rebuild"
+        [[ -n "$sim_caps" ]] && log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping the monerod capability check"
+    elif [[ -n "$sim_caps" ]]; then
+        local cap_explicit cap_path cap_flags cap_agent cap_help cap_flag cap_n=0
+        local -a cap_want
+        while IFS=$'\t' read -r cap_explicit cap_path cap_flags cap_agent; do
+            [[ -n "$cap_path" ]] || continue
+            if [[ ! -x "$cap_path" ]]; then
+                log_err "Config needs a patched monerod for agent '$cap_agent', but:"
+                if [[ -L "$cap_path" && ! -e "$cap_path" ]]; then
+                    log_err "  $cap_path -> $(readlink "$cap_path") (dangling symlink)"
+                elif [[ -e "$cap_path" ]]; then
+                    log_err "  $cap_path exists but is not executable"
+                else
+                    log_err "  $cap_path missing"
+                fi
+                if [[ "$cap_explicit" == "1" ]]; then
+                    log_info "That path came from the config's own 'daemon:' key."
+                    log_info "Fix the path, or build the binary it names."
+                else
+                    log_info "Build it: ./setup.sh --sim-binary   (--hardfork is a synonym)"
+                    log_info "A plain ./setup.sh does NOT build it -- the patched daemon is opt-in."
+                fi
+                log_info "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 skips the CHECK, not the requirement."
                 exit 1
             fi
-        fi
-        local sim_help
-        sim_help=$("$sim_bin" --help 2>/dev/null)
-        if [[ $needs_hf == 1 ]] && ! grep -q 'fakechain-hard-forks' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the hard fork schedule patch (vanilla binary?)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        if [[ $needs_native == 1 ]] && ! grep -q 'sim-hash-interval-ms' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the sim-mining patch (old monerod-hf build?)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        if [[ $needs_peerlist == 1 ]] && ! grep -q 'peerlist-dump-file' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the peerlist-dump patch (pre-eclipse build?)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        # Without the patch the attacker's withheld tie-block is never relayed, so
-        # the run would silently measure gamma~0 — a plausible-looking wrong result.
-        if [[ $needs_relay == 1 ]] && ! grep -q 'sim-relay-alt-blocks' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the selfish-relay patch (gamma would measure ~0)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        # Without the patch the PoP config key would be an unknown daemon flag
-        # (monerod fails fast on those), so this is belt-and-braces — but it
-        # also catches a stale binary predating the countermeasure patches.
-        if [[ $needs_pop == 1 ]] && ! grep -q 'sim-publish-or-perish' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the Publish-or-Perish patch"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        log_ok "monerod-sim matches pin and carries the flags this config needs"
+            # Version pin: enforced for binaries WE install, advisory for one the
+            # config names by path. Pointing at your own build is a deliberate
+            # choice and our pin is not the only valid base; warn, do not block.
+            if [[ -f "$SCRIPT_DIR/monero.pin" ]]; then
+                local sim_ver sim_pin
+                sim_pin=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
+                sim_ver=$("$cap_path" --version 2>&1 | head -n1)
+                if [[ "$sim_ver" != *"${sim_pin}"* ]]; then
+                    if [[ "$cap_explicit" == "1" ]]; then
+                        log_warn "$cap_path reports '$sim_ver', not pinned $sim_pin"
+                        log_warn "  (config-specified binary — continuing; mixed versions are on you)"
+                    else
+                        log_err "$cap_path is built from '$sim_ver', not pinned $sim_pin"
+                        log_info "Fix: ./update.sh --sim-binary --rebuild"
+                        exit 1
+                    fi
+                fi
+            fi
+            cap_help=$("$cap_path" --help 2>/dev/null)
+            IFS=',' read -ra cap_want <<< "$cap_flags"
+            for cap_flag in "${cap_want[@]}"; do
+                [[ -n "$cap_flag" ]] || continue
+                grep -q -- "$cap_flag" <<< "$cap_help" && continue
+                log_err "$cap_path does not support --$cap_flag"
+                log_err "  required by agent '$cap_agent' in this config"
+                case "$cap_flag" in
+                    peerlist-dump-file)
+                        log_err "  without it the daemon refuses to start and the run collects no peer-list data" ;;
+                    sim-relay-alt-blocks)
+                        log_err "  without it the withheld block is never relayed and gamma measures ~0" ;;
+                    sim-publish-or-perish)
+                        log_err "  without it the PoP countermeasure is silently absent and the run measures stock fork choice" ;;
+                    sim-hash-interval-ms)
+                        log_err "  without it native mining cannot be throttled" ;;
+                    fakechain-hard-forks)
+                        log_err "  without it the fork schedule is ignored" ;;
+                esac
+                log_info "Fix: ./setup.sh --sim-binary, or point 'daemon:' at a build that has it."
+                exit 1
+            done
+            cap_n=$((cap_n + 1))
+        done <<< "$sim_caps"
+        log_ok "monerod capability check passed for $cap_n binary/binaries this config uses"
     fi
 
     # Parse stop_time from config
@@ -1666,12 +1681,40 @@ archive_daemon_logs() {
         cup_count=$((cup_count + 1))
     done
 
+    # Measurement-only peer-list dumps (--peerlist-dump-file, eclipse study).
+    # These sit one level deeper than bitmonero.log: monerod resolves the
+    # relative dump path against the chain subdir, so a fakechain node writes
+    # <data-dir>/fake/peerlist_dump.jsonl. Neither glob above matches that, so
+    # before this loop the dumps were destroyed by the cleanup_tmp_monero
+    # --full call at the end of archive_results() and the only way to keep
+    # them was --no-clean plus a manual copy out of /tmp. Land each one beside
+    # that node's bitmonero.log; analysis/eclipse/analyze_peerlist_dumps.py
+    # reads this layout directly.
+    # The find is rooted at the monero-* dirs, not at $DAEMON_DATA_BASE: that
+    # base is normally this run's own /tmp/monerosim-<run_id>/, but a config
+    # may point daemon_data_dir at a shared /tmp, and we must never sweep up a
+    # concurrent run's dumps.
+    local dump_count=0
+    local dump_file dump_rel dump_node
+    while IFS= read -r dump_file; do
+        [[ -f "$dump_file" ]] || continue
+        dump_rel=${dump_file#"$DAEMON_DATA_BASE"/}
+        dump_node=${dump_rel%%/*}
+        [[ "$dump_node" == monero-* ]] || continue
+        mkdir -p "$logs_dir/$dump_node"
+        mv "$dump_file" "$logs_dir/$dump_node/"
+        dump_count=$((dump_count + 1))
+    done < <(find "$DAEMON_DATA_BASE"/monero-* -maxdepth 2 -name 'peerlist_dump.jsonl' -type f 2>/dev/null)
+
     if [[ $((count + cup_count)) -gt 0 ]]; then
         local total_size
         total_size=$(du -sh "$logs_dir" 2>/dev/null | cut -f1)
         log_ok "Daemon logs: $count monerod (bitmonero.log) + $cup_count cuprate log file(s) archived ($total_size total)"
     else
         log_warn "No daemon logs found in $DAEMON_DATA_BASE/monero-*/"
+    fi
+    if [[ $dump_count -gt 0 ]]; then
+        log_ok "Peer-list dumps: $dump_count peerlist_dump.jsonl archived into daemon_logs/<node>/"
     fi
     # NOTE: the daemon data dirs themselves (blockchain DBs, config, lock
     # files — tens of GB on a 1000-node sim) are cleaned by the
@@ -1915,8 +1958,9 @@ main() {
     run_simulation
     if [[ "$NO_ARCHIVE" == true ]]; then
         log_step "Phase 5: Archive skipped (--no-archive)"
-        log_warn "shadow.data/, daemon bitmonero.log files, blockchain snapshots,"
-        log_warn "monitoring data, and summary.txt are NOT being preserved."
+        log_warn "shadow.data/, daemon bitmonero.log files, peerlist_dump.jsonl,"
+        log_warn "blockchain snapshots, monitoring data, and summary.txt are NOT"
+        log_warn "being preserved. Pair with --no-clean to keep them in \$DAEMON_DATA_BASE."
         log_warn "Pre-run artifacts (input_config.yaml, shadow_agents.yaml,"
         log_warn "monerosim.log, shadow_run.log, build.log, memory_samples.csv)"
         log_warn "remain in $ARCHIVE_DIR."

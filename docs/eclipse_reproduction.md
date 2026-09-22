@@ -158,6 +158,27 @@ Shadow is deterministic in virtual time and every scenario pins
 `simulation_seed: 12345`, so re-running the same config reproduces the same
 metrics exactly.
 
+### Peer-list dumps (B and OR)
+
+Scenarios that set `peerlist-dump-file` write per-entry peer lists that the
+`eclipse_metrics.jsonl` sidecar does not carry; B and OR are computed from
+those dumps, not from the sidecar. Where they land depends on the flags:
+
+| Invocation | Dumps end up in |
+|---|---|
+| default (archiving on) | `archived_runs/<run_id>/daemon_logs/<node>/peerlist_dump.jsonl` |
+| `--no-clean --no-archive` (the recipe above) | `$DAEMON_DATA_BASE/monero-<node>/fake/` — analyse in place |
+| `--no-archive` **without** `--no-clean` | **deleted** with the daemon data dirs |
+
+```bash
+python analysis/eclipse/analyze_peerlist_dumps.py archived_runs/<run_id>
+# ...or, for a raw/preserved tree:
+python analysis/eclipse/analyze_peerlist_dumps.py /tmp/monerosim-<run_id>
+```
+
+Archiving of the dumps was added 2026-09-20; runs archived before then kept
+only `bitmonero.log`, so their dumps exist only in preserved raw-data trees.
+
 ## Scenarios (`test_configs/eclipse_*.scenario.yaml`)
 
 | Scenario | Purpose |
