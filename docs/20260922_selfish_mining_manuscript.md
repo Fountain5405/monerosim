@@ -145,6 +145,15 @@ over-predicts exactly where a rational attacker would operate.**
    gains from eclipse-DoS alone; above parity the majority verdict passes
    twice. The coalition-internal split has fat run-to-run variance
    (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
+8. **Publish-or-Perish's fork-choice core alone nearly eliminates ES
+   revenue at Monero speeds** (E4 pilot, pre-registered): attacker share
+   0.492 → 0.022 at α=0.4 with the attacker orphaning 97% of its finds
+   (73/77 fork decisions KEEP honest), while the honest control is
+   unaffected (0.408 ≈ α, orphan 0.02, throughput unchanged). But the
+   attack's network damage RISES under PoP (orphan 0.312 → 0.447) and its
+   MSB detectability too (+7.9 → +14.9): PoP removes the profit, not the
+   vandalism — incentive-removal and DoS-resilience are separate
+   countermeasure properties.
 
 ## 6. Limitations
 
@@ -205,6 +214,15 @@ All six ω-sweep runs launched before the 13:05Z monerod-sim rebuild, i.e.
 on the 4-patch binary — the PoP patch is flag-gated OFF in every ω-sweep
 config, so daemon behavior is stock either way.)
 
+| `20260922_140138_pop_pilot__es_none` | `5751f7df` | `pop_pilot` cell | E4 baseline: ES 0.492 on the curve (all verdicts PASS) |
+| `20260922_140138_pop_pilot__es_pop` | `5751f7df` | `pop_pilot` cell | **PoP core: 0.022, attacker orphan 0.973** — P1 confirmed |
+| `20260922_144601_pop_pilot__honest_none` | `5751f7df` | `pop_pilot` cell | honest control: 0.397 ≈ α |
+| `20260922_144601_pop_pilot__honest_pop` | `5751f7df` | `pop_pilot` cell | PoP honest control clean: 0.408 ≈ α, no storms |
+
+(PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
+on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
+— gitignored workdir, rows reproduced here and in the design doc.)
+
 (v6 was killed early — the `mine_after_height` gate held a victim whose
 daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 
@@ -223,13 +241,15 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 2. ~~Matrix runner~~ ✅ shipped 2026-09-22 (`scripts/selfish_matrix.py`,
    SELFISH_MINING §11): strategy × countermeasure × α specs → paired runs
    → one table with resume markers and commit provenance.
-3. **Countermeasure campaign (E4, in progress)**: Publish-or-Perish fork-
-   choice core shipped as `patches/monero-sim-pop.patch` (§12;
-   pre-registered predictions in `docs/20260922_pop_countermeasure_design.md`);
-   pilot `test_configs/matrix/pop_pilot.yaml`. Next: +uncles per MRL #144
-   (isolates the uncle term), Share-or-Perish workshares (MRL #146),
-   detective mining as an agent. Large parallel matrices move to the
-   256-thread/1 TB machine ("senior").
+3. **Countermeasure campaign (E4)**: Publish-or-Perish fork-choice core
+   shipped as `patches/monero-sim-pop.patch` (§12) and **pilot-confirmed
+   2026-09-22** (finding 8; full table in
+   `docs/20260922_pop_countermeasure_design.md`): 0.492 → 0.022 at α=0.4,
+   honest control clean, damage/detection rise. Next: +uncles per MRL #144
+   (isolates the uncle term), the det-tie axis, Share-or-Perish workshares
+   (MRL #146), detective mining as an agent; the full
+   strategy × countermeasure × α matrix on the 256-thread/1 TB machine
+   ("senior").
 4. Error bars: repeats exist at α_eff=0.467 and 0.667 (n=2 each); any
    quantitative split claim needs n≥3. The honest-baseline control was NOT
    re-run under v13 — v13's changes (mirror fork-gate, feed cap) only bind
