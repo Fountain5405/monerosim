@@ -290,6 +290,79 @@ hasbroute-composition shock calibration only.
    Bitcoin's 2016-block DAA wouldn't show, measurable via our existing
    `native_daa_analysis.py` machinery).
 
+## Part F — Monero mitigation proposals (MRL issues, Sept 2025 addendum)
+
+Added 2026-09-22 from the post-campaign mitigation discussion on
+moneroresearch.info; these define the countermeasure ladder for monerosim's
+strategy × countermeasure matrix (all by tevador).
+
+### MRL #144 — Publish or Perish, Monero-adapted (soft fork)
+
+tevador's Monero port of Zhang–Preneel CT-RSA 2017. Fork-choice change
+only; uncles affect **weight, not rewards or cumulative difficulty**.
+
+- A block is **late** if it arrives more than `D` seconds after any other
+  block of the same height (relative time only — no clock sync needed).
+  Late blocks contribute zero to their chain's weight.
+- Each miner may embed **one uncle of height exactly N−1** in the coinbase
+  `tx_extra` (PoW header only, ~80 B, validated by matching `prev_id`
+  against block N−1). In-time uncles count toward chain weight.
+- Parameters: `k = 3` (fall back to longest-chain when a competing chain
+  leads by ≥ k — partition recovery), `D = 5 s`.
+- **Tweak vs the paper:** deterministic tie-breaking (e.g. by hashing)
+  instead of PoP's uniform random selection among equal-weight chains.
+- Paper's number tevador cites: at α = 0.48, attacker gets ~64% of rewards
+  vs ~88% unmitigated.
+- A hard-fork variant (PoP + reward splitting via delayed coinbase
+  payouts + 60 s blocks, §2 of the issue) is explicitly "pending Monte
+  Carlo simulations" — a natural future monerosim deliverable, but it
+  changes payment/DAA semantics, not just fork choice.
+
+### MRL #145 — Lucky transactions (51% mitigation; parked)
+
+Chain weight = `(included_lucky_diff + current_lucky_diff/M) * pow_diff`
+where a transaction is "lucky" if
+`H(checkpoint_hash || key_image) < target * amount * (checkpoint_height - input_height)`
+— old/high-value spends become weight. Anti-51% (attacker with 0 lucky tx
+needs >80% hashrate), **not** anti-selfish (its own comparison table), and
+it is transaction-weighted, which our transaction-free phase-1 configs
+cannot exercise. Parked until we add a transaction load generator.
+
+### MRL #146 — Share or Perish (SoP; the PoP successor)
+
+Workshares at `1/w` of block difficulty share the block's `prev_id` and
+are embedded in the miner tx `tx_extra`; `version_minor` holds the
+workshare count and shares must have sequential `version_minor` values
+(serializes share mining — blocks cherry-picking others' shares while
+withholding one's own become invalid). Weight over the last `10*w` blocks:
+
+- block header: `l_b * diff(h)/w`; each valid share: `l_b * l_w * diff(h)/w`
+  — a fully-published block with its ~w−1 shares weighs ≈ `diff(h)`,
+  matching legacy weight; older-than-`10*w` blocks weigh plain `diff(h)`.
+- `l_b = 0` iff the block was first seen > `d` s after the main-chain block
+  of the same height (PoP's lateness);
+- `l_w = 0` iff the share was NOT first seen > `d` s **before** the honest
+  block of that height — so any withholding strategy zeros either `l_b`
+  (withheld blocks) or `l_w` (withheld shares). This closes PoP's k-window
+  gap: the lateness rules apply within `k*w` work objects of the fork
+  (48 at the recommended parameters), so a deep-reorg attacker needs to
+  out-mine honest by 48 work objects (~0.06%/attack at α=0.33 for a
+  3-block reorg, vs ~hourly under Nakamoto).
+- Parameters: `w = 16`, `d = 5 s`, `k = 3`. Random tie-break retained.
+- Open: cost model (extra ~170 MB/yr chain data in the tx_extra variant),
+  share-relay DoS surface.
+
+### Mapping to monerosim (build order)
+
+1. `--sim-publish-or-perish` — the shared fork-choice engine: per-node
+   first-seen-per-height bookkeeping, late-block discounting, k fail-safe,
+   tie policy flag. Measures PoP's core without uncles.
+2. Uncle embedding per #144 (`+uncles` knob; A/B random vs deterministic
+   tie) — completes published PoP and tevador's port in one binary.
+3. `--sim-share-or-perish` — workshare mining (extends the native-mining
+   throttling patch), share relay + bookkeeping, Table-3/4/5 weights.
+   Largest patch; reuses (1)'s engine.
+
 ## MANIFEST
 
 Downloaded 2026-09-20 from moneroresearch.info (WIKINDX resource ids in
