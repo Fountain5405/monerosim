@@ -534,3 +534,28 @@ def test_mirror_pushes_nothing_when_island_at_fork():
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
     a._mirror_private_blocks(priv_height=9)
     assert i1.submit_block.call_args_list == []
+
+
+def test_island_mode_caps_honest_feed_at_fork_while_withholding():
+    # v13: with islands, honest forwards into the miner stop at the fork —
+    # otherwise the miner's main compounds (honest adoptions + its own
+    # blocks) and the victim's branch can never overtake it (v12's stall).
+    # Without islands the feed is unchanged (base behavior byte-identical).
+    a, i1, _ = _make_island_agent()
+    a.strategy.fork = 5                      # withholding: committed through 5
+    a.bridge_rpc.get_block.side_effect = lambda height: {"blob": f"h{height}"}
+    a.bridge_rpc.get_info.return_value = {"height": 6, "top_block_hash": "t6"}
+    a.daemon_rpc.get_info.return_value = {"height": 8}   # priv 8 vs pub 6: a=3,h=1 -> withhold
+    a._pull_island_blocks = MagicMock()
+    a._mirror_private_blocks = MagicMock()
+    a._island_cash_out = MagicMock(return_value=False)
+    a.run_iteration()
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert submitted == ["h0", "h1", "h2", "h3", "h4"]   # cap at fork 5 (exclusive)
+    # concession path: fork = pub re-opens the feed fully
+    a.daemon_rpc.submit_block.reset_mock()
+    a.strategy.fork = 6
+    a.bridge_rpc.get_info.return_value = {"height": 7, "top_block_hash": "t7"}
+    a.run_iteration()
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert "h5" in submitted and "h6" in submitted       # past the old fork now

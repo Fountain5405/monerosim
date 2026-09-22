@@ -469,8 +469,20 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         decision = self.strategy.update(pub_height, priv_height)
 
         # 6. Forward honest blocks into the offline miner (reorg-aware, capped
-        #    by decision.forward_to).
-        self._forward_public_blocks(pub_height, pub_tip_hash, decision.forward_to)
+        #    by decision.forward_to). Island mode (v13) additionally caps the
+        #    feed at the strategy's fork while withholding: fed honest blocks
+        #    compound into the miner's main (5 h/s of adoption + the
+        #    attacker's own 4) and the victim's island branch (6 h/s) can
+        #    never overtake it from behind — v12's measured stall. With the
+        #    cap, the miner's main during withholding is the private branch
+        #    alone; the longer victim branch takes it over via the pull, the
+        #    attacker then mines ON it, and the concession path (fork = pub)
+        #    re-opens the feed automatically. Base (non-island) behavior is
+        #    byte-identical.
+        cap = decision.forward_to
+        if self.island_rpcs and self.strategy and cap is None:
+            cap = self.strategy.fork
+        self._forward_public_blocks(pub_height, pub_tip_hash, cap)
 
         # 7. Release per decision. The offline miner's chain already contains
         #    victim blocks (pulled above), so the release cashes the combined
