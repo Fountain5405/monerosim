@@ -112,3 +112,43 @@ question; that is precisely the measurement.
    honest_none/honest_pop).
 3. Full matrix on senior: strategy {es, es_r2, honest} × countermeasure
    {none, pop, pop_det} × α {0.30, 0.40, 0.45} + later SoP.
+
+## Pilot results (2026-09-22, `matrix_runs/pop_pilot/`, 4 × 6 h at α=0.4)
+
+| cell | attacker share | att. orphan | net orphan | MSB max-z | canonical blocks | PoP decisions |
+|---|---|---|---|---|---|---|
+| `es_none` | 0.492 (ES curve 0.484, all verdicts PASS) | 0.174 | 0.312 | +7.9 | 183 | — |
+| `es_pop` | **0.022** | **0.973** | **0.447** | +14.9 | 184 | 77 (73 KEEP / 4 SWITCH / 28 ties) |
+| `honest_none` | 0.397 | 0.027 | 0.021 | +0.1 | 184 | — |
+| `honest_pop` | 0.408 | 0.024 | 0.020 | +2.0 | 196 | 15 |
+
+- **P1 CONFIRMED at ~10× the pre-registered threshold**: 0.492 → 0.022
+  (predicted drop ≥ 0.05, measured 0.47). The attacker still mines (its
+  orphan rate 0.973 = it found ~183 blocks and banked 4) but every
+  withheld-then-released chain loses the weight race at the honest nodes:
+  73 of 77 PoP decisions KEEP the honest branch. P5's counter-pressure
+  (random-tie flips favoring the attacker at γ=0) did not materialize
+  net — lateness discounting dominates at Monero propagation speeds.
+- **P3/P4 clean**: `honest_pop` sits at α (0.408 vs 0.400), orphan rates
+  indistinguishable from `honest_none` (0.020–0.027 vs 0.021), canonical
+  throughput unchanged (196 vs 184 blocks — no reorg storms, no
+  self-harm). The patch is not breaking mining generally.
+- **New finding — the harm/profit asymmetry inverts into pure
+  vandalism**: under PoP the attack becomes UNPROFITABLE (0.022 < α) but
+  the network damage RISES (orphan rate 0.312 → 0.447): withholding still
+  orphans honest work even when it can never pay. A deployed PoP removes
+  the attacker's incentive but not the DoS; MSB detectability also RISES
+  (+7.9 → +14.9). Killing the profit and surviving the vandalism are
+  separate problems.
+- Verdict semantics: `es_pop` FAILs its (attack-shaped) verdicts because
+  it lands far BELOW the ES curve — that is the countermeasure working,
+  not a defect. `honest_none` FAILs the above-α check by 0.003 — an
+  honest actor is not supposed to clear it.
+
+Runs: `20260922_140138_pop_pilot__es_none`, `__es_pop`,
+`20260922_144601_pop_pilot__honest_none`, `__honest_pop` (commit
+`5751f7df`, monerod-sim 5-patch build 2026-09-22T13:05Z). Caveats:
+single 6 h runs (σ≈0.05); the A/B gap (0.47) is ~9σ — not noise. Next
+rung: the +uncles patch (isolates the uncle term the paper credits),
+det-tie axis, and the full strategy × countermeasure × α matrix on
+senior.
