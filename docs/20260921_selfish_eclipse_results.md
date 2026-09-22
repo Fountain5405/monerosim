@@ -294,9 +294,10 @@ Old 20260921_16-17h ω rows in the manuscript ledger ran v2-era code
 |---|---|---|---|---|---|---|---|---|
 | `ecl13_omega0300_3v` (3×1) | 3 | 0.467 | 0.421 | 0.429 | 0.008 | 0.000 | 0.485 | PASS (−0.056) |
 | `ecl13_frontier0467` (1×3) | 3 | 0.467 | 0.372 | 0.372 | 0.000 | 0.000 | 0.485 | FAIL (−0.113) |
-| `ecl13_omega0200` (1×2) | 2 | 0.40 | *(running)* | | | | 0.397 | |
-| `ecl13_omega0000` (none) | 0 | 0.267 | *(queued)* | | | | 0.220 | |
-| `ecl13_majority0667_rep` | 6 | 0.667 | *(running)* | | | | — | repeat of v13 |
+| `ecl13_omega0200` (1×2) | 2 | 0.40 | 0.258 | 0.297 | 0.039 | 0.000 | 0.364 | PASS (−0.067) |
+| `ecl13_majority0667_rep` (1×6) | 6 | 0.667 | 0.121 | **0.879** | 0.758 | 0.000 | 0.814 | PASS (+0.065) |
+| `ecl13_omega0000` (none) | 0 | 0.267 | *(running)* | — | — | | 0.220 | plain-selfish anchor |
+| `ecl13_frontier0467_rep` (1×3) | 3 | 0.467 | *(running)* | | | | 0.485 | repeat |
 
 **Frontier finding (batch 1, two runs):** at α_eff = 0.467 recruitment is
 ZERO in both victim architectures. The mechanism falls straight out of the
@@ -309,6 +310,22 @@ eclipse-DoS: honest competition loses 3 h/s, the attacker's effective
 active fraction becomes 4/12 ≈ 0.33, and its solo share (0.37–0.42) sits
 above both its naive α (0.267) and ES(0.267) = 0.22 — but BELOW
 R_mod(0.467) = 0.485, because the recruited hashrate never banks.
+
+**Batch 2 shapes the threshold.** At ω=2 (victim 2 vs honest 9) the
+controlled share 0.297 sits near the attacker's effective-share regime and
+victim banking stays marginal (0.039) — the small non-zero term flows
+through the attacker's OWN ES release path (the release cashes the
+combined chain whenever the private branch wins on its own), not through
+an island cash-out. At ω=6 (majority repeat) the headline REPLICATES:
+controlled **0.879 > 1/2** (v13: 0.559) — but the coalition-internal
+split swings wildly between the two runs (attacker solo 0.346 → 0.121,
+victim canonical 0.213 → 0.758). Both are consistent with the mechanism:
+above the threshold the island branch is mostly VICTIM-built (their 6 h/s
+out-runs honest's 5), each cash-out banks whichever branch the island
+adopted, and the island race is winner-take-all per cycle — so the SPLIT
+has much fatter variance than the controlled total. Any claim about the
+attacker-vs-coalition split needs several repeats; the majority verdict
+itself (controlled > 1/2) replicated twice.
 
 Contrast the v13 majority point (victim 6 h/s vs honest 5 h/s): there the
 island out-runs the free chain, cash-outs fire, and victims bank 0.213
