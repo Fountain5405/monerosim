@@ -708,3 +708,58 @@ validating the structural finding above).
    `docs/20260921_selfish_eclipse_results.md`; MSB calibration:
    `docs/msb_calibration_20260921.md`; manuscript index with the run
    ledger: `docs/20260922_selfish_mining_manuscript.md`.
+
+## 11. Matrix runner: strategy × countermeasure × α (2026-09-22)
+
+`scripts/selfish_matrix.py` turns a matrix spec into paired runs and one
+table — the harness for the countermeasure campaign (planned work item 3 in
+`docs/20260922_selfish_mining_manuscript.md` §8). A spec
+(`test_configs/matrix/*.yaml`) names a **base config** and one **overlay**
+per axis value; cells are the cartesian product, so every cell in a matrix
+shares seed and network shape and differs only by the axis variables —
+paired comparisons by construction. Spec fields:
+
+- `axes:` maps an axis name to `{value: overlay}`. Any axis names work;
+  conventional ones are `strategy` (attacker attributes: `strategy`,
+  `release_lead`, …), `countermeasure` (overlays on the honest side), and
+  `alpha` (hashrate split).
+- An overlay targets `attacker` (the one `agents.selfish_miner`),
+  `honest` (every non-eclipsed `agents.autonomous_miner` — eclipse victims
+  are deliberately a separate population), `bridges`, or `all`. Sub-dicts
+  (`attributes`, `daemon_options`) **merge**; scalars override. `hashrate`
+  under `honest` may be a scalar or a per-miner list (length-checked) for
+  exact α splits; α is always recomputed from the generated config, never
+  trusted from the label.
+- A **countermeasure** is just an overlay: a flag-gated `monerod-sim`
+  patch is `honest: {daemon_options: {<flag>: true}}` (run_sim preflight
+  fails the run if the binary lacks the patch — §9.2); an agent-level
+  countermeasure (e.g. detective mining) overrides `script`/`attributes`
+  the same way. No code change per experiment.
+- `exclude:` drops partial cell matches (e.g. an honest-strategy control
+  doesn't need every countermeasure).
+
+Run it:
+
+```bash
+venv/bin/python scripts/selfish_matrix.py test_configs/matrix/<spec>.yaml [--dry-run]
+```
+
+Each cell writes its generated config, launches
+`nice -n10 ./run_sim.sh --no-monitor`, analyzes the archived run via
+`selfish_mining_analysis.analyze_run()` (structured — no report parsing),
+and persists `matrix_runs/<name>/cells/<cell>.json`, which doubles as the
+**resume marker**: re-running the spec only executes cells without one
+(`--fresh` discards all). Output: `matrix_runs/<name>/table.md` (one row
+per cell: α, attacker share, controlled share if eclipse, realized γ,
+orphan rates, MSB max-z, verdicts) and `results.json`, both stamped with
+the commit. `--parallel N` (or spec `parallel:`) runs N cells concurrently
+— the pilot box fits 2 six-hour selfish runs; larger parallelism belongs
+on the 256-thread machine.
+
+Validation: unit tests (`scripts/test_selfish_matrix.py`) cover generation,
+planning, exclusions, the mocked pipeline, resume, failure rows, and table
+rendering; `analyze_run()` was verified behavior-preserving by re-analyzing
+the v13 run (byte-identical report). End-to-end smoke on the real box:
+`test_configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
+the daemon_options overlay and the sim-binary preflight with a real
+flag-gated patch).

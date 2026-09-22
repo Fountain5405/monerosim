@@ -295,14 +295,15 @@ def main() -> int:
     if args.cells:
         wanted = [s.strip() for s in args.cells.split(",") if s.strip()]
         cells = [c for c in cells if any(w in c[0] for w in wanted)]
-    workdir = DEFAULT_WORKROOT / _sanitize(spec["name"])
+    workroot = Path(os.environ.get("MONEROSIM_MATRIX_WORKROOT", DEFAULT_WORKROOT))
+    workdir = workroot / _sanitize(spec["name"])
     workdir.mkdir(parents=True, exist_ok=True)
     with open(workdir / "spec.yaml", "w") as f:
         yaml.safe_dump(spec, f, sort_keys=False)
 
     if args.dry_run:
-        for cell, values, _ in cells:
-            cfg = build_config(spec, values)
+        for cell, values, overlays in cells:
+            cfg = build_config(spec, overlays)
             out = workdir / "configs" / f"{cell}.yaml"
             out.parent.mkdir(parents=True, exist_ok=True)
             with open(out, "w") as f2:

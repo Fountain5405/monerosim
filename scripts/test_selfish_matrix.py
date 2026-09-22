@@ -164,3 +164,28 @@ def test_render_table(tmp_path):
     table = render_table(spec, rows)
     assert "PASS" in table and "0.470" in table and "t__es" in table
     assert "Failed cells" in table and "boom" in table
+
+
+def test_main_dry_run_generates_overlaid_configs(tmp_path, monkeypatch, capsys):
+    spec = {
+        "name": "t", "base": str(tmp_path / "base.yaml"), "stop_time": "1h",
+        "axes": {
+            "strategy": {"es": {"attacker": {"attributes": {"strategy": "eyal_sirer"}}},
+                         "honest": {}},
+            "cm": {"none": {},
+                   "relay": {"honest": {"daemon_options": {"sim-relay-alt-blocks": True}}}},
+        },
+    }
+    (tmp_path / "base.yaml").write_text(yaml.safe_dump(BASE))
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.safe_dump(spec, sort_keys=False))   # axis order = cell-name order
+    monkeypatch.setenv("MONEROSIM_MATRIX_WORKROOT", str(tmp_path / "mw"))
+    monkeypatch.setattr("sys.argv", ["selfish_matrix.py", str(spec_path), "--dry-run"])
+    import scripts.selfish_matrix as sm
+    assert sm.main() == 0
+    out = capsys.readouterr().out
+    assert "4 cell(s) planned" in out
+    cfg = yaml.safe_load((tmp_path / "mw" / "t" / "configs" / "es_relay.yaml").read_text())
+    assert cfg["agents"]["attacker-miner"]["attributes"]["strategy"] == "eyal_sirer"
+    assert cfg["agents"]["honest-001"]["daemon_options"] == {"sim-relay-alt-blocks": True}
+    assert cfg["general"]["stop_time"] == "1h"
