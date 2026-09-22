@@ -79,6 +79,15 @@ def test_pop_uncles_flag_is_gated(tmp_path):
     assert e["flags"] == ["sim-pop-uncles", "sim-publish-or-perish"]  # sorted
 
 
+def test_pop_uncles_header_flag_is_gated(tmp_path):
+    cfg = {"agents": {"honest-001": {
+        "daemon": "monerod-sim",
+        "daemon_options": {"sim-publish-or-perish": True,
+                           "sim-pop-uncles-header": True}}}}
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-pop-uncles-header", "sim-publish-or-perish"]
+
+
 def test_pure_script_agent_needs_no_daemon(tmp_path):
     """Regression: a monitor agent inherited daemon_defaults and demanded a
     patched binary it never runs (src/agent/pure_scripts.rs)."""

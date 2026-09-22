@@ -206,3 +206,32 @@ senior.
    weight rule, worth watching, not yet a signal.
 4. Detection: MSB z stays high everywhere (+7.8 to +14.9) — under every
    PoP variant the attacker remains loud.
+
+## Rung 3: MRL #144 EXACT (2026-09-22, `--sim-pop-uncles-header`)
+
+Per user direction: the deviated variant (above) runs its course; this rung
+produces #144 exactly. `--sim-pop-uncles-header` embeds the uncle's
+**~80 B PoW header (the hashing blob)** in a new `tx_extra` field
+(tag 0x75, `tx_extra_sim_uncle`, appended LAST in the variant so existing
+`which()` indices are stable) and verifies it **trustlessly**:
+
+- the verifier re-derives the uncle id (`cn_fast_hash` of the blob),
+  re-parses the header, requires the trailing tx-count varint to consume
+  the rest exactly, and requires a reconstructed block to reproduce the
+  blob byte-for-byte (non-canonical encodings count for nothing);
+- **PoW re-check**: the reconstructed header must meet the difficulty at
+  the uncle height (`get_block_longhash` + `check_hash`) — a fabricated or
+  insufficient-work header earns nothing;
+- **height/sibling check**: the header's `prev_id` must equal the
+  containing block's parent's prev (MRL #144's own validation);
+- **lateness**: a received uncle is held to Def. 1; a NEVER-RECEIVED uncle
+  still counts — that self-contained verifiability is exactly what the
+  deviated id-in-nonce variant cannot do.
+
+Template side appends the field after the weight-settling loop
+(cumulative_weight refolded so the template invariant holds); the field is
+covered by the miner-tx hash like any other extra field, so blocks remain
+stock-valid. The DEVIATED variant stays available (`--sim-pop-uncles`) for
+the A/B: any share gap between the two variants measures the value of
+trustless verification (never-seen uncles) in these topologies. Det-tie
+per #144 composes via the existing `--sim-pop-det-tie`.

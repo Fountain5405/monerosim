@@ -1,8 +1,56 @@
+diff --git a/src/cryptonote_basic/tx_extra.h b/src/cryptonote_basic/tx_extra.h
+index c168f48a7..0e6730b72 100644
+--- a/src/cryptonote_basic/tx_extra.h
++++ b/src/cryptonote_basic/tx_extra.h
+@@ -40,6 +40,7 @@
+ #define TX_EXTRA_MERGE_MINING_TAG           0x03
+ #define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS     0x04
+ #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG   0xDE
++#define TX_EXTRA_TAG_SIM_UNCLE            0x75   // monerosim sim-only (monero-sim-pop.patch, MRL #144 exact)
+ 
+ #define TX_EXTRA_NONCE_PAYMENT_ID           0x00
+ #define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID 0x01
+@@ -178,7 +179,21 @@ namespace cryptonote
+   //   varint tag;
+   //   varint size;
+   //   varint data[];
+-  typedef boost::variant<tx_extra_padding, tx_extra_pub_key, tx_extra_nonce, tx_extra_merge_mining_tag, tx_extra_additional_pub_keys, tx_extra_mysterious_minergate> tx_extra_field;
++  // SIMULATION ONLY (monerosim monero-sim-pop.patch): the PoW header
++  // (hashing blob, ~80 B) of one uncle block, per MRL #144 — any verifier
++  // can re-derive the uncle's block id and re-check its proof of work
++  // without ever having received the uncle itself.
++  struct tx_extra_sim_uncle
++  {
++    std::string data;
++
++    BEGIN_SERIALIZE()
++      FIELD(data)
++    END_SERIALIZE()
++  };
++
++  // tx_extra_sim_uncle is APPENDED (last) so existing which() indices are stable.
++  typedef boost::variant<tx_extra_padding, tx_extra_pub_key, tx_extra_nonce, tx_extra_merge_mining_tag, tx_extra_additional_pub_keys, tx_extra_mysterious_minergate, tx_extra_sim_uncle> tx_extra_field;
+ }
+ 
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
+@@ -187,3 +202,4 @@ VARIANT_TAG(binary_archive, cryptonote::tx_extra_nonce, TX_EXTRA_NONCE);
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_merge_mining_tag, TX_EXTRA_MERGE_MINING_TAG);
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_additional_pub_keys, TX_EXTRA_TAG_ADDITIONAL_PUBKEYS);
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_mysterious_minergate, TX_EXTRA_MYSTERIOUS_MINERGATE_TAG);
++VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index fcc92644a..e4f8491a7 100644
+index fcc92644a..fbd803db5 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
-@@ -1476,6 +1476,8 @@ uint64_t Blockchain::get_current_cumulative_block_weight_median() const
+@@ -70,6 +70,7 @@
+ using namespace crypto;
+ 
+ //#include "serialization/json_archive.h"
++#include "serialization/binary_utils.h"
+ 
+ /* TODO:
+  *  Clean up code:
+@@ -1476,6 +1477,8 @@ uint64_t Blockchain::get_current_cumulative_block_weight_median() const
  // in a lot of places.  That flag is not referenced in any of the code
  // nor any of the makefiles, howeve.  Need to look into whether or not it's
  // necessary at all.
@@ -11,7 +59,7 @@ index fcc92644a..e4f8491a7 100644
  bool Blockchain::create_block_template(block& b, const crypto::hash *from_block, const account_public_address& miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash)
  {
    LOG_PRINT_L3("Blockchain::" << __func__);
-@@ -1684,7 +1686,18 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1684,7 +1687,18 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
    //make blocks coin-base tx looks close to real coinbase tx to get truthful blob weight
    uint8_t hf_version = b.major_version;
    size_t max_outs = hf_version >= 4 ? 1 : 11;
@@ -31,7 +79,7 @@ index fcc92644a..e4f8491a7 100644
    CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, first chance");
    size_t cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
-@@ -1693,7 +1706,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1693,7 +1707,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
  #endif
    for (size_t try_count = 0; try_count != 10; ++try_count)
    {
@@ -40,7 +88,40 @@ index fcc92644a..e4f8491a7 100644
  
      CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, second chance");
      size_t coinbase_weight = get_transaction_weight(b.miner_tx);
-@@ -1857,6 +1870,171 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1731,6 +1745,32 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+         MDEBUG("Setting extra for block: " << b.miner_tx.extra.size() << ", try_count=" << try_count);
+       }
+     }
++    // SIMULATION ONLY (MRL #144 EXACT): after the weight-settling loop, append
++    // the uncle PoW-header field (tag 0x75 + varint length + hashing blob).
++    // The ~85 extra bytes are folded into cumulative_weight so the invariant
++    // below stays true; the field is covered by the miner-tx hash like any
++    // other extra field, so the block remains stock-valid.
++    if (m_sim_pop_enabled && m_sim_pop_uncles_header && height >= 2)
++    {
++      blobdata sim_uncle_blob;
++      if (sim_pop_find_uncle_header(height - 1, sim_uncle_blob))
++      {
++        b.miner_tx.extra.push_back(static_cast<uint8_t>(TX_EXTRA_TAG_SIM_UNCLE));
++        for (uint64_t len = sim_uncle_blob.size();;)
++        {
++          uint8_t byte = len & 0x7f;
++          len >>= 7;
++          if (len)
++            byte |= 0x80;
++          b.miner_tx.extra.push_back(byte);
++          if (!len)
++            break;
++        }
++        b.miner_tx.extra.insert(b.miner_tx.extra.end(), sim_uncle_blob.begin(), sim_uncle_blob.end());
++        cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
++        MINFO("SIM-PoP: embedding uncle header (" << sim_uncle_blob.size() << " B) at height " << height);
++      }
++    }
+     CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
+ #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
+     MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
+@@ -1857,6 +1897,285 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -57,18 +138,130 @@ index fcc92644a..e4f8491a7 100644
 +// measurement, no clock sync. Late blocks contribute zero to their chain's
 +// in-time weight. Uncles (Def. 2/3's second term) are NOT modeled: this
 +// patch measures the fork-choice core alone.
-+void Blockchain::set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles)
++void Blockchain::set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles, bool uncles_header)
 +{
 +  m_sim_pop_enabled = true;
 +  m_sim_pop_k = k;
 +  m_sim_pop_delay_ms = delay_ms;
 +  m_sim_pop_det_tie = det_tie;
 +  m_sim_pop_uncles = uncles;
++  m_sim_pop_uncles_header = uncles_header;
 +  m_sim_pop_rng.seed(std::random_device{}());
 +  MGINFO("*** SIMULATION: --sim-publish-or-perish is ON (k=" << k
 +         << ", delay=" << delay_ms << "ms, "
 +         << (det_tie ? "deterministic" : "random") << " tie-break, "
-+         << (uncles ? "WITH uncles" : "no uncles") << ") ***");
++         << (uncles ? "WITH uncles (id-in-nonce, DEVIATED)" : "")
++         << (uncles_header ? "WITH uncles (80B PoW header, MRL #144 exact)" : "")
++         << ((!uncles && !uncles_header) ? "no uncles" : "") << ") ***");
++}
++
++// --- MRL #144 EXACT uncle machinery -------------------------------------
++// Template side: the hashing blob (PoW header) of one in-time alt block
++// that competed with the block we are about to build on (height N-1
++// sibling, same prev).
++bool Blockchain::sim_pop_find_uncle_header(uint64_t parent_height, blobdata &header_blob) const
++{
++  if (parent_height < 1)
++    return false;
++  const crypto::hash parent_prev = get_block_id_by_height(parent_height - 1);
++  bool found = false;
++  m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
++      if (found || data.height != parent_height)
++        return true;
++      cryptonote::blobdata blob;
++      cryptonote::alt_block_data_t d2;
++      if (!m_db->get_alt_block(alt_id, &d2, &blob))
++        return true;
++      cryptonote::block alt_bl;
++      if (!cryptonote::parse_and_validate_block_from_blob(blob, alt_bl))
++        return true;
++      if (alt_bl.prev_id != parent_prev)
++        return true;
++      if (!sim_pop_in_time(alt_id, parent_height))
++        return true;
++      header_blob = get_block_hashing_blob(alt_bl);
++      found = true;
++      return true;
++  });
++  return found;
++}
++
++// Weight side (trustless per MRL #144): an embedded header counts when its
++// PoW meets the difficulty at the uncle height and its prev_id makes it a
++// sibling of the containing block's parent. In-time-ness: a block we
++// RECEIVED is held to the lateness rule; one we never received still
++// counts — that self-contained verifiability is the point of the 80-byte
++// header form (the DEVIATED id-in-nonce variant cannot do this).
++uint64_t Blockchain::sim_pop_uncle_bonus_header(const block &b, uint64_t height) const
++{
++  if (height < 2)
++    return 0;
++  std::vector<tx_extra_field> fields;
++  if (!parse_tx_extra(b.miner_tx.extra, fields))
++    return 0;
++  const crypto::hash parent_prev = get_block_id_by_height(height - 2);
++  uint64_t bonus = 0;
++  for (const auto &f : fields)
++  {
++    if (f.which() != 6)          // variant: ..., 5 minergate, 6 sim_uncle
++      continue;
++    const std::string &blob = boost::get<tx_extra_sim_uncle>(f).data;
++
++    // Re-derive the uncle id; re-parse the header; the trailing varint
++    // must consume the rest exactly, and a reconstructed block must
++    // reproduce the blob byte-for-byte or the header counts for nothing.
++    crypto::hash uncle_id;
++    cn_fast_hash(blob.data(), blob.size(), uncle_id);
++    std::vector<uint8_t> v(blob.begin(), blob.end());
++    binary_archive<false> ar{epee::to_span(v)};
++    block_header bh;
++    if (!::do_serialize(ar, bh))
++      continue;
++    blobdata hb;
++    if (!::serialization::dump_binary(bh, hb))
++      continue;
++    if (hb.empty() || hb.size() >= v.size())
++      continue;
++    uint64_t tx_count = 0;
++    {
++      size_t pos = hb.size(); uint64_t shift = 0;
++      bool done = false;
++      while (pos < v.size())
++      {
++        const uint8_t byte = v[pos++];
++        tx_count |= (uint64_t)(byte & 0x7f) << shift;
++        shift += 7;
++        if (!(byte & 0x80)) { done = true; break; }
++      }
++      if (!done || pos != v.size())
++        continue;               // trailing junk / multi-field tail
++    }
++    block ub;
++    ub.major_version = bh.major_version;
++    ub.minor_version = bh.minor_version;
++    ub.timestamp = bh.timestamp;
++    ub.prev_id = bh.prev_id;
++    ub.nonce = bh.nonce;
++    ub.tx_hashes.resize(tx_count);
++    if (get_block_hashing_blob(ub) != blob)
++      continue;                 // non-canonical encoding
++    if (bh.prev_id != parent_prev)
++      continue;                 // not a sibling of our parent (MRL #144 height check)
++
++    // PoW: the header must meet the difficulty at the uncle height.
++    crypto::hash pow;
++    get_block_longhash(this, ub, pow, height - 1, 0);
++    if (!check_hash(pow, m_db->get_block_difficulty(height - 1)))
++      continue;
++
++    // Lateness: received uncles are held to Def.1; never-received ones
++    // count (trustless — the PoW above is their proof of reality).
++    auto it = m_sim_recv.find(uncle_id);
++    if (it != m_sim_recv.end() && !sim_pop_in_time(uncle_id, height - 1))
++      continue;
++    ++bonus;
++  }
++  return bonus;
 +}
 +
 +// Earliest local receive time of ANY block (main or alt) at `height`.
@@ -176,7 +369,8 @@ index fcc92644a..e4f8491a7 100644
 +  uint64_t w_alt = 0, w_main = 0;
 +  for (const auto &e : alt_chain)
 +    if (sim_pop_in_time(get_block_hash(e.bl), e.height))
-+      w_alt += 1 + (m_sim_pop_uncles ? sim_pop_uncle_bonus(e.bl, e.height) : 0);
++      w_alt += 1 + (m_sim_pop_uncles ? sim_pop_uncle_bonus(e.bl, e.height)
++                   : m_sim_pop_uncles_header ? sim_pop_uncle_bonus_header(e.bl, e.height) : 0);
 +  for (uint64_t h = fork + 1; h <= top; ++h)
 +    if (sim_pop_in_time(get_block_id_by_height(h), h))
 +    {
@@ -185,7 +379,8 @@ index fcc92644a..e4f8491a7 100644
 +      {
 +        cryptonote::block main_bl;
 +        if (get_block_by_hash(get_block_id_by_height(h), main_bl))
-+          w_main += sim_pop_uncle_bonus(main_bl, h);
++          w_main += m_sim_pop_uncles ? sim_pop_uncle_bonus(main_bl, h)
++                   : sim_pop_uncle_bonus_header(main_bl, h);
 +      }
 +    }
 +
@@ -212,7 +407,7 @@ index fcc92644a..e4f8491a7 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -2093,7 +2271,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2093,7 +2412,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -223,7 +418,7 @@ index fcc92644a..e4f8491a7 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4674,6 +4854,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4674,6 +4995,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -238,7 +433,7 @@ index fcc92644a..e4f8491a7 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 0fd81f4ba..9adb0aadc 100644
+index 0fd81f4ba..f9c7e774f 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -265,12 +460,12 @@ index 0fd81f4ba..9adb0aadc 100644
 +     * weight wins, else the configured tie policy (random per the paper, or
 +     * deterministic hash comparison per MRL #144). Uncles are not modeled.
 +     */
-+    void set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles);
++    void set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles, bool uncles_header);
 +
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1188,6 +1203,20 @@ namespace cryptonote
+@@ -1188,6 +1203,23 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -281,6 +476,7 @@ index 0fd81f4ba..9adb0aadc 100644
 +    uint64_t m_sim_pop_delay_ms = 5000;    // Def.1 lateness bound
 +    bool m_sim_pop_det_tie = false;        // rule-3 tie policy
 +    bool m_sim_pop_uncles = false;         // MRL #144: embed/count uncles (completes published PoP)
++    bool m_sim_pop_uncles_header = false;  // MRL #144 EXACT: 80B PoW header field, trustless verification
 +    std::unordered_map<crypto::hash, uint64_t> m_sim_recv;  // block id -> first local receive time (ms)
 +    std::mt19937_64 m_sim_pop_rng;         // rule-3 random tie-break
 +    bool sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
@@ -288,14 +484,16 @@ index 0fd81f4ba..9adb0aadc 100644
 +    bool sim_pop_in_time(const crypto::hash &id, uint64_t height) const;
 +    bool sim_pop_find_uncle(uint64_t parent_height, crypto::hash &uncle_id) const;
 +    uint64_t sim_pop_uncle_bonus(const block &b, uint64_t height) const;
++    bool sim_pop_find_uncle_header(uint64_t parent_height, blobdata &header_blob) const;
++    uint64_t sim_pop_uncle_bonus_header(const block &b, uint64_t height) const;
      bool m_db_default_sync;
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index a727747a8..836eb2748 100644
+index a727747a8..c25e2edb5 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -196,6 +196,37 @@ namespace cryptonote
+@@ -196,6 +196,42 @@ namespace cryptonote
    , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
    , false
    };
@@ -327,13 +525,18 @@ index a727747a8..836eb2748 100644
 +  };
 +  static const command_line::arg_descriptor<bool> arg_sim_pop_uncles = {
 +    "sim-pop-uncles"
-+  , "Simulation only: embed (while mining) and count (at fork choice) in-time uncle blocks per MRL #144 — completes the published PoP rule on top of --sim-publish-or-perish. Off by default."
++  , "Simulation only: embed (while mining) and count (at fork choice) in-time uncle blocks per MRL #144 — completes the published PoP rule on top of --sim-publish-or-perish. DEVIATED variant: the uncle id rides the extra-nonce field with node-local validation. Off by default."
++  , false
++  };
++  static const command_line::arg_descriptor<bool> arg_sim_pop_uncles_header = {
++    "sim-pop-uncles-header"
++  , "Simulation only: MRL #144 EXACT — embed the ~80 B uncle PoW header in a new tx_extra field (tag 0x75) and verify it trustlessly (re-hash + PoW + sibling check); never-received uncles count. Off by default."
 +  , false
 +  };
    static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
      "max-txpool-weight"
    , "Set maximum txpool weight in bytes."
-@@ -339,6 +370,11 @@ namespace cryptonote
+@@ -339,6 +375,12 @@ namespace cryptonote
      command_line::add_arg(desc, arg_stagenet_on);
      command_line::add_arg(desc, arg_regtest_on);
      command_line::add_arg(desc, arg_sim_relay_alt_blocks);
@@ -342,10 +545,11 @@ index a727747a8..836eb2748 100644
 +  command_line::add_arg(desc, arg_sim_pop_delay_s);
 +  command_line::add_arg(desc, arg_sim_pop_det_tie);
 +  command_line::add_arg(desc, arg_sim_pop_uncles);
++  command_line::add_arg(desc, arg_sim_pop_uncles_header);
      command_line::add_arg(desc, arg_keep_fakechain);
      command_line::add_arg(desc, arg_fixed_difficulty);
      command_line::add_arg(desc, arg_fakechain_hard_forks);
-@@ -783,6 +819,16 @@ namespace cryptonote
+@@ -783,6 +825,17 @@ namespace cryptonote
  
      bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
      m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -358,7 +562,8 @@ index a727747a8..836eb2748 100644
 +          command_line::get_arg(vm, arg_sim_pop_k),
 +          command_line::get_arg(vm, arg_sim_pop_delay_s) * 1000,
 +          command_line::get_arg(vm, arg_sim_pop_det_tie),
-+          command_line::get_arg(vm, arg_sim_pop_uncles));
++          command_line::get_arg(vm, arg_sim_pop_uncles),
++          command_line::get_arg(vm, arg_sim_pop_uncles_header));
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
