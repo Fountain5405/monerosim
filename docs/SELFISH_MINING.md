@@ -693,16 +693,18 @@ validating the structural finding above).
    unchanged). Analysis reports CONTROLLED share (attacker + victims) vs
    Eyal–Sirer at α_eff, and never uses island chains as the canonical
    observer. Config: `test_configs/selfish_eclipse/gamma_eclipse.yaml`
-   (α=4/15≈0.27 naive, α_eff=7/15≈0.47). **v1–v3 results: hypothesis
-   rejected at every iteration, each with its mechanism** — v1 (naive
-   mirror/pull) 0.161 controlled: island branches that outran honest cannot
-   be resynced; v2 (cash-on-lead lifecycle) 0.291: attacker stops
-   self-destructing but victims bank exactly zero; v3 (late victim start)
-   0.295 with an honest-strategy control proving the residual is plumbing —
-   monerod first-seen semantics make the victim extend its own losing fork
-   locally, invisible to the pull. Meanwhile eclipse-as-DoS alone moved the
-   attacker's share 0.192 → 0.385 (ω=0 anchor vs ω=0.2). ω-sweep, MSB
-   calibration (honest controls flag 0/6; honest false positives cluster at
-   α_eff ≥ 0.4), and the v4 designs (rest windows / non-competing island
-   heights): `docs/20260921_selfish_eclipse_results.md` and
-   `docs/msb_calibration_20260921.md`.
+   (α=4/15≈0.27 naive, α_eff=7/15≈0.47). **The composition WORKS as of v13
+   (2026-09-22)**: controlled share **0.559 > 1/2 at α_eff=0.667** — PASS —
+   with victim recruitment at 0.213 canonical and realized γ still 0.000.
+   Getting there took thirteen iterations and seven localized defects
+   (island-resync deadlock, stale-skipped branch heads, silent
+   submit_block status rejections, the count/index off-by-one, feeds
+   skipping undelivered blocks, fire-and-forget releases from a phantom
+   fork, and the miner's main compounding honest adoptions during
+   withholding) — every one now encoded as a test, and every monerod API
+   fact in finding 4 of the manuscript index. The composition pays the
+   coalition, not the attacker (solo share 0.346, self-orphans 0.309);
+   network damage stays severe throughout (orphan 0.52). Full arc:
+   `docs/20260921_selfish_eclipse_results.md`; MSB calibration:
+   `docs/msb_calibration_20260921.md`; manuscript index with the run
+   ledger: `docs/20260922_selfish_mining_manuscript.md`.
