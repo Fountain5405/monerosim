@@ -354,15 +354,41 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
 
+    def _common_ancestor_with_bridge(self, pub_height: int, priv_height: int,
+                                     limit: int = 256) -> int:
+        """The highest height at which the offline miner's chain and the
+        bridge's (public) chain hold the SAME block hash, found by walking
+        down from min(pub, priv). The eclipse composition can leave the
+        miner on a branch that diverged from the public chain far below the
+        strategy's fork (a stale private branch the island resurrected), and
+        releasing from `fork` then submits blocks whose parents the network
+        never had — monerod files them as orphans and answers OK, so the
+        loss is invisible (the v10 release-side failure)."""
+        hi = min(pub_height, priv_height)
+        for h in range(hi - 1, max(-1, hi - 1 - limit), -1):
+            try:
+                mine = self._block_hash(self.daemon_rpc.get_block(height=h))
+                pubs = self._block_hash(self.bridge_rpc.get_block(height=h))
+            except RPCError:
+                continue
+            if mine and pubs and mine == pubs:
+                return h
+        return 0
+
     def _island_cash_out(self, pub_height: int, priv_height: int) -> bool:
-        """Cash-on-lead island lifecycle (experiment 3 v2): the moment the
-        island branch is `island_cash_lead` blocks ahead of the honest public
-        chain, release the whole combined chain and commit the win. The
-        island never carries a lead honest could outgrow and strand — the v1
-        pathology (docs/20260921_selfish_eclipse_results.md) — and every
-        recruitment burst is banked while it is still strictly winnable.
-        Runs after the strategy's own decision, so an already-committed
-        release this tick makes the range empty (no-op)."""
+        """Cash-on-lead island lifecycle: the moment the island branch is
+        `island_cash_lead` blocks ahead of the honest public chain, release
+        the combined chain and commit the win.
+
+        v11: the release starts at the hash-verified common ancestor with the
+        bridge (NOT the strategy's fork — the miner may sit on a branch the
+        fork bookkeeping no longer describes), and the fork commits ONLY on
+        verified adoption (the bridge's height reaching ours). A submitted
+        branch that fails to convince the network leaves fork and the
+        release watermark untouched, so the next tick re-releases the same
+        connected range instead of orphaning everything after a phantom
+        commit — the fire-and-forget assumption that held at gamma~0 without
+        islands does not survive them."""
         if not self.island_rpcs or not self._island_heights or not self.strategy:
             return False
         if self.strategy.fork >= priv_height:
@@ -370,11 +396,24 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         lead = max(self._island_heights) - pub_height
         if lead < self.island_cash_lead:
             return False
-        self._release_up_to(self.strategy.fork, priv_height - 1)
-        self.strategy.fork = priv_height
-        self.logger.info(
-            f"Island cash-out at lead {lead}: committed through height {priv_height}")
-        return True
+        ancestor = self._common_ancestor_with_bridge(pub_height, priv_height)
+        if ancestor >= priv_height:
+            return False                      # nothing divergent after all
+        self._released_index = min(self._released_index, ancestor)
+        self._release_up_to(ancestor, priv_height - 1)
+        adopted = False
+        try:
+            adopted = int(self.bridge_rpc.get_info().get("height", 0)) >= priv_height
+        except RPCError as e:
+            self.logger.debug(f"cash-out adoption check: {e}")
+        if adopted:
+            self.strategy.fork = priv_height
+            self.logger.info(f"Island cash-out at lead {lead} from ancestor "
+                             f"{ancestor}: committed through height {priv_height}")
+        else:
+            self.logger.info(f"Island cash-out at lead {lead} from ancestor "
+                             f"{ancestor}: NOT adopted yet (bridge behind) — will retry")
+        return adopted
 
     def run_iteration(self) -> float:
         # 1. Keep the offline miner mining.

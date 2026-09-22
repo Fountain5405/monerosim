@@ -337,10 +337,17 @@ def test_island_cash_out_fires_at_lead_and_commits():
     a, i1, i2 = _make_island_agent()
     a.strategy.fork = 10
     a._island_heights = [14, 12]          # max island height 14, pub 12 -> lead 2
+    # chains agree through height 10 (fork == true ancestor), bridge adopts
+    def blk(prefix):
+        return lambda height: {"blob": f"{prefix}{height}",
+                               "block_header": {"hash": f"{prefix}h{height}"}}
+    a.daemon_rpc.get_block.side_effect = blk("m")
+    a.bridge_rpc.get_block.side_effect = blk("m")
+    a.bridge_rpc.get_info.return_value = {"height": 14}
     a._release_up_to = MagicMock()
     fired = a._island_cash_out(pub_height=12, priv_height=14)
     assert fired is True
-    a._release_up_to.assert_called_once_with(10, 13)   # [fork, priv-1]
+    a._release_up_to.assert_called_once_with(11, 13)   # true ancestor (11), priv-1
     assert a.strategy.fork == 14                        # the win commits
 
 
@@ -457,3 +464,46 @@ def test_mine_after_height_gates_native_start():
     b.wallet_address = "addr"
     b.daemon_rpc.start_mining.return_value = {"status": "OK"}
     assert b._native_try_start() is True           # default: ungated
+
+
+def test_cash_out_releases_from_hash_verified_ancestor():
+    # v11: the miner may sit on a stale branch the strategy's fork no longer
+    # describes; the release must start where the chains actually agree.
+    a, i1, _ = _make_island_agent()
+    a.strategy.fork = 25                       # bookkeeping says 25
+    a._island_heights = [50]
+    a._released_index = 40
+    # chains actually agree only through height 5
+    def mine_blk(height):
+        return {"blob": f"m{height}", "block_header": {"hash": f"mh{height}" if height > 5 else f"sh{height}"}}
+    def pub_blk(height):
+        return {"blob": f"p{height}", "block_header": {"hash": f"ph{height}" if height > 5 else f"sh{height}"}}
+    a.daemon_rpc.get_info.return_value = {"height": 48}
+    a.daemon_rpc.get_block.side_effect = mine_blk
+    a.bridge_rpc.get_block.side_effect = pub_blk
+    a.daemon_rpc.get_info.side_effect = [{"height": 48}, {"height": 48}]
+    a._release_up_to = MagicMock()
+    a.bridge_rpc.get_info.return_value = {"height": 48}   # bridge adopts fully
+    fired = a._island_cash_out(pub_height=30, priv_height=48)
+    assert fired is True
+    a._release_up_to.assert_called_once_with(5, 47)       # from the TRUE ancestor
+    assert a._released_index == 5                         # watermark reset to retry
+    assert a.strategy.fork == 48
+
+
+def test_cash_out_does_not_commit_without_adoption():
+    # v11: a submitted branch the network does not adopt leaves fork and the
+    # release watermark alone — the next tick re-releases the same range.
+    a, i1, _ = _make_island_agent()
+    a.strategy.fork = 10
+    a._island_heights = [40]
+    a.daemon_rpc.get_info.side_effect = [{"height": 38}, {"height": 38}]
+    a.daemon_rpc.get_block.side_effect = lambda height: {
+        "blob": f"m{height}", "block_header": {"hash": f"mh{height}"}}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"p{height}", "block_header": {"hash": f"ph{height}"}}
+    a._release_up_to = MagicMock()
+    a.bridge_rpc.get_info.return_value = {"height": 12}   # bridge did NOT adopt
+    assert a._island_cash_out(pub_height=12, priv_height=38) is False
+    a._release_up_to.assert_called_once_with(0, 37)       # still released (retry path)
+    assert a.strategy.fork == 10                          # NOT committed
