@@ -186,6 +186,105 @@ def config_counts(config_path: str) -> dict:
     }
 
 
+# Options that only a patched monerod understands. Key = the daemon_options
+# key a config sets; value = the string that must appear in `monerod --help`.
+SIM_FLAG_OPTIONS = {
+    'fakechain-hard-forks': 'fakechain-hard-forks',
+    'peerlist-dump-file': 'peerlist-dump-file',
+    'sim-relay-alt-blocks': 'sim-relay-alt-blocks',
+}
+# general.mining.mode: native drives miners through the sim-mining patch.
+NATIVE_MINING_FLAG = 'sim-hash-interval-ms'
+# Shorthand names setup.sh installs; naming one means the config expects the
+# patched build to exist even if it sets no patched option itself.
+PATCHED_DAEMON_NAMES = ('monerod-sim', 'monerod-hf')
+DEFAULT_BIN_DIR = '.monerosim/bin'
+
+
+def _resolve_daemon(daemon: str) -> tuple[str, bool]:
+    """Map a config `daemon:` value to (path, explicit).
+
+    Mirrors src/utils/binary.rs: a bare name is shorthand for
+    ~/.monerosim/bin/<name>; anything containing a separator is a path the
+    user chose deliberately. `explicit` drives how strictly the version pin is
+    enforced -- a researcher pointing at their own build (a countermeasure
+    patch, say) should not be blocked by our pin.
+    """
+    daemon = os.path.expanduser(daemon.strip())
+    if os.sep in daemon:
+        return os.path.abspath(daemon), True
+    return os.path.join(os.path.expanduser('~'), DEFAULT_BIN_DIR, daemon), False
+
+
+def daemon_capabilities(config_path: str) -> list[dict]:
+    """Which binaries this config uses, and which patched flags each needs.
+
+    The check has to follow the config rather than assume ~/.monerosim/bin:
+    a config may point any agent at its own monerod by path, and that binary
+    is the one whose capabilities actually matter. Returns one entry per
+    distinct binary, each {path, explicit, flags, agents}, sorted by path.
+    Binaries needing nothing are omitted so ordinary runs stay ungated.
+    """
+    import yaml
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f) or {}
+    general = cfg.get('general', {}) or {}
+    defaults = general.get('daemon_defaults', {}) or {}
+    mining = general.get('mining', {}) or {}
+    native = str(mining.get('mode', '')).strip().lower() == 'native'
+
+    found: dict[str, dict] = {}
+    for name, spec in (cfg.get('agents', {}) or {}).items():
+        if not isinstance(spec, dict):
+            continue
+        # Pure script agents run no daemon at all, so daemon_defaults never
+        # reach them (src/agent/pure_scripts.rs: "a script but no daemon or
+        # wallet"). Counting them made a monitor agent demand a patched build.
+        if spec.get('script') and not spec.get('daemon') and not spec.get('wallet'):
+            continue
+        daemon = str(spec.get('daemon') or 'monerod')
+        if 'cuprated' in os.path.basename(daemon):
+            continue  # the cuprate pin gate owns those
+        opts = dict(defaults)
+        opts.update(spec.get('daemon_options', {}) or {})
+        flags = {flag for key, flag in SIM_FLAG_OPTIONS.items() if key in opts}
+        # Native mining REPLACES a miner's daemon with monerod-sim regardless of
+        # what the config says (src/agent/user_agents.rs:1119-1146), so probe
+        # that binary rather than the one the config names.
+        is_miner = name.startswith('miner-') or 'hashrate' in spec
+        if native and is_miner:
+            flags.add(NATIVE_MINING_FLAG)
+            daemon = 'monerod-sim'
+        named_patched = os.path.basename(daemon) in PATCHED_DAEMON_NAMES
+        if not flags and not named_patched:
+            continue
+        path, explicit = _resolve_daemon(daemon)
+        entry = found.setdefault(
+            path, {'path': path, 'explicit': explicit, 'flags': set(), 'agents': []})
+        entry['flags'] |= flags
+        entry['agents'].append(name)
+    return [
+        {'path': e['path'], 'explicit': e['explicit'],
+         'flags': sorted(e['flags']), 'agents': sorted(e['agents'])}
+        for e in sorted(found.values(), key=lambda e: e['path'])
+    ]
+
+
+def cmd_daemon_capabilities(args: argparse.Namespace) -> int:
+    """Emit one TAB-separated line per binary for run_sim.sh's gate.
+
+        <explicit 0|1>\t<path>\t<comma-separated flags>\t<example agent>
+
+    Flags may be empty: the config named a patched binary without setting a
+    patched option, so only its existence is checked.
+    """
+    for e in daemon_capabilities(args.config):
+        print("%d\t%s\t%s\t%s" % (
+            1 if e['explicit'] else 0, e['path'], ",".join(e['flags']),
+            e['agents'][0] if e['agents'] else ''))
+    return 0
+
+
 def cmd_config_summary(args: argparse.Namespace) -> int:
     """Print agent counts as a single space-separated line.
 
@@ -941,6 +1040,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_kv.add_argument('--report', required=True)
     p_kv.set_defaults(func=cmd_print_summary_kv)
+
+    p_dc = sub.add_parser(
+        'daemon-capabilities',
+        help='Per-binary patched-flag requirements implied by a config.',
+    )
+    p_dc.add_argument('--config', required=True)
+    p_dc.set_defaults(func=cmd_daemon_capabilities)
 
     return p
 

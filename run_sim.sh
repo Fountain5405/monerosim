@@ -641,82 +641,85 @@ preflight_checks() {
         fi
     fi
 
-    # monerod-sim: conditional capability gate, same philosophy as the cuprate
-    # gate above — only fires when the config needs a patched daemon (names
-    # monerod-sim/monerod-hf, sets fakechain-hard-forks, enables native mining,
-    # dumps its peer list, or relays withheld blocks), so a stale or absent
-    # monerod-sim never blocks an ordinary run.
-    # The --help probe is the real check: a vanilla rebuild copied over
-    # monerod-sim would print the SAME version string, but cannot know the flags.
+    # monerod capability gate. The binaries to probe come from the CONFIG, not
+    # from a fixed ~/.monerosim/bin path. A config may point any agent at its
+    # own monerod -- an eclipse countermeasure build, say -- and THAT binary is
+    # the one whose capabilities decide whether the run measures anything.
+    # Assuming ~/.monerosim/bin/monerod-sim used to hard-fail such a config and
+    # push the user to the blanket override, disabling every check at once.
+    # scripts/run_sim_helpers.py daemon-capabilities does the config walk (and
+    # is unit-tested); it mirrors the orchestrator, including native mining's
+    # substitution of monerod-sim for miners.
     # Dev override: MONEROSIM_SKIP_SIM_BINARY_CHECK=1 (MONEROSIM_SKIP_HARDFORK_CHECK=1 still honoured).
-    local sim_bin="$HOME/.monerosim/bin/monerod-sim"
-    [[ -x "$sim_bin" ]] || sim_bin="$HOME/.monerosim/bin/monerod-hf"
-    local needs_hf=0 needs_native=0 needs_peerlist=0 needs_relay=0
-    grep -qE 'monerod-hf|monerod-sim|fakechain-hard-forks' "$CONFIG" 2>/dev/null && needs_hf=1
-    grep -qE '^[[:space:]]*mode:[[:space:]]*native([[:space:]]|$)' "$CONFIG" 2>/dev/null && needs_native=1
-    grep -qE '^[[:space:]]*peerlist-dump-file:' "$CONFIG" 2>/dev/null && needs_peerlist=1
-    grep -qE '^[[:space:]]*sim-relay-alt-blocks:' "$CONFIG" 2>/dev/null && needs_relay=1
+    local sim_caps
+    sim_caps=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" daemon-capabilities --config "$CONFIG" 2>/dev/null)
     if [[ "${MONEROSIM_SKIP_SIM_BINARY_CHECK:-0}" == "1" || "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
-        log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping monerod-sim check"
-    elif [[ $needs_hf == 1 || $needs_native == 1 || $needs_peerlist == 1 || $needs_relay == 1 ]]; then
-        if [[ ! -x "$sim_bin" ]]; then
-            # Report BOTH candidates and why each failed. monerod-hf is normally
-            # a symlink to monerod-sim, so a missing monerod-sim leaves a
-            # dangling monerod-hf that `ls` still shows -- naming only
-            # monerod-sim here sent people hunting for the wrong thing.
-            local sim_dir="$HOME/.monerosim/bin" cand
-            log_err "Config needs the patched daemon; neither candidate is usable:"
-            for cand in monerod-sim monerod-hf; do
-                if [[ -L "$sim_dir/$cand" && ! -e "$sim_dir/$cand" ]]; then
-                    log_err "  $sim_dir/$cand -> $(readlink "$sim_dir/$cand") (dangling symlink)"
-                elif [[ -e "$sim_dir/$cand" ]]; then
-                    log_err "  $sim_dir/$cand exists but is not executable"
+        [[ -n "$sim_caps" ]] && log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping the monerod capability check"
+    elif [[ -n "$sim_caps" ]]; then
+        local cap_explicit cap_path cap_flags cap_agent cap_help cap_flag cap_n=0
+        local -a cap_want
+        while IFS=$'\t' read -r cap_explicit cap_path cap_flags cap_agent; do
+            [[ -n "$cap_path" ]] || continue
+            if [[ ! -x "$cap_path" ]]; then
+                log_err "Config needs a patched monerod for agent '$cap_agent', but:"
+                if [[ -L "$cap_path" && ! -e "$cap_path" ]]; then
+                    log_err "  $cap_path -> $(readlink "$cap_path") (dangling symlink)"
+                elif [[ -e "$cap_path" ]]; then
+                    log_err "  $cap_path exists but is not executable"
                 else
-                    log_err "  $sim_dir/$cand missing"
+                    log_err "  $cap_path missing"
                 fi
-            done
-            log_info "Build it: ./setup.sh --sim-binary   (--hardfork is a synonym)"
-            log_info "A plain ./setup.sh does NOT build it -- the patched daemon is opt-in."
-            log_info "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 skips the CHECK, not the requirement:"
-            log_info "  a config naming monerod-hf/monerod-sim cannot resolve its daemon, and"
-            log_info "  vanilla monerod refuses to start on --peerlist-dump-file and friends."
-            exit 1
-        fi
-        if [[ -f "$SCRIPT_DIR/monero.pin" ]]; then
-            local sim_ver sim_pin
-            sim_pin=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
-            sim_ver=$("$sim_bin" --version 2>&1 | head -n1)
-            if [[ "$sim_ver" != *"${sim_pin}"* ]]; then
-                log_err "monerod-sim is built from '$sim_ver', not pinned $sim_pin"
-                log_info "Fix: ./update.sh --sim-binary --rebuild"
+                if [[ "$cap_explicit" == "1" ]]; then
+                    log_info "That path came from the config's own 'daemon:' key."
+                    log_info "Fix the path, or build the binary it names."
+                else
+                    log_info "Build it: ./setup.sh --sim-binary   (--hardfork is a synonym)"
+                    log_info "A plain ./setup.sh does NOT build it -- the patched daemon is opt-in."
+                fi
+                log_info "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 skips the CHECK, not the requirement."
                 exit 1
             fi
-        fi
-        local sim_help
-        sim_help=$("$sim_bin" --help 2>/dev/null)
-        if [[ $needs_hf == 1 ]] && ! grep -q 'fakechain-hard-forks' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the hard fork schedule patch (vanilla binary?)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        if [[ $needs_native == 1 ]] && ! grep -q 'sim-hash-interval-ms' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the sim-mining patch (old monerod-hf build?)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        if [[ $needs_peerlist == 1 ]] && ! grep -q 'peerlist-dump-file' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the peerlist-dump patch (pre-eclipse build?)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        # Without the patch the attacker's withheld tie-block is never relayed, so
-        # the run would silently measure gamma~0 — a plausible-looking wrong result.
-        if [[ $needs_relay == 1 ]] && ! grep -q 'sim-relay-alt-blocks' <<< "$sim_help"; then
-            log_err "monerod-sim does not carry the selfish-relay patch (gamma would measure ~0)"
-            log_info "Fix: ./setup.sh --sim-binary"
-            exit 1
-        fi
-        log_ok "monerod-sim matches pin and carries the flags this config needs"
+            # Version pin: enforced for binaries WE install, advisory for one the
+            # config names by path. Pointing at your own build is a deliberate
+            # choice and our pin is not the only valid base; warn, do not block.
+            if [[ -f "$SCRIPT_DIR/monero.pin" ]]; then
+                local sim_ver sim_pin
+                sim_pin=$(tr -d '[:space:]' < "$SCRIPT_DIR/monero.pin")
+                sim_ver=$("$cap_path" --version 2>&1 | head -n1)
+                if [[ "$sim_ver" != *"${sim_pin}"* ]]; then
+                    if [[ "$cap_explicit" == "1" ]]; then
+                        log_warn "$cap_path reports '$sim_ver', not pinned $sim_pin"
+                        log_warn "  (config-specified binary — continuing; mixed versions are on you)"
+                    else
+                        log_err "$cap_path is built from '$sim_ver', not pinned $sim_pin"
+                        log_info "Fix: ./update.sh --sim-binary --rebuild"
+                        exit 1
+                    fi
+                fi
+            fi
+            cap_help=$("$cap_path" --help 2>/dev/null)
+            IFS=',' read -ra cap_want <<< "$cap_flags"
+            for cap_flag in "${cap_want[@]}"; do
+                [[ -n "$cap_flag" ]] || continue
+                grep -q -- "$cap_flag" <<< "$cap_help" && continue
+                log_err "$cap_path does not support --$cap_flag"
+                log_err "  required by agent '$cap_agent' in this config"
+                case "$cap_flag" in
+                    peerlist-dump-file)
+                        log_err "  without it the daemon refuses to start and the run collects no peer-list data" ;;
+                    sim-relay-alt-blocks)
+                        log_err "  without it the withheld block is never relayed and gamma measures ~0" ;;
+                    sim-hash-interval-ms)
+                        log_err "  without it native mining cannot be throttled" ;;
+                    fakechain-hard-forks)
+                        log_err "  without it the fork schedule is ignored" ;;
+                esac
+                log_info "Fix: ./setup.sh --sim-binary, or point 'daemon:' at a build that has it."
+                exit 1
+            done
+            cap_n=$((cap_n + 1))
+        done <<< "$sim_caps"
+        log_ok "monerod capability check passed for $cap_n binary/binaries this config uses"
     fi
 
     # Parse stop_time from config
