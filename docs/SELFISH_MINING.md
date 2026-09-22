@@ -782,8 +782,11 @@ design + pre-registered predictions:
    planned measurement. Set on honest agents' `daemon_options` only (the
    attacker's covert bridge keeps stock rules). Pilot:
    `test_configs/matrix/pop_pilot.yaml`.
-2. **+uncles** (planned): coinbase `tx_extra` embedding per MRL #144 —
-   completes published PoP; A/B against core isolates the uncle term.
+2. **`--sim-pop-uncles`** (shipped 2026-09-22, same patch): MRL #144's
+   uncle appreciation — miners embed one in-time N−1 sibling uncle id in
+   the miner-tx extra nonce; fork choice counts embedded in-time uncles
+   (node-local validation). A/B against core isolates the uncle term;
+   pilot spec `test_configs/matrix/pop_uncles_pilot.yaml`.
 3. **Share-or-Perish** (planned, MRL #146): workshares at 1/w difficulty,
    l_b/l_w lateness pair, `version_minor`-serialized share mining.
 4. Lucky transactions (MRL #145): parked — transaction-weighted, and aimed

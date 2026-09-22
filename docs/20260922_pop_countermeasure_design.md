@@ -1,9 +1,8 @@
 # Publish-or-Perish as a flag-gated monerod-sim patch — design and pre-registration
 
-**Status:** patch `patches/monero-sim-pop.patch` built and compiling clean
-(2026-09-22); experiments not yet run. This document fixes the mechanism
-mapping and the predictions BEFORE the first countermeasure run, so the
-outcome can't be fit after the fact.
+**Status:** patch shipped; pilot RUN AND CONFIRMED 2026-09-22 (results in
+the last section: 0.492 → 0.022 at α=0.4, honest control clean). The
+predictions below were fixed BEFORE the first run.
 
 ## Sources
 
@@ -97,6 +96,23 @@ question; that is precisely the measurement.
   `SIM-PoP: TIE` lines are frequent, the tie-flip offset (P1's
   counter-pressure) is dominating — an honest negative result worth
   reporting, and the case for the uncles patch.
+
+## +uncles (rung 2, shipped 2026-09-22 as part of monero-sim-pop.patch)
+
+`--sim-pop-uncles` completes the published rule per MRL #144: while
+mining, a node appends to its miner-tx extra-nonce field the id of one
+IN-TIME alt block that competed with the block it builds on (height N−1
+sibling, same prev); at fork choice each in-time suffix block earns +1
+per embedded uncle that the node received, saw in time at the uncle
+height, and still holds as an alt there. Predicted effect (pre-registered
+above, P-un): pop_core already collapsed ES to 0.022 — uncles convert the
+~28 tie coin-flips per run into deterministic honest wins, so
+es_pop_uncles ≤ es_pop with fewer transient forks; honest control stays
+at α. Documented deviation from the paper/#144: the id rides the
+extra-nonce field (not an 80 B PoW header in a new tx_extra tag) and
+validation is node-local alt storage (not a header PoW re-check) — same
+economics (miners embed only blocks they hold; verifiers count only
+blocks they hold); the header variant is the production-fidelity upgrade.
 
 ## Planned runs (E4 ladder)
 

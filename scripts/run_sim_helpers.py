@@ -196,6 +196,7 @@ SIM_FLAG_OPTIONS = {
     'sim-pop-k': 'sim-pop-k',
     'sim-pop-delay-s': 'sim-pop-delay-s',
     'sim-pop-det-tie': 'sim-pop-det-tie',
+    'sim-pop-uncles': 'sim-pop-uncles',
 }
 # general.mining.mode: native drives miners through the sim-mining patch.
 NATIVE_MINING_FLAG = 'sim-hash-interval-ms'
