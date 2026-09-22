@@ -268,6 +268,7 @@ def test_connect_islands_reads_registry():
 
 def test_mirror_pushes_own_chain_to_every_island():
     a, i1, i2 = _make_island_agent()
+    a.strategy.fork = 2                     # everything committed: gate transparent
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
     a._mirror_private_blocks(priv_height=2)            # count 2: indexes 0,1
     assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p0", "p1"]
@@ -281,6 +282,7 @@ def test_mirror_pushes_own_chain_to_every_island():
 
 def test_mirror_resets_watermark_on_own_reorg():
     a, i1, _ = _make_island_agent()
+    a.strategy.fork = 2                     # everything committed: gate transparent
     a._mirrored_index = 3
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
     a._mirror_private_blocks(priv_height=2)      # own chain shrank: count 2
@@ -437,6 +439,7 @@ def test_mirror_is_extension_only_from_island_count():
     # never SKIP the index the island needs next — a skip orphans every
     # later block (monerod answers orphaned submits with status OK).
     a, i1, _ = _make_island_agent()
+    a.strategy.fork = 6                     # everything committed: gate transparent
     a._island_heights = [4]                        # island count 4: needs index 4
     a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
     a._mirror_private_blocks(priv_height=6)        # miner count 6: indexes 0-5
@@ -507,3 +510,27 @@ def test_cash_out_does_not_commit_without_adoption():
     assert a._island_cash_out(pub_height=12, priv_height=38) is False
     a._release_up_to.assert_called_once_with(0, 37)       # still released (retry path)
     assert a.strategy.fork == 10                          # NOT committed
+
+
+def test_mirror_is_gated_at_strategy_fork():
+    # v12 rest window: the island gets the committed prefix + the private
+    # suffix ONLY — never honest blocks the miner adopted above the fork
+    # (that stream made the victim race 9 h/s and lose every fork: v11).
+    a, i1, _ = _make_island_agent()
+    a.strategy.fork = 5
+    a._island_heights = [2]                 # island needs indexes 2..
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
+    a._mirror_private_blocks(priv_height=12)   # miner main is 12 tall (incl. honest)
+    # pushes only indexes 2..4 (up to the fork, exclusive) — the private
+    # suffix 5..11 stays OFF the island so the victim owns that range
+    assert [c.args[0] for c in i1.submit_block.call_args_list] == ["p2", "p3", "p4"]
+    assert a._mirrored_index == 5
+
+
+def test_mirror_pushes_nothing_when_island_at_fork():
+    a, i1, _ = _make_island_agent()
+    a.strategy.fork = 5
+    a._island_heights = [5]                 # island already at the fork
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"p{height}"}
+    a._mirror_private_blocks(priv_height=9)
+    assert i1.submit_block.call_args_list == []

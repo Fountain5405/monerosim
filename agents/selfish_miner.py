@@ -134,10 +134,19 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
     def _mirror_private_blocks(self, priv_height: int) -> None:
         """Push the offline miner's chain onto every island — extension-only
-        (v4): blocks are pushed only at indexes the island does not yet have,
-        so a mirrored block can never collide with a block the island holds
-        (monerod keeps first-seen; a colliding submit lands as an alt and the
-        victim's fork of that height is silently lost).
+        (v4), and never above the strategy's fork (v12).
+
+        The v12 gate is the rest-window design from the results doc, made
+        precise: the island gets the committed prefix (indexes < fork) plus
+        the PRIVATE suffix the miner is withholding above it — never the
+        honest blocks the miner adopted from forwards. Without the gate, the
+        mirror streamed the miner's full main chain (honest 5 h/s + attacker
+        4 h/s) onto the island, and the victim's 6 h/s could never win
+        first-seen there: its branches died at the island (v11 — victim 199
+        finds, 0 canonical, network orphan rate 0.589). With it, the victim
+        races only the attacker's hashrate above the fork, its branch IS the
+        island main, and the pull + monerod's switch-to-longer deliver it
+        into the miner's private chain for the next cash-out.
 
         HEIGHT CONVENTION (the v8 off-by-one): get_info heights are COUNTS
         (top index + 1); block indexes are 0-based. An island at count C
@@ -148,6 +157,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         invisible until submit_block status checking landed."""
         if not self.island_rpcs:
             return
+        fork = self.strategy.fork if self.strategy else 0
         island_count = min(self._island_heights) if self._island_heights else 0
         if priv_height < self._mirrored_index:
             # Own reorg: heights can have changed anywhere above the new tip,
@@ -156,7 +166,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self._mirrored_index = 0
         start = max(self._mirrored_index, island_count)
         pushed = 0
-        for idx in range(start, priv_height):
+        for idx in range(start, min(priv_height, fork)):
             try:
                 blk = self.daemon_rpc.get_block(height=idx)
                 blob = blk.get("blob")
@@ -179,8 +189,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self._mirrored_index = idx + 1
             pushed += 1
         if pushed:
-            self.logger.info(f"island mirror: pushed {pushed} block(s), "
-                             f"island now needs index {self._mirrored_index}")
+            self.logger.info(f"island mirror: pushed {pushed} block(s) "
+                             f"(gate at fork {fork}), island needs {self._mirrored_index}")
 
     def _pull_island_blocks(self) -> None:
         """Pull each island's main chain into the offline miner — divergence-
