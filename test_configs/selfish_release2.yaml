@@ -1,0 +1,72 @@
+# Selfish-mining release-lead experiment (docs/20260920_selfish_mining_literature.md).
+# Identical to selfish_micro.yaml (alpha = 0.4, single bridge => gamma ~= 0, seed
+# 12345) except the attacker cashes its private chain out at lead 2 instead of
+# lead 1: `release_lead: 2` is the conservative release policy Qubic actually
+# ran on Monero in 2025 (Lee & Kim 2025, arXiv:2512.01437). Theory at
+# alpha=0.4, gamma=0: honest 0.400, modified (lead-2) model 0.364, Eyal-Sirer
+# 0.484 -- the expectation is a realized share between the two selfish curves
+# and likely below honest: the conservative policy trades honest waste for tie
+# safety, and at gamma~0 the safety was never needed (ties are lost anyway, but
+# so are fewer of the attacker's own blocks).
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+      release_lead: "2"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

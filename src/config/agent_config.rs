@@ -217,6 +217,10 @@ pub struct AgentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_group: Option<String>,
 
+    /// P2P peering pins (peer-pinning knob; see PeersConfig)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub peers: Option<PeersConfig>,
+
     /// Pin this agent to a specific GML topology node (by node `id`), overriding
     /// the index-based distribution. Its network position — and thus its latency
     /// to every other agent — becomes that of the chosen node. Requires a GML
@@ -308,6 +312,32 @@ impl AgentConfig {
     }
 }
 
+/// Per-agent P2P peering pins — the peer-pinning knob (SELFISH_MINING.md
+/// §9.4). Agent-id references are resolved to `ip:port` at generation time,
+/// so an eclipse/isolation experiment never hardcodes assigned IPs.
+///
+/// Orthogonal to `attributes.eclipsed` (which pulls the agent OUT of the
+/// miner ring and everyone's seed lists): `peers` says who this agent dials,
+/// `eclipsed` says who may learn about this agent.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct PeersConfig {
+    /// Exclusive peers: one `--add-exclusive-node=<ip:port>` per agent id;
+    /// monerod then dials only these peers (inbound still accepted unless
+    /// `in_peers` is 0 — the one-hop dominance primitive).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclusive: Option<Vec<String>>,
+    /// Priority peers: one `--add-priority-node=<ip:port>` per agent id
+    /// (sticky, survives eviction).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<Vec<String>>,
+    /// Max inbound peers: `--in-peers=<n>` (0 refuses inbound).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_peers: Option<i64>,
+    /// Max outbound peers: `--out-peers=<n>`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub out_peers: Option<i64>,
+}
+
 /// Raw struct for deserializing AgentConfig with flat phase fields support
 #[derive(Debug, Clone, Deserialize)]
 struct AgentConfigRaw {
@@ -367,6 +397,10 @@ struct AgentConfigRaw {
     pub attributes: Option<BTreeMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_group: Option<String>,
+
+    /// P2P peering pins (peer-pinning knob; see PeersConfig)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub peers: Option<PeersConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topology_node: Option<u32>,
     /// Capture any extra fields for flat phase parsing
@@ -428,6 +462,7 @@ impl<'de> Deserialize<'de> for AgentConfig {
             attributes: raw.attributes,
             subnet_group: raw.subnet_group,
             topology_node: raw.topology_node,
+            peers: raw.peers,
         })
     }
 }

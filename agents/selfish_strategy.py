@@ -8,12 +8,16 @@ block INDEX (the highest divergent index to submit to the bridge), or None.
 
 `honest` is the neutral baseline and `eyal_sirer` the textbook Eyal-Sirer state
 machine. The phase-2 stubborn variants (`trail_stubborn`, `equal_fork_stubborn`,
-`lead_stubborn`) layer on top of eyal_sirer (§4.2 of the phase-2 design). This
-apparatus runs at gamma~0: a released equal-height tie block does not propagate
-(a reactive attacker publishing through its own bridges is always second), so the
-attacker loses every tie and the tie-exploiting variants realize at or below
-eyal_sirer -- they are built to pay off at gamma>0. See
-docs/20260912_selfish_mining_results.md and the specs under
+`lead_stubborn`) layer on top of eyal_sirer (§4.2 of the phase-2 design). The
+`release_lead` knob (default 1 = textbook) parametrizes when eyal_sirer's
+cash-out fires: `release_lead: 2` is the conservative release-at-lead-2 policy
+Qubic actually ran on Monero in 2025 (Lee & Kim 2025, arXiv:2512.01437) --
+release the private chain while still two clear rather than waiting for honest
+to close to one. This apparatus runs at gamma~0: a released equal-height tie
+block does not propagate (a reactive attacker publishing through its own
+bridges is always second), so the attacker loses every tie and the
+tie-exploiting variants realize at or below eyal_sirer -- they are built to pay
+off at gamma>0. See docs/20260912_selfish_mining_results.md and the specs under
 docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md (+ -phase2-design.md).
 """
 from dataclasses import dataclass
@@ -32,7 +36,8 @@ class ReleaseDecision:
 
 
 class SelfishStrategy:
-    def __init__(self, name: str, start_height: int, trail_depth: int = 1):
+    def __init__(self, name: str, start_height: int, trail_depth: int = 1,
+                 release_lead: int = 1):
         if name not in (
             "honest",
             "eyal_sirer",
@@ -45,6 +50,9 @@ class SelfishStrategy:
         self.start_height = int(start_height)
         self.fork = int(start_height)
         self.trail_depth = int(trail_depth)
+        self.release_lead = int(release_lead)
+        if self.release_lead < 1:
+            raise ValueError(f"release_lead must be >= 1, got {release_lead}")
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
 
     def update(self, pub_height: int, priv_height: int) -> ReleaseDecision:
@@ -76,9 +84,10 @@ class SelfishStrategy:
         return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
 
     def _eyal_sirer_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
-        """Textbook Eyal-Sirer decision body. Shared by the `eyal_sirer` strategy
-        itself and by the stubborn variants' `a >= h` / fallthrough arms (§4.2:
-        each stubborn variant is "like eyal_sirer except ...")."""
+        """Textbook Eyal-Sirer decision body, parametrized by `self.release_lead`
+        (1 = textbook). Shared by the `eyal_sirer` strategy itself and by the
+        stubborn variants' `a >= h` / fallthrough arms (§4.2: each stubborn
+        variant is "like eyal_sirer except ...", so they inherit the knob)."""
         # Honest overtook (or attacker has nothing on the branch): adopt public.
         if a < h or (h > 0 and a == 0):
             self.fork = pub_height
@@ -95,12 +104,17 @@ class SelfishStrategy:
             # later extends (handled next tick as a-h==1). Fork is NOT moved.
             return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
 
-        if a - h == 1:
-            # Honest caught to within one: reveal all -> strictly longer -> win.
+        if 0 < a - h <= self.release_lead:
+            # Honest closed to within `release_lead`: reveal all -> strictly
+            # longer -> win. eyal_sirer is release_lead=1 (wait until honest is
+            # exactly one behind, maximising honest waste). release_lead=2 is
+            # Qubic's observed conservative policy (Lee & Kim 2025): cash out
+            # while still two clear, trading one honest block of waste per run
+            # for safety from the tie races a slow reveal loses at gamma~0.
             self.fork = priv_height
             return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
 
-        # a - h >= 2: still comfortably ahead; withhold.
+        # a - h > release_lead: still comfortably ahead; withhold.
         return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=None)
 
     def _trail_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:

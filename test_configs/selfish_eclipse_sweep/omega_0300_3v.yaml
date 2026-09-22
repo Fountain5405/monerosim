@@ -1,0 +1,114 @@
+# Eclipse x selfish composition: omega-sweep point, omega = 3 h/s of eclipsed
+# hashrate SPLIT ACROSS THREE victims (experiment 3, §10; v13 results:
+# docs/20260921_selfish_eclipse_results.md). The attacker (4 h/s) plus three
+# eclipsed victim miners (1 h/s each, all exclusive-peered to the attacker's
+# single island bridge) against 8 h/s of free honest miners (4 + 4). naive
+# alpha = 4/15 = 0.267; alpha_eff = (4+3)/15 = 0.467 -- the sub-majority
+# frontier. Paired with gamma_eclipse.yaml (same alpha_eff, ONE 3 h/s
+# victim) it isolates victim-count at fixed recruited hashrate. Total
+# network hashrate 15 h/s (D = 1800 at equilibrium).
+general:
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 4
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 4
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridges: attacker-bridge
+      islands: attacker-island
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+      island_cash_lead: "2"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  attacker-island:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      eclipsed: "true"
+      victims: "victim-001,victim-002,victim-003"
+  victim-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 1
+    start_time: 15m
+    daemon_options:
+      offline: true
+    attributes:
+      eclipsed: "true"
+      mine_after_height: "3"
+  victim-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 1
+    start_time: 15m
+    daemon_options:
+      offline: true
+    attributes:
+      eclipsed: "true"
+      mine_after_height: "3"
+  victim-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 1
+    start_time: 15m
+    daemon_options:
+      offline: true
+    attributes:
+      eclipsed: "true"
+      mine_after_height: "3"
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

@@ -214,6 +214,7 @@ fn build_seed_agent(seed_index: usize) -> AgentConfig {
         attributes: Some(attrs),
         subnet_group: None,
         topology_node: None,
+        peers: None,
     }
 }
 

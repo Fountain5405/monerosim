@@ -192,6 +192,10 @@ SIM_FLAG_OPTIONS = {
     'fakechain-hard-forks': 'fakechain-hard-forks',
     'peerlist-dump-file': 'peerlist-dump-file',
     'sim-relay-alt-blocks': 'sim-relay-alt-blocks',
+    'sim-publish-or-perish': 'sim-publish-or-perish',
+    'sim-pop-k': 'sim-pop-k',
+    'sim-pop-delay-s': 'sim-pop-delay-s',
+    'sim-pop-det-tie': 'sim-pop-det-tie',
 }
 # general.mining.mode: native drives miners through the sim-mining patch.
 NATIVE_MINING_FLAG = 'sim-hash-interval-ms'

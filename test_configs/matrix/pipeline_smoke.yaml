@@ -1,0 +1,26 @@
+# Matrix-runner pipeline smoke (docs/SELFISH_MINING.md §11).
+#
+# Purpose: END-TO-END validation of scripts/selfish_matrix.py on the real
+# box — config generation, run naming/archival, analysis integration,
+# table rendering, resume — at 1 sim-hour per cell so the whole matrix is
+# ~15 min wall at parallel 2. It is NOT science: 1h runs carry ~45
+# canonical blocks (share sigma ~0.07), and `relay` here flags the HONEST
+# miners' daemons with the phase-4 relay patch, which is a plumbing flag,
+# not a countermeasure (phase 4 flagged the attacker's bridges — see
+# SELFISH_MINING.md §9.2 for why relay changes nothing anyway). The cell
+# exists to prove the daemon_options overlay path and the sim-binary
+# preflight gate with a real flag-gated patch.
+#
+# Expected reading: strategy es > honest at alpha 0.4 directionally;
+# relay ~ none within the noise. Anything else = pipeline bug.
+name: pipeline_smoke
+base: test_configs/selfish_micro.yaml
+stop_time: 1h
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    none:  {}
+    relay: {honest: {daemon_options: {sim-relay-alt-blocks: true}}}

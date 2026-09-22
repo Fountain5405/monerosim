@@ -58,6 +58,18 @@ def test_daemon_defaults_reach_node_agents(tmp_path):
     assert e["flags"] == ["fakechain-hard-forks"]
 
 
+def test_pop_countermeasure_flags_are_gated(tmp_path):
+    """A PoP run must fail preflight against a binary without the patch:
+    without this gate the run would silently measure stock fork choice and
+    report it as the countermeasure's effect."""
+    cfg = {"agents": {"honest-001": {
+        "daemon": "monerod-sim",
+        "daemon_options": {"sim-publish-or-perish": True,
+                           "sim-pop-k": 3}}}}
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-pop-k", "sim-publish-or-perish"]
+
+
 def test_pure_script_agent_needs_no_daemon(tmp_path):
     """Regression: a monitor agent inherited daemon_defaults and demanded a
     patched binary it never runs (src/agent/pure_scripts.rs)."""

@@ -709,6 +709,8 @@ preflight_checks() {
                         log_err "  without it the daemon refuses to start and the run collects no peer-list data" ;;
                     sim-relay-alt-blocks)
                         log_err "  without it the withheld block is never relayed and gamma measures ~0" ;;
+                    sim-publish-or-perish)
+                        log_err "  without it the PoP countermeasure is silently absent and the run measures stock fork choice" ;;
                     sim-hash-interval-ms)
                         log_err "  without it native mining cannot be throttled" ;;
                     fakechain-hard-forks)

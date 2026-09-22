@@ -655,3 +655,136 @@ The alternative — patching the *receiver* to prefer a later-arriving equal-hei
 block — would lift γ by construction, but it changes consensus behaviour rather
 than relay plumbing, and a network running it would no longer be modelling
 Monero. It is deliberately not built.
+
+## 10. Experiment series (feat/selfish-mining-experiments)
+
+Branch for the post-phase-4 experiment programme. Literature context:
+`docs/20260920_selfish_mining_literature.md` (moneroresearch.info harvest —
+the Qubic campaign study independently measured γ ≈ 0.01–0.06 on real Monero,
+validating the structural finding above).
+
+1. **`release_lead` (shipped 2026-09-21).** eyal_sirer's reveal arm is
+   parametrized: cash out the private branch once honest closes to within
+   `release_lead` blocks (default 1 = textbook; 2 = Qubic's observed
+   conservative policy, Lee & Kim 2025). `scripts/selfish_mining_analysis.py`
+   adds `mod_revenue_share` (their Eq. 2) and a between-models band verdict
+   for release_lead ≥ 2 runs. Results: α=0.4 A/B 0.463 → 0.309 (profit →
+   loss) with network damage shrinking too (orphan rate 0.274 → 0.214, reorg
+   depths collapse to length-1, MSB detectability drops +6.94 → +3.98); the
+   α-sweep (0.30/0.40/0.45, `test_configs/selfish_sweep_release2/`) puts the
+   conservative policy's profitability crossover in (0.40, 0.45) and found
+   MSB over-flagging HONEST miners under heavy attack (their iid null needs
+   attack calibration). Numbers and interpretation:
+   `docs/20260921_selfish_release2_results.md`.
+2. **Externality/detection metrics (shipped 2026-09-21).**
+   `scripts/selfish_externality.py`, rendered as the analysis report's
+   "Externality & detection" section: Lee & Kim's per-hour orphan series +
+   Alg. 1 attack-period detection + reorg-depth histogram + attacker
+   run-length/release-signature scatter; Li et al. 2020 MSB consecutive-wins
+   z-scores; Kawaguchi & Noda SpEC; Gervais stale-rate series. The bridge's
+   canonical chain dump now records block timestamps (join-free bucketing).
+3. **Eclipse×selfish composition (experiment 3, v1 run 2026-09-21).** Two
+   orchestrator knobs — `peers:` (agent-id-resolved exclusive/priority peer
+   pins + in/out caps) and `attributes.eclipsed` (excluded from the miner
+   ring and all seed lists) — plus `islands` attacker attribute: isolated
+   island bridges that the agent mirrors its private chain onto (eclipsed
+   victims unknowingly extend it) and pulls blocks back from (victim blocks
+   join the private branch; the release path cashes the combined chain
+   unchanged). Analysis reports CONTROLLED share (attacker + victims) vs
+   Eyal–Sirer at α_eff, and never uses island chains as the canonical
+   observer. Config: `test_configs/selfish_eclipse/gamma_eclipse.yaml`
+   (α=4/15≈0.27 naive, α_eff=7/15≈0.47). **The composition WORKS as of v13
+   (2026-09-22)**: controlled share **0.559 > 1/2 at α_eff=0.667** — PASS —
+   with victim recruitment at 0.213 canonical and realized γ still 0.000.
+   Getting there took thirteen iterations and seven localized defects
+   (island-resync deadlock, stale-skipped branch heads, silent
+   submit_block status rejections, the count/index off-by-one, feeds
+   skipping undelivered blocks, fire-and-forget releases from a phantom
+   fork, and the miner's main compounding honest adoptions during
+   withholding) — every one now encoded as a test, and every monerod API
+   fact in finding 4 of the manuscript index. The composition pays the
+   coalition, not the attacker (solo share 0.346, self-orphans 0.309);
+   network damage stays severe throughout (orphan 0.52). Full arc:
+   `docs/20260921_selfish_eclipse_results.md`; MSB calibration:
+   `docs/msb_calibration_20260921.md`; manuscript index with the run
+   ledger: `docs/20260922_selfish_mining_manuscript.md`.
+
+## 11. Matrix runner: strategy × countermeasure × α (2026-09-22)
+
+`scripts/selfish_matrix.py` turns a matrix spec into paired runs and one
+table — the harness for the countermeasure campaign (planned work item 3 in
+`docs/20260922_selfish_mining_manuscript.md` §8). A spec
+(`test_configs/matrix/*.yaml`) names a **base config** and one **overlay**
+per axis value; cells are the cartesian product, so every cell in a matrix
+shares seed and network shape and differs only by the axis variables —
+paired comparisons by construction. Spec fields:
+
+- `axes:` maps an axis name to `{value: overlay}`. Any axis names work;
+  conventional ones are `strategy` (attacker attributes: `strategy`,
+  `release_lead`, …), `countermeasure` (overlays on the honest side), and
+  `alpha` (hashrate split).
+- An overlay targets `attacker` (the one `agents.selfish_miner`),
+  `honest` (every non-eclipsed `agents.autonomous_miner` — eclipse victims
+  are deliberately a separate population), `bridges`, or `all`. Sub-dicts
+  (`attributes`, `daemon_options`) **merge**; scalars override. `hashrate`
+  under `honest` may be a scalar or a per-miner list (length-checked) for
+  exact α splits; α is always recomputed from the generated config, never
+  trusted from the label.
+- A **countermeasure** is just an overlay: a flag-gated `monerod-sim`
+  patch is `honest: {daemon_options: {<flag>: true}}` (run_sim preflight
+  fails the run if the binary lacks the patch — §9.2); an agent-level
+  countermeasure (e.g. detective mining) overrides `script`/`attributes`
+  the same way. No code change per experiment.
+- `exclude:` drops partial cell matches (e.g. an honest-strategy control
+  doesn't need every countermeasure).
+
+Run it:
+
+```bash
+venv/bin/python scripts/selfish_matrix.py test_configs/matrix/<spec>.yaml [--dry-run]
+```
+
+Each cell writes its generated config, launches
+`nice -n10 ./run_sim.sh --no-monitor`, analyzes the archived run via
+`selfish_mining_analysis.analyze_run()` (structured — no report parsing),
+and persists `matrix_runs/<name>/cells/<cell>.json`, which doubles as the
+**resume marker**: re-running the spec only executes cells without one
+(`--fresh` discards all). Output: `matrix_runs/<name>/table.md` (one row
+per cell: α, attacker share, controlled share if eclipse, realized γ,
+orphan rates, MSB max-z, verdicts) and `results.json`, both stamped with
+the commit. `--parallel N` (or spec `parallel:`) runs N cells concurrently
+— the pilot box fits 2 six-hour selfish runs; larger parallelism belongs
+on the 256-thread machine.
+
+Validation: unit tests (`scripts/test_selfish_matrix.py`) cover generation,
+planning, exclusions, the mocked pipeline, resume, failure rows, and table
+rendering; `analyze_run()` was verified behavior-preserving by re-analyzing
+the v13 run (byte-identical report). End-to-end smoke on the real box:
+`test_configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
+the daemon_options overlay and the sim-binary preflight with a real
+flag-gated patch).
+
+## 12. Countermeasure patches (E4, 2026-09-22 —)
+
+The countermeasure campaign measures fork-choice-rule defenses as flag-gated
+`monerod-sim` patches, matrix-driven via §11. Sources and build ladder:
+`docs/20260920_selfish_mining_literature.md` Part F (MRL #144/#145/#146),
+design + pre-registered predictions:
+`docs/20260922_pop_countermeasure_design.md`.
+
+1. **`--sim-publish-or-perish`** (shipped as
+   `patches/monero-sim-pop.patch`): PoP's weighted fork-resolving policy —
+   late blocks (received > `--sim-pop-delay-s` [5] after the first block of
+   their height, measured per node in sim-ms) lose chain weight; reorgs
+   follow weight with a `--sim-pop-k` [3] longest-chain fail-safe and a
+   random (paper) or `--sim-pop-det-tie` (MRL #144) tie-break. Uncles are
+   deliberately not modeled in this first patch — the +uncles delta is a
+   planned measurement. Set on honest agents' `daemon_options` only (the
+   attacker's covert bridge keeps stock rules). Pilot:
+   `test_configs/matrix/pop_pilot.yaml`.
+2. **+uncles** (planned): coinbase `tx_extra` embedding per MRL #144 —
+   completes published PoP; A/B against core isolates the uncle term.
+3. **Share-or-Perish** (planned, MRL #146): workshares at 1/w difficulty,
+   l_b/l_w lateness pair, `version_minor`-serialized share mining.
+4. Lucky transactions (MRL #145): parked — transaction-weighted, and aimed
+   at 51% attacks rather than selfish mining.

@@ -50,6 +50,9 @@ pub struct PeerTopology {
     /// `agent_id -> [--add-priority-node=…]` for seed nodes (ring +
     /// cross-link to all miners).
     pub seed_connections: HashMap<String, Vec<String>>,
+    /// `agent_id -> ip:port` for every user agent — resolves `peers:`
+    /// agent-id references at render time.
+    pub agent_endpoints: HashMap<String, String>,
 }
 
 /// Build ring connections among a group of agents.
@@ -100,10 +103,21 @@ pub fn build_peer_topology(
     let mut miners: Vec<AgentEntry> = Vec::new();
     let mut seed_nodes: Vec<AgentEntry> = Vec::new();
     let mut regular_agents: Vec<AgentEntry> = Vec::new();
+    let mut agent_endpoints: HashMap<String, String> = HashMap::new();
 
     for (i, (agent_id, agent_config)) in user_agents.iter().enumerate() {
         let is_miner = agent_config.is_miner();
-        let is_seed_node = is_miner
+        // Eclipsed agents (attributes.eclipsed: "true") are excluded from the
+        // miner ring and from the seed lists everyone else bootstraps against:
+        // no one learns their address unless a `peers:` pin dials them. This
+        // is the isolation half of the eclipse-composition experiments; the
+        // offline attacker seed noise is a separate, older caveat.
+        let is_eclipsed = agent_config
+            .attributes
+            .as_ref()
+            .map(|attrs| attrs.get("eclipsed").map_or(false, |v| v == "true"))
+            .unwrap_or(false);
+        let is_seed_node = (is_miner && !is_eclipsed)
             || agent_config
                 .attributes
                 .as_ref()
@@ -134,6 +148,7 @@ pub fn build_peer_topology(
         let agent_port = crate::MONERO_P2P_PORT;
 
         all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
+        agent_endpoints.insert(agent_id.to_string(), format!("{}:{}", agent_ip, agent_port));
 
         let entry = AgentEntry {
             index: i,
@@ -143,11 +158,14 @@ pub fn build_peer_topology(
             port: agent_port,
         };
 
-        if is_miner {
+        if is_miner && !is_eclipsed {
+            // Eclipsed miners mine (wallet, hashrate, knobs all intact) but
+            // join neither the ring nor anyone's seed list.
             miners.push(entry);
         } else if is_seed_node {
             seed_nodes.push(entry);
-        } else {
+        } else if !is_eclipsed {
+            // And they can't be promoted to seeds in non-Dynamic modes either.
             regular_agents.push(entry);
         }
 
@@ -222,5 +240,6 @@ pub fn build_peer_topology(
         all_agent_ips,
         miner_connections,
         seed_connections,
+        agent_endpoints,
     })
 }

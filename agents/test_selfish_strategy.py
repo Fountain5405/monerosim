@@ -140,7 +140,47 @@ def test_lead_stubborn_withholds_while_honest_idle():
     assert d.release_to is None and d.adopt_public is False and s.fork == 0
 
 
-def test_every_withholding_strategy_has_a_winning_commit_path():
+def test_release_lead_two_cashes_at_lead_two():
+    # Qubic's observed conservative policy (Lee & Kim 2025): reveal the whole
+    # branch while still two clear of an active honest chain, instead of
+    # waiting for honest to close to one behind (eyal_sirer).
+    s = SelfishStrategy("eyal_sirer", start_height=0, release_lead=2)
+    assert _triple(s.update(0, 3)) == (None, None, False)      # h==0: free lead, withhold
+    d = s.update(1, 3)                                          # a=3,h=1, a-h==2 -> cash out
+    assert d.release_to == 2 and d.release_from == 0            # reveal indexes 0..2
+    assert d.adopt_public is False and s.fork == 3              # strictly longer: the win commits
+
+
+def test_release_lead_two_withholds_beyond_lead_two():
+    s = SelfishStrategy("eyal_sirer", start_height=0, release_lead=2)
+    assert _triple(s.update(1, 4)) == (None, None, False)      # a-h==3: keep withholding
+    d = s.update(2, 4)                                          # honest +1 -> a-h==2 -> cash
+    assert d.release_to == 3 and d.release_from == 0 and s.fork == 4
+
+
+def test_release_lead_two_tie_and_concede_arms_unchanged():
+    s = SelfishStrategy("eyal_sirer", start_height=0, release_lead=2)
+    s.update(0, 1)                                              # lead 1, h==0: withhold
+    d = s.update(1, 1)                                          # tie: contest, fork unmoved
+    assert _triple(d) == (0, None, False) and s.fork == 0
+    d = s.update(2, 1)                                          # a<h: concede
+    assert d.adopt_public is True and s.fork == 2
+
+
+def test_release_lead_one_is_eyal_sirer():
+    k1 = SelfishStrategy("eyal_sirer", start_height=0, release_lead=1)
+    es = SelfishStrategy("eyal_sirer", start_height=0)          # default
+    # monotone game: free lead, tie, cash, free lead, catch to one
+    for pub, priv in [(0, 1), (1, 1), (1, 2), (2, 3), (2, 4), (3, 4)]:
+        assert _triple(k1.update(pub, priv)) == _triple(es.update(pub, priv)), (pub, priv)
+
+
+def test_release_lead_rejects_nonpositive():
+    try:
+        SelfishStrategy("eyal_sirer", start_height=0, release_lead=0)
+    except ValueError:
+        return
+    raise AssertionError("release_lead=0 must raise")
     # Regression for the 2026-09-13 lead_stubborn bug: a strategy that can only
     # advance `fork` by conceding (adopt_public) never places a block on the
     # canonical chain (realized 0.000 share, orphan 1.000). Over a favorable game

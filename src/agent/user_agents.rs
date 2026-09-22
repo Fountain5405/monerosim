@@ -496,6 +496,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         all_agent_ips,
         miner_connections,
         seed_connections,
+        agent_endpoints,
     } = build_peer_topology(
         &user_agents,
         &agent_node_assignments,
@@ -879,10 +880,17 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         // once. Lifted verbatim from the former build_daemon_args_base closure so
         // MonerodImpl::render can append them after the DNS flags in the exact
         // historical order (the tests/golden/* snapshots enforce byte-identity).
+        let is_eclipsed = user_agent_config
+            .attributes
+            .as_ref()
+            .map(|attrs| attrs.get("eclipsed").map_or(false, |v| v == "true"))
+            .unwrap_or(false);
         let peer_args: Vec<String> = {
             let mut pa: Vec<String> = Vec::new();
-            // Initial fixed connections for miners / seeds.
-            if is_miner {
+            // Initial fixed connections for miners / seeds. Eclipsed agents
+            // have no ring/seed links (build_peer_topology skipped them);
+            // their only peering comes from the `peers:` pins below.
+            if is_miner && !is_eclipsed {
                 if let Some(conns) = miner_connections.get(*agent_id) {
                     for conn in conns {
                         pa.push(conn.clone());
@@ -895,9 +903,11 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     }
                 }
             }
-            // Peer connections for regular agents.
+            // Peer connections for regular agents. Eclipsed agents bootstrap
+            // nowhere: no --seed-node list, no topology links — whoever they
+            // talk to must be pinned explicitly via `peers:`.
             let is_actual_seed_node = seed_nodes.iter().any(|e| e.index == i);
-            if !is_miner && !is_actual_seed_node {
+            if !is_miner && !is_actual_seed_node && !is_eclipsed {
                 for seed_node in seed_agents.iter() {
                     if !seed_node.starts_with(&format!("{}:", agent_ip)) {
                         let peer_arg = if matches!(peer_mode, PeerMode::Dynamic) {
@@ -918,8 +928,63 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     }
                 }
             }
+            // Explicit `peers:` pins — agent-id references resolved to
+            // ip:port. Eclipsed or not, any agent may pin peers; unknown ids
+            // are a hard error (a typo'd pin silently isolates a node).
+            if let Some(peers) = user_agent_config.peers.as_ref() {
+                if let Some(exclusive) = peers.exclusive.as_ref() {
+                    for id in exclusive {
+                        let endpoint = agent_endpoints.get(id).ok_or_else(|| {
+                            color_eyre::eyre::eyre!(
+                                "Agent '{}': peers.exclusive references unknown agent '{}'",
+                                agent_id,
+                                id
+                            )
+                        })?;
+                        if id == agent_id.as_str() {
+                            return Err(color_eyre::eyre::eyre!(
+                                "Agent '{}': peers.exclusive references itself",
+                                agent_id
+                            ));
+                        }
+                        pa.push(format!("--add-exclusive-node={}", endpoint));
+                    }
+                }
+                if let Some(priority) = peers.priority.as_ref() {
+                    for id in priority {
+                        let endpoint = agent_endpoints.get(id).ok_or_else(|| {
+                            color_eyre::eyre::eyre!(
+                                "Agent '{}': peers.priority references unknown agent '{}'",
+                                agent_id,
+                                id
+                            )
+                        })?;
+                        if id == agent_id.as_str() {
+                            return Err(color_eyre::eyre::eyre!(
+                                "Agent '{}': peers.priority references itself",
+                                agent_id
+                            ));
+                        }
+                        pa.push(format!("--add-priority-node={}", endpoint));
+                    }
+                }
+            }
             pa
         };
+        // in/out peer caps from `peers:` ride in daemon_options (scalar
+        // flags), merged so an explicit daemon_options setting still wins.
+        if let Some(peers) = user_agent_config.peers.as_ref() {
+            if let Some(n) = peers.in_peers {
+                merged_daemon_options
+                    .entry("in-peers".to_string())
+                    .or_insert(OptionValue::Number(n));
+            }
+            if let Some(n) = peers.out_peers {
+                merged_daemon_options
+                    .entry("out-peers".to_string())
+                    .or_insert(OptionValue::Number(n));
+            }
+        }
         // Raw peer addresses (ip:port) extracted from the monerod-format peer
         // args, for implementations (cuprate) that take a seed list rather than
         // per-peer CLI flags. `--flag=ip:port` -> `ip:port`.
