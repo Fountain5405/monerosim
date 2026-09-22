@@ -209,3 +209,31 @@ long combined branches vs the honest network need timeline forensics —
 62 ties recorded). Next session starts there, with every feed verified.
 - One victim, one island, α_eff 0.467; the pathology should be α_eff-driven
   (worse as α_eff → 1/2 from below), which v2 should confirm by sweep.
+
+
+## v11 (2026-09-22): releases win — attacker 0.000 -> 0.463, one scoped gap left
+
+`20260921_*_gamma_eclipse_majority_v11`. Forensics on v10: the island's
+early burst resurrected the miner's STALE PRIVATE BRANCH via the pull, so
+the miner's chain diverged from the public chain far below the strategy's
+fork — every cash-out since submitted blocks whose parents the network
+never had, and monerod files orphaned submits silently with status OK
+(436 cash-outs of a 100-block branch: zero alt-adds, zero reorgs; a
+locally reproduced 20-block sequential submit adopts instantly, proving
+the mechanism fine when connected).
+
+v11 fixes: `_island_cash_out` releases from the hash-verified common
+ancestor with the bridge (walking down from min(pub, priv)) instead of
+the strategy's fork, and commits `fork` only on verified adoption (the
+bridge's height actually reaching ours), leaving the release watermark
+intact to retry a non-adopted range.
+
+Result: attacker canonical share **0.463** (from 0.000), attacker orphan
+rate **0.026** (from 1.000) — the composition publishes and banks. Still
+FAIL (0.463 < 0.5 majority), and controlled == attacker exactly: the
+victim's 199 finds bank ZERO. Scope of the remaining bug: the miner never
+adopts victim-led branches (the divergence-aware pull submits them into
+the miner's alt-tree, but the switch to the longer branch is not
+happening; the victim's 6 h/s burns against the mirror's flow — network
+orphan rate 0.589). Next probe: the miner's alt-tree/adopt behavior
+during a victim burst, one run, then the majority verdict should close.
