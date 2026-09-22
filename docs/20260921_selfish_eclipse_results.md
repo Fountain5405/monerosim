@@ -237,3 +237,46 @@ the miner's alt-tree, but the switch to the longer branch is not
 happening; the victim's 6 h/s burns against the mirror's flow — network
 orphan rate 0.589). Next probe: the miner's alt-tree/adopt behavior
 during a victim burst, one run, then the majority verdict should close.
+
+
+## v12–v13 (2026-09-22): RECRUITMENT WORKS — majority verdict PASSES
+
+**v12** (`20260921_224414` … commit `fe4f374a`, mirror gated at the fork):
+victim blocks finally built correctly in the miner's alt-tree (connected,
+alt-adds from height 43 up) — but the miner's own main compounded at an
+effective 9 h/s (honest blocks adopted through the forward feed + the
+attacker's own blocks on top), so the victim's 6 h/s branch never
+overtook it from behind. Final: 0.442 controlled, victims still zero.
+The mirror gate was necessary but not sufficient.
+
+**v13** (commit `7ce8e384`, honest feed capped at the fork while
+withholding — the miner's main during withholding is the private branch
+ALONE): mid-run the victim's blocks were already being published (16 of
+17 finds at the bridge within the first hour). Final
+(`20260922_044845_gamma_eclipse_majority_v13`):
+
+| Metric | v13 | Theory/expectation |
+|---|---|---|
+| CONTROLLED share (attacker + victims) | **0.559** | > 0.5 (majority) — **PASS** |
+| attacker share alone | 0.346 | — |
+| victim canonical contribution | **0.213** | recruited ✓ |
+| attacker orphan rate | 0.309 | merge races cost the attacker blocks |
+| network orphan rate | 0.519 | heavy damage persists |
+| realized γ | 0.000 (10 ties) | structural ✓ |
+
+The arc, for the record: v1 0.161 → v2 0.291 → v3 0.295 → v10 0.000
+(failure inverted to the attacker) → v11 0.463 → v12 0.442 → **v13
+0.559 PASS**. Seven distinct defects, each localized by one decisive
+probe and now encoded as tests: (1) island-resync deadlock, (2) branch
+heads skipped as stale, (3) silent submit_block rejections (status
+field), (4) count-vs-index off-by-one, (5) feeds skipping undelivered
+blocks, (6) fire-and-forget releases from a phantom fork, (7) the
+miner's main compounding honest adoptions during withholding.
+
+**Scientific reading:** the composition pays the COALITION, not the
+attacker — recruitment costs the attacker own-block orphans (0.309) and
+drops its solo share (0.463 → 0.346), while the controlled share clears
+the majority line only by combining both hashrates. Damage to the
+network stays severe (orphan rate 0.52) throughout every variant: the
+public-harm/private-profit asymmetry seen at every α now extends to the
+eclipse regime.
