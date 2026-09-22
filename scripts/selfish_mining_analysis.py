@@ -291,32 +291,31 @@ def _find_chain_file(run_dir, explicit, islands=frozenset()):
     return None
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("run_dir")
-    ap.add_argument("--chain", default=None, help="path to canonical_chain.json (default: search run_dir)")
-    ap.add_argument("--out", default=None)
-    args = ap.parse_args()
+class AnalysisInputError(Exception):
+    """Required run inputs missing/empty (main exit code 2)."""
 
-    run_dir = Path(args.run_dir)
+
+def analyze_run(run_dir, chain_path=None) -> dict:
+    """Structured analysis of one finished run — everything main() reports,
+    as a dict (matrix runner / cross-run studies consume this instead of
+    parsing report.md). Pure computation: writes nothing. Raises
+    AnalysisInputError when required inputs are missing or empty."""
+    run_dir = Path(run_dir)
     cfg_path = run_dir / "input_config.yaml"
     if not cfg_path.exists():
-        print(f"ERROR: {cfg_path} missing", file=sys.stderr)
-        return 2
+        raise AnalysisInputError(f"{cfg_path} missing")
     cfg = load_raw_config(cfg_path)
     attacker_ids = _attacker_ids(cfg)
     miner_ids = list(attacker_ids | _honest_miner_ids(cfg))
     islands = _island_ids_from_config(cfg)
     eclipsed = _eclipsed_miner_ids(cfg)
 
-    chain_path = _find_chain_file(run_dir, args.chain, islands)
+    chain_path = _find_chain_file(run_dir, chain_path, islands)
     if not chain_path or not chain_path.exists():
-        print("ERROR: canonical_chain.json not found (bridge did not record it?)", file=sys.stderr)
-        return 2
+        raise AnalysisInputError("canonical_chain.json not found (bridge did not record it?)")
     chain = json.loads(chain_path.read_text()).get("chain", [])
     if not chain:
-        print("ERROR: empty canonical chain", file=sys.stderr)
-        return 2
+        raise AnalysisInputError("empty canonical chain")
 
     found = parse_found_blocks(run_dir, miner_ids)
     h2m = found_by_hash(found)
@@ -329,17 +328,65 @@ def main() -> int:
     stats = orphan_stats(found, canonical_hashes, attacker_ids)
     gamma, n_ties = realized_gamma(found, chain, attacker_ids, attacker_ids | eclipsed)
     theory_at_gamma = es_revenue_share(alpha, gamma)
-    eclipse = (controlled, alpha_eff) if eclipsed else None
+    is_eclipse = bool(eclipsed)
+    eclipse = (controlled, alpha_eff) if is_eclipse else None
     verdicts = make_verdicts(alpha, share, stats, theory_at_gamma, release_lead, eclipse)
-
-    out_dir = Path(args.out) if args.out else (run_dir / "analysis_output" / "selfish")
-    out_dir.mkdir(parents=True, exist_ok=True)
     externality = _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes)
-    report = _render(alpha, share, stats, verdicts, gamma, n_ties, theory_at_gamma,
-                     release_lead, externality, eclipse)
+
+    theory = {
+        "es_gamma0": es_revenue_share(alpha, 0.0),
+        "at_measured_gamma": theory_at_gamma,
+    }
+    if release_lead >= 2:
+        theory["mod_gamma0"] = mod_revenue_share(alpha, 0.0)
+    if is_eclipse:
+        theory["mod_gamma0_alpha_eff"] = mod_revenue_share(alpha_eff, 0.0)
+    msb = externality["msb"]
+    return {
+        "run_dir": str(run_dir),
+        "chain_path": str(chain_path),
+        "canonical_blocks": len(chain),
+        "alpha": alpha,
+        "alpha_eff": alpha_eff,
+        "release_lead": release_lead,
+        "eclipse": is_eclipse,
+        "share": share,
+        "controlled": controlled if is_eclipse else None,
+        "gamma": gamma,
+        "n_ties": n_ties,
+        "orphan_stats": stats,
+        "attacker_orphan_rate": stats["attacker_orphan_rate"],
+        "network_orphan_rate": stats["network_orphan_rate"],
+        "theory": theory,
+        "verdicts": verdicts,
+        "msb_max_z": max((s["z"] for s in msb.values()), default=0.0),
+        "msb_flagged": {m for m, s in msb.items() if s["z"] > 2},
+        "externality": externality,
+        "_eclipse_pair": eclipse,     # (controlled, alpha_eff) for _render
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("run_dir")
+    ap.add_argument("--chain", default=None, help="path to canonical_chain.json (default: search run_dir)")
+    ap.add_argument("--out", default=None)
+    args = ap.parse_args()
+
+    try:
+        r = analyze_run(args.run_dir, args.chain)
+    except AnalysisInputError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 2
+
+    out_dir = Path(args.out) if args.out else (Path(r["run_dir"]) / "analysis_output" / "selfish")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = _render(r["alpha"], r["share"], r["orphan_stats"], r["verdicts"],
+                     r["gamma"], r["n_ties"], r["theory"]["at_measured_gamma"],
+                     r["release_lead"], r["externality"], r["_eclipse_pair"])
     (out_dir / "report.md").write_text(report)
     print(report)
-    return 0 if all(v["pass"] for v in verdicts) else 1
+    return 0 if all(v["pass"] for v in r["verdicts"]) else 1
 
 
 def _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes) -> dict:
