@@ -280,3 +280,41 @@ the majority line only by combining both hashrates. Damage to the
 network stays severe (orphan rate 0.52) throughout every variant: the
 public-harm/private-profit asymmetry seen at every α now extends to the
 eclipse regime.
+
+## ω-sweep under v13 semantics (2026-09-22, runs ecl13_*)
+
+The user-approved next step after the v13 PASS: re-run the ω-sweep with
+working recruitment, including the sub-majority frontier where theory says
+the composition goes marginal. All points hold total hashrate at 15 h/s
+(D=1800) with the attacker at 4 h/s; ω = eclipsed (recruited) hashrate.
+Old 20260921_16-17h ω rows in the manuscript ledger ran v2-era code
+(eclipse-DoS only) and are NOT comparable.
+
+| run | ω (h/s) | α_eff | attacker solo | controlled | victim canonical | γ | R_mod(α_eff) | verdict |
+|---|---|---|---|---|---|---|---|---|
+| `ecl13_omega0300_3v` (3×1) | 3 | 0.467 | 0.421 | 0.429 | 0.008 | 0.000 | 0.485 | PASS (−0.056) |
+| `ecl13_frontier0467` (1×3) | 3 | 0.467 | 0.372 | 0.372 | 0.000 | 0.000 | 0.485 | FAIL (−0.113) |
+| `ecl13_omega0200` (1×2) | 2 | 0.40 | *(running)* | | | | 0.397 | |
+| `ecl13_omega0000` (none) | 0 | 0.267 | *(queued)* | | | | 0.220 | |
+| `ecl13_majority0667_rep` | 6 | 0.667 | *(running)* | | | | — | repeat of v13 |
+
+**Frontier finding (batch 1, two runs):** at α_eff = 0.467 recruitment is
+ZERO in both victim architectures. The mechanism falls straight out of the
+v13 lifecycle: the island branch grows at the victims' hashrate (3 h/s)
+against the free honest chain's 8 h/s, so it never builds the
+`island_cash_lead = 2` lead the cash-out requires — victim blocks are
+pulled into the miner's private chain but never released onto the canonical
+chain (victim canonical 0.008 / 0.000). The composition degenerates to
+eclipse-DoS: honest competition loses 3 h/s, the attacker's effective
+active fraction becomes 4/12 ≈ 0.33, and its solo share (0.37–0.42) sits
+above both its naive α (0.267) and ES(0.267) = 0.22 — but BELOW
+R_mod(0.467) = 0.485, because the recruited hashrate never banks.
+
+Contrast the v13 majority point (victim 6 h/s vs honest 5 h/s): there the
+island out-runs the free chain, cash-outs fire, and victims bank 0.213
+canonical. **The composition looks thresholded in ω — recruitment pays
+only when the island's hashrate exceeds the free honest chain's — not
+smooth as the Nayak-style α_eff story predicts.** The 3-victim vs
+1-victim difference at fixed ω=3 (0.429 vs 0.372 controlled) is within
+single-run σ≈0.05; the repeats in flight will size the bar before any
+victim-count claim.
