@@ -126,3 +126,41 @@ def test_eclipse_majority_config():
                  if v.get("script") == "agents.autonomous_miner" and k != "victim-001")
     assert honest == 5
     assert abs(_alpha_eff_from_config(cfg) - 10 / 15) < 0.01   # majority regime
+
+
+@pytest.mark.parametrize("path,omega,expected_alpha_eff", [
+    (Path("test_configs/selfish_eclipse_sweep/omega_0000.yaml"), 0, 4 / 15),
+    (Path("test_configs/selfish_eclipse_sweep/omega_0200.yaml"), 2, 6 / 15),
+    (Path("test_configs/selfish_eclipse_sweep/omega_0300_3v.yaml"), 3, 7 / 15),
+], ids=["w000", "w020", "w030_3v"])
+def test_omega_sweep_points(path, omega, expected_alpha_eff):
+    # The omega sweep holds TOTAL hashrate at 15 h/s (so equilibrium
+    # difficulty is identical at every point) and the attacker at 4 h/s,
+    # varying only how much honest hashrate is eclipsed (recruited).
+    from scripts.selfish_mining_analysis import _alpha_eff_from_config
+    cfg = _load(path)
+    agents = cfg["agents"]
+    att = next(v for v in agents.values() if v.get("script") == "agents.selfish_miner")
+    victims = {k: v for k, v in agents.items()
+               if v.get("attributes", {}).get("eclipsed") == "true"
+               and v.get("script") == "agents.autonomous_miner"}
+    islands = {k: v for k, v in agents.items()
+               if v.get("script") == "agents.selfish_bridge"
+               and v.get("attributes", {}).get("victims")}
+    total = sum(v["hashrate"] for v in agents.values() if v.get("hashrate"))
+    assert total == 15, f"{path}: sweep points hold total hashrate at 15 h/s"
+    assert att["hashrate"] == 4
+    assert sum(v["hashrate"] for v in victims.values()) == omega
+    assert cfg["general"]["simulation_seed"] == 12345
+    if omega == 0:
+        assert not victims and not islands
+        assert "islands" not in att["attributes"]   # plain-selfish anchor
+    else:
+        for vid, v in victims.items():              # v8+ victim semantics
+            assert v["daemon_options"]["offline"] is True
+            assert v["attributes"]["mine_after_height"] == "3"
+        assert len(islands) == 1                    # exactly one island
+        island = next(iter(islands.values()))
+        assert set(island["attributes"]["victims"].split(",")) == set(victims)
+        assert att["attributes"]["islands"] in islands
+    assert abs(_alpha_eff_from_config(cfg) - expected_alpha_eff) < 0.01

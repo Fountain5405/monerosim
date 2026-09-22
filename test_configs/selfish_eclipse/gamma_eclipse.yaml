@@ -1,15 +1,18 @@
-# Eclipse x selfish composition, v2 cash-on-lead lifecycle (experiment 3;
-# v1 result + mechanism: docs/20260921_selfish_eclipse_results.md).
-# The attacker (4 h/s) plus ONE eclipsed victim miner (3 h/s, exclusive-peered
-# to the attacker's isolated island bridge) against 8 h/s of free honest
-# miners (4 + 4). naive alpha = 4/15 = 0.267 -- far below the gamma=0
-# profitability threshold; alpha_eff = (4+3)/15 = 0.467 -- deep in the
-# profitable regime. Hypothesis (Nayak-style composition): the CONTROLLED
-# canonical share (attacker + victim blocks) lands on the Eyal-Sirer gamma=0
-# curve at alpha_eff (~0.73), because the victim's hashrate extends the
-# withheld private chain through the island, while the honest network's
-# realized gamma stays 0. Same seed/shape conventions as the other selfish
-# micro experiments; externality metrics from experiment 2 ride along.
+# Eclipse x selfish composition: the sub-majority FRONTIER point (experiment
+# 3, docs/SELFISH_MINING.md §10; v1-v13 arc:
+# docs/20260921_selfish_eclipse_results.md). The attacker (4 h/s) plus ONE
+# eclipsed victim miner (3 h/s, exclusive-peered to the attacker's isolated
+# island bridge) against 8 h/s of free honest miners (4 + 4). naive
+# alpha = 4/15 = 0.267, far below the gamma=0 profitability threshold;
+# alpha_eff = (4+3)/15 = 0.467, just short of majority. Hypothesis under v13
+# semantics (mirror gated at the fork, honest feed capped at the fork,
+# ancestor-verified adoption-committed cash-out): below alpha_eff = 1/2 the
+# controlled share (attacker + victim) tracks R_mod at alpha_eff but cannot
+# reach majority control -- the marginal regime between plain selfish and
+# the v13 majority PASS (0.667). Paired with omega_0300_3v.yaml (same
+# alpha_eff, three 1 h/s victims) it isolates victim-count at fixed
+# recruited hashrate. Total network hashrate 15 h/s (D = 1800 at
+# equilibrium); externality metrics from experiment 2 ride along.
 general:
   stop_time: 6h
   simulation_seed: 12345
