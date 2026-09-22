@@ -168,3 +168,41 @@ single 6 h runs (σ≈0.05); the A/B gap (0.47) is ~9σ — not noise. Next
 rung: the +uncles patch (isolates the uncle term the paper credits),
 det-tie axis, and the full strategy × countermeasure × α matrix on
 senior.
+
+## Follow-up results (2026-09-22, `matrix_runs/pop_followup/`, 3 × 6 h at α=0.4)
+
+| cell | attacker share | att. orphan | net orphan | MSB max-z |
+|---|---|---|---|---|
+| `es_pop_det` (det tie) | **0.244** | 0.530 | 0.308 | +8.6 |
+| `es_r2_pop` | **0.349** | 0.353 | 0.287 | +8.1 |
+| `es_r2_pop_det` | **0.326** | 0.279 | 0.234 | +7.8 |
+
+(baselines: `es_pop` 0.022 [pilot], `es_r2_none` 0.309 [release2 A/B].)
+
+1. **PoP-core is blind to the conservative (lead-2) attacker.** 0.309 →
+   0.349/0.326 — no reduction, possibly a small INCREASE (honest's late
+   counter-blocks now lose weight too). The mechanism is exact timing
+   semantics: lateness is judged against the FIRST block ever received at
+   a height. Textbook ES releases only AFTER honest published at the
+   contested height (a−h = 1 ⇒ h ≥ 1) — its reveal is always late →
+   crushed (0.022). Lead-2 releases at h = 0, BEFORE honest mines that
+   height — the attacker's blocks arrive first-at-height → in-time → the
+   override wins exactly as under stock rules. **PoP's lateness rule
+   punishes catch-up-triggered reveals, not proactive ones** — and the
+   observed Qubic policy is the proactive kind. This is tevador's own
+   argument for Share-or-Perish (MRL #146), now measured: closing the
+   proactive-release gap is what the l_w share-lateness rule is for.
+   Corollary prediction (pre-registered): +uncles will NOT close it — the
+   lead-2 release is a clean in-time override, not a tie.
+2. **The det-tie gap is large but single-run.** `es_pop_det` 0.244 vs
+   `es_pop` 0.022 — if it holds at n=2 (wave 2 in flight), the
+   deterministic hash comparison is systematically weaker than uniform
+   random at γ≈0 (candidate mechanism: det-tie outcome is a fixed
+   function of the tip pair, so a favorable hash draw persists across
+   re-evaluations of the same contest, while random re-rolls; flagged for
+   the #144-exact rung, which uses det-tie per the issue).
+3. First nonzero realized γ ever measured: 0.040 in `es_r2_pop_det`
+   (one tie won out of ~25) — an artifact of tie re-evaluation under the
+   weight rule, worth watching, not yet a signal.
+4. Detection: MSB z stays high everywhere (+7.8 to +14.9) — under every
+   PoP variant the attacker remains loud.
