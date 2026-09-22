@@ -76,20 +76,37 @@ Honest false positives cluster exactly in the heaviest attacks
 over-flags honest miners precisely when it matters. Deployed detectors need
 an attack-aware null; our runs can calibrate it.
 
-### E3 — Eclipse composition (RQ3) ✅ mechanics closed at α_eff=0.667
+### E3 — Eclipse composition (RQ3) ✅ mechanics closed at α_eff=0.667;
+ω-sweep complete 2026-09-22
 
 `docs/20260921_selfish_eclipse_results.md` (the full v1→v13 arc, seven
-localized defects). Headline results: naive mirror/pull loses to monerod
-first-seen semantics at every level (v1–v3); eclipse-as-DoS alone moves the
-attacker 0.192→0.385 (ω=0 vs 0.2); ancestor-verified, adoption-committed
-releases took the attacker from 0.000 to 0.463 (v11); and with the full
-lifecycle (v13: mirror gated at the fork + honest feed capped at the fork)
-the composition CONTROLS the majority: **0.559 controlled share, victim
-recruitment at 0.213 canonical, γ still 0.000**. Recruitment pays the
-coalition, not the attacker (its solo share falls to 0.346 with 0.309
-self-orphans), and network damage stays severe (orphan rate 0.52) in every
-variant — the harm/profit asymmetry extends to the eclipse regime. The
-monerod-API findings below are themselves contributions.
+localized defects, then the ω-sweep). Headline results: naive mirror/pull
+loses to monerod first-seen semantics at every level (v1–v3);
+eclipse-as-DoS alone moves the attacker 0.192→0.385 (ω=0 vs 0.2);
+ancestor-verified, adoption-committed releases took the attacker from
+0.000 to 0.463 (v11); and with the full lifecycle (v13: mirror gated at
+the fork + honest feed capped at the fork) the composition CONTROLS the
+majority: **0.559 controlled share, victim recruitment at 0.213 canonical,
+γ still 0.000**. Recruitment pays the coalition, not the attacker (its
+solo share falls to 0.346 with 0.309 self-orphans), and network damage
+stays severe (orphan rate 0.52) in every variant — the harm/profit
+asymmetry extends to the eclipse regime. The monerod-API findings below
+are themselves contributions.
+
+**ω-sweep under v13 semantics (6 runs, 2 repeats):** controlled share
+rises with ω (0.166 → 0.297 → ~0.31 ± 0.06 → 0.559/0.879 at majority) but
+the composed-revenue model R_mod(α_eff) is REJECTED in the sub-majority
+regime: at α_eff=0.467 victim banking is ≈0 in both 1-victim repeats
+(band FAILs at −0.113/−0.235) because the island branch (3 h/s) can never
+out-run the free honest chain (8 h/s) to reach the cash-out lead.
+Recruitment only banks above island-vs-honest hashrate parity (ω=6 vs
+honest 5: majority verdict passes twice, 0.559 and 0.879, with a
+fat-variance internal split 0.346/0.213 vs 0.121/0.758 attacker/victim —
+each cash-out is winner-take-all on the island race). The attacker's solo
+share still climbs with ω (0.166 → 0.258–0.421) purely from eclipse-DoS
+de-hashing. **The composition's payoff is thresholded at
+island/honest parity, not smooth in α_eff — the Nayak-style aggregation
+over-predicts exactly where a rational attacker would operate.**
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -121,12 +138,22 @@ monerod-API findings below are themselves contributions.
    costs the attacker own-block orphans (0.309) and drops its solo share
    below its no-eclipse selfish share — the eclipse only pays when the
    recruited hashrate is spent as one chain.
+7. The eclipse composition's payoff is **thresholded at island-vs-honest
+   hashrate parity, not smooth in α_eff** (ω-sweep, 6 runs): below parity
+   the R_mod(α_eff) composed-revenue prediction is rejected (victim banking
+   ≈ 0, band FAILs at α_eff=0.467 in both repeats) while the attacker still
+   gains from eclipse-DoS alone; above parity the majority verdict passes
+   twice. The coalition-internal split has fat run-to-run variance
+   (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
 
 ## 6. Limitations
 
 - Micro-topology (8–13 hosts, 2–5 miners): honest-fragmentation effects at
-  larger scale are unmeasured here; single runs per point,
-  `native_preemption: true` (share σ≈0.05); A/A byte-determinism requires
+  larger scale are unmeasured here; single runs per point except where
+  repeats are noted (n=2 at α_eff 0.467 and 0.667),
+  `native_preemption: true` (share σ≈0.05; the eclipse coalition-internal
+  SPLIT has much fatter variance than the controlled total — each island
+  cash-out is winner-take-all); A/A byte-determinism requires
   `native_preemption: false`.
 - Phase-1 configs are transaction-free (bare-block relay); the externality
   metrics are attribution-complete only when all canonical blocks come from
@@ -166,6 +193,17 @@ tree at run time = that commit).
 | `20260922_033212_gamma_eclipse_majority_v11` | `077c71d1` | (v11) | attacker 0.463, orphan 0.026; victim still 0 |
 | `20260922_041348_gamma_eclipse_majority_v12` | `fe4f374a` | (v12) | mirror fork-gate alone: 0.442, victims 0 (miner main compounds 9 h/s) |
 | `20260922_044845_gamma_eclipse_majority_v13` | `7ce8e384` | (v13) | honest feed capped at fork: **0.559 controlled — PASS**; victim 0.213 canonical |
+| `20260922_105252_ecl13_omega0300_3v` | `8e26c6ba` | `omega_0300_3v.yaml` | ω-sweep v13: 3×1 victims, controlled 0.429, victim 0.008 (band PASS) |
+| `20260922_105252_ecl13_frontier0467` | `8e26c6ba` | `gamma_eclipse.yaml` | frontier α_eff=0.467: controlled 0.372, victim 0.000 (band FAIL −0.113) |
+| `20260922_124435_ecl13_frontier0467_rep` | `970b76bb`* | `gamma_eclipse.yaml` | frontier repeat: 0.250, victim 0.000 (band FAIL −0.235) |
+| `20260922_114614_ecl13_omega0200` | `8e26c6ba` | `omega_0200.yaml` | ω=2: controlled 0.297, victim 0.039 (band PASS) |
+| `20260922_114614_ecl13_majority0667_rep` | `8e26c6ba` | `gamma_eclipse_majority.yaml` | majority repeat: **0.879 controlled — PASS**; split swings to 0.121/0.758 |
+| `20260922_124435_ecl13_omega0000` | `970b76bb`* | `omega_0000.yaml` | no-eclipse anchor: 0.166 on the ES curve at α=0.267 (unprofitable) |
+
+(*agent code identical to `7ce8e384`; later commits are configs/docs only.
+All six ω-sweep runs launched before the 13:05Z monerod-sim rebuild, i.e.
+on the 4-patch binary — the PoP patch is flag-gated OFF in every ω-sweep
+config, so daemon behavior is stock either way.)
 
 (v6 was killed early — the `mine_after_height` gate held a victim whose
 daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
@@ -179,12 +217,21 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 
 ## 8. Planned work
 
-1. Close E3's remaining science: ω-sweep re-run under working recruitment
-   (v13 semantics) including the sub-majority frontier (α_eff < 1/2) where
-   the theory says the composition should become marginal; repeats for
-   error bars.
-2. The matrix runner (`scripts/selfish_matrix.py`): strategy ×
-   countermeasure × α cells → configs → paired runs → one table.
-3. First countermeasure patches: Publish-or-Perish and undercutting
-   avoidance as flag-gated `monerod-sim` patches; detective mining as an
-   agent. Large parallel matrices move to the 256-thread/1 TB machine.
+1. ~~ω-sweep under v13 semantics~~ ✅ done 2026-09-22 (E3 above, finding 7):
+   payoff thresholded at island/honest parity; R_mod rejected sub-majority;
+   majority replicated twice; split has fat variance.
+2. ~~Matrix runner~~ ✅ shipped 2026-09-22 (`scripts/selfish_matrix.py`,
+   SELFISH_MINING §11): strategy × countermeasure × α specs → paired runs
+   → one table with resume markers and commit provenance.
+3. **Countermeasure campaign (E4, in progress)**: Publish-or-Perish fork-
+   choice core shipped as `patches/monero-sim-pop.patch` (§12;
+   pre-registered predictions in `docs/20260922_pop_countermeasure_design.md`);
+   pilot `test_configs/matrix/pop_pilot.yaml`. Next: +uncles per MRL #144
+   (isolates the uncle term), Share-or-Perish workshares (MRL #146),
+   detective mining as an agent. Large parallel matrices move to the
+   256-thread/1 TB machine ("senior").
+4. Error bars: repeats exist at α_eff=0.467 and 0.667 (n=2 each); any
+   quantitative split claim needs n≥3. The honest-baseline control was NOT
+   re-run under v13 — v13's changes (mirror fork-gate, feed cap) only bind
+   during withholding, which `strategy: honest` never does, so the v3-era
+   honest control remains valid for plumbing neutrality.
