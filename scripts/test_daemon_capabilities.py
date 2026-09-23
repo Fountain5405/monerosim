@@ -80,13 +80,14 @@ def test_pop_uncles_flag_is_gated(tmp_path):
 
 
 def test_sop_w_flag_is_gated(tmp_path):
-    cfg = {"agents": {"miner-001": {
+    cfg = {"general": {"mining": {"mode": "native"}},
+           "agents": {"miner-001": {
         "daemon": "monerod-sim",
         "hashrate": 8,
         "daemon_options": {"sim-sop-w": 16},
         }}}
-    from scripts.run_sim_helpers import SIM_FLAG_OPTIONS, NATIVE_MINING_FLAG
-    # sim-sop-w is a registry key; the mining-substitution path adds the native flag
+    from scripts.run_sim_helpers import SIM_FLAG_OPTIONS
+    # sim-sop-w is a registry key; native mining adds the throttle flag too
     assert 'sim-sop-w' in SIM_FLAG_OPTIONS
     (e,) = daemon_capabilities(write(tmp_path, cfg))
     assert e["flags"] == ["sim-hash-interval-ms", "sim-sop-w"]  # sorted
