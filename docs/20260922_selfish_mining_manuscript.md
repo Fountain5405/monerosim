@@ -164,6 +164,16 @@ upgrade).
    honest racers dilute γ≈0 tie luck). Residual exact-variant cost:
    ~10% honest throughput. Full-scale (12 miners + 32 relays) is the
    committed senior-box leg.
+7. **Scale inverts the strategy ranking (mid-scale, n=1)**: the
+   conservative lead-2 policy out-earns textbook ES at 6 miners
+   (0.477 vs 0.387; micro had it reversed) — fragmented honest racing
+   feeds in-time overrides, so the attack Monero actually observed is
+   the stronger one at realistic miner counts. PoP-exact's blind spot
+   is partial at scale: lead-2 falls only −0.12 (to ~break-even 0.353
+   vs fair 0.40) vs −0.22 on ES — the residue SoP's share-lateness rule
+   targets. First nonzero realized γ appears only at this scale
+   (0.03–0.07): propagation races need a fabric big enough to have
+   them.
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -288,6 +298,8 @@ config, so daemon behavior is stock either way.)
 | `20260923_035522_pop_scale__es_exact` | `ccc44897`* | `pop_scale` cell (mid) | **exact holds at scale: 0.170**, 17 uncle embeddings |
 | `20260923_045220_pop_scale__honest_none` | `ccc44897`* | `pop_scale` cell (mid) | mid control: 0.386 ≈ α |
 | `20260923_160801_pop_scale__honest_exact` | `610158e5`* | `pop_scale` cell (mid) | control recovers at scale: 0.367 ≈ α — the dip was starvation |
+| `20260923_170500_pop_scale_r2__es_r2_none` | `233ae38d`* | `pop_scale_r2` cell | **lead-2 at scale: 0.477 — out-earns textbook ES** |
+| `20260923_175813_pop_scale_r2__es_r2_exact` | `233ae38d`* | `pop_scale_r2` cell | blind spot partial at scale: 0.353 ≈ break-even |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
