@@ -4,6 +4,23 @@
 
 ### Added
 
+- **Chain-snapshot difficulty preload for native mining** (`general.mining.chain_snapshot:
+  auto | off | <preset name or path>`, default `auto`, native mode only): grafts a
+  pre-mined chain — already at the target equilibrium difficulty with a full
+  720-block DAA window — onto every node before Shadow starts, skipping the
+  ~24h cold-start warm-up a fresh regtest chain otherwise needs.
+  `patches/monero-sim-mining.patch` gained a generation-only
+  `--sim-timestamp-offset <seconds>` flag (mined block templates timestamped
+  `now - offset`, so a snapshot's tip can land safely before a consumer run's
+  Shadow epoch); `scripts/chain_snapshot.py` exports a generator run's chain
+  into a git-trackable preset (`blocks.jsonl.gz` + `manifest.json`) and
+  materializes a machine-local LMDB template cache from one (real PoW
+  re-verified via `submit_block`), keyed by
+  `sha256(D0, monero_pin, hf_schedule, network_id, height)`;
+  `src/utils/chain_snapshot.rs` resolves/preflights/copies at config-generation
+  time. `test_configs/preload_chain.scenario.yaml` is the generator recipe
+  (machinery only — the real preset + committed blobs are a follow-up).
+  See `docs/CHAIN_SNAPSHOT.md`.
 - **Per-agent `turnover` override** (Gap G2): a per-agent `turnover: true|false`
   key (`AgentConfig::turnover`) overrides `general.turnover`'s default sampling
   for that agent. `true` forces the agent's daemon into the offline/online

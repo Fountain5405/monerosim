@@ -75,6 +75,8 @@ general:
 | `wallet_defaults` | map | - | Default wallet CLI options |
 | `runahead` | string | - | Shadow runahead duration |
 | `python_venv` | string | - | Path to Python virtual environment |
+| `mining.mode` | string | "generateblocks" | Block-production mode: `generateblocks` or `native`. See `docs/NATIVE_MINING.md` |
+| `mining.chain_snapshot` | string | "auto" | Native mode only: preload a difficulty-warmed chain (`auto`, `off`, or a preset name/path). See `docs/CHAIN_SNAPSHOT.md` |
 
 Note: if `daemon_defaults` does not set `max-connections-per-ip`, monerosim
 injects `4` (a floor, not a force — any user-provided value wins, including
