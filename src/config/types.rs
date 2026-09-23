@@ -521,10 +521,22 @@ pub struct MiningConfig {
     /// with literal hashrates light mode is too slow (spec §7).
     #[serde(default = "default_rx_full_dataset")]
     pub rx_full_dataset: bool,
+    /// Difficulty-preload chain snapshot (native mode only). `auto` = pick
+    /// the repo preset under `chain_snapshots/` whose `total_hashrate` and
+    /// `monero_pin` match this run; `off` = no preload (fresh genesis, the
+    /// historical warm-up); anything else names a preset directly (a bare
+    /// name resolves to `chain_snapshots/<name>/`, anything containing `/`
+    /// is used as a path as-is). See docs/CHAIN_SNAPSHOT.md.
+    #[serde(default = "default_chain_snapshot")]
+    pub chain_snapshot: String,
 }
 
 fn default_rx_full_dataset() -> bool {
     true
+}
+
+fn default_chain_snapshot() -> String {
+    "auto".to_string()
 }
 
 impl Default for MiningConfig {
@@ -532,6 +544,7 @@ impl Default for MiningConfig {
         Self {
             mode: MiningMode::default(),
             rx_full_dataset: default_rx_full_dataset(),
+            chain_snapshot: default_chain_snapshot(),
         }
     }
 }
@@ -702,5 +715,19 @@ mod mining_config_tests {
     fn mining_rejects_unknown_mode() {
         let yaml = "stop_time: 1h\nmining:\n  mode: socket\n";
         assert!(serde_yaml::from_str::<GeneralConfig>(yaml).is_err());
+    }
+
+    #[test]
+    fn chain_snapshot_defaults_to_auto() {
+        let yaml = "stop_time: 1h\nmining:\n  mode: native\n";
+        let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(g.mining.chain_snapshot, "auto");
+    }
+
+    #[test]
+    fn chain_snapshot_parses_explicit_value() {
+        let yaml = "stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: off\n";
+        let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(g.mining.chain_snapshot, "off");
     }
 }

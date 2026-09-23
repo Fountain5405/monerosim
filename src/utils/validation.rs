@@ -230,6 +230,25 @@ pub fn validate_mining_config(
     Ok(())
 }
 
+/// `general.mining.chain_snapshot` is only meaningful in native mode (see
+/// docs/CHAIN_SNAPSHOT.md): a concrete preset name/path while `mode` isn't
+/// `native` would silently never apply. `auto` (the default) and `off` are
+/// always fine, in either mode.
+pub fn validate_chain_snapshot_config(
+    mode: crate::config::MiningMode,
+    chain_snapshot: &str,
+) -> Result<(), String> {
+    use crate::config::MiningMode;
+    if mode != MiningMode::Native && chain_snapshot != "auto" && chain_snapshot != "off" {
+        return Err(format!(
+            "general.mining.chain_snapshot is '{}' but general.mining.mode is not native; \
+             chain snapshots only apply to native mining. Set mode: native or chain_snapshot: off.",
+            chain_snapshot
+        ));
+    }
+    Ok(())
+}
+
 /// Validate agent daemon/wallet configuration
 ///
 /// Validates agent configuration for the four supported agent types:
@@ -822,5 +841,22 @@ mod tests {
         let err = validate_mining_config(&single_agent("r", base_agent()), MiningMode::Native).unwrap_err();
         assert!(err.contains("no miners"), "{err}");
         assert!(validate_mining_config(&single_agent("r", base_agent()), MiningMode::Generateblocks).is_ok());
+    }
+
+    #[test]
+    fn chain_snapshot_auto_and_off_allowed_in_either_mode() {
+        use crate::config::MiningMode;
+        assert!(validate_chain_snapshot_config(MiningMode::Native, "auto").is_ok());
+        assert!(validate_chain_snapshot_config(MiningMode::Native, "off").is_ok());
+        assert!(validate_chain_snapshot_config(MiningMode::Generateblocks, "auto").is_ok());
+        assert!(validate_chain_snapshot_config(MiningMode::Generateblocks, "off").is_ok());
+    }
+
+    #[test]
+    fn chain_snapshot_preset_rejected_outside_native_mode() {
+        use crate::config::MiningMode;
+        let err = validate_chain_snapshot_config(MiningMode::Generateblocks, "h50").unwrap_err();
+        assert!(err.contains("mode is not native"), "{err}");
+        assert!(validate_chain_snapshot_config(MiningMode::Native, "h50").is_ok());
     }
 }

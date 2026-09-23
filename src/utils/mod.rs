@@ -1,6 +1,7 @@
 //! Shared utilities: duration parsing, validation, IP helpers, seed extraction.
 
 pub mod binary;
+pub mod chain_snapshot;
 pub mod duration;
 pub mod mining;
 pub mod options;

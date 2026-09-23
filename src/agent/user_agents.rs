@@ -662,17 +662,80 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     };
     let native_mining = mining.is_native();
     let mut sim_capability_cache: HashMap<String, bool> = HashMap::new();
+    let total_hashrate: u64 = user_agents
+        .iter()
+        .filter_map(|(_, cfg)| cfg.hashrate.map(|h| h as u64))
+        .sum();
     if native_mining {
-        let total: u64 = user_agents
-            .iter()
-            .filter_map(|(_, cfg)| cfg.hashrate.map(|h| h as u64))
-            .sum();
         log::info!(
             "Native mining: {} miner(s), total hashrate {} h/s, equilibrium difficulty ~{}",
             user_agents.iter().filter(|(_, c)| c.is_miner()).count(),
-            total,
-            equilibrium_difficulty(total)
+            total_hashrate,
+            equilibrium_difficulty(total_hashrate)
         );
+    }
+
+    // Difficulty-preload chain snapshot (native mining only; see
+    // docs/CHAIN_SNAPSHOT.md and
+    // docs/superpowers/specs/2026-09-23-difficulty-preload-design.md Sec 5).
+    // Resolved, preflighted, materialized and copied here, at config-
+    // generation time in this same process — strictly after main.rs's
+    // stale-{daemon_data_dir} cleanup and before Shadow ever runs, never
+    // inside the simulation itself.
+    if native_mining && mining.chain_snapshot != "off" {
+        use crate::utils::chain_snapshot::{
+            copy_template_into, ensure_template, preflight_check, read_monero_pin,
+            resolve_chain_snapshot, ChainSnapshotSelection,
+        };
+        let repo_root = Path::new(current_dir);
+        let selection =
+            resolve_chain_snapshot(&mining.chain_snapshot, repo_root, total_hashrate)
+                .map_err(|e| color_eyre::eyre::eyre!(e))?;
+        if let ChainSnapshotSelection::Preset(preset_dir) = selection {
+            let monero_pin =
+                read_monero_pin(repo_root).map_err(|e| color_eyre::eyre::eyre!(e))?;
+            // Only daemon_defaults is checked: the common case of a single
+            // network-wide schedule. Per-agent/per-phase overrides aren't
+            // compared (hf schedules are monerod-only and already gated
+            // against node_implementations above).
+            let hf_schedule_str: Option<String> = daemon_defaults
+                .and_then(|d| d.get(HF_SCHEDULE_KNOB))
+                .and_then(|v| match v {
+                    OptionValue::String(s) => Some(s.clone()),
+                    _ => None,
+                });
+            let manifest = preflight_check(&preset_dir, &monero_pin, hf_schedule_str.as_deref())
+                .map_err(|e| color_eyre::eyre::eyre!(e))?;
+            let cache_dir =
+                ensure_template(&preset_dir, repo_root).map_err(|e| color_eyre::eyre::eyre!(e))?;
+
+            let mut nodes_seeded = 0usize;
+            let mut total_bytes = 0u64;
+            for (id, cfg) in &user_agents {
+                if !cfg.has_local_daemon() {
+                    continue;
+                }
+                if node_impl_assignment.contains_key(*id) {
+                    continue; // non-monerod implementation (e.g. cuprate): syncs from peers
+                }
+                let dest = Path::new(daemon_data_dir).join(format!("monero-{}", id));
+                total_bytes +=
+                    copy_template_into(&cache_dir, &dest).map_err(|e| color_eyre::eyre::eyre!(e))?;
+                nodes_seeded += 1;
+            }
+            log::info!(
+                "Chain snapshot: preset={} key={} height={} D0={} nodes_seeded={} bytes_copied={}",
+                preset_dir.display(),
+                cache_dir
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default(),
+                manifest.height,
+                manifest.d0,
+                nodes_seeded,
+                total_bytes
+            );
+        }
     }
     let turnover_params: Option<(f64, f64, f64, f64, f64)> = match turnover {
         Some(c) => {

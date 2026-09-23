@@ -170,6 +170,7 @@ general:
   simulation_seed: 1
   mining:
     mode: native
+    chain_snapshot: off
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
   peer_mode: Dynamic
