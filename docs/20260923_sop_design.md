@@ -72,3 +72,18 @@ SoP's l_w rule to close.
    `--sim-share-or-perish`, `--sim-sop-w` [16], `--sim-sop-delay-s` [5],
    `--sim-sop-k` [3].
 4. Micro A/B (this box), then the scaled matrix on senior alongside PoP.
+
+## Step 1 shipped and validated (2026-09-23)
+
+`--sim-sop-w` (16 = MRL #146 default; 0 = off): the throttled mining loop
+logs every PoW header meeting ≥ difficulty/w on the current template
+(`SIM-SoP: share …`, plus a once-per-worker arming line). Capture-only —
+no relay, no weight effect; the pop_scale matrix running concurrently is
+unaffected (flag unset ⇒ stock). Validation smoke (12 sim-min, 1 miner @
+8 h/s, w=16): **88 shares / 5 blocks ≈ 17.6 ≈ w−1** ✓.
+
+**Gotcha encoded:** `MINFO` from miner.cpp is suppressed at
+`log-level: monitor` (the sims' default) while `MGINFO_GREEN` is forced —
+the first three smokes showed zero share lines purely because of this;
+the capture was working invisibly. All SoP diagnostics use forced-level
+logging.
