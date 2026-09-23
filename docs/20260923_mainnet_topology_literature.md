@@ -22,7 +22,7 @@ derives rather than measures are marked *derived*.
 | S8 | Monero v0.18.4.3 "Fluorine Fermi" [release notes](https://www.getmonero.org/2025/10/08/monero-0.18.4.3-released.html) | Oct 2025 | /24 subnet deduplication in peer selection |
 | S9 | monerod v0.18.5.1 source (`../monero`, tag `v0.18.5.1`), the version monerosim pins | — | Code reading |
 | S10 | `docs/20260618_mainnet_topology_targets.md` and `docs/20260620_network_topology_study.md` (this repo) | — | Earlier sourcing plus the validated sweep |
-| S11 | Kirschner, *An Analysis of Monero's Network Topology*, IEEE DAPPS 2026 (DOI 10.1109/DAPPS69803.2026.00019; local copy `~/monerosim_scale/An_Analysis_of_Moneros_Network_Topology.pdf`) | one week, date not stated | 11 VPN vantage points; edges = white-list peerlist adjacency gathered by iterative seed queries (not live connections) |
+| S11 | Kirschner, *An Analysis of Monero's Network Topology*, IEEE DAPPS 2026 (DOI 10.1109/DAPPS69803.2026.00019; local copy `~/monerosim_scale/An_Analysis_of_Moneros_Network_Topology.pdf`) | one week in **2022** (per the user; the paper does not state it) | 11 VPN vantage points; edges = white-list peerlist adjacency gathered by iterative seed queries (not live connections) |
 
 ## 2. Degree structure: hubs and periphery
 
