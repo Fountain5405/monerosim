@@ -21,6 +21,20 @@
   time. `test_configs/preload_chain.scenario.yaml` is the generator recipe
   (machinery only — the real preset + committed blobs are a follow-up).
   See `docs/CHAIN_SNAPSHOT.md`.
+- **`analysis/topology_metrics.py`** (Gap G1): stage-2 validation metrics
+  for the mainnet-replica scenario, computed on connection-graph snapshots
+  sampled from monitor-level daemon logs (reusing `conn_matrix.py`'s
+  connection-token regex and host loader) and observer
+  `peerlist_dump.jsonl` files. Reports outbound-degree class shares
+  (absolute and N-scaled thresholds), connection share of the top 13.2% of
+  nodes, hub coverage and hub-neighbour overlap, degree assortativity,
+  modularity (networkx, when importable), inbound connections per reachable
+  honest node, and spy share of honest inbound/outbound slots and of
+  peerlist entries, against the literature targets in
+  `docs/20260923_mainnet_topology_literature.md`. Markdown table to stdout
+  plus `--json`; `analysis/README.md` documents usage;
+  `analysis/test_topology_metrics.py` covers every metric against a
+  hand-built graph fixture plus a log-parser smoke test.
 - **Per-agent `turnover` override** (Gap G2): a per-agent `turnover: true|false`
   key (`AgentConfig::turnover`) overrides `general.turnover`'s default sampling
   for that agent. `true` forces the agent's daemon into the offline/online
