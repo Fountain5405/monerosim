@@ -316,3 +316,16 @@ miners + 16 relays, α=0.4, 6 h; honest_exact control re-running)
   fragmentation cuts the other way at scale. (Single runs; repeats
   queued behind the control.)
 - Vandalism persists (net orphan 0.32 → 0.38 under the countermeasure).
+
+**Mid-scale control (2026-09-23, `honest_exact` redo):** share **0.367 ≈
+α=0.4** — the micro-scale dip (0.322) VANISHES at 6 miners, and control
+orphaning normalizes (0.076 vs honest_none's 0.056). The dip was
+starvation: with real contention the uncles have consistent work and the
+weight disagreements settle. Remaining exact-variant cost at scale:
+~10% honest throughput (158 vs 176 canonical blocks / 6 h) — real,
+worth stating in any deployment discussion. Full mid-scale table:
+
+| mid (6 miners, α=0.4) | attacker | control |
+|---|---|---|
+| stock | 0.387 | 0.386 |
+| exact (uncles + det tie) | **0.170** | 0.367 |
