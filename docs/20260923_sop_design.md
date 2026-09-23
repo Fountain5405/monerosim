@@ -87,3 +87,31 @@ unaffected (flag unset ⇒ stock). Validation smoke (12 sim-min, 1 miner @
 the first three smokes showed zero share lines purely because of this;
 the capture was working invisibly. All SoP diagnostics use forced-level
 logging.
+
+## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
+
+A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —
+share-header bytes + height) touches exactly:
+
+- **declare**: `src/cryptonote_protocol/cryptonote_protocol_defs.h` —
+  struct with `const static int ID = BC_COMMANDS_POOL_BASE + <next free>`
+  (grep all `BC_COMMANDS_POOL_BASE +` first; fluffy block is +8, highest
+  seen +10), `request_t` with a `std::string` blob member +
+  `KV_SERIALIZE` (pattern at :322-334).
+- **receive**: `HANDLE_NOTIFY_T2(NOTIFY_NEW_WORKSHARE, &...handler)` in
+  `cryptonote_protocol_handler.h` invoke map (:88-98), handler decl
+  (:143) + impl in `.inl` (fluffy-block handler at .inl:586 is the
+  template).
+- **send**: a `relay_workshare` virtual in
+  `cryptonote_protocol_handler_common.h` (:44 default stub pattern),
+  impl modeled on `relay_block` (.inl:2638-2661: for_each_connection →
+  relay_notify_to_list; `net_node.inl:2373/2461` transport).
+- **size case**: `src/cryptonote_basic/connection_context.cpp:40-70`
+  (otherwise SIZE_MAX — works, unchecked).
+- **flusher**: `on_idle()` in `.inl:1672-1677` — add a
+  `m_workshare_flusher.do_call(...)` like `m_idle_peer_kicker` (1 s idle
+  handler registered at `net_node.inl:1048`).
+- **test**: `tests/unit_tests/test_protocol_pack.cpp` round-trip case.
+- **safety**: unknown levin IDs are logged and dropped
+  (`LEVIN_ERROR_CONNECTION_HANDLER_NOT_DEFINED`), no capability
+  negotiation gates notify IDs — mixed-version peers just drop shares.
