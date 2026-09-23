@@ -110,3 +110,102 @@ index 72dc12762..8595d0c2c 100644
 +    bool m_sim_rx_full_dataset;
    };
  }
+diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
+index fcc92644a..6903e75bd 100644
+--- a/src/cryptonote_core/blockchain.cpp
++++ b/src/cryptonote_core/blockchain.cpp
+@@ -92,7 +92,7 @@ DISABLE_VS_WARNINGS(4267)
+ //------------------------------------------------------------------
+ Blockchain::Blockchain(tx_memory_pool& tx_pool) :
+   m_db(), m_tx_pool(tx_pool), m_hardfork(NULL), m_timestamps_and_difficulties_height(0), m_reset_timestamps_and_difficulties_height(true), m_current_block_cumul_weight_limit(0), m_current_block_cumul_weight_median(0),
+-  m_enforce_dns_checkpoints(false), m_max_prepare_blocks_threads(4), m_db_sync_on_blocks(true), m_db_sync_threshold(1), m_db_sync_mode(db_async), m_db_default_sync(false), m_fast_sync(true), m_show_time_stats(false), m_sync_counter(0), m_bytes_to_sync(0), m_cancel(false),
++  m_enforce_dns_checkpoints(false), m_max_prepare_blocks_threads(4), m_db_sync_on_blocks(true), m_db_sync_threshold(1), m_db_sync_mode(db_async), m_db_default_sync(false), m_fast_sync(true), m_sim_timestamp_offset(0), m_show_time_stats(false), m_sync_counter(0), m_bytes_to_sync(0), m_cancel(false),
+   m_long_term_block_weights_window(CRYPTONOTE_LONG_TERM_BLOCK_WEIGHT_WINDOW_SIZE),
+   m_long_term_effective_median_block_weight(0),
+   m_long_term_block_weights_cache_tip_hash(crypto::null_hash),
+@@ -1608,6 +1608,13 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+     }
+   }
+   b.timestamp = time(NULL);
++  // Simulation only (monerosim patch): chain-snapshot generation stamps
++  // mined blocks in the past so their tip lands before a later run's
++  // simulated clock starts. Applied before the median-timestamp adjustment
++  // below, so a generated chain's own ordering/median rules are self-
++  // consistent throughout generation.
++  if (m_sim_timestamp_offset)
++    b.timestamp -= m_sim_timestamp_offset;
+ 
+   uint64_t median_ts;
+   if (!check_block_timestamp(b, median_ts))
+diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
+index 0fd81f4ba..9c0074d4a 100644
+--- a/src/cryptonote_core/blockchain.h
++++ b/src/cryptonote_core/blockchain.h
+@@ -880,6 +880,15 @@ namespace cryptonote
+      */
+     void safesyncmode(const bool onoff);
+ 
++    /**
++     * @brief simulation only (monerosim patch): offset subtracted from every
++     * mined block template's timestamp, before the median-timestamp
++     * adjustment. 0 = stock. See --sim-timestamp-offset in cryptonote_core.cpp.
++     *
++     * @param offset_seconds the offset, in seconds
++     */
++    void set_sim_timestamp_offset(uint64_t offset_seconds) { m_sim_timestamp_offset = offset_seconds; }
++
+     /**
+      * @brief set whether or not to show/print time statistics
+      *
+@@ -1225,6 +1234,8 @@ namespace cryptonote
+     network_type m_nettype;
+     bool m_offline;
+     difficulty_type m_fixed_difficulty;
++    // Simulation only (monerosim patch): 0 = stock. See set_sim_timestamp_offset().
++    uint64_t m_sim_timestamp_offset;
+ 
+     std::atomic<bool> m_cancel;
+ 
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+index cca70497a..754665722 100644
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -104,6 +104,22 @@ namespace cryptonote
+     "The first pair must be 1:0. Requires --regtest."
+   , ""
+   };
++  // Simulation only (monerosim patch): chain-snapshot generation mines a long
++  // fakechain in a few wall-hours and then ships it as a preloaded starting
++  // point for later runs. Its blocks must be timestamped before the target
++  // run's simulated clock (Shadow starts at 2000-01-01 UTC), or the first
++  // real block fails the "timestamp >= median of last 60" rule until sim
++  // time catches up to the chain's tip (~24h). Monero's timestamp rules only
++  // check order and not-in-the-future; they never check absolute recency, so
++  // shifting every mined timestamp back by a constant is harmless to the
++  // snapshot itself and only affects the generator process.
++  const command_line::arg_descriptor<uint64_t> arg_sim_timestamp_offset = {
++    "sim-timestamp-offset"
++  , "Simulation only: mined block templates are timestamped now minus this "
++    "many seconds (0 = stock). For generating chain snapshots whose tip must "
++    "land before a simulated run's clock starts."
++  , 0
++  };
+   const command_line::arg_descriptor<std::string, false, true, 3> arg_data_dir = {
+     "data-dir"
+   , "Specify data directory"
+@@ -331,6 +347,7 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_keep_fakechain);
+     command_line::add_arg(desc, arg_fixed_difficulty);
+     command_line::add_arg(desc, arg_fakechain_hard_forks);
++    command_line::add_arg(desc, arg_sim_timestamp_offset);
+     command_line::add_arg(desc, arg_dns_checkpoints);
+     command_line::add_arg(desc, arg_prep_blocks_threads);
+     command_line::add_arg(desc, arg_fast_block_sync);
+@@ -759,6 +776,7 @@ namespace cryptonote
+     const difficulty_type fixed_difficulty = command_line::get_arg(vm, arg_fixed_difficulty);
+     r = m_blockchain_storage.init(db.release(), m_nettype, m_offline, effective_test_options, fixed_difficulty, get_checkpoints);
+     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
++    m_blockchain_storage.set_sim_timestamp_offset(command_line::get_arg(vm, arg_sim_timestamp_offset));
+ 
+     r = m_mempool.init(max_txpool_weight, m_nettype == FAKECHAIN);
+     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize memory pool");
