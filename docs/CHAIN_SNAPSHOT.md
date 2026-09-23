@@ -71,17 +71,29 @@ general:
     chain_snapshot: auto     # auto | off | <preset name> | <path>
 ```
 
-- `off` — no preload (the historical cold-start warm-up).
-- `auto` (default) — pick the repo preset under `chain_snapshots/` whose
-  `total_hashrate` and `monero_pin` match this run. Zero matches is a hard
-  error naming this doc; more than one lists the candidates.
+- `off` — no preload, unconditionally (the historical cold-start warm-up).
+- `auto` (default, **soft**) — pick the repo preset under `chain_snapshots/`
+  whose `total_hashrate` and `monero_pin` match this run. Zero matches logs
+  a warning naming the expected preset (hashrate + pin) and this doc's
+  generator recipe, then continues without a snapshot (the same
+  cold-start warm-up as `off`) — it does not error. More than one match is
+  still a hard error listing the candidates.
 - a bare name (no `/`) — `chain_snapshots/<name>/`.
 - anything containing `/` — used as a path directly.
+
+An explicit preset name or path (i.e. anything other than `auto`/`off`) is
+always a hard error if it's missing or mismatched (see preflight, below) —
+only `auto`'s zero-match case is soft.
+
+YAML booleans are accepted as aliases: `false` == `off`, `true` == `auto`
+(see the scenario-parser gotcha below — this is what makes a bare `off`
+survive that round-trip without quoting).
 
 **Only meaningful in native mode.** Setting `chain_snapshot` to a concrete
 preset name/path while `mining.mode` isn't `native` is a config-load error
 (`auto`/`off` are always accepted, in either mode, since they're no-ops
-outside native mining).
+outside native mining — `auto` outside native mode never even scans
+`chain_snapshots/`).
 
 At generation time (in the `monerosim` binary, never inside Shadow) the
 resolved preset is preflighted (manifest present; `monero_pin` matches;
@@ -117,7 +129,7 @@ then commit `chain_snapshots/h50/`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `general.mining.chain_snapshot` | string | `auto` | `auto` \| `off` \| preset name \| path. Native mode only. |
+| `general.mining.chain_snapshot` | string | `auto` | `auto` (soft) \| `off` \| preset name \| path. Native mode only. Also accepts YAML booleans (`true`/`false`) as `auto`/`off` aliases. |
 
 ## `scripts/chain_snapshot.py` reference
 
@@ -130,9 +142,12 @@ then commit `chain_snapshots/h50/`.
 ## Gotcha: `off` through `scripts/scenario_parser.py`
 
 `.scenario.yaml` files are expanded through Python's PyYAML, which resolves
-a *bare* `off` (YAML 1.1) to the boolean `false` on re-emission — corrupting
-`chain_snapshot: off` into `chain_snapshot: false` in the expanded config
-(monerosim then looks for a preset literally named `false`). Quote it:
-`chain_snapshot: "off"`. Configs loaded directly by monerosim (not through
-the scenario expander) are unaffected — serde_yaml keeps a bare `off` as the
+a *bare* `off` (YAML 1.1) to the boolean `false` on re-emission — turning
+`chain_snapshot: off` into `chain_snapshot: false` in the expanded config.
+Quoting is no longer required to handle this: monerosim's config parser
+accepts YAML booleans as aliases (`false` == `off`, `true` == `auto`), so
+either a bare `chain_snapshot: off` or its round-tripped `chain_snapshot:
+false` resolves the same way. `chain_snapshot: "off"` (quoted) still works
+too. Configs loaded directly by monerosim (not through the scenario
+expander) are unaffected either way — serde_yaml keeps a bare `off` as the
 string `"off"`.

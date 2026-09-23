@@ -689,7 +689,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         };
         let repo_root = Path::new(current_dir);
         let selection =
-            resolve_chain_snapshot(&mining.chain_snapshot, repo_root, total_hashrate)
+            resolve_chain_snapshot(&mining.chain_snapshot, repo_root, total_hashrate, native_mining)
                 .map_err(|e| color_eyre::eyre::eyre!(e))?;
         if let ChainSnapshotSelection::Preset(preset_dir) = selection {
             let monero_pin =

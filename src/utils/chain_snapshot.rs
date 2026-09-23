@@ -52,9 +52,16 @@ pub enum ChainSnapshotSelection {
 ///
 /// - `off` -> Off.
 /// - contains `/` -> used as a path, as-is.
-/// - `auto` -> scan `<repo_root>/chain_snapshots/*/manifest.json` for the
-///   preset whose `total_hashrate` and `monero_pin` match this run.
-/// - anything else -> `<repo_root>/chain_snapshots/<value>/`.
+/// - `auto`, `native` -> scan `<repo_root>/chain_snapshots/*/manifest.json`
+///   for the preset whose `total_hashrate` and `monero_pin` match this run;
+///   if none match, this is a SOFT default: warn (naming the expected
+///   preset and the generator recipe doc) and resolve to `Off` rather than
+///   erroring. Several matches is still a hard error.
+/// - `auto`, not `native` -> `Off`, silently (chain snapshots only apply to
+///   native mining).
+/// - anything else -> `<repo_root>/chain_snapshots/<value>/`, unconditionally
+///   (a missing/mismatched explicit preset is always a hard error, checked
+///   later by [`preflight_check`]).
 ///
 /// `repo_root` anchors relative lookups (`chain_snapshots/<name>/`,
 /// `monero.pin`) — pass the process's current directory (monerosim is
@@ -64,6 +71,7 @@ pub fn resolve_chain_snapshot(
     value: &str,
     repo_root: &Path,
     total_hashrate: u64,
+    native: bool,
 ) -> Result<ChainSnapshotSelection, String> {
     if value == "off" {
         return Ok(ChainSnapshotSelection::Off);
@@ -72,6 +80,10 @@ pub fn resolve_chain_snapshot(
         return Ok(ChainSnapshotSelection::Preset(PathBuf::from(value)));
     }
     if value == "auto" {
+        if !native {
+            // Chain snapshots only apply to native mining; a no-op here.
+            return Ok(ChainSnapshotSelection::Off);
+        }
         return resolve_auto(repo_root, total_hashrate);
     }
     Ok(ChainSnapshotSelection::Preset(
@@ -103,14 +115,18 @@ fn resolve_auto(
         }
     }
     match matches.len() {
-        0 => Err(format!(
-            "general.mining.chain_snapshot: auto found no preset under {} matching total \
-             hashrate {} h/s and monero_pin {}. Generate one (see docs/CHAIN_SNAPSHOT.md): \
-             venv/bin/python scripts/chain_snapshot.py export ...",
-            base.display(),
-            total_hashrate,
-            monero_pin
-        )),
+        0 => {
+            log::warn!(
+                "general.mining.chain_snapshot: auto found no preset under {} matching total \
+                 hashrate {} h/s and monero_pin {} — continuing without a chain snapshot \
+                 (fresh genesis, the historical warm-up). Generate one (see \
+                 docs/CHAIN_SNAPSHOT.md): venv/bin/python scripts/chain_snapshot.py export ...",
+                base.display(),
+                total_hashrate,
+                monero_pin
+            );
+            Ok(ChainSnapshotSelection::Off)
+        }
         1 => Ok(ChainSnapshotSelection::Preset(matches.remove(0))),
         _ => {
             let names: Vec<String> = matches.iter().map(|p| p.display().to_string()).collect();
@@ -335,7 +351,7 @@ mod tests {
     fn resolve_off_is_off() {
         let tmp = tempfile::tempdir().unwrap();
         assert_eq!(
-            resolve_chain_snapshot("off", tmp.path(), 50).unwrap(),
+            resolve_chain_snapshot("off", tmp.path(), 50, true).unwrap(),
             ChainSnapshotSelection::Off
         );
     }
@@ -343,14 +359,14 @@ mod tests {
     #[test]
     fn resolve_path_used_as_is() {
         let tmp = tempfile::tempdir().unwrap();
-        let sel = resolve_chain_snapshot("some/dir/h50", tmp.path(), 50).unwrap();
+        let sel = resolve_chain_snapshot("some/dir/h50", tmp.path(), 50, true).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Preset(PathBuf::from("some/dir/h50")));
     }
 
     #[test]
     fn resolve_bare_name_under_chain_snapshots() {
         let tmp = tempfile::tempdir().unwrap();
-        let sel = resolve_chain_snapshot("h50", tmp.path(), 50).unwrap();
+        let sel = resolve_chain_snapshot("h50", tmp.path(), 50, true).unwrap();
         assert_eq!(
             sel,
             ChainSnapshotSelection::Preset(tmp.path().join("chain_snapshots").join("h50"))
@@ -358,12 +374,23 @@ mod tests {
     }
 
     #[test]
-    fn resolve_auto_no_match_errors_with_recipe_pointer() {
+    fn resolve_auto_no_match_native_warns_and_falls_back_off() {
+        // Soft default: no matching preset in native mode logs a warning
+        // (see resolve_auto's log::warn!) and resolves to Off rather than
+        // erroring — the run starts from genesis as it always used to.
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
-        let err = resolve_chain_snapshot("auto", tmp.path(), 50).unwrap_err();
-        assert!(err.contains("no preset"), "{err}");
-        assert!(err.contains("docs/CHAIN_SNAPSHOT.md"), "{err}");
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap();
+        assert_eq!(sel, ChainSnapshotSelection::Off);
+    }
+
+    #[test]
+    fn resolve_auto_non_native_is_noop() {
+        // Non-native mode: auto is a silent no-op, even without a
+        // monero.pin file to read (resolve_auto is never reached).
+        let tmp = tempfile::tempdir().unwrap();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, false).unwrap();
+        assert_eq!(sel, ChainSnapshotSelection::Off);
     }
 
     #[test]
@@ -372,28 +399,44 @@ mod tests {
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
         let preset = tmp.path().join("chain_snapshots").join("h50");
         write_manifest(&preset, &[]);
-        let sel = resolve_chain_snapshot("auto", tmp.path(), 50).unwrap();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Preset(preset));
     }
 
     #[test]
-    fn resolve_auto_ignores_pin_mismatch() {
+    fn resolve_auto_pin_mismatch_falls_back_off() {
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
         let preset = tmp.path().join("chain_snapshots").join("h50");
         write_manifest(&preset, &[("monero_pin", serde_json::json!("v0.18.0.0"))]);
-        let err = resolve_chain_snapshot("auto", tmp.path(), 50).unwrap_err();
-        assert!(err.contains("no preset"), "{err}");
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap();
+        assert_eq!(sel, ChainSnapshotSelection::Off);
     }
 
     #[test]
-    fn resolve_auto_ambiguous_errors_listing_both() {
+    fn resolve_auto_ambiguous_still_errors_listing_both() {
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
         write_manifest(&tmp.path().join("chain_snapshots").join("h50"), &[]);
         write_manifest(&tmp.path().join("chain_snapshots").join("h50b"), &[]);
-        let err = resolve_chain_snapshot("auto", tmp.path(), 50).unwrap_err();
+        let err = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap_err();
         assert!(err.contains("found 2 matching presets"), "{err}");
+    }
+
+    #[test]
+    fn resolve_explicit_missing_preset_is_hard_error() {
+        // An explicit preset name/path is never soft — the resolution
+        // itself always succeeds (it's just a path), but preflight_check
+        // (the actual existence/schema check) hard-errors when it's
+        // missing. See preflight_missing_manifest below.
+        let tmp = tempfile::tempdir().unwrap();
+        let sel = resolve_chain_snapshot("nonexistent-preset", tmp.path(), 50, true).unwrap();
+        let preset_dir = match sel {
+            ChainSnapshotSelection::Preset(p) => p,
+            other => panic!("expected Preset, got {other:?}"),
+        };
+        let err = preflight_check(&preset_dir, "v0.18.5.1", None).unwrap_err();
+        assert!(err.contains("no manifest.json"), "{err}");
     }
 
     #[test]

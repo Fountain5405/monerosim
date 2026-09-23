@@ -5,7 +5,6 @@ general:
   process_threads: 2
   mining:
     mode: native
-    chain_snapshot: off
   daemon_defaults:
     log-level: monitor
     no-zmq: true

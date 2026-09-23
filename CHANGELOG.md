@@ -8,7 +8,11 @@
   auto | off | <preset name or path>`, default `auto`, native mode only): grafts a
   pre-mined chain — already at the target equilibrium difficulty with a full
   720-block DAA window — onto every node before Shadow starts, skipping the
-  ~24h cold-start warm-up a fresh regtest chain otherwise needs.
+  ~24h cold-start warm-up a fresh regtest chain otherwise needs. `auto` is a
+  soft default: with no matching preset it warns and continues without a
+  snapshot rather than erroring (several matches, or an explicit preset
+  name/path that's missing or mismatched, are still hard errors); YAML
+  booleans are accepted as aliases (`false` == `off`, `true` == `auto`).
   `patches/monero-sim-mining.patch` gained a generation-only
   `--sim-timestamp-offset <seconds>` flag (mined block templates timestamped
   `now - offset`, so a snapshot's tip can land safely before a consumer run's

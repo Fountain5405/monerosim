@@ -521,13 +521,22 @@ pub struct MiningConfig {
     /// with literal hashrates light mode is too slow (spec §7).
     #[serde(default = "default_rx_full_dataset")]
     pub rx_full_dataset: bool,
-    /// Difficulty-preload chain snapshot (native mode only). `auto` = pick
-    /// the repo preset under `chain_snapshots/` whose `total_hashrate` and
-    /// `monero_pin` match this run; `off` = no preload (fresh genesis, the
-    /// historical warm-up); anything else names a preset directly (a bare
-    /// name resolves to `chain_snapshots/<name>/`, anything containing `/`
-    /// is used as a path as-is). See docs/CHAIN_SNAPSHOT.md.
-    #[serde(default = "default_chain_snapshot")]
+    /// Difficulty-preload chain snapshot (native mode only). `auto`
+    /// (default, soft) = pick the repo preset under `chain_snapshots/`
+    /// whose `total_hashrate` and `monero_pin` match this run; if none
+    /// exists, warns and continues without a snapshot (fresh genesis, the
+    /// historical warm-up) rather than erroring — several matches is still
+    /// a hard error. `off` = no preload, unconditionally. Anything else
+    /// names a preset directly (a bare name resolves to
+    /// `chain_snapshots/<name>/`, anything containing `/` is used as a path
+    /// as-is) and is a hard error if missing/mismatched. YAML booleans are
+    /// accepted as aliases (`false` == `off`, `true` == `auto`) since
+    /// `scripts/scenario_parser.py`'s PyYAML round-trip can turn an
+    /// unquoted `off` into one. See docs/CHAIN_SNAPSHOT.md.
+    #[serde(
+        default = "default_chain_snapshot",
+        deserialize_with = "deserialize_chain_snapshot"
+    )]
     pub chain_snapshot: String,
 }
 
@@ -537,6 +546,26 @@ fn default_rx_full_dataset() -> bool {
 
 fn default_chain_snapshot() -> String {
     "auto".to_string()
+}
+
+/// Accept a plain string (`"auto"`, `"off"`, a preset name/path) or a YAML
+/// boolean alias (`false` == `off`, `true` == `auto`) — see
+/// `chain_snapshot`'s doc comment.
+fn deserialize_chain_snapshot<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrBool {
+        Bool(bool),
+        String(String),
+    }
+    Ok(match StringOrBool::deserialize(deserializer)? {
+        StringOrBool::Bool(true) => "auto".to_string(),
+        StringOrBool::Bool(false) => "off".to_string(),
+        StringOrBool::String(s) => s,
+    })
 }
 
 impl Default for MiningConfig {
@@ -729,5 +758,32 @@ mod mining_config_tests {
         let yaml = "stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: off\n";
         let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(g.mining.chain_snapshot, "off");
+    }
+
+    #[test]
+    fn chain_snapshot_accepts_quoted_off_and_auto() {
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: \"off\"\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "off");
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: \"auto\"\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "auto");
+    }
+
+    #[test]
+    fn chain_snapshot_accepts_yaml_bool_aliases() {
+        // `false` == off — this is what scripts/scenario_parser.py's PyYAML
+        // round-trip turns an unquoted `off` into.
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: false\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "off");
+        // `true` == auto.
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: true\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "auto");
     }
 }
