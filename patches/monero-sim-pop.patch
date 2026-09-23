@@ -1,3 +1,83 @@
+diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
+index 74845ce13..fbccc7b99 100644
+--- a/src/cryptonote_basic/miner.cpp
++++ b/src/cryptonote_basic/miner.cpp
+@@ -108,6 +108,7 @@ namespace cryptonote
+     // PoW itself is unchanged: every block still carries a real RandomX hash that
+     // meets the real difficulty target, so unpatched peers validate it normally.
+     const command_line::arg_descriptor<uint64_t>    arg_sim_hash_interval_ms =  {"sim-hash-interval-ms", "Simulation only: sleep this many milliseconds before every hash attempt (0 = stock miner). Throttles the miner to a virtual hashrate so a discrete-event simulator sees a syscall per hash; forces a single mining thread and RandomX light mode unless --sim-rx-full-dataset is set.", 0, true};
++  const command_line::arg_descriptor<uint64_t>    arg_sim_sop_w =              {"sim-sop-w", "Simulation only (Share-or-Perish, MRL #146): workshare ratio w. When > 1, the miner also logs PoW headers meeting >= difficulty/w on the current template (capture step; relay/weight integration later). 0 = off.", 0, true};
+     const command_line::arg_descriptor<bool>        arg_sim_rx_full_dataset =   {"sim-rx-full-dataset", "Simulation only, with --sim-hash-interval-ms: allocate the full RandomX dataset (~2 GB, fast hashing) instead of light mode.", false, true};
+   }
+ 
+@@ -304,6 +305,7 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_bg_mining_idle_threshold_percentage);
+     command_line::add_arg(desc, arg_bg_mining_miner_target_percentage);
+     command_line::add_arg(desc, arg_sim_hash_interval_ms);
++    command_line::add_arg(desc, arg_sim_sop_w);
+     command_line::add_arg(desc, arg_sim_rx_full_dataset);
+   }
+   //-----------------------------------------------------------------------------------------------------
+@@ -352,6 +354,8 @@ namespace cryptonote
+ 
+     if(command_line::has_arg(vm, arg_sim_hash_interval_ms))
+       m_sim_hash_interval_ms = command_line::get_arg(vm, arg_sim_hash_interval_ms);
++    if(command_line::has_arg(vm, arg_sim_sop_w))
++      m_sim_sop_w = command_line::get_arg(vm, arg_sim_sop_w);
+     if(command_line::has_arg(vm, arg_sim_rx_full_dataset))
+       m_sim_rx_full_dataset = command_line::get_arg(vm, arg_sim_rx_full_dataset);
+     if(m_sim_hash_interval_ms)
+@@ -559,6 +563,7 @@ namespace cryptonote
+     uint64_t height = 0;
+     difficulty_type local_diff = 0;
+     uint32_t local_template_ver = 0;
++    bool sim_sop_armed_logged = false;   // SIM-SoP diagnostics
+     block b;
+     slow_hash_allocate_state();
+     ++m_threads_active;
+@@ -617,6 +622,15 @@ namespace cryptonote
+       if (m_sim_hash_interval_ms)
+         misc_utils::sleep_no_w(m_sim_hash_interval_ms);
+ 
++      // SIM-SoP diagnostics: arming proof, once per worker.
++      if (!sim_sop_armed_logged && m_sim_sop_w > 1)
++      {
++        MGINFO_GREEN("SIM-SoP: capture armed w=" << m_sim_sop_w << " diff=" << local_diff);
++        sim_sop_armed_logged = true;
++      }
++
++      // SIM-SoP diagnostics: one line per template, arming proof.
++
+       m_gbh(b, height, NULL, tools::get_max_concurrency(), h);
+ 
+       if(check_hash(h, local_diff))
+@@ -637,6 +651,14 @@ namespace cryptonote
+             epee::serialization::store_t_to_json_file(m_config, m_config_folder_path + "/" + MINER_CONFIG_FILE_NAME);
+         }
+       }
++      else if (m_sim_sop_w > 1 && local_diff / m_sim_sop_w >= 1 && check_hash(h, local_diff / m_sim_sop_w))
++      {
++        // SIMULATION ONLY (Share-or-Perish, MRL #146): workshare hit — a
++        // PoW header at >= 1/w of block difficulty on the current template
++        // (same prev_id by construction). Capture step: log only; expected
++        // rate ~w-1 shares per block. Relay + weight integration later.
++        MGINFO_GREEN("SIM-SoP: share " << get_block_hash(b) << " nonce " << nonce << " height " << height);
++      }
+       nonce+=m_threads_total;
+       ++m_hashes;
+       ++m_total_hashes;
+diff --git a/src/cryptonote_basic/miner.h b/src/cryptonote_basic/miner.h
+index 8595d0c2c..aa42bf6a9 100644
+--- a/src/cryptonote_basic/miner.h
++++ b/src/cryptonote_basic/miner.h
+@@ -177,6 +177,7 @@ namespace cryptonote
+     std::atomic<uint64_t> m_block_reward;
+     // Simulation mining (monerosim patch): 0 = stock miner.
+     uint64_t m_sim_hash_interval_ms;
++    uint64_t m_sim_sop_w = 0;              //!< SIMULATION ONLY (SoP, MRL #146): workshare ratio; 0 = off
+     bool m_sim_rx_full_dataset;
+   };
+ }
 diff --git a/src/cryptonote_basic/tx_extra.h b/src/cryptonote_basic/tx_extra.h
 index c168f48a7..0e6730b72 100644
 --- a/src/cryptonote_basic/tx_extra.h

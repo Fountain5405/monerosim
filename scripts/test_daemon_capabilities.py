@@ -89,7 +89,7 @@ def test_sop_w_flag_is_gated(tmp_path):
     # sim-sop-w is a registry key; the mining-substitution path adds the native flag
     assert 'sim-sop-w' in SIM_FLAG_OPTIONS
     (e,) = daemon_capabilities(write(tmp_path, cfg))
-    assert e["flags"] == ["sim-sop-w", "sim-hash-interval-ms"]  # sorted
+    assert e["flags"] == ["sim-hash-interval-ms", "sim-sop-w"]  # sorted
 
 
 def test_pop_uncles_header_flag_is_gated(tmp_path):
