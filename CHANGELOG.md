@@ -108,6 +108,20 @@
   Regression test: `scripts/test_archive_shared.sh` runs the real
   `archive_results()` against a fake layout.
 
+- **BREAKING: seeded reachable/turnover/node-impl selections were contiguous id
+  blocks, not a uniform sample.** `compute_node_impl_set`, `compute_unreachable_set`,
+  and `compute_turnover_set` (`src/agent/user_agents.rs`) sorted candidate ids
+  by the raw FNV-1a `seeded_hash` value and took a prefix. FNV-1a's high bits
+  are dominated by an id's *leading* bytes, so the raw hash sorts ids into
+  contiguous name/number blocks; a run with `--reachable 0.15` on
+  `topo1k_supernodes` made exactly `relay-633..790` unreachable (not a random
+  15%), and `mainnet_replica` put `medium-a` at 42/42 reachable and `medium-b`
+  at 0/42. Fixed by running the hash through the existing splitmix64 finaliser
+  (factored out of `seeded_unit` into `finalize_hash`) before sorting. Same
+  seed still reproduces the same set, but **any prior run that used
+  `reachable_fraction`/`reachable_by_role` < 1.0, `turnover`, or
+  `node_implementations` will get a different (now correctly uniform)
+  selection on re-run** — this is an intentional reshuffle, not a regression.
 - **Bare binary invocations no longer default into a shared `/tmp` namespace.**
   With `MONEROSIM_SHARED_DIR` / `MONEROSIM_DAEMON_DATA_DIR` unset, the
   generator used to default `general.shared_dir` / `general.daemon_data_dir`
