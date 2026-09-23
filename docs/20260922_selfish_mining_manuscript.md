@@ -20,6 +20,10 @@ every number to its run directory and commit. Companion index:
   when recruitment fails?
 - **RQ4** — Can deployed detectors (Li et al. 2020 MSB) distinguish
   withholding attackers from honest miners, and where do they break?
+- **RQ5** — Which countermeasures (MRL #144 Publish-or-Perish and its
+  variants; later #146 Share-or-Perish) work against which strategies, at
+  what cost to the honest network — measured on faithful monerod rather
+  than assumed from the papers' models?
 
 ## 2. Related work
 
@@ -107,6 +111,50 @@ share still climbs with ω (0.166 → 0.258–0.421) purely from eclipse-DoS
 de-hashing. **The composition's payoff is thresholded at
 island/honest parity, not smooth in α_eff — the Nayak-style aggregation
 over-predicts exactly where a rational attacker would operate.**
+
+### E4 — Countermeasures (RQ5: which countermeasure beats which strategy)
+
+Apparatus: the matrix runner (§3) + three flag-gated `monerod-sim` PoP
+modes (`docs/20260922_pop_countermeasure_design.md` pre-registers every
+prediction before its run). All cells 6 h, same seed, α=0.4, flags on the
+honest miners only (the covert bridge keeps stock rules — attackers don't
+upgrade).
+
+**Full readout (attacker canonical share; honest controls in text):**
+
+| strategy | stock | pop-core (random tie) | pop-core (det tie) | +uncles deviated (random/det) | +uncles EXACT (det) |
+|---|---|---|---|---|---|
+| ES (textbook) | 0.492 | 0.022, 0.123 | 0.244, 0.296 | 0.024 / 0.337 | **0.134** |
+| conservative lead-2 | 0.309 | — | — | — | — |
+| honest control (share vs α=0.4) | 0.397 | 0.408 | — | 0.402 | 0.322 ⚠️ |
+
+1. **P1 confirmed at ~10× margin**: pop-core nearly eliminates textbook
+   ES revenue (0.492 → 0.02–0.12; attacker orphans 97% of finds; 73/77
+   fork decisions KEEP honest). Mechanism verified in-daemon logs.
+2. **PoP-core is blind to proactive releases**: the conservative lead-2
+   attacker is untouched (0.309 → 0.349/0.326, possibly slightly helped)
+   because lead-2 releases at h=0 — before honest mines the contested
+   height — so its blocks arrive first-at-height = in-time. Lateness
+   punishes catch-up-triggered reveals (ES) but not proactive ones
+   (Qubic's observed policy). Measured support for tevador's SoP
+   motivation (MRL #146).
+3. **The tie policy matters more than the paper suggests**: det-tie
+   (MRL #144's choice) is consistently ~4× weaker than the paper's random
+   tie (0.244/0.296 vs 0.022/0.123, non-overlapping at n=2). Tie-win
+   frequencies alone don't explain it (43% vs 34%) — which ties are won
+   (deep vs shallow) does.
+4. **Uncles are a no-op against ES at micro scale** (0.024 ≈ core) but
+   **halve the det-tie leak in the EXACT form** (0.134 vs core's 0.27
+   mean, and vs 0.337 for the DEVIATED node-local variant — the variant
+   A/B against pre-registration). Only 3 embeddings occurred per 6 h: two
+   honest miners essentially never race. The honest_exact control dipped
+   (0.322, orphan 2.5×) — the mechanism starves and what little it does
+   shows as inter-node weight disagreement. Scale (rung 4, in flight:
+   6 miners + 16 relays mid; 12+32 committed for the senior box) is the
+   variable that settles it.
+5. **Vandalism persists under every PoP variant** (net orphan 0.31–0.45
+   vs 0.312 stock attack; MSB detectability stays high, z +7.4 to +14.9):
+   PoP removes the profit, not the DoS.
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -218,6 +266,15 @@ config, so daemon behavior is stock either way.)
 | `20260922_140138_pop_pilot__es_pop` | `5751f7df` | `pop_pilot` cell | **PoP core: 0.022, attacker orphan 0.973** — P1 confirmed |
 | `20260922_144601_pop_pilot__honest_none` | `5751f7df` | `pop_pilot` cell | honest control: 0.397 ≈ α |
 | `20260922_144601_pop_pilot__honest_pop` | `5751f7df` | `pop_pilot` cell | PoP honest control clean: 0.408 ≈ α, no storms |
+| `20260922_165018_pop_followup__es_pop_det` | `b5bfbf8b`* | `pop_followup` cell | det-tie: 0.244 — the single-run det-tie gap |
+| `20260922_165018_pop_followup__es_r2_pop` | `b5bfbf8b`* | `pop_followup` cell | **PoP blind to lead-2**: 0.349 vs 0.309 stock |
+| `20260922_173130_pop_followup__es_r2_pop_det` | `b5bfbf8b`* | `pop_followup` cell | 0.326; first nonzero realized γ 0.040 |
+| `20260922_182536_pop_wave2__es_pop` / `_es_pop_det` | `404f3b9f`* | `pop_wave2` cells | repeats: 0.123 / 0.296 — det-tie gap holds at n=2 |
+| `20260922_190749_pop_wave2__es_pop_uncles` | `404f3b9f`* | `pop_wave2` cell | deviated uncles: 0.024 ≈ core (no-op vs ES) |
+| `20260922_190819_pop_wave2__honest_pop_uncles` | `404f3b9f`* | `pop_wave2` cell | control clean: 0.402 ≈ α |
+| `20260923_012704_pop_exact__es_exact` | `2c86e6aa`* | `pop_exact` cell | **EXACT uncles: 0.134** — halves the det-tie leak |
+| `20260923_012704_pop_exact__es_uncles_det` | `2c86e6aa`* | `pop_exact` cell | deviated at det-tie: 0.337 (variant A/B) |
+| `20260923_020739_pop_exact__honest_exact` | `2c86e6aa`* | `pop_exact` cell | control dips: 0.322, orphan 0.050 — scale pending |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
