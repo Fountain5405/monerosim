@@ -23,6 +23,7 @@ derives rather than measures are marked *derived*.
 | S9 | monerod v0.18.5.1 source (`../monero`, tag `v0.18.5.1`), the version monerosim pins | — | Code reading |
 | S10 | `docs/20260618_mainnet_topology_targets.md` and `docs/20260620_network_topology_study.md` (this repo) | — | Earlier sourcing plus the validated sweep |
 | S11 | Kirschner, *An Analysis of Monero's Network Topology*, IEEE DAPPS 2026 (DOI 10.1109/DAPPS69803.2026.00019; local copy `~/monerosim_scale/An_Analysis_of_Moneros_Network_Topology.pdf`) | one week in **2022** (per the user; the paper does not state it) | 11 VPN vantage points; edges = white-list peerlist adjacency gathered by iterative seed queries (not live connections) |
+| S12 | Rucknium, [xmrnetscan](https://xmrnetscan.redteam.cash/) ([source](https://github.com/Rucknium/xmrnetscan)) — MRL daily network scan | daily since ~Jul 2025 (Jan 2026: ban list v2, hidden-spy counts) | Rust crawler on Cuprate's Levin handshaker from the hardcoded seeds; per node: pruning seed, peer id, support flags, disseminated peerlists; spy labels = MRL ban lists v1/v2, DNS blocklist, private fingerprint; ban-list adoption inferred from disseminated lists; Team Cymru ASNs. Data reachable only through the Shiny UI (the `plumber` API in the repo is not publicly exposed; no releases). **Requested from the author 2026-09-23.** |
 
 ## 2. Degree structure: hubs and periphery
 
