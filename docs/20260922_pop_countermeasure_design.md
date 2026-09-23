@@ -295,3 +295,24 @@ rise to O(hundreds); tie/natural-fork counts rise with miner count; the
 exact-vs-deviated gap either compounds or inverts; the honest control's
 orphaning is the safety readout. Mid runs one-at-a-time locally
 (parallel: 1); full scale is the senior-box leg.
+
+## Rung-4 mid-scale results (2026-09-23, `matrix_runs/pop_scale/`, 6 honest
+miners + 16 relays, α=0.4, 6 h; honest_exact control re-running)
+
+| cell | attacker share | att. orphan | net orphan | uncle embeddings |
+|---|---|---|---|---|
+| `es_none` | 0.387 | 0.280 | 0.321 | — |
+| `es_exact` | **0.170** | 0.721 | 0.380 | **17** |
+| `honest_none` | 0.386 ≈ α | 0.200 | 0.056 | — |
+
+- **P-scale (embeddings) confirmed directionally**: 3 → 17 with 2 → 6
+  honest miners — contention feeds the uncle mechanism as predicted.
+- **The exact countermeasure holds at mid scale**: 0.387 → 0.170
+  (−0.22; micro was −0.36 from a higher baseline). Attacker orphaning
+  stays at 0.72 — the crush survives more racers.
+- **Scale alone shrinks the stock attacker** (0.492 → 0.387): more honest
+  miners means fewer tie wins per node — the γ≈0 tie-luck dilutes. The
+  ES theory curve at α=0.4 (0.484) is a 2-racer number; honest-network
+  fragmentation cuts the other way at scale. (Single runs; repeats
+  queued behind the control.)
+- Vandalism persists (net orphan 0.32 → 0.38 under the countermeasure).
