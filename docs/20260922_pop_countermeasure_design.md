@@ -235,3 +235,29 @@ stock-valid. The DEVIATED variant stays available (`--sim-pop-uncles`) for
 the A/B: any share gap between the two variants measures the value of
 trustless verification (never-seen uncles) in these topologies. Det-tie
 per #144 composes via the existing `--sim-pop-det-tie`.
+
+## Wave-2 results (2026-09-22/23, `matrix_runs/pop_wave2/`, 4 × 6 h at α=0.4)
+
+| cell | attacker share | att. orphan | net orphan | verdict reading |
+|---|---|---|---|---|
+| `es_pop` (repeat) | 0.123 | 0.794 | 0.358 | core crush holds (n=2: 0.022, 0.123) |
+| `es_pop_det` (repeat) | 0.296 | 0.486 | 0.326 | det-tie weakness holds (n=2: 0.244, 0.296) |
+| `es_pop_uncles` | **0.024** | 0.970 | 0.446 | uncles ≈ core for ES — P-un confirmed |
+| `honest_pop_uncles` | 0.402 | 0.000 | 0.022 | control clean (≈ α, no storms) |
+
+1. **Det-tie weakness confirmed at n=2**: core 0.022/0.123 (mean 0.07) vs
+   det 0.244/0.296 (mean 0.27) — non-overlapping bands. Tie-win
+   frequencies alone do NOT explain it (random won 26/60 ties = 43%,
+   det won 28/82 = 34%): the gap must also involve WHICH ties are won —
+   deep (multi-block) vs shallow releases — and the fat-tailed
+   winner-take-all cycle variance. Mechanism not yet isolated; flagged
+   for the #144-exact readout, which uses det-tie as the issue specifies.
+2. **The uncle term is a no-op against textbook ES here** (0.024 vs core
+   0.022/0.123): with lateness already zeroing the attacker's contested
+   blocks, there is nothing left for uncles to rescue — consistent with
+   the paper's design intent (uncles reward honest publication, they do
+   not punish withholding further). Vandalism persists (net orphan 0.446).
+3. Honest control with uncle fields riding every honest coinbase: share
+   0.402 ≈ α, orphaning 0.022 — the ~85 B field is weightless to the
+   network. (Block counts 163–186 across cells: the countermeasure does
+   not slow the chain.)
