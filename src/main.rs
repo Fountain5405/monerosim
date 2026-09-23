@@ -11,11 +11,37 @@ use std::path::{Path, PathBuf};
 use monerosim::config_loader;
 use monerosim::orchestrator::generate_agent_shadow_config;
 
+/// Refuse to touch a directory we don't own. Shared multi-user boxes may
+/// have another user's directory sitting at a path we'd otherwise default
+/// to (e.g. a stale `/tmp/monerosim_shared`); chmod'ing or rm -rf'ing it
+/// out from under them would be a disaster, and normal permissions won't
+/// always stop us (e.g. a world-writable sticky-bit tmp dir they created).
+fn check_owned_by_us(path: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::MetadataExt;
+    let meta = fs::metadata(path)?;
+    let owner_uid = meta.uid();
+    let our_uid = unsafe { libc::getuid() };
+    if owner_uid != our_uid {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            format!(
+                "refusing to modify or delete '{}': owned by uid {}, not us (uid {})",
+                path.display(),
+                owner_uid,
+                our_uid
+            ),
+        ));
+    }
+    Ok(())
+}
+
 /// Recursively fix permissions on a directory tree to allow deletion.
 /// This handles cases where monero-wallet-rpc creates directories with
 /// restrictive permissions (d---------) that prevent normal rm -rf.
 fn fix_permissions_recursive(path: &Path) -> std::io::Result<()> {
     if path.is_dir() {
+        check_owned_by_us(path)?;
+
         // First, ensure we can read and traverse this directory
         let mut perms = fs::metadata(path)?.permissions();
         perms.set_mode(0o755);
@@ -30,9 +56,12 @@ fn fix_permissions_recursive(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Remove a directory tree, first fixing permissions if needed.
+/// Remove a directory tree, first fixing permissions if needed. Skips
+/// silently if the path doesn't exist; refuses (PermissionDenied) if it
+/// exists but isn't owned by us.
 fn remove_dir_with_permissions(path: &Path) -> std::io::Result<()> {
     if path.exists() {
+        check_owned_by_us(path)?;
         // Try normal removal first
         if fs::remove_dir_all(path).is_err() {
             // If it fails, fix permissions and try again
@@ -41,6 +70,48 @@ fn remove_dir_with_permissions(path: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod ownership_guard_tests {
+    use super::*;
+
+    /// If `/tmp/monerosim_shared` happens to exist on this box and is owned
+    /// by someone else, prove the guard refuses to touch it and leaves it
+    /// intact. This is the exact near-miss the guard exists to prevent, so
+    /// we use it opportunistically instead of a synthetic other-uid path
+    /// (which we can't create without root). Skips (does not fail) if no
+    /// such path is available in the sandbox.
+    #[test]
+    fn refuses_to_remove_a_directory_we_do_not_own() {
+        use std::os::unix::fs::MetadataExt;
+
+        let candidate = Path::new("/tmp/monerosim_shared");
+        let meta = match fs::metadata(candidate) {
+            Ok(m) => m,
+            Err(_) => {
+                eprintln!("skip: {} does not exist here", candidate.display());
+                return;
+            }
+        };
+        let our_uid = unsafe { libc::getuid() };
+        if meta.uid() == our_uid {
+            eprintln!(
+                "skip: {} is owned by us (uid {}); no other-uid dir available to test against",
+                candidate.display(),
+                our_uid
+            );
+            return;
+        }
+
+        let err = remove_dir_with_permissions(candidate)
+            .expect_err("must refuse to remove a directory we don't own");
+        assert_eq!(err.kind(), std::io::ErrorKind::PermissionDenied);
+        assert!(
+            candidate.exists(),
+            "directory must still exist after the refused removal"
+        );
+    }
 }
 
 /// Configuration utility for Monero network simulations in Shadow
@@ -93,8 +164,26 @@ fn main() -> Result<()> {
     info!("Configuration file: {:?}", args.config);
     info!("Output directory: {:?}", args.output);
 
+    // Record the config stem before any config defaults resolve, so a bare
+    // invocation (no MONEROSIM_SHARED_DIR / MONEROSIM_DAEMON_DATA_DIR) gets
+    // its own /tmp/monerosim-<timestamp>_<stem>_<pid> namespace instead of
+    // colliding with other users/runs on a shared /tmp.
+    let config_stem = args
+        .config
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("config");
+    monerosim::set_run_context(config_stem);
+
     // Load configuration using new system
     let mut new_config = config_loader::load_config(&args.config)?;
+
+    info!(
+        "Per-run tmp namespace: {}",
+        monerosim::run_namespace_source()
+    );
+    info!("Shared dir: {}", new_config.general.shared_dir);
+    info!("Daemon data dir: {}", new_config.general.daemon_data_dir);
 
     // CLI override: --reachable sets the global reachable fraction, beating
     // general.reachable_fraction from the config file.

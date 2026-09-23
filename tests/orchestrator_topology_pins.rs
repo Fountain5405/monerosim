@@ -15,6 +15,10 @@ fn topology_node_pins_agent_to_gml_node() {
     let mut config = config_loader::load_config(Path::new("tests/fixtures/topology_pins.yaml"))
         .expect("topology_pins fixture loads");
     config.general.shared_dir = shared_dir.to_string_lossy().to_string();
+    // Pin the daemon-data-dir default too (was already deterministic "/tmp";
+    // now the library generates a fresh per-process namespace when unset,
+    // so pin explicitly to keep this golden byte-diff stable).
+    config.general.daemon_data_dir = "/tmp".to_string();
 
     orchestrator::generate_agent_shadow_config(&config, &output_yaml)
         .expect("orchestrator generates");

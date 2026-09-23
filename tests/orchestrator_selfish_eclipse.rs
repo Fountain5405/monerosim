@@ -93,6 +93,10 @@ fn eclipse_fixture_pins_and_isolates() {
         config_loader::load_config(Path::new("tests/fixtures/selfish_eclipse.yaml"))
             .expect("eclipse fixture loads");
     config.general.shared_dir = shared_dir.to_string_lossy().to_string();
+    // Pin the daemon-data-dir default too (was already deterministic "/tmp";
+    // now the library generates a fresh per-process namespace when unset,
+    // so pin explicitly to keep this golden byte-diff stable).
+    config.general.daemon_data_dir = "/tmp".to_string();
 
     orchestrator::generate_agent_shadow_config(&config, &output_yaml)
         .expect("orchestrator generates");
@@ -183,6 +187,10 @@ agents:
     std::fs::write(&cfg_path, bad).unwrap();
     let mut config = config_loader::load_config(&cfg_path).expect("bad config parses");
     config.general.shared_dir = shared_dir.to_string_lossy().to_string();
+    // Pin the daemon-data-dir default too (was already deterministic "/tmp";
+    // now the library generates a fresh per-process namespace when unset,
+    // so pin explicitly to keep this golden byte-diff stable).
+    config.general.daemon_data_dir = "/tmp".to_string();
 
     let err = orchestrator::generate_agent_shadow_config(&config, &output_yaml)
         .err()
