@@ -31,15 +31,22 @@ struct Cli {
     data_dir: PathBuf,
 
     /// Path to daemon log directory (contains monero-<agent>/ dirs with bitmonero.log).
-    /// Defaults to /tmp for live runs. For archived runs, use the daemon_logs/ directory.
-    /// Falls back to shadow.data/hosts/ (legacy) if not specified and /tmp has no logs.
+    /// Defaults to the resolved run's daemon data dir (see --run-dir).
+    /// Falls back to shadow.data/hosts/ (legacy) if not specified and that dir has no logs.
     #[arg(short, long)]
     log_dir: Option<PathBuf>,
 
-    /// Path to shared data directory.
-    /// Defaults to `MONEROSIM_SHARED_DIR` env var (or `/tmp/monerosim_shared` if unset).
-    #[arg(short, long, default_value_os_t = PathBuf::from(monerosim::shared_dir()))]
-    shared_dir: PathBuf,
+    /// Path to shared data directory (agent_registry.json, transactions/, etc).
+    /// Defaults to the resolved run's shared dir (see --run-dir).
+    #[arg(short, long)]
+    shared_dir: Option<PathBuf>,
+
+    /// Run directory to resolve --shared-dir / the daemon log dir from, per
+    /// the run-dir contract (docs/20260904_per_run_directories.md):
+    /// this path's shadow_output/run_env.sh breadcrumb. Defaults to
+    /// $MONEROSIM_RUN_DIR, then the newest archived_runs/<run_id>.
+    #[arg(long)]
+    run_dir: Option<PathBuf>,
 
     /// Output directory for reports
     #[arg(short, long, default_value = "analysis_output")]
@@ -187,11 +194,32 @@ fn main() -> Result<()> {
             .context("Failed to configure thread pool")?;
     }
 
+    // Log which run directory the contract resolved (only relevant when at
+    // least one default is actually in play; explicit --shared-dir + --log-dir
+    // together never need it).
+    if cli.shared_dir.is_none() || cli.log_dir.is_none() {
+        match monerosim::run_dir::resolve_run_dir(cli.run_dir.as_deref()) {
+            Ok(run_dir) => log::info!("Run-dir contract resolved run: {}", run_dir.display()),
+            Err(e) => log::warn!("Run-dir contract could not resolve a run: {e}"),
+        }
+    }
+
+    // Resolve --shared-dir per the run-dir contract (docs/20260904_per_run_directories.md):
+    // explicit flag > --run-dir/$MONEROSIM_RUN_DIR's run_env.sh breadcrumb >
+    // newest archived_runs/<run_id>. Never falls back to a freshly generated
+    // /tmp namespace (that would silently point at an empty directory).
+    let shared_dir = monerosim::run_dir::resolve_dir(
+        cli.shared_dir.clone(),
+        cli.run_dir.as_deref(),
+        "MONEROSIM_SHARED_DIR",
+    )
+    .map_err(|e| color_eyre::eyre::eyre!("could not resolve --shared-dir: {e}"))?;
+
     // Load data sources
-    log::info!("Loading data from {}...", cli.shared_dir.display());
-    let agents = load_agent_registry(&cli.shared_dir)?;
-    let transactions = load_transactions(&cli.shared_dir)?;
-    let blocks = load_blocks(&cli.shared_dir)?;
+    log::info!("Loading data from {}...", shared_dir.display());
+    let agents = load_agent_registry(&shared_dir)?;
+    let transactions = load_transactions(&shared_dir)?;
+    let blocks = load_blocks(&shared_dir)?;
 
     log::info!(
         "Loaded {} agents, {} transactions, {} blocks",
@@ -201,29 +229,40 @@ fn main() -> Result<()> {
     );
 
     // Determine log directory: --log-dir flag, or auto-detect from the
-    // daemon data base dir (MONEROSIM_DAEMON_DATA_DIR, default /tmp; run_sim.sh
-    // namespaces this per-run) or shadow.data/hosts
+    // run's daemon data dir (resolved the same way as --shared-dir above),
+    // or fall back to legacy shadow.data/hosts.
     let log_dir = if let Some(ref dir) = cli.log_dir {
         dir.clone()
     } else {
-        // Auto-detect: check the daemon data base for monero-* dirs first,
-        // then fall back to shadow.data/hosts
-        let tmp_dir = PathBuf::from(monerosim::default_daemon_data_dir());
-        let has_tmp_logs = agents.iter().any(|a| {
-            tmp_dir
-                .join(format!("monero-{}", a.id))
-                .join("bitmonero.log")
-                .exists()
-        });
-        if has_tmp_logs {
-            log::info!("Auto-detected daemon logs in {}", tmp_dir.display());
-            tmp_dir
-        } else {
-            log::info!(
-                "No daemon logs in {}, falling back to shadow.data/hosts",
-                tmp_dir.display()
-            );
-            cli.data_dir.join("hosts")
+        match monerosim::run_dir::resolve_dir(
+            None,
+            cli.run_dir.as_deref(),
+            "MONEROSIM_DAEMON_DATA_DIR",
+        ) {
+            Ok(tmp_dir) => {
+                let has_tmp_logs = agents.iter().any(|a| {
+                    tmp_dir
+                        .join(format!("monero-{}", a.id))
+                        .join("bitmonero.log")
+                        .exists()
+                });
+                if has_tmp_logs {
+                    log::info!("Auto-detected daemon logs in {}", tmp_dir.display());
+                    tmp_dir
+                } else {
+                    log::info!(
+                        "No daemon logs in {}, falling back to shadow.data/hosts",
+                        tmp_dir.display()
+                    );
+                    cli.data_dir.join("hosts")
+                }
+            }
+            Err(e) => {
+                log::info!(
+                    "Could not resolve daemon data dir ({e}), falling back to shadow.data/hosts"
+                );
+                cli.data_dir.join("hosts")
+            }
         }
     };
 
@@ -370,7 +409,7 @@ fn main() -> Result<()> {
             // Quick summary without full analysis
             println!("\n=== MONEROSIM DATA SUMMARY ===\n");
             println!("Data directory: {}", cli.data_dir.display());
-            println!("Shared directory: {}", cli.shared_dir.display());
+            println!("Shared directory: {}", shared_dir.display());
             println!();
             println!("Agents: {}", agents.len());
             println!(
