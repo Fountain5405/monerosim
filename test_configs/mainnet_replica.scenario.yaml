@@ -1,0 +1,203 @@
+# MAINNET REPLICA: a scaled-down (1,000 honest daemons) model of the Monero
+# mainnet P2P topology, plus a clustered spy population.
+#
+# DRAFT, NOT YET RUN. Expanded and generated only (see the spec's verification
+# section). Design:  docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
+# Numbers:           docs/20260923_mainnet_topology_literature.md  (S1..S10 below)
+#
+# Honest population (1,000 daemons), classed by outbound degree as in S1:
+#   heavy   5  supernode-*   0.5% (S1 0.77%, S2 0.29%); 256/256 caps = the
+#                            config validated in S10; always on, reachable
+#   medium 125  medium-*     12.5% (S1) with out-peers raised above the
+#                            default 12: 16/32/64 in three sub-groups
+#   light  870  user-*, relay-*, observer-*, miner-*  (default 12 out)
+#   Reachable ≈ 15% (S10): 0.13 of the hash-assigned pool plus the 30
+#   pinned-reachable nodes (miners, supernodes, observers).
+#   Turnover 1 h on / 1 h off on everything not pinned (S10's mainnet match).
+#
+# Spy population, "2024" preset (S6): ~40% of reachable IPs, 6 dense /24s.
+#   108 spies = 0.40/0.60 x ~160 honest reachable, as 6 groups of 18. Each
+#   group is pinned to ONE GML node, and one GML node is one /24, so
+#   monerod's /24 deduplication (S8/S9) sees 6 subnets, as on mainnet.
+#   Variant R (real-node spies, below): stock monerod, big caps, always on.
+#   Variant P (proxy spies): commented template at the bottom; needs
+#   agents/spy_proxy.py (spec gap G3).
+#   Other presets (swap the spy groups): "2025" 14.7%, 7 /24s (S4);
+#   "2026" 81.6% (S5), ~14 dense /24s + a long scattered tail (S7), which
+#   needs variant P for affordable memory.
+#
+# Placement: 5,000-node GML so honest nodes almost never share a /24 (shared
+# /24s would couple them through deduplication). Weighted regions NA/EU/AS/OC
+# = 58/30/9/3 (S1 light-node countries, derived). Weighted placement fills a
+# region from its first node, so honest NA nodes take ~0..650; spies are pinned
+# to NA nodes 828..833 to keep their /24s spy-only.
+general:
+  stop_time: 16h            # the >6h-connection-tail metric needs the long window (S10)
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true   # turnover restarts hit LMDB resize (S10); preemption avoids the livelock
+  reachable_fraction: 0.13  # + 30 pinned-reachable => ~15% of honest daemons (S10)
+  turnover:
+    mean_session: 1h        # S10: 1 h / 1 h matched mainnet median AND >6h tail
+    mean_downtime: 1h
+    fraction: 1.0           # pinned nodes (miners, supernodes, observers, spies) are exempt
+  daemon_defaults:
+    log-level: monitor      # net.p2p.msg lines for the connection + tx-arrival analysis
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 0
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+  distribution:
+    strategy: Weighted
+    weights:
+      north_america: 58
+      europe: 30
+      asia: 9
+      oceania: 3
+      south_america: 0
+      africa: 0
+
+agents:
+  # ---------------- honest: heavy / infrastructure ----------------
+  # Miners stand in for pool nodes (S1: 9 of 28 heavy nodes were pools); kept at
+  # stock peering so hashrate and hub roles stay separable.
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+
+  # Hubs: S2/S3 "super-peers" — ~25% of N per direction (S2: 14 hubs cover 82%).
+  supernode-{001..005}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    daemon_options:
+      out-peers: 256
+      in-peers: 256
+      hide-my-port: false   # pinned reachable + always on
+
+  # ---------------- honest: medium (S1 12.5%, raised out-peers) ----------------
+  # Reachability is hash-assigned like any relay (assumption A2 in the spec).
+  medium-a-{001..042}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    daemon_options:
+      out-peers: 16
+  medium-b-{001..042}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    daemon_options:
+      out-peers: 32
+  medium-c-{001..041}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    daemon_options:
+      out-peers: 64
+
+  # ---------------- honest: light ----------------
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  relay-{001..645}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+
+  # Vantage points: always-on reachable light nodes that dump their peerlists,
+  # measuring spy share of peerlists and in/out slots like S4's vantage points.
+  observer-{001..020}:
+    daemon: monerod-hf      # patched build: --peerlist-dump-file
+    start_time: 0s
+    start_time_stagger: 3s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: "peerlist_dump.jsonl"
+
+  # ---------------- spies, variant R (real-node), "2024" preset ----------------
+  # out-peers 32 is a starting guess, to be calibrated in stage 2 against S4's
+  # 20% inbound / 15% outbound spy share at honest nodes.
+  spy-a-{001..018}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 828
+    daemon_options: &spy_opts
+      out-peers: 32
+      hide-my-port: false   # reachable + turnover-exempt: spies are infrastructure
+  spy-b-{001..018}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 829
+    daemon_options: *spy_opts
+  spy-c-{001..018}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 830
+    daemon_options: *spy_opts
+  spy-d-{001..018}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 831
+    daemon_options: *spy_opts
+  spy-e-{001..018}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 832
+    daemon_options: *spy_opts
+  spy-f-{001..018}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 833
+    daemon_options: *spy_opts
+
+  # ---------------- spies, variant P (proxy) — TEMPLATE, needs spec gap G3 ----------------
+  # A few real backend monerods behind many lightweight front-end IPs (S7). Swap
+  # in for (or mix with) variant R; keep total spy IPs at the preset's count.
+  # spy-backend-{001..003}:
+  #   daemon: monerod
+  #   start_time: 0s
+  #   topology_node: 827
+  #   daemon_options: { out-peers: 64, hide-my-port: false }
+  # spy-proxy-a-{001..018}:
+  #   script: agents.spy_proxy
+  #   start_time: 60s
+  #   topology_node: 828
+  #   attributes: { backend_group: spy-backend, dial_budget: "32" }
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
