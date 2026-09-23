@@ -188,16 +188,15 @@ has been re-run.**
   If they are, pin them reachable once G2 exists.
 - **A3.** Miners keep stock peering, so hashrate and hub roles stay separable.
   A variant makes the miners the hubs, as with pool front-ends.
-- **D1 (open).** Transaction load. The parser calibration raises
-  `transaction_interval` from 300 s to 2,596 s at 1,108 nodes (wallet-rpc
-  safety). S10's connection-duration results used 300 s, and the Rucknium
-  metric depends on transaction volume. Options: keep the calibrated value
-  (safe, not comparable with S10), or pass `--no-safe-tx-interval` (comparable
-  with S10, with wallet-overload risk).
-- **D2 (open).** Default spy preset: 2024 (affordable with R) or 2026 (current,
-  but needs G3).
-- **D3 (open).** Stop time: 16 h (keeps the >6 h tail metric; about 50 h wall
-  in S10 before spies) or 8 h (median-only).
+- **D1 (decided 2026-09-23, no user preference; recommendation taken).**
+  Transaction load stays at **300 s** so results are comparable with S10.
+  Expand with `--no-safe-tx-interval`: the parser calibration would otherwise
+  raise it to 2,596 s at 1,108 nodes, and the Rucknium connection metric is
+  volume-sensitive. Accepts some wallet-rpc overload risk.
+- **D2 (decided).** Default spy preset is **2024** (40%, 6 dense /24s, variant
+  R): runnable today. The 2026 preset waits for G3.
+- **D3 (decided).** Stop time **16 h**, to keep the >6 h tail metric
+  (about 50 h wall in S10 before spies; expect more).
 
 ## 9. Verification done without simulations
 
