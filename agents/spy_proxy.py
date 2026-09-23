@@ -204,9 +204,6 @@ def main():
                 if not self._stop.is_set():
                     self._poll_backend()
 
-            v = int(v)
-            return ".".join(str((v >> (8 * i)) & 0xFF) for i in range(4))
-
         # ---- peer list served to dialers: fleet mixed with the backend white list ----
         def _records(self):
             fleet = [(ip, p) for ip in self._fleet for p in self._ports]
