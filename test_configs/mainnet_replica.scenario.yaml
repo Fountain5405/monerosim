@@ -1,10 +1,10 @@
 # MAINNET REPLICA: a scaled-down (1,000 honest daemons) model of the Monero
 # mainnet P2P topology, plus a clustered spy population.
 #
-# DRAFT, NOT YET RUN. An earlier revision expanded and generated cleanly; this
-# revision uses three keys that do not exist yet (turnover: true = G2,
-# prefix_sharing = G5, mining.chain_snapshot = G6) and will not generate until
-# they land. Design:  docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
+# DRAFT, NOT YET RUN. Expands and generates cleanly (turnover: true = G2,
+# prefix_sharing = G5 and mining.chain_snapshot = G6 all exist); needs the
+# chain_snapshots/h50 preset for a warm start (without it, `auto` warns and the
+# chain starts from genesis). Design: docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
 # Numbers:           docs/20260923_mainnet_topology_literature.md  (S1..S10 below)
 #
 # Honest population (995 daemons + 6 auto seed hosts), classed by outbound
@@ -17,7 +17,7 @@
 #   light  865  user-*, relay-*, observer-*  (default 12 out)
 #   Reachable ≈ 16% (S10 target 15%): 150 pinned + 0.01 of the 840 users/relays.
 #   Turnover 1 h on / 1 h off on users, relays, medium (S10's mainnet match).
-#   Honest /24 sharing per S11 via prefix_sharing (G5).
+#   Honest /24 sharing per S13 (our 2026-09-23 crawl) via prefix_sharing (G5).
 #
 # Spy population, "2024" preset (S6): ~40% of reachable IPs, 6 dense /24s.
 #   108 spies = 0.40/0.60 x ~160 honest reachable, as 6 groups of 18. Each

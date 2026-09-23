@@ -1,11 +1,12 @@
 # MAINNET REPLICA — SMOKE (~100 honest + 12 spies). Plumbing check for
-# mainnet_replica.scenario.yaml: mesh forms, spies connect, peerlist dumps
-# are written. Too small for topology metrics: at N=100 the medium class is
-# plumbing only, and hub caps are scaled to ~0.25*N.
-# DRAFT, NOT YET RUN. See docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
-# NOTE: predates the 2026-09-23 decisions applied to mainnet_replica.scenario.yaml
-# (miners as native-mining hubs, medium nodes pinned + turnover: true, prefix
-# sharing, chain snapshot). Bring in line once G2/G5/G6 exist.
+# mainnet_replica.scenario.yaml: mesh forms on the chain snapshot, miners act as
+# hubs, medium nodes turn over while reachable, prefix sharing places nodes,
+# spies connect, observer peerlist dumps are written.
+# Too small for topology metrics: at N=100 the medium class is plumbing only,
+# and hub caps are scaled to ~0.25*N.
+# Uses the same 5 x 10 h/s miners as the full replica so it resolves the same
+# chain snapshot preset (chain_snapshots/h50).
+# See docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
 general:
   stop_time: 3h
   simulation_seed: 12345
@@ -16,7 +17,10 @@ general:
   runahead: 100ms
   process_threads: 2
   native_preemption: true
-  reachable_fraction: 0.13
+  reachable_fraction: 0.01
+  mining:
+    mode: native
+    chain_snapshot: auto
   turnover:
     mean_session: 1h
     mean_downtime: 1h
@@ -35,6 +39,9 @@ network:
   peer_mode: Dynamic
   distribution:
     strategy: Weighted
+    prefix_sharing:
+      fraction: 0.31
+      per_prefix: 3
     weights:
       north_america: 58
       europe: 30
@@ -44,29 +51,29 @@ network:
       africa: 0
 
 agents:
-  miner-{001..002}:
+  # Miners are the hubs (native mining; caps ~0.25*N at this scale).
+  miner-{001..005}:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
     start_time_stagger: 1s
-    hashrate: [50, 50]
+    hashrate: [10, 10, 10, 10, 10]
     can_receive_distributions: true
-
-  supernode-001:
-    daemon: monerod
-    start_time: 0s
     daemon_options:
       out-peers: 25
       in-peers: 25
       hide-my-port: false
 
+  # Medium: pinned reachable, still turning over (G2).
   medium-a-{001..012}:
     daemon: monerod
     start_time: 0s
     start_time_stagger: auto
+    turnover: true
     daemon_options:
       out-peers: 16
+      hide-my-port: false
 
   user-{001..020}:
     daemon: monerod
@@ -78,7 +85,7 @@ agents:
     activity_start_time: auto
     can_receive_distributions: true
 
-  relay-{001..062}:
+  relay-{001..060}:
     daemon: monerod
     start_time: 0s
     start_time_stagger: auto
@@ -91,6 +98,7 @@ agents:
       hide-my-port: false
       peerlist-dump-file: "peerlist_dump.jsonl"
 
+  # Real-node spies (variant R), 2 dense /24s.
   spy-a-{001..006}:
     daemon: monerod
     start_time: 0s
