@@ -35,6 +35,28 @@
   plus `--json`; `analysis/README.md` documents usage;
   `analysis/test_topology_metrics.py` covers every metric against a
   hand-built graph fixture plus a log-parser smoke test.
+- **Mainnet observation tools** (`analysis/mainnet/`): measure the live
+  Monero mainnet with the same metrics used on the simulator, for stage-2
+  replica validation (`docs/superpowers/specs/2026-09-23-mainnet-replica-design.md`).
+  `poll_node.py` polls a monerod's RPC (`get_info`/`get_connections`/
+  `/get_peer_list`) into daily, gzip-rolled-over JSONL, state-free and safe
+  under `systemd-run --user` for a week. `crawl.py` is a BFS crawler that
+  Levin-handshakes real mainnet peers (`agents/levin_lib.py`, extended with
+  initiator request/response helpers and peerlist/network-address parsing)
+  and records reachability, RTT, peer_id, top height, support-flags
+  presence and the peerlist-adjacency graph. `enrich_asn.py` does bulk
+  ASN/country lookup via Team Cymru's whois, cached on disk. `summarize.py`
+  turns a crawl+poll+ban-list+ASN dataset into `report.md`/`report.json`:
+  reachable count, three-way spy-label overlap (ban list / peer-ID mismatch
+  / absent support flags), spy and honest /24-ASN-country concentration, our
+  node's connection/spy-slot shares over time, poll-derived
+  connection-duration distribution, and crawl degree/hub-coverage stats —
+  the mainnet counterparts of the replica spec's §6 table. Validated live:
+  a bad default `top_version` in the handshake (not the current hard-fork
+  version) made every real mainnet node look like a "genesis trick" spy
+  decoy (0/200 reachable); fixed by fetching `hard_fork_info` (148/200
+  reachable after the fix). Tests in `test_mainnet_tools.py` run with no
+  network access.
 - **Per-agent `turnover` override** (Gap G2): a per-agent `turnover: true|false`
   key (`AgentConfig::turnover`) overrides `general.turnover`'s default sampling
   for that agent. `true` forces the agent's daemon into the offline/online
