@@ -72,14 +72,14 @@ validation checks that the graph monerod builds has mainnet's shape.
   hashrate as literal h/s. Difficulty warm-up is removed by the chain snapshot in
   `2026-09-23-difficulty-preload-design.md`; the replica is **blocked on that
   snapshot** for native runs.
-- **Honest prefix sharing (S11, decided in stage 1).** Mainnet honest nodes are
-  concentrated: 12% of BGP prefixes hold 55% of nodes (~11 per dense prefix).
-  One GML node is one /24 in the sim, so a knob co-locates a fraction of honest
-  nodes: `network.distribution.prefix_sharing: {fraction: 0.55, per_prefix: 11}`
-  moves that fraction of hash-selected honest daemons onto shared GML nodes,
-  `per_prefix` per node, inside their region. `per_prefix: 11` is an upper bound
-  (a BGP prefix is often wider than a /24), so stage 2 runs a sensitivity check at
-  4 and 11. Spies keep their own pinned nodes. This is gap G5.
+- **Honest prefix sharing (decided in stage 1; numbers from S13, our
+  2026-09-23 crawl).** Honest reachable nodes share /24s: the densest 12% of
+  /24s hold 30.8% of them, ~3.3 per /24 (S11's 55%-of-BGP-prefixes was the
+  coarser, 2022 view). One GML node is one /24 in the sim, so
+  `network.distribution.prefix_sharing: {fraction: 0.31, per_prefix: 3}` moves
+  that fraction of hash-selected honest daemons onto shared GML nodes,
+  `per_prefix` per node, inside their region. Spies keep their own pinned
+  nodes. Gap G5 (built).
 - **DNS bootstrap** is already mainnet-faithful and needs nothing: the in-sim DNS
   server answers `seeds.moneroseeds.*` with the seed hosts, the six fallback IPs
   are in-sim hosts, and monerod runs its stock resolution path (verified
@@ -113,7 +113,7 @@ validation checks that the graph monerod builds has mainnet's shape.
 |---|---|---|---|---|
 | 2024 (default) | 40% (S6) | 6 dense | 108 | R or P |
 | 2025 | 14.7% (S4) | 7 dense | ~28 | R or P |
-| 2026 | 81.6% (S5) | ~14 dense + scattered tail (S7) | ~700 | P (R would need ~190 GB of RAM) |
+| 2026-09 | 73.7% of reachable (S13, our crawl; S5 saw 81.6% in Feb) | 63 dense /24s, ~210 IPs each, 99.6% one ASN | ~440 | P (R would need ~120 GB of RAM) |
 
 **Variant R: real-node spies (works today, no code).**
 - Stock `monerod`, `hide-my-port: false` (reachable, and exempt from turnover),
@@ -174,7 +174,7 @@ Showing that it does is itself a stage-3 result.
 | G1 | `analysis/topology_metrics.py`: the §6 metrics from logs and peerlist dumps | 2 | medium | validation |
 | G2 | "Pinned reachable" also means "exempt from turnover". Add a per-agent `turnover: true` override so a class can be forced reachable **and** still cycle. | **1** (decided) | small (Rust) | medium nodes reachable and churning |
 | G3 | `agents/spy_proxy.py` (variant P) plus `levin_lib` parsing of transaction message 2002. Fingerprints to reproduce: peer-ID mismatch on ping (S5), `REQUEST_SUPPORT_FLAGS` (S6), oversized peerlists >1,000 (S11, pending the 250-entry rejection check). | 1b / 3 | medium | 2026 preset; proxy fingerprint |
-| G5 | Honest prefix-sharing knob `network.distribution.prefix_sharing` (see §3). | **1** (decided) | small (Rust, placement) | mainnet-like /24 co-location of honest nodes |
+| G5 | Honest prefix-sharing knob `network.distribution.prefix_sharing` (see §3). **Built** (deb529a1); defaults re-derived from S13. | done | — | mainnet-like /24 co-location of honest nodes |
 | G6 | Chain snapshot preload for native mining (own spec). | **1** | medium | any native-mining replica run |
 | G4 | Safety: generation outside `run_sim.sh` deletes the default `/tmp/monerosim_shared`, which on this box belongs to **user1**. The delete failed on permissions and nothing was lost. Dry generation must set `shared_dir` and `daemon_data_dir`. Refusing to delete a path we don't own should be the default. | now | small (Rust) | safe dry-runs on a shared box |
 

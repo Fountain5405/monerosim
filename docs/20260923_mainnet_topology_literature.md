@@ -24,6 +24,7 @@ derives rather than measures are marked *derived*.
 | S10 | `docs/20260618_mainnet_topology_targets.md` and `docs/20260620_network_topology_study.md` (this repo) | — | Earlier sourcing plus the validated sweep |
 | S11 | Kirschner, *An Analysis of Monero's Network Topology*, IEEE DAPPS 2026 (DOI 10.1109/DAPPS69803.2026.00019; local copy `~/monerosim_scale/An_Analysis_of_Moneros_Network_Topology.pdf`) | one week in **2022** (per the user; the paper does not state it) | 11 VPN vantage points; edges = white-list peerlist adjacency gathered by iterative seed queries (not live connections) |
 | S12 | Rucknium, [xmrnetscan](https://xmrnetscan.redteam.cash/) ([source](https://github.com/Rucknium/xmrnetscan)) — MRL daily network scan | daily since ~Jul 2025 (Jan 2026: ban list v2, hidden-spy counts) | Rust crawler on Cuprate's Levin handshaker from the hardcoded seeds; per node: pruning seed, peer id, support flags, disseminated peerlists; spy labels = MRL ban lists v1/v2, DNS blocklist, private fingerprint; ban-list adoption inferred from disseminated lists; Team Cymru ASNs. Data reachable only through the Shiny UI (the `plumber` API in the repo is not publicly exposed; no releases). **Requested from the author 2026-09-23.** |
+| S13 | **Our own crawl + node poll**, `~/basement_monerosim/20260923_mainnet_observation/` (`analysis/mainnet/`) | 2026-09-23 | One Levin handshake per advertised ip:port seeded from a LAN mainnet node's peerlists (39,885 probed, 45 min); Team Cymru ASNs; MRL ban list v2 of that day |
 
 ## 2. Degree structure: hubs and periphery
 
@@ -135,6 +136,32 @@ Spy behaviour:
 - **Parameters quoted:** 8 out / unlimited in as the default (the old value; see
   §2), and a "production-recommended" **64 out / 1,024 in**, which supports
   the medium class's 64-out sub-group.
+
+## 4b. Our measurement (S13, 2026-09-23)
+
+- **Reachable:** 18,026 of 39,885 probed (failures: 12,925 timeouts, 7,030
+  refused, 1,902 unreachable, 2 protocol).
+- **Spies: 73.7% of reachable IPs** are on the MRL ban list; **68.6%** show the
+  S5 peer-ID mismatch, and every mismatching node is also on the ban list; only
+  3.2% omit support flags. **13,281 spy IPs in 63 distinct /24s** (~210 per
+  /24), **99.6% in AS401476 Spruce Creek Networks**. So the 2026 shape is "63
+  dense /24s", not the ban list's "14 dense + tail" (the ban list covers 4,001
+  addresses; the fleet is 3× larger).
+- **Honest reachable ≈ 4,745.** ASNs: DigitalOcean **44.6%**, OVH 6.5%,
+  Hetzner 3.6%, Limestone 3.6%; countries: **US 64.1%**, DE 8.9%, LT 3.1%,
+  FR 3.0%, NL 1.7%, CA 1.6%, GB 1.6%, RU 1.5%, SG 1.5%, AU 1.2%.
+- **Honest /24 sharing:** 3,732 /24s hold the 4,745 honest nodes (mean 1.27);
+  the densest 12% of /24s (448) hold **30.8%** (~3.3 per dense /24). This is
+  the per-/24 counterpart of S11's per-BGP-prefix 55%: **the replica's
+  `prefix_sharing` should be `fraction 0.31, per_prefix 3`.**
+- **Peerlist adjacency** (each node's returned 250-entry list as edges):
+  mean degree 202, median 153, p90 449; top 13.2% of nodes hold 31.6% of
+  edges; the top 14 are adjacent to 17.4% of nodes. Not comparable with S2's
+  inferred-connection graph (our edges are advertisements, not links).
+- **LAN node (poll, first 48 ticks, ban list enabled):** 36 inbound / 12
+  outbound; 0 spies in its slots and peerlists; completed-connection medians
+  outbound 18 min, inbound 10 min (early, small n); some inbound connections
+  alive >1 week.
 
 ## 5. Geography and hosting
 

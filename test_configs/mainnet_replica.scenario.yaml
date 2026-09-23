@@ -27,8 +27,8 @@
 #   Variant P (proxy spies): commented template at the bottom; needs
 #   agents/spy_proxy.py (spec gap G3).
 #   Other presets (swap the spy groups): "2025" 14.7%, 7 /24s (S4);
-#   "2026" 81.6% (S5), ~14 dense /24s + a long scattered tail (S7), which
-#   needs variant P for affordable memory.
+#   "2026-09" 73.7% of reachable (S13, our crawl), 63 dense /24s (~210 IPs
+#   each, 99.6% one ASN), which needs variant P for affordable memory.
 #
 # Placement: 5,000-node GML so honest nodes almost never share a /24 (shared
 # /24s would couple them through deduplication). Weighted regions NA/EU/AS/OC
@@ -67,9 +67,9 @@ network:
   peer_mode: Dynamic
   distribution:
     strategy: Weighted
-    prefix_sharing:         # S11: 12% of BGP prefixes hold 55% of nodes (~11/prefix, an
-      fraction: 0.55        # upper bound for /24s). Co-locates that share of honest
-      per_prefix: 11        # daemons on shared GML nodes (= shared /24s). Gap G5.
+    prefix_sharing:         # S13 (our 2026-09-23 crawl): the densest 12% of /24s hold
+      fraction: 0.31        # 30.8% of honest reachable nodes, ~3.3 per /24. Co-locates
+      per_prefix: 3         # that share of honest daemons on shared GML nodes (G5).
     weights:
       north_america: 58
       europe: 30
