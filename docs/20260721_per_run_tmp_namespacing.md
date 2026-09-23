@@ -172,6 +172,21 @@ outside a `run_sim.sh`-managed run dir. Fine for the throwaway/debugging
 invocations this default is for; use `run_sim.sh` (or set the env vars
 explicitly) for anything you want to persist.
 
+Post-hoc tools inherit the same trap: `tx_analyzer` used to default
+`--shared-dir` / its daemon-log auto-detect to `monerosim::shared_dir()` /
+`default_daemon_data_dir()`, which after this change mint a fresh, empty
+per-process namespace whenever the env vars are unset — silently pointing a
+finished-run analysis at a directory nothing ever wrote to. It now resolves
+those defaults via the run-dir contract instead (`src/run_dir.rs`, the Rust
+twin of `scripts/run_dirs.py`): an explicit flag wins, else `--run-dir` /
+`$MONEROSIM_RUN_DIR`'s `shadow_output/run_env.sh` breadcrumb, else the newest
+`archived_runs/<run_id>`, else a clear error naming all three. Note the
+breadcrumb records the *live* `/tmp` paths a run used; once `run_sim.sh`'s
+own cleanup has removed that namespace (the normal end state for a finished,
+archived run), the resolved `--shared-dir` will exist in name only — pass
+`--shared-dir <run>/transaction_registry` (and `--log-dir <run>/daemon_logs`)
+explicitly for data that actually survived archiving.
+
 ## 6. Notes for older archives / scripts
 
 - Archives are unaffected — analysis tools take archive paths explicitly.

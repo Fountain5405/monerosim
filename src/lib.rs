@@ -12,6 +12,8 @@
 //! - `topology`: Network topology (switch, GML) and peer connections
 //! - `agent`: Agent config generation (miners, users, scripts)
 //! - `process`: Process/wrapper script generation
+//! - `run_dir`: Run-dir contract resolution for post-hoc tools (finding a
+//!   finished run's `shared_dir` / `daemon_data_dir` via its `run_env.sh`)
 //! - `analysis`: Post-simulation log analysis
 //! - `utils`: Duration parsing, validation, seed extraction
 
@@ -227,6 +229,7 @@ pub mod gml_parser;
 pub mod ip;
 pub mod orchestrator;
 pub mod process;
+pub mod run_dir;
 pub mod shadow;
 pub mod topology;
 pub mod utils;
