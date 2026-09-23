@@ -3,6 +3,9 @@
 # are written. Too small for topology metrics: at N=100 the medium class is
 # plumbing only, and hub caps are scaled to ~0.25*N.
 # DRAFT, NOT YET RUN. See docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
+# NOTE: predates the 2026-09-23 decisions applied to mainnet_replica.scenario.yaml
+# (miners as native-mining hubs, medium nodes pinned + turnover: true, prefix
+# sharing, chain snapshot). Bring in line once G2/G5/G6 exist.
 general:
   stop_time: 3h
   simulation_seed: 12345

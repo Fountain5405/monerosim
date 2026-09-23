@@ -17,9 +17,19 @@ three stages. Each stage gets its own plan.
 2. **Validation.** Run it and compare scale-free topology metrics against the
    literature (§6). Calibrate the knobs the literature leaves open, such as
    the spy dial budget.
-3. **Supernode and spy experiments.** Use the replica as the substrate:
-   tx-origin inference by spies, hub removal, and the effect of /24
-   deduplication and ban lists.
+3. **Experiments on the replica**, in this order (decided 2026-09-23):
+   1. **Tx-origin inference by spies.** Spies log every transaction
+      announcement (real-node spies already do, via monitor logs); the per-user
+      ledger gives ground truth; measure how often first-seen heuristics find the
+      originator, and how Dandelion++, the NAT majority, hub concentration, /24
+      dedup and the ban list move that number. Sets the proxy-spy agent's first
+      job: observe, don't relay.
+   2. **Hub dependence.** Remove or eclipse the pool hubs mid-run; compare
+      partition and propagation against S2's "14 hubs removed → −20%".
+   3. **Countermeasure effectiveness.** Same runs with and without dedup, the
+      ban list and peerlist flooding; measure spy footprint.
+   4. **Eclipse and selfish mining** re-run on the replica instead of the uniform
+      topology.
 
 **Decisions so far** (user, 2026-09-23):
 - Staged delivery.
@@ -44,10 +54,9 @@ validation checks that the graph monerod builds has mainnet's shape.
 
 | Class | Scenario group | Count | Config | Source |
 |---|---|---|---|---|
-| heavy: hubs | `supernode-*` | 5 (0.5%) | out 256 / in 256, pinned reachable, always on | S1 0.77%, S2 0.29%; caps validated in S10 |
-| heavy: seeds | auto `monero-seed-*` | 6 | fallback seeds, always on | S1: seeds are among the heavy nodes |
-| mining pools | `miner-*` | 5 | stock peering, reachable, always on | S1: 9 of 28 heavy nodes were pools (see A3) |
-| medium | `medium-{a,b,c}-*` | 125 (12.5%) | out-peers 16 / 32 / 64 | S1 12.5% |
+| heavy: pool hubs | `miner-*` | 5 | **native mining** (100 h/s each), out 256 / in 256, pinned reachable, always on | S1: 9 of 28 heavy nodes were pools, the largest hubs; caps validated in S10 (decided 2026-09-23, replaces the separate `supernode-*` group) |
+| heavy: seeds | auto `monero-seed-*` | 6 | fallback seeds, unlimited inbound, always on; become hubs naturally | S1: seeds are among the heavy nodes; S2's 14 hubs include public seeds |
+| medium | `medium-{a,b,c}-*` | 125 (12.5%) | out-peers 16 / 32 / 64, **pinned reachable, still turning over** (needs G2) | S1 12.5%; S11's "production-recommended" 64 out |
 | light users | `user-*` | 200 | default 12 out, wallet + tx agent | S10 lineage |
 | light relays | `relay-*` | 645 | default | — |
 | vantage points | `observer-*` | 20 | `monerod-hf` peerlist dump, pinned reachable, always on | S4 used 5 vantage points |
@@ -56,8 +65,25 @@ validation checks that the graph monerod builds has mainnet's shape.
 - **Reachability.** `reachable_fraction: 0.13` over the 970 hash-assigned
   daemons gives 126, plus 30 pinned. That is about 15–16% of honest daemons
   (S10 target 15%).
-- **Turnover.** 1 h on / 1 h off on all 970 non-pinned daemons, the combination
-  that matched mainnet's median connection duration *and* its >6 h tail (S10).
+- **Turnover.** 1 h on / 1 h off on all users, relays and medium nodes, the
+  combination that matched mainnet's median connection duration *and* its >6 h
+  tail (S10). Medium nodes are pinned reachable but still cycle (G2).
+- **Mining.** `general.mining.mode: native` (real RandomX, sleep-throttled),
+  hashrate as literal h/s. Difficulty warm-up is removed by the chain snapshot in
+  `2026-09-23-difficulty-preload-design.md`; the replica is **blocked on that
+  snapshot** for native runs.
+- **Honest prefix sharing (S11, decided in stage 1).** Mainnet honest nodes are
+  concentrated: 12% of BGP prefixes hold 55% of nodes (~11 per dense prefix).
+  One GML node is one /24 in the sim, so a knob co-locates a fraction of honest
+  nodes: `network.distribution.prefix_sharing: {fraction: 0.55, per_prefix: 11}`
+  moves that fraction of hash-selected honest daemons onto shared GML nodes,
+  `per_prefix` per node, inside their region. `per_prefix: 11` is an upper bound
+  (a BGP prefix is often wider than a /24), so stage 2 runs a sensitivity check at
+  4 and 11. Spies keep their own pinned nodes. This is gap G5.
+- **DNS bootstrap** is already mainnet-faithful and needs nothing: the in-sim DNS
+  server answers `seeds.moneroseeds.*` with the seed hosts, the six fallback IPs
+  are in-sim hosts, and monerod runs its stock resolution path (verified
+  read-only 2026-09-23; `agents/dns_server.py`, `src/.../fallback_seeds.rs`).
 - **Scaling rules** (used when producing other N):
   - Class shares stay fixed.
   - Hub caps ≈ 0.25·N per direction (S2's 82% hub coverage).
@@ -134,6 +160,7 @@ ones, so we compare shapes and ratios (literature §7).
 | Median connection duration / >6 h share OUT, INC | ~23 min / ~1.5%, ~0% | S10 | `ruck_analysis_turnover.r` |
 | Spy share of honest inbound / outbound slots | ~20% / ≤15% (lower post-dedup) | S4 | observer connection logs |
 | Spy share of peerlist entries | ~17% | S4 | observer `peerlist_dump.jsonl` |
+| Modularity (community structure) | ~0.09 greedy, ~0 random-walk: none | S11 | same connection graph |
 
 The spy slot and peerlist shares are **calibration targets** for the spy dial
 budget. S4 predates deduplication, so the outbound share should come out lower.
@@ -145,8 +172,10 @@ Showing that it does is itself a stage-3 result.
 |---|---|---|---|---|
 | G0 | **Seeded selection is not random.** Three sort-and-take selections in `src/agent/user_agents.rs` sort on the raw FNV-1a `seeded_hash`, whose high bits follow the name's leading bytes: `compute_unreachable_set` (~206), `compute_turnover_set` (~281) and `compute_node_impl_set` (~140). The chosen set is therefore contiguous by name or number. `seeded_unit` already applies a splitmix64 finaliser; the sorts do not. Fix: finalise the hash before sorting. **Breaking: it reshuffles every seeded assignment.** See §7a for the impact. | before stage 2 | small (Rust + tests) | any run with reachable_fraction < 1, turnover fraction < 1, or `node_implementations` |
 | G1 | `analysis/topology_metrics.py`: the §6 metrics from logs and peerlist dumps | 2 | medium | validation |
-| G2 | "Pinned reachable" also means "exempt from turnover". Add a per-agent opt-out so a class can be forced reachable **and** still turn over. | optional | small (Rust) | pinning medium nodes reachable (A2) |
-| G3 | `agents/spy_proxy.py` (variant P) plus `levin_lib` parsing of transaction message 2002 | 1b / 3 | medium | 2026 preset; proxy fingerprint |
+| G2 | "Pinned reachable" also means "exempt from turnover". Add a per-agent `turnover: true` override so a class can be forced reachable **and** still cycle. | **1** (decided) | small (Rust) | medium nodes reachable and churning |
+| G3 | `agents/spy_proxy.py` (variant P) plus `levin_lib` parsing of transaction message 2002. Fingerprints to reproduce: peer-ID mismatch on ping (S5), `REQUEST_SUPPORT_FLAGS` (S6), oversized peerlists >1,000 (S11, pending the 250-entry rejection check). | 1b / 3 | medium | 2026 preset; proxy fingerprint |
+| G5 | Honest prefix-sharing knob `network.distribution.prefix_sharing` (see §3). | **1** (decided) | small (Rust, placement) | mainnet-like /24 co-location of honest nodes |
+| G6 | Chain snapshot preload for native mining (own spec). | **1** | medium | any native-mining replica run |
 | G4 | Safety: generation outside `run_sim.sh` deletes the default `/tmp/monerosim_shared`, which on this box belongs to **user1**. The delete failed on permissions and nothing was lost. Dry generation must set `shared_dir` and `daemon_data_dir`. Refusing to delete a path we don't own should be the default. | now | small (Rust) | safe dry-runs on a shared box |
 
 ### 7a. G0 impact, measured by generating configs with the real binary (no runs)
@@ -183,11 +212,13 @@ has been re-run.**
 - **A1.** The replica models the honest network plus spies only; the items in
   literature §6 (pruning, Tor/I2P, IPv6, version mix, remote-node wallets) are
   out of scope, each for the reason given there.
-- **A2.** Medium nodes' reachability is hash-assigned like any relay. The
-  literature does not say whether nodes with raised out-peers are reachable.
-  If they are, pin them reachable once G2 exists.
-- **A3.** Miners keep stock peering, so hashrate and hub roles stay separable.
-  A variant makes the miners the hubs, as with pool front-ends.
+- **A2 (decided 2026-09-23).** Medium nodes are pinned reachable and still turn
+  over (G2). Rationale: raising `out-peers` is an operator act, and those
+  operators run always-on public nodes (S5: ~3,000 honest reachable, 30% with
+  public RPC; S1: medium nodes skew to hosting countries).
+- **A3 (decided 2026-09-23).** Miners **are** the hubs (pool front-ends, S1),
+  with native mining. Hub and hashrate roles are therefore coupled; a hub
+  experiment in stage 3 is also a hashrate experiment, which is how mainnet is.
 - **D1 (decided 2026-09-23, no user preference; recommendation taken).**
   Transaction load stays at **300 s** so results are comparable with S10.
   Expand with `--no-safe-tx-interval`: the parser calibration would otherwise

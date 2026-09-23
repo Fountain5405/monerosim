@@ -1,19 +1,23 @@
 # MAINNET REPLICA: a scaled-down (1,000 honest daemons) model of the Monero
 # mainnet P2P topology, plus a clustered spy population.
 #
-# DRAFT, NOT YET RUN. Expanded and generated only (see the spec's verification
-# section). Design:  docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
+# DRAFT, NOT YET RUN. An earlier revision expanded and generated cleanly; this
+# revision uses three keys that do not exist yet (turnover: true = G2,
+# prefix_sharing = G5, mining.chain_snapshot = G6) and will not generate until
+# they land. Design:  docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
 # Numbers:           docs/20260923_mainnet_topology_literature.md  (S1..S10 below)
 #
-# Honest population (1,000 daemons), classed by outbound degree as in S1:
-#   heavy   5  supernode-*   0.5% (S1 0.77%, S2 0.29%); 256/256 caps = the
-#                            config validated in S10; always on, reachable
-#   medium 125  medium-*     12.5% (S1) with out-peers raised above the
-#                            default 12: 16/32/64 in three sub-groups
-#   light  870  user-*, relay-*, observer-*, miner-*  (default 12 out)
-#   Reachable ≈ 15% (S10): 0.13 of the hash-assigned pool plus the 30
-#   pinned-reachable nodes (miners, supernodes, observers).
-#   Turnover 1 h on / 1 h off on everything not pinned (S10's mainnet match).
+# Honest population (995 daemons + 6 auto seed hosts), classed by outbound
+# degree as in S1:
+#   heavy   5  miner-*       pool hubs, native mining, 256/256 caps (S1 pools
+#                            are the biggest hubs; caps validated in S10) +
+#                            6 auto seed hosts (S1's other heavy class)
+#   medium 125  medium-*     12.5% (S1), out-peers 16/32/64; pinned reachable,
+#                            still turning over (G2)
+#   light  865  user-*, relay-*, observer-*  (default 12 out)
+#   Reachable ≈ 16% (S10 target 15%): 150 pinned + 0.01 of the 840 users/relays.
+#   Turnover 1 h on / 1 h off on users, relays, medium (S10's mainnet match).
+#   Honest /24 sharing per S11 via prefix_sharing (G5).
 #
 # Spy population, "2024" preset (S6): ~40% of reachable IPs, 6 dense /24s.
 #   108 spies = 0.40/0.60 x ~160 honest reachable, as 6 groups of 18. Each
@@ -41,7 +45,10 @@ general:
   runahead: 100ms
   process_threads: 2
   native_preemption: true   # turnover restarts hit LMDB resize (S10); preemption avoids the livelock
-  reachable_fraction: 0.13  # + 30 pinned-reachable => ~15% of honest daemons (S10)
+  reachable_fraction: 0.01  # 150 pinned (5 miners, 125 medium, 20 observers) + ~8 of the 840 users/relays => ~16% of 996 honest daemons (S10 target 15%)
+  mining:
+    mode: native            # real RandomX, sleep-throttled (docs/NATIVE_MINING.md)
+    chain_snapshot: auto    # difficulty preload (spec 2026-09-23-difficulty-preload-design.md, gap G6)
   turnover:
     mean_session: 1h        # S10: 1 h / 1 h matched mainnet median AND >6h tail
     mean_downtime: 1h
@@ -60,6 +67,9 @@ network:
   peer_mode: Dynamic
   distribution:
     strategy: Weighted
+    prefix_sharing:         # S11: 12% of BGP prefixes hold 55% of nodes (~11/prefix, an
+      fraction: 0.55        # upper bound for /24s). Co-locates that share of honest
+      per_prefix: 11        # daemons on shared GML nodes (= shared /24s). Gap G5.
     weights:
       north_america: 58
       europe: 30
@@ -70,47 +80,52 @@ network:
 
 agents:
   # ---------------- honest: heavy / infrastructure ----------------
-  # Miners stand in for pool nodes (S1: 9 of 28 heavy nodes were pools); kept at
-  # stock peering so hashrate and hub roles stay separable.
+  # Miners ARE the hubs: mainnet's largest hubs are pool front-ends (S1: 9 of 28
+  # heavy nodes were pools). Native mining, hashrate in literal h/s; hub caps
+  # ~25% of N per direction (S2: 14 hubs cover 82%). The six auto fallback seed
+  # hosts (S1's other heavy class) take unlimited inbound and become hubs on
+  # their own.
   miner-{001..005}:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.autonomous_miner
     start_time: 0s
     start_time_stagger: 1s
-    hashrate: [20, 20, 20, 20, 20]
+    hashrate: [100, 100, 100, 100, 100]   # h/s (native); D0 = 120 x 500
     can_receive_distributions: true
-
-  # Hubs: S2/S3 "super-peers" — ~25% of N per direction (S2: 14 hubs cover 82%).
-  supernode-{001..005}:
-    daemon: monerod
-    start_time: 0s
-    start_time_stagger: 2s
     daemon_options:
       out-peers: 256
       in-peers: 256
       hide-my-port: false   # pinned reachable + always on
 
   # ---------------- honest: medium (S1 12.5%, raised out-peers) ----------------
-  # Reachability is hash-assigned like any relay (assumption A2 in the spec).
+  # Pinned reachable (public always-listening nodes) but STILL turning over —
+  # `turnover: true` overrides the pinned-reachable exemption (spec gap G2;
+  # not generatable until G2 lands).
   medium-a-{001..042}:
     daemon: monerod
     start_time: 0s
     start_time_stagger: auto
+    turnover: true
     daemon_options:
       out-peers: 16
+      hide-my-port: false
   medium-b-{001..042}:
     daemon: monerod
     start_time: 0s
     start_time_stagger: auto
+    turnover: true
     daemon_options:
       out-peers: 32
+      hide-my-port: false
   medium-c-{001..041}:
     daemon: monerod
     start_time: 0s
     start_time_stagger: auto
+    turnover: true
     daemon_options:
       out-peers: 64
+      hide-my-port: false
 
   # ---------------- honest: light ----------------
   user-{001..200}:
@@ -123,7 +138,7 @@ agents:
     activity_start_time: auto
     can_receive_distributions: true
 
-  relay-{001..645}:
+  relay-{001..640}:
     daemon: monerod
     start_time: 0s
     start_time_stagger: auto

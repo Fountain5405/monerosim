@@ -80,20 +80,79 @@ replica run (S10: ~50 h wall for 16 h simulated before spies).
 
 Removes the DAA entirely, so hashrate changes have no effect. Not a model.
 
-## 4. Recommendation
+## 4. Recommendation (revised 2026-09-23, user confirmed)
 
-**Build B first, keep A as the follow-up.**
+**Build A. B is not needed.**
 
-B is a day of work, has no moving parts outside the patch, and unblocks the replica
-(monerod-only) immediately. A is the better model and is required the moment cuprate
-joins a native-mining run, but it carries the timestamp problem and snapshot
-plumbing, and its generation step *is* a native-mining run, so it is best done once
-B has proven the target difficulty numbers. A validation run of B against the first
-A snapshot is the natural check that the two agree.
+The first draft of this spec recommended B because A's timestamp problem looked
+hard. It is not:
+- Monero's timestamp rules only check **order** (≥ median of the last 60) and
+  **not-in-the-future** (≤ now + 2 h); the DAA only uses **spacing**. A constant
+  shift of every timestamp in a snapshot is therefore harmless.
+- The generator does not need B either: mine ~1,450 blocks from genesis in a tiny
+  native-mining sim. The first ~720 are warm-up, but they become deep history; the
+  window at the tip is 735 settled blocks at `D0`, which is all a run ever reads.
+
+So A is: **one generation-only miner flag (a few lines) + snapshot copying in the
+orchestrator + one cached generation run per hashrate target.** No DAA patch, no
+per-implementation rule, cuprate-safe, and nodes join a chain with history as on
+mainnet. B stays documented below only as the fallback if A's plumbing proves
+worse than expected.
 
 ## 5. Design details
 
-### B: `--sim-daa-prefill`
+### A: chain snapshot
+
+**Generator run** (`test_configs/preload_chain.scenario.yaml`, a normal native
+run, kept tiny so it simulates fast):
+- 1–5 miners whose **total** hashrate equals the target run's, e.g. 5 × 100 h/s,
+  so the settled difficulty is `D0 = 120 × 500`. No users, no relays.
+- `--sim-hash-interval-ms` throttling as usual (real RandomX, sim-time spacing).
+- Run until height ≥ `735 + 720 = 1,455` (~48 h simulated; small network, so a
+  few hours wall).
+- Miner flag **`--sim-timestamp-offset <s>`** (generation only, added to
+  `patches/monero-sim-mining.patch` next to `--sim-hash-interval-ms`): the miner
+  stamps blocks `now − offset`. Offset = `expected chain span + 10 min`, computed by
+  the orchestrator from `height × 120 s`, so the snapshot's tip lands a few minutes
+  **before** the 2000-01-01 sim epoch. Rules satisfied at generation: timestamps
+  are monotone (≥ median) and in the past (≤ now + 7,200).
+- Coinbase goes to a dedicated `genesis-miner` wallet whose seed is stored with the
+  snapshot.
+
+**Snapshot** = the miner's data dir after the run (LMDB, `--keep-fakechain`),
+stored under `~/.monerosim/chain_snapshots/<key>/` with a `manifest.json`:
+`{height, D0, total_hashrate, monero_pin, hf_schedule, network_id, tip_timestamp,
+tip_hash, genesis_miner_seed}`. Cache key = hash of `(D0, monero pin, HF schedule,
+network id, height)`.
+
+**Consumer side:**
+- `general.mining.chain_snapshot: auto | <path> | off` (native mode only; default
+  `auto` = look up the cache by key, error with the generator command if missing).
+- Orchestrator copies the snapshot into every daemon's data dir at generation
+  time (`cp --sparse=always`; 1,455 empty blocks is tens of MB). `--keep-fakechain`
+  already prevents daemons wiping it. Cuprate nodes get the same chain via their
+  own data-dir format only if a converter exists; until then, cuprate nodes start
+  empty and **sync** the 1,455 blocks from monerod peers at startup, which is the
+  mainnet-like path anyway.
+- Preflight checks the manifest's `monero_pin`/HF schedule against the run's, and
+  that `tip_timestamp < epoch`.
+- **Gap check at run start:** the first real block is stamped at
+  `epoch + t`, a few minutes after the tip; the DAA window then holds 734 snapshot
+  spacings and one small gap. Fine. What must be avoided is a gap of hours or more,
+  which the cut window would eventually expose and crash difficulty for ~720
+  blocks. Preflight enforces `epoch − tip_timestamp ≤ 30 min`.
+
+**Tests:** manifest round-trip; orchestrator copies to N data dirs and rejects a
+mismatched pin; the offset flag stamps `now − offset` (unit test in the patch);
+gate run (later, when a box is available): median block interval over the first
+100 blocks ≈ 120 s, difficulty at height 1,456 within ±10% of `D0`, no
+rejections, all nodes at the same height.
+
+**Funding:** `miner_distributor` may optionally fund users from the
+`genesis-miner` wallet (coinbase already unlocked), shortening the funding
+warm-up. Off by default; the real miners keep funding as today.
+
+### B (fallback only): `--sim-daa-prefill`
 
 - **Flag:** `--sim-daa-prefill <difficulty>` in `monerod-sim` (extend
   `patches/monero-sim-mining.patch` or add a fifth patch). `0`/absent = stock.
@@ -115,28 +174,6 @@ A snapshot is the natural check that the two agree.
   test that `auto` computes `120 × Σ hashrate` and injects the flag on relays too;
   gate run (later): first 50 blocks arrive at ~120 s median, no rejections, height
   matches across a monerod-only network.
-
-### A: snapshot (follow-up)
-
-- **Generator:** a dedicated one-time Shadow run (`preload_chain.scenario.yaml`):
-  one miner at the stock, unthrottled miner (`--sim-hash-interval-ms 0`) plus B's
-  prefill so the very first block is at `D0`, mining until height ≥ 735, then
-  exporting the data dir. Running it under Shadow is what makes the timestamps
-  sim-time rather than 2026 wall time.
-- **Timestamp offset (the open problem):** the snapshot's tip is at
-  `epoch + ~24.5 h`, while the real run starts at `epoch`. Options, to decide when
-  building A: (i) a generation-only miner flag `--sim-timestamp-offset <s>` that
-  stamps blocks `now − offset`, so the whole snapshot sits in the sim's past (the DAA
-  only uses spacing, so a constant shift is harmless); (ii) a Shadow start-time knob,
-  if one exists — the scout could not confirm one; (iii) have replica runs begin at
-  `epoch + 25 h` by an orchestrator offset. (i) is the smallest.
-- **Cache key:** `(D0, monero.pin version, HF schedule string, network id, height)`;
-  stored under `~/.monerosim/chain_snapshots/`.
-- **Distribution:** the orchestrator copies the snapshot into each node's data dir at
-  generation time; `--keep-fakechain` already prevents the daemon wiping it.
-- **Coinbase:** mine to a dedicated "genesis-miner" wallet whose seed is stored with
-  the snapshot, so `miner_distributor` can optionally fund users from it (60-block
-  unlock already satisfied).
 
 ## 6. Out of scope
 

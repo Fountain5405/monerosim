@@ -22,6 +22,7 @@ derives rather than measures are marked *derived*.
 | S8 | Monero v0.18.4.3 "Fluorine Fermi" [release notes](https://www.getmonero.org/2025/10/08/monero-0.18.4.3-released.html) | Oct 2025 | /24 subnet deduplication in peer selection |
 | S9 | monerod v0.18.5.1 source (`../monero`, tag `v0.18.5.1`), the version monerosim pins | — | Code reading |
 | S10 | `docs/20260618_mainnet_topology_targets.md` and `docs/20260620_network_topology_study.md` (this repo) | — | Earlier sourcing plus the validated sweep |
+| S11 | Kirschner, *An Analysis of Monero's Network Topology*, IEEE DAPPS 2026 (DOI 10.1109/DAPPS69803.2026.00019; local copy `~/monerosim_scale/An_Analysis_of_Moneros_Network_Topology.pdf`) | one week, date not stated | 11 VPN vantage points; edges = white-list peerlist adjacency gathered by iterative seed queries (not live connections) |
 
 ## 2. Degree structure: hubs and periphery
 
@@ -107,6 +108,32 @@ Spy behaviour:
   - An honest node holds at most about one outbound connection per spy /24.
   - A spy that dials *in* also uses up its /24 for that node's outbound choices.
   - The spies' Dec 2025 move to many new ranges fits adapting to this filter.
+
+## 4a. Kirschner (S11): the peerlist view
+
+- **Scale:** 20,560 active nodes, 10,626,886 peerlist edges, 2,116 ASes, 8,387
+  BGP prefixes, 141 countries; 31,684 IPs discovered before filtering.
+- **Spies from a third angle.** **4,840 nodes (24%)** return peerlists larger than
+  the 1,000-entry white-list maximum (half send >1,500; 468 send >2,000). They
+  hold **67%** of all edges, are adjacent to **99%** of the network, and 57% of
+  them sit in **43 ASes** (5% of ASes); 5% of BGP prefixes hold 55% of them.
+  This is the fleet S4–S7 describe, seen through its oversized peerlists.
+  - *To verify before modelling:* stock monerod may drop a peer that sends more
+    than `P2P_MAX_PEERS_IN_HANDSHAKE` (250) entries. If so, the oversized lists
+    only reach crawlers and custom software, not honest nodes.
+- **Honest concentration.** 86% of nodes sit in 14% of ASes; **12% of BGP
+  prefixes hold 55% of nodes**. Derived: the dense 12% of prefixes average
+  about **11 nodes per prefix**, the rest about 1.25. A BGP prefix is often
+  wider than a /24, so per-/24 density is lower than 11; treat 11 as an upper
+  bound.
+- **Geography:** US **33%**, Germany **>10%**, US+DE 46%. Matches S1's 2018 US
+  figure exactly.
+- **Structure:** modularity **0.088** (greedy) / ~0 (random walk): no community
+  structure. Degree stats (mean 517, median 667, p90 1,750) are peerlist
+  adjacency and are **not comparable** with connection degree.
+- **Parameters quoted:** 8 out / unlimited in as the default (the old value; see
+  §2), and a "production-recommended" **64 out / 1,024 in**, which supports
+  the medium class's 64-out sub-group.
 
 ## 5. Geography and hosting
 
