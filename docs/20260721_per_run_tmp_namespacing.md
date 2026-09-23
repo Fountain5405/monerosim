@@ -178,14 +178,18 @@ Post-hoc tools inherit the same trap: `tx_analyzer` used to default
 per-process namespace whenever the env vars are unset — silently pointing a
 finished-run analysis at a directory nothing ever wrote to. It now resolves
 those defaults via the run-dir contract instead (`src/run_dir.rs`, the Rust
-twin of `scripts/run_dirs.py`): an explicit flag wins, else `--run-dir` /
-`$MONEROSIM_RUN_DIR`'s `shadow_output/run_env.sh` breadcrumb, else the newest
-`archived_runs/<run_id>`, else a clear error naming all three. Note the
-breadcrumb records the *live* `/tmp` paths a run used; once `run_sim.sh`'s
-own cleanup has removed that namespace (the normal end state for a finished,
-archived run), the resolved `--shared-dir` will exist in name only — pass
-`--shared-dir <run>/transaction_registry` (and `--log-dir <run>/daemon_logs`)
-explicitly for data that actually survived archiving.
+twin of `scripts/run_dirs.py`), and knows about archiving: for each of
+`--shared-dir` and the daemon log dir, an explicit flag wins, else the
+archived copy under the resolved run dir (`transaction_registry/`,
+`daemon_logs/` — what `run_sim.sh`'s `archive_transaction_registry` and log
+archiving leave behind) if it exists, else the live `/tmp` path named in
+`shadow_output/run_env.sh` *if that path still exists* (a run whose `/tmp`
+namespace hasn't been cleaned up yet — still live, or archived with
+cleanup skipped), else a clear error naming both candidates tried. A
+finished, normally-archived run therefore resolves correctly with **no
+flags at all**: `run_sim.sh`'s own end-of-run cleanup has already `rm -rf`'d
+the live namespace the breadcrumb names, but the archived copies are what
+`tx_analyzer` picks up.
 
 ## 6. Notes for older archives / scripts
 

@@ -173,6 +173,51 @@ pub fn resolve_dir(
     })
 }
 
+/// Resolve a post-hoc data directory (`shared_dir` or the daemon log dir)
+/// that survives archiving: `explicit` if given, else the archived copy
+/// `<run_dir>/<archived_relative>` if it exists (`run_sim.sh`'s
+/// `archive_transaction_registry` moves `shared_dir`'s registry/wallet/ringdb
+/// files there under `transaction_registry/`, and daemon logs land under
+/// `daemon_logs/`), else the live `/tmp` path named by `breadcrumb_key` in
+/// `run_env.sh` *if that path still exists* (a run whose `/tmp` namespace
+/// hasn't been cleaned up yet, e.g. still live or archived with `--no-cleanup`).
+/// A finished, normally-archived run has had its `/tmp` namespace `rm -rf`'d
+/// by `run_sim.sh`, so the breadcrumb path alone is not enough — this is why
+/// `resolve_dir` (breadcrumb-only) isn't sufficient for this case. If neither
+/// candidate exists, fails naming both paths that were tried.
+pub fn resolve_data_dir(
+    explicit: Option<PathBuf>,
+    run_dir: Option<&Path>,
+    archived_relative: &str,
+    breadcrumb_key: &str,
+) -> Result<PathBuf, String> {
+    if let Some(p) = explicit {
+        return Ok(p);
+    }
+    let run_dir = resolve_run_dir(run_dir)?;
+    let archived = run_dir.join(archived_relative);
+    if archived.is_dir() {
+        return Ok(archived);
+    }
+    let env = read_run_env(&run_dir);
+    let breadcrumb = env.get(breadcrumb_key).map(PathBuf::from);
+    if let Some(live) = &breadcrumb {
+        if live.is_dir() {
+            return Ok(live.clone());
+        }
+    }
+    let breadcrumb_desc = match &breadcrumb {
+        Some(p) => format!("{} (${breadcrumb_key})", p.display()),
+        None => format!("<not set in run_env.sh> (${breadcrumb_key})"),
+    };
+    Err(format!(
+        "no {breadcrumb_key} data for run {}: tried the archived {} (not a directory) \
+         and the live breadcrumb {breadcrumb_desc} (not a directory); pass the path explicitly",
+        run_dir.display(),
+        archived.display(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,6 +354,76 @@ mod tests {
         let _run_guard = EnvVarGuard::unset(RUN_DIR_ENV);
         let err = resolve_dir(None, None, "MONEROSIM_SHARED_DIR").unwrap_err();
         assert!(err.contains(RUN_DIR_ENV), "{err}");
+    }
+
+    #[test]
+    fn resolve_data_dir_prefers_archived_copy_when_present() {
+        let dir = tempdir().unwrap();
+        let archived = dir.path().join("transaction_registry");
+        std::fs::create_dir_all(&archived).unwrap();
+        // Breadcrumb also present but must lose to the archived copy.
+        write_run_env(
+            dir.path(),
+            "MONEROSIM_SHARED_DIR=\"/does/not/exist/shared\"\n",
+        );
+
+        let resolved = resolve_data_dir(
+            None,
+            Some(dir.path()),
+            "transaction_registry",
+            "MONEROSIM_SHARED_DIR",
+        )
+        .unwrap();
+        assert_eq!(resolved, archived);
+    }
+
+    #[test]
+    fn resolve_data_dir_falls_back_to_live_breadcrumb_when_it_still_exists() {
+        let dir = tempdir().unwrap();
+        // No archived transaction_registry/ — only a live /tmp path that
+        // hasn't been cleaned up yet.
+        let live = tempdir().unwrap();
+        write_run_env(
+            dir.path(),
+            &format!(
+                "MONEROSIM_SHARED_DIR=\"{}\"\n",
+                live.path().to_str().unwrap()
+            ),
+        );
+
+        let resolved = resolve_data_dir(
+            None,
+            Some(dir.path()),
+            "transaction_registry",
+            "MONEROSIM_SHARED_DIR",
+        )
+        .unwrap();
+        assert_eq!(resolved, live.path());
+    }
+
+    #[test]
+    fn resolve_data_dir_fails_clearly_naming_both_paths_when_neither_exists() {
+        let dir = tempdir().unwrap();
+        write_run_env(
+            dir.path(),
+            "MONEROSIM_SHARED_DIR=\"/tmp/monerosim-long-gone/shared\"\n",
+        );
+
+        let err = resolve_data_dir(
+            None,
+            Some(dir.path()),
+            "transaction_registry",
+            "MONEROSIM_SHARED_DIR",
+        )
+        .unwrap_err();
+        assert!(
+            err.contains(&dir.path().join("transaction_registry").display().to_string()),
+            "should name the archived path: {err}"
+        );
+        assert!(
+            err.contains("/tmp/monerosim-long-gone/shared"),
+            "should name the breadcrumb path: {err}"
+        );
     }
 
     // std::env is process-global; the caller (each test above) holds
