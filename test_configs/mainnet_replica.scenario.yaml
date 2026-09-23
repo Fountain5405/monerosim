@@ -195,19 +195,28 @@ agents:
     topology_node: 833
     daemon_options: *spy_opts
 
-  # ---------------- spies, variant P (proxy) — TEMPLATE, needs spec gap G3 ----------------
-  # A few real backend monerods behind many lightweight front-end IPs (S7). Swap
-  # in for (or mix with) variant R; keep total spy IPs at the preset's count.
+  # ---------------- spies, variant P (proxy) — agents.spy_proxy ----------------
+  # Swap in for (or mix with) variant R above; keep total spy IPs at the preset's
+  # count. A few real backend monerods behind many lightweight front-end IPs
+  # (S7/S13). Front-ends reproduce the documented proxy fingerprints: peer-id
+  # mismatch on ping (S5), support flags present (S13 ~97%), backend chain state.
+  # Uncomment to use; see docs/superpowers/specs/2026-09-23-mainnet-replica-design.md §4.
   # spy-backend-{001..003}:
   #   daemon: monerod
   #   start_time: 0s
   #   topology_node: 827
-  #   daemon_options: { out-peers: 64, hide-my-port: false }
+  #   daemon_options: { out-peers: 64, in-peers: 256, hide-my-port: false }
   # spy-proxy-a-{001..018}:
   #   script: agents.spy_proxy
   #   start_time: 60s
+  #   start_time_stagger: 2s
   #   topology_node: 828
-  #   attributes: { backend_group: spy-backend, dial_budget: "32" }
+  #   attributes:
+  #     backend_group: spy-backend     # front-ends proxy any agent id starting with this
+  #     peer_id_mismatch: "true"       # ping id != handshake id (S5 fingerprint)
+  #     support_flags: present         # or "absent" (S4/S6 fingerprint)
+  #     fleet_share: "0.5"             # fraction of the served peerlist that is fleet IPs
+  #   dial_budget: 8                   # outbound held to honest reachable nodes
 
   miner-distributor:
     script: agents.miner_distributor

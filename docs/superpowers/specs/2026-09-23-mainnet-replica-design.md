@@ -122,7 +122,7 @@ validation checks that the graph monerod builds has mainnet's shape.
   `NOTIFY_NEW_TRANSACTIONS` arrivals, which `ruck_analysis.r` already parses.
 - They relay normally, which is not how real spies behave.
 
-**Variant P: proxy spies (gap G3).**
+**Variant P: proxy spies (`agents.spy_proxy`, built 2026-09-23).**
 - A few real backend monerods sit behind many lightweight front-end IPs (S7).
 - Built on the eclipse fake-peer stack (`agents/eclipse_fakepeer.py`,
   `levin_lib.py`; about 40 MB per host, proven at 1,000 hosts).
@@ -173,7 +173,7 @@ Showing that it does is itself a stage-3 result.
 | G0 | **Seeded selection is not random.** Three sort-and-take selections in `src/agent/user_agents.rs` sort on the raw FNV-1a `seeded_hash`, whose high bits follow the name's leading bytes: `compute_unreachable_set` (~206), `compute_turnover_set` (~281) and `compute_node_impl_set` (~140). The chosen set is therefore contiguous by name or number. `seeded_unit` already applies a splitmix64 finaliser; the sorts do not. Fix: finalise the hash before sorting. **Breaking: it reshuffles every seeded assignment.** See §7a for the impact. | before stage 2 | small (Rust + tests) | any run with reachable_fraction < 1, turnover fraction < 1, or `node_implementations` |
 | G1 | `analysis/topology_metrics.py`: the §6 metrics from logs and peerlist dumps | 2 | medium | validation |
 | G2 | "Pinned reachable" also means "exempt from turnover". Add a per-agent `turnover: true` override so a class can be forced reachable **and** still cycle. | **1** (decided) | small (Rust) | medium nodes reachable and churning |
-| G3 | `agents/spy_proxy.py` (variant P) plus `levin_lib` parsing of transaction message 2002. Fingerprints to reproduce: peer-ID mismatch on ping (S5), `REQUEST_SUPPORT_FLAGS` (S6), oversized peerlists >1,000 (S11, pending the 250-entry rejection check). | 1b / 3 | medium | 2026 preset; proxy fingerprint |
+| G3 | `agents/spy_proxy.py` (variant P) — **built 2026-09-23**: Levin responder on the eclipse stack, reports the backend's real chain state, peer-id mismatch on ping (S5) + support-flag knob (S4/S6) via a small `InjectorConfig` addition, fleet+backend peerlist, dial budget. Tests in `agents/test_spy_proxy.py`. **Follow-up:** proxy-side tx observation needs cryptonote-handshake participation (levin_lib is admin-only); real-node spies carry the tx feed for now. Oversized-peerlist fingerprint gated pending the 250-entry rejection check. | done / 3 | — | 2026 preset; proxy fingerprint |
 | G5 | Honest prefix-sharing knob `network.distribution.prefix_sharing` (see §3). **Built** (deb529a1); defaults re-derived from S13. | done | — | mainnet-like /24 co-location of honest nodes |
 | G6 | Chain snapshot preload for native mining (own spec). | **1** | medium | any native-mining replica run |
 | G4 | Safety: generation outside `run_sim.sh` deletes the default `/tmp/monerosim_shared`, which on this box belongs to **user1**. The delete failed on permissions and nothing was lost. Dry generation must set `shared_dir` and `daemon_data_dir`. Refusing to delete a path we don't own should be the default. | now | small (Rust) | safe dry-runs on a shared box |

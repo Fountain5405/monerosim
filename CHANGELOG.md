@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Added
+- **Proxy spy agent** (`agents.spy_proxy`, variant P): a simulation-only
+  Levin front-end that proxies a backend monerod's real chain state and
+  reproduces documented proxy fingerprints (peer-id mismatch on ping, support-flag
+  presence, fleet+backend peer list, dial budget), for the mainnet-replica spy
+  class and stage-3 privacy measurements. Shared responder gained optional
+  `ping_peer_id`/`support_flags` (`agents.eclipse_injector`). Tests in
+  `agents/test_spy_proxy.py`.
 
 - **Chain-snapshot difficulty preload for native mining** (`general.mining.chain_snapshot:
   auto | off | <preset name or path>`, default `auto`, native mode only): grafts a
