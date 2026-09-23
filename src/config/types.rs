@@ -97,6 +97,26 @@ pub struct RegionWeights {
     pub oceania: Option<u32>,
 }
 
+/// Honest-node /24 co-location knob (gap G5,
+/// `docs/superpowers/specs/2026-09-23-mainnet-replica-design.md` §3/§7).
+///
+/// Mainnet honest nodes are concentrated: Kirschner 2026 (S11) finds 12% of
+/// BGP prefixes hold 55% of nodes, about 11 per dense prefix. monerosim gives
+/// each GML node its own /24 (`src/ip/as_manager.rs`), so this moves a
+/// fraction of eligible honest daemons onto shared GML nodes, `per_prefix` at
+/// a time, inside their home region. Applied after the base distribution and
+/// before per-agent `topology_node` pins (which always win). Absent = today's
+/// behavior (every honest node keeps its own /24).
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub struct PrefixSharingConfig {
+    /// Fraction of eligible honest daemons to co-locate. Must be in `[0.0, 1.0]`.
+    pub fraction: f64,
+    /// How many co-located agents share one GML node (one /24). Must be in
+    /// `[2, 200]`; 11 is the S11 dense-prefix figure, itself an upper bound
+    /// since a BGP prefix is often wider than a /24.
+    pub per_prefix: u32,
+}
+
 /// Distribution configuration for GML network topologies.
 ///
 /// Controls how simulation agents are placed across the network topology nodes.
@@ -110,6 +130,9 @@ pub struct Distribution {
     /// Custom region weights (only used with Weighted strategy)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weights: Option<RegionWeights>,
+    /// Honest-node /24 co-location (gap G5). Absent = no sharing (default).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prefix_sharing: Option<PrefixSharingConfig>,
 }
 
 impl Default for Distribution {
@@ -117,6 +140,7 @@ impl Default for Distribution {
         Self {
             strategy: DistributionStrategy::Global,
             weights: None,
+            prefix_sharing: None,
         }
     }
 }
@@ -176,6 +200,7 @@ impl Config {
                     path,
                     peer_mode,
                     seed_nodes,
+                    distribution,
                     ..
                 } => {
                     if path.is_empty() {
@@ -184,6 +209,9 @@ impl Config {
                         ));
                     }
                     Self::validate_peer_config(peer_mode, seed_nodes)?;
+                    if let Some(dist) = distribution {
+                        Self::validate_prefix_sharing(dist.prefix_sharing.as_ref())?;
+                    }
                 }
                 Network::Switch {
                     network_type,
@@ -234,6 +262,27 @@ impl Config {
             }
         }
 
+        Ok(())
+    }
+
+    /// Validate `network.distribution.prefix_sharing` ranges (gap G5).
+    fn validate_prefix_sharing(
+        prefix_sharing: Option<&PrefixSharingConfig>,
+    ) -> Result<(), ValidationError> {
+        if let Some(ps) = prefix_sharing {
+            if !(0.0..=1.0).contains(&ps.fraction) {
+                return Err(ValidationError::InvalidNetwork(format!(
+                    "distribution.prefix_sharing.fraction must be in [0.0, 1.0], got {}",
+                    ps.fraction
+                )));
+            }
+            if !(2..=200).contains(&ps.per_prefix) {
+                return Err(ValidationError::InvalidNetwork(format!(
+                    "distribution.prefix_sharing.per_prefix must be in [2, 200], got {}",
+                    ps.per_prefix
+                )));
+            }
+        }
         Ok(())
     }
 }

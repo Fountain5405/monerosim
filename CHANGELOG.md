@@ -13,6 +13,16 @@
   `false` always excludes it, `fraction` notwithstanding. Miners and seed
   nodes stay always-on either way. Unset preserves prior behaviour
   (`src/agent/user_agents.rs`, `compute_turnover_set`).
+- **Honest prefix sharing** (gap G5, `network.distribution.prefix_sharing:
+  {fraction, per_prefix}`): co-locates a fraction of eligible honest daemons
+  (non-miner, non-seed, unpinned) onto shared GML nodes — `per_prefix` per
+  node, inside their region — so mainnet's BGP-prefix concentration
+  (Kirschner 2026 / S11: 12% of prefixes hold 55% of nodes) is reproducible
+  under monerod's `/24` outbound dedup. Runs after the base distribution and
+  before per-agent `topology_node` pins, which always win.
+  `src/topology/prefix_sharing.rs`; `seeded_hash`/`finalize_hash` factored
+  into `src/utils/seeded_hash.rs` (shared with the other seeded selections in
+  `src/agent/user_agents.rs`). Absent config = unchanged behavior.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was
   accepted only as an equal-height alternative, which stock monerod drops silently.

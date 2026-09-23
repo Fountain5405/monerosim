@@ -122,6 +122,26 @@ network:
       oceania: 2
 ```
 
+Optional honest-node `/24` co-location (`prefix_sharing`): mainnet honest
+nodes are concentrated on relatively few network prefixes (Kirschner 2026:
+12% of BGP prefixes hold 55% of nodes), and monerosim otherwise gives every
+GML node — and therefore every agent — its own `/24`. This knob moves
+`fraction` of eligible honest daemons (non-miner, non-seed, unpinned) onto
+shared GML nodes, `per_prefix` at a time, inside their home region, after the
+base distribution and before any `topology_node` pins (which always win):
+```yaml
+network:
+  path: "topology.gml"
+  peer_mode: Dynamic
+  distribution:
+    prefix_sharing:
+      fraction: 0.55   # 0.0-1.0: share of eligible honest daemons to co-locate
+      per_prefix: 11   # 2-200: co-located agents per shared node
+```
+`per_prefix: 11` is the S11 dense-prefix figure, itself an **upper bound**: a
+real BGP prefix is often wider than a single `/24`, so treat `per_prefix`
+values near the high end as a stress case rather than a literal target.
+
 ### Peer Discovery Modes
 
 | Mode | Description |

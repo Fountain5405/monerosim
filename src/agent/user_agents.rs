@@ -20,6 +20,7 @@ use crate::topology::{
 use crate::utils::binary::resolve_binary_path_for_shadow;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::options::{merge_options, translate_daemon_log_level};
+use crate::utils::seeded_hash::{finalize_hash, seeded_hash};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
@@ -45,6 +46,8 @@ pub struct UserAgentProcessContext<'a> {
     pub wallet_defaults: Option<&'a BTreeMap<String, OptionValue>>,
     pub distribution_strategy: Option<&'a crate::config::DistributionStrategy>,
     pub distribution_weights: Option<&'a crate::config::RegionWeights>,
+    /// Honest-node /24 co-location (gap G5). `None` = no sharing.
+    pub distribution_prefix_sharing: Option<&'a crate::config::PrefixSharingConfig>,
     pub scripts_dir: &'a Path,
     pub daemon_data_dir: &'a str,
     /// Deterministic seed for selecting which nodes are unreachable.
@@ -71,18 +74,6 @@ pub struct UserAgentProcessContext<'a> {
 }
 
 /// Process user agents
-/// Stable FNV-1a hash of (seed, id) — deterministic and reproducible
-/// without depending on std's (unstable across versions) hasher, so the
-/// same binary + seed always selects the same unreachable nodes.
-fn seeded_hash(seed: u64, s: &str) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325 ^ seed;
-    for b in s.bytes() {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    h
-}
-
 /// A node that explicitly pins `hide-my-port: false` in its *own* daemon_options
 /// is declaring itself an always-reachable hub (the supernode / infrastructure
 /// convention). Such a node is never firewalled, never hidden, and never cycled
@@ -222,24 +213,6 @@ fn compute_unreachable_set(
         }
     }
     unreachable
-}
-
-/// splitmix64 finalizer: any 1-bit input change flips ~half the output bits,
-/// giving well-distributed top bits regardless of key layout.
-///
-/// FNV-1a's avalanche in its *high* bits is poor when only a trailing byte
-/// changes (e.g. the session index in `cs:<id>:<k>`, or a numeric id suffix in
-/// `relay-001` vs `relay-002`) — sorting or bucketing on the raw FNV value
-/// selects contiguous blocks of keys instead of a uniform sample. Always run
-/// `seeded_hash` output through this finalizer before using it as a sort key
-/// or a uniform draw.
-fn finalize_hash(mut h: u64) -> u64 {
-    h ^= h >> 30;
-    h = h.wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    h ^= h >> 27;
-    h = h.wrapping_mul(0x94d0_49bb_1331_11eb);
-    h ^= h >> 31;
-    h
 }
 
 /// Map a seeded hash to a uniform float in (0, 1), nudged off the exact
@@ -440,6 +413,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         wallet_defaults,
         distribution_strategy,
         distribution_weights,
+        distribution_prefix_sharing,
         scripts_dir,
         daemon_data_dir,
         simulation_seed,
@@ -508,6 +482,21 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     };
 
     // No phase validation needed for new AgentConfig (simpler structure)
+
+    // Honest-node /24 co-location (gap G5). Runs after the base distribution
+    // and before topology_node pins (which always win — see below). See
+    // docs/superpowers/specs/2026-09-23-mainnet-replica-design.md §3/§7.
+    if let (Some(gml), true, Some(prefix_sharing)) =
+        (gml_graph, using_gml_topology, distribution_prefix_sharing)
+    {
+        crate::topology::apply_prefix_sharing(
+            &mut agent_node_assignments,
+            &user_agents,
+            gml.nodes.len(),
+            simulation_seed,
+            prefix_sharing,
+        );
+    }
 
     // Per-agent topology pins override the index-based distribution. This must run
     // before build_peer_topology / IP allocation consume agent_node_assignments,
