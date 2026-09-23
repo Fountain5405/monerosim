@@ -4,6 +4,15 @@
 
 ### Added
 
+- **Per-agent `turnover` override** (Gap G2): a per-agent `turnover: true|false`
+  key (`AgentConfig::turnover`) overrides `general.turnover`'s default sampling
+  for that agent. `true` forces the agent's daemon into the offline/online
+  turnover cycle regardless of `fraction` — including nodes that pin
+  `hide-my-port: false` (normally exempt as an always-reachable hub) — so a
+  "medium" reachability class can be pinned reachable yet still cycle.
+  `false` always excludes it, `fraction` notwithstanding. Miners and seed
+  nodes stay always-on either way. Unset preserves prior behaviour
+  (`src/agent/user_agents.rs`, `compute_turnover_set`).
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was
   accepted only as an equal-height alternative, which stock monerod drops silently.

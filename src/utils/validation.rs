@@ -459,6 +459,7 @@ mod tests {
             attributes: None,
             subnet_group: None,
             topology_node: None,
+            turnover: None,
             peers: None,
         }
     }

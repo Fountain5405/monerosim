@@ -305,6 +305,8 @@ agents:
 | `wallet_env` | map | Environment variables for wallet |
 | `attributes` | map | Custom key-value pairs passed to agent scripts |
 | `subnet_group` | string | Group agents into same /24 subnet |
+| `topology_node` | u32 | Pin this agent to a specific GML topology node id, overriding index-based distribution |
+| `turnover` | bool | Override this agent's `general.turnover` membership: `true` forces the daemon into the offline/online turnover cycle regardless of `fraction` — including a node that pins `hide-my-port: false` (normally exempt as an always-reachable hub); `false` always excludes it. Unset keeps the default (pinned-reachable excluded, others sampled at `fraction`). Miners and seed nodes are always excluded regardless. |
 
 ## Complete Example
 

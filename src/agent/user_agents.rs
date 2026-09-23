@@ -257,16 +257,22 @@ fn exp_draw(seed: u64, key: &str, mean: f64, min: f64, max: f64) -> f64 {
     (-mean * (1.0 - u).ln()).clamp(min, max) // inverse-CDF of Exp(mean)
 }
 
-/// Decide which nodes participate in turnover. Eligible = every non-seed,
-/// non-miner daemon node (relays AND users) that is NOT pinned always-on via
-/// an explicit `hide-my-port: false` in its own daemon_options (the supernode
-/// / infrastructure convention). Only the daemon cycles; a user's wallet-rpc
-/// and tx-agent stay up and reconnect on restart (regular_user.py has
-/// daemon-down recovery). `fraction` of the eligible set is selected
-/// deterministically by a turnover-namespaced seeded hash, so reachability and
-/// turnover membership are independent.
+/// Decide which nodes participate in turnover. Miners and seed nodes
+/// (`is_seed_node`) are ALWAYS excluded, no matter what a node's own
+/// `turnover` key says (bootstrap backbone). For everyone else, the
+/// per-agent `turnover: bool` key (see `AgentConfig::turnover`) overrides the
+/// default sampling: `Some(true)` forces the agent into the set regardless of
+/// `fraction` and regardless of pinned-reachable (`hide-my-port: false`);
+/// `Some(false)` always excludes it; `None` (unset) keeps the historical
+/// behaviour — pinned-reachable nodes (the supernode / infrastructure
+/// convention, see [`is_pinned_reachable`]) are excluded, and the rest are
+/// eligible and sampled at `fraction`, deterministically by a
+/// turnover-namespaced seeded hash so reachability and turnover membership
+/// are independent. Only the daemon cycles; a user's wallet-rpc and tx-agent
+/// stay up and reconnect on restart (regular_user.py has daemon-down
+/// recovery).
 ///
-/// BREAKING (2026-09-23): the sort key is now `finalize_hash(seeded_hash(...))`
+/// BREAKING (2026-09-23): the sort key is `finalize_hash(seeded_hash(...))`
 /// instead of the raw FNV-1a value — see [`compute_node_impl_set`]'s doc for
 /// why (contiguous id blocks, not a uniform sample). Same seed still
 /// reproduces the same set, but the set itself differs from prior runs.
@@ -277,9 +283,6 @@ fn compute_turnover_set(
 ) -> HashSet<String> {
     let frac = fraction.clamp(0.0, 1.0);
     let mut set = HashSet::new();
-    if frac <= 0.0 {
-        return set;
-    }
     let mut eligible: Vec<String> = Vec::new();
     for (id, cfg) in user_agents {
         if cfg.is_miner() {
@@ -293,13 +296,28 @@ fn compute_turnover_set(
         if is_seed {
             continue; // seeds stay always-on (bootstrap backbone)
         }
-        // NOTE: users (has_wallet) take part too now — only the *daemon* cycles;
-        // the wallet-rpc + agent stay up and reconnect. Miners are already
-        // excluded above via is_miner().
-        if is_pinned_reachable(cfg) {
-            continue; // supernodes / explicitly-reachable infra stay always-on
+        match cfg.turnover {
+            Some(true) => {
+                // Forced in — overrides fraction AND pinned-reachable.
+                set.insert(id.to_string());
+            }
+            Some(false) => {
+                // Forced out — never sampled.
+            }
+            None => {
+                // NOTE: users (has_wallet) take part too now — only the
+                // *daemon* cycles; the wallet-rpc + agent stay up and
+                // reconnect. Miners are already excluded above via
+                // is_miner().
+                if is_pinned_reachable(cfg) {
+                    continue; // supernodes / explicitly-reachable infra stay always-on
+                }
+                eligible.push(id.to_string());
+            }
         }
-        eligible.push(id.to_string());
+    }
+    if frac <= 0.0 {
+        return set;
     }
     eligible.sort_by_key(|id| finalize_hash(seeded_hash(seed, &format!("turnover:{}", id))));
     let n = ((frac * eligible.len() as f64).round() as usize).min(eligible.len());
@@ -573,6 +591,32 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         Some(c) => compute_turnover_set(&user_agents, simulation_seed, c.fraction),
         None => HashSet::new(),
     };
+    // Per-agent `turnover: true|false` overrides, tallied for the summary log
+    // below (miners + seeds are excluded from turnover regardless of this
+    // key, so they don't count as "forced").
+    let (turnover_forced_in, turnover_forced_out) = {
+        let mut forced_in = 0usize;
+        let mut forced_out = 0usize;
+        for (_, cfg) in &user_agents {
+            if cfg.is_miner() {
+                continue;
+            }
+            let is_seed = cfg
+                .attributes
+                .as_ref()
+                .map(|a| a.get("is_seed_node").map_or(false, |v| v == "true"))
+                .unwrap_or(false);
+            if is_seed {
+                continue;
+            }
+            match cfg.turnover {
+                Some(true) => forced_in += 1,
+                Some(false) => forced_out += 1,
+                None => {}
+            }
+        }
+        (forced_in, forced_out)
+    };
 
     // Assign alternate node implementations (e.g. cuprate) to eligible relay
     // nodes. Empty node_implementations => empty map => every node is monerod.
@@ -681,11 +725,14 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         if let Some(c) = turnover {
             log::info!(
                 "Turnover: {} node(s) cycle offline/online (mean_session={}, mean_downtime={}, \
-                 fraction={}); miners + seeds + pinned supernodes stay always-on",
+                 fraction={}; {} forced in, {} opted out via per-agent `turnover:`); \
+                 miners + seeds stay always-on; pinned supernodes stay always-on unless forced in",
                 turnover_set.len(),
                 c.mean_session,
                 c.mean_downtime,
-                c.fraction
+                c.fraction,
+                turnover_forced_in,
+                turnover_forced_out
             );
         }
     }
@@ -1847,6 +1894,104 @@ mod turnover_tests {
                 );
             }
         }
+    }
+
+    // --- Gap G2: per-agent `turnover: bool` override -----------------------
+
+    fn cfg(yaml: &str) -> AgentConfig {
+        serde_yaml::from_str(yaml).expect("AgentConfig parses")
+    }
+
+    #[test]
+    fn turnover_true_forces_pinned_reachable_node_in_regardless_of_fraction() {
+        let hub_id = "hub".to_string();
+        let hub = cfg(
+            "script: agents.relay\n\
+             daemon_options:\n  hide-my-port: false\n\
+             turnover: true\n",
+        );
+        let mut plain: Vec<(String, AgentConfig)> = (0..10)
+            .map(|i| (format!("relay-{i}"), cfg("script: agents.relay\n")))
+            .collect();
+        plain.insert(0, (hub_id.clone(), hub));
+        let refs: Vec<(&String, &AgentConfig)> =
+            plain.iter().map(|(id, c)| (id, c)).collect();
+
+        // fraction 0.0: forced-in ignores fraction — hub is still selected,
+        // and nothing else is (no sampling happens at fraction 0.0).
+        let set0 = compute_turnover_set(&refs, 42, 0.0);
+        assert!(set0.contains(&hub_id), "forced-in must ignore fraction=0.0");
+        assert_eq!(set0.len(), 1, "only the forced-in hub, no sampling at 0.0");
+
+        // fraction 0.5: hub still present (forced), and the sampled count
+        // among the 10 unset plain relays equals round(0.5 * 10) = 5.
+        let set = compute_turnover_set(&refs, 42, 0.5);
+        assert!(set.contains(&hub_id), "forced-in must be present at 0.5 too");
+        let sampled_unset = set.iter().filter(|id| *id != &hub_id).count();
+        assert_eq!(sampled_unset, 5, "round(0.5 * 10 unset-eligible) == 5");
+    }
+
+    #[test]
+    fn turnover_false_excludes_plain_relay_even_at_fraction_one() {
+        let excluded_id = "relay-excluded".to_string();
+        let excluded = cfg("script: agents.relay\nturnover: false\n");
+        let plain_id = "relay-plain".to_string();
+        let plain = cfg("script: agents.relay\n");
+        let agents = vec![(&excluded_id, &excluded), (&plain_id, &plain)];
+
+        let set = compute_turnover_set(&agents, 42, 1.0);
+        assert!(
+            !set.contains(&excluded_id),
+            "turnover: false must exclude even at fraction=1.0"
+        );
+        assert!(
+            set.contains(&plain_id),
+            "unset relay should be sampled in at fraction=1.0"
+        );
+    }
+
+    #[test]
+    fn turnover_true_on_miner_stays_excluded() {
+        let miner_id = "miner-0".to_string();
+        let miner = cfg("script: agents.autonomous_miner\nhashrate: 100\nturnover: true\n");
+        let agents = vec![(&miner_id, &miner)];
+
+        let set = compute_turnover_set(&agents, 42, 1.0);
+        assert!(
+            !set.contains(&miner_id),
+            "miners are always excluded from turnover, `turnover: true` notwithstanding"
+        );
+    }
+
+    #[test]
+    fn turnover_unset_behaviour_is_byte_identical_to_before() {
+        // Fixture without the `turnover` key at all: pinned-reachable hub
+        // stays excluded, and the rest are sampled at `fraction` by the same
+        // seeded-hash ordering as always.
+        let hub_id = "hub".to_string();
+        let hub = cfg("script: agents.relay\ndaemon_options:\n  hide-my-port: false\n");
+        let mut agents: Vec<(String, AgentConfig)> = (0..12)
+            .map(|i| (format!("relay-{i}"), cfg("script: agents.relay\n")))
+            .collect();
+        agents.insert(0, (hub_id.clone(), hub));
+        let refs: Vec<(&String, &AgentConfig)> =
+            agents.iter().map(|(id, c)| (id, c)).collect();
+
+        let seed = 12345u64;
+        let fraction = 0.6;
+        let actual = compute_turnover_set(&refs, seed, fraction);
+
+        assert!(!actual.contains(&hub_id), "pinned-reachable stays excluded when unset");
+
+        // Recompute the pre-G2 algorithm directly to prove it is unchanged:
+        // eligible = every non-hub relay, sorted by the turnover-namespaced
+        // finalized seeded hash, take round(fraction * n).
+        let mut eligible: Vec<String> = (0..12).map(|i| format!("relay-{i}")).collect();
+        eligible.sort_by_key(|id| finalize_hash(seeded_hash(seed, &format!("turnover:{}", id))));
+        let n = ((fraction * eligible.len() as f64).round() as usize).min(eligible.len());
+        let expected: Set<String> = eligible.into_iter().take(n).collect();
+
+        assert_eq!(actual, expected);
     }
 }
 
