@@ -144,6 +144,25 @@ def test_pop_pilot_matrix_spec():
     assert len(honest) >= 2, "overlay target population exists in the base"
 
 
+@pytest.mark.parametrize("path,n_miners,hps,relays", [
+    (Path("test_configs/selfish_scaled.yaml"), 12, 2, 32),      # senior
+    (Path("test_configs/selfish_scaled_mid.yaml"), 6, 3, 16),   # local pilot
+], ids=["scaled", "scaled_mid"])
+def test_scaled_selfish_configs(path, n_miners, hps, relays):
+    from scripts.selfish_mining_analysis import _alpha_from_config
+    cfg = _load(path)
+    agents = cfg["agents"]
+    att = next(v for v in agents.values() if v.get("script") == "agents.selfish_miner")
+    honest = [v for v in agents.values() if v.get("script") == "agents.autonomous_miner"]
+    n_relay = sum(1 for k in agents if k.startswith("relay-"))
+    assert len(honest) == n_miners and all(v["hashrate"] == hps for v in honest)
+    assert n_relay == relays
+    assert att["daemon_options"]["offline"] is True
+    assert att["attributes"]["bridges"] == "attacker-bridge"
+    assert abs(_alpha_from_config(cfg) - 0.40) < 0.01   # attacker/(attacker+honest)
+    assert cfg["general"]["simulation_seed"] == 12345
+
+
 @pytest.mark.parametrize("path,omega,expected_alpha_eff", [
     (Path("test_configs/selfish_eclipse_sweep/omega_0000.yaml"), 0, 4 / 15),
     (Path("test_configs/selfish_eclipse_sweep/omega_0200.yaml"), 2, 6 / 15),

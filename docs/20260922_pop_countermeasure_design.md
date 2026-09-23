@@ -261,3 +261,37 @@ per #144 composes via the existing `--sim-pop-det-tie`.
    0.402 ≈ α, orphaning 0.022 — the ~85 B field is weightless to the
    network. (Block counts 163–186 across cells: the countermeasure does
    not slow the chain.)
+
+## Rung-3 results (2026-09-23, `matrix_runs/pop_exact/`, 3 × 6 h at α=0.4)
+
+| cell (all det-tie) | attacker share | att. orphan | note |
+|---|---|---|---|
+| core (cited, n=2) | 0.244 / 0.296 | | |
+| **`es_exact`** (header uncles) | **0.134** | 0.742 | uncles HALVE the det-tie leak |
+| `es_uncles_det` (deviated uncles) | 0.337 | 0.385 | no help over core |
+| `honest_exact` control | 0.322 vs α=0.400 | 0.113 | ⚠️ first control dip; net orphan 0.050 |
+
+- **The exact-vs-deviated A/B (fixed det-tie) went AGAINST the
+  pre-registered prediction** (exact ≈ deviated): 0.134 vs 0.337. Only 3
+  uncle embeddings occurred — but the trustless weight side also counts
+  uncles whose blocks have LEFT local alt storage after reorgs, where the
+  deviated variant undercounts exactly during the multi-reorg dance
+  following contested releases. In winner-take-all cycles a few decisive
+  weight points move whole cycles. n=1 each — fat-tail caution.
+- **Watch item**: `honest_exact` dipped to 0.322 (other controls: 0.397,
+  0.402, 0.408) with orphaning 2.5× — at 2 honest miners the uncle
+  mechanism has nothing to do and what little it does causes visible
+  weight disagreement between nodes. Scale is the variable that settles
+  whether #144-exact helps or hurts under realistic contention → rung 4.
+
+## Rung 4: scale (2026-09-23, `pop_scale`)
+
+`test_configs/selfish_scaled{,_mid}.yaml`: 12 (senior) / 6 (local pilot)
+honest miners + 32/16 relays, α=0.40 exact, D=4800/3600. The micro
+topology starves the uncle mechanism — 3 embeddings per 6 h because two
+honest miners essentially never race; real Monero's contested-height rate
+is what uncle appreciation feeds on. Pre-registered (P-scale): embeddings
+rise to O(hundreds); tie/natural-fork counts rise with miner count; the
+exact-vs-deviated gap either compounds or inverts; the honest control's
+orphaning is the safety readout. Mid runs one-at-a-time locally
+(parallel: 1); full scale is the senior-box leg.
