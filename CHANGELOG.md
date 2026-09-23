@@ -109,15 +109,19 @@
   `{daemon_data_dir}/monero-*` stale-cleanup loop. See
   `docs/20260721_per_run_tmp_namespacing.md` §6a.
 - **`tx_analyzer` no longer defaults into that same fresh, empty per-process
-  `/tmp` namespace.** It used `monerosim::shared_dir()` /
+  `/tmp` namespace, and now actually loads a finished run's data with no
+  flags at all.** It used `monerosim::shared_dir()` /
   `default_daemon_data_dir()` as CLI defaults to locate a *finished* run's
   data; after the bare-binary fix above those functions mint a namespace no
   process ever wrote to, so the analyzer would silently look in an empty
   directory. It now resolves `--shared-dir` and the daemon log dir via the
   run-dir contract instead (new `src/run_dir.rs`, mirroring
-  `scripts/run_dirs.py`): explicit flag > `--run-dir`/`$MONEROSIM_RUN_DIR`'s
-  `shadow_output/run_env.sh` breadcrumb > newest `archived_runs/<run_id>` >
-  a clear error naming all three. See
+  `scripts/run_dirs.py`): explicit flag > `--run-dir`/`$MONEROSIM_RUN_DIR`
+  (else newest `archived_runs/<run_id>`)'s archived copy
+  (`transaction_registry/`, `daemon_logs/` — what `run_sim.sh`'s own
+  archiving leaves behind) > the live `shadow_output/run_env.sh` breadcrumb
+  path *if it still exists* (a finished run has had it `rm -rf`'d) > a clear
+  error naming both candidates tried. See
   `docs/20260721_per_run_tmp_namespacing.md` §6a.
 - **Success criteria are tri-state and no longer misreport mining-only runs.**
   The monitor marked `transactions_created_broadcast` / `transactions_in_blocks`

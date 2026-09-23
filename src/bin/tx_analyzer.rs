@@ -205,12 +205,14 @@ fn main() -> Result<()> {
     }
 
     // Resolve --shared-dir per the run-dir contract (docs/20260904_per_run_directories.md):
-    // explicit flag > --run-dir/$MONEROSIM_RUN_DIR's run_env.sh breadcrumb >
-    // newest archived_runs/<run_id>. Never falls back to a freshly generated
-    // /tmp namespace (that would silently point at an empty directory).
-    let shared_dir = monerosim::run_dir::resolve_dir(
+    // explicit flag > run-dir's archived transaction_registry/ (survives
+    // run_sim.sh's archiving) > the live run_env.sh breadcrumb (only if that
+    // /tmp path still exists — a finished run has had it rm -rf'd). Never
+    // falls back to a freshly generated /tmp namespace.
+    let shared_dir = monerosim::run_dir::resolve_data_dir(
         cli.shared_dir.clone(),
         cli.run_dir.as_deref(),
+        "transaction_registry",
         "MONEROSIM_SHARED_DIR",
     )
     .map_err(|e| color_eyre::eyre::eyre!("could not resolve --shared-dir: {e}"))?;
@@ -229,14 +231,16 @@ fn main() -> Result<()> {
     );
 
     // Determine log directory: --log-dir flag, or auto-detect from the
-    // run's daemon data dir (resolved the same way as --shared-dir above),
-    // or fall back to legacy shadow.data/hosts.
+    // run's daemon data dir (resolved the same way as --shared-dir above:
+    // archived daemon_logs/ preferred, live breadcrumb only if it still
+    // exists), or fall back to legacy shadow.data/hosts.
     let log_dir = if let Some(ref dir) = cli.log_dir {
         dir.clone()
     } else {
-        match monerosim::run_dir::resolve_dir(
+        match monerosim::run_dir::resolve_data_dir(
             None,
             cli.run_dir.as_deref(),
+            "daemon_logs",
             "MONEROSIM_DAEMON_DATA_DIR",
         ) {
             Ok(tmp_dir) => {
