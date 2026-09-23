@@ -329,3 +329,27 @@ worth stating in any deployment discussion. Full mid-scale table:
 |---|---|---|
 | stock | 0.387 | 0.386 |
 | exact (uncles + det tie) | **0.170** | 0.367 |
+
+## Rung 4b: the blind spot at mid scale (2026-09-23, `pop_scale_r2`, n=1)
+
+| mid (6 miners, α=0.4) | stock | exact (uncles+det) |
+|---|---|---|
+| conservative lead-2 | **0.477** | 0.353 |
+| (textbook ES, cited) | 0.387 | 0.170 |
+
+- **Scale INVERTS the strategy ranking**: at 6 miners the conservative
+  policy out-earns textbook ES (0.477 vs 0.387; micro was 0.309 vs
+  0.492). Fragmented honest racing (6 miners forking naturally) feeds
+  in-time overrides — the attack Monero actually observed (Qubic's
+  lead-2) is the STRONGER one at realistic miner counts.
+- **The blind spot is partial, not absolute, at scale**: PoP-exact cuts
+  lead-2 by −0.12 (vs −0.22 on ES) — fragmented honest races sometimes
+  beat the attacker to a contested height, so some releases go late —
+  but the h=0 release keeps most of its power and the attacker lands at
+  ~break-even (0.353 vs fair share 0.40). This residue is precisely
+  SoP's l_w target (P-SoP1's baseline: 0.477 stock / 0.353 under PoP).
+- First nonzero realized γ at mid scale (0.03–0.07 across cells): the
+  larger fabric has genuine propagation races — the network-layer γ the
+  literature reports, appearing only when the topology can produce it.
+- n=1 each (σ≈0.05): the 0.477-vs-0.309 scale jump is ~3σ directional;
+  quantitative claims need repeats (queued behind SoP work).
