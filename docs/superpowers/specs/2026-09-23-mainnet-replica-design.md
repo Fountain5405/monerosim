@@ -54,17 +54,17 @@ validation checks that the graph monerod builds has mainnet's shape.
 
 | Class | Scenario group | Count | Config | Source |
 |---|---|---|---|---|
-| heavy: pool hubs | `miner-*` | 5 | **native mining** (100 h/s each), out 256 / in 256, pinned reachable, always on | S1: 9 of 28 heavy nodes were pools, the largest hubs; caps validated in S10 (decided 2026-09-23, replaces the separate `supernode-*` group) |
+| heavy: pool hubs | `miner-*` | 5 | **native mining** (10 h/s each; D0 = 6,000), out 256 / in 256, pinned reachable, always on | S1: 9 of 28 heavy nodes were pools, the largest hubs; caps validated in S10 (decided 2026-09-23, replaces the separate `supernode-*` group) |
 | heavy: seeds | auto `monero-seed-*` | 6 | fallback seeds, unlimited inbound, always on; become hubs naturally | S1: seeds are among the heavy nodes; S2's 14 hubs include public seeds |
 | medium | `medium-{a,b,c}-*` | 125 (12.5%) | out-peers 16 / 32 / 64, **pinned reachable, still turning over** (needs G2) | S1 12.5%; S11's "production-recommended" 64 out |
 | light users | `user-*` | 200 | default 12 out, wallet + tx agent | S10 lineage |
-| light relays | `relay-*` | 645 | default | — |
+| light relays | `relay-*` | 640 | default | — |
 | vantage points | `observer-*` | 20 | `monerod-hf` peerlist dump, pinned reachable, always on | S4 used 5 vantage points |
 | **spies** | `spy-{a..f}-*` | 108 | see §4 | S6 "2024" preset |
 
-- **Reachability.** `reachable_fraction: 0.13` over the 970 hash-assigned
-  daemons gives 126, plus 30 pinned. That is about 15–16% of honest daemons
-  (S10 target 15%).
+- **Reachability.** 150 pinned reachable (5 miners, 125 medium, 20 observers)
+  plus `reachable_fraction: 0.01` over the 840 hash-assigned users/relays (~8)
+  gives ~158 of 996 honest daemons, about 16% (S10 target 15%).
 - **Turnover.** 1 h on / 1 h off on all users, relays and medium nodes, the
   combination that matched mainnet's median connection duration *and* its >6 h
   tail (S10). Medium nodes are pinned reachable but still cycle (G2).

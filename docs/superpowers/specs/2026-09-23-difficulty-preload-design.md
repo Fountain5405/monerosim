@@ -103,10 +103,18 @@ worse than expected.
 
 ### A: chain snapshot
 
+**Hashrate choice (decided 2026-09-23).** Native hashrate is literal h/s and every
+simulated hash is a real ~1.5 ms RandomX hash, so the number sets CPU cost, not
+behaviour: difficulty scales with it and block timing, variance, DAA response and
+mining-share ratios are the same at any value. The sim-speed ceiling is
+≈ 667/H per miner. The replica therefore uses **5 × 10 h/s, `D0 = 6,000`**
+(generator ≈ under an hour wall; 100 h/s would be ~7 h). Integer h/s with a
+floor of 1 still gives 2% steps in mining share for stage 3.
+
 **Generator run** (`test_configs/preload_chain.scenario.yaml`, a normal native
 run, kept tiny so it simulates fast):
-- 1–5 miners whose **total** hashrate equals the target run's, e.g. 5 × 100 h/s,
-  so the settled difficulty is `D0 = 120 × 500`. No users, no relays.
+- 1–5 miners whose **total** hashrate equals the target run's (5 × 10 h/s,
+  `D0 = 6,000`). No users, no relays.
 - `--sim-hash-interval-ms` throttling as usual (real RandomX, sim-time spacing).
 - Run until height ≥ `735 + 720 = 1,455` (~48 h simulated; small network, so a
   few hours wall).
@@ -119,21 +127,33 @@ run, kept tiny so it simulates fast):
 - Coinbase goes to a dedicated `genesis-miner` wallet whose seed is stored with the
   snapshot.
 
-**Snapshot** = the miner's data dir after the run (LMDB, `--keep-fakechain`),
-stored under `~/.monerosim/chain_snapshots/<key>/` with a `manifest.json`:
-`{height, D0, total_hashrate, monero_pin, hf_schedule, network_id, tip_timestamp,
-tip_hash, genesis_miner_seed}`. Cache key = hash of `(D0, monero pin, HF schedule,
-network id, height)`.
+**Snapshot format (decided 2026-09-23: packaged in the repo).** Users cloning the
+repo must be able to start with a full network without running the generator, so
+the snapshot is **git-tracked**, small and implementation-agnostic:
+- `chain_snapshots/<preset>/blocks.jsonl.zst`: one hex block blob per line
+  (`get_block` from the generator's miner, heights 1..N), plus `manifest.json`:
+  `{height, D0, total_hashrate, monero_pin, hf_schedule, network_id,
+  genesis_hash, tip_timestamp, tip_hash, genesis_miner_seed, generated_by_run}`.
+  1,455 coinbase-only blocks ≈ 200 KB raw, well under 1 MB compressed; one
+  directory per hashrate preset. No `monero-blockchain-export/import`
+  dependency: `setup.sh` does not build them.
+- **Template build, once per machine:** the orchestrator (or `setup.sh
+  --chain-snapshot`) starts an offline `monerod-sim --regtest --keep-fakechain`
+  natively, feeds the blocks in order through the `submit_block` RPC (PoW is
+  re-verified; seconds of work), stops it, and caches the LMDB data dir under
+  `~/.monerosim/chain_snapshots/<key>/`. Key = hash of the manifest's
+  `(D0, monero_pin, hf_schedule, network_id, height)`. The past timestamps are
+  fine: the rules only require order and not-in-the-future.
 
 **Consumer side:**
-- `general.mining.chain_snapshot: auto | <path> | off` (native mode only; default
-  `auto` = look up the cache by key, error with the generator command if missing).
-- Orchestrator copies the snapshot into every daemon's data dir at generation
-  time (`cp --sparse=always`; 1,455 empty blocks is tens of MB). `--keep-fakechain`
-  already prevents daemons wiping it. Cuprate nodes get the same chain via their
-  own data-dir format only if a converter exists; until then, cuprate nodes start
-  empty and **sync** the 1,455 blocks from monerod peers at startup, which is the
-  mainnet-like path anyway.
+- `general.mining.chain_snapshot: auto | <preset|path> | off` (native mode only;
+  default `auto` = the repo preset whose `total_hashrate` matches the config's
+  miners, error naming the generator command if none matches).
+- Orchestrator copies the cached LMDB template into every daemon's data dir at
+  generation time (`cp --sparse=always`). `--keep-fakechain` already prevents
+  daemons wiping it. Cuprate nodes start empty and **sync** the blocks from monerod
+  peers at startup, the mainnet-like path anyway (a cuprate template via its own
+  `submit_block` is a follow-up).
 - Preflight checks the manifest's `monero_pin`/HF schedule against the run's, and
   that `tip_timestamp < epoch`.
 - **Gap check at run start:** the first real block is stamped at

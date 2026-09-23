@@ -91,7 +91,7 @@ agents:
     script: agents.autonomous_miner
     start_time: 0s
     start_time_stagger: 1s
-    hashrate: [100, 100, 100, 100, 100]   # h/s (native); D0 = 120 x 500
+    hashrate: [10, 10, 10, 10, 10]        # h/s (native); D0 = 120 x 50 = 6,000. Small on purpose: sim-speed ceiling ~667/H per miner
     can_receive_distributions: true
     daemon_options:
       out-peers: 256
