@@ -163,6 +163,33 @@ Spy behaviour:
   outbound 18 min, inbound 10 min (early, small n); some inbound connections
   alive >1 week.
 
+## 4c. Encoded targets and reconciliation (the stage-2 baseline)
+
+The per-metric targets are machine-encoded in **`analysis/mainnet_targets.json`**
+and scored against a run by `analysis/topology_metrics.py --targets`, which
+prints each metric's measured-in-run value beside the literature target, the
+S13 crawl value where one exists, and a `PASS`/`FAIL`/`info` verdict. Four
+conclusions come out of reconciling S13 against the literature:
+
+1. **Most graph-structure metrics are not externally measurable, so they stay
+   literature-anchored.** A crawl sees advertised peerlists, not links (§4b,
+   §7): outbound-degree distribution, connection-graph top-13.2% share, hub
+   coverage/overlap, assortativity and modularity all keep their S1–S11 targets.
+   The peerlist-graph analogs S13 *can* compute (top-13.2% = 31.6%, top-14
+   coverage = 17.4%) are recorded in the JSON but flagged not-comparable, never
+   used as the target. The replica's own logs are the ground truth that
+   validates these — that is the point of stage 2.
+2. **`prefix_sharing: fraction 0.31` is confirmed by measurement** (densest 12%
+   of /24s hold 30.8% of honest nodes).
+3. **The spy regime has changed since the literature.** S4's ~17–20% spy slot
+   share is stale: 73.7% of *reachable IPs* are now one actor's fleet (AS401476
+   Spruce Creek). Spy-slot targets are therefore `info` (not pass/fail) — the
+   replica's spy share is a stage-3 placement choice, bounded below by a
+   defended node (≈0%, our poll) and above by the undefended reachable-IP share.
+4. **Measured geography (US 64% / EU ≈20%) runs against the S1-derived region
+   weights (NA 58 / EU 30).** Recorded in the JSON `_context` as a candidate
+   scenario retune, not a topology_metrics target (region only affects latency).
+
 ## 5. Geography and hosting
 
 - **By class (S1, 2018).** No later source publishes numbers, and S5 only says

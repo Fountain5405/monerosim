@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Stage-2 validation metrics: compare an archived run's connection graph
-against the mainnet-topology literature targets (S1-S11).
+against the mainnet-topology targets. Per-metric targets -- the literature
+point-estimates (S1-S11) plus our own 2026 crawl measurement (S13) where a
+crawl can observe the quantity -- live in analysis/mainnet_targets.json and
+are printed with a PASS/FAIL/info verdict per row (override with --targets;
+if the file is missing the tool falls back to the literature-only table).
 
 Spec: docs/superpowers/specs/2026-09-23-mainnet-replica-design.md #6
-Numbers: docs/20260923_mainnet_topology_literature.md
+Numbers: docs/20260923_mainnet_topology_literature.md ; analysis/mainnet_targets.json
 
 Reads monitor-level daemon logs (net.p2p.msg lines, the same bracketed
 `[<ip>:<port> INC|OUT]` tokens analysis/conn_matrix.py parses -- this module
@@ -43,7 +47,7 @@ snapshots.
 Usage:
     python3 analysis/topology_metrics.py <archive_dir> [--window 300]
         [--from SECONDS] [--to SECONDS] [--hubs id1,id2,...] [--top-k N]
-        [--json out.json]
+        [--targets PATH] [--json out.json]
 """
 import argparse
 import json
@@ -468,61 +472,142 @@ def fmt(agg, pct=True, digits=1):
     return "%.*f%s (%.*f-%.*f)" % (digits, agg["median"], suffix, digits, agg["min"], digits, agg["max"])
 
 
-# (label, extractor, target, source, is_percentage)
+# Per-metric targets (literature S1-S11 + our 2026 crawl S13) live in
+# analysis/mainnet_targets.json, keyed by the first field of each TABLE_ROW.
+DEFAULT_TARGETS_PATH = Path(__file__).resolve().parent / "mainnet_targets.json"
+
+
+def load_targets(path=None):
+    """{metric_key: entry} from mainnet_targets.json's "metrics" block.
+
+    Returns {} if the file is absent, so the tool still runs -- rendering the
+    plain fallback table with the literature targets hardcoded in TABLE_ROWS.
+    """
+    p = Path(path) if path else DEFAULT_TARGETS_PATH
+    if not p.is_file():
+        return {}
+    with open(p) as fh:
+        return json.load(fh).get("metrics", {})
+
+
+def verdict(value, target):
+    """PASS / FAIL / info / n/a for one measured median against a target spec.
+
+    kinds: point (|value-v|<=tolerance_abs), range ([lo,hi] inclusive),
+    min (>=v), max (<=v), info (scenario-dependent / n=1: never pass-fail).
+    Returns "" when no usable target is given.
+    """
+    if value is None:
+        return "n/a"
+    if not target:
+        return ""
+    kind = target.get("kind")
+    if kind == "info":
+        return "info"
+    if kind == "point":
+        v, tol = target.get("value"), target.get("tolerance_abs")
+        if v is None or tol is None:
+            return ""
+        return "PASS" if abs(value - v) <= tol else "FAIL"
+    if kind == "range":
+        lo, hi = target["value"]
+        return "PASS" if lo <= value <= hi else "FAIL"
+    if kind == "min":
+        return "PASS" if value >= target["value"] else "FAIL"
+    if kind == "max":
+        return "PASS" if value <= target["value"] else "FAIL"
+    return ""
+
+
+# (metric_key, label, extractor, literature_fallback, source_fallback, is_percentage)
+# literature_fallback/source_fallback are used only when mainnet_targets.json
+# is missing; otherwise the literature/2026/source columns come from the JSON.
 TABLE_ROWS = [
-    ("Outbound-degree share, light (<=12), absolute thresholds",
+    ("degree_light_abs", "Outbound-degree share, light (<=12), absolute thresholds",
      lambda r: aggregate(s["degree_class_shares_absolute"]["light_pct"] for s in r["per_snapshot"]),
      "86.8%", "S1", True),
-    ("Outbound-degree share, medium, absolute thresholds",
+    ("degree_medium_abs", "Outbound-degree share, medium, absolute thresholds",
      lambda r: aggregate(s["degree_class_shares_absolute"]["medium_pct"] for s in r["per_snapshot"]),
      "12.5%", "S1", True),
-    ("Outbound-degree share, heavy, absolute thresholds",
+    ("degree_heavy_abs", "Outbound-degree share, heavy, absolute thresholds",
      lambda r: aggregate(s["degree_class_shares_absolute"]["heavy_pct"] for s in r["per_snapshot"]),
      "0.7%", "S1", True),
-    ("Outbound-degree share, light (<=12), N-scaled thresholds",
+    ("degree_light_scaled", "Outbound-degree share, light (<=12), N-scaled thresholds",
      lambda r: aggregate(s["degree_class_shares_scaled"]["light_pct"] for s in r["per_snapshot"]),
      "86.8%", "S1", True),
-    ("Outbound-degree share, medium (<=0.07N), N-scaled thresholds",
+    ("degree_medium_scaled", "Outbound-degree share, medium (<=0.07N), N-scaled thresholds",
      lambda r: aggregate(s["degree_class_shares_scaled"]["medium_pct"] for s in r["per_snapshot"]),
      "12.5%", "S1", True),
-    ("Outbound-degree share, heavy (>0.25N), N-scaled thresholds",
+    ("degree_heavy_scaled", "Outbound-degree share, heavy (>0.25N), N-scaled thresholds",
      lambda r: aggregate(s["degree_class_shares_scaled"]["heavy_pct"] for s in r["per_snapshot"]),
      "0.7%", "S1", True),
-    ("Connection share held by top 13.2% of nodes (total degree)",
+    ("top_share", "Connection share held by top 13.2% of nodes (total degree)",
      lambda r: aggregate(s["top_k_connection_share_pct"] for s in r["per_snapshot"]),
      "~83%", "S1", True),
-    ("Hub coverage (share of non-hub nodes adjacent to a hub)",
+    ("hub_coverage", "Hub coverage (share of non-hub nodes adjacent to a hub)",
      lambda r: aggregate(s["hub_coverage_pct"] for s in r["per_snapshot"]),
      "~82%", "S2", True),
-    ("Hub neighbour overlap (median across hubs)",
+    ("hub_overlap", "Hub neighbour overlap (median across hubs)",
      lambda r: aggregate(s["hub_neighbour_overlap_pct"] for s in r["per_snapshot"]),
      ">91%", "S2", True),
-    ("Degree assortativity",
+    ("assortativity", "Degree assortativity",
      lambda r: aggregate(s["degree_assortativity"] for s in r["per_snapshot"]),
      "~-0.28", "S3", False),
-    ("Modularity (greedy)",
+    ("modularity", "Modularity (greedy)",
      lambda r: aggregate(s["modularity_greedy"] for s in r["per_snapshot"]),
      "~0.09", "S11", False),
-    ("Inbound connections per reachable honest node",
+    ("inbound_per_reachable", "Inbound connections per reachable honest node",
      lambda r: aggregate(s["inbound_per_reachable_honest"] for s in r["per_snapshot"]),
      "50-100", "S10", False),
-    ("Spy share of honest inbound slots",
+    ("spy_inbound", "Spy share of honest inbound slots",
      lambda r: aggregate(s["spy_share_inbound_pct"] for s in r["per_snapshot"]),
      "~20%", "S4", True),
-    ("Spy share of honest outbound slots",
+    ("spy_outbound", "Spy share of honest outbound slots",
      lambda r: aggregate(s["spy_share_outbound_pct"] for s in r["per_snapshot"]),
      "<=15%", "S4", True),
-    ("Spy share of peerlist entries (observer dumps)",
+    ("spy_peerlist", "Spy share of peerlist entries (observer dumps)",
      lambda r: aggregate(r["peerlist_spy_share_pct_per_snapshot"]),
      "~17%", "S4", True),
 ]
 
 
-def render_markdown(result):
-    lines = ["| metric | measured (median, range) | target | source |",
-             "|---|---|---|---|"]
-    for label, fn, target, source, pct in TABLE_ROWS:
-        lines.append("| %s | %s | %s | %s |" % (label, fmt(fn(result), pct=pct), target, source))
+def scorecard(result, targets):
+    """[{key,label,measured_median,verdict}, ...] + PASS/FAIL/info/na tallies."""
+    rows, tally = [], {"PASS": 0, "FAIL": 0, "info": 0, "n/a": 0}
+    for key, label, fn, _lit_fb, _src_fb, _pct in TABLE_ROWS:
+        agg = fn(result)
+        med = agg["median"] if agg else None
+        v = verdict(med, targets.get(key, {}).get("target"))
+        rows.append({"key": key, "label": label, "measured_median": med, "verdict": v})
+        if v in tally:
+            tally[v] += 1
+    return {"rows": rows, "tally": tally}
+
+
+def render_markdown(result, targets=None):
+    """Score table. With targets (mainnet_targets.json) loaded, the columns are
+    measured | literature | 2026 crawl (S13) | verdict | src. Without it, the
+    original measured | target | source fallback (keeps the tool runnable if
+    the JSON is missing)."""
+    targets = targets or {}
+    if not targets:
+        lines = ["| metric | measured (median, range) | target | source |",
+                 "|---|---|---|---|"]
+        for key, label, fn, lit_fb, src_fb, pct in TABLE_ROWS:
+            lines.append("| %s | %s | %s | %s |" % (label, fmt(fn(result), pct=pct), lit_fb, src_fb))
+        return "\n".join(lines)
+
+    lines = ["| metric | measured in run (median, range) | literature | 2026 crawl (S13) | verdict | src |",
+             "|---|---|---|---|---|---|"]
+    for key, label, fn, lit_fb, src_fb, pct in TABLE_ROWS:
+        agg = fn(result)
+        med = agg["median"] if agg else None
+        t = targets.get(key, {})
+        lit = t.get("literature", {}).get("display", lit_fb)
+        meas = t.get("measured_2026", {}).get("display", "n/a")
+        src = t.get("literature", {}).get("source", src_fb)
+        lines.append("| %s | %s | %s | %s | %s | %s |" % (
+            label, fmt(agg, pct=pct), lit, meas, verdict(med, t.get("target")), src))
     return "\n".join(lines)
 
 
@@ -541,16 +626,30 @@ def main(argv=None):
     parser.add_argument("--top-k", type=int, default=None,
                          help="use the top-K nodes by total degree as hubs instead of --hubs")
     parser.add_argument("--json", default=None, help="write full metrics + params to this path")
+    parser.add_argument("--targets", default=None,
+                         help="targets JSON (default: analysis/mainnet_targets.json; "
+                              "if absent, prints the plain literature-target table)")
     args = parser.parse_args(argv)
 
     hubs = args.hubs.split(",") if args.hubs else None
     result = analyze(args.archive, args.window, t_from=args.t_from, t_to=args.t_to,
                       hubs=hubs, top_k=args.top_k)
+    targets = load_targets(args.targets)
 
     print("archive: %s" % result["archive"])
     print("window params: %s" % result["params"])
     print()
-    print(render_markdown(result))
+    print(render_markdown(result, targets))
+
+    if targets:
+        card = scorecard(result, targets)
+        t = card["tally"]
+        print("\nverdict: %d PASS, %d FAIL, %d info, %d n/a "
+              "(info = scenario-dependent or n=1; see mainnet_targets.json)"
+              % (t["PASS"], t["FAIL"], t["info"], t["n/a"]))
+        result["scorecard"] = card
+    else:
+        print("\n(no targets file loaded; showing literature fallbacks only)")
 
     if args.json:
         with open(args.json, "w") as fh:

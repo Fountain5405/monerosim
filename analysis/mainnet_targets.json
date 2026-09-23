@@ -1,0 +1,165 @@
+{
+  "_meta": {
+    "description": "Stage-2 validation targets for the mainnet replica. One entry per row of topology_metrics.py's TABLE_ROWS, keyed by metric_key. Each carries the literature point-estimate (S1-S11) AND, where a crawl can observe it, our own 2026-09-23 measurement (S13), so the replica is scored against the best available target with its provenance visible.",
+    "literature_source": "docs/20260923_mainnet_topology_literature.md (S1-S11)",
+    "measured_source": "S13: our 2026-09-23 crawl + LAN-node poll, ~/basement_monerosim/20260923_mainnet_observation/crawl/report.json",
+    "generated": "2026-09-23",
+    "regenerate": "measured_2026 values are transcribed from crawl/report.json; re-run analysis/mainnet/{crawl,poll,enrich_asn,summarize}.py and re-transcribe if the crawl is repeated.",
+    "verdict_kinds": "point (|measured-value|<=tolerance_abs), range ([lo,hi] inclusive), min (>=value), max (<=value), info (no pass/fail: value is scenario-dependent or n=1)."
+  },
+
+  "_context": {
+    "note": "S13 findings that reconcile the design assumptions but do not map onto a per-node replica metric. Recorded here as the measured baseline's context.",
+    "reachability_of_probed": {
+      "value": 0.452,
+      "detail": "18026 reachable / 39885 probed IPs. NOT the same denominator as general.reachable_fraction (share of ACTIVE nodes accepting inbound, literature ~0.15): most unreachable probed IPs are stale/NAT peerlist entries. Do not set reachable_fraction from this number."
+    },
+    "spy_fleet": {
+      "reachable_ip_share": 0.737,
+      "ip_count": 13281,
+      "distinct_24s": 63,
+      "dominant_asn": "AS401476 (SCNL-1-0001 - Spruce Creek Networks LLC, US)",
+      "dominant_asn_share": 0.996,
+      "detail": "VALIDATES the design assumption of clustered spies in dense /24s within a single ASN. The replica places real-node spies (variant R) in dense /24s (topology_node 828-833) -- this is the mainnet analog, scaled down.  peer-id-mismatch alone labels 0.686; the ban list labels 0.737; support-flags-absent only 0.032 (few proxies omit flags in 2026)."
+    },
+    "honest_prefix_top12pct_share": {
+      "value": 0.308,
+      "validates": "network.distribution.prefix_sharing.fraction (currently 0.31) -- measured 0.308 of honest nodes in the top 12% of /24s. Good match; no change indicated.",
+      "distinct_24s": 3732,
+      "n_top_24s": 448
+    },
+    "honest_geography": {
+      "country_shares": {"US": 0.641, "DE": 0.089, "LT": 0.031, "FR": 0.030, "NL": 0.017, "CA": 0.016, "GB": 0.016, "RU": 0.015, "SG": 0.015, "AU": 0.012},
+      "detail": "Regionally ~NA 0.66 / EU 0.20 / asia ~0.03 / oceania ~0.01 (top-10 countries; tail unshown). The scenario's weights (north_america 58 / europe 30 / asia 9 / oceania 3) run EU high and NA low vs this. Candidate scenario retune, NOT a topology_metrics target. Note: DigitalOcean AS14061 alone holds 0.446 of honest nodes -- hosting-provider concentration the region weights don't capture."
+    },
+    "conn_duration_our_node": {
+      "outbound_median_s": 1082,
+      "inbound_median_s": 596,
+      "over_6h_share": 0.0,
+      "detail": "One LAN node, small n (28 out / 35 in). Connection-duration + >6h tail are OUT OF SCOPE for topology_metrics.py (see its docstring); validated separately with analysis/ruck_analysis_turnover.r. Recorded for cross-reference: median ~18min out / ~10min in is in the ballpark of the topology study's ~23min."
+    }
+  },
+
+  "metrics": {
+    "degree_light_abs": {
+      "label": "Outbound-degree share, light (<=12), absolute thresholds",
+      "literature": {"value": 86.8, "display": "86.8%", "source": "S1"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "A crawl observes peerlists, not each node's actual outbound connection count; outbound-degree distribution is not externally measurable. Literature retained."},
+      "target": {"kind": "point", "value": 86.8, "tolerance_abs": 7.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "degree_medium_abs": {
+      "label": "Outbound-degree share, medium, absolute thresholds",
+      "literature": {"value": 12.5, "display": "12.5%", "source": "S1"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "not externally measurable (see degree_light_abs)"},
+      "target": {"kind": "point", "value": 12.5, "tolerance_abs": 7.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "degree_heavy_abs": {
+      "label": "Outbound-degree share, heavy, absolute thresholds",
+      "literature": {"value": 0.7, "display": "0.7%", "source": "S1"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "not externally measurable (see degree_light_abs)"},
+      "target": {"kind": "point", "value": 0.7, "tolerance_abs": 2.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "degree_light_scaled": {
+      "label": "Outbound-degree share, light (<=12), N-scaled thresholds",
+      "literature": {"value": 86.8, "display": "86.8%", "source": "S1"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "not externally measurable (see degree_light_abs)"},
+      "target": {"kind": "point", "value": 86.8, "tolerance_abs": 7.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "degree_medium_scaled": {
+      "label": "Outbound-degree share, medium (<=0.07N), N-scaled thresholds",
+      "literature": {"value": 12.5, "display": "12.5%", "source": "S1"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "not externally measurable (see degree_light_abs)"},
+      "target": {"kind": "point", "value": 12.5, "tolerance_abs": 7.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "degree_heavy_scaled": {
+      "label": "Outbound-degree share, heavy (>0.25N), N-scaled thresholds",
+      "literature": {"value": 0.7, "display": "0.7%", "source": "S1"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "not externally measurable (see degree_light_abs)"},
+      "target": {"kind": "point", "value": 0.7, "tolerance_abs": 2.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "top_share": {
+      "label": "Connection share held by top 13.2% of nodes (total degree)",
+      "literature": {"value": 83.0, "display": "~83%", "source": "S1"},
+      "measured_2026": {"value": 31.6, "display": "31.6% (peerlist)", "source": "S13", "method": "top_13_2pct_edge_share of the peerlist-adjacency graph (who lists whom), n=39484. CAVEAT: a peerlist graph is far more even than the connection graph S1 measured (everyone lists ~150 peers), so this is NOT comparable to the 83% connection-graph target and must not replace it. Shown to document that the connection graph cannot be reconstructed from peerlists."},
+      "target": {"kind": "point", "value": 83.0, "tolerance_abs": 12.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "hub_coverage": {
+      "label": "Hub coverage (share of non-hub nodes adjacent to a hub)",
+      "literature": {"value": 82.0, "display": "~82%", "source": "S2"},
+      "measured_2026": {"value": 17.4, "display": "17.4% (peerlist,top14)", "source": "S13", "method": "hub_coverage_top14 on the peerlist-adjacency graph: share of nodes with a top-14-by-peerlist-degree node among their peerlist entries. CAVEAT: peerlist-degree hubs are not S2's connection-count supernodes, and peerlist adjacency is not the connection graph; not comparable to the 82% target. Retained literature."},
+      "target": {"kind": "point", "value": 82.0, "tolerance_abs": 15.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "hub_overlap": {
+      "label": "Hub neighbour overlap (median across hubs)",
+      "literature": {"value": 91.0, "display": ">91%", "source": "S2"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "requires the connection graph; not externally measurable"},
+      "target": {"kind": "min", "value": 91.0},
+      "unit": "pct",
+      "verdict_against": "literature"
+    },
+    "assortativity": {
+      "label": "Degree assortativity",
+      "literature": {"value": -0.28, "display": "~-0.28", "source": "S3"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "requires the connection graph; the peerlist graph's assortativity is not comparable and was not computed"},
+      "target": {"kind": "point", "value": -0.28, "tolerance_abs": 0.15},
+      "unit": "raw",
+      "verdict_against": "literature"
+    },
+    "modularity": {
+      "label": "Modularity (greedy)",
+      "literature": {"value": 0.09, "display": "~0.09", "source": "S11"},
+      "measured_2026": {"value": null, "display": "n/a", "source": "S13", "method": "requires the connection graph; not externally measurable"},
+      "target": {"kind": "point", "value": 0.09, "tolerance_abs": 0.06},
+      "unit": "raw",
+      "verdict_against": "literature"
+    },
+    "inbound_per_reachable": {
+      "label": "Inbound connections per reachable honest node",
+      "literature": {"value": [50, 100], "display": "50-100", "source": "S10"},
+      "measured_2026": {"value": 36, "display": "36 (our node,n=1)", "source": "S13", "method": "inbound median of our single LAN node over 48 poll ticks (day 1 of 7). n=1 node: one node's inbound depends on its uptime/advertisement, so this is a weak reference below the S10 band, not a retarget. The 7-day poll may raise it."},
+      "target": {"kind": "range", "value": [50, 100]},
+      "unit": "raw",
+      "verdict_against": "literature"
+    },
+    "spy_inbound": {
+      "label": "Spy share of honest inbound slots",
+      "literature": {"value": 20.0, "display": "~20%", "source": "S4"},
+      "measured_2026": {"value": null, "display": "0% defended / 74% of reachable IPs", "source": "S13", "method": "REGIME CHANGE. Our ban-list-defended LAN node saw 0% spy inbound; but the crawl finds 73.7% of REACHABLE IPs are the Spruce Creek fleet, so an UNDEFENDED node's inbound would be spy-dominated. The replica's actual spy inbound share is a function of how many reachable spies it places (a stage-3 design choice), so no hard pass/fail here."},
+      "target": {"kind": "info"},
+      "unit": "pct",
+      "verdict_against": "measured_2026"
+    },
+    "spy_outbound": {
+      "label": "Spy share of honest outbound slots",
+      "literature": {"value": 15.0, "display": "<=15%", "source": "S4"},
+      "measured_2026": {"value": null, "display": "0% defended", "source": "S13", "method": "0% at our defended node. Scenario-dependent (spy placement); no hard pass/fail. See spy_inbound regime note."},
+      "target": {"kind": "info"},
+      "unit": "pct",
+      "verdict_against": "measured_2026"
+    },
+    "spy_peerlist": {
+      "label": "Spy share of peerlist entries (observer dumps)",
+      "literature": {"value": 17.0, "display": "~17%", "source": "S4"},
+      "measured_2026": {"value": null, "display": "0% defended / 74% net reachable-IPs", "source": "S13", "method": "0% in our defended node's white/gray lists; 73.7% of network reachable IPs are spies. Scenario-dependent; no hard pass/fail. See spy_inbound regime note."},
+      "target": {"kind": "info"},
+      "unit": "pct",
+      "verdict_against": "measured_2026"
+    }
+  }
+}

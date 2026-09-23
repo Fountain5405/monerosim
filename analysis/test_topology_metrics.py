@@ -341,3 +341,101 @@ def test_default_window_bounds_falls_back_when_stop_before_bootstrap():
     t_from, t_to = tm.default_window_bounds(general)
     assert t_from == 3600
     assert t_to == 3600 + 3600
+
+
+# ---------------------------------------------------------------------------
+# Measured baseline: mainnet_targets.json + verdict / scorecard / render
+# ---------------------------------------------------------------------------
+
+def _snap(**over):
+    """One per-snapshot metrics dict sitting on the literature target values
+    (so the default scorecard is all-PASS); override any top-level key."""
+    s = {
+        "degree_class_shares_absolute": {"light_pct": 86.8, "medium_pct": 12.5, "heavy_pct": 0.7},
+        "degree_class_shares_scaled": {"light_pct": 86.8, "medium_pct": 12.5, "heavy_pct": 0.7},
+        "top_k_connection_share_pct": 83.0,
+        "hub_coverage_pct": 82.0,
+        "hub_neighbour_overlap_pct": 95.0,
+        "degree_assortativity": -0.28,
+        "modularity_greedy": 0.09,
+        "inbound_per_reachable_honest": 60,
+        "spy_share_inbound_pct": 20.0,
+        "spy_share_outbound_pct": 10.0,
+    }
+    s.update(over)
+    return s
+
+
+def _result(snap=None, peerlist=None):
+    return {"per_snapshot": [snap or _snap()],
+            "peerlist_spy_share_pct_per_snapshot": [17.0] if peerlist is None else peerlist}
+
+
+def test_targets_json_covers_every_table_row():
+    # load_targets() with no arg loads the shipped analysis/mainnet_targets.json.
+    targets = tm.load_targets()
+    assert targets, "mainnet_targets.json should ship next to the module"
+    keys = {row[0] for row in tm.TABLE_ROWS}
+    missing = keys - set(targets)
+    assert not missing, "every TABLE_ROW key needs a targets entry; missing %s" % missing
+    for k in keys:
+        e = targets[k]
+        assert "literature" in e and "measured_2026" in e and "target" in e
+        assert "kind" in e["target"]
+
+
+def test_load_targets_missing_file_returns_empty(tmp_path):
+    assert tm.load_targets(tmp_path / "nope.json") == {}
+
+
+@pytest.mark.parametrize("value,target,expected", [
+    (86.8, {"kind": "point", "value": 86.8, "tolerance_abs": 7}, "PASS"),
+    (78.0, {"kind": "point", "value": 86.8, "tolerance_abs": 7}, "FAIL"),   # off by 8.8 > 7
+    (60, {"kind": "range", "value": [50, 100]}, "PASS"),
+    (36, {"kind": "range", "value": [50, 100]}, "FAIL"),
+    (100, {"kind": "range", "value": [50, 100]}, "PASS"),                    # inclusive
+    (95, {"kind": "min", "value": 91}, "PASS"),
+    (80, {"kind": "min", "value": 91}, "FAIL"),
+    (10, {"kind": "max", "value": 15}, "PASS"),
+    (20, {"kind": "max", "value": 15}, "FAIL"),
+    (5, {"kind": "info"}, "info"),
+    (None, {"kind": "point", "value": 1, "tolerance_abs": 1}, "n/a"),
+    (5, {}, ""),
+    (5, {"kind": "point", "value": None, "tolerance_abs": 1}, ""),
+])
+def test_verdict(value, target, expected):
+    assert tm.verdict(value, target) == expected
+
+
+def test_scorecard_all_pass_on_target_values():
+    targets = tm.load_targets()
+    card = tm.scorecard(_result(), targets)
+    t = card["tally"]
+    assert t["FAIL"] == 0 and t["n/a"] == 0
+    assert t["info"] == 3            # spy inbound/outbound/peerlist are scenario-dependent
+    assert t["PASS"] == len(tm.TABLE_ROWS) - t["info"]
+
+
+def test_scorecard_flags_out_of_band_values():
+    targets = tm.load_targets()
+    snap = _snap(degree_assortativity=0.5, inbound_per_reachable_honest=36)
+    card = tm.scorecard(_result(snap), targets)
+    by_key = {r["key"]: r["verdict"] for r in card["rows"]}
+    assert by_key["assortativity"] == "FAIL"          # +0.5 vs ~-0.28
+    assert by_key["inbound_per_reachable"] == "FAIL"  # 36 below [50,100]
+    assert by_key["degree_light_abs"] == "PASS"       # untouched
+    assert card["tally"]["FAIL"] >= 2
+
+
+def test_render_markdown_with_targets_has_verdict_and_measured_columns():
+    out = tm.render_markdown(_result(), tm.load_targets())
+    assert "verdict" in out and "2026 crawl (S13)" in out
+    assert "PASS" in out and "info" in out
+    # the shipped crawl measurement is surfaced (peerlist top-13.2% edge share)
+    assert "31.6% (peerlist)" in out
+
+
+def test_render_markdown_without_targets_falls_back():
+    out = tm.render_markdown(_result(), {})
+    assert out.splitlines()[0] == "| metric | measured (median, range) | target | source |"
+    assert "verdict" not in out
