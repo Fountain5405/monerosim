@@ -93,6 +93,21 @@
 
 ### Fixed
 
+- **Bare binary invocations no longer default into a shared `/tmp` namespace.**
+  With `MONEROSIM_SHARED_DIR` / `MONEROSIM_DAEMON_DATA_DIR` unset, the
+  generator used to default `general.shared_dir` / `general.daemon_data_dir`
+  to the fixed, unnamespaced `/tmp/monerosim_shared` / `/tmp` — a real hazard
+  on a shared box (another user's `/tmp/monerosim_shared` from their own
+  simulations sat at that exact path). It now mints one run id per process
+  (`<UTC timestamp>_<config-file-stem>_<pid>`) and defaults to
+  `/tmp/monerosim-<run id>` / `/tmp/monerosim-<run id>/shared`, the same
+  per-run namespace shape `run_sim.sh` already sets up. Precedence unchanged:
+  explicit config value > env var > this generated default. Belt-and-braces:
+  `fix_permissions_recursive` / `remove_dir_with_permissions` now refuse
+  (`PermissionDenied`) to chmod or `rm -rf` any existing directory not owned
+  by the current uid, applied to the output dir, shared dir, and the
+  `{daemon_data_dir}/monero-*` stale-cleanup loop. See
+  `docs/20260721_per_run_tmp_namespacing.md` §6a.
 - **Success criteria are tri-state and no longer misreport mining-only runs.**
   The monitor marked `transactions_created_broadcast` / `transactions_in_blocks`
   FAIL on any config without a transaction workload — 36 of 111 clean runs in the

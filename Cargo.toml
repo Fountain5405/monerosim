@@ -47,6 +47,9 @@ zstd = "0.13"
 # Date/time handling for log timestamps
 chrono = { version = "0.4", features = ["serde"] }
 
+# uid lookups for the /tmp ownership guard
+libc = "0.2"
+
 [dev-dependencies]
 # Temporary files for testing
 tempfile = "3.8"

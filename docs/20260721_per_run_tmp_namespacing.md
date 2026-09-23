@@ -130,6 +130,48 @@ goldens regenerated (the process env map now carries the two `MONEROSIM_*`
 vars); full cargo + pytest suites pass; quickstart smoke gate 19/19 PASS
 on the final state.
 
+## 6a. Bare-binary invocations get their own namespace too (2026-09-23)
+
+Point 4 in the precedence list above ("legacy globals `/tmp` /
+`/tmp/monerosim_shared` — still the defaults when the generator runs outside
+`run_sim.sh`") was itself a hazard on a shared box: those two paths are not
+namespaced per-user or per-run, so a bare `./target/release/monerosim
+--config ... --output ...` invocation (no env, e.g. manual debugging, tests
+invoking the binary directly) could try to `rm -rf`/chmod a directory left
+behind by a *different user's* run. Concretely, this box has an
+`/tmp/monerosim_shared` owned by another user's simulations; the old default
+would have pointed straight at it.
+
+Two fixes, in `src/lib.rs` / `src/main.rs`:
+
+- **No more shared legacy defaults.** When `MONEROSIM_SHARED_DIR` /
+  `MONEROSIM_DAEMON_DATA_DIR` are unset, the generator now mints one run id
+  per process — `<UTC YYYYMMDD_HHMMSS>_<config-file-stem>_<pid>` — and
+  defaults to `/tmp/monerosim-<run id>` (daemon data) and
+  `/tmp/monerosim-<run id>/shared` (shared dir), i.e. the *same* per-run
+  namespace shape `run_sim.sh` already used, minted directly by the binary
+  instead of only by the wrapper script. Precedence is otherwise unchanged:
+  explicit `general.*` config value > env var > this generated default.
+  `main` calls `monerosim::set_run_context(<config stem>)` once, before
+  config defaults resolve, so the id is deterministic-ish and traceable to
+  the invoking config; if never called (e.g. library used standalone) the
+  stem falls back to `"config"`.
+- **Ownership guard.** `fix_permissions_recursive` and
+  `remove_dir_with_permissions` (`src/main.rs`) now refuse to chmod or
+  `rm -rf` any existing directory whose owner uid differs from the current
+  process's uid, returning `io::ErrorKind::PermissionDenied` naming the path
+  and both uids, instead of silently proceeding (or worse, succeeding
+  because permissions happened to allow it). This applies to the output dir,
+  the shared dir, and every `{daemon_data_dir}/monero-*` stale-cleanup
+  entry. Non-existent paths are still skipped silently (unchanged).
+
+Caveat: a bare-generated namespace has no live `.owner_pid` breadcrumb (that
+file is written by `run_sim.sh`, not the binary), so `run_sim.sh`'s
+dead-owner sweep may reclaim it on its next start if left lying around
+outside a `run_sim.sh`-managed run dir. Fine for the throwaway/debugging
+invocations this default is for; use `run_sim.sh` (or set the env vars
+explicitly) for anything you want to persist.
+
 ## 6. Notes for older archives / scripts
 
 - Archives are unaffected — analysis tools take archive paths explicitly.
