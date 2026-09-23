@@ -107,6 +107,13 @@ fn is_pinned_reachable(cfg: &AgentConfig) -> bool {
 /// eligible pool; sum <= 1.0 expected, over-assignment is clamped to what's
 /// left). monerod is the implicit default and never appears in the returned map.
 /// Returns agent_id -> impl_id. Empty / all-monerod `fractions` => empty map.
+///
+/// BREAKING (2026-09-23): the sort key is now `finalize_hash(seeded_hash(...))`
+/// instead of the raw FNV-1a value. FNV's high bits are dominated by the
+/// leading bytes of the id, so sorting on the raw hash picked contiguous
+/// id/name blocks (e.g. always the same numeric range of `relay-NNN`) rather
+/// than a well-mixed sample. Same seed still reproduces the same assignment,
+/// but assignments from prior runs will differ.
 fn compute_node_impl_set(
     user_agents: &[(&String, &AgentConfig)],
     seed: u64,
@@ -137,7 +144,7 @@ fn compute_node_impl_set(
         }
         eligible.push(id.to_string());
     }
-    eligible.sort_by_key(|id| seeded_hash(seed, &format!("nodeimpl:{}", id)));
+    eligible.sort_by_key(|id| finalize_hash(seeded_hash(seed, &format!("nodeimpl:{}", id))));
 
     let n = eligible.len();
     let mut cursor = 0usize;
@@ -168,6 +175,11 @@ fn compute_node_impl_set(
 /// global fraction; `by_role` overrides it per role (override semantics, NOT
 /// multiply). For each role, `round((1 - r) * count)` agents are marked
 /// unreachable, chosen deterministically by seeded hash so runs reproduce.
+///
+/// BREAKING (2026-09-23): the sort key is now `finalize_hash(seeded_hash(...))`
+/// instead of the raw FNV-1a value — see [`compute_node_impl_set`]'s doc for
+/// why (contiguous id blocks, not a uniform sample). Same seed still
+/// reproduces the same set, but the set itself differs from prior runs.
 fn compute_unreachable_set(
     user_agents: &[(&String, &AgentConfig)],
     seed: u64,
@@ -203,7 +215,7 @@ fn compute_unreachable_set(
         if r >= 1.0 {
             continue; // every node of this role stays reachable
         }
-        ids.sort_by_key(|id| seeded_hash(seed, id));
+        ids.sort_by_key(|id| finalize_hash(seeded_hash(seed, id)));
         let n_unreach = (((1.0 - r) * ids.len() as f64).round() as usize).min(ids.len());
         for id in ids.into_iter().take(n_unreach) {
             unreachable.insert(id);
@@ -212,22 +224,28 @@ fn compute_unreachable_set(
     unreachable
 }
 
-/// Map a seeded hash to a uniform float in (0, 1), nudged off the exact
-/// endpoints so the inverse-CDF `ln()` below is always finite.
-///
-/// FNV-1a's avalanche in its *high* bits is poor when only the trailing byte
-/// changes (e.g. the session index in `cs:<id>:<k>`), and we extract the top
-/// 53 bits — so consecutive keys would otherwise yield near-identical draws
-/// (every session the same length). Run the FNV output through a splitmix64
-/// finalizer first: any 1-bit input change then flips ~half the output bits,
+/// splitmix64 finalizer: any 1-bit input change flips ~half the output bits,
 /// giving well-distributed top bits regardless of key layout.
-fn seeded_unit(seed: u64, s: &str) -> f64 {
-    let mut h = seeded_hash(seed, s);
+///
+/// FNV-1a's avalanche in its *high* bits is poor when only a trailing byte
+/// changes (e.g. the session index in `cs:<id>:<k>`, or a numeric id suffix in
+/// `relay-001` vs `relay-002`) — sorting or bucketing on the raw FNV value
+/// selects contiguous blocks of keys instead of a uniform sample. Always run
+/// `seeded_hash` output through this finalizer before using it as a sort key
+/// or a uniform draw.
+fn finalize_hash(mut h: u64) -> u64 {
     h ^= h >> 30;
     h = h.wrapping_mul(0xbf58_476d_1ce4_e5b9);
     h ^= h >> 27;
     h = h.wrapping_mul(0x94d0_49bb_1331_11eb);
     h ^= h >> 31;
+    h
+}
+
+/// Map a seeded hash to a uniform float in (0, 1), nudged off the exact
+/// endpoints so the inverse-CDF `ln()` below is always finite.
+fn seeded_unit(seed: u64, s: &str) -> f64 {
+    let h = finalize_hash(seeded_hash(seed, s));
     let u = (h >> 11) as f64 / (1u64 << 53) as f64; // top 53 bits → [0,1)
     u.clamp(1e-9, 1.0 - 1e-9)
 }
@@ -247,6 +265,11 @@ fn exp_draw(seed: u64, key: &str, mean: f64, min: f64, max: f64) -> f64 {
 /// daemon-down recovery). `fraction` of the eligible set is selected
 /// deterministically by a turnover-namespaced seeded hash, so reachability and
 /// turnover membership are independent.
+///
+/// BREAKING (2026-09-23): the sort key is now `finalize_hash(seeded_hash(...))`
+/// instead of the raw FNV-1a value — see [`compute_node_impl_set`]'s doc for
+/// why (contiguous id blocks, not a uniform sample). Same seed still
+/// reproduces the same set, but the set itself differs from prior runs.
 fn compute_turnover_set(
     user_agents: &[(&String, &AgentConfig)],
     seed: u64,
@@ -278,7 +301,7 @@ fn compute_turnover_set(
         }
         eligible.push(id.to_string());
     }
-    eligible.sort_by_key(|id| seeded_hash(seed, &format!("turnover:{}", id)));
+    eligible.sort_by_key(|id| finalize_hash(seeded_hash(seed, &format!("turnover:{}", id))));
     let n = ((frac * eligible.len() as f64).round() as usize).min(eligible.len());
     for id in eligible.into_iter().take(n) {
         set.insert(id);
@@ -1824,5 +1847,134 @@ mod turnover_tests {
                 );
             }
         }
+    }
+}
+
+/// Regression tests for the 2026-09-23 fix: sort keys for
+/// `compute_node_impl_set` / `compute_unreachable_set` / `compute_turnover_set`
+/// were the raw `seeded_hash` value, whose high bits are dominated by an id's
+/// leading bytes — sorting on it selects contiguous id/name blocks instead of
+/// a uniform sample. The fix runs the hash through `finalize_hash` first.
+#[cfg(test)]
+mod finalize_hash_tests {
+    use super::*;
+
+    /// Minimal relay AgentConfig (daemon, no wallet, no hashrate) via YAML —
+    /// AgentConfig's fields are all Option so a tiny fragment deserializes.
+    fn relay_cfg() -> AgentConfig {
+        serde_yaml::from_str("daemon: monerod\n").expect("relay config parses")
+    }
+
+    /// Minimal user AgentConfig (daemon + wallet, no hashrate).
+    fn user_cfg() -> AgentConfig {
+        serde_yaml::from_str("daemon: monerod\nwallet: monero-wallet-rpc\n")
+            .expect("user config parses")
+    }
+
+    // --- seeded_unit regression: hand-computed against the pre-refactor
+    // implementation (raw FNV-1a run through the same splitmix64 finalizer
+    // inline) so the extraction into `finalize_hash` is proven bit-identical.
+    #[test]
+    fn seeded_unit_regression_values() {
+        let cases: &[(u64, &str, f64)] = &[
+            (12345, "relay-001", 0.3673475940312304),
+            (12345, "cs:relay-042:0", 0.7416440006449243),
+            (999, "turnover:user-007", 0.4060010101044802),
+        ];
+        for (seed, key, expected) in cases {
+            let got = seeded_unit(*seed, key);
+            assert!(
+                (got - expected).abs() < 1e-12,
+                "seeded_unit({seed}, {key:?}) = {got}, expected {expected}"
+            );
+        }
+    }
+
+    /// Sorting `relay-001..relay-790` by the raw seeded_hash concentrates the
+    /// unreachable selection into a couple of ten numeric-suffix deciles
+    /// (empirically [79,40,0,0,0,0,0,0,0,0] of 119) because FNV's high bits
+    /// track the leading "relay-0"/"relay-1"/... bytes. finalize_hash must
+    /// spread the same selection roughly evenly across all ten deciles.
+    #[test]
+    fn uniformity_finalized_sort_key_spreads_across_deciles() {
+        let ids: Vec<(String, AgentConfig)> =
+            (1..=790).map(|i| (format!("relay-{i:03}"), relay_cfg())).collect();
+        let refs: Vec<(&String, &AgentConfig)> =
+            ids.iter().map(|(id, cfg)| (id, cfg)).collect();
+
+        let unreachable = compute_unreachable_set(&refs, 12345, 0.85, None);
+        // reachable=0.85 => round((1-0.85)*790) == 119 unreachable.
+        assert_eq!(unreachable.len(), 119, "expected round(15% of 790) selected");
+
+        let mut deciles = [0usize; 10];
+        for id in &unreachable {
+            let num: usize = id.trim_start_matches("relay-").parse().unwrap();
+            let idx = ((num - 1) * 10 / 790).min(9);
+            deciles[idx] += 1;
+        }
+        for (i, count) in deciles.iter().enumerate() {
+            assert!(
+                (3..=30).contains(count),
+                "decile {i} has {count} of 119 selected (raw hash gives \
+                 [79,40,0,0,0,0,0,0,0,0]) — selection is not uniform"
+            );
+        }
+    }
+
+    /// A prefix/name-based sort must not let group identity determine
+    /// selection: with three "medium-*" groups plus a "relay-*" pool, a 13%
+    /// selection must include at least one and not all of every group.
+    #[test]
+    fn prefix_independence_no_group_all_or_nothing() {
+        let mut ids: Vec<(String, AgentConfig)> = Vec::new();
+        for i in 1..=42 {
+            ids.push((format!("medium-a-{i:03}"), user_cfg()));
+        }
+        for i in 1..=42 {
+            ids.push((format!("medium-b-{i:03}"), user_cfg()));
+        }
+        for i in 1..=41 {
+            ids.push((format!("medium-c-{i:03}"), user_cfg()));
+        }
+        for i in 1..=645 {
+            ids.push((format!("relay-{i:03}"), relay_cfg()));
+        }
+        let refs: Vec<(&String, &AgentConfig)> = ids.iter().map(|(id, cfg)| (id, cfg)).collect();
+
+        // reachable=0.87 => 13% unreachable, split independently per role
+        // (relay vs user) inside compute_unreachable_set, so check via the
+        // turnover set instead: it treats all non-seed/non-miner ids as one
+        // pool, which is what this test wants to exercise.
+        let selected = compute_turnover_set(&refs, 777, 0.13);
+        assert_eq!(selected.len(), 100, "expected 13% of 770 == 100 selected");
+
+        for prefix in ["medium-a", "medium-b", "medium-c", "relay"] {
+            let group_total = ids.iter().filter(|(id, _)| id.starts_with(prefix)).count();
+            let group_selected = selected.iter().filter(|id| id.starts_with(prefix)).count();
+            assert!(
+                group_selected > 0 && group_selected < group_total,
+                "group {prefix} selected {group_selected}/{group_total} \
+                 (0% or 100% means the sort key still tracks name prefix)"
+            );
+        }
+    }
+
+    #[test]
+    fn determinism_same_seed_same_set_different_seed_differs() {
+        let ids: Vec<(String, AgentConfig)> =
+            (1..=200).map(|i| (format!("relay-{i:03}"), relay_cfg())).collect();
+        let refs: Vec<(&String, &AgentConfig)> =
+            ids.iter().map(|(id, cfg)| (id, cfg)).collect();
+
+        let a = compute_turnover_set(&refs, 42, 0.3);
+        let b = compute_turnover_set(&refs, 42, 0.3);
+        assert_eq!(a, b, "same seed must reproduce the same set");
+
+        let c = compute_turnover_set(&refs, 43, 0.3);
+        assert_ne!(c, a, "different seed must (overwhelmingly likely) differ");
+
+        let impl_a = compute_node_impl_set(&refs, 42, &BTreeMap::from([("cuprated".into(), 0.3)]));
+        let impl_b = compute_node_impl_set(&refs, 42, &BTreeMap::from([("cuprated".into(), 0.3)]));
+        assert_eq!(impl_a, impl_b, "same seed must reproduce the same node-impl assignment");
     }
 }
