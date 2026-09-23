@@ -155,6 +155,15 @@ upgrade).
 5. **Vandalism persists under every PoP variant** (net orphan 0.31–0.45
    vs 0.312 stock attack; MSB detectability stays high, z +7.4 to +14.9):
    PoP removes the profit, not the DoS.
+6. **Mid-scale (6 honest miners + 16 relays) settles the rung-3 watch
+   item**: the exact variant's honest-control dip was starvation — at
+   scale the control recovers to 0.367 ≈ α (orphan 0.076), uncle
+   embeddings rise 3 → 17 with miner count as pre-registered, and the
+   countermeasure holds (attacker 0.387 → 0.170, orphaning 0.72).
+   Scale alone also shrinks the stock attacker (0.492 → 0.387 — more
+   honest racers dilute γ≈0 tie luck). Residual exact-variant cost:
+   ~10% honest throughput. Full-scale (12 miners + 32 relays) is the
+   committed senior-box leg.
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -275,6 +284,10 @@ config, so daemon behavior is stock either way.)
 | `20260923_012704_pop_exact__es_exact` | `2c86e6aa`* | `pop_exact` cell | **EXACT uncles: 0.134** — halves the det-tie leak |
 | `20260923_012704_pop_exact__es_uncles_det` | `2c86e6aa`* | `pop_exact` cell | deviated at det-tie: 0.337 (variant A/B) |
 | `20260923_020739_pop_exact__honest_exact` | `2c86e6aa`* | `pop_exact` cell | control dips: 0.322, orphan 0.050 — scale pending |
+| `20260923_023639_pop_scale__es_none` | `ccc44897`* | `pop_scale` cell (mid) | mid-scale stock: 0.387 (scale shrinks the attacker) |
+| `20260923_035522_pop_scale__es_exact` | `ccc44897`* | `pop_scale` cell (mid) | **exact holds at scale: 0.170**, 17 uncle embeddings |
+| `20260923_045220_pop_scale__honest_none` | `ccc44897`* | `pop_scale` cell (mid) | mid control: 0.386 ≈ α |
+| `20260923_160801_pop_scale__honest_exact` | `610158e5`* | `pop_scale` cell (mid) | control recovers at scale: 0.367 ≈ α — the dip was starvation |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
