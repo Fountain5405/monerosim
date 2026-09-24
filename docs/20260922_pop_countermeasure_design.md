@@ -262,27 +262,33 @@ per #144 composes via the existing `--sim-pop-det-tie`.
    network. (Block counts 163–186 across cells: the countermeasure does
    not slow the chain.)
 
-## Rung-3 results (2026-09-23, `matrix_runs/pop_exact/`, 3 × 6 h at α=0.4)
+## Rung-3 results (2026-09-23, `matrix_runs/pop_exact/`, 3 × 6 h at α=0.4;
+## replicated 2026-09-24, `matrix_runs/pop_exact_rep/`)
 
-| cell (all det-tie) | attacker share | att. orphan | note |
+| cell (all det-tie) | attacker share (run1 / run2) | att. orphan | note |
 |---|---|---|---|
 | core (cited, n=2) | 0.244 / 0.296 | | |
-| **`es_exact`** (header uncles) | **0.134** | 0.742 | uncles HALVE the det-tie leak |
-| `es_uncles_det` (deviated uncles) | 0.337 | 0.385 | no help over core |
-| `honest_exact` control | 0.322 vs α=0.400 | 0.113 | ⚠️ first control dip; net orphan 0.050 |
+| `es_exact` (header uncles) | 0.134 / 0.215 | 0.742 / 0.672 | mean 0.175 |
+| `es_uncles_det` (deviated uncles) | 0.337 / 0.209 | 0.385 / 0.610 | mean 0.273 |
+| `honest_exact` control | 0.322 / 0.378 vs α=0.400 | 0.113 / 0.029 | dip does not replicate |
 
 - **The exact-vs-deviated A/B (fixed det-tie) went AGAINST the
-  pre-registered prediction** (exact ≈ deviated): 0.134 vs 0.337. Only 3
-  uncle embeddings occurred — but the trustless weight side also counts
-  uncles whose blocks have LEFT local alt storage after reorgs, where the
-  deviated variant undercounts exactly during the multi-reorg dance
-  following contested releases. In winner-take-all cycles a few decisive
-  weight points move whole cycles. n=1 each — fat-tail caution.
-- **Watch item**: `honest_exact` dipped to 0.322 (other controls: 0.397,
-  0.402, 0.408) with orphaning 2.5× — at 2 honest miners the uncle
-  mechanism has nothing to do and what little it does causes visible
-  weight disagreement between nodes. Scale is the variable that settles
-  whether #144-exact helps or hurts under realistic contention → rung 4.
+  pre-registered prediction** (exact ≈ deviated) at n=1: 0.134 vs 0.337.
+  **The replication (2026-09-24) deflates the gap**: 0.215 vs 0.209 — a
+  dead heat in the paired second draw (per-run diffs −0.203 / +0.006;
+  means 0.175 vs 0.273 with overlapping spreads at σ≈0.06–0.09). The
+  trustless-counting advantage is directionally present on means but
+  NOT resolvable at n=2 — the n=1 "halves the det-tie leak" was
+  substantially run-to-run luck. Report as exact ≤ deviated on means,
+  magnitude unresolved pending n≥3. Mechanism note from run 1 stands:
+  the trustless side counts uncles whose blocks left alt storage after
+  reorgs, where the deviated variant undercounts during the multi-reorg
+  dance — in winner-take-all cycles a few decisive weight points move
+  whole cycles, which is also why single draws are noisy here.
+- **Watch item resolved**: `honest_exact` dipped to 0.322 in run 1
+  (other controls: 0.397, 0.402, 0.408) with orphaning 2.5× — the
+  repeat came in at 0.378 ≈ α with orphan 0.029: the dip was noise, not
+  mechanism. Rung 4's mid-scale recovery (0.367) stands regardless.
 
 ## Rung 4: scale (2026-09-23, `pop_scale`)
 

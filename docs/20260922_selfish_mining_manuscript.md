@@ -124,9 +124,9 @@ upgrade).
 
 | strategy | stock | pop-core (random tie) | pop-core (det tie) | +uncles deviated (random/det) | +uncles EXACT (det) |
 |---|---|---|---|---|---|
-| ES (textbook) | 0.492 | 0.022, 0.123 | 0.244, 0.296 | 0.024 / 0.337 | **0.134** |
+| ES (textbook) | 0.492 | 0.022, 0.123 | 0.244, 0.296 | 0.024 / 0.337, 0.209 | 0.134, 0.215 |
 | conservative lead-2 | 0.309 | — | — | — | — |
-| honest control (share vs α=0.4) | 0.397 | 0.408 | — | 0.402 | 0.322 ⚠️ |
+| honest control (share vs α=0.4) | 0.397 | 0.408 | — | 0.402 | 0.322, 0.378 |
 
 1. **P1 confirmed at ~10× margin**: pop-core nearly eliminates textbook
    ES revenue (0.492 → 0.02–0.12; attacker orphans 97% of finds; 73/77
@@ -143,15 +143,16 @@ upgrade).
    tie (0.244/0.296 vs 0.022/0.123, non-overlapping at n=2). Tie-win
    frequencies alone don't explain it (43% vs 34%) — which ties are won
    (deep vs shallow) does.
-4. **Uncles are a no-op against ES at micro scale** (0.024 ≈ core) but
-   **halve the det-tie leak in the EXACT form** (0.134 vs core's 0.27
-   mean, and vs 0.337 for the DEVIATED node-local variant — the variant
-   A/B against pre-registration). Only 3 embeddings occurred per 6 h: two
-   honest miners essentially never race. The honest_exact control dipped
-   (0.322, orphan 2.5×) — the mechanism starves and what little it does
-   shows as inter-node weight disagreement. Scale (rung 4, in flight:
-   6 miners + 16 relays mid; 12+32 committed for the senior box) is the
-   variable that settles it.
+4. **Uncles are a no-op against ES at micro scale** (0.024 ≈ core), and
+   the exact-vs-deviated variant A/B — the trustless-counting question —
+   is NOT resolvable at n=2: exact {0.134, 0.215} vs deviated {0.337,
+   0.209} (means 0.175 vs 0.273, overlapping spreads; the paired second
+   draw is a dead heat, +0.006). The n=1 reading — "header uncles halve
+   the det-tie leak" — was largely run-to-run luck; report exact ≤
+   deviated on means, magnitude unresolved pending n≥3. Only 3
+   embeddings occurred per 6 h: two honest miners essentially never race
+   (scale is what feeds the mechanism — finding 6). The honest_exact
+   micro dip (0.322) also did not replicate: 0.378 ≈ α, orphan 0.029.
 5. **Vandalism persists under every PoP variant** (net orphan 0.31–0.45
    vs 0.312 stock attack; MSB detectability stays high, z +7.4 to +14.9):
    PoP removes the profit, not the DoS.
@@ -300,6 +301,9 @@ config, so daemon behavior is stock either way.)
 | `20260923_160801_pop_scale__honest_exact` | `610158e5`* | `pop_scale` cell (mid) | control recovers at scale: 0.367 ≈ α — the dip was starvation |
 | `20260923_170500_pop_scale_r2__es_r2_none` | `233ae38d`* | `pop_scale_r2` cell | **lead-2 at scale: 0.477 — out-earns textbook ES** |
 | `20260923_175813_pop_scale_r2__es_r2_exact` | `233ae38d`* | `pop_scale_r2` cell | blind spot partial at scale: 0.353 ≈ break-even |
+| `20260924_030014_pop_exact_rep__es_exact` | `cfd1dd6b`* | `pop_exact_rep` cell | exact rep: 0.215 — n=1 A/B gap deflates |
+| `20260924_030014_pop_exact_rep__es_uncles_det` | `cfd1dd6b`* | `pop_exact_rep` cell | deviated rep: 0.209 (paired dead heat) |
+| `20260924_034156_pop_exact_rep__honest_exact` | `cfd1dd6b`* | `pop_exact_rep` cell | control rep: 0.378 ≈ α — micro dip was noise |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
