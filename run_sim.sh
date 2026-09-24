@@ -53,6 +53,7 @@ PREFLIGHT_ONLY=false      # if true, exit after preflight without touching shado
 NO_ARCHIVE=false          # if true, skip the post-sim archive step (shadow.data, daemon logs,
                           # blockchain snapshots, summary report). Still cleans the run's
                           # daemon data dirs unless --no-clean is also set.
+ALLOW_SHARED_PATHS=false  # if true, proceed even when a pinned shared/daemon dir is already in use
 NO_CLEAN=false            # if true, skip the daemon-data-dir cleanup so the user can dig
                           # through raw blockchain DBs / config files / etc. by hand.
 
@@ -100,6 +101,13 @@ Options:
                          also set). Pre-run artifacts (input_config.yaml,
                          shadow_agents.yaml, build.log, monerosim.log,
                          shadow_run.log) are still kept under archive_runs/.
+  --allow-shared-paths   Proceed even if the config pins general.shared_dir /
+                         general.daemon_data_dir to a path that already holds
+                         another run's state. Pinned paths opt out of the
+                         per-run /tmp isolation: runs sharing one will wipe,
+                         archive and delete each other's registry, wallets
+                         and daemon dirs. Default: warn if pinned, refuse if
+                         pinned AND in use.
   --no-clean             Skip the daemon-data-dir cleanup. The raw daemon
                          data directories (blockchain LMDB, monerod config,
                          and — with --no-archive also — bitmonero.log and
@@ -176,6 +184,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-clean)
             NO_CLEAN=true
+            shift
+            ;;
+        --allow-shared-paths)
+            ALLOW_SHARED_PATHS=true
             shift
             ;;
         --archive-blockchain)
@@ -992,6 +1004,10 @@ build_and_generate() {
         log_warn "Remove with 'rm -rf /tmp/monero-*' if no old-version run is live."
     fi
 
+    # Before anything is created under /tmp: does this config opt out of
+    # the per-run namespace? (Generation would wipe a pinned shared dir.)
+    check_pinned_paths
+
     # RUN_ID is only unique per ARCHIVE_BASE; a same-second launch under a
     # different --archive-dir/MONEROSIM_ARCHIVE_BASE (or from another
     # checkout) can pick the same RUN_TMP_DIR. Plain mkdir (no -p) makes that
@@ -1680,6 +1696,61 @@ copy_blockchain_snapshot() {
     else
         log_warn "No blockchain data for $node_name at $lmdb_dir"
     fi
+}
+
+# Pinned shared/daemon dirs opt a run out of the per-run /tmp namespace.
+# An explicit general.shared_dir / general.daemon_data_dir in the YAML beats
+# the MONEROSIM_* defaults run_sim.sh exports; a pre-set MONEROSIM_* env var
+# does the same one level up. Either way the run's registry, wallets and
+# daemon dirs land somewhere another run may also be using — the generator
+# wipes the shared dir before generating, archive_results() carries off
+# whatever is in it at the end, and cleanup_tmp_monero rm -rf's
+# <daemon_data_dir>/monero-*. Other users' dirs are protected by the
+# generator's uid guard and filesystem permissions; the caller's OWN other
+# runs are not. So: warn whenever a path is pinned, refuse when the pinned
+# path already holds run state unless --allow-shared-paths says otherwise.
+# Runs before anything is created under /tmp, so refusing leaves no trace
+# beyond the archive run dir, which it removes.
+check_pinned_paths() {
+    local pin_shared pin_daemon
+    read -r pin_shared pin_daemon <<< "$(python3 scripts/run_sim_helpers.py pinned-paths "$CONFIG" 2>/dev/null || echo "- -")"
+    [[ "$pin_shared" == "-" ]] && pin_shared=""
+    [[ "$pin_daemon" == "-" ]] && pin_daemon=""
+    # Effective paths: YAML explicit > env (already in SHARED_DIR /
+    # DAEMON_DATA_BASE) > per-run default.
+    local eff_shared="${pin_shared:-$SHARED_DIR}"
+    local eff_daemon="${pin_daemon:-$DAEMON_DATA_BASE}"
+    local pinned=()
+    [[ "$eff_shared" != "$RUN_TMP_DIR/shared" ]] && pinned+=("shared_dir=$eff_shared")
+    [[ "$eff_daemon" != "$RUN_TMP_DIR" ]] && pinned+=("daemon_data_dir=$eff_daemon")
+    [[ ${#pinned[@]} -eq 0 ]] && return 0
+
+    log_warn "Pinned path(s): ${pinned[*]}"
+    log_warn "  This run is NOT isolated: any other run using the same path will have its"
+    log_warn "  registry/wallets wiped at generation and its daemon dirs archived+deleted at the end."
+    log_warn "  Drop general.shared_dir / general.daemon_data_dir (and MONEROSIM_* env) to get a per-run /tmp namespace."
+
+    # In use already? Registry/lock/wallet in the shared dir, or daemon dirs
+    # under the data dir, mean another run's state is sitting there.
+    local in_use=()
+    if [[ "$eff_shared" != "$RUN_TMP_DIR/shared" ]] && compgen -G "$eff_shared/*.json" > /dev/null 2>&1; then
+        in_use+=("$eff_shared holds $(ls "$eff_shared"/*.json 2>/dev/null | wc -l) registry file(s)")
+    fi
+    if [[ "$eff_daemon" != "$RUN_TMP_DIR" ]] && compgen -G "$eff_daemon/monero-*" > /dev/null 2>&1; then
+        in_use+=("$eff_daemon holds $(ls -d "$eff_daemon"/monero-* 2>/dev/null | wc -l) daemon dir(s)")
+    fi
+    [[ ${#in_use[@]} -eq 0 ]] && return 0
+
+    if [[ "$ALLOW_SHARED_PATHS" == true ]]; then
+        log_warn "Pinned path already in use (${in_use[*]}) — proceeding because of --allow-shared-paths"
+        return 0
+    fi
+    log_err "Pinned path already in use: ${in_use[*]}"
+    log_err "Refusing: this run would destroy that state. Remove the pinned path from the config,"
+    log_err "or pass --allow-shared-paths if you are sure nothing else is using it."
+    rm -f "$RUN_DIR/.owner_pid"; rmdir "$RUN_DIR" 2>/dev/null || true
+    [[ -n "$DATA_BASE" ]] && rmdir "$DATA_BASE/$RUN_ID" 2>/dev/null || true
+    exit 1
 }
 
 cleanup_tmp_monero() {

@@ -95,6 +95,14 @@ before live-run analysis; for manual digging,
   into the namespace it mints (it has no `.owner_pid`; the generator exits
   at once), so the sweep can reclaim those too — unless daemon data was
   written into one by a hand-run sim, which is treated like `.keep`.
+- **Pinned paths:** an explicit `general.shared_dir` / `general.daemon_data_dir`
+  in the YAML, or a pre-set `MONEROSIM_*` env var, beats the per-run default
+  and opts that run out of isolation — the generator wipes the shared dir,
+  `archive_results` carries off its contents, `cleanup_tmp_monero` deletes
+  `<daemon_data_dir>/monero-*`. `run_sim.sh` warns whenever a path is pinned
+  and refuses (before creating anything) if the pinned path already holds a
+  registry or daemon dirs; `--allow-shared-paths` overrides. Other users'
+  dirs are protected by the generator's uid guard regardless.
 - **Legacy leftovers:** pre-namespacing `/tmp/monero-*` dirs are detected
   and reported with a manual-removal hint, never auto-deleted.
 

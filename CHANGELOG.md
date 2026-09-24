@@ -91,6 +91,20 @@
   `stub_{trail,equalfork,lead}.yaml` (alpha=0.4, 3 miners + 12 relays so
   gamma is measurable). See docs/SELFISH_MINING.md §8.
 
+### Added
+- **Pinned-path guard** (`run_sim.sh`, `check_pinned_paths`): an explicit
+  `general.shared_dir` / `general.daemon_data_dir` in the YAML (or a pre-set
+  `MONEROSIM_SHARED_DIR` / `MONEROSIM_DAEMON_DATA_DIR`) opts a run out of the
+  per-run `/tmp/monerosim-<run_id>/` isolation — the generator wipes that
+  shared dir, and the archive/cleanup steps carry off and delete whatever
+  is in it — but nothing said so at launch. Now: a loud warning whenever a
+  path is pinned, and a refusal (before anything is created under `/tmp`)
+  when the pinned path already holds another run's registry or `monero-*`
+  dirs, unless `--allow-shared-paths` is passed. Other users' dirs were
+  already protected by the generator's uid guard; this protects the
+  caller's own concurrent runs. Helper `run_sim_helpers.py pinned-paths`;
+  test `scripts/test_pinned_paths.sh`.
+
 ### Fixed
 
 - **Crashed and `--no-clean` runs' raw data was deleted by the next launch.**

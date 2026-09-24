@@ -289,6 +289,37 @@ def cmd_daemon_capabilities(args: argparse.Namespace) -> int:
     return 0
 
 
+def pinned_paths(config_path: str) -> dict:
+    """The shared_dir / daemon_data_dir a config pins EXPLICITLY, or None.
+
+    run_sim.sh gives every run its own /tmp/monerosim-<run_id>/ namespace by
+    exporting MONEROSIM_SHARED_DIR / MONEROSIM_DAEMON_DATA_DIR as the
+    generator's defaults — but an explicit `general.shared_dir` /
+    `general.daemon_data_dir` in the YAML beats those defaults, opting the
+    run out of isolation. Empty strings count as unset.
+    """
+    import yaml
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f) or {}
+    general = cfg.get('general', {}) or {}
+    out = {}
+    for key in ('shared_dir', 'daemon_data_dir'):
+        v = general.get(key)
+        out[key] = str(v) if v not in (None, '') else None
+    return out
+
+
+def cmd_pinned_paths(args: argparse.Namespace) -> int:
+    """Print "<shared_dir> <daemon_data_dir>" as pinned in the YAML, "-" for unset.
+
+    Consumed by run_sim.sh's check_pinned_paths:
+    `read -r CFG_PIN_SHARED CFG_PIN_DAEMON`.
+    """
+    p = pinned_paths(args.config)
+    print(f"{p['shared_dir'] or '-'} {p['daemon_data_dir'] or '-'}")
+    return 0
+
+
 def cmd_config_summary(args: argparse.Namespace) -> int:
     """Print agent counts as a single space-separated line.
 
@@ -960,6 +991,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cs.add_argument('config')
     p_cs.set_defaults(func=cmd_config_summary)
+
+    # pinned-paths
+    p_pp = sub.add_parser(
+        'pinned-paths',
+        help='Print "<shared_dir> <daemon_data_dir>" pinned explicitly in the config YAML ("-" = unset).',
+    )
+    p_pp.add_argument('config')
+    p_pp.set_defaults(func=cmd_pinned_paths)
 
     # estimate-disk-mb
     p_disk = sub.add_parser(

@@ -317,6 +317,19 @@ def test_config_counts_includes_parallelism_and_hours(tmp_path):
     assert c["parallelism"] == 4 and c["sim_hours"] == 6.0
 
 
+@pytest.mark.parametrize("general, expected", [
+    ("", "- -"),
+    ("  shared_dir: /tmp/monerosim_shared\n", "/tmp/monerosim_shared -"),
+    ("  daemon_data_dir: /tmp\n", "- /tmp"),
+    ("  shared_dir: ''\n  daemon_data_dir: /scratch\n", "- /scratch"),   # empty = unset
+])
+def test_pinned_paths(tmp_path, capsys, general, expected):
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(f"general:\n  stop_time: 1h\n{general}agents: {{}}\n")
+    _, out = _run(capsys, ["pinned-paths", str(cfg)])
+    assert out.strip() == expected
+
+
 def test_config_counts_parallelism_defaults_to_zero(tmp_path):
     cfg = tmp_path / "config.yaml"
     cfg.write_text("general:\n  stop_time: 1h\nagents:\n  miner-001: {}\n")
