@@ -429,10 +429,10 @@ def test_scorecard_flags_out_of_band_values():
 
 def test_render_markdown_with_targets_has_verdict_and_measured_columns():
     out = tm.render_markdown(_result(), tm.load_targets())
-    assert "verdict" in out and "2026 crawl (S13)" in out
+    assert "verdict" in out and "2026 measured (S12)" in out
     assert "PASS" in out and "info" in out
-    # the shipped crawl measurement is surfaced (peerlist top-13.2% edge share)
-    assert "31.6% (peerlist)" in out
+    # the shipped crawl measurement is surfaced (peerlist top-13.2% edge share, S12)
+    assert "30.0% (peerlist,S12)" in out
 
 
 def test_render_markdown_without_targets_falls_back():

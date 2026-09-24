@@ -597,7 +597,7 @@ def render_markdown(result, targets=None):
             lines.append("| %s | %s | %s | %s |" % (label, fmt(fn(result), pct=pct), lit_fb, src_fb))
         return "\n".join(lines)
 
-    lines = ["| metric | measured in run (median, range) | literature | 2026 crawl (S13) | verdict | src |",
+    lines = ["| metric | measured in run (median, range) | literature | 2026 measured (S12) | verdict | src |",
              "|---|---|---|---|---|---|"]
     for key, label, fn, lit_fb, src_fb, pct in TABLE_ROWS:
         agg = fn(result)

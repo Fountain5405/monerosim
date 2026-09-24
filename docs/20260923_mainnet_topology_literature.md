@@ -23,7 +23,7 @@ derives rather than measures are marked *derived*.
 | S9 | monerod v0.18.5.1 source (`../monero`, tag `v0.18.5.1`), the version monerosim pins | — | Code reading |
 | S10 | `docs/20260618_mainnet_topology_targets.md` and `docs/20260620_network_topology_study.md` (this repo) | — | Earlier sourcing plus the validated sweep |
 | S11 | Kirschner, *An Analysis of Monero's Network Topology*, IEEE DAPPS 2026 (DOI 10.1109/DAPPS69803.2026.00019; local copy `~/monerosim_scale/An_Analysis_of_Moneros_Network_Topology.pdf`) | one week in **2022** (per the user; the paper does not state it) | 11 VPN vantage points; edges = white-list peerlist adjacency gathered by iterative seed queries (not live connections) |
-| S12 | Rucknium, [xmrnetscan](https://xmrnetscan.redteam.cash/) ([source](https://github.com/Rucknium/xmrnetscan)) — MRL daily network scan | daily since ~Jul 2025 (Jan 2026: ban list v2, hidden-spy counts) | Rust crawler on Cuprate's Levin handshaker from the hardcoded seeds; per node: pruning seed, peer id, support flags, disseminated peerlists; spy labels = MRL ban lists v1/v2, DNS blocklist, private fingerprint; ban-list adoption inferred from disseminated lists; Team Cymru ASNs. Data reachable only through the Shiny UI (the `plumber` API in the repo is not publicly exposed; no releases). **Requested from the author 2026-09-23.** |
+| S12 | Rucknium, [xmrnetscan](https://xmrnetscan.redteam.cash/) ([source](https://github.com/Rucknium/xmrnetscan)) — MRL daily network scan | daily since ~Jul 2025 (Jan 2026: ban list v2, hidden-spy counts) | Rust crawler on Cuprate's Levin handshaker from the hardcoded seeds; per node: pruning seed, peer id, support flags, disseminated peerlists; spy labels = MRL ban lists v1/v2, DNS blocklist, private fingerprint; ban-list adoption inferred from disseminated lists; Team Cymru ASNs. **Received 2026-09-24: the 2026-09-22 snapshot (`crawler-netscan.db` + `bad_peers.txt`), summarised by `analysis/mainnet/netscan_summarize.py` -> `~/basement_monerosim/20260923_mainnet_observation/netscan/report.json`. Now the PRIMARY validation source (S13 corroborates).** |
 | S13 | **Our own crawl + node poll**, `~/basement_monerosim/20260923_mainnet_observation/` (`analysis/mainnet/`) | 2026-09-23 | One Levin handshake per advertised ip:port seeded from a LAN mainnet node's peerlists (39,885 probed, 45 min); Team Cymru ASNs; MRL ban list v2 of that day |
 
 ## 2. Degree structure: hubs and periphery
@@ -189,6 +189,46 @@ conclusions come out of reconciling S13 against the literature:
 4. **Measured geography (US 64% / EU ≈20%) runs against the S1-derived region
    weights (NA 58 / EU 30).** Recorded in the JSON `_context` as a candidate
    scenario retune, not a topology_metrics target (region only affects latency).
+
+## 4d. S12 xmrnetscan (2026-09-22) — the primary validation source
+
+Rucknium's own crawler snapshot (SQLite `crawler-netscan.db` + `bad_peers.txt`),
+summarised by `analysis/mainnet/netscan_summarize.py`. It supersedes our S13
+crawl as the primary baseline (Rucknium's infrastructure; it self-detects spies
+via a handshake-vs-ping peer-id comparison our crawl could not do), and the two
+independent crawls one day apart **cross-validate** each other closely:
+
+| Metric | **S12** xmrnetscan | **S13** our crawl |
+|---|---|---|
+| Reachable / probed (ip:port) | 21,365 / 40,801 = **52.4%** | 18,026 / 39,885 = 45.2% |
+| Spy share, by ip:port | **75.0%** | 73.7% |
+| Spy share, by distinct IP | **27.4%** (2,006 IPs, 9 /24s) | — |
+| Honest densest-12%-of-/24s | **0.296** | 0.308 |
+| Honest DigitalOcean share | 0.425 | 0.446 |
+| Honest US share | 0.619 | 0.641 |
+| Peerlist top-13.2% edge share | 0.300 | 0.316 |
+| Peerlist top-14 hub coverage | 0.206 | 0.174 |
+| Pruned | **0.062** | — |
+| Support-flags-absent | **0.0005** | 0.032 |
+
+**Port multiplexing — the key S12 finding, and a correction to §4b.** The Spruce
+Creek fleet is **~2,006 machines (IPs), each running ~8 monerod ports** (16,043
+ip:port node-instances / 2,006 IPs = 8.0). So the spy share is **0.75 by
+node-instance but only 0.27 by machine**. S12's by-ip:port share (0.751) matches
+S13's 0.737, and xmrnetscan's own peer-id-mismatch list (`bad_peers.txt`, 16,034
+entries) matches the Spruce ASN count (16,041) almost exactly. This **corrects
+§4b's "13,281 spy IPs in 63 /24s"** — those were ip:port / advertised addresses,
+not distinct reachable machines; the true reachable fleet is **2,006 IPs in 9
+/24s**. Consequence for the replica: stage-1 spies are one-IP-per-host (the 0.27
+machine view); reproducing the 0.75 node-instance slot pressure needs per-spy
+port multiplexing, deferred to stage 3.
+
+**S12-only health checks:** reachable nodes are tightly converged (height p10–p90
+spread **83 blocks**), **99.6%** on the current hard fork (top_version 16), and
+**6.2%** pruned (≈ literature S9's 8.1%). A healthy single-chain network — the
+substrate the replica models. And **support-flags-absent is a dead fingerprint**
+(0.05% in S12): the fleet does not omit flags, so `spy_proxy`'s flag-omission
+knob stays off by default.
 
 ## 5. Geography and hosting
 

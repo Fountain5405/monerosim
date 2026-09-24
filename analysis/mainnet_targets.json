@@ -2,41 +2,49 @@
   "_meta": {
     "description": "Stage-2 validation targets for the mainnet replica. One entry per row of topology_metrics.py's TABLE_ROWS, keyed by metric_key. Each carries the literature point-estimate (S1-S11) AND, where a crawl can observe it, our own 2026-09-23 measurement (S13), so the replica is scored against the best available target with its provenance visible.",
     "literature_source": "docs/20260923_mainnet_topology_literature.md (S1-S11)",
-    "measured_source": "S13: our 2026-09-23 crawl + LAN-node poll, ~/basement_monerosim/20260923_mainnet_observation/crawl/report.json",
-    "generated": "2026-09-23",
-    "regenerate": "measured_2026 values are transcribed from crawl/report.json; re-run analysis/mainnet/{crawl,poll,enrich_asn,summarize}.py and re-transcribe if the crawl is repeated.",
+    "measured_source_primary": "S12: Rucknium's xmrnetscan snapshot 2026-09-22, summarised by analysis/mainnet/netscan_summarize.py -> ~/basement_monerosim/20260923_mainnet_observation/netscan/report.json",
+    "measured_source_corroborating": "S13: our own 2026-09-23 crawl + LAN-node poll -> ~/basement_monerosim/20260923_mainnet_observation/crawl/report.json",
+    "generated": "2026-09-24",
+    "regenerate": "measured_2026 values are the S12 xmrnetscan numbers (S13 shown where S12 has no poll). Re-run analysis/mainnet/netscan_summarize.py --snapshot <extracted dir> --asn-cache <cache> on a fresh Rucknium snapshot and re-transcribe.",
     "verdict_kinds": "point (|measured-value|<=tolerance_abs), range ([lo,hi] inclusive), min (>=value), max (<=value), info (no pass/fail: value is scenario-dependent or n=1)."
   },
 
   "_context": {
-    "note": "S13 findings that reconcile the design assumptions but do not map onto a per-node replica metric. Recorded here as the measured baseline's context.",
+    "note": "Findings that reconcile the design assumptions but do not map onto a per-node replica metric. S12 (xmrnetscan) primary; S13 (our crawl) corroborates. Two independent crawls one day apart.",
     "reachability_of_probed": {
-      "value": 0.452,
-      "detail": "18026 reachable / 39885 probed IPs. NOT the same denominator as general.reachable_fraction (share of ACTIVE nodes accepting inbound, literature ~0.15): most unreachable probed IPs are stale/NAT peerlist entries. Do not set reachable_fraction from this number."
+      "s12": 0.524, "s13": 0.452,
+      "detail": "S12: 21365 reachable / 40801 probed ip:port. S13: 18026 / 39885. NOT the same denominator as general.reachable_fraction (share of ACTIVE nodes accepting inbound, literature ~0.15): most unreachable probed IPs are stale/NAT peerlist entries. Do not set reachable_fraction from this number."
     },
     "spy_fleet": {
-      "reachable_ip_share": 0.737,
-      "ip_count": 13281,
-      "distinct_24s": 63,
+      "share_by_ipport": 0.751,
+      "share_by_ip": 0.274,
+      "ip_count": 2006,
+      "ipport_count": 16043,
+      "distinct_24s": 9,
+      "mean_ports_per_spy_ip": 8.0,
       "dominant_asn": "AS401476 (SCNL-1-0001 - Spruce Creek Networks LLC, US)",
-      "dominant_asn_share": 0.996,
-      "detail": "VALIDATES the design assumption of clustered spies in dense /24s within a single ASN. The replica places real-node spies (variant R) in dense /24s (topology_node 828-833) -- this is the mainnet analog, scaled down.  peer-id-mismatch alone labels 0.686; the ban list labels 0.737; support-flags-absent only 0.032 (few proxies omit flags in 2026)."
+      "detail": "PORT MULTIPLEXING is the key S12 insight: the fleet is ~2006 machines (IPs) each running ~8 monerod ports = 16043 node-instances. So spy share is 0.75 by ip:port node-instance but only 0.27 by distinct machine. S12's ip:port share (0.751) matches S13's 0.737. CORRECTS S13's earlier '13281 spy IPs in 63 /24s' -- those were ip:port/advertised, not distinct reachable IPs (true = 2006 IPs in 9 /24s). xmrnetscan's OWN peer-id-mismatch detector (bad_peers.txt, 16034 entries) agrees with the ASN (16041) almost exactly. VALIDATES the clustered-spies-in-dense-/24s design (replica places real-node spies in 6 dense /24s). support-flags-absent is a DEAD fingerprint (S12 0.0005, S13 0.032 -- the fleet does not omit flags)."
     },
     "honest_prefix_top12pct_share": {
-      "value": 0.308,
-      "validates": "network.distribution.prefix_sharing.fraction (currently 0.31) -- measured 0.308 of honest nodes in the top 12% of /24s. Good match; no change indicated.",
-      "distinct_24s": 3732,
-      "n_top_24s": 448
+      "s12": 0.296, "s13": 0.308,
+      "validates": "network.distribution.prefix_sharing.fraction (currently 0.31) -- BOTH crawls independently measure ~0.30 of honest nodes in the densest 12% of /24s. Confirmed twice; no change indicated.",
+      "s12_distinct_24s": 4258, "s12_n_top_24s": 511
     },
     "honest_geography": {
-      "country_shares": {"US": 0.641, "DE": 0.089, "LT": 0.031, "FR": 0.030, "NL": 0.017, "CA": 0.016, "GB": 0.016, "RU": 0.015, "SG": 0.015, "AU": 0.012},
-      "detail": "Regionally ~NA 0.66 / EU 0.20 / asia ~0.03 / oceania ~0.01 (top-10 countries; tail unshown). The scenario's weights (north_america 58 / europe 30 / asia 9 / oceania 3) run EU high and NA low vs this. Candidate scenario retune, NOT a topology_metrics target. Note: DigitalOcean AS14061 alone holds 0.446 of honest nodes -- hosting-provider concentration the region weights don't capture."
+      "country_shares_s12": {"US": 0.619, "DE": 0.105, "FR": 0.030, "LT": 0.028, "CA": 0.020, "NL": 0.017, "GB": 0.017, "RU": 0.015, "SG": 0.015, "AU": 0.014},
+      "detail": "S12 (S13 nearly identical: US 0.641/DE 0.089). Regionally ~NA 0.64 / EU 0.21. The scenario's weights (north_america 58 / europe 30 / asia 9 / oceania 3) run EU high and NA low vs this. Candidate scenario retune, NOT a topology_metrics target (region only affects latency). Hosting concentration the region weights miss: DigitalOcean AS14061 alone holds 0.425 of honest nodes."
     },
-    "conn_duration_our_node": {
+    "chain_health_s12": {
+      "height_spread_p10_p90_blocks": 83,
+      "hf_v16_share": 0.996,
+      "pruned_share": 0.062,
+      "detail": "S12 sanity checks: reachable nodes are tightly converged (83-block p10-p90 spread), 99.6% on the current hard fork (top_version 16), 6.2% pruned (~ literature S9 8.1%). Confirms a healthy, single-chain network -- the substrate the replica models."
+    },
+    "conn_duration_our_node_s13": {
       "outbound_median_s": 1082,
       "inbound_median_s": 596,
       "over_6h_share": 0.0,
-      "detail": "One LAN node, small n (28 out / 35 in). Connection-duration + >6h tail are OUT OF SCOPE for topology_metrics.py (see its docstring); validated separately with analysis/ruck_analysis_turnover.r. Recorded for cross-reference: median ~18min out / ~10min in is in the ballpark of the topology study's ~23min."
+      "detail": "S13 poll only (xmrnetscan has no poll dimension). One LAN node, small n (28 out / 35 in). Connection-duration + >6h tail are OUT OF SCOPE for topology_metrics.py; validated separately with analysis/ruck_analysis_turnover.r. Median ~18min out / ~10min in is in the ballpark of the topology study's ~23min."
     }
   },
 
@@ -92,7 +100,7 @@
     "top_share": {
       "label": "Connection share held by top 13.2% of nodes (total degree)",
       "literature": {"value": 83.0, "display": "~83%", "source": "S1"},
-      "measured_2026": {"value": 31.6, "display": "31.6% (peerlist)", "source": "S13", "method": "top_13_2pct_edge_share of the peerlist-adjacency graph (who lists whom), n=39484. CAVEAT: a peerlist graph is far more even than the connection graph S1 measured (everyone lists ~150 peers), so this is NOT comparable to the 83% connection-graph target and must not replace it. Shown to document that the connection graph cannot be reconstructed from peerlists."},
+      "measured_2026": {"value": 30.0, "display": "30.0% (peerlist,S12)", "source": "S12", "method": "top_13_2pct_edge_share of the peerlist-adjacency graph (who lists whom), S12 n=40797 = 0.300; S13 = 0.316. CAVEAT: a peerlist graph is far more even than the connection graph S1 measured (everyone lists ~250 peers), so this is NOT comparable to the 83% connection-graph target and must not replace it. Shown to document that the connection graph cannot be reconstructed from peerlists."},
       "target": {"kind": "point", "value": 83.0, "tolerance_abs": 12.0},
       "unit": "pct",
       "verdict_against": "literature"
@@ -100,7 +108,7 @@
     "hub_coverage": {
       "label": "Hub coverage (share of non-hub nodes adjacent to a hub)",
       "literature": {"value": 82.0, "display": "~82%", "source": "S2"},
-      "measured_2026": {"value": 17.4, "display": "17.4% (peerlist,top14)", "source": "S13", "method": "hub_coverage_top14 on the peerlist-adjacency graph: share of nodes with a top-14-by-peerlist-degree node among their peerlist entries. CAVEAT: peerlist-degree hubs are not S2's connection-count supernodes, and peerlist adjacency is not the connection graph; not comparable to the 82% target. Retained literature."},
+      "measured_2026": {"value": 20.6, "display": "20.6% (peerlist,S12)", "source": "S12", "method": "hub_coverage_top14 on the peerlist-adjacency graph: share of nodes with a top-14-by-peerlist-degree node among their peerlist entries. S12 = 0.206; S13 = 0.174. CAVEAT: peerlist-degree hubs are not S2's connection-count supernodes, and peerlist adjacency is not the connection graph; not comparable to the 82% target. Retained literature."},
       "target": {"kind": "point", "value": 82.0, "tolerance_abs": 15.0},
       "unit": "pct",
       "verdict_against": "literature"
@@ -140,7 +148,7 @@
     "spy_inbound": {
       "label": "Spy share of honest inbound slots",
       "literature": {"value": 20.0, "display": "~20%", "source": "S4"},
-      "measured_2026": {"value": null, "display": "0% defended / 74% of reachable IPs", "source": "S13", "method": "REGIME CHANGE. Our ban-list-defended LAN node saw 0% spy inbound; but the crawl finds 73.7% of REACHABLE IPs are the Spruce Creek fleet, so an UNDEFENDED node's inbound would be spy-dominated. The replica's actual spy inbound share is a function of how many reachable spies it places (a stage-3 design choice), so no hard pass/fail here."},
+      "measured_2026": {"value": null, "display": "27% IP / 75% ip:port", "source": "S12", "method": "REGIME CHANGE + UNIT MATTERS. The Spruce Creek fleet is 27.4% of reachable machines (IPs) but 75.1% of reachable node-instances (ip:port), via ~8 ports/IP multiplexing (S12; S13 agrees at 73.7% by ip:port). An undefended node's inbound would be spy-dominated; a ban-list-defended node ~0% (S13 poll). The replica's actual spy inbound share is a stage-3 placement choice (stage-1 spies are IP-per-host = the 27% view; port-multiplexing to reach the 75% view is deferred), so no hard pass/fail here."},
       "target": {"kind": "info"},
       "unit": "pct",
       "verdict_against": "measured_2026"
@@ -148,7 +156,7 @@
     "spy_outbound": {
       "label": "Spy share of honest outbound slots",
       "literature": {"value": 15.0, "display": "<=15%", "source": "S4"},
-      "measured_2026": {"value": null, "display": "0% defended", "source": "S13", "method": "0% at our defended node. Scenario-dependent (spy placement); no hard pass/fail. See spy_inbound regime note."},
+      "measured_2026": {"value": null, "display": "0% defended", "source": "S12/S13", "method": "0% at our defended node (S13 poll). Scenario-dependent (spy placement); no hard pass/fail. See spy_inbound regime + port-multiplexing note."},
       "target": {"kind": "info"},
       "unit": "pct",
       "verdict_against": "measured_2026"
@@ -156,7 +164,7 @@
     "spy_peerlist": {
       "label": "Spy share of peerlist entries (observer dumps)",
       "literature": {"value": 17.0, "display": "~17%", "source": "S4"},
-      "measured_2026": {"value": null, "display": "0% defended / 74% net reachable-IPs", "source": "S13", "method": "0% in our defended node's white/gray lists; 73.7% of network reachable IPs are spies. Scenario-dependent; no hard pass/fail. See spy_inbound regime note."},
+      "measured_2026": {"value": null, "display": "27% IP / 75% ip:port", "source": "S12", "method": "By node-instance (ip:port) 75% of the network is the fleet; by machine (IP) 27% (S12). 0% in our defended node's own white/gray lists (S13 poll). Scenario-dependent; no hard pass/fail. See spy_inbound regime + port-multiplexing note."},
       "target": {"kind": "info"},
       "unit": "pct",
       "verdict_against": "measured_2026"

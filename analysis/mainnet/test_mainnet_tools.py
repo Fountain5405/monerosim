@@ -23,6 +23,7 @@ import poll_node  # noqa: E402
 import crawl  # noqa: E402
 import enrich_asn  # noqa: E402
 import summarize  # noqa: E402
+import netscan_summarize  # noqa: E402
 
 
 def load_fixture(name):
@@ -475,3 +476,88 @@ class TestLoadersAndReport:
         md = summarize.render_markdown(report)
         assert "# Mainnet observation report" in md
         assert "Spy share of reachable IPs" in md
+
+
+class TestNetscanSummarize:
+    """netscan_summarize.py against a hand-built xmrnetscan SQLite snapshot.
+
+    Reachable set: a spy fleet of 2 IPs multiplexing ports (200.0.0.1 on 3
+    ports, 200.0.0.2 on 2 ports = 5 ip:port) plus 2 honest IPs (1 port each);
+    7 reachable ip:port on 4 IPs. 3 more attempted-but-unreachable ip:port.
+    bad_peers.txt lists exactly the 5 spy ip:port. No network (asn_cache=None).
+    """
+    SPY = ["200.0.0.1:18080", "200.0.0.1:18081", "200.0.0.1:18082",
+           "200.0.0.2:18080", "200.0.0.2:18081"]
+    HONEST = ["10.0.0.1:18080", "10.1.0.1:18080"]   # two distinct /24s
+
+    def _make_snapshot(self, tmp_path):
+        import sqlite3
+        snap = tmp_path / "2026-01-01"
+        snap.mkdir()
+        db = sqlite3.connect(snap / "crawler-netscan.db")
+        db.execute("CREATE TABLE handshake_attempts (connected_node TEXT)")
+        db.execute("CREATE TABLE handshake_data (connected_node TEXT, rpc_port INTEGER, "
+                   "pruning_seed TEXT, peer_id BIGINT, support_flags TEXT, "
+                   "core_sync_data TEXT, my_port INTEGER)")
+        db.execute("CREATE TABLE peerlists (connected_node TEXT, peerlist TEXT)")
+        reachable = self.SPY + self.HONEST
+        for i, ipp in enumerate(reachable + ["9.9.9.9:18080", "9.9.9.10:18080", "9.9.9.11:18080"]):
+            db.execute("INSERT INTO handshake_attempts VALUES (?)", (ipp,))
+        csd = ("Mutex {{ data: CoreSyncData {{ cumulative_difficulty: 100, "
+               "current_height: {h}, top_version: {v} }} }}")
+        for i, ipp in enumerate(reachable):
+            flags = "PeerSupportFlags(0)" if ipp == self.HONEST[-1] else "PeerSupportFlags(1)"
+            pruning = "5" if ipp == self.HONEST[0] else "NotPruned"
+            db.execute("INSERT INTO handshake_data VALUES (?,?,?,?,?,?,?)",
+                       (ipp, 0, pruning, 1000 + i, flags,
+                        csd.format(h=3000 + i, v=16), 18080))
+        # one peerlist row so the graph is non-empty
+        db.execute("INSERT INTO peerlists VALUES (?,?)",
+                   ("KnownAddr(10.0.0.1:18080)", "[10.1.0.1:18080, 200.0.0.1:18080]"))
+        db.commit()
+        db.close()
+        (snap / "bad_peers.txt").write_text(
+            "".join("peer: %s, peer_ids: [1, 2, 2, 2],\n" % s for s in self.SPY))
+        return snap
+
+    def test_reachability_and_port_multiplexing(self, tmp_path):
+        snap = self._make_snapshot(tmp_path)
+        r = netscan_summarize.build_report(snap, None, None,
+                                           netscan_summarize.SPRUCE_ASN, allow_network=False)
+        rc = r["reachability"]
+        assert rc["reachable_ipport"] == 7
+        assert rc["reachable_ip"] == 4
+        assert rc["probed_ipport"] == 10
+        assert r["port_multiplexing"]["mean_ports_per_ip"] == pytest.approx(7 / 4)
+
+    def test_dual_unit_spy_share_from_bad_peers(self, tmp_path):
+        snap = self._make_snapshot(tmp_path)
+        r = netscan_summarize.build_report(snap, None, None,
+                                           netscan_summarize.SPRUCE_ASN, allow_network=False)
+        mm = r["spy"]["mismatch"]
+        assert mm["by_ipport"]["count"] == 5
+        assert mm["by_ipport"]["share"] == pytest.approx(5 / 7)   # node-instances
+        assert mm["by_ip"]["count"] == 2
+        assert mm["by_ip"]["share"] == pytest.approx(2 / 4)       # distinct machines
+        assert mm["by_ip"]["distinct_24s"] == 1                   # all 200.0.0.x
+        assert mm["mean_ports_per_spy_ip"] == pytest.approx(5 / 2)
+
+    def test_handshake_and_chain_fields(self, tmp_path):
+        snap = self._make_snapshot(tmp_path)
+        r = netscan_summarize.build_report(snap, None, None,
+                                           netscan_summarize.SPRUCE_ASN, allow_network=False)
+        hs = r["handshake"]
+        assert hs["flags_absent_share"] == pytest.approx(1 / 7)   # one PeerSupportFlags(0)
+        assert hs["pruned_share"] == pytest.approx(1 / 7)         # one pruning_seed != NotPruned
+        assert r["chain"]["top_version_dist"] == {"16": 7}
+        assert r["chain"]["height"]["n"] == 7
+        # honest = reachable minus spies -> the 2 honest IPs, in 2 distinct /24s
+        assert r["honest_concentration"]["prefix_share"]["distinct_24s"] == 2
+
+    def test_render_markdown_smoke(self, tmp_path):
+        snap = self._make_snapshot(tmp_path)
+        r = netscan_summarize.build_report(snap, None, None,
+                                           netscan_summarize.SPRUCE_ASN, allow_network=False)
+        md = netscan_summarize.render_markdown(r)
+        assert "xmrnetscan (S12) summary" in md
+        assert "Port multiplexing" in md and "ports/IP" in md

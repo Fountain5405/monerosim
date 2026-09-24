@@ -57,6 +57,18 @@ data instead of only the 2018-2026 literature
   FILE` takes an already-downloaded list; `--fetch-ban-list DIR` downloads a
   fresh, date-stamped one instead.
 
+- **`netscan_summarize.py`** — the S12 counterpart of `summarize.py`, for
+  Rucknium's [xmrnetscan](https://github.com/Rucknium/xmrnetscan) daily
+  snapshots (extract the `.tar.xz`; it holds `crawler-netscan.db` +
+  `bad_peers.txt`). Reuses `summarize.py`'s metric helpers so S12 is computed
+  identically to our own S13 crawl, and `enrich_asn.py`'s cache (only IPs not
+  already cached are looked up; `--no-network` skips even that). Reports
+  reachability, the spy share in **both** units (by ip:port node-instance and by
+  distinct IP — the fleet multiplexes ~8 ports/IP), honest /24 and ASN
+  concentration, chain-consensus health (height spread, hard-fork adoption,
+  pruned share), and the peerlist-adjacency graph. `--snapshot DIR --out
+  report.md [--asn-cache PATH] [--ban-list PATH] [--spy-asn 401476]`.
+
 ## The week-long recipe
 
 Datasets live **outside the repo**, e.g.
