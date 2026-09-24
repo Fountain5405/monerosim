@@ -208,6 +208,15 @@ variant rides the SoP step-4 matrix.
    cannot stay consistent across nodes. #146's in-block share embedding
    (omitted in v1 as an unexercised deviation) exists precisely to make
    weights node-independent; v2 with embedding is the indicated fix.
+   **v2 (embedded shares, full subjectivity machinery, run same day)
+   falsifies the fix's premise differently**: the honest control's
+   UNFLAGGED 40% miner takes 0.723 while the flagged 60% side churns
+   (0.30 orphaning) — mixed fleets punish the rule's adopters — and one
+   attack cell ends in a terminal 182-vs-5 faction split the k·w
+   objective escape does not resolve. Two faithful implementations, two
+   distinct stability/fairness failures on a topology where PoP-core
+   runs clean: evidence about the proposal's fragility, not just the
+   code (`docs/20260923_sop_design.md` §step-5).
 9. **The correctly-implemented exact variant punishes lead-2, magnitude
    unresolved at n=2** (rung-5 re-measurement after the parse fix):
    lead-2 under exact = {0.127, 0.294} (mean 0.211) vs the inert-bonus
