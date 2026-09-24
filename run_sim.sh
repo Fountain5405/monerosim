@@ -105,8 +105,9 @@ Options:
                          and — with --no-archive also — bitmonero.log and
                          peerlist_dump.jsonl files)
                          remain under the run's /tmp/monerosim-<runid>/ dir
-                         for you to inspect by hand. Can occupy tens of GB;
-                         remember to clean up manually when you're done.
+                         for you to inspect by hand (marked with .keep so
+                         later launches' stale-run sweep leaves it alone).
+                         Can occupy tens of GB; rm -rf it when you're done.
 
 Concurrency: every run lives in its own archived_runs/<run_id>/ (shadow.data,
 shadow_output, logs) and its own /tmp/monerosim-<run_id>/ daemon namespace, so
@@ -938,23 +939,34 @@ build_and_generate() {
     DAEMON_DATA_BASE="$MONEROSIM_DAEMON_DATA_DIR"
     SHARED_DIR="$MONEROSIM_SHARED_DIR"
 
-    # Sweep run dirs left behind by CRASHED runs (owner PID dead). Live
-    # concurrent runs are untouched — that's the point of the namespacing.
-    # Dirs without an .owner_pid breadcrumb are skipped (could be a manual
-    # generator invocation we can't reason about).
-    local stale opid
+    # Report run dirs left behind by other runs. Nothing is deleted here:
+    # a dir whose owner PID is dead is either a --no-clean run kept on
+    # purpose (.keep marker, see cleanup_tmp_monero) or a crashed/killed
+    # run whose daemon logs, peer-list dumps and shared/ never reached
+    # archived_runs/ — the forensic material, so it is never swept
+    # automatically. Reclaim space deliberately with
+    # scripts/sweep_stale_runs.sh (dry-run by default, --delete to act).
+    # Dirs without an .owner_pid breadcrumb could be a manual generator
+    # invocation we can't reason about. Live concurrent runs are the point
+    # of the namespacing.
+    local stale opid stale_size
     for stale in /tmp/monerosim-*/; do
         [[ -d "$stale" ]] || continue
         [[ "${stale%/}" == "$RUN_TMP_DIR" ]] && continue
         opid=$(cat "${stale}.owner_pid" 2>/dev/null || true)
         opid="${opid%% *}"    # first token (pid) only, for display
-        if [[ -z "$opid" ]]; then
+        if [[ -f "${stale}.keep" ]]; then
+            log_warn "Leaving ${stale} (kept by --no-clean; rm -rf it when you're done)"
+        elif [[ -z "$opid" && -f "${stale}.generated_by" ]]; then
+            log_info "Leaving ${stale} (bare 'monerosim --config' namespace; scripts/sweep_stale_runs.sh reclaims it)"
+        elif [[ -z "$opid" ]]; then
             log_warn "Leaving ${stale} (no .owner_pid — not created by run_sim.sh; remove manually if stale)"
         elif run_dir_is_live "${stale%/}"; then
             log_info "Leaving ${stale} (owner pid $opid alive — concurrent run)"
         else
-            log_info "Removing stale run dir ${stale} (owner pid $opid gone)"
-            rm -rf "$stale" 2>/dev/null || true
+            stale_size=$(du -sh "$stale" 2>/dev/null | cut -f1 || true)
+            log_warn "Leaving ${stale} (${stale_size:-?}; owner pid $opid gone — crashed/killed run, raw daemon logs + shared/ still inside)"
+            log_warn "  Reclaim with: scripts/sweep_stale_runs.sh --delete   (lists first without --delete)"
         fi
     done
     if compgen -G "/tmp/monero-*" > /dev/null 2>&1; then
@@ -1668,6 +1680,14 @@ cleanup_tmp_monero() {
         log_warn "Skipping daemon-dir cleanup (--no-clean). "
         log_warn "${tmp_size:-?} left in $DAEMON_DATA_BASE/monero-*/ for inspection."
         log_warn "Remember to 'rm -rf ${RUN_TMP_DIR:-$DAEMON_DATA_BASE/monero-*}' when you're done."
+        # Once this run_sim.sh exits, the kept dir's .owner_pid names a dead
+        # process — exactly what the launch-time sweep treats as a crashed
+        # run and rm -rf's. Mark it kept so the next launch (any checkout)
+        # leaves it alone. Written last, so a run that crashes never
+        # hides behind the marker.
+        if [[ -n "$RUN_TMP_DIR" && -d "$RUN_TMP_DIR" && "$DAEMON_DATA_BASE" == "$RUN_TMP_DIR" ]]; then
+            echo "kept by --no-clean: run $RUN_ID, $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RUN_TMP_DIR/.keep"
+        fi
         return
     fi
     log_info "Cleaning up $DAEMON_DATA_BASE/monero-*/ leftovers..."

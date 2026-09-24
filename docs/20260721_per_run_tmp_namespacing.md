@@ -84,9 +84,17 @@ before live-run analysis; for manual digging,
   `--no-archive` removes only the daemon dirs (shared/ kept, matching the
   old behavior of leaving `/tmp/monerosim_shared` in place).
 - **Crashed runs:** each run dir carries `.owner_pid`. At the next
-  `run_sim.sh` start, run dirs whose owner PID is dead are swept; dirs with
-  a live owner (a concurrent run) or no breadcrumb (manual generator
-  invocation) are left alone.
+  `run_sim.sh` start, every other `/tmp/monerosim-*/` is *reported*, never
+  deleted: a dead owner means either a `--no-clean` run kept on purpose
+  (`.keep`) or a crashed/killed run whose daemon logs, peer-list dumps and
+  `shared/` never reached `archived_runs/` — forensic material, so it stays
+  until you reclaim it with `scripts/sweep_stale_runs.sh` (dry-run by
+  default; `--delete` removes dead-owner dirs, `--include-kept` widens to
+  `.keep` dirs). Live owners (concurrent runs) and dirs with no breadcrumb
+  are always left alone. A bare `monerosim --config` writes `.generated_by`
+  into the namespace it mints (it has no `.owner_pid`; the generator exits
+  at once), so the sweep can reclaim those too — unless daemon data was
+  written into one by a hand-run sim, which is treated like `.keep`.
 - **Legacy leftovers:** pre-namespacing `/tmp/monero-*` dirs are detected
   and reported with a manual-removal hint, never auto-deleted.
 

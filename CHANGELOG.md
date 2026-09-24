@@ -93,6 +93,24 @@
 
 ### Fixed
 
+- **Crashed and `--no-clean` runs' raw data was deleted by the next launch.**
+  `run_sim.sh` started every run by sweeping `/tmp/monerosim-*/` dirs whose
+  `.owner_pid` was dead, as crash cleanup — but a finished `--no-clean` run
+  looks identical (its `run_sim.sh` has exited), and a crashed run's dir is
+  exactly where its `bitmonero.log`s, peer-list dumps and `shared/` still
+  are, since none of that reached `archived_runs/`. The launch sweep now
+  deletes nothing: it reports each dead-owner dir with its size and why it
+  is there (`kept by --no-clean` via a new `.keep` marker written at the
+  end of a `--no-clean` run, or `crashed/killed run`). Reclaiming space is
+  an explicit step, `scripts/sweep_stale_runs.sh` (dry-run by default,
+  `--delete` to act, `--include-kept` to widen; live, `.keep` and unowned
+  dirs are never touched). A bare `monerosim --config` now leaves a
+  `.generated_by` breadcrumb in the namespace it mints for itself (it
+  writes no `.owner_pid` — the generator is gone the moment it exits), so
+  those show up as reclaimable rather than "unknown"; one that holds daemon
+  data (a sim run by hand against it) is treated like a kept dir. Test:
+  `scripts/test_sweep_stale_runs.sh`.
+
 - **Eclipse sidecars were deleted instead of archived.** `run_sim.sh`'s
   archive step is an allow-list (registry JSON, wallets, ringdbs, monitoring,
   daemon logs, peer-list dumps); anything else in the per-run shared dir went

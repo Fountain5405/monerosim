@@ -296,6 +296,28 @@ fn main() -> Result<()> {
     })?;
     fs::create_dir_all(shared_dir).wrap_err("Failed to create shared directory")?;
 
+    // A bare invocation (no MONEROSIM_DAEMON_DATA_DIR, no YAML override) got
+    // its own /tmp/monerosim-<ts>_<stem>_<pid> namespace above. Nothing
+    // writes an .owner_pid there — this process is gone the moment the
+    // config is generated — so leave a breadcrumb that lets run_sim.sh's
+    // launch report and scripts/sweep_stale_runs.sh tell "generator
+    // namespace" apart from "dir we know nothing about".
+    if std::env::var("MONEROSIM_DAEMON_DATA_DIR").is_err()
+        && new_config.general.daemon_data_dir == monerosim::default_daemon_data_dir()
+    {
+        let marker = daemon_data_dir.join(".generated_by");
+        let note = format!(
+            "monerosim {} pid {} {} config {}\n",
+            env!("CARGO_PKG_VERSION"),
+            std::process::id(),
+            chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ"),
+            args.config.display()
+        );
+        if let Err(e) = fs::write(&marker, note) {
+            warn!("Could not write {}: {}", marker.display(), e);
+        }
+    }
+
     // Generate agent-based Shadow configuration
     info!("Running in agent-based simulation mode");
     generate_agent_shadow_config(&new_config, &shadow_config_path)?;

@@ -82,7 +82,10 @@ Two behaviours worth calling out explicitly:
   directory. If you also pass **`--no-clean`**, that deletion is skipped and
   `shadow.data` is kept under the run directory for inspection instead
   (`run_sim.sh` logs "shadow.data is being kept for inspection under
-  `<run_dir>`"). The small pre-run artifacts (`input_config.yaml`,
+  `<run_dir>`"). A kept `/tmp/monerosim-<run_id>/` gets a `.keep` marker so
+  later launches and `scripts/sweep_stale_runs.sh` report it as kept on
+  purpose rather than as a crashed run. Remove kept dirs by hand (or
+  `sweep_stale_runs.sh --delete --include-kept`). The small pre-run artifacts (`input_config.yaml`,
   `shadow_agents.yaml`, `monerosim.log`, `shadow_run.log`, `build.log`,
   `memory_samples.csv`) are always kept, `--no-archive` or not.
 - When a `--data-dir`-based run's scratch data is moved home into
