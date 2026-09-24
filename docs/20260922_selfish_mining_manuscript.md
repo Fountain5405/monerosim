@@ -157,26 +157,33 @@ upgrade).
    vs 0.312 stock attack; MSB detectability stays high, z +7.4 to +14.9):
    PoP removes the profit, not the DoS.
 6. **Mid-scale (6 honest miners + 16 relays) settles the rung-3 watch
-   item**: the exact variant's honest-control dip was starvation — at
-   scale the control recovers to 0.367 ≈ α (orphan 0.076), uncle
-   embeddings rise 3 → 17 with miner count as pre-registered, and the
-   countermeasure holds (attacker 0.387 → 0.170, orphaning 0.72).
-   Scale alone also shrinks the stock attacker (0.492 → 0.387 — more
-   honest racers dilute γ≈0 tie luck). Residual exact-variant cost:
-   ~10% honest throughput. Full-scale (12 miners + 32 relays) is the
-   committed senior-box leg.
-7. **Scale inverts the strategy ranking (mid-scale)**: the conservative
-   lead-2 policy out-earns textbook ES at 6 miners (0.477/0.396 vs
-   0.387 n=1; micro had it reversed) — both lead-2 draws exceed ES's
-   single mid-scale draw, but the margin is within run-to-run noise, so
-   the inversion holds on means pending the ES replicate. Fragmented
-   honest racing feeds in-time overrides, so the attack Monero actually
-   observed is the stronger one at realistic miner counts. PoP-exact's
-   blind spot is partial at scale and REPLICATES TIGHTLY: lead-2 lands
-   at break-even in both draws (0.353/0.347 vs fair 0.40) vs −0.22 on
-   ES — the residue SoP's share-lateness rule targets. First nonzero
-   realized γ appears only at this scale (0.03–0.10): propagation races
-   need a fabric big enough to have them.
+   item, n=2**: the exact variant's honest-control dip was starvation/
+   noise — controls sit at α in every scaled draw (0.367, 0.431; the
+   micro 0.322 did not replicate either: 0.378), uncle embeddings rise
+   3 → 17 with miner count as pre-registered, and the countermeasure
+   holds with CLEAN SEPARATION (attacker {0.387, 0.463} stock vs
+   {0.170, 0.285} exact — every exact draw below every stock draw).
+   "Scale alone shrinks the stock attacker" did NOT survive n=2 (micro
+   {0.463, 0.492} vs mid {0.387, 0.463} overlap, 0.463 in both sets;
+   if real, ~−0.05). Residual exact-variant cost: ~9–10% honest
+   throughput, twice measured (158/176 and 160/175 blocks per 6 h).
+   Full-scale (12 miners + 32 relays) is the committed senior-box leg.
+7. **Scale erases the micro-scale strategy separation (mid-scale,
+   n=2)**: the ranking inversion seen at n=1 (lead-2 0.477 > ES 0.387)
+   did NOT survive replication — ES drew 0.463 on its second mid-scale
+   run, interleaving the stock sets (ES {0.387, 0.463}, lead-2 {0.477,
+   0.396}; means 0.425 vs 0.437, statistically indistinguishable). At 6
+   miners, textbook ES and the observed conservative lead-2 policy earn
+   alike — the attack Monero actually observed cannot be dismissed as
+   the weaker variant (micro had them separated by 0.18: 0.492 vs
+   0.309). PoP-exact's blind spot is partial at scale and REPLICATES
+   TIGHTLY: lead-2 lands at break-even in both draws (0.353/0.347 vs
+   fair 0.40) while ES falls to 0.170/0.285 — lateness punishes
+   catch-up reveals roughly twice as hard as proactive ones (−0.20 vs
+   −0.09 on means); the residue is exactly what SoP's share-lateness
+   rule targets. First nonzero realized γ appears only at this scale
+   (0.03–0.10): propagation races need a fabric big enough to have
+   them.
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -229,7 +236,9 @@ upgrade).
 
 - Micro-topology (8–13 hosts, 2–5 miners): honest-fragmentation effects at
   larger scale are unmeasured here; single runs per point except where
-  repeats are noted (n=2 at α_eff 0.467 and 0.667),
+  repeats are noted (n=2 at α_eff 0.467 and 0.667, and across E4 after
+  the 2026-09-24 replication campaign — every quantitative E4 claim now
+  carries n=2; the exact-vs-deviated magnitude remains unresolved),
   `native_preemption: true` (share σ≈0.05; the eclipse coalition-internal
   SPLIT has much fatter variance than the controlled total — each island
   cash-out is winner-take-all); A/A byte-determinism requires
@@ -308,6 +317,10 @@ config, so daemon behavior is stock either way.)
 | `20260924_034156_pop_exact_rep__honest_exact` | `cfd1dd6b`* | `pop_exact_rep` cell | control rep: 0.378 ≈ α — micro dip was noise |
 | `20260924_040630_pop_scale_r2_rep__es_r2_none` | `306f8b9e`* | `pop_scale_r2_rep` cell | lead-2 stock rep: 0.396 — inversion margin thins |
 | `20260924_045805_pop_scale_r2_rep__es_r2_exact` | `306f8b9e`* | `pop_scale_r2_rep` cell | blind-spot residue replicates: 0.347 (γ 0.098) |
+| `20260924_055049_pop_scale_rep__es_none` | `550c8c2e`* | `pop_scale_rep` cell | mid stock rep: 0.463 — the n=1 inversion claim dies |
+| `20260924_064254_pop_scale_rep__es_exact` | `550c8c2e`* | `pop_scale_rep` cell | mid exact rep: 0.285 — separation holds at n=2 |
+| `20260924_073808_pop_scale_rep__honest_none` | `550c8c2e`* | `pop_scale_rep` cell | mid control rep: 0.400 ≈ α |
+| `20260924_082914_pop_scale_rep__honest_exact` | `550c8c2e`* | `pop_scale_rep` cell | exact control rep: 0.431 ≈ α; throughput −8.6% |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`

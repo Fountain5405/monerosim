@@ -302,39 +302,40 @@ exact-vs-deviated gap either compounds or inverts; the honest control's
 orphaning is the safety readout. Mid runs one-at-a-time locally
 (parallel: 1); full scale is the senior-box leg.
 
-## Rung-4 mid-scale results (2026-09-23, `matrix_runs/pop_scale/`, 6 honest
-miners + 16 relays, α=0.4, 6 h; honest_exact control re-running)
+## Rung-4 mid-scale results (2026-09-23 `matrix_runs/pop_scale/`;
+## replicated 2026-09-24 `matrix_runs/pop_scale_rep/` — 6 honest miners +
+## 16 relays, α=0.4, 6 h)
 
-| cell | attacker share | att. orphan | net orphan | uncle embeddings |
-|---|---|---|---|---|
-| `es_none` | 0.387 | 0.280 | 0.321 | — |
-| `es_exact` | **0.170** | 0.721 | 0.380 | **17** |
-| `honest_none` | 0.386 ≈ α | 0.200 | 0.056 | — |
+| cell | attacker share (run1/run2) | att. orphan | net orphan |
+|---|---|---|---|
+| `es_none` | 0.387 / 0.463 | 0.280 / 0.190 | 0.321 / 0.327 |
+| `es_exact` | **0.170 / 0.285** | 0.721 / 0.589 | 0.380 / 0.400 |
+| `honest_none` | 0.386 / 0.400 ≈ α | 0.200 / 0.041 | 0.056 / 0.074 |
+| `honest_exact` | 0.367 / 0.431 ≈ α | 0.076 / 0.028 | — / 0.080 |
 
 - **P-scale (embeddings) confirmed directionally**: 3 → 17 with 2 → 6
   honest miners — contention feeds the uncle mechanism as predicted.
-- **The exact countermeasure holds at mid scale**: 0.387 → 0.170
-  (−0.22; micro was −0.36 from a higher baseline). Attacker orphaning
-  stays at 0.72 — the crush survives more racers.
-- **Scale alone shrinks the stock attacker** (0.492 → 0.387): more honest
-  miners means fewer tie wins per node — the γ≈0 tie-luck dilutes. The
-  ES theory curve at α=0.4 (0.484) is a 2-racer number; honest-network
-  fragmentation cuts the other way at scale. (Single runs; repeats
-  queued behind the control.)
-- Vandalism persists (net orphan 0.32 → 0.38 under the countermeasure).
-
-**Mid-scale control (2026-09-23, `honest_exact` redo):** share **0.367 ≈
-α=0.4** — the micro-scale dip (0.322) VANISHES at 6 miners, and control
-orphaning normalizes (0.076 vs honest_none's 0.056). The dip was
-starvation: with real contention the uncles have consistent work and the
-weight disagreements settle. Remaining exact-variant cost at scale:
-~10% honest throughput (158 vs 176 canonical blocks / 6 h) — real,
-worth stating in any deployment discussion. Full mid-scale table:
-
-| mid (6 miners, α=0.4) | attacker | control |
-|---|---|---|
-| stock | 0.387 | 0.386 |
-| exact (uncles + det tie) | **0.170** | 0.367 |
+- **The exact countermeasure holds at mid scale, cleanly separated at
+  n=2**: stock {0.387, 0.463} vs exact {0.170, 0.285} — every exact
+  draw below every stock draw (means 0.425 → 0.228, −0.20). Attacker
+  orphaning stays 0.59–0.72 — the crush survives more racers. The point
+  estimate moves (0.170 → mean 0.228); the verdict does not.
+- **"Scale alone shrinks the stock attacker" WEAKENS at n=2**: micro ES
+  is {0.463, 0.492} (E1 baseline + pilot), mid ES {0.387, 0.463} —
+  means 0.478 vs 0.425 with 0.463 in BOTH sets. If the shrinkage is
+  real it is ~−0.05, within noise at n=2; dropped as a standalone
+  claim. (The ES theory curve at α=0.4, 0.484, is a 2-racer number;
+  honest-network fragmentation cuts the other way at scale.)
+- Vandalism persists (net orphan 0.32 → 0.38–0.40 under the
+  countermeasure).
+- **Controls clean at n=2**: honest_none 0.386/0.400; honest_exact
+  0.367/0.431 (mean 0.399 ≈ α) — the micro dip (0.322) did not
+  replicate (0.378) and the mid-scale recovery holds twice. The dip
+  was starvation/noise: with real contention the uncles have consistent
+  work and the weight disagreements settle. Remaining exact-variant
+  cost at scale: **~9–10% honest throughput, twice measured** (158 vs
+  176, and 160 vs 175 canonical blocks / 6 h) — real, worth stating in
+  any deployment discussion.
 
 ## Rung 4b: the blind spot at mid scale (2026-09-23 `pop_scale_r2` n=1;
 ## replicated 2026-09-24 `pop_scale_r2_rep`)
