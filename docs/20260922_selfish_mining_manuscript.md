@@ -196,6 +196,24 @@ variant rides the SoP step-4 matrix.
    rule targets. First nonzero realized γ appears only at this scale
    (0.03–0.10): propagation races need a fabric big enough to have
    them.
+8. **Share-or-Perish v1 falsified on stability (rung 5, pre-registered
+   falsifier)**: the #146 weight table implemented on gossip-pool
+   weights fragments the honest network — the honest control earns
+   0.547 ≠ α=0.4 with self-orphaning 18× the pre-registered threshold,
+   and the attack cells collapse to 9–22 canonical blocks per 6 h
+   (honest miners hold 180+-block local views; 6k–9.5k invalid-span
+   drops per node). The l_w mechanism itself works — the attacker's
+   share and γ both go to 0.000 with 100% attacker orphaning — but at
+   the cost of the chain: weights derived from node-local gossip state
+   cannot stay consistent across nodes. #146's in-block share embedding
+   (omitted in v1 as an unexercised deviation) exists precisely to make
+   weights node-independent; v2 with embedding is the indicated fix.
+9. **The correctly-implemented exact variant cuts lead-2 to 0.127**
+   (rung-5 re-measurement after the parse fix; inert-bonus era: ~0.35):
+   the residual "PoP blind spot to proactive releases" was substantially
+   the tx-tree-hash defect, not the timing semantics. ES is unchanged
+   (0.210 ≈ 0.134/0.215 — uncles stay a no-op vs ES at micro, third
+   replication). n=1; replication queued before promotion.
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -333,6 +351,15 @@ config, so daemon behavior is stock either way.)
 | `20260924_064254_pop_scale_rep__es_exact` | `550c8c2e`* | `pop_scale_rep` cell | mid exact rep: 0.285 — separation holds at n=2 |
 | `20260924_073808_pop_scale_rep__honest_none` | `550c8c2e`* | `pop_scale_rep` cell | mid control rep: 0.400 ≈ α |
 | `20260924_082914_pop_scale_rep__honest_exact` | `550c8c2e`* | `pop_scale_rep` cell | exact control rep: 0.431 ≈ α; throughput −8.6% |
+| `20260924_121104_pop_sop__es_none` | `b046e0b1`* | `pop_sop` cell | stock ES: 0.492 — replicates the pilot exactly |
+| `20260924_121104_pop_sop__es_sop` | `b046e0b1`* | `pop_sop` cell | SoP v1: 0.136 but 22 canonical blocks — collapse |
+| `20260924_125116_pop_sop__es_exact` | `b046e0b1`* | `pop_sop` cell | fixed-parser exact vs ES: 0.210 ≈ inert era |
+| `20260924_132719_pop_sop__es_r2_none` | `b046e0b1`* | `pop_sop` cell | stock lead-2: 0.356, in band |
+| `20260924_133321_pop_sop__es_r2_sop` | `b046e0b1`* | `pop_sop` cell | SoP v1 vs lead-2: 0.000 on a 9-block chain — collapse |
+| `20260924_140925_pop_sop__es_r2_exact` | `b046e0b1`* | `pop_sop` cell | **fixed-parser exact vs lead-2: 0.127 — the bonus bites** |
+| `20260924_144929_pop_sop__honest_none` | `b046e0b1`* | `pop_sop` cell | control clean: 0.399 ≈ α |
+| `20260924_144929_pop_sop__honest_sop` | `b046e0b1`* | `pop_sop` cell | **P-SoP3 falsified: 0.547, self-orphan 0.542 (18×)** |
+| `20260924_152904_pop_sop__honest_exact` | `b046e0b1`* | `pop_sop` cell | fixed-parser exact control: 0.357 clean |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`

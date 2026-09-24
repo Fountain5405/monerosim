@@ -178,6 +178,51 @@ stock) — so the embedding's load-bearing roles are not exercised. If a
 future strategy mines selectively-publishing share cherry-picks, the
 embedding + sequencing must be built first.
 
+## Step 4 results (2026-09-24, `matrix_runs/pop_sop/`, 9 × 6 h at α=0.4)
+
+| cell | share | att. orphan | blocks | verdict vs prediction |
+|---|---|---|---|---|
+| es_none | 0.492 | 0.179 | 195 | baseline, replicates the pilot exactly |
+| es_r2_none | 0.356 | 0.231 | 180 | baseline, in the 0.31–0.35 band |
+| honest_none | 0.399 | 0.024 | 203 | control clean |
+| es_sop | 0.136 | 0.973 | **22** | P-SoP2 "passes" — through collapse |
+| es_r2_sop | 0.000 | 1.000 | **9** | P-SoP1 "passes" — through collapse |
+| honest_sop | **0.547** | **0.542** | 181 | **P-SoP3 FALSIFIED** |
+| es_exact (fixed parser) | 0.210 | 0.593 | 176 | ≈ inert-era values — uncles still no-op vs ES |
+| es_r2_exact (fixed parser) | **0.127** | 0.759 | 205 | the bonus BITES lead-2 once it counts |
+| honest_exact (fixed parser) | 0.357 | 0.036 | 185 | control clean |
+
+- **P-SoP3 is FALSIFIED, cleanly and instructively.** The honest control
+  under SoP earns 0.547 ≠ α=0.4 with self-orphaning 0.542 — 18× the
+  pre-registered falsifier threshold (>2× stock's 0.03). The canonical
+  chain fragmented: honest miners hold 180+-block local views while the
+  attributed canonical chain has 9–22 blocks, with 6k–9.5k invalid-span
+  drops per node (427 is the stock baseline). Root cause, consistent with
+  the smoke watch item: **weights derived from node-local gossip state
+  cannot agree across nodes** — each node counts a different share set,
+  random ties plus l_b/l_w asymmetries keep views churning, and sync
+  livelocks. The strongest reading of #146's in-block share embedding
+  (our deviation #2) is now that it exists precisely to make weights
+  node-INDEPENDENT — every verifier re-derives the same weight from the
+  block, and only the first-seen timing comes from local state. A v2
+  with embedding (+ deterministic tie as a stability knob) is the
+  indicated fix; not built yet.
+- **P-SoP1/P-SoP2 "pass" only in the degenerate sense**: the attacker's
+  share and γ go to 0.000 with att. orphan 1.000 — the l_w mechanism
+  does reach both catch-up and proactive withholding — but through
+  networks that stopped producing common history (9/22 blocks in 6 h).
+  Incentive-removal at the cost of the chain itself.
+- **The exact-variant re-measurement (parser fixed) is the clean result
+  of the run**: with the uncle-header bonus actually counting, lead-2
+  falls 0.356 → 0.127 (att. orphan 0.759) — versus ~0.35 with the inert
+  bonus (0.353/0.347 mid-scale, 0.349/0.326 micro). ES is unchanged
+  (0.210 ≈ the inert-era 0.134/0.215 — "uncles are a no-op against ES
+  at micro" replicates a third time). The prior "PoP is blind to
+  proactive releases" residue was therefore substantially the DEFECT,
+  not the semantics: the correctly-implemented exact variant cuts lead-2
+  to textbook-ES-crush territory. n=1 — replicate before promotion to a
+  finding; queued.
+
 ## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
 
 A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —
