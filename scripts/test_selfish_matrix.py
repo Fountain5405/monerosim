@@ -82,6 +82,25 @@ def test_overlay_targets_and_eclipsed_victims(tmp_path):
         apply_overlay(cfg, {"islands": {}}, "t")
 
 
+def test_relays_target_reaches_only_forwarding_nodes():
+    """SoP-style gossip specs must flip relays to monerod-sim (a vanilla
+    monerod relay drops the workshare levin message) without touching the
+    attacker, its bridge, or any miner."""
+    from scripts.selfish_matrix import apply_overlay
+    base = yaml.safe_load(yaml.safe_dump(BASE))
+    base["agents"]["relay-001"] = {"daemon": "monerod", "start_time": "30s"}
+    cfg = yaml.safe_load(yaml.safe_dump(base))
+    apply_overlay(cfg, {"relays": {"daemon": "monerod-sim",
+                                   "daemon_options": {"sim-share-or-perish": True}}}, "t")
+    r = cfg["agents"]["relay-001"]
+    assert r["daemon"] == "monerod-sim"
+    assert r["daemon_options"] == {"sim-share-or-perish": True}
+    # nobody else moved: attacker stock, bridge stock, honest miner untouched
+    assert "daemon_options" not in cfg["agents"]["attacker-miner"]
+    assert "daemon_options" not in cfg["agents"]["attacker-bridge"]
+    assert "daemon_options" not in cfg["agents"]["honest-001"]
+
+
 def test_plan_cells_product_and_exclude(tmp_path):
     axes = {
         "strategy": {"es": {}, "honest": {}},

@@ -103,6 +103,15 @@ def _agent_targets(cfg: dict) -> dict:
         "attacker": attackers,
         "honest": honest,
         "bridges": [k for k, v in agents.items() if v.get("script") == "agents.selfish_bridge"],
+        # Forwarding nodes: run a daemon but are neither miner nor bridge nor
+        # attacker. SoP-style gossip countermeasures must reach these too —
+        # a vanilla-monerod relay drops unknown levin messages (shares), so
+        # those specs flip relays to monerod-sim via this target.
+        "relays": [k for k, v in agents.items()
+                   if "daemon" in v
+                   and v.get("script") not in ("agents.autonomous_miner",
+                                               "agents.selfish_miner",
+                                               "agents.selfish_bridge")],
         "all": [k for k, v in agents.items() if "daemon" in v],
     }
 

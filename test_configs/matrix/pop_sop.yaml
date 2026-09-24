@@ -1,0 +1,32 @@
+# E4 rung 5 (SoP step 4): the pre-registered micro A/B.
+# P-SoP1: SoP closes the proactive-release gap PoP cannot — es_r2_sop
+#   < 0.25 (baselines: lead-2 stock 0.309; under PoP 0.349/0.326).
+#   Mechanism: the lead-2 attacker's withheld shares are not seen > d
+#   before its withheld blocks, so l_w = 0 — lateness finally reaches
+#   proactive releases.
+# P-SoP2: textbook ES stays crushed (es_sop <= 0.15).
+# P-SoP3: honest control unchanged (share ~ alpha = 0.4, no storms);
+#   honest shares relay as mined so l_w = 1 and weight ~ legacy.
+# P-SoP4 (cost readout): share traffic ~ w-1 per block per miner —
+#   visible as relay volume, the P2P variant of #146's cost question.
+# Falsifier: honest-control orphaning > 2x stock means l_w mis-signs.
+# The `exact` axis value re-measures the uncle-header variant with the
+# FIXED parser (its bonus was inert in every prior run — the tx-tree-hash
+# defect, docs/20260923_sop_design.md step 2), same cells as pop_exact.
+# Topology: relays run monerod-sim under `sop` (a vanilla relay drops the
+# workshare notify); the attacker's covert bridge stays stock by design.
+name: pop_sop
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    none: {}
+    sop:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+    exact:
+      honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}

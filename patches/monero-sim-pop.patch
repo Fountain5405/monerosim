@@ -133,7 +133,7 @@ index c168f48a7..0e6730b72 100644
  VARIANT_TAG(binary_archive, cryptonote::tx_extra_mysterious_minergate, TX_EXTRA_MYSTERIOUS_MINERGATE_TAG);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index fcc92644a..810bf74e4 100644
+index fcc92644a..bb3b4fa98 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -215,7 +215,7 @@ index fcc92644a..810bf74e4 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1857,6 +1897,364 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1857,6 +1897,476 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -423,7 +423,12 @@ index fcc92644a..810bf74e4 100644
 +  // Same clock and same emplace semantics as block receives: re-submissions
 +  // and P2P duplicates never move the first-seen timestamp.
 +  m_sim_recv.emplace(id, now_ms);
-+  m_sim_shares.emplace(id, sim_workshare_entry{height, now_ms});
++  sim_workshare_entry ent;
++  ent.height = height;
++  ent.prev_id = bh.prev_id;
++  ent.recv_ms = now_ms;
++  ent.blob = blob;
++  m_sim_shares.emplace(id, ent);
 +  // Bound the pool by first-seen order (rates are ~w-1 per block per miner;
 +  // 1024 covers many heights of multi-miner gossip).
 +  if (m_sim_shares.size() > 1024)
@@ -526,8 +531,115 @@ index fcc92644a..810bf74e4 100644
 +
 +// The PoP reorg decision, replacing the raw cumulative-difficulty comparison
 +// for the alt block that just arrived (alt_chain already contains `bei`).
++// SIMULATION ONLY (Share-or-Perish, MRL #146, step 3): per-block weight.
++// Within the last 10*w blocks of the tip: l_b * (diff/w) * (1 + counted
++// shares); a share counts when its parent matches the candidate block's
++// parent, its PoW meets diff/w (lazy, cached), and it was first seen > d
++// BEFORE the first block at its height (l_w — the rule that reaches
++// proactive releases: a withheld share released with its block is late).
++// Older blocks weigh plain difficulty (legacy-compatible). Zero when the
++// block itself is late (l_b = 0).
++difficulty_type Blockchain::sim_sop_weight(uint64_t height, const crypto::hash &id, const crypto::hash &prev_id)
++{
++  const difficulty_type diff = m_db->get_block_difficulty(height);
++  const uint64_t top = m_db->height() - 1;
++  if (height + 10 * m_sim_sop_w <= top)
++    return diff;                       // legacy window
++  if (!sim_pop_in_time(id, height))
++    return 0;                          // l_b = 0: late block
++  difficulty_type unit = diff / m_sim_sop_w;
++  if (unit == 0)
++    unit = 1;   // sim-only floor: bootstrap difficulties < w would zero every
++                // block (real Monero never sees diff < w) and fork choice
++                // degenerates into permanent random ties
++  const uint64_t first = sim_pop_first_seen(height);
++  uint64_t shares = 0;
++  for (auto &s : m_sim_shares)
++  {
++    sim_workshare_entry &e = s.second;
++    if (e.height != height || e.prev_id != prev_id)
++      continue;
++    // l_w: the share must precede the first block at this height by > d.
++    if (first != std::numeric_limits<uint64_t>::max()
++        && !(first > e.recv_ms + m_sim_sop_delay_ms))
++      continue;
++    if (e.pow_ok == 0)
++    {
++      e.pow_ok = 2;
++      block_header bh;
++      uint64_t tx_count = 0;
++      if (sim_parse_pow_header(e.blob, bh, tx_count))
++      {
++        block ub;
++        ub.major_version = bh.major_version;
++        ub.minor_version = bh.minor_version;
++        ub.timestamp = bh.timestamp;
++        ub.prev_id = bh.prev_id;
++        ub.nonce = bh.nonce;
++        ub.tx_hashes.resize(tx_count);
++        crypto::hash pow;
++        get_block_longhash(this, ub, pow, height, 0);
++        e.pow_ok = check_hash(pow, diff / m_sim_sop_w) ? 1 : 2;
++      }
++    }
++    if (e.pow_ok == 1)
++      ++shares;
++  }
++  return unit * (1 + shares);
++}
++
++// SIMULATION ONLY (Share-or-Perish): the #146 fork choice — PoP's skeleton
++// (rule-1 fail-safe, rule-3 tie) with the share-aware weight table above.
++bool Blockchain::sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei)
++{
++  const uint64_t top = m_db->height() - 1;
++  const uint64_t fork = alt_chain.front().height - 1;
++  const uint64_t alt_len = alt_chain.size();
++  const uint64_t main_len = top > fork ? top - fork : 0;
++
++  if (alt_len >= main_len + m_sim_sop_k)
++    return true;
++
++  difficulty_type w_alt = 0, w_main = 0;
++  for (const auto &e : alt_chain)
++    w_alt += sim_sop_weight(e.height, get_block_hash(e.bl), e.bl.prev_id);
++  for (uint64_t h = fork + 1; h <= top; ++h)
++    w_main += sim_sop_weight(h, get_block_id_by_height(h), get_block_id_by_height(h - 1));
++
++  if (w_alt != w_main)
++  {
++    MINFO("SIM-SoP: fork " << fork << " alt " << w_alt << "/" << alt_len
++          << " vs main " << w_main << "/" << main_len
++          << " -> " << (w_alt > w_main ? "SWITCH" : "KEEP"));
++    return w_alt > w_main;
++  }
++
++  const bool sw = m_sim_pop_det_tie
++    ? bool(get_block_hash(bei.bl) < get_block_id_by_height(top))
++    : bool(m_sim_pop_rng() & 1);
++  MINFO("SIM-SoP: fork " << fork << " TIE " << w_alt << "/" << alt_len
++        << " vs " << w_main << "/" << main_len
++        << " -> " << (sw ? "SWITCH" : "KEEP") << " ("
++        << (m_sim_pop_det_tie ? "det" : "random") << " tie)");
++  return sw;
++}
++
++void Blockchain::set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k)
++{
++  m_sim_sop_w = w > 1 ? w : 2;
++  m_sim_sop_delay_ms = delay_ms;
++  m_sim_sop_k = k;
++  m_sim_sop_enabled = true;
++  m_sim_pop_enabled = true;   // arms the receive-time ledger (l_b/l_w clock)
++  MINFO("SIM-SoP: weight table armed (w=" << m_sim_sop_w
++        << " delay_ms=" << delay_ms << " k=" << k << ")");
++}
++
 +bool Blockchain::sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei)
 +{
++  if (m_sim_sop_enabled)
++    return sim_sop_should_switch(alt_chain, bei);   // #146 weight table
++
 +  const uint64_t top = m_db->height() - 1;              // main-chain top index
 +  const uint64_t fork = alt_chain.front().height - 1;   // last common-ancestor index
 +  const uint64_t alt_len = alt_chain.size();
@@ -539,7 +651,7 @@ index fcc92644a..810bf74e4 100644
 +    return true;
 +
 +  // Rule 2: larger in-time weight over the divergent suffixes.
-+  uint64_t w_alt = 0, w_main = 0;
++  difficulty_type w_alt = 0, w_main = 0;
 +  for (const auto &e : alt_chain)
 +    if (sim_pop_in_time(get_block_hash(e.bl), e.height))
 +      w_alt += 1 + (m_sim_pop_uncles ? sim_pop_uncle_bonus(e.bl, e.height)
@@ -580,7 +692,7 @@ index fcc92644a..810bf74e4 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -2093,7 +2491,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2093,7 +2603,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -591,7 +703,7 @@ index fcc92644a..810bf74e4 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4674,6 +5074,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4674,6 +5186,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -606,7 +718,7 @@ index fcc92644a..810bf74e4 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 0fd81f4ba..2b3ce73d0 100644
+index 0fd81f4ba..cbd223108 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -617,7 +729,7 @@ index 0fd81f4ba..2b3ce73d0 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -887,6 +888,24 @@ namespace cryptonote
+@@ -887,6 +888,27 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -639,10 +751,13 @@ index 0fd81f4ba..2b3ce73d0 100644
 +    // (local hit or gossiped); true only for a NEW share. See m_sim_shares.
 +    bool sim_add_workshare(const blobdata &blob, uint64_t height, crypto::hash &id);
 +
++    // SIMULATION ONLY (step 3): arm the SoP weight table on the PoP engine.
++    void set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k);
++
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1188,6 +1207,31 @@ namespace cryptonote
+@@ -1188,6 +1210,50 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -665,20 +780,39 @@ index 0fd81f4ba..2b3ce73d0 100644
 +    uint64_t sim_pop_uncle_bonus_header(const block &b, uint64_t height) const;
 +
 +    // SIMULATION ONLY (Share-or-Perish, MRL #146): workshare pool. Shares
-+    // are 80B PoW headers at >= 1/w difficulty on the template; first-seen
-+    // times land in the shared m_sim_recv ledger (one clock for l_b and
-+    // l_w). Full PoW verification is deferred to weight time (step 3),
-+    // mirroring embedded uncle headers.
-+    struct sim_workshare_entry { uint64_t height; uint64_t recv_ms; };
++    // are PoW headers at >= 1/w difficulty on the template (header + 32B
++    // tx-tree hash + tx-count varint); first-seen times land in the shared
++    // m_sim_recv ledger (one clock for l_b and l_w). PoW is verified lazily
++    // at weight time (pow_ok cache), like embedded uncle headers.
++    struct sim_workshare_entry {
++      uint64_t height;
++      crypto::hash prev_id;     // the parent the share mines on
++      uint64_t recv_ms;
++      std::string blob;         // kept for the lazy PoW check
++      uint8_t pow_ok = 0;       // 0 unverified / 1 pass / 2 fail
++    };
 +    std::unordered_map<crypto::hash, sim_workshare_entry> m_sim_shares;  // share id -> first-seen
++
++    // SIMULATION ONLY: Share-or-Perish fork choice (weight table per MRL
++    // #146: within the last 10*w blocks of the tip, a block weighs
++    // l_b * diff/w * (1 + counted shares); a share counts when its parent
++    // matches the candidate chain, its PoW meets diff/w, and it was first
++    // seen > d before the first block at its height (l_w)). Older blocks
++    // weigh plain difficulty (legacy-compatible).
++    bool m_sim_sop_enabled = false;
++    uint64_t m_sim_sop_w = 16;
++    uint64_t m_sim_sop_delay_ms = 5000;
++    uint64_t m_sim_sop_k = 3;
++    bool sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
++    difficulty_type sim_sop_weight(uint64_t height, const crypto::hash &id, const crypto::hash &prev_id);
      bool m_db_default_sync;
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index a727747a8..3581992ad 100644
+index a727747a8..eace5eddd 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -196,6 +196,42 @@ namespace cryptonote
+@@ -196,6 +196,64 @@ namespace cryptonote
    , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
    , false
    };
@@ -718,10 +852,32 @@ index a727747a8..3581992ad 100644
 +  , "Simulation only: MRL #144 EXACT — embed the ~80 B uncle PoW header in a new tx_extra field (tag 0x75) and verify it trustlessly (re-hash + PoW + sibling check); never-received uncles count. Off by default."
 +  , false
 +  };
++  static const command_line::arg_descriptor<bool> arg_sim_share_or_perish = {
++    "sim-share-or-perish"
++  , "Simulation only: enable the Share-or-Perish weighted fork choice (MRL #146) on top of the PoP engine — workshares at 1/w difficulty are gossiped ahead of their containing block and add chain weight when seen in time (l_b * l_w). Off by default."
++  , false
++  };
++  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_delay_s = {
++    "sim-sop-delay-s"
++  , "Simulation only: Share-or-Perish share lateness bound in seconds (a share counts only if first seen this long BEFORE the first block at its height)."
++  , 5
++  };
++  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_k = {
++    "sim-sop-k"
++  , "Simulation only: Share-or-Perish rule-1 length fail-safe (a competing chain this many blocks longer always wins, for partition recovery)."
++  , 3
++  };
++  // Lookup key only — the flag itself is registered by miner::init_options
++  // ("sim-sop-w"); core reads the same variable_map without re-registering.
++  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_w_key = {
++    "sim-sop-w"
++  , "(registered by the miner) workshare ratio w — here: the weight-table divisor."
++  , 16
++  };
    static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
      "max-txpool-weight"
    , "Set maximum txpool weight in bytes."
-@@ -339,6 +375,12 @@ namespace cryptonote
+@@ -339,6 +397,15 @@ namespace cryptonote
      command_line::add_arg(desc, arg_stagenet_on);
      command_line::add_arg(desc, arg_regtest_on);
      command_line::add_arg(desc, arg_sim_relay_alt_blocks);
@@ -731,10 +887,13 @@ index a727747a8..3581992ad 100644
 +  command_line::add_arg(desc, arg_sim_pop_det_tie);
 +  command_line::add_arg(desc, arg_sim_pop_uncles);
 +  command_line::add_arg(desc, arg_sim_pop_uncles_header);
++  command_line::add_arg(desc, arg_sim_share_or_perish);
++  command_line::add_arg(desc, arg_sim_sop_delay_s);
++  command_line::add_arg(desc, arg_sim_sop_k);
      command_line::add_arg(desc, arg_keep_fakechain);
      command_line::add_arg(desc, arg_fixed_difficulty);
      command_line::add_arg(desc, arg_fakechain_hard_forks);
-@@ -783,6 +825,17 @@ namespace cryptonote
+@@ -783,6 +850,32 @@ namespace cryptonote
  
      bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
      m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -749,10 +908,25 @@ index a727747a8..3581992ad 100644
 +          command_line::get_arg(vm, arg_sim_pop_det_tie),
 +          command_line::get_arg(vm, arg_sim_pop_uncles),
 +          command_line::get_arg(vm, arg_sim_pop_uncles_header));
++
++    // SIMULATION ONLY: Share-or-Perish (MRL #146) fork choice — same
++    // receive-time ledger, weight table extended with gossiped workshares
++    // (see Blockchain::sim_sop_weight). w comes from the miner's flag via
++    // the shared variable_map; has_arg guard because configs that enable
++    // SoP without an explicit w use the default.
++    if (command_line::get_arg(vm, arg_sim_share_or_perish))
++    {
++      const uint64_t sop_w = command_line::has_arg(vm, arg_sim_sop_w_key)
++          ? command_line::get_arg(vm, arg_sim_sop_w_key) : 16;
++      m_blockchain_storage.set_sim_sop(
++          sop_w,
++          command_line::get_arg(vm, arg_sim_sop_delay_s) * 1000,
++          command_line::get_arg(vm, arg_sim_sop_k));
++    }
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
-@@ -1435,6 +1488,35 @@ namespace cryptonote
+@@ -1435,6 +1528,35 @@ namespace cryptonote
      return true;
    }
    //-----------------------------------------------------------------------------------------------

@@ -137,6 +137,47 @@ legitimate races (unknown fork parent, peer briefly behind).
    fork split replayed 3×). Ritual: full log + explicit exit check +
    mtime before smoking.
 
+## Step 3 shipped (2026-09-24): the #146 weight table
+
+`--sim-share-or-perish` (+ `--sim-sop-delay-s` [5], `--sim-sop-k` [3]; w
+reuses `--sim-sop-w`): `set_sim_sop` arms the table on the PoP engine
+(`sim_pop_should_switch` delegates to `sim_sop_should_switch`). Within the
+last 10·w blocks of the tip a block weighs `l_b · (diff/w) · (1 + counted
+shares)`; older blocks weigh plain difficulty; a share counts when its
+parent matches the candidate block's parent, its PoW meets diff/w (lazy
+longhash, cached in the pool entry), and it was first seen > d BEFORE the
+first block at its height (l_w — the rule that reaches proactive
+releases). Rule 1 (k fail-safe) and rule 3 (tie) as in PoP; the unit
+weight is floored at 1 (sim-only: bootstrap difficulties < w would zero
+every block and degenerate fork choice into permanent random ties).
+
+**Validation smoke (12 sim-min, 2 miners + 2 relays, all SoP):** the
+mechanism fires — `SIM-SoP: fork` decisions with share-augmented weights
+(unit×(1+shares) visible, honest ties honest). **Watch item, resolved
+neither way at smoke scale:** the 12-min/2-miner topology spends its
+entire life at bootstrap difficulty (diff ≈ w → unit = 1 → weight =
+1 + locally-counted shares), so per-node pools disagree, chain views
+churn under random ties, and late-joining relays livelock their initial
+sync (stuck at height 4; 1265 invalid-span drops; the pre-floor version
+additionally zeroed every weight). The real 6 h A/B topology ramps diff
+to ≈1800 within its 10-min bootstrap — the same shape the PoP random-tie
+cells ran stably — so P-SoP3 ("honest control unchanged, no storms") is
+the live test of whether this matters at experimental scale. If the 6 h
+honest_sop control livelocks, that FALSIFIES P-SoP3 on stability grounds
+and motivates a deterministic-tie or share-warmup variant — recorded
+either way.
+
+**Deviation #2 (documented):** no in-block share embedding / version_minor
+serialization. #146 embeds shares in the miner tx extra for trustless
+verification by nodes that missed the gossip, plus sequential-
+version_minor anti-cherry-picking. Within the 10·w window the gossip pool
+dominates (every honest node pools the same shares), the withheld-share
+attack zeroes through l_w either way, and no strategy in our set
+cherry-picks others' shares (honest miners embed nobody's, attackers run
+stock) — so the embedding's load-bearing roles are not exercised. If a
+future strategy mines selectively-publishing share cherry-picks, the
+embedding + sequencing must be built first.
+
 ## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
 
 A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —
