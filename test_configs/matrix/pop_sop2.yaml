@@ -13,8 +13,15 @@
 # Falsifier: honest share > 0.45 or any cell < 100 blocks.
 # Baselines (n=2-4, no re-run): stock ES 0.492x2, lead-2 0.309/0.356,
 # honest 0.397-0.408; PoP-exact vs lead-2 {0.127, 0.294} (fixed parser).
+# Base: selfish_micro_sop (declared seeds on monerod-sim — vanilla nodes
+# reject version_minor-as-share-count on the vote rule; the covert bridge
+# runs monerod-sim UNFLAGGED = stock fork choice but soft-fork-accepting,
+# exactly the deployment story for an upgraded network with a selfish
+# minority). Attempt 1 stranded the whole vanilla fabric at height 1-2
+# (seeds/bridge rejected every honest block; the analysis bridge-reference
+# collapsed to 1 block) — cells re-run on this base only.
 name: pop_sop2
-base: test_configs/selfish_micro.yaml
+base: test_configs/selfish_micro_sop.yaml
 parallel: 2
 axes:
   strategy:
@@ -25,3 +32,4 @@ axes:
     sop2:
       honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
       relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim}

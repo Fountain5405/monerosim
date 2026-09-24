@@ -267,6 +267,50 @@ direction holds (fixed < inert, non-overlapping at n=2) but the 0.127
 headline was a favorable draw; report ~0.21 ± wide, magnitude
 unresolved. The σ≈0.05 single-run lesson, third application.
 
+## Step-5 A/B outcome (2026-09-24, `pop_sop2` attempt 4) — P-SoP3-v2 FALSIFIED; two open defects
+
+Four build/ deployment defects were closed en route (each caught by the
+smoke-first rule, each recorded in the commit log): the vote-gate sed
+that inverted bypass into enforcement (5816/5816 blocks rejected);
+vanilla seeds/bridge rejecting `version_minor`-as-share-count (fixed by
+the declared-seed base `selfish_micro_sop.yaml` + an UNFLAGGED
+monerod-sim bridge — the soft-fork deployment story); the per-share
+template pull saturating shadow's event queue (1 Hz limiter); and
+re-indexed share slots breaking PoW verification (true-slot contiguous
+prefix).
+
+On the fixed binary the honest network finally *runs* — honest miners
+reach 182 blocks in the attack cell, 141 canonical in the control —
+but both pre-registered v2 predictions fail:
+
+- **P-SoP3-v2 FALSIFIED on fairness**: the honest control's unflagged
+  40% miner (the deployment transition: a fleet that has not all
+  upgraded) takes **0.723** of canonical share with the flagged 60%
+  side churning (attacker-side orphaning 0.300 = 10× stock). The
+  mechanism reads as weight-inflation churn among flagged miners (their
+  per-node l_b/l_w views diverge slightly; heavier blocks flip chains)
+  handing consistency to the unflagged stock chain. SoP does not merely
+  fail to be revenue-neutral during upgrade — it punishes its adopters.
+- **Partition-escape gap**: `es_sop2` ended in a terminal faction split
+  (honest-001 + attacker-miner at 182 vs honest-002 + bridge + relays
+  at 5). The spec's k·w objective escape did not rescue a 177-block
+  divergence — either the stranded faction's span-sync path rejects the
+  winning chain somewhere outside the fork-choice gates, or subjective
+  weights block span-driven adoption. Unresolved; needs a focused
+  debug pass on the 5-faction's sync logs.
+- Both attack cells also lost their analysis rows (the bridge followed
+  the 5-faction, so the chain dump was not recorded) — an analysis-
+  tooling dependency to relax (any node's dump can serve as reference).
+
+**Reading**: two independent faithful implementations of #146 (v1
+pool-weights, v2 embedded-shares with the full subjectivity machinery)
+each fail P-SoP3 in a different way — fragmentation, then mixed-fleet
+inversion — on a topology where PoP's core runs cleanly. That is
+evidence about the PROPOSAL, not just the implementation: SoP's
+timing-weighted fork choice concentrates fragility that #144's
+block-level lateness does not. Whether a deterministic tie or a
+share-blind upgrade-transition rule rescues it is open.
+
 ## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
 
 A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —

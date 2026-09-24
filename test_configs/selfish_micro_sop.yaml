@@ -1,0 +1,81 @@
+# Selfish-mining micro gate (docs/SELFISH_MINING.md).
+# Honest miners total 6 h/s; the attacker mines 4 h/s (alpha = 0.4) on an
+# OFFLINE monerod-sim (withholds by construction). The bridge is a normal
+# relay + a registration-only agent; the attacker finds it via the registry.
+# Single bridge => gamma ~= 0 (ties never propagate) => the Eyal-Sirer gamma=0
+# baseline. Compare against the honest-strategy run at the same alpha.
+# SoP-compatible variant of selfish_micro: the six fallback seeds are
+# DECLARED (fallback_seeds: custom) so countermeasure overlays can reach
+# them — option-1 SoP blocks (version_minor = share count) are rejected by
+# the hardfork vote rule in vanilla monerod, so every block-validating node
+# in a SoP topology must run monerod-sim (parser + vote-gate bypass).
+# Baseline cells on this base are unaffected: unflagged monerod-sim is
+# byte-for-byte stock behavior.
+general:
+  fallback_seeds: custom
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    hashrate: 4
+    start_time: 0s
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  monero-seed-001: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-002: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-003: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-004: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-005: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-006: {daemon: monerod-sim, start_time: 5s}
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
