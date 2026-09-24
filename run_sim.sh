@@ -346,6 +346,13 @@ sweep_orphan_ramdisks() {
     local found=0
     for d in "$RAMDISK_PARENT"/monerosim_ramdisk_*; do
         [[ -d "$d" ]] || continue
+        # Another user's ramdisk: lsof below can't see their processes, so
+        # it would look orphaned even mid-run, and sudo would unmount it
+        # under their daemons. Never touch what we don't own.
+        if [[ ! -O "$d" ]]; then
+            log_info "Leaving ramdisk $d (owned by another user)"
+            continue
+        fi
         # Still mounted?
         if mountpoint -q "$d" 2>/dev/null; then
             # Anyone using it?
