@@ -860,6 +860,8 @@ check_disk_space() {
         echo ""
         echo "  Tips:"
         echo "    - Delete old runs: rm -rf archived_runs/<run_name>"
+        echo "    - Reclaim crashed/--no-clean runs' raw data left in /tmp:"
+        echo "        scripts/sweep_stale_runs.sh            (lists; --delete to remove)"
         echo "    - Reduce simulation duration (stop_time)"
         echo "    - Reduce node count (fewer relays)"
         echo "    - Use --data-dir to write to a different volume"
@@ -869,6 +871,15 @@ check_disk_space() {
             du -sh "$archive_dir"/*/ 2>/dev/null | sort -rh | head -10 | while read -r line; do
                 echo "    $line"
             done
+            echo ""
+        fi
+        # Dead-owner /tmp dirs are never auto-deleted (see the launch
+        # report), so they are the other place space goes.
+        local stale_lines
+        stale_lines=$(bash "$SCRIPT_DIR/scripts/sweep_stale_runs.sh" 2>/dev/null | grep -E "^(stale|kept) " || true)
+        if [[ -n "$stale_lines" ]]; then
+            echo "  Reclaimable /tmp run dirs (scripts/sweep_stale_runs.sh):"
+            echo "$stale_lines" | sed 's/^/    /'
             echo ""
         fi
         read -rp "  Continue anyway? (yes/no): " CONFIRM
