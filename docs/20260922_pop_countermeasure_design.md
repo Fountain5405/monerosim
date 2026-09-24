@@ -265,6 +265,16 @@ per #144 composes via the existing `--sim-pop-det-tie`.
 ## Rung-3 results (2026-09-23, `matrix_runs/pop_exact/`, 3 × 6 h at α=0.4;
 ## replicated 2026-09-24, `matrix_runs/pop_exact_rep/`)
 
+> **DEFECT DISCLOSED 2026-09-24:** the EXACT variant's uncle-header bonus
+> was INERT in every run on this page and below — its parser read the
+> tx-count varint from the 32-byte tx-tree-hash offset and rejected every
+> real blob, so `es_exact`/`honest_exact` cells measured pop-core +
+> det-tie with dead coinbase payload (the deviated variant's local-storage
+> counting did work — the A/B asymmetry below was real code asymmetry,
+> not trustless counting). Found during the SoP step-2 build; parser
+> fixed same day (`docs/20260923_sop_design.md` §step 2); re-measurement
+> rides the SoP step-4 matrix.
+
 | cell (all det-tie) | attacker share (run1 / run2) | att. orphan | note |
 |---|---|---|---|
 | core (cited, n=2) | 0.244 / 0.296 | | |

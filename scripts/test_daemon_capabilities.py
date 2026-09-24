@@ -93,6 +93,18 @@ def test_sop_w_flag_is_gated(tmp_path):
     assert e["flags"] == ["sim-hash-interval-ms", "sim-sop-w"]  # sorted
 
 
+def test_sop_step3_flags_are_gated(tmp_path):
+    """The full Share-or-Perish flag set rides the same gate: a config asking
+    for SoP fork choice must fail preflight against a binary without it."""
+    cfg = {"agents": {"honest-001": {
+        "daemon": "monerod-sim",
+        "daemon_options": {"sim-share-or-perish": True,
+                           "sim-sop-delay-s": 5,
+                           "sim-sop-k": 3}}}}
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-share-or-perish", "sim-sop-delay-s", "sim-sop-k"]
+
+
 def test_pop_uncles_header_flag_is_gated(tmp_path):
     cfg = {"agents": {"honest-001": {
         "daemon": "monerod-sim",

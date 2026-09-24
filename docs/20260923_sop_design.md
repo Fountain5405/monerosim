@@ -88,6 +88,55 @@ the first three smokes showed zero share lines purely because of this;
 the capture was working invisibly. All SoP diagnostics use forced-level
 logging.
 
+## Step 2 shipped and validated (2026-09-24)
+
+`NOTIFY_NEW_WORKSHARE` (levin `BC_COMMANDS_POOL_BASE + 11`; payload = the
+PoW-header blob (`get_block_hashing_blob`: block_header + **32-byte
+tx-tree hash** + tx-count varint — NOT a fixed 80 B) + the template
+height). Exactly the scouted touch points: defs.h struct,
+`HANDLE_NOTIFY_T2` + handler modeled on fluffy-block,
+`i_cryptonote_protocol::relay_workshare` + stub, relay modeled on
+`relay_block` **with a `state_normal` connection filter** — share bursts
+multiplexing with span downloads on syncing connections measurably
+amplified chain-sync churn (427 → 1119 invalid-span drops per 12-min
+smoke without the filter, and one deterministic livelocked fork split;
+WITH it: 427 = exactly the no-share-traffic baseline). Per-node pool
+`m_sim_shares`: dedup by share id, first-seen stamped into the shared
+`m_sim_recv` ledger (one clock for l_b/l_w), cap 1024, light validation
+(canonical parse + known parent, main or alt at height−1; full PoW
+deferred to weight time, like uncle headers). The handler is deliberately
+NOT flag-gated — forwarding nodes cannot opt out of gossip (a deployment
+property); vanilla monerod relays would drop the unknown levin ID, so SoP
+topologies must put monerod-sim on the forwarding path (the matrix
+`honest` overlay covers relays).
+
+Validation smoke (`sop_relay_smoke.yaml`, 2 miners × 10 h/s at w=16 + 2
+FLAG-LESS monerod-sim relays, 12 sim-min): all nodes converge (height 9);
+relays pool 71/68 remote shares each; miners 43/49 local + 40/35 remote;
+dedup absorbs template-refresh nonce re-walks; the few rejects are
+legitimate races (unknown fork parent, peer briefly behind).
+
+### Defects found while building step 2 (both load-bearing)
+
+1. **The tx-tree-hash parse bug — the "EXACT uncles" bonus was inert in
+   every E4 run.** `sim_parse_pow_header` (extracted from the shipped
+   `sim_pop_uncle_bonus_header`) started the tx-count varint right after
+   the block_header — landing on the 32-byte tx-tree hash — so every
+   real blob was rejected (P(pass) ≈ 2⁻³²). The 80-B embeddings were
+   written into coinbases but never counted: all `*_exact` E4 cells
+   effectively measured **pop-core + det-tie**, and the n=2
+   exact-vs-deviated dead heat (0.215 vs 0.209) is fully explained (the
+   deviated variant counts from local alt storage — its path worked).
+   The mid-scale countermeasure-holds finding survives with the
+   corrected label. The parser is fixed in the same commit; re-
+   measurement of the exact variant rides the step-4 matrix.
+2. **The masked-build footgun.** Piping `install_sim_monerod` output
+   through `grep|head` masked a failed build's exit code — smokes 4–5
+   ran a stale binary while appearing to test new code (tell: binary
+   mtime; behavior byte-identical across "new" builds; a deterministic
+   fork split replayed 3×). Ritual: full log + explicit exit check +
+   mtime before smoking.
+
 ## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
 
 A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —

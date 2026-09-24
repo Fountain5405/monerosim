@@ -128,6 +128,18 @@ upgrade).
 | conservative lead-2 | 0.309 | — | — | — | — |
 | honest control (share vs α=0.4) | 0.397 | 0.408 | — | 0.402 | 0.322, 0.378 |
 
+**Correction (2026-09-24, defect audit during the SoP build):** the
+"+uncles EXACT" column's weight bonus never engaged in any E4 run — its
+header parser read the tx-count varint from the 32-byte tx-tree-hash
+offset and rejected every real blob (P(pass) ≈ 2⁻³²), so every
+`*_exact` cell measured **pop-core + det-tie** plus an inert coinbase
+payload. (The DEVIATED variant counts from local alt storage and did
+work.) All "exact" numbers above and in findings 6–7 keep their
+measured values but carry the corrected label; the n=2 exact-vs-
+deviated dead heat is fully explained. Parser fixed 2026-09-24
+(`docs/20260923_sop_design.md` §step 2); re-measurement of the exact
+variant rides the SoP step-4 matrix.
+
 1. **P1 confirmed at ~10× margin**: pop-core nearly eliminates textbook
    ES revenue (0.492 → 0.02–0.12; attacker orphans 97% of finds; 73/77
    fork decisions KEEP honest). Mechanism verified in-daemon logs.
@@ -148,8 +160,8 @@ upgrade).
    is NOT resolvable at n=2: exact {0.134, 0.215} vs deviated {0.337,
    0.209} (means 0.175 vs 0.273, overlapping spreads; the paired second
    draw is a dead heat, +0.006). The n=1 reading — "header uncles halve
-   the det-tie leak" — was largely run-to-run luck; report exact ≤
-   deviated on means, magnitude unresolved pending n≥3. Only 3
+   the det-tie leak" — is fully explained by the correction above: the
+   exact variant had no uncle term at all. Only 3
    embeddings occurred per 6 h: two honest miners essentially never race
    (scale is what feeds the mechanism — finding 6). The honest_exact
    micro dip (0.322) also did not replicate: 0.378 ≈ α, orphan 0.029.

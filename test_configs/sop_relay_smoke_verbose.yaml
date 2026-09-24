@@ -1,0 +1,54 @@
+# SoP step-2 smoke (docs/20260923_sop_design.md): workshare gossip across
+# a mixed network. Two miners capture + send (sim-sop-w 16); two relays run
+# monerod-sim WITHOUT the flag and must still pool + forward — the handler
+# is deliberately not flag-gated (forwarding nodes cannot opt out of gossip;
+# a vanilla monerod relay would drop the unknown levin ID, which is why SoP
+# topologies put monerod-sim on the forwarding path). Success: "pooled
+# remote share" lines on nodes that never mine, ~w-1 = 15 shares per network
+# block, and every share first-seen BEFORE its containing block (the l_w
+# invariant). 12 sim-min -> ~6 blocks.
+general:
+  stop_time: 12m
+  simulation_seed: 12345
+  bootstrap_end_time: 1m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    log-level: 0
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 10
+    start_time: 0s
+    daemon_options:
+      sim-sop-w: 16
+  miner-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 10
+    start_time: 0s
+    daemon_options:
+      sim-sop-w: 16
+  relay-001:
+    daemon: monerod-sim
+    start_time: 30s
+  relay-002:
+    daemon: monerod-sim
+    start_time: 60s
