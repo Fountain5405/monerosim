@@ -208,12 +208,15 @@ variant rides the SoP step-4 matrix.
    cannot stay consistent across nodes. #146's in-block share embedding
    (omitted in v1 as an unexercised deviation) exists precisely to make
    weights node-independent; v2 with embedding is the indicated fix.
-9. **The correctly-implemented exact variant cuts lead-2 to 0.127**
-   (rung-5 re-measurement after the parse fix; inert-bonus era: ~0.35):
-   the residual "PoP blind spot to proactive releases" was substantially
-   the tx-tree-hash defect, not the timing semantics. ES is unchanged
-   (0.210 ≈ 0.134/0.215 — uncles stay a no-op vs ES at micro, third
-   replication). n=1; replication queued before promotion.
+9. **The correctly-implemented exact variant punishes lead-2, magnitude
+   unresolved at n=2** (rung-5 re-measurement after the parse fix):
+   lead-2 under exact = {0.127, 0.294} (mean 0.211) vs the inert-bonus
+   era's {0.326, 0.349} and stock {0.309–0.356} — direction confirmed
+   (non-overlapping), but the striking first draw (0.127) was largely
+   run-to-run luck; report ~0.21 with wide spread. The residual "PoP
+   blind spot" was therefore substantially the parse defect. ES is
+   unchanged (0.210 ≈ 0.134/0.215 — uncles stay a no-op vs ES at micro,
+   third replication).
 
 ## 5. Findings (manuscript-claim-ready)
 

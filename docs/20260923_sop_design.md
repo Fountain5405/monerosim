@@ -223,6 +223,50 @@ embedding + sequencing must be built first.
   to textbook-ES-crush territory. n=1 — replicate before promotion to a
   finding; queued.
 
+## Step-5: SoP v2 — tevador's #146 as written (2026-09-24)
+
+v1's falsification pointed at the omitted embedding; the issue text
+(fetched and re-read in full) supplies the missing semantics, all now
+implemented:
+
+- **Embedded shares (option 1, tx_extra)**: one 0x76 field per own share,
+  record = {seq, timestamp, nonce, tx_tree_hash, num_transactions};
+  `version_minor` = share count with slots 0..N−1; each share records the
+  tree hash it was MINED under, so verification is node-independent.
+  Miners advance slots by pulling a fresh template after every share hit
+  (the coinbase embedding + version_minor are covered by the PoW — that is
+  what binds a block to its share set).
+- **h0/nf subjectivity gates**: l_b/l_w apply only when the node was
+  online before the fork (h0 < hf) AND the chains differ by < k·w work
+  objects (blocks + embedded shares); otherwise fork choice is plain
+  cumulative difficulty. This is #146's late-joiner/partition-recovery
+  path — and it eliminates v1's sync livelock.
+- **main_seen = block_seen when no main block exists at the height**
+  (alt-ahead edge case), per the issue.
+- **Hardfork-vote bypass**: `version_minor` normally carries the HF vote
+  (must ≥ HF version); with it repurposed as the share count, every SoP
+  block would fail version validation. The real proposal is a soft fork
+  superseding that rule — the sim bypasses both vote gates when SoP is
+  armed.
+- v2 also fixes: the template cache must be invalidated when a new own
+  share is pooled (the miner's post-share template refresh otherwise gets
+  the stale cached template with no embedding).
+
+Validation smoke (12 sim-min, 2 miners + 2 relays, all v2): convergence
+at h=10–12 (above the stock baseline's 9–10), share embedding visible
+(slot advance 1→2→…), h0 gate firing on relays (OBJECTIVE decisions for
+pre-online forks), and **zero invalid-span drops** (stock baseline: 427 —
+v2's objective branch is gentler than stock random-tie churn). Bootstrap
+forks all sat at heights ≤ h0, so the subjective branch debuts in the
+6 h A/B (`pop_sop2`: P-SoP3-v2 stability, P-SoP1-v2/P-SoP2-v2 with an
+explicit no-collapse health bar).
+
+**Exact-fix replication (n=2)**: `es_r2_exact` = 0.294 (n=1: 0.127) —
+mean 0.211 vs inert-era {0.326, 0.349} and stock {0.309, 0.356}. The
+direction holds (fixed < inert, non-overlapping at n=2) but the 0.127
+headline was a favorable draw; report ~0.21 ± wide, magnitude
+unresolved. The σ≈0.05 single-run lesson, third application.
+
 ## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
 
 A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —

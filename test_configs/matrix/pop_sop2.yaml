@@ -1,0 +1,27 @@
+# E4 rung 5b: SoP v2 — tevador's #146 as written (embedded shares in
+# tx_extra tag 0x76, version_minor = share count with slots 0..N-1, the
+# h0<nf subjectivity gates, objective-difficulty fallback). v1's
+# pool-weighted variant fragmented the network (P-SoP3 falsified,
+# honest control 0.547 with 18x orphaning; see pop_sop).
+# Pre-registered:
+# P-SoP3-v2 (THE stability test): honest_sop2 ~ alpha = 0.4 with
+#   orphaning <= 2x stock (0.05) — v2's node-independent embedded weights
+#   must fix v1's fragmentation.
+# P-SoP1-v2: es_r2_sop2 < 0.25 WITHOUT collapse (>= 150 canonical blocks;
+#   v1 "passed" at 0.000 on a 9-block chain).
+# P-SoP2-v2: es_sop2 <= 0.15, same health bar.
+# Falsifier: honest share > 0.45 or any cell < 100 blocks.
+# Baselines (n=2-4, no re-run): stock ES 0.492x2, lead-2 0.309/0.356,
+# honest 0.397-0.408; PoP-exact vs lead-2 {0.127, 0.294} (fixed parser).
+name: pop_sop2
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
