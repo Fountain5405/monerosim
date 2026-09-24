@@ -93,6 +93,21 @@
 
 ### Fixed
 
+- **Eclipse sidecars were deleted instead of archived.** `run_sim.sh`'s
+  archive step is an allow-list (registry JSON, wallets, ringdbs, monitoring,
+  daemon logs, peer-list dumps); anything else in the per-run shared dir went
+  down with `cleanup_tmp_monero --full`. That silently dropped
+  `eclipse_metrics.jsonl` (`agents.eclipse_monitor`) and `raw_probe/*.jsonl.gz`
+  (`agents.eclipse_probe`) from every archived eclipse run — the only way to
+  keep them was `--no-clean --no-archive` plus a manual copy out of `/tmp`.
+  `eclipse_metrics.jsonl` now lands at the run-dir root (where the run index
+  and `analysis/eclipse/analyze_run.py` look for it), and a new catch-all
+  `archive_shared_leftovers` moves whatever is still in `shared/` into
+  `archived_runs/<run_id>/shared/`, so a future agent type's output is
+  preserved by default rather than lost until someone adds an archive line.
+  Regression test: `scripts/test_archive_shared.sh` runs the real
+  `archive_results()` against a fake layout.
+
 - **Bare binary invocations no longer default into a shared `/tmp` namespace.**
   With `MONEROSIM_SHARED_DIR` / `MONEROSIM_DAEMON_DATA_DIR` unset, the
   generator used to default `general.shared_dir` / `general.daemon_data_dir`

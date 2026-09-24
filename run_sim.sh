@@ -1496,6 +1496,16 @@ archive_results() {
         cp "$monitor_log" "$ARCHIVE_DIR/monerosim_monitor.log"
         log_ok "monerosim_monitor.log archived"
     fi
+    # Eclipse-monitor sidecar (agents/eclipse_monitor.py), one JSONL record
+    # per poll. It lives only in shared/, which cleanup_tmp_monero --full
+    # deletes, so land it at the run-dir root where the run index and
+    # analysis/eclipse/analyze_run.py look for it. Moved, not copied: the
+    # monitor appends, so a copy left in a non-namespaced shared dir would
+    # leak into the next run's file.
+    if [[ -f "$SHARED_DIR/eclipse_metrics.jsonl" ]]; then
+        mv "$SHARED_DIR/eclipse_metrics.jsonl" "$ARCHIVE_DIR/eclipse_metrics.jsonl"
+        log_ok "eclipse_metrics.jsonl archived ($(wc -l < "$ARCHIVE_DIR/eclipse_metrics.jsonl") polls)"
+    fi
 
     # Each step is guarded so a failure in one doesn't skip the rest
     archive_blockchain_snapshots  || log_warn "Blockchain snapshot archiving failed"
@@ -1507,9 +1517,36 @@ archive_results() {
         run_analysis || log_warn "Post-simulation analysis failed"
     fi
 
+    archive_shared_leftovers      || log_warn "Shared-dir sweep failed"
+
     # Everything of value has been moved/copied into the archive; remove the
     # daemon data dirs and (if namespaced) the whole per-run /tmp dir.
     cleanup_tmp_monero --full
+}
+
+archive_shared_leftovers() {
+    # Catch-all for shared/. The steps above are an allow-list (registry
+    # JSON, wallets, monitoring, ...), so any agent output nobody added a
+    # line for was silently deleted by cleanup_tmp_monero --full — which is
+    # how eclipse_probe's raw_probe/ snapshots went missing. Sweep whatever
+    # is still there into <run>/shared/ so a new agent type's sidecar is
+    # preserved by default; a step above that wants a nicer home can still
+    # claim it first. Entries the steps above COPIED (rather than moved) are
+    # skipped so they aren't archived twice.
+    local skip=" monitoring monerosim_monitor.log transactions "
+    local dest="$ARCHIVE_DIR/shared"
+    local count=0 entry name
+    for entry in "$SHARED_DIR"/* "$SHARED_DIR"/.[!.]*; do
+        [[ -e "$entry" ]] || continue
+        name=$(basename "$entry")
+        [[ "$skip" == *" $name "* ]] && continue
+        mkdir -p "$dest"
+        mv "$entry" "$dest/"
+        count=$((count + 1))
+    done
+    if [[ $count -gt 0 ]]; then
+        log_ok "Shared-dir leftovers: $count entries archived into shared/ ($(ls "$dest" | tr '\n' ' '))"
+    fi
 }
 
 generate_summary_report() {

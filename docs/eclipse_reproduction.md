@@ -144,10 +144,13 @@ documented number.
 python -m scripts.scenario_parser test_configs/eclipse_birth.scenario.yaml \
     -o test_configs/eclipse_birth.expanded.yaml
 
-# 2. Run it (one at a time; the box is shared). --no-clean keeps the per-run
-#    shared dir so the metrics survive; --no-archive skips the bulky shadow.data.
+# 2. Run it (one at a time; the box is shared). With archiving on (the
+#    default) the sidecars land in archived_runs/<run_id>/: eclipse_metrics.jsonl
+#    at the run root, eclipse_probe's raw_probe/ under shared/. The older
+#    --no-clean --no-archive recipe still works and keeps them in the per-run
+#    /tmp shared dir instead (--no-archive without --no-clean deletes them).
 ./run_sim.sh --config test_configs/eclipse_birth.expanded.yaml \
-    --no-build --no-monitor --no-clean --no-archive
+    --no-build --no-monitor
 
 # 3. Analyse (finds the run's metrics from the run_sim stdout log, prints the
 #    paper-comparison table, writes CSV + SVG under analysis/eclipse/results/)
@@ -210,7 +213,7 @@ relay leaves exactly one host — the target — firewalled by Shadow
   `eclipse_role` attribute, and via RPC computes CTR (`get_connections` on the
   target), whitelist/graylist occupation and benign count B (the direct
   `/get_peer_list` endpoint), and benign-node OR. Writes `eclipse_metrics.jsonl`
-  to the shared dir.
+  to the shared dir; `run_sim.sh` archives it to the run-dir root.
 - **`eclipse_injector.py`** — the py-levin injector: a Monero Levin *responder*
   that, when a daemon dials it, answers HANDSHAKE / TIMED_SYNC with a chosen
   `local_peerlist_new` (attacker listener records, optional trash). Peers flow
