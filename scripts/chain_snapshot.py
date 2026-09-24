@@ -30,6 +30,7 @@ import hashlib
 import json
 import shutil
 import socket
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -150,6 +151,59 @@ def _read_monero_pin() -> str:
 
 
 # --------------------------------------------------------------------------
+# difficulty/interval stats (pure functions; no daemon needed, unit-testable)
+# --------------------------------------------------------------------------
+
+DIFFICULTY_STATS_WINDOW = 735  # one full DAA window (720) plus margin
+
+
+def compute_difficulty_stats(
+    diffs: list, timestamps: list, window: int = DIFFICULTY_STATS_WINDOW
+) -> dict:
+    """Given per-height difficulty and timestamp lists (index 0 == height 1,
+    same length, ascending height order), compute:
+
+    - d0_measured: median difficulty over the last `window` blocks (the
+      settled tip difficulty actually mined, vs. the nominal target D0).
+    - median_block_interval_s: median inter-block time over the last
+      `window` blocks (uses one extra earlier timestamp, when available, so
+      the interval count matches `window`).
+    - convergence_height: the smallest height h such that every block from
+      h to the tip stays within 10% of d0_measured (a backward scan from
+      the tip, so late transient noise doesn't reset it) — 1 if the chain
+      never leaves that band, tip height if it doesn't converge until the
+      very last block.
+
+    Returns a dict with those three keys, all None if `diffs` is empty.
+    """
+    height = len(diffs)
+    if height == 0:
+        return {"d0_measured": None, "median_block_interval_s": None, "convergence_height": None}
+
+    w = min(window, height)
+    last_diffs = diffs[-w:]
+    d0_measured = statistics.median(last_diffs)
+
+    ts_window = timestamps[-(w + 1):] if height > w else timestamps[-w:]
+    intervals = [ts_window[i + 1] - ts_window[i] for i in range(len(ts_window) - 1)]
+    median_interval = statistics.median(intervals) if intervals else None
+
+    convergence_height = height
+    band = 0.10 * d0_measured if d0_measured else 0
+    for h in range(height, 0, -1):
+        if abs(diffs[h - 1] - d0_measured) <= band:
+            convergence_height = h
+        else:
+            break
+
+    return {
+        "d0_measured": d0_measured,
+        "median_block_interval_s": median_interval,
+        "convergence_height": convergence_height,
+    }
+
+
+# --------------------------------------------------------------------------
 # export
 # --------------------------------------------------------------------------
 
@@ -184,6 +238,8 @@ def cmd_export(args: argparse.Namespace) -> int:
             blocks_path = out_dir / "blocks.jsonl.gz"
             tip_hash = None
             tip_timestamp = None
+            diffs = []
+            timestamps = []
             with gzip.open(blocks_path, "wt", encoding="utf-8") as gz:
                 for height in range(1, tip_height + 1):
                     blk = _rpc_call(rpc_port, "get_block", {"height": height})
@@ -195,12 +251,19 @@ def cmd_export(args: argparse.Namespace) -> int:
                     }) + "\n")
                     tip_hash = header["hash"]
                     tip_timestamp = header["timestamp"]
+                    diffs.append(header["difficulty"])
+                    timestamps.append(header["timestamp"])
         finally:
             _stop_daemon(proc)
+
+    stats = compute_difficulty_stats(diffs, timestamps)
 
     manifest = {
         "height": tip_height,
         "D0": args.d0,
+        "d0_measured": stats["d0_measured"],
+        "median_block_interval_s": stats["median_block_interval_s"],
+        "convergence_height": stats["convergence_height"],
         "total_hashrate": args.total_hashrate,
         "monero_pin": _read_monero_pin(),
         "hf_schedule": args.hf_schedule,
@@ -217,6 +280,18 @@ def cmd_export(args: argparse.Namespace) -> int:
 
     print(f"Exported {tip_height} blocks to {out_dir}")
     print(json.dumps(manifest, indent=2, sort_keys=True))
+
+    d0_measured = stats["d0_measured"]
+    if d0_measured is not None and args.d0:
+        pct_off = abs(d0_measured - args.d0) / args.d0 * 100
+        if pct_off > 25:
+            print(
+                f"WARNING: d0_measured ({d0_measured}) is {pct_off:.1f}% off nominal D0 "
+                f"({args.d0}) — the effective hashrate under these settings is NOT the "
+                f"nominal {args.total_hashrate} h/s. Document this in docs/CHAIN_SNAPSHOT.md "
+                f"and chain_snapshots/README.md.",
+                file=sys.stderr,
+            )
     return 0
 
 

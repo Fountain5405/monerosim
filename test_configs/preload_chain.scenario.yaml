@@ -51,6 +51,13 @@ general:
   progress: true
   process_threads: 2
   native_preemption: true
+  # Auto-injected fallback seeds always run vanilla `monerod` (no
+  # native-mining patches), so daemon_defaults' sim-timestamp-offset below
+  # (a patch-only flag) crashes them on boot. This generator run's 5 miners
+  # already reach each other via static priority-node peering, so no
+  # fallback-seed discovery path is needed (see FallbackSeedsMode::Off doc
+  # in src/config/types.rs).
+  fallback_seeds: "off"
   mining:
     mode: native            # real RandomX, sleep-throttled (docs/NATIVE_MINING.md)
     # Quoted: scripts/scenario_parser.py round-trips through PyYAML, which
