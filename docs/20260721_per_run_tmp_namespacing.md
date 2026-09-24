@@ -75,7 +75,11 @@ before live-run analysis; for manual digging,
 ## 3. Cleanup lifecycle
 
 - **End of run:** after archiving (daemon logs, registry, wallets,
-  monitoring, summary all read/moved first), `cleanup_tmp_monero --full`
+  monitoring, summary all read/moved first, then `archive_shared_leftovers`
+  sweeps whatever is still in shared/ — e.g. `eclipse_probe`'s `raw_probe/`
+  — into `<run>/shared/`, so an agent sidecar no archive step names is
+  preserved by default; `eclipse_metrics.jsonl` lands at the run root),
+  `cleanup_tmp_monero --full`
   removes the entire run dir. `--no-clean` leaves it for inspection;
   `--no-archive` removes only the daemon dirs (shared/ kept, matching the
   old behavior of leaving `/tmp/monerosim_shared` in place).
