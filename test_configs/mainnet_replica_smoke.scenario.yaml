@@ -8,7 +8,10 @@
 # chain snapshot preset (chain_snapshots/h50).
 # See docs/superpowers/specs/2026-09-23-mainnet-replica-design.md
 general:
-  stop_time: 3h
+  # 8h: the auto bootstrap floor is 4h (MIN_BOOTSTRAP_END_TIME_S) and funding
+  # adds 1h, so activity can't start before 5h. The old 3h stop halted the sim
+  # mid-bootstrap (before any distribution/activity) — it could never run.
+  stop_time: 8h
   simulation_seed: 12345
   bootstrap_end_time: auto
   enable_dns_server: true
