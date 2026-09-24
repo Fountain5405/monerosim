@@ -165,16 +165,18 @@ upgrade).
    honest racers dilute γ≈0 tie luck). Residual exact-variant cost:
    ~10% honest throughput. Full-scale (12 miners + 32 relays) is the
    committed senior-box leg.
-7. **Scale inverts the strategy ranking (mid-scale, n=1)**: the
-   conservative lead-2 policy out-earns textbook ES at 6 miners
-   (0.477 vs 0.387; micro had it reversed) — fragmented honest racing
-   feeds in-time overrides, so the attack Monero actually observed is
-   the stronger one at realistic miner counts. PoP-exact's blind spot
-   is partial at scale: lead-2 falls only −0.12 (to ~break-even 0.353
-   vs fair 0.40) vs −0.22 on ES — the residue SoP's share-lateness rule
-   targets. First nonzero realized γ appears only at this scale
-   (0.03–0.07): propagation races need a fabric big enough to have
-   them.
+7. **Scale inverts the strategy ranking (mid-scale)**: the conservative
+   lead-2 policy out-earns textbook ES at 6 miners (0.477/0.396 vs
+   0.387 n=1; micro had it reversed) — both lead-2 draws exceed ES's
+   single mid-scale draw, but the margin is within run-to-run noise, so
+   the inversion holds on means pending the ES replicate. Fragmented
+   honest racing feeds in-time overrides, so the attack Monero actually
+   observed is the stronger one at realistic miner counts. PoP-exact's
+   blind spot is partial at scale and REPLICATES TIGHTLY: lead-2 lands
+   at break-even in both draws (0.353/0.347 vs fair 0.40) vs −0.22 on
+   ES — the residue SoP's share-lateness rule targets. First nonzero
+   realized γ appears only at this scale (0.03–0.10): propagation races
+   need a fabric big enough to have them.
 
 ## 5. Findings (manuscript-claim-ready)
 
@@ -304,6 +306,8 @@ config, so daemon behavior is stock either way.)
 | `20260924_030014_pop_exact_rep__es_exact` | `cfd1dd6b`* | `pop_exact_rep` cell | exact rep: 0.215 — n=1 A/B gap deflates |
 | `20260924_030014_pop_exact_rep__es_uncles_det` | `cfd1dd6b`* | `pop_exact_rep` cell | deviated rep: 0.209 (paired dead heat) |
 | `20260924_034156_pop_exact_rep__honest_exact` | `cfd1dd6b`* | `pop_exact_rep` cell | control rep: 0.378 ≈ α — micro dip was noise |
+| `20260924_040630_pop_scale_r2_rep__es_r2_none` | `306f8b9e`* | `pop_scale_r2_rep` cell | lead-2 stock rep: 0.396 — inversion margin thins |
+| `20260924_045805_pop_scale_r2_rep__es_r2_exact` | `306f8b9e`* | `pop_scale_r2_rep` cell | blind-spot residue replicates: 0.347 (γ 0.098) |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
