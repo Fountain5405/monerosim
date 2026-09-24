@@ -123,7 +123,18 @@ index fcc92644a..6903e75bd 100644
    m_long_term_block_weights_window(CRYPTONOTE_LONG_TERM_BLOCK_WEIGHT_WINDOW_SIZE),
    m_long_term_effective_median_block_weight(0),
    m_long_term_block_weights_cache_tip_hash(crypto::null_hash),
-@@ -1608,6 +1608,13 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1496,7 +1496,9 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+     if (!memcmp(&miner_address, &m_btc_address, sizeof(cryptonote::account_public_address)) && m_btc_nonce == ex_nonce
+       && m_btc_pool_cookie == m_tx_pool.cookie() && m_btc.prev_id == get_tail_id()) {
+       MDEBUG("Using cached template");
+-      const uint64_t now = time(NULL);
++      uint64_t now = time(NULL);
++      if (m_sim_timestamp_offset) // simulation (monerosim): keep the cached-template timestamp shifted too
++        now -= m_sim_timestamp_offset;
+       if (m_btc.timestamp < now) // ensures it can't get below the median of the last few blocks
+         m_btc.timestamp = now;
+       b = m_btc;
+@@ -1608,6 +1610,13 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
      }
    }
    b.timestamp = time(NULL);
