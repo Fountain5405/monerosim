@@ -51,6 +51,15 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.selfish_miner
+    # Late join: bootstrap (10m) must be non-adversarial. At fakechain
+    # genesis difficulty ANY solo daemon can bank a high-cum-difficulty
+    # chain in minutes (its private LWMA ramps fast); at fork-0 heights
+    # fork choice is objective (raw difficulty) and a banked chain splits
+    # the network permanently — measured 2026-09-24: honest nodes resolved
+    # fork 0 differently and ended 182-vs-5. Real Monero never has
+    # adversarial genesis mining; an attacker joining an operating network
+    # is the faithful shape. Stock cells on this base pair the comparison.
+    start_time: 12m
     hashrate: 4
     start_time: 0s
     daemon_options:
@@ -63,7 +72,7 @@ agents:
   attacker-bridge:
     daemon: monerod
     script: agents.selfish_bridge
-    start_time: 0s
+    start_time: 12m
   relay-001:
     daemon: monerod
     start_time: 30s

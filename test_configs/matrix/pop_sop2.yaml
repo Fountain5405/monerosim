@@ -20,6 +20,11 @@
 # minority). Attempt 1 stranded the whole vanilla fabric at height 1-2
 # (seeds/bridge rejected every honest block; the analysis bridge-reference
 # collapsed to 1 block) — cells re-run on this base only.
+# Attempt 4 split the network at fork 0 (the attacker banks a
+# high-cum-difficulty island during bootstrap; nodes resolve it
+# differently): the attacker now JOINS AT 12m, after the 10m bootstrap —
+# the faithful real-Monero shape — and paired `stock` cells on the same
+# base measure the same conditions without the countermeasure.
 name: pop_sop2
 base: test_configs/selfish_micro_sop.yaml
 parallel: 2
@@ -33,3 +38,4 @@ axes:
       honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
       relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
       bridges: {daemon: monerod-sim}
+    stock: {}
