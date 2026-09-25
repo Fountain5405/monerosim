@@ -141,3 +141,43 @@ Then pull on the R7525 (or wherever the full replica runs) and generate/run the
 replica as usual. The consumer side rebuilds an LMDB template from
 `blocks.jsonl.gz` automatically (`chain_snapshot.py build-template`, cached per
 machine) — nothing to do here beyond committing the preset.
+
+## Regen outcome (2026-09-25)
+
+Executed end to end on the 24-core / 32 GB pilot box, on this branch at
+`edaeabfb`.
+
+- **Generator** `20260925_121054_preload_h50` (5 × 10 h/s, 50 h simulated):
+  5 h 38 min wall (≈ 9 simulated hours per wall hour — far under the
+  10–19 h estimate above), 0 failed processes.
+- **Export / verify**: 1535 blocks, 230 KB gzipped; `verify` PASS — tip 805 s
+  before the Shadow epoch, `d0_measured` 5996 vs nominal 6000, median block
+  interval 78 s (= 120 s mean × ln 2 for exponential inter-arrivals, so it is
+  consistent with the 120 s target). Committed as `chain_snapshots/h50/`
+  (`135e6b47`).
+- **Note on the tip**: the consumer inherits the chain's *instantaneous* tip
+  difficulty (6669 at height 1535 here), not the windowed `d0_measured`;
+  LWMA then drifts it toward nominal over the following window. Expect the
+  first consumer blocks ~10 % above D0.
+
+## Consumer smoke outcome (2026-09-25)
+
+`test_configs/mainnet_replica_smoke.scenario.yaml` (114 agents, 8 h
+simulated, `chain_snapshot: auto`) run `20260925_175002_replica_smoke_h50`:
+
+- Snapshot consumption: preset `chain_snapshots/h50`, cache key
+  `a17488322c7a9c0a`, height 1535, D0 6000, **118 nodes seeded**, 180 MB
+  copied; `build-template` took 37 s on the first (uncached) use.
+- **Graft proven**: miner-001's FIRST mined block is HEIGHT 1536 at
+  difficulty 6663 (not height 1 / difficulty 1); its last is HEIGHT 1689 at
+  6324 (154 blocks); relay-001 ended at HEIGHT 1679 — the whole mesh ran on
+  the preloaded chain. `run_sim` exit 0, 2 h 28 min wall.
+- **2 of 5 miners were OOM-killed** (miner-003 at sim 01:21, miner-004 at
+  01:25, SIGKILL): each native miner holds a ~2.1 GB RandomX dataset and the
+  114-daemon fleet peaked at ~27.5 GB used + 2 GB swap on this 32 GB box.
+  The remaining three miners kept the chain going (difficulty then eased
+  from 6663 toward 6324), so the smoke completed, but the plumbing check ran
+  at 30 h/s instead of 50 for most of the run. This is the runbook's own
+  point: the replica belongs on the R7525. Options if it must run here:
+  light-mode RandomX for the miners (`--sim-rx-full-dataset` off, ~256 MB
+  each) or fewer/larger hosts.
