@@ -30,6 +30,19 @@ def test_scan_counts_and_share_weight_detection():
     assert b["share_weighted"] == 0          # every weight is lb*unit: the share term is inert
 
 
+POP = """\
+2000-01-01 00:22:00.001 [P2P1] INFO blockchain blockchain.cpp:2000 SIM-PoP: fork 2 alt 2/1 vs main 1/1 -> SWITCH
+2000-01-01 00:22:00.002 [P2P1] INFO blockchain blockchain.cpp:2000 SIM-PoP: fork 3 alt 1/1 vs main 1/1 -> KEEP
+2000-01-01 00:22:00.003 [P2P1] INFO blockchain blockchain.cpp:2000 SIM-PoP: fork 4 TIE 1/1 vs 1/1 -> KEEP (det tie)
+"""
+
+
+def test_scan_counts_pop_uncle_bonus():
+    n = scan_log_text(POP)                   # PoP needs no unit: a chain heavier than its length carried an uncle
+    assert n["decisions"] == 3 and n["sop_subjective"] == 0
+    assert n["share_weighted"] == 1          # 2/1: the uncle bonus counted (review F4 was 0 of 1260)
+
+
 def _run(tmp_path: Path, logs: dict) -> Path:
     for node, text in logs.items():
         d = tmp_path / "daemon_logs" / f"monero-{node}"

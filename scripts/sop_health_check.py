@@ -11,8 +11,9 @@ looked. This looks, per node:
   exceptions       'Exception at [add_new_block]'
   alt_added        'BLOCK ADDED AS ALTERNATIVE'
   decisions        'SIM-PoP: fork' / 'SIM-SoP: fork' lines (objective / tie / switch)
-  share_weighted   SoP subjective decisions where a chain's weight exceeds
-                   unit * length (unit = diff/w): at least one share counted
+  share_weighted   decisions where a chain's weight exceeds unit * length:
+                   for SoP (unit = diff/w) at least one share counted; for
+                   PoP (unit 1) at least one uncle bonus counted
 
 A run FAILS when any node has reorg_started != reorg_success or
 exceptions > 0. --require-forks also fails when no non-attacker node
@@ -63,13 +64,17 @@ def scan_log_text(text: str, unit: int | None = None) -> dict:
                 n["ties"] += 1
             if outcome == "SWITCH":
                 n["switches"] += 1
-            if engine == "SoP" and not objective:
+            if objective:
+                continue
+            # A block weighs lb*unit*(1+counted shares) under SoP and
+            # lb*(1+uncle bonus) under PoP: any chain heavier than
+            # unit*length had a share / uncle counted (weights are always
+            # multiples of the unit, so divisibility cannot tell).
+            u = unit if engine == "SoP" else 1
+            if engine == "SoP":
                 n["sop_subjective"] += 1
-                # A block weighs lb*unit*(1+counted shares): any chain heavier
-                # than unit*length had a share counted (always a multiple of
-                # the unit, so divisibility cannot tell).
-                if unit and (int(w_alt) > unit * int(l_alt) or int(w_main) > unit * int(l_main)):
-                    n["share_weighted"] += 1
+            if u and (int(w_alt) > u * int(l_alt) or int(w_main) > u * int(l_main)):
+                n["share_weighted"] += 1
     return n
 
 
@@ -129,7 +134,7 @@ def main(argv=None) -> int:
         rep["problems"].append("no non-attacker node accepted an alternative block (fork-free run)")
         rep["ok"] = False
     if a.require_share_weight and not rep["share_weighted"]:
-        rep["problems"].append("no subjective SoP decision carried a share-augmented weight")
+        rep["problems"].append("no fork decision carried a share/uncle-augmented weight")
         rep["ok"] = False
     if a.json:
         print(json.dumps(rep, indent=1))

@@ -188,4 +188,50 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
 
 ## 5. Fix log
 
-(appended as fixes land)
+- **F1 (2026-09-25)**: the vote comparison is dropped where it is
+  enforced — `HardFork::do_check` / `do_check_for_height` now check
+  `major_version` only (fork activation on the simulated chains is
+  height-scheduled with threshold 0, so votes move no fork height) — and
+  the two `Blockchain` gates are RESTORED (they now enforce major_version
+  through the same functions). `HardFork::add` therefore always writes the
+  `hf_versions` row; pops cannot throw. Unconditional, like the vote
+  removal it replaces: an unflagged monerod-sim must be able to reorganize
+  onto SoP blocks (the covert bridge, the offline attacker daemon).
+- **F2**: `sim_sop_weight` hashes the share's ORIGINAL blob (header with
+  `minor_version = seq`, the recorded tree hash, the count varint) through
+  the blobdata `get_block_longhash` overload; the share id is the keccak of
+  that same blob, i.e. what the pool stamped. Share target floored at 1.
+- **F3**: `sim_sop_weight(height, block, diff)` takes the block's own
+  difficulty from the caller — alt blocks from the alt chain's
+  cumulative-difficulty deltas, main blocks from the DB; the subjectivity
+  gate uses the first alt block's delta; `sim_block_difficulty_at()` clamps
+  any remaining by-height lookup to the tip.
+- **F4**: `sim_pop_uncle_bonus_header` hashes the embedded blob itself
+  (blobdata overload) and derives the uncle's block id as
+  keccak(varint(len) ‖ blob) — what `calculate_block_hash` computes — so
+  the receive-time lookup can match a received uncle. The reconstructed-
+  block comparison is gone.
+- **F6**: `render_table` emits one column per axis plus a `health`
+  column; a test pins header/row alignment.
+- **Process**: `scripts/sop_health_check.py` (per-node reorg
+  started/succeeded, exceptions, alternative blocks, fork decisions,
+  share-weighted decisions; hard gate in `run_cell`), `binary_provenance.txt`
+  archived by `run_sim.sh` into every run, `test_configs/sop_fork_smoke.yaml`
+  (fixed difficulty 300, ES attacker at 6 m through an unflagged
+  monerod-sim bridge, SoP on honest/relays/seeds, 45 sim-min).
+- **Validation (2026-09-25, `archived_runs/20260925_111038_sop_fork_smoke`,
+  binary sha `8b58dfed…`, patch sha `d7ed710c…`)**: the fork-forcing SoP
+  smoke passes the health gate — bridge reorgs 20/20, attacker daemon 5/5,
+  zero `add_new_block` exceptions on any node, 281 alternative blocks
+  accepted by non-attacker nodes, 261 fork decisions with share-augmented
+  weights (e.g. `alt 54/7 vs main 1098/6 -> KEEP`: a SEVEN-block attacker
+  chain evaluated without throwing (F3), honest blocks weighing ~10 units
+  each from counted shares (F2), the network converged at height 51 on
+  every node (F1)). Honest nodes never needed to reorganize (they KEEP
+  every time); the unflagged bridge follows the attacker's longer chain
+  and back, as stock should.
+- Patch regenerated per the H0/H1 ritual (`/tmp/h0wt` = base + 4 non-pop
+  patches); NOTE the build wrapper trap hit on the way: `install_sim_monerod`
+  reads `MONEROSIM_BIN` as the bin DIRECTORY (`~/.monerosim/bin`), and its
+  `cp` is unchecked — with the wrong value the build "succeeded" and the
+  old binary stayed installed. The mtime/provenance check caught it.

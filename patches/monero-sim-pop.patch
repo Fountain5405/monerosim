@@ -1,3 +1,42 @@
+diff --git a/src/cryptonote_basic/hardfork.cpp b/src/cryptonote_basic/hardfork.cpp
+index a0ea3633f..ca209ec15 100644
+--- a/src/cryptonote_basic/hardfork.cpp
++++ b/src/cryptonote_basic/hardfork.cpp
+@@ -106,10 +106,20 @@ uint8_t HardFork::get_effective_version(uint8_t voting_version) const
+   return voting_version;
+ }
+ 
++// SIMULATION ONLY (monerosim monero-sim-pop.patch, Share-or-Perish MRL #146):
++// version_minor may carry the embedded-workshare count (the proposal
++// repurposes the vote field under a soft fork), so the vote comparison is
++// dropped for EVERY block. It has to be dropped HERE, not only at the
++// Blockchain callers: HardFork::add() re-runs do_check() and
++// BlockchainDB::add_block ignores add()'s return, so a failing vote silently
++// skipped set_hard_fork_version and the next pop_block threw MDB_NOTFOUND
++// from on_block_popped -- every reorganization aborted in the 2026-09-24/25
++// SoP runs (review F1). Fork activation on the simulated chains is
++// height-scheduled with threshold 0, so ignoring votes moves no fork height.
+ bool HardFork::do_check(uint8_t block_version, uint8_t voting_version) const
+ {
+-  return block_version == heights[current_fork_index].version
+-      && voting_version >= heights[current_fork_index].version;
++  (void)voting_version;
++  return block_version == heights[current_fork_index].version;
+ }
+ 
+ bool HardFork::check(const cryptonote::block &block) const
+@@ -120,9 +130,9 @@ bool HardFork::check(const cryptonote::block &block) const
+ 
+ bool HardFork::do_check_for_height(uint8_t block_version, uint8_t voting_version, uint64_t height) const
+ {
++  (void)voting_version;   // SIMULATION ONLY: see do_check
+   int fork_index = get_voted_fork_index(height);
+-  return block_version == heights[fork_index].version
+-      && voting_version >= heights[fork_index].version;
++  return block_version == heights[fork_index].version;
+ }
+ 
+ bool HardFork::check_for_height(const cryptonote::block &block, uint64_t height) const
 diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
 index 74845ce13..13c715aed 100644
 --- a/src/cryptonote_basic/miner.cpp
@@ -168,7 +207,7 @@ index c168f48a7..d282d8986 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index fcc92644a..68b987b5a 100644
+index fcc92644a..6c025f890 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -307,7 +346,7 @@ index fcc92644a..68b987b5a 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1857,6 +1954,627 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1857,6 +1954,657 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -433,27 +472,33 @@ index fcc92644a..68b987b5a 100644
 +    // a reconstructed block must reproduce the blob byte-for-byte or the
 +    // header counts for nothing.
 +    crypto::hash uncle_id;
-+    cn_fast_hash(blob.data(), blob.size(), uncle_id);
++    {
++      // The uncle's block id = keccak(varint(size) || hashing blob), exactly
++      // what calculate_block_hash computes (get_object_hash serializes the
++      // blob as a length-prefixed string). A bare keccak of the blob is NOT
++      // the block id, so the lateness lookup below never matched before.
++      blobdata pre;
++      sim_sop_append_varint(pre, blob.size());
++      pre += blob;
++      get_blob_hash(pre, uncle_id);
++    }
 +    block_header bh;
 +    uint64_t tx_count = 0;
-+    if (!sim_parse_pow_header(blob, bh, tx_count))
++    if (!sim_parse_pow_header(blob, bh, tx_count))   // canonical header + tree hash + exact-fit count
 +      continue;
-+    block ub;
-+    ub.major_version = bh.major_version;
-+    ub.minor_version = bh.minor_version;
-+    ub.timestamp = bh.timestamp;
-+    ub.prev_id = bh.prev_id;
-+    ub.nonce = bh.nonce;
-+    ub.tx_hashes.resize(tx_count);
-+    if (get_block_hashing_blob(ub) != blob)
-+      continue;                 // non-canonical encoding
++    (void)tx_count;
 +    if (bh.prev_id != parent_prev)
 +      continue;                 // not a sibling of our parent (MRL #144 height check)
 +
-+    // PoW: the header must meet the difficulty at the uncle height.
++    // PoW: hash the embedded blob ITSELF (blobdata overload). Rebuilding a
++    // block from the header and hashing that recomputes the tree hash from
++    // an empty coinbase (and a wrong tx count), so it can never reproduce
++    // the mined blob -- the comparison that kept this bonus inert in every
++    // run through 2026-09-25 (review F4).
 +    crypto::hash pow;
-+    get_block_longhash(this, ub, pow, height - 1, 0);
-+    if (!check_hash(pow, m_db->get_block_difficulty(height - 1)))
++    if (!get_block_longhash(this, blob, pow, height - 1, bh.major_version, nullptr, 0))
++      continue;
++    if (!check_hash(pow, sim_block_difficulty_at(height - 1)))
 +      continue;
 +
 +    // Lateness: received uncles are held to Def.1; never-received ones
@@ -536,6 +581,17 @@ index fcc92644a..68b987b5a 100644
 +    m_sim_shares.erase(oldest);
 +  }
 +  return true;
++}
++
++// Difficulty at `h` for weight/PoW purposes. Alt-chain blocks may sit above
++// the main-chain tip, where the main DB has no row (the lookup threw
++// "difficulty not in db" and rejected every LONGER alt chain in the SoP v1
++// and ramp-era v2 runs, review F3): such heights take the tip's difficulty
++// (exact under fixed difficulty, an approximation under LWMA).
++difficulty_type Blockchain::sim_block_difficulty_at(uint64_t h) const
++{
++  const uint64_t top = m_db->height() - 1;
++  return m_db->get_block_difficulty(h <= top ? h : top);
 +}
 +
 +// Earliest local receive time of ANY block (main or alt) at `height`.
@@ -704,9 +760,11 @@ index fcc92644a..68b987b5a 100644
 +// proactive releases: a withheld share released with its block is late).
 +// Older blocks weigh plain difficulty (legacy-compatible). Zero when the
 +// block itself is late (l_b = 0).
-+difficulty_type Blockchain::sim_sop_weight(uint64_t height, const cryptonote::block &bl)
++difficulty_type Blockchain::sim_sop_weight(uint64_t height, const cryptonote::block &bl, difficulty_type diff)
 +{
-+  const difficulty_type diff = m_db->get_block_difficulty(height);
++  // `diff` is the block's own difficulty, supplied by the caller: for alt
++  // blocks from the alt chain's cumulative-difficulty deltas (the main DB has
++  // no row above the tip, review F3), for main blocks from the DB.
 +  const uint64_t top = m_db->height() - 1;
 +  if (height + 10 * m_sim_sop_w <= top)
 +    return diff;                       // legacy window: share weight is 0
@@ -751,23 +809,24 @@ index fcc92644a..68b987b5a 100644
 +        || seq != n - 1)
 +    { seq_ok = false; break; }
 +    sh.major_version = bl.major_version;
++    sh.minor_version = seq;             // the slot the share was mined under (#146)
 +    sh.prev_id = bl.prev_id;
 +    blobdata hb;
 +    if (!::serialization::dump_binary(sh, hb))
 +    { seq_ok = false; break; }
++    // The share's ORIGINAL PoW blob: its header, the tree hash it was mined
++    // under, its tx count. Hash THIS blob (blobdata overload). Rebuilding a
++    // block and hashing that recomputes the tree hash from an empty coinbase
++    // (and appends the wrong count), so no share ever verified at real
++    // difficulty before 2026-09-25 (review F2); the id below must also be
++    // the id the pool stamped, i.e. the hash of the same blob.
 +    blobdata share_blob = hb;
 +    share_blob.insert(share_blob.end(), tree.begin(), tree.end());
 +    sim_sop_append_varint(share_blob, num_tx);
-+    block ub;
-+    ub.major_version = sh.major_version;
-+    ub.minor_version = sh.minor_version;
-+    ub.timestamp = sh.timestamp;
-+    ub.prev_id = sh.prev_id;
-+    ub.nonce = sh.nonce;
-+    ub.tx_hashes.resize(num_tx);
++    const difficulty_type share_target = diff / m_sim_sop_w ? diff / m_sim_sop_w : 1;
 +    crypto::hash pow;
-+    get_block_longhash(this, ub, pow, height, 0);
-+    if (!check_hash(pow, diff / m_sim_sop_w))
++    if (!get_block_longhash(this, share_blob, pow, height, bl.major_version, nullptr, 0)
++        || !check_hash(pow, share_target))
 +    { seq_ok = false; break; }
 +    crypto::hash sid;
 +    cn_fast_hash(share_blob.data(), share_blob.size(), sid);
@@ -822,8 +881,13 @@ index fcc92644a..68b987b5a 100644
 +  // into per-node random ties that livelock the race point. Real Monero
 +  // never sees diff < w, so subjectivity engaging only there matches the
 +  // spec's regime.
++  // Alt-block difficulties come from the alt chain's own cumulative
++  // deltas (no main-DB row exists above the tip, review F3).
++  const difficulty_type fork_cum = m_db->get_block_cumulative_difficulty(fork);
++  const difficulty_type alt_front_diff = alt_chain.front().cumulative_difficulty > fork_cum
++      ? alt_chain.front().cumulative_difficulty - fork_cum : 0;
 +  const bool subjective = m_sim_sop_h0 < hf && nf < m_sim_sop_k * m_sim_sop_w
-+      && m_db->get_block_difficulty(hf) >= m_sim_sop_w;
++      && alt_front_diff >= m_sim_sop_w;
 +  if (!subjective)
 +  {
 +    const difficulty_type main_cum = m_db->get_block_cumulative_difficulty(top);
@@ -837,14 +901,19 @@ index fcc92644a..68b987b5a 100644
 +
 +  // Subjective regime: #146 weight table over the divergent suffixes.
 +  difficulty_type w_alt = 0, w_main = 0;
++  difficulty_type prev_cum = fork_cum;
 +  for (const auto &e : alt_chain)
-+    w_alt += sim_sop_weight(e.height, e.bl);
++  {
++    const difficulty_type d = e.cumulative_difficulty > prev_cum ? e.cumulative_difficulty - prev_cum : 0;
++    prev_cum = e.cumulative_difficulty;
++    w_alt += sim_sop_weight(e.height, e.bl, d);
++  }
 +  for (uint64_t h = fork + 1; h <= top; ++h)
 +  {
 +    cryptonote::block main_bl;
 +    if (!get_block_by_hash(get_block_id_by_height(h), main_bl))
 +      continue;
-+    w_main += sim_sop_weight(h, main_bl);
++    w_main += sim_sop_weight(h, main_bl, m_db->get_block_difficulty(h));
 +  }
 +
 +  if (w_alt != w_main)
@@ -935,22 +1004,18 @@ index fcc92644a..68b987b5a 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1884,12 +2602,8 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1882,7 +2630,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+     return false;
+   }
  
-   // this is a cheap test
+-  // this is a cheap test
++  // this is a cheap test (SIMULATION: the vote part of this check lives in
++  // HardFork::do_check_for_height and is disabled there; major_version is
++  // still enforced)
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
--  if (!m_hardfork->check_for_height(b, block_height))
--  {
--    LOG_PRINT_L1("Block with id: " << id << std::endl << "has old version for height " << block_height);
--    bvc.m_verifivation_failed = true;
--    return false;
--  }
-+  // SIMULATION ONLY (SoP): the height-specific vote gate is removed for
-+  // the same reason as above (version_minor = share count).
- 
-   //block is not related with head of main chain
-   //first of all - look in alternative chains container
-@@ -2093,7 +2807,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+   if (!m_hardfork->check_for_height(b, block_height))
+   {
+@@ -2093,7 +2843,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -961,30 +1026,18 @@ index fcc92644a..68b987b5a 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4072,14 +4788,14 @@ leave:
+@@ -4072,7 +4824,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
 -  // this is a cheap test
--  const uint8_t hf_version = get_current_hard_fork_version();
--  if (!m_hardfork->check(bl))
--  {
--    MERROR_VER("Block with id: " << id << std::endl << "has old version: " << (unsigned)bl.major_version << std::endl << "current: " << (unsigned)hf_version);
--    bvc.m_verifivation_failed = true;
--    goto leave;
--  }
-+  // SIMULATION ONLY (SoP, MRL #146): version_minor may carry the embedded
-+  // workshare count, so the hardfork VOTE rule (vote >= HF version) cannot
-+  // be enforced in monerod-sim — the soft fork supersedes it; the fakechain
-+  // schedule still pins major versions for templates. Vote gate REMOVED
-+  // (an earlier edit accidentally RESTORED enforcement by deleting the
-+  // bypass condition instead of the check — the smoke caught it: 5816/5816
-+  // blocks rejected at height 1).
-+  const uint8_t hf_version = get_current_hard_fork_version();   // used below
- 
-   TIME_MEASURE_FINISH(t1);
-   TIME_MEASURE_START(t2);
-@@ -4674,6 +5390,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
++  // this is a cheap test (SIMULATION: the vote part lives in
++  // HardFork::do_check and is disabled there -- removing it only here left
++  // HardFork::add() enforcing it with an ignored return value, review F1)
+   const uint8_t hf_version = get_current_hard_fork_version();
+   if (!m_hardfork->check(bl))
+   {
+@@ -4674,6 +5428,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -999,7 +1052,7 @@ index fcc92644a..68b987b5a 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 0fd81f4ba..b4b81e5a1 100644
+index 0fd81f4ba..37672709b 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1038,7 +1091,7 @@ index 0fd81f4ba..b4b81e5a1 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1188,6 +1210,54 @@ namespace cryptonote
+@@ -1188,6 +1210,55 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1053,6 +1106,7 @@ index 0fd81f4ba..b4b81e5a1 100644
 +    std::unordered_map<crypto::hash, uint64_t> m_sim_recv;  // block id -> first local receive time (ms)
 +    std::mt19937_64 m_sim_pop_rng;         // rule-3 random tie-break
 +    bool sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
++    difficulty_type sim_block_difficulty_at(uint64_t h) const;   // tip-clamped (alt heights above the tip)
 +    uint64_t sim_pop_first_seen(uint64_t height) const;
 +    bool sim_pop_in_time(const crypto::hash &id, uint64_t height) const;
 +    bool sim_pop_find_uncle(uint64_t parent_height, crypto::hash &uncle_id) const;
@@ -1088,7 +1142,7 @@ index 0fd81f4ba..b4b81e5a1 100644
 +    uint64_t m_sim_sop_k = 3;
 +    uint64_t m_sim_sop_h0 = 0;             // block height when this node came online (#146 h0)
 +    bool sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
-+    difficulty_type sim_sop_weight(uint64_t height, const cryptonote::block &bl);
++    difficulty_type sim_sop_weight(uint64_t height, const cryptonote::block &bl, difficulty_type diff);
 +    uint64_t sim_sop_embedded_share_count(const cryptonote::block &bl);
      bool m_db_default_sync;
      bool m_db_sync_on_blocks;
