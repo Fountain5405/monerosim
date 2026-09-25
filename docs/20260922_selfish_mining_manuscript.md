@@ -435,3 +435,28 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
    re-run under v13 — v13's changes (mirror fork-gate, feed cap) only bind
    during withholding, which `strategy: honest` never does, so the v3-era
    honest control remains valid for plumbing neutrality.
+5. **Published-work frontier (gap analysis 2026-09-25, vs the 20-paper
+   manifest + MRL issues):**
+   - **Stubborn × countermeasures** (next): Nayak's three stubborn
+     variants shipped in phase 2 but never faced PoP/SoP — the natural
+     completion of the E4 story (one matrix spec).
+   - **Monero-faithful topology**: build the sim GML from Gao et al.
+     2025's measured P2P topology (replacing CAIDA) — upgrades every
+     scale result incl. the senior leg.
+   - **Kopyciok et al. 2025 anomalous-peer detection**: network-layer
+     detectability of our attackers (composes with E2's block-layer MSB
+     calibration; sim telemetry already sufficient).
+   - **Shi et al. NDSS 2025 eclipse mechanics**: drive the real
+     peerlist-poisoning attack (E3 assumed a successful eclipse by
+     configuration — the load-bearing assumption in the 0.559 result).
+   - **Gervais et al. 2016**: propagation-vs-security curves vs
+     faithful monerod (topology/delay sweep).
+   - Blocked on the transaction layer: MRL #145 (lucky transactions,
+     parked day one), Carlsten 2016 / Gong 2022 (fee markets), Jiang &
+     Zhang 2024 (double-spends); Kawaguchi & Noda 2021 needs two
+     networks. Covered/excluded: Lee&Kim, Li, Nayak-composition, #144,
+     #146, Purkovic (covert-ASIC economics, not a selfish variant),
+     Garay/Budish/Miller/Franzoni (not simulation-shaped).
+   - Standing: n=2 repeats of the pop_sop2 verdict; the senior leg
+     (user-run; spec swap + a fixed-difficulty selfish_scaled variant);
+     the covert-bridge freeze defect.
