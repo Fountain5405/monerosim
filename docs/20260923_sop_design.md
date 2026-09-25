@@ -1,5 +1,14 @@
 # Share-or-Perish (MRL #146) as a flag-gated monerod-sim patch — design and pre-registration
 
+> **REVIEW NOTICE (2026-09-25, `docs/20260925_e4_code_data_review.md`):**
+> steps 4–6 below report runs on a binary that could not reorganize
+> (review F1), whose share term never verified (F2) and which rejected
+> every longer alt chain (F3). The step-4 "v1 fragmentation", the step-5
+> "mixed-fleet inversion / faction split" and the step-6 "SoP v2 works"
+> readings are all RETRACTED; the step-6 table's "att. orphan" column is
+> the network orphan rate and "γ = 1.000" is the attacker orphan rate
+> (F6). The exact-fix replication numbers are det-tie draws (F4).
+
 **Status:** design only (2026-09-23). Implementation is the next C++ rung
 after the scale experiments; nothing here has run. Motivated by our own
 E4 measurement: PoP's lateness rule punishes catch-up-triggered reveals

@@ -114,6 +114,17 @@ over-predicts exactly where a rational attacker would operate.**
 
 ### E4 — Countermeasures (RQ5: which countermeasure beats which strategy)
 
+> **REVIEW NOTICE (2026-09-25, `docs/20260925_e4_code_data_review.md`):**
+> the SoP v2 verdict (finding 10), the SoP v1/v2 arc in finding 8 and
+> finding 9 are **RETRACTED** pending re-runs on a fixed binary — the SoP
+> build could not reorganize (a hard-fork bookkeeping hole, review F1),
+> its embedded-share term never verified (F2), longer alt chains threw
+> (F3), and the MRL #144 EXACT uncle bonus never counted in ANY run,
+> parser fix included (F4): every `exact` cell below is pop-core +
+> det-tie. PoP-core, det-tie, deviated-uncle and mid-scale results stand
+> with that relabeling. Numbers transcribed from `table.md` files are
+> column-shifted (F6); the cell JSONs are authoritative.
+
 Apparatus: the matrix runner (§3) + three flag-gated `monerod-sim` PoP
 modes (`docs/20260922_pop_countermeasure_design.md` pre-registers every
 prediction before its run). All cells 6 h, same seed, α=0.4, flags on the
@@ -137,8 +148,10 @@ payload. (The DEVIATED variant counts from local alt storage and did
 work.) All "exact" numbers above and in findings 6–7 keep their
 measured values but carry the corrected label; the n=2 exact-vs-
 deviated dead heat is fully explained. Parser fixed 2026-09-24
-(`docs/20260923_sop_design.md` §step 2); re-measurement of the exact
-variant rides the SoP step-4 matrix.
+(`docs/20260923_sop_design.md` §step 2) — **but the review of 2026-09-25
+(F4) shows the bonus STILL never counts after that fix** (the verifier
+rebuilds the block and its hashing blob can never match): no `exact`
+cell to date measures anything but pop-core + det-tie.
 
 1. **P1 confirmed at ~10× margin**: pop-core nearly eliminates textbook
    ES revenue (0.492 → 0.02–0.12; attacker orphans 97% of finds; 73/77
@@ -208,6 +221,8 @@ variant rides the SoP step-4 matrix.
    cannot stay consistent across nodes. #146's in-block share embedding
    (omitted in v1 as an unexercised deviation) exists precisely to make
    weights node-independent; v2 with embedding is the indicated fix.
+   **[The v1 fragmentation above is review-F3 (longer alt chains threw), not
+   pool-derived weights; the v2 arc below is review-F1 — RETRACTED.]**
    **v2 (embedded shares, full subjectivity machinery, run same day)
    initially falsified differently** — a mixed-fleet inversion (0.723)
    and a terminal 182-vs-5 split — until the apparatus itself was
@@ -217,8 +232,9 @@ variant rides the SoP step-4 matrix.
    identical topology) and an attacker that joins after bootstrap (the
    real-Monero shape). On the corrected topology the failures vanish
    (§E4 finding 10).
-9. **The correctly-implemented exact variant punishes lead-2, magnitude
-   unresolved at n=2** (rung-5 re-measurement after the parse fix):
+9. **RETRACTED 2026-09-25 (review F4 — the bonus never counted; these are
+   det-tie draws).** ~~The correctly-implemented exact variant punishes lead-2, magnitude
+   unresolved at n=2~~ (rung-5 re-measurement after the parse fix):
    lead-2 under exact = {0.127, 0.294} (mean 0.211) vs the inert-bonus
    era's {0.326, 0.349} and stock {0.309–0.356} — direction confirmed
    (non-overlapping), but the striking first draw (0.127) was largely
@@ -264,8 +280,10 @@ variant rides the SoP step-4 matrix.
    gains from eclipse-DoS alone; above parity the majority verdict passes
    twice. The coalition-internal split has fat run-to-run variance
    (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
-10. **Share-or-Perish (#146, spec-exact v2) works on the corrected
-   apparatus**: with fixed genesis difficulty and a post-bootstrap
+10. **RETRACTED 2026-09-25 (review F1–F5: the SoP binary could not reorganize;
+   honest nodes never received an attacker block; shares never verified;
+   controls had zero forks; γ/orphan columns mis-read).** ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
+   apparatus~~: with fixed genesis difficulty and a post-bootstrap
    attacker, the honest control is textbook — 0.405 ≈ α with ZERO
    orphaning, and the unflagged 40% miner (the upgrade-transition
    fleet) takes exactly its fair share — while textbook ES is
@@ -398,6 +416,10 @@ config, so daemon behavior is stock either way.)
 | `20260925_050341_pop_sop2__honest_sop2` | `de5fb7b7`* | `pop_sop2` cell | **SoP v2 control: 0.405 ≈ α, ZERO orphaning — P-SoP3 passes** |
 | `20260925_051212_pop_sop2__honest_stock` | `de5fb7b7`* | `pop_sop2` cell | stock control: 0.369 |
 | `20260925_055045_pop_sop2__es_r2_sop2` | `de5fb7b7`* | `pop_sop2` cell | lead-2 under SoP: row lost to bridge freeze; log-verified every release → weight 0, kept off |
+
+(All `pop_sop` SoP rows and all `pop_sop2` rows above are INVALID per the
+2026-09-25 review — F1/F3: the daemon could not reorganize. The `*_exact`
+rows measure pop-core + det-tie — F4. Kept for provenance.)
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
