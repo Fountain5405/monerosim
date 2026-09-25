@@ -209,14 +209,14 @@ variant rides the SoP step-4 matrix.
    (omitted in v1 as an unexercised deviation) exists precisely to make
    weights node-independent; v2 with embedding is the indicated fix.
    **v2 (embedded shares, full subjectivity machinery, run same day)
-   falsifies the fix's premise differently**: the honest control's
-   UNFLAGGED 40% miner takes 0.723 while the flagged 60% side churns
-   (0.30 orphaning) — mixed fleets punish the rule's adopters — and one
-   attack cell ends in a terminal 182-vs-5 faction split the k·w
-   objective escape does not resolve. Two faithful implementations, two
-   distinct stability/fairness failures on a topology where PoP-core
-   runs clean: evidence about the proposal's fragility, not just the
-   code (`docs/20260923_sop_design.md` §step-5).
+   initially falsified differently** — a mixed-fleet inversion (0.723)
+   and a terminal 182-vs-5 split — until the apparatus itself was
+   corrected: fixed difficulty from genesis (the fakechain LWMA ramp
+   manufactured bankable bootstrap islands, sub-w weight degeneracy,
+   and fork-0 races that strand lagging nodes — stock converges on the
+   identical topology) and an attacker that joins after bootstrap (the
+   real-Monero shape). On the corrected topology the failures vanish
+   (§E4 finding 10).
 9. **The correctly-implemented exact variant punishes lead-2, magnitude
    unresolved at n=2** (rung-5 re-measurement after the parse fix):
    lead-2 under exact = {0.127, 0.294} (mean 0.211) vs the inert-bonus
@@ -264,6 +264,26 @@ variant rides the SoP step-4 matrix.
    gains from eclipse-DoS alone; above parity the majority verdict passes
    twice. The coalition-internal split has fat run-to-run variance
    (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
+10. **Share-or-Perish (#146, spec-exact v2) works on the corrected
+   apparatus**: with fixed genesis difficulty and a post-bootstrap
+   attacker, the honest control is textbook — 0.405 ≈ α with ZERO
+   orphaning, and the unflagged 40% miner (the upgrade-transition
+   fleet) takes exactly its fair share — while textbook ES is
+   annihilated (share 0.000, γ = 1.000, network healthy at 66 blocks
+   vs stock's 89; a ~26% throughput cost is the price). The lead-2
+   policy (the attack Monero observed) is log-verified neutralized:
+   every fork evaluation of its releases returns weight 0 (l_b = 0 for
+   released-late blocks, l_w = 0 for never-gossiped shares) and is
+   kept off; its canonical output is bounded to outright tip wins, far
+   under its stock 0.471 (the analysis row was lost twice to a
+   covert-bridge freeze under release bursts — open defect, 2 of 8
+   cells). Stocks pair cleanly (es 0.337, lead-2 0.471 — lead-2 again
+   out-earns ES). The earlier v1/v2 falsifications traced to the
+   simulator's degenerate bootstrap, not the rule: the lesson for the
+   countermeasure literature is that timing-subjective fork choice
+   must be evaluated on realistic difficulty schedules, or the
+   evaluation itself manufactures failures.
+
 8. **Publish-or-Perish's fork-choice core alone nearly eliminates ES
    revenue at Monero speeds** (E4 pilot, pre-registered): attacker share
    0.492 → 0.022 at α=0.4 with the attacker orphaning 97% of its finds
@@ -372,6 +392,12 @@ config, so daemon behavior is stock either way.)
 | `20260924_144929_pop_sop__honest_none` | `b046e0b1`* | `pop_sop` cell | control clean: 0.399 ≈ α |
 | `20260924_144929_pop_sop__honest_sop` | `b046e0b1`* | `pop_sop` cell | **P-SoP3 falsified: 0.547, self-orphan 0.542 (18×)** |
 | `20260924_152904_pop_sop__honest_exact` | `b046e0b1`* | `pop_sop` cell | fixed-parser exact control: 0.357 clean |
+| `20260925_034724_pop_sop2__es_stock` | `de5fb7b7`* | `pop_sop2` cell | fixed-topology stock ES: 0.337 (late-join attacker) |
+| `20260925_034724_pop_sop2__es_sop2` | `de5fb7b7`* | `pop_sop2` cell | **SoP v2: ES annihilated — 0.000, γ 1.000, network healthy** |
+| `20260925_043207_pop_sop2__es_r2_stock` | `de5fb7b7`* | `pop_sop2` cell | stock lead-2: 0.471 — again out-earns ES |
+| `20260925_050341_pop_sop2__honest_sop2` | `de5fb7b7`* | `pop_sop2` cell | **SoP v2 control: 0.405 ≈ α, ZERO orphaning — P-SoP3 passes** |
+| `20260925_051212_pop_sop2__honest_stock` | `de5fb7b7`* | `pop_sop2` cell | stock control: 0.369 |
+| `20260925_055045_pop_sop2__es_r2_sop2` | `de5fb7b7`* | `pop_sop2` cell | lead-2 under SoP: row lost to bridge freeze; log-verified every release → weight 0, kept off |
 
 (PoP cells ran the 5-patch monerod-sim, build 2026-09-22T13:05Z, flag ON
 on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
