@@ -90,8 +90,15 @@ venv/bin/python scripts/chain_snapshot.py verify --preset /tmp/h50_verify/
 - **FAIL on the timestamp rule** ⇒ the offset still isn't reaching every block;
   stop and re-open the patch rather than burning the full run.
 
-(The offset is over-applied in a 30-min run, so the tip lands well before the
-epoch — that's fine; `verify` only requires it be *before* the epoch.)
+**Correction (2026-09-25, first execution of this runbook):** `verify` requires
+the tip to land *at most 1800 s* before the epoch, not merely before it — with
+the 50 h offset (180,600 s) a 30-min run's tip lands ~178,900 s early and
+`verify` prints `FAIL: tip is 178924s before the Shadow epoch, exceeds the 1800s
+max gap`. That FAIL is the gap rule, not the timestamp fix (the tip time equals
+epoch − offset + run time, i.e. the offset reached the last block). To exercise
+the full `verify` rule in the short gate, size the offset for the short run:
+`sim-timestamp-offset: 2400` (= 30 min + 10 min) in the expanded YAML. The
+30-min run took ~9 min wall on a 24-core box.
 
 ## 4. Full regeneration
 
