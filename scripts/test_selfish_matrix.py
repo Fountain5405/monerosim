@@ -185,6 +185,29 @@ def test_render_table(tmp_path):
     assert "Failed cells" in table and "boom" in table
 
 
+def test_render_table_two_axes_columns_align(tmp_path):
+    """Review 2026-09-25 F6: with two axes the old renderer emitted one `cell`
+    column under two axis headers, shifting every value one column left
+    (gamma read as attacker orphan, ...). Each axis now gets its column."""
+    spec = _spec(tmp_path, {"strategy": {"es": {}}, "countermeasure": {"sop2": {}, "stock": {}}})
+    rows = [{"cell": "es_sop2", "values": {"strategy": "es", "countermeasure": "sop2"},
+             "alpha": 0.4, "share": 0.0, "controlled": None, "gamma": 0.0,
+             "attacker_orphan_rate": 1.0, "network_orphan_rate": 0.353,
+             "msb_max_z": 1.417, "canonical_blocks": 66, "verdicts": [("v", False)],
+             "all_verdicts_pass": False, "health": {"summary": "REORG 0/9; EXC 9"},
+             "run_dir": "/x/archived_runs/20260925_000000_t__es_sop2"}]
+    table = render_table(spec, rows)
+    header, sep, row = [l for l in table.splitlines() if l.startswith("|")][:3]
+    cols = [c.strip() for c in header.strip("|").split("|")]
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert len(cols) == len(cells)
+    got = dict(zip(cols, cells))
+    assert got["strategy"] == "es" and got["countermeasure"] == "sop2"
+    assert got["gamma"] == "0.000" and got["att_orph"] == "1.000"
+    assert got["net_orph"] == "0.353" and got["msb_z"] == "1.417"
+    assert got["health"] == "REORG 0/9; EXC 9"
+
+
 def test_main_dry_run_generates_overlaid_configs(tmp_path, monkeypatch, capsys):
     spec = {
         "name": "t", "base": str(tmp_path / "base.yaml"), "stop_time": "1h",

@@ -205,6 +205,7 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
     the axis->overlay mapping build_config consumes. The row json doubles as
     the resume marker."""
     from scripts.selfish_mining_analysis import AnalysisInputError, analyze_run
+    from scripts.sop_health_check import check_run, summarize
 
     marker = workdir / "cells" / f"{cell}.json"
     if marker.exists():
@@ -239,6 +240,12 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
             row["error"] = "run_sim exited 0 but no new archived run dir found"
         else:
             row["run_dir"] = str(run_dir)
+            # Daemon-log health (review 2026-09-25): a cell whose daemons
+            # could not reorganize, or whose honest nodes never saw a fork,
+            # is not evidence about fork choice whatever its share says.
+            health = check_run(run_dir)
+            row["health"] = {"ok": health["ok"], "summary": summarize(health),
+                             "forks_seen": health["forks_seen"], **health["totals"]}
             try:
                 r = analyze_run(run_dir)
                 row.update({k: r[k] for k in (
@@ -258,7 +265,7 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
 def render_table(spec: dict, rows: list) -> str:
     axes = list(spec["axes"])
     head = (axes + ["alpha", "share", "ctrl", "gamma", "att_orph", "net_orph",
-                    "msb_z", "blocks", "verdicts", "run"])
+                    "msb_z", "blocks", "verdicts", "health", "run"])
     lines = [f"# Matrix {spec['name']}", "",
              f"- base: `{spec['base']}`  seed: {spec.get('seed', '(base)')}"
              f"  stop_time: {spec.get('stop_time', '(base)')}",
@@ -271,13 +278,20 @@ def render_table(spec: dict, rows: list) -> str:
                    + f" ({len(r.get('verdicts', []))})")
         def fmt(k):
             return "-" if r.get(k) is None else f"{r[k]:.3f}"
+        # One column PER AXIS, so the row lines up with the header (the
+        # single `cell` column it used to emit shifted every value one
+        # column left under a 2-axis header — review 2026-09-25 F6).
+        vals = r.get("values") or {}
+        axis_cols = [str(vals[a]) if a in vals else (r["cell"] if i == 0 else "-")
+                     for i, a in enumerate(axes)]
         lines.append("| " + " | ".join(
-            [r["cell"]] + [fmt("alpha"), fmt("share"), fmt("controlled"),
-                           fmt("gamma"), fmt("attacker_orphan_rate"),
-                           fmt("network_orphan_rate"), fmt("msb_max_z"),
-                           str(r.get("canonical_blocks", "-")),
-                           verdict,
-                           Path(r.get("run_dir", "-")).name]) + " |")
+            axis_cols + [fmt("alpha"), fmt("share"), fmt("controlled"),
+                         fmt("gamma"), fmt("attacker_orphan_rate"),
+                         fmt("network_orphan_rate"), fmt("msb_max_z"),
+                         str(r.get("canonical_blocks", "-")),
+                         verdict,
+                         (r.get("health") or {}).get("summary", "-"),
+                         Path(r.get("run_dir", "-")).name]) + " |")
     if failed := [r for r in rows if "error" in r]:
         lines += ["", "## Failed cells", ""]
         for r in failed:
