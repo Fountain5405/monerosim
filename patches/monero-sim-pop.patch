@@ -207,7 +207,7 @@ index c168f48a7..d282d8986 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index fcc92644a..6c025f890 100644
+index fcc92644a..1d3ae8bef 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -346,7 +346,7 @@ index fcc92644a..6c025f890 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1857,6 +1954,657 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1857,6 +1954,679 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -459,7 +459,10 @@ index fcc92644a..6c025f890 100644
 +    return 0;
 +  std::vector<tx_extra_field> fields;
 +  if (!parse_tx_extra(b.miner_tx.extra, fields))
++  {
++    MINFO("SIM-PoP: block at height " << height << " tx_extra UNPARSABLE (uncle bonus 0)");
 +    return 0;
++  }
 +  const crypto::hash parent_prev = get_block_id_by_height(height - 2);
 +  uint64_t bonus = 0;
 +  for (const auto &f : fields)
@@ -485,10 +488,16 @@ index fcc92644a..6c025f890 100644
 +    block_header bh;
 +    uint64_t tx_count = 0;
 +    if (!sim_parse_pow_header(blob, bh, tx_count))   // canonical header + tree hash + exact-fit count
++    {
++      MINFO("SIM-PoP: uncle header at height " << height << " REJECTED (unparsable, " << blob.size() << " B)");
 +      continue;
++    }
 +    (void)tx_count;
 +    if (bh.prev_id != parent_prev)
++    {
++      MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " REJECTED (not a sibling of the parent)");
 +      continue;                 // not a sibling of our parent (MRL #144 height check)
++    }
 +
 +    // PoW: hash the embedded blob ITSELF (blobdata overload). Rebuilding a
 +    // block from the header and hashing that recomputes the tree hash from
@@ -496,16 +505,24 @@ index fcc92644a..6c025f890 100644
 +    // the mined blob -- the comparison that kept this bonus inert in every
 +    // run through 2026-09-25 (review F4).
 +    crypto::hash pow;
-+    if (!get_block_longhash(this, blob, pow, height - 1, bh.major_version, nullptr, 0))
++    if (!get_block_longhash(this, blob, pow, height - 1, bh.major_version, nullptr, 0)
++        || !check_hash(pow, sim_block_difficulty_at(height - 1)))
++    {
++      MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " REJECTED (PoW below difficulty "
++            << sim_block_difficulty_at(height - 1) << ")");
 +      continue;
-+    if (!check_hash(pow, sim_block_difficulty_at(height - 1)))
-+      continue;
++    }
 +
 +    // Lateness: received uncles are held to Def.1; never-received ones
 +    // count (trustless — the PoW above is their proof of reality).
 +    auto it = m_sim_recv.find(uncle_id);
 +    if (it != m_sim_recv.end() && !sim_pop_in_time(uncle_id, height - 1))
++    {
++      MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " REJECTED (received late)");
 +      continue;
++    }
++    MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " COUNTED"
++          << (it == m_sim_recv.end() ? " (never received: trustless)" : ""));
 +    ++bonus;
 +  }
 +  return bonus;
@@ -972,7 +989,12 @@ index fcc92644a..6c025f890 100644
 +    if (sim_pop_in_time(get_block_id_by_height(h), h))
 +    {
 +      ++w_main;
-+      if (m_sim_pop_uncles)
++      // Either uncle variant scores the MAIN chain too. The guard used to be
++      // `if (m_sim_pop_uncles)` alone, so under --sim-pop-uncles-header the
++      // header bonus was computed for alt blocks only and the honest main
++      // chain never earned one (review F5b, 2026-09-25: 5 embeddings, 0
++      // counted in the exact-uncle smoke even after the verifier fix).
++      if (m_sim_pop_uncles || m_sim_pop_uncles_header)
 +      {
 +        cryptonote::block main_bl;
 +        if (get_block_by_hash(get_block_id_by_height(h), main_bl))
@@ -1004,7 +1026,7 @@ index fcc92644a..6c025f890 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1882,7 +2630,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1882,7 +2652,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1015,7 +1037,7 @@ index fcc92644a..6c025f890 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2093,7 +2843,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2093,7 +2865,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1026,7 +1048,7 @@ index fcc92644a..6c025f890 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4072,7 +4824,9 @@ leave:
+@@ -4072,7 +4846,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1037,7 +1059,7 @@ index fcc92644a..6c025f890 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4674,6 +5428,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4674,6 +5450,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1047,6 +1069,23 @@ index fcc92644a..6c025f890 100644
 +  if (m_sim_pop_enabled)
 +    m_sim_recv.emplace(id, std::chrono::duration_cast<std::chrono::milliseconds>(
 +        std::chrono::system_clock::now().time_since_epoch()).count());
++  // SIMULATION ONLY diagnostics (review F5b): which received blocks carry
++  // embedded uncle headers, so a fork decision's COUNTED/REJECTED lines can
++  // be matched against them.
++  if (m_sim_pop_uncles_header)
++  {
++    std::vector<tx_extra_field> fields;
++    size_t n_uncles = 0;
++    if (!parse_tx_extra(bl.miner_tx.extra, fields))
++      MINFO("SIM-PoP: block " << id << " tx_extra UNPARSABLE on receive");
++    else
++      for (const auto &f : fields)
++        if (f.which() == 6)
++          ++n_uncles;
++    if (n_uncles)
++      MINFO("SIM-PoP: block " << id << " at height " << get_block_height(bl)
++            << " carries " << n_uncles << " uncle header(s)");
++  }
 +
    //check that block refers to chain tail
    if(!(bl.prev_id == get_tail_id()))

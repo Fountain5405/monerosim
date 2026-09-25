@@ -188,6 +188,11 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
 
 ## 5. Fix log
 
+**Status 2026-09-25 (end of session): F1–F5b fixed and validated; selfish
+work PAUSED at this checkpoint** (user decision) to finish the chain-snapshot
+preload on `feat/mainnet-replica` first, so the SoP re-run campaign can run
+once, on a chain with an established difficulty. Resume plan: §3.
+
 - **F1 (2026-09-25)**: the vote comparison is dropped where it is
   enforced — `HardFork::do_check` / `do_check_for_height` now check
   `major_version` only (fork activation on the simulated chains is
@@ -230,6 +235,27 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   every node (F1)). Honest nodes never needed to reorganize (they KEEP
   every time); the unflagged bridge follows the attacker's longer chain
   and back, as stock should.
+- **F5b (found by the exact-uncle smoke `20260925_112151_pop_exact_fork_smoke`,
+  2026-09-25)**: with F4 fixed, that smoke still counted **0** bonuses over
+  990 accepted alternative blocks and 5 embedded headers (reorgs 26/26 on
+  every node, 0 exceptions). Cause: `sim_pop_should_switch`'s main-chain
+  loop guarded the uncle bonus with `if (m_sim_pop_uncles)` — the DEVIATED
+  flag — so under `--sim-pop-uncles-header` only ALT blocks could ever earn
+  a header bonus and the honest main chain never did (the inner ternary's
+  header branch was unreachable). Pre-existing since rung 3. Fixed: either
+  flag scores the main chain; the verifier now logs every embedded header
+  as COUNTED / REJECTED (reason), and `add_new_block` logs every received
+  block that carries headers. **Re-validated** on the race-heavy smoke
+  `archived_runs/20260925_113930_pop_exact_fork_smoke_fast` (fixed
+  difficulty 40, 60 sim-min, binary built 2026-09-25T11:39Z): 21 template
+  embeddings, 22 received blocks carrying headers, 0 unparsable, **14
+  headers COUNTED**, 6 fork decisions with a bonus-bearing chain
+  (`alt 0/2 vs main 3/2 -> KEEP`: the honest MAIN chain scoring its uncle),
+  reorgs 82/82 on the bridge and 37–40/37–40 on the honest miners, 0
+  exceptions, 3206 alternative blocks accepted. The two earlier
+  zero-count smokes (difficulty 120, 4–5 embeddings) simply had no
+  header-carrying block inside any evaluated fork suffix — the receive
+  diagnostics show that directly.
 - Patch regenerated per the H0/H1 ritual (`/tmp/h0wt` = base + 4 non-pop
   patches); NOTE the build wrapper trap hit on the way: `install_sim_monerod`
   reads `MONEROSIM_BIN` as the bin DIRECTORY (`~/.monerosim/bin`), and its
