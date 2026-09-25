@@ -24,6 +24,14 @@ general:
   mining:
     mode: native
   daemon_defaults:
+    # Fixed difficulty from genesis: the fakechain LWMA ramp (diff from 1)
+    # is the root of every SoP bootstrap pathology measured 2026-09-24/25 —
+    # bankable high-cum-difficulty islands, diff<w weight degeneracy,
+    # bootstrap fork races that strand lagging nodes. Real Monero never
+    # ramps; 1800 = the LWMA target at 15 h/s, so the steady state matches
+    # the historical baselines. Stock cells on this base pair the
+    # comparison.
+    fixed-difficulty: 1800
     log-level: monitor
     max-log-file-size: 0
     db-sync-mode: fastest
