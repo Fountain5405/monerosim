@@ -61,7 +61,6 @@ agents:
     # is the faithful shape. Stock cells on this base pair the comparison.
     start_time: 12m
     hashrate: 4
-    start_time: 0s
     daemon_options:
       offline: true
     attributes:
