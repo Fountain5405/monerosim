@@ -311,6 +311,57 @@ timing-weighted fork choice concentrates fragility that #144's
 block-level lateness does not. Whether a deterministic tie or a
 share-blind upgrade-transition rule rescues it is open.
 
+## Step-6: the fixed-difficulty, late-attacker topology (2026-09-25) — SoP v2 WORKS
+
+Two topology corrections completed the apparatus, and both were
+sim-fidelity fixes, not SoP changes:
+
+1. **Fixed difficulty 1800 from genesis** (not the fakechain LWMA ramp
+   from diff=1). Real Monero never ramps; the ramp manufactured every
+   degenerate regime measured across attempts 1-5 — bankable
+   high-cum-difficulty bootstrap islands (a solo daemon's private LWMA
+   out-ramps the public one), the diff<w weight degeneracy, and the
+   fork-0 objective races that stranded lagging nodes (stock converges
+   on the identical topology; the stranding was SoP-subjectivity ×
+   span-based catch-up, where monero stops gossiping blocks to
+   non-synced peers so the objective rescue never arrives).
+2. **The attacker joins at 12m** — after the 10m bootstrap, the shape
+   of an attacker facing an operating network rather than genesis.
+
+On the corrected topology (`selfish_micro_sop.yaml`, paired stock
+cells, provenance `de5fb7b7`):
+
+| cell | share | att. orphan | blocks | verdict |
+|---|---|---|---|---|
+| es_stock | 0.337 | 0.198 | 89 | baseline: late-join ES earns 0.34 |
+| **es_sop2** | **0.000** | 0.353 | 66 | **P-SoP2 PASSES: ES annihilated, network healthy** |
+| es_r2_stock | 0.471 | 0.243 | 87 | baseline: lead-2 out-earns ES (replicates the scale finding) |
+| es_r2_sop2 | ≪0.471 (log-verified; row lost to the bridge freeze) | | 78 | every release evaluated to weight 0 and was kept off |
+| **honest_sop2** | **0.405** | **0.000** | 121 | **P-SoP3 PASSES: ≈ α, zero orphaning — mixed fleets are fair** |
+| honest_stock | 0.369 | 0.000 | 111 | control clean |
+
+- **The honest control is now textbook**: 0.405 ≈ α with zero
+  orphaning — and the unflagged 40% miner (the upgrade-transition
+  fleet) takes exactly its fair share. The attempt-4 mixed-fleet
+  inversion (0.723) was itself a ramp artifact: the flagged side's
+  ramp-era churn handed consistency to the stock chain.
+- **Textbook ES is annihilated**: share 0.000 with the network alive
+  (66 blocks vs stock's 89 — a ~26% throughput cost, the price of the
+  countermeasure's churn; net orphaning 1.417 is modest). γ = 1.000:
+  every release race resolves against the attacker.
+- **P-SoP1 directionally confirmed by logs** (the cell's analysis row
+  was lost twice to the bridge freeze — the covert bridge wedges at
+  ~5.5h under lead-2 release bursts specifically; 2 of 8 full-topology
+  cells, stack-level diagnosis open): the attacker found 38 blocks in
+  6h while honest reached 78; EVERY fork evaluation of its releases on
+  honest nodes returned weight 0 (l_b=0 for released-late blocks,
+  l_w=0 for never-gossiped shares) and was kept off — `alt 0/1 vs main
+  224/2 -> KEEP`. Its canonical output is bounded to outright tip wins
+  (in-time h=0 extensions), far below the stock cell's 0.471.
+- Residual pathologies, honestly: the bridge freeze above (open), and
+  one honest node can still strand in ramp-shaped topologies (fixed
+  difficulty eliminates the observed cases).
+
 ## Step-2 implementation anchors (scout-mapped 2026-09-23, worktree paths)
 
 A new sim-gated `NOTIFY_NEW_WORKSHARE` (payload: ~90 B blob —
