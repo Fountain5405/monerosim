@@ -1,0 +1,113 @@
+# dev-branch integration smoke: SoP micro topology CONSUMING the h50 chain
+# snapshot (chain_snapshot: h50 -> every daemon starts at height 1535 with an
+# established LWMA difficulty ~6000; no fixed-difficulty, no genesis ramp).
+# At 10 h/s the D0=6000 preset means ~600 s blocks, so this is a PLUMBING
+# check of the merged orchestrator (graft + SoP flags + unflagged bridge),
+# not a measurement; 40 sim-min. Gate:
+#   venv/bin/python scripts/sop_health_check.py archived_runs/<run>
+# (reorgs succeed, 0 exceptions) and, in the daemon logs, the first mined
+# block at HEIGHT 1536 with difficulty ~6000. The selfish campaign will use
+# its OWN preset sized for this topology (D0 = 120 x total h/s).
+general:
+  fallback_seeds: custom
+  stop_time: 40m
+  simulation_seed: 12345
+  bootstrap_end_time: 5m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+    chain_snapshot: h50
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+    daemon_options:
+      sim-share-or-perish: true
+      sim-sop-w: 16
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+    daemon_options:
+      sim-share-or-perish: true
+      sim-sop-w: 16
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    start_time: 2m
+    hashrate: 4
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: '0'
+      reaction_delay_ms: '200'
+  attacker-bridge:
+    daemon: monerod-sim
+    script: agents.selfish_bridge
+    start_time: 2m
+  relay-001:
+    daemon: monerod-sim
+    start_time: 30s
+    daemon_options:
+      sim-share-or-perish: true
+  relay-002:
+    daemon: monerod-sim
+    start_time: 60s
+    daemon_options:
+      sim-share-or-perish: true
+  monero-seed-001:
+    daemon: monerod-sim
+    start_time: 5s
+    daemon_options:
+      sim-share-or-perish: true
+  monero-seed-002:
+    daemon: monerod-sim
+    start_time: 5s
+    daemon_options:
+      sim-share-or-perish: true
+  monero-seed-003:
+    daemon: monerod-sim
+    start_time: 5s
+    daemon_options:
+      sim-share-or-perish: true
+  monero-seed-004:
+    daemon: monerod-sim
+    start_time: 5s
+    daemon_options:
+      sim-share-or-perish: true
+  monero-seed-005:
+    daemon: monerod-sim
+    start_time: 5s
+    daemon_options:
+      sim-share-or-perish: true
+  monero-seed-006:
+    daemon: monerod-sim
+    start_time: 5s
+    daemon_options:
+      sim-share-or-perish: true
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
