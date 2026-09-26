@@ -38,7 +38,7 @@ index a0ea3633f..ca209ec15 100644
  
  bool HardFork::check_for_height(const cryptonote::block &block, uint64_t height) const
 diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
-index 74845ce13..13c715aed 100644
+index 74845ce13..836d3e33c 100644
 --- a/src/cryptonote_basic/miner.cpp
 +++ b/src/cryptonote_basic/miner.cpp
 @@ -108,6 +108,7 @@ namespace cryptonote
@@ -90,7 +90,7 @@ index 74845ce13..13c715aed 100644
        m_gbh(b, height, NULL, tools::get_max_concurrency(), h);
  
        if(check_hash(h, local_diff))
-@@ -637,6 +651,37 @@ namespace cryptonote
+@@ -637,6 +651,38 @@ namespace cryptonote
              epee::serialization::store_t_to_json_file(m_config, m_config_folder_path + "/" + MINER_CONFIG_FILE_NAME);
          }
        }
@@ -102,7 +102,7 @@ index 74845ce13..13c715aed 100644
 +        // AHEAD of the containing block — l_w needs first-seen BEFORE the
 +        // block, so the share cannot ride in the block itself. Expected
 +        // rate ~w-1 shares per block.
-+        MGINFO_GREEN("SIM-SoP: share " << get_block_hash(b) << " nonce " << nonce << " height " << height << " slot " << b.minor_version);
++        MGINFO_GREEN("SIM-SoP: share " << get_block_hash(b) << " nonce " << nonce << " height " << height << " slot " << unsigned(b.minor_version));
 +        m_phandler->handle_workshare_found(get_block_hashing_blob(b), height);
 +        // #146 slot advance: the share just occupied slot b.minor_version;
 +        // subsequent hashes must carry minor_version = slot+1 and a
@@ -112,8 +112,9 @@ index 74845ce13..13c715aed 100644
 +        // m_template_no moves.
 +        // Rate-limited to 1/s: a template pull per share saturates the
 +        // simulator's event queue (measured: shadow at 5x CPU, virtual
-+        // clock stalled). A skipped refresh costs at most one share's
-+        // embedding (it re-hashes an occupied slot and is dropped).
++        // clock stalled). A skipped refresh re-hashes an occupied slot; the
++        // duplicate is skipped at embedding time (first wins) and the next
++        // refresh advances the slot, so it costs at most one share.
 +        static time_t last_sop_refresh = 0;
 +        time_t now = time(NULL);
 +        if (now != last_sop_refresh)
@@ -207,7 +208,7 @@ index c168f48a7..d282d8986 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index fcc92644a..1d3ae8bef 100644
+index 7e54738d9..584c2f283 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -235,7 +236,7 @@ index fcc92644a..1d3ae8bef 100644
  bool Blockchain::create_block_template(block& b, const crypto::hash *from_block, const account_public_address& miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash)
  {
    LOG_PRINT_L3("Blockchain::" << __func__);
-@@ -1684,7 +1695,18 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1693,7 +1704,18 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
    //make blocks coin-base tx looks close to real coinbase tx to get truthful blob weight
    uint8_t hf_version = b.major_version;
    size_t max_outs = hf_version >= 4 ? 1 : 11;
@@ -255,7 +256,7 @@ index fcc92644a..1d3ae8bef 100644
    CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, first chance");
    size_t cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
-@@ -1693,7 +1715,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1702,7 +1724,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
  #endif
    for (size_t try_count = 0; try_count != 10; ++try_count)
    {
@@ -264,7 +265,7 @@ index fcc92644a..1d3ae8bef 100644
  
      CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, second chance");
      size_t coinbase_weight = get_transaction_weight(b.miner_tx);
-@@ -1731,6 +1753,81 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1740,6 +1762,83 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
          MDEBUG("Setting extra for block: " << b.miner_tx.extra.size() << ", try_count=" << try_count);
        }
      }
@@ -314,7 +315,9 @@ index fcc92644a..1d3ae8bef 100644
 +      uint64_t n_embedded = 0;
 +      for (const auto &os : own)
 +      {
-+        if (os.first != n_embedded)
++        if (os.first < n_embedded)
++          continue;                 // duplicate slot (stale-template re-hash): first wins, keep going
++        if (os.first > n_embedded)
 +          break;                    // gap: the prefix ends here
 +        const sim_workshare_entry &e = m_sim_shares[os.second];
 +        block_header sbh;
@@ -346,7 +349,7 @@ index fcc92644a..1d3ae8bef 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1857,6 +1954,679 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1965,688 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -537,6 +540,8 @@ index fcc92644a..1d3ae8bef 100644
 +// NEW share (duplicates keep their first-seen and do not re-relay).
 +bool Blockchain::sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id)
 +{
++  if (!m_sim_sop_enabled)
++    return false;   // dormant node: no pool, no relay (stock behaviour in mixed networks)
 +  CRITICAL_REGION_LOCAL(m_blockchain_lock);
 +  if (height < 1 || height > get_current_blockchain_height())
 +  {
@@ -799,7 +804,13 @@ index fcc92644a..1d3ae8bef 100644
 +  if (bit != m_sim_recv.end() && first != std::numeric_limits<uint64_t>::max()
 +      && bit->second > first + m_sim_sop_delay_ms)
 +    lb = false;
-+  difficulty_type wgt = lb ? unit : 0;
++  // l_b multiplies EVERY term (header l_b*diff/w, each share l_b*l_w*diff/w,
++  // MRL #146 / docs/20260923_sop_design.md): a late block weighs zero however
++  // many of its shares were gossiped early. Before 2026-09-26 only the header
++  // term was gated, so "share early, publish late" kept its share weight.
++  if (!lb)
++    return 0;
++  difficulty_type wgt = unit;
 +
 +  // Embedded shares (#146 option 1, tx_extra tag 0x76): slots must run
 +  // 0..N-1 with block.minor_version == N; each share's PoW must meet
@@ -858,7 +869,7 @@ index fcc92644a..1d3ae8bef 100644
 +      wgt += unit;
 +  }
 +  if (!seq_ok || n != bl.minor_version)
-+    return lb ? unit : 0;              // non-conforming share set counts zero
++    return unit;                       // non-conforming share set counts zero (l_b already 1 here)
 +  return wgt;
 +}
 +
@@ -959,6 +970,7 @@ index fcc92644a..1d3ae8bef 100644
 +  m_sim_sop_k = k;
 +  m_sim_sop_enabled = true;
 +  m_sim_pop_enabled = true;   // arms the receive-time ledger (l_b/l_w clock)
++  m_sim_pop_rng.seed(std::random_device{}());   // random tie-break (was default-seeded when SoP ran without --sim-publish-or-perish)
 +  m_sim_sop_h0 = get_current_blockchain_height() > 1 ? get_current_blockchain_height() - 1 : 0;   // #146 h0: height when this node came online (genesis nodes: 0 — h0 < hf must hold for fork 0 too, else a bootstrap-era banked chain dominates objectively forever)
 +  MINFO("SIM-SoP: weight table armed (w=" << m_sim_sop_w
 +        << " delay_ms=" << delay_ms << " k=" << k << ")");
@@ -1026,7 +1038,7 @@ index fcc92644a..1d3ae8bef 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1882,7 +2652,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +2672,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1037,7 +1049,7 @@ index fcc92644a..1d3ae8bef 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2093,7 +2865,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +2885,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1048,7 +1060,7 @@ index fcc92644a..1d3ae8bef 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4072,7 +4846,9 @@ leave:
+@@ -4081,7 +4866,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1059,7 +1071,7 @@ index fcc92644a..1d3ae8bef 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4674,6 +5450,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4683,6 +5470,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1091,7 +1103,7 @@ index fcc92644a..1d3ae8bef 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 0fd81f4ba..37672709b 100644
+index 9c0074d4a..f84420b40 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1102,7 +1114,7 @@ index 0fd81f4ba..37672709b 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -887,6 +888,27 @@ namespace cryptonote
+@@ -896,6 +897,27 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -1130,7 +1142,7 @@ index 0fd81f4ba..37672709b 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1188,6 +1210,55 @@ namespace cryptonote
+@@ -1197,6 +1219,55 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1187,10 +1199,10 @@ index 0fd81f4ba..37672709b 100644
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index a727747a8..e725ba002 100644
+index 3e3f7a824..2cc333f15 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -196,6 +196,64 @@ namespace cryptonote
+@@ -212,6 +212,64 @@ namespace cryptonote
    , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
    , false
    };
@@ -1255,7 +1267,7 @@ index a727747a8..e725ba002 100644
    static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
      "max-txpool-weight"
    , "Set maximum txpool weight in bytes."
-@@ -339,6 +397,15 @@ namespace cryptonote
+@@ -355,6 +413,15 @@ namespace cryptonote
      command_line::add_arg(desc, arg_stagenet_on);
      command_line::add_arg(desc, arg_regtest_on);
      command_line::add_arg(desc, arg_sim_relay_alt_blocks);
@@ -1271,7 +1283,7 @@ index a727747a8..e725ba002 100644
      command_line::add_arg(desc, arg_keep_fakechain);
      command_line::add_arg(desc, arg_fixed_difficulty);
      command_line::add_arg(desc, arg_fakechain_hard_forks);
-@@ -783,6 +850,32 @@ namespace cryptonote
+@@ -801,6 +868,32 @@ namespace cryptonote
  
      bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
      m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -1304,7 +1316,7 @@ index a727747a8..e725ba002 100644
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
-@@ -1435,6 +1528,35 @@ namespace cryptonote
+@@ -1453,6 +1546,35 @@ namespace cryptonote
      return true;
    }
    //-----------------------------------------------------------------------------------------------

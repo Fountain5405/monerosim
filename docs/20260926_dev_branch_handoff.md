@@ -147,12 +147,18 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   analysis and the honest-reference column.
 - Daemon-patch fixes (weight table l_b gates shares; duplicate share slot
   skipped; unflagged nodes don't pool/relay shares; SoP-only tie RNG
-  seeded; slot logged as a number) are built and being smoke-tested against
-  a scratch binary (`sop_fork_smoke_fixed`); the regenerated
-  `monero-sim-pop.patch` lands in `patches/` once that gate passes, then a
-  rebuild + install + the three smokes on the installed binary. The
-  hard-fork vote bypass stays unconditional by design (the unflagged bridge
-  must carry SoP blocks); the "byte-for-byte stock" wording was qualified.
+  seeded; slot logged as a number) are COMMITTED in `patches/monero-sim-pop.patch`
+  after two smokes of a scratch build (`20260926_140023_sop_fork_smoke_fixed`
+  on the h10 graft, `20260926_141745_sop_fork_smoke_fixed_off` on this
+  morning's exact cold-start config: exit 0, 0 exceptions, 271 forks, 263 of
+  281 subjective decisions share-weighted). The INSTALLED monerod-sim
+  (12:41Z) predates it, so `monerod-sim.provenance` no longer matches the
+  tree until you rebuild: `./setup.sh --sim-binary` (or its
+  install_sim_monerod steps), then the three smokes on the installed binary.
+  Do that only after the running matrix has finished — its daemons are the
+  12:41Z build and their runs record it. The hard-fork vote bypass stays
+  unconditional by design (the unflagged bridge must carry SoP blocks); the
+  "byte-for-byte stock" wording was qualified.
 - Open decision for the owner: does the manuscript still want the MRL #144
   exact-uncle variant (≈10 more cells at n=2)? Otherwise keep the det-tie
   relabel.
