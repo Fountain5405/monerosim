@@ -11,6 +11,12 @@
 # in a SoP topology must run monerod-sim (parser + vote-gate bypass).
 # Baseline cells on this base are unaffected: unflagged monerod-sim is
 # byte-for-byte stock behavior.
+# 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
+# tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
+# of the fixed-difficulty 1800 stopgap, so monerod's real DAA runs from the
+# first mined block (docs/CHAIN_SNAPSHOT.md; docs/20260926_dev_branch_handoff.md
+# campaign step 1). Every daemon starts at height 336 on the same tip, so
+# the attacker joins at 0 s: there is no genesis ramp left to exploit.
 general:
   fallback_seeds: custom
   stop_time: 6h
@@ -23,15 +29,16 @@ general:
   native_preemption: true
   mining:
     mode: native
+    # Preload: every monerod-family daemon boots with chain_snapshots/h10
+    # (D0 1200, 336 blocks, tip ~13 min before the Shadow epoch). This
+    # replaces `fixed-difficulty: 1800` (2026-09-25..26): the fakechain
+    # ramp from difficulty 1 was the root of every SoP bootstrap pathology
+    # measured 2026-09-24/25 — bankable high-cum-difficulty islands, diff<w
+    # weight degeneracy, bootstrap fork races — and a constant difficulty
+    # was the stopgap. With the graft the real DAA is active and already
+    # settled at this topology's own equilibrium. Stock cells pair on it.
+    chain_snapshot: h10
   daemon_defaults:
-    # Fixed difficulty from genesis: the fakechain LWMA ramp (diff from 1)
-    # is the root of every SoP bootstrap pathology measured 2026-09-24/25 —
-    # bankable high-cum-difficulty islands, diff<w weight degeneracy,
-    # bootstrap fork races that strand lagging nodes. Real Monero never
-    # ramps; 1800 = the LWMA target at 15 h/s, so the steady state matches
-    # the historical baselines. Stock cells on this base pair the
-    # comparison.
-    fixed-difficulty: 1800
     log-level: monitor
     max-log-file-size: 0
     db-sync-mode: fastest
@@ -59,15 +66,15 @@ agents:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.selfish_miner
-    # Late join: bootstrap (10m) must be non-adversarial. At fakechain
-    # genesis difficulty ANY solo daemon can bank a high-cum-difficulty
-    # chain in minutes (its private LWMA ramps fast); at fork-0 heights
-    # fork choice is objective (raw difficulty) and a banked chain splits
-    # the network permanently — measured 2026-09-24: honest nodes resolved
-    # fork 0 differently and ended 182-vs-5. Real Monero never has
-    # adversarial genesis mining; an attacker joining an operating network
-    # is the faithful shape. Stock cells on this base pair the comparison.
-    start_time: 12m
+    # Synchronized start (2026-09-26). The 12-minute late join this base
+    # used until then existed because at fakechain genesis difficulty ANY
+    # solo daemon could bank a high-cum-difficulty private chain in minutes
+    # and split the network at fork 0 (measured 2026-09-24: 182-vs-5).
+    # With the h10 graft every daemon starts on an established 336-block
+    # chain at settled difficulty, so the attacker mines from t = 0 like
+    # the honest miners — the textbook selfish-mining model. Stock cells
+    # on this base pair the comparison.
+    start_time: 0s
     hashrate: 4
     daemon_options:
       offline: true
@@ -79,7 +86,7 @@ agents:
   attacker-bridge:
     daemon: monerod
     script: agents.selfish_bridge
-    start_time: 12m
+    start_time: 0s
   relay-001:
     daemon: monerod
     start_time: 30s

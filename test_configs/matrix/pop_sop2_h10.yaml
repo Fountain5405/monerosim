@@ -1,0 +1,45 @@
+# SoP v2 re-run on the h10 chain-snapshot base — first draw of an n=2 pair.
+# (docs/20260926_dev_branch_handoff.md campaign step 2;
+#  docs/20260925_e4_code_data_review.md §3 steps 3 and 5.)
+#
+# Cells are IDENTICAL to pop_sop2 (strategy x countermeasure, stock pairs on
+# the same base). What changes is the base: test_configs/selfish_micro_sop.yaml
+# now grafts chain_snapshots/h10 (1535 pre-mined blocks at D0 = 120 x 10 h/s =
+# 1200, the equilibrium for this topology) instead of `fixed-difficulty: 1800`,
+# so monerod's real difficulty algorithm runs from the first mined block and
+# the attacker starts at 0 s — there is no genesis ramp left to exploit, so the
+# 12-minute late join the fixed-difficulty base needed is gone.
+#
+# Every SoP cell of the 2026-09-24/25 campaign was retracted after five daemon
+# defects (review §5, F1–F6); this matrix is their re-run on the fixed daemon.
+# The stock cells double as the fixed-base stock baselines review §3 step 5
+# asks for (n >= 2 before any "lead-2 out-earns ES" claim).
+#
+# Second draw: test_configs/matrix/pop_sop2_h10_rep.yaml (same cells, new
+# matrix name so the runner does not resume, and — unlike the earlier *_rep
+# specs, which re-used seed 12345 and relied on native-preemption timing for
+# the second draw — its own simulation seed, so topology sampling and timing
+# are both independent while cells inside each matrix stay paired on one seed).
+#
+# Gate: every row's `health` must read ok (reorgs started == succeeded, zero
+# add_new_block exceptions). A control cell that never forked proves nothing
+# about fork choice; check forks_seen before reading share numbers.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_sop2_h10.yaml
+#
+# parallel: 6 sized for the 64-core / 251 GB dev box (~12 GB and a few cores
+# per 6 h micro cell); the _rep matrix runs concurrently for 12 cells at once.
+name: pop_sop2_h10
+base: test_configs/selfish_micro_sop.yaml
+parallel: 6
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim}
+    stock: {}

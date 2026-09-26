@@ -21,6 +21,13 @@ to well under that). Presets are generated with
 (recipe in `test_configs/preload_chain.scenario.yaml`'s header) and checked
 with `scripts/chain_snapshot.py verify --preset <dir>` before committing.
 
+## Presets
+
+| preset | total h/s | D0    | blocks | for                                        | generator scenario                              |
+|--------|-----------|-------|--------|--------------------------------------------|-------------------------------------------------|
+| `h50`  | 50        | 6,000 | 1,535  | mainnet replica (`mainnet_replica*.yaml`)  | `test_configs/preload_chain.scenario.yaml`      |
+| `h10`  | 10        | 1,200 | 336    | selfish-mining micro topology (`selfish_micro_sop.yaml`, `matrix/pop_sop2_h10*.yaml`) | `test_configs/preload_chain_h10.scenario.yaml` |
+
 Regenerate a preset whenever its target hashrate, `monero.pin`, or hard-fork
 schedule changes — `general.mining.chain_snapshot: auto` matches on exactly
 those fields and errors (naming the missing combination) if nothing fits.
