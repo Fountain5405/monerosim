@@ -1,11 +1,13 @@
 //! Shared utilities: duration parsing, validation, IP helpers, seed extraction.
 
 pub mod binary;
+pub mod chain_snapshot;
 pub mod duration;
 pub mod mining;
 pub mod options;
 pub mod script;
 pub mod seed_extractor;
+pub(crate) mod seeded_hash;
 pub mod validation;
 
 pub use binary::{resolve_binary_path, resolve_binary_path_for_shadow, BinaryError};

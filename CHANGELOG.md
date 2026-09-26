@@ -3,7 +3,90 @@
 ## [Unreleased]
 
 ### Added
+- **Proxy spy agent** (`agents.spy_proxy`, variant P): a simulation-only
+  Levin front-end that proxies a backend monerod's real chain state and
+  reproduces documented proxy fingerprints (peer-id mismatch on ping, support-flag
+  presence, fleet+backend peer list, dial budget), for the mainnet-replica spy
+  class and stage-3 privacy measurements. Shared responder gained optional
+  `ping_peer_id`/`support_flags` (`agents.eclipse_injector`). Tests in
+  `agents/test_spy_proxy.py`.
 
+- **Chain-snapshot difficulty preload for native mining** (`general.mining.chain_snapshot:
+  auto | off | <preset name or path>`, default `auto`, native mode only): grafts a
+  pre-mined chain — already at the target equilibrium difficulty with a full
+  720-block DAA window — onto every node before Shadow starts, skipping the
+  ~24h cold-start warm-up a fresh regtest chain otherwise needs. `auto` is a
+  soft default: with no matching preset it warns and continues without a
+  snapshot rather than erroring (several matches, or an explicit preset
+  name/path that's missing or mismatched, are still hard errors); YAML
+  booleans are accepted as aliases (`false` == `off`, `true` == `auto`).
+  `patches/monero-sim-mining.patch` gained a generation-only
+  `--sim-timestamp-offset <seconds>` flag (mined block templates timestamped
+  `now - offset`, so a snapshot's tip can land safely before a consumer run's
+  Shadow epoch); `scripts/chain_snapshot.py` exports a generator run's chain
+  into a git-trackable preset (`blocks.jsonl.gz` + `manifest.json`) and
+  materializes a machine-local LMDB template cache from one (real PoW
+  re-verified via `submit_block`), keyed by
+  `sha256(D0, monero_pin, hf_schedule, network_id, height)`;
+  `src/utils/chain_snapshot.rs` resolves/preflights/copies at config-generation
+  time. `test_configs/preload_chain.scenario.yaml` is the generator recipe
+  (machinery only — the real preset + committed blobs are a follow-up).
+  See `docs/CHAIN_SNAPSHOT.md`.
+- **`analysis/topology_metrics.py`** (Gap G1): stage-2 validation metrics
+  for the mainnet-replica scenario, computed on connection-graph snapshots
+  sampled from monitor-level daemon logs (reusing `conn_matrix.py`'s
+  connection-token regex and host loader) and observer
+  `peerlist_dump.jsonl` files. Reports outbound-degree class shares
+  (absolute and N-scaled thresholds), connection share of the top 13.2% of
+  nodes, hub coverage and hub-neighbour overlap, degree assortativity,
+  modularity (networkx, when importable), inbound connections per reachable
+  honest node, and spy share of honest inbound/outbound slots and of
+  peerlist entries, against the literature targets in
+  `docs/20260923_mainnet_topology_literature.md`. Markdown table to stdout
+  plus `--json`; `analysis/README.md` documents usage;
+  `analysis/test_topology_metrics.py` covers every metric against a
+  hand-built graph fixture plus a log-parser smoke test.
+- **Mainnet observation tools** (`analysis/mainnet/`): measure the live
+  Monero mainnet with the same metrics used on the simulator, for stage-2
+  replica validation (`docs/superpowers/specs/2026-09-23-mainnet-replica-design.md`).
+  `poll_node.py` polls a monerod's RPC (`get_info`/`get_connections`/
+  `/get_peer_list`) into daily, gzip-rolled-over JSONL, state-free and safe
+  under `systemd-run --user` for a week. `crawl.py` is a BFS crawler that
+  Levin-handshakes real mainnet peers (`agents/levin_lib.py`, extended with
+  initiator request/response helpers and peerlist/network-address parsing)
+  and records reachability, RTT, peer_id, top height, support-flags
+  presence and the peerlist-adjacency graph. `enrich_asn.py` does bulk
+  ASN/country lookup via Team Cymru's whois, cached on disk. `summarize.py`
+  turns a crawl+poll+ban-list+ASN dataset into `report.md`/`report.json`:
+  reachable count, three-way spy-label overlap (ban list / peer-ID mismatch
+  / absent support flags), spy and honest /24-ASN-country concentration, our
+  node's connection/spy-slot shares over time, poll-derived
+  connection-duration distribution, and crawl degree/hub-coverage stats —
+  the mainnet counterparts of the replica spec's §6 table. Validated live:
+  a bad default `top_version` in the handshake (not the current hard-fork
+  version) made every real mainnet node look like a "genesis trick" spy
+  decoy (0/200 reachable); fixed by fetching `hard_fork_info` (148/200
+  reachable after the fix). Tests in `test_mainnet_tools.py` run with no
+  network access.
+- **Per-agent `turnover` override** (Gap G2): a per-agent `turnover: true|false`
+  key (`AgentConfig::turnover`) overrides `general.turnover`'s default sampling
+  for that agent. `true` forces the agent's daemon into the offline/online
+  turnover cycle regardless of `fraction` — including nodes that pin
+  `hide-my-port: false` (normally exempt as an always-reachable hub) — so a
+  "medium" reachability class can be pinned reachable yet still cycle.
+  `false` always excludes it, `fraction` notwithstanding. Miners and seed
+  nodes stay always-on either way. Unset preserves prior behaviour
+  (`src/agent/user_agents.rs`, `compute_turnover_set`).
+- **Honest prefix sharing** (gap G5, `network.distribution.prefix_sharing:
+  {fraction, per_prefix}`): co-locates a fraction of eligible honest daemons
+  (non-miner, non-seed, unpinned) onto shared GML nodes — `per_prefix` per
+  node, inside their region — so mainnet's BGP-prefix concentration
+  (Kirschner 2026 / S11: 12% of prefixes hold 55% of nodes) is reproducible
+  under monerod's `/24` outbound dedup. Runs after the base distribution and
+  before per-agent `topology_node` pins, which always win.
+  `src/topology/prefix_sharing.rs`; `seeded_hash`/`finalize_hash` factored
+  into `src/utils/seeded_hash.rs` (shared with the other seeded selections in
+  `src/agent/user_agents.rs`). Absent config = unchanged behavior.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was
   accepted only as an equal-height alternative, which stock monerod drops silently.

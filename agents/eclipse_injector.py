@@ -25,7 +25,8 @@ from agents import levin_lib as L
 class InjectorConfig:
     def __init__(self, network_id, peer_id, my_port, records_fn,
                  height=1, cumdiff=1, top_id=b"\x00" * 32, top_version=1,
-                 max_records=250, logger=None):
+                 max_records=250, logger=None, ping_peer_id=None,
+                 support_flags=1):
         self.network_id = network_id
         self.peer_id = peer_id
         self.my_port = my_port
@@ -36,6 +37,16 @@ class InjectorConfig:
         self.top_version = top_version
         self.max_records = max_records
         self.logger = logger
+        # ping_peer_id: the id returned in a PING response. None -> use peer_id
+        # (a normal node answers PING with the same id it gave at handshake).
+        # Setting it to a DIFFERENT value reproduces the documented spy/proxy
+        # fingerprint where the handshake and ping ids disagree (ProbeLab 2026):
+        # a front-end that routes the ping to a different backend, or mints a
+        # fresh id. Off by default so eclipse tooling is unchanged.
+        self.ping_peer_id = ping_peer_id
+        # support_flags returned to a REQUEST_SUPPORT_FLAGS (1 = FLUFFY_BLOCKS,
+        # as stock monerod). 0 reproduces the flag-omission fingerprint (S4/S6).
+        self.support_flags = support_flags
         self.injected = 0
         self.conns = 0
 
@@ -94,12 +105,13 @@ def handle_connection(sock, cfg):
                 })
                 cfg.injected += len(arr[1])
             elif command == L.COMMAND_PING:
+                ping_id = cfg.ping_peer_id if cfg.ping_peer_id is not None else cfg.peer_id
                 _send(sock, command, {
                     "status": ("str", L.PING_OK_RESPONSE_STATUS_TEXT),
-                    "peer_id": ("u64", cfg.peer_id),
+                    "peer_id": ("u64", ping_id),
                 })
             elif command == L.COMMAND_REQUEST_SUPPORT_FLAGS:
-                _send(sock, command, {"support_flags": ("u32", 1)})
+                _send(sock, command, {"support_flags": ("u32", cfg.support_flags)})
             else:
                 # unknown admin command that expects a response: reply empty OK
                 if expect_resp:

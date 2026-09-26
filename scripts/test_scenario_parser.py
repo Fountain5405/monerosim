@@ -246,3 +246,27 @@ agents:
     assert agents["relay-002"]["start_time"] == "5s"
     assert agents["relay-003"]["start_time"] == "10s"
     assert "wallet" not in agents["relay-001"]
+
+
+def test_expand_scenario_turnover_key_is_passed_through_verbatim():
+    # Gap G2: `turnover` is an unrecognized per-group scalar to the parser
+    # (not a time field, not a `_stagger` field) -> copied verbatim to every
+    # agent in the group, same as any other pass-through key.
+    scenario = """
+general:
+  stop_time: 1h
+  bootstrap_end_time: auto
+network:
+  path: g.gml
+  peer_mode: Dynamic
+agents:
+  relay-{001..003}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 5s
+    turnover: true
+"""
+    agents = _expand(scenario)["agents"]
+    assert len(agents) == 3
+    for i in range(1, 4):
+        assert agents[f"relay-{i:03d}"]["turnover"] is True
