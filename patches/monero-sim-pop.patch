@@ -208,7 +208,7 @@ index c168f48a7..d282d8986 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 7e54738d9..584c2f283 100644
+index 7e54738d9..8728dde3a 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -349,7 +349,7 @@ index 7e54738d9..584c2f283 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1965,688 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1965,720 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -450,6 +450,24 @@ index 7e54738d9..584c2f283 100644
 +  return true;
 +}
 +
++// Sibling anchor for an embedded uncle: the containing block's grandparent,
++// i.e. its PARENT's prev_id. Read it from the parent block itself (main or
++// alt via get_block_by_hash), never from the main chain at height-2: when the
++// containing block sits three or more deep in an alt chain, main[height-2]
++// is a different block and every legitimate uncle in that chain was REJECTED
++// as "not a sibling of the parent" (2026-09-26 patch review, finding 5).
++bool Blockchain::sim_pop_parent_prev(const block &b, uint64_t height, crypto::hash &parent_prev) const
++{
++  block parent;
++  if (!get_block_by_hash(b.prev_id, parent))
++  {
++    MINFO("SIM-PoP: block at height " << height << " has unknown parent " << b.prev_id << " (uncle bonus 0)");
++    return false;
++  }
++  parent_prev = parent.prev_id;
++  return true;
++}
++
 +// Weight side (trustless per MRL #144): an embedded header counts when its
 +// PoW meets the difficulty at the uncle height and its prev_id makes it a
 +// sibling of the containing block's parent. In-time-ness: a block we
@@ -466,7 +484,9 @@ index 7e54738d9..584c2f283 100644
 +    MINFO("SIM-PoP: block at height " << height << " tx_extra UNPARSABLE (uncle bonus 0)");
 +    return 0;
 +  }
-+  const crypto::hash parent_prev = get_block_id_by_height(height - 2);
++  crypto::hash parent_prev;
++  if (!sim_pop_parent_prev(b, height, parent_prev))
++    return 0;
 +  uint64_t bonus = 0;
 +  for (const auto &f : fields)
 +  {
@@ -675,8 +695,13 @@ index 7e54738d9..584c2f283 100644
 +
 +uint64_t Blockchain::sim_pop_uncle_bonus(const block &b, uint64_t height) const
 +{
++  if (height < 2)
++    return 0;
 +  std::vector<tx_extra_field> fields;
 +  if (!parse_tx_extra(b.miner_tx.extra, fields))
++    return 0;
++  crypto::hash parent_prev;
++  if (!sim_pop_parent_prev(b, height, parent_prev))
 +    return 0;
 +  static constexpr size_t MAGIC_LEN = sizeof(SIM_POP_UNCLE_MAGIC) - 1;
 +  uint64_t bonus = 0;
@@ -697,6 +722,13 @@ index 7e54738d9..584c2f283 100644
 +    cryptonote::alt_block_data_t data;
 +    cryptonote::blobdata blob;
 +    if (!m_db->get_alt_block(uncle_id, &data, &blob) || data.height != height - 1)
++      continue;
++    // Sibling of the containing block's parent (same prev). The template side
++    // (sim_pop_find_uncle) always picked a sibling, but the verifier never
++    // checked, so any locally-held alt block at height-1 -- another fork's
++    // block -- earned the bonus (2026-09-26 patch review, finding 5).
++    cryptonote::block uncle_bl;
++    if (!cryptonote::parse_and_validate_block_from_blob(blob, uncle_bl) || uncle_bl.prev_id != parent_prev)
 +      continue;
 +    ++bonus;
 +  }
@@ -1038,7 +1070,7 @@ index 7e54738d9..584c2f283 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +2672,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +2704,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1049,7 +1081,7 @@ index 7e54738d9..584c2f283 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +2885,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +2917,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1060,7 +1092,7 @@ index 7e54738d9..584c2f283 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4081,7 +4866,9 @@ leave:
+@@ -4081,7 +4898,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1071,7 +1103,7 @@ index 7e54738d9..584c2f283 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4683,6 +5470,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4683,6 +5502,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1103,7 +1135,7 @@ index 7e54738d9..584c2f283 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 9c0074d4a..f84420b40 100644
+index 9c0074d4a..a22f4fa16 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1142,7 +1174,7 @@ index 9c0074d4a..f84420b40 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1197,6 +1219,55 @@ namespace cryptonote
+@@ -1197,6 +1219,56 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1164,6 +1196,7 @@ index 9c0074d4a..f84420b40 100644
 +    uint64_t sim_pop_uncle_bonus(const block &b, uint64_t height) const;
 +    bool sim_pop_find_uncle_header(uint64_t parent_height, blobdata &header_blob) const;
 +    uint64_t sim_pop_uncle_bonus_header(const block &b, uint64_t height) const;
++    bool sim_pop_parent_prev(const block &b, uint64_t height, crypto::hash &parent_prev) const;   // parent's prev_id, main or alt
 +
 +    // SIMULATION ONLY (Share-or-Perish, MRL #146): workshare pool. Shares
 +    // are PoW headers at >= 1/w difficulty on the template (header + 32B

@@ -267,7 +267,13 @@ def daemon_capabilities(config_path: str) -> list[dict]:
         is_miner = 'hashrate' in spec
         if native and is_miner:
             flags.add(NATIVE_MINING_FLAG)
-            daemon = 'monerod-sim'
+            # The orchestrator substitutes only when the config says exactly
+            # `monerod` (or nothing); a miner that names another binary by
+            # path or name runs THAT binary, so probe it (2026-09-26: the
+            # probe checked ~/.monerosim/bin while a scratch smoke's miners
+            # ran the explicit scratch build).
+            if daemon == 'monerod':
+                daemon = 'monerod-sim'
         named_patched = os.path.basename(daemon) in PATCHED_DAEMON_NAMES
         if not flags and not named_patched:
             continue
@@ -289,12 +295,16 @@ def cmd_daemon_capabilities(args: argparse.Namespace) -> int:
         <explicit 0|1>\t<path>\t<comma-separated flags>\t<example agent>
 
     Flags may be empty: the config named a patched binary without setting a
-    patched option, so only its existence is checked.
+    patched option, so only its existence is checked. An empty field is
+    written as "-": bash's `IFS=$'\\t' read` treats TAB as IFS whitespace and
+    collapses adjacent tabs, so an empty flags field shifted the agent name
+    into the flags column and the gate demanded a flag called after the agent
+    ("does not support --attacker-bridge", 2026-09-26).
     """
     for e in daemon_capabilities(args.config):
         print("%d\t%s\t%s\t%s" % (
-            1 if e['explicit'] else 0, e['path'], ",".join(e['flags']),
-            e['agents'][0] if e['agents'] else ''))
+            1 if e['explicit'] else 0, e['path'], ",".join(e['flags']) or "-",
+            e['agents'][0] if e['agents'] else '-'))
     return 0
 
 

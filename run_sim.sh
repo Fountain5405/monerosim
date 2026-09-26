@@ -727,6 +727,9 @@ preflight_checks() {
                 fi
             fi
             cap_help=$("$cap_path" --help 2>/dev/null)
+            # "-" = no flag needed (existence only); the probe writes it so an
+            # empty field cannot collapse under IFS=TAB and shift the columns.
+            [[ "$cap_flags" == "-" ]] && cap_flags=""
             IFS=',' read -ra cap_want <<< "$cap_flags"
             for cap_flag in "${cap_want[@]}"; do
                 [[ -n "$cap_flag" ]] || continue

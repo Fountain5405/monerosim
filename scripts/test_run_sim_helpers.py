@@ -417,3 +417,45 @@ def test_daemon_capabilities_miner_means_hashrate_set(tmp_path):
     assert "miner-observer-001" not in agents and "relay-001" not in agents
     sim = [e for e in entries if "honest-001" in e["agents"]][0]
     assert sim["path"].endswith("monerod-sim") and "sim-hash-interval-ms" in sim["flags"]
+
+
+def test_daemon_capabilities_cli_never_emits_an_empty_column(tmp_path, capsys):
+    """An explicit patched binary that needs no flag used to print an empty
+    flags field; bash's IFS=TAB read collapses adjacent tabs, so the agent
+    name slid into the flags column and run_sim.sh demanded a flag named
+    after the agent (2026-09-26: "does not support --attacker-bridge")."""
+    import argparse
+    from scripts.run_sim_helpers import cmd_daemon_capabilities
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    sim = bin_dir / "monerod-sim"
+    sim.write_text("#!/bin/sh\n")
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("agents:\n  attacker-bridge: {daemon: %s, script: agents.selfish_bridge}\n" % sim)
+    cmd_daemon_capabilities(argparse.Namespace(config=str(cfg)))
+    lines = [l for l in capsys.readouterr().out.splitlines() if l]
+    assert len(lines) == 1
+    cols = lines[0].split("\t")
+    assert cols == ["1", str(sim), "-", "attacker-bridge"]
+    assert all(c for c in cols)
+
+
+def test_daemon_capabilities_keeps_a_miners_explicit_binary(tmp_path):
+    """Native mining swaps the miner's daemon for monerod-sim only when the
+    config names plain `monerod` (src/agent/user_agents.rs); a miner pointed
+    at an explicit build must be probed at that path (2026-09-26)."""
+    from scripts.run_sim_helpers import daemon_capabilities
+    sim = tmp_path / "bin" / "monerod-sim"
+    sim.parent.mkdir()
+    sim.write_text("#!/bin/sh\n")
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(
+        "general:\n  mining: {mode: native}\n"
+        "agents:\n"
+        "  honest-001: {daemon: %s, script: agents.autonomous_miner, hashrate: 3}\n"
+        "  honest-002: {daemon: monerod, script: agents.autonomous_miner, hashrate: 3}\n" % sim)
+    entries = daemon_capabilities(str(cfg))
+    by_agent = {a: e for e in entries for a in e["agents"]}
+    assert by_agent["honest-001"]["path"] == str(sim) and by_agent["honest-001"]["explicit"]
+    assert by_agent["honest-002"]["path"].endswith("monerod-sim") and not by_agent["honest-002"]["explicit"]
+    assert "sim-hash-interval-ms" in by_agent["honest-001"]["flags"]
