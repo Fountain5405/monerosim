@@ -8,13 +8,17 @@
 # this box or on the fixed daemon (the runner needs the pairs in one place for
 # scripts/matrix_pairs.py).
 #
-# The exact verifier's sibling fix (2026-09-26, finding 5) matters most here:
-# deeper alt chains at mid scale are exactly where the old main-chain anchor
-# rejected legitimate uncles.
+# Runs on the daemon with both 2026-09-26 exact fixes: the verifier's sibling
+# anchor (F5c) and the template refresh on sibling-alt arrival (F5d). At micro
+# scale (pop_exact_h10) the exact variant collapsed to det-tie BY CONSTRUCTION:
+# with gamma ~= 0 the attacker's tie block never reaches an honest miner on its
+# own (the unflagged bridge stores it as an alternative and relays nothing),
+# so honest templates never had a sibling to embed. Here six honest miners
+# race each other naturally, and those ties DO propagate — the first setting
+# in this campaign where the uncle term can act.
 #
 # Second draw: pop_exact_mid_rep.yaml (seed 54321). Launched by the campaign
-# driver AFTER the micro batch finishes (12 mid cells ≈ 20 GB each; parallel 3
-# per draw => 6 at once on the 251 GB box).
+# driver alone (12 mid cells ≈ 20 GB each; parallel 3 per draw => 6 at once).
 #
 #   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_exact_mid.yaml
 name: pop_exact_mid

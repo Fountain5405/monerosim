@@ -214,6 +214,32 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   `venv/bin/python scripts/matrix_pairs.py pop_exact_h10 pop_exact_h10_rep
   --ledger` (and the other two pairs). Launched 18:14:56–18:15:56Z (runner pids in the scratchpad's `matrix3/pids.txt`; every run dir is named `*_<matrix>__<cell>`).
 
+- **Stage 1 results (19:56–20:19Z)** — `docs/20260926_exact_uncles_and_sop_controls.md`.
+  Exact micro: ES {0.169, 0.199} vs stock {0.377, 0.441}; lead-2 {0.284,
+  0.292} vs {0.305, 0.469}; honest {0.378, 0.389}; all health ok — but **0
+  uncle headers embedded** in any cell. Controls: `upgraded` {0.363, 0.368}
+  (orphan 0.014/0.000, shares circulating), `connected` {0.394, 0.418}
+  (orphan 0, no ties): the 17 lost ties of honest_sop2 draw 2 were the
+  offline-bridge control's own latency, not an upgrade cost measurable here.
+- **F5d + the γ ≈ 0 structural finding (20:05–20:30Z)**: added a template
+  refresh when an accepted alternative block sits at the tip height (both
+  uncle flags); two diagnostic smokes (`20260926_200552_pop_exact_fast_fix3`,
+  `20260926_201720_pop_exact_fast_fix3b`, both green) showed embeddings still
+  follow reorgs only, because the attacker's tie block never reaches honest
+  miners alone at γ ≈ 0 (unflagged bridge relays no alternatives; the block
+  arrives with its child via the sync path and is displaced at once). Exact =
+  det-tie by construction in the single-bridge topology. Build installed
+  20:30Z (pop sha `9492d7cb…`, provenance matches; SoP smokes not re-run —
+  the hook cannot run in a SoP cell). Micro exact re-run (`pop_exact2_h10`)
+  written then dropped as pointless.
+- **Stage 2 launched 20:31Z**: `pop_exact_mid` + `_rep` (driver
+  `run_stage2.sh` in the scratchpad; 6 mid cells at once, 12 total, ~2 waves
+  of ~7 h → done ~11:00Z 09-27). Read out with
+  `venv/bin/python scripts/matrix_pairs.py pop_exact_mid pop_exact_mid_rep --ledger`
+  and count `embedding uncle header` per honest miner before reading shares.
+- Owner decision opened: a γ > 0 exact cell (bridge with `sim-relay-alt-blocks`)
+  is the only way to measure the uncle term against the attacker itself.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

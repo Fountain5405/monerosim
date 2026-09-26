@@ -208,7 +208,7 @@ index c168f48a7..d282d8986 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 7e54738d9..8728dde3a 100644
+index 7e54738d9..1295231b2 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -349,7 +349,7 @@ index 7e54738d9..8728dde3a 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1965,720 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1965,731 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -393,9 +393,11 @@ index 7e54738d9..8728dde3a 100644
 +    return false;
 +  const crypto::hash parent_prev = get_block_id_by_height(parent_height - 1);
 +  bool found = false;
++  size_t at_height = 0, not_sibling = 0, late = 0;
 +  m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
 +      if (found || data.height != parent_height)
 +        return true;
++      ++at_height;
 +      cryptonote::blobdata blob;
 +      cryptonote::alt_block_data_t d2;
 +      if (!m_db->get_alt_block(alt_id, &d2, &blob))
@@ -404,13 +406,22 @@ index 7e54738d9..8728dde3a 100644
 +      if (!cryptonote::parse_and_validate_block_from_blob(blob, alt_bl))
 +        return true;
 +      if (alt_bl.prev_id != parent_prev)
++      {
++        ++not_sibling;
 +        return true;
++      }
 +      if (!sim_pop_in_time(alt_id, parent_height))
++      {
++        ++late;
 +        return true;
++      }
 +      header_blob = get_block_hashing_blob(alt_bl);
 +      found = true;
 +      return true;
 +  });
++  if (!found && at_height)
++    MINFO("SIM-PoP: template at height " << parent_height + 1 << ": " << at_height << " alt block(s) at the parent height, "
++          << not_sibling << " not sibling, " << late << " late -- no uncle embedded");
 +  return found;
 +}
 +
@@ -1070,7 +1081,7 @@ index 7e54738d9..8728dde3a 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +2704,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +2715,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1081,7 +1092,7 @@ index 7e54738d9..8728dde3a 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +2917,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +2928,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1092,7 +1103,7 @@ index 7e54738d9..8728dde3a 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4081,7 +4898,9 @@ leave:
+@@ -4081,7 +4909,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1103,7 +1114,7 @@ index 7e54738d9..8728dde3a 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4683,6 +5502,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4683,6 +5513,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1135,7 +1146,7 @@ index 7e54738d9..8728dde3a 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 9c0074d4a..a22f4fa16 100644
+index 9c0074d4a..e726cd513 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1146,7 +1157,7 @@ index 9c0074d4a..a22f4fa16 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -896,6 +897,27 @@ namespace cryptonote
+@@ -896,6 +897,28 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -1163,6 +1174,7 @@ index 9c0074d4a..a22f4fa16 100644
 +     * deterministic hash comparison per MRL #144). Uncles are not modeled.
 +     */
 +    void set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles, bool uncles_header);
++    bool sim_pop_uncles_enabled() const { return m_sim_pop_uncles || m_sim_pop_uncles_header; }   // either #144 uncle variant is on
 +
 +    // SIMULATION ONLY (Share-or-Perish, MRL #146, step 2): pool a workshare
 +    // (local hit or gossiped); true only for a NEW share. See m_sim_shares.
@@ -1174,7 +1186,7 @@ index 9c0074d4a..a22f4fa16 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1197,6 +1219,56 @@ namespace cryptonote
+@@ -1197,6 +1220,56 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1232,7 +1244,7 @@ index 9c0074d4a..a22f4fa16 100644
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index 3e3f7a824..2cc333f15 100644
+index 3e3f7a824..2eed1b680 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
 @@ -212,6 +212,64 @@ namespace cryptonote
@@ -1385,6 +1397,29 @@ index 3e3f7a824..2cc333f15 100644
    bool core::is_synchronized() const
    {
      return m_pprotocol != nullptr && m_pprotocol->is_synchronized();
+@@ -1541,6 +1663,22 @@ namespace cryptonote
+     add_new_block(*b, bvc, extra_block_txs);
+     if(update_miner_blocktemplate && bvc.m_added_to_main_chain)
+        update_miner_block_template();
++    // SIMULATION ONLY (MRL #144 uncles): a block that competes with our
++    // current tip (accepted as an alternative, same height as the top) is an
++    // uncle candidate for the template we are mining on -- but stock monerod
++    // rebuilds the template only when the top CHANGES, so a sibling arriving
++    // after our own block was never embedded (2026-09-26: 0 embeddings in
++    // 6 h micro cells with 60-90 in-time ties; every embedding in the smokes
++    // followed a REORGANIZE). A miner that wants the uncle reward refreshes.
++    else if (update_miner_blocktemplate && m_blockchain_storage.sim_pop_uncles_enabled()
++             && !bvc.m_verifivation_failed && !bvc.m_already_exists && !bvc.m_marked_as_orphaned
++             && !b->miner_tx.vin.empty() && b->miner_tx.vin[0].type() == typeid(txin_gen)
++             && boost::get<txin_gen>(b->miner_tx.vin[0]).height + 1 == m_blockchain_storage.get_current_blockchain_height())
++    {
++      MGINFO("SIM-PoP: sibling alternative block at the tip height " << boost::get<txin_gen>(b->miner_tx.vin[0]).height
++            << " -- refreshing the block template for the uncle header");
++      update_miner_block_template();
++    }
+     return true;
+ 
+     CATCH_ENTRY_L0("core::handle_incoming_block()", false);
 diff --git a/src/cryptonote_core/cryptonote_core.h b/src/cryptonote_core/cryptonote_core.h
 index 99df370fe..f0de93622 100644
 --- a/src/cryptonote_core/cryptonote_core.h

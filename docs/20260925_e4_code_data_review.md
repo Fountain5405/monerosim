@@ -193,10 +193,12 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   (0.000–0.035 vs stock 0.305–0.469); controls ≈ α.
 - Step 4 (exact cells): owner said yes 2026-09-26 (17:40Z). The exact-uncle
   sibling anchor was fixed first (F5c below, smoke-gated, installed 17:53Z);
-  the cells run as `test_configs/matrix/pop_exact_h10{,_rep}.yaml` (micro,
-  h10 base, pairs with pop_sop2_h10's stock rows) and
+  the cells ran as `test_configs/matrix/pop_exact_h10{,_rep}.yaml` (micro,
+  h10 base, pairs with pop_sop2_h10's stock rows: ES {0.169, 0.199}, lead-2
+  {0.284, 0.292}, honest {0.378, 0.389} — det-tie readings, see F5d) and
   `pop_exact_mid{,_rep}.yaml` (mid, genesis base UNCHANGED so the exact rows
-  compare directly with the retained det-tie mid rows; stock pairs re-run).
+  compare directly with the retained det-tie mid rows; stock pairs re-run;
+  launched 20:31Z).
   Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
   (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated
@@ -293,6 +295,24 @@ once, on a chain with an established difficulty. Resume plan: §3.
   `prev_id`; both verifiers use it, the deviated one now parses the alt blob
   and requires `prev_id == parent_prev`. Template side was already correct
   (it builds on main). Re-validated: all three gated smokes GREEN on the installed binary, run concurrently 17:55–18:14Z: `20260926_175546_pop_exact_fast_fix2` (reorgs 69/69 and 70/70 on the honest miners, 57/57 attacker, 104–107/104–107 on relays and seeds, 0 exceptions, 7,914 alternative blocks, **96 uncle headers COUNTED per honest miner with 0 "not a sibling" rejections** — the pre-fix run of the same config, `20260926_163610_pop_exact_fast`, counted 68/69 with 2 rejections — and 176 uncle-weighted fork decisions vs 111); `20260926_175531_sop_fork_smoke_fix2` (forks 230, all 230 SoP decisions share-weighted, 0 exceptions); `20260926_175601_snap_sop_fix2` (h50 graft plumbing, 0 exceptions).
+- **F5d (2026-09-26, found by the stage-1 exact cells; fixed 20:05Z)**: with
+  F5c in, four 6 h micro exact cells embedded **0** uncle headers against
+  60–90 in-time ties per honest miner. Stock monerod rebuilds the miner's
+  template only when the chain top changes; an in-time sibling that arrives
+  after the miner's own block is stored as an alternative and never becomes
+  a template candidate (every embedding in the race-heavy smokes follows a
+  `REORGANIZE SUCCESS`; the sim miner's per-second refresh is SoP-only).
+  Fix: `core::handle_incoming_block` refreshes the template when an accepted
+  alternative block sits at the tip height under either uncle flag. The
+  diagnostic smoke then showed the deeper cause: at γ ≈ 0 the attacker's tie
+  block never reaches an honest miner on its own (the unflagged bridge relays
+  no alternatives); it arrives with its child through the sync path and is
+  displaced at once, so no honest template ever holds an attacker sibling.
+  **Exact = det-tie by construction in the single-bridge topology**; every
+  `exact` cell to date measures pop-core + det-tie for that reason, and the
+  uncle term can only act on propagating ties (several honest miners, or a
+  bridge with `sim-relay-alt-blocks`). Micro re-run dropped; mid-scale runs.
+  Details: `docs/20260926_exact_uncles_and_sop_controls.md`.
 - Patch regenerated per the H0/H1 ritual (`/tmp/h0wt` = base + 4 non-pop
   patches); NOTE the build wrapper trap hit on the way: `install_sim_monerod`
   reads `MONEROSIM_BIN` as the bin DIRECTORY (`~/.monerosim/bin`), and its
