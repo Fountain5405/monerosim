@@ -1001,7 +1001,14 @@ cd build/release
 
 # Configure with CMake
 log_info "Configuring Monero build..."
-cmake -DCMAKE_BUILD_TYPE=Release ../..
+# Hardware-wallet support (Trezor, Ledger) is irrelevant inside Shadow and pulls
+# the protobuf toolchain plus ~25 extra translation units into the wallet build.
+# USE_DEVICE_TREZOR=OFF turns device_trezor into a stub (monero's own CheckTrezor
+# option); CMAKE_DISABLE_FIND_PACKAGE_HIDAPI is CMake's generic off-switch for an
+# optional find_package, and every Ledger source/define/link in monero is gated
+# on HIDAPI_FOUND. Verified 2026-09-26: wallet_rpc_server links none of hidapi,
+# libusb, udev or protobuf. monerod is unaffected either way.
+cmake -DCMAKE_BUILD_TYPE=Release -DUSE_DEVICE_TREZOR=OFF -DCMAKE_DISABLE_FIND_PACKAGE_HIDAPI=TRUE ../..
 
 if [[ $? -ne 0 ]]; then
     log_err "Failed to configure Monero with CMake"
@@ -1271,7 +1278,7 @@ install_sim_monerod() {
 
     log_info "Building patched monerod (monerod-sim, -j${BUILD_JOBS}) — this takes a while..."
     if ! (cd "$sim_build_dir" && mkdir -p build/release && cd build/release \
-          && cmake -DCMAKE_BUILD_TYPE=Release ../.. > cmake.log 2>&1 \
+          && cmake -DCMAKE_BUILD_TYPE=Release -DUSE_DEVICE_TREZOR=OFF -DCMAKE_DISABLE_FIND_PACKAGE_HIDAPI=TRUE ../.. > cmake.log 2>&1 \
           && nice -n10 make -j"$BUILD_JOBS" daemon); then
         log_err "monerod-sim build failed (see $sim_build_dir/build/release/cmake.log)"
         exit 1
