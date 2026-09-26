@@ -332,3 +332,41 @@ def test_analyze_run_without_snapshot_is_unchanged(tmp_path):
     r = analyze_run(tmp_path)
     assert r["preload_blocks"] == 0 and r["preload_expected"] is None
     assert r["canonical_blocks"] == 2 and abs(r["share"] - 0.5) < 1e-9
+
+
+def test_analyze_run_reports_honest_reference_share(tmp_path):
+    """The bridge (stock fork choice) can end a SoP run on an attacker branch
+    the honest network rejected; the honest node's daemon log gives the
+    honest canonical chain, and the analysis reports the share against it
+    next to the bridge-referenced one (review 2026-09-26)."""
+    from scripts.selfish_mining_analysis import SIM_EPOCH, analyze_run
+    E = SIM_EPOCH
+    bridge = [{"height": 1, "hash": "a" * 63 + "1", "timestamp": E + 100},
+              {"height": 2, "hash": "b" * 63 + "2", "timestamp": E + 250},
+              {"height": 3, "hash": "a" * 63 + "3", "timestamp": E + 400},   # attacker block on the bridge's chain
+              {"height": 4, "hash": "a" * 63 + "4", "timestamp": E + 520}]
+    _write_selfish_run(tmp_path, bridge, {
+        "honest-001": [_found_line(2, "b" * 63 + "2"), _found_line(3, "b" * 63 + "3"), _found_line(4, "b" * 63 + "4")],
+        "attacker-miner": [_found_line(1, "a" * 63 + "1"), _found_line(3, "a" * 63 + "3"), _found_line(4, "a" * 63 + "4")],
+    })
+    # honest-001's log: it never adopted the attacker's 3/4, it kept its own b3/b4.
+    T = "2000-01-01 00:{m:02d}:00.000\t[m]\tINFO\tblockchain\tsrc/cryptonote_core/blockchain.cpp:5271\t{msg}\n"
+    def add(m, h, hid):
+        return (T.format(m=m, msg="+++++ BLOCK SUCCESSFULLY ADDED") + T.format(m=m, msg=f"id:\t<{hid}>")
+                + T.format(m=m, msg=f"HEIGHT {h}, difficulty:\t1200"))
+    log = tmp_path / "daemon_logs" / "monero-honest-001" / "bitmonero.log"
+    log.parent.mkdir(parents=True)
+    log.write_text(add(1, 1, "a" * 63 + "1") + add(2, 2, "b" * 63 + "2") + add(3, 3, "b" * 63 + "3") + add(4, 4, "b" * 63 + "4"))
+    r = analyze_run(tmp_path)
+    assert abs(r["share"] - 0.75) < 1e-9                 # bridge view: a1, a3, a4 of 4
+    assert abs(r["share_honest_ref"] - 0.25) < 1e-9      # honest view: only a1
+    assert r["honest_ref"]["node"] == "honest-001"
+    assert r["honest_ref"]["differing_heights"] == 2 and r["honest_ref"]["first_divergence"] == 3
+
+
+def test_analyze_run_honest_reference_absent_without_daemon_logs(tmp_path):
+    from scripts.selfish_mining_analysis import SIM_EPOCH, analyze_run
+    chain = [{"height": 1, "hash": "a1", "timestamp": SIM_EPOCH + 10}]
+    _write_selfish_run(tmp_path, chain, {"attacker-miner": [_found_line(1, "a1")], "honest-001": []})
+    r = analyze_run(tmp_path)
+    assert r["share_honest_ref"] is None and r["honest_ref"] is None

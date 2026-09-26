@@ -309,3 +309,48 @@ def test_run_cell_flags_cell_with_no_attacker_blocks(tmp_path, monkeypatch):
     assert row["preload_blocks"] == 336
     assert row["health"]["ok"] is False
     assert "no-attacker-blocks" in row["health"]["summary"]
+
+
+def test_reanalyze_rewrites_markers_without_launching(tmp_path, monkeypatch, capsys):
+    """--reanalyze recomputes health + analysis from the archived run dirs
+    (analysis fixes must never require re-running simulations)."""
+    import json
+    import sys
+    from scripts.selfish_matrix import main
+    spec_path = tmp_path / "spec.yaml"
+    base = tmp_path / "base.yaml"
+    base.write_text(yaml.safe_dump(BASE))
+    spec_path.write_text(yaml.safe_dump({"name": "t", "base": str(base), "axes": {"strategy": {"es": {}}}}))
+    work = tmp_path / "work" / "t"
+    run_dir = tmp_path / "archive" / "20260926_000000_t__es"
+    run_dir.mkdir(parents=True)
+    (work / "cells").mkdir(parents=True)
+    (work / "cells" / "es.json").write_text(json.dumps(
+        {"cell": "es", "values": {"strategy": "es"}, "run_dir": str(run_dir), "returncode": 0, "share": 0.9}))
+
+    def no_launch(cmd, *a, **k):
+        if any("run_sim.sh" in str(c) for c in cmd):
+            raise AssertionError("reanalyze must not launch run_sim.sh")
+
+        class P:          # the commit stamp (`git rev-parse`) is fine
+            returncode = 0
+            stdout = "abc1234"
+            stderr = ""
+        return P()
+    monkeypatch.setattr("scripts.selfish_matrix.subprocess.run", no_launch)
+
+    def fake_analyze(rd, chain_path=None):
+        r = dict(_fake_analyze(rd))
+        r["share"] = 0.11
+        r["share_honest_ref"] = 0.10
+        r["orphan_stats"] = {"attacker_found": 40}
+        return r
+    monkeypatch.setattr("scripts.selfish_mining_analysis.analyze_run", fake_analyze)
+    monkeypatch.setenv("MONEROSIM_MATRIX_WORKROOT", str(tmp_path / "work"))
+    monkeypatch.setattr(sys, "argv", ["selfish_matrix.py", str(spec_path), "--reanalyze"])
+    rc = main()
+    row = json.loads((work / "cells" / "es.json").read_text())
+    assert row["share"] == 0.11 and row["share_honest_ref"] == 0.10 and row["attacker_found"] == 40
+    table = (work / "table.md").read_text()
+    assert "share_h" in table and "0.110" in table and "0.100" in table
+    assert rc in (0, 1)

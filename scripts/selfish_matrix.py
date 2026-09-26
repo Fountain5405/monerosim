@@ -263,41 +263,79 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
             row["error"] = "run_sim exited 0 but no new archived run dir found"
         else:
             row["run_dir"] = str(run_dir)
-            # Daemon-log health (review 2026-09-25): a cell whose daemons
-            # could not reorganize, or whose honest nodes never saw a fork,
-            # is not evidence about fork choice whatever its share says.
-            health = check_run(run_dir)
-            row["health"] = {"ok": health["ok"], "summary": summarize(health),
-                             "forks_seen": health["forks_seen"], **health["totals"]}
-            try:
-                r = analyze_run(run_dir)
-                row.update({k: r.get(k) for k in (
-                    "alpha", "alpha_eff", "release_lead", "eclipse", "share",
-                    "controlled", "gamma", "n_ties", "attacker_orphan_rate",
-                    "network_orphan_rate", "canonical_blocks", "preload_blocks",
-                    "msb_max_z")})
-                row["theory"] = r["theory"]
-                row["verdicts"] = [(v["name"], v["pass"]) for v in r["verdicts"]]
-                row["all_verdicts_pass"] = all(v["pass"] for v in r["verdicts"])
-                # Plumbing gate (review 2026-09-26): an attacker at several
-                # h/s that found NO block in the whole run never mined or
-                # never reached its bridge; its share of 0.000 is not data.
-                row["attacker_found"] = (r.get("orphan_stats") or {}).get("attacker_found")
-                if row["attacker_found"] == 0:
-                    row["health"]["ok"] = False
-                    prior = row["health"]["summary"]
-                    row["health"]["summary"] = "no-attacker-blocks" if prior == "ok" \
-                        else f"{prior}; no-attacker-blocks"
-            except AnalysisInputError as e:
-                row["error"] = f"analysis: {e}"
+            fill_row_from_run(row, run_dir)
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(json.dumps(row, indent=1, default=str))
     return row
 
 
+ROW_ANALYSIS_KEYS = (
+    "alpha", "alpha_eff", "release_lead", "eclipse", "share", "share_honest_ref",
+    "controlled", "gamma", "n_ties", "attacker_orphan_rate", "network_orphan_rate",
+    "canonical_blocks", "preload_blocks", "msb_max_z")
+
+
+def fill_row_from_run(row: dict, run_dir: Path) -> None:
+    """Health + analysis of one archived run into `row` (shared by run_cell
+    and --reanalyze, so an analysis fix never needs the sims re-run)."""
+    from scripts.selfish_mining_analysis import AnalysisInputError, analyze_run
+    from scripts.sop_health_check import check_run, summarize
+    row.pop("error", None)
+    # Daemon-log health (review 2026-09-25): a cell whose daemons could not
+    # reorganize, or whose honest nodes never saw a fork, is not evidence
+    # about fork choice whatever its share says.
+    health = check_run(run_dir)
+    row["health"] = {"ok": health["ok"], "summary": summarize(health),
+                     "forks_seen": health["forks_seen"], **health["totals"]}
+    try:
+        r = analyze_run(run_dir)
+    except AnalysisInputError as e:
+        row["error"] = f"analysis: {e}"
+        return
+    row.update({k: r.get(k) for k in ROW_ANALYSIS_KEYS})
+    row["honest_ref"] = r.get("honest_ref")
+    row["theory"] = r["theory"]
+    row["verdicts"] = [(v["name"], v["pass"]) for v in r["verdicts"]]
+    row["all_verdicts_pass"] = all(v["pass"] for v in r["verdicts"])
+    # Plumbing gate (review 2026-09-26): an attacker at several h/s that
+    # found NO block in the whole run never mined or never reached its
+    # bridge; its share of 0.000 is not data.
+    row["attacker_found"] = (r.get("orphan_stats") or {}).get("attacker_found")
+    if row["attacker_found"] == 0:
+        row["health"]["ok"] = False
+        prior = row["health"]["summary"]
+        row["health"]["summary"] = "no-attacker-blocks" if prior == "ok" \
+            else f"{prior}; no-attacker-blocks"
+
+
+def reanalyze_cells(cells, workdir: Path) -> list:
+    """--reanalyze: recompute health + analysis for every cell that already
+    has a marker with a run_dir; rewrite the markers; launch nothing."""
+    rows = []
+    for cell, values, _overlays in cells:
+        marker = workdir / "cells" / f"{cell}.json"
+        if not marker.exists():
+            print(f"[matrix] {cell}: no marker, skipped", flush=True)
+            continue
+        row = json.loads(marker.read_text())
+        run_dir = row.get("run_dir")
+        if not run_dir or not Path(run_dir).is_dir():
+            print(f"[matrix] {cell}: no archived run_dir, kept as is", flush=True)
+            rows.append(row)
+            continue
+        fill_row_from_run(row, Path(run_dir))
+        marker.write_text(json.dumps(row, indent=1, default=str))
+        rows.append(row)
+        print(f"[matrix] {cell}: reanalyzed share "
+              f"{row.get('share') if row.get('share') is None else round(row['share'], 3)}"
+              f" honest-ref {row.get('share_honest_ref') if row.get('share_honest_ref') is None else round(row['share_honest_ref'], 3)}",
+              flush=True)
+    return rows
+
+
 def render_table(spec: dict, rows: list) -> str:
     axes = list(spec["axes"])
-    head = (axes + ["alpha", "share", "ctrl", "gamma", "att_orph", "net_orph",
+    head = (axes + ["alpha", "share", "share_h", "ctrl", "gamma", "att_orph", "net_orph",
                     "msb_z", "blocks", "verdicts", "health", "run"])
     lines = [f"# Matrix {spec['name']}", "",
              f"- base: `{spec['base']}`  seed: {spec.get('seed', '(base)')}"
@@ -318,7 +356,7 @@ def render_table(spec: dict, rows: list) -> str:
         axis_cols = [str(vals[a]) if a in vals else (r["cell"] if i == 0 else "-")
                      for i, a in enumerate(axes)]
         lines.append("| " + " | ".join(
-            axis_cols + [fmt("alpha"), fmt("share"), fmt("controlled"),
+            axis_cols + [fmt("alpha"), fmt("share"), fmt("share_honest_ref"), fmt("controlled"),
                          fmt("gamma"), fmt("attacker_orphan_rate"),
                          fmt("network_orphan_rate"), fmt("msb_max_z"),
                          str(r.get("canonical_blocks", "-")),
@@ -344,6 +382,9 @@ def main() -> int:
                     help="concurrent runs (default: spec 'parallel', else 1)")
     ap.add_argument("--cells", default=None,
                     help="comma-separated substrings; run only matching cells")
+    ap.add_argument("--reanalyze", action="store_true",
+                    help="recompute health + analysis for cells that already ran (from their "
+                         "archived run dirs), rewrite markers/table; launch nothing")
     args = ap.parse_args()
 
     spec = load_spec(args.spec)
@@ -374,18 +415,21 @@ def main() -> int:
     archive = Path(os.environ.get("MONEROSIM_ARCHIVE_BASE", DEFAULT_ARCHIVE))
     parallel = args.parallel or spec.get("parallel", 1)
     rows = []
-    with ThreadPoolExecutor(max_workers=parallel) as pool:
-        futs = {pool.submit(run_cell, spec, cell, values, overlays,
-                            workdir, archive): cell
-                for cell, values, overlays in cells}
-        for fut in as_completed(futs):
-            row = fut.result()
-            rows.append(row)
-            status = "ERROR: " + row["error"][:120] if "error" in row else \
-                (f"share {row['share']:.3f}" + (
-                    f", controlled {row['controlled']:.3f}"
-                    if row.get("controlled") is not None else ""))
-            print(f"[matrix] {row['cell']}: {status}", flush=True)
+    if args.reanalyze:
+        rows = reanalyze_cells(cells, workdir)
+    else:
+        with ThreadPoolExecutor(max_workers=parallel) as pool:
+            futs = {pool.submit(run_cell, spec, cell, values, overlays,
+                                workdir, archive): cell
+                    for cell, values, overlays in cells}
+            for fut in as_completed(futs):
+                row = fut.result()
+                rows.append(row)
+                status = "ERROR: " + row["error"][:120] if "error" in row else \
+                    (f"share {row['share']:.3f}" + (
+                        f", controlled {row['controlled']:.3f}"
+                        if row.get("controlled") is not None else ""))
+                print(f"[matrix] {row['cell']}: {status}", flush=True)
 
     rows.sort(key=lambda r: r["cell"])
     (workdir / "results.json").write_text(json.dumps(rows, indent=1, default=str))

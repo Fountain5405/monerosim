@@ -22,6 +22,7 @@ import yaml
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.native_mining_check import FOUND          # noqa: E402
+from scripts.honest_chain_from_log import parse_main_chain   # noqa: E402
 from scripts.selfish_externality import (              # noqa: E402
     attacker_runs, detect_selfish_periods, hourly_series, msb_scores,
     reorg_contest_depths, spec,
@@ -49,6 +50,38 @@ def split_preload(chain: list) -> tuple:
         t = b.get("timestamp")
         return isinstance(t, int) and t < SIM_EPOCH
     return [b for b in chain if grafted(b)], [b for b in chain if not grafted(b)]
+
+
+def honest_reference(run_dir, cfg: dict, hash_to_miner: dict, attacker_ids: set, bridge_chain: list):
+    """Attacker share against an HONEST node's final main chain, rebuilt from
+    its archived daemon log (scripts/honest_chain_from_log.py), next to the
+    bridge-referenced share. The unflagged bridge follows stock cumulative
+    difficulty; under SoP / PoP the honest network may reject an attacker
+    branch the bridge adopted, so at the end of a run the bridge's chain can
+    carry attacker blocks the honest nodes never accepted (review 2026-09-26).
+    Returns None when no honest daemon log is archived."""
+    honest = sorted(_honest_miner_ids(cfg))
+    for node in honest:
+        log = Path(run_dir) / "daemon_logs" / f"monero-{node}" / "bitmonero.log"
+        if not log.is_file():
+            continue
+        chain = parse_main_chain(log.read_text(errors="replace"))
+        if not chain:
+            continue
+        b = {x["height"]: x["hash"] for x in bridge_chain}
+        h = {x["height"]: x["hash"] for x in chain}
+        common = sorted(set(b) & set(h))
+        diff = [k for k in common if b[k] != h[k]]
+        return {
+            "node": node,
+            "blocks": len(chain),
+            "tip": chain[-1]["height"],
+            "bridge_tip": max(b) if b else None,
+            "differing_heights": len(diff),
+            "first_divergence": diff[0] if diff else None,
+            "share": attacker_share_from_chain(chain, hash_to_miner, attacker_ids),
+        }
+    return None
 
 
 def _snapshot_height_from_config(cfg: dict):
@@ -380,6 +413,7 @@ def analyze_run(run_dir, chain_path=None) -> dict:
     eclipse = (controlled, alpha_eff) if is_eclipse else None
     verdicts = make_verdicts(alpha, share, stats, theory_at_gamma, release_lead, eclipse)
     externality = _externality_metrics(found, chain, h2m, attacker_ids, canonical_hashes)
+    honest_ref = honest_reference(run_dir, cfg, h2m, attacker_ids, chain)
 
     theory = {
         "es_gamma0": es_revenue_share(alpha, 0.0),
@@ -396,6 +430,8 @@ def analyze_run(run_dir, chain_path=None) -> dict:
         "canonical_blocks": len(chain),
         "preload_blocks": len(preload),
         "preload_expected": preload_expected,
+        "share_honest_ref": honest_ref["share"] if honest_ref else None,
+        "honest_ref": honest_ref,
         "alpha": alpha,
         "alpha_eff": alpha_eff,
         "release_lead": release_lead,
