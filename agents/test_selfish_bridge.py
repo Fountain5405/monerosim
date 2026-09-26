@@ -89,3 +89,56 @@ def test_island_relay_resets_watermarks_on_reorg():
     a.run_iteration()
     # re-pushes indexes 0..3 from genesis after the shrink
     assert [c.args[0] for c in v.submit_block.call_args_list] == ["r0", "r1", "r2", "r3"]
+
+
+def _island_agent_with_victim():
+    a = SelfishBridgeAgent(agent_id="attacker-island",
+                           attributes=[["victims", "victim-001"]])
+    a.logger = MagicMock()
+    a.daemon_rpc = MagicMock()
+    a.read_shared_state = MagicMock(return_value={"agents": [
+        {"id": "victim-001", "ip_addr": "10.0.0.5", "daemon_rpc_port": 18081}]})
+    v = MagicMock()
+    a.victim_rpcs = [v]
+    a._victim_connected = {"victim-001"}
+    return a, v
+
+
+def test_island_relay_repulls_victim_same_height_reorg():
+    """Review 2026-09-26: the only victim-reorg signal was a height DECREASE,
+    so a victim switching to an equal-length branch was never re-pulled and
+    the island/victim views diverged until a height change happened."""
+    a, v = _island_agent_with_victim()
+    a.daemon_rpc.get_info.return_value = {"height": 1, "top_block_hash": "g"}
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"i{height}", "block_header": {"hash": "g"}}
+    chain = {0: "g", 1: "a1", 2: "a2"}
+    v.get_info.return_value = {"height": 3, "top_block_hash": "a2"}
+    v.get_block.side_effect = lambda height: {"blob": f"v{height}.{chain[height]}",
+                                              "block_header": {"hash": chain[height]}}
+    a.run_iteration()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v0.g", "v1.a1", "v2.a2"]
+    a.daemon_rpc.submit_block.reset_mock()
+    chain[1], chain[2] = "c1", "c2"                        # equal-length branch switch
+    v.get_info.return_value = {"height": 3, "top_block_hash": "c2"}
+    a.run_iteration()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["v1.c1", "v2.c2"]   # parent first
+    a.daemon_rpc.submit_block.reset_mock()
+    a.run_iteration()                                       # unchanged tip: nothing re-pulled
+    assert a.daemon_rpc.submit_block.call_args_list == []
+
+
+def test_island_relay_repushes_island_same_height_reorg():
+    a, v = _island_agent_with_victim()
+    chain = {0: "g", 1: "i1", 2: "i2"}
+    a.daemon_rpc.get_info.return_value = {"height": 3, "top_block_hash": "i2"}
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"i{height}.{chain[height]}",
+                                                         "block_header": {"hash": chain[height]}}
+    v.get_info.return_value = {"height": 0}
+    v.get_block.side_effect = lambda height: {"blob": f"v{height}"}
+    a.run_iteration()
+    assert [c.args[0] for c in v.submit_block.call_args_list] == ["i0.g", "i1.i1", "i2.i2"]
+    v.submit_block.reset_mock()
+    chain[2] = "j2"                                         # island's own tip replaced at the same height
+    a.daemon_rpc.get_info.return_value = {"height": 3, "top_block_hash": "j2"}
+    a.run_iteration()
+    assert [c.args[0] for c in v.submit_block.call_args_list] == ["i2.j2"]

@@ -43,6 +43,15 @@ class SelfishBridgeAgent(BaseAgent):
         self._victim_connected = set()
         self._pushed_index = 0        # highest island-main height pushed to victims
         self._pulled_index = []       # per-victim highest main-chain height pulled back
+        # Reorg detection (review 2026-09-26): a height DECREASE was the only
+        # signal, so an equal-length branch switch on either side was never
+        # re-relayed. Now, as in SelfishMinerAgent._forward_public_blocks, a
+        # tip-hash change rescans the last REORG_WINDOW heights against the
+        # hashes relayed before and re-relays from the first changed one.
+        self._pushed_hashes = {}      # island idx -> hash pushed
+        self._island_tip = None
+        self._pulled_hashes = []      # per-victim {idx: hash pulled}
+        self._victim_tip = []         # per-victim last-seen tip hash
 
     def _setup_agent(self):
         # No agent-specific setup; BaseAgent.setup() -> _register_self()
@@ -64,6 +73,32 @@ class SelfishBridgeAgent(BaseAgent):
                 self._victim_connected.add(vid)
                 self.logger.info(f"Victim connected: {vid} at {host}:{port}")
 
+    REORG_WINDOW = 6
+
+    @staticmethod
+    def _hash_of(blk) -> str:
+        return (blk.get("block_header") or {}).get("hash")
+
+    def _rescan_start(self, rpc, seen: dict, next_index: int, count: int, tip, last_tip, what: str) -> int:
+        """Where to (re)start relaying from a source whose tip hash changed:
+        the first height in the trailing window whose hash differs from the
+        one relayed before (parent-first from there), else next_index."""
+        start = next_index
+        if tip is None or tip == last_tip or next_index == 0:
+            return start
+        floor = max(0, count - self.REORG_WINDOW)
+        hi = min(next_index - 1, count - 1)
+        for idx in range(floor, hi + 1):
+            try:
+                cur = self._hash_of(rpc.get_block(height=idx))
+            except RPCError as e:
+                self.logger.debug(f"{what} reorg rescan {idx}: {e}")
+                cur = None
+            if seen.get(idx) != cur:
+                self.logger.info(f"{what} reorg at height {idx}; re-relaying from there")
+                return idx
+        return start
+
     def _relay_tick(self) -> None:
         """One bidirectional island<->victims relay pass, parent-first in
         both directions. RPC rejections are debug-logged: shorter branches
@@ -73,24 +108,33 @@ class SelfishBridgeAgent(BaseAgent):
             return
         while len(self._pulled_index) < len(self.victim_rpcs):
             self._pulled_index.append(0)
+            self._pulled_hashes.append({})
+            self._victim_tip.append(None)
         try:
-            island_height = int(self.daemon_rpc.get_info().get("height", 0))
+            island_info = self.daemon_rpc.get_info()
+            island_height = int(island_info.get("height", 0))
+            island_tip = island_info.get("top_block_hash")
         except RPCError as e:
             self.logger.debug(f"island height read: {e}")
             return
         if island_height < self._pushed_index:
             self._pushed_index = 0        # island reorg: re-push from genesis
+        start = self._rescan_start(self.daemon_rpc, self._pushed_hashes, self._pushed_index,
+                                   island_height, island_tip, self._island_tip, "island")
         pushed = 0
         # HEIGHT CONVENTION: get_info heights are COUNTS (top index + 1);
         # block indexes are 0-based. The victim at count V needs indexes V..;
         # the island at count I supplies 0..I-1. (Asking for index I — one
         # past the top — errors, and skipping an index orphans the rest.)
-        for idx in range(self._pushed_index, island_height):
+        for idx in range(start, island_height):
             try:
-                blob = self.daemon_rpc.get_block(height=idx).get("blob")
+                blk = self.daemon_rpc.get_block(height=idx)
+                blob = blk.get("blob")
             except RPCError as e:
                 self.logger.debug(f"relay push {idx}: {e}")
                 break
+            if not blob:
+                break                       # nothing to relay for this index yet: retry next tick
             if blob:
                 undelivered = False
                 for rpc in self.victim_rpcs:
@@ -103,31 +147,51 @@ class SelfishBridgeAgent(BaseAgent):
                             undelivered = True
                 if undelivered:
                     break                   # retry this index next tick
-            self._pushed_index = idx + 1
+            h = self._hash_of(blk)
+            if h:
+                self._pushed_hashes[idx] = h
+            self._pushed_index = max(self._pushed_index, idx + 1)
+        for k in [k for k in self._pushed_hashes if k >= island_height]:
+            del self._pushed_hashes[k]
+        if island_tip is not None:
+            self._island_tip = island_tip
         pulled = 0
         for i, rpc in enumerate(self.victim_rpcs):
             try:
-                victim_height = int(rpc.get_info().get("height", 0))
+                vinfo = rpc.get_info()
+                victim_height = int(vinfo.get("height", 0))
+                victim_tip = vinfo.get("top_block_hash")
             except RPCError as e:
                 self.logger.debug(f"victim {i} height read: {e}")
                 continue
             if victim_height < self._pulled_index[i]:
                 self._pulled_index[i] = 0    # victim reorg: re-pull
-            for idx in range(self._pulled_index[i], victim_height):
+            start = self._rescan_start(rpc, self._pulled_hashes[i], self._pulled_index[i],
+                                       victim_height, victim_tip, self._victim_tip[i], f"victim {i}")
+            for idx in range(start, victim_height):
                 try:
-                    blob = rpc.get_block(height=idx).get("blob")
+                    blk = rpc.get_block(height=idx)
+                    blob = blk.get("blob")
                 except RPCError as e:
                     self.logger.debug(f"relay pull {idx}: {e}")
                     break
-                if blob:
-                    try:
-                        self.daemon_rpc.submit_block(blob)
-                        pulled += 1
-                    except RPCError as e:
-                        self.logger.debug(f"relay pull {idx} into island: {e}")
-                        if _undelivered(e):
-                            break           # retry this index next tick
-                self._pulled_index[i] = idx + 1
+                if not blob:
+                    break
+                try:
+                    self.daemon_rpc.submit_block(blob)
+                    pulled += 1
+                except RPCError as e:
+                    self.logger.debug(f"relay pull {idx} into island: {e}")
+                    if _undelivered(e):
+                        break           # retry this index next tick
+                h = self._hash_of(blk)
+                if h:
+                    self._pulled_hashes[i][idx] = h
+                self._pulled_index[i] = max(self._pulled_index[i], idx + 1)
+            for k in [k for k in self._pulled_hashes[i] if k >= victim_height]:
+                del self._pulled_hashes[i][k]
+            if victim_tip is not None:
+                self._victim_tip[i] = victim_tip
         if pushed or pulled:
             self.logger.info(f"island relay: pushed {pushed}, pulled {pulled}")
 
