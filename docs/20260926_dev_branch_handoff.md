@@ -169,8 +169,13 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   exited 126 after a complete archive because the script was edited in place
   under 12 running instances (never do that; memory + `b1db1d6b`).
 - Fixed `monerod-sim` (patch stack at `5d940ae1`) INSTALLED 16:30Z with a
-  provenance file matching the tree; the three bootstrap smokes are running
-  on it (results appended below when done).
+  provenance file matching the tree; the three bootstrap smokes on it are
+  GREEN (16:54Z): `20260926_162837_sop_fork_smoke` (forks 110, all 110 SoP
+  decisions share-weighted), `20260926_163610_pop_exact_fast` (reorgs 79/79
+  per node, 3,767 forks, 111 uncle-weighted decisions),
+  `20260926_164756_snap_sop` (h50 graft plumbing, 0 exceptions). The
+  bootstrap check in this doc passes on this box as of that time. Any new
+  cell runs on this binary.
 - Open decision for the owner: does the manuscript still want the MRL #144
   exact-uncle variant (≈10 more cells at n=2; needs the exact-uncle sibling
   fix from the patch review first)? Otherwise keep the det-tie relabel.
