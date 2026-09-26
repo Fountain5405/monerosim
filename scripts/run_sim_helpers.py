@@ -259,9 +259,12 @@ def daemon_capabilities(config_path: str) -> list[dict]:
         opts.update(spec.get('daemon_options', {}) or {})
         flags = {flag for key, flag in SIM_FLAG_OPTIONS.items() if key in opts}
         # Native mining REPLACES a miner's daemon with monerod-sim regardless of
-        # what the config says (src/agent/user_agents.rs:1119-1146), so probe
-        # that binary rather than the one the config names.
-        is_miner = name.startswith('miner-') or 'hashrate' in spec
+        # what the config says (src/agent/user_agents.rs), so probe that binary
+        # rather than the one the config names. "Miner" means exactly what the
+        # orchestrator means: `hashrate` is set (review 2026-09-26: a name
+        # prefix heuristic demanded the patched build for a relay called
+        # miner-observer-001 and would miss a miner called honest-001).
+        is_miner = 'hashrate' in spec
         if native and is_miner:
             flags.add(NATIVE_MINING_FLAG)
             daemon = 'monerod-sim'

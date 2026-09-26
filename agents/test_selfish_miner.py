@@ -635,3 +635,26 @@ def test_first_tick_attacker_already_ahead_withholds():
     a.bridge_rpc.submit_block.assert_not_called()
     assert a.strategy.fork == 337
     assert a._released_index == 336
+
+
+def test_pull_island_growth_is_not_reported_as_reorg():
+    """Review 2026-09-26: the rescan's high bound was `pulled` (the NEXT index
+    needed), which is never in `seen`, so every island growth logged
+    'island N reorg at height <tip>' and rescanned the window for nothing."""
+    a, i1, _ = _make_island_agent()
+    a.daemon_rpc.get_info.return_value = {"height": 0}
+    chain = {0: "a0", 1: "a1", 2: "a2"}
+    i1.get_info.return_value = {"height": 3, "top_block_hash": "a2"}
+    i1.get_block.side_effect = lambda height: {"blob": f"b{height}.{chain[height]}",
+                                               "block_header": {"hash": chain[height]}}
+    a._pull_island_blocks()
+    a.logger.reset_mock()
+    i1.get_block.reset_mock()
+    a.daemon_rpc.submit_block.reset_mock()
+    chain[3] = "a3"                                                  # island grew by one
+    i1.get_info.return_value = {"height": 4, "top_block_hash": "a3"}
+    a._pull_island_blocks()
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["b3.a3"]
+    assert not any("reorg" in str(c) for c in a.logger.info.call_args_list)
+    fetched = sorted(c.kwargs.get("height", c.args[0] if c.args else None) for c in i1.get_block.call_args_list)
+    assert fetched == [1, 2, 3]      # rescan covers the held window 1..2 plus the new block; never a phantom idx 3 mismatch

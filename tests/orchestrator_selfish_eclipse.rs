@@ -34,7 +34,11 @@ fn host_block(yaml: &str, host: &str) -> String {
             }
             continue;
         }
-        let trimmed = line.trim_end();
+        // `trim()` (not `trim_end()`): with the two leading spaces kept,
+        // `!contains(' ')` was always false and the block ran on to the next
+        // top-level key, so a leak into a LATER host's args was attributed to
+        // this host (review 2026-09-26).
+        let trimmed = line.trim();
         let is_next_host = line.starts_with("  ")
             && trimmed.ends_with(':')
             && !trimmed.contains(' ')

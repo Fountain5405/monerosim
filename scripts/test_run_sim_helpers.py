@@ -397,3 +397,23 @@ def test_live_runs_tsv(tmp_path, capsys, monkeypatch):
     assert est_kb == pytest.approx(4.0 * 2 * 1.2 * 1024, abs=1.0)   # default miner rate, 2h, margin
     assert rem_kb == pytest.approx(max(0.0, est_kb - used_kb), abs=1.0)
     assert o[3] == "0" and o[5] == "-" and o[6] == "-" and o[7] == "tmp" and o[8] == "-"
+
+
+def test_daemon_capabilities_miner_means_hashrate_set(tmp_path):
+    """Review 2026-09-26: miner-ness must match the orchestrator (`hashrate`
+    set), not a `miner-` name prefix — a relay called miner-observer-001 was
+    made to demand monerod-sim, and a miner called honest-001 was missed."""
+    from scripts.run_sim_helpers import daemon_capabilities
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(
+        "general:\n  mining: {mode: native}\n"
+        "agents:\n"
+        "  honest-001: {daemon: monerod, wallet: monero-wallet-rpc, script: agents.autonomous_miner, hashrate: 3}\n"
+        "  miner-observer-001: {daemon: monerod}\n"
+        "  relay-001: {daemon: monerod}\n")
+    entries = daemon_capabilities(str(cfg))
+    agents = {a for e in entries for a in e["agents"]}
+    assert "honest-001" in agents
+    assert "miner-observer-001" not in agents and "relay-001" not in agents
+    sim = [e for e in entries if "honest-001" in e["agents"]][0]
+    assert sim["path"].endswith("monerod-sim") and "sim-hash-interval-ms" in sim["flags"]

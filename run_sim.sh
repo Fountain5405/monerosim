@@ -672,7 +672,16 @@ preflight_checks() {
     # substitution of monerod-sim for miners.
     # Dev override: MONEROSIM_SKIP_SIM_BINARY_CHECK=1 (MONEROSIM_SKIP_HARDFORK_CHECK=1 still honoured).
     local sim_caps
-    sim_caps=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" daemon-capabilities --config "$CONFIG" 2>/dev/null)
+    # A probe that cannot run (no python3, no PyYAML, a bad config) used to
+    # leave sim_caps empty and the gate silently skipped -- the run then
+    # launched on vanilla monerod with the countermeasure absent (review
+    # 2026-09-26). Fail loudly instead.
+    if ! sim_caps=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" daemon-capabilities --config "$CONFIG" 2>&1); then
+        log_err "monerod capability probe failed (python3 scripts/run_sim_helpers.py daemon-capabilities):"
+        while IFS= read -r cap_line; do [[ -n "$cap_line" ]] && log_err "  $cap_line"; done <<< "$sim_caps"
+        log_err "The capability gate needs python3 with PyYAML; fix that rather than skipping the gate."
+        exit 1
+    fi
     if [[ "${MONEROSIM_SKIP_SIM_BINARY_CHECK:-0}" == "1" || "${MONEROSIM_SKIP_HARDFORK_CHECK:-0}" == "1" ]]; then
         [[ -n "$sim_caps" ]] && log_warn "MONEROSIM_SKIP_SIM_BINARY_CHECK=1 — skipping the monerod capability check"
     elif [[ -n "$sim_caps" ]]; then

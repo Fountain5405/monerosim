@@ -236,7 +236,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             start = pulled
             if reorg:
                 floor = max(1, island_count - self.REORG_WINDOW)
-                hi = min(pulled, island_count - 1)
+                # `pulled` is the NEXT index needed, so the last index we hold a
+                # hash for is pulled - 1 (review 2026-09-26: bounding at `pulled`
+                # made every island growth look like a reorg at the new tip).
+                hi = min(pulled - 1, island_count - 1)
                 for idx in range(floor, hi + 1):
                     try:
                         cur = self._block_hash(rpc.get_block(height=idx))
