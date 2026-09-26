@@ -354,3 +354,43 @@ def test_reanalyze_rewrites_markers_without_launching(tmp_path, monkeypatch, cap
     table = (work / "table.md").read_text()
     assert "share_h" in table and "0.110" in table and "0.100" in table
     assert rc in (0, 1)
+
+
+def test_reanalyze_recovers_run_dir_from_run_name(tmp_path, monkeypatch):
+    """A cell whose run_sim.sh exited non-zero AFTER archiving (2026-09-26:
+    the script file was rewritten under 12 running instances) has a complete
+    archive but a row with no run_dir; --reanalyze finds it by run name."""
+    import json
+    import sys
+    from scripts.selfish_matrix import main
+    spec_path = tmp_path / "spec.yaml"
+    base = tmp_path / "base.yaml"
+    base.write_text(yaml.safe_dump(BASE))
+    spec_path.write_text(yaml.safe_dump({"name": "t", "base": str(base), "axes": {"strategy": {"es": {}}}}))
+    work = tmp_path / "work" / "t"
+    archive = tmp_path / "archive"
+    run_dir = archive / "20260926_140803_t__es"
+    run_dir.mkdir(parents=True)
+    (run_dir / "summary.txt").write_text("Exit code: 0\n")
+    (work / "cells").mkdir(parents=True)
+    (work / "cells" / "es.json").write_text(json.dumps(
+        {"cell": "es", "values": {"strategy": "es"}, "run_name": "t__es", "returncode": 126,
+         "error": "./run_sim.sh: line 2158: ...: Is a directory"}))
+
+    def no_launch(cmd, *a, **k):
+        assert not any("run_sim.sh" in str(c) for c in cmd)
+
+        class P:
+            returncode = 0
+            stdout = "abc1234"
+            stderr = ""
+        return P()
+    monkeypatch.setattr("scripts.selfish_matrix.subprocess.run", no_launch)
+    monkeypatch.setattr("scripts.selfish_mining_analysis.analyze_run", _fake_analyze)
+    monkeypatch.setenv("MONEROSIM_MATRIX_WORKROOT", str(tmp_path / "work"))
+    monkeypatch.setenv("MONEROSIM_ARCHIVE_BASE", str(archive))
+    monkeypatch.setattr(sys, "argv", ["selfish_matrix.py", str(spec_path), "--reanalyze"])
+    main()
+    row = json.loads((work / "cells" / "es.json").read_text())
+    assert row["run_dir"] == str(run_dir) and row["recovered_run_dir"] is True
+    assert row["share"] == 0.47 and "error" not in row

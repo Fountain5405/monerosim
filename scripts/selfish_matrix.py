@@ -310,9 +310,10 @@ def fill_row_from_run(row: dict, run_dir: Path) -> None:
             else f"{prior}; no-attacker-blocks"
 
 
-def reanalyze_cells(cells, workdir: Path) -> list:
+def reanalyze_cells(cells, workdir: Path, archive: Path = None) -> list:
     """--reanalyze: recompute health + analysis for every cell that already
     has a marker with a run_dir; rewrite the markers; launch nothing."""
+    archive = archive or Path(os.environ.get("MONEROSIM_ARCHIVE_BASE", DEFAULT_ARCHIVE))
     rows = []
     for cell, values, _overlays in cells:
         marker = workdir / "cells" / f"{cell}.json"
@@ -321,6 +322,16 @@ def reanalyze_cells(cells, workdir: Path) -> list:
             continue
         row = json.loads(marker.read_text())
         run_dir = row.get("run_dir")
+        if (not run_dir or not Path(run_dir).is_dir()) and row.get("run_name"):
+            # A run whose run_sim.sh exited non-zero AFTER archiving (e.g. a
+            # post-simulation step failed) has a complete archive but no
+            # run_dir in its row: recover it from the run name.
+            cands = sorted(p for p in archive.glob(f"*_{row['run_name']}")
+                           if (p / "summary.txt").is_file())
+            if cands:
+                run_dir = str(cands[-1])
+                row["run_dir"] = run_dir
+                row["recovered_run_dir"] = True
         if not run_dir or not Path(run_dir).is_dir():
             print(f"[matrix] {cell}: no archived run_dir, kept as is", flush=True)
             rows.append(row)
@@ -418,7 +429,7 @@ def main() -> int:
     parallel = args.parallel or spec.get("parallel", 1)
     rows = []
     if args.reanalyze:
-        rows = reanalyze_cells(cells, workdir)
+        rows = reanalyze_cells(cells, workdir, archive)
     else:
         with ThreadPoolExecutor(max_workers=parallel) as pool:
             futs = {pool.submit(run_cell, spec, cell, values, overlays,
