@@ -91,6 +91,48 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
    native miner; 1,107 nodes ≈ 270 GB. Step up (e.g. 300 nodes, light-mode
    RandomX) before the full run.
 
+## Progress log
+
+### 2026-09-26 — bootstrap on the 64-core / 251 GB box; campaign step 1 done; matrix launched
+
+- Box: Ubuntu 24.04 (looks release-upgraded from 20.04 after 2026-09-19).
+  Two bootstrap snags, both fixed and recorded: a leftover apt.llvm.org
+  *focal* repo broke `clang-18` (disable it, `--allow-downgrades` the two
+  LLVM 18 libs), and CMake caches from before the upgrade remembered
+  `libdl.so` / `librt.so` dev symlinks glibc 2.39 no longer ships
+  (`rm -rf sibling_repos/shadowformonero/build`; `cmake -U RT -U
+  PROTOLIB_LIBRARY .` in `sibling_repos/monero/build/release`). setup.sh
+  now builds monero without Trezor/Ledger (1c465f5e) and offers the
+  native-mining micro gate as its `--sim-binary` test run (7ecc2c1c).
+- Verification: provenance matches all five patch shas (built
+  2026-09-26T12:41Z); Rust 170 passed; pytest 647 passed; the three smokes
+  green through the health gate (`20260926_125218_sop_fork_smoke`,
+  `20260926_130449_pop_exact_fast`, `20260926_132145_snap_sop`).
+- Step 1: `chain_snapshots/h10/` generated (run `20260926_125216_preload_h10`,
+  29 min wall), verified, committed with the generator scenario, the base
+  switch (`selfish_micro_sop.yaml`: `chain_snapshot: h10`, no
+  fixed-difficulty, attacker + bridge at 0 s) and the two matrix specs
+  (80821982).
+- Reviews (three parallel: `main..dev` diff, daemon patches in a patched
+  worktree, measurement pipeline vs manuscript) found one BLOCKER for the
+  matrix — the share denominator included the grafted preload blocks — plus
+  a first-tick fork=0 artifact in the attacker agent and two matrix-runner
+  overlay bugs. All fixed with tests in 21c61e1a BEFORE launch. Daemon-patch
+  findings (SoP weight table keeps a late block's share weight, contrary to
+  the design doc; duplicate share slot truncates later embeddings; vote
+  check and workshare pooling not gated on the sim flags; exact-uncle
+  sibling check) are results-neutral for withholding attackers and are
+  queued as a separate patch + rebuild + smoke. Full finding lists are in
+  this session's review outputs; the fix commits cite them.
+- Step 2 launched 13:42Z: `pop_sop2_h10` (seed 12345) and `pop_sop2_h10_rep`
+  (seed 54321), 6 cells each, all 12 concurrently. Results land in
+  `matrix_runs/pop_sop2_h10*/{table.md,results.json}`; gate every row on
+  `health == ok`, `attacker_found > 0`, `forks_seen > 0`,
+  `preload_blocks == 336`.
+- Open decision for the owner: does the manuscript still want the MRL #144
+  exact-uncle variant (≈10 more cells at n=2)? Otherwise keep the det-tie
+  relabel.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the
