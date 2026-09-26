@@ -243,3 +243,92 @@ def test_realized_gamma_excludes_victim_resolvers():
     # without controlled_ids (legacy call) the victim counts as honest: 1 event, gamma 1
     g2, e2 = realized_gamma(found, chain, {"attacker-miner"})
     assert e2 == 1 and g2 == 1.0
+
+
+# --- chain-snapshot preload exclusion (review 2026-09-26) -------------------
+
+def test_split_preload_by_shadow_epoch():
+    """Grafted preset blocks carry timestamps strictly BEFORE the Shadow epoch
+    (chain_snapshot.py verify enforces it); everything mined in the run is at
+    or after it. Legacy dumps without timestamps count as in-run."""
+    from scripts.selfish_mining_analysis import SIM_EPOCH, split_preload
+    chain = [
+        {"height": 1, "hash": "g1", "timestamp": SIM_EPOCH - 900},
+        {"height": 2, "hash": "g2", "timestamp": SIM_EPOCH - 763},
+        {"height": 3, "hash": "r3", "timestamp": SIM_EPOCH + 46},
+        {"height": 4, "hash": "r4"},
+    ]
+    pre, run = split_preload(chain)
+    assert [b["hash"] for b in pre] == ["g1", "g2"]
+    assert [b["hash"] for b in run] == ["r3", "r4"]
+
+
+def _write_selfish_run(tmp_path, chain, found_lines, snapshot="off"):
+    import json
+    (tmp_path / "input_config.yaml").write_text(
+        "general:\n  mining:\n    mode: native\n    chain_snapshot: %s\n"
+        "agents:\n"
+        "  honest-001: {script: agents.autonomous_miner, hashrate: 6}\n"
+        "  attacker-miner: {script: agents.selfish_miner, hashrate: 4,\n"
+        "                   attributes: {strategy: eyal_sirer, bridge_agent: attacker-bridge}}\n"
+        "  attacker-bridge: {script: agents.selfish_bridge}\n" % snapshot)
+    (tmp_path / "canonical_chain_attacker-bridge.json").write_text(
+        json.dumps({"observer": "attacker-bridge", "chain": chain}))
+    for miner, lines in found_lines.items():
+        host = tmp_path / "shadow.data" / "hosts" / miner
+        host.mkdir(parents=True)
+        (host / "monerod.stdout").write_text("".join(lines))
+
+
+def _found_line(height, block_hash):
+    return (f"2000-01-01 00:{height % 60:02d}:00.0\tI Found block <{block_hash}> "
+            f"at height {height} for difficulty: 1200\n")
+
+
+def test_analyze_run_excludes_chain_snapshot_preload(tmp_path):
+    """The bridge dumps its WHOLE main chain, grafted preload included. With
+    336 unattributed blocks in the denominator a true 0.50 share read 0.012;
+    every share/verdict of a snapshot-based cell was wrong (review 2026-09-26)."""
+    from scripts.selfish_mining_analysis import SIM_EPOCH, analyze_run
+    E = SIM_EPOCH
+    pre = [{"height": h, "hash": f"g{h}", "timestamp": E - 1000 - 120 * (336 - h)}
+           for h in range(1, 337)]
+    run = [{"height": 337, "hash": "h337", "timestamp": E + 100},
+           {"height": 338, "hash": "a338", "timestamp": E + 250},
+           {"height": 339, "hash": "a339", "timestamp": E + 400},
+           {"height": 340, "hash": "h340", "timestamp": E + 520}]
+    _write_selfish_run(tmp_path, pre + run, {
+        "honest-001": [_found_line(337, "h337"), _found_line(340, "h340")],
+        "attacker-miner": [_found_line(338, "a338"), _found_line(339, "a339")],
+    }, snapshot="h10")
+    r = analyze_run(tmp_path)
+    assert r["preload_blocks"] == 336
+    assert r["preload_expected"] == 336          # from chain_snapshots/h10/manifest.json
+    assert r["canonical_blocks"] == 4
+    assert abs(r["share"] - 0.5) < 1e-9
+
+
+def test_analyze_run_legacy_dump_falls_back_to_manifest_height(tmp_path):
+    """A dump without timestamps on a snapshot run: drop heights <= the
+    preset's manifest height instead."""
+    from scripts.selfish_mining_analysis import analyze_run
+    pre = [{"height": h, "hash": f"g{h}"} for h in range(1, 337)]
+    run = [{"height": 337, "hash": "a337"}, {"height": 338, "hash": "h338"}]
+    _write_selfish_run(tmp_path, pre + run, {
+        "honest-001": [_found_line(338, "h338")],
+        "attacker-miner": [_found_line(337, "a337")],
+    }, snapshot="h10")
+    r = analyze_run(tmp_path)
+    assert r["preload_blocks"] == 336 and r["canonical_blocks"] == 2
+    assert abs(r["share"] - 0.5) < 1e-9
+
+
+def test_analyze_run_without_snapshot_is_unchanged(tmp_path):
+    from scripts.selfish_mining_analysis import SIM_EPOCH, analyze_run
+    chain = [{"height": 1, "hash": "a1", "timestamp": SIM_EPOCH + 10},
+             {"height": 2, "hash": "h2", "timestamp": SIM_EPOCH + 130}]
+    _write_selfish_run(tmp_path, chain, {
+        "honest-001": [_found_line(2, "h2")], "attacker-miner": [_found_line(1, "a1")]})
+    r = analyze_run(tmp_path)
+    assert r["preload_blocks"] == 0 and r["preload_expected"] is None
+    assert r["canonical_blocks"] == 2 and abs(r["share"] - 0.5) < 1e-9

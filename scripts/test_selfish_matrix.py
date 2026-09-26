@@ -231,3 +231,81 @@ def test_main_dry_run_generates_overlaid_configs(tmp_path, monkeypatch, capsys):
     assert cfg["agents"]["attacker-miner"]["attributes"]["strategy"] == "eyal_sirer"
     assert cfg["agents"]["honest-001"]["daemon_options"] == {"sim-relay-alt-blocks": True}
     assert cfg["general"]["stop_time"] == "1h"
+
+
+# --- review 2026-09-26: overlay mutation / aliasing; plumbing-failure flag ----
+
+def test_build_config_does_not_mutate_spec_overlays(tmp_path):
+    """_apply_hashrates popped `hashrate` out of the spec's shared overlay
+    dict, so a hashrate axis value applied only to the FIRST cell using it
+    (later cells silently ran at the base alpha)."""
+    spec = _spec(tmp_path, {"s": {"es": {}}})
+    overlay = {"honest": {"hashrate": [4, 3]}, "attacker": {"hashrate": 5}}
+    cfg1 = build_config(spec, {"a": overlay})
+    cfg2 = build_config(spec, {"a": overlay})
+    for cfg in (cfg1, cfg2):
+        assert cfg["agents"]["honest-001"]["hashrate"] == 4
+        assert cfg["agents"]["honest-002"]["hashrate"] == 3
+        assert cfg["agents"]["attacker-miner"]["hashrate"] == 5
+    assert overlay == {"honest": {"hashrate": [4, 3]}, "attacker": {"hashrate": 5}}
+
+
+def test_overlay_does_not_leak_through_yaml_aliases(tmp_path):
+    """_merge_stanza updated the agent's sub-dict in place; with a YAML anchor
+    shared between agents, an overlay aimed at `honest` rewrote every agent
+    sharing the alias (a network-wide flag flip measured as 'honest only')."""
+    base = tmp_path / "base.yaml"
+    base.write_text(
+        "general: {stop_time: 6h, mining: {mode: native}}\n"
+        "agents:\n"
+        "  honest-001: {daemon: monerod, script: agents.autonomous_miner, hashrate: 3,\n"
+        "               daemon_options: &common {log-level: 1}}\n"
+        "  relay-001: {daemon: monerod, daemon_options: *common}\n"
+        "  attacker-miner: {daemon: monerod, script: agents.selfish_miner, hashrate: 4,\n"
+        "                   daemon_options: *common,\n"
+        "                   attributes: {strategy: honest, bridge_agent: attacker-bridge}}\n"
+        "  attacker-bridge: {daemon: monerod, script: agents.selfish_bridge}\n")
+    spec = {"name": "t", "base": str(base), "axes": {"c": {"x": {}}}}
+    cfg = build_config(spec, {"c": {"honest": {"daemon_options": {"sim-publish-or-perish": True}}}})
+    assert cfg["agents"]["honest-001"]["daemon_options"] == {"log-level": 1, "sim-publish-or-perish": True}
+    assert cfg["agents"]["relay-001"]["daemon_options"] == {"log-level": 1}
+    assert cfg["agents"]["attacker-miner"]["daemon_options"] == {"log-level": 1}
+    from scripts.selfish_matrix import dump_config
+    dump_config(cfg, tmp_path / "out" / "x.yaml")
+    dumped = (tmp_path / "out" / "x.yaml").read_text()
+    assert "&id" not in dumped and "*id" not in dumped      # no aliases in generated configs
+    assert yaml.safe_load(dumped)["agents"]["relay-001"]["daemon_options"] == {"log-level": 1}
+
+
+def test_run_cell_flags_cell_with_no_attacker_blocks(tmp_path, monkeypatch):
+    """An attacker at 4 h/s that found ZERO blocks in 6 h did not run (bridge
+    never connected, daemon never mined): the cell proves nothing and must not
+    read as a clean share of 0.000."""
+    spec = _spec(tmp_path, {"strategy": {"es": {}}})
+    archive = tmp_path / "archive"
+    archive.mkdir()
+
+    def fake_run(cmd, **kw):
+        run_name = cmd[cmd.index("--name") + 1]
+        (archive / f"20260922_000000_{run_name}").mkdir()
+
+        class P:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        return P()
+
+    def fake_analyze(run_dir, chain_path=None):
+        r = dict(_fake_analyze(run_dir))
+        r["share"] = 0.0
+        r["orphan_stats"] = {"attacker_found": 0, "attacker_canonical": 0}
+        r["preload_blocks"] = 336
+        return r
+
+    monkeypatch.setattr("scripts.selfish_matrix.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.selfish_mining_analysis.analyze_run", fake_analyze)
+    row = run_cell(spec, "es", {"strategy": "es"}, {"strategy": {}}, tmp_path / "work", archive)
+    assert row["attacker_found"] == 0
+    assert row["preload_blocks"] == 336
+    assert row["health"]["ok"] is False
+    assert "no-attacker-blocks" in row["health"]["summary"]

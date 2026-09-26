@@ -27,6 +27,43 @@ from scripts.selfish_externality import (              # noqa: E402
     reorg_contest_depths, spec,
 )
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Every Shadow host's clock starts at 2000-01-01T00:00:00Z. A chain-snapshot
+# preset's tip is required (scripts/chain_snapshot.py verify) to land strictly
+# BEFORE that epoch, so a canonical block time-stamped earlier was grafted,
+# not mined in the run (docs/CHAIN_SNAPSHOT.md).
+SIM_EPOCH = 946684800
+
+
+def split_preload(chain: list) -> tuple:
+    """Separate chain-snapshot preload blocks from blocks mined in this run.
+
+    The bridge dumps its WHOLE main chain; with `general.mining.chain_snapshot`
+    the first N entries are the grafted preset, which no miner in the run
+    found. Left in the denominator they shrank every share by
+    N / (N + in-run blocks) — 336 / (336 + ~180) on the h10 base (review
+    2026-09-26). Blocks without a timestamp (legacy dumps) count as in-run.
+    """
+    def grafted(b):
+        t = b.get("timestamp")
+        return isinstance(t, int) and t < SIM_EPOCH
+    return [b for b in chain if grafted(b)], [b for b in chain if not grafted(b)]
+
+
+def _snapshot_height_from_config(cfg: dict):
+    """Height of the preset the run's config names, or None (off / auto /
+    absent / unreadable). `auto` is unresolvable from the config alone; the
+    timestamp split in split_preload does not need it."""
+    snap = ((cfg.get("general") or {}).get("mining") or {}).get("chain_snapshot")
+    if not isinstance(snap, str) or snap.strip().lower() in ("", "auto", "off", "true", "false"):
+        return None
+    d = Path(snap) if "/" in snap else REPO_ROOT / "chain_snapshots" / snap
+    try:
+        return int(json.loads((d / "manifest.json").read_text())["height"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
 
 def load_raw_config(cfg_path) -> dict:
     """Load the RAW run config YAML, which carries the per-agent `agents` map
@@ -316,6 +353,17 @@ def analyze_run(run_dir, chain_path=None) -> dict:
     chain = json.loads(chain_path.read_text()).get("chain", [])
     if not chain:
         raise AnalysisInputError("empty canonical chain")
+    # Drop the chain-snapshot preload (grafted blocks nobody in the run mined).
+    preload, chain = split_preload(chain)
+    preload_expected = _snapshot_height_from_config(cfg)
+    if not preload and preload_expected:
+        # Legacy dump without timestamps on a snapshot run: fall back to the
+        # preset's manifest height.
+        preload = [b for b in chain if b["height"] <= preload_expected]
+        chain = [b for b in chain if b["height"] > preload_expected]
+    if not chain:
+        raise AnalysisInputError(
+            f"no in-run canonical blocks ({len(preload)} preload blocks only)")
 
     found = parse_found_blocks(run_dir, miner_ids)
     h2m = found_by_hash(found)
@@ -346,6 +394,8 @@ def analyze_run(run_dir, chain_path=None) -> dict:
         "run_dir": str(run_dir),
         "chain_path": str(chain_path),
         "canonical_blocks": len(chain),
+        "preload_blocks": len(preload),
+        "preload_expected": preload_expected,
         "alpha": alpha,
         "alpha_eff": alpha_eff,
         "release_lead": release_lead,

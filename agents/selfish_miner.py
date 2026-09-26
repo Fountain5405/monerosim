@@ -67,6 +67,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self._released_index = -1      # highest private block index released to the bridge
         self._forwarded_hashes = {}    # height -> hash last forwarded, for reorg detection (C3)
         self._last_pub_tip_hash = None # honest tip hash last seen; gates the reorg rescan (C3)
+        self._start_synced = False     # first-tick fork/watermark sync done (see _sync_start_state)
         self._tx_warned = False        # C4: warn once if a block carries transactions
 
     # How many trailing honest blocks to re-check for reorgs each tick. Selfish
@@ -364,6 +365,45 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
 
+    def _sync_start_state(self, pub_height: int, priv_height: int) -> None:
+        """One-time, first tick with a bridge: start the strategy's fork and
+        both watermarks at the hash-verified common ancestor of the miner's
+        and the bridge's chains (2026-09-26).
+
+        With `general.mining.chain_snapshot` every daemon boots on the same
+        pre-mined chain (336 blocks on the h10 preset). The strategy used to
+        start at fork = attack_start_height = 0, so its first tick read a
+        336-block private branch TIED with a 336-block honest branch: it
+        submitted the whole grafted prefix to the bridge and forwarded it
+        back into the miner (~700 already-have RPCs, during which honest
+        blocks were not forwarded) and, if the attacker found the next block
+        before honest did, released it at once as a lead-1 reveal over a
+        phantom honest branch instead of withholding it. Genesis-only chains
+        had the same one-block artifact (fork 0 vs a common genesis).
+        Aligning on the common ancestor removes both; the ancestor walk costs
+        two RPCs when the tips match."""
+        if pub_height <= 0 or priv_height <= 0:
+            return                                  # a daemon has no chain yet; retry next tick
+        self._start_synced = True
+        ancestor = self._common_ancestor_with_bridge(pub_height, priv_height)
+        common = ancestor + 1                       # block COUNT both chains share
+        if self.strategy.fork < common:
+            self.strategy.fork = common
+        self._forwarded_index = max(self._forwarded_index, ancestor)
+        self._released_index = max(self._released_index, ancestor)
+        # Seed the reorg-detection window with the shared hashes so the first
+        # forward tick sees no phantom reorg (review C3 rescan compares them).
+        for idx in range(max(0, ancestor - self.REORG_WINDOW), ancestor + 1):
+            try:
+                h = self._block_hash(self.bridge_rpc.get_block(height=idx))
+            except RPCError:
+                h = None
+            if h:
+                self._forwarded_hashes[idx] = h
+        self.logger.info(f"start sync: common ancestor at height {ancestor} "
+                         f"(public {pub_height}, private {priv_height}); "
+                         f"fork -> {self.strategy.fork}")
+
     def _common_ancestor_with_bridge(self, pub_height: int, priv_height: int,
                                      limit: int = 256) -> int:
         """The highest height at which the offline miner's chain and the
@@ -464,6 +504,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self._mirror_private_blocks(priv_height)
 
         self._ensure_strategy(self.attack_start_height)
+        if not self._start_synced:
+            self._sync_start_state(pub_height, priv_height)
 
         # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height)

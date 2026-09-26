@@ -47,6 +47,7 @@ matrix_runs/<name>/{table.md, results.json}. Exit 0 iff every cell ran and
 analyzed (verdict FAILs inside a completed run are results, not errors).
 """
 import argparse
+import copy
 import itertools
 import json
 import os
@@ -62,6 +63,21 @@ import yaml
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+class _NoAliasDumper(yaml.SafeDumper):
+    """Generated cell configs must not carry YAML anchors/aliases: the base
+    may share one object between agents (an anchor, or plain reuse), and a
+    reader that resolves aliases by identity would re-create the very
+    cross-agent coupling _merge_stanza's copy-on-write avoids."""
+    def ignore_aliases(self, data):
+        return True
+
+
+def dump_config(cfg: dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        yaml.dump(cfg, f, Dumper=_NoAliasDumper, sort_keys=False)
 
 # Matrix workdirs are reproducible from spec + base (both committed); the runs
 # themselves are archived under archived_runs/ like any hand-launched run.
@@ -117,12 +133,17 @@ def _agent_targets(cfg: dict) -> dict:
 
 
 def _merge_stanza(stanza: dict, overlay: dict, where: str) -> None:
-    """Sub-dicts (attributes, daemon_options) merge; scalars override."""
+    """Sub-dicts (attributes, daemon_options) merge; scalars override.
+
+    Copy-on-write: yaml.safe_load hands out ONE shared object for a YAML
+    anchor/alias, so updating the agent's sub-dict in place rewrote every
+    agent sharing the alias (review 2026-09-26) — and re-emitting the shared
+    object put anchors into the generated cell configs."""
     for key, val in overlay.items():
         if isinstance(val, dict) and isinstance(stanza.get(key), dict):
-            stanza[key].update(val)
+            stanza[key] = {**stanza[key], **copy.deepcopy(val)}
         else:
-            stanza[key] = val
+            stanza[key] = copy.deepcopy(val)
 
 
 def apply_overlay(cfg: dict, overlay: dict, where: str) -> None:
@@ -160,6 +181,10 @@ def _apply_hashrates(cfg: dict, overlay: dict, where: str) -> None:
 
 def build_config(spec: dict, cell_overlays: dict) -> dict:
     """Base config + general overrides + every axis overlay, in axis order."""
+    # The overlays are the spec's own dicts, shared by every cell that uses
+    # the same axis value; _apply_hashrates pops from them. Work on a copy so
+    # the second cell to use a hashrate value still gets it (review 2026-09-26).
+    cell_overlays = copy.deepcopy(cell_overlays)
     with open(spec["base"]) as f:
         cfg = yaml.safe_load(f)
     if spec.get("stop_time"):
@@ -213,9 +238,7 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
 
     cfg = build_config(spec, overlays)
     cfg_path = workdir / "configs" / f"{cell}.yaml"
-    cfg_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(cfg_path, "w") as f:
-        yaml.safe_dump(cfg, f, sort_keys=False)
+    dump_config(cfg, cfg_path)
 
     run_name = _sanitize(f"{spec['name']}__{cell}")
     before = set(str(p) for p in archive.glob(f"*_{run_name}"))
@@ -248,13 +271,23 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
                              "forks_seen": health["forks_seen"], **health["totals"]}
             try:
                 r = analyze_run(run_dir)
-                row.update({k: r[k] for k in (
+                row.update({k: r.get(k) for k in (
                     "alpha", "alpha_eff", "release_lead", "eclipse", "share",
                     "controlled", "gamma", "n_ties", "attacker_orphan_rate",
-                    "network_orphan_rate", "canonical_blocks", "msb_max_z")})
+                    "network_orphan_rate", "canonical_blocks", "preload_blocks",
+                    "msb_max_z")})
                 row["theory"] = r["theory"]
                 row["verdicts"] = [(v["name"], v["pass"]) for v in r["verdicts"]]
                 row["all_verdicts_pass"] = all(v["pass"] for v in r["verdicts"])
+                # Plumbing gate (review 2026-09-26): an attacker at several
+                # h/s that found NO block in the whole run never mined or
+                # never reached its bridge; its share of 0.000 is not data.
+                row["attacker_found"] = (r.get("orphan_stats") or {}).get("attacker_found")
+                if row["attacker_found"] == 0:
+                    row["health"]["ok"] = False
+                    prior = row["health"]["summary"]
+                    row["health"]["summary"] = "no-attacker-blocks" if prior == "ok" \
+                        else f"{prior}; no-attacker-blocks"
             except AnalysisInputError as e:
                 row["error"] = f"analysis: {e}"
     marker.parent.mkdir(parents=True, exist_ok=True)
@@ -329,8 +362,7 @@ def main() -> int:
             cfg = build_config(spec, overlays)
             out = workdir / "configs" / f"{cell}.yaml"
             out.parent.mkdir(parents=True, exist_ok=True)
-            with open(out, "w") as f2:
-                yaml.safe_dump(cfg, f2, sort_keys=False)
+            dump_config(cfg, out)
             print(f"{cell}: {out}")
         print(f"{len(cells)} cell(s) planned (dry run)")
         return 0

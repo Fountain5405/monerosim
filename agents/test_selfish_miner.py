@@ -551,7 +551,9 @@ def test_island_mode_caps_honest_feed_at_fork_while_withholding():
     a._island_cash_out = MagicMock(return_value=False)
     a.run_iteration()
     submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
-    assert submitted == ["h0", "h1", "h2", "h3", "h4"]   # cap at fork 5 (exclusive)
+    # cap at fork 5 (exclusive); index 0 (genesis) is common to every daemon
+    # and, since the 2026-09-26 start sync, never (re-)forwarded.
+    assert submitted == ["h1", "h2", "h3", "h4"]
     # concession path: fork = pub re-opens the feed fully
     a.daemon_rpc.submit_block.reset_mock()
     a.strategy.fork = 6
@@ -559,3 +561,77 @@ def test_island_mode_caps_honest_feed_at_fork_while_withholding():
     a.run_iteration()
     submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
     assert "h5" in submitted and "h6" in submitted       # past the old fork now
+
+
+# --- first-tick synchronisation on a shared (chain-snapshot) chain, 2026-09-26 ---
+
+def _chain_mocks(a, common: dict, pub_extra: dict, priv_extra: dict):
+    """get_block(height) on both daemons: `common` heights share a hash,
+    `pub_extra` / `priv_extra` diverge; unknown heights raise like monerod."""
+    def pub(height):
+        h = pub_extra.get(height, common.get(height))
+        if h is None:
+            raise RPCError("out of range")
+        return {"blob": f"pub{height}", "block_header": {"hash": h}}
+
+    def priv(height):
+        h = priv_extra.get(height, common.get(height))
+        if h is None:
+            raise RPCError("out of range")
+        return {"blob": f"priv{height}", "block_header": {"hash": h}}
+    a.bridge_rpc.get_block.side_effect = pub
+    a.daemon_rpc.get_block.side_effect = priv
+
+
+def test_first_tick_on_shared_chain_syncs_fork_and_watermarks():
+    """With chain_snapshot every daemon boots on the same 336-block chain.
+    The pre-fix first tick saw fork=0, i.e. a 337-block private branch TIED
+    with a 337-block honest branch: ~700 already-have submits, and if the
+    attacker found the next block first it was released at once (lead 1
+    over a phantom honest branch) instead of withheld. The fork must start
+    at the hash-verified common tip."""
+    a = _make_agent()
+    common = {h: f"c{h}" for h in range(0, 337)}
+    _chain_mocks(a, common, {}, {})
+    a.bridge_rpc.get_info.return_value = {"height": 337, "top_block_hash": "c336"}
+    a.daemon_rpc.get_info.return_value = {"height": 337, "top_block_hash": "c336"}
+    a.run_iteration()
+    assert a.strategy.fork == 337
+    assert a._forwarded_index == 336 and a._released_index == 336
+    a.bridge_rpc.submit_block.assert_not_called()
+    a.daemon_rpc.submit_block.assert_not_called()
+    # Attacker finds the next block: h == 0 -> withhold, fork unmoved.
+    _chain_mocks(a, common, {}, {337: "p337"})
+    a.daemon_rpc.get_info.return_value = {"height": 338, "top_block_hash": "p337"}
+    a.run_iteration()
+    a.bridge_rpc.submit_block.assert_not_called()
+    assert a.strategy.fork == 337
+
+
+def test_first_tick_honest_already_ahead_forwards_only_new_blocks():
+    """If honest blocks landed before the attacker's first tick, adopt them
+    and forward exactly those — not the whole grafted prefix."""
+    a = _make_agent()
+    common = {h: f"c{h}" for h in range(0, 337)}
+    _chain_mocks(a, common, {337: "h337", 338: "h338"}, {})
+    a.bridge_rpc.get_info.return_value = {"height": 339, "top_block_hash": "h338"}
+    a.daemon_rpc.get_info.return_value = {"height": 337, "top_block_hash": "c336"}
+    a.run_iteration()
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert submitted == ["pub337", "pub338"]
+    assert a.strategy.fork == 339
+    a.bridge_rpc.submit_block.assert_not_called()
+
+
+def test_first_tick_attacker_already_ahead_withholds():
+    """A private block found before the first tick is a real lead of 1 over
+    an honest branch of 0: withhold (pre-fix: released as a tie-break)."""
+    a = _make_agent()
+    common = {h: f"c{h}" for h in range(0, 337)}
+    _chain_mocks(a, common, {}, {337: "p337"})
+    a.bridge_rpc.get_info.return_value = {"height": 337, "top_block_hash": "c336"}
+    a.daemon_rpc.get_info.return_value = {"height": 338, "top_block_hash": "p337"}
+    a.run_iteration()
+    a.bridge_rpc.submit_block.assert_not_called()
+    assert a.strategy.fork == 337
+    assert a._released_index == 336
