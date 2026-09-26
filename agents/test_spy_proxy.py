@@ -117,3 +117,47 @@ def test_mix_records_handles_short_lists():
     recs = mix_records([("1.1.1.1", 18080)], [], n=100, fleet_share=0.5)
     assert recs == [("1.1.1.1", 18080)]
     assert mix_records([], [], n=100, fleet_share=0.5) == []
+
+
+# ---- outbound holds are bounded by dial_budget (review 2026-09-26) ----
+
+def test_holdbook_deficit_tracks_live_holds():
+    from agents.spy_proxy import HoldBook
+    b = HoldBook()
+    assert b.deficit(8) == 8 and b.live() == 0
+    b.add(("3.0.0.1", 18080)); b.add(("3.0.0.2", 18080))
+    assert b.deficit(8) == 6 and b.live() == 2 and ("3.0.0.1", 18080) in b.held()
+    b.add(("3.0.0.1", 18080))                     # same key twice is one hold
+    assert b.live() == 2
+    b.remove(("3.0.0.1", 18080))
+    assert b.deficit(8) == 7 and b.deficit(1) == 0
+
+
+def test_hold_connection_registers_for_its_lifetime_and_closes():
+    """A hold is counted while the socket is open and unregistered when it
+    ends (here: idle timeout against a responder that never speaks first)."""
+    from agents.spy_proxy import HoldBook, hold_connection
+    cfg = _cfg(height=999)
+    port, stop = _serve(cfg)
+    book = HoldBook()
+    chain = {"height": 1, "cumdiff": 1, "top_id": b"\x00" * 32, "top_version": 1}
+    try:
+        t = threading.Thread(target=hold_connection,
+                             args=("127.0.0.1", port, chain, cfg, 18080, book),
+                             kwargs={"idle_timeout": 0.5}, daemon=True)
+        t.start()
+        time.sleep(0.2)
+        assert book.live() == 1 and ("127.0.0.1", port) in book.held()
+        t.join(timeout=5)
+        assert not t.is_alive()
+        assert book.live() == 0                    # unregistered on exit, socket closed
+    finally:
+        stop.set()
+
+
+def test_hold_connection_to_closed_port_unregisters():
+    from agents.spy_proxy import HoldBook, hold_connection
+    book = HoldBook()
+    chain = {"height": 1, "cumdiff": 1, "top_id": b"\x00" * 32, "top_version": 1}
+    hold_connection("127.0.0.1", _free_port(), chain, _cfg(), 18080, book, idle_timeout=0.5)
+    assert book.live() == 0

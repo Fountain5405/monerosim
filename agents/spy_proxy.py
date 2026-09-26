@@ -40,6 +40,7 @@ stage-3 experiment 1 is carried by the real-node spies (variant R), which log tx
 arrivals at monitor log level. Full proxy-side tx observation is a follow-up.
 """
 import random
+import struct
 import threading
 import time
 import json
@@ -68,6 +69,75 @@ def mix_records(fleet, honest, n, fleet_share):
     recs = fleet[:n_fleet] + honest[: n - n_fleet]
     random.shuffle(recs)
     return recs[:n]
+
+
+class HoldBook:
+    """Live outbound holds, keyed by (ip, port). The dialer used to start
+    `dial_budget` NEW hold threads every cycle without tracking the ones still
+    open, so a 6 h run accumulated hundreds of threads and sockets per
+    front-end and hammered its targets' inbound slots far beyond the intended
+    handful (review 2026-09-26). Now a cycle dials only the deficit."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._live = set()
+
+    def add(self, key) -> None:
+        with self._lock:
+            self._live.add(key)
+
+    def remove(self, key) -> None:
+        with self._lock:
+            self._live.discard(key)
+
+    def held(self) -> set:
+        with self._lock:
+            return set(self._live)
+
+    def live(self) -> int:
+        with self._lock:
+            return len(self._live)
+
+    def deficit(self, budget: int) -> int:
+        with self._lock:
+            return max(0, int(budget) - len(self._live))
+
+
+def hold_connection(ip, port, chain, cfg, my_port, book: HoldBook, idle_timeout=120, logger=None) -> None:
+    """Hold one outbound connection to an honest node: handshake as a behind
+    peer, then answer its admin requests until it closes or idles out. Runs
+    in its own thread; registers itself in `book` for its whole lifetime and
+    always closes the socket, whatever the Levin layer raises (a malformed
+    bucket surfaces as struct.error / ValueError, not OSError)."""
+    key = (ip, port)
+    book.add(key)
+    s = None
+    try:
+        s = L.connect(ip, port, timeout=10)
+        req = L.serialize(L.handshake_request(
+            L.NETWORK_ID_MAINNET, my_port, cfg.peer_id,
+            chain["height"], chain["cumdiff"], chain["top_id"], chain["top_version"]))
+        s.sendall(L.pack_header(L.COMMAND_HANDSHAKE, len(req),
+                                L.LEVIN_PACKET_REQUEST, expect_response=True))
+        s.sendall(req)
+        try:
+            L.read_bucket(s)
+        except (OSError, struct.error, ValueError):
+            pass
+        # keep the socket open (occupies the peer's inbound slot); answer any
+        # admin request it sends us as our own responder would.
+        s.settimeout(idle_timeout)
+        handle_connection(s, cfg)
+    except (OSError, struct.error, ValueError) as e:
+        if logger:
+            logger.debug("hold %s:%s ended: %s", ip, port, e)
+    finally:
+        if s is not None:
+            try:
+                s.close()
+            except OSError:
+                pass
+        book.remove(key)
 
 
 def _rpc(ip, port, method, params=None, timeout=5):
@@ -119,6 +189,7 @@ def main():
                            "top_id": b"\x00" * 32, "top_version": 1}
             self._honest_peers = []   # [(ip, port)] from the backend white list
             self._backends = []       # [(ip, rpc_port)]
+            self._holds = HoldBook()  # live outbound holds (dial only the deficit)
 
             self._cfg = InjectorConfig(
                 network_id=L.NETWORK_ID_MAINNET,
@@ -213,45 +284,25 @@ def main():
         # ---- hold a few outbound connections to honest reachable nodes ----
         def _dial_loop(self):
             while not self._stop.is_set():
-                targets = [t for t in self._honest_peers if t[0] not in self._fleet]
+                held_now = self._holds.held()
+                targets = [t for t in self._honest_peers
+                           if t[0] not in self._fleet and tuple(t) not in held_now]
                 random.shuffle(targets)
-                held = 0
-                for ip, port in targets[: args.dial_budget]:
+                need = self._holds.deficit(args.dial_budget)
+                for ip, port in targets[:need]:
                     if self._stop.is_set():
                         break
-                    if self._hold_one(ip, port):
-                        held += 1
-                self.logger.debug("dialer: holding ~%d outbound", held)
+                    self._hold_one(ip, port)
+                self.logger.debug("dialer: holding %d outbound (budget %d)",
+                                  self._holds.live(), args.dial_budget)
                 self._stop.wait(max(30, args.sync_interval))
 
         def _hold_one(self, ip, port):
-            def worker():
-                try:
-                    s = L.connect(ip, port, timeout=10)
-                except OSError:
-                    return
-                try:
-                    c = self._chain
-                    req = L.serialize(L.handshake_request(
-                        L.NETWORK_ID_MAINNET, args.port_base, self._cfg.peer_id,
-                        c["height"], c["cumdiff"], c["top_id"], c["top_version"]))
-                    s.sendall(L.pack_header(L.COMMAND_HANDSHAKE, len(req),
-                                            L.LEVIN_PACKET_REQUEST, expect_response=True))
-                    s.sendall(req)
-                    try:
-                        L.read_bucket(s)
-                    except OSError:
-                        pass
-                    # keep the socket open (occupies the peer's inbound slot);
-                    # answer any admin request it sends us as our own responder would.
-                    s.settimeout(120)
-                    handle_connection(s, self._cfg)
-                except OSError:
-                    try:
-                        s.close()
-                    except OSError:
-                        pass
-            threading.Thread(target=worker, daemon=True).start()
+            threading.Thread(
+                target=hold_connection,
+                args=(ip, port, self._chain, self._cfg, args.port_base, self._holds),
+                kwargs={"logger": self.logger},
+                daemon=True).start()
             return True
 
         def run_iteration(self):
