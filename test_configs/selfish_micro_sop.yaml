@@ -9,8 +9,12 @@
 # them — option-1 SoP blocks (version_minor = share count) are rejected by
 # the hardfork vote rule in vanilla monerod, so every block-validating node
 # in a SoP topology must run monerod-sim (parser + vote-gate bypass).
-# Baseline cells on this base are unaffected: unflagged monerod-sim is
-# byte-for-byte stock behavior.
+# Baseline cells on this base are unaffected: an unflagged monerod-sim
+# behaves as stock except for that vote-gate bypass, which the pop patch
+# applies to every block precisely so an unflagged bridge/relay can carry
+# SoP blocks (no stock miner produces a block the bypass would newly
+# accept). Since 2026-09-26 an unflagged node also neither pools nor relays
+# workshares.
 # 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
 # tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
 # of the fixed-difficulty 1800 stopgap, so monerod's real DAA runs from the
@@ -27,6 +31,12 @@ general:
   progress: true
   process_threads: 2
   native_preemption: true
+  # Shadow worker threads per run. Default 0 = every core: with 12 matrix
+  # cells running concurrently on 64 cores that was 12 x 64 spinning workers
+  # for 13 hosts each (load 175, CPU 72% idle, 16% sys; 1x realtime instead
+  # of the ~4x a lone smoke gets). 4 workers cover 13 hosts; 12 cells then
+  # use 48 threads. Results are independent of the worker count.
+  parallelism: 4
   mining:
     mode: native
     # Preload: every monerod-family daemon boots with chain_snapshots/h10
