@@ -124,11 +124,35 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   sibling check) are results-neutral for withholding attackers and are
   queued as a separate patch + rebuild + smoke. Full finding lists are in
   this session's review outputs; the fix commits cite them.
-- Step 2 launched 13:42Z: `pop_sop2_h10` (seed 12345) and `pop_sop2_h10_rep`
-  (seed 54321), 6 cells each, all 12 concurrently. Results land in
+- Step 2: `pop_sop2_h10` (seed 12345) and `pop_sop2_h10_rep` (seed 54321),
+  6 cells each, all 12 concurrently. Launched 13:42Z; stopped at 13:54Z to
+  try `parallelism: 4` (12 x 13 default Shadow workers had load ~175 with
+  the CPU mostly idle) — that STALLED the grafted cells at 5 sim-seconds
+  (recorded in the base's comment; do not lower the worker count); final
+  relaunch 14:08Z at the default. At ~1x realtime the 6 h cells finish
+  around 20:15Z. Results land in
   `matrix_runs/pop_sop2_h10*/{table.md,results.json}`; gate every row on
   `health == ok`, `attacker_found > 0`, `forks_seen > 0`,
-  `preload_blocks == 336`.
+  `preload_blocks == 336`. Every run's `binary_provenance.txt` records the
+  12:41Z monerod-sim (pre-fix patch stack) they ran on.
+- Analysis tooling added while the matrix runs (a78492af): the bridge's
+  chain (stock fork choice) is the default reference; `share_honest_ref`
+  now sits beside `share`, computed from the first honest miner's daemon
+  log via `scripts/honest_chain_from_log.py` (the archived LMDBs are
+  useless for this — Shadow's hard stop plus `db-sync-mode: fastest`
+  leaves them at genesis; `--archive-blockchain` output is empty for
+  native-mining runs). `scripts/selfish_matrix.py --reanalyze <spec>`
+  recomputes every finished cell from its archive without re-running —
+  run it on both specs when the matrix ends so the rows carry the fixed
+  analysis and the honest-reference column.
+- Daemon-patch fixes (weight table l_b gates shares; duplicate share slot
+  skipped; unflagged nodes don't pool/relay shares; SoP-only tie RNG
+  seeded; slot logged as a number) are built and being smoke-tested against
+  a scratch binary (`sop_fork_smoke_fixed`); the regenerated
+  `monero-sim-pop.patch` lands in `patches/` once that gate passes, then a
+  rebuild + install + the three smokes on the installed binary. The
+  hard-fork vote bypass stays unconditional by design (the unflagged bridge
+  must carry SoP blocks); the "byte-for-byte stock" wording was qualified.
 - Open decision for the owner: does the manuscript still want the MRL #144
   exact-uncle variant (≈10 more cells at n=2)? Otherwise keep the det-tie
   relabel.
