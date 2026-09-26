@@ -68,11 +68,15 @@ resulting cache path back from the script's own stdout).
 general:
   mining:
     mode: native
-    chain_snapshot: auto     # auto | off | <preset name> | <path>
+    chain_snapshot: auto     # off (default) | auto | <preset name> | <path>
 ```
 
-- `off` — no preload, unconditionally (the historical cold-start warm-up).
-- `auto` (default, **soft**) — pick the repo preset under `chain_snapshots/`
+- `off` (**default** since 2026-09-26) — no preload, unconditionally (the
+  historical cold-start warm-up). `auto` used to be the default; the day
+  the `h10` preset landed, every legacy 10 h/s config would have started at
+  height 336 on an established difficulty with an INFO line as the only
+  signal, so a run now preloads only when its config says so.
+- `auto` (**soft**) — pick the repo preset under `chain_snapshots/`
   whose `total_hashrate` and `monero_pin` match this run. Zero matches logs
   a warning naming the expected preset (hashrate + pin) and this doc's
   generator recipe, then continues without a snapshot (the same

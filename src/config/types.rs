@@ -521,12 +521,17 @@ pub struct MiningConfig {
     /// with literal hashrates light mode is too slow (spec §7).
     #[serde(default = "default_rx_full_dataset")]
     pub rx_full_dataset: bool,
-    /// Difficulty-preload chain snapshot (native mode only). `auto`
-    /// (default, soft) = pick the repo preset under `chain_snapshots/`
-    /// whose `total_hashrate` and `monero_pin` match this run; if none
-    /// exists, warns and continues without a snapshot (fresh genesis, the
-    /// historical warm-up) rather than erroring — several matches is still
-    /// a hard error. `off` = no preload, unconditionally. Anything else
+    /// Difficulty-preload chain snapshot (native mode only). `off`
+    /// (default) = no preload, unconditionally — the cold-start warm-up
+    /// every config had before presets existed. It is the default since
+    /// 2026-09-26: `auto` was, and the moment a preset matching a common
+    /// hashrate landed (`h10`, 10 h/s) every legacy 10 h/s config silently
+    /// started at height 336 on an established difficulty instead of at
+    /// genesis, with an INFO line as the only signal. `auto` (soft) = pick
+    /// the repo preset under `chain_snapshots/` whose `total_hashrate` and
+    /// `monero_pin` match this run; if none exists, warns and continues
+    /// without a snapshot rather than erroring — several matches is still
+    /// a hard error. Configs that want a preset say so. Anything else
     /// names a preset directly (a bare name resolves to
     /// `chain_snapshots/<name>/`, anything containing `/` is used as a path
     /// as-is) and is a hard error if missing/mismatched. YAML booleans are
@@ -545,7 +550,7 @@ fn default_rx_full_dataset() -> bool {
 }
 
 fn default_chain_snapshot() -> String {
-    "auto".to_string()
+    "off".to_string()
 }
 
 /// Accept a plain string (`"auto"`, `"off"`, a preset name/path) or a YAML
@@ -747,10 +752,13 @@ mod mining_config_tests {
     }
 
     #[test]
-    fn chain_snapshot_defaults_to_auto() {
+    fn chain_snapshot_defaults_to_off() {
+        // A preset matching a common hashrate must never graft itself into a
+        // config that did not ask for one (2026-09-26: h10 vs 22 legacy
+        // 10 h/s configs).
         let yaml = "stop_time: 1h\nmining:\n  mode: native\n";
         let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(g.mining.chain_snapshot, "auto");
+        assert_eq!(g.mining.chain_snapshot, "off");
     }
 
     #[test]
