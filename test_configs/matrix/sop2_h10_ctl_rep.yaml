@@ -1,0 +1,44 @@
+# SoP v2 upgrade-transition controls on the h10 base — SECOND draw (cells
+# identical to sop2_h10_ctl.yaml, own simulation seed 54321) of an n=2
+# pair (docs/20260926_sop_h10_rerun.md, reading 5; owner decision 2026-09-26).
+#
+# Question: pop_sop2_h10's honest control under SoP ({0.440, 0.326}) lost 17
+# same-height races in its second draw, all by the honest-strategy attacker,
+# whose daemon is stock (gossips no shares) and OFFLINE behind the bridge (its
+# blocks reach the network by RPC push, ~200 ms + one hop late). Under the
+# rule a block with no gossiped shares weighs one unit against ~w units, so a
+# miner that has not upgraded loses every tie — but so might a miner that is
+# merely a hop late. Two controls separate the two costs; both keep the
+# honest strategy, α = 0.40, and the sop2 countermeasure exactly as in
+# pop_sop2_h10:
+#
+#   upgraded  — attacker daemon P2P-CONNECTED (offline: false — a false
+#               boolean renders as no flag) AND SoP-flagged (w = 16): a fully
+#               upgraded 4 h/s honest miner. Expect share ≈ α, ties won at
+#               the honest rate. Its shares reach the network through the
+#               SoP-flagged seeds/relays like any honest miner's.
+#   connected — attacker daemon P2P-connected but UNFLAGGED: the upgrade cost
+#               alone, with the bridge latency removed.
+#
+# Read against pop_sop2_h10{,_rep}'s honest_sop2 (offline + unflagged) and
+# honest_stock rows. The selfish_miner agent still runs (honest strategy
+# publishes everything at once); with a connected daemon its RPC forwards and
+# bridge pushes are already-have no-ops, and the bridge remains the analysis
+# reference (plus honest-001's log for share_h).
+#
+# First draw: sop2_h10_ctl.yaml (base seed 12345).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop2_h10_ctl_rep.yaml
+name: sop2_h10_ctl_rep
+seed: 54321
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+axes:
+  attacker:
+    upgraded:  {attacker: {attributes: {strategy: honest}, daemon_options: {offline: false, sim-share-or-perish: true, sim-sop-w: 16}}}
+    connected: {attacker: {attributes: {strategy: honest}, daemon_options: {offline: false}}}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim}

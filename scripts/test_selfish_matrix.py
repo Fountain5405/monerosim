@@ -394,3 +394,59 @@ def test_reanalyze_recovers_run_dir_from_run_name(tmp_path, monkeypatch):
     row = json.loads((work / "cells" / "es.json").read_text())
     assert row["run_dir"] == str(run_dir) and row["recovered_run_dir"] is True
     assert row["share"] == 0.47 and "error" not in row
+
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+def _plan_and_build(spec_name):
+    from scripts.selfish_matrix import load_spec
+    spec = load_spec(REPO / "test_configs" / "matrix" / f"{spec_name}.yaml")
+    return spec, {cell: build_config(spec, overlays) for cell, _values, overlays in plan_cells(spec)}
+
+
+def test_sop2_ctl_specs_unoffline_and_flag_the_attacker():
+    """The upgrade-transition controls (2026-09-26) turn the attacker into a
+    connected honest miner: `offline: false` (rendered as no flag by the
+    orchestrator) and, for the upgraded cell only, the SoP flags; the sop2
+    countermeasure stays as in pop_sop2_h10. The _rep draw has its own seed."""
+    for name, seed in (("sop2_h10_ctl", 12345), ("sop2_h10_ctl_rep", 54321)):
+        spec, cfgs = _plan_and_build(name)
+        assert sorted(cfgs) == ["connected_sop2", "upgraded_sop2"]
+        for cell, cfg in cfgs.items():
+            assert cfg["general"]["simulation_seed"] == seed
+            assert cfg["general"]["mining"]["chain_snapshot"] == "h10"
+            att = cfg["agents"]["attacker-miner"]
+            assert att["attributes"]["strategy"] == "honest"
+            assert att["daemon_options"]["offline"] is False
+            assert cfg["agents"]["honest-001"]["daemon_options"] == {"sim-share-or-perish": True, "sim-sop-w": 16}
+            assert cfg["agents"]["relay-001"]["daemon"] == "monerod-sim"
+            assert cfg["agents"]["attacker-bridge"]["daemon"] == "monerod-sim"
+        assert cfgs["upgraded_sop2"]["agents"]["attacker-miner"]["daemon_options"]["sim-share-or-perish"] is True
+        assert cfgs["upgraded_sop2"]["agents"]["attacker-miner"]["daemon_options"]["sim-sop-w"] == 16
+        assert "sim-share-or-perish" not in cfgs["connected_sop2"]["agents"]["attacker-miner"]["daemon_options"]
+
+
+def test_exact_specs_flag_honest_miners_only():
+    """MRL #144 exact cells (2026-09-26): flags on the honest miners only, the
+    attacker/bridge/relays stock; micro pairs with pop_sop2_h10's stock rows
+    (same base and seeds), mid carries its own stock pairs."""
+    flags = {"sim-publish-or-perish": True, "sim-pop-uncles-header": True, "sim-pop-det-tie": True}
+    for name, seed, base in (("pop_exact_h10", 12345, "selfish_micro_sop.yaml"),
+                             ("pop_exact_h10_rep", 54321, "selfish_micro_sop.yaml")):
+        spec, cfgs = _plan_and_build(name)
+        assert spec["base"].endswith(base)
+        assert sorted(cfgs) == ["es_exact", "es_r2_exact", "honest_exact"]
+        for cfg in cfgs.values():
+            assert cfg["general"]["simulation_seed"] == seed
+            assert cfg["agents"]["honest-001"]["daemon_options"] == flags
+            assert cfg["agents"]["honest-002"]["daemon_options"] == flags
+            assert cfg["agents"]["attacker-miner"]["daemon_options"] == {"offline": True}
+            assert "daemon_options" not in cfg["agents"]["relay-001"]
+        assert cfgs["es_r2_exact"]["agents"]["attacker-miner"]["attributes"]["release_lead"] == "2"
+    for name, seed in (("pop_exact_mid", 12345), ("pop_exact_mid_rep", 54321)):
+        spec, cfgs = _plan_and_build(name)
+        assert sorted(cfgs) == ["es_exact", "es_none", "es_r2_exact", "es_r2_none", "honest_exact", "honest_none"]
+        assert cfgs["es_exact"]["agents"]["honest-006"]["daemon_options"] == flags
+        assert "daemon_options" not in cfgs["es_none"]["agents"]["honest-006"]
+        assert cfgs["es_none"]["general"]["simulation_seed"] == seed

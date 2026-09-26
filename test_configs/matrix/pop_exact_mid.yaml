@@ -1,0 +1,30 @@
+# MRL #144 EXACT uncles at mid scale (6 miners + 16 relays, 23 hosts, α = 0.40)
+# with their stock pairs — first draw of an n=2 pair (review §3 step 4:
+# "micro + mid"). Base test_configs/selfish_scaled_mid.yaml UNCHANGED (genesis
+# fakechain, no snapshot): the mid-scale det-tie rows the manuscript retains
+# ({0.170, 0.285} vs stock {0.387, 0.463}, pop_scale{,_r2} on the 24-core
+# box) were measured on it, so this is the direct exact-vs-det-tie comparison
+# at scale. The stock cells are re-run here because no mid-scale run exists on
+# this box or on the fixed daemon (the runner needs the pairs in one place for
+# scripts/matrix_pairs.py).
+#
+# The exact verifier's sibling fix (2026-09-26, finding 5) matters most here:
+# deeper alt chains at mid scale are exactly where the old main-chain anchor
+# rejected legitimate uncles.
+#
+# Second draw: pop_exact_mid_rep.yaml (seed 54321). Launched by the campaign
+# driver AFTER the micro batch finishes (12 mid cells ≈ 20 GB each; parallel 3
+# per draw => 6 at once on the 251 GB box).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_exact_mid.yaml
+name: pop_exact_mid
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 3
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    exact: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}
+    none:  {}

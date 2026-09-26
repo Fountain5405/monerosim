@@ -191,8 +191,14 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   done on the `h10` chain-snapshot base instead of fixed difficulty —
   `docs/20260926_sop_h10_rerun.md`. SoP v2 neutralizes ES and lead-2
   (0.000–0.035 vs stock 0.305–0.469); controls ≈ α.
-- Step 4 (exact cells): pending the owner's decision; needs the exact-uncle
-  sibling-check fix from the 2026-09-26 patch review first.
+- Step 4 (exact cells): owner said yes 2026-09-26 (17:40Z). The exact-uncle
+  sibling anchor was fixed first (F5c below, smoke-gated, installed 17:53Z);
+  the cells run as `test_configs/matrix/pop_exact_h10{,_rep}.yaml` (micro,
+  h10 base, pairs with pop_sop2_h10's stock rows) and
+  `pop_exact_mid{,_rep}.yaml` (mid, genesis base UNCHANGED so the exact rows
+  compare directly with the retained det-tie mid rows; stock pairs re-run).
+  Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
+  (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated
   2026-09-26; findings 8 (v1/v2 arc) and 9 keep their retraction notices.
 
@@ -274,6 +280,19 @@ once, on a chain with an established difficulty. Resume plan: §3.
   zero-count smokes (difficulty 120, 4–5 embeddings) simply had no
   header-carrying block inside any evaluated fork suffix — the receive
   diagnostics show that directly.
+- **F5c (2026-09-26 patch review, finding 5; fixed 2026-09-26 17:50Z)**:
+  both uncle verifiers took the sibling anchor wrong. `sim_pop_uncle_bonus_header`
+  read `parent_prev = main[height-2]`; for a containing block three or more
+  deep in an alt chain that is a different block, so every legitimate uncle
+  in such a chain was REJECTED "not a sibling of the parent" — the alt chain
+  (the honest candidate during a reorg) could never score its uncles while
+  the main chain could. The DEVIATED verifier (`sim_pop_uncle_bonus`) had no
+  sibling test at all: any locally-held alt block at height-1, from any
+  fork, earned the bonus. Fix: `sim_pop_parent_prev(b, height)` reads the
+  parent block itself (`get_block_by_hash`, main or alt) and returns its
+  `prev_id`; both verifiers use it, the deviated one now parses the alt blob
+  and requires `prev_id == parent_prev`. Template side was already correct
+  (it builds on main). Re-validated: all three gated smokes GREEN on the installed binary, run concurrently 17:55–18:14Z: `20260926_175546_pop_exact_fast_fix2` (reorgs 69/69 and 70/70 on the honest miners, 57/57 attacker, 104–107/104–107 on relays and seeds, 0 exceptions, 7,914 alternative blocks, **96 uncle headers COUNTED per honest miner with 0 "not a sibling" rejections** — the pre-fix run of the same config, `20260926_163610_pop_exact_fast`, counted 68/69 with 2 rejections — and 176 uncle-weighted fork decisions vs 111); `20260926_175531_sop_fork_smoke_fix2` (forks 230, all 230 SoP decisions share-weighted, 0 exceptions); `20260926_175601_snap_sop_fix2` (h50 graft plumbing, 0 exceptions).
 - Patch regenerated per the H0/H1 ritual (`/tmp/h0wt` = base + 4 non-pop
   patches); NOTE the build wrapper trap hit on the way: `install_sim_monerod`
   reads `MONEROSIM_BIN` as the bin DIRECTORY (`~/.monerosim/bin`), and its

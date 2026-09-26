@@ -176,11 +176,43 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   `20260926_164756_snap_sop` (h50 graft plumbing, 0 exceptions). The
   bootstrap check in this doc passes on this box as of that time. Any new
   cell runs on this binary.
-- Open decision for the owner: does the manuscript still want the MRL #144
-  exact-uncle variant (≈10 more cells at n=2; needs the exact-uncle sibling
-  fix from the patch review first)? Otherwise keep the det-tie relabel.
-  Also open: a SoP-flagged honest-attacker control to size the
-  non-upgraded-miner race cost (`docs/20260926_sop_h10_rerun.md` §5).
+- Owner decisions (17:40Z): run the MRL #144 exact cells; add the
+  SoP-flagged honest-attacker control; `chain_snapshot` is not broken — the
+  default became `off` because `auto` silently grafted h10 into the 22
+  legacy 10 h/s configs; every campaign base names its preset explicitly.
+
+### 2026-09-26 evening — exact-uncle sibling fix; campaign 3 launched
+
+- **Patch fix (review F5c)**: `sim_pop_uncle_bonus_header` anchored the
+  sibling test on `main[height-2]`, wrong for a containing block ≥ 3 deep in
+  an alt chain (every legitimate uncle there was rejected); the deviated
+  verifier had no sibling test. Both now read the parent block's own
+  `prev_id` (`sim_pop_parent_prev`, main or alt). Patch sha `dcfbaeeb…`;
+  built 17:50Z in the scratch worktree, INSTALLED 17:53Z (provenance matches
+  the five tree shas; previous binary kept at the scratchpad's
+  `bin_fixed/monerod-sim.installed-1353`). Smokes: all three gated smokes GREEN on the installed binary, run concurrently 17:55–18:14Z: `20260926_175546_pop_exact_fast_fix2` (reorgs 69/69 and 70/70 on the honest miners, 57/57 attacker, 104–107/104–107 on relays and seeds, 0 exceptions, 7,914 alternative blocks, **96 uncle headers COUNTED per honest miner with 0 "not a sibling" rejections** — the pre-fix run of the same config, `20260926_163610_pop_exact_fast`, counted 68/69 with 2 rejections — and 176 uncle-weighted fork decisions vs 111); `20260926_175531_sop_fork_smoke_fix2` (forks 230, all 230 SoP decisions share-weighted, 0 exceptions); `20260926_175601_snap_sop_fix2` (h50 graft plumbing, 0 exceptions).
+- **Two probe bugs found by the scratch smoke**: (1) `run_sim.sh`'s
+  capability gate read the probe's TAB-separated lines with `IFS=$'\t'`;
+  TAB is IFS whitespace, adjacent tabs collapse, so an explicit patched
+  binary needing no flag shifted the agent name into the flags column and
+  the gate refused the run ("does not support --attacker-bridge"). The
+  probe now writes `-` for an empty field and the gate treats it as none.
+  (2) The probe substituted monerod-sim for EVERY native miner; the
+  orchestrator does so only when the config says exactly `monerod`, so a
+  miner pointed at an explicit build was probed at the wrong path. Both
+  unit-tested (`scripts/test_run_sim_helpers.py`).
+- **Campaign 3** (driver `run_campaign3.sh` in the scratchpad, detached;
+  kill script beside it): stage 1 = `pop_exact_h10` + `_rep` (ES, lead-2,
+  honest × exact; h10 base; stock pairs are pop_sop2_h10's rows) and
+  `sop2_h10_ctl` + `_rep` (`upgraded_sop2`: attacker daemon connected +
+  SoP-flagged; `connected_sop2`: connected, unflagged) — 10 micro cells at
+  once (~11.5 GB each measured on the morning matrix). Stage 2, started by
+  the driver when every stage-1 matrix has written `results.json`:
+  `pop_exact_mid` + `_rep` (ES, lead-2, honest × {exact, none} on the
+  UNCHANGED genesis mid base, 6 at once, ~20 GB each). Expect stage 1 to
+  finish ~7 h after launch and stage 2 ~14 h after that. Read out with
+  `venv/bin/python scripts/matrix_pairs.py pop_exact_h10 pop_exact_h10_rep
+  --ledger` (and the other two pairs). Launched 18:14:56–18:15:56Z (runner pids in the scratchpad's `matrix3/pids.txt`; every run dir is named `*_<matrix>__<cell>`).
 
 ## Where the reasoning lives
 
