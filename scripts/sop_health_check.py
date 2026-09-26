@@ -35,15 +35,54 @@ from pathlib import Path
 RE_DECISION = re.compile(
     r"SIM-(PoP|SoP): fork (\d+) (OBJECTIVE )?(alt|TIE) (\d+)/(\d+) vs (?:main )?(\d+)/(\d+)"
     r".*?-> (SWITCH|KEEP)")
+RE_HEIGHT_DIFF = re.compile(r"HEIGHT (\d+), difficulty:\s*(\d+)")
+RE_ARMED = re.compile(r"weight table armed \(w=(\d+)")
 ATTACKER_NODE = re.compile(r"attacker|bridge", re.I)
 
 
+def _suffix_units(diff_by_height: dict, last_diff: int | None, fork: int, length: int, w: int) -> int | None:
+    """Sum of per-height units (difficulty // w, floor 1) over the suffix
+    fork+1 .. fork+length, from the difficulties the node itself logged when
+    it added main-chain blocks; heights it never added (alt blocks above its
+    tip) take the latest logged difficulty."""
+    total = 0
+    for h in range(fork + 1, fork + length + 1):
+        d = diff_by_height.get(h, last_diff)
+        if d is None:
+            return None
+        total += max(1, d // w)
+    return total
+
+
 def scan_log_text(text: str, unit: int | None = None) -> dict:
-    """Count the health markers in one daemon log."""
+    """Count the health markers in one daemon log.
+
+    Share-weight detection needs the unit (diff / w). With an explicit
+    `unit` (the --unit / --diff --w CLI path, fixed-difficulty smokes) a chain
+    heavier than unit x length counted a share. Without one — a real-DAA base
+    such as the h10 chain snapshot — the unit at each suffix height is that
+    height's logged difficulty // w (w from the node's own "weight table
+    armed" line), and a chain must exceed length x unit by a further full
+    unit, so an alt chain's slightly different difficulty cannot masquerade
+    as a share (review 2026-09-26)."""
     n = {"reorg_started": 0, "reorg_success": 0, "exceptions": 0, "alt_added": 0,
          "decisions": 0, "objective": 0, "ties": 0, "switches": 0,
-         "sop_subjective": 0, "share_weighted": 0}
+         "sop_subjective": 0, "share_weighted": 0,
+         "w": None, "share_weighted_unit_source": "explicit" if unit else None}
+    diff_by_height: dict = {}
+    last_diff = None
     for line in text.splitlines():
+        if "difficulty:" in line and "HEIGHT " in line:
+            m = RE_HEIGHT_DIFF.search(line)
+            if m:
+                diff_by_height[int(m.group(1))] = int(m.group(2))
+                last_diff = int(m.group(2))
+            continue
+        if "weight table armed" in line:
+            m = RE_ARMED.search(line)
+            if m:
+                n["w"] = int(m.group(1))
+            continue
         if "###### REORGANIZE" in line:
             n["reorg_started"] += 1
         elif "REORGANIZE SUCCESS" in line:
@@ -56,7 +95,7 @@ def scan_log_text(text: str, unit: int | None = None) -> dict:
             m = RE_DECISION.search(line)
             if not m:
                 continue
-            engine, _fork, objective, kind, w_alt, l_alt, w_main, l_main, outcome = m.groups()
+            engine, fork, objective, kind, w_alt, l_alt, w_main, l_main, outcome = m.groups()
             n["decisions"] += 1
             if objective:
                 n["objective"] += 1
@@ -70,11 +109,24 @@ def scan_log_text(text: str, unit: int | None = None) -> dict:
             # lb*(1+uncle bonus) under PoP: any chain heavier than
             # unit*length had a share / uncle counted (weights are always
             # multiples of the unit, so divisibility cannot tell).
-            u = unit if engine == "SoP" else 1
-            if engine == "SoP":
-                n["sop_subjective"] += 1
-            if u and (int(w_alt) > u * int(l_alt) or int(w_main) > u * int(l_main)):
-                n["share_weighted"] += 1
+            if engine == "PoP":
+                if int(w_alt) > int(l_alt) or int(w_main) > int(l_main):
+                    n["share_weighted"] += 1
+                continue
+            n["sop_subjective"] += 1
+            if unit:
+                if int(w_alt) > unit * int(l_alt) or int(w_main) > unit * int(l_main):
+                    n["share_weighted"] += 1
+            elif n["w"]:
+                fork_h = int(fork)
+                ua = _suffix_units(diff_by_height, last_diff, fork_h, int(l_alt), n["w"])
+                um = _suffix_units(diff_by_height, last_diff, fork_h, int(l_main), n["w"])
+                # margin: one more full unit (the unit at the first suffix height)
+                margin = max(1, diff_by_height.get(fork_h + 1, last_diff or 0) // n["w"])
+                if ua is not None and um is not None:
+                    n["share_weighted_unit_source"] = "logged-difficulty"
+                    if int(w_alt) >= ua + margin or int(w_main) >= um + margin:
+                        n["share_weighted"] += 1
     return n
 
 
@@ -95,7 +147,8 @@ def check_run(run_dir: Path, unit: int | None = None) -> dict:
                      if not ATTACKER_NODE.search(name))
     share_weighted = sum(n["share_weighted"] for n in nodes.values())
     totals = {k: sum(n[k] for n in nodes.values()) for k in
-              ("reorg_started", "reorg_success", "exceptions", "alt_added", "decisions")}
+              ("reorg_started", "reorg_success", "exceptions", "alt_added", "decisions",
+               "sop_subjective", "share_weighted")}
     return {"run_dir": str(run_dir), "nodes": nodes, "totals": totals,
             "forks_seen": forks_seen, "share_weighted": share_weighted,
             "problems": problems, "ok": not problems and bool(nodes)}
@@ -115,6 +168,11 @@ def summarize(report: dict | None) -> str:
         parts.append(f"EXC {t['exceptions']}")
     if not report.get("forks_seen"):
         parts.append("no-forks")
+    # SoP nodes made subjective decisions but none ever carried a counted
+    # share: the share term is inert (the F2 class the 2026-09-25 review
+    # found by hand).
+    if t.get("sop_subjective") and not t.get("share_weighted"):
+        parts.append("share-term-inert")
     return "; ".join(parts) if parts else "ok"
 
 

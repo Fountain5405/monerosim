@@ -287,6 +287,8 @@ def fill_row_from_run(row: dict, run_dir: Path) -> None:
     health = check_run(run_dir)
     row["health"] = {"ok": health["ok"], "summary": summarize(health),
                      "forks_seen": health["forks_seen"], **health["totals"]}
+    if "share-term-inert" in row["health"]["summary"]:
+        row["health"]["ok"] = False
     try:
         r = analyze_run(run_dir)
     except AnalysisInputError as e:
