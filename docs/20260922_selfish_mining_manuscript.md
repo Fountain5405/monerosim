@@ -114,6 +114,14 @@ over-predicts exactly where a rational attacker would operate.**
 
 ### E4 — Countermeasures (RQ5: which countermeasure beats which strategy)
 
+> **RE-RUN (2026-09-26, `docs/20260926_sop_h10_rerun.md`):** the SoP v2
+> cells were re-run at n=2 on the fixed daemon and the `h10` chain-snapshot
+> base (real DAA from block one, attacker at 0 s). Result: ES {0.035, 0.000}
+> vs stock {0.377, 0.441}; lead-2 {0.000, 0.000} vs stock {0.305, 0.469};
+> honest controls ≈ α. Every SoP decision carried share weight; no daemon
+> threw. Finding 10 below is rewritten from that data. The 2026-09-25
+> notice that follows is kept for the record.
+>
 > **REVIEW NOTICE (2026-09-25, `docs/20260925_e4_code_data_review.md`):**
 > the SoP v2 verdict (finding 10), the SoP v1/v2 arc in finding 8 and
 > finding 9 are **RETRACTED** pending re-runs on a fixed binary — the SoP
@@ -280,9 +288,25 @@ cell to date measures anything but pop-core + det-tie.
    gains from eclipse-DoS alone; above parity the majority verdict passes
    twice. The coalition-internal split has fat run-to-run variance
    (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
-10. **RETRACTED 2026-09-25 (review F1–F5: the SoP binary could not reorganize;
-   honest nodes never received an attacker block; shares never verified;
-   controls had zero forks; γ/orphan columns mis-read).** ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
+10. **Share-or-Perish v2 (#146, embedded shares) neutralizes both the
+   textbook and the conservative lead-2 attacker at α = 0.4, n = 2, on a
+   realistic difficulty schedule** (2026-09-26 re-run on the fixed daemon
+   and the `h10` chain-snapshot base, `docs/20260926_sop_h10_rerun.md`):
+   ES earns {0.035, 0.000} (0.000 against the honest network's own chain)
+   vs stock {0.377, 0.441}; lead-2 — the policy PoP was blind to — earns
+   {0.000, 0.000} vs stock {0.305, 0.469}. Every one of the 2,822 subjective
+   fork decisions on SoP nodes carried share weight; the attacker's
+   unshared, late blocks lose every race. Honest controls sit at α under
+   both rules (stock {0.381, 0.410}; SoP {0.440, 0.326}). Costs: the
+   attacker's 40 % of hashrate is discarded (103–143 canonical blocks per
+   6 h vs ≈ 200 in the controls), the network orphan rate reads 0.36–0.52
+   (vandalism stays, profit goes), and a miner that does not gossip shares
+   weighs one unit in every tie — the SoP control's second draw lost 17
+   such races (share 0.326, orphan 0.218), an upgrade-transition cost that
+   n = 2 cannot yet size. The bridge (stock fork choice) is a biased
+   reference under SoP: report SoP shares against an honest node's chain.
+   **Earlier text, RETRACTED 2026-09-25 (review F1–F5) and superseded above:**
+   ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
    apparatus~~: with fixed genesis difficulty and a post-bootstrap
    attacker, the honest control is textbook — 0.405 ≈ α with ZERO
    orphaning, and the unflagged 40% miner (the upgrade-transition
@@ -416,6 +440,13 @@ config, so daemon behavior is stock either way.)
 | `20260925_050341_pop_sop2__honest_sop2` | `de5fb7b7`* | `pop_sop2` cell | **SoP v2 control: 0.405 ≈ α, ZERO orphaning — P-SoP3 passes** |
 | `20260925_051212_pop_sop2__honest_stock` | `de5fb7b7`* | `pop_sop2` cell | stock control: 0.369 |
 | `20260925_055045_pop_sop2__es_r2_sop2` | `de5fb7b7`* | `pop_sop2` cell | lead-2 under SoP: row lost to bridge freeze; log-verified every release → weight 0, kept off |
+| `20260926_140803_pop_sop2_h10__es_sop2` | `b1db1d6b`† | `pop_sop2_h10` cell | **SoP v2 vs ES on h10: 0.035 (honest-ref 0.000)**, 720/720 decisions share-weighted |
+| `20260926_140823_pop_sop2_h10_rep__es_sop2` | `b1db1d6b`† | `pop_sop2_h10_rep` cell | SoP v2 vs ES rep: 0.000 |
+| `20260926_140803_pop_sop2_h10__es_stock` / `_rep__es_stock` | `b1db1d6b`† | `pop_sop2_h10*` cells | stock ES on h10: 0.377 / 0.441 |
+| `20260926_140803_pop_sop2_h10__es_r2_sop2` / `_rep__es_r2_sop2` | `b1db1d6b`† | `pop_sop2_h10*` cells | **SoP v2 vs lead-2: 0.000 / 0.000** — the PoP blind spot closed |
+| `20260926_140803_pop_sop2_h10__es_r2_stock` / `_rep__es_r2_stock` | `b1db1d6b`† | `pop_sop2_h10*` cells | stock lead-2 on h10: 0.305 / 0.469 |
+| `20260926_140803_pop_sop2_h10__honest_sop2` / `_rep__honest_sop2` | `b1db1d6b`† | `pop_sop2_h10*` cells | SoP controls: 0.440 / 0.326 (rep lost 17 ties, orphan 0.218) |
+| `20260926_140803_pop_sop2_h10__honest_stock` / `_rep__honest_stock` | `b1db1d6b`† | `pop_sop2_h10*` cells | stock controls: 0.381 / 0.410 ≈ α |
 
 (All `pop_sop` SoP rows and all `pop_sop2` rows above are INVALID per the
 2026-09-25 review — F1/F3: the daemon could not reorganize. The `*_exact`
@@ -434,6 +465,8 @@ Reproduce any row:
 git checkout <commit> && nice -n10 ./run_sim.sh --config <config> --name <label> --no-monitor
 venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 ```
+
+† daemon `monerod-sim` built 2026-09-26T12:41Z from the patch stack at `caa8f656`; analysis re-run at `b1db1d6b` (`--reanalyze`). See `docs/20260926_sop_h10_rerun.md`.
 
 ## 8. Planned work
 

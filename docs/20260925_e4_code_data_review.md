@@ -178,6 +178,24 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
    4–6, the handoff, and the ledger rows for those cells (notices
    added 2026-09-25 pointing here).
 
+### Status (2026-09-26)
+
+- Step 1 (fixes): done 2026-09-25; a second patch review on 2026-09-26 added
+  l_b gating of the share term, the duplicate-slot skip, the dormant-node
+  share gate and the SoP RNG seed (`5d940ae1`, smoke-gated).
+- Step 2 (fork-forcing smoke): `test_configs/sop_fork_smoke.yaml` +
+  `scripts/sop_health_check.py`, green on the 12:41Z build
+  (`20260926_125218_sop_fork_smoke`) and on the fixed build
+  (`20260926_141745_sop_fork_smoke_fixed_off`).
+- Steps 3 and 5 (SoP cells at n=2 with stock pairs, stock baselines n≥2):
+  done on the `h10` chain-snapshot base instead of fixed difficulty —
+  `docs/20260926_sop_h10_rerun.md`. SoP v2 neutralizes ES and lead-2
+  (0.000–0.035 vs stock 0.305–0.469); controls ≈ α.
+- Step 4 (exact cells): pending the owner's decision; needs the exact-uncle
+  sibling-check fix from the 2026-09-26 patch review first.
+- Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated
+  2026-09-26; findings 8 (v1/v2 arc) and 9 keep their retraction notices.
+
 ## 4. Process changes
 
 - Archive `~/.monerosim/bin/monerod-sim.provenance` + the binary sha256

@@ -159,9 +159,23 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   12:41Z build and their runs record it. The hard-fork vote bypass stays
   unconditional by design (the unflagged bridge must carry SoP blocks); the
   "byte-for-byte stock" wording was qualified.
+- **Step 2 result (16:27Z, `docs/20260926_sop_h10_rerun.md`)**: all 12 cells
+  green through the gate (`--reanalyze` at `b1db1d6b`). SoP v2 vs ES
+  {0.035, 0.000} (honest-ref 0.000/0.000) vs stock {0.377, 0.441}; SoP v2 vs
+  lead-2 {0.000, 0.000} vs stock {0.305, 0.469}; controls stock {0.381,
+  0.410}, SoP {0.440, 0.326}. 2,822 of 2,822 subjective SoP decisions
+  share-weighted, 0 exceptions. Manuscript §4 notice, §5 finding 10 and §7
+  ledger updated; review §3 carries a status block. One cell's `run_sim.sh`
+  exited 126 after a complete archive because the script was edited in place
+  under 12 running instances (never do that; memory + `b1db1d6b`).
+- Fixed `monerod-sim` (patch stack at `5d940ae1`) INSTALLED 16:30Z with a
+  provenance file matching the tree; the three bootstrap smokes are running
+  on it (results appended below when done).
 - Open decision for the owner: does the manuscript still want the MRL #144
-  exact-uncle variant (≈10 more cells at n=2)? Otherwise keep the det-tie
-  relabel.
+  exact-uncle variant (≈10 more cells at n=2; needs the exact-uncle sibling
+  fix from the patch review first)? Otherwise keep the det-tie relabel.
+  Also open: a SoP-flagged honest-attacker control to size the
+  non-upgraded-miner race cost (`docs/20260926_sop_h10_rerun.md` §5).
 
 ## Where the reasoning lives
 
