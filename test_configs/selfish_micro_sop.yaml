@@ -31,12 +31,13 @@ general:
   progress: true
   process_threads: 2
   native_preemption: true
-  # Shadow worker threads per run. Default 0 = every core: with 12 matrix
-  # cells running concurrently on 64 cores that was 12 x 64 spinning workers
-  # for 13 hosts each (load 175, CPU 72% idle, 16% sys; 1x realtime instead
-  # of the ~4x a lone smoke gets). 4 workers cover 13 hosts; 12 cells then
-  # use 48 threads. Results are independent of the worker count.
-  parallelism: 4
+  # Shadow worker threads per run: leave at the default (0 = one per host,
+  # 13 here). Measured 2026-09-26 with 12 cells concurrent on 64 cores:
+  # default -> ~1x realtime per cell (load ~175, CPU mostly idle, 16% sys —
+  # ugly but steady); `parallelism: 4` -> the grafted cells advanced 5 sim-
+  # SECONDS in 10 wall-minutes (daemons 2-5% CPU each, no Shadow errors),
+  # while a lone 4-worker smoke ran at only ~1.2x versus ~3.6x at default.
+  # Fewer workers than hosts stalls these native-mining cells; do not lower it.
   mining:
     mode: native
     # Preload: every monerod-family daemon boots with chain_snapshots/h10
