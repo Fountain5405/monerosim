@@ -1,0 +1,22 @@
+# E4 wave 2: (a) repeats sizing the surprising det-tie gap (es_pop 0.022 vs
+# es_pop_det 0.244 — single runs, fat-tailed tie dynamics, need n=2);
+# (b) the +uncles rung (deviated id-in-nonce variant, flagged in the design
+# doc). Prediction for uncles (pre-registered): ties resolve for honest
+# deterministically -> es_pop_uncles <= es_pop, fewer transient forks;
+# honest control stays at alpha. Prediction for the conservative gap
+# (mechanism-derived): uncles do NOT close it — the lead-2 release is a
+# clean in-time override, not a tie — that gap is SoP's job (MRL #146).
+name: pop_wave2
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    pop:        {honest: {daemon_options: {sim-publish-or-perish: true}}}
+    pop_det:    {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-det-tie: true}}}
+    pop_uncles: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles: true}}}
+exclude:
+  - {strategy: honest, countermeasure: pop}
+  - {strategy: honest, countermeasure: pop_det}

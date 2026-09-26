@@ -1,0 +1,17 @@
+# E4 follow-up: PoP vs the conservative strategy (release_lead 2), and the
+# deterministic-tie axis (MRL #144's tweak vs the paper's random tie, P2).
+# Baselines are CITED, not re-run: es_none 0.492 (pop_pilot), es_r2_none
+# 0.309 (20260921_020113_selfish_release2 — same base+seed+shape).
+# Cells: es_pop_det, es_r2_pop, es_r2_pop_det (es_pop excluded: measured).
+name: pop_followup
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    pop:     {honest: {daemon_options: {sim-publish-or-perish: true}}}
+    pop_det: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-det-tie: true}}}
+exclude:
+  - {strategy: es, countermeasure: pop}

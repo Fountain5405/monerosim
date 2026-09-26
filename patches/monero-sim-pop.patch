@@ -1,8 +1,352 @@
+diff --git a/src/cryptonote_basic/hardfork.cpp b/src/cryptonote_basic/hardfork.cpp
+index a0ea3633f..ca209ec15 100644
+--- a/src/cryptonote_basic/hardfork.cpp
++++ b/src/cryptonote_basic/hardfork.cpp
+@@ -106,10 +106,20 @@ uint8_t HardFork::get_effective_version(uint8_t voting_version) const
+   return voting_version;
+ }
+ 
++// SIMULATION ONLY (monerosim monero-sim-pop.patch, Share-or-Perish MRL #146):
++// version_minor may carry the embedded-workshare count (the proposal
++// repurposes the vote field under a soft fork), so the vote comparison is
++// dropped for EVERY block. It has to be dropped HERE, not only at the
++// Blockchain callers: HardFork::add() re-runs do_check() and
++// BlockchainDB::add_block ignores add()'s return, so a failing vote silently
++// skipped set_hard_fork_version and the next pop_block threw MDB_NOTFOUND
++// from on_block_popped -- every reorganization aborted in the 2026-09-24/25
++// SoP runs (review F1). Fork activation on the simulated chains is
++// height-scheduled with threshold 0, so ignoring votes moves no fork height.
+ bool HardFork::do_check(uint8_t block_version, uint8_t voting_version) const
+ {
+-  return block_version == heights[current_fork_index].version
+-      && voting_version >= heights[current_fork_index].version;
++  (void)voting_version;
++  return block_version == heights[current_fork_index].version;
+ }
+ 
+ bool HardFork::check(const cryptonote::block &block) const
+@@ -120,9 +130,9 @@ bool HardFork::check(const cryptonote::block &block) const
+ 
+ bool HardFork::do_check_for_height(uint8_t block_version, uint8_t voting_version, uint64_t height) const
+ {
++  (void)voting_version;   // SIMULATION ONLY: see do_check
+   int fork_index = get_voted_fork_index(height);
+-  return block_version == heights[fork_index].version
+-      && voting_version >= heights[fork_index].version;
++  return block_version == heights[fork_index].version;
+ }
+ 
+ bool HardFork::check_for_height(const cryptonote::block &block, uint64_t height) const
+diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
+index 74845ce13..13c715aed 100644
+--- a/src/cryptonote_basic/miner.cpp
++++ b/src/cryptonote_basic/miner.cpp
+@@ -108,6 +108,7 @@ namespace cryptonote
+     // PoW itself is unchanged: every block still carries a real RandomX hash that
+     // meets the real difficulty target, so unpatched peers validate it normally.
+     const command_line::arg_descriptor<uint64_t>    arg_sim_hash_interval_ms =  {"sim-hash-interval-ms", "Simulation only: sleep this many milliseconds before every hash attempt (0 = stock miner). Throttles the miner to a virtual hashrate so a discrete-event simulator sees a syscall per hash; forces a single mining thread and RandomX light mode unless --sim-rx-full-dataset is set.", 0, true};
++  const command_line::arg_descriptor<uint64_t>    arg_sim_sop_w =              {"sim-sop-w", "Simulation only (Share-or-Perish, MRL #146): workshare ratio w. When > 1, the miner also logs PoW headers meeting >= difficulty/w on the current template (capture step; relay/weight integration later). 0 = off.", 0, true};
+     const command_line::arg_descriptor<bool>        arg_sim_rx_full_dataset =   {"sim-rx-full-dataset", "Simulation only, with --sim-hash-interval-ms: allocate the full RandomX dataset (~2 GB, fast hashing) instead of light mode.", false, true};
+   }
+ 
+@@ -304,6 +305,7 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_bg_mining_idle_threshold_percentage);
+     command_line::add_arg(desc, arg_bg_mining_miner_target_percentage);
+     command_line::add_arg(desc, arg_sim_hash_interval_ms);
++    command_line::add_arg(desc, arg_sim_sop_w);
+     command_line::add_arg(desc, arg_sim_rx_full_dataset);
+   }
+   //-----------------------------------------------------------------------------------------------------
+@@ -352,6 +354,8 @@ namespace cryptonote
+ 
+     if(command_line::has_arg(vm, arg_sim_hash_interval_ms))
+       m_sim_hash_interval_ms = command_line::get_arg(vm, arg_sim_hash_interval_ms);
++    if(command_line::has_arg(vm, arg_sim_sop_w))
++      m_sim_sop_w = command_line::get_arg(vm, arg_sim_sop_w);
+     if(command_line::has_arg(vm, arg_sim_rx_full_dataset))
+       m_sim_rx_full_dataset = command_line::get_arg(vm, arg_sim_rx_full_dataset);
+     if(m_sim_hash_interval_ms)
+@@ -559,6 +563,7 @@ namespace cryptonote
+     uint64_t height = 0;
+     difficulty_type local_diff = 0;
+     uint32_t local_template_ver = 0;
++    bool sim_sop_armed_logged = false;   // SIM-SoP diagnostics
+     block b;
+     slow_hash_allocate_state();
+     ++m_threads_active;
+@@ -617,6 +622,15 @@ namespace cryptonote
+       if (m_sim_hash_interval_ms)
+         misc_utils::sleep_no_w(m_sim_hash_interval_ms);
+ 
++      // SIM-SoP diagnostics: arming proof, once per worker.
++      if (!sim_sop_armed_logged && m_sim_sop_w > 1)
++      {
++        MGINFO_GREEN("SIM-SoP: capture armed w=" << m_sim_sop_w << " diff=" << local_diff);
++        sim_sop_armed_logged = true;
++      }
++
++      // SIM-SoP diagnostics: one line per template, arming proof.
++
+       m_gbh(b, height, NULL, tools::get_max_concurrency(), h);
+ 
+       if(check_hash(h, local_diff))
+@@ -637,6 +651,37 @@ namespace cryptonote
+             epee::serialization::store_t_to_json_file(m_config, m_config_folder_path + "/" + MINER_CONFIG_FILE_NAME);
+         }
+       }
++      else if (m_sim_sop_w > 1 && local_diff / m_sim_sop_w >= 1 && check_hash(h, local_diff / m_sim_sop_w))
++      {
++        // SIMULATION ONLY (Share-or-Perish, MRL #146): workshare hit — a
++        // PoW header at >= 1/w of block difficulty on the current template
++        // (same prev_id by construction). Step 2: pool locally and gossip
++        // AHEAD of the containing block — l_w needs first-seen BEFORE the
++        // block, so the share cannot ride in the block itself. Expected
++        // rate ~w-1 shares per block.
++        MGINFO_GREEN("SIM-SoP: share " << get_block_hash(b) << " nonce " << nonce << " height " << height << " slot " << b.minor_version);
++        m_phandler->handle_workshare_found(get_block_hashing_blob(b), height);
++        // #146 slot advance: the share just occupied slot b.minor_version;
++        // subsequent hashes must carry minor_version = slot+1 and a
++        // coinbase embedding shares 0..slot (tx_tree_hash covers them), or
++        // the eventual block's version_minor/sequence would not bind its
++        // hashed header. Pull a fresh template; the loop refetches when
++        // m_template_no moves.
++        // Rate-limited to 1/s: a template pull per share saturates the
++        // simulator's event queue (measured: shadow at 5x CPU, virtual
++        // clock stalled). A skipped refresh costs at most one share's
++        // embedding (it re-hashes an occupied slot and is dropped).
++        static time_t last_sop_refresh = 0;
++        time_t now = time(NULL);
++        if (now != last_sop_refresh)
++        {
++          last_sop_refresh = now;
++          block nb; difficulty_type nd; uint64_t nh = 0, nr = 0, nsh = 0;
++          crypto::hash nseed;
++          if (m_phandler->get_block_template(nb, get_mining_address(), nd, nh, nr, blobdata(), nsh, nseed))
++            set_block_template(nb, nd, nh, nr);
++        }
++      }
+       nonce+=m_threads_total;
+       ++m_hashes;
+       ++m_total_hashes;
+diff --git a/src/cryptonote_basic/miner.h b/src/cryptonote_basic/miner.h
+index 8595d0c2c..0bd7401dc 100644
+--- a/src/cryptonote_basic/miner.h
++++ b/src/cryptonote_basic/miner.h
+@@ -47,6 +47,10 @@ namespace cryptonote
+   struct i_miner_handler
+   {
+     virtual bool handle_block_found(block& b, block_verification_context &bvc) = 0;
++    // SIMULATION ONLY (Share-or-Perish, MRL #146): a workshare hit on the
++    // current template (80B PoW header blob + height). Default no-op so
++    // non-core implementors (tests) keep compiling.
++    virtual bool handle_workshare_found(const blobdata& share_blob, uint64_t height) { return false; }
+     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash) = 0;
+   protected:
+     ~i_miner_handler(){};
+@@ -177,6 +181,7 @@ namespace cryptonote
+     std::atomic<uint64_t> m_block_reward;
+     // Simulation mining (monerosim patch): 0 = stock miner.
+     uint64_t m_sim_hash_interval_ms;
++    uint64_t m_sim_sop_w = 0;              //!< SIMULATION ONLY (SoP, MRL #146): workshare ratio; 0 = off
+     bool m_sim_rx_full_dataset;
+   };
+ }
+diff --git a/src/cryptonote_basic/tx_extra.h b/src/cryptonote_basic/tx_extra.h
+index c168f48a7..d282d8986 100644
+--- a/src/cryptonote_basic/tx_extra.h
++++ b/src/cryptonote_basic/tx_extra.h
+@@ -40,6 +40,8 @@
+ #define TX_EXTRA_MERGE_MINING_TAG           0x03
+ #define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS     0x04
+ #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG   0xDE
++#define TX_EXTRA_TAG_SIM_UNCLE            0x75   // monerosim sim-only (monero-sim-pop.patch, MRL #144 exact)
++#define TX_EXTRA_TAG_SIM_WORKSHARE        0x76   // monerosim sim-only (monero-sim-pop.patch, MRL #146 share-or-perish)
+ 
+ #define TX_EXTRA_NONCE_PAYMENT_ID           0x00
+ #define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID 0x01
+@@ -178,7 +180,34 @@ namespace cryptonote
+   //   varint tag;
+   //   varint size;
+   //   varint data[];
+-  typedef boost::variant<tx_extra_padding, tx_extra_pub_key, tx_extra_nonce, tx_extra_merge_mining_tag, tx_extra_additional_pub_keys, tx_extra_mysterious_minergate> tx_extra_field;
++  // SIMULATION ONLY (monerosim monero-sim-pop.patch): the PoW header
++  // (hashing blob, ~80 B) of one uncle block, per MRL #144 — any verifier
++  // can re-derive the uncle's block id and re-check its proof of work
++  // without ever having received the uncle itself.
++  struct tx_extra_sim_uncle
++  {
++    std::string data;
++
++    BEGIN_SERIALIZE()
++      FIELD(data)
++    END_SERIALIZE()
++  };
++
++  // One embedded Share-or-Perish workshare record (MRL #146): varint seq,
++  // varint timestamp, 4B nonce, 32B tx_tree_hash, varint num_transactions
++  // (version_major/prev_id/version_minor are implicit in the containing
++  // block; version_minor == the share's sequence index).
++  struct tx_extra_sim_workshare
++  {
++    std::string data;
++
++    BEGIN_SERIALIZE()
++      FIELD(data)
++    END_SERIALIZE()
++  };
++
++  // sim fields are APPENDED (last) so existing which() indices are stable.
++  typedef boost::variant<tx_extra_padding, tx_extra_pub_key, tx_extra_nonce, tx_extra_merge_mining_tag, tx_extra_additional_pub_keys, tx_extra_mysterious_minergate, tx_extra_sim_uncle, tx_extra_sim_workshare> tx_extra_field;
+ }
+ 
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
+@@ -187,3 +216,5 @@ VARIANT_TAG(binary_archive, cryptonote::tx_extra_nonce, TX_EXTRA_NONCE);
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_merge_mining_tag, TX_EXTRA_MERGE_MINING_TAG);
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_additional_pub_keys, TX_EXTRA_TAG_ADDITIONAL_PUBKEYS);
+ VARIANT_TAG(binary_archive, cryptonote::tx_extra_mysterious_minergate, TX_EXTRA_MYSTERIOUS_MINERGATE_TAG);
++VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
++VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index fcc92644a..1d969f47f 100644
+index fcc92644a..1d3ae8bef 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
-@@ -1857,6 +1857,104 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -70,6 +70,7 @@
+ using namespace crypto;
+ 
+ //#include "serialization/json_archive.h"
++#include "serialization/binary_utils.h"
+ 
+ /* TODO:
+  *  Clean up code:
+@@ -1476,6 +1477,16 @@ uint64_t Blockchain::get_current_cumulative_block_weight_median() const
+ // in a lot of places.  That flag is not referenced in any of the code
+ // nor any of the makefiles, howeve.  Need to look into whether or not it's
+ // necessary at all.
++static const char SIM_POP_UNCLE_MAGIC[] = "SIMPOPU1";
++
++// SIM-SoP helpers (definitions below, near the weight table): used by
++// create_block_template's share embedding, which precedes them in this file.
++template<typename T> static void sim_sop_append_varint(T &out, uint64_t v);
++static bool sim_sop_read_varint(const std::string &in, size_t &pos, uint64_t &v);
++static blobdata sim_sop_share_record(uint64_t seq, const block_header &bh,
++                                     const std::string &tree_hash, uint64_t num_tx);
++static bool sim_parse_pow_header(const std::string &blob, block_header &bh, uint64_t &tx_count);
++
+ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block, const account_public_address& miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash)
+ {
+   LOG_PRINT_L3("Blockchain::" << __func__);
+@@ -1684,7 +1695,18 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+   //make blocks coin-base tx looks close to real coinbase tx to get truthful blob weight
+   uint8_t hf_version = b.major_version;
+   size_t max_outs = hf_version >= 4 ? 1 : 11;
+-  bool r = construct_miner_tx(height, median_weight, already_generated_coins, txs_weight, fee, miner_address, b.miner_tx, ex_nonce, max_outs, hf_version);
++  blobdata sim_ex_nonce = ex_nonce;
++  if (m_sim_pop_enabled && m_sim_pop_uncles && height >= 2)
++  {
++    crypto::hash sim_uncle;
++    if (sim_pop_find_uncle(height - 1, sim_uncle))
++    {
++      sim_ex_nonce.append(SIM_POP_UNCLE_MAGIC, sizeof(SIM_POP_UNCLE_MAGIC) - 1);
++      sim_ex_nonce.append(reinterpret_cast<const char*>(&sim_uncle), sizeof(sim_uncle));
++      MINFO("SIM-PoP: embedding uncle " << sim_uncle << " at height " << height);
++    }
++  }
++  bool r = construct_miner_tx(height, median_weight, already_generated_coins, txs_weight, fee, miner_address, b.miner_tx, sim_ex_nonce, max_outs, hf_version);
+   CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, first chance");
+   size_t cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
+ #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
+@@ -1693,7 +1715,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+ #endif
+   for (size_t try_count = 0; try_count != 10; ++try_count)
+   {
+-    r = construct_miner_tx(height, median_weight, already_generated_coins, cumulative_weight, fee, miner_address, b.miner_tx, ex_nonce, max_outs, hf_version);
++    r = construct_miner_tx(height, median_weight, already_generated_coins, cumulative_weight, fee, miner_address, b.miner_tx, sim_ex_nonce, max_outs, hf_version);
+ 
+     CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, second chance");
+     size_t coinbase_weight = get_transaction_weight(b.miner_tx);
+@@ -1731,6 +1753,81 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+         MDEBUG("Setting extra for block: " << b.miner_tx.extra.size() << ", try_count=" << try_count);
+       }
+     }
++    // SIMULATION ONLY (MRL #144 EXACT): after the weight-settling loop, append
++    // the uncle PoW-header field (tag 0x75 + varint length + hashing blob).
++    // The ~85 extra bytes are folded into cumulative_weight so the invariant
++    // below stays true; the field is covered by the miner-tx hash like any
++    // other extra field, so the block remains stock-valid.
++    if (m_sim_pop_enabled && m_sim_pop_uncles_header && height >= 2)
++    {
++      blobdata sim_uncle_blob;
++      if (sim_pop_find_uncle_header(height - 1, sim_uncle_blob))
++      {
++        b.miner_tx.extra.push_back(static_cast<uint8_t>(TX_EXTRA_TAG_SIM_UNCLE));
++        for (uint64_t len = sim_uncle_blob.size();;)
++        {
++          uint8_t byte = len & 0x7f;
++          len >>= 7;
++          if (len)
++            byte |= 0x80;
++          b.miner_tx.extra.push_back(byte);
++          if (!len)
++            break;
++        }
++        b.miner_tx.extra.insert(b.miner_tx.extra.end(), sim_uncle_blob.begin(), sim_uncle_blob.end());
++        cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
++        MINFO("SIM-PoP: embedding uncle header (" << sim_uncle_blob.size() << " B) at height " << height);
++      }
++    }
++    // SIMULATION ONLY (MRL #146, option 1): embed this node's OWN
++    // workshares for the template's (prev, height) — one 0x76 field per
++    // share, slots 0..N-1, and version_minor = N. Each share records the
++    // tree hash it was mined under (its own header), so verification is
++    // node-independent; only l_b/l_w timing is subjective.
++    if (m_sim_sop_enabled && height >= 1)
++    {
++      std::vector<std::pair<uint64_t, crypto::hash>> own;
++      for (const auto &sh : m_sim_shares)
++        if (sh.second.local && sh.second.height == height
++            && sh.second.prev_id == b.prev_id)
++          own.push_back({sh.second.seq, sh.first});
++      std::sort(own.begin(), own.end());
++      // TRUE slots only: a share's PoW covers its own minor_version, so it
++      // can ONLY verify at the slot it was mined under. Embed the contiguous
++      // prefix 0..N-1 (first-wins on duplicate slots — stale-template shares
++      // re-hash an already-filled slot); b.minor_version = N.
++      uint64_t n_embedded = 0;
++      for (const auto &os : own)
++      {
++        if (os.first != n_embedded)
++          break;                    // gap: the prefix ends here
++        const sim_workshare_entry &e = m_sim_shares[os.second];
++        block_header sbh;
++        uint64_t num_tx = 0;
++        blobdata rec, tree;
++        if (sim_parse_pow_header(e.blob, sbh, num_tx))
++        {
++          blobdata hb;
++          if (::serialization::dump_binary(sbh, hb) && hb.size() + 32 < e.blob.size())
++          {
++            tree.assign(e.blob, hb.size(), 32);
++            rec = sim_sop_share_record(e.seq, sbh, tree, num_tx);
++          }
++        }
++        if (rec.empty())
++          break;
++        b.miner_tx.extra.push_back(static_cast<uint8_t>(TX_EXTRA_TAG_SIM_WORKSHARE));
++        sim_sop_append_varint(b.miner_tx.extra, rec.size());
++        b.miner_tx.extra.insert(b.miner_tx.extra.end(), rec.begin(), rec.end());
++        ++n_embedded;
++      }
++      b.minor_version = n_embedded;
++      if (n_embedded)
++      {
++        cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
++        MINFO("SIM-SoP: embedding " << n_embedded << " workshares at height " << height);
++      }
++    }
+     CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
+ #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
+     MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
+@@ -1857,6 +1954,679 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -19,16 +363,252 @@ index fcc92644a..1d969f47f 100644
 +// measurement, no clock sync. Late blocks contribute zero to their chain's
 +// in-time weight. Uncles (Def. 2/3's second term) are NOT modeled: this
 +// patch measures the fork-choice core alone.
-+void Blockchain::set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie)
++void Blockchain::set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles, bool uncles_header)
 +{
 +  m_sim_pop_enabled = true;
 +  m_sim_pop_k = k;
 +  m_sim_pop_delay_ms = delay_ms;
 +  m_sim_pop_det_tie = det_tie;
++  m_sim_pop_uncles = uncles;
++  m_sim_pop_uncles_header = uncles_header;
 +  m_sim_pop_rng.seed(std::random_device{}());
 +  MGINFO("*** SIMULATION: --sim-publish-or-perish is ON (k=" << k
 +         << ", delay=" << delay_ms << "ms, "
-+         << (det_tie ? "deterministic" : "random") << " tie-break; no uncles) ***");
++         << (det_tie ? "deterministic" : "random") << " tie-break, "
++         << (uncles ? "WITH uncles (id-in-nonce, DEVIATED)" : "")
++         << (uncles_header ? "WITH uncles (80B PoW header, MRL #144 exact)" : "")
++         << ((!uncles && !uncles_header) ? "no uncles" : "") << ") ***");
++}
++
++// --- MRL #144 EXACT uncle machinery -------------------------------------
++// Template side: the hashing blob (PoW header) of one in-time alt block
++// that competed with the block we are about to build on (height N-1
++// sibling, same prev).
++bool Blockchain::sim_pop_find_uncle_header(uint64_t parent_height, blobdata &header_blob) const
++{
++  if (parent_height < 1)
++    return false;
++  const crypto::hash parent_prev = get_block_id_by_height(parent_height - 1);
++  bool found = false;
++  m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
++      if (found || data.height != parent_height)
++        return true;
++      cryptonote::blobdata blob;
++      cryptonote::alt_block_data_t d2;
++      if (!m_db->get_alt_block(alt_id, &d2, &blob))
++        return true;
++      cryptonote::block alt_bl;
++      if (!cryptonote::parse_and_validate_block_from_blob(blob, alt_bl))
++        return true;
++      if (alt_bl.prev_id != parent_prev)
++        return true;
++      if (!sim_pop_in_time(alt_id, parent_height))
++        return true;
++      header_blob = get_block_hashing_blob(alt_bl);
++      found = true;
++      return true;
++  });
++  return found;
++}
++
++// Parse a PoW-header blob (get_block_hashing_blob output): after the
++// serialized block_header come the 32-byte tx-tree hash and then the
++// tx_hashes-count varint, which must consume the blob exactly. (The
++// tree-hash offset matters: a parser that starts the varint right after
++// the header lands on the tree hash and rejects every real blob — the
++// defect that silently zeroed the uncle-header bonus in every run before
++// 2026-09-24.) Shared by the uncle-header verifier and the SoP workshare
++// pool.
++static bool sim_parse_pow_header(const std::string &blob, block_header &bh, uint64_t &tx_count)
++{
++  std::vector<uint8_t> v(blob.begin(), blob.end());
++  binary_archive<false> ar{epee::to_span(v)};
++  if (!::do_serialize(ar, bh))
++    return false;
++  blobdata hb;
++  if (!::serialization::dump_binary(bh, hb))
++    return false;
++  if (hb.empty() || hb.size() + 32 >= v.size())
++    return false;
++  tx_count = 0;
++  {
++    size_t pos = hb.size() + 32; uint64_t shift = 0;   // skip the tx-tree hash
++    bool terminated = false;
++    while (pos < v.size())
++    {
++      const uint8_t byte = v[pos++];
++      tx_count |= (uint64_t)(byte & 0x7f) << shift;
++      shift += 7;
++      if (!(byte & 0x80)) { terminated = true; break; }
++    }
++    if (!terminated || pos != v.size())
++      return false;           // trailing junk / unterminated varint
++  }
++  return true;
++}
++
++// Weight side (trustless per MRL #144): an embedded header counts when its
++// PoW meets the difficulty at the uncle height and its prev_id makes it a
++// sibling of the containing block's parent. In-time-ness: a block we
++// RECEIVED is held to the lateness rule; one we never received still
++// counts — that self-contained verifiability is the point of the 80-byte
++// header form (the DEVIATED id-in-nonce variant cannot do this).
++uint64_t Blockchain::sim_pop_uncle_bonus_header(const block &b, uint64_t height) const
++{
++  if (height < 2)
++    return 0;
++  std::vector<tx_extra_field> fields;
++  if (!parse_tx_extra(b.miner_tx.extra, fields))
++  {
++    MINFO("SIM-PoP: block at height " << height << " tx_extra UNPARSABLE (uncle bonus 0)");
++    return 0;
++  }
++  const crypto::hash parent_prev = get_block_id_by_height(height - 2);
++  uint64_t bonus = 0;
++  for (const auto &f : fields)
++  {
++    if (f.which() != 6)          // variant: ..., 5 minergate, 6 sim_uncle
++      continue;
++    const std::string &blob = boost::get<tx_extra_sim_uncle>(f).data;
++
++    // Re-derive the uncle id; re-parse the header (canonical form only);
++    // a reconstructed block must reproduce the blob byte-for-byte or the
++    // header counts for nothing.
++    crypto::hash uncle_id;
++    {
++      // The uncle's block id = keccak(varint(size) || hashing blob), exactly
++      // what calculate_block_hash computes (get_object_hash serializes the
++      // blob as a length-prefixed string). A bare keccak of the blob is NOT
++      // the block id, so the lateness lookup below never matched before.
++      blobdata pre;
++      sim_sop_append_varint(pre, blob.size());
++      pre += blob;
++      get_blob_hash(pre, uncle_id);
++    }
++    block_header bh;
++    uint64_t tx_count = 0;
++    if (!sim_parse_pow_header(blob, bh, tx_count))   // canonical header + tree hash + exact-fit count
++    {
++      MINFO("SIM-PoP: uncle header at height " << height << " REJECTED (unparsable, " << blob.size() << " B)");
++      continue;
++    }
++    (void)tx_count;
++    if (bh.prev_id != parent_prev)
++    {
++      MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " REJECTED (not a sibling of the parent)");
++      continue;                 // not a sibling of our parent (MRL #144 height check)
++    }
++
++    // PoW: hash the embedded blob ITSELF (blobdata overload). Rebuilding a
++    // block from the header and hashing that recomputes the tree hash from
++    // an empty coinbase (and a wrong tx count), so it can never reproduce
++    // the mined blob -- the comparison that kept this bonus inert in every
++    // run through 2026-09-25 (review F4).
++    crypto::hash pow;
++    if (!get_block_longhash(this, blob, pow, height - 1, bh.major_version, nullptr, 0)
++        || !check_hash(pow, sim_block_difficulty_at(height - 1)))
++    {
++      MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " REJECTED (PoW below difficulty "
++            << sim_block_difficulty_at(height - 1) << ")");
++      continue;
++    }
++
++    // Lateness: received uncles are held to Def.1; never-received ones
++    // count (trustless — the PoW above is their proof of reality).
++    auto it = m_sim_recv.find(uncle_id);
++    if (it != m_sim_recv.end() && !sim_pop_in_time(uncle_id, height - 1))
++    {
++      MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " REJECTED (received late)");
++      continue;
++    }
++    MINFO("SIM-PoP: uncle " << uncle_id << " at height " << height << " COUNTED"
++          << (it == m_sim_recv.end() ? " (never received: trustless)" : ""));
++    ++bonus;
++  }
++  return bonus;
++}
++
++// SIMULATION ONLY (Share-or-Perish, MRL #146, step 2): admit a workshare
++// into the per-node pool. Validation here is intentionally light — canonical
++// parse plus "continues a block we know" (main or alt at height-1); the full
++// PoW check (>= diff/w at this height) is deferred to weight time, exactly
++// like embedded uncle headers. First-seen time goes into the shared
++// m_sim_recv ledger so l_b and l_w read one clock. Returns true only for a
++// NEW share (duplicates keep their first-seen and do not re-relay).
++bool Blockchain::sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id)
++{
++  CRITICAL_REGION_LOCAL(m_blockchain_lock);
++  if (height < 1 || height > get_current_blockchain_height())
++  {
++    MINFO("SIM-SoP: share rejected (height " << height << " vs chain height " << get_current_blockchain_height() << ")");
++    return false;
++  }
++  block_header bh;
++  uint64_t tx_count = 0;
++  if (!sim_parse_pow_header(blob, bh, tx_count))
++  {
++    MINFO("SIM-SoP: share rejected (unparsable, " << blob.size() << " B)");
++    return false;
++  }
++
++  // The share must continue something we know at height-1: the main-chain
++  // block, or an alt block competing there (during races the template's
++  // parent can itself be off the main chain).
++  bool parent_known = get_block_id_by_height(height - 1) == bh.prev_id;
++  if (!parent_known)
++  {
++    m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
++        if (data.height == height - 1 && alt_id == bh.prev_id)
++          parent_known = true;
++        return true;
++    });
++  }
++  if (!parent_known)
++  {
++    MINFO("SIM-SoP: share rejected (unknown parent " << bh.prev_id << " at height " << (height - 1) << ")");
++    return false;
++  }
++
++  cn_fast_hash(blob.data(), blob.size(), id);
++  if (m_sim_shares.count(id))
++    return false;
++  const uint64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++  // Same clock and same emplace semantics as block receives: re-submissions
++  // and P2P duplicates never move the first-seen timestamp.
++  m_sim_recv.emplace(id, now_ms);
++  if (local)
++    m_btc_valid = false;   // a new own share must reach the next template
++  sim_workshare_entry ent;
++  ent.height = height;
++  ent.prev_id = bh.prev_id;
++  ent.recv_ms = now_ms;
++  ent.blob = blob;
++  ent.local = local;
++  ent.seq = bh.minor_version;   // the slot the share was mined under (#146)
++  m_sim_shares.emplace(id, ent);
++  // Bound the pool by first-seen order (rates are ~w-1 per block per miner;
++  // 1024 covers many heights of multi-miner gossip).
++  if (m_sim_shares.size() > 1024)
++  {
++    auto oldest = m_sim_shares.begin();
++    for (auto it = m_sim_shares.begin(); it != m_sim_shares.end(); ++it)
++      if (it->second.recv_ms < oldest->second.recv_ms)
++        oldest = it;
++    m_sim_shares.erase(oldest);
++  }
++  return true;
++}
++
++// Difficulty at `h` for weight/PoW purposes. Alt-chain blocks may sit above
++// the main-chain tip, where the main DB has no row (the lookup threw
++// "difficulty not in db" and rejected every LONGER alt chain in the SoP v1
++// and ramp-era v2 runs, review F3): such heights take the tip's difficulty
++// (exact under fixed difficulty, an approximation under LWMA).
++difficulty_type Blockchain::sim_block_difficulty_at(uint64_t h) const
++{
++  const uint64_t top = m_db->height() - 1;
++  return m_db->get_block_difficulty(h <= top ? h : top);
 +}
 +
 +// Earliest local receive time of ANY block (main or alt) at `height`.
@@ -61,10 +641,334 @@ index fcc92644a..1d969f47f 100644
 +  return it->second <= first + m_sim_pop_delay_ms;
 +}
 +
++bool Blockchain::sim_pop_find_uncle(uint64_t parent_height, crypto::hash &uncle_id) const
++{
++  if (parent_height < 1)
++    return false;
++  const crypto::hash parent_prev = get_block_id_by_height(parent_height - 1);
++  bool found = false;
++  m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
++      if (found || data.height != parent_height)
++        return true;
++      cryptonote::blobdata blob;
++      cryptonote::alt_block_data_t d2;
++      if (!m_db->get_alt_block(alt_id, &d2, &blob))
++        return true;
++      cryptonote::block alt_bl;
++      if (!cryptonote::parse_and_validate_block_from_blob(blob, alt_bl))
++        return true;
++      if (alt_bl.prev_id != parent_prev)
++        return true;
++      if (!sim_pop_in_time(alt_id, parent_height))
++        return true;
++      uncle_id = alt_id;
++      found = true;
++      return true;
++  });
++  return found;
++}
++
++uint64_t Blockchain::sim_pop_uncle_bonus(const block &b, uint64_t height) const
++{
++  std::vector<tx_extra_field> fields;
++  if (!parse_tx_extra(b.miner_tx.extra, fields))
++    return 0;
++  static constexpr size_t MAGIC_LEN = sizeof(SIM_POP_UNCLE_MAGIC) - 1;
++  uint64_t bonus = 0;
++  for (const auto &f : fields)
++  {
++    if (f.which() != 2)
++      continue;
++    const std::string &nonce = boost::get<tx_extra_nonce>(f).nonce;
++    const size_t pos = nonce.find(SIM_POP_UNCLE_MAGIC, 0, MAGIC_LEN);
++    if (pos == std::string::npos || pos + MAGIC_LEN + sizeof(crypto::hash) > nonce.size())
++      continue;
++    crypto::hash uncle_id;
++    memcpy(&uncle_id, nonce.data() + pos + MAGIC_LEN, sizeof(crypto::hash));
++    if (m_sim_recv.find(uncle_id) == m_sim_recv.end())
++      continue;
++    if (!sim_pop_in_time(uncle_id, height - 1))
++      continue;
++    cryptonote::alt_block_data_t data;
++    cryptonote::blobdata blob;
++    if (!m_db->get_alt_block(uncle_id, &data, &blob) || data.height != height - 1)
++      continue;
++    ++bonus;
++  }
++  return bonus;
++}
++
 +// The PoP reorg decision, replacing the raw cumulative-difficulty comparison
 +// for the alt block that just arrived (alt_chain already contains `bei`).
++// --- MRL #146 share records ----------------------------------------------
++// One embedded workshare: varint seq, varint timestamp, 4B nonce (LE),
++// 32B tx_tree_hash, varint num_transactions. version_major/prev_id/
++// version_minor come from the containing block (version_minor == the
++// share's slot). Each share records the tree hash it was MINED under, so
++// shares verify independently of the block's final coinbase.
++template<typename T>
++static void sim_sop_append_varint(T &out, uint64_t v)
++{
++  for (;;)
++  {
++    uint8_t byte = v & 0x7f;
++    v >>= 7;
++    if (v)
++      byte |= 0x80;
++    out.push_back(byte);
++    if (!v)
++      return;
++  }
++}
++
++static bool sim_sop_read_varint(const std::string &in, size_t &pos, uint64_t &v)
++{
++  v = 0; uint64_t shift = 0;
++  while (pos < in.size())
++  {
++    const uint8_t byte = (uint8_t)in[pos++];
++    v |= (uint64_t)(byte & 0x7f) << shift;
++    shift += 7;
++    if (!(byte & 0x80))
++      return true;
++  }
++  return false;
++}
++
++static blobdata sim_sop_share_record(uint64_t seq, const block_header &bh,
++                                     const std::string &tree_hash, uint64_t num_tx)
++{
++  blobdata rec;
++  sim_sop_append_varint(rec, seq);
++  sim_sop_append_varint(rec, bh.timestamp);
++  const uint8_t *nonce_bytes = reinterpret_cast<const uint8_t*>(&bh.nonce);
++  for (size_t i = 0; i < sizeof(bh.nonce); ++i)   // little-endian, host is LE
++    rec.push_back(nonce_bytes[i]);
++  rec.insert(rec.end(), tree_hash.begin(), tree_hash.end());
++  sim_sop_append_varint(rec, num_tx);
++  return rec;
++}
++
++static bool sim_sop_parse_share_record(const std::string &rec, uint64_t &seq,
++                                       block_header &bh, std::string &tree_hash,
++                                       uint64_t &num_tx)
++{
++  size_t pos = 0;
++  if (!sim_sop_read_varint(rec, pos, seq))
++    return false;
++  if (!sim_sop_read_varint(rec, pos, bh.timestamp))
++    return false;
++  if (pos + sizeof(uint32_t) + 32 > rec.size())
++    return false;
++  memcpy(&bh.nonce, rec.data() + pos, sizeof(uint32_t));
++  pos += sizeof(uint32_t);
++  tree_hash.assign(rec, pos, 32);
++  pos += 32;
++  if (!sim_sop_read_varint(rec, pos, num_tx))
++    return false;
++  return pos == rec.size();
++}
++
++// SIMULATION ONLY (Share-or-Perish, MRL #146, step 3): per-block weight.
++// Within the last 10*w blocks of the tip: l_b * (diff/w) * (1 + counted
++// shares); a share counts when its parent matches the candidate block's
++// parent, its PoW meets diff/w (lazy, cached), and it was first seen > d
++// BEFORE the first block at its height (l_w — the rule that reaches
++// proactive releases: a withheld share released with its block is late).
++// Older blocks weigh plain difficulty (legacy-compatible). Zero when the
++// block itself is late (l_b = 0).
++difficulty_type Blockchain::sim_sop_weight(uint64_t height, const cryptonote::block &bl, difficulty_type diff)
++{
++  // `diff` is the block's own difficulty, supplied by the caller: for alt
++  // blocks from the alt chain's cumulative-difficulty deltas (the main DB has
++  // no row above the tip, review F3), for main blocks from the DB.
++  const uint64_t top = m_db->height() - 1;
++  if (height + 10 * m_sim_sop_w <= top)
++    return diff;                       // legacy window: share weight is 0
++  difficulty_type unit = diff / m_sim_sop_w;
++  if (unit == 0)
++    unit = 1;   // sim-only floor: bootstrap difficulties < w would zero every
++                // block (real Monero never sees diff < w)
++
++  // l_b: the block is late iff first seen > d after the first block at its
++  // height (subjective, per #146; the h0/nf gates live in should_switch).
++  const uint64_t first = sim_pop_first_seen(height);
++  const crypto::hash id = get_block_hash(bl);
++  auto bit = m_sim_recv.find(id);
++  bool lb = true;
++  if (bit != m_sim_recv.end() && first != std::numeric_limits<uint64_t>::max()
++      && bit->second > first + m_sim_sop_delay_ms)
++    lb = false;
++  difficulty_type wgt = lb ? unit : 0;
++
++  // Embedded shares (#146 option 1, tx_extra tag 0x76): slots must run
++  // 0..N-1 with block.minor_version == N; each share's PoW must meet
++  // diff/w at this height (header reconstructed from the block's
++  // major_version/prev_id + the share's own slot/timestamp/nonce/tree/
++  // num_tx); l_w counts it only when first seen > d before the first
++  // block at the height (main_seen falls back to this block's own seen
++  // time when no main block exists there, per the spec).
++  std::vector<tx_extra_field> fields;
++  if (!parse_tx_extra(bl.miner_tx.extra, fields))
++    return wgt;
++  uint64_t n = 0;
++  bool seq_ok = true;
++  for (const auto &f : fields)
++  {
++    if (f.which() != 7)          // variant: ..., 6 sim_uncle, 7 sim_workshare
++      continue;
++    ++n;
++    uint64_t seq = 0, num_tx = 0;
++    block_header sh;
++    blobdata tree;
++    if (!sim_sop_parse_share_record(boost::get<tx_extra_sim_workshare>(f).data,
++                                    seq, sh, tree, num_tx)
++        || seq != n - 1)
++    { seq_ok = false; break; }
++    sh.major_version = bl.major_version;
++    sh.minor_version = seq;             // the slot the share was mined under (#146)
++    sh.prev_id = bl.prev_id;
++    blobdata hb;
++    if (!::serialization::dump_binary(sh, hb))
++    { seq_ok = false; break; }
++    // The share's ORIGINAL PoW blob: its header, the tree hash it was mined
++    // under, its tx count. Hash THIS blob (blobdata overload). Rebuilding a
++    // block and hashing that recomputes the tree hash from an empty coinbase
++    // (and appends the wrong count), so no share ever verified at real
++    // difficulty before 2026-09-25 (review F2); the id below must also be
++    // the id the pool stamped, i.e. the hash of the same blob.
++    blobdata share_blob = hb;
++    share_blob.insert(share_blob.end(), tree.begin(), tree.end());
++    sim_sop_append_varint(share_blob, num_tx);
++    const difficulty_type share_target = diff / m_sim_sop_w ? diff / m_sim_sop_w : 1;
++    crypto::hash pow;
++    if (!get_block_longhash(this, share_blob, pow, height, bl.major_version, nullptr, 0)
++        || !check_hash(pow, share_target))
++    { seq_ok = false; break; }
++    crypto::hash sid;
++    cn_fast_hash(share_blob.data(), share_blob.size(), sid);
++    auto sit = m_sim_recv.find(sid);
++    if (sit == m_sim_recv.end())
++      continue;                        // never gossiped here: not seen early
++    uint64_t main_seen = first;
++    if (main_seen == std::numeric_limits<uint64_t>::max() && bit != m_sim_recv.end())
++      main_seen = bit->second;         // alt ahead: main_seen = block_seen
++    if (main_seen != std::numeric_limits<uint64_t>::max()
++        && main_seen > sit->second + m_sim_sop_delay_ms)
++      wgt += unit;
++  }
++  if (!seq_ok || n != bl.minor_version)
++    return lb ? unit : 0;              // non-conforming share set counts zero
++  return wgt;
++}
++
++uint64_t Blockchain::sim_sop_embedded_share_count(const cryptonote::block &bl)
++{
++  std::vector<tx_extra_field> fields;
++  if (!parse_tx_extra(bl.miner_tx.extra, fields))
++    return 0;
++  uint64_t n = 0;
++  for (const auto &f : fields)
++    if (f.which() == 7)
++      ++n;
++  return n;
++}
++
++// SIMULATION ONLY (Share-or-Perish): the #146 fork choice — PoP's skeleton
++// (rule-1 fail-safe, rule-3 tie) with the share-aware weight table above.
++bool Blockchain::sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei)
++{
++  const uint64_t top = m_db->height() - 1;
++  const uint64_t hf = alt_chain.front().height;       // fork height (#146)
++  const uint64_t fork = hf - 1;
++  const uint64_t alt_len = alt_chain.size();
++  const uint64_t main_len = top > fork ? top - fork : 0;
++
++  // #146 subjectivity gate: the lateness factors apply only when this node
++  // was online before the fork (h0 < hf) AND the chains differ by fewer
++  // than k*w work objects. Otherwise compare OBJECTIVE cumulative
++  // difficulty — late joiners and partition recovery converge on plain
++  // weights ("partitions resolve on average after 3 blocks, when the
++  // objective chain weights kick in").
++  uint64_t nf = 0;
++  for (const auto &e : alt_chain)
++    nf += 1 + sim_sop_embedded_share_count(e.bl);
++  // The difficulty gate is sim-only: at fakechain bootstrap difficulty
++  // (< w) every weight collapses to the unit floor and forks degenerate
++  // into per-node random ties that livelock the race point. Real Monero
++  // never sees diff < w, so subjectivity engaging only there matches the
++  // spec's regime.
++  // Alt-block difficulties come from the alt chain's own cumulative
++  // deltas (no main-DB row exists above the tip, review F3).
++  const difficulty_type fork_cum = m_db->get_block_cumulative_difficulty(fork);
++  const difficulty_type alt_front_diff = alt_chain.front().cumulative_difficulty > fork_cum
++      ? alt_chain.front().cumulative_difficulty - fork_cum : 0;
++  const bool subjective = m_sim_sop_h0 < hf && nf < m_sim_sop_k * m_sim_sop_w
++      && alt_front_diff >= m_sim_sop_w;
++  if (!subjective)
++  {
++    const difficulty_type main_cum = m_db->get_block_cumulative_difficulty(top);
++    const bool sw = main_cum < bei.cumulative_difficulty;
++    MINFO("SIM-SoP: fork " << fork << " OBJECTIVE alt " << bei.cumulative_difficulty
++          << "/" << alt_len << " vs main " << main_cum << "/" << main_len
++          << " (h0=" << m_sim_sop_h0 << " nf=" << nf << ") -> "
++          << (sw ? "SWITCH" : "KEEP"));
++    return sw;
++  }
++
++  // Subjective regime: #146 weight table over the divergent suffixes.
++  difficulty_type w_alt = 0, w_main = 0;
++  difficulty_type prev_cum = fork_cum;
++  for (const auto &e : alt_chain)
++  {
++    const difficulty_type d = e.cumulative_difficulty > prev_cum ? e.cumulative_difficulty - prev_cum : 0;
++    prev_cum = e.cumulative_difficulty;
++    w_alt += sim_sop_weight(e.height, e.bl, d);
++  }
++  for (uint64_t h = fork + 1; h <= top; ++h)
++  {
++    cryptonote::block main_bl;
++    if (!get_block_by_hash(get_block_id_by_height(h), main_bl))
++      continue;
++    w_main += sim_sop_weight(h, main_bl, m_db->get_block_difficulty(h));
++  }
++
++  if (w_alt != w_main)
++  {
++    MINFO("SIM-SoP: fork " << fork << " alt " << w_alt << "/" << alt_len
++          << " vs main " << w_main << "/" << main_len
++          << " -> " << (w_alt > w_main ? "SWITCH" : "KEEP"));
++    return w_alt > w_main;
++  }
++
++  // Exact weight tie: uniform random (the spec; det via the PoP flag).
++  const bool sw = m_sim_pop_det_tie
++    ? bool(get_block_hash(bei.bl) < get_block_id_by_height(top))
++    : bool(m_sim_pop_rng() & 1);
++  MINFO("SIM-SoP: fork " << fork << " TIE " << w_alt << "/" << alt_len
++        << " vs " << w_main << "/" << main_len
++        << " -> " << (sw ? "SWITCH" : "KEEP") << " ("
++        << (m_sim_pop_det_tie ? "det" : "random") << " tie)");
++  return sw;
++}
++
++void Blockchain::set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k)
++{
++  m_sim_sop_w = w > 1 ? w : 2;
++  m_sim_sop_delay_ms = delay_ms;
++  m_sim_sop_k = k;
++  m_sim_sop_enabled = true;
++  m_sim_pop_enabled = true;   // arms the receive-time ledger (l_b/l_w clock)
++  m_sim_sop_h0 = get_current_blockchain_height() > 1 ? get_current_blockchain_height() - 1 : 0;   // #146 h0: height when this node came online (genesis nodes: 0 — h0 < hf must hold for fork 0 too, else a bootstrap-era banked chain dominates objectively forever)
++  MINFO("SIM-SoP: weight table armed (w=" << m_sim_sop_w
++        << " delay_ms=" << delay_ms << " k=" << k << ")");
++}
++
 +bool Blockchain::sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei)
 +{
++  if (m_sim_sop_enabled)
++    return sim_sop_should_switch(alt_chain, bei);   // #146 weight table
++
 +  const uint64_t top = m_db->height() - 1;              // main-chain top index
 +  const uint64_t fork = alt_chain.front().height - 1;   // last common-ancestor index
 +  const uint64_t alt_len = alt_chain.size();
@@ -76,13 +980,28 @@ index fcc92644a..1d969f47f 100644
 +    return true;
 +
 +  // Rule 2: larger in-time weight over the divergent suffixes.
-+  uint64_t w_alt = 0, w_main = 0;
++  difficulty_type w_alt = 0, w_main = 0;
 +  for (const auto &e : alt_chain)
 +    if (sim_pop_in_time(get_block_hash(e.bl), e.height))
-+      ++w_alt;
++      w_alt += 1 + (m_sim_pop_uncles ? sim_pop_uncle_bonus(e.bl, e.height)
++                   : m_sim_pop_uncles_header ? sim_pop_uncle_bonus_header(e.bl, e.height) : 0);
 +  for (uint64_t h = fork + 1; h <= top; ++h)
 +    if (sim_pop_in_time(get_block_id_by_height(h), h))
++    {
 +      ++w_main;
++      // Either uncle variant scores the MAIN chain too. The guard used to be
++      // `if (m_sim_pop_uncles)` alone, so under --sim-pop-uncles-header the
++      // header bonus was computed for alt blocks only and the honest main
++      // chain never earned one (review F5b, 2026-09-25: 5 embeddings, 0
++      // counted in the exact-uncle smoke even after the verifier fix).
++      if (m_sim_pop_uncles || m_sim_pop_uncles_header)
++      {
++        cryptonote::block main_bl;
++        if (get_block_by_hash(get_block_id_by_height(h), main_bl))
++          w_main += m_sim_pop_uncles ? sim_pop_uncle_bonus(main_bl, h)
++                   : sim_pop_uncle_bonus_header(main_bl, h);
++      }
++    }
 +
 +  if (w_alt != w_main)
 +  {
@@ -107,7 +1026,18 @@ index fcc92644a..1d969f47f 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -2093,7 +2191,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1882,7 +2652,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+     return false;
+   }
+ 
+-  // this is a cheap test
++  // this is a cheap test (SIMULATION: the vote part of this check lives in
++  // HardFork::do_check_for_height and is disabled there; major_version is
++  // still enforced)
+   const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
+   if (!m_hardfork->check_for_height(b, block_height))
+   {
+@@ -2093,7 +2865,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -118,7 +1048,18 @@ index fcc92644a..1d969f47f 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4674,6 +4774,13 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4072,7 +4846,9 @@ leave:
+     MCLOG_RED(level, "global", "**********************************************************************");
+   }
+ 
+-  // this is a cheap test
++  // this is a cheap test (SIMULATION: the vote part lives in
++  // HardFork::do_check and is disabled there -- removing it only here left
++  // HardFork::add() enforcing it with an ignored return value, review F1)
+   const uint8_t hf_version = get_current_hard_fork_version();
+   if (!m_hardfork->check(bl))
+   {
+@@ -4674,6 +5450,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -128,12 +1069,29 @@ index fcc92644a..1d969f47f 100644
 +  if (m_sim_pop_enabled)
 +    m_sim_recv.emplace(id, std::chrono::duration_cast<std::chrono::milliseconds>(
 +        std::chrono::system_clock::now().time_since_epoch()).count());
++  // SIMULATION ONLY diagnostics (review F5b): which received blocks carry
++  // embedded uncle headers, so a fork decision's COUNTED/REJECTED lines can
++  // be matched against them.
++  if (m_sim_pop_uncles_header)
++  {
++    std::vector<tx_extra_field> fields;
++    size_t n_uncles = 0;
++    if (!parse_tx_extra(bl.miner_tx.extra, fields))
++      MINFO("SIM-PoP: block " << id << " tx_extra UNPARSABLE on receive");
++    else
++      for (const auto &f : fields)
++        if (f.which() == 6)
++          ++n_uncles;
++    if (n_uncles)
++      MINFO("SIM-PoP: block " << id << " at height " << get_block_height(bl)
++            << " carries " << n_uncles << " uncle header(s)");
++  }
 +
    //check that block refers to chain tail
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 0fd81f4ba..2ba731935 100644
+index 0fd81f4ba..37672709b 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -144,7 +1102,7 @@ index 0fd81f4ba..2ba731935 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -887,6 +888,20 @@ namespace cryptonote
+@@ -887,6 +888,27 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -160,12 +1118,19 @@ index 0fd81f4ba..2ba731935 100644
 +     * weight wins, else the configured tie policy (random per the paper, or
 +     * deterministic hash comparison per MRL #144). Uncles are not modeled.
 +     */
-+    void set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie);
++    void set_sim_pop(uint64_t k, uint64_t delay_ms, bool det_tie, bool uncles, bool uncles_header);
++
++    // SIMULATION ONLY (Share-or-Perish, MRL #146, step 2): pool a workshare
++    // (local hit or gossiped); true only for a NEW share. See m_sim_shares.
++    bool sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id);
++
++    // SIMULATION ONLY (step 3): arm the SoP weight table on the PoP engine.
++    void set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k);
 +
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1188,6 +1203,17 @@ namespace cryptonote
+@@ -1188,6 +1210,55 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -175,19 +1140,57 @@ index 0fd81f4ba..2ba731935 100644
 +    uint64_t m_sim_pop_k = 3;              // rule-1 length fail-safe
 +    uint64_t m_sim_pop_delay_ms = 5000;    // Def.1 lateness bound
 +    bool m_sim_pop_det_tie = false;        // rule-3 tie policy
++    bool m_sim_pop_uncles = false;         // MRL #144: embed/count uncles (completes published PoP)
++    bool m_sim_pop_uncles_header = false;  // MRL #144 EXACT: 80B PoW header field, trustless verification
 +    std::unordered_map<crypto::hash, uint64_t> m_sim_recv;  // block id -> first local receive time (ms)
 +    std::mt19937_64 m_sim_pop_rng;         // rule-3 random tie-break
 +    bool sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
++    difficulty_type sim_block_difficulty_at(uint64_t h) const;   // tip-clamped (alt heights above the tip)
 +    uint64_t sim_pop_first_seen(uint64_t height) const;
 +    bool sim_pop_in_time(const crypto::hash &id, uint64_t height) const;
++    bool sim_pop_find_uncle(uint64_t parent_height, crypto::hash &uncle_id) const;
++    uint64_t sim_pop_uncle_bonus(const block &b, uint64_t height) const;
++    bool sim_pop_find_uncle_header(uint64_t parent_height, blobdata &header_blob) const;
++    uint64_t sim_pop_uncle_bonus_header(const block &b, uint64_t height) const;
++
++    // SIMULATION ONLY (Share-or-Perish, MRL #146): workshare pool. Shares
++    // are PoW headers at >= 1/w difficulty on the template (header + 32B
++    // tx-tree hash + tx-count varint); first-seen times land in the shared
++    // m_sim_recv ledger (one clock for l_b and l_w). PoW is verified lazily
++    // at weight time (pow_ok cache), like embedded uncle headers.
++    struct sim_workshare_entry {
++      uint64_t height;
++      crypto::hash prev_id;     // the parent the share mines on
++      uint64_t recv_ms;
++      std::string blob;         // kept for the lazy PoW check and embedding
++      uint8_t pow_ok = 0;       // 0 unverified / 1 pass / 2 fail
++      bool local = false;       // captured by THIS node (embeddable)
++      uint64_t seq = 0;         // version_minor slot (own shares only, per prev)
++    };
++    std::unordered_map<crypto::hash, sim_workshare_entry> m_sim_shares;  // share id -> first-seen
++
++    // SIMULATION ONLY: Share-or-Perish fork choice (weight table per MRL
++    // #146: within the last 10*w blocks of the tip, a block weighs
++    // l_b * diff/w * (1 + counted shares); a share counts when its parent
++    // matches the candidate chain, its PoW meets diff/w, and it was first
++    // seen > d before the first block at its height (l_w)). Older blocks
++    // weigh plain difficulty (legacy-compatible).
++    bool m_sim_sop_enabled = false;
++    uint64_t m_sim_sop_w = 16;
++    uint64_t m_sim_sop_delay_ms = 5000;
++    uint64_t m_sim_sop_k = 3;
++    uint64_t m_sim_sop_h0 = 0;             // block height when this node came online (#146 h0)
++    bool sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
++    difficulty_type sim_sop_weight(uint64_t height, const cryptonote::block &bl, difficulty_type diff);
++    uint64_t sim_sop_embedded_share_count(const cryptonote::block &bl);
      bool m_db_default_sync;
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index a727747a8..390e029c1 100644
+index a727747a8..e725ba002 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -196,6 +196,32 @@ namespace cryptonote
+@@ -196,6 +196,64 @@ namespace cryptonote
    , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
    , false
    };
@@ -217,10 +1220,42 @@ index a727747a8..390e029c1 100644
 +  , "Simulation only: break exact-weight Publish-or-Perish ties deterministically (tip hash comparison) instead of the paper's uniform random choice. Off by default (random, per the paper)."
 +  , false
 +  };
++  static const command_line::arg_descriptor<bool> arg_sim_pop_uncles = {
++    "sim-pop-uncles"
++  , "Simulation only: embed (while mining) and count (at fork choice) in-time uncle blocks per MRL #144 — completes the published PoP rule on top of --sim-publish-or-perish. DEVIATED variant: the uncle id rides the extra-nonce field with node-local validation. Off by default."
++  , false
++  };
++  static const command_line::arg_descriptor<bool> arg_sim_pop_uncles_header = {
++    "sim-pop-uncles-header"
++  , "Simulation only: MRL #144 EXACT — embed the ~80 B uncle PoW header in a new tx_extra field (tag 0x75) and verify it trustlessly (re-hash + PoW + sibling check); never-received uncles count. Off by default."
++  , false
++  };
++  static const command_line::arg_descriptor<bool> arg_sim_share_or_perish = {
++    "sim-share-or-perish"
++  , "Simulation only: enable the Share-or-Perish weighted fork choice (MRL #146) on top of the PoP engine — workshares at 1/w difficulty are gossiped ahead of their containing block and add chain weight when seen in time (l_b * l_w). Off by default."
++  , false
++  };
++  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_delay_s = {
++    "sim-sop-delay-s"
++  , "Simulation only: Share-or-Perish share lateness bound in seconds (a share counts only if first seen this long BEFORE the first block at its height)."
++  , 5
++  };
++  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_k = {
++    "sim-sop-k"
++  , "Simulation only: Share-or-Perish rule-1 length fail-safe (a competing chain this many blocks longer always wins, for partition recovery)."
++  , 3
++  };
++  // Lookup key only — the flag itself is registered by miner::init_options
++  // ("sim-sop-w"); core reads the same variable_map without re-registering.
++  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_w_key = {
++    "sim-sop-w"
++  , "(registered by the miner) workshare ratio w — here: the weight-table divisor."
++  , 16
++  };
    static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
      "max-txpool-weight"
    , "Set maximum txpool weight in bytes."
-@@ -339,6 +365,10 @@ namespace cryptonote
+@@ -339,6 +397,15 @@ namespace cryptonote
      command_line::add_arg(desc, arg_stagenet_on);
      command_line::add_arg(desc, arg_regtest_on);
      command_line::add_arg(desc, arg_sim_relay_alt_blocks);
@@ -228,10 +1263,15 @@ index a727747a8..390e029c1 100644
 +  command_line::add_arg(desc, arg_sim_pop_k);
 +  command_line::add_arg(desc, arg_sim_pop_delay_s);
 +  command_line::add_arg(desc, arg_sim_pop_det_tie);
++  command_line::add_arg(desc, arg_sim_pop_uncles);
++  command_line::add_arg(desc, arg_sim_pop_uncles_header);
++  command_line::add_arg(desc, arg_sim_share_or_perish);
++  command_line::add_arg(desc, arg_sim_sop_delay_s);
++  command_line::add_arg(desc, arg_sim_sop_k);
      command_line::add_arg(desc, arg_keep_fakechain);
      command_line::add_arg(desc, arg_fixed_difficulty);
      command_line::add_arg(desc, arg_fakechain_hard_forks);
-@@ -783,6 +813,15 @@ namespace cryptonote
+@@ -783,6 +850,32 @@ namespace cryptonote
  
      bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
      m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -243,7 +1283,250 @@ index a727747a8..390e029c1 100644
 +      m_blockchain_storage.set_sim_pop(
 +          command_line::get_arg(vm, arg_sim_pop_k),
 +          command_line::get_arg(vm, arg_sim_pop_delay_s) * 1000,
-+          command_line::get_arg(vm, arg_sim_pop_det_tie));
++          command_line::get_arg(vm, arg_sim_pop_det_tie),
++          command_line::get_arg(vm, arg_sim_pop_uncles),
++          command_line::get_arg(vm, arg_sim_pop_uncles_header));
++
++    // SIMULATION ONLY: Share-or-Perish (MRL #146) fork choice — same
++    // receive-time ledger, weight table extended with gossiped workshares
++    // (see Blockchain::sim_sop_weight). w comes from the miner's flag via
++    // the shared variable_map; has_arg guard because configs that enable
++    // SoP without an explicit w use the default.
++    if (command_line::get_arg(vm, arg_sim_share_or_perish))
++    {
++      const uint64_t sop_w = command_line::has_arg(vm, arg_sim_sop_w_key)
++          ? command_line::get_arg(vm, arg_sim_sop_w_key) : 16;
++      m_blockchain_storage.set_sim_sop(
++          sop_w,
++          command_line::get_arg(vm, arg_sim_sop_delay_s) * 1000,
++          command_line::get_arg(vm, arg_sim_sop_k));
++    }
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
+@@ -1435,6 +1528,35 @@ namespace cryptonote
+     return true;
+   }
+   //-----------------------------------------------------------------------------------------------
++  // SIMULATION ONLY (Share-or-Perish, MRL #146, step 2: pool + gossip, no
++  // weight effect yet). A workshare is a PoW header at >= 1/w of block
++  // difficulty on the current template — same prev_id as the block that
++  // will contain it.
++  bool core::handle_workshare_found(const blobdata& share_blob, uint64_t height)
++  {
++    crypto::hash id;
++    if (!m_blockchain_storage.sim_add_workshare(share_blob, height, true, id))
++      return false;
++    // "blockchain" category: visible at log-level monitor (core's own
++    // default category INFO is not).
++    MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: pooled local share " << id << " at height " << height);
++    NOTIFY_NEW_WORKSHARE::request arg{};
++    arg.blob = share_blob;
++    arg.height = height;
++    cryptonote_connection_context exclude_context = {};
++    m_pprotocol->relay_workshare(arg, exclude_context);
++    return true;
++  }
++  //-----------------------------------------------------------------------------------------------
++  bool core::add_workshare_remote(const blobdata& share_blob, uint64_t height)
++  {
++    crypto::hash id;
++    const bool fresh = m_blockchain_storage.sim_add_workshare(share_blob, height, false, id);
++    if (fresh)
++      MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: pooled remote share " << id << " at height " << height);
++    return fresh;
++  }
++  //-----------------------------------------------------------------------------------------------
+   bool core::is_synchronized() const
+   {
+     return m_pprotocol != nullptr && m_pprotocol->is_synchronized();
+diff --git a/src/cryptonote_core/cryptonote_core.h b/src/cryptonote_core/cryptonote_core.h
+index 99df370fe..f0de93622 100644
+--- a/src/cryptonote_core/cryptonote_core.h
++++ b/src/cryptonote_core/cryptonote_core.h
+@@ -230,6 +230,23 @@ namespace cryptonote
+       */
+      virtual bool handle_block_found(block& b, block_verification_context &bvc) override;
+ 
++     /**
++      * @brief SIMULATION ONLY (Share-or-Perish, MRL #146): pool a locally
++      * mined workshare and gossip it ahead of its containing block
++      *
++      * @param share_blob 80B PoW header (get_block_hashing_blob) of the share hit
++      * @param height the template height the share mines at
++      *
++      * @return true if the share was new (pooled and relayed)
++      */
++     virtual bool handle_workshare_found(const blobdata& share_blob, uint64_t height) override;
++
++     /**
++      * @brief SIMULATION ONLY: pool a remotely gossiped workshare (first-seen
++      * bookkeeping); the caller relays it onward only when this returns true
++      */
++     bool add_workshare_remote(const blobdata& share_blob, uint64_t height);
++
+      /**
+       * @copydoc Blockchain::create_block_template
+       *
+diff --git a/src/cryptonote_protocol/cryptonote_protocol_defs.h b/src/cryptonote_protocol/cryptonote_protocol_defs.h
+index 0b860f1a8..118919184 100644
+--- a/src/cryptonote_protocol/cryptonote_protocol_defs.h
++++ b/src/cryptonote_protocol/cryptonote_protocol_defs.h
+@@ -336,6 +336,29 @@ namespace cryptonote
+     typedef epee::misc_utils::struct_init<request_t> request;
+   };  
+ 
++  /************************************************************************/
++  /*                                                                      */
++  /************************************************************************/
++  /************************************************************************/
++  /*                                                                      */
++  /************************************************************************/
++  struct NOTIFY_NEW_WORKSHARE
++  {
++    const static int ID = BC_COMMANDS_POOL_BASE + 11;
++
++    struct request_t
++    {
++      std::string blob;     // SIMULATION ONLY (Share-or-Perish, MRL #146): 80B PoW header (get_block_hashing_blob) of a workshare hit
++      uint64_t height;      // height the share mines at (the template height)
++
++      BEGIN_KV_SERIALIZE_MAP()
++        KV_SERIALIZE(blob)
++        KV_SERIALIZE(height)
++      END_KV_SERIALIZE_MAP()
++    };
++    typedef epee::misc_utils::struct_init<request_t> request;
++  };
++
+   /************************************************************************/
+   /*                                                                      */
+   /************************************************************************/
+diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.h b/src/cryptonote_protocol/cryptonote_protocol_handler.h
+index 1719d8c43..c45262e11 100644
+--- a/src/cryptonote_protocol/cryptonote_protocol_handler.h
++++ b/src/cryptonote_protocol/cryptonote_protocol_handler.h
+@@ -95,6 +95,7 @@ namespace cryptonote
+       HANDLE_NOTIFY_T2(NOTIFY_NEW_FLUFFY_BLOCK, &cryptonote_protocol_handler::handle_notify_new_fluffy_block)			
+       HANDLE_NOTIFY_T2(NOTIFY_REQUEST_FLUFFY_MISSING_TX, &cryptonote_protocol_handler::handle_request_fluffy_missing_tx)						
+       HANDLE_NOTIFY_T2(NOTIFY_GET_TXPOOL_COMPLEMENT, &cryptonote_protocol_handler::handle_notify_get_txpool_complement)
++      HANDLE_NOTIFY_T2(NOTIFY_NEW_WORKSHARE, &cryptonote_protocol_handler::handle_notify_new_workshare)
+     END_INVOKE_MAP2()
+ 
+     bool on_idle();
+@@ -143,10 +144,12 @@ namespace cryptonote
+     int handle_notify_new_fluffy_block(int command, NOTIFY_NEW_FLUFFY_BLOCK::request& arg, cryptonote_connection_context& context);
+     int handle_request_fluffy_missing_tx(int command, NOTIFY_REQUEST_FLUFFY_MISSING_TX::request& arg, cryptonote_connection_context& context);
+     int handle_notify_get_txpool_complement(int command, NOTIFY_GET_TXPOOL_COMPLEMENT::request& arg, cryptonote_connection_context& context);
++    int handle_notify_new_workshare(int command, NOTIFY_NEW_WORKSHARE::request& arg, cryptonote_connection_context& context);
+ 		
+     //----------------- i_bc_protocol_layout ---------------------------------------
+     virtual bool relay_block(NOTIFY_NEW_FLUFFY_BLOCK::request& arg, cryptonote_connection_context& exclude_context);
+     virtual bool relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay);
++    virtual bool relay_workshare(NOTIFY_NEW_WORKSHARE::request& arg, cryptonote_connection_context& exclude_context);
+     //----------------------------------------------------------------------------------
+     //bool get_payload_sync_data(HANDSHAKE_DATA::request& hshd, cryptonote_connection_context& context);
+     bool should_drop_connection(cryptonote_connection_context& context, uint32_t next_stripe);
+diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.inl b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
+index 3ad26a3de..9523dbc9c 100644
+--- a/src/cryptonote_protocol/cryptonote_protocol_handler.inl
++++ b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
+@@ -2661,6 +2661,48 @@ skip:
+     return true;
+   }
+   //------------------------------------------------------------------------------------------------------------------------
++  // SIMULATION ONLY (Share-or-Perish, MRL #146): a workshare gossiped ahead
++  // of its containing block — l_w depends on the share being seen BEFORE the
++  // block, so shares cannot ride in the block itself. Only NEW shares relay
++  // onward (the pool's first-seen insert decides), which also bounds loops.
++  template<class t_core>
++  int t_cryptonote_protocol_handler<t_core>::handle_notify_new_workshare(int command, NOTIFY_NEW_WORKSHARE::request& arg, cryptonote_connection_context& context)
++  {
++    // "blockchain" category: must be visible at log-level monitor (this
++    // file's net.cn INFO is suppressed there — the capture-diagnostics trap).
++    MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: workshare received (" << arg.blob.size() << " B, height " << arg.height << ")");
++    if (!m_core.add_workshare_remote(arg.blob, arg.height))
++      return 1;             // duplicate / unparsable / unknown parent — keep first-seen, don't relay
++    relay_workshare(arg, context);
++    return 1;
++  }
++  //------------------------------------------------------------------------------------------------------------------------
++  template<class t_core>
++  bool t_cryptonote_protocol_handler<t_core>::relay_workshare(NOTIFY_NEW_WORKSHARE::request& arg, cryptonote_connection_context& exclude_context)
++  {
++    std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections;
++    m_p2p->for_each_connection([&exclude_context, &connections](connection_context& context, nodetool::peerid_type peer_id, uint32_t support_flags)
++    {
++      // peer_id also filters out connections before handshake; state_normal
++      // keeps share gossip OFF syncing connections — spans and share bursts
++      // multiplexing on one connection measurably amplify chain-sync churn
++      // (invalid-span drops), and a syncing peer would reject the share
++      // anyway (unknown parent).
++      if (peer_id && exclude_context.m_connection_id != context.m_connection_id
++          && context.m_state == cryptonote_connection_context::state_normal
++          && context.m_remote_address.get_zone() == epee::net_utils::zone::public_)
++        connections.push_back({context.m_remote_address.get_zone(), context.m_connection_id});
++      return true;
++    });
++    if (!connections.empty())
++    {
++      epee::levin::message_writer blob{2 * 1024};
++      epee::serialization::store_t_to_binary(arg, blob.buffer);
++      m_p2p->relay_notify_to_list(NOTIFY_NEW_WORKSHARE::ID, std::move(blob), std::move(connections));
++    }
++    return true;
++  }
++  //------------------------------------------------------------------------------------------------------------------------
+   template<class t_core>
+   bool t_cryptonote_protocol_handler<t_core>::relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay)
+   {
+diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler_common.h b/src/cryptonote_protocol/cryptonote_protocol_handler_common.h
+index 63655eed8..18e4828dd 100644
+--- a/src/cryptonote_protocol/cryptonote_protocol_handler_common.h
++++ b/src/cryptonote_protocol/cryptonote_protocol_handler_common.h
+@@ -43,6 +43,9 @@ namespace cryptonote
+     virtual bool is_synchronized() const = 0;
+     virtual bool relay_block(NOTIFY_NEW_FLUFFY_BLOCK::request& arg, cryptonote_connection_context& exclude_context)=0;
+     virtual bool relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay)=0;
++    // SIMULATION ONLY (Share-or-Perish, MRL #146): gossip a workshare ahead
++    // of its containing block (the l_w first-seen rule needs this).
++    virtual bool relay_workshare(NOTIFY_NEW_WORKSHARE::request& arg, cryptonote_connection_context& exclude_context)=0;
+     //virtual bool request_objects(NOTIFY_REQUEST_GET_OBJECTS::request& arg, cryptonote_connection_context& context)=0;
+   };
+ 
+@@ -63,6 +66,10 @@ namespace cryptonote
+     {
+       return false;
+     }
++    virtual bool relay_workshare(NOTIFY_NEW_WORKSHARE::request& arg, cryptonote_connection_context& exclude_context)
++    {
++      return false;
++    }
+ 
+   };
+ }
+diff --git a/tests/unit_tests/test_protocol_pack.cpp b/tests/unit_tests/test_protocol_pack.cpp
+index 78bf01d4b..60592c254 100644
+--- a/tests/unit_tests/test_protocol_pack.cpp
++++ b/tests/unit_tests/test_protocol_pack.cpp
+@@ -54,3 +54,20 @@ TEST(protocol_pack, protocol_pack_command)
+     ASSERT_TRUE(r.total_height == 3);
+   }
+ }
++
++// SIMULATION ONLY (Share-or-Perish, MRL #146): the workshare notify must
++// round-trip byte-exactly (embedded-NUL blob + height).
++TEST(protocol_pack, workshare_round_trip)
++{
++  epee::byte_slice buff;
++  cryptonote::NOTIFY_NEW_WORKSHARE::request r;
++  r.blob = std::string(80, static_cast<char>(0x5a));
++  r.height = 42;
++  ASSERT_TRUE(epee::serialization::store_t_to_binary(r, buff));
++
++  cryptonote::NOTIFY_NEW_WORKSHARE::request r2;
++  ASSERT_TRUE(epee::serialization::load_t_from_binary(r2, epee::to_span(buff)));
++  ASSERT_TRUE(r2.blob.size() == 80);
++  ASSERT_TRUE(r2.blob == r.blob);
++  ASSERT_TRUE(r2.height == 42);
++}
