@@ -230,6 +230,10 @@ pub fn ensure_template(preset_dir: &Path, repo_root: &Path) -> Result<PathBuf, S
         preset_dir.display()
     );
     log::info!("Chain snapshot: ensuring template cache ({})", cmd_display);
+    log::info!(
+        "Chain snapshot: a cold cache replays the whole preset through an offline monerod-sim \
+         (roughly 10 s per 300 blocks; config generation waits for it, no progress is printed)"
+    );
     let output = Command::new(&python)
         .arg(&script)
         .arg("build-template")

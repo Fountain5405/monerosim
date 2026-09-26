@@ -204,3 +204,54 @@ agents:
         "error names the bad reference: {err}"
     );
 }
+
+#[test]
+fn peers_reference_to_daemonless_agent_is_rejected() {
+    // Review 2026-09-26: a wallet-only agent has an IP but no daemon listening,
+    // so a pin to it used to generate happily and isolate the pinning node.
+    std::env::set_var("MONEROSIM_SKIP_SIM_BINARY_CHECK", "1");
+    let tmp = TempDir::new().unwrap();
+    let output_yaml = tmp.path().join("shadow_agents.yaml");
+    let shared_dir = tmp.path().join("shared");
+    std::fs::create_dir_all(&shared_dir).unwrap();
+    std::fs::create_dir_all(tmp.path().join("scripts")).unwrap();
+
+    let bad = r#"
+general:
+  stop_time: 5m
+  simulation_seed: 1
+  mining:
+    mode: native
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 5
+    attributes:
+      is_public_node: "true"
+    peers:
+      exclusive:
+      - user-001
+  user-001:
+    daemon:
+      address: auto
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+"#;
+    let cfg_path = tmp.path().join("bad.yaml");
+    std::fs::write(&cfg_path, bad).unwrap();
+    let mut config = config_loader::load_config(&cfg_path).expect("bad config parses");
+    config.general.shared_dir = shared_dir.to_string_lossy().to_string();
+    config.general.daemon_data_dir = "/tmp".to_string();
+
+    let err = orchestrator::generate_agent_shadow_config(&config, &output_yaml)
+        .err()
+        .expect("a pin to a daemonless agent must be rejected")
+        .to_string();
+    assert!(err.contains("user-001"), "names the pinned agent: {err}");
+    assert!(err.contains("no local daemon"), "explains why: {err}");
+}

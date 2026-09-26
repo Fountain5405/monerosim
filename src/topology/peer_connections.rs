@@ -148,7 +148,14 @@ pub fn build_peer_topology(
         let agent_port = crate::MONERO_P2P_PORT;
 
         all_agent_ips.push(format!("{}:{}", agent_ip, agent_port));
-        agent_endpoints.insert(agent_id.to_string(), format!("{}:{}", agent_ip, agent_port));
+        // Only agents that run a local daemon are pinnable: a wallet-only or
+        // script-only agent has an IP but nothing listening on the P2P port,
+        // and a `peers:` pin to it would dial a closed port forever — the
+        // silent isolation the unknown-id hard error exists to prevent
+        // (review 2026-09-26).
+        if agent_config.has_local_daemon() {
+            agent_endpoints.insert(agent_id.to_string(), format!("{}:{}", agent_ip, agent_port));
+        }
 
         let entry = AgentEntry {
             index: i,

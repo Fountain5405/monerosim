@@ -138,9 +138,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         (v4), and never above the strategy's fork (v12).
 
         The v12 gate is the rest-window design from the results doc, made
-        precise: the island gets the committed prefix (indexes < fork) plus
-        the PRIVATE suffix the miner is withholding above it — never the
-        honest blocks the miner adopted from forwards. Without the gate, the
+        precise: the island gets the committed prefix (indexes < fork) and
+        nothing above it — neither the honest blocks the miner adopted from
+        forwards nor the private suffix the miner is withholding (review
+        2026-09-26: this docstring used to say the suffix was mirrored too;
+        the code never did, by design — see below). Without the gate, the
         mirror streamed the miner's full main chain (honest 5 h/s + attacker
         4 h/s) onto the island, and the victim's 6 h/s could never win
         first-seen there: its branches died at the island (v11 — victim 199

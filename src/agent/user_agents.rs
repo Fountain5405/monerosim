@@ -1058,7 +1058,9 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     for id in exclusive {
                         let endpoint = agent_endpoints.get(id).ok_or_else(|| {
                             color_eyre::eyre::eyre!(
-                                "Agent '{}': peers.exclusive references unknown agent '{}'",
+                                "Agent '{}': peers.exclusive references unknown agent '{}' (no such \
+                                 agent, or it runs no local daemon, so nothing listens at its \
+                                 address)",
                                 agent_id,
                                 id
                             )
@@ -1076,7 +1078,9 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     for id in priority {
                         let endpoint = agent_endpoints.get(id).ok_or_else(|| {
                             color_eyre::eyre::eyre!(
-                                "Agent '{}': peers.priority references unknown agent '{}'",
+                                "Agent '{}': peers.priority references unknown agent '{}' (no such \
+                                 agent, or it runs no local daemon, so nothing listens at its \
+                                 address)",
                                 agent_id,
                                 id
                             )
