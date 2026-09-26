@@ -191,8 +191,32 @@ pub fn resolve_data_dir(
     archived_relative: &str,
     breadcrumb_key: &str,
 ) -> Result<PathBuf, String> {
+    let env_value = std::env::var_os(breadcrumb_key).map(PathBuf::from);
+    resolve_data_dir_with_env(explicit, run_dir, archived_relative, breadcrumb_key, env_value)
+}
+
+/// `resolve_data_dir` with the caller's environment value for `breadcrumb_key`
+/// passed in (testable without mutating the process environment). Precedence:
+/// the explicit flag > that key exported in the CALLER's environment (the
+/// documented `export MONEROSIM_SHARED_DIR=...` workflow; a hardened install
+/// that pins its shared dir would otherwise be analysed against the newest
+/// archived run instead — review 2026-09-26) > the run's archived copy > the
+/// run's live breadcrumb. An exported value that is not a directory is ignored
+/// with the run-dir contract taking over, so a stale export cannot hide a run.
+pub fn resolve_data_dir_with_env(
+    explicit: Option<PathBuf>,
+    run_dir: Option<&Path>,
+    archived_relative: &str,
+    breadcrumb_key: &str,
+    env_value: Option<PathBuf>,
+) -> Result<PathBuf, String> {
     if let Some(p) = explicit {
         return Ok(p);
+    }
+    if let Some(p) = env_value {
+        if p.is_dir() {
+            return Ok(p);
+        }
     }
     let run_dir = resolve_run_dir(run_dir)?;
     let archived = run_dir.join(archived_relative);
@@ -227,6 +251,31 @@ mod tests {
         let shadow_output = run_dir.join("shadow_output");
         std::fs::create_dir_all(&shadow_output).unwrap();
         std::fs::write(shadow_output.join("run_env.sh"), contents).unwrap();
+    }
+
+    #[test]
+    fn exported_env_dir_beats_the_run_dir_contract_but_not_an_explicit_flag() {
+        let tmp = tempdir().unwrap();
+        let run_dir = tmp.path().join("run");
+        std::fs::create_dir_all(run_dir.join("transaction_registry")).unwrap();
+        let exported = tmp.path().join("pinned_shared");
+        std::fs::create_dir_all(&exported).unwrap();
+        // env dir wins over the archived copy
+        let got = resolve_data_dir_with_env(
+            None, Some(&run_dir), "transaction_registry", "MONEROSIM_SHARED_DIR",
+            Some(exported.clone())).unwrap();
+        assert_eq!(got, exported);
+        // an explicit flag still wins over the env
+        let explicit = tmp.path().join("explicit");
+        let got = resolve_data_dir_with_env(
+            Some(explicit.clone()), Some(&run_dir), "transaction_registry", "MONEROSIM_SHARED_DIR",
+            Some(exported.clone())).unwrap();
+        assert_eq!(got, explicit);
+        // a stale export (not a directory) is ignored: the archived copy is used
+        let got = resolve_data_dir_with_env(
+            None, Some(&run_dir), "transaction_registry", "MONEROSIM_SHARED_DIR",
+            Some(tmp.path().join("gone"))).unwrap();
+        assert_eq!(got, run_dir.join("transaction_registry"));
     }
 
     #[test]
