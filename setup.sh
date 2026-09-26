@@ -1316,8 +1316,20 @@ fi
 log_header "Step 10: Optional Test Simulation"
 
 log_info "Setup is complete! You can now run a test simulation to verify everything works."
-log_warn "The test simulation (test_configs/quickstart.yaml) runs for 6 hours simulated time"
-log_warn "This is a quickstart test with 10 agents (~10-15 min wall clock)"
+# --sim-binary users are here for native-mining / hard-fork scenarios, so the
+# smoke should exercise monerod-sim's real-PoW path (docs/NATIVE_MINING.md
+# §validation), not the synthetic-mining quickstart.
+if [[ "$INSTALL_SIM_BINARY" == true ]]; then
+    TEST_SIM_CONFIG="test_configs/native_micro.yaml"
+    log_warn "The test simulation ($TEST_SIM_CONFIG) runs for 3 hours simulated time"
+    log_warn "Native-mining micro gate: 2 miners (20 + 5 h/s, real RandomX on monerod-sim) + 2 stock relays"
+    TEST_SIM_HINT="For deeper validation see docs/NATIVE_MINING.md §7 Validation results (expect difficulty ~3000, miner-001 ~80% of blocks)"
+else
+    TEST_SIM_CONFIG="test_configs/quickstart.yaml"
+    log_warn "The test simulation ($TEST_SIM_CONFIG) runs for 6 hours simulated time"
+    log_warn "This is a quickstart test with 10 agents (~10-15 min wall clock)"
+    TEST_SIM_HINT="For deeper validation: ./scripts/smoke_test.sh quickstart"
+fi
 log_info ""
 log_info "Choose an option:"
 echo "  y/Y - Run the full test simulation"
@@ -1333,10 +1345,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     log_info "and live progress display. Scroll up after it finishes for the summary."
     echo ""
 
-    if ./run_sim.sh --config test_configs/quickstart.yaml; then
+    if ./run_sim.sh --config "$TEST_SIM_CONFIG"; then
         log_ok "Test simulation completed successfully."
         log_info "Per-host logs and run summary archived under archived_runs/<latest>/."
-        log_info "For deeper validation: ./scripts/smoke_test.sh quickstart"
+        log_info "$TEST_SIM_HINT"
     else
         log_err "Test simulation failed (run_sim.sh exited non-zero)."
         log_info "Check archived_runs/<latest>/ for shadow.log, monerosim.log, and per-host stdout."
