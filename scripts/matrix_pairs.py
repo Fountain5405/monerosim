@@ -103,6 +103,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("matrices", nargs="+", help="matrix names under matrix_runs/ (draws of the same cells)")
     ap.add_argument("--json", default=None, help="also write the paired rows as JSON")
+    ap.add_argument("--ledger", action="store_true",
+                    help="also print reproducibility-ledger rows (one per run) for the manuscript")
+    ap.add_argument("--commit", default=None, help="commit to stamp ledger rows with (default: git rev-parse --short HEAD)")
     args = ap.parse_args()
     workroot = Path(os.environ.get("MONEROSIM_MATRIX_WORKROOT", DEFAULT_WORKROOT))
     draws = {n: load_rows(n, workroot) for n in args.matrices}
@@ -115,6 +118,20 @@ def main() -> int:
     print(f"{len(paired)} cells; {len(paired) - len(bad)} ok" + (f"; NOT ok: {', '.join(bad)}" if bad else ""))
     if args.json:
         Path(args.json).write_text(json.dumps(paired, indent=1, default=str))
+    if args.ledger:
+        import subprocess
+        commit = args.commit or subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO_ROOT,
+                                               capture_output=True, text=True).stdout.strip()
+        print()
+        print("| Run directory | Commit | Config | What it shows |")
+        print("|---|---|---|---|")
+        for p in paired:
+            for name, d in p["per_draw"].items():
+                what = (f"{p['cell']}: share {_f(d['share'])} (honest-ref {_f(d['share_h'])}), "
+                        f"blocks {d['blocks']}, forks {d['forks']}, sw {d['sw']}, health {d['health']}")
+                if d.get("error"):
+                    what = f"{p['cell']}: ERROR {d['error']}"
+                print(f"| `{d['run']}` | `{commit}` | `{name}` cell | {what} |")
     return 1 if bad else 0
 
 
