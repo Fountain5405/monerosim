@@ -1,0 +1,16 @@
+{
+  "D0": 6000,
+  "convergence_height": 1535,
+  "created_at": "2026-09-25T17:48:51Z",
+  "d0_measured": 5996,
+  "generated_by_run": "20260925_121054_preload_h50",
+  "genesis_hash": "418015bb9ae982a1975da7d79277c2705727a56894ba0fb246adaabb1f4632e3",
+  "height": 1535,
+  "hf_schedule": null,
+  "median_block_interval_s": 78,
+  "monero_pin": "v0.18.5.1",
+  "network_id": "regtest-fakechain",
+  "tip_hash": "87d768ef2a704c1104aa51eb4589b43b57b2535e7d766b3d2e8589008ebc8812",
+  "tip_timestamp": 946683995,
+  "total_hashrate": 50
+}

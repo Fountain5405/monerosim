@@ -466,7 +466,15 @@ nice -n10 ./run_sim.sh --config test_configs/native_daa_300_10h.yaml --name nati
 python3 scripts/native_daa_analysis.py archived_runs/<run_id> --join-time 4h --png   # --png needs matplotlib
 ```
 
-## 8. Fidelity notes and limits
+## 8. Difficulty preload (skipping the warm-up)
+
+The 24-hour warm-up described below (§9's "Warm-up transient") is an
+artefact of every run starting from an empty regtest chain, not a modelling
+requirement. `general.mining.chain_snapshot` grafts a pre-mined chain,
+already at the target equilibrium difficulty with a full 720-block DAA
+window, onto every node before Shadow starts — see `docs/CHAIN_SNAPSHOT.md`.
+
+## 9. Fidelity notes and limits
 
 - **Retarget window.** monerod's stock LWMA window is 720 blocks in native
   mode, so difficulty retargets over hours — mainnet-like. This differs

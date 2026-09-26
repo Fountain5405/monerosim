@@ -1,5 +1,7 @@
 use crate::config::{validate_daemon_phases, Config};
-use crate::utils::validation::{validate_agent_daemon_config, validate_mining_config};
+use crate::utils::validation::{
+    validate_agent_daemon_config, validate_chain_snapshot_config, validate_mining_config,
+};
 use color_eyre::eyre::{eyre, WrapErr};
 use color_eyre::Result;
 use log::info;
@@ -32,6 +34,12 @@ pub fn load_config(config_path: &Path) -> Result<Config> {
 
     validate_mining_config(&config.agents.agents, config.general.mining.mode)
         .map_err(|e| eyre!("Mining configuration error: {}", e))?;
+
+    validate_chain_snapshot_config(
+        config.general.mining.mode,
+        &config.general.mining.chain_snapshot,
+    )
+    .map_err(|e| eyre!("Mining configuration error: {}", e))?;
 
     // Validate daemon phase timing for agents with phases
     for (agent_id, agent_config) in &config.agents.agents {

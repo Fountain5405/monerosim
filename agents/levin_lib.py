@@ -284,3 +284,71 @@ def connect(ip, port, timeout=20):
     s = socket.create_connection((ip, port), timeout=timeout)
     s.settimeout(timeout)
     return s
+
+
+# ---- initiator helpers (dial OUT and read a typed response) --------------
+# Used by analysis/mainnet/crawl.py to act as a normal client: send a request
+# bucket and decode the response's portable-storage payload with parse().
+def send_request(sock, command, section, expect_response=True):
+    payload = serialize(section)
+    sock.sendall(pack_header(command, len(payload), LEVIN_PACKET_REQUEST,
+                             expect_response=expect_response))
+    sock.sendall(payload)
+
+
+def request_response(sock, command, section):
+    """Send a request bucket and return the parsed response payload (dict)."""
+    send_request(sock, command, section)
+    _command, _flags, _return_code, _has_response, payload = read_bucket(sock)
+    return parse(payload)
+
+
+def handshake_request(network_id_bytes, my_port, peer_id, height, cumdiff,
+                      top_id_bytes, top_version=1, cumdiff_top64=0,
+                      rpc_port=0, support_flags=1):
+    """COMMAND_HANDSHAKE request section: our node_data + chain sync state."""
+    return {
+        "node_data": basic_node_data(network_id_bytes, my_port, peer_id,
+                                     rpc_port=rpc_port, support_flags=support_flags),
+        "payload_data": core_sync_data(height, cumdiff, top_id_bytes, top_version,
+                                       cumdiff_top64=cumdiff_top64),
+    }
+
+
+def ping_request():
+    """COMMAND_PING request section: empty (monero: 'we don't need to send any
+    real data')."""
+    return {}
+
+
+def ip_from_m_ip(m_ip):
+    """Inverse of ipv4_m_ip: little-endian-packed u32 -> dotted string."""
+    return ".".join(str((m_ip >> (8 * k)) & 0xFF) for k in range(4))
+
+
+def parse_network_address(adr):
+    """adr: a parsed `network_address` object (see network_address_ipv4).
+    Returns (ip_str, port) for an IPv4 entry (type 1), or (None, None)
+    otherwise (IPv6/Tor/I2P, not used by monerosim's mainnet crawl)."""
+    if not isinstance(adr, dict) or adr.get("type") != 1:
+        return None, None
+    addr = adr.get("addr") or {}
+    return ip_from_m_ip(addr.get("m_ip", 0)), addr.get("m_port", 0)
+
+
+def parse_peerlist(entries):
+    """Parsed local_peerlist_new (list of peerlist_entry dicts, see
+    peerlist_entry) -> list of {ip, port, peer_id, last_seen, rpc_port}."""
+    out = []
+    for e in entries or []:
+        ip, port = parse_network_address(e.get("adr"))
+        if ip is None:
+            continue
+        out.append({
+            "ip": ip,
+            "port": port,
+            "peer_id": e.get("id"),
+            "last_seen": e.get("last_seen"),
+            "rpc_port": e.get("rpc_port", 0),
+        })
+    return out

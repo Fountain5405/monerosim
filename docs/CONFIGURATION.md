@@ -75,6 +75,8 @@ general:
 | `wallet_defaults` | map | - | Default wallet CLI options |
 | `runahead` | string | - | Shadow runahead duration |
 | `python_venv` | string | - | Path to Python virtual environment |
+| `mining.mode` | string | "generateblocks" | Block-production mode: `generateblocks` or `native`. See `docs/NATIVE_MINING.md` |
+| `mining.chain_snapshot` | string | "auto" | Native mode only: preload a difficulty-warmed chain (`auto`, `off`, or a preset name/path; `auto` is a soft default — falls back to no preload with a warning if no matching preset exists). YAML booleans are accepted as aliases (`false` == `off`, `true` == `auto`). See `docs/CHAIN_SNAPSHOT.md` |
 
 Note: if `daemon_defaults` does not set `max-connections-per-ip`, monerosim
 injects `4` (a floor, not a force — any user-provided value wins, including
@@ -121,6 +123,26 @@ network:
       africa: 3
       oceania: 2
 ```
+
+Optional honest-node `/24` co-location (`prefix_sharing`): mainnet honest
+nodes are concentrated on relatively few network prefixes (Kirschner 2026:
+12% of BGP prefixes hold 55% of nodes), and monerosim otherwise gives every
+GML node — and therefore every agent — its own `/24`. This knob moves
+`fraction` of eligible honest daemons (non-miner, non-seed, unpinned) onto
+shared GML nodes, `per_prefix` at a time, inside their home region, after the
+base distribution and before any `topology_node` pins (which always win):
+```yaml
+network:
+  path: "topology.gml"
+  peer_mode: Dynamic
+  distribution:
+    prefix_sharing:
+      fraction: 0.55   # 0.0-1.0: share of eligible honest daemons to co-locate
+      per_prefix: 11   # 2-200: co-located agents per shared node
+```
+`per_prefix: 11` is the S11 dense-prefix figure, itself an **upper bound**: a
+real BGP prefix is often wider than a single `/24`, so treat `per_prefix`
+values near the high end as a stress case rather than a literal target.
 
 ### Peer Discovery Modes
 
@@ -305,6 +327,8 @@ agents:
 | `wallet_env` | map | Environment variables for wallet |
 | `attributes` | map | Custom key-value pairs passed to agent scripts |
 | `subnet_group` | string | Group agents into same /24 subnet |
+| `topology_node` | u32 | Pin this agent to a specific GML topology node id, overriding index-based distribution |
+| `turnover` | bool | Override this agent's `general.turnover` membership: `true` forces the daemon into the offline/online turnover cycle regardless of `fraction` — including a node that pins `hide-my-port: false` (normally exempt as an always-reachable hub); `false` always excludes it. Unset keeps the default (pinned-reachable excluded, others sampled at `fraction`). Miners and seed nodes are always excluded regardless. |
 
 ## Complete Example
 

@@ -97,6 +97,26 @@ pub struct RegionWeights {
     pub oceania: Option<u32>,
 }
 
+/// Honest-node /24 co-location knob (gap G5,
+/// `docs/superpowers/specs/2026-09-23-mainnet-replica-design.md` §3/§7).
+///
+/// Mainnet honest nodes are concentrated: Kirschner 2026 (S11) finds 12% of
+/// BGP prefixes hold 55% of nodes, about 11 per dense prefix. monerosim gives
+/// each GML node its own /24 (`src/ip/as_manager.rs`), so this moves a
+/// fraction of eligible honest daemons onto shared GML nodes, `per_prefix` at
+/// a time, inside their home region. Applied after the base distribution and
+/// before per-agent `topology_node` pins (which always win). Absent = today's
+/// behavior (every honest node keeps its own /24).
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub struct PrefixSharingConfig {
+    /// Fraction of eligible honest daemons to co-locate. Must be in `[0.0, 1.0]`.
+    pub fraction: f64,
+    /// How many co-located agents share one GML node (one /24). Must be in
+    /// `[2, 200]`; 11 is the S11 dense-prefix figure, itself an upper bound
+    /// since a BGP prefix is often wider than a /24.
+    pub per_prefix: u32,
+}
+
 /// Distribution configuration for GML network topologies.
 ///
 /// Controls how simulation agents are placed across the network topology nodes.
@@ -110,6 +130,9 @@ pub struct Distribution {
     /// Custom region weights (only used with Weighted strategy)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weights: Option<RegionWeights>,
+    /// Honest-node /24 co-location (gap G5). Absent = no sharing (default).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prefix_sharing: Option<PrefixSharingConfig>,
 }
 
 impl Default for Distribution {
@@ -117,6 +140,7 @@ impl Default for Distribution {
         Self {
             strategy: DistributionStrategy::Global,
             weights: None,
+            prefix_sharing: None,
         }
     }
 }
@@ -176,6 +200,7 @@ impl Config {
                     path,
                     peer_mode,
                     seed_nodes,
+                    distribution,
                     ..
                 } => {
                     if path.is_empty() {
@@ -184,6 +209,9 @@ impl Config {
                         ));
                     }
                     Self::validate_peer_config(peer_mode, seed_nodes)?;
+                    if let Some(dist) = distribution {
+                        Self::validate_prefix_sharing(dist.prefix_sharing.as_ref())?;
+                    }
                 }
                 Network::Switch {
                     network_type,
@@ -234,6 +262,27 @@ impl Config {
             }
         }
 
+        Ok(())
+    }
+
+    /// Validate `network.distribution.prefix_sharing` ranges (gap G5).
+    fn validate_prefix_sharing(
+        prefix_sharing: Option<&PrefixSharingConfig>,
+    ) -> Result<(), ValidationError> {
+        if let Some(ps) = prefix_sharing {
+            if !(0.0..=1.0).contains(&ps.fraction) {
+                return Err(ValidationError::InvalidNetwork(format!(
+                    "distribution.prefix_sharing.fraction must be in [0.0, 1.0], got {}",
+                    ps.fraction
+                )));
+            }
+            if !(2..=200).contains(&ps.per_prefix) {
+                return Err(ValidationError::InvalidNetwork(format!(
+                    "distribution.prefix_sharing.per_prefix must be in [2, 200], got {}",
+                    ps.per_prefix
+                )));
+            }
+        }
         Ok(())
     }
 }
@@ -472,10 +521,51 @@ pub struct MiningConfig {
     /// with literal hashrates light mode is too slow (spec §7).
     #[serde(default = "default_rx_full_dataset")]
     pub rx_full_dataset: bool,
+    /// Difficulty-preload chain snapshot (native mode only). `auto`
+    /// (default, soft) = pick the repo preset under `chain_snapshots/`
+    /// whose `total_hashrate` and `monero_pin` match this run; if none
+    /// exists, warns and continues without a snapshot (fresh genesis, the
+    /// historical warm-up) rather than erroring — several matches is still
+    /// a hard error. `off` = no preload, unconditionally. Anything else
+    /// names a preset directly (a bare name resolves to
+    /// `chain_snapshots/<name>/`, anything containing `/` is used as a path
+    /// as-is) and is a hard error if missing/mismatched. YAML booleans are
+    /// accepted as aliases (`false` == `off`, `true` == `auto`) since
+    /// `scripts/scenario_parser.py`'s PyYAML round-trip can turn an
+    /// unquoted `off` into one. See docs/CHAIN_SNAPSHOT.md.
+    #[serde(
+        default = "default_chain_snapshot",
+        deserialize_with = "deserialize_chain_snapshot"
+    )]
+    pub chain_snapshot: String,
 }
 
 fn default_rx_full_dataset() -> bool {
     true
+}
+
+fn default_chain_snapshot() -> String {
+    "auto".to_string()
+}
+
+/// Accept a plain string (`"auto"`, `"off"`, a preset name/path) or a YAML
+/// boolean alias (`false` == `off`, `true` == `auto`) — see
+/// `chain_snapshot`'s doc comment.
+fn deserialize_chain_snapshot<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrBool {
+        Bool(bool),
+        String(String),
+    }
+    Ok(match StringOrBool::deserialize(deserializer)? {
+        StringOrBool::Bool(true) => "auto".to_string(),
+        StringOrBool::Bool(false) => "off".to_string(),
+        StringOrBool::String(s) => s,
+    })
 }
 
 impl Default for MiningConfig {
@@ -483,6 +573,7 @@ impl Default for MiningConfig {
         Self {
             mode: MiningMode::default(),
             rx_full_dataset: default_rx_full_dataset(),
+            chain_snapshot: default_chain_snapshot(),
         }
     }
 }
@@ -653,5 +744,46 @@ mod mining_config_tests {
     fn mining_rejects_unknown_mode() {
         let yaml = "stop_time: 1h\nmining:\n  mode: socket\n";
         assert!(serde_yaml::from_str::<GeneralConfig>(yaml).is_err());
+    }
+
+    #[test]
+    fn chain_snapshot_defaults_to_auto() {
+        let yaml = "stop_time: 1h\nmining:\n  mode: native\n";
+        let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(g.mining.chain_snapshot, "auto");
+    }
+
+    #[test]
+    fn chain_snapshot_parses_explicit_value() {
+        let yaml = "stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: off\n";
+        let g: GeneralConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(g.mining.chain_snapshot, "off");
+    }
+
+    #[test]
+    fn chain_snapshot_accepts_quoted_off_and_auto() {
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: \"off\"\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "off");
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: \"auto\"\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "auto");
+    }
+
+    #[test]
+    fn chain_snapshot_accepts_yaml_bool_aliases() {
+        // `false` == off — this is what scripts/scenario_parser.py's PyYAML
+        // round-trip turns an unquoted `off` into.
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: false\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "off");
+        // `true` == auto.
+        let g: GeneralConfig =
+            serde_yaml::from_str("stop_time: 1h\nmining:\n  mode: native\n  chain_snapshot: true\n")
+                .unwrap();
+        assert_eq!(g.mining.chain_snapshot, "auto");
     }
 }

@@ -227,6 +227,17 @@ pub struct AgentConfig {
     /// topology (`network:` GML section). Multiple agents may share a node.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topology_node: Option<u32>,
+
+    /// Explicit per-agent turnover override (see
+    /// `compute_turnover_set` in `src/agent/user_agents.rs`). `Some(true)`
+    /// forces the agent into the turnover set regardless of the global
+    /// `fraction` and regardless of pinned-reachable (`hide-my-port: false`);
+    /// `Some(false)` always excludes it; `None` (unset) keeps the existing
+    /// behaviour (pinned-reachable excluded, others sampled at `fraction`).
+    /// Miners and seed nodes are always excluded no matter what this is set
+    /// to.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub turnover: Option<bool>,
 }
 
 impl AgentConfig {
@@ -403,6 +414,8 @@ struct AgentConfigRaw {
     pub peers: Option<PeersConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topology_node: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub turnover: Option<bool>,
     /// Capture any extra fields for flat phase parsing
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_yaml::Value>,
@@ -462,6 +475,7 @@ impl<'de> Deserialize<'de> for AgentConfig {
             attributes: raw.attributes,
             subnet_group: raw.subnet_group,
             topology_node: raw.topology_node,
+            turnover: raw.turnover,
             peers: raw.peers,
         })
     }

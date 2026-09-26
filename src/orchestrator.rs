@@ -7,7 +7,9 @@ use crate::agent::{
     prepare_fallback_seeds, process_miner_distributor, process_pure_script_agents,
     process_simulation_monitor, process_user_agents, UserAgentProcessContext,
 };
-use crate::config::{Config, DistributionStrategy, Network, PeerMode, RegionWeights};
+use crate::config::{
+    Config, DistributionStrategy, Network, PeerMode, PrefixSharingConfig, RegionWeights,
+};
 use crate::gml_parser::{self, get_autonomous_systems, validate_topology, GmlGraph};
 use crate::ip::{get_agent_ip, AgentType, AsSubnetManager, GlobalIpRegistry};
 use crate::shadow::{
@@ -278,6 +280,7 @@ fn compose_base_environment(
 /// distribution config from the optional `network` block. The defaults match
 /// the legacy fall-throughs (Dynamic peer mode, no seeds, DAG topology, no
 /// distribution overrides).
+#[allow(clippy::type_complexity)]
 fn extract_network_topology_config(
     config: &Config,
 ) -> (
@@ -286,6 +289,7 @@ fn extract_network_topology_config(
     Option<Topology>,
     Option<DistributionStrategy>,
     Option<RegionWeights>,
+    Option<PrefixSharingConfig>,
 ) {
     match &config.network {
         Some(Network::Gml {
@@ -299,11 +303,15 @@ fn extract_network_topology_config(
             let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
             let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
             // Extract distribution config (defaults to Global strategy)
-            let (strategy, weights) = match distribution {
-                Some(dist) => (Some(dist.strategy.clone()), dist.weights.clone()),
-                None => (None, None), // Will default to Global in distribution.rs
+            let (strategy, weights, prefix_sharing) = match distribution {
+                Some(dist) => (
+                    Some(dist.strategy.clone()),
+                    dist.weights.clone(),
+                    dist.prefix_sharing,
+                ),
+                None => (None, None, None), // Will default to Global in distribution.rs
             };
-            (mode, seeds, Some(topo), strategy, weights)
+            (mode, seeds, Some(topo), strategy, weights, prefix_sharing)
         }
         Some(Network::Switch {
             peer_mode,
@@ -315,7 +323,7 @@ fn extract_network_topology_config(
             let seeds = seed_nodes.as_ref().unwrap_or(&Vec::new()).clone();
             let topo = topology.as_ref().unwrap_or(&Topology::Dag).clone();
             // Switch topology doesn't use distribution config
-            (mode, seeds, Some(topo), None, None)
+            (mode, seeds, Some(topo), None, None, None)
         }
         None => {
             // Default to Dynamic mode with no seed nodes and DAG topology
@@ -323,6 +331,7 @@ fn extract_network_topology_config(
                 PeerMode::Dynamic,
                 Vec::new(),
                 Some(Topology::Dag),
+                None,
                 None,
                 None,
             )
@@ -764,8 +773,14 @@ pub fn generate_agent_shadow_config(
     };
 
     // Extract peer mode, seed nodes, topology, and distribution config from configuration
-    let (peer_mode, seed_node_list, topology, distribution_strategy, distribution_weights) =
-        extract_network_topology_config(config);
+    let (
+        peer_mode,
+        seed_node_list,
+        topology,
+        distribution_strategy,
+        distribution_weights,
+        distribution_prefix_sharing,
+    ) = extract_network_topology_config(config);
 
     // Validate topology configuration
     // Count user agents (agents with daemon or wallet)
@@ -866,6 +881,7 @@ pub fn generate_agent_shadow_config(
         wallet_defaults: config.general.wallet_defaults.as_ref(),
         distribution_strategy: distribution_strategy.as_ref(),
         distribution_weights: distribution_weights.as_ref(),
+        distribution_prefix_sharing: distribution_prefix_sharing.as_ref(),
         scripts_dir: &scripts_dir,
         daemon_data_dir: &config.general.daemon_data_dir,
         simulation_seed: config.general.simulation_seed,

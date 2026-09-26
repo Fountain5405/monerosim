@@ -1,0 +1,84 @@
+# CHAIN-SNAPSHOT GENERATOR (docs/CHAIN_SNAPSHOT.md, preset "h50" = 5 x 10 h/s).
+#
+# Mines a long fakechain from genesis under native mining so its tail (the
+# last 735 blocks, a full DAA window) sits at the equilibrium difficulty
+# D0 = 120 x total_hashrate = 120 x 50 = 6,000. Consumer runs graft this
+# chain in ahead of their own genesis so the DAA never has to warm up from
+# block 1 (see docs/superpowers/specs/2026-09-23-difficulty-preload-design.md
+# Sec 5). No users, no relays, no transactions: this run exists only to mine
+# blocks.
+#
+# stop_time is 50h so the chain runs well past the 735+720 = 1,455-block
+# floor (~48.5h at 120s/block) with margin for warm-up variance; native
+# mining does not stop itself early, so by 50h the tip sits at ~1,500 blocks,
+# comfortably inside settled DAA territory.
+#
+# --sim-timestamp-offset (patches/monero-sim-mining.patch): every daemon in
+# this run — like every daemon in every monerosim run — starts its Shadow
+# clock at the SAME epoch (2000-01-01 00:00 UTC = 946,684,800), so a block
+# mined here late in THIS run would otherwise carry a timestamp far in a
+# consumer run's future. The offset subtracts a constant from every mined
+# block's timestamp so the chain's tip lands ~10 minutes BEFORE that shared
+# epoch instead: offset = stop_time + 10 min = 180,000s + 600s = 180,600s.
+# Monero's timestamp rules only check order (>= median of last 60) and
+# not-in-the-future (<= now + 2h); a constant shift preserves both, so this
+# is safe for the chain mined under it (see the design doc Sec 4).
+#
+# ---- G6b recipe (generate + commit the real "h50" preset; not yet run) ----
+#   1. Expand:
+#        python -m scripts.scenario_parser test_configs/preload_chain.scenario.yaml \
+#            -o test_configs/preload_chain.expanded.yaml --no-calibrate
+#   2. Run it, keeping the daemon data dirs (--no-clean; the box is shared,
+#      run this alone):
+#        ./run_sim.sh --config test_configs/preload_chain.expanded.yaml \
+#            --no-monitor --no-clean --no-archive
+#   3. Export any one miner's chain (they should all match — same seed, same
+#      D0) — find its data dir under $DAEMON_DATA_BASE (run_sim.sh prints it;
+#      see docs/eclipse_reproduction.md's --no-clean table for the pattern):
+#        venv/bin/python scripts/chain_snapshot.py export \
+#            --data-dir "$DAEMON_DATA_BASE/monero-miner-001" \
+#            --out chain_snapshots/h50/ --total-hashrate 50 --d0 6000 \
+#            --generated-by <run id from step 2>
+#   4. Verify:
+#        venv/bin/python scripts/chain_snapshot.py verify --preset chain_snapshots/h50/
+#   5. Commit chain_snapshots/h50/ (blocks.jsonl.gz + manifest.json; keep it
+#      under 1 MB — see chain_snapshots/README.md).
+general:
+  stop_time: 50h
+  simulation_seed: 12345
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  # Auto-injected fallback seeds always run vanilla `monerod` (no
+  # native-mining patches), so daemon_defaults' sim-timestamp-offset below
+  # (a patch-only flag) crashes them on boot. This generator run's 5 miners
+  # already reach each other via static priority-node peering, so no
+  # fallback-seed discovery path is needed (see FallbackSeedsMode::Off doc
+  # in src/config/types.rs).
+  fallback_seeds: "off"
+  mining:
+    mode: native            # real RandomX, sleep-throttled (docs/NATIVE_MINING.md)
+    # Quoted: scripts/scenario_parser.py round-trips through PyYAML, which
+    # resolves a bare `off` to the boolean false (YAML 1.1 bool literals);
+    # quoting keeps it the string "off" monerosim expects.
+    chain_snapshot: "off"   # this run GENERATES a preset; it must not consume one
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    sim-timestamp-offset: 180600   # stop_time (180000s) + 10 min; see header
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [10, 10, 10, 10, 10]   # h/s (native); D0 = 120 x 50 = 6,000

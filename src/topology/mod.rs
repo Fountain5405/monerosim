@@ -7,9 +7,11 @@ pub mod connections;
 pub mod distribution;
 pub mod peer_connections;
 pub mod placement;
+pub mod prefix_sharing;
 pub mod types;
 
 pub use connections::generate_topology_connections;
 pub use distribution::distribute_agents_across_topology;
 pub use peer_connections::{build_peer_topology, AgentEntry, PeerTopology};
+pub use prefix_sharing::apply_prefix_sharing;
 pub use types::Topology;

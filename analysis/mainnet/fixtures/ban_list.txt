@@ -1,0 +1,4 @@
+# tiny synthetic ban list for tests (not the real Boog900 list)
+10.0.0.5
+10.0.1.0/24
+10.0.2.10
