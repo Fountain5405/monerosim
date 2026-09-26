@@ -1,0 +1,18 @@
+# E4 rung 2: +uncles (MRL #144) on top of the PoP core — isolates the uncle
+# term the paper credits. Prediction (pre-registered in the design doc):
+# pop_core already collapsed ES to 0.022; uncles convert the ~28 tie coin
+# flips per run into deterministic honest wins (the honest block embeds the
+# attacker's in-time tie block as uncle, +1 weight), so es_pop_uncles
+# should land at or below es_pop (0.022) with FEWER transient forks, and
+# the honest control stays at alpha. Cells: es_pop_uncles + honest_pop_uncles;
+# baselines cited: es_none 0.492, es_pop 0.022, honest_none 0.397,
+# honest_pop 0.408 (pop_pilot).
+name: pop_uncles_pilot
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    pop_uncles: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles: true}}}

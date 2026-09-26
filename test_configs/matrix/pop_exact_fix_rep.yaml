@@ -1,0 +1,14 @@
+# Replication (n=2) of the fixed-parser exact result from pop_sop: lead-2
+# under PoP-exact fell to 0.127 with the bonus actually counting (vs ~0.35
+# in the inert era, and 0.356 stock in the same matrix). n=1 — replicate
+# before promoting to a manuscript finding. Cells IDENTICAL to the pop_sop
+# es_r2×exact cell, new matrix name; independent draw from preemption
+# timing.
+name: pop_exact_fix_rep
+base: test_configs/selfish_micro.yaml
+parallel: 1
+axes:
+  strategy:
+    es_r2: {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    exact: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}

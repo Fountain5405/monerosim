@@ -70,6 +70,50 @@ def test_pop_countermeasure_flags_are_gated(tmp_path):
     assert e["flags"] == ["sim-pop-k", "sim-publish-or-perish"]
 
 
+def test_pop_uncles_flag_is_gated(tmp_path):
+    cfg = {"agents": {"honest-001": {
+        "daemon": "monerod-sim",
+        "daemon_options": {"sim-publish-or-perish": True,
+                           "sim-pop-uncles": True}}}}
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-pop-uncles", "sim-publish-or-perish"]  # sorted
+
+
+def test_sop_w_flag_is_gated(tmp_path):
+    cfg = {"general": {"mining": {"mode": "native"}},
+           "agents": {"miner-001": {
+        "daemon": "monerod-sim",
+        "hashrate": 8,
+        "daemon_options": {"sim-sop-w": 16},
+        }}}
+    from scripts.run_sim_helpers import SIM_FLAG_OPTIONS
+    # sim-sop-w is a registry key; native mining adds the throttle flag too
+    assert 'sim-sop-w' in SIM_FLAG_OPTIONS
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-hash-interval-ms", "sim-sop-w"]  # sorted
+
+
+def test_sop_step3_flags_are_gated(tmp_path):
+    """The full Share-or-Perish flag set rides the same gate: a config asking
+    for SoP fork choice must fail preflight against a binary without it."""
+    cfg = {"agents": {"honest-001": {
+        "daemon": "monerod-sim",
+        "daemon_options": {"sim-share-or-perish": True,
+                           "sim-sop-delay-s": 5,
+                           "sim-sop-k": 3}}}}
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-share-or-perish", "sim-sop-delay-s", "sim-sop-k"]
+
+
+def test_pop_uncles_header_flag_is_gated(tmp_path):
+    cfg = {"agents": {"honest-001": {
+        "daemon": "monerod-sim",
+        "daemon_options": {"sim-publish-or-perish": True,
+                           "sim-pop-uncles-header": True}}}}
+    (e,) = daemon_capabilities(write(tmp_path, cfg))
+    assert e["flags"] == ["sim-pop-uncles-header", "sim-publish-or-perish"]
+
+
 def test_pure_script_agent_needs_no_daemon(tmp_path):
     """Regression: a monitor agent inherited daemon_defaults and demanded a
     patched binary it never runs (src/agent/pure_scripts.rs)."""

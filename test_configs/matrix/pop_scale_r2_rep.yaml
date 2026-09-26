@@ -1,0 +1,15 @@
+# Replication (n=2) for rung 4b: the scale-inversion headline (lead-2
+# 0.477 > ES 0.387 at 6 miners) and the partial blind spot (0.353 vs
+# break-even) are n=1. Cells are IDENTICAL to pop_scale_r2 under a new
+# matrix name (the runner resumes per name, so the rename is what makes
+# it run); the independent draw comes from native-preemption timing
+# (sigma~0.05 at 6 h). Mid-scale: one cell at a time on this box.
+name: pop_scale_r2_rep
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 1
+axes:
+  strategy:
+    es_r2: {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    none: {}
+    exact: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}

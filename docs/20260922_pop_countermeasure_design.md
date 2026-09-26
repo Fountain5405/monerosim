@@ -1,9 +1,8 @@
 # Publish-or-Perish as a flag-gated monerod-sim patch — design and pre-registration
 
-**Status:** patch `patches/monero-sim-pop.patch` built and compiling clean
-(2026-09-22); experiments not yet run. This document fixes the mechanism
-mapping and the predictions BEFORE the first countermeasure run, so the
-outcome can't be fit after the fact.
+**Status:** patch shipped; pilot RUN AND CONFIRMED 2026-09-22 (results in
+the last section: 0.492 → 0.022 at α=0.4, honest control clean). The
+predictions below were fixed BEFORE the first run.
 
 ## Sources
 
@@ -98,6 +97,23 @@ question; that is precisely the measurement.
   counter-pressure) is dominating — an honest negative result worth
   reporting, and the case for the uncles patch.
 
+## +uncles (rung 2, shipped 2026-09-22 as part of monero-sim-pop.patch)
+
+`--sim-pop-uncles` completes the published rule per MRL #144: while
+mining, a node appends to its miner-tx extra-nonce field the id of one
+IN-TIME alt block that competed with the block it builds on (height N−1
+sibling, same prev); at fork choice each in-time suffix block earns +1
+per embedded uncle that the node received, saw in time at the uncle
+height, and still holds as an alt there. Predicted effect (pre-registered
+above, P-un): pop_core already collapsed ES to 0.022 — uncles convert the
+~28 tie coin-flips per run into deterministic honest wins, so
+es_pop_uncles ≤ es_pop with fewer transient forks; honest control stays
+at α. Documented deviation from the paper/#144: the id rides the
+extra-nonce field (not an 80 B PoW header in a new tx_extra tag) and
+validation is node-local alt storage (not a header PoW re-check) — same
+economics (miners embed only blocks they hold; verifiers count only
+blocks they hold); the header variant is the production-fidelity upgrade.
+
 ## Planned runs (E4 ladder)
 
 1. ~~Pipeline smoke~~ ✅ done 2026-09-22 (`matrix_runs/pipeline_smoke/`,
@@ -112,3 +128,252 @@ question; that is precisely the measurement.
    honest_none/honest_pop).
 3. Full matrix on senior: strategy {es, es_r2, honest} × countermeasure
    {none, pop, pop_det} × α {0.30, 0.40, 0.45} + later SoP.
+
+## Pilot results (2026-09-22, `matrix_runs/pop_pilot/`, 4 × 6 h at α=0.4)
+
+| cell | attacker share | att. orphan | net orphan | MSB max-z | canonical blocks | PoP decisions |
+|---|---|---|---|---|---|---|
+| `es_none` | 0.492 (ES curve 0.484, all verdicts PASS) | 0.174 | 0.312 | +7.9 | 183 | — |
+| `es_pop` | **0.022** | **0.973** | **0.447** | +14.9 | 184 | 77 (73 KEEP / 4 SWITCH / 28 ties) |
+| `honest_none` | 0.397 | 0.027 | 0.021 | +0.1 | 184 | — |
+| `honest_pop` | 0.408 | 0.024 | 0.020 | +2.0 | 196 | 15 |
+
+- **P1 CONFIRMED at ~10× the pre-registered threshold**: 0.492 → 0.022
+  (predicted drop ≥ 0.05, measured 0.47). The attacker still mines (its
+  orphan rate 0.973 = it found ~183 blocks and banked 4) but every
+  withheld-then-released chain loses the weight race at the honest nodes:
+  73 of 77 PoP decisions KEEP the honest branch. P5's counter-pressure
+  (random-tie flips favoring the attacker at γ=0) did not materialize
+  net — lateness discounting dominates at Monero propagation speeds.
+- **P3/P4 clean**: `honest_pop` sits at α (0.408 vs 0.400), orphan rates
+  indistinguishable from `honest_none` (0.020–0.027 vs 0.021), canonical
+  throughput unchanged (196 vs 184 blocks — no reorg storms, no
+  self-harm). The patch is not breaking mining generally.
+- **New finding — the harm/profit asymmetry inverts into pure
+  vandalism**: under PoP the attack becomes UNPROFITABLE (0.022 < α) but
+  the network damage RISES (orphan rate 0.312 → 0.447): withholding still
+  orphans honest work even when it can never pay. A deployed PoP removes
+  the attacker's incentive but not the DoS; MSB detectability also RISES
+  (+7.9 → +14.9). Killing the profit and surviving the vandalism are
+  separate problems.
+- Verdict semantics: `es_pop` FAILs its (attack-shaped) verdicts because
+  it lands far BELOW the ES curve — that is the countermeasure working,
+  not a defect. `honest_none` FAILs the above-α check by 0.003 — an
+  honest actor is not supposed to clear it.
+
+Runs: `20260922_140138_pop_pilot__es_none`, `__es_pop`,
+`20260922_144601_pop_pilot__honest_none`, `__honest_pop` (commit
+`5751f7df`, monerod-sim 5-patch build 2026-09-22T13:05Z). Caveats:
+single 6 h runs (σ≈0.05); the A/B gap (0.47) is ~9σ — not noise. Next
+rung: the +uncles patch (isolates the uncle term the paper credits),
+det-tie axis, and the full strategy × countermeasure × α matrix on
+senior.
+
+## Follow-up results (2026-09-22, `matrix_runs/pop_followup/`, 3 × 6 h at α=0.4)
+
+| cell | attacker share | att. orphan | net orphan | MSB max-z |
+|---|---|---|---|---|
+| `es_pop_det` (det tie) | **0.244** | 0.530 | 0.308 | +8.6 |
+| `es_r2_pop` | **0.349** | 0.353 | 0.287 | +8.1 |
+| `es_r2_pop_det` | **0.326** | 0.279 | 0.234 | +7.8 |
+
+(baselines: `es_pop` 0.022 [pilot], `es_r2_none` 0.309 [release2 A/B].)
+
+1. **PoP-core is blind to the conservative (lead-2) attacker.** 0.309 →
+   0.349/0.326 — no reduction, possibly a small INCREASE (honest's late
+   counter-blocks now lose weight too). The mechanism is exact timing
+   semantics: lateness is judged against the FIRST block ever received at
+   a height. Textbook ES releases only AFTER honest published at the
+   contested height (a−h = 1 ⇒ h ≥ 1) — its reveal is always late →
+   crushed (0.022). Lead-2 releases at h = 0, BEFORE honest mines that
+   height — the attacker's blocks arrive first-at-height → in-time → the
+   override wins exactly as under stock rules. **PoP's lateness rule
+   punishes catch-up-triggered reveals, not proactive ones** — and the
+   observed Qubic policy is the proactive kind. This is tevador's own
+   argument for Share-or-Perish (MRL #146), now measured: closing the
+   proactive-release gap is what the l_w share-lateness rule is for.
+   Corollary prediction (pre-registered): +uncles will NOT close it — the
+   lead-2 release is a clean in-time override, not a tie.
+2. **The det-tie gap is large but single-run.** `es_pop_det` 0.244 vs
+   `es_pop` 0.022 — if it holds at n=2 (wave 2 in flight), the
+   deterministic hash comparison is systematically weaker than uniform
+   random at γ≈0 (candidate mechanism: det-tie outcome is a fixed
+   function of the tip pair, so a favorable hash draw persists across
+   re-evaluations of the same contest, while random re-rolls; flagged for
+   the #144-exact rung, which uses det-tie per the issue).
+3. First nonzero realized γ ever measured: 0.040 in `es_r2_pop_det`
+   (one tie won out of ~25) — an artifact of tie re-evaluation under the
+   weight rule, worth watching, not yet a signal.
+4. Detection: MSB z stays high everywhere (+7.8 to +14.9) — under every
+   PoP variant the attacker remains loud.
+
+## Rung 3: MRL #144 EXACT (2026-09-22, `--sim-pop-uncles-header`)
+
+Per user direction: the deviated variant (above) runs its course; this rung
+produces #144 exactly. `--sim-pop-uncles-header` embeds the uncle's
+**~80 B PoW header (the hashing blob)** in a new `tx_extra` field
+(tag 0x75, `tx_extra_sim_uncle`, appended LAST in the variant so existing
+`which()` indices are stable) and verifies it **trustlessly**:
+
+- the verifier re-derives the uncle id (`cn_fast_hash` of the blob),
+  re-parses the header, requires the trailing tx-count varint to consume
+  the rest exactly, and requires a reconstructed block to reproduce the
+  blob byte-for-byte (non-canonical encodings count for nothing);
+- **PoW re-check**: the reconstructed header must meet the difficulty at
+  the uncle height (`get_block_longhash` + `check_hash`) — a fabricated or
+  insufficient-work header earns nothing;
+- **height/sibling check**: the header's `prev_id` must equal the
+  containing block's parent's prev (MRL #144's own validation);
+- **lateness**: a received uncle is held to Def. 1; a NEVER-RECEIVED uncle
+  still counts — that self-contained verifiability is exactly what the
+  deviated id-in-nonce variant cannot do.
+
+Template side appends the field after the weight-settling loop
+(cumulative_weight refolded so the template invariant holds); the field is
+covered by the miner-tx hash like any other extra field, so blocks remain
+stock-valid. The DEVIATED variant stays available (`--sim-pop-uncles`) for
+the A/B: any share gap between the two variants measures the value of
+trustless verification (never-seen uncles) in these topologies. Det-tie
+per #144 composes via the existing `--sim-pop-det-tie`.
+
+## Wave-2 results (2026-09-22/23, `matrix_runs/pop_wave2/`, 4 × 6 h at α=0.4)
+
+| cell | attacker share | att. orphan | net orphan | verdict reading |
+|---|---|---|---|---|
+| `es_pop` (repeat) | 0.123 | 0.794 | 0.358 | core crush holds (n=2: 0.022, 0.123) |
+| `es_pop_det` (repeat) | 0.296 | 0.486 | 0.326 | det-tie weakness holds (n=2: 0.244, 0.296) |
+| `es_pop_uncles` | **0.024** | 0.970 | 0.446 | uncles ≈ core for ES — P-un confirmed |
+| `honest_pop_uncles` | 0.402 | 0.000 | 0.022 | control clean (≈ α, no storms) |
+
+1. **Det-tie weakness confirmed at n=2**: core 0.022/0.123 (mean 0.07) vs
+   det 0.244/0.296 (mean 0.27) — non-overlapping bands. Tie-win
+   frequencies alone do NOT explain it (random won 26/60 ties = 43%,
+   det won 28/82 = 34%): the gap must also involve WHICH ties are won —
+   deep (multi-block) vs shallow releases — and the fat-tailed
+   winner-take-all cycle variance. Mechanism not yet isolated; flagged
+   for the #144-exact readout, which uses det-tie as the issue specifies.
+2. **The uncle term is a no-op against textbook ES here** (0.024 vs core
+   0.022/0.123): with lateness already zeroing the attacker's contested
+   blocks, there is nothing left for uncles to rescue — consistent with
+   the paper's design intent (uncles reward honest publication, they do
+   not punish withholding further). Vandalism persists (net orphan 0.446).
+3. Honest control with uncle fields riding every honest coinbase: share
+   0.402 ≈ α, orphaning 0.022 — the ~85 B field is weightless to the
+   network. (Block counts 163–186 across cells: the countermeasure does
+   not slow the chain.)
+
+## Rung-3 results (2026-09-23, `matrix_runs/pop_exact/`, 3 × 6 h at α=0.4;
+## replicated 2026-09-24, `matrix_runs/pop_exact_rep/`)
+
+> **DEFECT DISCLOSED 2026-09-24:** the EXACT variant's uncle-header bonus
+> was INERT in every run on this page and below — its parser read the
+> tx-count varint from the 32-byte tx-tree-hash offset and rejected every
+> real blob, so `es_exact`/`honest_exact` cells measured pop-core +
+> det-tie with dead coinbase payload (the deviated variant's local-storage
+> counting did work — the A/B asymmetry below was real code asymmetry,
+> not trustless counting). Found during the SoP step-2 build; parser
+> fixed same day (`docs/20260923_sop_design.md` §step 2); re-measurement
+> rides the SoP step-4 matrix.
+
+| cell (all det-tie) | attacker share (run1 / run2) | att. orphan | note |
+|---|---|---|---|
+| core (cited, n=2) | 0.244 / 0.296 | | |
+| `es_exact` (header uncles) | 0.134 / 0.215 | 0.742 / 0.672 | mean 0.175 |
+| `es_uncles_det` (deviated uncles) | 0.337 / 0.209 | 0.385 / 0.610 | mean 0.273 |
+| `honest_exact` control | 0.322 / 0.378 vs α=0.400 | 0.113 / 0.029 | dip does not replicate |
+
+- **The exact-vs-deviated A/B (fixed det-tie) went AGAINST the
+  pre-registered prediction** (exact ≈ deviated) at n=1: 0.134 vs 0.337.
+  **The replication (2026-09-24) deflates the gap**: 0.215 vs 0.209 — a
+  dead heat in the paired second draw (per-run diffs −0.203 / +0.006;
+  means 0.175 vs 0.273 with overlapping spreads at σ≈0.06–0.09). The
+  trustless-counting advantage is directionally present on means but
+  NOT resolvable at n=2 — the n=1 "halves the det-tie leak" was
+  substantially run-to-run luck. Report as exact ≤ deviated on means,
+  magnitude unresolved pending n≥3. Mechanism note from run 1 stands:
+  the trustless side counts uncles whose blocks left alt storage after
+  reorgs, where the deviated variant undercounts during the multi-reorg
+  dance — in winner-take-all cycles a few decisive weight points move
+  whole cycles, which is also why single draws are noisy here.
+- **Watch item resolved**: `honest_exact` dipped to 0.322 in run 1
+  (other controls: 0.397, 0.402, 0.408) with orphaning 2.5× — the
+  repeat came in at 0.378 ≈ α with orphan 0.029: the dip was noise, not
+  mechanism. Rung 4's mid-scale recovery (0.367) stands regardless.
+
+## Rung 4: scale (2026-09-23, `pop_scale`)
+
+`test_configs/selfish_scaled{,_mid}.yaml`: 12 (senior) / 6 (local pilot)
+honest miners + 32/16 relays, α=0.40 exact, D=4800/3600. The micro
+topology starves the uncle mechanism — 3 embeddings per 6 h because two
+honest miners essentially never race; real Monero's contested-height rate
+is what uncle appreciation feeds on. Pre-registered (P-scale): embeddings
+rise to O(hundreds); tie/natural-fork counts rise with miner count; the
+exact-vs-deviated gap either compounds or inverts; the honest control's
+orphaning is the safety readout. Mid runs one-at-a-time locally
+(parallel: 1); full scale is the senior-box leg.
+
+## Rung-4 mid-scale results (2026-09-23 `matrix_runs/pop_scale/`;
+## replicated 2026-09-24 `matrix_runs/pop_scale_rep/` — 6 honest miners +
+## 16 relays, α=0.4, 6 h)
+
+| cell | attacker share (run1/run2) | att. orphan | net orphan |
+|---|---|---|---|
+| `es_none` | 0.387 / 0.463 | 0.280 / 0.190 | 0.321 / 0.327 |
+| `es_exact` | **0.170 / 0.285** | 0.721 / 0.589 | 0.380 / 0.400 |
+| `honest_none` | 0.386 / 0.400 ≈ α | 0.200 / 0.041 | 0.056 / 0.074 |
+| `honest_exact` | 0.367 / 0.431 ≈ α | 0.076 / 0.028 | — / 0.080 |
+
+- **P-scale (embeddings) confirmed directionally**: 3 → 17 with 2 → 6
+  honest miners — contention feeds the uncle mechanism as predicted.
+- **The exact countermeasure holds at mid scale, cleanly separated at
+  n=2**: stock {0.387, 0.463} vs exact {0.170, 0.285} — every exact
+  draw below every stock draw (means 0.425 → 0.228, −0.20). Attacker
+  orphaning stays 0.59–0.72 — the crush survives more racers. The point
+  estimate moves (0.170 → mean 0.228); the verdict does not.
+- **"Scale alone shrinks the stock attacker" WEAKENS at n=2**: micro ES
+  is {0.463, 0.492} (E1 baseline + pilot), mid ES {0.387, 0.463} —
+  means 0.478 vs 0.425 with 0.463 in BOTH sets. If the shrinkage is
+  real it is ~−0.05, within noise at n=2; dropped as a standalone
+  claim. (The ES theory curve at α=0.4, 0.484, is a 2-racer number;
+  honest-network fragmentation cuts the other way at scale.)
+- Vandalism persists (net orphan 0.32 → 0.38–0.40 under the
+  countermeasure).
+- **Controls clean at n=2**: honest_none 0.386/0.400; honest_exact
+  0.367/0.431 (mean 0.399 ≈ α) — the micro dip (0.322) did not
+  replicate (0.378) and the mid-scale recovery holds twice. The dip
+  was starvation/noise: with real contention the uncles have consistent
+  work and the weight disagreements settle. Remaining exact-variant
+  cost at scale: **~9–10% honest throughput, twice measured** (158 vs
+  176, and 160 vs 175 canonical blocks / 6 h) — real, worth stating in
+  any deployment discussion.
+
+## Rung 4b: the blind spot at mid scale (2026-09-23 `pop_scale_r2` n=1;
+## replicated 2026-09-24 `pop_scale_r2_rep`)
+
+| mid (6 miners, α=0.4) | stock | exact (uncles+det) |
+|---|---|---|
+| conservative lead-2 | 0.477 / 0.396 | 0.353 / 0.347 |
+| (textbook ES, cited) | 0.387 | 0.170 |
+
+- **Scale INVERTS the strategy ranking — direction unbroken, margin
+  thin at n=2**: both lead-2 stock draws (0.477, 0.396) exceed ES's
+  single mid-scale draw (0.387; micro was 0.309 vs 0.492), but the
+  −0.08 run-to-run swing on lead-2 nearly erases the gap, so the
+  inversion holds on means (0.437) pending the ES replicate in
+  `pop_scale_rep` (in flight). Fragmented honest racing (6 miners
+  forking naturally) feeds in-time overrides — the attack Monero
+  actually observed (Qubic's lead-2) is the stronger one at realistic
+  miner counts, by however thin a margin.
+- **The blind spot is partial, not absolute, at scale — and replicates
+  tightly**: PoP-exact lands lead-2 at ~break-even in BOTH draws
+  (0.353 / 0.347 vs fair share 0.40) vs −0.22 on ES. Fragmented honest
+  races sometimes beat the attacker to a contested height, so some
+  releases go late — but the h=0 release keeps most of its power. This
+  residue is precisely SoP's l_w target (P-SoP1 baseline: stock 0.477 /
+  0.396, under PoP 0.353 / 0.347).
+- First nonzero realized γ at mid scale (0.03–0.10 across cells; the
+  r2 rep drew 0.098/0.105): the larger fabric has genuine propagation
+  races — the network-layer γ the literature reports, appearing only
+  when the topology can produce it.
+- σ≈0.05 per 6 h draw: r2 cells now n=2; the `pop_scale` legs
+  (ES + controls) replicate next.

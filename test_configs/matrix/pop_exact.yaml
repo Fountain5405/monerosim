@@ -1,0 +1,23 @@
+# E4 rung 3: MRL #144 EXACT (PoW-header uncles + deterministic tie, per the
+# issue as written) — and the single-variable variant A/B: pop_uncles_det
+# is the DEVIATED id-in-nonce variant at the SAME det-tie, so
+# es_exact vs es_uncles_det isolates trustless verification
+# (never-received uncles + PoW re-check) from everything else.
+# Baselines cited: es_none 0.492; es_pop_det 0.244 (+ wave-2 repeat);
+# es_pop_uncles from wave 2 (random tie). Prediction (pre-registered):
+# exact ~ deviated in these topologies (every honest node holds the
+# attacker's alts, so the trustless path rarely fires); the interesting
+# number is honest_exact staying at alpha with header fields riding every
+# honest coinbase (block-size/weight sanity).
+name: pop_exact
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    exact:      {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}
+    uncles_det: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles: true, sim-pop-det-tie: true}}}
+exclude:
+  - {strategy: honest, countermeasure: uncles_det}

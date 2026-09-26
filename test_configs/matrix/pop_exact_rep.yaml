@@ -1,0 +1,18 @@
+# Replication (n=2) of the exact-vs-deviated variant A/B (micro): the
+# 0.134-vs-0.337 trustless-counting gap and the honest_exact dip (0.322)
+# are n=1. Cells IDENTICAL to pop_exact (incl. the exclude), new matrix
+# name; independent draw from native-preemption timing. Runs FIRST as
+# the overnight canary — 25-min micro cells verify the whole harness
+# before the 6 h mid-scale legs start.
+name: pop_exact_rep
+base: test_configs/selfish_micro.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    exact:      {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}
+    uncles_det: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles: true, sim-pop-det-tie: true}}}
+exclude:
+  - {strategy: honest, countermeasure: uncles_det}

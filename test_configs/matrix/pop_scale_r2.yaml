@@ -1,0 +1,18 @@
+# E4 rung 4b: the proactive-release blind spot at mid scale. Prediction
+# (pre-registered): PoP-exact stays BLIND to the conservative lead-2
+# attacker at 6 miners — the blind spot is timing semantics (release at
+# h=0 lands first-at-height = in-time), not a small-network artifact;
+# faster honest catch-up (6 miners) may shave the lead-2 baseline slightly
+# but not close the gap. If the gap DOES close at scale, the SoP
+# motivation weakens and the finding flips — recorded either way.
+# Baselines cited: es_r2 micro 0.309, es_r2_pop micro 0.349/0.326;
+# mid-scale es_none 0.387, es_exact 0.170.
+name: pop_scale_r2
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 1
+axes:
+  strategy:
+    es_r2: {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    none: {}
+    exact: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}

@@ -1,0 +1,23 @@
+# E4 rung 4: the uncle mechanism at realistic contention. The micro
+# topology starves it (3 uncle embeddings per 6 h — two honest miners
+# essentially never race), and the first honest_exact control dipped
+# (0.322 vs alpha=0.400 with 2.5x orphaning) — scale is the variable that
+# settles whether #144-exact helps or hurts when contested heights actually
+# occur. Mid-size base (6 miners + 16 relays, 23 hosts) runs ONE AT A TIME
+# on the 24-core/31GB box (parallel: 1); full scale (12 miners + 32 relays)
+# is the senior-box spec (swap base: test_configs/selfish_scaled.yaml).
+# Pre-registered predictions (P-scale): natural-fork/tie counts rise ~with
+# miner count; uncle embeddings rise from ~3 to O(hundreds); the
+# exact-vs-deviated gap either grows (trustless counting compounds) or
+# inverts (PoW re-check disagreement); the honest control's orphaning is
+# the key safety readout.
+name: pop_scale
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 1
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    honest: {attacker: {attributes: {strategy: honest}}}
+  countermeasure:
+    none: {}
+    exact: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}

@@ -1064,6 +1064,23 @@ build_and_generate() {
     cp "$CONFIG" "$ARCHIVE_DIR/input_config.yaml"
     log_ok "Input config archived"
 
+    # Binary provenance (review 2026-09-25): record WHICH monerod binaries
+    # this run used. Until now a run's binary could only be reconstructed
+    # from build timestamps, and a masked build failure ran stale code
+    # while looking like a test of new code.
+    {
+        echo "archived_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        for _b in "$HOME/.monerosim/bin/monerod" "$HOME/.monerosim/bin/monerod-sim"; do
+            if [[ -f "$_b" ]]; then
+                echo "$(basename "$_b"): sha256=$(sha256sum "$_b" | cut -d' ' -f1) mtime=$(date -u -r "$_b" +%Y-%m-%dT%H:%M:%SZ)"
+            fi
+        done
+        if [[ -f "$HOME/.monerosim/bin/monerod-sim.provenance" ]]; then
+            echo "--- monerod-sim.provenance ---"
+            cat "$HOME/.monerosim/bin/monerod-sim.provenance"
+        fi
+    } > "$ARCHIVE_DIR/binary_provenance.txt" 2>/dev/null || true
+
     # Generate Shadow config
     log_info "Generating Shadow configuration..."
     REACHABLE_ARGS=()

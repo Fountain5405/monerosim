@@ -1,0 +1,96 @@
+# PoP EXACT-uncle fork-forcing smoke, RACE-HEAVY variant (review F5b).
+# Same as pop_exact_fork_smoke.yaml but fixed difficulty 40 (a block every
+# ~4 s at 10 h/s, so a large fraction of heights race and honest miners
+# mine dozens of templates that carry an in-time uncle header) and 60
+# sim-minutes. Gate as the base smoke:
+#   venv/bin/python scripts/sop_health_check.py archived_runs/<run> \
+#       --require-forks --require-share-weight
+general:
+  fallback_seeds: custom
+  stop_time: 60m
+  simulation_seed: 12345
+  bootstrap_end_time: 5m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+  daemon_defaults:
+    fixed-difficulty: 40
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+    daemon_options:
+      sim-publish-or-perish: true
+      sim-pop-uncles-header: true
+      sim-pop-det-tie: true
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+    daemon_options:
+      sim-publish-or-perish: true
+      sim-pop-uncles-header: true
+      sim-pop-det-tie: true
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    start_time: 6m
+    hashrate: 4
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: '0'
+      reaction_delay_ms: '200'
+  attacker-bridge:
+    daemon: monerod-sim
+    script: agents.selfish_bridge
+    start_time: 6m
+  relay-001:
+    daemon: monerod-sim
+    start_time: 30s
+  relay-002:
+    daemon: monerod-sim
+    start_time: 60s
+  monero-seed-001:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-002:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-003:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-004:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-005:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-006:
+    daemon: monerod-sim
+    start_time: 5s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
