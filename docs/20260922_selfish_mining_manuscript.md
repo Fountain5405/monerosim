@@ -114,6 +114,18 @@ over-predicts exactly where a rational attacker would operate.**
 
 ### E4 — Countermeasures (RQ5: which countermeasure beats which strategy)
 
+> **EXACT RE-RUN (2026-09-26/27, `docs/20260926_exact_uncles_and_sop_controls.md`):**
+> after two more daemon fixes (review F5c: uncle sibling anchor; F5d:
+> template refresh on a sibling at the tip) the MRL #144 exact cells were
+> re-run at n=2. Micro (h10 base): 0 uncle headers embedded in any cell —
+> at γ ≈ 0 the attacker's tie block never reaches an honest miner on its own,
+> so exact = det-tie by construction there (ES {0.169, 0.199} vs stock
+> {0.377, 0.441}; lead-2 {0.284, 0.292} vs {0.305, 0.469}). Mid (genesis
+> base, 6 miners): uncles live but rare (12–22 embedded per cell); ES
+> {0.253, 0.303} vs stock {0.376, 0.518}, lead-2 {0.241, 0.251} vs stock
+> {0.455, 0.351}, honest control ≈ α. A same-daemon det-tie pair to isolate
+> the uncle term is running. Finding 9 stays retracted until it lands.
+>
 > **RE-RUN (2026-09-26, `docs/20260926_sop_h10_rerun.md`):** the SoP v2
 > cells were re-run at n=2 on the fixed daemon and the `h10` chain-snapshot
 > base (real DAA from block one, attacker at 0 s). Result: ES {0.035, 0.000}
@@ -459,12 +471,27 @@ on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
 (v6 was killed early — the `mine_after_height` gate held a victim whose
 daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 
+| `20260926_203140_pop_exact_mid__es_exact` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_exact: share 0.253 (honest-ref 0.253), blocks 190, forks 6872, sw 65, health ok |
+| `20260926_203201_pop_exact_mid_rep__es_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_exact: share 0.303 (honest-ref 0.303), blocks 195, forks 4144, sw 37, health ok |
+| `20260926_203140_pop_exact_mid__es_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_none: share 0.376 (honest-ref 0.376), blocks 93, forks 1366, sw 0, health ok |
+| `20260926_203201_pop_exact_mid_rep__es_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_none: share 0.518 (honest-ref 0.518), blocks 195, forks 3507, sw 0, health ok |
+| `20260926_203140_pop_exact_mid__es_r2_exact` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_r2_exact: share 0.241 (honest-ref 0.241), blocks 166, forks 3449, sw 44, health ok |
+| `20260926_203200_pop_exact_mid_rep__es_r2_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_r2_exact: share 0.251 (honest-ref 0.251), blocks 175, forks 1939, sw 28, health ok |
+| `20260926_230344_pop_exact_mid__es_r2_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_r2_none: share 0.455 (honest-ref 0.455), blocks 145, forks 2424, sw 0, health ok |
+| `20260926_230504_pop_exact_mid_rep__es_r2_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_r2_none: share 0.351 (honest-ref 0.351), blocks 194, forks 1758, sw 0, health ok |
+| `20260926_231316_pop_exact_mid__honest_exact` | `e6f6c854` | `pop_exact_mid` cell ‡ | honest_exact: share 0.416 (honest-ref 0.416), blocks 178, forks 41, sw 0, health ok |
+| `20260926_231036_pop_exact_mid_rep__honest_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | honest_exact: share 0.367 (honest-ref 0.367), blocks 188, forks 106, sw 34, health ok |
+| `20260926_231717_pop_exact_mid__honest_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | honest_none: share 0.405 (honest-ref 0.405), blocks 195, forks 90, sw 0, health ok |
+| `20260926_231908_pop_exact_mid_rep__honest_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | honest_none: share 0.470 (honest-ref 0.470), blocks 181, forks 46, sw 0, health ok |
+
 Reproduce any row:
 
 ```bash
 git checkout <commit> && nice -n10 ./run_sim.sh --config <config> --name <label> --no-monitor
 venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 ```
+
+‡ daemon `monerod-sim` with review fixes F5c+F5d (pop patch sha `9492d7cb…`, installed 2026-09-26T20:30Z). See `docs/20260926_exact_uncles_and_sop_controls.md` for these and the micro exact / SoP-control rows.
 
 † daemon `monerod-sim` built 2026-09-26T12:41Z from the patch stack at `caa8f656`; analysis re-run at `b1db1d6b` (`--reanalyze`). See `docs/20260926_sop_h10_rerun.md`.
 

@@ -240,6 +240,14 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
 - Owner decision opened: a γ > 0 exact cell (bridge with `sim-relay-alt-blocks`)
   is the only way to measure the uncle term against the attacker itself.
 
+- **Stage 2 results (2026-09-27T01:46Z)**: all 12 mid cells health ok. Exact
+  vs stock: ES {0.253, 0.303} vs {0.376, 0.518}; lead-2 {0.241, 0.251} vs
+  {0.455, 0.351}; honest {0.416, 0.367} vs {0.405, 0.470}. Uncle term live
+  but rare (12–22 embeddings per attack cell, all skips "not sibling").
+  Exact ES sits inside the retained det-tie-only mid range, so a
+  same-daemon det-tie pair (`pop_dettie_mid{,_rep}`, ES + lead-2, 4 cells,
+  driver `run_stage3.sh`) was launched 01:47Z; ~5 h.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

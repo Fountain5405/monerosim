@@ -450,3 +450,21 @@ def test_exact_specs_flag_honest_miners_only():
         assert cfgs["es_exact"]["agents"]["honest-006"]["daemon_options"] == flags
         assert "daemon_options" not in cfgs["es_none"]["agents"]["honest-006"]
         assert cfgs["es_none"]["general"]["simulation_seed"] == seed
+
+
+def test_dettie_mid_control_differs_from_exact_only_by_the_uncle_flag():
+    """pop_dettie_mid{,_rep} (2026-09-27) isolate the uncle term: same base,
+    seeds and strategies as pop_exact_mid, honest flags minus
+    sim-pop-uncles-header."""
+    for name, exact_name, seed in (("pop_dettie_mid", "pop_exact_mid", 12345),
+                                   ("pop_dettie_mid_rep", "pop_exact_mid_rep", 54321)):
+        spec, cfgs = _plan_and_build(name)
+        _, exact = _plan_and_build(exact_name)
+        assert sorted(cfgs) == ["es_dettie", "es_r2_dettie"]
+        for strat in ("es", "es_r2"):
+            d, e = cfgs[f"{strat}_dettie"], exact[f"{strat}_exact"]
+            assert d["general"]["simulation_seed"] == seed == e["general"]["simulation_seed"]
+            assert d["agents"]["attacker-miner"] == e["agents"]["attacker-miner"]
+            eo = dict(e["agents"]["honest-001"]["daemon_options"])
+            assert eo.pop("sim-pop-uncles-header") is True
+            assert d["agents"]["honest-001"]["daemon_options"] == eo

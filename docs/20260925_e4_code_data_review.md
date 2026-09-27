@@ -197,8 +197,11 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   h10 base, pairs with pop_sop2_h10's stock rows: ES {0.169, 0.199}, lead-2
   {0.284, 0.292}, honest {0.378, 0.389} — det-tie readings, see F5d) and
   `pop_exact_mid{,_rep}.yaml` (mid, genesis base UNCHANGED so the exact rows
-  compare directly with the retained det-tie mid rows; stock pairs re-run;
-  launched 20:31Z).
+  compare directly with the retained det-tie mid rows; stock pairs re-run):
+  finished 2026-09-27T01:46Z, all 12 health ok — ES {0.253, 0.303} vs stock
+  {0.376, 0.518}, lead-2 {0.241, 0.251} vs {0.455, 0.351}, honest ≈ α; uncle
+  term live (12–22 embeddings per attack cell). Same-daemon det-tie pair
+  `pop_dettie_mid{,_rep}` launched 01:47Z to isolate the uncle term.
   Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
   (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated

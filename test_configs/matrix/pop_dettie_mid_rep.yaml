@@ -1,0 +1,25 @@
+# Same-daemon det-tie control for pop_exact_mid — SECOND draw (cells identical
+# to pop_dettie_mid.yaml, own simulation seed 54321) of an n=2 pair.
+#
+# pop_exact_mid{,_rep} (2026-09-26/27) measured MRL #144 exact at mid scale:
+# ES {0.253, 0.303} vs stock {0.376, 0.518}; lead-2 {0.241, 0.251} vs stock
+# {0.455, 0.351}; the uncle term was live (12-22 headers embedded and 28-65
+# uncle-weighted fork decisions per attack cell). But "exact" = pop-core +
+# det-tie + uncles, and the retained det-tie-only mid rows (ES {0.170, 0.285},
+# pop_scale on the 24-core box, pre-fix daemon) already sit in the same range.
+# This pair removes the uncle flag and nothing else — same base, same seeds,
+# same installed daemon — so exact minus det-tie is the uncle term's own effect.
+#
+# First draw: pop_dettie_mid.yaml (base seed 12345).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_dettie_mid_rep.yaml
+name: pop_dettie_mid_rep
+seed: 54321
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    dettie: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-det-tie: true}}}
