@@ -255,6 +255,16 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   counted. New `scripts/uncle_attribution.py`: 0 attacker uncles in every
   earlier exact cell. Rationale: results doc §4.
 
+- **Campaign 4 done (06:3xZ)**: relay results + two new findings in
+  `docs/20260926_exact_uncles_and_sop_controls.md` §4–§5. The uncle term never
+  entered a fork decision (138 attacker uncles embedded, 0 counted); relay
+  gives the attacker γ 0.10–0.43 under PoP det-tie. **Attacker stranding**:
+  the stock bridge adopts long released branches the flagged miners reject,
+  so the attacker keeps mining them (SoP cells lost 28–57 % of attacker
+  blocks this way; explains most PoP spread). Tool:
+  `scripts/attacker_stranding.py`. Owner decision open: re-run attack cells
+  with a bridge that runs the honest rule.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

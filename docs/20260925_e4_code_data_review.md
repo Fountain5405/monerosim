@@ -204,7 +204,10 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   `pop_dettie_mid{,_rep}` (det-tie only, same daemon/seeds): ES {0.159, 0.162},
   lead-2 {0.293, 0.389}; pooled mean equal to exact; all mid uncles honest-
   vs-honest. Exact = det-tie in effect at γ ≈ 0. Relaying-bridge matrix
-  `pop_exact_relay{,_rep}` (uncles on attacker blocks) launched 03:27Z.
+  `pop_exact_relay{,_rep}` (uncles on attacker blocks), 12/12 ok: 138 attacker
+  uncles embedded, 0 counted in any fork decision; relay gives the attacker
+  γ 0.10–0.43 under det-tie. Step 4 closed: the #144 uncle term had no
+  measurable effect in any setting. Stranding caveat: results doc §5.
   Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
   (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated

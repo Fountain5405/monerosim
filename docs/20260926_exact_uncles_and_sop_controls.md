@@ -242,7 +242,50 @@ Cells: {ES, lead-2} × {stock, det-tie, exact}, relay on the bridge in all,
 h10 micro base, seeds 12345 / 54321, 12 cells, launched 03:27Z (8 at once).
 Read: stock vs det-tie = what visible ties do to PoP; det-tie vs exact = the
 uncle term against the attacker; all against the no-relay rows of §1 and
-`pop_sop2_h10`. Results: to follow.
+`pop_sop2_h10`.
+
+**Results (finished 2026-09-27T06:3xZ, all 12 health ok).** Share per draw,
+realized γ, and the fraction of the attacker's blocks lost to stranding (§5):
+
+| attacker, relay on | stock | det-tie | exact |
+|---|---|---|---|
+| ES | 0.460, 0.445 (γ 0, 0) | 0.338, 0.063 (γ 0.10, 0.02; stranded 0 %, 88 %) | 0.336, 0.365 (γ 0.19, 0.20; stranded 24 %, 0 %) |
+| lead-2 | 0.376, 0.384 (γ 0, 0) | 0.415, 0.313 (γ 0.28, 0.24; stranded 18 %, 30 %) | 0.281, 0.414 (γ 0.43, 0.32; stranded 0 %, 19 %) |
+
+No-relay reference on the same base and seeds: stock ES {0.377, 0.441},
+lead-2 {0.305, 0.469}; det-tie ("exact" at γ ≈ 0) ES {0.169, 0.199}, lead-2
+{0.284, 0.292} — those four PoP cells stranded 21–61 %.
+
+Reading:
+
+1. **Relay alone changes nothing under stock rules** (γ 0.00 in all four
+   cells, shares inside the no-relay range), as phase 4 found.
+2. **Under PoP, visible ties hand the attacker a real γ: 0.10–0.43**
+   (≈ 0 without relay). The det-tie rule breaks in-time 1-vs-1 ties by
+   hash, so once honest nodes hold the attacker's block, some ties go its
+   way. With the stranded draw set aside, PoP with relay leaves ES at
+   ≈ 0.34–0.37 (stock 0.45) and lead-2 at 0.28–0.42 (stock 0.38): **PoP
+   loses most of its bite against an attacker whose tie blocks are seen.**
+   How much of the no-relay PoP advantage was stranding rather than tie
+   blindness cannot be separated here — every no-relay micro PoP attack
+   cell stranded (§5).
+3. **The uncle term never enters fork choice, even with the attacker's
+   blocks as uncles.** Honest miners embedded 138 attacker blocks as uncles
+   across the four exact cells (`scripts/uncle_parents.py`: 34, 38, 32, 36
+   honest-parent / attacker-sibling), and `scripts/uncle_attribution.py`
+   finds **0 uncles counted in any fork decision**; every weighted decision
+   has weight = block count. Structural: an uncle only counts when a later
+   fork spans the block that carries it, and both ES and lead-2 abandon a
+   race as soon as the honest branch extends past the tie, so no decision
+   ever weighs an uncle-bearing honest block against an attacker
+   continuation. Exact and det-tie pool to the same mean (ES 0.351 vs 0.200
+   with the stranded draw, 0.337 vs 0.338 without; lead-2 0.347 vs 0.364).
+
+**Conclusion for MRL #144 exact:** across every setting run — micro and mid,
+with and without a relaying bridge, ES and lead-2 — the uncle bonus never
+decided a fork against the attacker. Its measured effect is nil; what
+PoP-exact achieves is PoP-core + det-tie, and against visible ties that is
+modest. Finding 9 (retracted) should be replaced by this.
 
 ## 5. Attacker stranding — a bias in every PoP/SoP attack cell (2026-09-27)
 
@@ -348,6 +391,16 @@ Fix options (owner decision; not run):
 | `20260927_014753_pop_dettie_mid_rep__es_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell | es_dettie: share 0.162 (honest-ref 0.162), blocks 198, forks 11776, sw 0, health ok |
 | `20260927_014733_pop_dettie_mid__es_r2_dettie` | `97c6494f` | `pop_dettie_mid` cell | es_r2_dettie: share 0.293 (honest-ref 0.293), blocks 164, forks 2025, sw 0, health ok |
 | `20260927_014753_pop_dettie_mid_rep__es_r2_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell | es_r2_dettie: share 0.389 (honest-ref 0.389), blocks 180, forks 3637, sw 0, health ok |
-
-The `pop_exact_relay{,_rep}` rows follow when that pair finishes.
+| `20260927_032741_pop_exact_relay__es_dettie_relay` | `d406dc83` | `pop_exact_relay` cell | es_dettie_relay: share 0.338 (honest-ref 0.338), blocks 157, forks 1115, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_dettie_relay` | `d406dc83` | `pop_exact_relay_rep` cell | es_dettie_relay: share 0.063 (honest-ref 0.063), blocks 127, forks 6276, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_exact_relay` | `d406dc83` | `pop_exact_relay` cell | es_exact_relay: share 0.336 (honest-ref 0.336), blocks 146, forks 1683, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_exact_relay` | `d406dc83` | `pop_exact_relay_rep` cell | es_exact_relay: share 0.365 (honest-ref 0.365), blocks 156, forks 898, sw 0, health ok |
+| `20260927_050234_pop_exact_relay__es_r2_dettie_relay` | `d406dc83` | `pop_exact_relay` cell | es_r2_dettie_relay: share 0.415 (honest-ref 0.415), blocks 164, forks 1809, sw 0, health ok |
+| `20260927_045723_pop_exact_relay_rep__es_r2_dettie_relay` | `d406dc83` | `pop_exact_relay_rep` cell | es_r2_dettie_relay: share 0.313 (honest-ref 0.313), blocks 163, forks 1246, sw 0, health ok |
+| `20260927_050534_pop_exact_relay__es_r2_exact_relay` | `d406dc83` | `pop_exact_relay` cell | es_r2_exact_relay: share 0.281 (honest-ref 0.281), blocks 153, forks 633, sw 0, health ok |
+| `20260927_050053_pop_exact_relay_rep__es_r2_exact_relay` | `d406dc83` | `pop_exact_relay_rep` cell | es_r2_exact_relay: share 0.414 (honest-ref 0.421), blocks 133, forks 1086, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_r2_stock_relay` | `d406dc83` | `pop_exact_relay` cell | es_r2_stock_relay: share 0.376 (honest-ref 0.376), blocks 165, forks 691, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_r2_stock_relay` | `d406dc83` | `pop_exact_relay_rep` cell | es_r2_stock_relay: share 0.384 (honest-ref 0.384), blocks 151, forks 800, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_stock_relay` | `d406dc83` | `pop_exact_relay` cell | es_stock_relay: share 0.460 (honest-ref 0.460), blocks 139, forks 921, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_stock_relay` | `d406dc83` | `pop_exact_relay_rep` cell | es_stock_relay: share 0.445 (honest-ref 0.445), blocks 146, forks 850, sw 0, health ok |
 Daemons: stage 1 ran the 17:50Z build (pop patch `dcfbaeeb…`), stage 2 the 20:25Z build (`9492d7cb…`); every run's `binary_provenance.txt` records it.

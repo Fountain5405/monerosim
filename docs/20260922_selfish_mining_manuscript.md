@@ -136,8 +136,13 @@ over-predicts exactly where a rational attacker would operate.**
 > (2026-09-27): ES {0.159, 0.162}, lead-2 {0.293, 0.389} — same pooled mean
 > as exact (0.251 vs 0.262), and every mid uncle was honest-vs-honest, so the
 > reduction is PoP-core + det-tie; the uncle term adds nothing measurable
-> against a γ ≈ 0 attacker. Finding 9 stays retracted. A relaying-bridge
-> matrix (the uncle term acting on attacker blocks) is running.
+> against a γ ≈ 0 attacker. Relaying-bridge matrix (2026-09-27, doc §4):
+> honest miners embedded 138 attacker blocks as uncles, yet 0 uncles entered
+> any fork decision (ES/lead-2 abandon a race before an uncle-bearing block
+> is weighed); visible ties give the attacker γ 0.10–0.43 under det-tie, and
+> PoP then leaves ES ≈ 0.34–0.37 (stock 0.45), lead-2 0.28–0.42 (stock 0.38).
+> The #144 uncle term had no measurable effect in any setting. Finding 9
+> stays retracted; its replacement is this paragraph.
 >
 > **RE-RUN (2026-09-26, `docs/20260926_sop_h10_rerun.md`):** the SoP v2
 > cells were re-run at n=2 on the fixed daemon and the `h10` chain-snapshot
@@ -501,6 +506,19 @@ daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 | `20260927_014753_pop_dettie_mid_rep__es_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell ‡ | es_dettie: share 0.162 (honest-ref 0.162), blocks 198, forks 11776, sw 0, health ok |
 | `20260927_014733_pop_dettie_mid__es_r2_dettie` | `97c6494f` | `pop_dettie_mid` cell ‡ | es_r2_dettie: share 0.293 (honest-ref 0.293), blocks 164, forks 2025, sw 0, health ok |
 | `20260927_014753_pop_dettie_mid_rep__es_r2_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell ‡ | es_r2_dettie: share 0.389 (honest-ref 0.389), blocks 180, forks 3637, sw 0, health ok |
+
+| `20260927_032741_pop_exact_relay__es_dettie_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_dettie_relay: share 0.338 (honest-ref 0.338), blocks 157, forks 1115, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_dettie_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_dettie_relay: share 0.063 (honest-ref 0.063), blocks 127, forks 6276, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_exact_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_exact_relay: share 0.336 (honest-ref 0.336), blocks 146, forks 1683, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_exact_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_exact_relay: share 0.365 (honest-ref 0.365), blocks 156, forks 898, sw 0, health ok |
+| `20260927_050234_pop_exact_relay__es_r2_dettie_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_r2_dettie_relay: share 0.415 (honest-ref 0.415), blocks 164, forks 1809, sw 0, health ok |
+| `20260927_045723_pop_exact_relay_rep__es_r2_dettie_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_r2_dettie_relay: share 0.313 (honest-ref 0.313), blocks 163, forks 1246, sw 0, health ok |
+| `20260927_050534_pop_exact_relay__es_r2_exact_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_r2_exact_relay: share 0.281 (honest-ref 0.281), blocks 153, forks 633, sw 0, health ok |
+| `20260927_050053_pop_exact_relay_rep__es_r2_exact_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_r2_exact_relay: share 0.414 (honest-ref 0.421), blocks 133, forks 1086, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_r2_stock_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_r2_stock_relay: share 0.376 (honest-ref 0.376), blocks 165, forks 691, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_r2_stock_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_r2_stock_relay: share 0.384 (honest-ref 0.384), blocks 151, forks 800, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_stock_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_stock_relay: share 0.460 (honest-ref 0.460), blocks 139, forks 921, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_stock_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_stock_relay: share 0.445 (honest-ref 0.445), blocks 146, forks 850, sw 0, health ok |
 
 Reproduce any row:
 
