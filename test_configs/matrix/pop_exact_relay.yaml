@@ -1,0 +1,45 @@
+# MRL #144 exact uncles with a RELAYING attacker bridge — first draw of an n=2
+# pair (owner request 2026-09-27; docs/20260926_exact_uncles_and_sop_controls.md).
+#
+# Why: in every earlier exact cell the attacker's single bridge was a stock
+# relay. It stores the attacker's released tie block as an alternative and
+# announces nothing, so honest miners first see that block together with its
+# child, through the sync path, and reorganize at once. No honest template
+# ever held an attacker sibling, and the uncle term had nothing to act on:
+# exact = det-tie by construction at micro scale (0 embeddings in 6 cells).
+#
+# Here the bridge runs monerod-sim with `sim-relay-alt-blocks`: a block it
+# accepts from the attacker's submit_block as an equal-height alternative is
+# announced to its peers like a main-chain block. Honest miners then receive
+# the attacker's tie block while their own block is still on top, which does
+# two things this matrix separates:
+#   1. The tie becomes a real race on the RECEIVER side. Stock nodes keep the
+#      first-seen block, so relay alone should leave gamma ~ 0 (measured
+#      2026-09-13, phase 4: 0/10 ties). PoP det-tie nodes break an in-time
+#      1-vs-1 tie by tip hash, so with relay about half the ties can go to
+#      the attacker — relay may HELP the attacker under det-tie.
+#   2. Honest templates can embed the attacker's block as an MRL #144 uncle
+#      (template refresh F5d), giving the honest branch +1 weight in the next
+#      race. That is the uncle term acting on the attacker for the first time.
+# Cells: strategy {ES, lead-2} x countermeasure {stock, det-tie, exact}, the
+# relay flag on the bridge in EVERY cell (single-value `bridge` axis). Stock
+# vs det-tie measures what relay does to fork choice; det-tie vs exact is the
+# uncle term's own effect. Base, seeds, attacker as pop_exact_h10 (h10 graft,
+# alpha = 0.40), so the no-relay rows there and in pop_sop2_h10 pair directly.
+#
+# Second draw: pop_exact_relay_rep.yaml (seed 54321).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_exact_relay.yaml
+name: pop_exact_relay
+base: test_configs/selfish_micro_sop.yaml
+parallel: 4
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    stock:  {}
+    dettie: {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-det-tie: true}}}
+    exact:  {honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}}
+  bridge:
+    relay:  {bridges: {daemon: monerod-sim, daemon_options: {sim-relay-alt-blocks: true}}}

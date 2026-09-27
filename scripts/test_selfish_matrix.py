@@ -468,3 +468,25 @@ def test_dettie_mid_control_differs_from_exact_only_by_the_uncle_flag():
             eo = dict(e["agents"]["honest-001"]["daemon_options"])
             assert eo.pop("sim-pop-uncles-header") is True
             assert d["agents"]["honest-001"]["daemon_options"] == eo
+
+
+def test_exact_relay_specs_put_the_relay_flag_on_the_bridge_in_every_cell():
+    """pop_exact_relay{,_rep} (2026-09-27): the attacker bridge runs
+    monerod-sim with sim-relay-alt-blocks in all six cells; the honest flags
+    are the only other variable; nothing else relays alternatives."""
+    for name, seed in (("pop_exact_relay", 12345), ("pop_exact_relay_rep", 54321)):
+        spec, cfgs = _plan_and_build(name)
+        assert sorted(cfgs) == sorted(f"{s}_{c}_relay" for s in ("es", "es_r2")
+                                      for c in ("stock", "dettie", "exact"))
+        for cell, cfg in cfgs.items():
+            assert cfg["general"]["simulation_seed"] == seed
+            assert cfg["general"]["mining"]["chain_snapshot"] == "h10"
+            br = cfg["agents"]["attacker-bridge"]
+            assert br["daemon"] == "monerod-sim" and br["daemon_options"] == {"sim-relay-alt-blocks": True}
+            relaying = [a for a, v in cfg["agents"].items()
+                        if (v.get("daemon_options") or {}).get("sim-relay-alt-blocks")]
+            assert relaying == ["attacker-bridge"]
+            assert cfg["agents"]["attacker-miner"]["daemon_options"] == {"offline": True}
+        assert "daemon_options" not in cfgs["es_stock_relay"]["agents"]["honest-001"]
+        assert "sim-pop-uncles-header" not in cfgs["es_dettie_relay"]["agents"]["honest-001"]["daemon_options"]
+        assert cfgs["es_exact_relay"]["agents"]["honest-001"]["daemon_options"]["sim-pop-uncles-header"] is True

@@ -193,6 +193,38 @@ Reading:
    exact is {0.416, 0.367} ≈ α with attacker orphan 0.00, against stock
    {0.405, 0.470}; network orphan 0.055–0.058 vs 0.067.
 
+## 4. Campaign 4 — exact with a RELAYING attacker bridge (`pop_exact_relay{,_rep}`)
+
+Owner request 2026-09-27. **Why relay:** MRL #144's uncle term needs an honest
+miner to hold the attacker's competing block beside its own tip while building
+the next block. Behind a stock bridge that never happens: the bridge stores
+the attacker's tie block as a side block and announces nothing, so honest
+nodes meet it only together with its child and reorganize at once.
+`scripts/uncle_attribution.py` (new) confirms it for every exact cell so far —
+**0 attacker blocks ever counted as uncles**, micro or mid; the mid uncles
+were all honest-vs-honest natural ties (1–3 unique per cell).
+
+With `sim-relay-alt-blocks` on the bridge, the attacker's tie block is
+announced like a tip block and honest miners receive it about one hop after
+their own. Two effects, separated by the cells: (1) under stock rules nodes
+keep the first-seen block, so relay alone should not lift γ (phase 4
+measured 0/10); PoP det-tie nodes break an in-time equal-weight tie by hash,
+so relay may hand the attacker about half the ties; (2) honest templates can
+embed the attacker's block as an uncle and win the next race. Relay makes
+ties *visible*; it is not "γ > 0" in the stock sense.
+
+Smoke (`20260927_031322_pop_exact_relay_smoke`, race-heavy fixed difficulty
+40, 60 sim-min): gate green (reorgs balanced on every node, 0 exceptions,
+4,611 forks), uncle headers embedded 85 vs 19 without relay
+(`20260926_201720_pop_exact_fast_fix3b`), template refreshes 149 vs 5, and the
+first attacker block ever counted as an uncle (1 of 2 unique counted).
+
+Cells: {ES, lead-2} × {stock, det-tie, exact}, relay on the bridge in all,
+h10 micro base, seeds 12345 / 54321, 12 cells, launched 03:27Z (8 at once).
+Read: stock vs det-tie = what visible ties do to PoP; det-tie vs exact = the
+uncle term against the attacker; all against the no-relay rows of §1 and
+`pop_sop2_h10`. Results: to follow.
+
 ## Runs (reproducibility ledger rows)
 
 | Run directory | Commit | Config | What it shows |

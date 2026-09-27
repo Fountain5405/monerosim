@@ -248,6 +248,13 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   same-daemon det-tie pair (`pop_dettie_mid{,_rep}`, ES + lead-2, 4 cells,
   driver `run_stage3.sh`) was launched 01:47Z; ~5 h.
 
+- **Campaign 4 launched 03:27Z (owner request)**: `pop_exact_relay` + `_rep`,
+  exact with a relaying attacker bridge (`sim-relay-alt-blocks`), {ES,
+  lead-2} × {stock, det-tie, exact}, 12 micro cells, driver
+  `run_relay_matrix.sh`. Relay smoke green, first attacker uncle ever
+  counted. New `scripts/uncle_attribution.py`: 0 attacker uncles in every
+  earlier exact cell. Rationale: results doc §4.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the
