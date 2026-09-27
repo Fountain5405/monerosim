@@ -123,8 +123,12 @@ over-predicts exactly where a rational attacker would operate.**
 > {0.377, 0.441}; lead-2 {0.284, 0.292} vs {0.305, 0.469}). Mid (genesis
 > base, 6 miners): uncles live but rare (12–22 embedded per cell); ES
 > {0.253, 0.303} vs stock {0.376, 0.518}, lead-2 {0.241, 0.251} vs stock
-> {0.455, 0.351}, honest control ≈ α. A same-daemon det-tie pair to isolate
-> the uncle term is running. Finding 9 stays retracted until it lands.
+> {0.455, 0.351}, honest control ≈ α. A same-daemon det-tie-only pair
+> (2026-09-27): ES {0.159, 0.162}, lead-2 {0.293, 0.389} — same pooled mean
+> as exact (0.251 vs 0.262), and every mid uncle was honest-vs-honest, so the
+> reduction is PoP-core + det-tie; the uncle term adds nothing measurable
+> against a γ ≈ 0 attacker. Finding 9 stays retracted. A relaying-bridge
+> matrix (the uncle term acting on attacker blocks) is running.
 >
 > **RE-RUN (2026-09-26, `docs/20260926_sop_h10_rerun.md`):** the SoP v2
 > cells were re-run at n=2 on the fixed daemon and the `h10` chain-snapshot
@@ -483,6 +487,11 @@ daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 | `20260926_231036_pop_exact_mid_rep__honest_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | honest_exact: share 0.367 (honest-ref 0.367), blocks 188, forks 106, sw 34, health ok |
 | `20260926_231717_pop_exact_mid__honest_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | honest_none: share 0.405 (honest-ref 0.405), blocks 195, forks 90, sw 0, health ok |
 | `20260926_231908_pop_exact_mid_rep__honest_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | honest_none: share 0.470 (honest-ref 0.470), blocks 181, forks 46, sw 0, health ok |
+
+| `20260927_014733_pop_dettie_mid__es_dettie` | `97c6494f` | `pop_dettie_mid` cell ‡ | es_dettie: share 0.159 (honest-ref 0.159), blocks 164, forks 6329, sw 0, health ok |
+| `20260927_014753_pop_dettie_mid_rep__es_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell ‡ | es_dettie: share 0.162 (honest-ref 0.162), blocks 198, forks 11776, sw 0, health ok |
+| `20260927_014733_pop_dettie_mid__es_r2_dettie` | `97c6494f` | `pop_dettie_mid` cell ‡ | es_r2_dettie: share 0.293 (honest-ref 0.293), blocks 164, forks 2025, sw 0, health ok |
+| `20260927_014753_pop_dettie_mid_rep__es_r2_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell ‡ | es_r2_dettie: share 0.389 (honest-ref 0.389), blocks 180, forks 3637, sw 0, health ok |
 
 Reproduce any row:
 

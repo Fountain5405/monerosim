@@ -201,7 +201,10 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   finished 2026-09-27T01:46Z, all 12 health ok — ES {0.253, 0.303} vs stock
   {0.376, 0.518}, lead-2 {0.241, 0.251} vs {0.455, 0.351}, honest ≈ α; uncle
   term live (12–22 embeddings per attack cell). Same-daemon det-tie pair
-  `pop_dettie_mid{,_rep}` launched 01:47Z to isolate the uncle term.
+  `pop_dettie_mid{,_rep}` (det-tie only, same daemon/seeds): ES {0.159, 0.162},
+  lead-2 {0.293, 0.389}; pooled mean equal to exact; all mid uncles honest-
+  vs-honest. Exact = det-tie in effect at γ ≈ 0. Relaying-bridge matrix
+  `pop_exact_relay{,_rep}` (uncles on attacker blocks) launched 03:27Z.
   Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
   (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated

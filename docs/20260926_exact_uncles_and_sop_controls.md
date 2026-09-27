@@ -183,12 +183,28 @@ Reading:
    an available alternative block did so because it was not a sibling of the
    template's parent (37–100 per cell, 0 skipped as late): attacker blocks
    appear to honest miners as displaced branches, not fresh siblings (§1).
-3. **Whether the uncles add anything over det-tie is not yet measured.** The
-   exact ES mean (0.278) sits inside the retained det-tie-only mid rows
-   ({0.170, 0.285}, pop_scale, earlier box and pre-fix daemon), so these
-   draws cannot credit the reduction to the uncle term. A same-daemon,
-   same-seed det-tie pair (`pop_dettie_mid{,_rep}`, ES and lead-2, uncle flag
-   removed and nothing else) was launched 01:47Z to settle it.
+3. **The uncles add nothing measurable over det-tie at mid scale.** The
+   same-daemon, same-seed det-tie pair (`pop_dettie_mid{,_rep}`, uncle flag
+   removed and nothing else, finished 2026-09-27T04:50Z, all health ok):
+
+   | attacker | det-tie only | exact | stock |
+   |---|---|---|---|
+   | ES | 0.159, 0.162 (orphan 0.72, 0.75) | 0.253, 0.303 (0.55, 0.48) | 0.376, 0.518 |
+   | lead-2 | 0.293, 0.389 (orphan 0.34, 0.29) | 0.241, 0.251 (0.50, 0.48) | 0.455, 0.351 |
+
+   The two variants differ in opposite directions by strategy and pool to
+   the same mean (det-tie 0.251, exact 0.262 over the four draws each). Both
+   cut stock. `scripts/uncle_parents.py` (new) classifies every embedding by
+   who mined the template's parent and the embedded sibling: **all 60 mid
+   embeddings are honest-parent, honest-sibling** — the uncle term never
+   touched an attacker block at mid scale, so it has no direct route to the
+   attacker's share. The ES gap (det-tie lower in both draws, with the
+   attacker orphan rate 0.72–0.75 vs 0.48–0.55) is consistent across draws
+   but has no identified mechanism: exact cells show somewhat more tie
+   switches (18–22 vs 12–13 on honest-001) and reorgs (26–31 vs 18–19), and
+   only 4–9 fork decisions per cell carried an uncle bonus. Open; not
+   claimed. The retained pre-fix det-tie mid rows ({0.170, 0.285}) agree
+   with the new ES det-tie draws.
 4. **No collateral damage to honest miners.** The honest control under
    exact is {0.416, 0.367} ≈ α with attacker orphan 0.00, against stock
    {0.405, 0.470}; network orphan 0.055–0.058 vs 0.067.
@@ -218,6 +234,9 @@ Smoke (`20260927_031322_pop_exact_relay_smoke`, race-heavy fixed difficulty
 4,611 forks), uncle headers embedded 85 vs 19 without relay
 (`20260926_201720_pop_exact_fast_fix3b`), template refreshes 149 vs 5, and the
 first attacker block ever counted as an uncle (1 of 2 unique counted).
+`scripts/uncle_parents.py` on the smoke: 73 of 85 embeddings put the
+ATTACKER's block in as the uncle on an honest parent (11 honest-honest, 1 on
+an attacker parent); without relay, 19 of 19 were honest-honest.
 
 Cells: {ES, lead-2} × {stock, det-tie, exact}, relay on the bridge in all,
 h10 micro base, seeds 12345 / 54321, 12 cells, launched 03:27Z (8 at once).
@@ -251,6 +270,10 @@ uncle term against the attacker; all against the no-relay rows of §1 and
 | `20260926_231036_pop_exact_mid_rep__honest_exact` | `e6f6c854` | `pop_exact_mid_rep` cell | honest_exact: share 0.367 (honest-ref 0.367), blocks 188, forks 106, sw 34, health ok |
 | `20260926_231717_pop_exact_mid__honest_none` | `e6f6c854` | `pop_exact_mid` cell | honest_none: share 0.405 (honest-ref 0.405), blocks 195, forks 90, sw 0, health ok |
 | `20260926_231908_pop_exact_mid_rep__honest_none` | `e6f6c854` | `pop_exact_mid_rep` cell | honest_none: share 0.470 (honest-ref 0.470), blocks 181, forks 46, sw 0, health ok |
+| `20260927_014733_pop_dettie_mid__es_dettie` | `97c6494f` | `pop_dettie_mid` cell | es_dettie: share 0.159 (honest-ref 0.159), blocks 164, forks 6329, sw 0, health ok |
+| `20260927_014753_pop_dettie_mid_rep__es_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell | es_dettie: share 0.162 (honest-ref 0.162), blocks 198, forks 11776, sw 0, health ok |
+| `20260927_014733_pop_dettie_mid__es_r2_dettie` | `97c6494f` | `pop_dettie_mid` cell | es_r2_dettie: share 0.293 (honest-ref 0.293), blocks 164, forks 2025, sw 0, health ok |
+| `20260927_014753_pop_dettie_mid_rep__es_r2_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell | es_r2_dettie: share 0.389 (honest-ref 0.389), blocks 180, forks 3637, sw 0, health ok |
 
-The `pop_dettie_mid{,_rep}` rows follow when that pair finishes.
+The `pop_exact_relay{,_rep}` rows follow when that pair finishes.
 Daemons: stage 1 ran the 17:50Z build (pop patch `dcfbaeeb…`), stage 2 the 20:25Z build (`9492d7cb…`); every run's `binary_provenance.txt` records it.
