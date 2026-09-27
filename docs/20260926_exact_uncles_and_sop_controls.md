@@ -244,7 +244,7 @@ Read: stock vs det-tie = what visible ties do to PoP; det-tie vs exact = the
 uncle term against the attacker; all against the no-relay rows of §1 and
 `pop_sop2_h10`.
 
-**Results (finished 2026-09-27T06:3xZ, all 12 health ok).** Share per draw,
+**Results (finished 2026-09-27T06:12Z, all 12 health ok).** Share per draw,
 realized γ, and the fraction of the attacker's blocks lost to stranding (§5):
 
 | attacker, relay on | stock | det-tie | exact |
