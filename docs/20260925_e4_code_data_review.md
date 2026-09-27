@@ -182,7 +182,7 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
 
 - Step 1 (fixes): done 2026-09-25; a second patch review on 2026-09-26 added
   l_b gating of the share term, the duplicate-slot skip, the dormant-node
-  share gate and the SoP RNG seed (`5d940ae1`, smoke-gated).
+  share gate and the SoP RNG seed (`9cbd1be9`, smoke-gated).
 - Step 2 (fork-forcing smoke): `test_configs/sop_fork_smoke.yaml` +
   `scripts/sop_health_check.py`, green on the 12:41Z build
   (`20260926_125218_sop_fork_smoke`) and on the fixed build

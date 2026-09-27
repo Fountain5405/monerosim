@@ -9,8 +9,8 @@ new work happens on `dev`. Do not merge `dev` → `main` on your own.
 
 ## What is on `dev` and what has been proven
 
-- Merge of `origin/main` (5183217b) + the replica branch (`bbfa6d26`) + the
-  selfish branch (`6d6bf364`); see those merge commits for the two manual
+- Merge of `origin/main` (5183217b) + the replica branch (`683373dd`) + the
+  selfish branch (`a6b22994`); see those merge commits for the two manual
   conflict resolutions (`finalize_hash` lives in `src/utils/seeded_hash.rs`;
   a duplicated test module was dropped).
 - Daemon patch stack `patches/*.patch` (5 patches): replica's mining patch
@@ -102,8 +102,8 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   `libdl.so` / `librt.so` dev symlinks glibc 2.39 no longer ships
   (`rm -rf sibling_repos/shadowformonero/build`; `cmake -U RT -U
   PROTOLIB_LIBRARY .` in `sibling_repos/monero/build/release`). setup.sh
-  now builds monero without Trezor/Ledger (1c465f5e) and offers the
-  native-mining micro gate as its `--sim-binary` test run (7ecc2c1c).
+  now builds monero without Trezor/Ledger (8d511e45) and offers the
+  native-mining micro gate as its `--sim-binary` test run (d428a1fb).
 - Verification: provenance matches all five patch shas (built
   2026-09-26T12:41Z); Rust 170 passed; pytest 647 passed; the three smokes
   green through the health gate (`20260926_125218_sop_fork_smoke`,
@@ -112,12 +112,12 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   29 min wall), verified, committed with the generator scenario, the base
   switch (`selfish_micro_sop.yaml`: `chain_snapshot: h10`, no
   fixed-difficulty, attacker + bridge at 0 s) and the two matrix specs
-  (80821982).
+  (4cd78307).
 - Reviews (three parallel: `main..dev` diff, daemon patches in a patched
   worktree, measurement pipeline vs manuscript) found one BLOCKER for the
   matrix — the share denominator included the grafted preload blocks — plus
   a first-tick fork=0 artifact in the attacker agent and two matrix-runner
-  overlay bugs. All fixed with tests in 21c61e1a BEFORE launch. Daemon-patch
+  overlay bugs. All fixed with tests in 21c94c3d BEFORE launch. Daemon-patch
   findings (SoP weight table keeps a late block's share weight, contrary to
   the design doc; duplicate share slot truncates later embeddings; vote
   check and workshare pooling not gated on the sim flags; exact-uncle
@@ -135,7 +135,7 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   `health == ok`, `attacker_found > 0`, `forks_seen > 0`,
   `preload_blocks == 336`. Every run's `binary_provenance.txt` records the
   12:41Z monerod-sim (pre-fix patch stack) they ran on.
-- Analysis tooling added while the matrix runs (a78492af): the bridge's
+- Analysis tooling added while the matrix runs (e2cc495b): the bridge's
   chain (stock fork choice) is the default reference; `share_honest_ref`
   now sits beside `share`, computed from the first honest miner's daemon
   log via `scripts/honest_chain_from_log.py` (the archived LMDBs are
@@ -160,15 +160,15 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   unconditional by design (the unflagged bridge must carry SoP blocks); the
   "byte-for-byte stock" wording was qualified.
 - **Step 2 result (16:27Z, `docs/20260926_sop_h10_rerun.md`)**: all 12 cells
-  green through the gate (`--reanalyze` at `b1db1d6b`). SoP v2 vs ES
+  green through the gate (`--reanalyze` at `703bdffe`). SoP v2 vs ES
   {0.035, 0.000} (honest-ref 0.000/0.000) vs stock {0.377, 0.441}; SoP v2 vs
   lead-2 {0.000, 0.000} vs stock {0.305, 0.469}; controls stock {0.381,
   0.410}, SoP {0.440, 0.326}. 2,822 of 2,822 subjective SoP decisions
   share-weighted, 0 exceptions. Manuscript §4 notice, §5 finding 10 and §7
   ledger updated; review §3 carries a status block. One cell's `run_sim.sh`
   exited 126 after a complete archive because the script was edited in place
-  under 12 running instances (never do that; memory + `b1db1d6b`).
-- Fixed `monerod-sim` (patch stack at `5d940ae1`) INSTALLED 16:30Z with a
+  under 12 running instances (never do that; memory + `703bdffe`).
+- Fixed `monerod-sim` (patch stack at `9cbd1be9`) INSTALLED 16:30Z with a
   provenance file matching the tree; the three bootstrap smokes on it are
   GREEN (16:54Z): `20260926_162837_sop_fork_smoke` (forks 110, all 110 SoP
   decisions share-weighted), `20260926_163610_pop_exact_fast` (reorgs 79/79

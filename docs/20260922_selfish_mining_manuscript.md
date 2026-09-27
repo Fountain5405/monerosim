@@ -470,13 +470,13 @@ config, so daemon behavior is stock either way.)
 | `20260925_050341_pop_sop2__honest_sop2` | `de5fb7b7`* | `pop_sop2` cell | **SoP v2 control: 0.405 ≈ α, ZERO orphaning — P-SoP3 passes** |
 | `20260925_051212_pop_sop2__honest_stock` | `de5fb7b7`* | `pop_sop2` cell | stock control: 0.369 |
 | `20260925_055045_pop_sop2__es_r2_sop2` | `de5fb7b7`* | `pop_sop2` cell | lead-2 under SoP: row lost to bridge freeze; log-verified every release → weight 0, kept off |
-| `20260926_140803_pop_sop2_h10__es_sop2` | `b1db1d6b`† | `pop_sop2_h10` cell | **SoP v2 vs ES on h10: 0.035 (honest-ref 0.000)**, 720/720 decisions share-weighted |
-| `20260926_140823_pop_sop2_h10_rep__es_sop2` | `b1db1d6b`† | `pop_sop2_h10_rep` cell | SoP v2 vs ES rep: 0.000 |
-| `20260926_140803_pop_sop2_h10__es_stock` / `_rep__es_stock` | `b1db1d6b`† | `pop_sop2_h10*` cells | stock ES on h10: 0.377 / 0.441 |
-| `20260926_140803_pop_sop2_h10__es_r2_sop2` / `_rep__es_r2_sop2` | `b1db1d6b`† | `pop_sop2_h10*` cells | **SoP v2 vs lead-2: 0.000 / 0.000** — the PoP blind spot closed |
-| `20260926_140803_pop_sop2_h10__es_r2_stock` / `_rep__es_r2_stock` | `b1db1d6b`† | `pop_sop2_h10*` cells | stock lead-2 on h10: 0.305 / 0.469 |
-| `20260926_140803_pop_sop2_h10__honest_sop2` / `_rep__honest_sop2` | `b1db1d6b`† | `pop_sop2_h10*` cells | SoP controls: 0.440 / 0.326 (rep lost 17 ties, orphan 0.218) |
-| `20260926_140803_pop_sop2_h10__honest_stock` / `_rep__honest_stock` | `b1db1d6b`† | `pop_sop2_h10*` cells | stock controls: 0.381 / 0.410 ≈ α |
+| `20260926_140803_pop_sop2_h10__es_sop2` | `703bdffe`† | `pop_sop2_h10` cell | **SoP v2 vs ES on h10: 0.035 (honest-ref 0.000)**, 720/720 decisions share-weighted |
+| `20260926_140823_pop_sop2_h10_rep__es_sop2` | `703bdffe`† | `pop_sop2_h10_rep` cell | SoP v2 vs ES rep: 0.000 |
+| `20260926_140803_pop_sop2_h10__es_stock` / `_rep__es_stock` | `703bdffe`† | `pop_sop2_h10*` cells | stock ES on h10: 0.377 / 0.441 |
+| `20260926_140803_pop_sop2_h10__es_r2_sop2` / `_rep__es_r2_sop2` | `703bdffe`† | `pop_sop2_h10*` cells | **SoP v2 vs lead-2: 0.000 / 0.000** — the PoP blind spot closed |
+| `20260926_140803_pop_sop2_h10__es_r2_stock` / `_rep__es_r2_stock` | `703bdffe`† | `pop_sop2_h10*` cells | stock lead-2 on h10: 0.305 / 0.469 |
+| `20260926_140803_pop_sop2_h10__honest_sop2` / `_rep__honest_sop2` | `703bdffe`† | `pop_sop2_h10*` cells | SoP controls: 0.440 / 0.326 (rep lost 17 ties, orphan 0.218) |
+| `20260926_140803_pop_sop2_h10__honest_stock` / `_rep__honest_stock` | `703bdffe`† | `pop_sop2_h10*` cells | stock controls: 0.381 / 0.410 ≈ α |
 
 (All `pop_sop` SoP rows and all `pop_sop2` rows above are INVALID per the
 2026-09-25 review — F1/F3: the daemon could not reorganize. The `*_exact`
@@ -489,36 +489,36 @@ on the honest miners only; matrix table at `matrix_runs/pop_pilot/table.md`
 (v6 was killed early — the `mine_after_height` gate held a victim whose
 daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 
-| `20260926_203140_pop_exact_mid__es_exact` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_exact: share 0.253 (honest-ref 0.253), blocks 190, forks 6872, sw 65, health ok |
-| `20260926_203201_pop_exact_mid_rep__es_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_exact: share 0.303 (honest-ref 0.303), blocks 195, forks 4144, sw 37, health ok |
-| `20260926_203140_pop_exact_mid__es_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_none: share 0.376 (honest-ref 0.376), blocks 93, forks 1366, sw 0, health ok |
-| `20260926_203201_pop_exact_mid_rep__es_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_none: share 0.518 (honest-ref 0.518), blocks 195, forks 3507, sw 0, health ok |
-| `20260926_203140_pop_exact_mid__es_r2_exact` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_r2_exact: share 0.241 (honest-ref 0.241), blocks 166, forks 3449, sw 44, health ok |
-| `20260926_203200_pop_exact_mid_rep__es_r2_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_r2_exact: share 0.251 (honest-ref 0.251), blocks 175, forks 1939, sw 28, health ok |
-| `20260926_230344_pop_exact_mid__es_r2_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | es_r2_none: share 0.455 (honest-ref 0.455), blocks 145, forks 2424, sw 0, health ok |
-| `20260926_230504_pop_exact_mid_rep__es_r2_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | es_r2_none: share 0.351 (honest-ref 0.351), blocks 194, forks 1758, sw 0, health ok |
-| `20260926_231316_pop_exact_mid__honest_exact` | `e6f6c854` | `pop_exact_mid` cell ‡ | honest_exact: share 0.416 (honest-ref 0.416), blocks 178, forks 41, sw 0, health ok |
-| `20260926_231036_pop_exact_mid_rep__honest_exact` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | honest_exact: share 0.367 (honest-ref 0.367), blocks 188, forks 106, sw 34, health ok |
-| `20260926_231717_pop_exact_mid__honest_none` | `e6f6c854` | `pop_exact_mid` cell ‡ | honest_none: share 0.405 (honest-ref 0.405), blocks 195, forks 90, sw 0, health ok |
-| `20260926_231908_pop_exact_mid_rep__honest_none` | `e6f6c854` | `pop_exact_mid_rep` cell ‡ | honest_none: share 0.470 (honest-ref 0.470), blocks 181, forks 46, sw 0, health ok |
+| `20260926_203140_pop_exact_mid__es_exact` | `238aed7e` | `pop_exact_mid` cell ‡ | es_exact: share 0.253 (honest-ref 0.253), blocks 190, forks 6872, sw 65, health ok |
+| `20260926_203201_pop_exact_mid_rep__es_exact` | `238aed7e` | `pop_exact_mid_rep` cell ‡ | es_exact: share 0.303 (honest-ref 0.303), blocks 195, forks 4144, sw 37, health ok |
+| `20260926_203140_pop_exact_mid__es_none` | `238aed7e` | `pop_exact_mid` cell ‡ | es_none: share 0.376 (honest-ref 0.376), blocks 93, forks 1366, sw 0, health ok |
+| `20260926_203201_pop_exact_mid_rep__es_none` | `238aed7e` | `pop_exact_mid_rep` cell ‡ | es_none: share 0.518 (honest-ref 0.518), blocks 195, forks 3507, sw 0, health ok |
+| `20260926_203140_pop_exact_mid__es_r2_exact` | `238aed7e` | `pop_exact_mid` cell ‡ | es_r2_exact: share 0.241 (honest-ref 0.241), blocks 166, forks 3449, sw 44, health ok |
+| `20260926_203200_pop_exact_mid_rep__es_r2_exact` | `238aed7e` | `pop_exact_mid_rep` cell ‡ | es_r2_exact: share 0.251 (honest-ref 0.251), blocks 175, forks 1939, sw 28, health ok |
+| `20260926_230344_pop_exact_mid__es_r2_none` | `238aed7e` | `pop_exact_mid` cell ‡ | es_r2_none: share 0.455 (honest-ref 0.455), blocks 145, forks 2424, sw 0, health ok |
+| `20260926_230504_pop_exact_mid_rep__es_r2_none` | `238aed7e` | `pop_exact_mid_rep` cell ‡ | es_r2_none: share 0.351 (honest-ref 0.351), blocks 194, forks 1758, sw 0, health ok |
+| `20260926_231316_pop_exact_mid__honest_exact` | `238aed7e` | `pop_exact_mid` cell ‡ | honest_exact: share 0.416 (honest-ref 0.416), blocks 178, forks 41, sw 0, health ok |
+| `20260926_231036_pop_exact_mid_rep__honest_exact` | `238aed7e` | `pop_exact_mid_rep` cell ‡ | honest_exact: share 0.367 (honest-ref 0.367), blocks 188, forks 106, sw 34, health ok |
+| `20260926_231717_pop_exact_mid__honest_none` | `238aed7e` | `pop_exact_mid` cell ‡ | honest_none: share 0.405 (honest-ref 0.405), blocks 195, forks 90, sw 0, health ok |
+| `20260926_231908_pop_exact_mid_rep__honest_none` | `238aed7e` | `pop_exact_mid_rep` cell ‡ | honest_none: share 0.470 (honest-ref 0.470), blocks 181, forks 46, sw 0, health ok |
 
-| `20260927_014733_pop_dettie_mid__es_dettie` | `97c6494f` | `pop_dettie_mid` cell ‡ | es_dettie: share 0.159 (honest-ref 0.159), blocks 164, forks 6329, sw 0, health ok |
-| `20260927_014753_pop_dettie_mid_rep__es_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell ‡ | es_dettie: share 0.162 (honest-ref 0.162), blocks 198, forks 11776, sw 0, health ok |
-| `20260927_014733_pop_dettie_mid__es_r2_dettie` | `97c6494f` | `pop_dettie_mid` cell ‡ | es_r2_dettie: share 0.293 (honest-ref 0.293), blocks 164, forks 2025, sw 0, health ok |
-| `20260927_014753_pop_dettie_mid_rep__es_r2_dettie` | `97c6494f` | `pop_dettie_mid_rep` cell ‡ | es_r2_dettie: share 0.389 (honest-ref 0.389), blocks 180, forks 3637, sw 0, health ok |
+| `20260927_014733_pop_dettie_mid__es_dettie` | `cd233568` | `pop_dettie_mid` cell ‡ | es_dettie: share 0.159 (honest-ref 0.159), blocks 164, forks 6329, sw 0, health ok |
+| `20260927_014753_pop_dettie_mid_rep__es_dettie` | `cd233568` | `pop_dettie_mid_rep` cell ‡ | es_dettie: share 0.162 (honest-ref 0.162), blocks 198, forks 11776, sw 0, health ok |
+| `20260927_014733_pop_dettie_mid__es_r2_dettie` | `cd233568` | `pop_dettie_mid` cell ‡ | es_r2_dettie: share 0.293 (honest-ref 0.293), blocks 164, forks 2025, sw 0, health ok |
+| `20260927_014753_pop_dettie_mid_rep__es_r2_dettie` | `cd233568` | `pop_dettie_mid_rep` cell ‡ | es_r2_dettie: share 0.389 (honest-ref 0.389), blocks 180, forks 3637, sw 0, health ok |
 
-| `20260927_032741_pop_exact_relay__es_dettie_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_dettie_relay: share 0.338 (honest-ref 0.338), blocks 157, forks 1115, sw 0, health ok |
-| `20260927_032802_pop_exact_relay_rep__es_dettie_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_dettie_relay: share 0.063 (honest-ref 0.063), blocks 127, forks 6276, sw 0, health ok |
-| `20260927_032741_pop_exact_relay__es_exact_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_exact_relay: share 0.336 (honest-ref 0.336), blocks 146, forks 1683, sw 0, health ok |
-| `20260927_032802_pop_exact_relay_rep__es_exact_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_exact_relay: share 0.365 (honest-ref 0.365), blocks 156, forks 898, sw 0, health ok |
-| `20260927_050234_pop_exact_relay__es_r2_dettie_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_r2_dettie_relay: share 0.415 (honest-ref 0.415), blocks 164, forks 1809, sw 0, health ok |
-| `20260927_045723_pop_exact_relay_rep__es_r2_dettie_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_r2_dettie_relay: share 0.313 (honest-ref 0.313), blocks 163, forks 1246, sw 0, health ok |
-| `20260927_050534_pop_exact_relay__es_r2_exact_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_r2_exact_relay: share 0.281 (honest-ref 0.281), blocks 153, forks 633, sw 0, health ok |
-| `20260927_050053_pop_exact_relay_rep__es_r2_exact_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_r2_exact_relay: share 0.414 (honest-ref 0.421), blocks 133, forks 1086, sw 0, health ok |
-| `20260927_032741_pop_exact_relay__es_r2_stock_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_r2_stock_relay: share 0.376 (honest-ref 0.376), blocks 165, forks 691, sw 0, health ok |
-| `20260927_032802_pop_exact_relay_rep__es_r2_stock_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_r2_stock_relay: share 0.384 (honest-ref 0.384), blocks 151, forks 800, sw 0, health ok |
-| `20260927_032741_pop_exact_relay__es_stock_relay` | `d406dc83` | `pop_exact_relay` cell ‡ | es_stock_relay: share 0.460 (honest-ref 0.460), blocks 139, forks 921, sw 0, health ok |
-| `20260927_032802_pop_exact_relay_rep__es_stock_relay` | `d406dc83` | `pop_exact_relay_rep` cell ‡ | es_stock_relay: share 0.445 (honest-ref 0.445), blocks 146, forks 850, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_dettie_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_dettie_relay: share 0.338 (honest-ref 0.338), blocks 157, forks 1115, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_dettie_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_dettie_relay: share 0.063 (honest-ref 0.063), blocks 127, forks 6276, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_exact_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_exact_relay: share 0.336 (honest-ref 0.336), blocks 146, forks 1683, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_exact_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_exact_relay: share 0.365 (honest-ref 0.365), blocks 156, forks 898, sw 0, health ok |
+| `20260927_050234_pop_exact_relay__es_r2_dettie_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_r2_dettie_relay: share 0.415 (honest-ref 0.415), blocks 164, forks 1809, sw 0, health ok |
+| `20260927_045723_pop_exact_relay_rep__es_r2_dettie_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_r2_dettie_relay: share 0.313 (honest-ref 0.313), blocks 163, forks 1246, sw 0, health ok |
+| `20260927_050534_pop_exact_relay__es_r2_exact_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_r2_exact_relay: share 0.281 (honest-ref 0.281), blocks 153, forks 633, sw 0, health ok |
+| `20260927_050053_pop_exact_relay_rep__es_r2_exact_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_r2_exact_relay: share 0.414 (honest-ref 0.421), blocks 133, forks 1086, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_r2_stock_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_r2_stock_relay: share 0.376 (honest-ref 0.376), blocks 165, forks 691, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_r2_stock_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_r2_stock_relay: share 0.384 (honest-ref 0.384), blocks 151, forks 800, sw 0, health ok |
+| `20260927_032741_pop_exact_relay__es_stock_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_stock_relay: share 0.460 (honest-ref 0.460), blocks 139, forks 921, sw 0, health ok |
+| `20260927_032802_pop_exact_relay_rep__es_stock_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_stock_relay: share 0.445 (honest-ref 0.445), blocks 146, forks 850, sw 0, health ok |
 
 Reproduce any row:
 
@@ -529,7 +529,7 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 
 ‡ daemon `monerod-sim` with review fixes F5c+F5d (pop patch sha `9492d7cb…`, installed 2026-09-26T20:30Z). See `docs/20260926_exact_uncles_and_sop_controls.md` for these and the micro exact / SoP-control rows.
 
-† daemon `monerod-sim` built 2026-09-26T12:41Z from the patch stack at `caa8f656`; analysis re-run at `b1db1d6b` (`--reanalyze`). See `docs/20260926_sop_h10_rerun.md`.
+† daemon `monerod-sim` built 2026-09-26T12:41Z from the patch stack at `4793ba5f`; analysis re-run at `703bdffe` (`--reanalyze`). See `docs/20260926_sop_h10_rerun.md`.
 
 ## 8. Planned work
 
