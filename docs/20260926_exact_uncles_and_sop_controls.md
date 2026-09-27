@@ -185,7 +185,7 @@ Reading:
    appear to honest miners as displaced branches, not fresh siblings (§1).
 3. **The uncles add nothing measurable over det-tie at mid scale.** The
    same-daemon, same-seed det-tie pair (`pop_dettie_mid{,_rep}`, uncle flag
-   removed and nothing else, finished 2026-09-27T04:50Z, all health ok):
+   removed and nothing else, finished 2026-09-27T04:38Z, all health ok):
 
    | attacker | det-tie only | exact | stock |
    |---|---|---|---|
