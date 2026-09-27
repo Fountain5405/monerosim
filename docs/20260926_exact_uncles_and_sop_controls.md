@@ -244,6 +244,80 @@ Read: stock vs det-tie = what visible ties do to PoP; det-tie vs exact = the
 uncle term against the attacker; all against the no-relay rows of §1 and
 `pop_sop2_h10`. Results: to follow.
 
+## 5. Attacker stranding — a bias in every PoP/SoP attack cell (2026-09-27)
+
+Found while reading the relay cells. In every PoP/SoP matrix the
+countermeasure runs on the honest miners (PoP cells) or on the miners,
+relays and seeds (SoP cells); **the attacker's bridge always keeps stock
+fork choice**, and in PoP cells so do the relays and seeds. When the
+attacker releases a long private branch, stock nodes adopt it (more work)
+while the flagged miners reject it as late. The attacker reads "the public
+chain" from its bridge, so it believes it is winning and keeps extending a
+branch the miners never accept — sometimes for 20–47 blocks — until the
+honest chain outgrows it and the bridge flips back.
+
+`scripts/attacker_stranding.py` counts, from honest-001's fork decisions,
+the alternative chains of ≥ 10 blocks that were kept out, and the bridge's
+deepest reorganization (attack cells; stock cells cannot strand — every node
+runs the same rule):
+
+| matrix | cell | share | attacker orphan | rejected runs >= 10 | blocks in them | of attacker found | bridge max reorg |
+|---|---|---|---|---|---|---|---|
+| pop_sop2_h10 | es_r2_sop2 | 0.000 | 1.00 | 2 | 46 | 0.57 | 37 |
+| pop_sop2_h10 | es_sop2 | 0.035 | 0.94 | 1 | 23 | 0.28 | 24 |
+| pop_sop2_h10_rep | es_r2_sop2 | 0.000 | 1.00 | 1 | 37 | 0.43 | 38 |
+| pop_sop2_h10_rep | es_sop2 | 0.000 | 1.00 | 2 | 43 | 0.48 | 33 |
+| pop_exact_h10 | es_exact | 0.169 | 0.74 | 3 | 52 | 0.61 | 23 |
+| pop_exact_h10 | es_r2_exact | 0.284 | 0.53 | 1 | 19 | 0.21 | 20 |
+| pop_exact_h10_rep | es_exact | 0.199 | 0.69 | 2 | 42 | 0.42 | 26 |
+| pop_exact_h10_rep | es_r2_exact | 0.292 | 0.50 | 1 | 25 | 0.30 | 26 |
+| pop_dettie_mid | es_dettie | 0.159 | 0.72 | 1 | 29 | 0.31 | 31 |
+| pop_dettie_mid | es_r2_dettie | 0.293 | 0.34 | 0 | 0 | 0.00 | 4 |
+| pop_dettie_mid_rep | es_dettie | 0.162 | 0.75 | 2 | 66 | 0.51 | 46 |
+| pop_dettie_mid_rep | es_r2_dettie | 0.389 | 0.29 | 1 | 11 | 0.11 | 10 |
+| pop_exact_mid | es_exact | 0.253 | 0.55 | 2 | 31 | 0.29 | 17 |
+| pop_exact_mid | es_r2_exact | 0.241 | 0.50 | 0 | 0 | 0.00 | 10 |
+| pop_exact_mid_rep | es_exact | 0.303 | 0.48 | 0 | 0 | 0.00 | 9 |
+| pop_exact_mid_rep | es_r2_exact | 0.251 | 0.48 | 0 | 0 | 0.00 | 7 |
+| pop_exact_relay | es_dettie_relay | 0.338 | 0.33 | 0 | 0 | 0.00 | 9 |
+| pop_exact_relay | es_exact_relay | 0.336 | 0.41 | 1 | 20 | 0.24 | 21 |
+| pop_exact_relay_rep | es_dettie_relay | 0.063 | 0.92 | 3 | 87 | 0.88 | 47 |
+| pop_exact_relay_rep | es_exact_relay | 0.365 | 0.26 | 0 | 0 | 0.00 | 7 |
+
+Reading:
+
+1. **Stranding explains most of the spread in the PoP numbers.** Cells with
+   no rejected long run sit at share 0.24–0.37 with attacker orphan
+   0.26–0.48; cells that lost ≥ 40 % of the attacker's blocks in long runs
+   sit at 0.06–0.20. The ES-vs-lead-2 and det-tie-vs-exact differences of
+   §3 and §4 line up with it more than with the countermeasure (e.g. relay
+   det-tie draws 0.338 with no stranding vs 0.063 with 88 % stranded).
+2. **Every SoP attack cell stranded at least once, losing 28–57 % of the
+   attacker's blocks that way.** In those cells the relays and seeds were
+   SoP-flagged, so the attacker's own bridge was the ONLY stock node: the
+   attacker was misled purely by its own vantage point. SoP still wins
+   outright (attacker orphan 0.94–1.00 — it also loses every short race),
+   but the headline 0.000 mixes fork-choice losses with self-inflicted ones.
+3. **This is an apparatus choice, not a law of the rule.** A real attacker
+   watching a node that runs the miners' rule would not strand. A partial
+   deployment in which relays and exchanges stay stock does produce exactly
+   this effect on an attacker who watches them, so both are defensible
+   models — but the manuscript must say which one it measured.
+
+Fix options (owner decision; not run):
+- **Bridge runs the honest rule** (config-only: give `bridges` the same
+  countermeasure flags as the honest miners). The attacker's view then
+  matches the miners'. Branches the rule accepts become the bridge's main
+  chain and are announced as usual; rejected ones are not (the miners reject
+  them anyway). Under det-tie the bridge itself may pick the attacker's tie
+  block and announce it, so γ is no longer pinned at ≈ 0 — record realized γ.
+- **Separate view and publish bridges** (agent change): the attacker reads a
+  flagged observer node and publishes through a stock bridge. Keeps the
+  γ ≈ 0 publication path exactly as now.
+- Either way, re-run the ES and lead-2 attack cells of `pop_sop2_h10`,
+  `pop_exact_h10` and `pop_exact_mid` (or a subset) and quote the
+  stranding-free numbers next to the current ones.
+
 ## Runs (reproducibility ledger rows)
 
 | Run directory | Commit | Config | What it shows |

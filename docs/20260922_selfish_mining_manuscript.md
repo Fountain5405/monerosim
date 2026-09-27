@@ -114,6 +114,15 @@ over-predicts exactly where a rational attacker would operate.**
 
 ### E4 — Countermeasures (RQ5: which countermeasure beats which strategy)
 
+> **STRANDING CAVEAT (2026-09-27, same doc §5):** in every PoP/SoP attack
+> cell the attacker's bridge keeps stock fork choice, so after releasing a
+> long branch the attacker sees it "win" on the bridge while the flagged
+> miners reject it, and keeps mining on it for up to 47 blocks. SoP cells
+> lost 28–57 % of the attacker's blocks this way (0.000 headline stands, but
+> mixes fork-choice losses with self-inflicted ones); PoP cells 0–88 %, and
+> stranding explains most of the PoP spread. Re-runs with a bridge that runs
+> the honest rule are an open owner decision.
+>
 > **EXACT RE-RUN (2026-09-26/27, `docs/20260926_exact_uncles_and_sop_controls.md`):**
 > after two more daemon fixes (review F5c: uncle sibling anchor; F5d:
 > template refresh on a sibling at the tip) the MRL #144 exact cells were
