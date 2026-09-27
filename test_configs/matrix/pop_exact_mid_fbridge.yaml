@@ -1,0 +1,32 @@
+# STRANDING RE-RUN (owner decision 2026-09-27): MRL #144 exact attack cells (mid, genesis base) with the attacker's
+# bridge running the SAME fork-choice rule as the honest miners — first draw of an n=2 pair (second: pop_exact_mid_fbridge_rep.yaml, seed 54321).
+#
+# In every earlier PoP/SoP attack cell the attacker's bridge kept stock fork
+# choice. When the attacker released a long private branch, the stock bridge
+# adopted it (more work) while the flagged miners rejected it as late; the
+# attacker reads "the public chain" from its bridge, so it kept extending a
+# branch the miners never accepted, for up to 47 blocks
+# (docs/20260926_exact_uncles_and_sop_controls.md §5,
+# scripts/attacker_stranding.py). Here the bridge runs the honest miners' PoP flags, so the
+# attacker sees the chain the miners accept. Nothing else changes: base,
+# seeds, strategies, honest/relay flags and daemon are those of pop_exact_mid, whose
+# rows (and their stock pairs, which cannot strand) this pairs with by cell name.
+#
+# Side effect to record, not hide: a flagged bridge announces a released block
+# only when the RULE makes it the bridge's tip. Under PoP det-tie the bridge breaks an in-time
+# 1-vs-1 tie by hash, so it announces the attacker's tie block when that block
+# wins the comparison and gamma can rise above 0. Record realized gamma per cell.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_exact_mid_fbridge.yaml
+#   venv/bin/python scripts/attacker_stranding.py pop_exact_mid_fbridge pop_exact_mid
+name: pop_exact_mid_fbridge
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2"}}}
+  countermeasure:
+    exact:
+      honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}

@@ -265,6 +265,18 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   `scripts/attacker_stranding.py`. Owner decision open: re-run attack cells
   with a bridge that runs the honest rule.
 
+- **Stranding re-run launched 2026-09-27T13:02Z (owner said yes)**: the
+  attacker's bridge runs the countermeasure rule (SoP cells: the relays'
+  `sim-share-or-perish`; PoP cells: the honest miners' exact flags); nothing
+  else changes (a test asserts it). Six matrices `pop_sop2_h10_fbridge`,
+  `pop_exact_h10_fbridge`, `pop_exact_mid_fbridge` (+ `_rep`), ES and
+  lead-2, 12 cells at once (8 micro ≈ 2.5 h, 4 mid ≈ 6–7 h), driver
+  `run_fbridge.sh` in the scratchpad. Bridges confirmed flagged at start
+  (PoP banner; SoP "weight table armed"). Read out per matrix with
+  `scripts/matrix_pairs.py <m> <m>_rep` and `scripts/attacker_stranding.py`,
+  against the original rows; record realized γ (PoP bridges may announce
+  tie blocks that win det-tie).
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

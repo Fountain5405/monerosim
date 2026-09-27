@@ -490,3 +490,27 @@ def test_exact_relay_specs_put_the_relay_flag_on_the_bridge_in_every_cell():
         assert "daemon_options" not in cfgs["es_stock_relay"]["agents"]["honest-001"]
         assert "sim-pop-uncles-header" not in cfgs["es_dettie_relay"]["agents"]["honest-001"]["daemon_options"]
         assert cfgs["es_exact_relay"]["agents"]["honest-001"]["daemon_options"]["sim-pop-uncles-header"] is True
+
+
+def test_fbridge_specs_differ_from_their_originals_only_in_the_bridge():
+    """Stranding re-run (2026-09-27): each *_fbridge cell equals the same-named
+    cell of its original matrix except that the attacker bridge runs the
+    countermeasure rule (SoP: the relays' flag; PoP: the honest miners'
+    flags). Seeds pair draw-for-draw."""
+    pairs = [("pop_sop2_h10_fbridge", "pop_sop2_h10", {"sim-share-or-perish": True}),
+             ("pop_exact_h10_fbridge", "pop_exact_h10", None),
+             ("pop_exact_mid_fbridge", "pop_exact_mid", None)]
+    for new, orig, bridge_opts in pairs:
+        for suffix in ("", "_rep"):
+            _, fb = _plan_and_build(new + suffix)
+            _, og = _plan_and_build(orig + suffix)
+            assert sorted(fb) and set(fb) <= set(og)
+            for cell, cfg in fb.items():
+                o = og[cell]
+                want = bridge_opts or o["agents"]["honest-001"]["daemon_options"]
+                br = cfg["agents"]["attacker-bridge"]
+                assert br["daemon"] == "monerod-sim" and br["daemon_options"] == want
+                assert cfg["general"] == o["general"]
+                for aid in cfg["agents"]:
+                    if aid != "attacker-bridge":
+                        assert cfg["agents"][aid] == o["agents"][aid], (new + suffix, cell, aid)
