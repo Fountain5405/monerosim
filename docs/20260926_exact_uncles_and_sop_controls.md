@@ -394,11 +394,15 @@ loses normally costs a few blocks, because it concedes as soon as the
 honest chain is taller. An abandonment of ≥ 10 blocks (§5's threshold) is
 a branch the attacker kept extending after the network had rejected it. The §5
 table read the same thing from honest-001's decisions instead. That view
-is blind here; see reading 1.
+is blind here; see reading 1. Both tables are reproduced by
+`venv/bin/python scripts/attacker_stranding.py <matrix> ...`, which since
+2026-09-28 reports the attacker-side columns first. "Bridge kept out"
+counts subjective KEEPs only: after an OBJECTIVE switch, the node's KEEP
+lines re-weigh the honest branch it just left.
 
 | matrix | cell | share (run / rep) | original | realized γ | attacker orphan | abandoned ≥ 10: runs, blocks, of found | deepest abandon | longest reveal the bridge kept out |
 |---|---|---|---|---|---|---|---|---|
-| sop2_h10 | ES | **0.405 / 0.495** | 0.035 / 0.000 | 0.023 / 0.000 | 0.48 / 0.40 | 1, 13, 0.14 / 1, 13, 0.15 | 13 / 13 | 49 / 52 (won; reading 3) |
+| sop2_h10 | ES | **0.405 / 0.495** | 0.035 / 0.000 | 0.023 / 0.000 | 0.48 / 0.40 | 1, 13, 0.14 / 1, 13, 0.15 | 13 / 13 | 47 / 47, then won at 49 / 51 (reading 3) |
 | sop2_h10 | lead-2 | 0.000 / 0.000 | 0.000 / 0.000 | 0 / 0 | 1.00 / 1.00 | 1, 10, 0.15 / 2, 41, 0.49 | 10 / 28 | 10 / 28 |
 | exact_h10 | ES | 0.157 / 0.190 | 0.169 / 0.199 | 0.028 / 0.015 | 0.78 / 0.76 | 3, 64, 0.73 / 0, 0, 0.00 | 29 / 9 | 29 / 9 |
 | exact_h10 | lead-2 | 0.272 / 0.366 | 0.284 / 0.292 | 0.160 / 0.195 | 0.51 / 0.36 | 1, 29, 0.35 / 1, 17, 0.18 | 29 / 17 | 29 / 17 |
