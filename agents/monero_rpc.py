@@ -318,6 +318,16 @@ class MoneroRPC(BaseRPC):
             raise RPCError(f"submit_block status: {status}")
         return result
 
+    def pop_blocks(self, nblocks: int) -> Dict[str, Any]:
+        """Remove the top `nblocks` blocks from the main chain. Legacy
+        endpoint, unrestricted RPC only: POST /pop_blocks. The reply carries
+        the new chain height. Any non-OK status raises RPCError."""
+        result = self._make_legacy_request("pop_blocks", {"nblocks": int(nblocks)})
+        status = (result or {}).get("status", "")
+        if status != "OK":
+            raise RPCError(f"pop_blocks status: {status}")
+        return result
+
     def get_transaction_pool(self) -> Dict[str, Any]:
         """
         Get information about the transaction pool (mempool).

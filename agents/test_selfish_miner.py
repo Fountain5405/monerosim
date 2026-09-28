@@ -658,3 +658,106 @@ def test_pull_island_growth_is_not_reported_as_reorg():
     assert not any("reorg" in str(c) for c in a.logger.info.call_args_list)
     fetched = sorted(c.kwargs.get("height", c.args[0] if c.args else None) for c in i1.get_block.call_args_list)
     assert fetched == [1, 2, 3]      # rescan covers the held window 1..2 plus the new block; never a phantom idx 3 mismatch
+
+
+# --- rejection-aware attacker (2026-09-28) ---
+# The strategy assumes every reveal wins. A bridge running the countermeasure
+# rejects a late reveal and never announces it, so the textbook attacker kept
+# racing a dead branch for up to ~50 blocks (results doc §6). With
+# `reject_aware` the agent checks adoption after a cash-out reveal and, if the
+# bridge's tip is not the attacker's, pops its branch and mines on the public
+# chain.
+
+def _reject_aware_agent():
+    a = SelfishMinerAgent(
+        agent_id="attacker-miner",
+        attributes=[["strategy", "eyal_sirer"], ["bridge_agent", "attacker-bridge"],
+                    ["reject_aware", "true"]],
+    )
+    a.logger = MagicMock()
+    a.daemon_rpc = MagicMock()
+    a.bridge_rpc = MagicMock()
+    a.bridge_rpcs = [a.bridge_rpc]
+    a.native_started = True
+    a._native_run_iteration = MagicMock(return_value=1.0)
+    a._ensure_strategy(0)
+    return a
+
+
+def test_reject_aware_attribute_defaults_off_and_parses():
+    assert _make_agent().reject_aware is False
+    assert _reject_aware_agent().reject_aware is True
+
+
+def _withhold_then_reveal(a, bridge_adopts: bool):
+    """Shared chain c0..c9 (count 10). Tick 1: the attacker holds p10,p11
+    (a=2, h=0) and withholds. Tick 2: honest h10 lands (a=2, h=1), so ES
+    reveals p10,p11. The bridge adopts them or keeps h10."""
+    common = {h: f"c{h}" for h in range(10)}
+    _chain_mocks(a, common, {}, {10: "p10", 11: "p11"})
+    a.bridge_rpc.get_info.return_value = {"height": 10, "top_block_hash": "c9"}
+    a.daemon_rpc.get_info.return_value = {"height": 12, "top_block_hash": "p11"}
+    a.run_iteration()
+    assert a.strategy.fork == 10
+    public = {10: "p10", 11: "p11"} if bridge_adopts else {10: "h10"}
+    _chain_mocks(a, common, public, {10: "p10", 11: "p11"})
+    a.bridge_rpc.get_info.return_value = {"height": 12 if bridge_adopts else 11,
+                                          "top_block_hash": "p11" if bridge_adopts else "h10"}
+    # tick 2 reads the pre-release public height (honest h10 just landed)
+    a.bridge_rpc.get_info.side_effect = [{"height": 11, "top_block_hash": "h10"},
+                                         a.bridge_rpc.get_info.return_value]
+    a.daemon_rpc.submit_block.reset_mock()
+    a.daemon_rpc.pop_blocks.reset_mock()
+    a.run_iteration()
+
+
+def test_reject_aware_withholding_does_not_feed_honest_blocks_past_the_fork():
+    # Honest blocks above the fork would sit in the miner's alt DB, and after a
+    # concession pop monerod would refuse them as already-have.
+    a = _reject_aware_agent()
+    common = {h: f"c{h}" for h in range(10)}
+    _chain_mocks(a, common, {10: "h10"}, {10: "p10", 11: "p11", 12: "p12"})
+    a.bridge_rpc.get_info.return_value = {"height": 11, "top_block_hash": "h10"}
+    a.daemon_rpc.get_info.return_value = {"height": 13, "top_block_hash": "p12"}
+    a.run_iteration()                          # a=3, h=1: withhold
+    submitted = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert "pub10" not in submitted
+
+
+def test_rejected_reveal_pops_the_branch_and_mines_on_the_public_chain():
+    a = _reject_aware_agent()
+    _withhold_then_reveal(a, bridge_adopts=False)
+    released = [c.args[0] for c in a.bridge_rpc.submit_block.call_args_list]
+    assert released == ["priv10", "priv11"]    # the reveal still went out
+    a.daemon_rpc.pop_blocks.assert_called_once_with(2)
+    names = [c[0] for c in a.daemon_rpc.method_calls]
+    subs = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert subs == ["pub10"]                   # honest h10 forwarded once, after the pop
+    assert names.index("pop_blocks") < names.index("submit_block")
+    assert a.strategy.fork == 11               # conceded to the public chain
+    assert a._released_index == 10 and a._forwarded_index == 10
+
+
+def test_adopted_reveal_keeps_the_branch():
+    a = _reject_aware_agent()
+    _withhold_then_reveal(a, bridge_adopts=True)
+    a.daemon_rpc.pop_blocks.assert_not_called()
+    assert a.strategy.fork == 12
+
+
+def test_without_reject_aware_a_rejected_reveal_is_not_noticed():
+    # Legacy behavior stays byte-identical: no adoption check, no pop.
+    a = _make_agent()
+    _withhold_then_reveal(a, bridge_adopts=False)
+    a.daemon_rpc.pop_blocks.assert_not_called()
+    assert a.strategy.fork == 12
+
+
+def test_rejected_reveal_with_failed_pop_leaves_state_alone():
+    # If the pop fails the miner is still on its branch; moving the fork would
+    # desynchronize the bookkeeping from the daemon.
+    a = _reject_aware_agent()
+    a.daemon_rpc.pop_blocks.side_effect = RPCError("pop_blocks status: Failed")
+    _withhold_then_reveal(a, bridge_adopts=False)
+    assert a.strategy.fork == 12
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == []

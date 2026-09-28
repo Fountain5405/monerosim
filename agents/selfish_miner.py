@@ -31,6 +31,20 @@ Attributes (via --attributes KEY VALUE):
                         this many blocks (default 1 = textbook Eyal-Sirer;
                         2 = Qubic's observed conservative release, Lee & Kim
                         2025 -- see agents/selfish_strategy.py)
+    reject_aware        "true" to check, after every cash-out reveal, that the
+                        first bridge adopted the branch, and to concede if not
+                        (default off; 2026-09-28). The strategy assumes a
+                        reveal wins, so a bridge that runs the countermeasure
+                        and rejects the reveal left the attacker racing a dead
+                        branch ("stranding", docs/20260926_exact_uncles_and_
+                        sop_controls.md §6). On rejection the agent pops its
+                        branch down to the common ancestor with the bridge and
+                        forwards the public chain, so the miner mines on the
+                        honest tip in the same tick. While withholding, honest
+                        blocks are forwarded only up to the fork, because blocks
+                        already in the miner's alt DB are refused as
+                        already-have after the pop. Only as good as the bridge's
+                        view: pair it with a bridge that runs the network's rule.
 """
 import logging
 
@@ -62,6 +76,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
         self.trail_depth = int(self.attributes.get("trail_depth", "1") or 1)  # trail_stubborn only
         self.release_lead = int(self.attributes.get("release_lead", "1") or 1)  # cash-out threshold
+        self.reject_aware = str(self.attributes.get("reject_aware", "false")).strip().lower() in ("1", "true", "yes")
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
         self._released_index = -1      # highest private block index released to the bridge
@@ -370,6 +385,50 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
 
+    def _concede_if_rejected(self, priv_height: int) -> bool:
+        """After a cash-out reveal: if the first bridge's block at the
+        attacker's tip height is not the attacker's tip, the reveal was
+        rejected. Pop the attacker's branch down to the hash-verified common
+        ancestor with the bridge, move the strategy's fork to the public
+        height, and forward the public chain into the miner. Returns True if
+        it conceded. The bridge judges a submitted block synchronously, so
+        the check can run right after the release."""
+        tip = priv_height - 1
+        try:
+            mine = self._block_hash(self.daemon_rpc.get_block(height=tip))
+        except RPCError as e:
+            self.logger.warning(f"adoption check: own tip {tip}: {e}")
+            return False
+        try:
+            theirs = self._block_hash(self.bridge_rpc.get_block(height=tip))
+        except RPCError:
+            theirs = None                           # bridge is shorter: not adopted
+        if mine and theirs == mine:
+            return False
+        try:
+            pub_info = self.bridge_rpc.get_info()
+            pub_height = int(pub_info.get("height", 0))
+        except RPCError as e:
+            self.logger.warning(f"adoption check: bridge height: {e}")
+            return False
+        ancestor = self._common_ancestor_with_bridge(pub_height, priv_height)
+        npop = priv_height - (ancestor + 1)
+        try:
+            self.daemon_rpc.pop_blocks(npop)
+        except RPCError as e:
+            self.logger.warning(f"reveal rejected but pop_blocks({npop}) failed: {e}")
+            return False
+        self.strategy.fork = pub_height
+        self._released_index = pub_height - 1
+        self._forwarded_index = ancestor
+        for k in [k for k in self._forwarded_hashes if k > ancestor]:
+            del self._forwarded_hashes[k]
+        self._last_pub_tip_hash = None              # force the rescan gate open
+        self._forward_public_blocks(pub_height, pub_info.get("top_block_hash"))
+        self.logger.info(f"reveal rejected by the bridge (tip {tip}); popped {npop} "
+                         f"private block(s) to ancestor {ancestor}, fork -> {pub_height}")
+        return True
+
     def _sync_start_state(self, pub_height: int, priv_height: int) -> None:
         """One-time, first tick with a bridge: start the strategy's fork and
         both watermarks at the hash-verified common ancestor of the miner's
@@ -529,6 +588,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         cap = decision.forward_to
         if self.island_rpcs and self.strategy and cap is None:
             cap = self.strategy.fork
+        # Rejection-aware: cap at the fork BEFORE this step. A cash-out has
+        # already moved strategy.fork to the attacker's tip; forwarding up to
+        # it would put the honest block into the miner's alt DB before the
+        # reveal is judged, and a concession pop could not bring it back. An
+        # adopt-public step must forward (that is the concession itself).
+        if self.reject_aware and not decision.adopt_public:
+            cap = decision.release_from if cap is None else min(cap, decision.release_from)
         self._forward_public_blocks(pub_height, pub_tip_hash, cap)
 
         # 7. Release per decision. The offline miner's chain already contains
@@ -536,6 +602,10 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         #    branch unchanged.
         if decision.release_to is not None:
             self._release_up_to(decision.release_from, decision.release_to)
+            # 7b. A cash-out moved the fork to the attacker's tip on the
+            #     assumption that the reveal wins. Check it.
+            if self.reject_aware and self.strategy.fork > decision.release_from:
+                self._concede_if_rejected(priv_height)
 
         # 8. Island cash-out (v2 lifecycle): bank the combined branch the
         #    moment it leads honest by `island_cash_lead`, regardless of the

@@ -167,3 +167,27 @@ def test_legacy_request_transport_failure_becomes_rpc_error(mocker):
 
     with pytest.raises(RPCError, match="connection refused"):
         rpc.mining_status()
+
+
+def test_pop_blocks_posts_nblocks_to_legacy_endpoint(mocker):
+    """pop_blocks POSTs {"nblocks": n} to /pop_blocks (unrestricted RPC only)
+    and returns the flat reply with the new height."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    post = mocker.patch.object(rpc.session, "post")
+    post.return_value = _fake_post_response({"status": "OK", "height": 10})
+
+    result = rpc.pop_blocks(2)
+
+    args, kwargs = post.call_args
+    url = args[0] if args else kwargs.get("url")
+    assert url.endswith("/pop_blocks")
+    assert kwargs["json"] == {"nblocks": 2}
+    assert result == {"status": "OK", "height": 10}
+
+
+def test_pop_blocks_raises_on_non_ok_status(mocker):
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    post = mocker.patch.object(rpc.session, "post")
+    post.return_value = _fake_post_response({"status": "Failed"})
+    with pytest.raises(RPCError):
+        rpc.pop_blocks(1)
