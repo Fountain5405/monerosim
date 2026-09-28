@@ -289,6 +289,13 @@ modest. Finding 9 (retracted) should be replaced by this.
 
 ## 5. Attacker stranding — a bias in every PoP/SoP attack cell (2026-09-27)
 
+> **Update 2026-09-28 (§6):** the flagged-bridge re-run (fix option 1)
+> did not remove stranding, and the mechanism below is only half right.
+> The attacker strands because its strategy assumes every reveal wins,
+> not because its bridge misleads it. A flagged bridge hides the rejected
+> branch from honest-001, so the honest-side count below reads ≈ 0 on
+> re-run cells. §6 measures stranding from the attacker's daemon instead.
+
 Found while reading the relay cells. In every PoP/SoP matrix the
 countermeasure runs on the honest miners (PoP cells) or on the miners,
 relays and seeds (SoP cells); **the attacker's bridge always keeps stock
@@ -361,6 +368,131 @@ Fix options (owner decision; not run):
   `pop_exact_h10` and `pop_exact_mid` (or a subset) and quote the
   stranding-free numbers next to the current ones.
 
+## 6. Flagged-bridge re-run — stranding NOT removed; SoP lost past its fail-safe window (2026-09-27/28)
+
+The owner chose §5's first fix option: the attacker's bridge runs the
+countermeasure rule (SoP cells: the relays' `sim-share-or-perish`; PoP
+cells: the honest miners' exact flags). Six matrices,
+`pop_sop2_h10_fbridge`, `pop_exact_h10_fbridge`, `pop_exact_mid_fbridge`
+(+ `_rep`, seed 54321), ES and lead-2 only, 12 cells at once, launched
+2026-09-27T13:02Z at `cf55ea8e`; micro done 15:25Z, mid 16:00Z. A test in
+`scripts/test_selfish_matrix.py` asserts that each cell differs from the
+original's same-named cell only in the bridge's `daemon_options`. All 12
+cells health ok; bridge flags confirmed in the logs at start.
+
+Daemon: every re-run cell ran the ‡ build (2026-09-26T20:31Z, pop patch
+`9492d7cb…`), the same as the `pop_exact_mid` originals and one build later
+than the `pop_exact_h10` originals (stage 1, `dcfbaeeb…`). The
+`pop_sop2_h10` originals ran the older † build (12:41Z, before the
+2026-09-26 SoP weight-table fixes). So the SoP rows below differ from their
+originals in the daemon as well as in the bridge.
+
+Stranding is measured here **from the attacker's side**: every time the
+attacker's offline daemon logs `REORGANIZE on height: h of top`, it
+abandons `top − h + 1` blocks of its own branch. A race the attacker
+loses normally costs a few blocks, because it concedes as soon as the
+honest chain is taller. An abandonment of ≥ 10 blocks (§5's threshold) is
+a branch the attacker kept extending after the network had rejected it. The §5
+table read the same thing from honest-001's decisions instead. That view
+is blind here; see reading 1.
+
+| matrix | cell | share (run / rep) | original | realized γ | attacker orphan | abandoned ≥ 10: runs, blocks, of found | deepest abandon | longest reveal the bridge kept out |
+|---|---|---|---|---|---|---|---|---|
+| sop2_h10 | ES | **0.405 / 0.495** | 0.035 / 0.000 | 0.023 / 0.000 | 0.48 / 0.40 | 1, 13, 0.14 / 1, 13, 0.15 | 13 / 13 | 49 / 52 (won; reading 3) |
+| sop2_h10 | lead-2 | 0.000 / 0.000 | 0.000 / 0.000 | 0 / 0 | 1.00 / 1.00 | 1, 10, 0.15 / 2, 41, 0.49 | 10 / 28 | 10 / 28 |
+| exact_h10 | ES | 0.157 / 0.190 | 0.169 / 0.199 | 0.028 / 0.015 | 0.78 / 0.76 | 3, 64, 0.73 / 0, 0, 0.00 | 29 / 9 | 29 / 9 |
+| exact_h10 | lead-2 | 0.272 / 0.366 | 0.284 / 0.292 | 0.160 / 0.195 | 0.51 / 0.36 | 1, 29, 0.35 / 1, 17, 0.18 | 29 / 17 | 29 / 17 |
+| exact_mid | ES | 0.181 / 0.236 | 0.253 / 0.303 | 0.056 / 0.106 | 0.70 / 0.58 | 3, 48, 0.49 / 2, 22, 0.20 | 25 / 12 | 25 / 12 |
+| exact_mid | lead-2 | 0.328 / 0.291 | 0.241 / 0.251 | 0.105 / 0.190 | 0.48 / 0.40 | 1, 12, 0.10 / 0, 0, 0.00 | 12 / 9 | 12 / 9 |
+
+The same attacker-side measure on the originals (stock bridge):
+
+| matrix | cell | abandoned ≥ 10: runs, blocks, of found (run / rep) | deepest abandon |
+|---|---|---|---|
+| sop2_h10 | ES | 1, 23, 0.28 / 2, 43, 0.48 | 23 / 32 |
+| sop2_h10 | lead-2 | 2, 46, 0.57 / 2, 58, 0.67 | 36 / 38 |
+| exact_h10 | ES | 3, 52, 0.61 / 2, 42, 0.42 | 22 / 25 |
+| exact_h10 | lead-2 | 1, 19, 0.21 / 1, 25, 0.30 | 19 / 25 |
+| exact_mid | ES | 2, 31, 0.29 / 0, 0, 0.00 | 16 / 8 |
+| exact_mid | lead-2 | 0, 0, 0.00 / 0, 0, 0.00 | 9 / 8 |
+
+On the originals it reproduces §5's honest-side counts wherever the stock
+bridge made the rejected branch visible (2/46, 1/23, 2/43, 3/52, 2/42,
+1/19, 1/25, 2/31). The exception is `pop_sop2_h10_rep` lead-2: 2/58 here
+against §5's 1/37, because one abandoned branch never reached honest-001.
+
+Reading:
+
+1. **The flagged bridge did not remove stranding. It made stranding
+   invisible to the §5 metric.** The re-run cells abandoned branches of up
+   to 29 blocks, against up to 38 in the originals; PoP stranding is no
+   lower (ES micro 0.73 / 0.00 of found vs 0.61 / 0.42; mid ES
+   0.49 / 0.20 vs 0.29 / 0.00). The flagged bridge rejects the late reveal
+   the way the miners do. A block that is not on its main chain is never
+   announced, so honest-001 never receives the branch. Its longest kept-out
+   alternative in the PoP re-run cells is 1–12 blocks, so
+   `scripts/attacker_stranding.py` as written in §5 read 0 in seven of the
+   eight PoP re-run cells. The exception is mid rep ES, 1 run of 12
+   against 2 runs and 22 blocks abandoned.
+2. **§5's mechanism was half right. The attacker strands because its
+   strategy assumes a reveal wins, not because its bridge misleads it.**
+   `SelfishStrategy._eyal_sirer_decision` moves `fork` to the attacker's
+   own tip on every reveal at lead ≤ `release_lead` and from then on compares
+   chain heights only. It never checks whether the bridge adopted the
+   branch. After a rejected reveal it keeps racing on its own branch until
+   the honest chain is taller, whatever rule the bridge runs. The stock
+   bridge of the originals did not cause this; it adopted the rejected
+   branch and so made it visible to the honest nodes. The fix that removes
+   stranding is a **rejection-aware attacker** (after a reveal, check that
+   the bridge's tip is the attacker's tip, and concede if not). That is an
+   agent change and has not been run.
+3. **Share-or-Perish lost both ES cells, past its k·w fail-safe.** Each
+   cell's whole attacker share is one long branch that the honest miners
+   adopted:
+   - `pop_sop2_h10_fbridge`, 05:23:56: honest-001 logs
+     `fork 390 OBJECTIVE alt 490992/49 vs main 490276/49 (nf=49) -> SWITCH`.
+     The 49 attacker blocks (heights 391–439, found 02:48–05:18) are the
+     attacker's 49 canonical blocks of 121. Honest-001 and honest-002 end on
+     the same chain.
+   - `pop_sop2_h10_fbridge_rep`, 04:04:44:
+     `fork 344 OBJECTIVE alt 447518/51 vs main 447289/52 (nf=51) -> SWITCH`.
+     The attacker's branch was one block SHORTER and won on cumulative
+     difficulty.
+
+   #146 applies lateness only within k·w = 48 work objects of the fork
+   (partition recovery, `docs/20260923_sop_design.md`). Past that, the
+   daemon compares plain cumulative difficulty. The attacker's withheld
+   blocks carry no shares, so its branch reaches 48 objects only at 48
+   blocks. Over those 2.5 h the attacker found 49 blocks to the honest
+   miners' 51: a lucky stretch, since whole-run attacker fractions sit at
+   0.34–0.46 in every cell including the honest controls. The two
+   equal-length branches then differed by 0.15 % and 0.05 % in weight,
+   decided by DAA noise. This is the rule working as specified, not a
+   daemon defect. The textbook attacker got there only because it cannot
+   see that its reveals were rejected (reading 2). No original SoP cell
+   crossed the window (one original had 10 OBJECTIVE decisions, all KEEP),
+   and neither lead-2 re-run cell reached it.
+   How often an α = 0.4 attacker stays level for 48 blocks is not measured
+   here (2 of 2 re-run cells, 0 of 4 originals). Neither is whether a
+   deliberately stubborn attacker could do it on purpose. Lead-2 stays at
+   0.000 in both re-run cells.
+4. **PoP shares moved in both directions, and γ is no longer ≈ 0.** The
+   flagged bridge now announces the attacker's tie blocks when det-tie picks
+   them, so realized γ is 0.015–0.195 (originals 0–0.036). ES micro
+   {0.157, 0.190} vs {0.169, 0.199}; lead-2 micro {0.272, 0.366} vs
+   {0.284, 0.292}; ES mid {0.181, 0.236} vs {0.253, 0.303}; lead-2 mid
+   {0.328, 0.291} vs {0.241, 0.251}. Every cell stays below α = 0.4 and
+   below the stock pair means (micro 0.409 / 0.387, mid 0.447 / 0.403). The
+   re-run rows are neither stranding-free nor at γ ≈ 0, so they do not
+   replace the originals. Quote them next to the originals, as a
+   sensitivity to the bridge's rule.
+
+Consequences for the manuscript: the §5 stranding caveat stands and
+applies to these rows too. SoP finding 10 needs the fail-safe caveat (an
+attacker that stays level for more than 48 blocks wins under stock rules),
+and its 0.000 headline is n = 2 on the stock-bridge apparatus only. The
+stranding-free numbers need the rejection-aware attacker (owner decision).
+
 ## Runs (reproducibility ledger rows)
 
 | Run directory | Commit | Config | What it shows |
@@ -403,4 +535,16 @@ Fix options (owner decision; not run):
 | `20260927_032802_pop_exact_relay_rep__es_r2_stock_relay` | `c7155952` | `pop_exact_relay_rep` cell | es_r2_stock_relay: share 0.384 (honest-ref 0.384), blocks 151, forks 800, sw 0, health ok |
 | `20260927_032741_pop_exact_relay__es_stock_relay` | `c7155952` | `pop_exact_relay` cell | es_stock_relay: share 0.460 (honest-ref 0.460), blocks 139, forks 921, sw 0, health ok |
 | `20260927_032802_pop_exact_relay_rep__es_stock_relay` | `c7155952` | `pop_exact_relay_rep` cell | es_stock_relay: share 0.445 (honest-ref 0.445), blocks 146, forks 850, sw 0, health ok |
-Daemons: stage 1 ran the 17:50Z build (pop patch `dcfbaeeb…`), stage 2 the 20:25Z build (`9492d7cb…`); every run's `binary_provenance.txt` records it.
+| `20260927_130223_pop_sop2_h10_fbridge__es_r2_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge` cell | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 115, forks 91, sw 172, health ok |
+| `20260927_130243_pop_sop2_h10_fbridge_rep__es_r2_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge_rep` cell | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 130, forks 51, sw 140, health ok |
+| `20260927_130223_pop_sop2_h10_fbridge__es_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge` cell | es_sop2: share 0.405 (honest-ref 0.405), blocks 121, forks 980, sw 617, health ok |
+| `20260927_130243_pop_sop2_h10_fbridge_rep__es_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge_rep` cell | es_sop2: share 0.495 (honest-ref 0.495), blocks 107, forks 1020, sw 562, health ok |
+| `20260927_130303_pop_exact_h10_fbridge__es_exact` | `cf55ea8e` | `pop_exact_h10_fbridge` cell | es_exact: share 0.157 (honest-ref 0.157), blocks 121, forks 235, sw 20, health ok |
+| `20260927_130323_pop_exact_h10_fbridge_rep__es_exact` | `cf55ea8e` | `pop_exact_h10_fbridge_rep` cell | es_exact: share 0.190 (honest-ref 0.190), blocks 121, forks 272, sw 0, health ok |
+| `20260927_130303_pop_exact_h10_fbridge__es_r2_exact` | `cf55ea8e` | `pop_exact_h10_fbridge` cell | es_r2_exact: share 0.272 (honest-ref 0.272), blocks 151, forks 666, sw 0, health ok |
+| `20260927_130323_pop_exact_h10_fbridge_rep__es_r2_exact` | `cf55ea8e` | `pop_exact_h10_fbridge_rep` cell | es_r2_exact: share 0.366 (honest-ref 0.366), blocks 161, forks 794, sw 0, health ok |
+| `20260927_130344_pop_exact_mid_fbridge__es_exact` | `cf55ea8e` | `pop_exact_mid_fbridge` cell | es_exact: share 0.181 (honest-ref 0.181), blocks 160, forks 1334, sw 36, health ok |
+| `20260927_130404_pop_exact_mid_fbridge_rep__es_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell | es_exact: share 0.236 (honest-ref 0.236), blocks 199, forks 3844, sw 39, health ok |
+| `20260927_130344_pop_exact_mid_fbridge__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge` cell | es_r2_exact: share 0.328 (honest-ref 0.328), blocks 189, forks 3019, sw 55, health ok |
+| `20260927_130404_pop_exact_mid_fbridge_rep__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell | es_r2_exact: share 0.291 (honest-ref 0.291), blocks 179, forks 3245, sw 16, health ok |
+Daemons: stage 1 ran the 17:50Z build (pop patch `dcfbaeeb…`), stage 2, campaign 4 and the §6 flagged-bridge re-run the 20:25Z build (`9492d7cb…`); every run's `binary_provenance.txt` records it. The §6 rows are commit `cf55ea8e`, the commit HEAD was at when they launched.

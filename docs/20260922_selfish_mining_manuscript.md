@@ -123,6 +123,20 @@ over-predicts exactly where a rational attacker would operate.**
 > stranding explains most of the PoP spread. Re-runs with a bridge that runs
 > the honest rule are an open owner decision.
 >
+> **FLAGGED-BRIDGE RE-RUN (2026-09-27/28, same doc §6): stranding NOT
+> removed.** 12 cells re-ran ES and lead-2 with the bridge running the
+> countermeasure rule (`pop_sop2_h10_fbridge`, `pop_exact_h10_fbridge`,
+> `pop_exact_mid_fbridge`, + `_rep`). Measured at the attacker's own
+> daemon, it still abandons branches of up to 29 blocks (originals: up to
+> 38). The flagged bridge only hides them from honest nodes. The cause is
+> the attacker's strategy, which assumes every reveal wins and compares
+> heights only, so the caveat above stands for these rows too. The fix is a
+> rejection-aware attacker (owner decision, not run). PoP shares stay
+> below α and below stock (ES micro {0.157, 0.190}, mid {0.181, 0.236};
+> lead-2 micro {0.272, 0.366}, mid {0.328, 0.291}), but realized γ is now
+> 0.02–0.20, so these rows are a sensitivity check, not replacements.
+> **SoP lost both ES cells** ({0.405, 0.495}): see finding 10.
+>
 > **EXACT RE-RUN (2026-09-26/27, `docs/20260926_exact_uncles_and_sop_controls.md`):**
 > after two more daemon fixes (review F5c: uncle sibling anchor; F5d:
 > template refresh on a sibling at the tip) the MRL #144 exact cells were
@@ -335,6 +349,19 @@ cell to date measures anything but pop-core + det-tie.
    such races (share 0.326, orphan 0.218), an upgrade-transition cost that
    n = 2 cannot yet size. The bridge (stock fork choice) is a biased
    reference under SoP: report SoP shares against an honest node's chain.
+   **Fail-safe caveat (2026-09-28, `docs/20260926_exact_uncles_and_sop_controls.md`
+   §6):** #146 applies lateness only within k·w = 48 work objects of a
+   fork. Past that, fork choice is plain cumulative difficulty. In the
+   flagged-bridge re-run, the ES attacker kept a rejected branch level with
+   the honest chain for 49 and 51 blocks. Both times the honest miners
+   switched to it on the objective rule, the second time to a branch one
+   block shorter but heavier, and ES earned {0.405, 0.495}. That happened
+   in 0 of 4 original SoP attack cells, and lead-2 stayed at {0.000, 0.000}.
+   The attacker reached the window only because it could not see its
+   reveals were rejected (the stranding bias). How often an α = 0.4
+   attacker stays level that long, and whether a deliberately stubborn one
+   could, is not measured. The 0.000 headline above holds only inside the
+   fail-safe window and only on the stock-bridge apparatus.
    **Earlier text, RETRACTED 2026-09-25 (review F1–F5) and superseded above:**
    ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
    apparatus~~: with fixed genesis difficulty and a post-bootstrap
@@ -519,6 +546,19 @@ daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 | `20260927_032802_pop_exact_relay_rep__es_r2_stock_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_r2_stock_relay: share 0.384 (honest-ref 0.384), blocks 151, forks 800, sw 0, health ok |
 | `20260927_032741_pop_exact_relay__es_stock_relay` | `c7155952` | `pop_exact_relay` cell ‡ | es_stock_relay: share 0.460 (honest-ref 0.460), blocks 139, forks 921, sw 0, health ok |
 | `20260927_032802_pop_exact_relay_rep__es_stock_relay` | `c7155952` | `pop_exact_relay_rep` cell ‡ | es_stock_relay: share 0.445 (honest-ref 0.445), blocks 146, forks 850, sw 0, health ok |
+
+| `20260927_130223_pop_sop2_h10_fbridge__es_r2_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge` cell ‡ | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 115, forks 91, sw 172, health ok |
+| `20260927_130243_pop_sop2_h10_fbridge_rep__es_r2_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge_rep` cell ‡ | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 130, forks 51, sw 140, health ok |
+| `20260927_130223_pop_sop2_h10_fbridge__es_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge` cell ‡ | es_sop2: share 0.405 (honest-ref 0.405), blocks 121, forks 980, sw 617, health ok |
+| `20260927_130243_pop_sop2_h10_fbridge_rep__es_sop2` | `cf55ea8e` | `pop_sop2_h10_fbridge_rep` cell ‡ | es_sop2: share 0.495 (honest-ref 0.495), blocks 107, forks 1020, sw 562, health ok |
+| `20260927_130303_pop_exact_h10_fbridge__es_exact` | `cf55ea8e` | `pop_exact_h10_fbridge` cell ‡ | es_exact: share 0.157 (honest-ref 0.157), blocks 121, forks 235, sw 20, health ok |
+| `20260927_130323_pop_exact_h10_fbridge_rep__es_exact` | `cf55ea8e` | `pop_exact_h10_fbridge_rep` cell ‡ | es_exact: share 0.190 (honest-ref 0.190), blocks 121, forks 272, sw 0, health ok |
+| `20260927_130303_pop_exact_h10_fbridge__es_r2_exact` | `cf55ea8e` | `pop_exact_h10_fbridge` cell ‡ | es_r2_exact: share 0.272 (honest-ref 0.272), blocks 151, forks 666, sw 0, health ok |
+| `20260927_130323_pop_exact_h10_fbridge_rep__es_r2_exact` | `cf55ea8e` | `pop_exact_h10_fbridge_rep` cell ‡ | es_r2_exact: share 0.366 (honest-ref 0.366), blocks 161, forks 794, sw 0, health ok |
+| `20260927_130344_pop_exact_mid_fbridge__es_exact` | `cf55ea8e` | `pop_exact_mid_fbridge` cell ‡ | es_exact: share 0.181 (honest-ref 0.181), blocks 160, forks 1334, sw 36, health ok |
+| `20260927_130404_pop_exact_mid_fbridge_rep__es_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell ‡ | es_exact: share 0.236 (honest-ref 0.236), blocks 199, forks 3844, sw 39, health ok |
+| `20260927_130344_pop_exact_mid_fbridge__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge` cell ‡ | es_r2_exact: share 0.328 (honest-ref 0.328), blocks 189, forks 3019, sw 55, health ok |
+| `20260927_130404_pop_exact_mid_fbridge_rep__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell ‡ | es_r2_exact: share 0.291 (honest-ref 0.291), blocks 179, forks 3245, sw 16, health ok |
 
 Reproduce any row:
 

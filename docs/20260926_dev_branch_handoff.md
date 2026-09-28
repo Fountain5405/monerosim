@@ -277,6 +277,22 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
   against the original rows; record realized γ (PoP bridges may announce
   tie blocks that win det-tie).
 
+- **Stranding re-run done (2026-09-27 16:00Z; read out 2026-09-28)**:
+  12/12 health ok, commit `cf55ea8e`. Results:
+  `docs/20260926_exact_uncles_and_sop_controls.md` §6.
+  - Stranding NOT removed. Measured at the attacker's daemon, it still
+    abandons rejected branches of up to 29 blocks. The flagged bridge
+    rejects reveals and never announces them, so the honest-side
+    `attacker_stranding.py` read ≈ 0. Cause: `SelfishStrategy` assumes a
+    reveal wins and compares heights only.
+  - SoP ES earned {0.405, 0.495}: a rejected branch stayed level past
+    #146's k·w = 48 fail-safe window and won on cumulative difficulty.
+    Lead-2 stayed at 0.000.
+  - PoP shares stay below α, with γ 0.02–0.20.
+  - Manuscript E4 notice, finding 10, §7 ledger, SoP re-run doc and review
+    §3 status updated.
+  - Owner decision open: a rejection-aware attacker (agent change).
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

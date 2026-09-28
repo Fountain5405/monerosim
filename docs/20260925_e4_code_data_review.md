@@ -208,6 +208,13 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   uncles embedded, 0 counted in any fork decision; relay gives the attacker
   γ 0.10–0.43 under det-tie. Step 4 closed: the #144 uncle term had no
   measurable effect in any setting. Stranding caveat: results doc §5.
+  Flagged-bridge re-run (2026-09-27, results doc §6, 12/12 health ok):
+  stranding NOT removed. The attacker strategy never checks that a reveal
+  was adopted, and a flagged bridge only hides the rejected branch from
+  honest nodes, so the stranding metric now reads the attacker's daemon.
+  SoP ES lost both cells ({0.405, 0.495}) past the k·w = 48 fail-safe
+  window. PoP shares stay below α at γ 0.02–0.20. Open: a rejection-aware
+  attacker (agent change, owner decision).
   Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
   (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated
