@@ -761,3 +761,58 @@ def test_rejected_reveal_with_failed_pop_leaves_state_alone():
     _withhold_then_reveal(a, bridge_adopts=False)
     assert a.strategy.fork == 12
     assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == []
+
+
+def _committed_then_reverted(a):
+    """Common c0..c355. The attacker's reveal p356,p357 was adopted (fork 358)
+    and it holds p358 privately. The bridge has since switched back to honest
+    h356..h358 (smoke 2026-09-28: PoP det-tie flipped the bridge 5 min later)."""
+    common = {h: f"c{h}" for h in range(356)}
+    _chain_mocks(a, common, {356: "h356", 357: "h357", 358: "h358"},
+                 {356: "p356", 357: "p357", 358: "p358"})
+    a._start_synced = True
+    a.strategy.fork = 358
+    a._forwarded_index = 355
+    a._released_index = 357
+    a._forwarded_hashes = {h: f"c{h}" for h in range(350, 356)}   # as a live agent records them
+    a._last_pub_tip_hash = "p357"
+    a.bridge_rpc.get_info.return_value = {"height": 359, "top_block_hash": "h358"}
+    a.daemon_rpc.get_info.return_value = {"height": 359, "top_block_hash": "p358"}
+
+
+def test_reverted_commit_is_conceded_before_any_honest_block_is_forwarded():
+    # Honest blocks forwarded onto the attacker's branch land in the miner's alt
+    # DB; after a pop monerod cannot connect them ("main blockchain wrong
+    # height": an alt chain may not start at the main tip) and the miner mines
+    # on a stale parent. So the concession must come first.
+    a = _reject_aware_agent()
+    _committed_then_reverted(a)
+    a.run_iteration()
+    a.daemon_rpc.pop_blocks.assert_called_once_with(3)
+    names = [c[0] for c in a.daemon_rpc.method_calls]
+    subs = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
+    assert subs == ["pub356", "pub357", "pub358"]
+    assert names.index("pop_blocks") < names.index("submit_block")
+    assert a.strategy.fork == 359
+
+
+def test_strategy_concession_pops_instead_of_forwarding_onto_the_branch():
+    # ES adopts when honest is taller. With reject_aware the miner leaves its
+    # branch by pop + forward, never by honest blocks piling up as alt blocks.
+    a = _reject_aware_agent()
+    common = {h: f"c{h}" for h in range(10)}
+    _chain_mocks(a, common, {10: "h10", 11: "h11"}, {10: "p10"})
+    a._start_synced = True
+    a.strategy.fork = 10
+    a._forwarded_index = 9
+    a._released_index = 9
+    a._last_pub_tip_hash = "c9"
+    a._forwarded_hashes = {h: f"c{h}" for h in range(4, 10)}
+    a.bridge_rpc.get_info.return_value = {"height": 12, "top_block_hash": "h11"}
+    a.daemon_rpc.get_info.return_value = {"height": 11, "top_block_hash": "p10"}
+    a.run_iteration()                          # a=1 < h=2: adopt
+    a.daemon_rpc.pop_blocks.assert_called_once_with(1)
+    names = [c[0] for c in a.daemon_rpc.method_calls]
+    assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["pub10", "pub11"]
+    assert names.index("pop_blocks") < names.index("submit_block")
+    assert a.strategy.fork == 12

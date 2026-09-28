@@ -83,6 +83,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self._forwarded_hashes = {}    # height -> hash last forwarded, for reorg detection (C3)
         self._last_pub_tip_hash = None # honest tip hash last seen; gates the reorg rescan (C3)
         self._start_synced = False     # first-tick fork/watermark sync done (see _sync_start_state)
+        self._divergence_checked = None # public tip last checked for a dropped commit (reject_aware)
         self._tx_warned = False        # C4: warn once if a block carries transactions
 
     # How many trailing honest blocks to re-check for reorgs each tick. Selfish
@@ -385,48 +386,73 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
 
+    def _same_block(self, height: int):
+        """True/False: the miner and the first bridge hold the same block at
+        `height` (a missing bridge block counts as different). None if the
+        miner's own block cannot be read."""
+        try:
+            mine = self._block_hash(self.daemon_rpc.get_block(height=height))
+        except RPCError as e:
+            self.logger.warning(f"adoption check: own block {height}: {e}")
+            return None
+        try:
+            theirs = self._block_hash(self.bridge_rpc.get_block(height=height))
+        except RPCError:
+            theirs = None                           # bridge is shorter
+        return bool(mine) and theirs == mine
+
     def _concede_if_rejected(self, priv_height: int) -> bool:
         """After a cash-out reveal: if the first bridge's block at the
         attacker's tip height is not the attacker's tip, the reveal was
-        rejected. Pop the attacker's branch down to the hash-verified common
+        rejected; concede. The bridge judges a submitted block synchronously,
+        so the check can run right after the release."""
+        if self._same_block(priv_height - 1) is not False:
+            return False
+        return self._concede(priv_height, f"reveal rejected by the bridge (tip {priv_height - 1})")
+
+    def _concede_if_diverged(self, pub_height: int, priv_height: int) -> bool:
+        """The committed prefix (below the strategy's fork) must still be the
+        bridge's chain. A bridge can adopt a reveal and later switch back (a
+        det-tie flip, smoke 2026-09-28); the strategy would keep treating the
+        dropped blocks as committed. Concede if they differ."""
+        height = min(self.strategy.fork, pub_height, priv_height) - 1
+        if height < 0 or self._same_block(height) is not False:
+            return False
+        return self._concede(priv_height, f"committed block {height} dropped by the bridge")
+
+    def _concede(self, priv_height: int, reason: str) -> bool:
+        """Leave the private branch: pop it down to the hash-verified common
         ancestor with the bridge, move the strategy's fork to the public
         height, and forward the public chain into the miner. Returns True if
-        it conceded. The bridge judges a submitted block synchronously, so
-        the check can run right after the release."""
-        tip = priv_height - 1
-        try:
-            mine = self._block_hash(self.daemon_rpc.get_block(height=tip))
-        except RPCError as e:
-            self.logger.warning(f"adoption check: own tip {tip}: {e}")
-            return False
-        try:
-            theirs = self._block_hash(self.bridge_rpc.get_block(height=tip))
-        except RPCError:
-            theirs = None                           # bridge is shorter: not adopted
-        if mine and theirs == mine:
-            return False
+        it conceded.
+
+        Pop FIRST, forward after: monerod keeps honest blocks forwarded onto
+        the attacker's branch in its alt DB, and once the branch is popped it
+        cannot connect them again (build_alt_chain: an alt chain may not start
+        at the main tip, "main blockchain wrong height"). The miner would then
+        mine on a stale parent (smoke 2026-09-28)."""
         try:
             pub_info = self.bridge_rpc.get_info()
             pub_height = int(pub_info.get("height", 0))
         except RPCError as e:
-            self.logger.warning(f"adoption check: bridge height: {e}")
+            self.logger.warning(f"concede: bridge height: {e}")
             return False
         ancestor = self._common_ancestor_with_bridge(pub_height, priv_height)
         npop = priv_height - (ancestor + 1)
-        try:
-            self.daemon_rpc.pop_blocks(npop)
-        except RPCError as e:
-            self.logger.warning(f"reveal rejected but pop_blocks({npop}) failed: {e}")
-            return False
+        if npop > 0:
+            try:
+                self.daemon_rpc.pop_blocks(npop)
+            except RPCError as e:
+                self.logger.warning(f"{reason} but pop_blocks({npop}) failed: {e}")
+                return False
         self.strategy.fork = pub_height
         self._released_index = pub_height - 1
         self._forwarded_index = ancestor
         for k in [k for k in self._forwarded_hashes if k > ancestor]:
             del self._forwarded_hashes[k]
-        self._last_pub_tip_hash = None              # force the rescan gate open
         self._forward_public_blocks(pub_height, pub_info.get("top_block_hash"))
-        self.logger.info(f"reveal rejected by the bridge (tip {tip}); popped {npop} "
-                         f"private block(s) to ancestor {ancestor}, fork -> {pub_height}")
+        self.logger.info(f"{reason}; popped {npop} private block(s) to ancestor "
+                         f"{ancestor}, fork -> {pub_height}")
         return True
 
     def _sync_start_state(self, pub_height: int, priv_height: int) -> None:
@@ -571,8 +597,22 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if not self._start_synced:
             self._sync_start_state(pub_height, priv_height)
 
+        # 4c. Rejection-aware: whenever the public tip changes, check that the
+        #     committed prefix is still the bridge's chain, BEFORE any honest
+        #     block is forwarded onto the attacker's branch.
+        if self.reject_aware and pub_tip_hash != self._divergence_checked:
+            self._divergence_checked = pub_tip_hash
+            if self._concede_if_diverged(pub_height, priv_height):
+                return self._reaction_interval_s()
+
         # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height)
+
+        # 5b. Rejection-aware: the strategy conceded (honest is taller). Leave
+        #     the branch by pop + forward, not by piling honest blocks onto it.
+        if self.reject_aware and decision.adopt_public:
+            if self._concede(priv_height, "strategy conceded"):
+                return self._reaction_interval_s()
 
         # 6. Forward honest blocks into the offline miner (reorg-aware, capped
         #    by decision.forward_to). Island mode (v13) additionally caps the
