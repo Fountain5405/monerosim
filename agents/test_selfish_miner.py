@@ -733,7 +733,9 @@ def test_rejected_reveal_pops_the_branch_and_mines_on_the_public_chain():
     names = [c[0] for c in a.daemon_rpc.method_calls]
     subs = [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list]
     assert subs == ["pub10"]                   # honest h10 forwarded once, after the pop
-    assert names.index("pop_blocks") < names.index("submit_block")
+    # flush the alt DB, then pop, then forward: honest blocks already held as
+    # alternatives could otherwise never be connected after the pop
+    assert names.index("flush_alt_blocks") < names.index("pop_blocks") < names.index("submit_block")
     assert a.strategy.fork == 11               # conceded to the public chain
     assert a._released_index == 10 and a._forwarded_index == 10
 
@@ -816,3 +818,34 @@ def test_strategy_concession_pops_instead_of_forwarding_onto_the_branch():
     assert [c.args[0] for c in a.daemon_rpc.submit_block.call_args_list] == ["pub10", "pub11"]
     assert names.index("pop_blocks") < names.index("submit_block")
     assert a.strategy.fork == 12
+
+
+def test_concession_without_alt_flush_changes_nothing():
+    # A daemon without the flush (old binary) would wedge after the pop, so the
+    # agent must not pop at all.
+    a = _reject_aware_agent()
+    a.daemon_rpc.flush_alt_blocks.side_effect = RPCError("flush_cache: sim_alt_blocks not confirmed")
+    _withhold_then_reveal(a, bridge_adopts=False)
+    a.daemon_rpc.pop_blocks.assert_not_called()
+    assert a.strategy.fork == 12
+
+
+def test_strategy_concession_with_nothing_to_pop_still_flushes():
+    # Smoke 2026-09-28: the miner's own block and the forwarded honest block at
+    # the same height raced; the honest one sat in the alt DB at the main tip
+    # and every later forward was refused (306 no-op concessions).
+    a = _reject_aware_agent()
+    common = {h: f"c{h}" for h in range(10)}
+    _chain_mocks(a, common, {10: "h10"}, {})
+    a._start_synced = True
+    a.strategy.fork = 10
+    a._forwarded_index = 9
+    a._released_index = 9
+    a._last_pub_tip_hash = "c9"
+    a._forwarded_hashes = {h: f"c{h}" for h in range(4, 10)}
+    a.bridge_rpc.get_info.return_value = {"height": 11, "top_block_hash": "h10"}
+    a.daemon_rpc.get_info.return_value = {"height": 10, "top_block_hash": "c9"}
+    a.run_iteration()                          # a=0, h=1: adopt
+    a.daemon_rpc.pop_blocks.assert_not_called()
+    names = [c[0] for c in a.daemon_rpc.method_calls]
+    assert names.index("flush_alt_blocks") < names.index("submit_block")

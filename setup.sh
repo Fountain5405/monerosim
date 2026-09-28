@@ -54,7 +54,7 @@ while [[ $# -gt 0 ]]; do
             echo "                         test_configs/selfish_micro_sop.yaml):"
             echo "                         monero-fakechain-hardforks.patch  --fakechain-hard-forks (network-upgrade sims)"
             echo "                         monero-sim-mining.patch           --sim-hash-interval-ms (native PoW under Shadow)"
-            echo "                         monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)"
+            echo "                         monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0) + flush_cache sim_alt_blocks RPC"
             echo "                         monero-sim-peerlist-dump.patch    --peerlist-dump-file (eclipse measurement)"
             echo "                         monero-sim-pop.patch              --sim-publish-or-perish (PoP countermeasure)"
             echo "                         Built in a worktree; the primary monerod stays vanilla."
@@ -1219,6 +1219,7 @@ install_sim_monerod() {
     #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
     #   patches/monero-sim-mining.patch           --sim-hash-interval-ms / --sim-rx-full-dataset
     #   patches/monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)
+    #                                             + flush_cache sim_alt_blocks (drops the alt DB; RPC-opt-in)
     #   patches/monero-sim-peerlist-dump.patch    --peerlist-dump-file (measurement only)
     #   patches/monero-sim-pop.patch              --sim-publish-or-perish (countermeasure sims)
     # One build serves the fork-schedule, native-mining and eclipse-measurement

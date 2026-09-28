@@ -191,3 +191,17 @@ def test_pop_blocks_raises_on_non_ok_status(mocker):
     post.return_value = _fake_post_response({"status": "Failed"})
     with pytest.raises(RPCError):
         rpc.pop_blocks(1)
+
+
+def test_flush_alt_blocks_sends_sim_field_and_requires_confirmation(mocker):
+    """flush_cache with sim_alt_blocks=true; the patched daemon answers
+    sim_alt_blocks_dropped=true. A daemon without the patch ignores the unknown
+    field and still says OK, which must not pass silently."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    mk = mocker.patch.object(rpc, "_make_request",
+                             return_value={"status": "OK", "sim_alt_blocks_dropped": True})
+    assert rpc.flush_alt_blocks()["sim_alt_blocks_dropped"] is True
+    mk.assert_called_once_with("flush_cache", {"sim_alt_blocks": True})
+    mk.return_value = {"status": "OK"}
+    with pytest.raises(RPCError):
+        rpc.flush_alt_blocks()

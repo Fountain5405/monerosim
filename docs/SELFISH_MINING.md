@@ -632,6 +632,17 @@ The tie-break lives in the *receiver*, which keeps whichever block it saw first
 at that height. Delivering the attacker's block faster or wider does not change
 the mind of a node that has already chosen.
 
+**Alt-block flush (2026-09-28).** The same patch adds an opt-in field to the
+unrestricted `flush_cache` RPC: `{"sim_alt_blocks": true}` drops the daemon's
+whole alternative-block DB (`Blockchain::sim_drop_alt_blocks`), and the reply
+carries `sim_alt_blocks_dropped: true`. A stock daemon ignores the unknown
+field and still answers OK, so `MoneroRPC.flush_alt_blocks` requires that
+confirmation. It exists for the rejection-aware attacker (`reject_aware` in
+`agents/selfish_miner.py`): after popping a conceded branch, honest blocks the
+offline miner already held as alternatives start at the new main tip and
+`build_alt_chain` refuses them ("main blockchain wrong height"). Without the
+field set the daemon's behaviour is unchanged.
+
 ### 9.3 Running phase 4
 
 ```bash

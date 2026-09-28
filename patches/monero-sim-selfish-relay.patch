@@ -59,3 +59,93 @@ index 19d9c6e65..99df370fe 100644
  
       std::shared_ptr<tools::Notify> m_block_rate_notify;
     };
+diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
+index 7e54738d9..3608364dd 100644
+--- a/src/cryptonote_core/blockchain.cpp
++++ b/src/cryptonote_core/blockchain.cpp
+@@ -2794,6 +2794,14 @@ void Blockchain::flush_invalid_blocks()
+   m_invalid_blocks.clear();
+ }
+ //------------------------------------------------------------------
++void Blockchain::sim_drop_alt_blocks()
++{
++  LOG_PRINT_L3("Blockchain::" << __func__);
++  CRITICAL_REGION_LOCAL(m_blockchain_lock);
++  m_db->drop_alt_blocks();
++  MGINFO("SIM: dropped all alternative blocks (flush_cache sim_alt_blocks)");
++}
++//------------------------------------------------------------------
+ bool Blockchain::have_block_unlocked(const crypto::hash& id, int *where) const
+ {
+   // WARNING: this function does not take m_blockchain_lock, and thus should only call read only
+diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
+index 9c0074d4a..35079e858 100644
+--- a/src/cryptonote_core/blockchain.h
++++ b/src/cryptonote_core/blockchain.h
+@@ -1149,6 +1149,19 @@ namespace cryptonote
+      */
+     void flush_invalid_blocks();
+ 
++    /**
++     * @brief Simulation/research only (monerosim selfish-mining patch): drop
++     * every stored alternative block.
++     *
++     * An attacker's offline miner that concedes a race pops its private
++     * branch; honest blocks it already holds as alternatives then start at
++     * the new main tip, and build_alt_chain can never connect them again
++     * ("main blockchain wrong height"). Dropping the alt DB lets them be
++     * resubmitted as plain main-chain extensions. Reached only via the
++     * flush_cache RPC with sim_alt_blocks=true (unrestricted RPC).
++     */
++    void sim_drop_alt_blocks();
++
+     /**
+      * @brief get the "adjusted time"
+      *
+diff --git a/src/rpc/core_rpc_server.cpp b/src/rpc/core_rpc_server.cpp
+index c68449630..912361a25 100644
+--- a/src/rpc/core_rpc_server.cpp
++++ b/src/rpc/core_rpc_server.cpp
+@@ -3534,6 +3534,12 @@ namespace cryptonote
+     RPC_TRACKER(flush_cache);
+     if (req.bad_blocks)
+       m_core.flush_invalid_blocks();
++    res.sim_alt_blocks_dropped = false;
++    if (req.sim_alt_blocks)
++    {
++      m_core.get_blockchain_storage().sim_drop_alt_blocks();
++      res.sim_alt_blocks_dropped = true;
++    }
+     res.status = CORE_RPC_STATUS_OK;
+     return true;
+   }
+diff --git a/src/rpc/core_rpc_server_commands_defs.h b/src/rpc/core_rpc_server_commands_defs.h
+index e6c07ce77..567010a8f 100644
+--- a/src/rpc/core_rpc_server_commands_defs.h
++++ b/src/rpc/core_rpc_server_commands_defs.h
+@@ -2779,18 +2779,25 @@ namespace cryptonote
+     struct request_t: public rpc_request_base
+     {
+       bool bad_blocks;
++      bool sim_alt_blocks;  // simulation only (monerosim selfish-mining patch)
+ 
+       BEGIN_KV_SERIALIZE_MAP()
+         KV_SERIALIZE_PARENT(rpc_request_base)
+         KV_SERIALIZE_OPT(bad_blocks, false)
++        KV_SERIALIZE_OPT(sim_alt_blocks, false)
+       END_KV_SERIALIZE_MAP()
+     };
+     typedef epee::misc_utils::struct_init<request_t> request;
+ 
+     struct response_t: public rpc_response_base
+     {
++      // True only when this binary dropped the alt DB. A daemon without the
++      // patch ignores the unknown request field, so callers must check this.
++      bool sim_alt_blocks_dropped;
++
+       BEGIN_KV_SERIALIZE_MAP()
+         KV_SERIALIZE_PARENT(rpc_response_base)
++        KV_SERIALIZE_OPT(sim_alt_blocks_dropped, false)
+       END_KV_SERIALIZE_MAP()
+     };
+     typedef epee::misc_utils::struct_init<response_t> response;

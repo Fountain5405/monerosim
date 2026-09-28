@@ -37,14 +37,19 @@ Attributes (via --attributes KEY VALUE):
                         reveal wins, so a bridge that runs the countermeasure
                         and rejects the reveal left the attacker racing a dead
                         branch ("stranding", docs/20260926_exact_uncles_and_
-                        sop_controls.md §6). On rejection the agent pops its
-                        branch down to the common ancestor with the bridge and
+                        sop_controls.md §6). It also concedes when a commit
+                        the bridge first adopted is later dropped, and routes
+                        the strategy's own concessions the same way. A
+                        concession flushes the miner's alt DB, pops its branch
+                        down to the common ancestor with the bridge and
                         forwards the public chain, so the miner mines on the
-                        honest tip in the same tick. While withholding, honest
-                        blocks are forwarded only up to the fork, because blocks
-                        already in the miner's alt DB are refused as
-                        already-have after the pop. Only as good as the bridge's
-                        view: pair it with a bridge that runs the network's rule.
+                        honest tip in the same tick. Needs monerod-sim with the
+                        alt-flush RPC (selfish-relay patch, 2026-09-28): without
+                        it the agent refuses to concede. While withholding,
+                        honest blocks are forwarded only up to the fork. Only as
+                        good as the bridge's view: pair it with a bridge that
+                        runs the network's rule, and note that the bridge sees
+                        the attacker's reveals first.
 """
 import logging
 
@@ -426,11 +431,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         height, and forward the public chain into the miner. Returns True if
         it conceded.
 
-        Pop FIRST, forward after: monerod keeps honest blocks forwarded onto
-        the attacker's branch in its alt DB, and once the branch is popped it
-        cannot connect them again (build_alt_chain: an alt chain may not start
-        at the main tip, "main blockchain wrong height"). The miner would then
-        mine on a stale parent (smoke 2026-09-28)."""
+        Order: flush the alt DB, pop, then forward. monerod keeps honest
+        blocks forwarded onto the attacker's branch in its alt DB, and once
+        the branch is popped it cannot connect them again (build_alt_chain:
+        an alt chain may not start at the main tip, "main blockchain wrong
+        height"); the miner would then mine on a stale parent (smokes
+        2026-09-28). Needs monerod-sim with the alt-flush RPC."""
         try:
             pub_info = self.bridge_rpc.get_info()
             pub_height = int(pub_info.get("height", 0))
@@ -439,6 +445,17 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             return False
         ancestor = self._common_ancestor_with_bridge(pub_height, priv_height)
         npop = priv_height - (ancestor + 1)
+        # Clear the alt DB first. The miner and the forwarder run
+        # concurrently, so an honest block can land there despite the feed
+        # cap (smoke 2026-09-28: the miner's own block and a forwarded honest
+        # block at the same height, 0.2 s apart). Without the flush it could
+        # never be connected once the branch is popped. If the daemon cannot
+        # flush (a binary without the patch), change nothing.
+        try:
+            self.daemon_rpc.flush_alt_blocks()
+        except RPCError as e:
+            self.logger.error(f"{reason} but the alt-block flush failed, not conceding: {e}")
+            return False
         if npop > 0:
             try:
                 self.daemon_rpc.pop_blocks(npop)

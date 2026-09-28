@@ -328,6 +328,17 @@ class MoneroRPC(BaseRPC):
             raise RPCError(f"pop_blocks status: {status}")
         return result
 
+    def flush_alt_blocks(self) -> Dict[str, Any]:
+        """Drop every stored alternative block (monerod-sim only: the
+        selfish-relay patch's `sim_alt_blocks` field on flush_cache,
+        unrestricted RPC). A daemon without the patch ignores the unknown
+        field and still answers OK, so the reply must confirm
+        `sim_alt_blocks_dropped` or this raises RPCError."""
+        result = self._make_request("flush_cache", {"sim_alt_blocks": True})
+        if not (result or {}).get("sim_alt_blocks_dropped"):
+            raise RPCError("flush_cache: sim_alt_blocks not confirmed (monerod-sim without the alt-flush patch?)")
+        return result
+
     def get_transaction_pool(self) -> Dict[str, Any]:
         """
         Get information about the transaction pool (mempool).
