@@ -21,6 +21,7 @@ output unconditionally).
 
 import argparse
 import datetime as dt
+import math
 import re
 import statistics
 import sys
@@ -38,8 +39,10 @@ def find_miner_log(archive_dir: Path) -> Path | None:
     daemon_logs = archive_dir / "daemon_logs"
     if not daemon_logs.is_dir():
         return None
-    # Prefer miner-001 → miner-002 → first miner-* in lexical order.
-    candidates = sorted(daemon_logs.glob("monero-miner-*"))
+    # Prefer miner-001 → miner-002 → first miner-* in lexical order, then any
+    # other daemon (selfish-mining configs name miners honest-001, ...).
+    candidates = (sorted(daemon_logs.glob("monero-miner-*")) + sorted(daemon_logs.glob("monero-honest-*"))
+                  + sorted(daemon_logs.glob("monero-*")))
     for c in candidates:
         log = c / "bitmonero.log"
         if log.is_file() and log.stat().st_size > 0:
@@ -85,33 +88,114 @@ def parse_block_events(log_path: Path) -> list[tuple[float, int, int]]:
     return [((t - sim_start).total_seconds(), h, d) for (t, h, d) in deduped]
 
 
-def histogram_buckets(intervals: list[float]) -> str:
-    edges = [0, 30, 60, 120, 180, 300, 600, 900, 1800, 3600, float("inf")]
-    labels = ["0-30s", "30-60s", "1-2m", "2-3m", "3-5m", "5-10m",
-              "10-15m", "15-30m", "30-60m", ">60m"]
-    counts = [0] * len(labels)
-    for d in intervals:
-        for i, top in enumerate(edges[1:]):
-            if d < top:
-                counts[i] += 1
-                break
-    if not counts or max(counts) == 0:
-        return "  (no data)"
-    width = 28
-    maxc = max(counts)
-    out = []
-    for lbl, c in zip(labels, counts):
-        bar = "█" * int(width * c / maxc)
-        out.append(f"  {lbl:>9}: {c:>4}  {bar}")
-    return "\n".join(out)
-
-
 def fmt_seconds(s: float) -> str:
     if s < 60:
         return f"{s:.1f}s"
     if s < 3600:
         return f"{s/60:.1f}m"
     return f"{s/3600:.2f}h"
+
+
+# Monero's block-time target (DIFFICULTY_TARGET_V2).
+TARGET_S = 120.0
+# Warm-up ends at the first block whose difficulty is within this fraction of
+# the late-run level (median difficulty over the second half of the run).
+WARMUP_FRACTION = 0.75
+# Equal-width 30 s bins up to 5 min, then one overflow bin (~8 % of intervals).
+BIN_EDGES = [30.0 * i for i in range(11)] + [math.inf]
+
+
+def steady_state_start(events: list[tuple[float, int, int]]) -> int:
+    """Index of the first event past the difficulty warm-up.
+
+    A run that starts from genesis spends its first blocks with difficulty
+    ramping up from 1, so those blocks come far faster than 2 minutes. A run
+    booted on a chain snapshot starts near equilibrium and has no warm-up."""
+    diffs = [d for _, _, d in events]
+    late = sorted(diffs[len(diffs) // 2:])
+    level = late[len(late) // 2]
+    for i, d in enumerate(diffs):
+        if d >= WARMUP_FRACTION * level:
+            return i
+    return 0
+
+
+def expected_counts(n: int, edges: list[float]) -> list[float]:
+    """Counts per bin if n intervals were exponential with mean TARGET_S (what
+    proof-of-work produces at the target block time)."""
+    cdf = lambda x: 1.0 if math.isinf(x) else 1.0 - math.exp(-x / TARGET_S)
+    return [n * (cdf(b) - cdf(a)) for a, b in zip(edges, edges[1:])]
+
+
+def verdict(mean_s: float, n: int) -> tuple[bool, str]:
+    """Is the mean interval consistent with TARGET_S? The standard error of the
+    mean of n exponential intervals is TARGET_S / sqrt(n); allow 2.5 of them."""
+    band = 2.5 * TARGET_S / math.sqrt(n)
+    diff = mean_s - TARGET_S
+    if abs(diff) <= band:
+        return True, (f"consistent with the 2-minute target "
+                      f"(mean {fmt_seconds(mean_s)}, expected {fmt_seconds(TARGET_S)} ± {band:.0f}s for n={n})")
+    way = "faster" if diff < 0 else "slower"
+    return False, (f"{way} than the 2-minute target: mean {fmt_seconds(mean_s)} vs "
+                   f"{fmt_seconds(TARGET_S)} ± {band:.0f}s for n={n}")
+
+
+def _label(a: float, b: float) -> str:
+    def f(x: float) -> str:
+        return f"{int(x)}s" if x < 60 else (f"{x / 60:g}m")
+    return f">{f(a)}" if math.isinf(b) else f"{f(a)}-{f(b)}"
+
+
+def render_summary(events: list[tuple[float, int, int]], source: str) -> str:
+    out: list[str] = []
+    sim_end = events[-1][0]
+    out.append("")
+    out.append(f"  {_BOLD}Block production{_RESET}  (parsed from {source})")
+    out.append(f"  Chain reached height:    {events[-1][1]} ({len(events) - 1} blocks in {fmt_seconds(sim_end)})")
+    out.append(f"  Final difficulty:        {events[-1][2]}")
+
+    start = steady_state_start(events)
+    if start > 0:
+        warm = [events[i][0] - events[i - 1][0] for i in range(1, start + 1)]
+        out.append("")
+        out.append(f"  {_BOLD}Warm-up{_RESET} (difficulty ramp from genesis, {events[0][2]} -> {events[start][2]}): "
+                   f"heights {events[0][1]}-{events[start][1]}, {len(warm)} blocks, mean {fmt_seconds(statistics.mean(warm))}")
+        out.append("    Blocks come fast until difficulty catches up with the hashrate;")
+        out.append("    they are left out of the statistics below.")
+
+    iv = [events[i][0] - events[i - 1][0] for i in range(start + 1, len(events))]
+    out.append("")
+    if len(iv) < 2:
+        out.append(f"  {_BOLD}Steady state{_RESET}: only {len(iv)} interval(s) after warm-up; too few to judge.")
+        out.append("")
+        return "\n".join(out)
+    ok, text = verdict(statistics.mean(iv), len(iv))
+    out.append(f"  {_BOLD}Steady state{_RESET}  (n={len(iv)} intervals)  {'PASS' if ok else 'CHECK'}: {text}")
+    out.append(f"    mean {fmt_seconds(statistics.mean(iv))}   median {fmt_seconds(statistics.median(iv))} "
+               f"(expected ~{fmt_seconds(TARGET_S * math.log(2))})   min {fmt_seconds(min(iv))}   max {fmt_seconds(max(iv))}")
+    out.append("")
+    out.append(f"  {_BOLD}Interval distribution{_RESET}  (observed vs expected at a 2-minute target)")
+    out.append("    Mining is a random process: gaps between blocks are exponential, so")
+    out.append("    short gaps are the most common and the median is ~0.69 x the mean.")
+    obs = [0] * (len(BIN_EDGES) - 1)
+    for d in iv:
+        for i, b in enumerate(BIN_EDGES[1:]):
+            if d < b:
+                obs[i] += 1
+                break
+    exp = expected_counts(len(iv), BIN_EDGES)
+    width = 30
+    top = max(max(obs), max(exp)) or 1
+    out.append(f"    {'interval':>9}  {'obs':>4}  {'expected':>8}")
+    for i, (a, b) in enumerate(zip(BIN_EDGES, BIN_EDGES[1:])):
+        filled = int(round(width * obs[i] / top))
+        mark = int(round(width * exp[i] / top))
+        bar = ["█"] * filled + [" "] * (width + 1 - filled)
+        bar[mark] = "┃" if mark < filled else "|"    # expected, inside or past the bar
+        out.append(f"    {_label(a, b):>9}  {obs[i]:>4}  {exp[i]:>8.1f}  {''.join(bar).rstrip()}")
+    out.append("    (bars: observed; | or ┃: expected)")
+    out.append("")
+    return "\n".join(out)
 
 
 def main() -> int:
@@ -135,29 +219,7 @@ def main() -> int:
         print(f"  (block-time analysis: only {len(events)} block event(s); need ≥2)")
         return 0
 
-    sim_end = events[-1][0]
-    n_blocks = len(events) - 1  # genesis is height 0; chain growth = #intervals
-    intervals = [events[i][0] - events[i - 1][0] for i in range(1, len(events))]
-    final_height = events[-1][1]
-    final_diff = events[-1][2]
-
-    print()
-    print(f"  {_BOLD}Block production{_RESET}  (parsed from {log.parent.name})")
-    print(f"  Chain reached height:    {final_height} ({n_blocks} blocks in {fmt_seconds(sim_end)})")
-    print(f"  Final difficulty:        {final_diff}")
-    print()
-    print(f"  {_BOLD}Block intervals{_RESET}  (n={len(intervals)})")
-    print(f"    mean:    {fmt_seconds(statistics.mean(intervals)):>8}"
-          f"   target = 2m (mainnet)")
-    print(f"    median:  {fmt_seconds(statistics.median(intervals)):>8}")
-    if len(intervals) > 1:
-        print(f"    stdev:   {fmt_seconds(statistics.stdev(intervals)):>8}")
-    print(f"    min:     {fmt_seconds(min(intervals)):>8}")
-    print(f"    max:     {fmt_seconds(max(intervals)):>8}")
-    print()
-    print(f"  {_BOLD}Interval distribution{_RESET}")
-    print(histogram_buckets(intervals))
-    print()
+    print(render_summary(events, source=log.parent.name))
     return 0
 
 
