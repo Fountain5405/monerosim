@@ -849,3 +849,22 @@ def test_strategy_concession_with_nothing_to_pop_still_flushes():
     a.daemon_rpc.pop_blocks.assert_not_called()
     names = [c[0] for c in a.daemon_rpc.method_calls]
     assert names.index("flush_alt_blocks") < names.index("submit_block")
+
+
+def test_concession_pops_from_the_daemon_height_at_pop_time():
+    # Campaign 6 (2026-09-29, pop_sop2_h10_reject_rep es_sop2 02:20:05): the
+    # native miner added two blocks between the tick's height read and the
+    # concession; pop_blocks(n) from the stale height removed only those two
+    # and left part of the private branch in place.
+    a = _reject_aware_agent()
+    common = {h: f"c{h}" for h in range(10)}
+    _chain_mocks(a, common, {10: "h10", 11: "h11"}, {10: "p10", 11: "p11", 12: "p12"})
+    a._start_synced = True
+    a.strategy.fork = 10
+    a._forwarded_index = 9
+    a._released_index = 9
+    a._forwarded_hashes = {h: f"c{h}" for h in range(4, 10)}
+    a.bridge_rpc.get_info.return_value = {"height": 12, "top_block_hash": "h11"}
+    a.daemon_rpc.get_info.return_value = {"height": 13, "top_block_hash": "p12"}   # grew since the tick read 11
+    assert a._concede(11, "strategy conceded")
+    a.daemon_rpc.pop_blocks.assert_called_once_with(3)                           # 13 - (9 + 1)

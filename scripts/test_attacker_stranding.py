@@ -69,3 +69,33 @@ def test_run_row_kept_out_ignores_objective_reevaluations_of_the_displaced_branc
     ])
     row = run_row(_run_dir(tmp_path, "", bridge, ""), min_len=10)
     assert row["bridge_kept_out"] == 47
+
+
+AGENT_LOG = "\n".join([
+    # every line is logged twice (two handlers); count each concession once
+    "2000-01-01 01:03:54,374 - attacker-miner - SelfishMinerAgent[attacker-miner] - INFO - reveal rejected by the bridge (tip 1016); popped 12 private block(s) to ancestor 1004, fork -> 1016",
+    "2000-01-01 01:03:54,374 - SelfishMinerAgent[attacker-miner] - INFO - reveal rejected by the bridge (tip 1016); popped 12 private block(s) to ancestor 1004, fork -> 1016",
+    "2000-01-01 02:00:00,100 - attacker-miner - SelfishMinerAgent[attacker-miner] - INFO - strategy conceded; popped 1 private block(s) to ancestor 1030, fork -> 1032",
+    "2000-01-01 02:00:00,100 - SelfishMinerAgent[attacker-miner] - INFO - strategy conceded; popped 1 private block(s) to ancestor 1030, fork -> 1032",
+    "2000-01-01 03:00:00,200 - attacker-miner - SelfishMinerAgent[attacker-miner] - INFO - committed block 1099 dropped by the bridge; popped 4 private block(s) to ancestor 1097, fork -> 1101",
+    "2000-01-01 03:00:00,200 - SelfishMinerAgent[attacker-miner] - INFO - committed block 1099 dropped by the bridge; popped 4 private block(s) to ancestor 1097, fork -> 1101",
+])
+
+
+def test_concessions_are_counted_once_by_reason():
+    from scripts.attacker_stranding import concessions
+    c = concessions(AGENT_LOG)
+    assert c == {"reveal rejected": [12], "strategy conceded": [1], "committed dropped": [4]}
+
+
+def test_run_row_reports_pops_for_a_reject_aware_attacker(tmp_path):
+    # Pops are not reorganizations: a reject-aware attacker's abandonment
+    # shows only in its own concession lines.
+    d = _run_dir(tmp_path, "", "", "")
+    host = tmp_path / "shadow.data" / "hosts" / "attacker-miner"
+    host.mkdir(parents=True)
+    (host / "bash.1020.stdout").write_text(AGENT_LOG)
+    row = run_row(d, min_len=10)
+    assert row["concessions"] == 3
+    assert row["pop_max"] == 12
+    assert row["dropped_commits"] == 1 and row["dropped_commit_blocks"] == 4

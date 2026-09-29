@@ -21,7 +21,11 @@ Per run this reports:
   countermeasure rejects it and never announces it, so this view reads ~0
   there while the attacker still strands
   (docs/20260926_exact_uncles_and_sop_controls.md §6);
-- the bridge's deepest reorganization.
+- the bridge's deepest reorganization;
+- for a reject_aware attacker (2026-09-29), its concessions from its own log:
+  count, largest pop, and pops after a commit the bridge later dropped (the
+  residual stranding). Pops are not reorganizations, so the attacker-side
+  abandoned columns above read ~0 for such an attacker.
 
 Usage:
   venv/bin/python scripts/attacker_stranding.py <matrix-name> [...] [--min-len 10]
@@ -57,6 +61,27 @@ def abandoned_depths(log: str) -> list:
     return [int(top) - int(h) + 1 for h, top in RE_A.findall(log)]
 
 
+RE_CONCEDE = re.compile(r"^(\S+ \S+) - .*? - INFO - (reveal rejected|strategy conceded|committed block \d+ dropped)"
+                        r".*?; popped (\d+) private block\(s\) to ancestor (\d+), fork -> (\d+)", re.M)
+
+
+def concessions(agent_log: str) -> dict:
+    """A reject_aware attacker's concessions by reason -> popped depths
+    (agents/selfish_miner.py _concede). Pops never log as reorganizations, so
+    for such an attacker this is where abandonment shows. 'committed dropped'
+    is the residual stranding: a reveal the bridge adopted and later reverted,
+    with the attacker building on it meanwhile. Each line is logged twice."""
+    out, seen = {}, set()
+    for m in RE_CONCEDE.finditer(agent_log):
+        key = (m.group(1), m.group(4), m.group(5))
+        if key in seen:
+            continue
+        seen.add(key)
+        reason = "committed dropped" if m.group(2).startswith("committed") else m.group(2)
+        out.setdefault(reason, []).append(int(m.group(3)))
+    return out
+
+
 def run_row(run_dir: Path, min_len: int) -> dict:
     logs = run_dir / "daemon_logs"
     hl = (logs / "monero-honest-001/bitmonero.log").read_text(errors="replace")
@@ -65,7 +90,14 @@ def run_row(run_dir: Path, min_len: int) -> dict:
     runs = rejected_long_runs(hl, min_len)
     depths = abandoned_depths(al)
     long_ = [d for d in depths if d >= min_len]
-    return {"abandoned_runs": len(long_), "abandoned_blocks": sum(long_),
+    agent = "".join(f.read_text(errors="replace")
+                    for f in sorted((run_dir / "shadow.data" / "hosts" / "attacker-miner").glob("bash.*.stdout")))
+    conc = concessions(agent)
+    pops = [d for ds in conc.values() for d in ds]
+    dropped = conc.get("committed dropped", [])
+    return {"concessions": len(pops), "pop_max": max(pops or [0]),
+            "dropped_commits": len(dropped), "dropped_commit_blocks": sum(dropped),
+            "abandoned_runs": len(long_), "abandoned_blocks": sum(long_),
             "attacker_max_abandon": max(depths or [0]),
             "bridge_kept_out": max(rejected_long_runs(bl, 1).values() or [0]),
             "runs": len(runs), "blocks": sum(runs.values()), "bridge_max_reorg": deepest_reorg(bl)}
@@ -97,13 +129,15 @@ def main() -> int:
         return 0
     n = args.min_len
     print(f"| matrix | cell | share | attacker orphan | abandoned runs >= {n} | blocks in them | of attacker found "
-          f"| deepest abandon | bridge kept out | honest-001 rejected runs >= {n} (blocks) | bridge max reorg |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|")
+          f"| deepest abandon | bridge kept out | honest-001 rejected runs >= {n} (blocks) | bridge max reorg "
+          f"| concessions (max pop) | dropped commits (blocks) |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for r in rows:
         f = "-" if r["abandoned_frac"] is None else f"{r['abandoned_frac']:.2f}"
         print(f"| {r['matrix']} | {r['cell']} | {r['share']:.3f} | {r['attacker_orphan']:.2f} | {r['abandoned_runs']} "
               f"| {r['abandoned_blocks']} | {f} | {r['attacker_max_abandon']} | {r['bridge_kept_out']} "
-              f"| {r['runs']} ({r['blocks']}) | {r['bridge_max_reorg']} |")
+              f"| {r['runs']} ({r['blocks']}) | {r['bridge_max_reorg']} "
+              f"| {r['concessions']} ({r['pop_max']}) | {r['dropped_commits']} ({r['dropped_commit_blocks']}) |")
     return 0
 
 

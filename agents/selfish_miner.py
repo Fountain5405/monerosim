@@ -443,6 +443,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         except RPCError as e:
             self.logger.warning(f"concede: bridge height: {e}")
             return False
+        # Re-read our own height: the native miner keeps adding blocks while
+        # this tick runs, and popping from the tick's stale height would leave
+        # part of the branch in place (campaign 6, 2026-09-29).
+        try:
+            priv_height = int(self.daemon_rpc.get_info().get("height", priv_height))
+        except RPCError as e:
+            self.logger.warning(f"concede: own height re-read failed, using {priv_height}: {e}")
         ancestor = self._common_ancestor_with_bridge(pub_height, priv_height)
         npop = priv_height - (ancestor + 1)
         # Clear the alt DB first. The miner and the forwarder run
