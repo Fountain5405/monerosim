@@ -137,6 +137,22 @@ over-predicts exactly where a rational attacker would operate.**
 > 0.02–0.20, so these rows are a sensitivity check, not replacements.
 > **SoP lost both ES cells** ({0.405, 0.495}): see finding 10.
 >
+> **STRANDING-FREE RE-RUN (2026-09-29, same doc §8; supersedes the two
+> notices above for these cells).** The attacker is now rejection-aware
+> (`reject_aware`: concedes a rejected reveal or a dropped commit at once)
+> and the bridge runs the countermeasure. Micro cells run on the corrected
+> `h10` preset, with stock pairs re-run on it. n = 2, α = 0.4.
+> - SoP: ES {0.000, 0.000} and lead-2 {0.000, 0.000} vs stock {0.519,
+>   0.544} / {0.491, 0.500}.
+> - PoP exact, micro: ES {0.156, 0.256}, lead-2 {0.263, 0.307}.
+> - PoP exact, mid: ES {0.223, 0.229} vs stock {0.376, 0.518}; lead-2
+>   **{0.353, 0.419} vs stock {0.455, 0.351}**, so PoP does not stop lead-2
+>   at mid scale.
+>
+> Realized γ in PoP cells is 0.11–0.33 (the flagged bridge announces tie
+> blocks). Residual stranding: pops after a dropped commit, 0–6 per cell,
+> at most 17 blocks. These are the rows to quote.
+>
 > **EXACT RE-RUN (2026-09-26/27, `docs/20260926_exact_uncles_and_sop_controls.md`):**
 > after two more daemon fixes (review F5c: uncle sibling anchor; F5d:
 > template refresh on a sibling at the tip) the MRL #144 exact cells were
@@ -362,6 +378,14 @@ cell to date measures anything but pop-core + det-tie.
    attacker stays level that long, and whether a deliberately stubborn one
    could, is not measured. The 0.000 headline above holds only inside the
    fail-safe window and only on the stock-bridge apparatus.
+   **Stranding-free re-run (2026-09-29, results doc §8): SoP holds.**
+   With a rejection-aware attacker, ES earns {0.000, 0.000} and lead-2
+   {0.000, 0.000} vs stock {0.519, 0.544} / {0.491, 0.500}. No honest node
+   made a single past-window (OBJECTIVE) fork decision in any SoP cell, and
+   the longest rejected reveal was 17 blocks. The {0.405, 0.495} above came
+   from the stranding attacker. What remains open is a deliberately stubborn
+   attacker that withholds past 48 work objects on purpose. That exposure
+   is in the rule, and it has not been measured.
    **Earlier text, RETRACTED 2026-09-25 (review F1–F5) and superseded above:**
    ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
    apparatus~~: with fixed genesis difficulty and a post-bootstrap
@@ -392,6 +416,13 @@ cell to date measures anything but pop-core + det-tie.
    MSB detectability too (+7.9 → +14.9): PoP removes the profit, not the
    vandalism — incentive-removal and DoS-resilience are separate
    countermeasure properties.
+   **Update (2026-09-29, results doc §8; the pilot numbers above predate
+   the review fixes).** On the fixed apparatus with a rejection-aware
+   attacker, MRL #144 exact PoP cuts textbook ES by roughly half: micro
+   0.206 vs stock 0.531, mid 0.226 vs 0.447 (n = 2 means). It does **not**
+   stop the conservative lead-2 attacker at mid scale: 0.386 vs stock
+   0.403, one draw 0.419 > α. Micro lead-2 falls to 0.285 vs 0.496.
+   Realized γ is 0.11–0.33 in these cells.
 
 ## 6. Limitations
 
@@ -569,12 +600,31 @@ daemon was stuck at height 1 by the then-undiagnosed count bug; no result.)
 | `20260927_130344_pop_exact_mid_fbridge__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge` cell ‡ | es_r2_exact: share 0.328 (honest-ref 0.328), blocks 189, forks 3019, sw 55, health ok |
 | `20260927_130404_pop_exact_mid_fbridge_rep__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell ‡ | es_r2_exact: share 0.291 (honest-ref 0.291), blocks 179, forks 3245, sw 16, health ok |
 
+| `20260929_183459_pop_sop2_h10_reject__es_r2_sop2` | `42cd3715` | `pop_sop2_h10_reject` cell § | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 100, forks 74, sw 134, health ok |
+| `20260929_183148_pop_sop2_h10_reject_rep__es_r2_sop2` | `42cd3715` | `pop_sop2_h10_reject_rep` cell § | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 108, forks 52, sw 93, health ok |
+| `20260929_184200_pop_sop2_h10_reject__es_r2_stock` | `42cd3715` | `pop_sop2_h10_reject` cell § | es_r2_stock: share 0.491 (honest-ref 0.491), blocks 112, forks 620, sw 0, health ok |
+| `20260929_184621_pop_sop2_h10_reject_rep__es_r2_stock` | `42cd3715` | `pop_sop2_h10_reject_rep` cell § | es_r2_stock: share 0.500 (honest-ref 0.500), blocks 136, forks 722, sw 0, health ok |
+| `20260929_170204_pop_sop2_h10_reject__es_sop2` | `42cd3715` | `pop_sop2_h10_reject` cell § | es_sop2: share 0.000 (honest-ref 0.000), blocks 100, forks 70, sw 134, health ok |
+| `20260929_170225_pop_sop2_h10_reject_rep__es_sop2` | `42cd3715` | `pop_sop2_h10_reject_rep` cell § | es_sop2: share 0.000 (honest-ref 0.000), blocks 99, forks 70, sw 138, health ok |
+| `20260929_170204_pop_sop2_h10_reject__es_stock` | `42cd3715` | `pop_sop2_h10_reject` cell § | es_stock: share 0.519 (honest-ref 0.519), blocks 135, forks 840, sw 0, health ok |
+| `20260929_170225_pop_sop2_h10_reject_rep__es_stock` | `42cd3715` | `pop_sop2_h10_reject_rep` cell § | es_stock: share 0.544 (honest-ref 0.544), blocks 114, forks 861, sw 0, health ok |
+| `20260929_170245_pop_exact_h10_reject__es_exact` | `42cd3715` | `pop_exact_h10_reject` cell § | es_exact: share 0.156 (honest-ref 0.156), blocks 109, forks 266, sw 0, health ok |
+| `20260929_170305_pop_exact_h10_reject_rep__es_exact` | `42cd3715` | `pop_exact_h10_reject_rep` cell § | es_exact: share 0.256 (honest-ref 0.256), blocks 121, forks 574, sw 0, health ok |
+| `20260929_170245_pop_exact_h10_reject__es_r2_exact` | `42cd3715` | `pop_exact_h10_reject` cell § | es_r2_exact: share 0.263 (honest-ref 0.263), blocks 133, forks 458, sw 0, health ok |
+| `20260929_170305_pop_exact_h10_reject_rep__es_r2_exact` | `42cd3715` | `pop_exact_h10_reject_rep` cell § | es_r2_exact: share 0.307 (honest-ref 0.307), blocks 137, forks 518, sw 0, health ok |
+| `20260929_170325_pop_exact_mid_reject__es_exact` | `42cd3715` | `pop_exact_mid_reject` cell § | es_exact: share 0.223 (honest-ref 0.213), blocks 175, forks 1669, sw 41, health ok |
+| `20260929_170345_pop_exact_mid_reject_rep__es_exact` | `42cd3715` | `pop_exact_mid_reject_rep` cell § | es_exact: share 0.229 (honest-ref 0.229), blocks 188, forks 1860, sw 28, health ok |
+| `20260929_170325_pop_exact_mid_reject__es_r2_exact` | `42cd3715` | `pop_exact_mid_reject` cell § | es_r2_exact: share 0.353 (honest-ref 0.353), blocks 184, forks 2419, sw 45, health ok |
+| `20260929_170345_pop_exact_mid_reject_rep__es_r2_exact` | `42cd3715` | `pop_exact_mid_reject_rep` cell § | es_r2_exact: share 0.419 (honest-ref 0.419), blocks 191, forks 2731, sw 35, health ok |
+
 Reproduce any row:
 
 ```bash
 git checkout <commit> && nice -n10 ./run_sim.sh --config <config> --name <label> --no-monitor
 venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 ```
+
+§ as ‡ plus the alt-flush RPC (selfish-relay patch sha `4d4c86d6…`, installed 2026-09-29); micro § rows graft the regenerated `h10` preset (`4e02491e`). See results doc §8.
 
 ‡ daemon `monerod-sim` with review fixes F5c+F5d (pop patch sha `9492d7cb…`, installed 2026-09-26T20:30Z). See `docs/20260926_exact_uncles_and_sop_controls.md` for these and the micro exact / SoP-control rows.
 

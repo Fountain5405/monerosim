@@ -542,6 +542,112 @@ about 106 s, not 120 s, in the `h10` honest controls.
   Its 70 blocks averaged 151 s, inside the ±36 s band for n = 70. Earlier
   ledger rows reproduce from their own commits, which carry the old preset.
 
+## 8. Stranding-free re-run: rejection-aware attacker, corrected `h10` (2026-09-29)
+
+Campaign 6 is the first run free of both biases found above. The attacker
+no longer strands (§5–§6), and the micro cells no longer run on a 10 %-fast
+chain (§7).
+
+- **Setup.** There are six matrices, each with a seed 12345 and a seed 54321
+  (`_rep`) draw, launched 2026-09-29T17:03Z at `42cd3715`:
+  - `pop_sop2_h10_reject`: SoP and stock, ES and lead-2;
+  - `pop_exact_h10_reject`: PoP exact, ES and lead-2;
+  - `pop_exact_mid_reject`: PoP exact, ES and lead-2, on the mid genesis
+    base.
+
+  Every cell is its `_fbridge` predecessor with one change: the attacker's
+  `reject_aware: "true"`. It concedes a rejected reveal at once and also
+  concedes when the bridge drops a commit it had adopted. Each concession
+  flushes the alt DB, pops the branch and forwards the public chain. A test
+  pins that one-field difference. The micro stock pairs were re-run because
+  the old ones ran on the old preset. Micro cells graft the regenerated
+  `h10` (994 blocks, next-block difficulty +1.8 %). The mid stock pairs
+  remain `pop_exact_mid{,_rep}` es_none / es_r2_none (same base and build).
+  All 16 cells are health ok; wall time about 3 h.
+- **Checked per cell.** `reject_aware` in every attacker's arguments.
+  Bridge banners match the spec: flagged on SoP and exact, none on stock.
+  Concessions: 41–111 per cell, 1146 in all, each checked by replaying the
+  attacker daemon's log. The checker flags 13 (0–3 per cell). The one
+  traced in detail is a pop race: the native miner added two blocks
+  between the tick's height read and the pop, so part of the branch stayed
+  until the next honest block. It is fixed for later runs in `1dce4cf6`.
+  The other 12 flags were not traced one by one. Delivered hashrate from all found blocks times difficulty:
+  8.8–10.7 h/s micro (declared 10); 23–29 h/s mid (declared 30,
+  genesis ramp included).
+
+| cell | countermeasure (run / rep) | stock pair (run / rep) | realized γ (cm) | attacker orphan (cm) |
+|---|---|---|---|---|
+| micro ES vs SoP | **0.000 / 0.000** | 0.519 / 0.544 | 0 / 0 | 1.00 / 1.00 |
+| micro lead-2 vs SoP | **0.000 / 0.000** | 0.491 / 0.500 | 0 / 0 | 1.00 / 1.00 |
+| micro ES vs PoP exact | 0.156 / 0.256 (mean 0.206) | 0.519 / 0.544 | 0.125 / 0.154 | 0.76 / 0.54 |
+| micro lead-2 vs PoP exact | 0.263 / 0.307 (mean 0.285) | 0.491 / 0.500 | 0.219 / 0.316 | 0.49 / 0.24 |
+| mid ES vs PoP exact | 0.223 / 0.229 (mean 0.226) | 0.376 / 0.518 | 0.107 / 0.196 | 0.65 / 0.52 |
+| mid lead-2 vs PoP exact | **0.353 / 0.419 (mean 0.386)** | 0.455 / 0.351 | 0.333 / 0.222 | 0.28 / 0.30 |
+
+Shares are against the bridge chain. The honest-node reference is
+identical in every cell except mid ES (0.213 vs 0.223 in the first draw).
+α = 0.40 throughout.
+
+How this compares with the earlier rows (run / rep):
+
+| cell | original (stock bridge) | flagged bridge (§6) | rejection-aware (§8) |
+|---|---|---|---|
+| micro ES vs SoP | 0.035 / 0.000 | 0.405 / 0.495 | 0.000 / 0.000 |
+| micro lead-2 vs SoP | 0.000 / 0.000 | 0.000 / 0.000 | 0.000 / 0.000 |
+| micro ES vs PoP exact | 0.169 / 0.199 | 0.157 / 0.190 | 0.156 / 0.256 |
+| micro lead-2 vs PoP exact | 0.284 / 0.292 | 0.272 / 0.366 | 0.263 / 0.307 |
+| mid ES vs PoP exact | 0.253 / 0.303 | 0.181 / 0.236 | 0.223 / 0.229 |
+| mid lead-2 vs PoP exact | 0.241 / 0.251 | 0.328 / 0.291 | 0.353 / 0.419 |
+| micro stock ES | 0.377 / 0.441 (old preset) | — | 0.519 / 0.544 |
+| micro stock lead-2 | 0.305 / 0.469 (old preset) | — | 0.491 / 0.500 |
+
+Reading:
+
+1. **Share-or-Perish holds against a competent textbook attacker: 0.000 in
+   all four SoP cells, ES and lead-2, n = 2 each.** No honest node made a
+   single OBJECTIVE (past k·w) fork decision in any SoP cell. The largest
+   rejected reveal was 17 blocks, well inside the 48-object window. The
+   0.405 / 0.495 of §6 came from the stranding attacker. It kept racing
+   branches that had already been rejected until one crossed the window.
+   An attacker that concedes rejections never gets there. Still untested:
+   a *deliberately* stubborn attacker that withholds past 48 objects on
+   purpose. That is the rule's remaining exposure, and it has not been
+   measured.
+2. **PoP (MRL #144 exact) cuts textbook ES by roughly half or more, at
+   both scales, and stays below α.** Micro: 0.206 vs stock 0.531 (−61 %).
+   Mid: 0.226 vs stock 0.447 (−49 %). This is in line with the earlier,
+   stranding-biased ES rows (0.16–0.30), so stranding did not visibly
+   inflate PoP's effect on ES.
+3. **PoP does not stop the conservative lead-2 attacker at mid scale.**
+   Mid lead-2 earns 0.386 vs stock 0.403, with one draw above α (0.419).
+   At micro scale PoP still cuts lead-2 (0.285 vs 0.496). This reinstates
+   the original "PoP is blind to proactive release" concern at mid scale,
+   which the stranding-biased mid rows (0.241 / 0.251) had appeared to
+   settle. SoP closes the gap; PoP does not.
+4. **Realized γ is 0.11–0.33 in the PoP cells.** The flagged bridge
+   announces the attacker's tie blocks when det-tie picks them. So the PoP
+   rows are at γ > 0, unlike the stock-bridge originals (γ ≈ 0). This is
+   the apparatus modelling an attacker whose node follows the network's
+   rule; it is not a change to PoP.
+5. **The stock baseline moved up**: micro ES 0.531 (was 0.409), lead-2
+   0.496 (was 0.387), both above ES theory at γ ≈ 0 (0.484). The new
+   preset starts the chain at the right difficulty, where the old one ran
+   blocks ~10 % fast with more natural forks. That is a plausible cause,
+   but n = 2 per cell and the old pairs' spread was 0.06–0.16, so the size
+   of the shift is not established. Every countermeasure reading above is
+   against this run's own stock pairs.
+6. **Residual stranding is small.** Pops after a commit the bridge later
+   dropped: 0–6 per cell, at most 17 blocks in a 6 h run. The flagged
+   bridge alone left 10–64 abandoned blocks per cell (§6). The stranding
+   tool reports these from the attacker's own concession lines
+   (`scripts/attacker_stranding.py`, `1dce4cf6`), because pops never log
+   as reorganizations.
+
+For the manuscript: finding 10 (SoP) can drop the fail-safe loss, and it
+keeps a narrower caveat about a deliberately stubborn attacker. Finding 8
+(PoP) gains the stranding-free numbers, and the lead-2 gap at mid scale
+comes back. All shares are n = 2.
+
 ## Runs (reproducibility ledger rows)
 
 | Run directory | Commit | Config | What it shows |
@@ -596,4 +702,20 @@ about 106 s, not 120 s, in the `h10` honest controls.
 | `20260927_130404_pop_exact_mid_fbridge_rep__es_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell | es_exact: share 0.236 (honest-ref 0.236), blocks 199, forks 3844, sw 39, health ok |
 | `20260927_130344_pop_exact_mid_fbridge__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge` cell | es_r2_exact: share 0.328 (honest-ref 0.328), blocks 189, forks 3019, sw 55, health ok |
 | `20260927_130404_pop_exact_mid_fbridge_rep__es_r2_exact` | `cf55ea8e` | `pop_exact_mid_fbridge_rep` cell | es_r2_exact: share 0.291 (honest-ref 0.291), blocks 179, forks 3245, sw 16, health ok |
-Daemons: stage 1 ran the 17:50Z build (pop patch `dcfbaeeb…`), stage 2, campaign 4 and the §6 flagged-bridge re-run the 20:25Z build (`9492d7cb…`); every run's `binary_provenance.txt` records it. The §6 rows are commit `cf55ea8e`, the commit HEAD was at when they launched.
+| `20260929_183459_pop_sop2_h10_reject__es_r2_sop2` | `42cd3715` | `pop_sop2_h10_reject` cell | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 100, forks 74, sw 134, health ok |
+| `20260929_183148_pop_sop2_h10_reject_rep__es_r2_sop2` | `42cd3715` | `pop_sop2_h10_reject_rep` cell | es_r2_sop2: share 0.000 (honest-ref 0.000), blocks 108, forks 52, sw 93, health ok |
+| `20260929_184200_pop_sop2_h10_reject__es_r2_stock` | `42cd3715` | `pop_sop2_h10_reject` cell | es_r2_stock: share 0.491 (honest-ref 0.491), blocks 112, forks 620, sw 0, health ok |
+| `20260929_184621_pop_sop2_h10_reject_rep__es_r2_stock` | `42cd3715` | `pop_sop2_h10_reject_rep` cell | es_r2_stock: share 0.500 (honest-ref 0.500), blocks 136, forks 722, sw 0, health ok |
+| `20260929_170204_pop_sop2_h10_reject__es_sop2` | `42cd3715` | `pop_sop2_h10_reject` cell | es_sop2: share 0.000 (honest-ref 0.000), blocks 100, forks 70, sw 134, health ok |
+| `20260929_170225_pop_sop2_h10_reject_rep__es_sop2` | `42cd3715` | `pop_sop2_h10_reject_rep` cell | es_sop2: share 0.000 (honest-ref 0.000), blocks 99, forks 70, sw 138, health ok |
+| `20260929_170204_pop_sop2_h10_reject__es_stock` | `42cd3715` | `pop_sop2_h10_reject` cell | es_stock: share 0.519 (honest-ref 0.519), blocks 135, forks 840, sw 0, health ok |
+| `20260929_170225_pop_sop2_h10_reject_rep__es_stock` | `42cd3715` | `pop_sop2_h10_reject_rep` cell | es_stock: share 0.544 (honest-ref 0.544), blocks 114, forks 861, sw 0, health ok |
+| `20260929_170245_pop_exact_h10_reject__es_exact` | `42cd3715` | `pop_exact_h10_reject` cell | es_exact: share 0.156 (honest-ref 0.156), blocks 109, forks 266, sw 0, health ok |
+| `20260929_170305_pop_exact_h10_reject_rep__es_exact` | `42cd3715` | `pop_exact_h10_reject_rep` cell | es_exact: share 0.256 (honest-ref 0.256), blocks 121, forks 574, sw 0, health ok |
+| `20260929_170245_pop_exact_h10_reject__es_r2_exact` | `42cd3715` | `pop_exact_h10_reject` cell | es_r2_exact: share 0.263 (honest-ref 0.263), blocks 133, forks 458, sw 0, health ok |
+| `20260929_170305_pop_exact_h10_reject_rep__es_r2_exact` | `42cd3715` | `pop_exact_h10_reject_rep` cell | es_r2_exact: share 0.307 (honest-ref 0.307), blocks 137, forks 518, sw 0, health ok |
+| `20260929_170325_pop_exact_mid_reject__es_exact` | `42cd3715` | `pop_exact_mid_reject` cell | es_exact: share 0.223 (honest-ref 0.213), blocks 175, forks 1669, sw 41, health ok |
+| `20260929_170345_pop_exact_mid_reject_rep__es_exact` | `42cd3715` | `pop_exact_mid_reject_rep` cell | es_exact: share 0.229 (honest-ref 0.229), blocks 188, forks 1860, sw 28, health ok |
+| `20260929_170325_pop_exact_mid_reject__es_r2_exact` | `42cd3715` | `pop_exact_mid_reject` cell | es_r2_exact: share 0.353 (honest-ref 0.353), blocks 184, forks 2419, sw 45, health ok |
+| `20260929_170345_pop_exact_mid_reject_rep__es_r2_exact` | `42cd3715` | `pop_exact_mid_reject_rep` cell | es_r2_exact: share 0.419 (honest-ref 0.419), blocks 191, forks 2731, sw 35, health ok |
+Daemons: stage 1 ran the 17:50Z build (pop patch `dcfbaeeb…`), stage 2, campaign 4 and the §6 flagged-bridge re-run the 20:25Z build (`9492d7cb…`); every run's `binary_provenance.txt` records it. The §6 rows are commit `cf55ea8e`, the commit HEAD was at when they launched. The §8 rows are commit `42cd3715` and ran the rebuilt monerod-sim with the alt-flush RPC (selfish-relay patch sha `4d4c86d6…`).

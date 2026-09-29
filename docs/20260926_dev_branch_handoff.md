@@ -305,6 +305,17 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
     32 h generator: d_next_at_tip 1222 (+1.8 %), and a consumer run shows
     the daemon hands off exactly that.
 
+- **Campaign 6 done (2026-09-29 ~20:10Z)**: the stranding-free re-run
+  (`*_reject`, 16 cells, `42cd3715`), results doc §8.
+  - SoP 0.000 in all four cells, with no fork ever reaching the fail-safe
+    window.
+  - PoP exact: ES ~0.21 (micro) / 0.23 (mid) vs stock 0.53 / 0.45; mid
+    lead-2 0.386 vs stock 0.403, so PoP is blind to lead-2 at mid scale.
+  - Stock baseline up to 0.53 / 0.50 on the corrected preset.
+  - Pop race fixed afterwards (`1dce4cf6`).
+  - Manuscript E4 notice, findings 8 and 10, and the §7 ledger are updated.
+  - Open: a deliberately stubborn attacker vs SoP's k·w window.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

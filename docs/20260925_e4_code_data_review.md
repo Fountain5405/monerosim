@@ -213,8 +213,13 @@ the cell JSON), the "att. orphan" column is `network_orphan_rate`
   was adopted, and a flagged bridge only hides the rejected branch from
   honest nodes, so the stranding metric now reads the attacker's daemon.
   SoP ES lost both cells ({0.405, 0.495}) past the k·w = 48 fail-safe
-  window. PoP shares stay below α at γ 0.02–0.20. Open: a rejection-aware
-  attacker (agent change, owner decision).
+  window. PoP shares stay below α at γ 0.02–0.20.
+  Stranding-free re-run (2026-09-29, results doc §8, 16/16 health ok):
+  a rejection-aware attacker, the monerod-sim alt-flush RPC, and the h10
+  preset regenerated behind a next-block-difficulty gate. SoP 0.000 in all
+  four cells. PoP exact cuts ES to ~0.21–0.23 but not mid lead-2 (0.386 vs
+  stock 0.403). Open: a deliberately stubborn attacker against SoP's k·w
+  window.
   Alongside: `sop2_h10_ctl{,_rep}.yaml`, the SoP upgrade-transition controls
   (`docs/20260926_sop_h10_rerun.md` reading 5).
 - Step 6 (docs): manuscript §4 notice, §5 finding 10 and §7 ledger updated
