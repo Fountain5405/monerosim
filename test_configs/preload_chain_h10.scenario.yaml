@@ -45,7 +45,13 @@
 #            --generated-by <run id from step 2>
 #   4. Verify:
 #        venv/bin/python scripts/chain_snapshot.py verify --preset chain_snapshots/h10/
-#   5. Commit chain_snapshots/h10/ (blocks.jsonl.gz + manifest.json).
+#   5. Keep the generator's daemon logs (--no-archive leaves them only in the
+#      run tmp dir; without them a bad snapshot cannot be diagnosed):
+#        for m in 1 2 3 4 5; do mkdir -p archived_runs/<run id>/daemon_logs/monero-miner-00$m
+#          cp "$DAEMON_DATA_BASE/monero-miner-00$m/bitmonero.log" archived_runs/<run id>/daemon_logs/monero-miner-00$m/; done
+#   6. Commit chain_snapshots/h10/ (blocks.jsonl.gz + manifest.json). export
+#      exits 2 if the next-block difficulty at the tip is > 5 % off D0: rerun
+#      with another simulation_seed, do not commit.
 general:
   stop_time: 32h
   simulation_seed: 12345
