@@ -395,6 +395,14 @@ cell to date measures anything but pop-core + det-tie.
 
 ## 6. Limitations
 
+- **Every `h10` cell ran ~10 % fast** (2026-09-29,
+  `docs/20260926_exact_uncles_and_sop_controls.md` §7): the `h10`
+  snapshot handed its consumers a next-block difficulty of 1083 vs
+  D0 1200, so blocks averaged ~106 s, not 120 s. The bias is shared by
+  every cell on that base, so within-run share comparisons stand;
+  absolute block and orphan rates are ~10 % high, and the extra natural
+  forks feed γ slightly. The preset is being regenerated with a
+  next-block-difficulty gate.
 - Micro-topology (8–13 hosts, 2–5 miners): honest-fragmentation effects at
   larger scale are unmeasured here; single runs per point except where
   repeats are noted (n=2 at α_eff 0.467 and 0.667, and across E4 after

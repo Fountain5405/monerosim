@@ -293,6 +293,17 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
     §3 status updated.
   - Owner decision open: a rejection-aware attacker (agent change).
 
+- **2026-09-28/29 — rejection-aware attacker, block times, h10 regen**:
+  - `reject_aware` attacker + monerod-sim `flush_cache sim_alt_blocks`
+    (`f4005dfe`, `9c96e08f`, `3ad1cd09`). Smokes on the rebuilt daemon
+    under way.
+  - The post-run block-time summary now shows expected exponential
+    counts, splits out the genesis warm-up and gives a verdict (`bff72772`).
+  - `h10` snapshot found to start consumers 9.8 % under D0, so every h10
+    cell ran ~10 % fast (results doc §7). `chain_snapshot.py` now gates on
+    the next-block difficulty (`ca01aa4d`); a 32 h generator
+    (`preload_h10_32h`) is running to replace the preset.
+
 ## Where the reasoning lives
 
 - `docs/20260925_e4_code_data_review.md` — the audit, the fix log, the

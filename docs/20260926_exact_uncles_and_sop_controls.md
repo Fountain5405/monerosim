@@ -497,6 +497,47 @@ attacker that stays level for more than 48 blocks wins under stock rules),
 and its 0.000 headline is n = 2 on the stock-bridge apparatus only. The
 stranding-free numbers need the rejection-aware attacker (owner decision).
 
+## 7. Block-time note — every `h10` cell ran ~10 % fast (2026-09-29)
+
+Found while checking the owner's observation that the setup test sim's
+block times looked skewed. The skew toward short gaps is correct (block
+intervals are exponential; median ≈ 0.69 × mean). The mean was not: it was
+about 106 s, not 120 s, in the `h10` honest controls.
+
+- **Cause: the `h10` snapshot hands consumers a low difficulty.** Monero's
+  DAA takes total work over total time across its window. With fewer than
+  600 blocks that window is the whole chain, and the 12 h generator made 336.
+  Reimplemented exactly (`scripts/chain_snapshot.py`
+  `next_difficulty_at_tip`; it reproduces monerod's logged value), the block
+  after the snapshot tip gets **1083, 9.8 % under D0 = 1200**. The
+  manifest's `d0_measured` (a tail median, 1173) did not show it. The
+  window carries the genesis ramp and a stretch where the generator
+  delivered ~6.5 of its 10 h/s (heights 250–299, 2.39 h for 50 blocks;
+  header and arrival times agree within 2 s; all five miners kept finding
+  blocks). Whether that stretch was host load or chance (~3.5σ) cannot be
+  told from what the run archived.
+- **Effect in consumers.** The live miners deliver about their declared
+  rate (~10.2 h/s), so difficulty starts at 1083 and creeps up (~1116 by
+  hour 6) without converging. Blocks run about 10 % fast for the whole
+  run: `pop_sop2_h10{,_rep}` honest_stock, 106.2 / 106.7 s mean over ~200
+  intervals. Past its genesis ramp the native_micro gate delivers its
+  declared 25 h/s, so the miner calibration itself is fine.
+- **Scope.** Every cell on `test_configs/selfish_micro_sop.yaml`, i.e. all
+  `pop_sop2_h10*`, `pop_exact_h10*`, `sop2_h10_ctl*`, `pop_exact_relay*`
+  matrices and their `_fbridge` re-runs. The mid matrices
+  (`selfish_scaled_mid.yaml`) start from genesis with a ramp of their own,
+  not checked here.
+- **What it changes.** Attacker and honest shares are compared within a
+  run, and every `h10` cell shares the bias, so no comparison is invalidated.
+  More blocks per propagation delay do mean somewhat more natural forks;
+  that feeds γ and race outcomes. Absolute rates (blocks per 6 h, orphan
+  rates) are ~10 % high against a 120 s chain.
+- **Fix (in progress).** `export` now records `d_next_at_tip` and refuses a
+  snapshot more than 5 % off D0, and `verify` rejects one. The generator
+  runs 32 h so the tip's window is 720 post-ramp blocks. The regenerated
+  preset replaces `chain_snapshots/h10` for future runs; earlier ledger
+  rows reproduce from their own commits, which carry the old preset.
+
 ## Runs (reproducibility ledger rows)
 
 | Run directory | Commit | Config | What it shows |
