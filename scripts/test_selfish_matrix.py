@@ -514,3 +514,35 @@ def test_fbridge_specs_differ_from_their_originals_only_in_the_bridge():
                 for aid in cfg["agents"]:
                     if aid != "attacker-bridge":
                         assert cfg["agents"][aid] == o["agents"][aid], (new + suffix, cell, aid)
+
+
+def test_reject_specs_differ_from_their_predecessors_only_in_reject_aware():
+    """Stranding-free re-run (2026-09-29): each *_reject cell equals the
+    same-named cell of the flagged-bridge matrix (countermeasure cells) or of
+    the original matrix (stock cells, micro only; the old ones ran on the
+    pre-2026-09-29 h10 preset), except that the attacker is reject_aware.
+    Seeds pair draw-for-draw."""
+    pairs = [("pop_sop2_h10_reject", ["pop_sop2_h10_fbridge", "pop_sop2_h10"]),
+             ("pop_exact_h10_reject", ["pop_exact_h10_fbridge"]),
+             ("pop_exact_mid_reject", ["pop_exact_mid_fbridge"])]
+    for new, preds in pairs:
+        for suffix in ("", "_rep"):
+            _, rj = _plan_and_build(new + suffix)
+            cells = {}
+            for p in preds:
+                _, built = _plan_and_build(p + suffix)
+                for c, cfg in built.items():
+                    cells.setdefault(c, cfg)
+            assert rj and all(c.startswith(("es_", "es_r2_")) for c in rj), sorted(rj)
+            for cell, cfg in rj.items():
+                o = cells[cell]
+                att = dict(cfg["agents"]["attacker-miner"])
+                att["attributes"] = dict(att["attributes"])
+                assert att["attributes"].pop("reject_aware") == "true"
+                assert att == o["agents"]["attacker-miner"], (new + suffix, cell)
+                assert cfg["general"] == o["general"]
+                for aid in cfg["agents"]:
+                    if aid != "attacker-miner":
+                        assert cfg["agents"][aid] == o["agents"][aid], (new + suffix, cell, aid)
+    _, sop = _plan_and_build("pop_sop2_h10_reject")
+    assert sorted(sop) == ["es_r2_sop2", "es_r2_stock", "es_sop2", "es_stock"]

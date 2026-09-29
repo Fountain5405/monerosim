@@ -1,0 +1,28 @@
+# STRANDING-FREE RE-RUN (owner decision 2026-09-29): MRL #144 exact attack cells (mid, genesis base) with a
+# REJECTION-AWARE attacker — first draw of an n=2 pair (second: pop_exact_mid_reject_rep.yaml, seed 54321).
+#
+# Same cells as pop_exact_mid_fbridge; the only change is the attacker's
+# `reject_aware: "true"` (agents/selfish_miner.py). After every cash-out
+# reveal, and whenever the public tip changes, the attacker checks that the
+# bridge holds its committed blocks and otherwise concedes (flush the miner's
+# alt DB, pop, forward the public chain). The flagged bridge makes the
+# bridge's view match the countermeasure rule; together they remove the
+# stranding bias of results doc §5-§6. Needs monerod-sim with the alt-flush
+# RPC (selfish-relay patch, 3ad1cd09+). A test in scripts/test_selfish_matrix.py
+# pins the one-field difference.
+# Stock pairs: pop_exact_mid{,_rep} es_none / es_r2_none (same genesis base
+# and daemon build; the h10 regeneration does not touch this base).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_exact_mid_reject.yaml
+#   venv/bin/python scripts/attacker_stranding.py pop_exact_mid_reject pop_exact_mid_fbridge
+name: pop_exact_mid_reject
+base: test_configs/selfish_scaled_mid.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer, reject_aware: "true"}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2", reject_aware: "true"}}}
+  countermeasure:
+    exact:
+      honest: {daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-publish-or-perish: true, sim-pop-uncles-header: true, sim-pop-det-tie: true}}

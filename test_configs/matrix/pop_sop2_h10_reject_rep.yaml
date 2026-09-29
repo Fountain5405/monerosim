@@ -1,0 +1,32 @@
+# STRANDING-FREE RE-RUN (owner decision 2026-09-29): SoP v2 attack cells (micro, h10) plus their stock pairs with a
+# REJECTION-AWARE attacker — SECOND draw of an n=2 pair (own simulation seed 54321, cells identical to pop_sop2_h10_reject.yaml).
+#
+# Same cells as pop_sop2_h10_fbridge (SoP cells) and pop_sop2_h10 (stock cells) (their _rep draws); the only change is the attacker's
+# `reject_aware: "true"` (agents/selfish_miner.py). After every cash-out
+# reveal, and whenever the public tip changes, the attacker checks that the
+# bridge holds its committed blocks and otherwise concedes (flush the miner's
+# alt DB, pop, forward the public chain). The flagged bridge makes the
+# bridge's view match the countermeasure rule; together they remove the
+# stranding bias of results doc §5-§6. Needs monerod-sim with the alt-flush
+# RPC (selfish-relay patch, 3ad1cd09+). A test in scripts/test_selfish_matrix.py
+# pins the one-field difference.
+# The stock pairs are re-run because the old ones ran on the pre-2026-09-29
+# h10 preset, whose tip difficulty was 9.8 % under D0 (results doc §7); they
+# also pair with pop_exact_h10_reject.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_sop2_h10_reject_rep.yaml
+#   venv/bin/python scripts/attacker_stranding.py pop_sop2_h10_reject_rep pop_sop2_h10_fbridge_rep
+name: pop_sop2_h10_reject_rep
+seed: 54321
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+axes:
+  strategy:
+    es:     {attacker: {attributes: {strategy: eyal_sirer, reject_aware: "true"}}}
+    es_r2:  {attacker: {attributes: {strategy: eyal_sirer, release_lead: "2", reject_aware: "true"}}}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+    stock: {}
