@@ -532,11 +532,15 @@ about 106 s, not 120 s, in the `h10` honest controls.
   More blocks per propagation delay do mean somewhat more natural forks;
   that feeds γ and race outcomes. Absolute rates (blocks per 6 h, orphan
   rates) are ~10 % high against a 120 s chain.
-- **Fix (in progress).** `export` now records `d_next_at_tip` and refuses a
-  snapshot more than 5 % off D0, and `verify` rejects one. The generator
-  runs 32 h so the tip's window is 720 post-ramp blocks. The regenerated
-  preset replaces `chain_snapshots/h10` for future runs; earlier ledger
-  rows reproduce from their own commits, which carry the old preset.
+- **Fix (2026-09-29).** `export` now records `d_next_at_tip` and refuses
+  a snapshot more than 5 % off D0, and `verify` rejects one. The generator
+  runs 32 h. The regenerated preset (`20260929_111321_preload_h10_32h`, 994
+  blocks, tip 845 s before the epoch) has **d_next_at_tip 1222 (+1.8 %)**.
+  Its tail median `d0_measured` reads 1148, the same misleading statistic
+  as before. A 3 h honest consumer (`20260929_122944_consumer_h10_new`)
+  confirms the handoff exactly: monerod gave height 995 difficulty 1222.
+  Its 70 blocks averaged 151 s, inside the ±36 s band for n = 70. Earlier
+  ledger rows reproduce from their own commits, which carry the old preset.
 
 ## Runs (reproducibility ledger rows)
 

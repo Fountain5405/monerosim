@@ -301,8 +301,9 @@ its `cp` is unchecked — always confirm the binary mtime and provenance.
     counts, splits out the genesis warm-up and gives a verdict (`bff72772`).
   - `h10` snapshot found to start consumers 9.8 % under D0, so every h10
     cell ran ~10 % fast (results doc §7). `chain_snapshot.py` now gates on
-    the next-block difficulty (`ca01aa4d`); a 32 h generator
-    (`preload_h10_32h`) is running to replace the preset.
+    the next-block difficulty (`ca01aa4d`). The preset was regenerated from a
+    32 h generator: d_next_at_tip 1222 (+1.8 %), and a consumer run shows
+    the daemon hands off exactly that.
 
 ## Where the reasoning lives
 
