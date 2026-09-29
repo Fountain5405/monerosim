@@ -156,6 +156,67 @@ def _read_monero_pin() -> str:
 
 DIFFICULTY_STATS_WINDOW = 735  # one full DAA window (720) plus margin
 
+# Monero v0.18 DAA constants (src/cryptonote_config.h) and the tolerance the
+# next-block difficulty at the tip must meet against D0. The DAA's own spread
+# over a full 600-block (cut) window is ~4 %; the 2026-09-26 h10 snapshot was
+# 9.8 % low and every consumer ran ~10 % fast.
+DAA_WINDOW, DAA_LAG, DAA_CUT, DAA_TARGET_S = 720, 15, 60, 120
+D_NEXT_TOLERANCE = 0.05
+
+
+def _next_difficulty(timestamps: list, cumulative: list) -> int:
+    """cryptonote_basic/difficulty.cpp next_difficulty(), exactly (including
+    sorting the timestamps but not the cumulative difficulties)."""
+    if len(timestamps) > DAA_WINDOW:
+        timestamps, cumulative = timestamps[:DAA_WINDOW], cumulative[:DAA_WINDOW]
+    n = len(timestamps)
+    if n <= 1:
+        return 1
+    timestamps = sorted(timestamps)
+    if n <= DAA_WINDOW - 2 * DAA_CUT:
+        b, e = 0, n
+    else:
+        b = (n - (DAA_WINDOW - 2 * DAA_CUT) + 1) // 2
+        e = b + (DAA_WINDOW - 2 * DAA_CUT)
+    span = max(timestamps[e - 1] - timestamps[b], 1)
+    work = cumulative[e - 1] - cumulative[b]
+    return (work * DAA_TARGET_S + span - 1) // span
+
+
+def next_difficulty_at_tip(diffs: list, timestamps: list) -> int:
+    """Difficulty monerod assigns to the block after the tip, given per-height
+    difficulties and header timestamps of heights 1..n (index 0 == height 1).
+    Mirrors Blockchain::get_difficulty_for_next_block: the last
+    DIFFICULTY_BLOCKS_COUNT (735) blocks, genesis excluded."""
+    n = len(timestamps)
+    h = n + 1
+    off = h - min(h, DAA_WINDOW + DAA_LAG)
+    if off == 0:
+        off = 1
+    cumulative, c = [], 0
+    for d in diffs[:n]:
+        c += d
+        cumulative.append(c)
+    return _next_difficulty(timestamps[off - 1:n], cumulative[off - 1:n])
+
+
+def _block_timestamp(blob_hex: str) -> int:
+    """Header timestamp from a block blob (varint major, minor, timestamp)."""
+    b = bytes.fromhex(blob_hex[:64])
+    i = 0
+    out = []
+    for _ in range(3):
+        v = shift = 0
+        while True:
+            c = b[i]; i += 1
+            v |= (c & 0x7F) << shift
+            shift += 7
+            if c < 0x80:
+                break
+        out.append(v)
+    return out[2]
+
+
 
 def compute_difficulty_stats(
     diffs: list, timestamps: list, window: int = DIFFICULTY_STATS_WINDOW
@@ -257,6 +318,7 @@ def cmd_export(args: argparse.Namespace) -> int:
             _stop_daemon(proc)
 
     stats = compute_difficulty_stats(diffs, timestamps)
+    d_next = next_difficulty_at_tip(diffs, timestamps)
 
     manifest = {
         "height": tip_height,
@@ -264,6 +326,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         "d0_measured": stats["d0_measured"],
         "median_block_interval_s": stats["median_block_interval_s"],
         "convergence_height": stats["convergence_height"],
+        "d_next_at_tip": d_next,
         "total_hashrate": args.total_hashrate,
         "monero_pin": _read_monero_pin(),
         "hf_schedule": args.hf_schedule,
@@ -280,6 +343,17 @@ def cmd_export(args: argparse.Namespace) -> int:
 
     print(f"Exported {tip_height} blocks to {out_dir}")
     print(json.dumps(manifest, indent=2, sort_keys=True))
+
+    if args.d0 and abs(d_next - args.d0) / args.d0 > D_NEXT_TOLERANCE:
+        print(
+            f"ERROR: the block after the tip gets difficulty {d_next}, "
+            f"{(d_next - args.d0) / args.d0 * 100:+.1f}% vs D0 {args.d0} (tolerance "
+            f"{D_NEXT_TOLERANCE * 100:.0f}%). Every consumer would start off-equilibrium; "
+            f"regenerate (longer run or another seed) instead of committing. "
+            f"The files were written for inspection; `verify` will reject them.",
+            file=sys.stderr,
+        )
+        return 2
 
     d0_measured = stats["d0_measured"]
     if d0_measured is not None and args.d0:
@@ -438,6 +512,14 @@ def verify_manifest(manifest: dict, expected_monero_pin: Optional[str] = None) -
             failures.append(
                 f"tip is {gap}s before the Shadow epoch, exceeds the {MAX_TIP_GAP_SECONDS}s max gap"
             )
+
+    # Manifests written before 2026-09-29 have no d_next_at_tip; skip the gate.
+    d_next, d0 = manifest.get("d_next_at_tip"), manifest.get("D0")
+    if d_next is not None and d0 and abs(d_next - d0) / d0 > D_NEXT_TOLERANCE:
+        failures.append(
+            f"next-block difficulty at the tip is {d_next}, {(d_next - d0) / d0 * 100:+.1f}% vs D0 {d0} "
+            f"(tolerance {D_NEXT_TOLERANCE * 100:.0f}%): consumers would start off-equilibrium"
+        )
 
     return failures
 

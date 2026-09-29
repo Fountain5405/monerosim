@@ -19,6 +19,7 @@ from scripts.chain_snapshot import (
     load_blocks,
     load_manifest,
     manifest_key,
+    next_difficulty_at_tip,
     verify_manifest,
 )
 
@@ -159,6 +160,36 @@ def test_verify_no_pin_check_when_expected_is_none():
     assert failures == []
 
 
+def test_verify_flags_a_tip_difficulty_far_from_d0():
+    # The 2026-09-26 h10 snapshot: tail median 1173 looked fine, but the block
+    # after the tip got 1083 (9.8 % under D0 1200), so every consumer ran ~10 %
+    # fast. The gate is on what the next block actually gets.
+    failures = verify_manifest(_manifest(D0=1200, d_next_at_tip=1083), expected_monero_pin="v0.18.5.1")
+    assert any("next-block difficulty" in f for f in failures)
+
+
+def test_verify_accepts_a_tip_difficulty_within_tolerance():
+    assert verify_manifest(_manifest(D0=1200, d_next_at_tip=1150), expected_monero_pin="v0.18.5.1") == []
+
+
+def test_verify_skips_the_difficulty_gate_for_manifests_without_it():
+    assert verify_manifest(_manifest(D0=1200), expected_monero_pin="v0.18.5.1") == []
+
+
+def test_next_difficulty_at_tip_reproduces_monerod_on_the_h10_snapshot():
+    # Header timestamps of the h10 snapshot as committed on 2026-09-26; monerod
+    # logged difficulty 1083 for the first block grafted on top (height 337).
+    fx = json.loads((Path(__file__).resolve().parent.parent / "tests" / "fixtures"
+                     / "h10_20260926_timestamps.json").read_text())
+    ts = fx["timestamps"]
+    # difficulties are not stored; rebuild them the way the daemon did
+    diffs = []
+    for i in range(len(ts)):
+        diffs.append(next_difficulty_at_tip(diffs, ts[:i]))
+    assert diffs[0] == 1
+    assert next_difficulty_at_tip(diffs, ts) == fx["d_next_at_tip"] == 1083
+
+
 # --------------------------------------------------------------------------
 # integration: real daemon (skipped unless monerod-sim is installed)
 # --------------------------------------------------------------------------
@@ -225,10 +256,14 @@ def test_export_and_build_template_round_trip(tmp_path):
         hf_schedule=None,
         binary=str(MONEROD_SIM),
     )
-    assert cmd_export(export_args) == 0
+    # A 5-block chain is nowhere near D0 6000: export writes the files (for
+    # inspection) but refuses with exit 2, and verify would reject them.
+    assert cmd_export(export_args) == 2
 
     manifest = load_manifest(preset_dir)
     assert manifest["height"] == 5
+    assert manifest["d_next_at_tip"] < 6000
+    assert any("next-block difficulty" in f for f in verify_manifest(manifest))
     blocks = load_blocks(preset_dir)
     assert [b["height"] for b in blocks] == [1, 2, 3, 4, 5]
 

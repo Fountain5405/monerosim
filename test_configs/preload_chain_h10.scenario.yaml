@@ -10,19 +10,22 @@
 # campaign at its own D0 so the first mined block is a ~120 s block and the
 # fixed-difficulty stopgap in the base can be dropped.
 #
-# stop_time is 12h (handoff, campaign step 1): ~360 blocks at 120 s/block,
-# comfortably >= the 300-block floor (DAA window contents + the SoP 160-block
-# legacy window). Below 600 blocks Monero's DAA uses the whole chain as its
-# window with no outlier cut (docs/superpowers/specs/2026-09-23-difficulty-
-# preload-design.md); the genesis ramp contributes ~zero work in ~zero time,
-# so D_next at the tip is self-consistently ~D0. The h50 preset needed the
-# full 735 + 720 floor because the replica's DAA window is what that study
-# measures; the micro campaign measures fork choice over 6 h (~180 blocks).
+# stop_time is 32h (~960 blocks at 120 s/block; revised 2026-09-29). The
+# first version ran 12h (~336 blocks), which is below Monero's 600-block cut
+# threshold, so the DAA window at the tip was the WHOLE chain: genesis ramp
+# plus a ~2.4 h stretch where this generator delivered ~6.5 of its 10 h/s.
+# Its tail median looked fine (1173) but the block after the tip got 1083
+# (-9.8 %), and every consumer ran ~10 % fast
+# (docs/20260926_exact_uncles_and_sop_controls.md, block-time note). At 32h
+# the tip's window is 720 post-ramp blocks with the 60/60 outlier cut, so
+# D_next is ~D0 within the DAA's own ~4 % spread. `chain_snapshot.py export`
+# now computes D_next at the tip exactly and refuses anything > 5 % off D0;
+# on a refusal, rerun with another simulation_seed rather than loosening it.
 #
 # --sim-timestamp-offset (patches/monero-sim-mining.patch): shifts every
 # mined block's timestamp back by a constant so the tip lands ~10 minutes
 # BEFORE the shared Shadow epoch (2000-01-01 00:00 UTC = 946,684,800);
-# offset = stop_time + 10 min = 43,200 s + 600 s = 43,800 s. `verify` requires
+# offset = stop_time + 10 min = 115,200 s + 600 s = 115,800 s. `verify` requires
 # the tip strictly before the epoch and at most 1,800 s earlier.
 #
 # ---- recipe (mirror of docs/CHAIN_SNAPSHOT_REGEN.md Sec 4, D0 = 1200) ----
@@ -44,7 +47,7 @@
 #        venv/bin/python scripts/chain_snapshot.py verify --preset chain_snapshots/h10/
 #   5. Commit chain_snapshots/h10/ (blocks.jsonl.gz + manifest.json).
 general:
-  stop_time: 12h
+  stop_time: 32h
   simulation_seed: 12345
   enable_dns_server: true
   shadow_log_level: warning
@@ -66,7 +69,7 @@ general:
     db-sync-mode: fastest
     no-zmq: true
     non-interactive: true
-    sim-timestamp-offset: 43800    # stop_time (43200s) + 10 min; see header
+    sim-timestamp-offset: 115800   # stop_time (115200s) + 10 min; see header
 network:
   path: gml_processing/1200_nodes_caida_with_loops.gml
   peer_mode: Dynamic
