@@ -263,8 +263,14 @@ def test_split_preload_by_shadow_epoch():
     assert [b["hash"] for b in run] == ["r3", "r4"]
 
 
-def _write_selfish_run(tmp_path, chain, found_lines, snapshot="off"):
+def _write_selfish_run(tmp_path, chain, found_lines, snapshot="off", grafted_height=None):
     import json
+    if grafted_height is not None:
+        # what the orchestrator logs when it grafts a preset into the run
+        (tmp_path / "monerosim.log").write_text(
+            "[2026-09-27T13:02:23Z INFO  monerosim::agent::user_agents] Chain snapshot: "
+            f"preset=/x/chain_snapshots/{snapshot} key=a4e7b7ae1a1785fc height={grafted_height} "
+            "D0=1200 nodes_seeded=12 bytes_copied=7382568\n")
     (tmp_path / "input_config.yaml").write_text(
         "general:\n  mining:\n    mode: native\n    chain_snapshot: %s\n"
         "agents:\n"
@@ -300,10 +306,10 @@ def test_analyze_run_excludes_chain_snapshot_preload(tmp_path):
     _write_selfish_run(tmp_path, pre + run, {
         "honest-001": [_found_line(337, "h337"), _found_line(340, "h340")],
         "attacker-miner": [_found_line(338, "a338"), _found_line(339, "a339")],
-    }, snapshot="h10")
+    }, snapshot="h10", grafted_height=336)
     r = analyze_run(tmp_path)
     assert r["preload_blocks"] == 336
-    assert r["preload_expected"] == 336          # from chain_snapshots/h10/manifest.json
+    assert r["preload_expected"] == 336          # from the run's own monerosim.log
     assert r["canonical_blocks"] == 4
     assert abs(r["share"] - 0.5) < 1e-9
 
@@ -317,10 +323,40 @@ def test_analyze_run_legacy_dump_falls_back_to_manifest_height(tmp_path):
     _write_selfish_run(tmp_path, pre + run, {
         "honest-001": [_found_line(338, "h338")],
         "attacker-miner": [_found_line(337, "a337")],
-    }, snapshot="h10")
+    }, snapshot="h10", grafted_height=336)
     r = analyze_run(tmp_path)
     assert r["preload_blocks"] == 336 and r["canonical_blocks"] == 2
     assert abs(r["share"] - 0.5) < 1e-9
+
+
+def test_preload_height_comes_from_the_run_not_the_current_preset(tmp_path):
+    """chain_snapshots/h10 was regenerated on 2026-09-29 (336 -> 994 blocks).
+    Re-analysing a run grafted from the old preset must use the height that
+    run logged, not the repo's current manifest; the legacy (timestamp-less)
+    fallback would otherwise drop the run's own blocks."""
+    import json
+    from pathlib import Path
+    from scripts.selfish_mining_analysis import analyze_run
+    current = json.loads((Path(__file__).resolve().parent.parent / "chain_snapshots" / "h10"
+                          / "manifest.json").read_text())["height"]
+    assert current != 336                       # the preset really changed
+    pre = [{"height": h, "hash": f"g{h}"} for h in range(1, 337)]
+    run = [{"height": 337, "hash": "a337"}, {"height": 338, "hash": "h338"}]
+    _write_selfish_run(tmp_path, pre + run, {
+        "honest-001": [_found_line(338, "h338")],
+        "attacker-miner": [_found_line(337, "a337")],
+    }, snapshot="h10", grafted_height=336)
+    r = analyze_run(tmp_path)
+    assert r["preload_expected"] == 336 and r["canonical_blocks"] == 2
+
+
+def test_preload_height_falls_back_to_the_preset_without_a_graft_line(tmp_path):
+    import json
+    from pathlib import Path
+    from scripts.selfish_mining_analysis import _snapshot_height
+    current = json.loads((Path(__file__).resolve().parent.parent / "chain_snapshots" / "h10"
+                          / "manifest.json").read_text())["height"]
+    assert _snapshot_height(tmp_path, {"general": {"mining": {"chain_snapshot": "h10"}}}) == current
 
 
 def test_analyze_run_without_snapshot_is_unchanged(tmp_path):

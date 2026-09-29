@@ -15,6 +15,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -96,6 +97,26 @@ def _snapshot_height_from_config(cfg: dict):
         return int(json.loads((d / "manifest.json").read_text())["height"])
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+RE_GRAFT = re.compile(r"Chain snapshot: preset=\S+ key=[0-9a-f]+ height=(\d+)")
+
+
+def _snapshot_height(run_dir, cfg: dict):
+    """Height of the chain snapshot this run actually grafted. Prefer the
+    orchestrator's own log line ("Chain snapshot: preset=... key=...
+    height=N" in monerosim.log): presets get regenerated (h10: 336 -> 994
+    blocks on 2026-09-29), so the repo's current manifest can describe a
+    different chain than an archived run used. Fall back to the preset the
+    config names."""
+    log = Path(run_dir) / "monerosim.log"
+    try:
+        m = RE_GRAFT.search(log.read_text(errors="replace"))
+        if m:
+            return int(m.group(1))
+    except OSError:
+        pass
+    return _snapshot_height_from_config(cfg)
 
 
 def load_raw_config(cfg_path) -> dict:
@@ -388,7 +409,7 @@ def analyze_run(run_dir, chain_path=None) -> dict:
         raise AnalysisInputError("empty canonical chain")
     # Drop the chain-snapshot preload (grafted blocks nobody in the run mined).
     preload, chain = split_preload(chain)
-    preload_expected = _snapshot_height_from_config(cfg)
+    preload_expected = _snapshot_height(run_dir, cfg)
     if not preload and preload_expected:
         # Legacy dump without timestamps on a snapshot run: fall back to the
         # preset's manifest height.
