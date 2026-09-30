@@ -202,3 +202,127 @@ def test_release_lead_rejects_nonpositive():
                 won = True
                 break
         assert won, f"{name} has no winning commit path (only advances fork by conceding)"
+
+
+# --- window_stubborn (Share-or-Perish attack) -------------------------------
+
+def test_window_stubborn_rejects_bad_give_up_depth():
+    try:
+        SelfishStrategy("window_stubborn", start_height=0, give_up_depth=0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("give_up_depth=0 must raise")
+
+
+def test_window_stubborn_rejects_bad_window_objects():
+    try:
+        SelfishStrategy("window_stubborn", start_height=0, window_objects=0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("window_objects=0 must raise")
+
+
+def test_window_stubborn_a_zero_h_positive_adopts():
+    s = SelfishStrategy("window_stubborn", start_height=0)
+    d = s.update(pub_height=1, priv_height=0)
+    assert d.adopt_public is True and d.release_to is None and d.forward_to is None
+    assert s.fork == 1
+
+
+def test_window_stubborn_h_zero_withholds():
+    s = SelfishStrategy("window_stubborn", start_height=0)
+    d = s.update(pub_height=0, priv_height=2)
+    assert d.release_to is None and d.adopt_public is False and d.forward_to == 0
+    assert s.fork == 0
+
+
+def test_window_stubborn_tie_holds():
+    s = SelfishStrategy("window_stubborn", start_height=0)
+    s.update(0, 1)
+    d = s.update(1, 1)
+    assert d.release_to is None and d.adopt_public is False and d.forward_to == 0
+    assert s.fork == 0
+
+
+def test_window_stubborn_give_up_at_depth_one():
+    s = SelfishStrategy("window_stubborn", start_height=0, give_up_depth=1)
+    s.update(0, 1)                                   # a=1,h=0 withhold
+    d = s.update(1, 1)                                # a=1,h=1: h-a==0==d-1 -> hold
+    assert d.adopt_public is False and d.forward_to == 0
+    d = s.update(2, 1)                                # a=1,h=2: h-a==1==d -> give up
+    assert d.adopt_public is True and d.release_to is None and d.forward_to is None
+    assert s.fork == 2
+
+
+def test_window_stubborn_give_up_at_depth_two():
+    s = SelfishStrategy("window_stubborn", start_height=0, give_up_depth=2)
+    s.update(0, 1)
+    d = s.update(1, 1)                                # a=1,h=1: h-a==0
+    assert d.adopt_public is False and d.forward_to == 0
+    d = s.update(2, 1)                                # a=1,h=2: h-a==1==d-1 -> still hold
+    assert d.adopt_public is False and d.forward_to == 0
+    d = s.update(3, 1)                                # a=1,h=3: h-a==2==d -> give up
+    assert d.adopt_public is True and s.fork == 3
+
+
+def test_window_stubborn_give_up_at_depth_three():
+    s = SelfishStrategy("window_stubborn", start_height=0, give_up_depth=3)
+    s.update(0, 1)
+    d = s.update(1, 1)                                # h-a==0
+    assert d.adopt_public is False
+    d = s.update(2, 1)                                # h-a==1
+    assert d.adopt_public is False
+    d = s.update(3, 1)                                # h-a==2==d-1 -> still hold
+    assert d.adopt_public is False and d.forward_to == 0
+    d = s.update(4, 1)                                # h-a==3==d -> give up
+    assert d.adopt_public is True and s.fork == 4
+
+
+def test_window_stubborn_ahead_beyond_release_lead_withholds_without_rpc():
+    s = SelfishStrategy("window_stubborn", start_height=0)
+    s.update(0, 1)                                    # h=0,a=1 withhold
+
+    def _boom(fork, priv_height):
+        raise AssertionError("branch_objects must not be called outside the window check")
+
+    d = s.update(1, 3)                                # a=3,h=1: a-h==2 > release_lead(1)
+    d = s.update(1, 3, branch_objects=_boom)
+    assert d.adopt_public is False and d.release_to is None and d.forward_to == 0
+
+
+def test_window_stubborn_within_release_lead_but_below_window_withholds():
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=5)
+    s.update(0, 1)                                    # h=0, a=1 withhold
+    d = s.update(1, 2, branch_objects=lambda fork, priv: 4)   # a=2,h=1,a-h==1<=release_lead; objects=4<5
+    assert d.adopt_public is False and d.release_to is None and d.forward_to == 0
+    assert s.last_objects == 4
+    assert s.fork == 0
+
+
+def test_window_stubborn_reaching_window_reveals_and_moves_fork():
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=5)
+    s.update(0, 1)
+    d = s.update(1, 2, branch_objects=lambda fork, priv: 5)   # objects==window -> reveal
+    assert d.release_to == 1 and d.release_from == 0
+    assert d.adopt_public is False and d.forward_to is None
+    assert s.fork == 2
+    assert s.last_objects == 5
+
+
+def test_window_stubborn_default_branch_objects_uses_block_count():
+    # No branch_objects callable: objects falls back to `a`. With the default
+    # window (48) the block-only arm needs a >= 48 to reveal.
+    s = SelfishStrategy("window_stubborn", start_height=0)
+    s.update(0, 1)
+    # Drive the private branch to 48 blocks ahead with honest idle, then let
+    # honest close to within release_lead so the reveal arm is reached.
+    priv = 1
+    while priv < 48:
+        priv += 1
+        s.update(0, priv)
+    d = s.update(47, priv)                             # a=48,h=47: a-h==1<=release_lead
+    assert priv == 48
+    assert d.release_to == priv - 1 and s.fork == priv
+    assert d.adopt_public is False

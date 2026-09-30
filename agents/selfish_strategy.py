@@ -19,9 +19,17 @@ bridges is always second), so the attacker loses every tie and the
 tie-exploiting variants realize at or below eyal_sirer -- they are built to pay
 off at gamma>0. See docs/20260912_selfish_mining_results.md and the specs under
 docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md (+ -phase2-design.md).
+
+`window_stubborn` attacks Share-or-Perish (SoP): SoP judges a fork subjectively
+(and rejects withheld/late blocks) only while the alt branch holds fewer than
+`window_objects` WORK OBJECTS (a block counts as 1 + its embedded valid
+shares); at or past the window honest nodes fall back to plain cumulative
+difficulty. The attacker withholds and never reveals while its branch is
+still inside the window, reveals once it is past the window AND ahead, and
+gives up once honest leads by `give_up_depth` blocks.
 """
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
 
 
 @dataclass
@@ -37,13 +45,15 @@ class ReleaseDecision:
 
 class SelfishStrategy:
     def __init__(self, name: str, start_height: int, trail_depth: int = 1,
-                 release_lead: int = 1):
+                 release_lead: int = 1, window_objects: int = 48,
+                 give_up_depth: int = 2):
         if name not in (
             "honest",
             "eyal_sirer",
             "trail_stubborn",
             "equal_fork_stubborn",
             "lead_stubborn",
+            "window_stubborn",
         ):
             raise ValueError(f"unknown strategy: {name}")
         self.name = name
@@ -53,9 +63,17 @@ class SelfishStrategy:
         self.release_lead = int(release_lead)
         if self.release_lead < 1:
             raise ValueError(f"release_lead must be >= 1, got {release_lead}")
+        self.window_objects = int(window_objects)
+        if self.window_objects < 1:
+            raise ValueError(f"window_objects must be >= 1, got {window_objects}")
+        self.give_up_depth = int(give_up_depth)
+        if self.give_up_depth < 1:
+            raise ValueError(f"give_up_depth must be >= 1, got {give_up_depth}")
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
+        self.last_objects = None   # window_stubborn: last branch_objects() count seen
 
-    def update(self, pub_height: int, priv_height: int) -> ReleaseDecision:
+    def update(self, pub_height: int, priv_height: int,
+               branch_objects: Optional[Callable[[int, int], int]] = None) -> ReleaseDecision:
         # `old_fork` is the divergence point for THIS step's release range. Every
         # returned decision carries it as release_from, because the reveal/adopt
         # branches below move self.fork forward and a caller that read the
@@ -81,6 +99,8 @@ class SelfishStrategy:
             return self._trail_stubborn_decision(old_fork, pub_height, priv_height, a, h)
         if self.name == "equal_fork_stubborn":
             return self._equal_fork_stubborn_decision(old_fork, pub_height, priv_height, a, h)
+        if self.name == "window_stubborn":
+            return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_objects)
         return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
 
     def _eyal_sirer_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
@@ -184,3 +204,43 @@ class SelfishStrategy:
 
         # h == 0 (withhold), a == h (tie), a < h (adopt): eyal_sirer rules.
         return self._eyal_sirer_decision(old_fork, pub_height, priv_height, a, h)
+
+    def _window_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int,
+                                   a: int, h: int,
+                                   branch_objects: Optional["Callable[[int, int], int]"]) -> ReleaseDecision:
+        """Attacks Share-or-Perish (SoP): SoP judges a fork subjectively (and
+        rejects withheld/late blocks) only while the alt branch holds fewer
+        than `window_objects` WORK OBJECTS; at or past the window honest
+        nodes fall back to plain cumulative difficulty. Withhold and never
+        reveal while still inside the window, reveal once past the window
+        AND ahead, and give up once honest leads by `give_up_depth` blocks.
+        An attack only starts from a private lead, so a == 0 adopts as in
+        eyal_sirer."""
+        if (a == 0 and h > 0) or (h - a >= self.give_up_depth):
+            self.fork = pub_height
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
+
+        if h == 0:
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+
+        if a <= h:
+            # Tied, or behind by less than give_up_depth: hold and keep
+            # mining the private branch. No tie reveals -- this apparatus
+            # runs at gamma~0, and inside the window SoP rejects them.
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+
+        # a > h >= 1 from here.
+        if a - h > self.release_lead:
+            # Comfortably ahead: withhold (maximise honest waste), same as
+            # eyal_sirer. Do not spend an RPC on branch_objects here.
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+
+        objects = branch_objects(old_fork, priv_height) if branch_objects else a
+        self.last_objects = objects
+        if objects < self.window_objects:
+            # Inside the window: a reveal is judged subjectively and loses.
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+
+        # Past the window and ahead: reveal the whole branch and win.
+        self.fork = priv_height
+        return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)

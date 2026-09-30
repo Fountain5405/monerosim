@@ -316,7 +316,7 @@ def test_run_iteration_pulls_islands_before_strategy_decision():
     a, i1, _ = _make_island_agent()
     calls = []
 
-    def fake_update(pub, priv):
+    def fake_update(pub, priv, branch_objects=None):
         calls.append(("strategy", pub, priv))
         return ReleaseDecision()
 
@@ -868,3 +868,100 @@ def test_concession_pops_from_the_daemon_height_at_pop_time():
     a.daemon_rpc.get_info.return_value = {"height": 13, "top_block_hash": "p12"}   # grew since the tick read 11
     assert a._concede(11, "strategy conceded")
     a.daemon_rpc.pop_blocks.assert_called_once_with(3)                           # 13 - (9 + 1)
+
+
+# --- window_stubborn attributes and _branch_objects (SoP attack, 2026-09-30) ---
+
+def test_window_stubborn_attributes_parse_with_defaults():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "window_stubborn"], ["bridges", "b1"]])
+    a.logger = MagicMock()
+    assert a.window_objects == 48
+    assert a.give_up_depth == 2
+    assert a.embedded_shares is False
+    a._ensure_strategy(0)
+    assert a.strategy.window_objects == 48 and a.strategy.give_up_depth == 2
+
+
+def test_window_stubborn_attributes_parse_overrides():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "window_stubborn"], ["bridges", "b1"],
+        ["window_objects", "10"], ["give_up_depth", "3"],
+        ["embedded_shares", "true"]])
+    a.logger = MagicMock()
+    assert a.window_objects == 10
+    assert a.give_up_depth == 3
+    assert a.embedded_shares is True
+    a._ensure_strategy(0)
+    assert a.strategy.window_objects == 10 and a.strategy.give_up_depth == 3
+
+
+def test_branch_objects_returns_block_count_without_embedded_shares():
+    a = _make_agent(strategy="window_stubborn")
+    assert a.embedded_shares is False
+    assert a._branch_objects(5, 8) == 3
+    a.daemon_rpc.get_block_headers_range.assert_not_called()
+
+
+def test_branch_objects_returns_zero_for_empty_range():
+    a = _make_agent(strategy="window_stubborn")
+    assert a._branch_objects(5, 5) == 0
+    assert a._branch_objects(8, 5) == 0
+
+
+def test_branch_objects_sums_minor_version_with_embedded_shares():
+    a = _make_agent(strategy="window_stubborn")
+    a.embedded_shares = True
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"minor_version": 2}, {"minor_version": 0}, {"minor_version": 5},
+    ]
+    assert a._branch_objects(5, 8) == (1 + 2) + (1 + 0) + (1 + 5)
+    a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
+
+
+def test_branch_objects_returns_zero_on_rpc_error():
+    a = _make_agent(strategy="window_stubborn")
+    a.embedded_shares = True
+    a.daemon_rpc.get_block_headers_range.side_effect = RPCError("boom")
+    assert a._branch_objects(5, 8) == 0
+
+
+def test_branch_objects_returns_zero_on_short_header_list():
+    a = _make_agent(strategy="window_stubborn")
+    a.embedded_shares = True
+    a.daemon_rpc.get_block_headers_range.return_value = [{"minor_version": 1}]  # expected 3
+    assert a._branch_objects(5, 8) == 0
+
+
+def test_run_iteration_passes_branch_objects_to_strategy_update():
+    a = _make_agent(strategy="window_stubborn")
+    a.strategy.update = MagicMock(wraps=a.strategy.update)
+    a.daemon_rpc.get_block.side_effect = lambda height: {
+        "blob": f"priv{height}", "block_header": {"hash": f"ph{height}"}}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"pub{height}", "block_header": {"hash": f"hh{height}"}}
+    a.bridge_rpc.get_info.return_value = {"height": 0}
+    a.daemon_rpc.get_info.return_value = {"height": 1}
+    a.run_iteration()
+    args, kwargs = a.strategy.update.call_args
+    assert kwargs.get("branch_objects") == a._branch_objects
+
+
+def test_window_stubborn_reveal_is_logged():
+    a = _make_agent(strategy="window_stubborn", start_height=0)
+    a._start_synced = True   # skip first-tick ancestor sync; fork stays 0
+    a.window_objects = 2
+    a.give_up_depth = 2
+    a.strategy.window_objects = 2
+    a.strategy.give_up_depth = 2
+    a.daemon_rpc.get_block.side_effect = lambda height: {
+        "blob": f"priv{height}", "block_header": {"hash": f"ph{height}"}}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"pub{height}", "block_header": {"hash": f"hh{height}"}}
+    # a=2 blocks (fork 0..1), h=1: a-h==1<=release_lead; branch_objects (no
+    # embedded_shares) returns a==2==window -> reveal.
+    a.bridge_rpc.get_info.return_value = {"height": 1}
+    a.daemon_rpc.get_info.return_value = {"height": 2}
+    a.run_iteration()
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("window_stubborn: reveal fork=0 a=2 h=1 objects=2" in m for m in messages)

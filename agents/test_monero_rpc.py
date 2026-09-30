@@ -205,3 +205,24 @@ def test_flush_alt_blocks_sends_sim_field_and_requires_confirmation(mocker):
     mk.return_value = {"status": "OK"}
     with pytest.raises(RPCError):
         rpc.flush_alt_blocks()
+
+
+def test_get_block_headers_range_returns_headers_list(mocker):
+    """get_block_headers_range calls json_rpc with both bounds inclusive and
+    returns result['headers']."""
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    mk = mocker.patch.object(rpc, "_make_request",
+                             return_value={"headers": [{"height": 3}, {"height": 4}]})
+
+    result = rpc.get_block_headers_range(3, 4)
+
+    mk.assert_called_once_with("get_block_headers_range",
+                                {"start_height": 3, "end_height": 4})
+    assert result == [{"height": 3}, {"height": 4}]
+
+
+def test_get_block_headers_range_defaults_to_empty_list(mocker):
+    rpc = MoneroRPC("127.0.0.1", 18081)
+    mocker.patch.object(rpc, "_make_request", return_value={})
+
+    assert rpc.get_block_headers_range(0, 0) == []

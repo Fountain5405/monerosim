@@ -298,6 +298,21 @@ class MoneroRPC(BaseRPC):
         result = self._make_request("get_block_header_by_height", params)
         return result.get("block_header", {})
 
+    def get_block_headers_range(self, start_height: int, end_height: int) -> List[Dict]:
+        """
+        Get block headers for a range of heights (both bounds inclusive).
+
+        Args:
+            start_height: First block height in the range (inclusive)
+            end_height: Last block height in the range (inclusive)
+
+        Returns:
+            List of block header dictionaries
+        """
+        params = {"start_height": start_height, "end_height": end_height}
+        result = self._make_request("get_block_headers_range", params)
+        return result.get("headers", [])
+
     def submit_block(self, block_blob: str) -> Dict[str, Any]:
         """Submit a single mined block (hex blob) to the daemon.
 

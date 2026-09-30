@@ -20,7 +20,9 @@ join the private branch, so the existing release path cashes the combined
 chain and the strategy sees the recruited hashrate as its own lead).
 
 Attributes (via --attributes KEY VALUE):
-    strategy            "honest" | "eyal_sirer"  (default "honest")
+    strategy            "honest" | "eyal_sirer" | "trail_stubborn" |
+                        "equal_fork_stubborn" | "lead_stubborn" |
+                        "window_stubborn"  (default "honest")
     bridges             comma-separated bridge agent ids (required)
     bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
     islands             comma-separated ISLAND bridge agent ids (optional;
@@ -31,6 +33,19 @@ Attributes (via --attributes KEY VALUE):
                         this many blocks (default 1 = textbook Eyal-Sirer;
                         2 = Qubic's observed conservative release, Lee & Kim
                         2025 -- see agents/selfish_strategy.py)
+    window_objects      Share-or-Perish (SoP) subjective-judging window, in WORK
+                        OBJECTS (a block counts as 1 + its embedded valid
+                        shares) (default 48 = k*w). Only used by
+                        window_stubborn -- see agents/selfish_strategy.py.
+    give_up_depth       window_stubborn: give up once honest leads by this many
+                        blocks (default 2).
+    embedded_shares     "true" to read a SoP daemon's per-block share count from
+                        get_block_headers_range's minor_version field (the
+                        patched template sets b.minor_version = N) when
+                        computing window_stubborn's work-object count (default
+                        off, which counts 1 object per block; without SoP,
+                        minor_version is the hard-fork vote, not a share count,
+                        hence opt-in).
     reject_aware        "true" to check, after every cash-out reveal, that the
                         first bridge adopted the branch, and to concede if not
                         (default off; 2026-09-28). The strategy assumes a
@@ -81,6 +96,9 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
         self.trail_depth = int(self.attributes.get("trail_depth", "1") or 1)  # trail_stubborn only
         self.release_lead = int(self.attributes.get("release_lead", "1") or 1)  # cash-out threshold
+        self.window_objects = int(self.attributes.get("window_objects", "48") or 48)  # window_stubborn only
+        self.give_up_depth = int(self.attributes.get("give_up_depth", "2") or 2)      # window_stubborn only
+        self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.reject_aware = str(self.attributes.get("reject_aware", "false")).strip().lower() in ("1", "true", "yes")
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
@@ -118,7 +136,33 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if self.strategy is None:
             self.strategy = SelfishStrategy(self.strategy_name, start_height,
                                             trail_depth=self.trail_depth,
-                                            release_lead=self.release_lead)
+                                            release_lead=self.release_lead,
+                                            window_objects=self.window_objects,
+                                            give_up_depth=self.give_up_depth)
+
+    def _branch_objects(self, fork: int, priv_height: int) -> int:
+        """window_stubborn's work-object counter: 1 object per private block,
+        plus its embedded valid shares when `embedded_shares` is on. On a SoP
+        daemon minor_version is the per-block share count (the patched
+        template sets b.minor_version = N); without SoP it is the hard-fork
+        vote, which is why this is opt-in. Conservative on failure: returns 0
+        (keeps the attacker withholding) on an RPCError or a header count
+        that doesn't match the expected range."""
+        n = priv_height - fork
+        if n <= 0:
+            return 0
+        if not self.embedded_shares:
+            return n
+        try:
+            headers = self.daemon_rpc.get_block_headers_range(fork, priv_height - 1)
+        except RPCError as e:
+            self.logger.warning(f"_branch_objects: get_block_headers_range failed: {e}")
+            return 0
+        if len(headers) != n:
+            self.logger.warning(
+                f"_branch_objects: expected {n} headers for {fork}..{priv_height - 1}, got {len(headers)}")
+            return 0
+        return sum(1 + int(h["minor_version"]) for h in headers)
 
     def _lookup_agents(self, agent_ids, connected_ids, rpcs, what: str) -> None:
         """Resolve agent ids to RPC endpoints from the shared registry,
@@ -630,7 +674,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 return self._reaction_interval_s()
 
         # 5. Strategy decision first: forward_to (below) depends on it.
-        decision = self.strategy.update(pub_height, priv_height)
+        decision = self.strategy.update(pub_height, priv_height, branch_objects=self._branch_objects)
+        if (self.strategy_name == "window_stubborn" and decision.release_to is not None
+                and pub_height >= self.strategy.start_height):   # warm-up publishes everything
+            fork = decision.release_from
+            self.logger.info(
+                f"window_stubborn: reveal fork={fork} a={priv_height - fork} "
+                f"h={pub_height - fork} objects={self.strategy.last_objects}")
 
         # 5b. Rejection-aware: the strategy conceded (honest is taller). Leave
         #     the branch by pop + forward, not by piling honest blocks onto it.
