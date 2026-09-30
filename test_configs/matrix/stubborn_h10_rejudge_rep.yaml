@@ -1,0 +1,30 @@
+# STUBBORN-ATTACKER CAMPAIGN, rejudge hazard (2026-09-30): monerod's SoP
+# implementation re-judges a displaced block one at a time, not the whole
+# branch at once, when sim-sop-rejudge-displaced is set. This isolates that
+# implementation hazard against the share arm's sop2 cells at a040 and a045,
+# d2: every cell here equals stubborn_h10's share_sop2 cell at the same alpha
+# and d2 except that every non-attacker daemon (honest, relays, bridge) also
+# carries sim-sop-rejudge-displaced. Second draw of an n=2 pair (first:
+# stubborn_h10_rejudge.yaml, seed 12345).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_rejudge_rep.yaml
+name: stubborn_h10_rejudge_rep
+seed: 54321
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48", weigh: sop}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    sop2_rejudge:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-rejudge-displaced: true}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true, sim-sop-rejudge-displaced: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true, sim-sop-rejudge-displaced: true}}
+  alpha:
+    a040: {attacker: {hashrate: 4},   honest: {hashrate: [3, 3]}}
+    a045: {attacker: {hashrate: 4.5}, honest: {hashrate: [2.75, 2.75]}}
+  depth:
+    d2: {attacker: {attributes: {give_up_depth: "2"}}}

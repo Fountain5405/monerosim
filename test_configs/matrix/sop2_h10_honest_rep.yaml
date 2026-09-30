@@ -1,0 +1,29 @@
+# SoP CORRECTED-BINARY HONEST CONTROLS (2026-09-30): fairness, orphan rate and
+# shares-per-block (~15 expected) on the corrected binary (MRL #146:
+# share-counted fallback weights, all published shares embedded in blocks,
+# main-chain lateness reference, whole-branch comparison). The attacker axis
+# is copied exactly from sop2_h10_ctl (upgraded: fully SoP-upgraded honest
+# miner; connected: P2P-connected but unflagged); the countermeasure axis adds
+# a `stock` cell (no SoP anywhere) alongside sop2_h10_ctl's own `sop2` overlay.
+# upgraded x stock is excluded: "upgraded" IS the sop2 upgrade, so it has no
+# stock pairing. Cells: upgraded_sop2 (all-SoP honest network), connected_sop2
+# (one miner that does not share), connected_stock. Second draw of an n=2 pair
+# (first: sop2_h10_honest.yaml, seed 12345).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop2_h10_honest_rep.yaml
+name: sop2_h10_honest_rep
+seed: 54321
+base: test_configs/selfish_micro_sop.yaml
+parallel: 3
+axes:
+  attacker:
+    upgraded:  {attacker: {attributes: {strategy: honest}, daemon_options: {offline: false, sim-share-or-perish: true, sim-sop-w: 16}}}
+    connected: {attacker: {attributes: {strategy: honest}, daemon_options: {offline: false}}}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim}
+    stock: {}
+exclude:
+  - {attacker: upgraded, countermeasure: stock}

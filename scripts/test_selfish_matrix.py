@@ -549,19 +549,25 @@ def test_reject_specs_differ_from_their_predecessors_only_in_reject_aware():
 
 
 def test_stubborn_specs_pin_arms_alphas_and_the_depth_sweep():
-    """Stubborn-attacker campaign (2026-09-30): 12 main cells (arm x
-    countermeasure x alpha at d2) plus the d1/d3 sweep on share x a040. Every
-    cell keeps the 10 h/s total so it grafts h10. The share arm flags the
-    attacker's offline daemon and reads its share counts; the block arm does
-    neither. The SoP overlay equals campaign 6's."""
+    """Stubborn-attacker campaign, corrected-binary run (2026-09-30): 12 cells
+    (5 share_sop2, 2 block_sop2, 5 block_stock -- share is excluded against
+    stock; block_sop2 is excluded at a030 and at d1/d3). Every cell keeps the
+    10 h/s total so it grafts h10. The share arm flags the attacker's offline
+    daemon and reads its own embedded share counts; the block arm does
+    neither. weigh is `sop` on both arms except the stock countermeasure,
+    which forces `weigh: difficulty, window_objects: "0"` (stock has no SoP
+    concept of a window). The SoP overlay equals campaign 6's."""
     _, c6 = _plan_and_build("pop_sop2_h10_reject")
     c6_sop, c6_stock = c6["es_sop2"], c6["es_stock"]
     alphas = {"a030": (3, [3.5, 3.5]), "a040": (4, [3, 3]), "a045": (4.5, [2.75, 2.75])}
     for name, seed in (("stubborn_h10", 12345), ("stubborn_h10_rep", 54321)):
         _, cfgs = _plan_and_build(name)
-        expected = {f"{arm}_{cm}_{al}_d2" for arm in ("share", "block")
-                    for cm in ("sop2", "stock") for al in alphas}
-        expected |= {f"share_{cm}_a040_{d}" for cm in ("sop2", "stock") for d in ("d1", "d3")}
+        expected = ({f"share_sop2_{al}_d2" for al in alphas}
+                    | {f"share_sop2_a040_{d}" for d in ("d1", "d3")}
+                    | {f"block_sop2_{al}_d2" for al in ("a040", "a045")}
+                    | {f"block_stock_{al}_d2" for al in alphas}
+                    | {f"block_stock_a040_{d}" for d in ("d1", "d3")})
+        assert len(expected) == 12
         assert set(cfgs) == expected, sorted(cfgs)
         for cell, cfg in cfgs.items():
             arm, cm, al, d = cell.split("_")
@@ -571,17 +577,125 @@ def test_stubborn_specs_pin_arms_alphas_and_the_depth_sweep():
             honest = [cfg["agents"][h]["hashrate"] for h in ("honest-001", "honest-002")]
             assert (att["hashrate"], honest) == alphas[al]
             assert att["hashrate"] + sum(honest) == 10
+            assert cfg["agents"]["honest-001"]["hashrate"] == cfg["agents"]["honest-002"]["hashrate"]
             at = att["attributes"]
             assert at["strategy"] == "window_stubborn" and at["reject_aware"] == "true"
-            assert at["window_objects"] == "48" and at["give_up_depth"] == d[1:]
-            if arm == "share":
+            assert at["give_up_depth"] == d[1:]
+            if cell.startswith("share_sop2"):
                 assert at["embedded_shares"] == "true"
+                assert at["weigh"] == "sop" and at["window_objects"] == "48"
                 assert att["daemon_options"] == {"offline": True, "sim-share-or-perish": True, "sim-sop-w": 16}
-            else:
+            elif cell.startswith("block_sop2"):
                 assert "embedded_shares" not in at
+                assert at["weigh"] == "sop" and at["window_objects"] == "48"
+                assert att["daemon_options"] == {"offline": True}
+            else:
+                assert cell.startswith("block_stock")
+                assert "embedded_shares" not in at
+                assert at["weigh"] == "difficulty" and at["window_objects"] == "0"
                 assert att["daemon_options"] == {"offline": True}
             ref = c6_sop if cm == "sop2" else c6_stock
             for aid in ("relay-001", "relay-002", "attacker-bridge"):
                 assert cfg["agents"][aid] == ref["agents"][aid], (name, cell, aid)
             assert cfg["agents"]["honest-001"].get("daemon_options") == ref["agents"]["honest-001"].get("daemon_options")
             assert cfg["general"]["stop_time"] == ref["general"]["stop_time"]
+
+
+def test_stubborn_rejudge_specs_add_one_flag_to_the_share_sop2_cells():
+    """stubborn_h10_rejudge{,_rep} (2026-09-30): isolate monerod's native
+    one-block-at-a-time re-judging of displaced blocks. Every cell equals
+    stubborn_h10(_rep)'s share_sop2 cell at the same alpha and d2, once
+    sim-sop-rejudge-displaced is popped from every non-attacker daemon's
+    daemon_options -- and that flag is present on exactly those daemons."""
+    for name, base_name in (("stubborn_h10_rejudge", "stubborn_h10"),
+                            ("stubborn_h10_rejudge_rep", "stubborn_h10_rep")):
+        _, cfgs = _plan_and_build(name)
+        _, base = _plan_and_build(base_name)
+        assert sorted(cfgs) == ["share_sop2_rejudge_a040_d2", "share_sop2_rejudge_a045_d2"]
+        for cell, cfg in cfgs.items():
+            ref = base[cell.replace("sop2_rejudge", "sop2")]
+            must_have = ("honest-001", "honest-002", "relay-001", "relay-002", "attacker-bridge")
+            assert cfg["agents"]["attacker-miner"] == ref["agents"]["attacker-miner"]
+            for aid in cfg["agents"]:
+                if aid == "attacker-miner":
+                    continue
+                do = dict(cfg["agents"][aid].get("daemon_options") or {})
+                popped = do.pop("sim-sop-rejudge-displaced", None)
+                if aid in must_have:
+                    assert popped is True, (name, cell, aid)
+                assert do == (ref["agents"][aid].get("daemon_options") or {}), (name, cell, aid)
+
+
+def test_stubborn_long_specs_pin_alpha033_and_240h_otherwise_match_a040_d2():
+    """stubborn_h10_long{,_rep} (2026-09-30): the MRL #146 alpha = 0.33 claim
+    check ("about once per 10 days", "on average a 3-block reorg") at 240 h.
+    Each cell equals stubborn_h10(_rep)'s same-arm, same-countermeasure
+    a040_d2 cell once hashrate and stop_time are set aside."""
+    for name, base_name in (("stubborn_h10_long", "stubborn_h10"),
+                            ("stubborn_h10_long_rep", "stubborn_h10_rep")):
+        _, cfgs = _plan_and_build(name)
+        _, base = _plan_and_build(base_name)
+        assert sorted(cfgs) == ["block_stock_a033_d2", "share_sop2_a033_d2"]
+        for cell, cfg in cfgs.items():
+            assert cfg["general"]["stop_time"] == "240h"
+            assert cfg["agents"]["attacker-miner"]["hashrate"] == 3.3
+            assert [cfg["agents"][h]["hashrate"] for h in ("honest-001", "honest-002")] == [3.35, 3.35]
+            ref_cell = {"share_sop2_a033_d2": "share_sop2_a040_d2",
+                        "block_stock_a033_d2": "block_stock_a040_d2"}[cell]
+            ref = base[ref_cell]
+            a = dict(cfg["agents"]["attacker-miner"]); a.pop("hashrate")
+            r = dict(ref["agents"]["attacker-miner"]); r.pop("hashrate")
+            assert a == r
+            for aid in cfg["agents"]:
+                if aid not in ("attacker-miner",):
+                    c, b = dict(cfg["agents"][aid]), dict(ref["agents"][aid])
+                    c.pop("hashrate", None)
+                    b.pop("hashrate", None)
+                    assert c == b, (name, cell, aid)
+
+
+def test_pop_sop2_fixed_specs_match_reject_specs_cell_for_cell():
+    """pop_sop2_h10_fixed{,_rep} (2026-09-30): campaign 6's SoP cells re-run on
+    the corrected binary; configs identical to pop_sop2_h10_reject{,_rep},
+    only the binary differs. Seeds already agree (pop_sop2_h10_reject has no
+    explicit seed, so it takes the base config's 12345, same as this spec's
+    explicit seed; the _rep pair both pin 54321)."""
+    for name, ref_name in (("pop_sop2_h10_fixed", "pop_sop2_h10_reject"),
+                           ("pop_sop2_h10_fixed_rep", "pop_sop2_h10_reject_rep")):
+        _, cfgs = _plan_and_build(name)
+        _, ref = _plan_and_build(ref_name)
+        assert sorted(cfgs) == ["es_r2_sop2", "es_sop2"]
+        for cell, cfg in cfgs.items():
+            assert cfg == ref[cell], (name, cell)
+
+
+def test_sop2_honest_specs_pin_cells_and_match_ctl_sop2_cells():
+    """sop2_h10_honest{,_rep} (2026-09-30): honest controls on the corrected
+    binary. upgraded_sop2 and connected_sop2 equal sop2_h10_ctl{,_rep}'s same
+    cells; connected_stock carries no SoP flag anywhere."""
+    for name, ctl_name in (("sop2_h10_honest", "sop2_h10_ctl"),
+                           ("sop2_h10_honest_rep", "sop2_h10_ctl_rep")):
+        _, cfgs = _plan_and_build(name)
+        _, ctl = _plan_and_build(ctl_name)
+        assert sorted(cfgs) == ["connected_sop2", "connected_stock", "upgraded_sop2"]
+        assert cfgs["upgraded_sop2"] == ctl["upgraded_sop2"]
+        assert cfgs["connected_sop2"] == ctl["connected_sop2"]
+        cs = cfgs["connected_stock"]
+        for aid, agent in cs["agents"].items():
+            do = agent.get("daemon_options") or {}
+            assert not any("sop" in str(k).lower() for k in do), (name, aid, do)
+
+
+def test_stubborn_smoke_matches_stubborn_h10_cells_except_stop_time():
+    """stubborn_h10_smoke (2026-09-30): its two cells (share_sop2_a045_d2,
+    block_stock_a045_d2) equal stubborn_h10's same cells except stop_time."""
+    _, cfgs = _plan_and_build("stubborn_h10_smoke")
+    _, base = _plan_and_build("stubborn_h10")
+    assert sorted(cfgs) == ["block_stock_a045_d2", "share_sop2_a045_d2"]
+    for cell, cfg in cfgs.items():
+        assert cfg["general"]["stop_time"] == "2h"
+        ref = base[cell]
+        c, b = dict(cfg["general"]), dict(ref["general"])
+        c.pop("stop_time"); b.pop("stop_time")
+        assert c == b
+        assert cfg["agents"] == ref["agents"], cell

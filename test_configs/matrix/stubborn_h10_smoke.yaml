@@ -1,10 +1,14 @@
-# SMOKE for stubborn_h10 (2026-09-30): the share arm at alpha 0.45, d2, against SoP and
-# stock, 2 h. Checks, before the 32-cell launch:
-#   - the attacker's daemon embeds its own shares ("SIM-SoP: embedding N workshares");
-#   - honest SoP nodes count them (nf= in "SIM-SoP: fork" lines grows ~16 per attacker block),
-#     and a reveal past the window is judged OBJECTIVE;
-#   - window_stubborn's "reveal ... objects=" lines are >= 48 and match the honest nf;
-#   - stock (unflagged) nodes accept share-carrying attacker blocks.
+# SMOKE for stubborn_h10 (2026-09-30, corrected binary): the two arm x
+# countermeasure cells that are NOT excluded from stubborn_h10 at a045, d2 --
+# share_sop2 and block_stock -- 2 h. Checks, before the 24-cell launch:
+#   - SIM-SoP-DEC lines are present in every SoP daemon's log, and
+#     `venv/bin/python scripts/sop_oracle.py check <run dirs>` exits 0;
+#   - honest blocks embed remote shares ("SIM-SoP: embedding N workshares
+#     (X own, Y remote)"), N ~ 15;
+#   - window_stubborn's reveal lines carry weight= / honest_weight= (share_sop2:
+#     weighed by SoP; block_stock: weighed by plain difficulty);
+#   - no "Failed to push ex-main" on any SoP node;
+#   - the stock cell's attacker reveals by difficulty, not by share weight.
 #   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_smoke.yaml
 name: stubborn_h10_smoke
 seed: 12345
@@ -15,15 +19,22 @@ axes:
   arm:
     share:
       attacker:
-        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48"}
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48", weigh: sop}
         daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+    block:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", window_objects: "48", weigh: sop}
   countermeasure:
     sop2:
       honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
       relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
       bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
-    stock: {}
+    stock:
+      attacker: {attributes: {weigh: difficulty, window_objects: "0"}}
   alpha:
     a045: {attacker: {hashrate: 4.5}, honest: {hashrate: [2.75, 2.75]}}
   depth:
     d2: {attacker: {attributes: {give_up_depth: "2"}}}
+exclude:
+  - {arm: share, countermeasure: stock}
+  - {arm: block, countermeasure: sop2}

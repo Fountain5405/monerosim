@@ -1,0 +1,36 @@
+# STUBBORN-ATTACKER CAMPAIGN, MRL #146 claim check (2026-09-30): alpha = 0.33,
+# d2, 240 h (10 days) long run, testing MRL #146's own claim about an alpha =
+# 0.33 window_stubborn attacker ("about once per 10 days", "on average a
+# 3-block reorg") directly. Same arms/countermeasures as stubborn_h10 (share
+# excluded against stock; block excluded against sop2), one alpha, one depth.
+# Second draw of an n=2 pair (first: stubborn_h10_long.yaml, seed 12345).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_long_rep.yaml
+name: stubborn_h10_long_rep
+seed: 54321
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 240h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48", weigh: sop}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+    block:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", window_objects: "48", weigh: sop}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+    stock:
+      attacker: {attributes: {weigh: difficulty, window_objects: "0"}}
+  alpha:
+    a033: {attacker: {hashrate: 3.3}, honest: {hashrate: [3.35, 3.35]}}
+  depth:
+    d2: {attacker: {attributes: {give_up_depth: "2"}}}
+exclude:
+  - {arm: share, countermeasure: stock}
+  - {arm: block, countermeasure: sop2}
