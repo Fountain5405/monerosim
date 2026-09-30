@@ -23,10 +23,12 @@ docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md (+ -phase2-
 `window_stubborn` attacks Share-or-Perish (SoP): SoP judges a fork subjectively
 (and rejects withheld/late blocks) only while the alt branch holds fewer than
 `window_objects` WORK OBJECTS (a block counts as 1 + its embedded valid
-shares); at or past the window honest nodes fall back to plain cumulative
-difficulty, which is a WEIGHT, not a block count -- each recent block weighs
-`unit * (1 + its valid embedded shares)`, `unit = max(1, difficulty // w)`
-(MRL #146). The attacker withholds while its branch is still inside the
+shares); at or past the window every lateness factor is 1 and honest nodes
+compare MRL #146's share-counted WEIGHT, not a block count or plain
+cumulative difficulty -- each recent block weighs
+`unit * (1 + its valid embedded shares)`, `unit = max(1, difficulty // w)`.
+`window_objects = 0` is "no window", for the stock cells (stock monerod has
+none): the attacker then reveals as soon as it is heavier. The attacker withholds while its branch is still inside the
 window or its weight does not exceed honest's, reveals once BOTH the window
 and the weight conditions hold, and gives up once honest leads by
 `give_up_depth` blocks. Past the window there is no "withhold while
@@ -71,8 +73,8 @@ class SelfishStrategy:
         if self.release_lead < 1:
             raise ValueError(f"release_lead must be >= 1, got {release_lead}")
         self.window_objects = int(window_objects)
-        if self.window_objects < 1:
-            raise ValueError(f"window_objects must be >= 1, got {window_objects}")
+        if self.window_objects < 0:     # 0 = no window (stock)
+            raise ValueError(f"window_objects must be >= 0, got {window_objects}")
         self.give_up_depth = int(give_up_depth)
         if self.give_up_depth < 1:
             raise ValueError(f"give_up_depth must be >= 1, got {give_up_depth}")

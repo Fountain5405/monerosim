@@ -103,10 +103,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.island_cash_lead = int(self.attributes.get("island_cash_lead", "2") or 2)
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
-        self.trail_depth = int(self.attributes.get("trail_depth", "1") or 1)  # trail_stubborn only
-        self.release_lead = int(self.attributes.get("release_lead", "1") or 1)  # cash-out threshold
-        self.window_objects = int(self.attributes.get("window_objects", "48") or 48)  # window_stubborn only
-        self.give_up_depth = int(self.attributes.get("give_up_depth", "2") or 2)      # window_stubborn only
+        kw = self.strategy_kwargs(self.attributes)
+        self.trail_depth = kw["trail_depth"]
+        self.release_lead = kw["release_lead"]
+        self.window_objects = kw["window_objects"]
+        self.give_up_depth = kw["give_up_depth"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
@@ -142,6 +143,20 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
     def _reaction_interval_s(self) -> float:
         return max(self.reaction_delay_ms, 1) / 1000.0
+
+    @staticmethod
+    def strategy_kwargs(attributes) -> dict:
+        """SelfishStrategy's keyword arguments, parsed from the agent's
+        attributes. The agent builds its strategy on its first tick, so a
+        value the strategy rejects would raise on every tick of a run.
+        scripts/test_selfish_matrix.py builds every matrix cell's strategy
+        from these, so such a value fails pytest instead."""
+        return {
+            "trail_depth": int(attributes.get("trail_depth", "1") or 1),            # trail_stubborn only
+            "release_lead": int(attributes.get("release_lead", "1") or 1),          # cash-out threshold
+            "window_objects": int(attributes.get("window_objects", "48") or 48),    # window_stubborn only; "0" = no window
+            "give_up_depth": int(attributes.get("give_up_depth", "2") or 2),        # window_stubborn only
+        }
 
     def _ensure_strategy(self, start_height: int) -> None:
         if self.strategy is None:

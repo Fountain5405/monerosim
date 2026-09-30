@@ -699,3 +699,30 @@ def test_stubborn_smoke_matches_stubborn_h10_cells_except_stop_time():
         c.pop("stop_time"); b.pop("stop_time")
         assert c == b
         assert cfg["agents"] == ref["agents"], cell
+
+
+def test_every_matrix_cell_builds_its_attackers_strategy():
+    """Every selfish-miner agent in every matrix cell gets a strategy that
+    SelfishStrategy accepts, through the agent's own attribute parsing. The
+    agent builds its strategy on its first tick. A rejected value
+    (window_objects "0" in the stubborn smoke's stock cell, 2026-09-30) raised
+    on every tick of the run, and the attacker never published."""
+    from agents.selfish_miner import SelfishMinerAgent
+    from agents.selfish_strategy import SelfishStrategy
+    specs = sorted((REPO / "test_configs" / "matrix").glob("*.yaml"))
+    built, bad = 0, []
+    for path in specs:
+        _, cfgs = _plan_and_build(path.stem)
+        for cell, cfg in cfgs.items():
+            for aid, agent in cfg["agents"].items():
+                if not str(agent.get("script", "")).endswith("selfish_miner"):
+                    continue
+                at = agent.get("attributes") or {}
+                try:
+                    SelfishStrategy(at.get("strategy", "honest"), 0,
+                                    **SelfishMinerAgent.strategy_kwargs(at))
+                    built += 1
+                except ValueError as e:
+                    bad.append(f"{path.stem}/{cell}/{aid}: {e}")
+    assert not bad, bad
+    assert built > 0

@@ -217,11 +217,27 @@ def test_window_stubborn_rejects_bad_give_up_depth():
 
 def test_window_stubborn_rejects_bad_window_objects():
     try:
-        SelfishStrategy("window_stubborn", start_height=0, window_objects=0)
+        SelfishStrategy("window_stubborn", start_height=0, window_objects=-1)
     except ValueError:
         pass
     else:
-        raise AssertionError("window_objects=0 must raise")
+        raise AssertionError("window_objects=-1 must raise")
+
+
+def test_window_stubborn_window_zero_reveals_on_weight_alone():
+    """window_objects=0 is the stock cells' "no window": stock has no SoP
+    window, so the attacker reveals as soon as it is heavier. Before
+    2026-09-30 the strategy rejected 0 on every tick and the stock smoke
+    attacker never published."""
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=0)
+    s.update(0, 1)
+    d = s.update(1, 2, branch_weights=lambda fork, priv, pub: (1, 11, 10))
+    assert d.release_to == 1 and d.release_from == 0 and d.adopt_public is False
+    assert s.fork == 2
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=0)
+    s.update(0, 1)
+    d = s.update(1, 2, branch_weights=lambda fork, priv, pub: (1, 10, 10))  # weight tied
+    assert d.release_to is None and d.adopt_public is False and d.forward_to == 0
 
 
 def test_window_stubborn_a_zero_h_positive_adopts():
