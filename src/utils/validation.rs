@@ -166,7 +166,7 @@ pub fn validate_mining_config(
 ) -> Result<(), String> {
     use crate::config::MiningMode;
     let native = mode == MiningMode::Native;
-    let mut total_hashrate = 0u64;
+    let mut total_hashrate = 0.0_f64;
     let mut mining_agent_count = 0;
 
     for (agent_id, agent) in agents.iter() {
@@ -191,26 +191,40 @@ pub fn validate_mining_config(
         })?;
 
         if native {
-            if hashrate == 0 {
+            if !(hashrate.is_finite() && hashrate > 0.0) {
                 return Err(format!(
-                    "Mining agent '{}': hashrate must be >= 1 hash/second in native mode",
-                    agent_id
+                    "Mining agent '{}': hashrate must be > 0 hashes/second in native mode (got {})",
+                    agent_id, hashrate
                 ));
             }
-            if hashrate > 1000 {
+            if hashrate > 1000.0 {
                 return Err(format!(
                     "Mining agent '{}': hashrate {} h/s exceeds 1000 in native mode (--sim-hash-interval-ms cannot go below 1 ms)",
                     agent_id, hashrate
                 ));
             }
-        } else if hashrate == 0 || hashrate > 100 {
+            let err = crate::utils::mining::delivered_hashrate_error(hashrate);
+            if err > crate::utils::mining::MAX_DELIVERED_HASHRATE_ERROR {
+                return Err(format!(
+                    "Mining agent '{}': hashrate {} h/s needs a {} ms hash interval, which mines \
+                     {:.1} h/s ({:+.1} %; limit {:.0} %). Pick a rate whose 1000/H is close to a \
+                     whole number of milliseconds",
+                    agent_id,
+                    hashrate,
+                    crate::utils::mining::hash_interval_ms(hashrate),
+                    crate::utils::mining::delivered_hashrate(hashrate),
+                    100.0 * (crate::utils::mining::delivered_hashrate(hashrate) - hashrate) / hashrate,
+                    100.0 * crate::utils::mining::MAX_DELIVERED_HASHRATE_ERROR
+                ));
+            }
+        } else if !(1.0..=100.0).contains(&hashrate) {
             return Err(format!(
                 "Mining agent '{}': hashrate {}% out of valid range (must be 1-100)",
                 agent_id, hashrate
             ));
         }
 
-        total_hashrate += hashrate as u64;
+        total_hashrate += hashrate;
     }
 
     if native && mining_agent_count == 0 {
@@ -219,7 +233,7 @@ pub fn validate_mining_config(
             .to_string());
     }
 
-    if !native && mining_agent_count > 0 && total_hashrate != 100 {
+    if !native && mining_agent_count > 0 && (total_hashrate - 100.0).abs() > 1e-6 {
         log::warn!(
             "Total mining hashrate is {}% (expected 100%). Found {} mining agent(s).",
             total_hashrate,
@@ -558,7 +572,7 @@ mod tests {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
             script: Some("agents.autonomous_miner".to_string()),
-            hashrate: Some(100),
+            hashrate: Some(100.0),
             ..base_agent()
         };
 
@@ -572,7 +586,7 @@ mod tests {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: None,
             script: Some("agents.autonomous_miner".to_string()),
-            hashrate: Some(50),
+            hashrate: Some(50.0),
             ..base_agent()
         };
 
@@ -604,7 +618,7 @@ mod tests {
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
-            hashrate: Some(0),
+            hashrate: Some(0.0),
             ..base_agent()
         };
 
@@ -619,7 +633,7 @@ mod tests {
         let agent = AgentConfig {
             daemon: Some(DaemonConfig::Local("monerod".to_string())),
             wallet: Some("monero-wallet-rpc".to_string()),
-            hashrate: Some(150),
+            hashrate: Some(150.0),
             ..base_agent()
         };
 
@@ -731,7 +745,7 @@ mod tests {
                 strategy: None,
             }),
             wallet: Some("monero-wallet-rpc".to_string()),
-            hashrate: Some(100),
+            hashrate: Some(100.0),
             ..base_agent()
         };
 
@@ -803,7 +817,7 @@ mod tests {
             .contains("wallet without local daemon requires remote daemon configuration"));
     }
 
-    fn miner(hashrate: u32) -> AgentConfig {
+    fn miner(hashrate: f64) -> AgentConfig {
         let mut a = base_agent();
         a.hashrate = Some(hashrate);
         a.wallet = Some("monero-wallet-rpc".to_string());
@@ -814,25 +828,52 @@ mod tests {
     #[test]
     fn generateblocks_mode_keeps_percentage_range() {
         use crate::config::MiningMode;
-        assert!(validate_mining_config(&single_agent("m", miner(150)), MiningMode::Generateblocks).is_err());
-        assert!(validate_mining_config(&single_agent("m", miner(100)), MiningMode::Generateblocks).is_ok());
+        assert!(validate_mining_config(&single_agent("m", miner(150.0)), MiningMode::Generateblocks).is_err());
+        assert!(validate_mining_config(&single_agent("m", miner(100.0)), MiningMode::Generateblocks).is_ok());
     }
 
     #[test]
     fn native_mode_accepts_literal_hashrates_above_100() {
         use crate::config::MiningMode;
-        assert!(validate_mining_config(&single_agent("m", miner(150)), MiningMode::Native).is_ok());
-        assert!(validate_mining_config(&single_agent("m", miner(0)), MiningMode::Native).is_err());
+        assert!(validate_mining_config(&single_agent("m", miner(200.0)), MiningMode::Native).is_ok());
+        assert!(validate_mining_config(&single_agent("m", miner(0.0)), MiningMode::Native).is_err());
     }
 
     #[test]
     fn native_mode_hashrate_upper_bound() {
         use crate::config::MiningMode;
-        assert!(validate_mining_config(&single_agent("m", miner(1000)), MiningMode::Native).is_ok());
-        let err = validate_mining_config(&single_agent("m", miner(1001)), MiningMode::Native).unwrap_err();
+        assert!(validate_mining_config(&single_agent("m", miner(1000.0)), MiningMode::Native).is_ok());
+        let err = validate_mining_config(&single_agent("m", miner(1001.0)), MiningMode::Native).unwrap_err();
         assert!(err.contains("exceeds 1000"), "{err}");
         // Still rejected in generateblocks mode by the existing 1-100 rule.
-        assert!(validate_mining_config(&single_agent("m", miner(1001)), MiningMode::Generateblocks).is_err());
+        assert!(validate_mining_config(&single_agent("m", miner(1001.0)), MiningMode::Generateblocks).is_err());
+    }
+
+    #[test]
+    fn native_mode_accepts_fractional_hashrates() {
+        use crate::config::MiningMode;
+        for h in [4.5, 2.75, 3.5, 0.5] {
+            assert!(validate_mining_config(&single_agent("m", miner(h)), MiningMode::Native).is_ok(), "{h}");
+        }
+        assert!(validate_mining_config(&single_agent("m", miner(-1.0)), MiningMode::Native).is_err());
+        assert!(validate_mining_config(&single_agent("m", miner(f64::NAN)), MiningMode::Native).is_err());
+    }
+
+    #[test]
+    fn native_mode_rejects_hashrates_the_ms_interval_cannot_deliver() {
+        // 150 h/s -> 7 ms sleeps -> 142.9 h/s actually mined (-4.8 %).
+        use crate::config::MiningMode;
+        let err = validate_mining_config(&single_agent("m", miner(150.0)), MiningMode::Native).unwrap_err();
+        assert!(err.contains("142.9"), "{err}");
+        let err = validate_mining_config(&single_agent("m", miner(700.0)), MiningMode::Native).unwrap_err();
+        assert!(err.contains("1000.0"), "{err}");
+    }
+
+    #[test]
+    fn generateblocks_mode_accepts_fractional_percentages() {
+        use crate::config::MiningMode;
+        assert!(validate_mining_config(&single_agent("m", miner(33.5)), MiningMode::Generateblocks).is_ok());
+        assert!(validate_mining_config(&single_agent("m", miner(0.5)), MiningMode::Generateblocks).is_err());
     }
 
     #[test]

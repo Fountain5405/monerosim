@@ -53,6 +53,15 @@ RPC_TIMEOUT_S = 30
 DAEMON_STOP_TIMEOUT_S = 30
 
 
+def normalize_hashrate(hashrate: float) -> Any:
+    """Write ints for integral hashrates (10.0 -> 10) so existing-style
+    manifests stay byte-identical; fractional hashrates (10.5) pass through
+    as floats."""
+    if float(hashrate).is_integer():
+        return int(hashrate)
+    return hashrate
+
+
 class ChainSnapshotError(Exception):
     """Raised for any export/build-template/verify failure."""
 
@@ -327,7 +336,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         "median_block_interval_s": stats["median_block_interval_s"],
         "convergence_height": stats["convergence_height"],
         "d_next_at_tip": d_next,
-        "total_hashrate": args.total_hashrate,
+        "total_hashrate": normalize_hashrate(args.total_hashrate),
         "monero_pin": _read_monero_pin(),
         "hf_schedule": args.hf_schedule,
         "network_id": NETWORK_ID,
@@ -547,7 +556,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_export = sub.add_parser("export", help="dump a generator run's chain into a preset")
     p_export.add_argument("--data-dir", required=True, help="a generator run's monerod data dir (read-only)")
     p_export.add_argument("--out", required=True, help="output preset directory (e.g. chain_snapshots/h50/)")
-    p_export.add_argument("--total-hashrate", type=int, required=True, help="sum of generator miners' h/s")
+    p_export.add_argument("--total-hashrate", type=float, required=True, help="sum of generator miners' h/s")
     p_export.add_argument("--d0", type=int, required=True, dest="d0", help="the generator's target equilibrium difficulty")
     p_export.add_argument("--generated-by", required=True, help="run id or label recorded in the manifest")
     p_export.add_argument("--hf-schedule", default=None, help="the --fakechain-hard-forks string used, if any")

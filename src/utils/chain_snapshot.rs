@@ -24,7 +24,7 @@ pub struct SnapshotManifest {
     pub height: u64,
     #[serde(rename = "D0")]
     pub d0: u64,
-    pub total_hashrate: u64,
+    pub total_hashrate: f64,
     pub monero_pin: String,
     #[serde(default)]
     pub hf_schedule: Option<String>,
@@ -70,7 +70,7 @@ pub enum ChainSnapshotSelection {
 pub fn resolve_chain_snapshot(
     value: &str,
     repo_root: &Path,
-    total_hashrate: u64,
+    total_hashrate: f64,
     native: bool,
 ) -> Result<ChainSnapshotSelection, String> {
     if value == "off" {
@@ -93,7 +93,7 @@ pub fn resolve_chain_snapshot(
 
 fn resolve_auto(
     repo_root: &Path,
-    total_hashrate: u64,
+    total_hashrate: f64,
 ) -> Result<ChainSnapshotSelection, String> {
     let monero_pin = read_monero_pin(repo_root)?;
     let base = repo_root.join("chain_snapshots");
@@ -109,7 +109,10 @@ fn resolve_auto(
                 Ok(m) => m,
                 Err(_) => continue, // not a preset (or unreadable): skip silently
             };
-            if manifest.total_hashrate == total_hashrate && manifest.monero_pin == monero_pin {
+            // Fractional per-miner rates sum in floating point (3 + 3.5 + 3.5).
+            if (manifest.total_hashrate - total_hashrate).abs() < 1e-6
+                && manifest.monero_pin == monero_pin
+            {
                 matches.push(preset_dir);
             }
         }
@@ -352,10 +355,31 @@ mod tests {
     }
 
     #[test]
+    fn auto_matches_a_fractional_total_to_an_integer_preset() {
+        // 3 + 3.5 + 3.5 h/s must pick the h10 preset.
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
+        write_manifest(&tmp.path().join("chain_snapshots/h10"), &[("total_hashrate", serde_json::json!(10))]);
+        let total: f64 = [3.0, 3.5, 3.5].iter().sum();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), total, true).unwrap();
+        assert_eq!(sel, ChainSnapshotSelection::Preset(tmp.path().join("chain_snapshots/h10")));
+        // 10.5 h/s matches nothing.
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 10.5, true).unwrap();
+        assert_eq!(sel, ChainSnapshotSelection::Off);
+    }
+
+    #[test]
+    fn manifest_accepts_a_fractional_total_hashrate() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_manifest(tmp.path(), &[("total_hashrate", serde_json::json!(12.5))]);
+        assert_eq!(load_manifest(&tmp.path().join("manifest.json")).unwrap().total_hashrate, 12.5);
+    }
+
+    #[test]
     fn resolve_off_is_off() {
         let tmp = tempfile::tempdir().unwrap();
         assert_eq!(
-            resolve_chain_snapshot("off", tmp.path(), 50, true).unwrap(),
+            resolve_chain_snapshot("off", tmp.path(), 50.0, true).unwrap(),
             ChainSnapshotSelection::Off
         );
     }
@@ -363,14 +387,14 @@ mod tests {
     #[test]
     fn resolve_path_used_as_is() {
         let tmp = tempfile::tempdir().unwrap();
-        let sel = resolve_chain_snapshot("some/dir/h50", tmp.path(), 50, true).unwrap();
+        let sel = resolve_chain_snapshot("some/dir/h50", tmp.path(), 50.0, true).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Preset(PathBuf::from("some/dir/h50")));
     }
 
     #[test]
     fn resolve_bare_name_under_chain_snapshots() {
         let tmp = tempfile::tempdir().unwrap();
-        let sel = resolve_chain_snapshot("h50", tmp.path(), 50, true).unwrap();
+        let sel = resolve_chain_snapshot("h50", tmp.path(), 50.0, true).unwrap();
         assert_eq!(
             sel,
             ChainSnapshotSelection::Preset(tmp.path().join("chain_snapshots").join("h50"))
@@ -384,7 +408,7 @@ mod tests {
         // erroring — the run starts from genesis as it always used to.
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
-        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50.0, true).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Off);
     }
 
@@ -393,7 +417,7 @@ mod tests {
         // Non-native mode: auto is a silent no-op, even without a
         // monero.pin file to read (resolve_auto is never reached).
         let tmp = tempfile::tempdir().unwrap();
-        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, false).unwrap();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50.0, false).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Off);
     }
 
@@ -403,7 +427,7 @@ mod tests {
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
         let preset = tmp.path().join("chain_snapshots").join("h50");
         write_manifest(&preset, &[]);
-        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50.0, true).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Preset(preset));
     }
 
@@ -413,7 +437,7 @@ mod tests {
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
         let preset = tmp.path().join("chain_snapshots").join("h50");
         write_manifest(&preset, &[("monero_pin", serde_json::json!("v0.18.0.0"))]);
-        let sel = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap();
+        let sel = resolve_chain_snapshot("auto", tmp.path(), 50.0, true).unwrap();
         assert_eq!(sel, ChainSnapshotSelection::Off);
     }
 
@@ -423,7 +447,7 @@ mod tests {
         fs::write(tmp.path().join("monero.pin"), "v0.18.5.1\n").unwrap();
         write_manifest(&tmp.path().join("chain_snapshots").join("h50"), &[]);
         write_manifest(&tmp.path().join("chain_snapshots").join("h50b"), &[]);
-        let err = resolve_chain_snapshot("auto", tmp.path(), 50, true).unwrap_err();
+        let err = resolve_chain_snapshot("auto", tmp.path(), 50.0, true).unwrap_err();
         assert!(err.contains("found 2 matching presets"), "{err}");
     }
 
@@ -434,7 +458,7 @@ mod tests {
         // (the actual existence/schema check) hard-errors when it's
         // missing. See preflight_missing_manifest below.
         let tmp = tempfile::tempdir().unwrap();
-        let sel = resolve_chain_snapshot("nonexistent-preset", tmp.path(), 50, true).unwrap();
+        let sel = resolve_chain_snapshot("nonexistent-preset", tmp.path(), 50.0, true).unwrap();
         let preset_dir = match sel {
             ChainSnapshotSelection::Preset(p) => p,
             other => panic!("expected Preset, got {other:?}"),

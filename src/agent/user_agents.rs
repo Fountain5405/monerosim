@@ -662,9 +662,9 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     };
     let native_mining = mining.is_native();
     let mut sim_capability_cache: HashMap<String, bool> = HashMap::new();
-    let total_hashrate: u64 = user_agents
+    let total_hashrate: f64 = user_agents
         .iter()
-        .filter_map(|(_, cfg)| cfg.hashrate.map(|h| h as u64))
+        .filter_map(|(_, cfg)| cfg.hashrate)
         .sum();
     if native_mining {
         log::info!(
@@ -936,7 +936,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             ));
         }
         if native_mining && is_miner {
-            let hs = user_agent_config.hashrate.unwrap_or(1);
+            let hs = user_agent_config.hashrate.unwrap_or(1.0);
             merged_daemon_options.insert(
                 SIM_HASH_INTERVAL_KNOB.to_string(),
                 OptionValue::Number(hash_interval_ms(hs) as i64),

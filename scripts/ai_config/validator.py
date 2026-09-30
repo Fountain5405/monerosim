@@ -92,7 +92,7 @@ class AgentInfo:
     wallet: Optional[str] = None
     script: Optional[str] = None
     start_time_s: int = 0
-    hashrate: Optional[int] = None
+    hashrate: Optional[float] = None
     transaction_interval: Optional[int] = None
     activity_start_time_s: Optional[int] = None
 
@@ -161,8 +161,8 @@ class ValidationReport:
     has_monitor: bool = False
 
     # Miner stats
-    total_hashrate: int = 0
-    hashrate_distribution: Dict[str, int] = field(default_factory=dict)
+    total_hashrate: float = 0
+    hashrate_distribution: Dict[str, float] = field(default_factory=dict)
 
     # User stats
     user_start_time_range: Tuple[int, int] = (0, 0)
@@ -413,7 +413,7 @@ class ConfigValidator:
 
         # Sum-to-100 only makes sense in generateblocks mode; native mode
         # hashrates are literal hashes/second and are checked separately.
-        if (report.total_hashrate != 100 and report.miner_count > 0
+        if (abs(report.total_hashrate - 100) > 1e-6 and report.miner_count > 0
                 and not report.has_native_mining):
             report.warnings.append(f"Total hashrate is {report.total_hashrate}, not 100")
 
@@ -512,10 +512,20 @@ class ConfigValidator:
                     "(an agent with a hashrate field)")
             for aid in miner_ids:
                 hr = agent_info_by_id[aid].hashrate
-                if hr is not None and not (1 <= hr <= 1000):
+                if hr is not None and not (0 < hr <= 1000):
                     native_errors.append(
-                        f"Agent '{aid}': hashrate {hr} h/s is out of range 1..=1000 "
+                        f"Agent '{aid}': hashrate {hr} h/s is out of range (0, 1000] "
                         "for native mode (--sim-hash-interval-ms cannot go below 1 ms)")
+                elif hr is not None:
+                    # Mirrors src/utils/mining.rs: the interval is whole ms,
+                    # so the delivered rate is 1000 / round(1000 / H).
+                    ms = max(1, round(1000 / hr))
+                    delivered = 1000 / ms
+                    if abs(delivered - hr) / hr > 0.02:
+                        native_errors.append(
+                            f"Agent '{aid}': hashrate {hr} h/s needs a {ms} ms hash "
+                            f"interval, which mines {delivered:.1f} h/s "
+                            f"({100 * (delivered - hr) / hr:+.1f} %; limit 2 %)")
                 # Matches daemon_N and any of its four suffix variants
                 # (_start/_stop/_args/_env) — src/config/agent_config.rs's
                 # parse_typed_phases() creates a phase entry from any one of

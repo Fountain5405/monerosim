@@ -11,7 +11,7 @@ from typing import Any, Dict
 from .timeline import format_time_offset
 
 
-def generate_miner_agent(hashrate: int, start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
+def generate_miner_agent(hashrate: float, start_offset_s: int, daemon_binary: str = "monerod") -> Dict[str, Any]:
     """Generate a miner agent configuration (new format)."""
     return OrderedDict([
         ("daemon", daemon_binary),
@@ -24,7 +24,7 @@ def generate_miner_agent(hashrate: int, start_offset_s: int, daemon_binary: str 
 
 
 def generate_miner_agent_phased(
-    hashrate: int,
+    hashrate: float,
     start_offset_s: int,
     daemon_v1: str,
     daemon_v2: str,

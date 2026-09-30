@@ -555,9 +555,9 @@ fn build_miner_registry(
                         .attributes
                         .as_ref()
                         .and_then(|attrs| attrs.get("hashrate"))
-                        .and_then(|h| h.parse::<u32>().ok())
+                        .and_then(|h| h.parse::<f64>().ok())
                 })
-                .unwrap_or(10); // Default to 10 for better distribution
+                .unwrap_or(10.0); // Default to 10 for better distribution
 
             let miner_info = MinerInfo {
                 agent_id: agent_id.clone(),
@@ -576,12 +576,12 @@ fn build_miner_registry(
         );
     } else {
         // Calculate total weight to ensure it's positive
-        let total_weight: u32 = miner_registry.miners.iter().map(|m| m.weight).sum();
-        if total_weight == 0 {
+        let total_weight: f64 = miner_registry.miners.iter().map(|m| m.weight).sum();
+        if total_weight == 0.0 {
             println!("Warning: Total mining hashrate weight is zero. Setting default weights of 10 for each miner.");
             // Set default weights if total is zero
             for miner in miner_registry.miners.iter_mut() {
-                miner.weight = 10;
+                miner.weight = 10.0;
             }
         } else {
             println!(

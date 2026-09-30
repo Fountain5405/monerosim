@@ -84,6 +84,27 @@ def test_validator_accepts_boundary_hashrates_in_native_mode():
     assert report.is_valid, report.errors
 
 
+def test_validator_accepts_fractional_hashrates_in_native_mode():
+    config = _config(
+        _base_general({"mode": "native"}),
+        {"miner-001": _miner(hashrate=4.5), "miner-002": _miner(hashrate=2.75),
+         "miner-003": _miner(hashrate=0.5)},
+    )
+    report = ConfigValidator().validate(config)
+    assert report.is_valid, report.errors
+
+
+def test_validator_rejects_hashrates_the_ms_interval_cannot_deliver():
+    # Mirrors src/utils/validation.rs: 150 h/s sleeps 7 ms, mines 142.9 h/s.
+    config = _config(
+        _base_general({"mode": "native"}),
+        {"miner-001": _miner(hashrate=150)},
+    )
+    report = ConfigValidator().validate(config)
+    assert not report.is_valid
+    assert any("142.9" in e for e in report.errors), report.errors
+
+
 # --- Validator: zero miners in native mode ----------------------------------
 
 def test_validator_rejects_native_mode_with_zero_miners():

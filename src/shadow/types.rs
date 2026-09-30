@@ -25,7 +25,7 @@ pub struct MinerInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_address: Option<String>,
     /// Mining weight/hashrate percentage (should sum to 100 across all miners)
-    pub weight: u32,
+    pub weight: f64,
 }
 
 /// Registry of all miners in the simulation.

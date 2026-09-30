@@ -14,12 +14,14 @@ from scripts.chain_snapshot import (
     DEFAULT_BINARY,
     SHADOW_EPOCH,
     ChainSnapshotError,
+    build_parser,
     cmd_build_template,
     cmd_export,
     load_blocks,
     load_manifest,
     manifest_key,
     next_difficulty_at_tip,
+    normalize_hashrate,
     verify_manifest,
 )
 
@@ -47,6 +49,28 @@ def _manifest(**overrides):
 # --------------------------------------------------------------------------
 # manifest key derivation
 # --------------------------------------------------------------------------
+
+def test_normalize_hashrate_integral_float_becomes_int():
+    assert normalize_hashrate(10.0) == 10
+    assert isinstance(normalize_hashrate(10.0), int)
+
+
+def test_normalize_hashrate_fractional_stays_float():
+    assert normalize_hashrate(10.5) == 10.5
+    assert isinstance(normalize_hashrate(10.5), float)
+
+
+def test_export_arg_parser_accepts_fractional_hashrate():
+    args = build_parser().parse_args([
+        "export",
+        "--data-dir", "/tmp/data",
+        "--out", "/tmp/out",
+        "--total-hashrate", "10.5",
+        "--d0", "6000",
+        "--generated-by", "pytest",
+    ])
+    assert args.total_hashrate == 10.5
+
 
 def test_manifest_key_deterministic():
     m1 = _manifest()

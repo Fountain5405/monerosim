@@ -12,16 +12,31 @@ pub const SIM_RX_FULL_DATASET_KNOB: &str = "sim-rx-full-dataset";
 const DIFFICULTY_TARGET_SECS: u64 = 120;
 
 /// Sleep between hash attempts for a miner declaring `hashrate_hs` hashes per
-/// second: round(1000 / H), floored at 1 ms. Contract: `hashrate_hs` must be
-/// in `1..=1000` (enforced by `validate_mining_config` in native mode) —
-/// above 1000 this floor silently caps the miner at 1000 h/s while the
-/// logged `D_eq` still reports the larger declared value.
-pub fn hash_interval_ms(hashrate_hs: u32) -> u64 {
-    if hashrate_hs == 0 {
+/// second: round(1000 / H), floored at 1 ms. Fractional rates are fine
+/// (4.5 h/s -> 222 ms). Contract: `hashrate_hs` must be in `(0, 1000]` and
+/// within `MAX_DELIVERED_HASHRATE_ERROR` of what the whole-ms interval
+/// delivers (both enforced by `validate_mining_config` in native mode).
+pub fn hash_interval_ms(hashrate_hs: f64) -> u64 {
+    if !(hashrate_hs > 0.0) {
         return 1000;
     }
-    let ms = (1000.0_f64 / hashrate_hs as f64).round() as u64;
+    let ms = (1000.0_f64 / hashrate_hs).round() as u64;
     ms.max(1)
+}
+
+/// Largest relative gap `validate_mining_config` accepts between a declared
+/// native hashrate and the rate its whole-millisecond interval delivers.
+pub const MAX_DELIVERED_HASHRATE_ERROR: f64 = 0.02;
+
+/// Hash rate a miner actually runs at: 1000 / hash_interval_ms(H).
+pub fn delivered_hashrate(hashrate_hs: f64) -> f64 {
+    1000.0 / hash_interval_ms(hashrate_hs) as f64
+}
+
+/// |delivered - declared| / declared. The interval is whole milliseconds,
+/// so high rates drift: 150 h/s sleeps 7 ms and mines 142.9 h/s (-4.8 %).
+pub fn delivered_hashrate_error(hashrate_hs: f64) -> f64 {
+    (delivered_hashrate(hashrate_hs) - hashrate_hs).abs() / hashrate_hs
 }
 
 /// True if `script` is one of the native-mining agent scripts that need the
@@ -33,8 +48,8 @@ pub fn is_native_miner_script(script: &str) -> bool {
 
 /// Difficulty monerod's LWMA converges to when the network declares
 /// `total_hashrate_hs` hashes per second and the target is 120 s.
-pub fn equilibrium_difficulty(total_hashrate_hs: u64) -> u64 {
-    DIFFICULTY_TARGET_SECS * total_hashrate_hs
+pub fn equilibrium_difficulty(total_hashrate_hs: f64) -> u64 {
+    (DIFFICULTY_TARGET_SECS as f64 * total_hashrate_hs).round() as u64
 }
 
 /// True if any raw daemon arg sets --sim-hash-interval-ms OR
@@ -80,22 +95,43 @@ mod tests {
 
     #[test]
     fn interval_is_inverse_of_hashrate_rounded() {
-        assert_eq!(hash_interval_ms(1), 1000);
-        assert_eq!(hash_interval_ms(20), 50);
-        assert_eq!(hash_interval_ms(3), 333);
-        assert_eq!(hash_interval_ms(7), 143);
+        assert_eq!(hash_interval_ms(1.0), 1000);
+        assert_eq!(hash_interval_ms(20.0), 50);
+        assert_eq!(hash_interval_ms(3.0), 333);
+        assert_eq!(hash_interval_ms(7.0), 143);
+    }
+
+    #[test]
+    fn interval_takes_fractional_hashrates() {
+        assert_eq!(hash_interval_ms(4.5), 222);
+        assert_eq!(hash_interval_ms(2.75), 364);
+        assert_eq!(hash_interval_ms(3.5), 286);
+        assert_eq!(hash_interval_ms(0.5), 2000);
     }
 
     #[test]
     fn interval_never_below_one_ms() {
-        assert_eq!(hash_interval_ms(5000), 1);
-        assert_eq!(hash_interval_ms(u32::MAX), 1);
+        assert_eq!(hash_interval_ms(5000.0), 1);
+        assert_eq!(hash_interval_ms(f64::MAX), 1);
+    }
+
+    #[test]
+    fn delivered_hashrate_error_measures_millisecond_rounding() {
+        // 4.5 h/s -> 222 ms -> 4.5045 h/s: +0.1 %.
+        assert!(delivered_hashrate_error(4.5) < 0.002);
+        // 150 h/s -> 7 ms -> 142.9 h/s: -4.8 %.
+        let e = delivered_hashrate_error(150.0);
+        assert!((e - 0.0476).abs() < 0.001, "{e}");
+        // 700 h/s -> 1 ms -> 1000 h/s: +43 %.
+        assert!(delivered_hashrate_error(700.0) > 0.4);
+        assert_eq!(delivered_hashrate_error(20.0), 0.0);
     }
 
     #[test]
     fn equilibrium_is_120_times_total() {
-        assert_eq!(equilibrium_difficulty(100), 12_000);
-        assert_eq!(equilibrium_difficulty(0), 0);
+        assert_eq!(equilibrium_difficulty(100.0), 12_000);
+        assert_eq!(equilibrium_difficulty(0.0), 0);
+        assert_eq!(equilibrium_difficulty(10.5), 1_260);
     }
 
     #[test]

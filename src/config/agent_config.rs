@@ -120,7 +120,7 @@ pub struct AgentConfig {
     // === Miner-specific fields ===
     /// Hashrate for autonomous miners
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hashrate: Option<u32>,
+    pub hashrate: Option<f64>,
 
     // === User-specific fields ===
     /// Transaction interval in seconds for regular users
@@ -365,7 +365,7 @@ struct AgentConfigRaw {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_time: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hashrate: Option<u32>,
+    pub hashrate: Option<f64>,
     #[serde(default, deserialize_with = "deserialize_duration_option")]
     pub transaction_interval: Option<u32>,
     #[serde(default, deserialize_with = "deserialize_duration_option")]

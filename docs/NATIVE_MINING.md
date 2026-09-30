@@ -112,11 +112,18 @@ Native mining: 5 miner(s), total hashrate 100 h/s, equilibrium difficulty ~12000
 
 **Interval derivation** (`src/utils/mining.rs`, unit-tested): for a miner
 declaring `H` hashes/second, the sleep between hash attempts is
-`interval_ms = max(1, round(1000 / H))`, so `H ≥ 1` gives an interval
-≤ 1000 ms. `H` must be in `1..=1000`: the knob floors at 1 ms, so a larger
-declared hashrate would silently mine at 1000 h/s while the logged `D_eq`
-still reports the declared value; validation rejects `H > 1000` with an
-error naming the miner and the bound.
+`interval_ms = max(1, round(1000 / H))`. `H` may be fractional (since
+2026-09-30): 4.5 h/s sleeps 222 ms, 2.75 h/s sleeps 364 ms. Validation
+enforces two bounds, each with an error naming the miner:
+
+- `0 < H ≤ 1000`. The knob floors at 1 ms, so a larger declared hashrate
+  would silently mine at 1000 h/s while the logged `D_eq` still reports
+  the declared value.
+- The rate actually mined, `1000 / interval_ms`, must be within 2 % of
+  `H`. Because the interval is whole milliseconds, high rates drift:
+  150 h/s sleeps 7 ms and mines 142.9 h/s (−4.8 %), which is rejected.
+  Every committed config is inside the bound (the worst is 30 h/s at
+  +1.0 %).
 
 **Binary selection.** In native mode:
 
