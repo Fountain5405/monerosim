@@ -1,0 +1,96 @@
+# CHAIN-SNAPSHOT GENERATOR for the 20 h/s micro topology (preset "h20").
+# Added 2026-09-29 for the stubborn-attacker alpha sweep: native hashrates are
+# integers, and alpha in {0.30, 0.40, 0.45} needs a 20 h/s total (attacker
+# 6 / 8 / 9 h/s). Everything else mirrors preload_chain_h10.scenario.yaml,
+# including its 32 h length and the next-block-difficulty gate; that file's
+# header has the reasoning.
+#
+# CHAIN-SNAPSHOT GENERATOR for the selfish-mining micro topology
+# (docs/CHAIN_SNAPSHOT.md, preset "h20" = 5 x 4 h/s = 20 h/s).
+#
+# Sibling of test_configs/preload_chain.scenario.yaml (the "h50" generator,
+# sized for the 50 h/s mainnet replica). The selfish campaign base
+# (test_configs/selfish_micro_sop.yaml, consumed by test_configs/matrix/
+# pop_sop2.yaml) mines 3 + 3 h/s honest + 4 h/s attacker = 10 h/s, so its
+# equilibrium difficulty is D0 = 120 x 10 = 1,200. Grafting h50 there means
+# 600 s blocks (docs/20260926_dev_branch_handoff.md); this preset lands the
+# campaign at its own D0 so the first mined block is a ~120 s block and the
+# fixed-difficulty stopgap in the base can be dropped.
+#
+# stop_time is 32h (~960 blocks at 120 s/block; revised 2026-09-29). The
+# first version ran 12h (~336 blocks), which is below Monero's 600-block cut
+# threshold, so the DAA window at the tip was the WHOLE chain: genesis ramp
+# plus a ~2.4 h stretch where this generator delivered ~6.5 of its 10 h/s.
+# Its tail median looked fine (1173) but the block after the tip got 1083
+# (-9.8 %), and every consumer ran ~10 % fast
+# (docs/20260926_exact_uncles_and_sop_controls.md, block-time note). At 32h
+# the tip's window is 720 post-ramp blocks with the 60/60 outlier cut, so
+# D_next is ~D0 within the DAA's own ~4 % spread. `chain_snapshot.py export`
+# now computes D_next at the tip exactly and refuses anything > 5 % off D0;
+# on a refusal, rerun with another simulation_seed rather than loosening it.
+#
+# --sim-timestamp-offset (patches/monero-sim-mining.patch): shifts every
+# mined block's timestamp back by a constant so the tip lands ~10 minutes
+# BEFORE the shared Shadow epoch (2000-01-01 00:00 UTC = 946,684,800);
+# offset = stop_time + 10 min = 115,200 s + 600 s = 115,800 s. `verify` requires
+# the tip strictly before the epoch and at most 1,800 s earlier.
+#
+# ---- recipe (mirror of docs/CHAIN_SNAPSHOT_REGEN.md Sec 4, D0 = 2400) ----
+#   1. Expand:
+#        venv/bin/python scripts/scenario_parser.py \
+#            test_configs/preload_chain_h20.scenario.yaml \
+#            -o test_configs/preload_chain_h20.expanded.yaml --no-calibrate
+#   2. Run it DETACHED (multi-hour; never inside an agent tool call), keeping
+#      the daemon data dirs:
+#        setsid nohup ./run_sim.sh --config test_configs/preload_chain_h20.expanded.yaml \
+#            --name preload_h20 --no-monitor --no-clean --no-archive \
+#            > /tmp/preload_h20.launch.log 2>&1 &
+#   3. Export any one miner's chain (same seed, same D0 => they match):
+#        venv/bin/python scripts/chain_snapshot.py export \
+#            --data-dir "$DAEMON_DATA_BASE/monero-miner-001" \
+#            --out chain_snapshots/h20/ --total-hashrate 20 --d0 2400 \
+#            --generated-by <run id from step 2>
+#   4. Verify:
+#        venv/bin/python scripts/chain_snapshot.py verify --preset chain_snapshots/h20/
+#   5. Keep the generator's daemon logs (--no-archive leaves them only in the
+#      run tmp dir; without them a bad snapshot cannot be diagnosed):
+#        for m in 1 2 3 4 5; do mkdir -p archived_runs/<run id>/daemon_logs/monero-miner-00$m
+#          cp "$DAEMON_DATA_BASE/monero-miner-00$m/bitmonero.log" archived_runs/<run id>/daemon_logs/monero-miner-00$m/; done
+#   6. Commit chain_snapshots/h20/ (blocks.jsonl.gz + manifest.json). export
+#      exits 2 if the next-block difficulty at the tip is > 5 % off D0: rerun
+#      with another simulation_seed, do not commit.
+general:
+  stop_time: 32h
+  simulation_seed: 12345
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  # Auto-injected fallback seeds run vanilla `monerod`, which rejects the
+  # patch-only sim-timestamp-offset flag below; the 5 miners reach each other
+  # via static priority-node peering, so no seed discovery is needed.
+  fallback_seeds: "off"
+  mining:
+    mode: native            # real RandomX, sleep-throttled (docs/NATIVE_MINING.md)
+    # Quoted: scripts/scenario_parser.py round-trips through PyYAML, which
+    # resolves a bare `off` to boolean false; quoting keeps the string.
+    chain_snapshot: "off"   # this run GENERATES a preset; it must not consume one
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    sim-timestamp-offset: 115800   # stop_time (115200s) + 10 min; see header
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [4, 4, 4, 4, 4]   # h/s (native); D0 = 120 x 20 = 2,400
