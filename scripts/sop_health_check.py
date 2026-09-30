@@ -15,8 +15,17 @@ looked. This looks, per node:
                    for SoP (unit = diff/w) at least one share counted; for
                    PoP (unit 1) at least one uncle bonus counted
 
+and, per host, in the agents' own output (shadow.data/hosts/<host>/
+bash.*.stdout and .stderr; daemon and wallet output is not scanned):
+
+  agent_tracebacks 'Traceback (most recent call last)' lines. An agent can
+                   raise on every tick while every daemon stays healthy (the
+                   stubborn smoke's stock attacker, 2026-09-30, never
+                   published and its cell read "ok"). Lines, not exceptions:
+                   an agent logging through two handlers prints each twice.
+
 A run FAILS when any node has reorg_started != reorg_success or
-exceptions > 0. --require-forks also fails when no non-attacker node
+exceptions > 0, or any agent printed a traceback. --require-forks also fails when no non-attacker node
 accepted an alternative block (a fork-free control validates nothing);
 --require-share-weight fails when no subjective SoP decision carried a
 share-augmented weight (the share term is inert).
@@ -38,6 +47,7 @@ RE_DECISION = re.compile(
 RE_HEIGHT_DIFF = re.compile(r"HEIGHT (\d+), difficulty:\s*(\d+)")
 RE_ARMED = re.compile(r"weight table armed \(w=(\d+)")
 ATTACKER_NODE = re.compile(r"attacker|bridge", re.I)
+AGENT_TRACEBACK = b"Traceback (most recent call last)"
 
 
 def _suffix_units(diff_by_height: dict, last_diff: int | None, fork: int, length: int, w: int) -> int | None:
@@ -130,6 +140,19 @@ def scan_log_text(text: str, unit: int | None = None) -> dict:
     return n
 
 
+def scan_agent_logs(run_dir: Path) -> dict:
+    """Traceback lines per host in the agents' output (agents run under bash;
+    see the module docstring). Hosts without any are left out."""
+    counts: dict[str, int] = {}
+    hosts = Path(run_dir) / "shadow.data" / "hosts"
+    for f in sorted(hosts.glob("*/bash.*.stdout")) + sorted(hosts.glob("*/bash.*.stderr")):
+        with open(f, "rb") as fh:
+            c = sum(1 for line in fh if AGENT_TRACEBACK in line)
+        if c:
+            counts[f.parent.name] = counts.get(f.parent.name, 0) + c
+    return counts
+
+
 def check_run(run_dir: Path, unit: int | None = None) -> dict:
     """Scan every daemon log under <run_dir>/daemon_logs; return the report."""
     run_dir = Path(run_dir)
@@ -143,13 +166,18 @@ def check_run(run_dir: Path, unit: int | None = None) -> dict:
             problems.append(f"{name}: reorg {n['reorg_success']}/{n['reorg_started']} succeeded")
         if n["exceptions"]:
             problems.append(f"{name}: {n['exceptions']} add_new_block exceptions")
+    agent_tb = scan_agent_logs(run_dir)
+    for host, c in agent_tb.items():
+        problems.append(f"{host}: {c} agent traceback lines")
     forks_seen = sum(n["alt_added"] for name, n in nodes.items()
                      if not ATTACKER_NODE.search(name))
     share_weighted = sum(n["share_weighted"] for n in nodes.values())
     totals = {k: sum(n[k] for n in nodes.values()) for k in
               ("reorg_started", "reorg_success", "exceptions", "alt_added", "decisions",
                "sop_subjective", "share_weighted")}
+    totals["agent_tracebacks"] = sum(agent_tb.values())
     return {"run_dir": str(run_dir), "nodes": nodes, "totals": totals,
+            "agent_tracebacks": agent_tb,
             "forks_seen": forks_seen, "share_weighted": share_weighted,
             "problems": problems, "ok": not problems and bool(nodes)}
 
@@ -166,6 +194,8 @@ def summarize(report: dict | None) -> str:
         parts.append(f"REORG {t['reorg_success']}/{t['reorg_started']}")
     if t["exceptions"]:
         parts.append(f"EXC {t['exceptions']}")
+    if t.get("agent_tracebacks"):
+        parts.append(f"AGENT-TB {t['agent_tracebacks']}")
     if not report.get("forks_seen"):
         parts.append("no-forks")
     # SoP nodes made subjective decisions but none ever carried a counted

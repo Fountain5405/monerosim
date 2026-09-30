@@ -125,3 +125,27 @@ def test_summarize_flags_inert_share_term(tmp_path):
     assert "share-term-inert" in summarize(rep)
     healthy = _run(tmp_path / "h", {"honest-001": REAL_DAA})
     assert "share-term-inert" not in summarize(check_run(healthy))
+
+
+def test_check_run_flags_agent_tracebacks(tmp_path):
+    """An agent can raise on every tick while every daemon stays healthy: the
+    stubborn smoke's stock attacker (2026-09-30) printed 2750 traceback lines,
+    never published, and its cell still read "ok" / no-forks. The agents'
+    output (shadow.data/hosts/<host>/bash.*.stdout|stderr) is scanned too.
+    Lines are counted, since an agent logging through two handlers prints each
+    exception twice. Daemon and wallet output is not scanned."""
+    run = _run(tmp_path, {"honest-001": HEALTHY})
+    host = run / "shadow.data" / "hosts" / "attacker-miner"
+    host.mkdir(parents=True)
+    tb = 'Traceback (most recent call last):\n  File "x.py", line 1\nValueError: bad\n'
+    (host / "bash.1020.stdout").write_text("fine\n" + tb + tb)
+    (host / "bash.1020.stderr").write_text(tb)
+    (host / "monerod-sim.1000.stdout").write_text(tb)
+    rep = check_run(run, unit=112)
+    assert not rep["ok"]
+    assert rep["agent_tracebacks"] == {"attacker-miner": 3}
+    assert rep["totals"]["agent_tracebacks"] == 3
+    assert any("attacker-miner: 3 agent traceback lines" in p for p in rep["problems"])
+    assert summarize(rep) == "AGENT-TB 3"
+    clean = check_run(_run(tmp_path / "c", {"honest-001": HEALTHY}), unit=112)
+    assert clean["ok"] and clean["agent_tracebacks"] == {} and clean["totals"]["agent_tracebacks"] == 0
