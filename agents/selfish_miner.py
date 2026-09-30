@@ -42,10 +42,19 @@ Attributes (via --attributes KEY VALUE):
     embedded_shares     "true" to read a SoP daemon's per-block share count from
                         get_block_headers_range's minor_version field (the
                         patched template sets b.minor_version = N) when
-                        computing window_stubborn's work-object count (default
-                        off, which counts 1 object per block; without SoP,
-                        minor_version is the hard-fork vote, not a share count,
-                        hence opt-in).
+                        computing window_stubborn's attacker-side work-object
+                        and weight counts (default off, which counts 0 shares
+                        per attacker block; without SoP, minor_version is the
+                        hard-fork vote, not a share count, hence opt-in). The
+                        honest side always counts minor_version as its share
+                        count, since on a Share-or-Perish network the honest
+                        template sets it that way.
+    weigh               window_stubborn's past-window comparison: "sop" (default,
+                        MRL #146 weight -- unit * (1 + shares) per block, unit =
+                        max(1, difficulty // sop_w)) or "difficulty" (plain
+                        cumulative difficulty, for a stock, non-SoP network).
+    sop_w               SoP's `w` parameter, used by weigh="sop" to compute
+                        unit = max(1, difficulty // sop_w) (default 16).
     reject_aware        "true" to check, after every cash-out reveal, that the
                         first bridge adopted the branch, and to concede if not
                         (default off; 2026-09-28). The strategy assumes a
@@ -99,6 +108,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.window_objects = int(self.attributes.get("window_objects", "48") or 48)  # window_stubborn only
         self.give_up_depth = int(self.attributes.get("give_up_depth", "2") or 2)      # window_stubborn only
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
+        self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
+        self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
         self.reject_aware = str(self.attributes.get("reject_aware", "false")).strip().lower() in ("1", "true", "yes")
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
@@ -140,29 +151,73 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             window_objects=self.window_objects,
                                             give_up_depth=self.give_up_depth)
 
-    def _branch_objects(self, fork: int, priv_height: int) -> int:
-        """window_stubborn's work-object counter: 1 object per private block,
-        plus its embedded valid shares when `embedded_shares` is on. On a SoP
-        daemon minor_version is the per-block share count (the patched
-        template sets b.minor_version = N); without SoP it is the hard-fork
-        vote, which is why this is opt-in. Conservative on failure: returns 0
-        (keeps the attacker withholding) on an RPCError or a header count
-        that doesn't match the expected range."""
-        n = priv_height - fork
+    @staticmethod
+    def _header_difficulty(h) -> int:
+        """A header's difficulty: the `difficulty` field, falling back to
+        parsing `wide_difficulty`'s hex string when `difficulty` is absent
+        (monerod's 128-bit field on high-difficulty networks)."""
+        if "difficulty" in h and h["difficulty"] is not None:
+            return int(h["difficulty"])
+        return int(h["wide_difficulty"], 16)
+
+    def _read_range(self, rpc: MoneroRPC, fork: int, top_height: int, which: str):
+        """Read headers for indexes fork..top_height-1 via
+        get_block_headers_range. Returns None, with a logged warning, on an
+        RPCError or a header count that doesn't match the expected range."""
+        n = top_height - fork
         if n <= 0:
-            return 0
-        if not self.embedded_shares:
-            return n
+            return []
         try:
-            headers = self.daemon_rpc.get_block_headers_range(fork, priv_height - 1)
+            headers = rpc.get_block_headers_range(fork, top_height - 1)
         except RPCError as e:
-            self.logger.warning(f"_branch_objects: get_block_headers_range failed: {e}")
-            return 0
+            self.logger.warning(f"_branch_weights: {which} get_block_headers_range failed: {e}")
+            return None
         if len(headers) != n:
             self.logger.warning(
-                f"_branch_objects: expected {n} headers for {fork}..{priv_height - 1}, got {len(headers)}")
-            return 0
-        return sum(1 + int(h["minor_version"]) for h in headers)
+                f"_branch_weights: expected {n} {which} headers for {fork}..{top_height - 1}, "
+                f"got {len(headers)}")
+            return None
+        return headers
+
+    def _branch_weights(self, fork: int, priv_height: int, pub_height: int):
+        """window_stubborn's work-object count and weight, per MRL #146: each
+        recent block weighs `unit * (1 + its valid embedded shares)`, with
+        `unit = max(1, difficulty // sop_w)`. Returns
+        (att_objects, att_weight, hon_weight), or None (with a logged
+        warning) on an RPCError or a header count mismatch on either side.
+
+        weigh="sop" (default): attacker shares per block are `minor_version`
+        when `embedded_shares` is on, else 0; honest shares are always
+        `minor_version`, since on a Share-or-Perish network the honest
+        template sets minor_version to the embedded share count.
+        weigh="difficulty": att_objects = block count; both weights are
+        plain cumulative difficulty (a stock, non-SoP network)."""
+        att_headers = self._read_range(self.daemon_rpc, fork, priv_height, "attacker")
+        if att_headers is None:
+            return None
+        hon_headers = self._read_range(self.bridge_rpc, fork, pub_height, "honest")
+        if hon_headers is None:
+            return None
+
+        if self.weigh == "difficulty":
+            att_objects = len(att_headers)
+            att_weight = sum(self._header_difficulty(h) for h in att_headers)
+            hon_weight = sum(self._header_difficulty(h) for h in hon_headers)
+            return att_objects, att_weight, hon_weight
+
+        att_objects = 0
+        att_weight = 0
+        for h in att_headers:
+            n = int(h["minor_version"]) if self.embedded_shares else 0
+            unit = max(1, self._header_difficulty(h) // self.sop_w)
+            att_objects += 1 + n
+            att_weight += unit * (1 + n)
+        hon_weight = 0
+        for h in hon_headers:
+            m = int(h["minor_version"])
+            unit = max(1, self._header_difficulty(h) // self.sop_w)
+            hon_weight += unit * (1 + m)
+        return att_objects, att_weight, hon_weight
 
     def _lookup_agents(self, agent_ids, connected_ids, rpcs, what: str) -> None:
         """Resolve agent ids to RPC endpoints from the shared registry,
@@ -674,13 +729,15 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 return self._reaction_interval_s()
 
         # 5. Strategy decision first: forward_to (below) depends on it.
-        decision = self.strategy.update(pub_height, priv_height, branch_objects=self._branch_objects)
+        decision = self.strategy.update(pub_height, priv_height, branch_weights=self._branch_weights)
         if (self.strategy_name == "window_stubborn" and decision.release_to is not None
                 and pub_height >= self.strategy.start_height):   # warm-up publishes everything
             fork = decision.release_from
+            att_objects, att_weight, hon_weight = self.strategy.last_weights
             self.logger.info(
                 f"window_stubborn: reveal fork={fork} a={priv_height - fork} "
-                f"h={pub_height - fork} objects={self.strategy.last_objects}")
+                f"h={pub_height - fork} objects={att_objects} weight={att_weight} "
+                f"honest_weight={hon_weight}")
 
         # 5b. Rejection-aware: the strategy conceded (honest is taller). Leave
         #     the branch by pop + forward, not by piling honest blocks onto it.

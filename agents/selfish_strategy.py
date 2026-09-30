@@ -24,9 +24,16 @@ docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md (+ -phase2-
 (and rejects withheld/late blocks) only while the alt branch holds fewer than
 `window_objects` WORK OBJECTS (a block counts as 1 + its embedded valid
 shares); at or past the window honest nodes fall back to plain cumulative
-difficulty. The attacker withholds and never reveals while its branch is
-still inside the window, reveals once it is past the window AND ahead, and
-gives up once honest leads by `give_up_depth` blocks.
+difficulty, which is a WEIGHT, not a block count -- each recent block weighs
+`unit * (1 + its valid embedded shares)`, `unit = max(1, difficulty // w)`
+(MRL #146). The attacker withholds while its branch is still inside the
+window or its weight does not exceed honest's, reveals once BOTH the window
+and the weight conditions hold, and gives up once honest leads by
+`give_up_depth` blocks. Past the window there is no "withhold while
+comfortably ahead" arm (unlike eyal_sirer/lead_stubborn): waiting for honest
+to close in only risks losing the weight lead the attacker already has, and
+the spec's own analysis models revealing at the first opportunity once past
+the window.
 """
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -70,10 +77,10 @@ class SelfishStrategy:
         if self.give_up_depth < 1:
             raise ValueError(f"give_up_depth must be >= 1, got {give_up_depth}")
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
-        self.last_objects = None   # window_stubborn: last branch_objects() count seen
+        self.last_weights = None   # window_stubborn: last branch_weights() result seen
 
     def update(self, pub_height: int, priv_height: int,
-               branch_objects: Optional[Callable[[int, int], int]] = None) -> ReleaseDecision:
+               branch_weights: Optional[Callable[[int, int, int], Optional[tuple]]] = None) -> ReleaseDecision:
         # `old_fork` is the divergence point for THIS step's release range. Every
         # returned decision carries it as release_from, because the reveal/adopt
         # branches below move self.fork forward and a caller that read the
@@ -100,7 +107,7 @@ class SelfishStrategy:
         if self.name == "equal_fork_stubborn":
             return self._equal_fork_stubborn_decision(old_fork, pub_height, priv_height, a, h)
         if self.name == "window_stubborn":
-            return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_objects)
+            return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
         return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
 
     def _eyal_sirer_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
@@ -207,15 +214,22 @@ class SelfishStrategy:
 
     def _window_stubborn_decision(self, old_fork: int, pub_height: int, priv_height: int,
                                    a: int, h: int,
-                                   branch_objects: Optional["Callable[[int, int], int]"]) -> ReleaseDecision:
+                                   branch_weights: Optional["Callable[[int, int, int], Optional[tuple]]"]
+                                   ) -> ReleaseDecision:
         """Attacks Share-or-Perish (SoP): SoP judges a fork subjectively (and
         rejects withheld/late blocks) only while the alt branch holds fewer
-        than `window_objects` WORK OBJECTS; at or past the window honest
-        nodes fall back to plain cumulative difficulty. Withhold and never
-        reveal while still inside the window, reveal once past the window
-        AND ahead, and give up once honest leads by `give_up_depth` blocks.
-        An attack only starts from a private lead, so a == 0 adopts as in
-        eyal_sirer."""
+        than `window_objects` WORK OBJECTS. At or past the window every
+        lateness factor is 1, but the comparison is still MRL #146's
+        share-counted WEIGHT (unit * (1 + shares) per recent block), not a
+        block count or plain cumulative difficulty. Give up once honest leads by
+        `give_up_depth` blocks. An attack only starts from a private lead, so
+        a == 0 adopts as in eyal_sirer. Withhold entirely while honest hasn't
+        moved (h == 0). Otherwise reveal only once BOTH the branch is past
+        `window_objects` objects AND its weight exceeds honest's; hold
+        (never withhold-while-comfortably-ahead, unlike eyal_sirer) in every
+        other case -- past the window, waiting for honest to close in only
+        risks losing the weight lead already held, and the spec's own
+        analysis models revealing at the first opportunity."""
         if (a == 0 and h > 0) or (h - a >= self.give_up_depth):
             self.fork = pub_height
             return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
@@ -223,24 +237,15 @@ class SelfishStrategy:
         if h == 0:
             return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
 
-        if a <= h:
-            # Tied, or behind by less than give_up_depth: hold and keep
-            # mining the private branch. No tie reveals -- this apparatus
-            # runs at gamma~0, and inside the window SoP rejects them.
+        weights = branch_weights(old_fork, priv_height, pub_height) if branch_weights else (a, a, h)
+        self.last_weights = weights
+        if weights is None:
+            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+        att_objects, att_weight, hon_weight = weights
+        if att_objects < self.window_objects or att_weight <= hon_weight:
+            # Inside the window, or not ahead by weight: hold.
             return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
 
-        # a > h >= 1 from here.
-        if a - h > self.release_lead:
-            # Comfortably ahead: withhold (maximise honest waste), same as
-            # eyal_sirer. Do not spend an RPC on branch_objects here.
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
-
-        objects = branch_objects(old_fork, priv_height) if branch_objects else a
-        self.last_objects = objects
-        if objects < self.window_objects:
-            # Inside the window: a reveal is judged subjectively and loses.
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
-
-        # Past the window and ahead: reveal the whole branch and win.
+        # Past the window and ahead by weight: reveal the whole branch and win.
         self.fork = priv_height
         return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)

@@ -316,7 +316,7 @@ def test_run_iteration_pulls_islands_before_strategy_decision():
     a, i1, _ = _make_island_agent()
     calls = []
 
-    def fake_update(pub, priv, branch_objects=None):
+    def fake_update(pub, priv, branch_weights=None):
         calls.append(("strategy", pub, priv))
         return ReleaseDecision()
 
@@ -870,7 +870,7 @@ def test_concession_pops_from_the_daemon_height_at_pop_time():
     a.daemon_rpc.pop_blocks.assert_called_once_with(3)                           # 13 - (9 + 1)
 
 
-# --- window_stubborn attributes and _branch_objects (SoP attack, 2026-09-30) ---
+# --- window_stubborn attributes and _branch_weights (SoP attack, MRL #146, 2026-09-30) ---
 
 def test_window_stubborn_attributes_parse_with_defaults():
     a = SelfishMinerAgent(agent_id="atk", attributes=[
@@ -879,6 +879,8 @@ def test_window_stubborn_attributes_parse_with_defaults():
     assert a.window_objects == 48
     assert a.give_up_depth == 2
     assert a.embedded_shares is False
+    assert a.weigh == "sop"
+    assert a.sop_w == 16
     a._ensure_strategy(0)
     assert a.strategy.window_objects == 48 and a.strategy.give_up_depth == 2
 
@@ -887,53 +889,106 @@ def test_window_stubborn_attributes_parse_overrides():
     a = SelfishMinerAgent(agent_id="atk", attributes=[
         ["strategy", "window_stubborn"], ["bridges", "b1"],
         ["window_objects", "10"], ["give_up_depth", "3"],
-        ["embedded_shares", "true"]])
+        ["embedded_shares", "true"], ["weigh", "difficulty"], ["sop_w", "8"]])
     a.logger = MagicMock()
     assert a.window_objects == 10
     assert a.give_up_depth == 3
     assert a.embedded_shares is True
+    assert a.weigh == "difficulty"
+    assert a.sop_w == 8
     a._ensure_strategy(0)
     assert a.strategy.window_objects == 10 and a.strategy.give_up_depth == 3
 
 
-def test_branch_objects_returns_block_count_without_embedded_shares():
+def test_branch_weights_sop_mode_without_embedded_shares():
     a = _make_agent(strategy="window_stubborn")
     assert a.embedded_shares is False
-    assert a._branch_objects(5, 8) == 3
-    a.daemon_rpc.get_block_headers_range.assert_not_called()
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "minor_version": 2},
+        {"difficulty": 32, "minor_version": 3},
+        {"difficulty": 48, "minor_version": 4},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "minor_version": 5},
+        {"difficulty": 32, "minor_version": 1},
+    ]
+    result = a._branch_weights(5, 8, 7)
+    # attacker shares ignored (embedded_shares off): objects=3, weight=1+2+3=6
+    # honest shares always counted: unit*(1+m) = 1*6 + 2*2 = 10
+    assert result == (3, 6, 10)
+    a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
+    a.bridge_rpc.get_block_headers_range.assert_called_once_with(5, 6)
 
 
-def test_branch_objects_returns_zero_for_empty_range():
-    a = _make_agent(strategy="window_stubborn")
-    assert a._branch_objects(5, 5) == 0
-    assert a._branch_objects(8, 5) == 0
-
-
-def test_branch_objects_sums_minor_version_with_embedded_shares():
+def test_branch_weights_sop_mode_with_embedded_shares():
     a = _make_agent(strategy="window_stubborn")
     a.embedded_shares = True
     a.daemon_rpc.get_block_headers_range.return_value = [
-        {"minor_version": 2}, {"minor_version": 0}, {"minor_version": 5},
+        {"difficulty": 16, "minor_version": 2},
+        {"difficulty": 32, "minor_version": 3},
     ]
-    assert a._branch_objects(5, 8) == (1 + 2) + (1 + 0) + (1 + 5)
-    a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
+    a.bridge_rpc.get_block_headers_range.return_value = []
+    result = a._branch_weights(5, 7, 5)
+    # objects = (1+2)+(1+3) = 7; weight = 1*3 + 2*4 = 11; honest range empty -> 0
+    assert result == (7, 11, 0)
+    a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
-def test_branch_objects_returns_zero_on_rpc_error():
+def test_branch_weights_difficulty_mode():
     a = _make_agent(strategy="window_stubborn")
-    a.embedded_shares = True
+    a.weigh = "difficulty"
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 100}, {"difficulty": 200},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [{"difficulty": 150}]
+    result = a._branch_weights(5, 7, 6)
+    assert result == (2, 300, 150)
+
+
+def test_branch_weights_wide_difficulty_fallback():
+    a = _make_agent(strategy="window_stubborn")
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"wide_difficulty": "0x10", "minor_version": 0},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = []
+    result = a._branch_weights(5, 6, 5)
+    # difficulty 16 // sop_w(16) = 1, unit=max(1,1)=1, weight=1*(1+0)=1
+    assert result == (1, 1, 0)
+
+
+def test_branch_weights_none_on_rpc_error_from_daemon():
+    a = _make_agent(strategy="window_stubborn")
     a.daemon_rpc.get_block_headers_range.side_effect = RPCError("boom")
-    assert a._branch_objects(5, 8) == 0
+    assert a._branch_weights(5, 8, 6) is None
 
 
-def test_branch_objects_returns_zero_on_short_header_list():
+def test_branch_weights_none_on_rpc_error_from_bridge():
     a = _make_agent(strategy="window_stubborn")
-    a.embedded_shares = True
-    a.daemon_rpc.get_block_headers_range.return_value = [{"minor_version": 1}]  # expected 3
-    assert a._branch_objects(5, 8) == 0
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "minor_version": 0}, {"difficulty": 16, "minor_version": 0},
+        {"difficulty": 16, "minor_version": 0},
+    ]
+    a.bridge_rpc.get_block_headers_range.side_effect = RPCError("boom")
+    assert a._branch_weights(5, 8, 7) is None
 
 
-def test_run_iteration_passes_branch_objects_to_strategy_update():
+def test_branch_weights_none_on_short_header_list():
+    a = _make_agent(strategy="window_stubborn")
+    a.daemon_rpc.get_block_headers_range.return_value = [{"difficulty": 16, "minor_version": 0}]
+    assert a._branch_weights(5, 8, 5) is None   # expected 3 attacker headers, got 1
+
+
+def test_branch_weights_empty_honest_range():
+    a = _make_agent(strategy="window_stubborn")
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "minor_version": 0},
+    ]
+    result = a._branch_weights(5, 6, 5)   # pub_height == fork: empty honest range
+    assert result == (1, 1, 0)
+    a.bridge_rpc.get_block_headers_range.assert_not_called()
+
+
+def test_run_iteration_passes_branch_weights_to_strategy_update():
     a = _make_agent(strategy="window_stubborn")
     a.strategy.update = MagicMock(wraps=a.strategy.update)
     a.daemon_rpc.get_block.side_effect = lambda height: {
@@ -944,7 +999,7 @@ def test_run_iteration_passes_branch_objects_to_strategy_update():
     a.daemon_rpc.get_info.return_value = {"height": 1}
     a.run_iteration()
     args, kwargs = a.strategy.update.call_args
-    assert kwargs.get("branch_objects") == a._branch_objects
+    assert kwargs.get("branch_weights") == a._branch_weights
 
 
 def test_window_stubborn_reveal_is_logged():
@@ -958,10 +1013,16 @@ def test_window_stubborn_reveal_is_logged():
         "blob": f"priv{height}", "block_header": {"hash": f"ph{height}"}}
     a.bridge_rpc.get_block.side_effect = lambda height: {
         "blob": f"pub{height}", "block_header": {"hash": f"hh{height}"}}
-    # a=2 blocks (fork 0..1), h=1: a-h==1<=release_lead; branch_objects (no
-    # embedded_shares) returns a==2==window -> reveal.
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "minor_version": 0}, {"difficulty": 16, "minor_version": 0},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "minor_version": 0},
+    ]
+    # a=2 blocks (fork 0..1), h=1: objects=2==window -> weight att=1+1=2 > honest=1 -> reveal.
     a.bridge_rpc.get_info.return_value = {"height": 1}
     a.daemon_rpc.get_info.return_value = {"height": 2}
     a.run_iteration()
     messages = [c.args[0] for c in a.logger.info.call_args_list]
-    assert any("window_stubborn: reveal fork=0 a=2 h=1 objects=2" in m for m in messages)
+    assert any("window_stubborn: reveal fork=0 a=2 h=1 objects=2 weight=2 honest_weight=1" in m
+               for m in messages)
