@@ -372,29 +372,29 @@ def invariant_ok(stats: SimStats, total_att_blocks: int, total_hon_blocks: int) 
 # CLI
 # ---------------------------------------------------------------------------
 
+def days_to_even_odds(mean_days_between: float) -> float:
+    """Horizon at which at least one success has probability 1/2, for
+    successes arriving as a Poisson process: ln 2 x the mean interval. This
+    is the quantity Rucknium's Strategy 2 reports ("possess the hashpower for
+    N hours to achieve a 50 percent attack success probability"), which
+    tevador cites as "on average once per 10 days"."""
+    return math.log(2) * mean_days_between
+
+
 def _print_tevador(alpha: float, w: int, k: int) -> None:
     results = run_model_a(alpha=alpha, w=w, k=k)
     print(f"# Model A: tevador's claims at alpha={alpha}, w={w}, k={k}, K={k*w} objects\n")
-    print(f"tevador's claims: P(success) < 0.06%, ~once per 10 days, ~3-block reorg\n")
-    print("| variant | P(success) | expected days between successes | mean reorg (blocks) |")
-    print("|:--|--:|--:|--:|")
+    print("tevador's claims: P(success) < 0.06%, ~once per 10 days, ~3-block reorg\n")
+    print("| variant | P(success) | mean days between successes | days to a 50% chance | mean reorg (honest blocks) |")
+    print("|:--|--:|--:|--:|--:|")
     for r in results:
         print(f"| {r.name} | {r.p_success*100:.5f}% | {r.expected_days_between_successes:.3f} "
+              f"| {days_to_even_odds(r.expected_days_between_successes):.3f} "
               f"| {r.mean_reorg_blocks:.3f} |")
     print()
-    best = None
-    for r in results:
-        matches_p = r.p_success < 0.0006
-        matches_days = 5 <= r.expected_days_between_successes <= 20
-        if matches_p and matches_days:
-            best = r
-            break
-    if best:
-        print(f"Match: {best.name} reproduces both the probability and the "
-              "once-per-10-days cadence (within a broad band).")
-    else:
-        print("No variant simultaneously reproduces '<0.06%' AND 'once per 10 days' "
-              "within a broad band; see table above for each variant's own numbers.")
+    print("A3 (z=48) is Rucknium's Strategy 2 counted in work objects: attempts per duration")
+    print("w = d / (z + (1-q)/q), success per attempt I_q(z, z). Its 50%-chance horizon is the")
+    print("'once per 10 days'; the mean interval between successes is ln 2 larger.")
 
 
 def _sweep(days: float, seed: int) -> None:

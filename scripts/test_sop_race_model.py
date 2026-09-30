@@ -229,3 +229,12 @@ def test_exact_reorg_depth_matches_a_brute_force_sum():
     terms = [comb(K - 1 + j, j) * alpha ** K * (1 - alpha) ** j for j in range(K)]
     expected = sum(j * t for j, t in enumerate(terms)) / sum(terms)
     assert abs(exact_reorg_blocks_given_win(alpha, K, w) - expected) < 1e-12
+
+
+def test_rucknium_strategy2_in_objects_gives_tevadors_ten_days_as_the_even_odds_horizon():
+    # MRL #146: "once per 10 days" at alpha = 0.33, from Rucknium's Strategy 2
+    # (50 % success horizon) with z = k*w = 48 work objects.
+    from scripts.sop_race_model import a3_strategy2_formula, days_to_even_odds
+    r = a3_strategy2_formula(0.33, 48, objects_per_z_unit=1.0)
+    assert r.p_success < 0.0006
+    assert 9.5 < days_to_even_odds(r.expected_days_between_successes) < 10.1
