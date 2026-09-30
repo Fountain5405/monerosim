@@ -1,0 +1,29 @@
+# SMOKE for stubborn_h10 (2026-09-30): the share arm at alpha 0.45, d2, against SoP and
+# stock, 2 h. Checks, before the 32-cell launch:
+#   - the attacker's daemon embeds its own shares ("SIM-SoP: embedding N workshares");
+#   - honest SoP nodes count them (nf= in "SIM-SoP: fork" lines grows ~16 per attacker block),
+#     and a reveal past the window is judged OBJECTIVE;
+#   - window_stubborn's "reveal ... objects=" lines are >= 48 and match the honest nf;
+#   - stock (unflagged) nodes accept share-carrying attacker blocks.
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_smoke.yaml
+name: stubborn_h10_smoke
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 2h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48"}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+    stock: {}
+  alpha:
+    a045: {attacker: {hashrate: 4.5}, honest: {hashrate: [2.75, 2.75]}}
+  depth:
+    d2: {attacker: {attributes: {give_up_depth: "2"}}}

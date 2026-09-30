@@ -1,0 +1,58 @@
+# STUBBORN-ATTACKER CAMPAIGN (owner decisions 2026-09-30): a window_stubborn
+# attacker against Share-or-Perish's k*w = 48 work-object window, and the same
+# attacker against stock monerod. First draw of an n=2 pair (second: stubborn_h10_rep.yaml, seed 54321).
+#
+# window_stubborn (agents/selfish_strategy.py, 9a570ae4) withholds, never
+# reveals while its branch is under 48 work objects (SoP judges such forks
+# subjectively), reveals once past the window AND ahead (SoP then compares
+# plain cumulative difficulty), and gives up when honest leads by
+# give_up_depth blocks. reject_aware as in campaign 6; bridges flagged in SoP cells.
+#
+# Arms:
+#   share  -- the attacker's OFFLINE daemon runs SoP, so its miner captures
+#             its own workshares and embeds them (minor_version = N). Each
+#             block then counts 1 + N objects toward the window (~16 at
+#             w = 16), so the branch crosses 48 in ~3 blocks. The agent reads
+#             the exact count from its headers (embedded_shares: "true").
+#             Needs the 2026-09-30 window-count fix (0101b624): only shares
+#             whose PoW verifies count.
+#   block  -- no shares: the branch must reach 48 BLOCKS.
+# alpha on the h10 preset via fractional hashrates (f917bf49); the 10 h/s
+# total still auto-matches h10. a040 pairs with campaign 6.
+# Give-up depth: d2 everywhere; d1/d3 only for share x a040 (owner, 2026-09-30).
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10.yaml
+name: stubborn_h10
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 4
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48"}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+    block:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", window_objects: "48"}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+    stock: {}
+  alpha:
+    a030: {attacker: {hashrate: 3},   honest: {hashrate: [3.5, 3.5]}}
+    a040: {attacker: {hashrate: 4},   honest: {hashrate: [3, 3]}}
+    a045: {attacker: {hashrate: 4.5}, honest: {hashrate: [2.75, 2.75]}}
+  depth:
+    d2: {attacker: {attributes: {give_up_depth: "2"}}}
+    d1: {attacker: {attributes: {give_up_depth: "1"}}}
+    d3: {attacker: {attributes: {give_up_depth: "3"}}}
+exclude:
+  - {depth: d1, arm: block}
+  - {depth: d1, alpha: a030}
+  - {depth: d1, alpha: a045}
+  - {depth: d3, arm: block}
+  - {depth: d3, alpha: a030}
+  - {depth: d3, alpha: a045}

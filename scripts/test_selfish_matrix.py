@@ -546,3 +546,42 @@ def test_reject_specs_differ_from_their_predecessors_only_in_reject_aware():
                         assert cfg["agents"][aid] == o["agents"][aid], (new + suffix, cell, aid)
     _, sop = _plan_and_build("pop_sop2_h10_reject")
     assert sorted(sop) == ["es_r2_sop2", "es_r2_stock", "es_sop2", "es_stock"]
+
+
+def test_stubborn_specs_pin_arms_alphas_and_the_depth_sweep():
+    """Stubborn-attacker campaign (2026-09-30): 12 main cells (arm x
+    countermeasure x alpha at d2) plus the d1/d3 sweep on share x a040. Every
+    cell keeps the 10 h/s total so it grafts h10. The share arm flags the
+    attacker's offline daemon and reads its share counts; the block arm does
+    neither. The SoP overlay equals campaign 6's."""
+    _, c6 = _plan_and_build("pop_sop2_h10_reject")
+    c6_sop, c6_stock = c6["es_sop2"], c6["es_stock"]
+    alphas = {"a030": (3, [3.5, 3.5]), "a040": (4, [3, 3]), "a045": (4.5, [2.75, 2.75])}
+    for name, seed in (("stubborn_h10", 12345), ("stubborn_h10_rep", 54321)):
+        _, cfgs = _plan_and_build(name)
+        expected = {f"{arm}_{cm}_{al}_d2" for arm in ("share", "block")
+                    for cm in ("sop2", "stock") for al in alphas}
+        expected |= {f"share_{cm}_a040_{d}" for cm in ("sop2", "stock") for d in ("d1", "d3")}
+        assert set(cfgs) == expected, sorted(cfgs)
+        for cell, cfg in cfgs.items():
+            arm, cm, al, d = cell.split("_")
+            assert cfg["general"]["simulation_seed"] == seed
+            assert cfg["general"]["mining"]["chain_snapshot"] == "h10"
+            att = cfg["agents"]["attacker-miner"]
+            honest = [cfg["agents"][h]["hashrate"] for h in ("honest-001", "honest-002")]
+            assert (att["hashrate"], honest) == alphas[al]
+            assert att["hashrate"] + sum(honest) == 10
+            at = att["attributes"]
+            assert at["strategy"] == "window_stubborn" and at["reject_aware"] == "true"
+            assert at["window_objects"] == "48" and at["give_up_depth"] == d[1:]
+            if arm == "share":
+                assert at["embedded_shares"] == "true"
+                assert att["daemon_options"] == {"offline": True, "sim-share-or-perish": True, "sim-sop-w": 16}
+            else:
+                assert "embedded_shares" not in at
+                assert att["daemon_options"] == {"offline": True}
+            ref = c6_sop if cm == "sop2" else c6_stock
+            for aid in ("relay-001", "relay-002", "attacker-bridge"):
+                assert cfg["agents"][aid] == ref["agents"][aid], (name, cell, aid)
+            assert cfg["agents"]["honest-001"].get("daemon_options") == ref["agents"]["honest-001"].get("daemon_options")
+            assert cfg["general"]["stop_time"] == ref["general"]["stop_time"]
