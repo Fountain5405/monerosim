@@ -1,7 +1,10 @@
 # CHAIN-SNAPSHOT GENERATOR for the 20 h/s micro topology (preset "h20").
-# Added 2026-09-29 for the stubborn-attacker alpha sweep: native hashrates are
-# integers, and alpha in {0.30, 0.40, 0.45} needs a 20 h/s total (attacker
-# 6 / 8 / 9 h/s). Everything else mirrors preload_chain_h10.scenario.yaml,
+# Added 2026-09-29 for the stubborn-attacker alpha sweep while native
+# hashrates were integers (alpha 0.30 / 0.40 / 0.45 needs a 20 h/s total:
+# attacker 6 / 8 / 9 h/s). Fractional hashrates (f917bf49) moved that sweep
+# to h10; h20 stays as an extra preset. Generated 2026-09-30 (run
+# 20260930_022540_preload_h20_32h: height 976, next-block difficulty at the
+# tip 2315, -3.5 % vs D0). Everything else mirrors preload_chain_h10.scenario.yaml,
 # including its 32 h length and the next-block-difficulty gate; that file's
 # header has the reasoning.
 #
