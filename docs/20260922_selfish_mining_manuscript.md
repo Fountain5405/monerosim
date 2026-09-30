@@ -1,7 +1,8 @@
 # Selfish mining on Monero — working manuscript and backing-material index
 
-**Status:** working notes for a planned manuscript, 2026-09-22. Branch
-`feat/selfish-mining-experiments`. Everything below is backed by committed
+**Status:** working notes for a planned manuscript, started 2026-09-22
+(branch `feat/selfish-mining-experiments`, now `dev`). §5 rewritten as a
+current-state list on 2026-09-30. Everything below is backed by committed
 code, archived runs, and dated result documents in this repository; §7 maps
 every number to its run directory and commit. Companion index:
 `docs/SELFISH_MINING.md` §10.
@@ -313,15 +314,35 @@ cell to date measures anything but pop-core + det-tie.
 
 ## 5. Findings (manuscript-claim-ready)
 
+Current state as of **2026-09-30**. Each finding gives its latest
+measurement. The versions it replaced, including retracted text, are kept
+word for word in Appendix A. The numbers 8 and 10 are fixed because other
+documents cite them. E4 countermeasure numbers are n = 2 per cell, α = 0.4,
+and "share" means the attacker's canonical share, unless stated otherwise.
+
+**The attack (E1).**
+
 1. The Eyal–Sirer γ=0 curve and the Lee–Kim conservative-release curve are
    both reproduced by the simulator within statistical tolerance, and the
    conservative policy's profitability crossover sits in (0.40, 0.45) —
    conservative release is a *delay*, not a *cure*.
+   *Open tension (2026-09-29):* the E1 runs predate the chain-snapshot base.
+   On the corrected `h10` preset the micro stock pairs read above the γ=0
+   curve: ES {0.519, 0.544} and lead-2 {0.491, 0.500}, against ES theory
+   0.484 at α = 0.4. With n = 2 the size of the shift is not established,
+   and it has not been reconciled with E1 (results doc
+   `docs/20260926_exact_uncles_and_sop_controls.md` §8, reading 5).
 2. Conservative release shrinks the PUBLIC harm (orphan rate, reorg depth,
    throughput dips) even as it cuts attacker revenue — the attacker's
    private loss and the network's damage decouple.
+
+**Detection (E2).**
+
 3. MSB detection is sound on honest networks and breaks under heavy
    attack by flagging honest miners — an attack-aware null is required.
+
+**monerod behaviour the apparatus depends on.**
+
 4. monerod API facts, established by local repro and now encoded as tests:
    orphaned/`submit_block` rejections return HTTP 200 + status≠OK (silent
    unless checked); `get_info` height is a count (top+1); RPC-submitted
@@ -329,6 +350,9 @@ cell to date measures anything but pop-core + det-tie.
    for them; offline daemons accept submits immediately, isolated-online
    ones answer BUSY forever; first-seen semantics govern alt-vs-main at
    every level.
+
+**Eclipse composition (E3).**
+
 5. Eclipse-recruited hashrate is only bankable through an island lifecycle
    that (a) keeps the victim the sole miner above the fork (mirror gated at
    the fork), (b) keeps the miner's withholding main free of honest
@@ -348,81 +372,74 @@ cell to date measures anything but pop-core + det-tie.
    gains from eclipse-DoS alone; above parity the majority verdict passes
    twice. The coalition-internal split has fat run-to-run variance
    (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
-10. **Share-or-Perish v2 (#146, embedded shares) neutralizes both the
-   textbook and the conservative lead-2 attacker at α = 0.4, n = 2, on a
-   realistic difficulty schedule** (2026-09-26 re-run on the fixed daemon
-   and the `h10` chain-snapshot base, `docs/20260926_sop_h10_rerun.md`):
-   ES earns {0.035, 0.000} (0.000 against the honest network's own chain)
-   vs stock {0.377, 0.441}; lead-2 — the policy PoP was blind to — earns
-   {0.000, 0.000} vs stock {0.305, 0.469}. Every one of the 2,822 subjective
-   fork decisions on SoP nodes carried share weight; the attacker's
-   unshared, late blocks lose every race. Honest controls sit at α under
-   both rules (stock {0.381, 0.410}; SoP {0.440, 0.326}). Costs: the
-   attacker's 40 % of hashrate is discarded (103–143 canonical blocks per
-   6 h vs ≈ 200 in the controls), the network orphan rate reads 0.36–0.52
-   (vandalism stays, profit goes), and a miner that does not gossip shares
-   weighs one unit in every tie — the SoP control's second draw lost 17
-   such races (share 0.326, orphan 0.218), an upgrade-transition cost that
-   n = 2 cannot yet size. The bridge (stock fork choice) is a biased
-   reference under SoP: report SoP shares against an honest node's chain.
-   **Fail-safe caveat (2026-09-28, `docs/20260926_exact_uncles_and_sop_controls.md`
-   §6):** #146 applies lateness only within k·w = 48 work objects of a
-   fork. Past that, fork choice is plain cumulative difficulty. In the
-   flagged-bridge re-run, the ES attacker kept a rejected branch level with
-   the honest chain for 49 and 51 blocks. Both times the honest miners
-   switched to it on the objective rule, the second time to a branch one
-   block shorter but heavier, and ES earned {0.405, 0.495}. That happened
-   in 0 of 4 original SoP attack cells, and lead-2 stayed at {0.000, 0.000}.
-   The attacker reached the window only because it could not see its
-   reveals were rejected (the stranding bias). How often an α = 0.4
-   attacker stays level that long, and whether a deliberately stubborn one
-   could, is not measured. The 0.000 headline above holds only inside the
-   fail-safe window and only on the stock-bridge apparatus.
-   **Stranding-free re-run (2026-09-29, results doc §8): SoP holds.**
-   With a rejection-aware attacker, ES earns {0.000, 0.000} and lead-2
-   {0.000, 0.000} vs stock {0.519, 0.544} / {0.491, 0.500}. No honest node
-   made a single past-window (OBJECTIVE) fork decision in any SoP cell, and
-   the longest rejected reveal was 17 blocks. The {0.405, 0.495} above came
-   from the stranding attacker. What remains open is a deliberately stubborn
-   attacker that withholds past 48 work objects on purpose. That exposure
-   is in the rule, and it has not been measured.
-   **Earlier text, RETRACTED 2026-09-25 (review F1–F5) and superseded above:**
-   ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
-   apparatus~~: with fixed genesis difficulty and a post-bootstrap
-   attacker, the honest control is textbook — 0.405 ≈ α with ZERO
-   orphaning, and the unflagged 40% miner (the upgrade-transition
-   fleet) takes exactly its fair share — while textbook ES is
-   annihilated (share 0.000, γ = 1.000, network healthy at 66 blocks
-   vs stock's 89; a ~26% throughput cost is the price). The lead-2
-   policy (the attack Monero observed) is log-verified neutralized:
-   every fork evaluation of its releases returns weight 0 (l_b = 0 for
-   released-late blocks, l_w = 0 for never-gossiped shares) and is
-   kept off; its canonical output is bounded to outright tip wins, far
-   under its stock 0.471 (the analysis row was lost twice to a
-   covert-bridge freeze under release bursts — open defect, 2 of 8
-   cells). Stocks pair cleanly (es 0.337, lead-2 0.471 — lead-2 again
-   out-earns ES). The earlier v1/v2 falsifications traced to the
-   simulator's degenerate bootstrap, not the rule: the lesson for the
-   countermeasure literature is that timing-subjective fork choice
-   must be evaluated on realistic difficulty schedules, or the
-   evaluation itself manufactures failures.
 
-8. **Publish-or-Perish's fork-choice core alone nearly eliminates ES
-   revenue at Monero speeds** (E4 pilot, pre-registered): attacker share
-   0.492 → 0.022 at α=0.4 with the attacker orphaning 97% of its finds
-   (73/77 fork decisions KEEP honest), while the honest control is
-   unaffected (0.408 ≈ α, orphan 0.02, throughput unchanged). But the
-   attack's network damage RISES under PoP (orphan 0.312 → 0.447) and its
-   MSB detectability too (+7.9 → +14.9): PoP removes the profit, not the
-   vandalism — incentive-removal and DoS-resilience are separate
-   countermeasure properties.
-   **Update (2026-09-29, results doc §8; the pilot numbers above predate
-   the review fixes).** On the fixed apparatus with a rejection-aware
-   attacker, MRL #144 exact PoP cuts textbook ES by roughly half: micro
-   0.206 vs stock 0.531, mid 0.226 vs 0.447 (n = 2 means). It does **not**
-   stop the conservative lead-2 attacker at mid scale: 0.386 vs stock
-   0.403, one draw 0.419 > α. Micro lead-2 falls to 0.285 vs 0.496.
-   Realized γ is 0.11–0.33 in these cells.
+**Countermeasures (E4).** All rows below come from the stranding-free
+re-run (results doc §8, 2026-09-29) unless marked otherwise. That run used
+a rejection-aware attacker, which concedes a rejected reveal at once, and
+the corrected `h10` preset for micro cells. Earlier E4 attackers kept
+racing branches the network had already rejected (the stranding bias,
+results doc §5–§6).
+
+8. **Publish-or-Perish (MRL #144 exact) cuts textbook selfish mining by
+   roughly half, but does not stop the conservative lead-2 attacker at mid
+   scale.**
+
+   | cell | PoP exact (run / rep, mean) | stock (run / rep, mean) |
+   |---|---|---|
+   | micro ES | 0.156 / 0.256, 0.206 | 0.519 / 0.544, 0.531 |
+   | micro lead-2 | 0.263 / 0.307, 0.285 | 0.491 / 0.500, 0.496 |
+   | mid ES | 0.223 / 0.229, 0.226 | 0.376 / 0.518, 0.447 |
+   | mid lead-2 | 0.353 / 0.419, 0.386 | 0.455 / 0.351, 0.403 |
+
+   ES stays below α at both scales (−61 % micro, −49 % mid). Mid-scale
+   lead-2 is statistically indistinguishable from stock, and one draw is
+   above α. The mechanism: lateness punishes catch-up reveals (ES), but
+   lead-2 releases before honest miners have mined the contested height,
+   so its blocks arrive in time. Realized γ is 0.11–0.33 in these cells,
+   because the flagged bridge announces the attacker's tie blocks when the
+   deterministic tie-break picks them.
+   *Not re-measured on the fixed apparatus:* the tie-policy result (#144's
+   deterministic tie was ~4× weaker than a random tie against ES in the
+   pilot: 0.244/0.296 vs 0.022/0.123, §4 E4 item 3).
+9. **Neither countermeasure removes the damage, only the profit.** Under
+   PoP the attack's network orphan rate rose from 0.312 (stock) to
+   0.31–0.45 across variants, and MSB detectability stayed high (z +7.4
+   to +14.9; §4 E4 item 5, pre-review apparatus). Under SoP the
+   network orphan rate read 0.36–0.52 while the attacker earned nothing
+   (2026-09-26 run, `docs/20260926_sop_h10_rerun.md`). Incentive removal
+   and DoS resilience are separate properties. Orphan rates have not been
+   re-read on the §8 runs.
+10. **Share-or-Perish v2 (MRL #146, embedded shares) holds both textbook
+    attackers at zero, within its 48-object window.**
+    - *Result (§8):* ES {0.000, 0.000} and lead-2 {0.000, 0.000}, vs stock
+      {0.519, 0.544} and {0.491, 0.500}. No honest node made a single
+      past-window (OBJECTIVE) fork decision in any SoP cell. The longest
+      rejected reveal was 17 blocks. The earlier stock-bridge run agrees:
+      ES {0.035, 0.000} (0.000 against an honest node's chain), lead-2
+      {0.000, 0.000}, and all 2,822 subjective fork decisions carried share
+      weight (`docs/20260926_sop_h10_rerun.md`).
+    - *Scope: the window.* #146 applies lateness only while a fork holds
+      fewer than k·w = 48 work objects. Past that, fork choice is plain
+      cumulative difficulty. The fallback can be reached: in the
+      flagged-bridge re-run (results doc §6) a stranding attacker kept a
+      rejected branch level for 49 and 51 blocks, honest miners switched to
+      it on the objective rule, and ES earned {0.405, 0.495}. A work object
+      is a block plus each share embedded in it, so an attacker that embeds
+      its own shares (expected ~15 per block at w = 16, not yet measured)
+      reaches 48 in about 3 blocks, not 48. A deliberately stubborn attacker, with and without embedded
+      shares, is being measured now (`stubborn_h10`, 2026-09-30). The
+      simulator's window count was corrected first, so that only shares
+      whose PoW verifies count (`0101b624`).
+    - *Costs (2026-09-26 run):* the attacker's hashrate is discarded (103–143
+      canonical blocks per 6 h vs ≈ 200 in the controls). A miner that
+      does not gossip shares weighs one unit in every tie: the SoP
+      control's second draw lost 17 such races (share 0.326, orphan 0.218),
+      an upgrade-transition cost that n = 2 cannot size. Honest controls:
+      stock {0.381, 0.410}, SoP {0.440, 0.326}. They ran on the
+      pre-2026-09-29 `h10` preset (tip difficulty 9.8 % low) and have not
+      been re-run on the corrected one.
+    - *Reporting:* a bridge running stock fork choice is a biased reference
+      under SoP. Report SoP shares against an honest node's chain.
 
 ## 6. Limitations
 
@@ -677,3 +694,124 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
    - Standing: n=2 repeats of the pop_sop2 verdict; the senior leg
      (user-run; spec swap + a fixed-difficulty selfish_scaled variant);
      the covert-bridge freeze defect.
+
+## Appendix A — superseded §5 text (moved here 2026-09-30)
+
+§5 was rewritten on 2026-09-30 as a current-state list. Below is the whole
+§5 as it stood before that rewrite, word for word, including the text it
+had already retracted. Findings 1–7 carried over unchanged, except for the
+open-tension note added to finding 1. Findings 8 and 10 were rewritten from
+their layered updates.
+
+> **§5 before 2026-09-30:**
+>
+> 1. The Eyal–Sirer γ=0 curve and the Lee–Kim conservative-release curve are
+>    both reproduced by the simulator within statistical tolerance, and the
+>    conservative policy's profitability crossover sits in (0.40, 0.45) —
+>    conservative release is a *delay*, not a *cure*.
+> 2. Conservative release shrinks the PUBLIC harm (orphan rate, reorg depth,
+>    throughput dips) even as it cuts attacker revenue — the attacker's
+>    private loss and the network's damage decouple.
+> 3. MSB detection is sound on honest networks and breaks under heavy
+>    attack by flagging honest miners — an attack-aware null is required.
+> 4. monerod API facts, established by local repro and now encoded as tests:
+>    orphaned/`submit_block` rejections return HTTP 200 + status≠OK (silent
+>    unless checked); `get_info` height is a count (top+1); RPC-submitted
+>    blocks are never relayed over P2P; a "synchronized" node does not poll
+>    for them; offline daemons accept submits immediately, isolated-online
+>    ones answer BUSY forever; first-seen semantics govern alt-vs-main at
+>    every level.
+> 5. Eclipse-recruited hashrate is only bankable through an island lifecycle
+>    that (a) keeps the victim the sole miner above the fork (mirror gated at
+>    the fork), (b) keeps the miner's withholding main free of honest
+>    adoptions (feed capped at the fork), (c) releases from the
+>    hash-verified common ancestor, and (d) commits only on adoption. With
+>    all four: controlled share 0.559 > 1/2 at α_eff=0.667 with victim
+>    recruitment at 0.213 canonical. Without them: eclipse-DoS plus
+>    self-destruction (measured 0.000–0.442 across variants).
+> 6. The composed attack pays the coalition, not the attacker: recruitment
+>    costs the attacker own-block orphans (0.309) and drops its solo share
+>    below its no-eclipse selfish share — the eclipse only pays when the
+>    recruited hashrate is spent as one chain.
+> 7. The eclipse composition's payoff is **thresholded at island-vs-honest
+>    hashrate parity, not smooth in α_eff** (ω-sweep, 6 runs): below parity
+>    the R_mod(α_eff) composed-revenue prediction is rejected (victim banking
+>    ≈ 0, band FAILs at α_eff=0.467 in both repeats) while the attacker still
+>    gains from eclipse-DoS alone; above parity the majority verdict passes
+>    twice. The coalition-internal split has fat run-to-run variance
+>    (0.346/0.213 vs 0.121/0.758) — each island cash-out is winner-take-all.
+> 10. **Share-or-Perish v2 (#146, embedded shares) neutralizes both the
+>    textbook and the conservative lead-2 attacker at α = 0.4, n = 2, on a
+>    realistic difficulty schedule** (2026-09-26 re-run on the fixed daemon
+>    and the `h10` chain-snapshot base, `docs/20260926_sop_h10_rerun.md`):
+>    ES earns {0.035, 0.000} (0.000 against the honest network's own chain)
+>    vs stock {0.377, 0.441}; lead-2 — the policy PoP was blind to — earns
+>    {0.000, 0.000} vs stock {0.305, 0.469}. Every one of the 2,822 subjective
+>    fork decisions on SoP nodes carried share weight; the attacker's
+>    unshared, late blocks lose every race. Honest controls sit at α under
+>    both rules (stock {0.381, 0.410}; SoP {0.440, 0.326}). Costs: the
+>    attacker's 40 % of hashrate is discarded (103–143 canonical blocks per
+>    6 h vs ≈ 200 in the controls), the network orphan rate reads 0.36–0.52
+>    (vandalism stays, profit goes), and a miner that does not gossip shares
+>    weighs one unit in every tie — the SoP control's second draw lost 17
+>    such races (share 0.326, orphan 0.218), an upgrade-transition cost that
+>    n = 2 cannot yet size. The bridge (stock fork choice) is a biased
+>    reference under SoP: report SoP shares against an honest node's chain.
+>    **Fail-safe caveat (2026-09-28, `docs/20260926_exact_uncles_and_sop_controls.md`
+>    §6):** #146 applies lateness only within k·w = 48 work objects of a
+>    fork. Past that, fork choice is plain cumulative difficulty. In the
+>    flagged-bridge re-run, the ES attacker kept a rejected branch level with
+>    the honest chain for 49 and 51 blocks. Both times the honest miners
+>    switched to it on the objective rule, the second time to a branch one
+>    block shorter but heavier, and ES earned {0.405, 0.495}. That happened
+>    in 0 of 4 original SoP attack cells, and lead-2 stayed at {0.000, 0.000}.
+>    The attacker reached the window only because it could not see its
+>    reveals were rejected (the stranding bias). How often an α = 0.4
+>    attacker stays level that long, and whether a deliberately stubborn one
+>    could, is not measured. The 0.000 headline above holds only inside the
+>    fail-safe window and only on the stock-bridge apparatus.
+>    **Stranding-free re-run (2026-09-29, results doc §8): SoP holds.**
+>    With a rejection-aware attacker, ES earns {0.000, 0.000} and lead-2
+>    {0.000, 0.000} vs stock {0.519, 0.544} / {0.491, 0.500}. No honest node
+>    made a single past-window (OBJECTIVE) fork decision in any SoP cell, and
+>    the longest rejected reveal was 17 blocks. The {0.405, 0.495} above came
+>    from the stranding attacker. What remains open is a deliberately stubborn
+>    attacker that withholds past 48 work objects on purpose. That exposure
+>    is in the rule, and it has not been measured.
+>    **Earlier text, RETRACTED 2026-09-25 (review F1–F5) and superseded above:**
+>    ~~Share-or-Perish (#146, spec-exact v2) works on the corrected
+>    apparatus~~: with fixed genesis difficulty and a post-bootstrap
+>    attacker, the honest control is textbook — 0.405 ≈ α with ZERO
+>    orphaning, and the unflagged 40% miner (the upgrade-transition
+>    fleet) takes exactly its fair share — while textbook ES is
+>    annihilated (share 0.000, γ = 1.000, network healthy at 66 blocks
+>    vs stock's 89; a ~26% throughput cost is the price). The lead-2
+>    policy (the attack Monero observed) is log-verified neutralized:
+>    every fork evaluation of its releases returns weight 0 (l_b = 0 for
+>    released-late blocks, l_w = 0 for never-gossiped shares) and is
+>    kept off; its canonical output is bounded to outright tip wins, far
+>    under its stock 0.471 (the analysis row was lost twice to a
+>    covert-bridge freeze under release bursts — open defect, 2 of 8
+>    cells). Stocks pair cleanly (es 0.337, lead-2 0.471 — lead-2 again
+>    out-earns ES). The earlier v1/v2 falsifications traced to the
+>    simulator's degenerate bootstrap, not the rule: the lesson for the
+>    countermeasure literature is that timing-subjective fork choice
+>    must be evaluated on realistic difficulty schedules, or the
+>    evaluation itself manufactures failures.
+>
+> 8. **Publish-or-Perish's fork-choice core alone nearly eliminates ES
+>    revenue at Monero speeds** (E4 pilot, pre-registered): attacker share
+>    0.492 → 0.022 at α=0.4 with the attacker orphaning 97% of its finds
+>    (73/77 fork decisions KEEP honest), while the honest control is
+>    unaffected (0.408 ≈ α, orphan 0.02, throughput unchanged). But the
+>    attack's network damage RISES under PoP (orphan 0.312 → 0.447) and its
+>    MSB detectability too (+7.9 → +14.9): PoP removes the profit, not the
+>    vandalism — incentive-removal and DoS-resilience are separate
+>    countermeasure properties.
+>    **Update (2026-09-29, results doc §8; the pilot numbers above predate
+>    the review fixes).** On the fixed apparatus with a rejection-aware
+>    attacker, MRL #144 exact PoP cuts textbook ES by roughly half: micro
+>    0.206 vs stock 0.531, mid 0.226 vs 0.447 (n = 2 means). It does **not**
+>    stop the conservative lead-2 attacker at mid scale: 0.386 vs stock
+>    0.403, one draw 0.419 > α. Micro lead-2 falls to 0.285 vs 0.496.
+>    Realized γ is 0.11–0.33 in these cells.
