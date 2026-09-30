@@ -250,6 +250,17 @@ implemented:
   objects (blocks + embedded shares); otherwise fork choice is plain
   cumulative difficulty. This is #146's late-joiner/partition-recovery
   path — and it eliminates v1's sync livelock.
+  **Correction (2026-09-30):** "plain cumulative difficulty" misreads the
+  spec. Outside the gate the lateness factors are 1, and Table 3 still
+  applies: a recent block weighs diff/w × (1 + its shares), the spec's
+  "objective chain weights". So a branch without shares cannot win the
+  fallback on block count. The implementation followed this misreading
+  until `0b9e8089`, together with three other deviations: blocks carried
+  only the finder's own shares; lateness was measured against the first
+  block at the height on any chain rather than the main-chain block; and
+  displaced blocks were re-judged one at a time after a reorg. The
+  corrected rules and their conventions are in
+  `docs/20260930_sop_conformance.md`.
 - **main_seen = block_seen when no main block exists at the height**
   (alt-ahead edge case), per the issue.
 - **Hardfork-vote bypass**: `version_minor` normally carries the HF vote
