@@ -23,7 +23,7 @@ import threading
 import time
 
 from agents import levin_lib as L
-from agents.eclipse_injector import InjectorConfig, serve_forever, dial_and_handshake
+from agents.eclipse_injector import InjectorConfig, RegistryCache, serve_ports, dial_and_handshake
 
 
 def main():
@@ -45,6 +45,8 @@ def main():
     class FakePeerAgent(BaseAgent):
         def _setup_agent(self):
             self._discovery = AgentDiscovery(str(self.shared_dir) if self.shared_dir else None)
+            self._registry = RegistryCache(self._discovery)
+            self._rec_lock = threading.Lock()
             self._ports = list(range(args.port_base, args.port_base + max(1, args.port_count)))
             self._stop = threading.Event()
             self._rec_cache = []
@@ -58,11 +60,11 @@ def main():
                 max_records=args.max_records,
                 logger=self.logger,
             )
-            # One persistent Levin responder per port (port-diversity).
-            for p in self._ports:
-                threading.Thread(target=serve_forever,
-                                 args=("0.0.0.0", p, self._cfg, self._stop),
-                                 daemon=True).start()
+            # One Levin responder thread for all ports (port-diversity) -- no
+            # thread per connection (see serve_ports).
+            threading.Thread(target=serve_ports,
+                             args=("0.0.0.0", self._ports, self._cfg, self._stop),
+                             daemon=True).start()
             self.logger.info("FakePeerAgent listening on %d ports (%d..%d)",
                              len(self._ports), self._ports[0], self._ports[-1])
             # SYNC-CREDIBILITY: present the GENESIS block as our top_id. When we
@@ -82,61 +84,41 @@ def main():
 
         def _fleet_records(self):
             """Full port-diverse attacker set: every fake-peer/attacker host IP x
-            every port in the range. Cached ~30s so we don't rebuild per response."""
-            now = time.time()
-            if self._rec_cache and now - self._rec_ts < 30:
-                return self._rec_cache
-            ips = []
-            try:
-                reg = self._discovery.get_agent_registry(force_refresh=True)
-                agents = reg.get("agents", [])
-                if isinstance(agents, dict):
-                    agents = list(agents.values())
-                for a in agents:
+            every port in the range. Rebuilt at most every ~30s, under a lock so
+            concurrent callers never rebuild it at the same time."""
+            with self._rec_lock:
+                now = time.monotonic()
+                if self._rec_cache and now - self._rec_ts < 30:
+                    return self._rec_cache
+                ips = []
+                for a in self._registry.agents():
                     role = (a.get("attributes") or {}).get("eclipse_role")
                     if role in ("attacker", "fakepeer") and a.get("ip_addr"):
                         ips.append(a["ip_addr"])
-            except Exception:  # noqa: BLE001
-                pass
-            recs = [(ip, p) for ip in ips for p in self._ports]
-            self._rec_cache = recs
-            self._rec_ts = now
-            return recs
+                self._rec_cache = [(ip, p) for ip in ips for p in self._ports]
+                self._rec_ts = now
+                return self._rec_cache
 
         def _poison_targets(self):
             """Honest reachable nodes + seeds to actively dial (paper's N-I): dialing
             them makes them whitelist us and later dial back -> flooded."""
             out = []
-            try:
-                reg = self._discovery.get_agent_registry(force_refresh=True)
-                agents = reg.get("agents", [])
-                if isinstance(agents, dict):
-                    agents = list(agents.values())
-                for a in agents:
-                    role = (a.get("attributes") or {}).get("eclipse_role")
-                    aid = a.get("id", "") or ""
-                    if (role == "benign" or aid.startswith("monero-seed")) and a.get("ip_addr"):
-                        out.append(a["ip_addr"])
-            except Exception:  # noqa: BLE001
-                pass
+            for a in self._registry.agents():
+                role = (a.get("attributes") or {}).get("eclipse_role")
+                aid = a.get("id", "") or ""
+                if (role == "benign" or aid.startswith("monero-seed")) and a.get("ip_addr"):
+                    out.append(a["ip_addr"])
             return out
 
         def _daemon_rpc_urls(self):
             """RPC endpoints of real, synced nodes (miners/seeds) we can read the
             genesis hash from. Attackers/fakepeers are skipped (they have no chain)."""
             urls = []
-            try:
-                reg = self._discovery.get_agent_registry(force_refresh=True)
-                agents = reg.get("agents", [])
-                if isinstance(agents, dict):
-                    agents = list(agents.values())
-                for a in agents:
-                    aid = a.get("id", "") or ""
-                    ip = a.get("ip_addr")
-                    if ip and (aid.startswith("miner") or aid.startswith("monero-seed")):
-                        urls.append("http://%s:18081/json_rpc" % ip)
-            except Exception:  # noqa: BLE001
-                pass
+            for a in self._registry.agents():
+                aid = a.get("id", "") or ""
+                ip = a.get("ip_addr")
+                if ip and (aid.startswith("miner") or aid.startswith("monero-seed")):
+                    urls.append("http://%s:18081/json_rpc" % ip)
             return urls
 
         def _track_genesis(self):
@@ -173,9 +155,9 @@ def main():
                 # dial on our base port; the target will whitelist us and dial back
                 if dial_and_handshake(ip, self._ports[0], self._cfg, timeout=6):
                     dialed += 1
-            self.logger.info("fakepeer: dialed %d/%d honest nodes; injected=%d conns=%d records=%d",
+            self.logger.info("fakepeer: dialed %d/%d honest nodes; injected=%d conns=%d live=%d records=%d",
                              dialed, len(targets), self._cfg.injected, self._cfg.conns,
-                             len(self._fleet_records()))
+                             self._cfg.live, len(self._fleet_records()))
             return args.dial_interval
 
     agent = FakePeerAgent(
