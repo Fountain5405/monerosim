@@ -163,7 +163,8 @@ target hardware tier is always.
 
 | `process_threads` | `native_preemption` | Result |
 |---|---|---|
-| `0` | `true` | Fully non-deterministic; every monerod sizes its pools from the host core count (our quickstart default) |
+| `0` | `true` | Fully non-deterministic; every monerod sizes its pools from the host core count -- avoid |
+| `2` | `true` | Non-deterministic, small per-node pools (our quickstart and eclipse default) |
 | `0` | `false` | Non-deterministic without the throughput win — rarely useful |
 | `1` | `false` | Deterministic, slow — pick this for strict reproducibility |
 | `1` | `true` | Determinism guarantee is broken; treat as effectively non-deterministic |
