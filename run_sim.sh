@@ -1143,7 +1143,8 @@ run_simulation() {
     fi
 
     # Start memory monitor in background
-    start_memory_monitor "$SHADOW_PID" "$ARCHIVE_DIR/memory_samples.csv" &
+    start_memory_monitor "$SHADOW_PID" "$ARCHIVE_DIR/memory_samples.csv" "$SHADOW_LOG" \
+        "$ARCHIVE_DIR/memory_status" "$ARCHIVE_DIR/memory_alerts.log" &
     MONITOR_PID=$!
 
     # Wait for Shadow with or without live monitor
@@ -1195,45 +1196,53 @@ run_simulation() {
 start_memory_monitor() {
     local shadow_pid=$1
     local csv_file=$2
+    local shadow_log=$3
+    local status_file=$4
+    local alerts_file=$5
 
-    echo "timestamp,shadow_rss_mb,monerod_rss_mb,wallet_rss_mb,total_rss_mb,system_free_mb,system_used_pct" > "$csv_file"
-
+    # One PSS sample of Shadow's process tree per interval (see mem-sample in
+    # scripts/run_sim_helpers.py for why not `ps -u $USER -o rss`). The helper
+    # also classifies memory pressure into ok / warn / critical.
+    local level prev_level="ok" last_alert=0 now msg
     while kill -0 "$shadow_pid" 2>/dev/null; do
-        # Aggregate RSS by process type from all user processes
-        local shadow_kb=0 monerod_kb=0 wallet_kb=0 other_kb=0
-
-        while read -r rss comm; do
-            [[ -z "$rss" ]] && continue
-            case "$comm" in
-                shadow)    shadow_kb=$((shadow_kb + rss)) ;;
-                monerod)   monerod_kb=$((monerod_kb + rss)) ;;
-                monero-wa*) wallet_kb=$((wallet_kb + rss)) ;;
-                *)         other_kb=$((other_kb + rss)) ;;
-            esac
-        done < <(ps -u "$USER" -o rss=,comm= 2>/dev/null)
-
-        local total_kb=$((shadow_kb + monerod_kb + wallet_kb + other_kb))
-
-        # System memory
-        local mem_info
-        mem_info=$(free -m | awk '/^Mem:/{print $3, $2, $7}')
-        local used_mb total_mb avail_mb used_pct
-        used_mb=$(echo "$mem_info" | awk '{print $1}')
-        total_mb=$(echo "$mem_info" | awk '{print $2}')
-        avail_mb=$(echo "$mem_info" | awk '{print $3}')
-        used_pct=$((used_mb * 100 / total_mb))
-
-        printf "%s,%d,%d,%d,%d,%d,%d%%\n" \
-            "$(date '+%H:%M:%S')" \
-            "$((shadow_kb / 1024))" \
-            "$((monerod_kb / 1024))" \
-            "$((wallet_kb / 1024))" \
-            "$((total_kb / 1024))" \
-            "$avail_mb" \
-            "$used_pct" >> "$csv_file"
-
+        level=$(python3 scripts/run_sim_helpers.py mem-sample \
+            --root-pid "$shadow_pid" --shadow-log "$shadow_log" \
+            --csv "$csv_file" --status-file "$status_file" 2>/dev/null || echo "ok")
+        now=$(date +%s)
+        # Record alerts on every escalation and every 30 min while they last.
+        if [[ "$level" != "ok" ]] && { [[ "$level" != "$prev_level" ]] || (( now - last_alert >= 1800 )); }; then
+            msg=$(cut -d'|' -f2- "$status_file" 2>/dev/null)
+            echo "$(date '+%Y-%m-%d %H:%M:%S') ${level^^}: $msg" >> "$alerts_file"
+            last_alert=$now
+            # The live monitor shows the banner itself; without it the terminal
+            # is idle in `wait`, so shout there.
+            if [[ "$SHOW_MONITOR" != true ]]; then
+                print_memory_banner "$level" "$msg" >&2
+            fi
+        fi
+        prev_level=$level
         sleep "$MEMORY_SAMPLE_INTERVAL"
     done
+}
+
+# Loud multi-line banner for a memory-pressure status (level, message).
+print_memory_banner() {
+    local level=$1 msg=$2 line
+    if [[ "$level" == "critical" ]]; then
+        echo -e "${RED}${BOLD}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
+        echo -e "${RED}${BOLD}!!  MEMORY CRITICAL: RAM EXHAUSTED AND THE SIMULATION HAS STALLED       !!${NC}"
+        echo -e "${RED}${BOLD}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
+        while IFS= read -r line; do
+            echo -e "${RED}${BOLD}  ${line}${NC}"
+        done < <(fold -s -w 72 <<< "$msg")
+        echo -e "${RED}${BOLD}  The run is not being stopped. Expect little further progress and an${NC}"
+        echo -e "${RED}${BOLD}  eventual OOM kill unless memory is freed.${NC}"
+    else
+        echo -e "${YELLOW}${BOLD}*** MEMORY WARNING: RAM nearly exhausted ***${NC}"
+        while IFS= read -r line; do
+            echo -e "${YELLOW}  ${line}${NC}"
+        done < <(fold -s -w 72 <<< "$msg")
+    fi
 }
 
 # ============================================================
@@ -1349,43 +1358,39 @@ exit 0' INT
         output+="Wall time:  ${wall_fmt} elapsed\n"; lines=$((lines + 1))
         output+="\n"; lines=$((lines + 1))
 
-        # Process counts and memory
+        # Process counts
         local shadow_cnt=0 monerod_cnt=0 wallet_cnt=0
-        local shadow_kb=0 monerod_kb=0 wallet_kb=0
-
-        while read -r rss comm; do
-            [[ -z "$rss" ]] && continue
+        while read -r comm; do
             case "$comm" in
-                shadow)
-                    shadow_kb=$((shadow_kb + rss))
-                    shadow_cnt=$((shadow_cnt + 1))
-                    ;;
-                monerod)
-                    monerod_kb=$((monerod_kb + rss))
-                    monerod_cnt=$((monerod_cnt + 1))
-                    ;;
-                monero-wa*)
-                    wallet_kb=$((wallet_kb + rss))
-                    wallet_cnt=$((wallet_cnt + 1))
-                    ;;
+                shadow)     shadow_cnt=$((shadow_cnt + 1)) ;;
+                monerod)    monerod_cnt=$((monerod_cnt + 1)) ;;
+                monero-wa*) wallet_cnt=$((wallet_cnt + 1)) ;;
             esac
-        done < <(ps -u "$USER" -o rss=,comm= 2>/dev/null)
-
-        local total_kb=$((shadow_kb + monerod_kb + wallet_kb))
-        local shadow_mb=$((shadow_kb / 1024))
-        local monerod_mb=$((monerod_kb / 1024))
-        local wallet_mb=$((wallet_kb / 1024))
-        local total_mb=$((total_kb / 1024))
-
-        # Use GB for display if > 1024 MB
-        local shadow_disp monerod_disp wallet_disp total_disp
-        shadow_disp=$(format_kb "$shadow_kb")
-        monerod_disp=$(format_kb "$monerod_kb")
-        wallet_disp=$(format_kb "$wallet_kb")
-        total_disp=$(format_kb "$total_kb")
-
+        done < <(ps -u "$USER" -o comm= 2>/dev/null)
         output+="Processes:  ${monerod_cnt} monerod  |  ${wallet_cnt} wallet-rpc  |  ${shadow_cnt} shadow\n"; lines=$((lines + 1))
-        output+="Memory:     Shadow ${shadow_disp}  |  Monerod ${monerod_disp}  |  Wallets ${wallet_disp}  |  Total ${total_disp}\n"; lines=$((lines + 1))
+
+        # Memory: latest PSS sample of this run's process tree, written by
+        # start_memory_monitor (fields: see MEM_CSV_FIELDS in run_sim_helpers.py).
+        local mem_csv="$ARCHIVE_DIR/memory_samples.csv"
+        local mem_row=""
+        [[ -s "$mem_csv" ]] && mem_row=$(tail -1 "$mem_csv")
+        if [[ -n "$mem_row" && "$mem_row" != timestamp,* ]]; then
+            local _ts _ep _sim m_shadow m_daemon m_wallet m_agents m_other m_total _np m_ram m_avail m_used m_swap
+            IFS=, read -r _ts _ep _sim m_shadow m_daemon m_wallet m_agents m_other m_total _np m_ram m_avail m_used m_swap <<< "$mem_row"
+            output+="Memory:     Shadow $(format_kb $((m_shadow * 1024)))  |  Daemons $(format_kb $((m_daemon * 1024)))  |  Wallets $(format_kb $((m_wallet * 1024)))  |  Agents $(format_kb $((m_agents * 1024)))  |  Other $(format_kb $((m_other * 1024)))  |  Total $(format_kb $((m_total * 1024))) (PSS)\n"; lines=$((lines + 1))
+            output+="System RAM: ${m_used}% used, $(format_kb $((m_avail * 1024))) available, swap $(format_kb $((m_swap * 1024))) in use\n"; lines=$((lines + 1))
+        else
+            output+="Memory:     (waiting for first sample)\n"; lines=$((lines + 1))
+        fi
+        local mem_status="" mem_level="" mem_msg=""
+        [[ -s "$ARCHIVE_DIR/memory_status" ]] && mem_status=$(head -1 "$ARCHIVE_DIR/memory_status")
+        mem_level=${mem_status%%|*}
+        mem_msg=${mem_status#*|}
+        if [[ "$mem_level" == "critical" || "$mem_level" == "warn" ]]; then
+            local banner
+            banner=$(print_memory_banner "$mem_level" "$mem_msg")
+            output+="${banner}\n"; lines=$((lines + $(printf '%s\n' "$banner" | wc -l)))
+        fi
 
         # Free disk space
         local free_kb

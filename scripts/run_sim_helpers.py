@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+import time
 from typing import Iterable
 
 from datetime import datetime
@@ -495,6 +496,264 @@ def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
     """
     parts = args.timestamp.split(':')
     print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Memory sampler (start_memory_monitor in run_sim.sh calls mem-sample every
+# MEMORY_SAMPLE_INTERVAL seconds).
+#
+# Two bugs in the old bash sampler made memory_samples.csv unusable for
+# diagnosing the 2026-10-01 eclipse OOM:
+#   1. it summed RSS over every process the user owned (other runs included);
+#   2. RSS counts shared pages once per mapper, and Shadow shares memory with
+#      every managed process, so total_rss_mb reached 6.7 TB on a 1 TB box.
+# This version sums PSS (shared pages divided among their mappers, so the
+# buckets add up) over Shadow's process tree only, gives Python agents their
+# own bucket, and records wall epoch + sim seconds so a growth-while-stalled
+# condition can be detected from the CSV alone.
+# ---------------------------------------------------------------------------
+
+MEM_CSV_FIELDS = (
+    'timestamp', 'epoch', 'sim_s',
+    'shadow_mb', 'daemon_mb', 'wallet_mb', 'agents_mb', 'other_mb', 'total_mb',
+    'nprocs', 'ram_total_mb', 'avail_mb', 'used_pct', 'swap_used_mb',
+)
+MEM_CSV_HEADER = ','.join(MEM_CSV_FIELDS)
+
+_SIM_TIME_RE = re.compile(rb'simulated: (\d+):(\d{2}):(\d{2})')
+
+
+def _mem_bucket(comm: str) -> str:
+    """Bucket a process by /proc/<pid>/comm (kernel-truncated to 15 chars)."""
+    if comm == 'shadow' or comm.startswith('shadow-'):
+        return 'shadow'
+    if comm.startswith('monerod') or comm.startswith('cuprated'):
+        return 'daemon'
+    if comm.startswith('monero-wallet'):
+        return 'wallet'
+    if comm.startswith('python'):
+        return 'agents'
+    return 'other'
+
+
+def _proc_tree(root_pid: int, proc: str = '/proc') -> list[int]:
+    """root_pid plus all its descendants, from one scan of /proc/*/stat."""
+    children: dict[int, list[int]] = {}
+    for entry in os.listdir(proc):
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f'{proc}/{entry}/stat', 'rb') as fh:
+                stat = fh.read()
+        except OSError:
+            continue
+        # comm is parenthesised and may contain spaces/parens: split after the LAST ')'
+        rest = stat[stat.rfind(b')') + 2:].split()
+        if len(rest) < 2:
+            continue
+        children.setdefault(int(rest[1]), []).append(int(entry))
+    tree, todo = [], [root_pid]
+    while todo:
+        pid = todo.pop()
+        tree.append(pid)
+        todo.extend(children.get(pid, ()))
+    return tree
+
+
+def _pss_kb(pid: int, proc: str = '/proc') -> int:
+    try:
+        with open(f'{proc}/{pid}/smaps_rollup') as fh:
+            for line in fh:
+                if line.startswith('Pss:'):
+                    return int(line.split()[1])
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0
+
+
+def _meminfo_kb(proc: str = '/proc') -> dict:
+    out = {}
+    try:
+        with open(f'{proc}/meminfo') as fh:
+            for line in fh:
+                key, _, val = line.partition(':')
+                out[key] = int(val.split()[0])
+    except (OSError, ValueError, IndexError):
+        pass
+    return out
+
+
+def latest_sim_seconds(shadow_log: str, tail_bytes: int = 256 * 1024) -> int:
+    """Sim seconds from the last Shadow 'simulated: HH:MM:SS' line, -1 if none."""
+    try:
+        with open(shadow_log, 'rb') as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - tail_bytes))
+            matches = _SIM_TIME_RE.findall(fh.read())
+    except OSError:
+        return -1
+    if not matches:
+        return -1
+    h, m, s = matches[-1]
+    return int(h) * 3600 + int(m) * 60 + int(s)
+
+
+def collect_mem_sample(root_pid: int, shadow_log: str, proc: str = '/proc',
+                       now: float | None = None) -> dict:
+    kb = {'shadow': 0, 'daemon': 0, 'wallet': 0, 'agents': 0, 'other': 0}
+    tree = _proc_tree(root_pid, proc)
+    for pid in tree:
+        try:
+            with open(f'{proc}/{pid}/comm') as fh:
+                comm = fh.read().strip()
+        except OSError:
+            continue
+        kb[_mem_bucket(comm)] += _pss_kb(pid, proc)
+    mi = _meminfo_kb(proc)
+    total = mi.get('MemTotal', 0)
+    avail = mi.get('MemAvailable', 0)
+    now = time.time() if now is None else now
+    return {
+        'timestamp': datetime.fromtimestamp(now).strftime('%H:%M:%S'),
+        'epoch': int(now),
+        'sim_s': latest_sim_seconds(shadow_log),
+        **{f'{k}_mb': v // 1024 for k, v in kb.items()},
+        'total_mb': sum(kb.values()) // 1024,
+        'nprocs': len(tree),
+        'ram_total_mb': total // 1024,
+        'avail_mb': avail // 1024,
+        'used_pct': (100 * (total - avail) // total) if total else 0,
+        'swap_used_mb': (mi.get('SwapTotal', 0) - mi.get('SwapFree', 0)) // 1024,
+    }
+
+
+def load_mem_samples(csv_path: str) -> list[dict]:
+    """Rows of a memory_samples.csv as int dicts; [] for a legacy-format file."""
+    try:
+        with open(csv_path) as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return []
+    if not lines or lines[0] != MEM_CSV_HEADER:
+        return []
+    rows = []
+    for line in lines[1:]:
+        parts = line.split(',')
+        if len(parts) != len(MEM_CSV_FIELDS):
+            continue
+        try:
+            rows.append({k: (v if k == 'timestamp' else int(v))
+                         for k, v in zip(MEM_CSV_FIELDS, parts)})
+        except ValueError:
+            continue
+    return rows
+
+
+def _sim_rate(rows: list[dict]) -> float | None:
+    """Sim seconds per wall second across rows (None if not measurable)."""
+    rows = [r for r in rows if r['sim_s'] >= 0]
+    if len(rows) < 2 or rows[-1]['epoch'] <= rows[0]['epoch']:
+        return None
+    return (rows[-1]['sim_s'] - rows[0]['sim_s']) / (rows[-1]['epoch'] - rows[0]['epoch'])
+
+
+def _classify_mem_window(rows: list[dict], end: int, window_s: int,
+                         low_avail_frac: float, healthy_avail_frac: float,
+                         stall_ratio: float) -> tuple[str, str]:
+    """mem_stall_status for the window ending at rows[end] (see there)."""
+    last = rows[end]
+    recent = [r for r in rows[:end + 1] if r['epoch'] >= last['epoch'] - window_s]
+    if last['epoch'] - recent[0]['epoch'] < window_s * 0.9 or not last['ram_total_mb']:
+        return 'ok', ''
+    # Median, not the last sample: page-cache reclaim makes MemAvailable jitter
+    # under pressure and a single bump must not clear the alarm.
+    fracs = sorted(r['avail_mb'] / r['ram_total_mb'] for r in recent)
+    if fracs[len(fracs) // 2] >= low_avail_frac:
+        return 'ok', ''
+
+    def used(r):
+        return r['ram_total_mb'] - r['avail_mb'] + r['swap_used_mb']
+
+    growth = used(last) - used(recent[0])
+    mins = window_s // 60
+    pressure = (f"RAM {100 - 100 * last['avail_mb'] / last['ram_total_mb']:.0f}% used, "
+                f"swap {last['swap_used_mb'] / 1024:.1f} GB in use, "
+                f"memory {growth / 1024:+.1f} GB over the last {mins} min")
+
+    recent_rate = _sim_rate(recent)
+    healthy = [r for r in rows[:end + 1]
+               if r['epoch'] < recent[0]['epoch']
+               and r['avail_mb'] >= healthy_avail_frac * r['ram_total_mb']]
+    baseline_rate = None
+    if healthy:
+        base = [r for r in healthy if r['epoch'] >= healthy[-1]['epoch'] - window_s]
+        baseline_rate = _sim_rate(base)
+    if recent_rate is not None and baseline_rate and recent_rate < stall_ratio * baseline_rate:
+        return 'critical', (
+            f"{pressure}; sim advanced only {recent_rate * window_s:.0f} sim-s in the last "
+            f"{mins} min ({100 * recent_rate / baseline_rate:.0f}% of its pace while memory "
+            f"was healthy). Likely swap-thrashing toward an OOM kill.")
+    return 'warn', pressure + '; sim still advancing for now.'
+
+
+def mem_stall_status(rows: list[dict], window_s: int = 1800,
+                     low_avail_frac: float = 0.10, healthy_avail_frac: float = 0.20,
+                     stall_ratio: float = 0.25,
+                     hold_s: int = 1800) -> tuple[str, str]:
+    """Classify memory pressure from memory_samples rows.
+
+    'critical': RAM nearly exhausted across the last window_s (median
+                MemAvailable < low_avail_frac) AND the sim rate fell below
+                stall_ratio x its rate in the last healthy window (MemAvailable
+                >= healthy_avail_frac). Memory growth/swap is reported but not
+                required: once RAM is pinned, growth moves into swap or stops
+                while the sim still crawls. The 20260928 eclipse run sat in this
+                state for ~24 h before its OOM kill.
+    'warn':     RAM nearly exhausted, sim still advancing.
+    'ok':       anything else, including too little history to judge.
+
+    The worst level seen at any sample in the last hold_s is reported (with
+    its time if not the latest), so an alarm cannot flicker off between two
+    monitor refreshes while the run is still in trouble.
+    """
+    if not rows:
+        return 'ok', ''
+    rank = {'ok': 0, 'warn': 1, 'critical': 2}
+    best, best_i = ('ok', ''), len(rows) - 1
+    i = len(rows) - 1
+    while i >= 0 and rows[i]['epoch'] >= rows[-1]['epoch'] - hold_s:
+        cur = _classify_mem_window(rows, i, window_s, low_avail_frac,
+                                   healthy_avail_frac, stall_ratio)
+        if rank[cur[0]] > rank[best[0]]:
+            best, best_i = cur, i
+        if best[0] == 'critical':
+            break
+        i -= 1
+    level, msg = best
+    if level != 'ok' and best_i != len(rows) - 1:
+        msg = f"(as of {rows[best_i]['timestamp']}) " + msg
+    return level, msg
+
+
+def cmd_mem_sample(args: argparse.Namespace) -> int:
+    """Append one sample to --csv (writing the header first if the file is
+    new) and write the current mem_stall_status to --status-file as
+    '<level>|<message>'. Prints the level on stdout for run_sim.sh."""
+    csv_path = Path(args.csv)
+    sample = collect_mem_sample(args.root_pid, args.shadow_log)
+    new = not csv_path.exists() or csv_path.stat().st_size == 0
+    with open(csv_path, 'a') as fh:
+        if new:
+            fh.write(MEM_CSV_HEADER + '\n')
+        fh.write(','.join(str(sample[k]) for k in MEM_CSV_FIELDS) + '\n')
+    level, msg = mem_stall_status(load_mem_samples(str(csv_path)))
+    if args.status_file:
+        tmp = args.status_file + '.tmp'
+        with open(tmp, 'w') as fh:
+            fh.write(f'{level}|{msg}\n')
+        os.replace(tmp, args.status_file)
+    print(level)
     return 0
 
 
@@ -1031,6 +1290,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_hms.add_argument('timestamp')
     p_hms.set_defaults(func=cmd_hms_to_seconds)
+
+    # mem-sample
+    p_ms = sub.add_parser(
+        'mem-sample',
+        help="Append one PSS memory sample of Shadow's process tree to a CSV "
+             'and update the memory-stall status file.',
+    )
+    p_ms.add_argument('--root-pid', type=int, required=True)
+    p_ms.add_argument('--shadow-log', required=True)
+    p_ms.add_argument('--csv', required=True)
+    p_ms.add_argument('--status-file', default='')
+    p_ms.set_defaults(func=cmd_mem_sample)
 
     # chain-growth-stats
     p_cg = sub.add_parser(

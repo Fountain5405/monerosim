@@ -397,3 +397,142 @@ def test_live_runs_tsv(tmp_path, capsys, monkeypatch):
     assert est_kb == pytest.approx(4.0 * 2 * 1.2 * 1024, abs=1.0)   # default miner rate, 2h, margin
     assert rem_kb == pytest.approx(max(0.0, est_kb - used_kb), abs=1.0)
     assert o[3] == "0" and o[5] == "-" and o[6] == "-" and o[7] == "tmp" and o[8] == "-"
+
+
+# ---------------------------------------------------------------------------
+# mem-sample: PSS sampler over Shadow's process tree + memory-stall detection
+# ---------------------------------------------------------------------------
+from scripts.run_sim_helpers import (  # noqa: E402
+    MEM_CSV_HEADER,
+    collect_mem_sample,
+    latest_sim_seconds,
+    load_mem_samples,
+    mem_stall_status,
+)
+
+
+def _fake_proc(root, procs, mem_total_kb=1000 * 1024, avail_kb=600 * 1024,
+               swap_total_kb=0, swap_free_kb=0):
+    """procs: {pid: (comm, ppid, pss_kb)} -> a minimal /proc tree under root."""
+    for pid, (comm, ppid, pss) in procs.items():
+        d = root / str(pid)
+        d.mkdir()
+        (d / 'comm').write_text(comm + '\n')
+        (d / 'stat').write_text(f'{pid} ({comm}) S {ppid} {pid} {pid} 0 -1\n')
+        (d / 'smaps_rollup').write_text(f'Rss:  {pss * 3} kB\nPss:  {pss} kB\n')
+    (root / 'meminfo').write_text(
+        f'MemTotal: {mem_total_kb} kB\nMemFree: 1 kB\nMemAvailable: {avail_kb} kB\n'
+        f'SwapTotal: {swap_total_kb} kB\nSwapFree: {swap_free_kb} kB\n')
+    (root / 'self').mkdir()
+
+
+def test_collect_mem_sample_scopes_to_shadow_tree_and_buckets(tmp_path):
+    proc = tmp_path / 'proc'
+    proc.mkdir()
+    _fake_proc(proc, {
+        100: ('shadow', 1, 10 * 1024),
+        101: ('monerod', 100, 300 * 1024),
+        102: ('bash', 100, 4 * 1024),
+        103: ('python3', 102, 50 * 1024),       # agent: grandchild via wrapper
+        104: ('monero-wallet-r', 100, 20 * 1024),
+        105: ('a) b (c', 100, 1024),            # parens/spaces in comm
+        200: ('monerod', 1, 999 * 1024),        # another run: must be excluded
+    }, swap_total_kb=8 * 1024 * 1024, swap_free_kb=6 * 1024 * 1024)
+    log = tmp_path / 'shadow.log'
+    log.write_text('Progress: 1% — simulated: 01:02:03.4/10:00:00, realtime: 1\n')
+
+    s = collect_mem_sample(100, str(log), proc=str(proc), now=1_000_000)
+
+    assert (s['shadow_mb'], s['daemon_mb'], s['wallet_mb'], s['agents_mb'], s['other_mb']) \
+        == (10, 300, 20, 50, 5)
+    assert s['total_mb'] == 385
+    assert s['nprocs'] == 6
+    assert s['sim_s'] == 3723
+    assert (s['ram_total_mb'], s['avail_mb'], s['used_pct'], s['swap_used_mb']) == (1000, 600, 40, 2048)
+
+
+def test_latest_sim_seconds_uses_last_line_and_handles_missing(tmp_path):
+    log = tmp_path / 'shadow.log'
+    log.write_text('simulated: 00:00:05.0/1\nnoise\nsimulated: 42:06:48.7/50:00:00\n')
+    assert latest_sim_seconds(str(log)) == 42 * 3600 + 6 * 60 + 48
+    assert latest_sim_seconds(str(tmp_path / 'nope.log')) == -1
+    (tmp_path / 'empty.log').write_text('starting\n')
+    assert latest_sim_seconds(str(tmp_path / 'empty.log')) == -1
+
+
+def _rows(phases, ram=1_000_000, step=30):
+    """phases: [(n_samples, avail_mb_start, avail_mb_end, sim_rate)] -> rows."""
+    rows, t, sim = [], 0, 0.0
+    for n, a0, a1, rate in phases:
+        for i in range(n):
+            avail = a0 + (a1 - a0) * i // max(1, n - 1)
+            rows.append({'timestamp': '', 'epoch': t, 'sim_s': int(sim),
+                         'ram_total_mb': ram, 'avail_mb': avail, 'swap_used_mb': 0})
+            t += step
+            sim += rate * step
+    return rows
+
+
+def test_mem_stall_critical_when_ram_exhausted_growing_and_stalled():
+    rows = _rows([(120, 600_000, 300_000, 1.0),     # healthy, sim 1x
+                  (120, 80_000, 20_000, 0.05)])    # thrash: 2-8% avail, sim 0.05x
+    level, msg = mem_stall_status(rows)
+    assert level == 'critical'
+    assert 'swap-thrashing' in msg
+
+
+def test_mem_stall_warn_when_ram_exhausted_but_still_advancing():
+    rows = _rows([(120, 600_000, 300_000, 1.0), (120, 80_000, 20_000, 0.8)])
+    assert mem_stall_status(rows)[0] == 'warn'
+
+
+def test_mem_stall_not_critical_without_a_stall():
+    # normal attack-phase growth with RAM to spare: no alarm
+    assert mem_stall_status(_rows([(240, 600_000, 300_000, 0.05)]))[0] == 'ok'
+    # RAM tight and flat, sim keeping its healthy pace: warn, not critical
+    assert mem_stall_status(_rows([(120, 600_000, 300_000, 1.0),
+                                   (240, 50_000, 50_000, 0.9)]))[0] == 'warn'
+    # too little history
+    assert mem_stall_status(_rows([(10, 50_000, 10_000, 0.0)]))[0] == 'ok'
+    assert mem_stall_status([])[0] == 'ok'
+
+
+def test_mem_sample_cli_writes_header_once_and_status(tmp_path, capsys, monkeypatch):
+    import scripts.run_sim_helpers as h
+    fake = {k: 0 for k in h.MEM_CSV_FIELDS}
+    fake.update(timestamp='12:00:00', epoch=1, sim_s=5, ram_total_mb=1000, avail_mb=900)
+    monkeypatch.setattr(h, 'collect_mem_sample', lambda *a, **k: dict(fake))
+    csv = tmp_path / 'memory_samples.csv'
+    status = tmp_path / 'memory_status'
+    argv = ['mem-sample', '--root-pid', '1', '--shadow-log', 'x',
+            '--csv', str(csv), '--status-file', str(status)]
+    assert _run(capsys, argv) == (0, 'ok\n')
+    _run(capsys, argv)
+
+    lines = csv.read_text().splitlines()
+    assert lines[0] == MEM_CSV_HEADER and lines.count(MEM_CSV_HEADER) == 1
+    assert len(load_mem_samples(str(csv))) == 2
+    assert status.read_text() == 'ok|\n'
+
+
+def test_load_mem_samples_rejects_legacy_format(tmp_path):
+    legacy = tmp_path / 'm.csv'
+    legacy.write_text('timestamp,shadow_rss_mb,monerod_rss_mb,wallet_rss_mb,total_rss_mb,'
+                      'system_free_mb,system_used_pct\n12:00:00,1,2,3,4,5,6%\n')
+    assert load_mem_samples(str(legacy)) == []
+
+
+def test_mem_stall_critical_when_ram_pinned_and_stalled_even_without_growth():
+    # The last ~5 h of the 20260928 run: RAM pinned, nothing left to grow into,
+    # sim crawling at ~2% of its healthy pace. Must still alarm.
+    rows = _rows([(120, 600_000, 300_000, 1.0), (120, 5_000, 5_000, 0.02)])
+    assert mem_stall_status(rows)[0] == 'critical'
+
+
+def test_mem_stall_alarm_holds_through_a_brief_recovery_blip():
+    rows = _rows([(120, 600_000, 300_000, 1.0),
+                  (120, 80_000, 20_000, 0.05),    # critical
+                  (30, 20_000, 20_000, 1.0)])     # 15 min back at normal pace
+    level, msg = mem_stall_status(rows)
+    assert level == 'critical'
+    assert msg.startswith('(as of ')
