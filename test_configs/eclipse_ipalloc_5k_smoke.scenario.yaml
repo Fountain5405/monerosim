@@ -16,7 +16,7 @@ general:
   shadow_log_level: warning
   progress: true
   runahead: 100ms
-  process_threads: 0
+  process_threads: 2   # thread-pool size INSIDE each daemon (x every node), not Shadow parallelism -- keep small
   native_preemption: true
   reachable_fraction: 0.0
   daemon_defaults:
