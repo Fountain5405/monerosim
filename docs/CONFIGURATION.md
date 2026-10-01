@@ -31,7 +31,7 @@ general:
   enable_dns_server: true          # Enable DNS server for monerod peer discovery
   bootstrap_end_time: "4h"         # High bandwidth / no packet loss until this time
   difficulty_cache_ttl: 30         # Seconds to cache difficulty in autonomous miners
-  process_threads: 1               # Thread count for monerod/wallet-rpc (1=deterministic)
+  process_threads: 1               # Thread-pool size INSIDE each simulated daemon (not Shadow's; see `parallelism`)
   native_preemption: false         # Shadow native preemption (breaks determinism)
 
   # Default options applied to all daemons (overridable per-agent)
@@ -69,7 +69,7 @@ general:
 | `enable_dns_server` | bool | - | Enable DNS discovery agent |
 | `bootstrap_end_time` | string | - | Bootstrap period end time |
 | `difficulty_cache_ttl` | u32 | 30 | Difficulty cache TTL (seconds) |
-| `process_threads` | u32 | 1 | monerod/wallet thread count |
+| `process_threads` | u32 | 1 | Thread-pool size inside **each simulated daemon**: monerod gets `--max-concurrency=N --prep-blocks-threads=N`; cuprated pins its tokio/rayon/storage pools to N. Not applied to wallet-rpc or Python agents. **Not** Shadow's worker-thread count (that is `parallelism`): cost scales with N x number of daemons, so keep it small (1 or 2). `0` omits the monerod flags, so every node sizes its pools from the host's core count. |
 | `native_preemption` | bool | false | Shadow native preemption |
 | `daemon_defaults` | map | - | Default daemon CLI options |
 | `wallet_defaults` | map | - | Default wallet CLI options |

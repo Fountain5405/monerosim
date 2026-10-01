@@ -103,7 +103,7 @@ Notable choices in the generated TOML:
 |---|---|
 | `network = "Mainnet"` **plus** `--regtest` | The `network` TOML field only accepts Mainnet/Testnet/Stagenet. FakeChain is reachable **only** via the `--regtest` CLI flag |
 | `fast_sync = false` | Irrelevant on a private chain |
-| `[tokio] [rayon] [storage]` threads pinned | **Load-bearing.** Under Shadow, `/proc` reflects the *host* (e.g. 256 cores / 1 TB), so cuprate's auto-sizing would allocate a host-sized pool *per simulated node*. Uses `general.process_threads`, defaulting to 2 |
+| `[tokio] [rayon] [storage]` threads pinned | **Load-bearing.** Under Shadow, `/proc` reflects the *host* (e.g. 256 cores / 1 TB), so cuprate's auto-sizing would allocate a host-sized pool *per simulated node*. Uses `general.process_threads` (default 1), or 2 if it is set to `0` |
 | `[tracing.stdout] level = "info"` | Keeps stdout lean |
 | `[tracing.file] level = "debug"` | **Required for analysis.** cuprate logs block events at INFO but tx-relay, P2P connection and handshake events only at DEBUG |
 | `[p2p.clear_net] seed_nodes = [...]` | Filled from the spec's `peer_addrs`. This is what joins the node to the sim topology — FakeChain ships no built-in seeds |

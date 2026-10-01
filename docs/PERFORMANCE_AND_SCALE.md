@@ -31,7 +31,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | Knob | Effect | Tradeoff |
 |---|---|---|
 | `runahead: 500ms` (default 100ms) | Shadow batches more events before sync | Slightly less accurate timing between hosts |
-| `process_threads: 2` (default 2) | Threads per simulated process | `0` = non-deterministic but fastest; `1` = deterministic but slow |
+| `process_threads: 2` (default 1) | Thread-pool size inside each simulated daemon (monerod `--max-concurrency`/`--prep-blocks-threads`; cuprated pools). Not wallet-rpc, not Python agents, and **not** Shadow's worker threads (`parallelism`) | `1` = deterministic but slow. Cost scales with N x daemons: large values (the eclipse templates once used 64-192) multiply per-daemon thread state across every node. `0` = monerod sizes its pools from the host core count (256 here) in every node |
 | `native_preemption: true` (default false) | Shadow preempts long-running CPU-bound code so other hosts get scheduled | See [Native preemption](#native-preemption) — improves wall perf; breaks strict reproducibility |
 | `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
@@ -163,7 +163,7 @@ target hardware tier is always.
 
 | `process_threads` | `native_preemption` | Result |
 |---|---|---|
-| `0` | `true` | Fastest, fully non-deterministic (our quickstart default) |
+| `0` | `true` | Fully non-deterministic; every monerod sizes its pools from the host core count (our quickstart default) |
 | `0` | `false` | Non-deterministic without the throughput win — rarely useful |
 | `1` | `false` | Deterministic, slow — pick this for strict reproducibility |
 | `1` | `true` | Determinism guarantee is broken; treat as effectively non-deterministic |

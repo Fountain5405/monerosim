@@ -33,7 +33,7 @@ These are Shadow simulator settings — top-level fields under `general:`, **not
 | Field | Default | Description |
 |-------|---------|-------------|
 | `runahead` | `100ms` | Shadow runahead window. Larger = faster but less accurate |
-| `process_threads` | `2` | Threads per simulated process. `0` = program defaults, `1` = deterministic |
+| `process_threads` | `1` | Thread-pool size inside each simulated daemon (monerod `--max-concurrency`/`--prep-blocks-threads`; cuprated pools). Not wallet-rpc, not agents, not Shadow (`parallelism`). Keep small: cost scales with N x daemons. `0` = program defaults (host-core-sized pools per node), `1` = deterministic |
 | `native_preemption` | `false` | Enable Shadow native preemption for better wall-time performance |
 | `fallback_seeds` | `auto` | How to host Monero's hardcoded fallback seed IPs. See below. |
 

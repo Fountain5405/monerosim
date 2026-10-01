@@ -280,11 +280,15 @@ pub struct GeneralConfig {
     /// Show simulation progress on stderr (default: true for visibility)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<bool>,
-    /// Thread count for monerod and wallet-rpc processes
-    /// - None or 0: auto-detect (omits thread flags, lets processes decide)
-    /// - 1: single-threaded (default for determinism)
+    /// Thread-pool size inside each simulated daemon: monerod gets
+    /// --max-concurrency=N --prep-blocks-threads=N, cuprated pins its pools to N.
+    /// Not applied to wallet-rpc or agents, and NOT Shadow's worker threads
+    /// (that is `parallelism`); cost scales with N x daemons.
+    /// - None: 1 (orchestrator default)
+    /// - 0: omit the monerod flags, so every node sizes its pools from the
+    ///   host core count (cuprated falls back to 2)
+    /// - 1: single-threaded (deterministic)
     /// - 2+: use specified thread count
-    /// Affects --max-concurrency and --prep-blocks-threads flags
     #[serde(skip_serializing_if = "Option::is_none")]
     pub process_threads: Option<u32>,
 
