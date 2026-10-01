@@ -37,7 +37,6 @@ class EclipseProbeAgent(BaseAgent):
         self._interval = interval
         self._peerlist_interval = peerlist_interval
         self._peerlist_timeout = peerlist_timeout
-        self._fh = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._role = "?"
@@ -81,7 +80,6 @@ class EclipseProbeAgent(BaseAgent):
         except OSError:
             pass
         self._path = raw_dir / ("raw_%s.jsonl.gz" % (self.agent_id or "node"))
-        self._fh = gzip.open(self._path, "at")  # gzip append, one stream, flushed per write
         if self.daemon_rpc:
             self._peerlist_url = self.daemon_rpc.url.replace("/json_rpc", "/get_peer_list")
             # SEPARATE session for the peer_list thread (requests.Session is not
@@ -97,9 +95,14 @@ class EclipseProbeAgent(BaseAgent):
         try:
             line = json.dumps({"sim_t": round(sim_t, 1), "id": self.agent_id,
                                "role": self._role, "kind": kind, "data": obj}) + "\n"
+            # One complete gzip member per record, closed immediately. Concatenated
+            # members are one valid stream to gzip -d / zcat / gzip.open, so the
+            # file stays valid however the probe dies (Shadow shutdown, OOM,
+            # SIGKILL). A single long-lived stream never got its trailer written
+            # and every archived file failed gzip -d (issue #11).
             with self._lock:
-                self._fh.write(line)
-                self._fh.flush()
+                with gzip.open(self._path, "at") as fh:
+                    fh.write(line)
         except Exception as e:  # noqa: BLE001
             self.logger.warning("dump %s failed: %s", kind, e)
 
