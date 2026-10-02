@@ -574,9 +574,23 @@ def _shadow_pinned_cpus(online: set[int] | None, proc: str = '/proc') -> set[int
     return busy
 
 
+def count_shadow_hosts(path: str) -> int:
+    """Number of hosts in a Shadow config: the keys under top-level `hosts:`."""
+    n, in_hosts = 0, False
+    with open(path) as f:
+        for line in f:
+            if not line.strip() or line.lstrip().startswith('#'):
+                continue
+            if not line.startswith(' '):
+                in_hosts = line.rstrip() == 'hosts:'
+            elif in_hosts and re.match(r'  [^ -]', line):
+                n += 1
+    return n
+
+
 def plan_shadow_cpus(parallelism: int, allowed: Iterable[int] | None = None,
                      sys_cpu: str = '/sys/devices/system/cpu',
-                     proc: str = '/proc') -> tuple[str, int, str]:
+                     proc: str = '/proc', hosts: int | None = None) -> tuple[str, int, str]:
     """Choose the CPUs and worker count for a new Shadow run.
 
     Shadow's own `parallelism: 0` dedupes CPUs on topology/core_id, which
@@ -593,9 +607,16 @@ def plan_shadow_cpus(parallelism: int, allowed: Iterable[int] | None = None,
     lowest-numbered CPUs first and knows nothing about the others). Cores are
     taken in NUMA-node order to keep a run's memory local. parallelism 0
     takes every free core; N takes N of them (a run can be capped this way
-    to leave room for the next). '-' means no restriction: nothing else is
-    running, or nothing is free (then runs share cores; wall clock suffers,
-    results do not).
+    to leave room for the next). Either way at most `hosts` cores: Shadow
+    runs min(parallelism, hosts) workers, so an 18-host run never needs more
+    than 18.
+
+    Any plan short of the whole machine is a taskset mask, even with nothing
+    else running: the mask makes the reservation visible to the next launch
+    at once, while an unrestricted Shadow shows nothing until it has built
+    every host and pinned its workers (seconds to minutes). '-' means no
+    restriction: the run takes every core, or nothing is free (then runs
+    share cores; wall clock suffers, results do not).
     """
     if allowed is None:
         allowed = os.sched_getaffinity(0)
@@ -612,24 +633,30 @@ def plan_shadow_cpus(parallelism: int, allowed: Iterable[int] | None = None,
     busy = _shadow_pinned_cpus(online, proc)
     free = sorted((k for k in cores if not (k & busy)), key=lambda k: cores[k])
     n_all = len(cores)
-    if len(free) == n_all:
-        return '-', parallelism or n_all, f'{n_all} physical cores, none used by other Shadow runs'
+    want = parallelism or len(free) or n_all
+    capped = bool(hosts) and want > hosts
+    if capped:
+        want = hosts
     if not free:
-        return ('-', parallelism or n_all,
-                f'all {n_all} physical cores are used by other Shadow runs; sharing them')
-    want = parallelism or len(free)
+        return '-', want, f'all {n_all} physical cores are used by other Shadow runs; sharing them'
     take = free[:want]
-    cpus = set().union(*take) & set(topo)
-    note = f'{len(take)} of {len(free)} free physical cores ({n_all - len(free)} used by other Shadow runs)'
+    used = n_all - len(free)
+    note = (f'{len(take)} of {len(free)} free physical cores '
+            f'({used if used else "none"} used by other Shadow runs)')
+    if capped:
+        note += f'; capped at {hosts} hosts'
     if want > len(free):
-        note += f'; parallelism {parallelism} > free cores, workers will share'
-    return _fmt_cpu_list(cpus), parallelism or len(take), note
+        note += f'; {want} workers > free cores, workers will share'
+    if len(take) == n_all:
+        return '-', want, note
+    return _fmt_cpu_list(set().union(*take) & set(topo)), want, note
 
 
 def cmd_cpu_plan(args: argparse.Namespace) -> int:
     """Print "<taskset list or -><TAB><workers><TAB><note>" for run_sim.sh."""
     try:
-        cpus, workers, note = plan_shadow_cpus(args.parallelism)
+        hosts = count_shadow_hosts(args.shadow_config) if args.shadow_config else args.hosts
+        cpus, workers, note = plan_shadow_cpus(args.parallelism, hosts=hosts or None)
     except OSError as e:
         print(f'cpu-plan: {e}', file=sys.stderr)
         return 1
@@ -1449,6 +1476,10 @@ def build_parser() -> argparse.ArgumentParser:
              'avoiding cores pinned by other live Shadow runs.',
     )
     p_cp.add_argument('--parallelism', type=int, default=0)
+    p_cp.add_argument('--hosts', type=int, default=0,
+                      help='Host count (estimate) to cap the cores at; 0 = unknown.')
+    p_cp.add_argument('--shadow-config', default='',
+                      help='Generated Shadow config: count its hosts exactly (overrides --hosts).')
     p_cp.set_defaults(func=cmd_cpu_plan)
 
     # mem-sample

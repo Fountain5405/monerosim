@@ -575,11 +575,11 @@ def _fake_shadow_proc(root, procs):
     return str(root)
 
 
-def _plan(tmp_path, procs, parallelism=0, **kw):
+def _plan(tmp_path, procs, parallelism=0, hosts=None, **kw):
     from scripts.run_sim_helpers import plan_shadow_cpus
     sys_cpu = _fake_sys_cpu(tmp_path / 'sys', **kw)
     proc = _fake_shadow_proc(tmp_path / 'proc', procs)
-    return plan_shadow_cpus(parallelism, range(8), sys_cpu, proc)
+    return plan_shadow_cpus(parallelism, range(8), sys_cpu, proc, hosts=hosts)
 
 
 def _shadow(pid, worker_cpus, main_mask='0-7'):
@@ -636,6 +636,45 @@ def test_cpu_plan_parallelism_above_free_cores_warns(tmp_path):
     assert 'will share' in note
 
 
+def test_cpu_plan_small_run_alone_is_masked_to_its_hosts(tmp_path):
+    """Shadow runs at most one worker per host; reserve no more, and mask even
+    when alone so the next launch sees the reservation before workers exist."""
+    cpus, workers, note = _plan(tmp_path, {}, hosts=2)
+    assert (cpus, workers) == ('0-1,4-5', 2)
+    assert 'capped at 2 hosts' in note
+
+
+def test_cpu_plan_big_run_alone_takes_whole_machine_unmasked(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, {}, hosts=10)
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_back_to_back_small_runs_get_disjoint_cores(tmp_path):
+    """Second launch while the first (masked by the planner) is still building hosts."""
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [], main_mask='0-1,4-5'), hosts=2)
+    assert (cpus, workers) == ('2-3,6-7', 2)
+
+
+def test_cpu_plan_explicit_parallelism_capped_at_hosts(tmp_path):
+    cpus, workers, note = _plan(tmp_path, {}, parallelism=4, hosts=1)
+    assert (cpus, workers) == ('0,4', 1)
+    assert 'capped at 1 hosts' in note and 'share' not in note
+
+
+def test_count_shadow_hosts(tmp_path):
+    from scripts.run_sim_helpers import count_shadow_hosts
+    cfg = tmp_path / 'shadow.yaml'
+    cfg.write_text('general:\n  parallelism: 0\nhosts:\n  dnsserver:\n    network_node_id: 0\n'
+                   '    processes:\n    - path: /bin/bash\n  miner-001:\n    ip_addr: 1.0.0.1\n'
+                   '  # comment: not a host\n  user-001:\n    ip_addr: 1.0.0.2\n')
+    assert count_shadow_hosts(str(cfg)) == 3
+
+
+def test_count_shadow_hosts_golden_quickstart():
+    from scripts.run_sim_helpers import count_shadow_hosts
+    assert count_shadow_hosts('tests/golden/quickstart.yaml') == 18
+
+
 def test_cpu_plan_falls_back_to_thread_siblings(tmp_path):
     cpus, workers, _ = _plan(tmp_path, {}, name='thread_siblings_list')
     assert (cpus, workers) == ('-', 4)
@@ -658,3 +697,9 @@ def test_cpu_plan_cli_on_this_host(capsys):
     rc, out = _run(capsys, ['cpu-plan', '--parallelism', '0'])
     cpus, workers, note = out.rstrip('\n').split('\t')
     assert rc == 0 and int(workers) >= 1 and note
+
+
+def test_cpu_plan_cli_counts_shadow_config_hosts(capsys):
+    rc, out = _run(capsys, ['cpu-plan', '--shadow-config', 'tests/golden/quickstart.yaml'])
+    cpus, workers, note = out.rstrip('\n').split('\t')
+    assert rc == 0 and 1 <= int(workers) <= 18

@@ -910,7 +910,8 @@ check_disk_space() {
     # is decided again at launch). Never blocks: sharing cores slows wall
     # clock but leaves simulation results unchanged.
     local plan plan_cpus plan_workers plan_note
-    if plan=$(python3 scripts/run_sim_helpers.py cpu-plan --parallelism "${CFG_PARALLELISM:-0}" 2>/dev/null) \
+    if plan=$(python3 scripts/run_sim_helpers.py cpu-plan --parallelism "${CFG_PARALLELISM:-0}" \
+                --hosts "$num_hosts" 2>/dev/null) \
             && [[ -n "$plan" ]]; then
         IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
         if [[ "$plan_note" == *shar* ]]; then
@@ -1121,20 +1122,23 @@ build_and_generate() {
 # Phase 3: Run Simulation
 # ============================================================
 
-run_simulation() {
-    log_step "Phase 3: Starting Simulation"
-
+# Plan this run's CPUs, then start Shadow (sets SHADOW_LOG, SHADOW_PID).
+# Called by run_simulation under CPU_PLAN_LOCK.
+plan_and_launch_shadow() {
     # Pick this run's CPUs and worker count (run_sim_helpers.py cpu-plan).
     # Each Shadow process pins its workers, and the processes they run, to
     # the lowest-numbered CPUs it may use and knows nothing of other runs, so
     # concurrent runs would stack on the same cores. Launching under taskset
-    # with the physical cores no other Shadow run holds splits the box.
-    # parallelism 0 = one worker per such core; Shadow's own auto mode counts
-    # one socket only (64 of 128 cores here). --parallelism overrides the YAML.
+    # with the physical cores no other Shadow run holds splits the box, and
+    # the mask shows the next launch this run's cores before its workers
+    # exist. parallelism 0 = one worker per such core, at most one per host
+    # (Shadow's cap); Shadow's own auto mode counts one socket only (64 of
+    # 128 cores here). --parallelism overrides the YAML.
     local launch=() par_args=() cfg_par plan plan_cpus plan_workers plan_note
     cfg_par=$(grep -oPm1 '^  parallelism: \K[0-9]+' "$SHADOW_OUTPUT/shadow_agents.yaml" || true)
     cfg_par=${cfg_par:-0}
-    if plan=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" cpu-plan --parallelism "$cfg_par" 2>/dev/null) \
+    if plan=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" cpu-plan --parallelism "$cfg_par" \
+                --shadow-config "$SHADOW_OUTPUT/shadow_agents.yaml" 2>/dev/null) \
             && [[ -n "$plan" ]]; then
         IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
         if [[ "$plan_cpus" != "-" ]]; then
@@ -1154,8 +1158,45 @@ run_simulation() {
     # Start Shadow in its own process group (via setsid) so Ctrl+C won't reach it
     SHADOW_LOG="$ARCHIVE_DIR/shadow_run.log"
     log_info "Starting Shadow (data dir: $DATA_DIR)..."
-    setsid "${launch[@]}" "$SHADOW_BIN" "${par_args[@]}" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 &
+    setsid "${launch[@]}" "$SHADOW_BIN" "${par_args[@]}" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 9<&- &
     SHADOW_PID=$!
+
+    # Return (releasing the lock) once the new Shadow is visible to the next
+    # launch's planner: its comm is "shadow" from exec on, with the taskset
+    # mask already applied. Milliseconds; bounded at 10 s.
+    local i comm
+    for ((i = 0; i < 100; i++)); do
+        comm=""
+        read -r comm < "/proc/$SHADOW_PID/comm" 2>/dev/null || true
+        [[ "$comm" == shadow ]] && break
+        kill -0 "$SHADOW_PID" 2>/dev/null || break
+        sleep 0.1
+    done
+}
+
+# One lock for every run_sim launch on the box (any user, any checkout).
+# Without it, launches that plan before either Shadow exists pick the same
+# cores, and a batch from one checkout launches in lockstep whenever cargo
+# rebuilds (its build lock releases them together). The name stays clear of
+# the /tmp/monerosim-* and /tmp/monerosim_* cleanup globs.
+CPU_PLAN_LOCK=/tmp/monerosim.cpu-plan.lock
+
+run_simulation() {
+    log_step "Phase 3: Starting Simulation"
+
+    # /tmp is sticky and fs.protected_regular forbids O_CREAT on another
+    # user's file there, so create the lock only if it is missing and open it
+    # read-only (flock needs no write access). Shadow never inherits it (9<&-).
+    [[ -e "$CPU_PLAN_LOCK" ]] || ( umask 022; : >> "$CPU_PLAN_LOCK" ) 2>/dev/null || true
+    if [[ -r "$CPU_PLAN_LOCK" ]]; then
+        {
+            flock -x -w 120 9 || log_warn "CPU plan lock still held after 120 s; planning without it"
+            plan_and_launch_shadow
+        } 9< "$CPU_PLAN_LOCK"
+    else
+        log_warn "Cannot open $CPU_PLAN_LOCK; planning CPUs without the launch lock"
+        plan_and_launch_shadow
+    fi
     START_TIME=$(date +%s)
     START_TIME_FMT=$(date '+%Y-%m-%d %H:%M:%S')
 

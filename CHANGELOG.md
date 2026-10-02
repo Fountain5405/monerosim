@@ -127,7 +127,16 @@
   1.29x slower than one, so no mode ever exceeds one. The gain from 128 versus
   64 physical cores on a large run is not measured yet. The old "~63-core
   algorithmic ceiling" was very likely this bug. Running several simulations
-  at once: set `parallelism` in each config (docs/CONFIGURATION.md).
+  at once: set `parallelism` in each config (docs/CONFIGURATION.md). A run
+  reserves at most one core per simulated host (Shadow's own worker cap), so
+  the quickstart takes 18 cores, not every free one. It is also always
+  launched under `taskset` unless it takes the whole machine: before that,
+  a run started alone showed other launches nothing until Shadow had built
+  its hosts and pinned its workers. And planning plus launching now happens
+  under one lock for the whole box (`/tmp/monerosim.cpu-plan.lock`, any user,
+  any checkout), held until the new Shadow is visible: two quickstarts started
+  20 s apart from one checkout got the same 18 CPUs, because cargo's build lock
+  released both onto the launch within 6 ms of each other after a rebuild.
 - **Eclipse probe dumps failed `gzip -d` ("unexpected end of file", issue #11).**
   `agents/eclipse_probe.py` held one gzip stream open for the whole run and only
   flushed it; the probe is always killed from outside, so the gzip trailer was never

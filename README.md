@@ -78,7 +78,7 @@ general:
   shadow_log_level: warning
   progress: true
   runahead: 100ms
-  parallelism: 0       # Shadow workers: 0 = every free physical core; set e.g. 64 if another sim may run at the same time
+  parallelism: 0       # Shadow workers: 0 = one per host, up to every free physical core; set e.g. 64 if another sim may run at the same time
   process_threads: 2   # thread-pool size INSIDE each daemon (x every node), not Shadow parallelism -- keep small
   native_preemption: true
   daemon_defaults:
