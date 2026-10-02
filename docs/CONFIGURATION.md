@@ -61,7 +61,7 @@ general:
 |-------|------|---------|-------------|
 | `stop_time` | string | required | Simulation duration |
 | `simulation_seed` | u64 | 12345 | Seed for deterministic simulations |
-| `parallelism` | u32 | 0 (auto) | Shadow worker threads, one per physical core. `run_sim.sh` gives each run its own cores: it skips cores that other live Shadow runs have pinned and starts Shadow under `taskset` with the rest. 0 takes every free core (Shadow's own auto mode would count only one socket's cores, 64 of 128 on a 2 x 64-core box). N takes N cores, which leaves the rest of the machine to runs started later. |
+| `parallelism` | u32 | 0 (auto) | Shadow worker threads, one per physical core. `run_sim.sh` gives each run its own cores: it skips cores that other live Shadow runs have pinned and starts Shadow under `taskset` with the rest. 0 takes every free core (Shadow's own auto mode would count only one socket's cores, 64 of 128 on a 2 x 64-core box). N takes N cores, which leaves the rest of the machine to runs started later. Set N if another simulation may run at the same time; see [Running several simulations at once](#running-several-simulations-at-once). Never more than the physical cores: two workers per core ran 1.29x slower. |
 | `fresh_blockchain` | bool | true | Start from genesis |
 | `log_level` | string | "info" | Agent log level |
 | `shadow_log_level` | string | "info" | Shadow log level |
@@ -75,6 +75,30 @@ general:
 | `wallet_defaults` | map | - | Default wallet CLI options |
 | `runahead` | string | - | Shadow runahead duration |
 | `python_venv` | string | - | Path to Python virtual environment |
+
+### Running several simulations at once
+
+`parallelism: 0` (the default) gives a run **every physical core that no other
+live Shadow run is using**, whether or not the run is big enough to use them.
+A run started after it then finds no free cores and has to share them, so both
+run slower (results are unaffected). If you plan to run more than one
+simulation on the same machine, set `parallelism` explicitly in each config,
+for example `64` on a 128-core box for two runs side by side. `run_sim.sh`
+then gives each run that many cores of its own and leaves the rest for the
+next one. A run that is already going keeps its cores until it ends.
+
+Guidance:
+- One run at a time: leave `parallelism: 0`.
+- Two or more at a time: give each a share, with the shares adding up to no
+  more than the physical cores. The preflight's `Shadow CPUs:` line shows what
+  each run will get, and warns when a run has to share.
+- Small runs cannot use many workers anyway: Shadow never starts more
+  workers than there are hosts, and a ~240-host run kept 128 workers mostly
+  spinning. Giving such a run fewer cores costs it little and frees them.
+- Never more workers than physical cores: two per core (both hyperthreads)
+  ran 1.29x slower than one per core.
+- Changing `parallelism` changes the run's trajectory (not only its speed), so
+  keep it fixed across runs you compare seed for seed.
 
 Note: if `daemon_defaults` does not set `max-connections-per-ip`, monerosim
 injects `4` (a floor, not a force — any user-provided value wins, including

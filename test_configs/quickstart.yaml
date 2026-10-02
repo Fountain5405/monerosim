@@ -6,6 +6,8 @@ general:
   shadow_log_level: warning
   progress: true
   runahead: 100ms
+  # parallelism: 0 (default) = every free physical core. Running another sim at the same
+  # time? Set e.g. `parallelism: 64` in each (docs/CONFIGURATION.md, several simulations).
   process_threads: 2   # thread-pool size INSIDE each daemon (x every node), not Shadow parallelism -- keep small
   native_preemption: true
   daemon_defaults:
