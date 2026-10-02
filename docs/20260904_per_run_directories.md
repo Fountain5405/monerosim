@@ -185,6 +185,19 @@ When no other run is live, the two lines above collapse to
   the sum exceeds the core count (simulations will be slower, not wrong)
   but never blocks a launch. The existing confirm prompt is the only gate.
 
+  **Superseded 2026-10-02.** That sum hid two problems. Shadow's own
+  `parallelism: 0` counts one socket's cores (64 of 128 here), and every
+  Shadow process pins its workers, and the processes they run, to the
+  lowest-numbered CPUs it may use. So concurrent runs did not split the box:
+  each one sat on CPUs 0-63, which is also why the parallel-run acceptance
+  test below needed a relaxed wall-clock ceiling. `run_sim.sh` now plans the
+  CPUs itself (`run_sim_helpers.py cpu-plan`): it skips the physical cores
+  that other live Shadow runs (any user) have pinned, launches Shadow under
+  `taskset` with the free ones, and for `parallelism: 0` passes
+  `--parallelism <free cores>`. The preflight line is now
+  `Shadow CPUs: N worker threads; ...`, and it warns when the run has to
+  share cores.
+
 ## 5. Acceptance
 
 The integration test that exercises all of this is

@@ -792,9 +792,7 @@ check_disk_space() {
     # reserved out of free space so one launch cannot fill the disk that
     # all of them share. Runs known only from /tmp (another checkout or
     # archive base) have no estimate and are reported as such.
-    local nproc_n
-    nproc_n=$(nproc 2>/dev/null || echo 0)
-    local live_tsv live_rc=0 other_remaining_kb=0 other_unknown=0 other_count=0 other_parallelism=0
+    local live_tsv live_rc=0 other_remaining_kb=0 other_unknown=0 other_count=0
     live_tsv=$(python3 scripts/run_sim_helpers.py live-runs \
         --archive-base "$archive_dir" --exclude-pid $$ 2>/dev/null) || live_rc=$?
     if [[ -n "$live_tsv" ]]; then
@@ -806,7 +804,6 @@ check_disk_space() {
             el_txt="?"; [[ "$elapsed" -ge 0 ]] && el_txt=$(format_duration "$elapsed")
             # A malformed/missing field must not abort the launch under set -e.
             [[ "$rem" =~ ^[0-9]+$ ]] || rem="-"
-            [[ "$par" =~ ^[0-9]+$ ]] || par="-"
             if [[ "$rem" != "-" ]]; then
                 other_remaining_kb=$((other_remaining_kb + rem))
                 est_txt="est. total $(format_kb "$est"), remaining $(format_kb "$rem")"
@@ -814,9 +811,6 @@ check_disk_space() {
                 other_unknown=$((other_unknown + 1))
                 est_txt="no estimate"
             fi
-            [[ "$par" == "-" ]] && par=0
-            (( par == 0 )) && par=$nproc_n
-            other_parallelism=$((other_parallelism + par))
             log_info "  $rid  pid $pid  up $el_txt  $daemons daemons  used $(format_kb "$used")  ($est_txt) [$src]"
         done <<< "$live_tsv"
         log_info "  Reserving $(format_kb "$other_remaining_kb") for their projected growth ($other_unknown of $other_count with no estimate)"
@@ -912,16 +906,20 @@ check_disk_space() {
         log_ok "Disk space: $(format_kb "$effective_free_kb") free (estimated need: $(format_kb "$estimated_kb"))"
     fi
 
-    # Informational: Shadow worker threads across all live runs vs cores.
-    # 0 (auto) counts as every core. Never blocks: contention slows wall
+    # Informational: the CPUs this run would get (see plan_shadow_cpus; it
+    # is decided again at launch). Never blocks: sharing cores slows wall
     # clock but leaves simulation results unchanged.
-    local this_par="${CFG_PARALLELISM:-0}"
-    (( this_par == 0 )) && this_par=$nproc_n
-    local total_par=$((this_par + other_parallelism))
-    if (( nproc_n > 0 && total_par > nproc_n )); then
-        log_warn "Shadow worker threads: this run $this_par + other live runs $other_parallelism = $total_par > $nproc_n cores (wall clock will suffer; results unaffected)"
+    local plan plan_cpus plan_workers plan_note
+    if plan=$(python3 scripts/run_sim_helpers.py cpu-plan --parallelism "${CFG_PARALLELISM:-0}" 2>/dev/null) \
+            && [[ -n "$plan" ]]; then
+        IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
+        if [[ "$plan_note" == *shar* ]]; then
+            log_warn "Shadow CPUs: $plan_workers worker threads; $plan_note (wall clock will suffer; results unaffected)"
+        else
+            log_info "Shadow CPUs: $plan_workers worker threads; $plan_note"
+        fi
     else
-        log_info "Shadow worker threads: this run $this_par + other live runs $other_parallelism = $total_par of $nproc_n cores"
+        log_info "Shadow CPUs: could not plan (helper failed)"
     fi
 }
 
@@ -1122,13 +1120,41 @@ build_and_generate() {
 # ============================================================
 # Phase 3: Run Simulation
 # ============================================================
+
 run_simulation() {
     log_step "Phase 3: Starting Simulation"
+
+    # Pick this run's CPUs and worker count (run_sim_helpers.py cpu-plan).
+    # Each Shadow process pins its workers, and the processes they run, to
+    # the lowest-numbered CPUs it may use and knows nothing of other runs, so
+    # concurrent runs would stack on the same cores. Launching under taskset
+    # with the physical cores no other Shadow run holds splits the box.
+    # parallelism 0 = one worker per such core; Shadow's own auto mode counts
+    # one socket only (64 of 128 cores here). --parallelism overrides the YAML.
+    local launch=() par_args=() cfg_par plan plan_cpus plan_workers plan_note
+    cfg_par=$(grep -oPm1 '^  parallelism: \K[0-9]+' "$SHADOW_OUTPUT/shadow_agents.yaml" || true)
+    cfg_par=${cfg_par:-0}
+    if plan=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" cpu-plan --parallelism "$cfg_par" 2>/dev/null) \
+            && [[ -n "$plan" ]]; then
+        IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
+        if [[ "$plan_cpus" != "-" ]]; then
+            if command -v taskset > /dev/null; then
+                launch=(taskset -c "$plan_cpus")
+            else
+                log_warn "taskset not found: Shadow may share CPUs with other runs"
+                plan_cpus="-"
+            fi
+        fi
+        [[ "$cfg_par" == "0" ]] && par_args=(--parallelism "$plan_workers")
+        log_info "Shadow CPUs: $([[ "$plan_cpus" == "-" ]] && echo any || echo "$plan_cpus"); $plan_workers worker threads ($plan_note)"
+    else
+        log_warn "Shadow CPUs: could not plan; Shadow picks (it counts one socket's cores and stacks concurrent runs on the same CPUs)"
+    fi
 
     # Start Shadow in its own process group (via setsid) so Ctrl+C won't reach it
     SHADOW_LOG="$ARCHIVE_DIR/shadow_run.log"
     log_info "Starting Shadow (data dir: $DATA_DIR)..."
-    setsid "$SHADOW_BIN" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 &
+    setsid "${launch[@]}" "$SHADOW_BIN" "${par_args[@]}" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 &
     SHADOW_PID=$!
     START_TIME=$(date +%s)
     START_TIME_FMT=$(date '+%Y-%m-%d %H:%M:%S')

@@ -107,6 +107,24 @@
 
 ### Fixed
 
+- **Shadow used only 64 of this box's 128 physical cores (25% of the CPUs in
+  htop), and concurrent runs stacked on the same 64.** With `parallelism: 0`
+  (the default), Shadow counts physical cores by `topology/core_id`, which Linux
+  numbers per socket, so a 2 x 64-core machine got 64 worker threads (Shadow's
+  `count_physical_cores`, unfixed upstream). Each Shadow process also pins its
+  workers, and the processes they run, to the lowest-numbered CPUs it may use,
+  knowing nothing of other runs, so every concurrent run sat on CPUs 0-63 and
+  socket 1 stayed idle. `run_sim.sh` now plans the CPUs itself
+  (`run_sim_helpers.py cpu-plan`). It treats each set of hyperthread siblings
+  as one core and skips cores that other live Shadow runs, of any user, have
+  pinned. It then launches Shadow under `taskset` with the free cores, in NUMA
+  order. For `parallelism: 0` it also passes `--parallelism <free cores>`,
+  which overrides the YAML. An explicit `parallelism: N` takes N cores, which
+  leaves the rest of the machine to later runs. `shadow_agents.yaml` is
+  unchanged, so the golden files stay machine-independent. The concurrency
+  preflight reports the plan in place of the old `nproc` sum. The speed-up
+  from 128 workers has not been measured yet. The old "~63-core algorithmic
+  ceiling" was very likely this bug.
 - **Eclipse probe dumps failed `gzip -d` ("unexpected end of file", issue #11).**
   `agents/eclipse_probe.py` held one gzip stream open for the whole run and only
   flushed it; the probe is always killed from outside, so the gzip trailer was never

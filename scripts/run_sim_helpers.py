@@ -487,6 +487,157 @@ def cmd_live_runs(args: argparse.Namespace) -> int:
 
 
 # ============================================================
+# Helpers: Shadow CPU plan (worker count + which cores)
+# ============================================================
+def _cpu_list(text: str) -> set[int]:
+    """Parse a kernel CPU list such as "0-3,8,10-11"."""
+    cpus = set()
+    for part in text.strip().split(','):
+        if not part:
+            continue
+        lo, _, hi = part.partition('-')
+        cpus.update(range(int(lo), int(hi or lo) + 1))
+    return cpus
+
+
+def _fmt_cpu_list(cpus: Iterable[int]) -> str:
+    """Inverse of _cpu_list, for taskset -c."""
+    out, run = [], []
+    for c in sorted(cpus):
+        if run and c == run[-1] + 1:
+            run.append(c)
+            continue
+        if run:
+            out.append(f'{run[0]}-{run[-1]}' if len(run) > 1 else str(run[0]))
+        run = [c]
+    if run:
+        out.append(f'{run[0]}-{run[-1]}' if len(run) > 1 else str(run[0]))
+    return ','.join(out)
+
+
+def _cpu_topology(allowed: Iterable[int], sys_cpu: str) -> dict[int, tuple]:
+    """cpu -> (node, package, sibling cpus) for each CPU we may run on."""
+    topo = {}
+    for cpu in allowed:
+        d = Path(sys_cpu) / f'cpu{cpu}'
+        sib = None
+        for name in ('core_cpus_list', 'thread_siblings_list'):
+            try:
+                sib = frozenset(_cpu_list((d / 'topology' / name).read_text()))
+                break
+            except OSError:
+                continue
+        if sib is None:
+            raise OSError(f'no sibling list under {d}/topology')
+        try:
+            pkg = int((d / 'topology' / 'physical_package_id').read_text())
+        except (OSError, ValueError):
+            pkg = 0
+        nodes = sorted(int(n.name[4:]) for n in d.glob('node[0-9]*'))
+        topo[cpu] = (nodes[0] if nodes else 0, pkg, sib)
+    return topo
+
+
+def _shadow_pinned_cpus(online: set[int] | None, proc: str = '/proc') -> set[int]:
+    """CPUs claimed by live Shadow processes of ANY user on this box.
+
+    Shadow pins each worker thread (and the managed processes it runs) to
+    one CPU, choosing from its own affinity mask, lowest CPU first. A
+    worker's one-CPU mask marks that CPU; a Shadow main thread launched
+    under taskset marks its whole mask (it holds that reservation before
+    its workers exist). An unrestricted, not-yet-pinned Shadow shows
+    nothing to avoid.
+    """
+    busy = set()
+    for pid in os.listdir(proc):
+        if not pid.isdigit():
+            continue
+        try:
+            if Path(proc, pid, 'comm').read_text().strip() != 'shadow':
+                continue
+            tasks = os.listdir(Path(proc, pid, 'task'))
+        except OSError:
+            continue
+        for tid in tasks:
+            t = Path(proc, pid, 'task', tid)
+            try:
+                comm = (t / 'comm').read_text().strip()
+                mask = next(_cpu_list(line.split(':', 1)[1])
+                            for line in (t / 'status').read_text().splitlines()
+                            if line.startswith('Cpus_allowed_list:'))
+            except (OSError, StopIteration, ValueError):
+                continue
+            if comm == 'shadow-worker' and len(mask) == 1:
+                busy |= mask
+            elif tid == pid and online is not None and mask < online:
+                busy |= mask
+    return busy
+
+
+def plan_shadow_cpus(parallelism: int, allowed: Iterable[int] | None = None,
+                     sys_cpu: str = '/sys/devices/system/cpu',
+                     proc: str = '/proc') -> tuple[str, int, str]:
+    """Choose the CPUs and worker count for a new Shadow run.
+
+    Shadow's own `parallelism: 0` dedupes CPUs on topology/core_id, which
+    Linux numbers per socket, so a 2 x 64-core box gets 64 workers, a
+    quarter of its 256 hardware threads (count_physical_cores in Shadow's
+    src/main/core/cpu.rs; unfixed upstream as of 2026-10). Here a physical
+    core is a set of hyperthread siblings, which is right on any socket
+    count. Shadow's pinning numbers cores system-wide (lscpu), so N workers
+    in an N-core mask land one per core.
+
+    Returns (taskset cpu list or '-', workers, note). Whole physical cores
+    already used by other Shadow runs are skipped, so concurrent runs split
+    the box instead of all pinning to CPUs 0..N-1 (each Shadow process picks
+    lowest-numbered CPUs first and knows nothing about the others). Cores are
+    taken in NUMA-node order to keep a run's memory local. parallelism 0
+    takes every free core; N takes N of them (a run can be capped this way
+    to leave room for the next). '-' means no restriction: nothing else is
+    running, or nothing is free (then runs share cores; wall clock suffers,
+    results do not).
+    """
+    if allowed is None:
+        allowed = os.sched_getaffinity(0)
+    topo = _cpu_topology(allowed, sys_cpu)
+    if not topo:
+        raise OSError('empty CPU affinity mask')
+    cores = {}
+    for cpu, (node, pkg, sib) in topo.items():
+        cores.setdefault(sib, (node, pkg, min(sib)))
+    try:
+        online = _cpu_list(Path(sys_cpu, 'online').read_text())
+    except OSError:
+        online = None
+    busy = _shadow_pinned_cpus(online, proc)
+    free = sorted((k for k in cores if not (k & busy)), key=lambda k: cores[k])
+    n_all = len(cores)
+    if len(free) == n_all:
+        return '-', parallelism or n_all, f'{n_all} physical cores, none used by other Shadow runs'
+    if not free:
+        return ('-', parallelism or n_all,
+                f'all {n_all} physical cores are used by other Shadow runs; sharing them')
+    want = parallelism or len(free)
+    take = free[:want]
+    cpus = set().union(*take) & set(topo)
+    note = f'{len(take)} of {len(free)} free physical cores ({n_all - len(free)} used by other Shadow runs)'
+    if want > len(free):
+        note += f'; parallelism {parallelism} > free cores, workers will share'
+    return _fmt_cpu_list(cpus), parallelism or len(take), note
+
+
+def cmd_cpu_plan(args: argparse.Namespace) -> int:
+    """Print "<taskset list or -><TAB><workers><TAB><note>" for run_sim.sh."""
+    try:
+        cpus, workers, note = plan_shadow_cpus(args.parallelism)
+    except OSError as e:
+        print(f'cpu-plan: {e}', file=sys.stderr)
+        return 1
+    print(f'{cpus}\t{workers}\t{note}')
+    return 0
+
+
+# ============================================================
 # Helpers: live progress monitor
 # ============================================================
 def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
@@ -1290,6 +1441,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_hms.add_argument('timestamp')
     p_hms.set_defaults(func=cmd_hms_to_seconds)
+
+    # cpu-plan
+    p_cp = sub.add_parser(
+        'cpu-plan',
+        help='CPUs (taskset list) and worker count for a new Shadow run, '
+             'avoiding cores pinned by other live Shadow runs.',
+    )
+    p_cp.add_argument('--parallelism', type=int, default=0)
+    p_cp.set_defaults(func=cmd_cpu_plan)
 
     # mem-sample
     p_ms = sub.add_parser(

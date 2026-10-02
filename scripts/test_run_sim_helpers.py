@@ -536,3 +536,125 @@ def test_mem_stall_alarm_holds_through_a_brief_recovery_blip():
     level, msg = mem_stall_status(rows)
     assert level == 'critical'
     assert msg.startswith('(as of ')
+
+
+
+# ---- cpu-plan (Shadow worker count + which cores) ----
+
+# 2 sockets x 2 cores x 2 threads. core_id repeats per socket (Shadow counts
+# 2 cores); sibling sets do not (4 cores). cpus 4-7 are the SMT siblings.
+_TWO_SOCKET = {0: ('0,4', 0, 0), 1: ('1,5', 0, 0), 2: ('2,6', 1, 1), 3: ('3,7', 1, 1),
+               4: ('0,4', 0, 0), 5: ('1,5', 0, 0), 6: ('2,6', 1, 1), 7: ('3,7', 1, 1)}
+
+
+def _fake_sys_cpu(root, layout=_TWO_SOCKET, name='core_cpus_list'):
+    root.mkdir()
+    (root / 'online').write_text('0-%d\n' % (len(layout) - 1))
+    for cpu, (sib, pkg, node) in layout.items():
+        topo = root / f'cpu{cpu}' / 'topology'
+        topo.mkdir(parents=True)
+        (topo / name).write_text(sib + '\n')
+        (topo / 'physical_package_id').write_text(f'{pkg}\n')
+        (topo / 'core_id').write_text(f'{cpu % 2}\n')
+        (root / f'cpu{cpu}' / f'node{node}').mkdir()
+    return str(root)
+
+
+def _fake_shadow_proc(root, procs):
+    """procs: {pid: (comm, {tid: (thread comm, Cpus_allowed_list)})}"""
+    root.mkdir()
+    for pid, (comm, tasks) in procs.items():
+        d = root / str(pid)
+        (d / 'task').mkdir(parents=True)
+        (d / 'comm').write_text(comm + '\n')
+        for tid, (tcomm, mask) in tasks.items():
+            t = d / 'task' / str(tid)
+            t.mkdir()
+            (t / 'comm').write_text(tcomm + '\n')
+            (t / 'status').write_text(f'Name:\t{tcomm}\nCpus_allowed_list:\t{mask}\n')
+    return str(root)
+
+
+def _plan(tmp_path, procs, parallelism=0, **kw):
+    from scripts.run_sim_helpers import plan_shadow_cpus
+    sys_cpu = _fake_sys_cpu(tmp_path / 'sys', **kw)
+    proc = _fake_shadow_proc(tmp_path / 'proc', procs)
+    return plan_shadow_cpus(parallelism, range(8), sys_cpu, proc)
+
+
+def _shadow(pid, worker_cpus, main_mask='0-7'):
+    tasks = {pid: ('shadow', main_mask)}
+    tasks.update({pid + 1 + i: ('shadow-worker', str(c)) for i, c in enumerate(worker_cpus)})
+    return {pid: ('shadow', tasks)}
+
+
+def test_cpu_plan_alone_counts_both_sockets(tmp_path):
+    """Nothing else running: no taskset, one worker per physical core (4, not Shadow's 2)."""
+    cpus, workers, _ = _plan(tmp_path, {})
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_avoids_cores_of_another_run(tmp_path):
+    """Another run pinned to socket 0 -> this run gets socket 1 and its siblings."""
+    cpus, workers, note = _plan(tmp_path, _shadow(100, [0, 1]))
+    assert (cpus, workers) == ('2-3,6-7', 2)
+    assert '2 used by other Shadow runs' in note
+
+
+def test_cpu_plan_explicit_parallelism_takes_that_many(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [0, 1]), parallelism=1)
+    assert (cpus, workers) == ('2,6', 1)
+
+
+def test_cpu_plan_sibling_pin_blocks_whole_core(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [4]))
+    assert (cpus, workers) == ('1-3,5-7', 3)
+
+
+def test_cpu_plan_sees_taskset_reservation_before_workers_exist(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [], main_mask='2-3,6-7'))
+    assert (cpus, workers) == ('0-1,4-5', 2)
+
+
+def test_cpu_plan_ignores_unpinned_shadow_and_other_programs(tmp_path):
+    procs = _shadow(100, [])                                   # starting, unrestricted
+    procs[200] = ('monerod', {200: ('monerod', '0')})          # pinned, but not Shadow
+    procs[300] = ('python3', {300: ('shadow-worker', '1')})    # thread name alone is not enough
+    cpus, workers, _ = _plan(tmp_path, procs)
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_everything_taken_shares(tmp_path):
+    cpus, workers, note = _plan(tmp_path, _shadow(100, [0, 1, 2, 3]))
+    assert (cpus, workers) == ('-', 4)
+    assert 'sharing' in note
+
+
+def test_cpu_plan_parallelism_above_free_cores_warns(tmp_path):
+    cpus, workers, note = _plan(tmp_path, _shadow(100, [0, 1, 2]), parallelism=2)
+    assert (cpus, workers) == ('3,7', 2)
+    assert 'will share' in note
+
+
+def test_cpu_plan_falls_back_to_thread_siblings(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, {}, name='thread_siblings_list')
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_missing_topology_raises(tmp_path):
+    from scripts.run_sim_helpers import plan_shadow_cpus
+    with pytest.raises(OSError):
+        plan_shadow_cpus(0, {0}, str(tmp_path), str(tmp_path))
+
+
+def test_cpu_list_round_trip():
+    from scripts.run_sim_helpers import _cpu_list, _fmt_cpu_list
+    assert _cpu_list('0-3,8,10-11') == {0, 1, 2, 3, 8, 10, 11}
+    assert _fmt_cpu_list({0, 1, 2, 3, 8, 10, 11}) == '0-3,8,10-11'
+    assert _fmt_cpu_list(set()) == ''
+
+
+def test_cpu_plan_cli_on_this_host(capsys):
+    rc, out = _run(capsys, ['cpu-plan', '--parallelism', '0'])
+    cpus, workers, note = out.rstrip('\n').split('\t')
+    assert rc == 0 and int(workers) >= 1 and note

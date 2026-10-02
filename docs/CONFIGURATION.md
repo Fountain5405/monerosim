@@ -23,7 +23,7 @@ agents:
 general:
   stop_time: "8h"                  # Required. Simulation duration (e.g., "30m", "2h", "8h")
   simulation_seed: 12345           # Global seed for deterministic simulations (default: 12345)
-  parallelism: 0                   # Shadow worker threads: 0=auto, 1=deterministic, N=fixed
+  parallelism: 0                   # Shadow worker threads: 0=all free physical cores (run_sim.sh), 1=deterministic, N=fixed
   fresh_blockchain: true           # Start from genesis block
   log_level: info                  # Agent log level: trace/debug/info/warn/error
   shadow_log_level: info           # Shadow's own log level
@@ -61,7 +61,7 @@ general:
 |-------|------|---------|-------------|
 | `stop_time` | string | required | Simulation duration |
 | `simulation_seed` | u64 | 12345 | Seed for deterministic simulations |
-| `parallelism` | u32 | 0 (auto) | Shadow worker threads |
+| `parallelism` | u32 | 0 (auto) | Shadow worker threads, one per physical core. `run_sim.sh` gives each run its own cores: it skips cores that other live Shadow runs have pinned and starts Shadow under `taskset` with the rest. 0 takes every free core (Shadow's own auto mode would count only one socket's cores, 64 of 128 on a 2 x 64-core box). N takes N cores, which leaves the rest of the machine to runs started later. |
 | `fresh_blockchain` | bool | true | Start from genesis |
 | `log_level` | string | "info" | Agent log level |
 | `shadow_log_level` | string | "info" | Shadow log level |
