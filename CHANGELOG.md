@@ -136,7 +136,8 @@
   unchanged, so the golden files stay machine-independent. The concurrency
   preflight reports the plan in place of the old `nproc` sum. Measured on a
   ~240-host run confined to one socket: two workers per physical core were
-  1.29x slower than one, so no mode ever exceeds one. The gain from 128 versus
+  1.29x slower than one, so no mode ever exceeds one; the same run took 75-77
+  min with 16, 32 or 64 workers. The gain from 128 versus
   64 physical cores on a large run is not measured yet. The old "~63-core
   algorithmic ceiling" was very likely this bug. Running several simulations
   at once: set `parallelism` in each config (docs/CONFIGURATION.md). A run

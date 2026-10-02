@@ -94,10 +94,12 @@ Guidance:
 - Two or more at a time: give each a share, with the shares adding up to no
   more than the physical cores. The preflight's `Shadow CPUs:` line shows what
   each run will get, and warns when a run has to share.
-- Runs of a few hundred hosts may not keep a worker per core busy: a
-  ~240-host run kept 128 workers mostly spinning. Giving such a run fewer
-  cores frees them for other runs; how much it slows the run itself has not
-  been measured.
+- Runs of a few hundred hosts gain little from many workers: a ~240-host
+  eclipse run took 75-77 min of Shadow time with 16, 32 or 64 workers (one run
+  each, two at 64). `parallelism: 16` for a run that size frees the other
+  cores at no measurable cost. Larger runs have more parallel work (a
+  2232-host run's simulated processes used ~14 cores across 64 workers); how
+  far they scale has not been measured.
 - Never more workers than physical cores: two per core (both hyperthreads)
   ran 1.29x slower than one per core.
 - Outside the [Determinism](#determinism) recipe (`parallelism: 1`, no
