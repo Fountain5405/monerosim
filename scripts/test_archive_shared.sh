@@ -16,6 +16,7 @@ extract() { awk -v fn="^$1\\(\\) \\{" '$0 ~ fn {f=1} f{print} f&&/^\}/{exit}' "$
 eval "$(extract archive_results)"
 eval "$(extract archive_transaction_registry)"
 if grep -q '^archive_shared_leftovers()' "$RUN_SIM"; then eval "$(extract archive_shared_leftovers)"; fi
+if grep -q '^compress_probe_dumps()' "$RUN_SIM"; then eval "$(extract compress_probe_dumps)"; else compress_probe_dumps(){ :; }; fi
 log_step(){ :; }; log_info(){ :; }; log_warn(){ echo "  WARN: $*"; }; log_ok(){ echo "  OK: $*"; }
 for fn in archive_blockchain_snapshots archive_daemon_logs generate_summary_report \
           run_analysis cleanup_tmp_monero; do eval "$fn(){ :; }"; done
@@ -50,6 +51,25 @@ expect_file "$ARCHIVE_DIR/monitoring/final_report.json" "monitoring copied"
 expect_gone "$ARCHIVE_DIR/shared/monitoring" "monitoring not double-archived by sweep"
 expect_file "$SHARED_DIR/monitoring/final_report.json" "monitoring left in shared/ for later readers"
 expect_gone "$ARCHIVE_DIR/shared/monerosim_monitor.log" "monitor log not double-archived"
+
+echo "== eclipse run: plain-JSONL probe dumps are gzipped into the archive"
+setup
+mkdir -p "$SHARED_DIR/raw_probe"
+for i in 1 2 3; do
+    for k in $(seq 1 200); do printf '{"sim_t":%d,"id":"relay-%d","kind":"info","data":{"height":%d}}\n' "$k" "$i" "$k"; done \
+        > "$SHARED_DIR/raw_probe/raw_relay-$i.jsonl"
+done
+printf '{"sim_t":1}\n{"sim_t":2,"trunc' >> "$SHARED_DIR/raw_probe/raw_relay-3.jsonl"   # killed mid-write
+archive_results
+for i in 1 2 3; do
+    f="$ARCHIVE_DIR/shared/raw_probe/raw_relay-$i.jsonl.gz"
+    expect_file "$f" "raw_relay-$i.jsonl.gz archived"
+    gzip -t "$f" 2>/dev/null && pass "raw_relay-$i.jsonl.gz passes gzip -t" || fail "raw_relay-$i gzip -t"
+    expect_gone "$ARCHIVE_DIR/shared/raw_probe/raw_relay-$i.jsonl" "plain raw_relay-$i.jsonl not kept alongside"
+done
+[[ $(gzip -dc "$ARCHIVE_DIR/shared/raw_probe/raw_relay-1.jsonl.gz" | wc -l) == 200 ]] && pass "200 records intact" || fail "record count"
+gzip -dc "$ARCHIVE_DIR/shared/raw_probe/raw_relay-3.jsonl.gz" | tail -c 20 | grep -q 'trunc' \
+    && pass "truncated last record preserved byte-for-byte" || fail "truncated tail"
 
 echo "== plain run: nothing unexpected"
 setup

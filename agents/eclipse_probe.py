@@ -21,8 +21,8 @@ block for many seconds. It therefore runs in its OWN background thread with its
 OWN RPC session, so it never stalls the cheap, frequent get_connections /
 get_info capture in the main loop.
 """
-import gzip
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -79,7 +79,15 @@ class EclipseProbeAgent(BaseAgent):
             raw_dir.mkdir(parents=True, exist_ok=True)
         except OSError:
             pass
-        self._path = raw_dir / ("raw_%s.jsonl.gz" % (self.agent_id or "node"))
+        # Plain JSONL while the run is live: one unbuffered append per record,
+        # so the file is complete and readable however the probe dies (Shadow
+        # shutdown, OOM, SIGKILL). run_sim.sh's archive step compresses it to
+        # raw_<id>.jsonl.gz as a single gzip stream (compress_probe_dumps).
+        # Earlier formats: one long-lived gzip stream (never closed, so gzip -d
+        # failed, issue #11), then one gzip member per record (valid but 4-5x
+        # larger, no shared dictionary).
+        self._path = raw_dir / ("raw_%s.jsonl" % (self.agent_id or "node"))
+        self._fd = os.open(self._path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o664)
         if self.daemon_rpc:
             self._peerlist_url = self.daemon_rpc.url.replace("/json_rpc", "/get_peer_list")
             # SEPARATE session for the peer_list thread (requests.Session is not
@@ -95,14 +103,8 @@ class EclipseProbeAgent(BaseAgent):
         try:
             line = json.dumps({"sim_t": round(sim_t, 1), "id": self.agent_id,
                                "role": self._role, "kind": kind, "data": obj}) + "\n"
-            # One complete gzip member per record, closed immediately. Concatenated
-            # members are one valid stream to gzip -d / zcat / gzip.open, so the
-            # file stays valid however the probe dies (Shadow shutdown, OOM,
-            # SIGKILL). A single long-lived stream never got its trailer written
-            # and every archived file failed gzip -d (issue #11).
             with self._lock:
-                with gzip.open(self._path, "at") as fh:
-                    fh.write(line)
+                os.write(self._fd, line.encode())
         except Exception as e:  # noqa: BLE001
             self.logger.warning("dump %s failed: %s", kind, e)
 

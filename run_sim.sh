@@ -1568,11 +1568,31 @@ archive_results() {
         run_analysis || log_warn "Post-simulation analysis failed"
     fi
 
+    compress_probe_dumps          || log_warn "Probe dump compression failed"
     archive_shared_leftovers      || log_warn "Shared-dir sweep failed"
 
     # Everything of value has been moved/copied into the archive; remove the
     # daemon data dirs and (if namespaced) the whole per-run /tmp dir.
     cleanup_tmp_monero --full
+}
+
+compress_probe_dumps() {
+    # agents/eclipse_probe.py writes plain JSONL during the run (one unbuffered
+    # append per record, so it is complete however the probe dies). Compress
+    # each file once here, as a single gzip stream, so the archive keeps the
+    # familiar raw_<id>.jsonl.gz names at full compression (~1 MB for a 27 MB
+    # target dump; per-record gzip members were ~6 MB). Plain files are left
+    # in place if gzip fails, and the sweep below archives them either way.
+    local dir="$SHARED_DIR/raw_probe"
+    compgen -G "$dir/*.jsonl" > /dev/null || return 0
+    local n
+    n=$(find "$dir" -maxdepth 1 -name '*.jsonl' | wc -l)
+    if find "$dir" -maxdepth 1 -name '*.jsonl' -print0 | xargs -0 -r -n 1 -P 8 gzip -9 --; then
+        log_ok "Probe dumps: $n raw_probe/*.jsonl compressed to .jsonl.gz"
+    else
+        log_warn "Probe dumps: gzip failed for some raw_probe/*.jsonl (left uncompressed)"
+        return 1
+    fi
 }
 
 archive_shared_leftovers() {

@@ -107,6 +107,31 @@
 
 ### Fixed
 
+- **Eclipse probe dumps failed `gzip -d` ("unexpected end of file", issue #11).**
+  `agents/eclipse_probe.py` held one gzip stream open for the whole run and only
+  flushed it; the probe is always killed from outside, so the gzip trailer was never
+  written (`zcat` still read every record). The probe now writes plain JSONL (one
+  unbuffered append per record) and `run_sim.sh` compresses each file once at
+  archive time (`compress_probe_dumps`), keeping the `raw_<id>.jsonl.gz` names at
+  better-than-before compression (1.05 MB for a 27 MB target dump).
+- **Eclipse fake-peer/injector memory growth.** Both agents ran a thread per inbound
+  connection and re-parsed the whole agent registry on every handshake (the injector
+  with no cache, the fake peer with an unlocked 30 s cache). With a dial-all fleet this
+  allocation churn grew every process for the whole attack; the 2026-09-28 50 h run
+  OOM-killed the box. They now serve all ports from one selector-loop thread
+  (`serve_ports`, `levin_lib.pop_bucket`) with a locked 30 s `RegistryCache`: at
+  1/10 scale 2 threads and a flat 19 MB per fake peer (was 11-42 threads, growing),
+  with identical attacker-side behaviour.
+- **`memory_samples.csv` could not attribute memory.** It summed RSS over every
+  process of the user (other runs included), double-counting Shadow's shared memory
+  (6.7 TB "total" on a 1 TB box). It now records PSS over the run's own process tree.
+- **`process_threads` was misused and misdocumented.** It sizes the thread pools
+  inside every simulated daemon (monerod `--max-concurrency`/`--prep-blocks-threads`,
+  cuprated pools) -- not Shadow's worker threads (`parallelism`), not wallet-rpc.
+  The eclipse templates set it to 48-128 as if it were a CPU cap and the quickstart
+  and 8 other configs to 0 (host-core-sized pools in every node); all now use 2, and
+  the docs agree the default is 1. A 192-vs-2 A/B showed no memory effect.
+
 - **Crashed and `--no-clean` runs' raw data was deleted by the next launch.**
   `run_sim.sh` started every run by sweeping `/tmp/monerosim-*/` dirs whose
   `.owner_pid` was dead, as crash cleanup — but a finished `--no-clean` run
@@ -223,6 +248,16 @@
   (`agents/file_locking.py`).
 
 ### Changed
+
+- **`memory_samples.csv` columns (breaking for readers):** `timestamp, epoch, sim_s,
+  shadow_mb, daemon_mb, wallet_mb, agents_mb, other_mb, total_mb, nprocs,
+  ram_total_mb, avail_mb, used_pct, swap_used_mb` (PSS, MB).
+- **Memory-stall warning:** when RAM stays nearly exhausted the live monitor (or the
+  terminal, with `--no-monitor`) shows a warning, and a loud banner once the sim has
+  also stalled (< 25% of its healthy pace); alerts go to `<run>/memory_alerts.log`
+  and `check_sim.sh`. The run is never stopped.
+- **Eclipse probe output during a run** is `shared/raw_probe/raw_<id>.jsonl` (plain);
+  archived runs still contain `raw_<id>.jsonl.gz`.
 
 - Transactions ledger is now one append-only `shared/transactions/<agent_id>.jsonl`
   per writer (fields unchanged plus `writer_id`, `seq`), with no file lock; the
