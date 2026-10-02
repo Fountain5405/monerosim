@@ -97,8 +97,13 @@ Guidance:
   spinning. Giving such a run fewer cores costs it little and frees them.
 - Never more workers than physical cores: two per core (both hyperthreads)
   ran 1.29x slower than one per core.
-- Changing `parallelism` changes the run's trajectory (not only its speed), so
-  keep it fixed across runs you compare seed for seed.
+- Outside the [Determinism](#determinism) recipe (`parallelism: 1`, no
+  `native_preemption`, ...), runs are not reproducible even with the same
+  config, seed and `parallelism`: three identical 1/10-scale eclipse runs
+  (64 workers, `native_preemption: true`) ended with 4, 6 and 9 attacker
+  connections to the target. Compare such runs with replicates, not seed for
+  seed. No effect of `parallelism` on results has been shown beyond that
+  spread (64 vs 128 workers: 8 vs 5).
 
 Note: if `daemon_defaults` does not set `max-connections-per-ip`, monerosim
 injects `4` (a floor, not a force — any user-provided value wins, including
