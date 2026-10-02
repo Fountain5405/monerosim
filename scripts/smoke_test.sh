@@ -17,7 +17,7 @@
 #   2  smoke_assertions.py: run did not complete (missing summary.txt).
 #   3  smoke_assertions.py: baseline JSON file not found.
 #   4  Required input(s) missing: scenario YAML or baseline JSON.
-#   5  Could not locate the archive directory after run_sim.sh.
+#   5  run_sim.sh exited 0 but never reported its run directory.
 #   *  Any other non-zero from run_sim.sh is propagated.
 
 set -euo pipefail
@@ -57,9 +57,13 @@ START_TS=$(date +%s)
 echo -e "${BOLD}Running ./run_sim.sh --config ${CONFIG_PATH} ...${NC}"
 echo
 
+# run_sim.sh reports its own run directory here as soon as it allocates it.
+RUN_DIR_FILE=$(mktemp "${TMPDIR:-/tmp}/smoke_run_dir.XXXXXX")
+trap 'rm -f "$RUN_DIR_FILE"' EXIT
+
 # Don't let `set -e` abort on a non-zero run_sim.sh: we evaluate it explicitly.
 SIM_EXIT=0
-./run_sim.sh --config "$CONFIG_PATH" || SIM_EXIT=$?
+./run_sim.sh --config "$CONFIG_PATH" --run-dir-file "$RUN_DIR_FILE" || SIM_EXIT=$?
 
 END_TS=$(date +%s)
 WALL_S=$(( END_TS - START_TS ))
@@ -67,25 +71,26 @@ echo
 echo -e "${BOLD}run_sim.sh exit code: ${SIM_EXIT} (wall ${WALL_S}s)${NC}"
 
 # --- Locate the archive ---------------------------------------------------
+# Grade the directory run_sim.sh reported, never "the newest one under
+# archived_runs/": another run from this checkout (a concurrent smoke test, a
+# sweep) may have touched a newer directory, and MONEROSIM_ARCHIVE_BASE or
+# --archive-dir can put archives elsewhere entirely.
 ARCHIVE_DIR=""
-if [[ -d "archived_runs" ]]; then
-    # Most recent archive directory.
-    candidate=$(find archived_runs -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
-                | sort -nr | head -1 | awk '{print $2}')
-    if [[ -n "$candidate" && -d "$candidate" ]]; then
-        ARCHIVE_DIR="$candidate"
-    fi
-fi
+[[ -s "$RUN_DIR_FILE" ]] && ARCHIVE_DIR=$(head -n 1 "$RUN_DIR_FILE")
 
-if [[ -z "$ARCHIVE_DIR" ]]; then
-    echo -e "${RED}Smoke test FAIL: could not locate archive directory under archived_runs/${NC}" >&2
+if [[ -z "$ARCHIVE_DIR" || ! -d "$ARCHIVE_DIR" ]]; then
+    if (( SIM_EXIT != 0 )); then
+        echo -e "${RED}Smoke test FAIL: run_sim.sh exited ${SIM_EXIT} before creating a run directory${NC}" >&2
+        exit "$SIM_EXIT"
+    fi
+    echo -e "${RED}Smoke test FAIL: run_sim.sh did not report its run directory${NC}" >&2
     exit 5
 fi
 
 # Sanity-check: archive name should end with the scenario name.
 arch_base=$(basename "$ARCHIVE_DIR")
 if [[ "$arch_base" != *"_${SCENARIO}" ]]; then
-    echo -e "${YELLOW}Warning: latest archive '${arch_base}' does not end with '_${SCENARIO}'.${NC}" >&2
+    echo -e "${YELLOW}Warning: archive '${arch_base}' does not end with '_${SCENARIO}'.${NC}" >&2
     echo -e "${YELLOW}Continuing anyway, but the archive may be from a different scenario.${NC}" >&2
 fi
 

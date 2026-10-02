@@ -37,6 +37,7 @@ RUN_NAME=""
 DATA_BASE=""              # --data-dir: base under which <run_id>/shadow.data is placed (scratch volume)
 RUN_DIR=""                # == ARCHIVE_DIR; the run's only home for its whole life
 ARCHIVE_BASE=""
+RUN_DIR_FILE=""            # --run-dir-file: write this run's directory there once allocated
 REACHABLE=""              # "" = use config default; else fraction in [0,1] passed to monerosim --reachable
 TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 1h) -> monerosim --turnover-session
 TURNOVER_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --turnover-downtime
@@ -77,6 +78,9 @@ Options:
                          session/(session+downtime).
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
   --archive-dir <dir>    Archive location (default: $MONEROSIM_ARCHIVE_BASE or archived_runs)
+  --run-dir-file <path>  Write this run's directory (<archive>/<run_id>) to <path> as
+                         soon as it is allocated, so a wrapper can tell its own run
+                         from concurrent ones (scripts/smoke_test.sh uses it).
   --data-dir <base>      Put this run's Shadow data at <base>/<run_id>/shadow.data
                          instead of archived_runs/<run_id>/shadow.data (e.g. a
                          scratch volume); it is moved into the run dir at the end.
@@ -160,6 +164,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --archive-dir)
             ARCHIVE_BASE="$2"
+            shift 2
+            ;;
+        --run-dir-file)
+            RUN_DIR_FILE="$2"
             shift 2
             ;;
         --no-monitor)
@@ -940,6 +948,10 @@ build_and_generate() {
     }
     RUN_DIR="$ARCHIVE_BASE/$RUN_ID"
     ARCHIVE_DIR="$RUN_DIR"
+    if [[ -n "$RUN_DIR_FILE" ]]; then
+        printf '%s\n' "$RUN_DIR" > "$RUN_DIR_FILE" \
+            || log_warn "Could not write the run directory to --run-dir-file $RUN_DIR_FILE"
+    fi
     SHADOW_OUTPUT="$RUN_DIR/shadow_output"
     if [[ -n "$DATA_BASE" ]]; then
         DATA_DIR="$DATA_BASE/$RUN_ID/shadow.data"

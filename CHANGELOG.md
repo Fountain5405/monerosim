@@ -107,6 +107,18 @@
 
 ### Fixed
 
+- **`scripts/smoke_test.sh` graded the wrong run whenever another run from the
+  same checkout was live.** It picked the most recently modified directory
+  under `archived_runs/`, so two smoke tests running at once graded the same run
+  (seen 2026-10-02: both tests of each pair wrote the same run_id to the
+  history), and a smoke test beside any other run (a sweep, an A/B arm) could
+  grade that run instead. It also ignored `MONEROSIM_ARCHIVE_BASE`. `run_sim.sh`
+  has a new `--run-dir-file <path>` option that writes the run's directory to
+  `<path>` as soon as it is allocated; `smoke_test.sh` passes a temp file and
+  grades exactly that directory. If `run_sim.sh` fails before creating one, the
+  smoke test now exits with `run_sim.sh`'s code instead of grading some other
+  run. Test: `scripts/test_smoke_run_dir.sh` (fails 5 of 7 checks on the old
+  code).
 - **Shadow used only 64 of this box's 128 physical cores (25% of the CPUs in
   htop), and concurrent runs stacked on the same 64.** With `parallelism: 0`
   (the default), Shadow counts physical cores by `topology/core_id`, which Linux
