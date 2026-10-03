@@ -115,6 +115,17 @@ injects `4` (a floor, not a force — any user-provided value wins, including
 stock monerod's default of `1`). See the commented example above and
 `docs/20260605_max_connections_per_ip_bug.md` for why.
 
+Note: RPC SSL is off unless you turn it on. monerosim passes
+`--rpc-ssl=disabled` to every monerod and `--rpc-ssl=disabled
+--daemon-ssl=disabled` to every monero-wallet-rpc, unless `daemon_defaults` /
+`daemon_options`, `wallet_defaults` / `wallet_options` or the raw args set them
+(e.g. `rpc-ssl: autodetect` restores stock behaviour). At its default monerod
+generates an RSA-4096 certificate on every start, ~1.1 wall-s per start under
+Shadow. RPC SSL has no effect on P2P; agents and wallets talk plain HTTP. One
+visible difference: monerod's and cuprated's RPC now both answer in plaintext,
+so the TLS fingerprint in `docs/20260724_cuprate_wallet_rpc.md` no longer shows
+inside simulations. See `docs/20261003_startup_cost.md`.
+
 ## Network Section
 
 The network section configures the virtual network topology. There are two modes:

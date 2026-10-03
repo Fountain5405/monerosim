@@ -30,6 +30,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=3.0.0.11
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -96,6 +97,7 @@ hosts:
       - --no-zmq
       - --non-interactive
       - --offline
+      - --rpc-ssl=disabled
       - --sim-hash-interval-ms=250
       - --sim-rx-full-dataset
       - --rpc-bind-ip=2.0.0.10
@@ -135,6 +137,8 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/attacker-miner_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
+      - --daemon-ssl=disabled
+      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -237,6 +241,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --sim-hash-interval-ms=167
       - --sim-rx-full-dataset
       - --rpc-bind-ip=1.0.0.10
@@ -276,6 +281,8 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/honest-001_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
+      - --daemon-ssl=disabled
+      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -353,6 +360,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=176.9.0.187
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -397,6 +405,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=88.198.163.90
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -441,6 +450,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=192.99.8.110
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -485,6 +495,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=37.187.74.171
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -529,6 +540,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=88.99.195.15
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -573,6 +585,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=5.104.84.64
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -617,6 +630,7 @@ hosts:
       - --max-connections-per-ip=4
       - --no-zmq
       - --non-interactive
+      - --rpc-ssl=disabled
       - --rpc-bind-ip=179.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
