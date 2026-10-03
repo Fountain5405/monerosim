@@ -4,6 +4,27 @@
 below the "Steps" heading is to be done on the smaller box; the big box is busy with a
 colleague's run and must not be used for experiments.
 
+## Problem statement
+
+Monerosim simulations spend most of their wall-clock time starting up, and more CPU does not
+help. In a 2,232-host eclipse run the first ~1.1 simulated hours take ~6 wall-hours; a
+~240-host run spends ~40 of its ~75 wall-minutes on its first ~6.6 simulated minutes, with 16,
+32 or 64 Shadow workers alike. During that phase the simulation waits on one daemon at a
+time: each newly started monerod holds everything up for ~17 wall-seconds, and the
+start-time stagger (which must stay, because starting daemons together causes a RAM storm)
+puts those startups strictly in a row.
+
+This investigation must answer:
+1. Where do the ~17 wall-seconds of a daemon start go inside Shadow?
+2. Does disabling RPC SSL (`--rpc-ssl disabled` on monerod; `--rpc-ssl disabled
+   --daemon-ssl disabled` on monero-wallet-rpc), which skips the RSA-4096 certificate
+   generated at every start, cut the per-start time, and by how much?
+3. If it does, make it monerosim's default. If not, find the real cost.
+
+Done when: seconds per daemon start are measured with and without SSL on the same box, a
+profile of one start names the dominant cost, and either the default is changed (committed,
+smoke test passing) or the real cause is identified with evidence.
+
 ## What is already known
 
 **Symptom.** A run's startup phase dominates its wall time and does not speed up with more
