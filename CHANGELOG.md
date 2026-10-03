@@ -4,6 +4,15 @@
 
 ### Added
 
+- **`performance.unblocked_vdso_latency`** (opt-in, e.g. `1 us`; unset keeps
+  Shadow's 10 ns): passed to Shadow as `experimental.unblocked_vdso_latency`.
+  Every monerod / monero-wallet-rpc start spends ~15.5 of its ~17 wall-s in
+  monero's `get_ticks_per_ns()` static initializer, which busy-waits 100 ms
+  of simulated time: 10 million clock reads at 10 ns each. At `1 us` a start
+  takes ~1.7 s, ~0.43 s with RPC SSL off; a 70-host run's Shadow wall time went
+  from 1229 s to 93 s. It changes simulated timing (1 µs per clock read), so it
+  is not the default yet. Investigation, profiles and scripts:
+  `docs/20261003_startup_cost.md`, `analysis/startup_cost/`.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was
   accepted only as an equal-height alternative, which stock monerod drops silently.
@@ -292,6 +301,18 @@
 
 ### Changed
 
+- **RPC SSL is off by default:** every monerod gets `--rpc-ssl=disabled` and every
+  monero-wallet-rpc `--rpc-ssl=disabled --daemon-ssl=disabled`, unless the config
+  or raw args set them. This skips the RSA-4096 certificate generated on every
+  start, ~1.1 wall-s per daemon start under Shadow. P2P is unaffected; agents
+  already talked plain HTTP. Side effect: monerod's and cuprated's RPC now both
+  answer in plaintext, so the TLS-probe fingerprint in
+  `docs/20260724_cuprate_wallet_rpc.md` no longer shows inside simulations.
+  wallet-rpc still generates one certificate per create/open_wallet for its
+  MMS client, which no option reaches.
+- **Corrected:** the sim-time-0 freeze with `model_unblocked_syscall_latency:
+  false` (339e9431) is the `get_ticks_per_ns()` busy-wait never seeing time
+  pass, not a "CPU-bound startup" (`docs/PERFORMANCE_AND_SCALE.md`).
 - **`memory_samples.csv` columns (breaking for readers):** `timestamp, epoch, sim_s,
   shadow_mb, daemon_mb, wallet_mb, agents_mb, other_mb, total_mb, nprocs,
   ram_total_mb, avail_mb, used_pct, swap_used_mb` (PSS, MB).

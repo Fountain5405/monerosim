@@ -36,6 +36,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
 | `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | **Don't enable.** See [Modeling syscall latency](#modeling-syscall-latency) — empirically stalls Monerosim runs even at quickstart scale. |
+| `performance.unblocked_vdso_latency: 1 us` (default unset = Shadow's 10 ns) | Every monero process start drops from ~17 to ~1.7 wall-s (~0.4 s with RPC SSL off, the default) | Every clock read in every process charges 1 µs of sim time instead of 10 ns. See [Start-up cost](#start-up-cost) |
 | Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
 
 ## Modeling syscall latency
@@ -97,18 +98,27 @@ Empirically, setting this to `false` stalls Monerosim simulations —
 even at quickstart scale (11 hosts). Sim time stays at `00:00:00.000`
 indefinitely while monerod processes burn 100% real CPU.
 
-The mechanism: monerod's startup phase (config parse, fakechain
-genesis init, RandomX dataset alloc, etc.) is CPU-bound and makes
-relatively few *blocking* syscalls. With non-blocking syscall costs
-unmodeled, none of those calls advance Shadow's simulated clock. With
-no events queued and no process making a blocking call, Shadow has
-nothing to advance to — the clock freezes at zero and the run never
-gets past startup.
+The mechanism (profiled 2026-10-03, `docs/20261003_startup_cost.md`):
+every monero binary (monerod and monero-wallet-rpc) runs a static
+initializer before `main()`, `ticks_per_ns = get_ticks_per_ns()` in
+`src/common/perf_timer.cpp`, that busy-waits on `steady_clock` until
+100 ms have passed. Under Shadow that clock is simulated time, and a
+clock read only moves it forward by the modeled per-call latency. With
+the modeling off, the loop never sees time pass, so the first daemon
+never gets to `main()` and the clock freezes at zero. (An earlier
+version of this section blamed a "CPU-bound startup"; that was never
+measured, and the profile shows it was this loop.)
 
 This contradicts the earlier guidance in this section that said the
 knob was "essentially free for Monero." That guidance was wrong:
 Shadow can only advance simulated time when *something* is willing to
-block, and monerod's hot init path doesn't block enough.
+block or is charged latency, and this loop does neither without the
+modeling.
+
+With the modeling on, the loop still ends only after 100 ms / 10 ns =
+10 million clock reads, and with `native_preemption: true` each read
+costs ~1.6 µs of real time. That is the ~16-17 wall-seconds every
+monero process start costs; see [Start-up cost](#start-up-cost).
 
 ### Verdict
 
@@ -172,6 +182,40 @@ target hardware tier is always.
 If you actually need bit-for-bit reproducibility (e.g., reproducing a
 known-good run for a paper), set `process_threads: 1` *and*
 `native_preemption: false`. Otherwise leave preemption on.
+
+## Start-up cost
+
+Every monerod and monero-wallet-rpc start used to hold the simulation for
+~17 wall-seconds, and the start-time stagger puts starts in a row, so start-up
+dominated large runs (a 2232-host run: ~6 wall-hours for the first ~1.1
+sim-hours) and did not speed up with more workers. Measured and profiled in
+`docs/20261003_startup_cost.md`:
+
+- ~15.5 s: monero's `get_ticks_per_ns()` static initializer busy-waits for
+  100 ms of `steady_clock` (see [above](#why-turning-it-off-breaks-monerosim-runs)).
+  At Shadow's default `unblocked_vdso_latency` of 10 ns that is 10 million
+  clock reads, each ~1.55 µs of real time with `native_preemption: true`.
+- ~1.2 s: the RSA-4096 certificate monerod and wallet-rpc generate for RPC SSL.
+  monerosim now passes `--rpc-ssl=disabled` to every monerod and
+  `--rpc-ssl=disabled --daemon-ssl=disabled` to every wallet-rpc unless you
+  set them (see `docs/CONFIGURATION.md`).
+- ~0.3 s: everything else.
+
+Per start on a 70-host test (median, wall-seconds): 17.3 as before; 16.2 with
+SSL off; 1.7 with `unblocked_vdso_latency: 1 us`; **0.43 with both**. With
+`100 ns` and SSL off: 1.9. The run's Shadow wall time went from 1229 s to 93 s.
+
+To get the large cut, set:
+
+```yaml
+performance:
+  unblocked_vdso_latency: 1 us     # default: unset (Shadow's 10 ns)
+```
+
+The cost: every clock read in every simulated process charges 1 µs of sim
+time instead of 10 ns, the same as Shadow already charges for a non-blocking
+syscall. That is microseconds per event against millisecond network
+latencies. Runs are not seed-for-seed comparable with runs made without it.
 
 ## Tuning monerod log-level
 

@@ -4,6 +4,9 @@
 below the "Steps" heading is to be done on the smaller box; the big box is busy with a
 colleague's run and must not be used for experiments.
 
+**Outcome (2026-10-03):** the SSL hypothesis explains ~1.1 of the ~17 s; the rest is
+monero's `get_ticks_per_ns()` start-up busy-wait. See `docs/20261003_startup_cost.md`.
+
 ## Problem statement
 
 Monerosim simulations spend most of their wall-clock time starting up, and more CPU does not
