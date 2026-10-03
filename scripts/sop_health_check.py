@@ -24,8 +24,29 @@ bash.*.stdout and .stderr; daemon and wallet output is not scanned):
                    published and its cell read "ok"). Lines, not exceptions:
                    an agent logging through two handlers prints each twice.
 
+Also per node:
+
+  stale_ids        'Found block <id>' whose id equals an earlier
+                   'SIM-SoP: share <id>' of the same node. The share log's
+                   get_block_hash(b) cached the share's id in the mining
+                   block object, so a block found before the next template
+                   refresh was stored under the SHARE's id while peers
+                   hashed the true one: one block, two ids. In a 240 h run
+                   it split the network for good (2026-10-03).
+  invalid_chain    'Sent invalid chain': a peer's blocks did not match the
+                   ids it advertised (how the stale ids showed up in sync).
+
+and across nodes:
+
+  chain agreement  the last height at which every non-attacker node's final
+                   main chain holds the same block, compared by PoW (a
+                   stale-id block has two ids but one PoW), and how far the
+                   longest chain runs past it (split_depth).
+
 A run FAILS when any node has reorg_started != reorg_success or
-exceptions > 0, or any agent printed a traceback. --require-forks also fails when no non-attacker node
+exceptions > 0, or any agent printed a traceback, or any node found a
+stale-id block or logged 'Sent invalid chain' (zero in all 60 healthy runs
+since 2026-09-29), or the chains split by more than SPLIT_TOLERANCE blocks. --require-forks also fails when no non-attacker node
 accepted an alternative block (a fork-free control validates nothing);
 --require-share-weight fails when no subjective SoP decision carried a
 share-augmented weight (the share term is inert).
@@ -48,6 +69,13 @@ RE_HEIGHT_DIFF = re.compile(r"HEIGHT (\d+), difficulty:\s*(\d+)")
 RE_ARMED = re.compile(r"weight table armed \(w=(\d+)")
 ATTACKER_NODE = re.compile(r"attacker|bridge", re.I)
 AGENT_TRACEBACK = b"Traceback (most recent call last)"
+RE_SHARE = re.compile(r"SIM-SoP: share <([0-9a-f]{64})>")
+RE_FOUND = re.compile(r"Found block <([0-9a-f]{64})>")
+RE_POW = re.compile(r"PoW:\s*<([0-9a-f]{64})>")
+RE_REORG_DONE = re.compile(r"REORGANIZE SUCCESS! on height: \d+, new blockchain size: (\d+)")
+# Nodes still disagreeing more than this many blocks past their last common
+# block at the end of a run did not converge (one block in flight is normal).
+SPLIT_TOLERANCE = 3
 
 
 def _suffix_units(diff_by_height: dict, last_diff: int | None, fork: int, length: int, w: int) -> int | None:
@@ -77,16 +105,44 @@ def scan_log_text(text: str, unit: int | None = None) -> dict:
     as a share (review 2026-09-26)."""
     n = {"reorg_started": 0, "reorg_success": 0, "exceptions": 0, "alt_added": 0,
          "decisions": 0, "objective": 0, "ties": 0, "switches": 0,
-         "sop_subjective": 0, "share_weighted": 0,
-         "w": None, "share_weighted_unit_source": "explicit" if unit else None}
+         "sop_subjective": 0, "share_weighted": 0, "stale_ids": 0, "invalid_chain": 0,
+         "w": None, "share_weighted_unit_source": "explicit" if unit else None,
+         "main_pow": {}}
     diff_by_height: dict = {}
     last_diff = None
+    main_pow = n["main_pow"]     # height -> PoW of the node's final main chain
+    pending, pending_pow = None, None   # the block being printed: "main" / "alt"
+    shares: set = set()
     for line in text.splitlines():
         if "difficulty:" in line and "HEIGHT " in line:
             m = RE_HEIGHT_DIFF.search(line)
             if m:
                 diff_by_height[int(m.group(1))] = int(m.group(2))
                 last_diff = int(m.group(2))
+                if pending == "main" and pending_pow:
+                    main_pow[int(m.group(1))] = pending_pow
+            pending, pending_pow = None, None
+            continue
+        if "BLOCK SUCCESSFULLY ADDED" in line:
+            pending, pending_pow = "main", None
+            continue
+        if "PoW:" in line:
+            if pending == "main":
+                m = RE_POW.search(line)
+                pending_pow = m.group(1) if m else None
+            continue
+        if "SIM-SoP: share <" in line:
+            m = RE_SHARE.search(line)
+            if m:
+                shares.add(m.group(1))
+            continue
+        if "Found block <" in line:
+            m = RE_FOUND.search(line)
+            if m and m.group(1) in shares:
+                n["stale_ids"] += 1
+            continue
+        if "Sent invalid chain" in line:
+            n["invalid_chain"] += 1
             continue
         if "weight table armed" in line:
             m = RE_ARMED.search(line)
@@ -97,10 +153,16 @@ def scan_log_text(text: str, unit: int | None = None) -> dict:
             n["reorg_started"] += 1
         elif "REORGANIZE SUCCESS" in line:
             n["reorg_success"] += 1
+            m = RE_REORG_DONE.search(line)
+            if m:            # a reorg can leave a SHORTER chain under SoP
+                size = int(m.group(1))
+                for h in [h for h in main_pow if h >= size]:
+                    del main_pow[h]
         elif "Exception at [add_new_block]" in line:
             n["exceptions"] += 1
         elif "BLOCK ADDED AS ALTERNATIVE" in line:
             n["alt_added"] += 1
+            pending, pending_pow = "alt", None
         elif "SIM-PoP: fork" in line or "SIM-SoP: fork" in line:
             m = RE_DECISION.search(line)
             if not m:
@@ -153,6 +215,23 @@ def scan_agent_logs(run_dir: Path) -> dict:
     return counts
 
 
+def chain_agreement(chains: dict) -> dict:
+    """The last height at which every chain ({height: PoW}) holds the same
+    block, how far the longest chain runs past it, and each tip."""
+    chains = {k: c for k, c in chains.items() if c}
+    tips = {k: max(c) for k, c in chains.items()}
+    if len(chains) < 2:
+        return {"common_height": None, "split_depth": 0, "tips": tips}
+    common = None
+    for h in sorted(set.intersection(*(set(c) for c in chains.values())), reverse=True):
+        if len({c[h] for c in chains.values()}) == 1:
+            common = h
+            break
+    start = min(min(c) for c in chains.values()) - 1
+    return {"common_height": common, "split_depth": max(tips.values()) - (start if common is None else common),
+            "tips": tips}
+
+
 def check_run(run_dir: Path, unit: int | None = None) -> dict:
     """Scan every daemon log under <run_dir>/daemon_logs; return the report."""
     run_dir = Path(run_dir)
@@ -166,6 +245,17 @@ def check_run(run_dir: Path, unit: int | None = None) -> dict:
             problems.append(f"{name}: reorg {n['reorg_success']}/{n['reorg_started']} succeeded")
         if n["exceptions"]:
             problems.append(f"{name}: {n['exceptions']} add_new_block exceptions")
+    for name, n in nodes.items():
+        if n["stale_ids"]:
+            problems.append(f"{name}: {n['stale_ids']} block(s) found under a share's id (stale-id miner bug)")
+        if n["invalid_chain"]:
+            problems.append(f"{name}: {n['invalid_chain']} 'Sent invalid chain' (a peer's blocks did not match "
+                            f"the ids it advertised)")
+    chains = {name: n.pop("main_pow") for name, n in nodes.items()}
+    chain = chain_agreement({k: c for k, c in chains.items() if not ATTACKER_NODE.search(k)})
+    if chain["split_depth"] > SPLIT_TOLERANCE:
+        problems.append(f"chains split: the longest runs {chain['split_depth']} blocks past the last common "
+                        f"block {chain['common_height']} (tips {chain['tips']})")
     agent_tb = scan_agent_logs(run_dir)
     for host, c in agent_tb.items():
         problems.append(f"{host}: {c} agent traceback lines")
@@ -174,10 +264,11 @@ def check_run(run_dir: Path, unit: int | None = None) -> dict:
     share_weighted = sum(n["share_weighted"] for n in nodes.values())
     totals = {k: sum(n[k] for n in nodes.values()) for k in
               ("reorg_started", "reorg_success", "exceptions", "alt_added", "decisions",
-               "sop_subjective", "share_weighted")}
+               "sop_subjective", "share_weighted", "stale_ids", "invalid_chain")}
     totals["agent_tracebacks"] = sum(agent_tb.values())
+    totals["split_depth"] = chain["split_depth"]
     return {"run_dir": str(run_dir), "nodes": nodes, "totals": totals,
-            "agent_tracebacks": agent_tb,
+            "agent_tracebacks": agent_tb, "chain": chain,
             "forks_seen": forks_seen, "share_weighted": share_weighted,
             "problems": problems, "ok": not problems and bool(nodes)}
 
@@ -196,6 +287,12 @@ def summarize(report: dict | None) -> str:
         parts.append(f"EXC {t['exceptions']}")
     if t.get("agent_tracebacks"):
         parts.append(f"AGENT-TB {t['agent_tracebacks']}")
+    if t.get("stale_ids"):
+        parts.append(f"STALE-ID {t['stale_ids']}")
+    if t.get("invalid_chain"):
+        parts.append(f"INVALID-CHAIN {t['invalid_chain']}")
+    if t.get("split_depth", 0) > SPLIT_TOLERANCE:
+        parts.append(f"SPLIT {t['split_depth']}")
     if not report.get("forks_seen"):
         parts.append("no-forks")
     # SoP nodes made subjective decisions but none ever carried a counted
@@ -231,6 +328,9 @@ def main(argv=None) -> int:
             print(f"{name:22s} reorg {n['reorg_success']}/{n['reorg_started']}  exc {n['exceptions']}"
                   f"  alt {n['alt_added']}  decisions {n['decisions']} (obj {n['objective']},"
                   f" tie {n['ties']}, switch {n['switches']})  share-weighted {n['share_weighted']}")
+        c = rep["chain"]
+        print(f"chain: last common block {c['common_height']}, split depth {c['split_depth']}, tips {c['tips']}; "
+              f"stale-id blocks {rep['totals']['stale_ids']}, 'Sent invalid chain' {rep['totals']['invalid_chain']}")
         print(f"forks_seen={rep['forks_seen']} share_weighted={rep['share_weighted']}"
               f" -> {'OK' if rep['ok'] else 'FAIL'}")
         for p in rep["problems"]:

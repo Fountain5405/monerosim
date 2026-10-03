@@ -149,3 +149,86 @@ def test_check_run_flags_agent_tracebacks(tmp_path):
     assert summarize(rep) == "AGENT-TB 3"
     clean = check_run(_run(tmp_path / "c", {"honest-001": HEALTHY}), unit=112)
     assert clean["ok"] and clean["agent_tracebacks"] == {} and clean["totals"]["agent_tracebacks"] == 0
+
+
+def _line(msg, t="01:00:00.000"):
+    return f"2000-01-01 {t}\t[P2P1]\tINFO\tblockchain\tblockchain.cpp:1\t{msg}\n"
+
+
+def _blocks(pairs):
+    """Daemon-log lines for main-chain block adds, as monerod prints them:
+    one log line each for the banner, id, PoW and HEIGHT."""
+    return "".join(_line("+++++ BLOCK SUCCESSFULLY ADDED") + _line(f"id:\t<{pw[::-1]}>")
+                   + _line(f"PoW:\t<{pw}>") + _line(f"HEIGHT {h}, difficulty:\t1000") for h, pw in pairs)
+
+
+def _pw(i):
+    return f"{i:064x}"
+
+
+def test_stale_id_blocks_fail_the_run(tmp_path):
+    """The stale-id miner bug (2026-10-03): the share log's get_block_hash(b)
+    cached the share's id in the mining block object, so a block found before
+    the next template refresh was announced and stored under the SHARE's id
+    while peers hashed the true one. A found id equal to the same miner's
+    earlier share id can only be that bug."""
+    a, b = "a" * 64, "b" * 64
+    text = (_line(f"SIM-SoP: share <{a}> nonce 1 height 1000 slot 0", "00:00:01.000")
+            + _line(f"Found block <{a}> at height 1000 for difficulty: 1000", "00:00:02.000")
+            + _line(f"Found block <{b}> at height 1001 for difficulty: 1000", "00:03:00.000"))
+    assert scan_log_text(text)["stale_ids"] == 1
+    rep = check_run(_run(tmp_path, {"honest-001": text}))
+    assert not rep["ok"]
+    assert rep["totals"]["stale_ids"] == 1
+    assert any("honest-001: 1 block(s) found under a share's id" in p for p in rep["problems"])
+    assert "STALE-ID 1" in summarize(rep)
+
+
+def test_end_of_run_chain_split_fails_the_run(tmp_path):
+    """Nodes that never converge. In the 240 h run of 2026-10-03 the seeds,
+    relays and bridge stopped at 4706 while both honest miners went on to
+    ~7700 on chains nobody else could fetch, and health still read "ok".
+    Final main chains are compared by PoW, since a stale-id block has two ids
+    but one PoW. The attacker's private chain is not compared."""
+    shared = [(h, _pw(h)) for h in range(1000, 1010)]
+    own = _blocks(shared + [(h, _pw(10_000 + h)) for h in range(1010, 1030)])
+    stuck = _blocks(shared + [(1010, _pw(20_000))])
+    private = _blocks([(h, _pw(30_000 + h)) for h in range(1000, 1050)])
+    rep = check_run(_run(tmp_path, {"honest-001": own, "monero-seed-001": stuck, "attacker-miner": private}))
+    assert rep["chain"]["common_height"] == 1009
+    assert rep["chain"]["split_depth"] == 20 and rep["totals"]["split_depth"] == 20
+    assert not rep["ok"] and "SPLIT 20" in summarize(rep)
+    assert any("chains split" in p for p in rep["problems"])
+    lag = check_run(_run(tmp_path / "lag", {"honest-001": _blocks(shared + [(1010, _pw(1010))]),
+                                            "honest-002": _blocks(shared)}))
+    assert lag["chain"]["split_depth"] == 1 and lag["ok"]      # one block in flight is not a split
+
+
+def test_main_chain_follows_reorgs_and_ignores_alternative_blocks(tmp_path):
+    """A reorg re-adds blocks and may leave a SHORTER chain under SoP (fewer
+    blocks, more shares), so heights at or above the new size are dropped.
+    Alternative blocks never enter the main chain."""
+    shared = [(h, _pw(h)) for h in range(1000, 1010)]
+    text = (_blocks(shared + [(1010, _pw(1)), (1011, _pw(2)), (1012, _pw(3))])
+            + _line("###### REORGANIZE on height: 1010 of 1012 with cum_difficulty 1")
+            + _blocks([(1010, _pw(1010)), (1011, _pw(1011))])
+            + _line("----- BLOCK ADDED AS ALTERNATIVE ON HEIGHT 1012") + _line(f"id:\t<{'c' * 64}>")
+            + _line(f"PoW:\t<{_pw(3)}>")
+            + _line("REORGANIZE SUCCESS! on height: 1010, new blockchain size: 1012"))
+    n = scan_log_text(text)
+    assert max(n["main_pow"]) == 1011 and n["main_pow"][1011] == _pw(1011) and n["main_pow"][1010] == _pw(1010)
+    other = _blocks(shared + [(1010, _pw(1010)), (1011, _pw(1011))])
+    rep = check_run(_run(tmp_path, {"honest-001": text, "honest-002": other}))
+    assert rep["chain"]["split_depth"] == 0 and rep["chain"]["common_height"] == 1011
+
+
+def test_sent_invalid_chain_fails_the_run(tmp_path):
+    """A peer whose blocks do not match the ids it advertised. Zero in all 60
+    healthy runs since 2026-09-29; it appeared only beside stale-id blocks
+    (2 to 2.2 million lines), so any of it marks the run."""
+    text = _line("[1.0.0.10:57547 INC] Sent invalid chain") * 3
+    assert scan_log_text(text)["invalid_chain"] == 3
+    rep = check_run(_run(tmp_path, {"monero-seed-001": text}))
+    assert not rep["ok"] and rep["totals"]["invalid_chain"] == 3
+    assert any("monero-seed-001: 3 'Sent invalid chain'" in p for p in rep["problems"])
+    assert "INVALID-CHAIN 3" in summarize(rep)
