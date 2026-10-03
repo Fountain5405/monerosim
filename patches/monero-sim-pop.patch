@@ -38,7 +38,7 @@ index a0ea3633f..ca209ec15 100644
  
  bool HardFork::check_for_height(const cryptonote::block &block, uint64_t height) const
 diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
-index 74845ce13..836d3e33c 100644
+index 74845ce13..694fea534 100644
 --- a/src/cryptonote_basic/miner.cpp
 +++ b/src/cryptonote_basic/miner.cpp
 @@ -108,6 +108,7 @@ namespace cryptonote
@@ -74,7 +74,22 @@ index 74845ce13..836d3e33c 100644
      block b;
      slow_hash_allocate_state();
      ++m_threads_active;
-@@ -617,6 +622,15 @@ namespace cryptonote
+@@ -602,6 +607,14 @@ namespace cryptonote
+       }
+ 
+       b.nonce = nonce;
++      // SIMULATION ONLY (Share-or-Perish, MRL #146): a new nonce makes any
++      // cached id stale. The share log below calls get_block_hash(b), which
++      // caches the share's id in `b`, and the template refresh after a local
++      // share is rate-limited, so a block found later on this same `b` was
++      // announced and stored under the SHARE's id while peers hashed the
++      // true one: one block, two ids. In a 240 h run that split the network
++      // for good (2026-10-03).
++      b.invalidate_hashes();
+       crypto::hash h;
+ 
+       if ((b.major_version >= RX_BLOCK_VERSION) && !rx_set && (!m_sim_hash_interval_ms || m_sim_rx_full_dataset))
+@@ -617,6 +630,15 @@ namespace cryptonote
        if (m_sim_hash_interval_ms)
          misc_utils::sleep_no_w(m_sim_hash_interval_ms);
  
@@ -90,7 +105,7 @@ index 74845ce13..836d3e33c 100644
        m_gbh(b, height, NULL, tools::get_max_concurrency(), h);
  
        if(check_hash(h, local_diff))
-@@ -637,6 +651,38 @@ namespace cryptonote
+@@ -637,6 +659,38 @@ namespace cryptonote
              epee::serialization::store_t_to_json_file(m_config, m_config_folder_path + "/" + MINER_CONFIG_FILE_NAME);
          }
        }
