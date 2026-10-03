@@ -24,7 +24,15 @@ worth of work on average).
 
 Model B (`sweep`/`deep` subcommands) simulates our window_stubborn attacker
 event-by-event: honest/attacker suffixes since the fork, pending-share
-counters, give-up/withhold/reveal/hold decisions per the spec.
+counters, give-up/withhold/reveal/hold decisions per the spec. It draws
+objects at a fixed total rate (cfg.days of 720 blocks found), but per-day
+rates are reported per CANONICAL day (720 canonical blocks). Real Monero, and
+the simulator, retarget difficulty on the canonical chain. So when an attack
+orphans a fraction f of all blocks, (1 - f)^-1 times as many get found per
+day: about 1.45x under SoP at alpha 0.33, where the 240 h sim run found
+~1050 blocks a day (2026-10-03). Before that, per-day rates were per
+fixed-rate day and too low by that factor. Compare with the simulator per
+block found (`reveals_per_1000_found`).
 """
 from __future__ import annotations
 
@@ -249,11 +257,27 @@ class SimStats:
     att_final_blocks: int = 0
     hon_final_blocks: int = 0
     att_orphaned_blocks: int = 0
-    sim_days: float = 0.0
+    sim_days: float = 0.0   # fixed-rate days: the object budget (720 blocks found per day)
+
+    @property
+    def canonical_days(self) -> float:
+        """Days of a chain retargeting on its canonical blocks: 720 per day."""
+        return (self.att_final_blocks + self.hon_final_blocks) * T_BLOCK_S / SECONDS_PER_DAY
+
+    @property
+    def blocks_found(self) -> int:
+        """Every block found and settled: final, plus orphaned on both sides
+        (in-flight blocks at the end are dropped, as in the accounting)."""
+        return (self.att_final_blocks + self.hon_final_blocks
+                + self.att_orphaned_blocks + sum(self.reorg_depths))
 
     @property
     def reveals_per_day(self) -> float:
-        return self.reveals / self.sim_days if self.sim_days else 0.0
+        return self.reveals / self.canonical_days if self.canonical_days else 0.0
+
+    @property
+    def reveals_per_1000_found(self) -> float:
+        return 1000.0 * self.reveals / self.blocks_found if self.blocks_found else 0.0
 
     @property
     def mean_reorg_depth(self) -> float:
@@ -268,7 +292,7 @@ class SimStats:
 
     @property
     def rate_ge10_per_year(self) -> float:
-        per_day = self.count_ge(10) / self.sim_days if self.sim_days else 0.0
+        per_day = self.count_ge(10) / self.canonical_days if self.canonical_days else 0.0
         return per_day * 365.25
 
     @property
@@ -401,10 +425,12 @@ def _sweep(days: float, seed: int) -> None:
     alphas = [0.30, 0.33, 0.40, 0.45]
     ds = [1, 2, 3]
     variants = [("sop", True), ("sop", False), ("stock", False)]
-    print(f"# Model B sweep: days={days}, seed={seed}\n")
-    print("| alpha | d | rule | embeds | reveals | reveals/day | mean reorg | max reorg | "
-          "#>=3 | #>=10 | rate>=10/yr | revenue share | orphan frac |")
-    print("|--:|--:|:--|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|")
+    print(f"# Model B sweep: days={days} (fixed-rate), seed={seed}")
+    print("# Per-day and per-year rates are per CANONICAL day (difficulty retargets on the\n"
+          "# canonical chain); 'canon days' shows how many of those the run covered.\n")
+    print("| alpha | d | rule | embeds | reveals | canon days | reveals/day | per 1000 found | "
+          "mean reorg | max reorg | #>=3 | #>=10 | rate>=10/yr | revenue share | orphan frac |")
+    print("|--:|--:|:--|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|")
     for alpha in alphas:
         for d in ds:
             for rule, embeds in variants:
@@ -412,7 +438,8 @@ def _sweep(days: float, seed: int) -> None:
                                  days=days, seed=seed)
                 s = simulate(cfg)
                 print(f"| {alpha} | {d} | {rule} | {embeds} | {s.reveals} | "
-                      f"{s.reveals_per_day:.4f} | {s.mean_reorg_depth:.3f} | "
+                      f"{s.canonical_days:.1f} | {s.reveals_per_day:.4f} | "
+                      f"{s.reveals_per_1000_found:.3f} | {s.mean_reorg_depth:.3f} | "
                       f"{s.max_reorg_depth} | {s.count_ge(3)} | {s.count_ge(10)} | "
                       f"{s.rate_ge10_per_year:.4f} | {s.attacker_revenue_share:.4f} | "
                       f"{s.attacker_orphan_fraction:.4f} |")
@@ -423,10 +450,11 @@ def _deep(years: float, seed: int) -> None:
     ds = [2, 3, 5, 10, 20]
     days = years * 365.25
     print(f"# Model B deep-reorg estimate: alpha={alpha}, years={years} "
-          f"({days:.1f} days), rule=sop, attacker_embeds=True\n")
+          f"({days:.1f} fixed-rate days), rule=sop, attacker_embeds=True")
+    print("# Rates are per canonical year (difficulty retargets on the canonical chain).\n")
     print("tevador's claim: about 1 reorg of 10+ blocks per 3 years of stubborn mining.\n")
-    print("| d | #>=10 reorgs | rate>=10/yr | years/reorg |")
-    print("|--:|--:|--:|--:|")
+    print("| d | canon years | #>=10 reorgs | rate>=10/yr | years/reorg |")
+    print("|--:|--:|--:|--:|--:|")
     for d in ds:
         cfg = SimConfig(alpha=alpha, d=d, rule="sop", attacker_embeds=True,
                          days=days, seed=seed)
@@ -434,7 +462,7 @@ def _deep(years: float, seed: int) -> None:
         n10 = s.count_ge(10)
         rate = s.rate_ge10_per_year
         years_per = (1.0 / rate) if rate > 0 else math.inf
-        print(f"| {d} | {n10} | {rate:.4f} | {years_per:.3f} |")
+        print(f"| {d} | {s.canonical_days / 365.25:.2f} | {n10} | {rate:.4f} | {years_per:.3f} |")
 
 
 def main(argv: Optional[List[str]] = None) -> int:

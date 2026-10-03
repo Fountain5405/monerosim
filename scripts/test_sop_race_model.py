@@ -238,3 +238,27 @@ def test_rucknium_strategy2_in_objects_gives_tevadors_ten_days_as_the_even_odds_
     r = a3_strategy2_formula(0.33, 48, objects_per_z_unit=1.0)
     assert r.p_success < 0.0006
     assert 9.5 < days_to_even_odds(r.expected_days_between_successes) < 10.1
+
+
+def test_per_day_rates_use_canonical_days_like_a_retargeting_chain():
+    """Difficulty retargets on the canonical chain, so a day is 720 CANONICAL
+    blocks, not 720 blocks found. Under a stubborn attack under SoP, about a
+    third of all blocks are orphaned at alpha 0.33, so per-day rates over
+    fixed-rate days came out ~1.45x too low (the 240 h sim run, 2026-10-03:
+    difficulty fell 32 % and ~1050 blocks a day were found)."""
+    from scripts.sop_race_model import SimStats
+    s = SimStats(sim_days=10.0, reveals=4, reorg_depths=[10, 12, 1, 1],
+                 att_final_blocks=1200, hon_final_blocks=2400, att_orphaned_blocks=400)
+    assert math.isclose(s.canonical_days, 5.0)          # 3600 canonical blocks / 720
+    assert math.isclose(s.reveals_per_day, 0.8)
+    assert math.isclose(s.rate_ge10_per_year, 2 / 5.0 * 365.25)
+    assert s.blocks_found == 1200 + 2400 + 400 + 24     # + honest blocks the reveals orphaned
+    assert math.isclose(s.reveals_per_1000_found, 4000 / 4024)
+    assert SimStats(sim_days=1.0).reveals_per_day == 0.0
+
+
+def test_simulate_orphans_shrink_canonical_days():
+    s = simulate(SimConfig(alpha=0.33, d=2, rule="sop", attacker_embeds=True, days=20, seed=3))
+    stock = simulate(SimConfig(alpha=0.33, d=2, rule="stock", attacker_embeds=False, days=20, seed=3))
+    assert s.canonical_days < 0.8 * s.sim_days          # ~31 % of blocks orphaned
+    assert stock.canonical_days > s.canonical_days
