@@ -185,18 +185,71 @@ builds an SSL context; passing `ssl_support: disabled` there would skip it.
 | Patch `get_ticks_per_ns` to sleep instead of spin | → ~0.3 s | No | monero (only reaches `monerod-sim`; the default `monerod` and wallet-rpc are vanilla) |
 | `native_preemption: false` | 3 s | Yes, and wallet-rpc's ring-signature loops can starve their host (`src/shadow/types.rs`) | not a fix |
 
-Fidelity of the vDSO charge: Shadow already charges 1 µs for every
-non-blocking real syscall (`unblocked_syscall_latency`). At 1 µs a clock read
-costs the same. A real vDSO `clock_gettime` costs 40-400 CPU cycles (Shadow's
-own estimate, i.e. ~10-100 ns), so 1 µs overcharges it, but by microseconds
-per event, against network latencies of
-milliseconds and a 120 s block time. Results will not be seed-for-seed
-comparable with earlier runs, which they already are not with
-`native_preemption: true` (`docs/CONFIGURATION.md`, Determinism).
+A real vDSO `clock_gettime` costs 40-400 CPU cycles (Shadow's own estimate,
+i.e. ~10-100 ns), so 1 µs overcharges it. How much that matters depends on how
+often processes read the clock, measured next.
 
-Recommendation: set `performance.unblocked_vdso_latency: 1 us` in the eclipse
-and other large configs now (or make it the default), and fix the shim's
-timer toggling in shadowformonero as the clean long-term fix.
+### How often a normal run reads the clock
+
+The full 6 h quickstart at default settings (`20261003_110240_clk_quickstart`:
+5 miners, 6 seeds, 1 relay, 3 users with transactions from 4 h), with Shadow's
+`experimental.strace_logging_mode: standard`. The shim logs every clock read it
+answers (`clock_gettime`, `gettimeofday`, `time`) with its simulated time, and
+Shadow logs `= <blocked>` where a thread goes to sleep. A **busy period** is a
+thread's run from waking up to blocking again: each clock read in it delays the
+thread's next action (e.g. relaying a block) by the vDSO charge. Counted by
+`analysis/startup_cost/clock_reads.py`, excluding each process's first 2 sim
+minutes:
+
+| Process | Clock reads per sim-second | Syscalls Shadow charges 1 µs, per sim-second | Reads per busy period: median / 99.9% / max | Longest run of reads with no other syscall |
+|---|---|---|---|---|
+| monerod, miners (5) | 127-176 | 116-185 | 1 / ≤31 / 170-362 | 155-347 |
+| monerod, seeds (6) | 109-115 | 94-101 | 1 / ≤31 / 106 | 57-73 |
+| monerod, relay | 153 | 163 | 1 / ≤31 / 106 | 73 |
+| monerod, users (3) | 152-158 | 160-167 | 1 / ≤31 / 387 | 371 |
+| monero-wallet-rpc (8) | 49-50 | 20-23 | 4-7 / ≤63 / 501-1161 | 14 |
+| Python agents, DNS server | 1-7 | 2-12 | 1 / ≤511 / 480 | 31 |
+| start-up busy-wait, per monero process | 10,000,000 in its first 0.1 sim-s | | | 10,000,000 |
+
+- The rate is steady over the run (100-190 reads/s per monerod, creeping up
+  as the chain grows; transactions add little). 40 reads/s per monerod come
+  from one periodic timer thread.
+- Block handling: on seed-001 every busy period of 100+ reads (all 106)
+  falls within 1 s of a block being added. Per block, the busiest thread
+  reads the clock 54 times (median; p90 60, max 106) on seed-001 and 66
+  (median and p90) on relay-001. The 340-390-read busy periods fall in the
+  transaction phase on miner and user daemons.
+
+What `unblocked_vdso_latency: 1 us` would change (+0.99 µs per read):
+
+- **Load:** +0.11-0.17 ms of simulated CPU time per simulated second per
+  monerod (0.01-0.02%). Shadow already charges 0.09-0.19 ms/s for syscalls, so
+  a monerod's modeled CPU time roughly doubles, from tiny to still tiny.
+- **Per event:** the median busy period gets 1 µs later, 99.9% of them at
+  most 31 µs later, a block's handling 0.05-0.1 ms later per hop, the worst
+  monerod busy period 0.38 ms, the worst wallet one 1.15 ms. Link latencies in
+  `1200_nodes_caida_with_loops.gml` are 25-95 ms (p10-p90, median 45 ms), so a
+  block's extra 0.05-0.1 ms per hop is under 0.5% of one link's delay.
+
+Runs with it are not seed-for-seed comparable with runs without it, which
+runs with `native_preemption: true` already are not (`docs/CONFIGURATION.md`,
+Determinism): this run and the smoke run `20261003_055721_quickstart` both
+reached height 179 with 180 blocks on miner-001, with different hashes.
+
+### Charging more only where it is needed
+
+The setting is global and fixed for a run: Shadow copies it into each host's
+shared memory at start and has no way to change it mid-run. But normal
+operation never reads the clock more than 371 times in a row without another
+syscall, while the start-up busy-wait does it 10,000,000 times. A shim change
+in shadowformonero could keep the 10 ns charge and charge 1 µs only after,
+say, 10,000 consecutive reads: normal operation would be unchanged (27x
+margin over the longest run measured), and every process start would cost
+what it costs in arm E. It would also cover daemons that restart mid-run
+(turnover, upgrade phases), which pay the ~17 s on every restart today.
+
+Recommendation: until then, set `performance.unblocked_vdso_latency: 1 us` in
+the eclipse and other large configs, where start-up dominates.
 
 ## Expected effect at scale (not measured here)
 
@@ -229,6 +282,14 @@ top-level block that the scenario parser passes through:
 performance:
   unblocked_vdso_latency: 1 us      # arms D, E (100 ns: F)
 ```
+
+Clock reads: run with Shadow's `experimental.strace_logging_mode: standard`
+(monerosim does not pass it through; the measurement above added it to the
+generated Shadow config with a temporary patch), then
+`python3 analysis/startup_cost/clock_reads.py <run>/shadow.data/hosts --skip 120`
+(`--glob 'monero-wallet-rpc.*.strace'` for wallets). The 6 h quickstart wrote
+21 GB of strace files, half of it the start-up busy-waits; analysis takes
+about a minute.
 
 Profile a whole start: wait for a new monerod PID, then
 `perf record -e cpu-clock -F 199 --call-graph dwarf,16384 -t <pid> -- sleep 25`

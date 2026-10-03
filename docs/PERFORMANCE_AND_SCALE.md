@@ -214,8 +214,12 @@ performance:
 
 The cost: every clock read in every simulated process charges 1 µs of sim
 time instead of 10 ns, the same as Shadow already charges for a non-blocking
-syscall. That is microseconds per event against millisecond network
-latencies. Runs are not seed-for-seed comparable with runs made without it.
+syscall. Measured over a full quickstart, a monerod reads the clock 110-180
+times per simulated second, about as often as it makes syscalls Shadow already
+charges 1 µs for; half its busy periods (from waking up to blocking again)
+contain one read and 99.9% at most 31; handling a block gets 0.05-0.1 ms later per hop,
+against 25-95 ms link latencies. Runs are not seed-for-seed comparable with
+runs made without it.
 
 ## Tuning monerod log-level
 
