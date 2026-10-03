@@ -180,6 +180,9 @@ pub struct ShadowExperimental {
     /// the host and prevent the RPC handler thread from responding.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub native_preemption_enabled: Option<bool>,
+    /// Simulated latency per vDSO call (Shadow default 10 ns when unset).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unblocked_vdso_latency: Option<String>,
 }
 
 /// Shadow network configuration.
