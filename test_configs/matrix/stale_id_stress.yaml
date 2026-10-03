@@ -1,0 +1,42 @@
+# STALE-ID STRESS SMOKE (2026-10-03): before/after check of the miner fix
+# e2955754 (b.invalidate_hashes() on every nonce).
+#
+# Mechanism. The bug needs a block found after two of a miner's own shares in
+# one sim-second (the second skips the rate-limited template refresh), and
+# before any other template change. So it scales with a single miner's own
+# share rate.
+#
+# This cell makes it frequent:
+#   - one dominant honest miner (8 of 10 h/s);
+#   - w = 64, 4x the shares of w = 16, on every SoP node;
+#   - no attack.
+# At w = 16 with a third of the hashrate per miner it hit a few times per
+# 10 sim-days.
+#
+# Run it twice:
+#   1. on the pre-fix binary (pop patch 899cd283): health must show STALE-ID > 0;
+#   2. after the owner's setup.sh rebuild (2d6499a8): STALE-ID must be 0.
+# binary_provenance.txt in each run dir records which binary ran. The pre-fix
+# binary is also kept in .claude/campaign7/bin/ (git-ignored).
+#
+# Seeds keep the base config: they relay shares but are not flagged.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stale_id_stress.yaml
+# (second run: add --fresh, since the first run leaves the cell's marker)
+name: stale_id_stress
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 2h
+axes:
+  network:
+    w64:
+      attacker:
+        hashrate: 8
+        attributes: {strategy: honest}
+        daemon_options: {offline: false, sim-share-or-perish: true, sim-sop-w: 64}
+      honest:
+        hashrate: [1, 1]
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 64}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true, sim-sop-w: 64}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true, sim-sop-w: 64}}

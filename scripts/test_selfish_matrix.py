@@ -726,3 +726,24 @@ def test_every_matrix_cell_builds_its_attackers_strategy():
                     bad.append(f"{path.stem}/{cell}/{aid}: {e}")
     assert not bad, bad
     assert built > 0
+
+
+def test_stale_id_stress_spec_flags_every_sop_node_at_w64_with_one_dominant_miner():
+    """stale_id_stress (2026-10-03): the before/after check of the miner fix
+    e2955754. One honest cell, 2 h. A dominant 8-of-10 h/s miner and w = 64 on
+    every SoP node make the stale-id bug frequent, and the 10 h/s total still
+    grafts h10."""
+    _, cfgs = _plan_and_build("stale_id_stress")
+    assert sorted(cfgs) == ["w64"]
+    cfg = cfgs["w64"]
+    assert cfg["general"]["stop_time"] == "2h" and cfg["general"]["simulation_seed"] == 12345
+    assert cfg["general"]["mining"]["chain_snapshot"] == "h10"
+    agents = cfg["agents"]
+    att = agents["attacker-miner"]
+    assert att["attributes"]["strategy"] == "honest" and att["daemon_options"]["offline"] is False
+    assert att["hashrate"] == 8 and agents["honest-001"]["hashrate"] == 1 and agents["honest-002"]["hashrate"] == 1
+    flagged = {aid for aid, a in agents.items() if (a.get("daemon_options") or {}).get("sim-share-or-perish")}
+    assert {"attacker-miner", "honest-001", "honest-002", "attacker-bridge"} <= flagged
+    assert any(aid.startswith("relay-") for aid in flagged)
+    assert all(agents[aid]["daemon_options"]["sim-sop-w"] == 64 for aid in flagged), \
+        {aid: agents[aid]["daemon_options"].get("sim-sop-w") for aid in flagged}
