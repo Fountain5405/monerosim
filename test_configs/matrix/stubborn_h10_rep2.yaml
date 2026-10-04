@@ -1,0 +1,78 @@
+# THIRD DRAW (2026-10-04, owner decision: n = 3 for the headline cells), seed 24680.
+# Identical to stubborn_h10.yaml (seed 12345) and stubborn_h10_rep.yaml (seed 54321) except name and
+# seed. First run on the stale-id-fixed binary (pop patch 2d6499a8).
+#
+# STUBBORN-ATTACKER CAMPAIGN (owner decisions 2026-09-30, corrected binary): a
+# window_stubborn attacker against Share-or-Perish's k*w = 48 work-object
+# window, and the same attacker against stock monerod. Third draw of an n=3
+# set (others: stubborn_h10.yaml, stubborn_h10_rep.yaml).
+#
+# Runs on the SoP correction of 2026-09-30 (MRL #146): share-counted fallback
+# weights, all published shares embedded in blocks, main-chain lateness
+# reference, and whole-branch comparison. window_stubborn now takes `weigh`
+# ("sop" | "difficulty") and reveals only when heavier under that rule.
+#
+# Arms:
+#   share  -- the attacker's OFFLINE daemon runs SoP, so its miner captures
+#             its own workshares and embeds them (minor_version = N). Each
+#             block then counts 1 + N objects toward the window (~16 at
+#             w = 16), so the branch crosses 48 in ~3 blocks. The agent reads
+#             the exact count from its headers (embedded_shares: "true").
+#             weigh: sop -- the attacker judges its branch the way SoP does.
+#   block  -- no shares: the branch must reach 48 BLOCKS. weigh: sop still,
+#             but with no embedded shares the window fills from blocks alone.
+#
+# Countermeasures:
+#   sop2  -- honest miners, relays and the attacker bridge all run
+#            sim-share-or-perish (w = 16), as in campaign 6.
+#   stock -- nobody runs SoP. The share arm is EXCLUDED here: a share-carrying
+#            block's version_minor is the hard-fork vote, and v0.18 requires
+#            vote >= fork version, so stock (unflagged) daemons reject it.
+#            The attacker's own fork-choice switches to plain cumulative
+#            difficulty (weigh: difficulty, window_objects: "0" -- the window
+#            is an SoP concept and has no meaning on stock).
+#
+# alpha on the h10 preset via fractional hashrates (f917bf49); the 10 h/s
+# total still auto-matches h10. a040 pairs with campaign 6.
+# Give-up depth: d2 everywhere; d1/d3 only for share x sop2 x a040 (owner,
+# 2026-09-30) -- the depth sweep only makes sense where the attacker can
+# actually accrue a window via shares.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10.yaml
+name: stubborn_h10_rep2
+seed: 24680
+base: test_configs/selfish_micro_sop.yaml
+parallel: 4
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48", weigh: sop}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+    block:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", window_objects: "48", weigh: sop}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+    stock:
+      attacker: {attributes: {weigh: difficulty, window_objects: "0"}}
+  alpha:
+    a030: {attacker: {hashrate: 3},   honest: {hashrate: [3.5, 3.5]}}
+    a040: {attacker: {hashrate: 4},   honest: {hashrate: [3, 3]}}
+    a045: {attacker: {hashrate: 4.5}, honest: {hashrate: [2.75, 2.75]}}
+  depth:
+    d2: {attacker: {attributes: {give_up_depth: "2"}}}
+    d1: {attacker: {attributes: {give_up_depth: "1"}}}
+    d3: {attacker: {attributes: {give_up_depth: "3"}}}
+exclude:
+  - {arm: share, countermeasure: stock}
+  - {arm: block, countermeasure: sop2, alpha: a030}
+  - {arm: block, countermeasure: sop2, depth: d1}
+  - {arm: block, countermeasure: sop2, depth: d3}
+  - {depth: d1, alpha: a030}
+  - {depth: d1, alpha: a045}
+  - {depth: d3, alpha: a030}
+  - {depth: d3, alpha: a045}

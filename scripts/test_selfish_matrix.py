@@ -747,3 +747,41 @@ def test_stale_id_stress_spec_flags_every_sop_node_at_w64_with_one_dominant_mine
     assert any(aid.startswith("relay-") for aid in flagged)
     assert all(agents[aid]["daemon_options"]["sim-sop-w"] == 64 for aid in flagged), \
         {aid: agents[aid]["daemon_options"].get("sim-sop-w") for aid in flagged}
+
+
+def test_third_draw_specs_equal_their_base_except_seed():
+    """stubborn_h10_rep2 and stubborn_h10_long_rep2 (2026-10-04; the owner
+    chose n = 3 for the headline cells). Every cell equals the base spec's
+    same cell except the simulation seed, 24680. The other draws use 12345
+    and 54321."""
+    import copy
+    for name, base_name in (("stubborn_h10_rep2", "stubborn_h10"), ("stubborn_h10_long_rep2", "stubborn_h10_long")):
+        _, cfgs = _plan_and_build(name)
+        _, base = _plan_and_build(base_name)
+        assert sorted(cfgs) == sorted(base)
+        for cell, cfg in cfgs.items():
+            assert cfg["general"]["simulation_seed"] == 24680
+            c, b = copy.deepcopy(cfg), copy.deepcopy(base[cell])
+            c["general"].pop("simulation_seed")
+            b["general"].pop("simulation_seed")
+            assert c == b, (name, cell)
+
+
+def test_long_depth_specs_vary_only_give_up_depth():
+    """stubborn_h10_long_depth{,_rep} (2026-10-04, owner decision): the 240 h
+    alpha 0.33 share_sop2 cell at give_up_depth 3 and 5. Model B says SoP's
+    10+ block reorg rate rises steeply with depth. Each cell equals
+    stubborn_h10_long(_rep)'s share_sop2_a033_d2 cell at the same seed,
+    except that one attribute."""
+    import copy
+    for name, base_name in (("stubborn_h10_long_depth", "stubborn_h10_long"),
+                            ("stubborn_h10_long_depth_rep", "stubborn_h10_long_rep")):
+        _, cfgs = _plan_and_build(name)
+        _, base = _plan_and_build(base_name)
+        assert sorted(cfgs) == ["share_sop2_a033_d3", "share_sop2_a033_d5"]
+        for cell, cfg in cfgs.items():
+            assert cfg["agents"]["attacker-miner"]["attributes"]["give_up_depth"] == cell[-1]
+            c, r = copy.deepcopy(cfg), copy.deepcopy(base["share_sop2_a033_d2"])
+            c["agents"]["attacker-miner"]["attributes"].pop("give_up_depth")
+            r["agents"]["attacker-miner"]["attributes"].pop("give_up_depth")
+            assert c == r, (name, cell)
