@@ -80,11 +80,12 @@ Options:
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
   --bootfast             Fast process starts, nothing else changed. Each monerod /
                          wallet-rpc start spends ~16 wall-s in monero's start-up
-                         clock-calibration loop; with this, clock reads cost 1 us
-                         of simulated time instead of 10 ns only after 10,000 in a
-                         row with no other syscall (normal code: at most a few
-                         hundred), which ends the loop in ~0.2 s. Needs
-                         shadowformonero >= v0.2.5. See docs/PERFORMANCE_AND_SCALE.md.
+                         clock-calibration loop. With this, each clock read in a
+                         row after the 10,000th costs 1 us of simulated time
+                         instead of 10 ns; any other syscall restarts the count
+                         (normal code never gets past a few hundred). Ends the
+                         loop in ~0.2 s. Needs shadowformonero >= v0.2.5.
+                         Explained in docs/explain_clock_mods.md.
   --allfast              Every clock read in every process costs 1 us of simulated
                          time instead of 10 ns, for the whole run. Starts as fast
                          as --bootfast; normal code runs slightly slower in

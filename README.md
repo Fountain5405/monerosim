@@ -315,6 +315,7 @@ monerosim/
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
 - [Network Scaling Guide](docs/NETWORK_SCALING_GUIDE.md) - CAIDA topologies and large-scale simulations
 - [Performance and Scale Limits](docs/PERFORMANCE_AND_SCALE.md) - Speed knobs, per-machine safe-N caps, and auto-config guardrails
+- [Fast Process Starts: `--bootfast` / `--allfast`](docs/explain_clock_mods.md) - Plain-language explanation of why every monero process start took ~16 s under Shadow and how the two `run_sim.sh` clock flags cut it to under half a second
 - [How It Works](docs/FLOW.md) - Detailed mechanics of how monerosim interfaces with Shadow
 - [Determinism Fixes](docs/DETERMINISM_FIXES.md) - Sources of non-determinism and fixes
 - [AI Config Generator](docs/AI_CONFIG_GENERATOR.md) - LLM-based configuration generation

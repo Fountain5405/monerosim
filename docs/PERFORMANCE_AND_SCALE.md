@@ -203,12 +203,13 @@ sim-hours) and did not speed up with more workers. Measured and profiled in
 - ~0.3 s: everything else.
 
 Per start on a 70-host test (median, wall-seconds): 17.3 as before, 16.2
-with SSL off. Two `run_sim.sh` flags remove the busy-wait cost:
+with SSL off. Two `run_sim.sh` flags remove the busy-wait cost (explained in
+plain language in [`explain_clock_mods.md`](explain_clock_mods.md)):
 
 | Flag | Simulated time a clock read costs | Relay start | Shadow wall (70 hosts) | Normal operation |
 |---|---|---|---|---|
 | none | 10 ns (Shadow's default) | 16.1 s | 1106 s | as before |
-| `--bootfast` | 10 ns; 1 µs once a thread has read the clock more than 10,000 times in a row with no other syscall | 0.43 s | 93 s | unchanged: the longest such run in a full quickstart was 371 reads |
+| `--bootfast` | 10 ns, except each read in a row past the 10,000th (no other syscall in between): 1 µs | 0.43 s | 93 s | unchanged: the longest such run in a full quickstart was 371 reads |
 | `--allfast` | 1 µs, always | 0.42 s | 93 s | slightly slower in sim time, see below |
 
 ```bash

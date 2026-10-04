@@ -8,10 +8,11 @@
   monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
   `get_ticks_per_ns()` static initializer, which spins on the clock until 100 ms
   of simulated time pass: 10 million reads at Shadow's 10 ns each.
-  `--bootfast` charges 1 µs per read only after 10,000 reads in a row with no
-  other syscall (normal operation: at most a few hundred), so nothing else
-  changes; `--allfast` charges every read 1 µs. Both: relay start 16.1 → 0.43 s,
-  a 70-host run's Shadow wall time 1106 → 93 s. Neither is the default.
+  `--bootfast` charges 1 µs for each read in a row past the 10,000th; any other
+  syscall restarts the count (normal operation: at most a few hundred in a row),
+  so nothing else changes. `--allfast` charges every read 1 µs. Both: relay
+  start 16.1 → 0.43 s, a 70-host run's Shadow wall time 1106 → 93 s. Neither is
+  the default. Plain-language explanation: `docs/explain_clock_mods.md`.
   Config equivalents under `performance:`: `unblocked_vdso_busy_threshold` /
   `unblocked_vdso_busy_latency` (`--bootfast`) and `unblocked_vdso_latency`
   (`--allfast`). `--bootfast` needs **shadowformonero v0.2.5** (pin bumped; adds

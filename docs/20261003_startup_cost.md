@@ -6,7 +6,8 @@
 (saves ~1.1 s per start). `run_sim.sh --bootfast` (shadowformonero v0.2.5)
 cuts a start from ~16 s to 0.43 s without changing how normal operation is
 charged; `run_sim.sh --allfast` does the same by charging every clock read
-1 µs. Neither is the default.
+1 µs. Neither is the default. Plain-language explanation of both:
+[`explain_clock_mods.md`](explain_clock_mods.md).
 
 ## TL;DR
 
