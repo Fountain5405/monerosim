@@ -154,6 +154,17 @@ pub struct PerformanceConfig {
     /// through as experimental.unblocked_vdso_latency.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unblocked_vdso_latency: Option<String>,
+    /// Once a thread has made more than this many vDSO calls in a row with no
+    /// other syscall in between (a busy loop on the clock), charge
+    /// `unblocked_vdso_busy_latency` per call instead. Unset or 0 = off.
+    /// Needs shadowformonero >= v0.2.5. Passed through as
+    /// experimental.unblocked_vdso_busy_threshold; `--bootfast` sets it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unblocked_vdso_busy_threshold: Option<u64>,
+    /// Simulated time charged per vDSO call past the busy threshold, e.g.
+    /// "1 us". Passed through as experimental.unblocked_vdso_busy_latency.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unblocked_vdso_busy_latency: Option<String>,
 }
 
 impl Default for PerformanceConfig {
@@ -161,6 +172,8 @@ impl Default for PerformanceConfig {
         PerformanceConfig {
             model_unblocked_syscall_latency: default_model_unblocked_syscall_latency(),
             unblocked_vdso_latency: None,
+            unblocked_vdso_busy_threshold: None,
+            unblocked_vdso_busy_latency: None,
         }
     }
 }

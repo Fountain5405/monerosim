@@ -4,14 +4,19 @@
 
 ### Added
 
-- **`performance.unblocked_vdso_latency`** (opt-in, e.g. `1 us`; unset keeps
-  Shadow's 10 ns): passed to Shadow as `experimental.unblocked_vdso_latency`.
-  Every monerod / monero-wallet-rpc start spends ~15.5 of its ~17 wall-s in
-  monero's `get_ticks_per_ns()` static initializer, which busy-waits 100 ms
-  of simulated time: 10 million clock reads at 10 ns each. At `1 us` a start
-  takes ~1.7 s, ~0.43 s with RPC SSL off; a 70-host run's Shadow wall time went
-  from 1229 s to 93 s. It changes simulated timing (1 µs per clock read), so it
-  is not the default yet. Investigation, profiles and scripts:
+- **`run_sim.sh --bootfast` / `--allfast`**: fast monero process starts. Every
+  monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
+  `get_ticks_per_ns()` static initializer, which spins on the clock until 100 ms
+  of simulated time pass: 10 million reads at Shadow's 10 ns each.
+  `--bootfast` charges 1 µs per read only after 10,000 reads in a row with no
+  other syscall (normal operation: at most a few hundred), so nothing else
+  changes; `--allfast` charges every read 1 µs. Both: relay start 16.1 → 0.43 s,
+  a 70-host run's Shadow wall time 1106 → 93 s. Neither is the default.
+  Config equivalents under `performance:`: `unblocked_vdso_busy_threshold` /
+  `unblocked_vdso_busy_latency` (`--bootfast`) and `unblocked_vdso_latency`
+  (`--allfast`). `--bootfast` needs **shadowformonero v0.2.5** (pin bumped; adds
+  `experimental.unblocked_vdso_busy_threshold` / `_latency`); run_sim.sh checks.
+  Investigation, clock-read measurements and scripts:
   `docs/20261003_startup_cost.md`, `analysis/startup_cost/`.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was

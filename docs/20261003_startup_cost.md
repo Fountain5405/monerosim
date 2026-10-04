@@ -2,10 +2,11 @@
 
 **Date:** 2026-10-03, measured on a 24-thread box (Ryzen 9 3900X, 12 cores,
 31 GB) following `docs/20261003_startup_ssl_runbook.md`.
-**Status:** Cause found. RPC SSL is now off by default (saves ~1.1 s per start).
-The main cost needs `performance.unblocked_vdso_latency` (new, opt-in), which
-cuts a start from 17.3 s to 0.43 s together with SSL off; making it the
-default is an open decision (see [Options](#options)).
+**Status:** Cause found and fixed behind flags. RPC SSL is now off by default
+(saves ~1.1 s per start). `run_sim.sh --bootfast` (shadowformonero v0.2.5)
+cuts a start from ~16 s to 0.43 s without changing how normal operation is
+charged; `run_sim.sh --allfast` does the same by charging every clock read
+1 µs. Neither is the default.
 
 ## TL;DR
 
@@ -179,7 +180,8 @@ builds an SSL context; passing `ssl_support: disabled` there would skip it.
 | Fix | Per start | Changes simulated timing? | Where |
 |---|---|---|---|
 | RPC SSL off (done, default) | -1.1 s | No (P2P unaffected; RPC answers in plaintext) | monerosim |
-| `performance.unblocked_vdso_latency: 1 us` | 17.3 → 1.7 s (0.43 s with SSL off) | Yes: every clock read in every process charges 1 µs of sim time instead of 10 ns | monerosim config (knob added, opt-in) |
+| `--allfast` (= `performance.unblocked_vdso_latency: 1 us`) | 17.3 → 1.7 s (0.43 s with SSL off) | Yes: every clock read in every process charges 1 µs of sim time instead of 10 ns | monerosim (done, opt-in) |
+| `--bootfast`: charge 1 µs only after 10,000 clock reads in a row with no other syscall | → 0.43 s with SSL off | No, below 10,000 in a row | shadowformonero v0.2.5 + monerosim (done, opt-in) |
 | `performance.unblocked_vdso_latency: 100 ns` | → 1.9 s with SSL off | Yes, 10x less than 1 µs | same |
 | Shim: don't toggle the preemption timer for calls the shim answers itself (clock reads), only before an IPC round trip to Shadow | ~3 s with SSL on (arm C is the bound: no toggling at all) → ~0.5-1 s with SSL off, estimated | No for normal code; tight loops of clock reads become preemptible, as intended | shadowformonero |
 | Patch `get_ticks_per_ns` to sleep instead of spin | → ~0.3 s | No | monero (only reaches `monerod-sim`; the default `monerod` and wallet-rpc are vanilla) |
@@ -236,26 +238,56 @@ runs with `native_preemption: true` already are not (`docs/CONFIGURATION.md`,
 Determinism): this run and the smoke run `20261003_055721_quickstart` both
 reached height 179 with 180 blocks on miner-001, with different hashes.
 
-### Charging more only where it is needed
+### Charging more only where it is needed: `--bootfast`
 
-The setting is global and fixed for a run: Shadow copies it into each host's
-shared memory at start and has no way to change it mid-run. But normal
-operation never reads the clock more than 371 times in a row without another
-syscall, while the start-up busy-wait does it 10,000,000 times. A shim change
-in shadowformonero could keep the 10 ns charge and charge 1 µs only after,
-say, 10,000 consecutive reads: normal operation would be unchanged (27x
-margin over the longest run measured), and every process start would cost
-what it costs in arm E. It would also cover daemons that restart mid-run
-(turnover, upgrade phases), which pay the ~17 s on every restart today.
+`unblocked_vdso_latency` is global and fixed for a run: Shadow copies it into
+each host's shared memory at start and has no way to change it mid-run. But
+normal operation never reads the clock more than 371 times in a row without
+another syscall, while the start-up busy-wait does it 10,000,000 times.
 
-Recommendation: until then, set `performance.unblocked_vdso_latency: 1 us` in
-the eclipse and other large configs, where start-up dominates.
+shadowformonero v0.2.5 adds two options for this:
+`experimental.unblocked_vdso_busy_threshold` (default 0 = off) and
+`experimental.unblocked_vdso_busy_latency` (default 1 µs). The shim counts
+each thread's clock reads in a row; any other syscall resets the count; past
+the threshold each read is charged the busy latency. `run_sim.sh --bootfast`
+sets them to 10,000 and 1 µs (27x margin over the longest run measured).
+
+A test program reading the clock in fixed patterns under Shadow
+(threshold 10,000):
+
+| Pattern | default | `--bootfast` | `--allfast` |
+|---|---|---|---|
+| 1,001 reads in a row | 10.1 µs | 10.1 µs | 1.0 ms |
+| ~10,000 reads in a row | 100 µs | 100 µs | 10 ms |
+| 20,001 reads in a row | 201 µs | 10.1 ms | 20 ms |
+| 8,001 reads, one other syscall, 8,001 reads | 161.8 µs | 161.8 µs | 16 ms |
+| spin until 100 ms has passed | 9,999,909 iterations | 109,899 | 100,000 |
+
+Below the threshold `--bootfast` charges exactly what Shadow charges without
+it. On the 70-host test it starts relays as fast as `--allfast` (0.43 vs
+0.42 s median, both runs 93 s of Shadow wall time), against 16.14 s and
+1106 s with neither flag on the same Shadow build (`20261003_233145_startup_ssl_v025_default`). It also covers daemons
+that restart mid-run (turnover, upgrade phases), which otherwise pay the
+start cost on every restart.
+
+Smoke test (`quickstart`, 23 monero processes): without flags on v0.2.5,
+19/19 and the exact historical outcome (height 179, 191/191 transactions;
+`20261003_235204_quickstart`, 734 s). With `--bootfast`: 520-550 s. One run
+(`20261004_000442_quickstart_bootfast`) failed 1 of 19 checks: the distributor
+agent logged "Read timed out" because miner-004's wallet sent `/get_outs.bin`
+to its own daemon, the daemon handled it at once, and the reply never arrived
+(the wallet gave up after 210 s; the retry succeeded). That wallet-to-daemon
+"Unexpected recv fail" also appears in 12 runs from September on v0.2.4,
+without these changes, where it hit the background refresh instead. The
+rerun (`20261004_001553_quickstart_bootfast2`) passed 19/19 with the historical outcome.
+
+Recommendation: use `--bootfast` for large runs, where start-up dominates.
 
 ## Expected effect at scale (not measured here)
 
 - ~240-host 1/10-scale eclipse config: start-up phase ~40 wall-min on the
-  big box. With E's settings each start drops from ~17 s to under 0.5 s, so
-  expect a few minutes. It does not fit this 31 GB box (each monerod holds
+  big box. With `--bootfast` (or arm E's settings) each start drops from ~17 s
+  to under 0.5 s, so expect a few minutes. It does not fit this 31 GB box (each monerod holds
   ~267 MB, mostly the RandomX light cache), so measure it on the big box.
 - 2232-host run: 2,220 relay starts x ~17 s ≈ 10 h → x ~0.4-0.5 s ≈ 15-20 min
   of start cost, if nothing else limits the phase.

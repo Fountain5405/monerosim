@@ -183,6 +183,13 @@ pub struct ShadowExperimental {
     /// Simulated latency per vDSO call (Shadow default 10 ns when unset).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unblocked_vdso_latency: Option<String>,
+    /// Consecutive vDSO calls after which `unblocked_vdso_busy_latency`
+    /// applies (shadowformonero >= v0.2.5; off when unset).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unblocked_vdso_busy_threshold: Option<u64>,
+    /// Simulated latency per vDSO call in a busy loop on the clock.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unblocked_vdso_busy_latency: Option<String>,
 }
 
 /// Shadow network configuration.
