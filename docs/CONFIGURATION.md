@@ -115,16 +115,40 @@ injects `4` (a floor, not a force — any user-provided value wins, including
 stock monerod's default of `1`). See the commented example above and
 `docs/20260605_max_connections_per_ip_bug.md` for why.
 
-Note: RPC SSL is off unless you turn it on. monerosim passes
-`--rpc-ssl=disabled` to every monerod and `--rpc-ssl=disabled
---daemon-ssl=disabled` to every monero-wallet-rpc, unless `daemon_defaults` /
-`daemon_options`, `wallet_defaults` / `wallet_options` or the raw args set them
-(e.g. `rpc-ssl: autodetect` restores stock behaviour). At its default monerod
-generates an RSA-4096 certificate on every start, ~1.1 wall-s per start under
-Shadow. RPC SSL has no effect on P2P; agents and wallets talk plain HTTP. One
-visible difference: monerod's and cuprated's RPC now both answer in plaintext,
-so the TLS fingerprint in `docs/20260724_cuprate_wallet_rpc.md` no longer shows
-inside simulations. See `docs/20261003_startup_cost.md`.
+### RPC SSL
+
+RPC SSL is off unless you turn it on. monerosim passes `--rpc-ssl=disabled`
+to every monerod and `--rpc-ssl=disabled --daemon-ssl=disabled` to every
+monero-wallet-rpc. With SSL at its stock setting, monerod and wallet-rpc
+generate an RSA-4096 certificate on every start, ~1.1 wall-s per start under
+Shadow. RPC SSL has no effect on P2P, and the Python agents and wallets talk
+plain HTTP. See `docs/20261003_startup_cost.md`.
+
+To turn it back on for every node (stock Monero behaviour):
+
+```yaml
+general:
+  daemon_defaults:
+    rpc-ssl: autodetect
+  wallet_defaults:
+    rpc-ssl: autodetect
+    daemon-ssl: autodetect
+```
+
+For some nodes only, set the same keys in an agent's `daemon_options` /
+`wallet_options`. A raw `--rpc-ssl=...` / `--daemon-ssl=...` in the agent's
+args also works: monerosim then leaves that flag out instead of passing it
+twice.
+
+Use `autodetect`, not `enabled`. With `autodetect` monerod looks at the first
+bytes of each RPC connection and uses TLS only if the client starts a TLS
+handshake, so plain-HTTP clients keep working. `enabled` requires TLS on every
+connection, and the Python agents, which only speak plain `http://`, then
+cannot reach the daemon.
+
+With SSL off, monerod's and cuprated's RPC both answer in plaintext, so the
+TLS fingerprint described in `docs/20260724_cuprate_wallet_rpc.md` does not
+show inside simulations; turn SSL back on to study it.
 
 ## Network Section
 
