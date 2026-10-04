@@ -15,6 +15,13 @@
 #       - Manual:  anything passed via --keep
 # Everything else in daemon_logs/ and shadow.data/hosts/ is deleted.
 #
+# Eclipse runs are the exception: nothing is deleted. Every node's peer-list
+# dump is the measurement, so the run is handed to compress_archives.sh
+# (bitmonero.log + peerlist_dump.jsonl gzipped in place) instead. A run counts
+# as eclipse when it has eclipse_metrics.jsonl, any daemon_logs/*/peerlist_dump,
+# or agents.eclipse_* in shadow_agents.yaml. Those configs carry no
+# simulation-monitor, so they never get a summary.txt; none is required here.
+#
 # Usage:
 #   prune_archives.sh [OPTIONS] <archive_dir>...
 #
@@ -22,8 +29,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=run_dir_lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/run_dir_lib.sh"
+source "$SCRIPT_DIR/run_dir_lib.sh"
 
 # ---------- defaults ----------
 TOP_USERS=4
@@ -53,6 +61,10 @@ Always keeps (in addition to anything above):
   - All small top-level files (summary, configs, logs, monitoring data)
   - Sample hosts: miner-001, relay-001, miner-distributor, simulation-monitor, dnsserver
   - Any user whose wallet-rpc died with SIGABRT/SIGSEGV (auto-detected)
+
+Eclipse runs (peer-list dumps, eclipse_metrics.jsonl or agents.eclipse_*) are
+never pruned: their daemon logs and dumps are gzipped in place instead, via
+scripts/compress_archives.sh, and no summary.txt is needed.
 EOF
     exit "${1:-0}"
 }
@@ -100,6 +112,14 @@ crashed_users() {
         | grep -oE "user-[0-9]+" | sort -u
 }
 
+# True when the run is an eclipse study run (see the header).
+is_eclipse_run() {
+    local a="$1"
+    [[ -e "$a/eclipse_metrics.jsonl" || -e "$a/eclipse_metrics.jsonl.gz" ]] && return 0
+    [[ -n "$(find "$a/daemon_logs" -mindepth 2 -maxdepth 3 -name 'peerlist_dump.jsonl*' -print -quit 2>/dev/null)" ]] && return 0
+    grep -q 'agents\.eclipse_' "$a/shadow_agents.yaml" 2>/dev/null
+}
+
 rm_or_echo() {
     local dir="$1"
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -117,6 +137,15 @@ prune_one() {
     if run_dir_is_live "$archive" && [[ "$FORCE" == "false" ]]; then
         echo "Refusing $archive: run is LIVE (owner pid $(cat "$archive/.owner_pid" | awk '{print $1}')); use --force to prune anyway" >&2
         return 1
+    fi
+
+    if is_eclipse_run "$archive"; then
+        echo "Eclipse run $archive: keeping every node, compressing instead of deleting"
+        local cargs=(--peerlist-dumps)
+        [[ "$DRY_RUN" == "true" ]] && cargs+=(--dry-run)
+        "$SCRIPT_DIR/compress_archives.sh" "${cargs[@]}" "$archive"
+        echo ""
+        return
     fi
 
     local summary="$archive/summary.txt"

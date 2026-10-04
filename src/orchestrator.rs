@@ -1078,6 +1078,9 @@ pub fn generate_agent_shadow_config(
             runahead: config.general.runahead.clone(), // Optional runahead for performance tuning
             use_dynamic_runahead: true,
             native_preemption_enabled: config.general.native_preemption, // Pass through config (Shadow default false when unset)
+            unblocked_vdso_latency: config.performance.unblocked_vdso_latency.clone(),
+            unblocked_vdso_busy_threshold: config.performance.unblocked_vdso_busy_threshold,
+            unblocked_vdso_busy_latency: config.performance.unblocked_vdso_busy_latency.clone(),
         },
         network: ShadowNetwork {
             graph: shadow_graph,

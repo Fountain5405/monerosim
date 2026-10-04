@@ -87,6 +87,22 @@
   `src/topology/prefix_sharing.rs`; `seeded_hash`/`finalize_hash` factored
   into `src/utils/seeded_hash.rs` (shared with the other seeded selections in
   `src/agent/user_agents.rs`). Absent config = unchanged behavior.
+
+- **`run_sim.sh --bootfast` / `--allfast`**: fast monero process starts. Every
+  monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
+  `get_ticks_per_ns()` static initializer, which spins on the clock until 100 ms
+  of simulated time pass: 10 million reads at Shadow's 10 ns each.
+  `--bootfast` charges 1 µs for each read in a row past the 10,000th; any other
+  syscall restarts the count (normal operation: at most a few hundred in a row),
+  so nothing else changes. `--allfast` charges every read 1 µs. Both: relay
+  start 16.1 → 0.43 s, a 70-host run's Shadow wall time 1106 → 93 s. Neither is
+  the default. Plain-language explanation: `docs/explain_clock_mods.md`.
+  Config equivalents under `performance:`: `unblocked_vdso_busy_threshold` /
+  `unblocked_vdso_busy_latency` (`--bootfast`) and `unblocked_vdso_latency`
+  (`--allfast`). `--bootfast` needs **shadowformonero v0.2.5** (pin bumped; adds
+  `experimental.unblocked_vdso_busy_threshold` / `_latency`); run_sim.sh checks.
+  Investigation, clock-read measurements and scripts:
+  `docs/20261003_startup_cost.md`, `analysis/startup_cost/`.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was
   accepted only as an equal-height alternative, which stock monerod drops silently.
@@ -187,8 +203,91 @@
   already protected by the generator's uid guard; this protects the
   caller's own concurrent runs. Helper `run_sim_helpers.py pinned-paths`;
   test `scripts/test_pinned_paths.sh`.
+- **`scripts/compress_archives.sh`**: gzips finished runs' `daemon_logs/<node>/bitmonero.log`
+  (and rotated `bitmonero.log-*`) in place, losing nothing. With no arguments it
+  covers every run under the archive base and skips live runs; `--peerlist-dumps`
+  also compresses eclipse peer-list dumps; `--dry-run` only reports. A log-level-1
+  relay log measured 86 MB -> 6.2 MB; on one box the eleven finished eclipse runs
+  held ~870 GB of plain daemon logs. `analysis/eclipse/analyze_peerlist_dumps.py`
+  now finds `peerlist_dump.jsonl.gz` too (it could already read them). Tests
+  `scripts/test_compress_archives.py`, `scripts/test_peerlist_dump_layouts.py`.
+- **`scripts/prune_archives.sh` recognises eclipse runs** (`eclipse_metrics.jsonl`,
+  any `daemon_logs/*/peerlist_dump.jsonl`, or `agents.eclipse_*` in
+  `shadow_agents.yaml`) and compresses them with `compress_archives.sh
+  --peerlist-dumps` instead of deleting. Before, it skipped them for lacking
+  `summary.txt` (eclipse configs have no simulation-monitor, which is what writes
+  it), and `--force` would have kept only `monero-miner-001`'s logs, deleting every
+  other node's peer-list dump, the study's measurement data.
 
 ### Fixed
+
+- **`scripts/smoke_test.sh` graded the wrong run whenever another run from the
+  same checkout was live.** It picked the most recently modified directory
+  under `archived_runs/`, so two smoke tests running at once graded the same run
+  (seen 2026-10-02: both tests of each pair wrote the same run_id to the
+  history), and a smoke test beside any other run (a sweep, an A/B arm) could
+  grade that run instead. It also ignored `MONEROSIM_ARCHIVE_BASE`. `run_sim.sh`
+  has a new `--run-dir-file <path>` option that writes the run's directory to
+  `<path>` as soon as it is allocated; `smoke_test.sh` passes a temp file and
+  grades exactly that directory. If `run_sim.sh` fails before creating one, the
+  smoke test now exits with `run_sim.sh`'s code instead of grading some other
+  run. Test: `scripts/test_smoke_run_dir.sh` (fails 5 of 7 checks on the old
+  code).
+- **Shadow used only 64 of this box's 128 physical cores (25% of the CPUs in
+  htop), and concurrent runs stacked on the same 64.** With `parallelism: 0`
+  (the default), Shadow counts physical cores by `topology/core_id`, which Linux
+  numbers per socket, so a 2 x 64-core machine got 64 worker threads (Shadow's
+  `count_physical_cores`, unfixed upstream). Each Shadow process also pins its
+  workers, and the processes they run, to the lowest-numbered CPUs it may use,
+  knowing nothing of other runs, so every concurrent run sat on CPUs 0-63 and
+  socket 1 stayed idle. `run_sim.sh` now plans the CPUs itself
+  (`run_sim_helpers.py cpu-plan`). It treats each set of hyperthread siblings
+  as one core and skips cores that other live Shadow runs, of any user, have
+  pinned. It then launches Shadow under `taskset` with the free cores, in NUMA
+  order. For `parallelism: 0` it also passes `--parallelism <free cores>`,
+  which overrides the YAML. An explicit `parallelism: N` takes N cores, which
+  leaves the rest of the machine to later runs. `shadow_agents.yaml` is
+  unchanged, so the golden files stay machine-independent. The concurrency
+  preflight reports the plan in place of the old `nproc` sum. Measured on a
+  ~240-host run confined to one socket: two workers per physical core were
+  1.29x slower than one, so no mode ever exceeds one; the same run took 75-77
+  min with 16, 32 or 64 workers. The gain from 128 versus
+  64 physical cores on a large run is not measured yet. The old "~63-core
+  algorithmic ceiling" was very likely this bug. Running several simulations
+  at once: set `parallelism` in each config (docs/CONFIGURATION.md). A run
+  reserves at most one core per simulated host (Shadow's own worker cap), so
+  the quickstart takes 18 cores, not every free one. It is also always
+  launched under `taskset` unless it takes the whole machine: before that,
+  a run started alone showed other launches nothing until Shadow had built
+  its hosts and pinned its workers. And planning plus launching now happens
+  under one lock for the whole box (`/tmp/monerosim.cpu-plan.lock`, any user,
+  any checkout), held until the new Shadow is visible: two quickstarts started
+  20 s apart from one checkout got the same 18 CPUs, because cargo's build lock
+  released both onto the launch within 6 ms of each other after a rebuild.
+- **Eclipse probe dumps failed `gzip -d` ("unexpected end of file", issue #11).**
+  `agents/eclipse_probe.py` held one gzip stream open for the whole run and only
+  flushed it; the probe is always killed from outside, so the gzip trailer was never
+  written (`zcat` still read every record). The probe now writes plain JSONL (one
+  unbuffered append per record) and `run_sim.sh` compresses each file once at
+  archive time (`compress_probe_dumps`), keeping the `raw_<id>.jsonl.gz` names at
+  better-than-before compression (1.05 MB for a 27 MB target dump).
+- **Eclipse fake-peer/injector memory growth.** Both agents ran a thread per inbound
+  connection and re-parsed the whole agent registry on every handshake (the injector
+  with no cache, the fake peer with an unlocked 30 s cache). With a dial-all fleet this
+  allocation churn grew every process for the whole attack; the 2026-09-28 50 h run
+  OOM-killed the box. They now serve all ports from one selector-loop thread
+  (`serve_ports`, `levin_lib.pop_bucket`) with a locked 30 s `RegistryCache`: at
+  1/10 scale 2 threads and a flat 19 MB per fake peer (was 11-42 threads, growing),
+  with identical attacker-side behaviour.
+- **`memory_samples.csv` could not attribute memory.** It summed RSS over every
+  process of the user (other runs included), double-counting Shadow's shared memory
+  (6.7 TB "total" on a 1 TB box). It now records PSS over the run's own process tree.
+- **`process_threads` was misused and misdocumented.** It sizes the thread pools
+  inside every simulated daemon (monerod `--max-concurrency`/`--prep-blocks-threads`,
+  cuprated pools) -- not Shadow's worker threads (`parallelism`), not wallet-rpc.
+  The eclipse templates set it to 48-128 as if it were a CPU cap and the quickstart
+  and 8 other configs to 0 (host-core-sized pools in every node); all now use 2, and
+  the docs agree the default is 1. A 192-vs-2 A/B showed no memory effect.
 
 - **Crashed and `--no-clean` runs' raw data was deleted by the next launch.**
   `run_sim.sh` started every run by sweeping `/tmp/monerosim-*/` dirs whose
@@ -306,6 +405,28 @@
   (`agents/file_locking.py`).
 
 ### Changed
+
+- **RPC SSL is off by default:** every monerod gets `--rpc-ssl=disabled` and every
+  monero-wallet-rpc `--rpc-ssl=disabled --daemon-ssl=disabled`, unless the config
+  or raw args set them. This skips the RSA-4096 certificate generated on every
+  start, ~1.1 wall-s per daemon start under Shadow. P2P is unaffected; agents
+  already talked plain HTTP. Side effect: monerod's and cuprated's RPC now both
+  answer in plaintext, so the TLS-probe fingerprint in
+  `docs/20260724_cuprate_wallet_rpc.md` no longer shows inside simulations.
+  wallet-rpc still generates one certificate per create/open_wallet for its
+  MMS client, which no option reaches.
+- **Corrected:** the sim-time-0 freeze with `model_unblocked_syscall_latency:
+  false` (339e9431) is the `get_ticks_per_ns()` busy-wait never seeing time
+  pass, not a "CPU-bound startup" (`docs/PERFORMANCE_AND_SCALE.md`).
+- **`memory_samples.csv` columns (breaking for readers):** `timestamp, epoch, sim_s,
+  shadow_mb, daemon_mb, wallet_mb, agents_mb, other_mb, total_mb, nprocs,
+  ram_total_mb, avail_mb, used_pct, swap_used_mb` (PSS, MB).
+- **Memory-stall warning:** when RAM stays nearly exhausted the live monitor (or the
+  terminal, with `--no-monitor`) shows a warning, and a loud banner once the sim has
+  also stalled (< 25% of its healthy pace); alerts go to `<run>/memory_alerts.log`
+  and `check_sim.sh`. The run is never stopped.
+- **Eclipse probe output during a run** is `shared/raw_probe/raw_<id>.jsonl` (plain);
+  archived runs still contain `raw_<id>.jsonl.gz`.
 
 - Transactions ledger is now one append-only `shared/transactions/<agent_id>.jsonl`
   per writer (fields unchanged plus `writer_id`, `seq`), with no file lock; the

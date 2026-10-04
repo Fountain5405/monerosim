@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+import time
 from typing import Iterable
 
 from datetime import datetime
@@ -505,6 +506,184 @@ def cmd_live_runs(args: argparse.Namespace) -> int:
 
 
 # ============================================================
+# Helpers: Shadow CPU plan (worker count + which cores)
+# ============================================================
+def _cpu_list(text: str) -> set[int]:
+    """Parse a kernel CPU list such as "0-3,8,10-11"."""
+    cpus = set()
+    for part in text.strip().split(','):
+        if not part:
+            continue
+        lo, _, hi = part.partition('-')
+        cpus.update(range(int(lo), int(hi or lo) + 1))
+    return cpus
+
+
+def _fmt_cpu_list(cpus: Iterable[int]) -> str:
+    """Inverse of _cpu_list, for taskset -c."""
+    out, run = [], []
+    for c in sorted(cpus):
+        if run and c == run[-1] + 1:
+            run.append(c)
+            continue
+        if run:
+            out.append(f'{run[0]}-{run[-1]}' if len(run) > 1 else str(run[0]))
+        run = [c]
+    if run:
+        out.append(f'{run[0]}-{run[-1]}' if len(run) > 1 else str(run[0]))
+    return ','.join(out)
+
+
+def _cpu_topology(allowed: Iterable[int], sys_cpu: str) -> dict[int, tuple]:
+    """cpu -> (node, package, sibling cpus) for each CPU we may run on."""
+    topo = {}
+    for cpu in allowed:
+        d = Path(sys_cpu) / f'cpu{cpu}'
+        sib = None
+        for name in ('core_cpus_list', 'thread_siblings_list'):
+            try:
+                sib = frozenset(_cpu_list((d / 'topology' / name).read_text()))
+                break
+            except OSError:
+                continue
+        if sib is None:
+            raise OSError(f'no sibling list under {d}/topology')
+        try:
+            pkg = int((d / 'topology' / 'physical_package_id').read_text())
+        except (OSError, ValueError):
+            pkg = 0
+        nodes = sorted(int(n.name[4:]) for n in d.glob('node[0-9]*'))
+        topo[cpu] = (nodes[0] if nodes else 0, pkg, sib)
+    return topo
+
+
+def _shadow_pinned_cpus(online: set[int] | None, proc: str = '/proc') -> set[int]:
+    """CPUs claimed by live Shadow processes of ANY user on this box.
+
+    Shadow pins each worker thread (and the managed processes it runs) to
+    one CPU, choosing from its own affinity mask, lowest CPU first. A
+    worker's one-CPU mask marks that CPU; a Shadow main thread launched
+    under taskset marks its whole mask (it holds that reservation before
+    its workers exist). An unrestricted, not-yet-pinned Shadow shows
+    nothing to avoid.
+    """
+    busy = set()
+    for pid in os.listdir(proc):
+        if not pid.isdigit():
+            continue
+        try:
+            if Path(proc, pid, 'comm').read_text().strip() != 'shadow':
+                continue
+            tasks = os.listdir(Path(proc, pid, 'task'))
+        except OSError:
+            continue
+        for tid in tasks:
+            t = Path(proc, pid, 'task', tid)
+            try:
+                comm = (t / 'comm').read_text().strip()
+                mask = next(_cpu_list(line.split(':', 1)[1])
+                            for line in (t / 'status').read_text().splitlines()
+                            if line.startswith('Cpus_allowed_list:'))
+            except (OSError, StopIteration, ValueError):
+                continue
+            if comm == 'shadow-worker' and len(mask) == 1:
+                busy |= mask
+            elif tid == pid and online is not None and mask < online:
+                busy |= mask
+    return busy
+
+
+def count_shadow_hosts(path: str) -> int:
+    """Number of hosts in a Shadow config: the keys under top-level `hosts:`."""
+    n, in_hosts = 0, False
+    with open(path) as f:
+        for line in f:
+            if not line.strip() or line.lstrip().startswith('#'):
+                continue
+            if not line.startswith(' '):
+                in_hosts = line.rstrip() == 'hosts:'
+            elif in_hosts and re.match(r'  [^ -]', line):
+                n += 1
+    return n
+
+
+def plan_shadow_cpus(parallelism: int, allowed: Iterable[int] | None = None,
+                     sys_cpu: str = '/sys/devices/system/cpu',
+                     proc: str = '/proc', hosts: int | None = None) -> tuple[str, int, str]:
+    """Choose the CPUs and worker count for a new Shadow run.
+
+    Shadow's own `parallelism: 0` dedupes CPUs on topology/core_id, which
+    Linux numbers per socket, so a 2 x 64-core box gets 64 workers, a
+    quarter of its 256 hardware threads (count_physical_cores in Shadow's
+    src/main/core/cpu.rs; unfixed upstream as of 2026-10). Here a physical
+    core is a set of hyperthread siblings, which is right on any socket
+    count. Shadow's pinning numbers cores system-wide (lscpu), so N workers
+    in an N-core mask land one per core.
+
+    Returns (taskset cpu list or '-', workers, note). Whole physical cores
+    already used by other Shadow runs are skipped, so concurrent runs split
+    the box instead of all pinning to CPUs 0..N-1 (each Shadow process picks
+    lowest-numbered CPUs first and knows nothing about the others). Cores are
+    taken in NUMA-node order to keep a run's memory local. parallelism 0
+    takes every free core; N takes N of them (a run can be capped this way
+    to leave room for the next). Either way at most `hosts` cores: Shadow
+    runs min(parallelism, hosts) workers, so an 18-host run never needs more
+    than 18.
+
+    Any plan short of the whole machine is a taskset mask, even with nothing
+    else running: the mask makes the reservation visible to the next launch
+    at once, while an unrestricted Shadow shows nothing until it has built
+    every host and pinned its workers (seconds to minutes). '-' means no
+    restriction: the run takes every core, or nothing is free (then runs
+    share cores; wall clock suffers, results do not).
+    """
+    if allowed is None:
+        allowed = os.sched_getaffinity(0)
+    topo = _cpu_topology(allowed, sys_cpu)
+    if not topo:
+        raise OSError('empty CPU affinity mask')
+    cores = {}
+    for cpu, (node, pkg, sib) in topo.items():
+        cores.setdefault(sib, (node, pkg, min(sib)))
+    try:
+        online = _cpu_list(Path(sys_cpu, 'online').read_text())
+    except OSError:
+        online = None
+    busy = _shadow_pinned_cpus(online, proc)
+    free = sorted((k for k in cores if not (k & busy)), key=lambda k: cores[k])
+    n_all = len(cores)
+    want = parallelism or len(free) or n_all
+    capped = bool(hosts) and want > hosts
+    if capped:
+        want = hosts
+    if not free:
+        return '-', want, f'all {n_all} physical cores are used by other Shadow runs; sharing them'
+    take = free[:want]
+    used = n_all - len(free)
+    note = (f'{len(take)} of {len(free)} free physical cores '
+            f'({used if used else "none"} used by other Shadow runs)')
+    if capped:
+        note += f'; capped at {hosts} hosts'
+    if want > len(free):
+        note += f'; {want} workers > free cores, workers will share'
+    if len(take) == n_all:
+        return '-', want, note
+    return _fmt_cpu_list(set().union(*take) & set(topo)), want, note
+
+
+def cmd_cpu_plan(args: argparse.Namespace) -> int:
+    """Print "<taskset list or -><TAB><workers><TAB><note>" for run_sim.sh."""
+    try:
+        hosts = count_shadow_hosts(args.shadow_config) if args.shadow_config else args.hosts
+        cpus, workers, note = plan_shadow_cpus(args.parallelism, hosts=hosts or None)
+    except OSError as e:
+        print(f'cpu-plan: {e}', file=sys.stderr)
+        return 1
+    print(f'{cpus}\t{workers}\t{note}')
+    return 0
+
+
+# ============================================================
 # Helpers: live progress monitor
 # ============================================================
 def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
@@ -514,6 +693,264 @@ def cmd_hms_to_seconds(args: argparse.Namespace) -> int:
     """
     parts = args.timestamp.split(':')
     print(int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Memory sampler (start_memory_monitor in run_sim.sh calls mem-sample every
+# MEMORY_SAMPLE_INTERVAL seconds).
+#
+# Two bugs in the old bash sampler made memory_samples.csv unusable for
+# diagnosing the 2026-10-01 eclipse OOM:
+#   1. it summed RSS over every process the user owned (other runs included);
+#   2. RSS counts shared pages once per mapper, and Shadow shares memory with
+#      every managed process, so total_rss_mb reached 6.7 TB on a 1 TB box.
+# This version sums PSS (shared pages divided among their mappers, so the
+# buckets add up) over Shadow's process tree only, gives Python agents their
+# own bucket, and records wall epoch + sim seconds so a growth-while-stalled
+# condition can be detected from the CSV alone.
+# ---------------------------------------------------------------------------
+
+MEM_CSV_FIELDS = (
+    'timestamp', 'epoch', 'sim_s',
+    'shadow_mb', 'daemon_mb', 'wallet_mb', 'agents_mb', 'other_mb', 'total_mb',
+    'nprocs', 'ram_total_mb', 'avail_mb', 'used_pct', 'swap_used_mb',
+)
+MEM_CSV_HEADER = ','.join(MEM_CSV_FIELDS)
+
+_SIM_TIME_RE = re.compile(rb'simulated: (\d+):(\d{2}):(\d{2})')
+
+
+def _mem_bucket(comm: str) -> str:
+    """Bucket a process by /proc/<pid>/comm (kernel-truncated to 15 chars)."""
+    if comm == 'shadow' or comm.startswith('shadow-'):
+        return 'shadow'
+    if comm.startswith('monerod') or comm.startswith('cuprated'):
+        return 'daemon'
+    if comm.startswith('monero-wallet'):
+        return 'wallet'
+    if comm.startswith('python'):
+        return 'agents'
+    return 'other'
+
+
+def _proc_tree(root_pid: int, proc: str = '/proc') -> list[int]:
+    """root_pid plus all its descendants, from one scan of /proc/*/stat."""
+    children: dict[int, list[int]] = {}
+    for entry in os.listdir(proc):
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f'{proc}/{entry}/stat', 'rb') as fh:
+                stat = fh.read()
+        except OSError:
+            continue
+        # comm is parenthesised and may contain spaces/parens: split after the LAST ')'
+        rest = stat[stat.rfind(b')') + 2:].split()
+        if len(rest) < 2:
+            continue
+        children.setdefault(int(rest[1]), []).append(int(entry))
+    tree, todo = [], [root_pid]
+    while todo:
+        pid = todo.pop()
+        tree.append(pid)
+        todo.extend(children.get(pid, ()))
+    return tree
+
+
+def _pss_kb(pid: int, proc: str = '/proc') -> int:
+    try:
+        with open(f'{proc}/{pid}/smaps_rollup') as fh:
+            for line in fh:
+                if line.startswith('Pss:'):
+                    return int(line.split()[1])
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0
+
+
+def _meminfo_kb(proc: str = '/proc') -> dict:
+    out = {}
+    try:
+        with open(f'{proc}/meminfo') as fh:
+            for line in fh:
+                key, _, val = line.partition(':')
+                out[key] = int(val.split()[0])
+    except (OSError, ValueError, IndexError):
+        pass
+    return out
+
+
+def latest_sim_seconds(shadow_log: str, tail_bytes: int = 256 * 1024) -> int:
+    """Sim seconds from the last Shadow 'simulated: HH:MM:SS' line, -1 if none."""
+    try:
+        with open(shadow_log, 'rb') as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - tail_bytes))
+            matches = _SIM_TIME_RE.findall(fh.read())
+    except OSError:
+        return -1
+    if not matches:
+        return -1
+    h, m, s = matches[-1]
+    return int(h) * 3600 + int(m) * 60 + int(s)
+
+
+def collect_mem_sample(root_pid: int, shadow_log: str, proc: str = '/proc',
+                       now: float | None = None) -> dict:
+    kb = {'shadow': 0, 'daemon': 0, 'wallet': 0, 'agents': 0, 'other': 0}
+    tree = _proc_tree(root_pid, proc)
+    for pid in tree:
+        try:
+            with open(f'{proc}/{pid}/comm') as fh:
+                comm = fh.read().strip()
+        except OSError:
+            continue
+        kb[_mem_bucket(comm)] += _pss_kb(pid, proc)
+    mi = _meminfo_kb(proc)
+    total = mi.get('MemTotal', 0)
+    avail = mi.get('MemAvailable', 0)
+    now = time.time() if now is None else now
+    return {
+        'timestamp': datetime.fromtimestamp(now).strftime('%H:%M:%S'),
+        'epoch': int(now),
+        'sim_s': latest_sim_seconds(shadow_log),
+        **{f'{k}_mb': v // 1024 for k, v in kb.items()},
+        'total_mb': sum(kb.values()) // 1024,
+        'nprocs': len(tree),
+        'ram_total_mb': total // 1024,
+        'avail_mb': avail // 1024,
+        'used_pct': (100 * (total - avail) // total) if total else 0,
+        'swap_used_mb': (mi.get('SwapTotal', 0) - mi.get('SwapFree', 0)) // 1024,
+    }
+
+
+def load_mem_samples(csv_path: str) -> list[dict]:
+    """Rows of a memory_samples.csv as int dicts; [] for a legacy-format file."""
+    try:
+        with open(csv_path) as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return []
+    if not lines or lines[0] != MEM_CSV_HEADER:
+        return []
+    rows = []
+    for line in lines[1:]:
+        parts = line.split(',')
+        if len(parts) != len(MEM_CSV_FIELDS):
+            continue
+        try:
+            rows.append({k: (v if k == 'timestamp' else int(v))
+                         for k, v in zip(MEM_CSV_FIELDS, parts)})
+        except ValueError:
+            continue
+    return rows
+
+
+def _sim_rate(rows: list[dict]) -> float | None:
+    """Sim seconds per wall second across rows (None if not measurable)."""
+    rows = [r for r in rows if r['sim_s'] >= 0]
+    if len(rows) < 2 or rows[-1]['epoch'] <= rows[0]['epoch']:
+        return None
+    return (rows[-1]['sim_s'] - rows[0]['sim_s']) / (rows[-1]['epoch'] - rows[0]['epoch'])
+
+
+def _classify_mem_window(rows: list[dict], end: int, window_s: int,
+                         low_avail_frac: float, healthy_avail_frac: float,
+                         stall_ratio: float) -> tuple[str, str]:
+    """mem_stall_status for the window ending at rows[end] (see there)."""
+    last = rows[end]
+    recent = [r for r in rows[:end + 1] if r['epoch'] >= last['epoch'] - window_s]
+    if last['epoch'] - recent[0]['epoch'] < window_s * 0.9 or not last['ram_total_mb']:
+        return 'ok', ''
+    # Median, not the last sample: page-cache reclaim makes MemAvailable jitter
+    # under pressure and a single bump must not clear the alarm.
+    fracs = sorted(r['avail_mb'] / r['ram_total_mb'] for r in recent)
+    if fracs[len(fracs) // 2] >= low_avail_frac:
+        return 'ok', ''
+
+    def used(r):
+        return r['ram_total_mb'] - r['avail_mb'] + r['swap_used_mb']
+
+    growth = used(last) - used(recent[0])
+    mins = window_s // 60
+    pressure = (f"RAM {100 - 100 * last['avail_mb'] / last['ram_total_mb']:.0f}% used, "
+                f"swap {last['swap_used_mb'] / 1024:.1f} GB in use, "
+                f"memory {growth / 1024:+.1f} GB over the last {mins} min")
+
+    recent_rate = _sim_rate(recent)
+    healthy = [r for r in rows[:end + 1]
+               if r['epoch'] < recent[0]['epoch']
+               and r['avail_mb'] >= healthy_avail_frac * r['ram_total_mb']]
+    baseline_rate = None
+    if healthy:
+        base = [r for r in healthy if r['epoch'] >= healthy[-1]['epoch'] - window_s]
+        baseline_rate = _sim_rate(base)
+    if recent_rate is not None and baseline_rate and recent_rate < stall_ratio * baseline_rate:
+        return 'critical', (
+            f"{pressure}; sim advanced only {recent_rate * window_s:.0f} sim-s in the last "
+            f"{mins} min ({100 * recent_rate / baseline_rate:.0f}% of its pace while memory "
+            f"was healthy). Likely swap-thrashing toward an OOM kill.")
+    return 'warn', pressure + '; sim still advancing for now.'
+
+
+def mem_stall_status(rows: list[dict], window_s: int = 1800,
+                     low_avail_frac: float = 0.10, healthy_avail_frac: float = 0.20,
+                     stall_ratio: float = 0.25,
+                     hold_s: int = 1800) -> tuple[str, str]:
+    """Classify memory pressure from memory_samples rows.
+
+    'critical': RAM nearly exhausted across the last window_s (median
+                MemAvailable < low_avail_frac) AND the sim rate fell below
+                stall_ratio x its rate in the last healthy window (MemAvailable
+                >= healthy_avail_frac). Memory growth/swap is reported but not
+                required: once RAM is pinned, growth moves into swap or stops
+                while the sim still crawls. The 20260928 eclipse run sat in this
+                state for ~24 h before its OOM kill.
+    'warn':     RAM nearly exhausted, sim still advancing.
+    'ok':       anything else, including too little history to judge.
+
+    The worst level seen at any sample in the last hold_s is reported (with
+    its time if not the latest), so an alarm cannot flicker off between two
+    monitor refreshes while the run is still in trouble.
+    """
+    if not rows:
+        return 'ok', ''
+    rank = {'ok': 0, 'warn': 1, 'critical': 2}
+    best, best_i = ('ok', ''), len(rows) - 1
+    i = len(rows) - 1
+    while i >= 0 and rows[i]['epoch'] >= rows[-1]['epoch'] - hold_s:
+        cur = _classify_mem_window(rows, i, window_s, low_avail_frac,
+                                   healthy_avail_frac, stall_ratio)
+        if rank[cur[0]] > rank[best[0]]:
+            best, best_i = cur, i
+        if best[0] == 'critical':
+            break
+        i -= 1
+    level, msg = best
+    if level != 'ok' and best_i != len(rows) - 1:
+        msg = f"(as of {rows[best_i]['timestamp']}) " + msg
+    return level, msg
+
+
+def cmd_mem_sample(args: argparse.Namespace) -> int:
+    """Append one sample to --csv (writing the header first if the file is
+    new) and write the current mem_stall_status to --status-file as
+    '<level>|<message>'. Prints the level on stdout for run_sim.sh."""
+    csv_path = Path(args.csv)
+    sample = collect_mem_sample(args.root_pid, args.shadow_log)
+    new = not csv_path.exists() or csv_path.stat().st_size == 0
+    with open(csv_path, 'a') as fh:
+        if new:
+            fh.write(MEM_CSV_HEADER + '\n')
+        fh.write(','.join(str(sample[k]) for k in MEM_CSV_FIELDS) + '\n')
+    level, msg = mem_stall_status(load_mem_samples(str(csv_path)))
+    if args.status_file:
+        tmp = args.status_file + '.tmp'
+        with open(tmp, 'w') as fh:
+            fh.write(f'{level}|{msg}\n')
+        os.replace(tmp, args.status_file)
+    print(level)
     return 0
 
 
@@ -1050,6 +1487,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_hms.add_argument('timestamp')
     p_hms.set_defaults(func=cmd_hms_to_seconds)
+
+    # cpu-plan
+    p_cp = sub.add_parser(
+        'cpu-plan',
+        help='CPUs (taskset list) and worker count for a new Shadow run, '
+             'avoiding cores pinned by other live Shadow runs.',
+    )
+    p_cp.add_argument('--parallelism', type=int, default=0)
+    p_cp.add_argument('--hosts', type=int, default=0,
+                      help='Host count (estimate) to cap the cores at; 0 = unknown.')
+    p_cp.add_argument('--shadow-config', default='',
+                      help='Generated Shadow config: count its hosts exactly (overrides --hosts).')
+    p_cp.set_defaults(func=cmd_cpu_plan)
+
+    # mem-sample
+    p_ms = sub.add_parser(
+        'mem-sample',
+        help="Append one PSS memory sample of Shadow's process tree to a CSV "
+             'and update the memory-stall status file.',
+    )
+    p_ms.add_argument('--root-pid', type=int, required=True)
+    p_ms.add_argument('--shadow-log', required=True)
+    p_ms.add_argument('--csv', required=True)
+    p_ms.add_argument('--status-file', default='')
+    p_ms.set_defaults(func=cmd_mem_sample)
 
     # chain-growth-stats
     p_cg = sub.add_parser(

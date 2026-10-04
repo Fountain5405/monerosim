@@ -37,10 +37,12 @@ RUN_NAME=""
 DATA_BASE=""              # --data-dir: base under which <run_id>/shadow.data is placed (scratch volume)
 RUN_DIR=""                # == ARCHIVE_DIR; the run's only home for its whole life
 ARCHIVE_BASE=""
+RUN_DIR_FILE=""            # --run-dir-file: write this run's directory there once allocated
 REACHABLE=""              # "" = use config default; else fraction in [0,1] passed to monerosim --reachable
 TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 1h) -> monerosim --turnover-session
 TURNOVER_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --turnover-downtime
 TURNOVER_MAX_SESSION=""      # optional hard session ceiling (e.g. 6h) -> monerosim --turnover-max-session
+CLOCK_MODE=""                # "" = Shadow default clock charge; bootfast | allfast -> monerosim --bootfast / --allfast
 SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
@@ -76,7 +78,22 @@ Options:
   --turnover-downtime <dur> Mean OFFLINE gap for turnover (e.g. 1h). Average uptime =
                          session/(session+downtime).
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
+  --bootfast             Fast process starts, nothing else changed. Each monerod /
+                         wallet-rpc start spends ~16 wall-s in monero's start-up
+                         clock-calibration loop. With this, each clock read in a
+                         row after the 10,000th costs 1 us of simulated time
+                         instead of 10 ns; any other syscall restarts the count
+                         (normal code never gets past a few hundred). Ends the
+                         loop in ~0.2 s. Needs shadowformonero >= v0.2.5.
+                         Explained in docs/explain_clock_mods.md.
+  --allfast              Every clock read in every process costs 1 us of simulated
+                         time instead of 10 ns, for the whole run. Starts as fast
+                         as --bootfast; normal code runs slightly slower in
+                         simulated time (~0.1 ms per block hop). Not with --bootfast.
   --archive-dir <dir>    Archive location (default: $MONEROSIM_ARCHIVE_BASE or archived_runs)
+  --run-dir-file <path>  Write this run's directory (<archive>/<run_id>) to <path> as
+                         soon as it is allocated, so a wrapper can tell its own run
+                         from concurrent ones (scripts/smoke_test.sh uses it).
   --data-dir <base>      Put this run's Shadow data at <base>/<run_id>/shadow.data
                          instead of archived_runs/<run_id>/shadow.data (e.g. a
                          scratch volume); it is moved into the run dir at the end.
@@ -128,6 +145,7 @@ Examples:
   ./run_sim.sh --config test_configs/quickstart.yaml --name scaling_1000 --analyze
   ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50
   ./run_sim.sh --config large.yaml --data-dir /scratch/shadow_data
+  ./run_sim.sh --config test_configs/quickstart.yaml --bootfast
 EOF
     exit 0
 }
@@ -158,8 +176,20 @@ while [[ $# -gt 0 ]]; do
             TURNOVER_MAX_SESSION="$2"
             shift 2
             ;;
+        --bootfast|--allfast)
+            if [[ -n "$CLOCK_MODE" && "$CLOCK_MODE" != "${1#--}" ]]; then
+                echo "Error: --bootfast and --allfast are mutually exclusive" >&2
+                exit 1
+            fi
+            CLOCK_MODE="${1#--}"
+            shift
+            ;;
         --archive-dir)
             ARCHIVE_BASE="$2"
+            shift 2
+            ;;
+        --run-dir-file)
+            RUN_DIR_FILE="$2"
             shift 2
             ;;
         --no-monitor)
@@ -586,6 +616,21 @@ preflight_checks() {
         log_warn "shadowformonero.pin missing — skipping fork version check"
     fi
 
+    # --bootfast needs the busy-loop clock charge (shadowformonero >= v0.2.5).
+    # An older Shadow rejects the generated config ("unknown field"), so say so
+    # here instead (this also covers MONEROSIM_SKIP_SHADOW_CHECK=1).
+    if [[ "$CLOCK_MODE" == "bootfast" ]]; then
+        if "$SHADOW_BIN" --help 2>&1 | grep -q -- '--unblocked-vdso-busy-threshold'; then
+            log_ok "Clock: --bootfast (1 us per clock read past the 10,000th in a row)"
+        else
+            log_err "--bootfast needs shadowformonero >= v0.2.5; the installed Shadow lacks it"
+            log_info "Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild), or use --allfast"
+            exit 1
+        fi
+    elif [[ "$CLOCK_MODE" == "allfast" ]]; then
+        log_ok "Clock: --allfast (1 us per clock read)"
+    fi
+
     # Verify the installed monerod matches this checkout's pinned monero
     # version (monero.pin). Same rationale as the shadow check: a pin bump
     # after `git pull` must not silently run sims on the old daemon.
@@ -804,9 +849,7 @@ check_disk_space() {
     # reserved out of free space so one launch cannot fill the disk that
     # all of them share. Runs known only from /tmp (another checkout or
     # archive base) have no estimate and are reported as such.
-    local nproc_n
-    nproc_n=$(nproc 2>/dev/null || echo 0)
-    local live_tsv live_rc=0 other_remaining_kb=0 other_unknown=0 other_count=0 other_parallelism=0
+    local live_tsv live_rc=0 other_remaining_kb=0 other_unknown=0 other_count=0
     live_tsv=$(python3 scripts/run_sim_helpers.py live-runs \
         --archive-base "$archive_dir" --exclude-pid $$ 2>/dev/null) || live_rc=$?
     if [[ -n "$live_tsv" ]]; then
@@ -818,7 +861,6 @@ check_disk_space() {
             el_txt="?"; [[ "$elapsed" -ge 0 ]] && el_txt=$(format_duration "$elapsed")
             # A malformed/missing field must not abort the launch under set -e.
             [[ "$rem" =~ ^[0-9]+$ ]] || rem="-"
-            [[ "$par" =~ ^[0-9]+$ ]] || par="-"
             if [[ "$rem" != "-" ]]; then
                 other_remaining_kb=$((other_remaining_kb + rem))
                 est_txt="est. total $(format_kb "$est"), remaining $(format_kb "$rem")"
@@ -826,9 +868,6 @@ check_disk_space() {
                 other_unknown=$((other_unknown + 1))
                 est_txt="no estimate"
             fi
-            [[ "$par" == "-" ]] && par=0
-            (( par == 0 )) && par=$nproc_n
-            other_parallelism=$((other_parallelism + par))
             log_info "  $rid  pid $pid  up $el_txt  $daemons daemons  used $(format_kb "$used")  ($est_txt) [$src]"
         done <<< "$live_tsv"
         log_info "  Reserving $(format_kb "$other_remaining_kb") for their projected growth ($other_unknown of $other_count with no estimate)"
@@ -924,16 +963,21 @@ check_disk_space() {
         log_ok "Disk space: $(format_kb "$effective_free_kb") free (estimated need: $(format_kb "$estimated_kb"))"
     fi
 
-    # Informational: Shadow worker threads across all live runs vs cores.
-    # 0 (auto) counts as every core. Never blocks: contention slows wall
+    # Informational: the CPUs this run would get (see plan_shadow_cpus; it
+    # is decided again at launch). Never blocks: sharing cores slows wall
     # clock but leaves simulation results unchanged.
-    local this_par="${CFG_PARALLELISM:-0}"
-    (( this_par == 0 )) && this_par=$nproc_n
-    local total_par=$((this_par + other_parallelism))
-    if (( nproc_n > 0 && total_par > nproc_n )); then
-        log_warn "Shadow worker threads: this run $this_par + other live runs $other_parallelism = $total_par > $nproc_n cores (wall clock will suffer; results unaffected)"
+    local plan plan_cpus plan_workers plan_note
+    if plan=$(python3 scripts/run_sim_helpers.py cpu-plan --parallelism "${CFG_PARALLELISM:-0}" \
+                --hosts "$num_hosts" 2>/dev/null) \
+            && [[ -n "$plan" ]]; then
+        IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
+        if [[ "$plan_note" == *shar* ]]; then
+            log_warn "Shadow CPUs: $plan_workers worker threads; $plan_note (wall clock will suffer; results unaffected)"
+        else
+            log_info "Shadow CPUs: $plan_workers worker threads; $plan_note"
+        fi
     else
-        log_info "Shadow worker threads: this run $this_par + other live runs $other_parallelism = $total_par of $nproc_n cores"
+        log_info "Shadow CPUs: could not plan (helper failed)"
     fi
 }
 
@@ -953,6 +997,10 @@ build_and_generate() {
     }
     RUN_DIR="$ARCHIVE_BASE/$RUN_ID"
     ARCHIVE_DIR="$RUN_DIR"
+    if [[ -n "$RUN_DIR_FILE" ]]; then
+        printf '%s\n' "$RUN_DIR" > "$RUN_DIR_FILE" \
+            || log_warn "Could not write the run directory to --run-dir-file $RUN_DIR_FILE"
+    fi
     SHADOW_OUTPUT="$RUN_DIR/shadow_output"
     if [[ -n "$DATA_BASE" ]]; then
         DATA_DIR="$DATA_BASE/$RUN_ID/shadow.data"
@@ -1105,7 +1153,12 @@ build_and_generate() {
     [[ -n "$TURNOVER_DOWNTIME" ]] && TURNOVER_ARGS+=(--turnover-downtime "$TURNOVER_DOWNTIME")
     [[ -n "$TURNOVER_MAX_SESSION" ]] && TURNOVER_ARGS+=(--turnover-max-session "$TURNOVER_MAX_SESSION")
     [[ ${#TURNOVER_ARGS[@]} -gt 0 ]] && log_info "Turnover override: ${TURNOVER_ARGS[*]}"
-    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${TURNOVER_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
+    CLOCK_ARGS=()
+    if [[ -n "$CLOCK_MODE" ]]; then
+        CLOCK_ARGS=(--"$CLOCK_MODE")
+        log_info "Clock: --$CLOCK_MODE"
+    fi
+    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${TURNOVER_ARGS[@]}" "${CLOCK_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
         log_ok "Shadow config generated"
     else
         log_err "Config generation failed! See $ARCHIVE_DIR/monerosim.log"
@@ -1151,14 +1204,82 @@ build_and_generate() {
 # ============================================================
 # Phase 3: Run Simulation
 # ============================================================
-run_simulation() {
-    log_step "Phase 3: Starting Simulation"
+
+# Plan this run's CPUs, then start Shadow (sets SHADOW_LOG, SHADOW_PID).
+# Called by run_simulation under CPU_PLAN_LOCK.
+plan_and_launch_shadow() {
+    # Pick this run's CPUs and worker count (run_sim_helpers.py cpu-plan).
+    # Each Shadow process pins its workers, and the processes they run, to
+    # the lowest-numbered CPUs it may use and knows nothing of other runs, so
+    # concurrent runs would stack on the same cores. Launching under taskset
+    # with the physical cores no other Shadow run holds splits the box, and
+    # the mask shows the next launch this run's cores before its workers
+    # exist. parallelism 0 = one worker per such core, at most one per host
+    # (Shadow's cap); Shadow's own auto mode counts one socket only (64 of
+    # 128 cores here). --parallelism overrides the YAML.
+    local launch=() par_args=() cfg_par plan plan_cpus plan_workers plan_note
+    cfg_par=$(grep -oPm1 '^  parallelism: \K[0-9]+' "$SHADOW_OUTPUT/shadow_agents.yaml" || true)
+    cfg_par=${cfg_par:-0}
+    if plan=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" cpu-plan --parallelism "$cfg_par" \
+                --shadow-config "$SHADOW_OUTPUT/shadow_agents.yaml" 2>/dev/null) \
+            && [[ -n "$plan" ]]; then
+        IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
+        if [[ "$plan_cpus" != "-" ]]; then
+            if command -v taskset > /dev/null; then
+                launch=(taskset -c "$plan_cpus")
+            else
+                log_warn "taskset not found: Shadow may share CPUs with other runs"
+                plan_cpus="-"
+            fi
+        fi
+        [[ "$cfg_par" == "0" ]] && par_args=(--parallelism "$plan_workers")
+        log_info "Shadow CPUs: $([[ "$plan_cpus" == "-" ]] && echo any || echo "$plan_cpus"); $plan_workers worker threads ($plan_note)"
+    else
+        log_warn "Shadow CPUs: could not plan; Shadow picks (it counts one socket's cores and stacks concurrent runs on the same CPUs)"
+    fi
 
     # Start Shadow in its own process group (via setsid) so Ctrl+C won't reach it
     SHADOW_LOG="$ARCHIVE_DIR/shadow_run.log"
     log_info "Starting Shadow (data dir: $DATA_DIR)..."
-    setsid "$SHADOW_BIN" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 &
+    setsid "${launch[@]}" "$SHADOW_BIN" "${par_args[@]}" -d "$DATA_DIR" "$SHADOW_OUTPUT/shadow_agents.yaml" > "$SHADOW_LOG" 2>&1 9<&- &
     SHADOW_PID=$!
+
+    # Return (releasing the lock) once the new Shadow is visible to the next
+    # launch's planner: its comm is "shadow" from exec on, with the taskset
+    # mask already applied. Milliseconds; bounded at 10 s.
+    local i comm
+    for ((i = 0; i < 100; i++)); do
+        comm=""
+        read -r comm < "/proc/$SHADOW_PID/comm" 2>/dev/null || true
+        [[ "$comm" == shadow ]] && break
+        kill -0 "$SHADOW_PID" 2>/dev/null || break
+        sleep 0.1
+    done
+}
+
+# One lock for every run_sim launch on the box (any user, any checkout).
+# Without it, launches that plan before either Shadow exists pick the same
+# cores, and a batch from one checkout launches in lockstep whenever cargo
+# rebuilds (its build lock releases them together). The name stays clear of
+# the /tmp/monerosim-* and /tmp/monerosim_* cleanup globs.
+CPU_PLAN_LOCK=/tmp/monerosim.cpu-plan.lock
+
+run_simulation() {
+    log_step "Phase 3: Starting Simulation"
+
+    # /tmp is sticky and fs.protected_regular forbids O_CREAT on another
+    # user's file there, so create the lock only if it is missing and open it
+    # read-only (flock needs no write access). Shadow never inherits it (9<&-).
+    [[ -e "$CPU_PLAN_LOCK" ]] || ( umask 022; : >> "$CPU_PLAN_LOCK" ) 2>/dev/null || true
+    if [[ -r "$CPU_PLAN_LOCK" ]]; then
+        {
+            flock -x -w 120 9 || log_warn "CPU plan lock still held after 120 s; planning without it"
+            plan_and_launch_shadow
+        } 9< "$CPU_PLAN_LOCK"
+    else
+        log_warn "Cannot open $CPU_PLAN_LOCK; planning CPUs without the launch lock"
+        plan_and_launch_shadow
+    fi
     START_TIME=$(date +%s)
     START_TIME_FMT=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -1172,7 +1293,8 @@ run_simulation() {
     fi
 
     # Start memory monitor in background
-    start_memory_monitor "$SHADOW_PID" "$ARCHIVE_DIR/memory_samples.csv" &
+    start_memory_monitor "$SHADOW_PID" "$ARCHIVE_DIR/memory_samples.csv" "$SHADOW_LOG" \
+        "$ARCHIVE_DIR/memory_status" "$ARCHIVE_DIR/memory_alerts.log" &
     MONITOR_PID=$!
 
     # Wait for Shadow with or without live monitor
@@ -1224,45 +1346,53 @@ run_simulation() {
 start_memory_monitor() {
     local shadow_pid=$1
     local csv_file=$2
+    local shadow_log=$3
+    local status_file=$4
+    local alerts_file=$5
 
-    echo "timestamp,shadow_rss_mb,monerod_rss_mb,wallet_rss_mb,total_rss_mb,system_free_mb,system_used_pct" > "$csv_file"
-
+    # One PSS sample of Shadow's process tree per interval (see mem-sample in
+    # scripts/run_sim_helpers.py for why not `ps -u $USER -o rss`). The helper
+    # also classifies memory pressure into ok / warn / critical.
+    local level prev_level="ok" last_alert=0 now msg
     while kill -0 "$shadow_pid" 2>/dev/null; do
-        # Aggregate RSS by process type from all user processes
-        local shadow_kb=0 monerod_kb=0 wallet_kb=0 other_kb=0
-
-        while read -r rss comm; do
-            [[ -z "$rss" ]] && continue
-            case "$comm" in
-                shadow)    shadow_kb=$((shadow_kb + rss)) ;;
-                monerod)   monerod_kb=$((monerod_kb + rss)) ;;
-                monero-wa*) wallet_kb=$((wallet_kb + rss)) ;;
-                *)         other_kb=$((other_kb + rss)) ;;
-            esac
-        done < <(ps -u "$USER" -o rss=,comm= 2>/dev/null)
-
-        local total_kb=$((shadow_kb + monerod_kb + wallet_kb + other_kb))
-
-        # System memory
-        local mem_info
-        mem_info=$(free -m | awk '/^Mem:/{print $3, $2, $7}')
-        local used_mb total_mb avail_mb used_pct
-        used_mb=$(echo "$mem_info" | awk '{print $1}')
-        total_mb=$(echo "$mem_info" | awk '{print $2}')
-        avail_mb=$(echo "$mem_info" | awk '{print $3}')
-        used_pct=$((used_mb * 100 / total_mb))
-
-        printf "%s,%d,%d,%d,%d,%d,%d%%\n" \
-            "$(date '+%H:%M:%S')" \
-            "$((shadow_kb / 1024))" \
-            "$((monerod_kb / 1024))" \
-            "$((wallet_kb / 1024))" \
-            "$((total_kb / 1024))" \
-            "$avail_mb" \
-            "$used_pct" >> "$csv_file"
-
+        level=$(python3 scripts/run_sim_helpers.py mem-sample \
+            --root-pid "$shadow_pid" --shadow-log "$shadow_log" \
+            --csv "$csv_file" --status-file "$status_file" 2>/dev/null || echo "ok")
+        now=$(date +%s)
+        # Record alerts on every escalation and every 30 min while they last.
+        if [[ "$level" != "ok" ]] && { [[ "$level" != "$prev_level" ]] || (( now - last_alert >= 1800 )); }; then
+            msg=$(cut -d'|' -f2- "$status_file" 2>/dev/null)
+            echo "$(date '+%Y-%m-%d %H:%M:%S') ${level^^}: $msg" >> "$alerts_file"
+            last_alert=$now
+            # The live monitor shows the banner itself; without it the terminal
+            # is idle in `wait`, so shout there.
+            if [[ "$SHOW_MONITOR" != true ]]; then
+                print_memory_banner "$level" "$msg" >&2
+            fi
+        fi
+        prev_level=$level
         sleep "$MEMORY_SAMPLE_INTERVAL"
     done
+}
+
+# Loud multi-line banner for a memory-pressure status (level, message).
+print_memory_banner() {
+    local level=$1 msg=$2 line
+    if [[ "$level" == "critical" ]]; then
+        echo -e "${RED}${BOLD}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
+        echo -e "${RED}${BOLD}!!  MEMORY CRITICAL: RAM EXHAUSTED AND THE SIMULATION HAS STALLED       !!${NC}"
+        echo -e "${RED}${BOLD}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
+        while IFS= read -r line; do
+            echo -e "${RED}${BOLD}  ${line}${NC}"
+        done < <(fold -s -w 72 <<< "$msg")
+        echo -e "${RED}${BOLD}  The run is not being stopped. Expect little further progress and an${NC}"
+        echo -e "${RED}${BOLD}  eventual OOM kill unless memory is freed.${NC}"
+    else
+        echo -e "${YELLOW}${BOLD}*** MEMORY WARNING: RAM nearly exhausted ***${NC}"
+        while IFS= read -r line; do
+            echo -e "${YELLOW}  ${line}${NC}"
+        done < <(fold -s -w 72 <<< "$msg")
+    fi
 }
 
 # ============================================================
@@ -1378,43 +1508,39 @@ exit 0' INT
         output+="Wall time:  ${wall_fmt} elapsed\n"; lines=$((lines + 1))
         output+="\n"; lines=$((lines + 1))
 
-        # Process counts and memory
+        # Process counts
         local shadow_cnt=0 monerod_cnt=0 wallet_cnt=0
-        local shadow_kb=0 monerod_kb=0 wallet_kb=0
-
-        while read -r rss comm; do
-            [[ -z "$rss" ]] && continue
+        while read -r comm; do
             case "$comm" in
-                shadow)
-                    shadow_kb=$((shadow_kb + rss))
-                    shadow_cnt=$((shadow_cnt + 1))
-                    ;;
-                monerod)
-                    monerod_kb=$((monerod_kb + rss))
-                    monerod_cnt=$((monerod_cnt + 1))
-                    ;;
-                monero-wa*)
-                    wallet_kb=$((wallet_kb + rss))
-                    wallet_cnt=$((wallet_cnt + 1))
-                    ;;
+                shadow)     shadow_cnt=$((shadow_cnt + 1)) ;;
+                monerod)    monerod_cnt=$((monerod_cnt + 1)) ;;
+                monero-wa*) wallet_cnt=$((wallet_cnt + 1)) ;;
             esac
-        done < <(ps -u "$USER" -o rss=,comm= 2>/dev/null)
-
-        local total_kb=$((shadow_kb + monerod_kb + wallet_kb))
-        local shadow_mb=$((shadow_kb / 1024))
-        local monerod_mb=$((monerod_kb / 1024))
-        local wallet_mb=$((wallet_kb / 1024))
-        local total_mb=$((total_kb / 1024))
-
-        # Use GB for display if > 1024 MB
-        local shadow_disp monerod_disp wallet_disp total_disp
-        shadow_disp=$(format_kb "$shadow_kb")
-        monerod_disp=$(format_kb "$monerod_kb")
-        wallet_disp=$(format_kb "$wallet_kb")
-        total_disp=$(format_kb "$total_kb")
-
+        done < <(ps -u "$USER" -o comm= 2>/dev/null)
         output+="Processes:  ${monerod_cnt} monerod  |  ${wallet_cnt} wallet-rpc  |  ${shadow_cnt} shadow\n"; lines=$((lines + 1))
-        output+="Memory:     Shadow ${shadow_disp}  |  Monerod ${monerod_disp}  |  Wallets ${wallet_disp}  |  Total ${total_disp}\n"; lines=$((lines + 1))
+
+        # Memory: latest PSS sample of this run's process tree, written by
+        # start_memory_monitor (fields: see MEM_CSV_FIELDS in run_sim_helpers.py).
+        local mem_csv="$ARCHIVE_DIR/memory_samples.csv"
+        local mem_row=""
+        [[ -s "$mem_csv" ]] && mem_row=$(tail -1 "$mem_csv")
+        if [[ -n "$mem_row" && "$mem_row" != timestamp,* ]]; then
+            local _ts _ep _sim m_shadow m_daemon m_wallet m_agents m_other m_total _np m_ram m_avail m_used m_swap
+            IFS=, read -r _ts _ep _sim m_shadow m_daemon m_wallet m_agents m_other m_total _np m_ram m_avail m_used m_swap <<< "$mem_row"
+            output+="Memory:     Shadow $(format_kb $((m_shadow * 1024)))  |  Daemons $(format_kb $((m_daemon * 1024)))  |  Wallets $(format_kb $((m_wallet * 1024)))  |  Agents $(format_kb $((m_agents * 1024)))  |  Other $(format_kb $((m_other * 1024)))  |  Total $(format_kb $((m_total * 1024))) (PSS)\n"; lines=$((lines + 1))
+            output+="System RAM: ${m_used}% used, $(format_kb $((m_avail * 1024))) available, swap $(format_kb $((m_swap * 1024))) in use\n"; lines=$((lines + 1))
+        else
+            output+="Memory:     (waiting for first sample)\n"; lines=$((lines + 1))
+        fi
+        local mem_status="" mem_level="" mem_msg=""
+        [[ -s "$ARCHIVE_DIR/memory_status" ]] && mem_status=$(head -1 "$ARCHIVE_DIR/memory_status")
+        mem_level=${mem_status%%|*}
+        mem_msg=${mem_status#*|}
+        if [[ "$mem_level" == "critical" || "$mem_level" == "warn" ]]; then
+            local banner
+            banner=$(print_memory_banner "$mem_level" "$mem_msg")
+            output+="${banner}\n"; lines=$((lines + $(printf '%s\n' "$banner" | wc -l)))
+        fi
 
         # Free disk space
         local free_kb
@@ -1592,11 +1718,31 @@ archive_results() {
         run_analysis || log_warn "Post-simulation analysis failed"
     fi
 
+    compress_probe_dumps          || log_warn "Probe dump compression failed"
     archive_shared_leftovers      || log_warn "Shared-dir sweep failed"
 
     # Everything of value has been moved/copied into the archive; remove the
     # daemon data dirs and (if namespaced) the whole per-run /tmp dir.
     cleanup_tmp_monero --full
+}
+
+compress_probe_dumps() {
+    # agents/eclipse_probe.py writes plain JSONL during the run (one unbuffered
+    # append per record, so it is complete however the probe dies). Compress
+    # each file once here, as a single gzip stream, so the archive keeps the
+    # familiar raw_<id>.jsonl.gz names at full compression (~1 MB for a 27 MB
+    # target dump; per-record gzip members were ~6 MB). Plain files are left
+    # in place if gzip fails, and the sweep below archives them either way.
+    local dir="$SHARED_DIR/raw_probe"
+    compgen -G "$dir/*.jsonl" > /dev/null || return 0
+    local n
+    n=$(find "$dir" -maxdepth 1 -name '*.jsonl' | wc -l)
+    if find "$dir" -maxdepth 1 -name '*.jsonl' -print0 | xargs -0 -r -n 1 -P 8 gzip -9 --; then
+        log_ok "Probe dumps: $n raw_probe/*.jsonl compressed to .jsonl.gz"
+    else
+        log_warn "Probe dumps: gzip failed for some raw_probe/*.jsonl (left uncompressed)"
+        return 1
+    fi
 }
 
 archive_shared_leftovers() {

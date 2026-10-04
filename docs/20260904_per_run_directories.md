@@ -148,6 +148,11 @@ python3 scripts/smoke_assertions.py --run-dir archived_runs/20260904_184958_par_
 # Pruning refuses a run that is still live
 ./scripts/prune_archives.sh archived_runs/20260904_184958_par_a_184911
 # -> Refusing archived_runs/...: run is LIVE (owner pid 12345); use --force to prune anyway
+# (eclipse runs are never pruned: they are compressed instead, see below)
+
+# Gzip every finished run's bitmonero.log in place (lossless; live runs skipped)
+./scripts/compress_archives.sh --dry-run
+./scripts/compress_archives.sh
 ```
 
 ## 4. Preflight report
@@ -184,6 +189,19 @@ When no other run is live, the two lines above collapse to
   the number of cores on the box. It is informational only: it warns when
   the sum exceeds the core count (simulations will be slower, not wrong)
   but never blocks a launch. The existing confirm prompt is the only gate.
+
+  **Superseded 2026-10-02.** That sum hid two problems. Shadow's own
+  `parallelism: 0` counts one socket's cores (64 of 128 here), and every
+  Shadow process pins its workers, and the processes they run, to the
+  lowest-numbered CPUs it may use. So concurrent runs did not split the box:
+  each one sat on CPUs 0-63, which is also why the parallel-run acceptance
+  test below needed a relaxed wall-clock ceiling. `run_sim.sh` now plans the
+  CPUs itself (`run_sim_helpers.py cpu-plan`): it skips the physical cores
+  that other live Shadow runs (any user) have pinned, launches Shadow under
+  `taskset` with the free ones, and for `parallelism: 0` passes
+  `--parallelism <free cores>`. The preflight line is now
+  `Shadow CPUs: N worker threads; ...`, and it warns when the run has to
+  share cores.
 
 ## 5. Acceptance
 

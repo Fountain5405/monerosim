@@ -31,11 +31,13 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | Knob | Effect | Tradeoff |
 |---|---|---|
 | `runahead: 500ms` (default 100ms) | Shadow batches more events before sync | Slightly less accurate timing between hosts |
-| `process_threads: 2` (default 2) | Threads per simulated process | `0` = non-deterministic but fastest; `1` = deterministic but slow |
+| `process_threads: 2` (default 1) | Thread-pool size inside each simulated daemon (monerod `--max-concurrency`/`--prep-blocks-threads`; cuprated pools). Not wallet-rpc, not Python agents, and **not** Shadow's worker threads (`parallelism`) | `1` = deterministic but slow. Cost scales with N x daemons: large values (the eclipse templates once used 64-192) multiply per-daemon thread state across every node. `0` = monerod sizes its pools from the host core count (256 here) in every node |
 | `native_preemption: true` (default false) | Shadow preempts long-running CPU-bound code so other hosts get scheduled | See [Native preemption](#native-preemption) — improves wall perf; breaks strict reproducibility |
 | `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
 | `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | **Don't enable.** See [Modeling syscall latency](#modeling-syscall-latency) — empirically stalls Monerosim runs even at quickstart scale. |
+| `run_sim.sh --bootfast` (needs shadowformonero >= v0.2.5) | Every monero process start drops from ~16 to ~0.4 wall-s | None measurable: only a thread that reads the clock more than 10,000 times in a row is charged more. See [Start-up cost](#start-up-cost) |
+| `run_sim.sh --allfast` (= `performance.unblocked_vdso_latency: 1 us`) | Same start-up cut | Every clock read in every process charges 1 µs of sim time instead of 10 ns (~0.1 ms per block hop). See [Start-up cost](#start-up-cost) |
 | Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
 
 ## Modeling syscall latency
@@ -97,18 +99,27 @@ Empirically, setting this to `false` stalls Monerosim simulations —
 even at quickstart scale (11 hosts). Sim time stays at `00:00:00.000`
 indefinitely while monerod processes burn 100% real CPU.
 
-The mechanism: monerod's startup phase (config parse, fakechain
-genesis init, RandomX dataset alloc, etc.) is CPU-bound and makes
-relatively few *blocking* syscalls. With non-blocking syscall costs
-unmodeled, none of those calls advance Shadow's simulated clock. With
-no events queued and no process making a blocking call, Shadow has
-nothing to advance to — the clock freezes at zero and the run never
-gets past startup.
+The mechanism (profiled 2026-10-03, `docs/20261003_startup_cost.md`):
+every monero binary (monerod and monero-wallet-rpc) runs a static
+initializer before `main()`, `ticks_per_ns = get_ticks_per_ns()` in
+`src/common/perf_timer.cpp`, that busy-waits on `steady_clock` until
+100 ms have passed. Under Shadow that clock is simulated time, and a
+clock read only moves it forward by the modeled per-call latency. With
+the modeling off, the loop never sees time pass, so the first daemon
+never gets to `main()` and the clock freezes at zero. (An earlier
+version of this section blamed a "CPU-bound startup"; that was never
+measured, and the profile shows it was this loop.)
 
 This contradicts the earlier guidance in this section that said the
 knob was "essentially free for Monero." That guidance was wrong:
 Shadow can only advance simulated time when *something* is willing to
-block, and monerod's hot init path doesn't block enough.
+block or is charged latency, and this loop does neither without the
+modeling.
+
+With the modeling on, the loop still ends only after 100 ms / 10 ns =
+10 million clock reads, and with `native_preemption: true` each read
+costs ~1.6 µs of real time. That is the ~16-17 wall-seconds every
+monero process start costs; see [Start-up cost](#start-up-cost).
 
 ### Verdict
 
@@ -163,7 +174,8 @@ target hardware tier is always.
 
 | `process_threads` | `native_preemption` | Result |
 |---|---|---|
-| `0` | `true` | Fastest, fully non-deterministic (our quickstart default) |
+| `0` | `true` | Fully non-deterministic; every monerod sizes its pools from the host core count -- avoid |
+| `2` | `true` | Non-deterministic, small per-node pools (our quickstart and eclipse default) |
 | `0` | `false` | Non-deterministic without the throughput win — rarely useful |
 | `1` | `false` | Deterministic, slow — pick this for strict reproducibility |
 | `1` | `true` | Determinism guarantee is broken; treat as effectively non-deterministic |
@@ -171,6 +183,63 @@ target hardware tier is always.
 If you actually need bit-for-bit reproducibility (e.g., reproducing a
 known-good run for a paper), set `process_threads: 1` *and*
 `native_preemption: false`. Otherwise leave preemption on.
+
+## Start-up cost
+
+Every monerod and monero-wallet-rpc start used to hold the simulation for
+~17 wall-seconds, and the start-time stagger puts starts in a row, so start-up
+dominated large runs (a 2232-host run: ~6 wall-hours for the first ~1.1
+sim-hours) and did not speed up with more workers. Measured and profiled in
+`docs/20261003_startup_cost.md`:
+
+- ~15.5 s: monero's `get_ticks_per_ns()` static initializer busy-waits for
+  100 ms of `steady_clock` (see [above](#why-turning-it-off-breaks-monerosim-runs)).
+  At Shadow's default `unblocked_vdso_latency` of 10 ns that is 10 million
+  clock reads, each ~1.55 µs of real time with `native_preemption: true`.
+- ~1.2 s: the RSA-4096 certificate monerod and wallet-rpc generate for RPC SSL.
+  monerosim now passes `--rpc-ssl=disabled` to every monerod and
+  `--rpc-ssl=disabled --daemon-ssl=disabled` to every wallet-rpc unless you
+  set them (see `docs/CONFIGURATION.md`).
+- ~0.3 s: everything else.
+
+Per start on a 70-host test (median, wall-seconds): 17.3 as before, 16.2
+with SSL off. Two `run_sim.sh` flags remove the busy-wait cost (explained in
+plain language in [`explain_clock_mods.md`](explain_clock_mods.md)):
+
+| Flag | Simulated time a clock read costs | Relay start | Shadow wall (70 hosts) | Normal operation |
+|---|---|---|---|---|
+| none | 10 ns (Shadow's default) | 16.1 s | 1106 s | as before |
+| `--bootfast` | 10 ns, except each read in a row past the 10,000th (no other syscall in between): 1 µs | 0.43 s | 93 s | unchanged: the longest such run in a full quickstart was 371 reads |
+| `--allfast` | 1 µs, always | 0.42 s | 93 s | slightly slower in sim time, see below |
+
+```bash
+./run_sim.sh --config my.yaml --bootfast
+```
+
+`--bootfast` needs shadowformonero >= v0.2.5 (run_sim.sh checks before it
+generates anything); `--allfast` works with any Shadow. Both also speed up
+daemons that restart mid-run (turnover, upgrade phases), which pay the start
+cost again on every restart. The flags override these config knobs, which you
+can also set directly (the scenario parser passes `performance:` through):
+
+```yaml
+performance:
+  unblocked_vdso_busy_threshold: 10000   # what --bootfast sets
+  unblocked_vdso_busy_latency: 1 us
+  # unblocked_vdso_latency: 1 us         # what --allfast sets
+```
+
+What `--allfast` costs: every clock read in every simulated process charges
+1 µs of sim time instead of 10 ns, the same as Shadow already charges for a
+non-blocking syscall. Measured over a full quickstart, a monerod reads the
+clock 110-180 times per simulated second, about as often as it makes syscalls
+Shadow already charges 1 µs for; half its busy periods (from waking up to
+blocking again) contain one read and 99.9% at most 31; handling a block gets
+0.05-0.1 ms later per hop, against 25-95 ms link latencies. Runs are not
+seed-for-seed comparable with runs made without it. `--bootfast` charges
+none of this: below 10,000 reads in a row it charges exactly what Shadow
+charges without it (verified with a test program reading the clock in fixed
+patterns).
 
 ## Tuning monerod log-level
 

@@ -153,6 +153,93 @@ struct Args {
     /// exponential tail run free. See --turnover-session.
     #[arg(long)]
     turnover_max_session: Option<String>,
+
+    /// Fast process starts, nothing else changed: clock reads keep Shadow's
+    /// 10 ns charge except in a busy loop on the clock (more than 10,000 reads
+    /// in a row with no other syscall), where each further read is charged
+    /// 1 us. Ends monero's start-up calibration loop in ~0.2 s instead of ~16 s.
+    /// Needs shadowformonero >= v0.2.5. Overrides
+    /// `performance.unblocked_vdso_busy_threshold` / `unblocked_vdso_busy_latency`.
+    #[arg(long, conflicts_with = "allfast")]
+    bootfast: bool,
+
+    /// Charge 1 us of simulated time for every clock read in every process
+    /// for the whole run (Shadow's default: 10 ns). Overrides
+    /// `performance.unblocked_vdso_latency`.
+    #[arg(long)]
+    allfast: bool,
+}
+
+/// `--bootfast`: clock reads in a row after which the busy charge applies. In a
+/// full quickstart no monerod made more than 371 in a row; monero's start-up
+/// calibration loop makes 10 million (docs/20261003_startup_cost.md).
+const BOOTFAST_BUSY_THRESHOLD: u64 = 10_000;
+
+/// Clock-read charge for `--bootfast` (past the threshold) and `--allfast`.
+const FAST_VDSO_LATENCY: &str = "1 us";
+
+/// Applies `--bootfast` / `--allfast` over the config's `performance` knobs
+/// (clap rejects the two together).
+fn apply_clock_flags(
+    performance: &mut monerosim::config::PerformanceConfig,
+    bootfast: bool,
+    allfast: bool,
+) {
+    if bootfast {
+        performance.unblocked_vdso_busy_threshold = Some(BOOTFAST_BUSY_THRESHOLD);
+        performance.unblocked_vdso_busy_latency = Some(FAST_VDSO_LATENCY.to_string());
+        info!(
+            "CLI --bootfast: clock reads past {} in a row charge {}",
+            BOOTFAST_BUSY_THRESHOLD, FAST_VDSO_LATENCY
+        );
+    }
+    if allfast {
+        performance.unblocked_vdso_latency = Some(FAST_VDSO_LATENCY.to_string());
+        info!(
+            "CLI --allfast: every clock read charges {}",
+            FAST_VDSO_LATENCY
+        );
+    }
+}
+
+#[cfg(test)]
+mod clock_flag_tests {
+    use super::*;
+    use monerosim::config::PerformanceConfig;
+
+    #[test]
+    fn bootfast_sets_only_the_busy_loop_charge() {
+        let mut p = PerformanceConfig::default();
+        apply_clock_flags(&mut p, true, false);
+        assert_eq!(p.unblocked_vdso_busy_threshold, Some(10_000));
+        assert_eq!(p.unblocked_vdso_busy_latency.as_deref(), Some("1 us"));
+        assert_eq!(p.unblocked_vdso_latency, None);
+    }
+
+    #[test]
+    fn allfast_sets_only_the_plain_charge() {
+        let mut p = PerformanceConfig::default();
+        apply_clock_flags(&mut p, false, true);
+        assert_eq!(p.unblocked_vdso_latency.as_deref(), Some("1 us"));
+        assert_eq!(p.unblocked_vdso_busy_threshold, None);
+        assert_eq!(p.unblocked_vdso_busy_latency, None);
+    }
+
+    #[test]
+    fn neither_flag_keeps_the_config() {
+        let mut p = PerformanceConfig::default();
+        p.unblocked_vdso_latency = Some("100 ns".to_string());
+        apply_clock_flags(&mut p, false, false);
+        assert_eq!(p.unblocked_vdso_latency.as_deref(), Some("100 ns"));
+        assert_eq!(p.unblocked_vdso_busy_threshold, None);
+    }
+
+    #[test]
+    fn flags_are_mutually_exclusive() {
+        let r =
+            Args::try_parse_from(["monerosim", "--config", "x.yaml", "--bootfast", "--allfast"]);
+        assert!(r.is_err());
+    }
 }
 
 fn main() -> Result<()> {
@@ -230,6 +317,10 @@ fn main() -> Result<()> {
             c.mean_session, c.mean_downtime, c.max_session, c.fraction
         );
     }
+
+    // CLI: --bootfast / --allfast set how much simulated time a clock read
+    // costs (docs/20261003_startup_cost.md).
+    apply_clock_flags(&mut new_config.performance, args.bootfast, args.allfast);
 
     // Determine output directory and final config path
     let (output_dir, shadow_config_path) =

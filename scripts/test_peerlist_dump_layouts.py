@@ -139,3 +139,17 @@ def test_pre_fix_archive_reports_missing_dump(tmp_path):
     out = _run(root)
     assert out.returncode == 0, out.stderr
     assert "NO target dump found" in out.stdout
+
+
+def test_gzipped_dumps_are_read(tmp_path):
+    """compress_archives.sh --peerlist-dumps leaves peerlist_dump.jsonl.gz."""
+    import gzip
+    root = _make_archived(str(tmp_path / "gz"))
+    plain = os.path.join(root, "daemon_logs", TARGET, "peerlist_dump.jsonl")
+    with open(plain, "rb") as src, gzip.open(plain + ".gz", "wb") as dst:
+        dst.write(src.read())
+    os.remove(plain)
+    out = _run(root)
+    assert out.returncode == 0, out.stderr
+    assert "NO target dump found" not in out.stdout
+    assert "B trajectory: peak=1  final=0" in out.stdout

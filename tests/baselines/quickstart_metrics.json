@@ -8,14 +8,14 @@
     "per_miner_tx_floor: 0 is intentional. Poisson block-time variance under different seeds can leave a miner at 0 txs created. The grep-pattern check + per-user floor are the load-bearing assertions for catching the wallets-die-after-3-txs regression.",
     "all_nodes_within_height_range: max(final_node_heights) - min(final_node_heights) <= 2 across all 15 nodes.",
     "wallets_funded_exact: 8 = 5 miners with can_receive_distributions: true + 3 users.",
-    "wall_time_seconds_max: 1080s (18 min) is generous over the canonical 14-15 min.",
-    "tx_in_blocks_ratio_min: ratio of tx_in_blocks / tx_created. The canonical was 137/168 = 0.815. Threshold of 0.80 leaves room for one or two extra tx-not-yet-mined."
+    "wall_time_seconds_max: 2040s (34 min), re-measured 2026-10-02. The 1080 s ceiling (May) predates the Aug block-cadence fix, after which a quickstart simulates ~179 blocks instead of ~129. On the shared 256-core box five functionally clean runs took 1175-1638 s depending on other load (1298 s with another user's sim at load 64-80; 1638 s with that plus a concurrent eclipse smoke). The two FAIL rows dated 2026-10-02 in quickstart_run_history.csv are those measurements against the then-ceilings (1080 s, 1620 s). 2040 s is ~1.25x the slowest: it catches a real slowdown (e.g. 2x) without flapping on box load.",
+    "tx_in_blocks_ratio_min: ratio of tx_in_blocks / tx_created. The May canonical was 137/168 = 0.815; since the Aug cadence fix runs give 191/191 = 1.0. Threshold of 0.80 leaves room for one or two extra tx-not-yet-mined."
   ],
   "expected": {
     "exit_code": 0,
     "all_success_criteria_pass": true,
     "max_alerts": 0,
-    "wall_time_seconds_max": 1080,
+    "wall_time_seconds_max": 2040,
     "block_height_min": 100,
     "blocks_mined_min": 100,
     "all_nodes_within_height_range": 2,

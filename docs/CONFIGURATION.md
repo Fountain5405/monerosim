@@ -4,7 +4,7 @@ All Monerosim configurations are written in YAML. This document describes the cu
 
 ## Configuration Structure
 
-A configuration file has three top-level sections:
+A configuration file has three top-level sections, plus an optional fourth:
 
 ```yaml
 general:
@@ -15,6 +15,9 @@ network:
 
 agents:
   # Named agent definitions
+
+performance:
+  # Optional Shadow speed knobs (see Performance Section)
 ```
 
 ## General Section
@@ -23,7 +26,7 @@ agents:
 general:
   stop_time: "8h"                  # Required. Simulation duration (e.g., "30m", "2h", "8h")
   simulation_seed: 12345           # Global seed for deterministic simulations (default: 12345)
-  parallelism: 0                   # Shadow worker threads: 0=auto, 1=deterministic, N=fixed
+  parallelism: 0                   # Shadow worker threads: 0=all free physical cores (run_sim.sh), 1=deterministic, N=fixed
   fresh_blockchain: true           # Start from genesis block
   log_level: info                  # Agent log level: trace/debug/info/warn/error
   shadow_log_level: info           # Shadow's own log level
@@ -31,7 +34,7 @@ general:
   enable_dns_server: true          # Enable DNS server for monerod peer discovery
   bootstrap_end_time: "4h"         # High bandwidth / no packet loss until this time
   difficulty_cache_ttl: 30         # Seconds to cache difficulty in autonomous miners
-  process_threads: 1               # Thread count for monerod/wallet-rpc (1=deterministic)
+  process_threads: 1               # Thread-pool size INSIDE each simulated daemon (not Shadow's; see `parallelism`)
   native_preemption: false         # Shadow native preemption (breaks determinism)
 
   # Default options applied to all daemons (overridable per-agent)
@@ -61,7 +64,7 @@ general:
 |-------|------|---------|-------------|
 | `stop_time` | string | required | Simulation duration |
 | `simulation_seed` | u64 | 12345 | Seed for deterministic simulations |
-| `parallelism` | u32 | 0 (auto) | Shadow worker threads |
+| `parallelism` | u32 | 0 (auto) | Shadow worker threads, one per physical core. `run_sim.sh` gives each run its own cores: it skips cores that other live Shadow runs have pinned and starts Shadow under `taskset` with the rest. 0 takes one core per simulated host, up to every free core (Shadow never runs more workers than hosts; its own auto mode would count only one socket's cores, 64 of 128 on a 2 x 64-core box). N takes N cores (again at most one per host), which leaves the rest of the machine to runs started later. Set N if another simulation may run at the same time; see [Running several simulations at once](#running-several-simulations-at-once). Never more than the physical cores: two workers per core ran 1.29x slower. |
 | `fresh_blockchain` | bool | true | Start from genesis |
 | `log_level` | string | "info" | Agent log level |
 | `shadow_log_level` | string | "info" | Shadow log level |
@@ -69,7 +72,7 @@ general:
 | `enable_dns_server` | bool | - | Enable DNS discovery agent |
 | `bootstrap_end_time` | string | - | Bootstrap period end time |
 | `difficulty_cache_ttl` | u32 | 30 | Difficulty cache TTL (seconds) |
-| `process_threads` | u32 | 1 | monerod/wallet thread count |
+| `process_threads` | u32 | 1 | Thread-pool size inside **each simulated daemon**: monerod gets `--max-concurrency=N --prep-blocks-threads=N`; cuprated pins its tokio/rayon/storage pools to N. Not applied to wallet-rpc or Python agents. **Not** Shadow's worker-thread count (that is `parallelism`): cost scales with N x number of daemons, so keep it small (1 or 2). `0` omits the monerod flags, so every node sizes its pools from the host's core count. |
 | `native_preemption` | bool | false | Shadow native preemption |
 | `daemon_defaults` | map | - | Default daemon CLI options |
 | `wallet_defaults` | map | - | Default wallet CLI options |
@@ -78,10 +81,105 @@ general:
 | `mining.mode` | string | "generateblocks" | Block-production mode: `generateblocks` or `native`. See `docs/NATIVE_MINING.md` |
 | `mining.chain_snapshot` | string | "auto" | Native mode only: preload a difficulty-warmed chain (`auto`, `off`, or a preset name/path; `auto` is a soft default — falls back to no preload with a warning if no matching preset exists). YAML booleans are accepted as aliases (`false` == `off`, `true` == `auto`). See `docs/CHAIN_SNAPSHOT.md` |
 
+### Running several simulations at once
+
+`parallelism: 0` (the default) gives a run **one physical core per simulated
+host, up to every core that no other live Shadow run is using**. The
+quickstart (18 hosts) takes 18 cores and leaves the rest free. A run with more
+hosts than free cores takes all of them, whether or not it can keep them busy,
+and a run started after it then finds no free cores and has to share them, so
+both run slower (results are unaffected). If you plan to run more than one
+simulation on the same machine, set `parallelism` explicitly in each config,
+for example `64` on a 128-core box for two runs side by side. `run_sim.sh`
+then gives each run that many cores of its own and leaves the rest for the
+next one. A run that is already going keeps its cores until it ends.
+
+Guidance:
+- One run at a time: leave `parallelism: 0`.
+- Two or more at a time: give each a share, with the shares adding up to no
+  more than the physical cores. The preflight's `Shadow CPUs:` line shows what
+  each run will get, and warns when a run has to share.
+- Runs of a few hundred hosts gain little from many workers: a ~240-host
+  eclipse run took 75-77 min of Shadow time with 16, 32 or 64 workers (one run
+  each, two at 64). `parallelism: 16` for a run that size frees the other
+  cores at no measurable cost. Larger runs have more parallel work (a
+  2232-host run's simulated processes used ~14 cores across 64 workers); how
+  far they scale has not been measured.
+- Never more workers than physical cores: two per core (both hyperthreads)
+  ran 1.29x slower than one per core.
+- Outside the [Determinism](#determinism) recipe (`parallelism: 1`, no
+  `native_preemption`, ...), runs are not reproducible even with the same
+  config, seed and `parallelism`: three identical 1/10-scale eclipse runs
+  (64 workers, `native_preemption: true`) ended with 4, 6 and 9 attacker
+  connections to the target. Compare such runs with replicates, not seed for
+  seed. No effect of `parallelism` on results has been shown beyond that
+  spread (64 vs 128 workers: 8 vs 5).
+
 Note: if `daemon_defaults` does not set `max-connections-per-ip`, monerosim
 injects `4` (a floor, not a force — any user-provided value wins, including
 stock monerod's default of `1`). See the commented example above and
 `docs/20260605_max_connections_per_ip_bug.md` for why.
+
+### RPC SSL
+
+RPC SSL is off unless you turn it on. monerosim passes `--rpc-ssl=disabled`
+to every monerod and `--rpc-ssl=disabled --daemon-ssl=disabled` to every
+monero-wallet-rpc. With SSL at its stock setting, monerod and wallet-rpc
+generate an RSA-4096 certificate on every start, ~1.1 wall-s per start under
+Shadow. RPC SSL has no effect on P2P, and the Python agents and wallets talk
+plain HTTP. See `docs/20261003_startup_cost.md`.
+
+To turn it back on for every node (stock Monero behaviour):
+
+```yaml
+general:
+  daemon_defaults:
+    rpc-ssl: autodetect
+  wallet_defaults:
+    rpc-ssl: autodetect
+    daemon-ssl: autodetect
+```
+
+For some nodes only, set the same keys in an agent's `daemon_options` /
+`wallet_options`. A raw `--rpc-ssl=...` / `--daemon-ssl=...` in the agent's
+args also works: monerosim then leaves that flag out instead of passing it
+twice.
+
+Use `autodetect`, not `enabled`. With `autodetect` monerod looks at the first
+bytes of each RPC connection and uses TLS only if the client starts a TLS
+handshake, so plain-HTTP clients keep working. `enabled` requires TLS on every
+connection, and the Python agents, which only speak plain `http://`, then
+cannot reach the daemon.
+
+With SSL off, monerod's and cuprated's RPC both answer in plaintext, so the
+TLS fingerprint described in `docs/20260724_cuprate_wallet_rpc.md` does not
+show inside simulations; turn SSL back on to study it.
+
+## Performance Section
+
+Optional. Shadow-level knobs, written into the run's
+`shadow_output/shadow_agents.yaml` under `experimental:`.
+
+```yaml
+performance:
+  unblocked_vdso_busy_threshold: 10000   # fast monero process starts (= run_sim.sh --bootfast)
+  unblocked_vdso_busy_latency: 1 us
+```
+
+| Field | Default | What it does |
+|---|---|---|
+| `unblocked_vdso_busy_threshold` | unset (off) | Clock reads in a row, with no other syscall, after which each further read charges `unblocked_vdso_busy_latency`. `10000` with `1 us` is what `--bootfast` sets: every monerod / monero-wallet-rpc start drops from ~16 to ~0.4 wall-s, and nothing else in the simulation changes (outside start-up, the longest run of clock reads measured was 371). **Needs shadowformonero v0.2.5+**; an older Shadow stops at launch with `unknown field 'unblocked_vdso_busy_threshold'`. |
+| `unblocked_vdso_busy_latency` | `1 us` once the threshold is set | Simulated time per clock read past the threshold. |
+| `unblocked_vdso_latency` | Shadow's 10 ns | Simulated time per clock read, always. `1 us` is what `--allfast` sets: same start-up cut, but every clock read in every process costs more sim time, so runs are not seed-for-seed comparable with runs made without it. Prefer the busy threshold. |
+| `model_unblocked_syscall_latency` | `true` | Leave it on: `false` stalls Monerosim runs (`docs/PERFORMANCE_AND_SCALE.md`). |
+
+`run_sim.sh --bootfast` / `--allfast` set the same fields for one run and
+override the config's values. Put the block in the config when every run of it
+should have it. Big runs gain the most: each monero process start used to hold
+the whole simulation for ~17 wall-s, one after another (the 2,232-host eclipse
+run spent 7.6 of ~22 wall-hours starting its 1,214 monero processes). How it
+works: `docs/explain_clock_mods.md`; measurements:
+`docs/20261003_startup_cost.md`.
 
 ## Network Section
 

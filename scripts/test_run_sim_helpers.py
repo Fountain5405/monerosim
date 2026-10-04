@@ -459,3 +459,309 @@ def test_daemon_capabilities_keeps_a_miners_explicit_binary(tmp_path):
     assert by_agent["honest-001"]["path"] == str(sim) and by_agent["honest-001"]["explicit"]
     assert by_agent["honest-002"]["path"].endswith("monerod-sim") and not by_agent["honest-002"]["explicit"]
     assert "sim-hash-interval-ms" in by_agent["honest-001"]["flags"]
+
+
+# ---------------------------------------------------------------------------
+# mem-sample: PSS sampler over Shadow's process tree + memory-stall detection
+# ---------------------------------------------------------------------------
+from scripts.run_sim_helpers import (  # noqa: E402
+    MEM_CSV_HEADER,
+    collect_mem_sample,
+    latest_sim_seconds,
+    load_mem_samples,
+    mem_stall_status,
+)
+
+
+def _fake_proc(root, procs, mem_total_kb=1000 * 1024, avail_kb=600 * 1024,
+               swap_total_kb=0, swap_free_kb=0):
+    """procs: {pid: (comm, ppid, pss_kb)} -> a minimal /proc tree under root."""
+    for pid, (comm, ppid, pss) in procs.items():
+        d = root / str(pid)
+        d.mkdir()
+        (d / 'comm').write_text(comm + '\n')
+        (d / 'stat').write_text(f'{pid} ({comm}) S {ppid} {pid} {pid} 0 -1\n')
+        (d / 'smaps_rollup').write_text(f'Rss:  {pss * 3} kB\nPss:  {pss} kB\n')
+    (root / 'meminfo').write_text(
+        f'MemTotal: {mem_total_kb} kB\nMemFree: 1 kB\nMemAvailable: {avail_kb} kB\n'
+        f'SwapTotal: {swap_total_kb} kB\nSwapFree: {swap_free_kb} kB\n')
+    (root / 'self').mkdir()
+
+
+def test_collect_mem_sample_scopes_to_shadow_tree_and_buckets(tmp_path):
+    proc = tmp_path / 'proc'
+    proc.mkdir()
+    _fake_proc(proc, {
+        100: ('shadow', 1, 10 * 1024),
+        101: ('monerod', 100, 300 * 1024),
+        102: ('bash', 100, 4 * 1024),
+        103: ('python3', 102, 50 * 1024),       # agent: grandchild via wrapper
+        104: ('monero-wallet-r', 100, 20 * 1024),
+        105: ('a) b (c', 100, 1024),            # parens/spaces in comm
+        200: ('monerod', 1, 999 * 1024),        # another run: must be excluded
+    }, swap_total_kb=8 * 1024 * 1024, swap_free_kb=6 * 1024 * 1024)
+    log = tmp_path / 'shadow.log'
+    log.write_text('Progress: 1% — simulated: 01:02:03.4/10:00:00, realtime: 1\n')
+
+    s = collect_mem_sample(100, str(log), proc=str(proc), now=1_000_000)
+
+    assert (s['shadow_mb'], s['daemon_mb'], s['wallet_mb'], s['agents_mb'], s['other_mb']) \
+        == (10, 300, 20, 50, 5)
+    assert s['total_mb'] == 385
+    assert s['nprocs'] == 6
+    assert s['sim_s'] == 3723
+    assert (s['ram_total_mb'], s['avail_mb'], s['used_pct'], s['swap_used_mb']) == (1000, 600, 40, 2048)
+
+
+def test_latest_sim_seconds_uses_last_line_and_handles_missing(tmp_path):
+    log = tmp_path / 'shadow.log'
+    log.write_text('simulated: 00:00:05.0/1\nnoise\nsimulated: 42:06:48.7/50:00:00\n')
+    assert latest_sim_seconds(str(log)) == 42 * 3600 + 6 * 60 + 48
+    assert latest_sim_seconds(str(tmp_path / 'nope.log')) == -1
+    (tmp_path / 'empty.log').write_text('starting\n')
+    assert latest_sim_seconds(str(tmp_path / 'empty.log')) == -1
+
+
+def _rows(phases, ram=1_000_000, step=30):
+    """phases: [(n_samples, avail_mb_start, avail_mb_end, sim_rate)] -> rows."""
+    rows, t, sim = [], 0, 0.0
+    for n, a0, a1, rate in phases:
+        for i in range(n):
+            avail = a0 + (a1 - a0) * i // max(1, n - 1)
+            rows.append({'timestamp': '', 'epoch': t, 'sim_s': int(sim),
+                         'ram_total_mb': ram, 'avail_mb': avail, 'swap_used_mb': 0})
+            t += step
+            sim += rate * step
+    return rows
+
+
+def test_mem_stall_critical_when_ram_exhausted_growing_and_stalled():
+    rows = _rows([(120, 600_000, 300_000, 1.0),     # healthy, sim 1x
+                  (120, 80_000, 20_000, 0.05)])    # thrash: 2-8% avail, sim 0.05x
+    level, msg = mem_stall_status(rows)
+    assert level == 'critical'
+    assert 'swap-thrashing' in msg
+
+
+def test_mem_stall_warn_when_ram_exhausted_but_still_advancing():
+    rows = _rows([(120, 600_000, 300_000, 1.0), (120, 80_000, 20_000, 0.8)])
+    assert mem_stall_status(rows)[0] == 'warn'
+
+
+def test_mem_stall_not_critical_without_a_stall():
+    # normal attack-phase growth with RAM to spare: no alarm
+    assert mem_stall_status(_rows([(240, 600_000, 300_000, 0.05)]))[0] == 'ok'
+    # RAM tight and flat, sim keeping its healthy pace: warn, not critical
+    assert mem_stall_status(_rows([(120, 600_000, 300_000, 1.0),
+                                   (240, 50_000, 50_000, 0.9)]))[0] == 'warn'
+    # too little history
+    assert mem_stall_status(_rows([(10, 50_000, 10_000, 0.0)]))[0] == 'ok'
+    assert mem_stall_status([])[0] == 'ok'
+
+
+def test_mem_sample_cli_writes_header_once_and_status(tmp_path, capsys, monkeypatch):
+    import scripts.run_sim_helpers as h
+    fake = {k: 0 for k in h.MEM_CSV_FIELDS}
+    fake.update(timestamp='12:00:00', epoch=1, sim_s=5, ram_total_mb=1000, avail_mb=900)
+    monkeypatch.setattr(h, 'collect_mem_sample', lambda *a, **k: dict(fake))
+    csv = tmp_path / 'memory_samples.csv'
+    status = tmp_path / 'memory_status'
+    argv = ['mem-sample', '--root-pid', '1', '--shadow-log', 'x',
+            '--csv', str(csv), '--status-file', str(status)]
+    assert _run(capsys, argv) == (0, 'ok\n')
+    _run(capsys, argv)
+
+    lines = csv.read_text().splitlines()
+    assert lines[0] == MEM_CSV_HEADER and lines.count(MEM_CSV_HEADER) == 1
+    assert len(load_mem_samples(str(csv))) == 2
+    assert status.read_text() == 'ok|\n'
+
+
+def test_load_mem_samples_rejects_legacy_format(tmp_path):
+    legacy = tmp_path / 'm.csv'
+    legacy.write_text('timestamp,shadow_rss_mb,monerod_rss_mb,wallet_rss_mb,total_rss_mb,'
+                      'system_free_mb,system_used_pct\n12:00:00,1,2,3,4,5,6%\n')
+    assert load_mem_samples(str(legacy)) == []
+
+
+def test_mem_stall_critical_when_ram_pinned_and_stalled_even_without_growth():
+    # The last ~5 h of the 20260928 run: RAM pinned, nothing left to grow into,
+    # sim crawling at ~2% of its healthy pace. Must still alarm.
+    rows = _rows([(120, 600_000, 300_000, 1.0), (120, 5_000, 5_000, 0.02)])
+    assert mem_stall_status(rows)[0] == 'critical'
+
+
+def test_mem_stall_alarm_holds_through_a_brief_recovery_blip():
+    rows = _rows([(120, 600_000, 300_000, 1.0),
+                  (120, 80_000, 20_000, 0.05),    # critical
+                  (30, 20_000, 20_000, 1.0)])     # 15 min back at normal pace
+    level, msg = mem_stall_status(rows)
+    assert level == 'critical'
+    assert msg.startswith('(as of ')
+
+
+
+# ---- cpu-plan (Shadow worker count + which cores) ----
+
+# 2 sockets x 2 cores x 2 threads. core_id repeats per socket (Shadow counts
+# 2 cores); sibling sets do not (4 cores). cpus 4-7 are the SMT siblings.
+_TWO_SOCKET = {0: ('0,4', 0, 0), 1: ('1,5', 0, 0), 2: ('2,6', 1, 1), 3: ('3,7', 1, 1),
+               4: ('0,4', 0, 0), 5: ('1,5', 0, 0), 6: ('2,6', 1, 1), 7: ('3,7', 1, 1)}
+
+
+def _fake_sys_cpu(root, layout=_TWO_SOCKET, name='core_cpus_list'):
+    root.mkdir()
+    (root / 'online').write_text('0-%d\n' % (len(layout) - 1))
+    for cpu, (sib, pkg, node) in layout.items():
+        topo = root / f'cpu{cpu}' / 'topology'
+        topo.mkdir(parents=True)
+        (topo / name).write_text(sib + '\n')
+        (topo / 'physical_package_id').write_text(f'{pkg}\n')
+        (topo / 'core_id').write_text(f'{cpu % 2}\n')
+        (root / f'cpu{cpu}' / f'node{node}').mkdir()
+    return str(root)
+
+
+def _fake_shadow_proc(root, procs):
+    """procs: {pid: (comm, {tid: (thread comm, Cpus_allowed_list)})}"""
+    root.mkdir()
+    for pid, (comm, tasks) in procs.items():
+        d = root / str(pid)
+        (d / 'task').mkdir(parents=True)
+        (d / 'comm').write_text(comm + '\n')
+        for tid, (tcomm, mask) in tasks.items():
+            t = d / 'task' / str(tid)
+            t.mkdir()
+            (t / 'comm').write_text(tcomm + '\n')
+            (t / 'status').write_text(f'Name:\t{tcomm}\nCpus_allowed_list:\t{mask}\n')
+    return str(root)
+
+
+def _plan(tmp_path, procs, parallelism=0, hosts=None, **kw):
+    from scripts.run_sim_helpers import plan_shadow_cpus
+    sys_cpu = _fake_sys_cpu(tmp_path / 'sys', **kw)
+    proc = _fake_shadow_proc(tmp_path / 'proc', procs)
+    return plan_shadow_cpus(parallelism, range(8), sys_cpu, proc, hosts=hosts)
+
+
+def _shadow(pid, worker_cpus, main_mask='0-7'):
+    tasks = {pid: ('shadow', main_mask)}
+    tasks.update({pid + 1 + i: ('shadow-worker', str(c)) for i, c in enumerate(worker_cpus)})
+    return {pid: ('shadow', tasks)}
+
+
+def test_cpu_plan_alone_counts_both_sockets(tmp_path):
+    """Nothing else running: no taskset, one worker per physical core (4, not Shadow's 2)."""
+    cpus, workers, _ = _plan(tmp_path, {})
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_avoids_cores_of_another_run(tmp_path):
+    """Another run pinned to socket 0 -> this run gets socket 1 and its siblings."""
+    cpus, workers, note = _plan(tmp_path, _shadow(100, [0, 1]))
+    assert (cpus, workers) == ('2-3,6-7', 2)
+    assert '2 used by other Shadow runs' in note
+
+
+def test_cpu_plan_explicit_parallelism_takes_that_many(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [0, 1]), parallelism=1)
+    assert (cpus, workers) == ('2,6', 1)
+
+
+def test_cpu_plan_sibling_pin_blocks_whole_core(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [4]))
+    assert (cpus, workers) == ('1-3,5-7', 3)
+
+
+def test_cpu_plan_sees_taskset_reservation_before_workers_exist(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [], main_mask='2-3,6-7'))
+    assert (cpus, workers) == ('0-1,4-5', 2)
+
+
+def test_cpu_plan_ignores_unpinned_shadow_and_other_programs(tmp_path):
+    procs = _shadow(100, [])                                   # starting, unrestricted
+    procs[200] = ('monerod', {200: ('monerod', '0')})          # pinned, but not Shadow
+    procs[300] = ('python3', {300: ('shadow-worker', '1')})    # thread name alone is not enough
+    cpus, workers, _ = _plan(tmp_path, procs)
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_everything_taken_shares(tmp_path):
+    cpus, workers, note = _plan(tmp_path, _shadow(100, [0, 1, 2, 3]))
+    assert (cpus, workers) == ('-', 4)
+    assert 'sharing' in note
+
+
+def test_cpu_plan_parallelism_above_free_cores_warns(tmp_path):
+    cpus, workers, note = _plan(tmp_path, _shadow(100, [0, 1, 2]), parallelism=2)
+    assert (cpus, workers) == ('3,7', 2)
+    assert 'will share' in note
+
+
+def test_cpu_plan_small_run_alone_is_masked_to_its_hosts(tmp_path):
+    """Shadow runs at most one worker per host; reserve no more, and mask even
+    when alone so the next launch sees the reservation before workers exist."""
+    cpus, workers, note = _plan(tmp_path, {}, hosts=2)
+    assert (cpus, workers) == ('0-1,4-5', 2)
+    assert 'capped at 2 hosts' in note
+
+
+def test_cpu_plan_big_run_alone_takes_whole_machine_unmasked(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, {}, hosts=10)
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_back_to_back_small_runs_get_disjoint_cores(tmp_path):
+    """Second launch while the first (masked by the planner) is still building hosts."""
+    cpus, workers, _ = _plan(tmp_path, _shadow(100, [], main_mask='0-1,4-5'), hosts=2)
+    assert (cpus, workers) == ('2-3,6-7', 2)
+
+
+def test_cpu_plan_explicit_parallelism_capped_at_hosts(tmp_path):
+    cpus, workers, note = _plan(tmp_path, {}, parallelism=4, hosts=1)
+    assert (cpus, workers) == ('0,4', 1)
+    assert 'capped at 1 hosts' in note and 'share' not in note
+
+
+def test_count_shadow_hosts(tmp_path):
+    from scripts.run_sim_helpers import count_shadow_hosts
+    cfg = tmp_path / 'shadow.yaml'
+    cfg.write_text('general:\n  parallelism: 0\nhosts:\n  dnsserver:\n    network_node_id: 0\n'
+                   '    processes:\n    - path: /bin/bash\n  miner-001:\n    ip_addr: 1.0.0.1\n'
+                   '  # comment: not a host\n  user-001:\n    ip_addr: 1.0.0.2\n')
+    assert count_shadow_hosts(str(cfg)) == 3
+
+
+def test_count_shadow_hosts_golden_quickstart():
+    from scripts.run_sim_helpers import count_shadow_hosts
+    assert count_shadow_hosts('tests/golden/quickstart.yaml') == 18
+
+
+def test_cpu_plan_falls_back_to_thread_siblings(tmp_path):
+    cpus, workers, _ = _plan(tmp_path, {}, name='thread_siblings_list')
+    assert (cpus, workers) == ('-', 4)
+
+
+def test_cpu_plan_missing_topology_raises(tmp_path):
+    from scripts.run_sim_helpers import plan_shadow_cpus
+    with pytest.raises(OSError):
+        plan_shadow_cpus(0, {0}, str(tmp_path), str(tmp_path))
+
+
+def test_cpu_list_round_trip():
+    from scripts.run_sim_helpers import _cpu_list, _fmt_cpu_list
+    assert _cpu_list('0-3,8,10-11') == {0, 1, 2, 3, 8, 10, 11}
+    assert _fmt_cpu_list({0, 1, 2, 3, 8, 10, 11}) == '0-3,8,10-11'
+    assert _fmt_cpu_list(set()) == ''
+
+
+def test_cpu_plan_cli_on_this_host(capsys):
+    rc, out = _run(capsys, ['cpu-plan', '--parallelism', '0'])
+    cpus, workers, note = out.rstrip('\n').split('\t')
+    assert rc == 0 and int(workers) >= 1 and note
+
+
+def test_cpu_plan_cli_counts_shadow_config_hosts(capsys):
+    rc, out = _run(capsys, ['cpu-plan', '--shadow-config', 'tests/golden/quickstart.yaml'])
+    cpus, workers, note = out.rstrip('\n').split('\t')
+    assert rc == 0 and 1 <= int(workers) <= 18

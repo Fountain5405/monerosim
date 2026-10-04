@@ -66,6 +66,29 @@ def read_bucket(sock):
     return command, flags, return_code, bool(have_ret), payload
 
 
+def pop_bucket(buf):
+    """Incremental counterpart of read_bucket for non-blocking servers.
+
+    If `buf` (a bytearray of received bytes) starts with a complete bucket,
+    remove it from `buf` and return (command, flags, return_code,
+    expect_response, payload); return None if more bytes are needed. Raises
+    ValueError on a bad signature or oversized payload, like read_bucket.
+    """
+    if len(buf) < HEADER_SIZE:
+        return None
+    sig, cb, have_ret, command, return_code, flags, _proto = _HEADER.unpack_from(buf, 0)
+    if sig != LEVIN_SIGNATURE:
+        raise ValueError("bad Levin signature 0x%x" % sig)
+    if cb > LEVIN_DEFAULT_MAX_PACKET_SIZE:
+        raise ValueError("payload too large: %d" % cb)
+    end = HEADER_SIZE + cb
+    if len(buf) < end:
+        return None
+    payload = bytes(buf[HEADER_SIZE:end])
+    del buf[:end]
+    return command, flags, return_code, bool(have_ret), payload
+
+
 # ---- epee portable storage ----------------------------------------------
 PORTABLE_STORAGE_SIGNATUREA = 0x01011101
 PORTABLE_STORAGE_SIGNATUREB = 0x01020101

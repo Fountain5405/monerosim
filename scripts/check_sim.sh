@@ -415,8 +415,20 @@ log_header "Resources"
 if [ -n "${RUN_DIR:-}" ]; then
     MEM_FILE="$RUN_DIR/memory_samples.csv"
     if [ -f "$MEM_FILE" ] && [ -s "$MEM_FILE" ]; then
-        LAST_MEM=$(tail -1 "$MEM_FILE")
-        log_info "Latest memory sample: $LAST_MEM"
+        log_info "Memory samples: $(head -1 "$MEM_FILE")"
+        log_info "Latest:         $(tail -1 "$MEM_FILE")"
+    fi
+    MEM_STATUS_FILE="$RUN_DIR/memory_status"
+    if [ -s "$MEM_STATUS_FILE" ]; then
+        MEM_STATUS=$(head -1 "$MEM_STATUS_FILE")
+        case "${MEM_STATUS%%|*}" in
+            critical) log_err "MEMORY CRITICAL: ${MEM_STATUS#*|}" ;;
+            warn)     log_warn "Memory warning: ${MEM_STATUS#*|}" ;;
+        esac
+    fi
+    if [ -s "$RUN_DIR/memory_alerts.log" ]; then
+        log_warn "Memory alerts ($(wc -l < "$RUN_DIR/memory_alerts.log") total), latest 3:"
+        tail -3 "$RUN_DIR/memory_alerts.log" | sed 's/^/    /'
     fi
 fi
 if [ -n "${SHADOW_PID:-}" ]; then
