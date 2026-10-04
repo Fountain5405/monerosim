@@ -120,6 +120,24 @@ injects `4` (a floor, not a force — any user-provided value wins, including
 stock monerod's default of `1`). See the commented example above and
 `docs/20260605_max_connections_per_ip_bug.md` for why.
 
+
+**Many small runs at once** (`MONEROSIM_SHADOW_CPU_PINNING=0`, dev 2026-10-04).
+Sometimes the runs together need more workers than the box has cores, e.g.
+20+ native-mining cells of 13 hosts on a 32-core box. Then the plan above
+cannot give every run its own cores:
+- a later run gets fewer workers than it has hosts, and native-mining cells
+  stall below one worker per host (`test_configs/selfish_micro_sop.yaml`);
+- the runs after it get no cores at all and pin onto CPUs 0..N-1.
+
+Set `MONEROSIM_SHADOW_CPU_PINNING=0` in the environment of `run_sim.sh`.
+`scripts/selfish_matrix.py` passes its environment on. With it set:
+- there is no `taskset`;
+- Shadow runs with `--use-cpu-pinning false`;
+- the worker count stays as configured;
+- Linux spreads every worker of every run over all CPUs.
+
+Each run records its CPU decision in `shadow_output/cpu_plan.txt`.
+
 ### RPC SSL
 
 RPC SSL is off unless you turn it on. monerosim passes `--rpc-ssl=disabled`

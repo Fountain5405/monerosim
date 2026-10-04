@@ -967,7 +967,9 @@ check_disk_space() {
     # is decided again at launch). Never blocks: sharing cores slows wall
     # clock but leaves simulation results unchanged.
     local plan plan_cpus plan_workers plan_note
-    if plan=$(python3 scripts/run_sim_helpers.py cpu-plan --parallelism "${CFG_PARALLELISM:-0}" \
+    if [[ "${MONEROSIM_SHADOW_CPU_PINNING:-1}" == "0" ]]; then
+        log_info "Shadow CPUs: any, unpinned (MONEROSIM_SHADOW_CPU_PINNING=0)"
+    elif plan=$(python3 scripts/run_sim_helpers.py cpu-plan --parallelism "${CFG_PARALLELISM:-0}" \
                 --hosts "$num_hosts" 2>/dev/null) \
             && [[ -n "$plan" ]]; then
         IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
@@ -1220,7 +1222,19 @@ plan_and_launch_shadow() {
     local launch=() par_args=() cfg_par plan plan_cpus plan_workers plan_note
     cfg_par=$(grep -oPm1 '^  parallelism: \K[0-9]+' "$SHADOW_OUTPUT/shadow_agents.yaml" || true)
     cfg_par=${cfg_par:-0}
-    if plan=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" cpu-plan --parallelism "$cfg_par" \
+    if [[ "${MONEROSIM_SHADOW_CPU_PINNING:-1}" == "0" ]]; then
+        # Many small runs at once (2026-10-04). The plan below gives whole
+        # cores to the first runs. When few cores are left it gives a later
+        # run fewer workers than it has hosts, and native-mining cells stall
+        # below one worker per host (test_configs/selfish_micro_sop.yaml).
+        # When none are left, it lets the rest pin onto CPUs 0..N-1. With
+        # Shadow's pinning off and no mask, Linux spreads every worker of
+        # every run over all CPUs. Workers stay as the YAML says: 0 means
+        # Shadow's own count, at most one per host.
+        par_args=(--use-cpu-pinning false)
+        log_info "Shadow CPUs: any, unpinned (MONEROSIM_SHADOW_CPU_PINNING=0); workers as configured (parallelism $cfg_par)"
+        echo "cpus=any pinning=off parallelism=$cfg_par (MONEROSIM_SHADOW_CPU_PINNING=0)" > "$SHADOW_OUTPUT/cpu_plan.txt"
+    elif plan=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" cpu-plan --parallelism "$cfg_par" \
                 --shadow-config "$SHADOW_OUTPUT/shadow_agents.yaml" 2>/dev/null) \
             && [[ -n "$plan" ]]; then
         IFS=$'\t' read -r plan_cpus plan_workers plan_note <<< "$plan"
@@ -1234,6 +1248,7 @@ plan_and_launch_shadow() {
         fi
         [[ "$cfg_par" == "0" ]] && par_args=(--parallelism "$plan_workers")
         log_info "Shadow CPUs: $([[ "$plan_cpus" == "-" ]] && echo any || echo "$plan_cpus"); $plan_workers worker threads ($plan_note)"
+        echo "cpus=$plan_cpus pinning=on workers=$plan_workers ($plan_note)" > "$SHADOW_OUTPUT/cpu_plan.txt"
     else
         log_warn "Shadow CPUs: could not plan; Shadow picks (it counts one socket's cores and stacks concurrent runs on the same CPUs)"
     fi
