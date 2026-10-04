@@ -326,8 +326,17 @@ read per step would take 1 µs more simulated time per read past 10,000.
   big box. With `--bootfast` (or arm E's settings) each start drops from ~17 s
   to under 0.5 s, so expect a few minutes. It does not fit this 31 GB box (each monerod holds
   ~267 MB, mostly the RandomX light cache), so measure it on the big box.
-- 2232-host run: 2,220 relay starts x ~17 s ≈ 10 h → x ~0.4-0.5 s ≈ 15-20 min
-  of start cost, if nothing else limits the phase.
+- 2232-host eclipse run (`eclipse_nyx_fakepeer_onboardfirst_10000_whitelist_fix_14_hrs_burn_in_50_hrs_run`,
+  measured on the big box after the fact, run `20261004_003742`, no flag): only
+  1,214 of its hosts start a monero process (1,210 monerod, 4 wallet-rpc); the
+  other ~1,020 are Python fake peers, which do not run the busy-wait. The
+  monerod start phase (sim 0-1.3 h) took 7.6 wall-h, ~22.6 wall-s per start, of
+  a ~22 h run; burn-in to sim 15.7 h took 2.4 wall-h and the attack phase runs
+  at ~3x real time. Removing the ~16-17 s busy-wait and SSL per start leaves
+  ~0.4 s plus ~5 s per start that is not the busy-wait (not profiled), so
+  expect the phase at ~0.5-2 h and the run at ~15-16.5 h (~1.4x), not hours
+  shorter than that. (An earlier estimate here, "2,220 relay starts x ~17 s ≈
+  10 h", counted the fake peers.)
 
 ## Reproduce
 

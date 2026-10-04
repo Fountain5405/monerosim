@@ -18,6 +18,60 @@ without changing anything else in the simulation, so prefer it.
 ./run_sim.sh --config my.yaml --bootfast
 ```
 
+## How to use it
+
+**1. Install Shadow v0.2.5 or later** (shadowformonero). Check with
+`~/.monerosim/bin/shadow --version`; if it says v0.2.4 or older, run
+`./update.sh --shadow --rebuild` (or `./setup.sh`). An older Shadow refuses a
+config that has the setting: `unknown field 'unblocked_vdso_busy_threshold'`.
+
+**2. Turn it on, any one of these ways.** All produce exactly the same
+simulation.
+
+- For every run of a config: add this block at the top level of the config
+  (next to `general:`), so nobody has to remember the flag. It works in a
+  compact `.scenario.yaml` (`generate_config.py --from` copies it into the
+  expanded config) and in an expanded config:
+
+  ```yaml
+  performance:
+    unblocked_vdso_busy_threshold: 10000   # what --bootfast sets
+    unblocked_vdso_busy_latency: 1 us
+  ```
+- For one run: `./run_sim.sh --config my.yaml --bootfast`.
+- Generating by hand: `monerosim --config my.yaml --bootfast --output dir`.
+
+`run_sim.sh` and `monerosim` read only expanded configs; expand a compact
+`.scenario.yaml` first (`scripts/generate_config.py --from x.scenario.yaml -o
+x.yaml`). A flag overrides the config's `performance:` values.
+
+**3. Check a run has it:** its `shadow_output/shadow_agents.yaml` contains
+`unblocked_vdso_busy_threshold: 10000` under `experimental:`.
+
+### Where the setting goes
+
+`--bootfast` is a `run_sim.sh` option only because `run_sim.sh` is the usual
+way to start a run. It is really a Shadow setting:
+
+```
+run_sim.sh --bootfast
+  -> monerosim --bootfast              (the config generator)
+     -> performance: block, as above   (same as writing it in your YAML)
+        -> experimental:               (in the run's shadow_agents.yaml)
+             unblocked_vdso_busy_threshold: 10000
+             unblocked_vdso_busy_latency: 1 us
+           -> read by Shadow when it loads that file
+```
+
+The `shadow` process is not started with a `--bootfast` flag; it reads the
+setting from its config file like every other Shadow option. If you run
+Shadow by hand on a generated config, the setting is already in the file.
+Shadow v0.2.5 also takes it on its own command line, as
+`--unblocked-vdso-busy-threshold 10000 --unblocked-vdso-busy-latency 1us`.
+`run_sim.sh` checks the installed Shadow's version only when `--bootfast` is
+given; with the YAML block, an older Shadow stops at launch with the error
+above.
+
 ## How time works in Shadow
 
 Programs inside Shadow do not see a real clock; they see a simulated one.
@@ -33,8 +87,9 @@ it starts: "keep looking at the clock until 0.1 seconds have passed". On a
 real computer that takes 0.1 seconds. In Shadow each look moves the clock
 only 10 ns, so the program has to look **10 million times**. Each look costs
 the real computer about 1.6 µs of work, so every start took about 16 real
-seconds. Starts are staggered, one after another, so a run with 2,000 nodes
-spent hours on nothing but this.
+seconds. Starts are staggered, one after another, so they add up: the
+2,232-host eclipse run has 1,214 monero processes and spent its first 7.6 of
+~22 wall-hours starting them.
 
 ## `--allfast`
 

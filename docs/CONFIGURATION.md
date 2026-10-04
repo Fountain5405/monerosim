@@ -4,7 +4,7 @@ All Monerosim configurations are written in YAML. This document describes the cu
 
 ## Configuration Structure
 
-A configuration file has three top-level sections:
+A configuration file has three top-level sections, plus an optional fourth:
 
 ```yaml
 general:
@@ -15,6 +15,9 @@ network:
 
 agents:
   # Named agent definitions
+
+performance:
+  # Optional Shadow speed knobs (see Performance Section)
 ```
 
 ## General Section
@@ -149,6 +152,32 @@ cannot reach the daemon.
 With SSL off, monerod's and cuprated's RPC both answer in plaintext, so the
 TLS fingerprint described in `docs/20260724_cuprate_wallet_rpc.md` does not
 show inside simulations; turn SSL back on to study it.
+
+## Performance Section
+
+Optional. Shadow-level knobs, written into the run's
+`shadow_output/shadow_agents.yaml` under `experimental:`.
+
+```yaml
+performance:
+  unblocked_vdso_busy_threshold: 10000   # fast monero process starts (= run_sim.sh --bootfast)
+  unblocked_vdso_busy_latency: 1 us
+```
+
+| Field | Default | What it does |
+|---|---|---|
+| `unblocked_vdso_busy_threshold` | unset (off) | Clock reads in a row, with no other syscall, after which each further read charges `unblocked_vdso_busy_latency`. `10000` with `1 us` is what `--bootfast` sets: every monerod / monero-wallet-rpc start drops from ~16 to ~0.4 wall-s, and nothing else in the simulation changes (outside start-up, the longest run of clock reads measured was 371). **Needs shadowformonero v0.2.5+**; an older Shadow stops at launch with `unknown field 'unblocked_vdso_busy_threshold'`. |
+| `unblocked_vdso_busy_latency` | `1 us` once the threshold is set | Simulated time per clock read past the threshold. |
+| `unblocked_vdso_latency` | Shadow's 10 ns | Simulated time per clock read, always. `1 us` is what `--allfast` sets: same start-up cut, but every clock read in every process costs more sim time, so runs are not seed-for-seed comparable with runs made without it. Prefer the busy threshold. |
+| `model_unblocked_syscall_latency` | `true` | Leave it on: `false` stalls Monerosim runs (`docs/PERFORMANCE_AND_SCALE.md`). |
+
+`run_sim.sh --bootfast` / `--allfast` set the same fields for one run and
+override the config's values. Put the block in the config when every run of it
+should have it. Big runs gain the most: each monero process start used to hold
+the whole simulation for ~17 wall-s, one after another (the 2,232-host eclipse
+run spent 7.6 of ~22 wall-hours starting its 1,214 monero processes). How it
+works: `docs/explain_clock_mods.md`; measurements:
+`docs/20261003_startup_cost.md`.
 
 ## Network Section
 
