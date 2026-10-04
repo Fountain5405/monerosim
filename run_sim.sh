@@ -621,7 +621,7 @@ preflight_checks() {
     # here instead (this also covers MONEROSIM_SKIP_SHADOW_CHECK=1).
     if [[ "$CLOCK_MODE" == "bootfast" ]]; then
         if "$SHADOW_BIN" --help 2>&1 | grep -q -- '--unblocked-vdso-busy-threshold'; then
-            log_ok "Clock: --bootfast (1 us per clock read after 10,000 in a row)"
+            log_ok "Clock: --bootfast (1 us per clock read past the 10,000th in a row)"
         else
             log_err "--bootfast needs shadowformonero >= v0.2.5; the installed Shadow lacks it"
             log_info "Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild), or use --allfast"
