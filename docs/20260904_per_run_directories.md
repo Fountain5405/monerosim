@@ -148,6 +148,11 @@ python3 scripts/smoke_assertions.py --run-dir archived_runs/20260904_184958_par_
 # Pruning refuses a run that is still live
 ./scripts/prune_archives.sh archived_runs/20260904_184958_par_a_184911
 # -> Refusing archived_runs/...: run is LIVE (owner pid 12345); use --force to prune anyway
+# (eclipse runs are never pruned: they are compressed instead, see below)
+
+# Gzip every finished run's bitmonero.log in place (lossless; live runs skipped)
+./scripts/compress_archives.sh --dry-run
+./scripts/compress_archives.sh
 ```
 
 ## 4. Preflight report

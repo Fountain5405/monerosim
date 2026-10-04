@@ -100,7 +100,8 @@ def atk(c):
     return sum(c.get(r, 0) for r in ATTACKER_ROLES)
 
 # ---- where the per-node dumps live ----
-# archive_daemon_logs() moves each dump to daemon_logs/<node>/peerlist_dump.jsonl;
+# archive_daemon_logs() moves each dump to daemon_logs/<node>/peerlist_dump.jsonl
+# (gzipped later by scripts/compress_archives.sh --peerlist-dumps; load_dump reads both);
 # in a raw run dir the node dirs sit at the top level and the dump is one deeper
 # (<node>/fake/). The recursive glob covers both once rooted correctly.
 node_root = os.path.join(run, "daemon_logs")
@@ -108,7 +109,7 @@ if not os.path.isdir(node_root):
     node_root = run
 
 # ---- TARGET B(t) + OR_white(t) ----
-tgt = glob.glob(os.path.join(node_root, "monero-relay-4000", "**", "peerlist_dump.jsonl"), recursive=True)
+tgt = glob.glob(os.path.join(node_root, "monero-relay-4000", "**", "peerlist_dump.jsonl*"), recursive=True)
 print("\n=== TARGET relay-4000: B (benign gray) and whitelist OR over time ===")
 if tgt:
     snaps = load_dump(tgt[0])
@@ -130,7 +131,7 @@ else:
 
 # ---- OBSERVED BENIGN whitelist OR ----
 print("\n=== OBSERVED BENIGN whitelist OR (final snapshot per node) ===")
-allb = glob.glob(os.path.join(node_root, "monero-relay-*", "**", "peerlist_dump.jsonl"), recursive=True)
+allb = glob.glob(os.path.join(node_root, "monero-relay-*", "**", "peerlist_dump.jsonl*"), recursive=True)
 benign_dumps = [p for p in allb if "relay-4000" not in p]
 ors = []
 for p in benign_dumps:

@@ -104,6 +104,21 @@
   already protected by the generator's uid guard; this protects the
   caller's own concurrent runs. Helper `run_sim_helpers.py pinned-paths`;
   test `scripts/test_pinned_paths.sh`.
+- **`scripts/compress_archives.sh`**: gzips finished runs' `daemon_logs/<node>/bitmonero.log`
+  (and rotated `bitmonero.log-*`) in place, losing nothing. With no arguments it
+  covers every run under the archive base and skips live runs; `--peerlist-dumps`
+  also compresses eclipse peer-list dumps; `--dry-run` only reports. A log-level-1
+  relay log measured 86 MB -> 6.2 MB; on one box the eleven finished eclipse runs
+  held ~870 GB of plain daemon logs. `analysis/eclipse/analyze_peerlist_dumps.py`
+  now finds `peerlist_dump.jsonl.gz` too (it could already read them). Tests
+  `scripts/test_compress_archives.py`, `scripts/test_peerlist_dump_layouts.py`.
+- **`scripts/prune_archives.sh` recognises eclipse runs** (`eclipse_metrics.jsonl`,
+  any `daemon_logs/*/peerlist_dump.jsonl`, or `agents.eclipse_*` in
+  `shadow_agents.yaml`) and compresses them with `compress_archives.sh
+  --peerlist-dumps` instead of deleting. Before, it skipped them for lacking
+  `summary.txt` (eclipse configs have no simulation-monitor, which is what writes
+  it), and `--force` would have kept only `monero-miner-001`'s logs, deleting every
+  other node's peer-list dump, the study's measurement data.
 
 ### Fixed
 
