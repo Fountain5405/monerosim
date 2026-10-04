@@ -1,0 +1,39 @@
+# Start-up cost A/B scenario (docs/20261003_startup_cost.md, arm A).
+# 3 miners with wallets + 60 daemon-only relays started 5 s apart; expands to
+# 70 hosts with the 6 seeds and the DNS server. Variants used in the doc:
+#   B: daemon_defaults rpc-ssl: disabled; wallet_defaults rpc-ssl/daemon-ssl: disabled
+#      (now monerosim's default; to measure the old behaviour set them to autodetect)
+#   C: native_preemption: false                     (diagnostic only)
+#   D: performance: {unblocked_vdso_latency: 1 us}
+#   E: D + B      F: performance: {unblocked_vdso_latency: 100 ns} + B
+general:
+  stop_time: 10m
+  simulation_seed: 12345
+  bootstrap_end_time: 5m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true
+  daemon_defaults:
+    log-level: 1
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-{001..003}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [34, 33, 33]
+  relay-{001..060}:
+    daemon: monerod
+    start_time: 30s
+    start_time_stagger: 5s

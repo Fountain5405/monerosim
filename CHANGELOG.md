@@ -4,6 +4,21 @@
 
 ### Added
 
+- **`run_sim.sh --bootfast` / `--allfast`**: fast monero process starts. Every
+  monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
+  `get_ticks_per_ns()` static initializer, which spins on the clock until 100 ms
+  of simulated time pass: 10 million reads at Shadow's 10 ns each.
+  `--bootfast` charges 1 µs for each read in a row past the 10,000th; any other
+  syscall restarts the count (normal operation: at most a few hundred in a row),
+  so nothing else changes. `--allfast` charges every read 1 µs. Both: relay
+  start 16.1 → 0.43 s, a 70-host run's Shadow wall time 1106 → 93 s. Neither is
+  the default. Plain-language explanation: `docs/explain_clock_mods.md`.
+  Config equivalents under `performance:`: `unblocked_vdso_busy_threshold` /
+  `unblocked_vdso_busy_latency` (`--bootfast`) and `unblocked_vdso_latency`
+  (`--allfast`). `--bootfast` needs **shadowformonero v0.2.5** (pin bumped; adds
+  `experimental.unblocked_vdso_busy_threshold` / `_latency`); run_sim.sh checks.
+  Investigation, clock-read measurements and scripts:
+  `docs/20261003_startup_cost.md`, `analysis/startup_cost/`.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
   default, sim-only): makes a daemon relay a **locally-submitted** block that was
   accepted only as an equal-height alternative, which stock monerod drops silently.
@@ -307,6 +322,18 @@
 
 ### Changed
 
+- **RPC SSL is off by default:** every monerod gets `--rpc-ssl=disabled` and every
+  monero-wallet-rpc `--rpc-ssl=disabled --daemon-ssl=disabled`, unless the config
+  or raw args set them. This skips the RSA-4096 certificate generated on every
+  start, ~1.1 wall-s per daemon start under Shadow. P2P is unaffected; agents
+  already talked plain HTTP. Side effect: monerod's and cuprated's RPC now both
+  answer in plaintext, so the TLS-probe fingerprint in
+  `docs/20260724_cuprate_wallet_rpc.md` no longer shows inside simulations.
+  wallet-rpc still generates one certificate per create/open_wallet for its
+  MMS client, which no option reaches.
+- **Corrected:** the sim-time-0 freeze with `model_unblocked_syscall_latency:
+  false` (339e9431) is the `get_ticks_per_ns()` busy-wait never seeing time
+  pass, not a "CPU-bound startup" (`docs/PERFORMANCE_AND_SCALE.md`).
 - **`memory_samples.csv` columns (breaking for readers):** `timestamp, epoch, sim_s,
   shadow_mb, daemon_mb, wallet_mb, agents_mb, other_mb, total_mb, nprocs,
   ram_total_mb, avail_mb, used_pct, swap_used_mb` (PSS, MB).

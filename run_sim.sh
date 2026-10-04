@@ -42,6 +42,7 @@ REACHABLE=""              # "" = use config default; else fraction in [0,1] pass
 TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 1h) -> monerosim --turnover-session
 TURNOVER_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --turnover-downtime
 TURNOVER_MAX_SESSION=""      # optional hard session ceiling (e.g. 6h) -> monerosim --turnover-max-session
+CLOCK_MODE=""                # "" = Shadow default clock charge; bootfast | allfast -> monerosim --bootfast / --allfast
 SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
@@ -77,6 +78,18 @@ Options:
   --turnover-downtime <dur> Mean OFFLINE gap for turnover (e.g. 1h). Average uptime =
                          session/(session+downtime).
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
+  --bootfast             Fast process starts, nothing else changed. Each monerod /
+                         wallet-rpc start spends ~16 wall-s in monero's start-up
+                         clock-calibration loop. With this, each clock read in a
+                         row after the 10,000th costs 1 us of simulated time
+                         instead of 10 ns; any other syscall restarts the count
+                         (normal code never gets past a few hundred). Ends the
+                         loop in ~0.2 s. Needs shadowformonero >= v0.2.5.
+                         Explained in docs/explain_clock_mods.md.
+  --allfast              Every clock read in every process costs 1 us of simulated
+                         time instead of 10 ns, for the whole run. Starts as fast
+                         as --bootfast; normal code runs slightly slower in
+                         simulated time (~0.1 ms per block hop). Not with --bootfast.
   --archive-dir <dir>    Archive location (default: $MONEROSIM_ARCHIVE_BASE or archived_runs)
   --run-dir-file <path>  Write this run's directory (<archive>/<run_id>) to <path> as
                          soon as it is allocated, so a wrapper can tell its own run
@@ -132,6 +145,7 @@ Examples:
   ./run_sim.sh --config test_configs/quickstart.yaml --name scaling_1000 --analyze
   ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50
   ./run_sim.sh --config large.yaml --data-dir /scratch/shadow_data
+  ./run_sim.sh --config test_configs/quickstart.yaml --bootfast
 EOF
     exit 0
 }
@@ -161,6 +175,14 @@ while [[ $# -gt 0 ]]; do
         --turnover-max-session)
             TURNOVER_MAX_SESSION="$2"
             shift 2
+            ;;
+        --bootfast|--allfast)
+            if [[ -n "$CLOCK_MODE" && "$CLOCK_MODE" != "${1#--}" ]]; then
+                echo "Error: --bootfast and --allfast are mutually exclusive" >&2
+                exit 1
+            fi
+            CLOCK_MODE="${1#--}"
+            shift
             ;;
         --archive-dir)
             ARCHIVE_BASE="$2"
@@ -592,6 +614,21 @@ preflight_checks() {
         fi
     else
         log_warn "shadowformonero.pin missing — skipping fork version check"
+    fi
+
+    # --bootfast needs the busy-loop clock charge (shadowformonero >= v0.2.5).
+    # An older Shadow rejects the generated config ("unknown field"), so say so
+    # here instead (this also covers MONEROSIM_SKIP_SHADOW_CHECK=1).
+    if [[ "$CLOCK_MODE" == "bootfast" ]]; then
+        if "$SHADOW_BIN" --help 2>&1 | grep -q -- '--unblocked-vdso-busy-threshold'; then
+            log_ok "Clock: --bootfast (1 us per clock read after 10,000 in a row)"
+        else
+            log_err "--bootfast needs shadowformonero >= v0.2.5; the installed Shadow lacks it"
+            log_info "Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild), or use --allfast"
+            exit 1
+        fi
+    elif [[ "$CLOCK_MODE" == "allfast" ]]; then
+        log_ok "Clock: --allfast (1 us per clock read)"
     fi
 
     # Verify the installed monerod matches this checkout's pinned monero
@@ -1087,7 +1124,12 @@ build_and_generate() {
     [[ -n "$TURNOVER_DOWNTIME" ]] && TURNOVER_ARGS+=(--turnover-downtime "$TURNOVER_DOWNTIME")
     [[ -n "$TURNOVER_MAX_SESSION" ]] && TURNOVER_ARGS+=(--turnover-max-session "$TURNOVER_MAX_SESSION")
     [[ ${#TURNOVER_ARGS[@]} -gt 0 ]] && log_info "Turnover override: ${TURNOVER_ARGS[*]}"
-    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${TURNOVER_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
+    CLOCK_ARGS=()
+    if [[ -n "$CLOCK_MODE" ]]; then
+        CLOCK_ARGS=(--"$CLOCK_MODE")
+        log_info "Clock: --$CLOCK_MODE"
+    fi
+    if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${TURNOVER_ARGS[@]}" "${CLOCK_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
         log_ok "Shadow config generated"
     else
         log_err "Config generation failed! See $ARCHIVE_DIR/monerosim.log"
