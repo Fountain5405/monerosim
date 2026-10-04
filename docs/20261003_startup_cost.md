@@ -283,6 +283,42 @@ rerun (`20261004_001553_quickstart_bootfast2`) passed 19/19 with the historical 
 
 Recommendation: use `--bootfast` for large runs, where start-up dominates.
 
+### Does `--bootfast` touch anything besides start-up?
+
+The rule applies to every process in the simulation, so every process type
+was checked for runs of 10,000+ clock reads with no other syscall (Shadow's
+strace logs; `analysis/startup_cost/clock_reads.py --threshold 10000`, which
+counts runs exactly as the shim does: `rdtsc` counts as a read, Shadow's own
+`shadow_yield` does not end a run). Longest run per process type, outside
+each process's first 2 simulated minutes:
+
+| Scenario (run) | monerod | monerod-sim (native mining) | monero-wallet-rpc | Python agents, DNS server |
+|---|---|---|---|---|
+| quickstart, 6 h, default (`20261003_110240_clk_quickstart`) | 371 | - | 14 | 31 |
+| eclipse_inject_smoke, 60 min, `--bootfast` (`20261004_103028_clk_eclipse_inject_bootfast`): miners, benign and attacker relays, target, 2 injectors, eclipse monitor | 137 | - | 12 | 31 |
+| selfish_micro, 2 h, `--bootfast` (`20261004_103536_clk_selfish_micro_bootfast`): native mining, selfish miner and bridge agents | 45 | 49 | 6 | 31 |
+
+Runs over 10,000: exactly one per monero process, its start-up loop
+(109,903 reads under `--bootfast`), and none anywhere else in any process.
+The busiest Python agent (the selfish miner, 264 reads per simulated second)
+never read the clock more than 31 times in a row.
+
+The Python agents read the clock explicitly in 69 places
+(`grep -rn "time\.time\|time\.monotonic\|datetime\.now" agents/`). Every
+loop among them sleeps, waits on `select`, makes an RPC call or takes a file
+lock on each pass (`monero_rpc.py` `wait_until_ready`, `base_agent.py`
+`wait_for_height` / `wait_for_wallet_sync`, `autonomous_miner.py`'s wallet
+poll, `file_locking.py`, `eclipse_injector.py`'s event loop); the rest are
+timestamps and cache-TTL checks. None spins on the clock. Python's own
+implicit reads (log timestamps, socket and `select` timeouts) sit next to
+the syscalls they time.
+
+Not checked: cuprated (not installed on this box), runs with thousands of
+hosts, and transaction loads heavier than the quickstart's. If a run ever did
+pass 10,000 reads in a row: a loop waiting for a time to pass would end at
+the same simulated time after fewer iterations; a loop doing work with a clock
+read per step would take 1 µs more simulated time per read past 10,000.
+
 ## Expected effect at scale (not measured here)
 
 - ~240-host 1/10-scale eclipse config: start-up phase ~40 wall-min on the
