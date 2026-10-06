@@ -322,6 +322,11 @@ read per step would take 1 µs more simulated time per read past 10,000.
 
 ## Expected effect at scale (not measured here)
 
+**Measured since, on the big box:** the full 2232-host 50 h eclipse run took 15.6 wall-h
+with `--bootfast` against 22.5 h without; the monerod start-up phase went from 7.71 h to
+0.63 h and nothing else changed (`docs/20261006_bootfast_eclipse_reproduction.md`). The
+estimates below are kept as written.
+
 - ~240-host 1/10-scale eclipse config: start-up phase ~40 wall-min on the
   big box. With `--bootfast` (or arm E's settings) each start drops from ~17 s
   to under 0.5 s, so expect a few minutes. It does not fit this 31 GB box (each monerod holds
