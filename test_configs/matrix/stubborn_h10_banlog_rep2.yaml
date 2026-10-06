@@ -1,0 +1,26 @@
+# P2P BAN CASCADE RE-RUN (2026-10-06, owner decision), third seed (24680). Same
+# cell as stubborn_h10_banlog.yaml (why: see there) at another seed.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_banlog_rep2.yaml
+name: stubborn_h10_banlog_rep2
+seed: 24680
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 240h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48", weigh: sop}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+  alpha:
+    a033: {attacker: {hashrate: 3.3}, honest: {hashrate: [3.35, 3.35]}}
+  depth:
+    d5: {attacker: {attributes: {give_up_depth: "5"}}}
+  log:
+    netcn_debug: {all: {daemon_options: {log-level: "*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL,net.cn:DEBUG"}}}

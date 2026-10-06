@@ -785,3 +785,42 @@ def test_long_depth_specs_vary_only_give_up_depth():
             c["agents"]["attacker-miner"]["attributes"].pop("give_up_depth")
             r["agents"]["attacker-miner"]["attributes"].pop("give_up_depth")
             assert c == r, (name, cell)
+
+
+def test_banlog_specs_add_net_cn_debug_to_the_long_depth_d5_cell():
+    """stubborn_h10_banlog{,_rep,_rep2} (2026-10-06, owner decision): the 240 h
+    d5 cell again, to catch stubborn_h10_long_depth d5's P2P ban cascade in
+    the act. Stock monero scores a peer down when its height drops ("Claims
+    N, claimed M before") and drops it with ban score 5 on the second hit;
+    both log to net.cn, which the monitor level hides. Every daemon adds
+    net.cn:DEBUG after the monitor categories (the last matching category
+    wins). Otherwise each cell equals the long_depth d5 cell, at seeds
+    12345, 54321 and 24680."""
+    import copy
+    import re
+    monitor = re.search(r'MONITOR_LOG_CATEGORIES: &str = "([^"]+)"',
+                        (REPO / "src" / "utils" / "options.rs").read_text()).group(1)
+    _, ref = _plan_and_build("stubborn_h10_long_depth")
+
+    def strip(cfg):
+        cfg = copy.deepcopy(cfg)
+        cfg["general"].pop("simulation_seed")
+        for agent in cfg["agents"].values():
+            opts = agent.get("daemon_options")
+            if opts is not None:
+                opts.pop("log-level", None)
+                if not opts:
+                    agent.pop("daemon_options")
+        return cfg
+
+    for name, seed in (("stubborn_h10_banlog", 12345), ("stubborn_h10_banlog_rep", 54321),
+                       ("stubborn_h10_banlog_rep2", 24680)):
+        _, cfgs = _plan_and_build(name)
+        assert sorted(cfgs) == ["share_sop2_a033_d5_netcn_debug"]
+        cfg = cfgs["share_sop2_a033_d5_netcn_debug"]
+        assert cfg["general"]["simulation_seed"] == seed
+        daemons = [aid for aid, a in cfg["agents"].items() if "daemon" in a]
+        assert len(daemons) == 12
+        for aid in daemons:
+            assert cfg["agents"][aid]["daemon_options"]["log-level"] == monitor + ",net.cn:DEBUG", aid
+        assert strip(cfg) == strip(ref["share_sop2_a033_d5"]), name

@@ -1,0 +1,39 @@
+# P2P BAN CASCADE RE-RUN (2026-10-06, owner decision), first seed (12345).
+# stubborn_h10_long_depth's d5 run had 48 "Host X blocked." bans in three
+# waves (sim 01-08 19:39, 01-09 05:22, 01-09 05:57). They cut relay-002 off
+# for 13.7 sim-hours and the attacker's bridge off for 24 h; no other run on
+# the fixed binary banned anyone. Stock monero scores a peer down whenever
+# its height drops ("Claims N, claimed M before"), drops the connection with
+# ban score 5 on the second hit, and bans the host for 24 h once its score,
+# which never decays, passes 10. SoP lets a node switch to a branch with
+# FEWER blocks (7 over 10 at 01-09 05:23), which its peers see as a height
+# drop. That run had 8 shorter-branch episodes, the most of any run, and its
+# first ban wave came at the 4th. The score hits and the drops log to
+# net.cn, which the monitor level hides, so these cells add net.cn:DEBUG on
+# every daemon (the last matching category wins). Otherwise each is
+# stubborn_h10_long_depth's share_sop2_a033_d5 cell. Runs are not
+# seed-reproducible: each seed is a fresh draw, and 1 of the 2 d5 runs banned.
+#
+#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_banlog.yaml
+name: stubborn_h10_banlog
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 240h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: "true", embedded_shares: "true", window_objects: "48", weigh: sop}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    sop2:
+      honest: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relays: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      bridges: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+  alpha:
+    a033: {attacker: {hashrate: 3.3}, honest: {hashrate: [3.35, 3.35]}}
+  depth:
+    d5: {attacker: {attributes: {give_up_depth: "5"}}}
+  log:
+    netcn_debug: {all: {daemon_options: {log-level: "*:WARNING,blockchain:INFO,txpool:INFO,net.p2p.msg:INFO,daemon.rpc:INFO,global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL,net.cn:DEBUG"}}}
