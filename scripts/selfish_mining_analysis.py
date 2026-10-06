@@ -13,6 +13,7 @@ Exit: 0 all verdicts pass; 1 a verdict failed; 2 inputs missing / empty.
 """
 import argparse
 import glob
+import gzip
 import json
 import os
 import sys
@@ -59,8 +60,11 @@ def parse_found_blocks(run_dir, miner_ids) -> list:
     run_dir = Path(run_dir)
     out = []
     for miner in miner_ids:
-        for log in sorted(glob.glob(str(run_dir / "shadow.data" / "hosts" / miner / "monerod*.stdout"))):
-            with open(log, "r", errors="replace") as f:
+        # Plain, or gzipped in place by scripts/compress_archives.sh.
+        pattern = str(run_dir / "shadow.data" / "hosts" / miner / "monerod*.stdout")
+        for log in sorted(glob.glob(pattern)) + sorted(glob.glob(pattern + ".gz")):
+            opener = gzip.open if log.endswith(".gz") else open
+            with opener(log, "rt", errors="replace") as f:
                 for line in f:
                     m = FOUND.search(line)
                     if m:

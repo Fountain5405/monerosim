@@ -88,3 +88,24 @@ def test_rotated_logs_compressed_existing_gz_kept_and_rerun_is_noop(tmp_path):
     r = _run([str(a)])
     assert r.returncode == 0, r.stderr
     assert "nothing to compress" in r.stdout
+
+
+def test_monerod_stdout_compressed_agent_stdout_kept(tmp_path):
+    """Under Shadow monerod's console log lands in shadow.data/hosts/<host>/
+    monerod.<pid>.stdout, a second copy of bitmonero.log. Agents' stdout is
+    their only log and stays plain."""
+    a = _run_dir(tmp_path, "20261004_120000_done", owner=DEAD)
+    hosts = a / "shadow.data" / "hosts"
+    for host, name in (("relay-001", "monerod.1000.stdout"),
+                       ("miner-001", "monerod-sim.1000.stdout"),
+                       ("miner-001", "bash.1001.stdout"),
+                       ("eclipse-monitor", "python3.1000.stdout")):
+        (hosts / host).mkdir(parents=True, exist_ok=True)
+        (hosts / host / name).write_text(f"{host} {name}\n" * 500)
+    r = _run([str(a)])
+    assert r.returncode == 0, r.stderr
+    assert gzip.open(hosts / "relay-001" / "monerod.1000.stdout.gz", "rt").read() == \
+        "relay-001 monerod.1000.stdout\n" * 500
+    assert (hosts / "miner-001" / "monerod-sim.1000.stdout.gz").exists()
+    assert (hosts / "miner-001" / "bash.1001.stdout").exists()
+    assert (hosts / "eclipse-monitor" / "python3.1000.stdout").exists()

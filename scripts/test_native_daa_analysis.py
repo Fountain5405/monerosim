@@ -27,6 +27,8 @@ from scripts.native_daa_analysis import (
     monerod_window,
     theory_difficulty_at_time,
     expected_blocks,
+    parse_all_miners,
+    count_relay_rejections,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -321,3 +323,20 @@ def test_cli_end_to_end_on_split_archive(tmp_path):
     assert len(lines) > 100  # header + >100 accepted blocks
 
     assert "Verdicts" in report_md.read_text()
+
+
+# ---------------------------------------------------------------------------
+# gzipped monerod stdout (scripts/compress_archives.sh)
+# ---------------------------------------------------------------------------
+def test_readers_accept_gzipped_monerod_stdout(tmp_path):
+    import gzip
+    hosts = tmp_path / "shadow.data" / "hosts"
+    (hosts / "miner-001").mkdir(parents=True)
+    (hosts / "relay-001").mkdir(parents=True)
+    with gzip.open(hosts / "miner-001" / "monerod.1000.stdout.gz", "wt") as f:
+        f.write("2000-01-01 00:02:00.000\tI Found block <aa> at height 5 for difficulty: 120\n")
+    with gzip.open(hosts / "relay-001" / "monerod.1000.stdout.gz", "wt") as f:
+        f.write("x\tE Block does not have enough proof of work\n")
+    raw = parse_all_miners(tmp_path, ["miner-001"])
+    assert [e["height"] for e in raw] == [5]
+    assert count_relay_rejections(tmp_path) == 1

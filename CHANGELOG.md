@@ -127,6 +127,13 @@
   held ~870 GB of plain daemon logs. `analysis/eclipse/analyze_peerlist_dumps.py`
   now finds `peerlist_dump.jsonl.gz` too (it could already read them). Tests
   `scripts/test_compress_archives.py`, `scripts/test_peerlist_dump_layouts.py`.
+  Also compresses `shadow.data/hosts/<host>/monerod*.stdout`: monerod's console
+  log, the same lines as `bitmonero.log` in a shorter format, ~127 MB per relay
+  (140 GB in a 2232-host 50 h eclipse run); agents' stdout stays plain.
+  `selfish_mining_analysis.py` and `native_daa_analysis.py` read `.gz` stdout;
+  `native_mining_check.py` (left unchanged) does not, so run it before
+  compressing. gzip -6 measured 67-79 MB/s per job on these logs (`--jobs N`,
+  default 8).
 - **`scripts/prune_archives.sh` recognises eclipse runs** (`eclipse_metrics.jsonl`,
   any `daemon_logs/*/peerlist_dump.jsonl`, or `agents.eclipse_*` in
   `shadow_agents.yaml`) and compresses them with `compress_archives.sh
