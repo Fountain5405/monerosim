@@ -93,6 +93,11 @@ experiment for the owner to decide on.
 
 ## 2. Stage 1b — `sop2_h10_ctl{,_rep}`: SoP upgrade-transition controls
 
+> **Superseded (2026-10-07):** these SoP controls ran on the simulator
+> before the spec corrections (`0b9e8089`) and the stale-id miner fix
+> (`e2955754`). Campaign 7 re-ran the honest controls
+> (`docs/20261007_sop_campaign7_results.md` §8).
+
 Question (`docs/20260926_sop_h10_rerun.md` reading 5): the SoP honest
 control's second draw lost 17 same-height races, all by the honest-strategy
 attacker, whose daemon was stock (no shares) AND offline behind the bridge
@@ -288,6 +293,11 @@ PoP-exact achieves is PoP-core + det-tie, and against visible ties that is
 modest. Finding 9 (retracted) should be replaced by this.
 
 ## 5. Attacker stranding — a bias in every PoP/SoP attack cell (2026-09-27)
+
+> **Note (2026-10-07):** the SoP rows of this section ran on the
+> pre-correction simulator and are superseded by campaign 7
+> (`docs/20261007_sop_campaign7_results.md`). The stranding mechanism and
+> the PoP rows are not affected.
 
 > **Update 2026-09-28 (§6):** the flagged-bridge re-run (fix option 1)
 > did not remove stranding, and the mechanism below is only half right.

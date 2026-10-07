@@ -549,6 +549,12 @@ results doc §5–§6).
 
 ## 7. Reproducibility ledger
 
+> **Note (2026-10-07):** the ledger records what each run measured on the
+> apparatus of its day. Every SoP row dated before 2026-10-04 ran on a
+> simulator that deviated from MRL #146 and had the stale-id miner bug,
+> so its numbers are superseded (§4 E4, campaign 7 notice). The campaign
+> 7 rows are at the end of this section.
+
 Every run's archived directory carries its own `input_config.yaml`,
 `shadow_agents.yaml`, daemon logs, and analysis output; runs execute the
 commit listed (run_sim rebuilds nothing with `--no-build`, so the working
