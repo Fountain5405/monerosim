@@ -824,3 +824,18 @@ def test_banlog_specs_add_net_cn_debug_to_the_long_depth_d5_cell():
         for aid in daemons:
             assert cfg["agents"][aid]["daemon_options"]["log-level"] == monitor + ",net.cn:DEBUG", aid
         assert strip(cfg) == strip(ref["share_sop2_a033_d5"]), name
+
+
+def test_banfix_specs_equal_the_banlog_specs():
+    """stubborn_h10_banfix{,_rep,_rep2} (2026-10-07, plan agreed 2026-10-06):
+    the banlog cells again on monerod-sim with the SoP height-drop guard
+    (hit_score in patches/monero-sim-pop.patch). Only the binary changes:
+    same seeds, same net.cn:DEBUG, so the logs still show every height-drop
+    hit and would show any scored drop or ban. Each spec builds exactly its
+    banlog spec's cells."""
+    for name, base_name in (("stubborn_h10_banfix", "stubborn_h10_banlog"),
+                            ("stubborn_h10_banfix_rep", "stubborn_h10_banlog_rep"),
+                            ("stubborn_h10_banfix_rep2", "stubborn_h10_banlog_rep2")):
+        _, cfgs = _plan_and_build(name)
+        _, base = _plan_and_build(base_name)
+        assert cfgs == base, name
