@@ -1309,7 +1309,7 @@ index 3608364dd..92b442aad 100644
    if(!(bl.prev_id == get_tail_id()))
    {
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 35079e858..671ebee7b 100644
+index 35079e858..c43ad2d79 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1320,7 +1320,7 @@ index 35079e858..671ebee7b 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -896,6 +897,28 @@ namespace cryptonote
+@@ -896,6 +897,29 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -1345,11 +1345,12 @@ index 35079e858..671ebee7b 100644
 +
 +    // SIMULATION ONLY (step 3): arm the SoP weight table on the PoP engine.
 +    void set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k, bool rejudge_displaced = false);
++    bool sim_sop_enabled() const { return m_sim_sop_enabled; }
 +
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1210,6 +1233,64 @@ namespace cryptonote
+@@ -1210,6 +1234,64 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1694,7 +1695,7 @@ index 1719d8c43..c45262e11 100644
      //bool get_payload_sync_data(HANDSHAKE_DATA::request& hshd, cryptonote_connection_context& context);
      bool should_drop_connection(cryptonote_connection_context& context, uint32_t next_stripe);
 diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.inl b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
-index 3ad26a3de..9523dbc9c 100644
+index 3ad26a3de..a73c508fe 100644
 --- a/src/cryptonote_protocol/cryptonote_protocol_handler.inl
 +++ b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
 @@ -2661,6 +2661,48 @@ skip:
@@ -1746,6 +1747,24 @@ index 3ad26a3de..9523dbc9c 100644
    template<class t_core>
    bool t_cryptonote_protocol_handler<t_core>::relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay)
    {
+@@ -2695,6 +2737,17 @@ skip:
+       MERROR("Negative score hit");
+       return;
+     }
++    // SIMULATION ONLY (Share-or-Perish, MRL #146): every caller of hit_score
++    // scores a peer whose height went DOWN ("Claims N, claimed M before").
++    // Under SoP that is legitimate: a node may switch to a branch with fewer
++    // blocks but more share weight. Scoring it dropped connections with ban
++    // score 5 and, through the host fail score that never decays, banned
++    // honest peers for 24 h (stubborn_h10_banlog runs, 2026-10-07).
++    if (m_core.get_blockchain_storage().sim_sop_enabled())
++    {
++      MCLOG(el::Level::Info, "blockchain", el::Color::Default, context << "SIM-SoP: peer height drop not scored");
++      return;
++    }
+     context.m_score -= score;
+     if (context.m_score <= DROP_PEERS_ON_SCORE)
+       drop_connection_with_score(context, 5, false);
 diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler_common.h b/src/cryptonote_protocol/cryptonote_protocol_handler_common.h
 index 63655eed8..18e4828dd 100644
 --- a/src/cryptonote_protocol/cryptonote_protocol_handler_common.h
