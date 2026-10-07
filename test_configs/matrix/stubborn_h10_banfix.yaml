@@ -7,7 +7,10 @@
 # under SoP (hit_score in patches/monero-sim-pop.patch, logged as "SIM-SoP:
 # peer height drop not scored"). These are the banlog cells unchanged, on
 # that binary and still with net.cn:DEBUG: expect the hits, but no score-5
-# drop and no ban. Shadow stays v0.2.4, like every campaign 7 run.
+# drop and no ban. The owner's rebuild also brought Shadow to v0.2.5 (the
+# pin; the banlog runs used v0.2.4). That cannot confound the pass
+# criteria, which are per hit, and the attack rates are compared with the
+# banlog runs as a check.
 #
 #   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_banfix.yaml
 name: stubborn_h10_banfix
