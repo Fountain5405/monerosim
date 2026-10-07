@@ -469,9 +469,13 @@ results doc §5–§6).
     - *Deep reorgs (Model B, validated against the simulator):* reorgs
       orphaning 10+ honest blocks at α = 0.33 come once per 2.9 canonical
       years at d = 2, once per 1.5 at d = 3, and once per 5 months at
-      d = 5. #146's "about one per 3 years" holds only at d = 2. Per real
-      day the rates are about 1.5× higher under attack, because difficulty
-      retargets on the canonical chain.
+      d = 5. That is for an attacker that reveals at the first chance but
+      keeps mining while up to d − 1 blocks behind. #146's "about 1 per 3
+      years" comes from tevador's simulator, whose attacker gives up once
+      more than 5 work objects behind, so it is one attacker's rate, not a
+      bound. An independent simulator on the #146 thread (2026-10-04)
+      finds propagation delay raising it much further (about 81× at a 3 s
+      mean delay).
     - *The window does not hand fork choice to plain difficulty.* Past
       k·w = 48 work objects the lateness factors are 1, but recent blocks
       still weigh diff/w · (1 + shares) (#146, Table 3).
@@ -487,14 +491,14 @@ results doc §5–§6).
         Monero's peer scoring punishes the height drop of a legitimate
         switch to a shorter, heavier branch (results doc §6; a fix is
         under test).
-    - *Spec gaps:*
-      - the fork-choice loop is unspecified, and per-block re-judging cuts
-        the attacker to {0.043, 0.000} at α = 0.40, against 0.187 with
-        whole-branch judging;
-      - the per-time claims assume a fixed block rate;
-      - the 10+ reorg claim assumes d = 2;
-      - as implemented, unmodified v0.18 nodes reject share-carrying
-        blocks.
+    - *Spec gaps* (checked against the issue text 2026-10-07):
+      - re-judging displaced blocks is unspecified, and per-block
+        re-judging cuts the attacker to {0.043, 0.000} at α = 0.40,
+        against 0.187 with whole-branch judging;
+      - the spec's `version_minor` rule makes most SoP blocks invalid to
+        unupgraded v0.18 nodes (the field is their hard-fork vote and must
+        be at least 16), so SoP is a hard fork;
+      - the 10+ reorg figure is one attacker's rate, not a bound.
     - *Not established:*
       - network scale (12 daemons, 2 honest miners);
       - attackers with a network advantage;

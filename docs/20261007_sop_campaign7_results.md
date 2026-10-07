@@ -13,9 +13,9 @@ repository. Whether and what to report on MRL #146 is the owner's decision.
 |---|---|---|
 | 1 | SoP defeats the spec's own stubborn attacker at α ≤ 0.45: it earns less than its hashrate share in every cell. At α = 0.33 its share falls from 0.30 (stock) to about 0.02. The margin shrinks with α: 0.11–0.19 at α = 0.40 and 0.37 at α = 0.45. | High at α = 0.33 (13 runs of 240 h). Moderate at 0.30/0.40/0.45 (6 h, n = 3). |
 | 2 | An independent race model (Model B) reproduces the simulator: attacker share, reveal rate, orphan rates, race shapes and, once replicated, reorg depth. | High for this attacker and topology. |
-| 3 | Reorgs of 10+ blocks depend on how long the attacker holds on. At α = 0.33 (Model B): 1 per 2.9 canonical years at give-up depth 2, 1 per 1.5 at depth 3, and 1 per 5 months at depth 5. The spec's "about 1 per 3 years" holds only at depth 2. | Moderate–high (model, validated against the simulator at shallower depths). |
+| 3 | Reorgs of 10+ blocks depend on how far behind the attacker keeps mining. At α = 0.33 (Model B), an attacker that reveals at the first chance but keeps mining while up to 1, 2 or 4 blocks behind (give-up depth 2, 3, 5) causes one per 2.9, 1.5 and 0.41 years. The spec's "about 1 per 3 years" comes from tevador's simulator, whose attacker gives up once more than 5 work objects (under half a block) behind. It is one attacker's rate, not a bound. | Moderate–high (model, validated against the simulator at shallower depths). |
 | 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. | High for the mechanism (67 of 67 bans replayed exactly). The fix is committed; its check is pending (§6.4). |
-| 5 | Spec gaps: (a) which chains are compared after a reorg is unspecified, and the two readings give very different attacker revenue; (b) as implemented, unmodified v0.18 nodes reject share-carrying blocks; (c) the per-time claims assume a fixed block rate; (d) the 10+ reorg claim assumes give-up depth 2. | High for (a), (c), (d). (b) depends on an encoding the spec does not define (§7.2). |
+| 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and the two readings give very different attacker revenue; (b) the spec's `version_minor` rule makes most SoP blocks invalid to unupgraded nodes, so SoP is a hard fork; (c) the 10+ reorg figure is one attacker's rate, not a bound. | High (checked against the issue text and tevador's simulator, §7). |
 
 Every SoP number recorded before 2026-10-04 is superseded (§1), including
 manuscript finding 10 as it stood and the "SoP lost both ES cells" result
@@ -171,17 +171,31 @@ embedding its shares (Model B, about 677 canonical years per cell):
 | 3 | 0.677 | 1.5 years |
 | 5 | 2.44 | 5 months |
 
-- MRL #146's "about one reorg of 10+ blocks per 3 years" matches d = 2
-  only. An attacker that holds on until honest leads by 5 causes them
-  about 7× as often. The spec does not fix d, so the claim needs it
-  stated. Earlier estimates in the spec comments of the depth matrices
-  were shorter runs: d3 there read 1 per 1.35 years.
-- Per real day these rates are higher. Difficulty retargets on the
-  canonical chain, and under this attack about a third of all found blocks
-  are orphaned. So about 1.49× as many blocks are found per day as at a
-  fixed rate (10,443 found against 7,013 canonical in the first d5 run).
-  Model B now reports canonical-day rates (`e1b6b9db`). The spec's
-  per-time figures assume a fixed rate.
+- MRL #146 says "Monte Carlo simulations show that the attacker can
+  achieve on average about 1 such reorg per 3 years of stubborn mining".
+  - The figure comes from tevador's published simulator
+    (`tevador/scratchpad`, `share-or-perish/blockhain-sim.py`), from his
+    table of 2025-09-28: w = 16, the uniqueness rule, no uncles.
+  - That attacker hunts the deep reorg: a success needs the honest branch
+    to hold 10 blocks. But it abandons its fork once honest leads by more
+    than 5 work objects, less than half a block.
+  - Ours reveals at the first chance yet keeps mining while up to d − 1
+    blocks behind, and its rate rises about 7× from d = 2 to d = 5.
+
+  So "about 1 per 3 years" is one attacker's rate, not a bound. The two
+  attackers differ in more than the give-up rule, so the d = 2 figure's
+  closeness to 3 years is not a like-for-like check. Earlier estimates in
+  the spec comments of the depth matrices were shorter runs (d3 read 1 per
+  1.35 years).
+- The time base matters. Difficulty retargets on the canonical chain, and
+  under this attack about a third of all found blocks are orphaned, so
+  about 1.49× as many blocks are found per day as are kept (10,443 found
+  against 7,013 canonical in the first d5 run).
+  - Rates must therefore be counted per canonical day (720 canonical
+    blocks), which is a real day. Model B does so since `e1b6b9db`.
+  - tevador's simulator sets block difficulty from the honest hashrate
+    alone (`BLOCK_DIFF = HONEST_HR * 120`), which amounts to the same. Its
+    per-time figure needs no correction.
 - The simulator cannot observe these rates directly. It saw two
   10-block reorgs in 48.7 canonical days at d5, where Model B expects
   0.33 (Poisson p about 0.04; see §4 on depth), and none at d2 (29.2
@@ -273,21 +287,55 @@ real network, with real peer counts and peer churn, is not measured.
    disagree, and the attacker earned {0.043, 0.000} at α = 0.40 and
    {0.000, 0.000} at α = 0.45. Under the whole-branch reading it earned
    0.187 and 0.373 (§3).
-2. **Not a soft fork, as implemented.** In run `20260930_161539` an
-   unmodified v0.18 bridge rejected share-carrying blocks ("has old
-   version", `blockchain.cpp`; vote check in `hardfork.cpp`). Our
-   implementation carries the share count in the block's minor version
-   (conformance doc, convention 8), which legacy nodes treat as a
-   hard-fork vote. The spec does not define how a block carries its shares
-   in a form legacy nodes accept. Verify against the issue text before
-   reporting this one.
-3. **The per-time claims assume a fixed block rate.** About 1.49× as many
-   blocks are found per real day under this attack (§5).
-4. **The 10+ reorg rate depends on the give-up depth**: about 1 per 3
-   years only at d = 2, about 1 per 5 months at d = 5 (§5).
-5. **The P2P ban cascade (§6)**: the spec's weight-based fork choice
-   conflicts with monero's height-based peer scoring. Pending the fix
-   check.
+2. **SoP is a hard fork, not a soft fork.**
+   - The issue requires miners to "set the `version_minor` block header
+     field to be equal to the number of workshares included in the block".
+   - In monero v0.18, `version_minor` is the hard-fork vote. A block is
+     valid only if that vote is at least the current fork version, 16
+     (`HardFork::do_check`, `hardfork.cpp:109–113`).
+   - So every SoP block with fewer than 16 workshares is invalid to an
+     unupgraded node. Honest blocks here carry about 15 on average, with a
+     median of 11.
+   - The issue calls `tx_extra` placement of the shares "the simplest
+     backwards-compatible solution". That holds for the share data, not
+     for this field.
+   - Observed: an unmodified v0.18 bridge rejected SoP blocks with "has old
+     version" (`blockchain.cpp:1889`, run `20260930_161539`).
+
+   Our implementation follows the rule as written (conformance doc,
+   convention 8).
+3. **The 10+ reorg figure is one attacker's rate, not a bound** (§5).
+4. **The P2P ban cascade (§6).** The weight-based fork choice lets nodes
+   switch to branches with fewer blocks, which conflicts with monero's
+   height-based peer scoring. Pending the fix check.
+
+*Withdrawn after checking (2026-10-07):* "the per-time claims assume a
+fixed block rate". tevador's simulator sets difficulty from the honest
+hashrate, so its days are already canonical days (§5).
+
+### 7.1 Relation to the MRL #146 thread (read 2026-10-07)
+
+- **tevador's simulator** (single honest node, zero delay, γ = 0.5 on
+  exact weight ties) is the source of "about 1 per 3 years". Its attacker
+  is a deep-reorg seeker with an object-based give-up rule (§5).
+- **albinjm (comment of 2026-10-04)** reported results from an
+  independent event simulator: 10 pools, lognormal propagation delays,
+  and calibration against tevador's table.
+  - It agrees with us on profit: no withholding strategy earned its fair
+    share at α ≤ 0.33.
+  - It adds what our micro network cannot show, the effect of delay. At a
+    3 s mean, 10+ reorgs came about 81× as often as tevador's figure,
+    15–16 % of honest workshares were lost to `version_minor` collisions,
+    and 10+ reorgs appeared even without an attacker at 5 s and above.
+  - It asks whether a shorter branch with more shares is meant to replace
+    a longer one past the cutoff (its question 1), and which chain the
+    lateness factors judge (question 5; we judge the alt chain only,
+    conformance doc).
+- **Not in the thread:**
+  - the P2P ban cascade (that simulator has no P2P layer), which is a
+    concrete consequence of exactly its question 1;
+  - the hard-fork consequence of the `version_minor` rule;
+  - the size of the re-judging ambiguity (item 1).
 
 ## 8. Controls
 
@@ -309,7 +357,9 @@ real network, with real peer counts and peer churn, is not measured.
   a global network, more shares could miss the next block template, and
   lighter honest blocks help the attacker. The 5 s lateness window and the
   ban cascade (§6.5) also need realistic peer counts and latencies. This is
-  the roadmap's stepped-up replica (about 300 nodes).
+  the roadmap's stepped-up replica (about 300 nodes). An independent
+  simulator with a 3 s mean delay (§7.1) reports 15–16 % of honest
+  workshares lost and 10+ reorgs far more often than at zero delay.
 - **Other attackers.** Only the spec's stubborn attacker, a non-embedding
   variant, ES and lead-2 were run. No attacker with a network advantage
   (γ > 0) was run.
