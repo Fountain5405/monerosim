@@ -280,7 +280,8 @@ real network, with real peer counts and peer churn, is not measured.
 
 1. **The fork-choice loop is unspecified.** The spec does not say whether
    blocks displaced by a reorg are judged again one at a time or as a
-   whole branch (conformance doc, convention 6). The readings differ
+   whole branch. We judge a displaced branch again as a whole
+   (`docs/20260930_sop_conformance.md`, convention 6). The readings differ
    materially. Under the per-block "rejudge" reading
    (`--sim-sop-rejudge-displaced`), switches were undone within a second
    (flip-backs on the attacker's bridge: up to 3 per run, in 3 of 4 runs), so nodes can
@@ -302,8 +303,8 @@ real network, with real peer counts and peer churn, is not measured.
    - Observed: an unmodified v0.18 bridge rejected SoP blocks with "has old
      version" (`blockchain.cpp:1889`, run `20260930_161539`).
 
-   Our implementation follows the rule as written (conformance doc,
-   convention 8).
+   Our implementation follows the rule as written
+   (`docs/20260930_sop_conformance.md`, convention 8).
 3. **The 10+ reorg figure is one attacker's rate, not a bound** (§5).
 4. **The P2P ban cascade (§6).** The weight-based fork choice lets nodes
    switch to branches with fewer blocks, which conflicts with monero's
@@ -329,8 +330,11 @@ hashrate, so its days are already canonical days (§5).
     and 10+ reorgs appeared even without an attacker at 5 s and above.
   - It asks whether a shorter branch with more shares is meant to replace
     a longer one past the cutoff (its question 1), and which chain the
-    lateness factors judge (question 5; we judge the alt chain only,
-    conformance doc).
+    lateness factors judge (question 5). We apply Tables 4 and 5 to both
+    chains: a main-chain block is on time by definition, and main-chain
+    shares are judged. That is its "both chains" reading, and it matches
+    tevador's comment of 2025-10-15 that a block's late share counts once
+    the penalty lapses.
 - **Not in the thread:**
   - the P2P ban cascade (that simulator has no P2P layer), which is a
     concrete consequence of exactly its question 1;
@@ -363,6 +367,15 @@ hashrate, so its days are already canonical days (§5).
 - **Other attackers.** Only the spec's stubborn attacker, a non-embedding
   variant, ES and lead-2 were run. No attacker with a network advantage
   (γ > 0) was run.
+- **Honest shares in the attacker's first block.** Our attacker's miner is
+  offline and never embeds honest workshares. The spec's analysis lets an
+  attacker use them in its first private block, which is why the
+  uniqueness rule exists. Our attacker is weaker there, so our deep-reorg
+  rates may be conservative.
+- **`n_f` counts shared workshares** (a known deviation,
+  `docs/20260930_sop_conformance.md`). It cannot affect our attack forks
+  (the attacker never holds honest shares). Honest-vs-honest forks may
+  leave the lateness window a little early.
 - **Mixed networks** (upgraded alongside non-upgraded nodes): see §8.
 - **α other than 0.33 at long horizons.** The 0.30/0.40/0.45 rows are 6 h,
   n = 3.

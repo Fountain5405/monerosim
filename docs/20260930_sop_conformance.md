@@ -75,16 +75,35 @@ Each is a choice. The oracle and the daemon must both follow it.
    It is the daemon flag `--sim-sop-rejudge-displaced`, off by default.
 7. **One draw per tie.** The daemon caches the random draw per (alt tip, main
    tip) pair, so re-judging the same pair cannot re-roll it.
-8. **Share validity.** A block's embedded shares count only when the whole set
-   conforms. Slots must run `0..N-1`, `N` must equal `version_minor`, and every
-   share's PoW must meet `diff/w`. Otherwise `n_sh = 0` and the block counts
-   as its header alone, both in `n_f` and in weight.
+8. **Share validity.** The slot rule itself is the spec's: miners set
+   `version_minor` to the number of included workshares, whose slots run
+   `0..N-1`. Every share's PoW must meet `diff/w`. The spec does not say
+   what follows from a violation; its "requires" suggests the block is
+   invalid. Our convention is more lenient: `n_sh = 0`, and the block counts
+   as its header alone, both in `n_f` and in weight. *(Relabelled
+   2026-10-07: this was listed as if the whole rule were ours. No violating
+   block occurred in the runs checked.)*
 9. **Sim-only guard.** The regime is objective when the first alt block's
    difficulty is below `w`. Fakechain bootstrap difficulties never occur with a
    chain snapshot.
 10. **Integer arithmetic.** `unit = max(1, floor(diff / w))`. A recent block
     weighs `unit * (l_b + l_b * (number of counted shares))`, and an old one
     weighs `diff`.
+
+
+## Known deviation (found 2026-10-07)
+
+- **`n_f` counts shared workshares.** The spec counts the alt chain's work
+  objects "that are not contained in the main chain". The daemon and the
+  oracle count every alt block and every share it embeds. That includes
+  shares the main chain's block at the fork height also embeds; both
+  blocks have the same parent, so their shares can coincide.
+  - Affected: forks whose first blocks share workshares, e.g. two honest
+    miners' competing blocks. There `n_f` can reach `k*w` early, and the
+    window close sooner than the spec says.
+  - Not affected: attack forks in our setup, because the attacker's
+    offline miner never holds honest shares.
+  - Not fixed: it needs a daemon change and a rebuild.
 
 ## Log line
 
