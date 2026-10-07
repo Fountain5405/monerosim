@@ -2,7 +2,9 @@
 
 **Status:** working notes for a planned manuscript, started 2026-09-22
 (branch `feat/selfish-mining-experiments`, now `dev`). §5 rewritten as a
-current-state list on 2026-09-30. Everything below is backed by committed
+current-state list on 2026-09-30. Findings 9 and 10 updated on 2026-10-07
+from campaign 7 (`docs/20261007_sop_campaign7_results.md`), which
+supersedes every earlier Share-or-Perish number. Everything below is backed by committed
 code, archived runs, and dated result documents in this repository; §7 maps
 every number to its run directory and commit. Companion index:
 `docs/SELFISH_MINING.md` §10.
@@ -115,6 +117,28 @@ over-predicts exactly where a rational attacker would operate.**
 
 ### E4 — Countermeasures (RQ5: which countermeasure beats which strategy)
 
+> **CAMPAIGN 7 (2026-09-30 to 2026-10-07,
+> `docs/20261007_sop_campaign7_results.md`; supersedes every SoP number in
+> this section).** An audit against the text of MRL #146 found the
+> simulator's SoP off-spec in four ways, corrected in `0b9e8089`:
+> - past the k·w = 48-object window the fallback compared plain cumulative
+>   difficulty, where the spec keeps its share-counted weight;
+> - blocks carried only their own miner's shares;
+> - lateness used the wrong reference;
+> - displaced blocks were re-judged one at a time.
+>
+> A miner bug that stored some blocks under a share's id then affected
+> every SoP run until 2026-10-04 (fixed in `e2955754`). On the corrected
+> simulator:
+> - ES earns {0.000, 0.000} and lead-2 {0.015, 0.000} at α = 0.40.
+> - The spec's own stubborn attacker, embedding its shares, earns
+>   0.015–0.025 at α = 0.33 (10 runs of 240 h; stock 0.287–0.310), and
+>   stays below α up to α = 0.45.
+> - The "SoP lost both ES cells" result below was an artifact of the
+>   plain-difficulty fallback.
+>
+> Findings 9 and 10 are rewritten from this campaign.
+>
 > **STRANDING CAVEAT (2026-09-27, same doc §5):** in every PoP/SoP attack
 > cell the attacker's bridge keeps stock fork choice, so after releasing a
 > long branch the attacker sees it "win" on the bridge while the flagged
@@ -137,6 +161,8 @@ over-predicts exactly where a rational attacker would operate.**
 > lead-2 micro {0.272, 0.366}, mid {0.328, 0.291}), but realized γ is now
 > 0.02–0.20, so these rows are a sensitivity check, not replacements.
 > **SoP lost both ES cells** ({0.405, 0.495}): see finding 10.
+> *[2026-10-07: an artifact of the simulator's plain-difficulty fallback,
+> corrected before campaign 7; see the notice above.]*
 >
 > **STRANDING-FREE RE-RUN (2026-09-29, same doc §8; supersedes the two
 > notices above for these cells).** The attacker is now rejection-aware
@@ -314,7 +340,8 @@ cell to date measures anything but pop-core + det-tie.
 
 ## 5. Findings (manuscript-claim-ready)
 
-Current state as of **2026-09-30**. Each finding gives its latest
+Current state as of **2026-09-30**; findings 9 and 10 as of
+**2026-10-07**. Each finding gives its latest
 measurement. The versions it replaced, including retracted text, are kept
 word for word in Appendix A. The numbers 8 and 10 are fixed because other
 documents cite them. E4 countermeasure numbers are n = 2 per cell, α = 0.4,
@@ -401,43 +428,78 @@ results doc §5–§6).
    *Not re-measured on the fixed apparatus:* the tie-policy result (#144's
    deterministic tie was ~4× weaker than a random tie against ES in the
    pilot: 0.244/0.296 vs 0.022/0.123, §4 E4 item 3).
-9. **Neither countermeasure removes the damage, only the profit.** Under
-   PoP the attack's network orphan rate rose from 0.312 (stock) to
-   0.31–0.45 across variants, and MSB detectability stayed high (z +7.4
-   to +14.9; §4 E4 item 5, pre-review apparatus). Under SoP the
-   network orphan rate read 0.36–0.52 while the attacker earned nothing
-   (2026-09-26 run, `docs/20260926_sop_h10_rerun.md`). Incentive removal
-   and DoS resilience are separate properties. Orphan rates have not been
-   re-read on the §8 runs.
-10. **Share-or-Perish v2 (MRL #146, embedded shares) holds both textbook
-    attackers at zero, within its 48-object window.**
-    - *Result (§8):* ES {0.000, 0.000} and lead-2 {0.000, 0.000}, vs stock
-      {0.519, 0.544} and {0.491, 0.500}. No honest node made a single
-      past-window (OBJECTIVE) fork decision in any SoP cell. The longest
-      rejected reveal was 17 blocks. The earlier stock-bridge run agrees:
-      ES {0.035, 0.000} (0.000 against an honest node's chain), lead-2
-      {0.000, 0.000}, and all 2,822 subjective fork decisions carried share
-      weight (`docs/20260926_sop_h10_rerun.md`).
-    - *Scope: the window.* #146 applies lateness only while a fork holds
-      fewer than k·w = 48 work objects. Past that, fork choice is plain
-      cumulative difficulty. The fallback can be reached: in the
-      flagged-bridge re-run (results doc §6) a stranding attacker kept a
-      rejected branch level for 49 and 51 blocks, honest miners switched to
-      it on the objective rule, and ES earned {0.405, 0.495}. A work object
-      is a block plus each share embedded in it, so an attacker that embeds
-      its own shares (expected ~15 per block at w = 16, not yet measured)
-      reaches 48 in about 3 blocks, not 48. A deliberately stubborn attacker, with and without embedded
-      shares, is being measured now (`stubborn_h10`, 2026-09-30). The
-      simulator's window count was corrected first, so that only shares
-      whose PoW verifies count (`0101b624`).
-    - *Costs (2026-09-26 run):* the attacker's hashrate is discarded (103–143
-      canonical blocks per 6 h vs ≈ 200 in the controls). A miner that
-      does not gossip shares weighs one unit in every tie: the SoP
-      control's second draw lost 17 such races (share 0.326, orphan 0.218),
-      an upgrade-transition cost that n = 2 cannot size. Honest controls:
-      stock {0.381, 0.410}, SoP {0.440, 0.326}. They ran on the
-      pre-2026-09-29 `h10` preset (tip difficulty 9.8 % low) and have not
-      been re-run on the corrected one.
+9. **Neither countermeasure removes the damage, only the profit, but under
+   SoP the damage falls almost entirely on the attacker.** Under PoP the
+   attack's network orphan rate rose from 0.312 (stock) to 0.31–0.45
+   across variants, and MSB detectability stayed high (z +7.4 to +14.9;
+   §4 E4 item 5, pre-review apparatus). Under SoP (campaign 7, α = 0.33,
+   240 h; `docs/20261007_sop_campaign7_results.md` §3) the network orphan
+   rate is 0.320–0.329 against 0.202–0.209 under stock, while the attacker
+   earns about 0.02. Almost all of it is the attacker's own blocks
+   (attacker orphan rate 0.95–0.97): honest miners lose about 1 % of their
+   blocks to reveals, against about 17 % under stock. SoP leaves:
+   - the wasted attacker hashrate;
+   - the deep reorgs of finding 10;
+   - at give-up depth 5, the P2P ban cascade.
+
+   Incentive removal and DoS resilience are separate properties. PoP
+   orphan rates have not been re-read on the §8 runs. *(Updated
+   2026-10-07; the earlier text is in Appendix A.)*
+10. **Share-or-Perish (MRL #146, as specified) defeats the textbook
+    attackers and the spec's own stubborn attacker up to α = 0.45. Its
+    margin shrinks with α, and its 10+ block reorg rate depends on how long
+    the attacker holds on.** Campaign 7 on the corrected simulator
+    (`docs/20261007_sop_campaign7_results.md`); rewritten 2026-10-07, the
+    earlier text is in Appendix A.
+    - *Textbook attackers (α = 0.40, n = 2):* ES {0.000, 0.000} and lead-2
+      {0.015, 0.000}, against stock {0.519, 0.544} and {0.491, 0.500}
+      (2026-09-29 pairs).
+    - *The stubborn attacker* (`window_stubborn`): it withholds, reveals
+      once its branch holds 48 work objects and outweighs honest, and gives
+      up when honest leads by d blocks. Embedding its own shares, it earns:
+      - 0.015–0.025 at α = 0.33 (10 runs of 240 h, d = 2, 3, 5), against
+        stock 0.287–0.310 (3 runs);
+      - 0.11–0.19 at α = 0.40 depending on d (6 h, n = 3; stock 0.38–0.46);
+      - 0.373 at α = 0.45 (stock 0.496).
+
+      That is below α in every cell. Embedding no shares, it earns 0.000.
+    - *Model agreement:* an independent race model (Model B,
+      `scripts/sop_race_model.py`) reproduces the revenue, the reveal
+      rate, the orphan rates and the race shapes.
+    - *Deep reorgs (Model B, validated against the simulator):* reorgs
+      orphaning 10+ honest blocks at α = 0.33 come once per 2.9 canonical
+      years at d = 2, once per 1.5 at d = 3, and once per 5 months at
+      d = 5. #146's "about one per 3 years" holds only at d = 2. Per real
+      day the rates are about 1.5× higher under attack, because difficulty
+      retargets on the canonical chain.
+    - *The window does not hand fork choice to plain difficulty.* Past
+      k·w = 48 work objects the lateness factors are 1, but recent blocks
+      still weigh diff/w · (1 + shares) (#146, Table 3).
+      - The earlier "past that, fork choice is plain cumulative
+        difficulty" came from a simulator deviation, corrected 2026-09-30
+        (`0b9e8089`). So did the ES {0.405, 0.495} it explained (results
+        doc 2026-09-26 §6).
+      - A non-embedding attacker weighs one unit per block against about
+        16 per honest block, so it cannot win past the window either.
+    - *Costs:*
+      - the damage of finding 9;
+      - at d = 5, honest nodes banned each other for 24 h in 3 of 5 runs.
+        Monero's peer scoring punishes the height drop of a legitimate
+        switch to a shorter, heavier branch (results doc §6; a fix is
+        under test).
+    - *Spec gaps:*
+      - the fork-choice loop is unspecified, and per-block re-judging cuts
+        the attacker to {0.043, 0.000} at α = 0.40, against 0.187 with
+        whole-branch judging;
+      - the per-time claims assume a fixed block rate;
+      - the 10+ reorg claim assumes d = 2;
+      - as implemented, unmodified v0.18 nodes reject share-carrying
+        blocks.
+    - *Not established:*
+      - network scale (12 daemons, 2 honest miners);
+      - attackers with a network advantage;
+      - mixed upgraded and legacy networks: the "connected" control does
+        not model a legacy node.
     - *Reporting:* a bridge running stock fork choice is a biased reference
       under SoP. Report SoP shares against an honest node's chain.
 
@@ -470,6 +532,16 @@ results doc §5–§6).
 - Chain-selection countermeasures (Publish-or-Perish etc.) deliberately
   not built: they change consensus behaviour; when built as sim-only flags
   they measure hypothetical future Monero, not today's.
+
+- **Share-or-Perish is our implementation of MRL #146**
+  (`docs/20260930_sop_conformance.md`).
+  - Where the issue is silent we chose conventions, for example
+    whole-branch comparison and the share-count encoding. The oracle checks
+    every decision against that reading, not against the authors' intent.
+  - Campaign 7 ran on Shadow v0.2.4, except the ban-fix check (v0.2.5).
+    From 2026-10-04 15:57 UTC its runs were unpinned
+    (`MONEROSIM_SHADOW_CPU_PINNING=0`). That CPU placement does not change
+    results is assumed, not tested.
 
 ## 7. Reproducibility ledger
 
@@ -647,6 +719,24 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
 
 † daemon `monerod-sim` built 2026-09-26T12:41Z from the patch stack at `4793ba5f`; analysis re-run at `703bdffe` (`--reanalyze`). See `docs/20260926_sop_h10_rerun.md`.
 
+
+**Campaign 7 (2026-09-30 to 2026-10-07).** `matrix_runs/<matrix>/cells/*.json`
+lists every run with its health. `docs/20261007_sop_campaign7_results.md` §2
+maps matrices to run directories. Launch commits:
+
+| Runs | Commit | Matrices | What they show |
+|---|---|---|---|
+| `20260930_*` stock rows | `32cfc34f` | stock cells of `stubborn_h10{,_rep}` (6 h) and `stubborn_h10_long{,_rep}` (240 h) | stock attacker 0.287 / 0.310 at α 0.33; the stock α sweep |
+| `20261003_115208_*` (pre-fix binary), `20261004_102321_*` (fixed binary) | `8b8a93b6` | `stale_id_stress` | the miner fix: stale ids 6 → 0, dominant-miner orphans 62 % → 0 % |
+| `20261004_111002_*` | `b85fad1b` | 6 h SoP cells of `stubborn_h10{,_rep,_rep2}`; `stubborn_h10_rejudge*`, `pop_sop2_h10_fixed*`, `sop2_h10_honest*` | SoP α sweep; controls |
+| `20261004_1[56]*` | `34cd8ad5` (unpinned) | the 240 h SoP cells and `stubborn_h10_long_rep2`; unfinished and third-draw 6 h cells | SoP at α 0.33, d2 / d3 / d5; the Model B comparison |
+| `20261006_033956_*` | `487499f2` | `stubborn_h10_banlog{,_rep,_rep2}` | the P2P ban cascade, logged with net.cn:DEBUG |
+| `20261007_103711_*` | `e5631456` (fix `002cd40c`) | `stubborn_h10_banfix{,_rep,_rep2}` | the ban-cascade fix check (running) |
+
+Daemon: `monerod-sim` with the corrected SoP and the miner fix. The pop
+patch sha is `2d6499a8…`, installed 2026-10-03, except `stubborn_h10_banfix`
+(`a51b85b0…`, installed 2026-10-07 together with Shadow v0.2.5).
+
 ## 8. Planned work
 
 1. ~~ω-sweep under v13 semantics~~ ✅ done 2026-09-22 (E3 above, finding 7):
@@ -671,9 +761,9 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
    honest control remains valid for plumbing neutrality.
 5. **Published-work frontier (gap analysis 2026-09-25, vs the 20-paper
    manifest + MRL issues):**
-   - **Stubborn × countermeasures** (next): Nayak's three stubborn
-     variants shipped in phase 2 but never faced PoP/SoP — the natural
-     completion of the E4 story (one matrix spec).
+   - **Stubborn × countermeasures**: SoP against the spec's own stubborn
+     attacker (`window_stubborn`) done 2026-10-07 (campaign 7, finding
+     10). Nayak's three stubborn variants have still not faced PoP or SoP.
    - **Monero-faithful topology**: build the sim GML from Gao et al.
      2025's measured P2P topology (replacing CAIDA) — upgrades every
      scale result incl. the senior leg.
@@ -691,9 +781,16 @@ venv/bin/python scripts/selfish_mining_analysis.py archived_runs/<run>
      networks. Covered/excluded: Lee&Kim, Li, Nayak-composition, #144,
      #146, Purkovic (covert-ASIC economics, not a selfish variant),
      Garay/Budish/Miller/Franzoni (not simulation-shaped).
-   - Standing: n=2 repeats of the pop_sop2 verdict; the senior leg
-     (user-run; spec swap + a fixed-difficulty selfish_scaled variant);
-     the covert-bridge freeze defect.
+   - Standing: the senior leg (user-run; spec swap + a fixed-difficulty
+     selfish_scaled variant); the covert-bridge freeze defect. (The n=2
+     repeats of the pop_sop2 verdict were done in campaign 7.)
+6. **After campaign 7** (2026-10-07):
+   - the ban-cascade fix check (`stubborn_h10_banfix*`, ends 2026-10-08);
+   - a stepped-up network (about 300 nodes, light-mode RandomX), to
+     measure share propagation, the lateness window and P2P effects at
+     scale, then feed the measured parameters into Model B;
+   - attackers with a network advantage;
+   - a real legacy node for the upgrade-transition question.
 
 ## Appendix A — superseded §5 text (moved here 2026-09-30)
 
@@ -815,3 +912,46 @@ their layered updates.
 >    stop the conservative lead-2 attacker at mid scale: 0.386 vs stock
 >    0.403, one draw 0.419 > α. Micro lead-2 falls to 0.285 vs 0.496.
 >    Realized γ is 0.11–0.33 in these cells.
+
+**Findings 9 and 10 before 2026-10-07** (superseded by campaign 7,
+`docs/20261007_sop_campaign7_results.md`), word for word:
+
+> 9. **Neither countermeasure removes the damage, only the profit.** Under
+>    PoP the attack's network orphan rate rose from 0.312 (stock) to
+>    0.31–0.45 across variants, and MSB detectability stayed high (z +7.4
+>    to +14.9; §4 E4 item 5, pre-review apparatus). Under SoP the
+>    network orphan rate read 0.36–0.52 while the attacker earned nothing
+>    (2026-09-26 run, `docs/20260926_sop_h10_rerun.md`). Incentive removal
+>    and DoS resilience are separate properties. Orphan rates have not been
+>    re-read on the §8 runs.
+> 10. **Share-or-Perish v2 (MRL #146, embedded shares) holds both textbook
+>     attackers at zero, within its 48-object window.**
+>     - *Result (§8):* ES {0.000, 0.000} and lead-2 {0.000, 0.000}, vs stock
+>       {0.519, 0.544} and {0.491, 0.500}. No honest node made a single
+>       past-window (OBJECTIVE) fork decision in any SoP cell. The longest
+>       rejected reveal was 17 blocks. The earlier stock-bridge run agrees:
+>       ES {0.035, 0.000} (0.000 against an honest node's chain), lead-2
+>       {0.000, 0.000}, and all 2,822 subjective fork decisions carried share
+>       weight (`docs/20260926_sop_h10_rerun.md`).
+>     - *Scope: the window.* #146 applies lateness only while a fork holds
+>       fewer than k·w = 48 work objects. Past that, fork choice is plain
+>       cumulative difficulty. The fallback can be reached: in the
+>       flagged-bridge re-run (results doc §6) a stranding attacker kept a
+>       rejected branch level for 49 and 51 blocks, honest miners switched to
+>       it on the objective rule, and ES earned {0.405, 0.495}. A work object
+>       is a block plus each share embedded in it, so an attacker that embeds
+>       its own shares (expected ~15 per block at w = 16, not yet measured)
+>       reaches 48 in about 3 blocks, not 48. A deliberately stubborn attacker, with and without embedded
+>       shares, is being measured now (`stubborn_h10`, 2026-09-30). The
+>       simulator's window count was corrected first, so that only shares
+>       whose PoW verifies count (`0101b624`).
+>     - *Costs (2026-09-26 run):* the attacker's hashrate is discarded (103–143
+>       canonical blocks per 6 h vs ≈ 200 in the controls). A miner that
+>       does not gossip shares weighs one unit in every tie: the SoP
+>       control's second draw lost 17 such races (share 0.326, orphan 0.218),
+>       an upgrade-transition cost that n = 2 cannot size. Honest controls:
+>       stock {0.381, 0.410}, SoP {0.440, 0.326}. They ran on the
+>       pre-2026-09-29 `h10` preset (tip difficulty 9.8 % low) and have not
+>       been re-run on the corrected one.
+>     - *Reporting:* a bridge running stock fork choice is a biased reference
+>       under SoP. Report SoP shares against an honest node's chain.

@@ -370,6 +370,13 @@ Fix options (owner decision; not run):
 
 ## 6. Flagged-bridge re-run — stranding NOT removed; SoP lost past its fail-safe window (2026-09-27/28)
 
+> **Correction (2026-10-07):** the SoP result of this section, ES
+> {0.405, 0.495} "past its fail-safe window", is an artifact. The
+> simulator then compared plain cumulative difficulty past k·w = 48
+> work objects, whereas MRL #146 keeps its share-counted weight there.
+> Corrected in `0b9e8089`; see `docs/20261007_sop_campaign7_results.md`
+> §1. The stranding and PoP readings of this section are not affected.
+
 The owner chose §5's first fix option: the attacker's bridge runs the
 countermeasure rule (SoP cells: the relays' `sim-share-or-perish`; PoP
 cells: the honest miners' exact flags). Six matrices,
@@ -543,6 +550,12 @@ about 106 s, not 120 s, in the `h10` honest controls.
   ledger rows reproduce from their own commits, which carry the old preset.
 
 ## 8. Stranding-free re-run: rejection-aware attacker, corrected `h10` (2026-09-29)
+
+> **Note (2026-10-07):** the SoP rows of this section ran before the
+> simulator was brought to the text of MRL #146 (`0b9e8089`) and before
+> the stale-id miner fix (`e2955754`). Campaign 7 re-measured them
+> (`docs/20261007_sop_campaign7_results.md` §8): ES {0.000, 0.000},
+> lead-2 {0.015, 0.000}. Quote those. The PoP and stock rows stand.
 
 Campaign 6 is the first run free of both biases found above. The attacker
 no longer strands (§5–§6), and the micro cells no longer run on a 10 %-fast
