@@ -4,8 +4,8 @@
 checked runs. Section 6 (the P2P ban cascade) reports a verified mechanism.
 Its fix is committed (`002cd40c`), but the runs that test it
 (`stubborn_h10_banfix{,_rep,_rep2}`) end about 2026-10-08 10:00–11:00 UTC,
-so §6.4 is still open. Nothing here has been reported outside this
-repository. Whether and what to report on MRL #146 is the owner's decision.
+so §6.4 is still open. Preliminary results; not yet reported on MRL
+#146.
 
 ## Summary
 
@@ -376,23 +376,26 @@ hashrate, so its days are already canonical days (§5).
   `--reanalyze`. Each cell's marker is `matrix_runs/<name>/cells/<cell>.json`
   (run dir, health, share).
 - **Checks:** `venv/bin/python scripts/sop_oracle.py check <SoP run dirs>`
-  (exit 0: no mismatches; exit 2: a run had no SoP decisions);
-  `.claude/campaign7/flipback_scan.py <run dirs>`.
+  (exit 0: no mismatches; exit 2: a run had no SoP decisions); the
+  flip-back scan, `.claude/campaign7/flipback_scan.py <run dirs>`, which is
+  campaign tooling and not yet in the repository.
 - **Model B:** `scripts/sop_race_model.py sweep --days 2000` and
   `... deep --years N`. The 1000-year runs and per-reveal shapes come from
   the analysis tooling below.
-- **Analysis tooling** for §§4–6: `.claude/campaign7/analysis/`. It is
-  outside the package and git-ignored; moving it into `scripts/` with
-  tests is an open item. Outputs are in `out/`, and Model B results in
-  `modelb/`.
+- **Analysis tooling** for §§4–6 is `scripts/selfish_mining/`, with tests
+  alongside. Run it from the repo root as
+  `venv/bin/python scripts/selfish_mining/<module>.py <subcommand> ...`.
 
-| script | what it computes |
+| module and subcommand | what it computes |
 |---|---|
-| `reveal_stats.py` | reveals and honest-orphan depths on honest-001, blocks found |
-| `compare_modelb.py` | the §4 table and depth tail tests (`modelb/run_one.py` makes its inputs) |
-| `depth_mc.py` | the depth resampling tests of §4 |
-| `modelb_shapes.py` | Model B with per-reveal shapes and share budgets |
-| `share_budget.py`, `embed_vs_judged.py` | shares found, embedded and judged per miner |
-| `race_leads.py` | the largest honest lead in every revealed race |
-| `reorg_depths.py` | reorg depth histograms per node |
-| `ban_replay.py` | the fail-score replay of §6 (needs net.cn:DEBUG logs) |
+| `sop_reveals.py stats` | reveals and honest-orphan depths on honest-001, and blocks found (JSON) |
+| `sop_reveals.py depths` | reorg depth histograms per node |
+| `sop_reveals.py shapes`, `leads` | per-reveal branch shapes, and the largest honest lead in every revealed race |
+| `sop_shares.py budget`, `judged` | shares found, embedded and judged per miner |
+| `sop_model_compare.py model`, `shapes` | Model B runs (1000 years: `model sop 5 True 365250 1 sop_d5.json`), and per-reveal shapes and share budgets |
+| `sop_model_compare.py table` | the §4 table and tail tests |
+| `sop_model_compare.py depth-by-config`, `depth-test` | the §4 depth resampling tests, per give-up depth and for the d5 replication |
+| `p2p_ban_replay.py replay`, `drops` | the fail-score replay of §6 (needs net.cn:DEBUG logs), and the scored drops grouped |
+
+The numbers above came from the same code before it moved into the
+repository. The moved modules reproduce every stored output exactly.
