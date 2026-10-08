@@ -18,7 +18,7 @@ restated (§7 item 1). The review's seven other points are in §9 and §10.
 | 3 | Reorgs of 10+ blocks depend on how far behind the attacker keeps mining. At α = 0.33 (Model B), an attacker that reveals at the first chance but keeps mining while up to 1, 2 or 4 blocks behind (give-up depth 2, 3, 5) causes one per 2.9, 1.5 and 0.41 years. The spec's "about 1 per 3 years" comes from tevador's simulator, whose attacker gives up once more than 5 work objects (under half a block) behind. It is one attacker's rate, not a bound. | Moderate–high (model, validated against the simulator at shallower depths). |
 | 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. Not scoring that height drop on SoP nodes removed every ban in 3 re-runs. | High for the mechanism (67 of 67 bans replayed exactly) and for the fix on this network (0 bans, 0 scored drops, §6.4). |
 | 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and the two readings give very different attacker revenue; (b) the spec's `version_minor` rule makes most SoP blocks invalid to unupgraded nodes, so SoP is a hard fork; (c) the 10+ reorg figure is one attacker's rate, not a bound. | High (checked against the issue text and tevador's simulator, §7). |
-| 6 | **Reveal rate.** At α = 0.33 and d = 2 the simulator measures 2.98 reveals per canonical day (Model B 3.13), each with a branch of at least 48 work objects. The spec says an attacker avoids the lateness penalties "on average once per 10 days", about 30× less often. The reveals have a mean depth of 2.3 blocks, so the spec's "3-block reorg" is about right and the frequency is not. About 2 % of reveals are reversed within 3.3 s by one honest block (§4.2). | High for the measurement (simulator and Model B agree). The cause is a hypothesis (§4.1). |
+| 6 | **Reveal rate.** At α = 0.33 and d = 2 the simulator measures 2.98 reveals per canonical day (Model B 3.13), each with a branch of at least 48 work objects. The spec says an attacker avoids the lateness penalties "on average once per 10 days", about 30× less often. The reveals have a mean depth of 2.3 blocks, so the spec's "3-block reorg" is about right and the frequency is not. About 2 % of reveals are reversed within 3.3 s by one honest block (§4.2). | High for the measurement (simulator and Model B agree). Cause shown by a model ablation and by the logs of 3 runs (§4.1); replicates pending. |
 
 Every SoP number recorded before 2026-10-04 is superseded (§1), including
 manuscript finding 10 as it stood and the "SoP lost both ES cells" result
@@ -213,16 +213,45 @@ days to even odds).
   "3-block reorg".
 - The spec's rate and the reveal rate are therefore different things, and
   the docs previously scrutinised only "about 1 per 3 years" (§5).
-- **Hypothesis, not tested:** the rule requires `n_f ≥ k·w` on the *alt*
-  chain only, and then compares weights. The attacker reveals when its 48+
-  objects outweigh what is *in the honest blocks* at that moment. Honest
-  shares found but not yet in a block count for nothing until the next
-  honest block embeds them, and the give-up rule is in blocks (the attacker keeps mining up to d − 1
-  blocks, about 16 objects each, behind), not in objects. A race to 48 objects
-  against 48 honest objects is a rarer event. The reversals of §4.2 fit
-  this: a single honest block that embeds its pending shares makes the
-  honest branch heavier again. To test it, count honest pending shares at
-  each reveal in the logs, or give Model A the same stopping rule.
+- **Cause, tested two ways (2026-10-08).** The rule needs `n_f ≥ k·w` on
+  the alt chain only and then compares weights. The fork choice counts only
+  shares that are inside blocks. Honest shares that have been found but not
+  yet put in a block count for nothing until the next honest block carries
+  them, and honest blocks are about 180 s apart, with about 15 shares each.
+  The attacker reveals when its 48+ objects outweigh the honest *blocks*.
+  1. *Model B, one assumption changed at a time*
+     (`scripts/sop_reveal_variants.py`, α = 0.33, d = 2, 20,000 fixed-rate
+     days, seed 11, `data/campaign7/modelb/reveal_variants_a033_d2_20000d.md`):
+
+     | variant | reveals / canonical day | one per |
+     |---|--:|--:|
+     | Model B as is | 3.16 | 0.3 days |
+     | honest pending shares also counted | 0.012 | 83 days |
+     | counted, and the attacker gives up at 48 objects behind | 0.005 | 212 days |
+     | counted, give-up at 16 objects | 0.023 | 44 days |
+     | counted, give-up at 5 objects (tevador's T5 rule) | 0.030 | 33 days |
+
+     Counting the pending shares alone removes 99.6 % of reveals. The
+     spec's "once per 10 days" (14 days mean, 0.07 per day) lies between the
+     variants, so that arithmetic describes an attacker racing against *all*
+     honest work, and the fork choice does not see all honest work.
+  2. *The logs* (`scripts/selfish_mining/sop_pending.py`, the three banfix
+     runs, the only ones that log share receipts; output in
+     `data/campaign7/analysis_out/pending_shares_banfix.txt`). At each of
+     the 87 reveals on honest-001, the node had received a median of 40
+     honest shares (mean 41, max 96; duplicates from several peers
+     collapsed by a 2 s gap, so an estimate) since the last block of the
+     branch it was about to drop. The attacker's weight lead at the reveal
+     was a median of 8 objects. **Had those shares been counted, all 87
+     reveals (100 %) would have been blocked.** 40 is well above the ~15
+     an arbitrary moment would show, so reveals are selected for honest
+     dry spells.
+- So the simulator is not off. The spec's figure answers a different
+  question. The attacker wins by timing its reveal for when the honest
+  side has a large uncommitted backlog. Whether that is acceptable, or a
+  design problem (committed work lags found work by one block interval), is
+  for the thread. Replicates beyond the three banfix runs, and a check at
+  non-zero network delay, are still to do.
 
 ### 4.2 Reveals reversed within seconds (whole-branch mode)
 

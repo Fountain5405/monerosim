@@ -248,6 +248,11 @@ class SimConfig:
     seed: int
     w: int = W_DEFAULT
     K_objects: int = K_DEFAULT * W_DEFAULT
+    # Variants for the 2026-10-08 decomposition of the reveal rate
+    # (results doc 4.1). Defaults reproduce Model B exactly.
+    count_honest_pending: bool = False   # honest shares found but in no block count as honest weight
+    give_up_objects: int = -1            # >= 0: give up once honest is more than this many objects
+                                         # ahead (counted since the fork), instead of d blocks behind
 
 
 @dataclass
@@ -322,15 +327,30 @@ def simulate(cfg: SimConfig) -> SimStats:
         hon_blocks.clear()
         att_blocks.clear()
 
+    obj_mode = cfg.give_up_objects >= 0
+    att_fork = hon_fork = 0   # objects found since the fork (obj_mode only)
+
     for _ in range(n_objects):
         is_attacker = rng.random() < cfg.alpha
         is_block = rng.random() < (1.0 / cfg.w)
+
+        if obj_mode:
+            if is_attacker:
+                att_fork += 1
+            else:
+                hon_fork += 1
 
         if not is_block:
             if is_attacker:
                 att_pending += 1
             else:
                 hon_pending += 1
+            if obj_mode and hon_fork - att_fork > cfg.give_up_objects:
+                stats.hon_final_blocks += len(hon_blocks)
+                stats.att_orphaned_blocks += len(att_blocks)
+                reset_fork()
+                att_pending = 0
+                att_fork, hon_fork = 0, hon_pending
             continue
 
         if is_attacker:
@@ -345,12 +365,17 @@ def simulate(cfg: SimConfig) -> SimStats:
         h = len(hon_blocks)
 
         # Decision, only evaluated after a block event (honest or attacker).
-        if (a == 0 and h > 0) or (h - a >= cfg.d):
+        if obj_mode:
+            give_up = hon_fork - att_fork > cfg.give_up_objects
+        else:
+            give_up = (a == 0 and h > 0) or (h - a >= cfg.d)
+        if give_up:
             # give up: attacker suffix orphaned, honest suffix final
             stats.hon_final_blocks += h
             stats.att_orphaned_blocks += a
             reset_fork()
             att_pending = 0
+            att_fork, hon_fork = 0, hon_pending
             # hon_pending carries on (not reset)
             continue
 
@@ -361,6 +386,8 @@ def simulate(cfg: SimConfig) -> SimStats:
             att_objects = sum(1 + n for n in att_blocks)
             att_weight = att_objects
             hon_weight = sum(1 + m for m in hon_blocks)
+            if cfg.count_honest_pending:
+                hon_weight += hon_pending
             K = cfg.K_objects
         else:  # stock
             att_objects = a
@@ -376,6 +403,7 @@ def simulate(cfg: SimConfig) -> SimStats:
             stats.att_orphaned_blocks += 0  # attacker blocks became final, not orphaned
             reset_fork()
             hon_pending = 0
+            att_fork, hon_fork = att_pending, 0
             # att_pending carries on
             continue
 

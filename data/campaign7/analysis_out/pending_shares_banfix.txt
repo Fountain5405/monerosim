@@ -1,0 +1,4 @@
+20261007_103711_stubborn_h10_banfix__share_sop2_a033_d5_netcn_debug: reveals=31 pending mean=45.3 median=46 would-be-blocked=31
+20261007_103711_stubborn_h10_banfix_rep__share_sop2_a033_d5_netcn_debug: reveals=33 pending mean=36.5 median=35 would-be-blocked=33
+20261007_103711_stubborn_h10_banfix_rep2__share_sop2_a033_d5_netcn_debug: reveals=23 pending mean=41.7 median=41 would-be-blocked=23
+ALL: reveals=87 pending mean=41.0 median=40 max=96; attacker lead at reveal (objects) mean=11.2 median=8; blocked if pending counted: 87 of 87

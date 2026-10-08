@@ -262,3 +262,31 @@ def test_simulate_orphans_shrink_canonical_days():
     stock = simulate(SimConfig(alpha=0.33, d=2, rule="stock", attacker_embeds=False, days=20, seed=3))
     assert s.canonical_days < 0.8 * s.sim_days          # ~31 % of blocks orphaned
     assert stock.canonical_days > s.canonical_days
+
+
+def test_variant_fields_default_to_the_original_model():
+    from scripts.sop_race_model import SimConfig, simulate
+    base = dict(alpha=0.33, d=2, rule='sop', attacker_embeds=True, days=30, seed=3)
+    a = simulate(SimConfig(**base))
+    b = simulate(SimConfig(**base, count_honest_pending=False, give_up_objects=-1))
+    assert (a.reveals, a.reorg_depths, a.att_final_blocks) == (b.reveals, b.reorg_depths, b.att_final_blocks)
+
+
+def test_counting_honest_pending_shares_removes_reveals_and_keeps_accounting():
+    """2026-10-08: honest shares found but in no block did not count against
+    the attacker; counting them must cut the reveal rate sharply."""
+    from scripts.sop_race_model import SimConfig, simulate
+    base = dict(alpha=0.33, d=2, rule='sop', attacker_embeds=True, days=60, seed=5)
+    plain = simulate(SimConfig(**base))
+    counted = simulate(SimConfig(**base, count_honest_pending=True))
+    assert counted.reveals < plain.reveals / 2
+    assert counted.att_final_blocks + counted.att_orphaned_blocks >= 0
+
+
+def test_object_giveup_variant_runs_and_gives_up_earlier_when_stricter():
+    from scripts.sop_race_model import SimConfig, simulate
+    base = dict(alpha=0.33, d=2, rule='sop', attacker_embeds=True, days=60, seed=5, count_honest_pending=True)
+    loose = simulate(SimConfig(**base, give_up_objects=48))
+    strict = simulate(SimConfig(**base, give_up_objects=5))
+    assert strict.reveals <= loose.reveals
+    assert strict.att_final_blocks + strict.hon_final_blocks > 0

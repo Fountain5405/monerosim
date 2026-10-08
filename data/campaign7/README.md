@@ -9,7 +9,9 @@ The data behind `docs/20261007_sop_campaign7_results.md`.
   `alpha_sweep_400d_seed11.md` (α 0.30–0.45, d 1–3; the 10+ reorg rates of §5).
 - Added after the 2026-10-08 review, in `analysis_out/`:
   `flipback_scan_240h_{1,5}s.txt` (day-aware scan, honest-001, 16 runs),
-  `reveal_stats_banfix.json` and `depth_pooled_d5.txt` (all eight d5 runs).
+  `reveal_stats_banfix.json` and `depth_pooled_d5.txt` (all eight d5 runs),
+  `pending_shares_banfix.txt` (honest shares in no block at each reveal);
+  `modelb/reveal_variants_a033_d2_20000d.md` (reveal-rate ablation).
 - `matrix_cells/<matrix>/cells/*.json`: each simulated cell's record (run
   dir, health, attacker share), as written by `scripts/selfish_matrix.py`,
   plus the matrix `table.md`.
