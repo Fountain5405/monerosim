@@ -1,18 +1,24 @@
 # Share-or-Perish (MRL #146) on the corrected simulator: campaign 7 results (2026-09-30 to 2026-10-07)
 
-**Status: DRAFT, 2026-10-08.** Every section reports finished, checked
-runs, including the check of the ban-cascade fix (§6.4). Preliminary
-results; not yet reported on MRL #146.
+**Status: DRAFT, 2026-10-08, revised the same day after an independent
+review of the whole branch.** Every section reports finished, checked runs,
+including the check of the ban-cascade fix (§6.4). Preliminary results; not
+yet reported on MRL #146. What the review changed: the flip-back check had
+only read the first simulated day of each run (§4.2); the reveal rate is
+about 30× the spec's own figure (§4.1); the α = 0.45 and reorg-depth claims
+are weaker than first written (rows 1 and 2, §4); the re-judging finding is
+restated (§7 item 1). The review's seven other points are in §9 and §10.
 
 ## Summary
 
 | # | Result | Confidence |
 |---|---|---|
-| 1 | SoP defeats the spec's own stubborn attacker at α ≤ 0.45: it earns less than its hashrate share in every cell. At α = 0.33 its share falls from 0.30 (stock) to about 0.02. The margin shrinks with α: 0.11–0.19 at α = 0.40 and 0.37 at α = 0.45. | High at α = 0.33 (13 runs of 240 h). Moderate at 0.30/0.40/0.45 (6 h, n = 3). |
-| 2 | An independent race model (Model B) reproduces the simulator: attacker share, reveal rate, orphan rates, race shapes and, once replicated, reorg depth. | High for this attacker and topology. |
+| 1 | SoP removes the profit of a stubborn attacker that reveals at the first chance (`window_stubborn`; not tevador's T5 attacker, §5). At α = 0.33 its share falls from 0.30 (stock) to about 0.02. At α = 0.40 it is about 0.14 (nine 6 h draws, all ≤ 0.29; Model B 0.13–0.14). At α = 0.45 the simulator cannot tell 0.37 from 0.45 (draws 0.22, 0.47, 0.43); Model B gives 0.36. The attack still succeeds often (row 6). | High at α = 0.33 (13 runs of 240 h). Solid at 0.40 (9 draws, sign test p = 0.002). Not established at 0.45 (n = 3, 6 h). |
+| 2 | An independent race model (Model B) agrees with the simulator on attacker share, reveal rate, orphan rates and race shapes, within sampling error. Reorg depth differs by 5–10 % in a direction that changes with d; pooled over all eight d5 runs the simulator reads deeper (p = 0.03, one-sided; §4). Not explained. | High for share, rate and shapes. Moderate for depth. |
 | 3 | Reorgs of 10+ blocks depend on how far behind the attacker keeps mining. At α = 0.33 (Model B), an attacker that reveals at the first chance but keeps mining while up to 1, 2 or 4 blocks behind (give-up depth 2, 3, 5) causes one per 2.9, 1.5 and 0.41 years. The spec's "about 1 per 3 years" comes from tevador's simulator, whose attacker gives up once more than 5 work objects (under half a block) behind. It is one attacker's rate, not a bound. | Moderate–high (model, validated against the simulator at shallower depths). |
 | 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. Not scoring that height drop on SoP nodes removed every ban in 3 re-runs. | High for the mechanism (67 of 67 bans replayed exactly) and for the fix on this network (0 bans, 0 scored drops, §6.4). |
 | 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and the two readings give very different attacker revenue; (b) the spec's `version_minor` rule makes most SoP blocks invalid to unupgraded nodes, so SoP is a hard fork; (c) the 10+ reorg figure is one attacker's rate, not a bound. | High (checked against the issue text and tevador's simulator, §7). |
+| 6 | **Reveal rate.** At α = 0.33 and d = 2 the simulator measures 2.98 reveals per canonical day (Model B 3.13), each with a branch of at least 48 work objects. The spec says an attacker avoids the lateness penalties "on average once per 10 days", about 30× less often. The reveals have a mean depth of 2.3 blocks, so the spec's "3-block reorg" is about right and the frequency is not. About 2 % of reveals are reversed within 3.3 s by one honest block (§4.2). | High for the measurement (simulator and Model B agree). The cause is a hypothesis (§4.1). |
 
 Every SoP number recorded before 2026-10-04 is superseded (§1), including
 manuscript finding 10 as it stood and the "SoP lost both ES cells" result
@@ -74,12 +80,14 @@ corrected in the same commit as this draft.
   "share" arm embeds its own shares; the "block" arm embeds none.
 - **Runs.** Every cell was checked with re-scored health (0 stale ids, 0
   splits, 0 invalid chains, 0 agent tracebacks in every run below, except
-  one invalid chain noted in §6), the oracle (0 mismatches in every run)
-  and the flip-back scan (0 undone switches outside the rejudge cells).
+  one invalid chain noted in §6) and the oracle (0 mismatches in every
+  run). The flip-back scan is reported in §4.2: its first version read
+  only simulated day 1 of each run, so for the 240 h runs it had checked
+  one tenth of the data.
 
 | matrices | cells | length, n | binary / Shadow | run dirs |
 |---|---|---|---|---|
-| `stubborn_h10{,_rep,_rep2}` | share/block × stock/sop2 × α 0.30–0.45 × d1–d3 | 6 h, n = 3 | fixed (pop `2d6499a8`) / v0.2.4; the first two draws' stock rows ran 2026-09-30 | `20261004_*`, `20260930_*` |
+| `stubborn_h10{,_rep,_rep2}` | share/block × stock/sop2 × α 0.30–0.45 × d1–d3 | 6 h, n = 3 | fixed (pop `2d6499a8`) / v0.2.4; the first two draws' stock rows ran 2026-09-30 on pop `899cd283` (before the stale-id fix, which only acts when w > 1, so stock cells cannot reach it) | `20261004_*`, `20260930_*` |
 | `stubborn_h10_long{,_rep,_rep2}` | share_sop2 and block_stock, α 0.33, d2 | 240 h, n = 3 | same | `20261004_155751_*`, `20260930_190000_*` |
 | `stubborn_h10_long_depth{,_rep}` | share_sop2 α 0.33 at d3, d5 | 240 h, n = 2 | same | `20261004_155751_*` |
 | `stubborn_h10_banlog{,_rep,_rep2}` | the d5 cell + net.cn:DEBUG | 240 h, n = 3 | same | `20261006_033956_*` |
@@ -89,6 +97,16 @@ corrected in the same commit as this draft.
 Concurrent runs ran unpinned from 2026-10-04 15:57 UTC
 (`MONEROSIM_SHADOW_CPU_PINNING=0`, `34cd8ad5`). That no result depends on
 CPU placement is assumed, not tested.
+
+**Seeds.** Only three seeds (12345, 54321, 24680) are used, and each is
+reused across matrices: two of the five d5 runs share seed 12345 and two
+share 54321. Bans fell by seed (both 12345 runs 48 and 10, both 54321 runs
+0, the 24680 run 57). Whether a Shadow seed fixes topology placement or
+link latencies was not checked (the run directories do not keep
+`topology.gml`), so same-seed runs are not shown to be independent draws.
+The runs do differ (reveal times differ), so they are not copies. No Shadow
+build is recorded in any run directory either; the v0.2.4 / v0.2.5
+assignment rests on the commit dates.
 
 ## 3. Attacker revenue
 
@@ -106,10 +124,18 @@ Model B (`scripts/sop_race_model.py`, 2000 fixed-rate days per cell).
 | 0.40 | 3 | 0.459 (3) | 0.422 | 0.127 (3; 0.037–0.234) | 0.142 |
 | 0.45 | 2 | 0.496 (3) | 0.510 | 0.373 (3; 0.220–0.470) | 0.356 |
 
-- Under SoP the attacker earns less than α in every cell, so the
-  stubborn strategy does not pay up to α = 0.45. The 6 h cells are noisy
-  (one α = 0.45 draw reached 0.470, above α), but their means sit on
-  Model B.
+- Under SoP the cell means are below α in every cell, but the evidence
+  differs by α.
+  - α = 0.33: 13 runs of 240 h, every share ≤ 0.025.
+  - α = 0.40: nine 6 h draws, all ≤ 0.287 (sign test p = 0.002). The
+    three cell means (0.11, 0.19, 0.13) are noisy; Model B puts every d at
+    0.13–0.14, so read it as about 0.14 ± 0.03.
+  - α = 0.45: three draws, 0.220, 0.470, 0.429. Mean 0.373, standard
+    error 0.077, so the mean is one standard error below α (one-sided
+    p ≈ 0.2). One draw is above α. The claim at 0.45 rests on Model B
+    (0.356), not on the simulator.
+  - Each 6 h cell holds only 1–9 reveals, so a cell's share is set by a
+    handful of events.
 - The block arm (an attacker that embeds no shares) earns 0.000 in all six
   SoP draws at α = 0.40 and 0.45.
 - Damage is not removed. At α = 0.33 the network orphan rate is
@@ -152,10 +178,80 @@ mechanics and not just its averages:
   resampling against Model B's reveal distribution that gives p 0.02,
   0.02 and 0.008. The three banlog runs, the same cell, did not replicate
   it: mean 3.31 (B 3.35, p 0.59), 3 reveals of 7+ against 3.3 expected,
-  none of 10. Pooled (126 reveals): mean 3.55, p 0.11. d2 read
-  shallower (2.28, p 0.04) and d3 deeper (3.21, p 0.03) with 2–3 runs
-  each. No mechanism was found (all four checks above came out clean).
-  These are treated as sampling variation.
+  none of 10. The three banfix runs (§6.4) read deep again: mean 3.63.
+  Pooled over all eight d5 runs (214 reveals, `sop_model_compare.py
+  depth-pooled`): mean 3.58 against 3.35, P(mean ≥) = 0.029 one-sided (a
+  normal approximation gives 0.02); 2 reveals of 10+ against 0.52
+  expected (P = 0.08). d2 read shallower (2.28, p 0.04) and d3 deeper
+  (3.21, p 0.03) with 2–3 runs each. These p-values are one-sided in the
+  direction seen, after the data, over several configurations; none
+  survives a correction for that. The honest summary is: the simulator's
+  reveals are a little deeper than Model B's at d3 and d5, marginally
+  significant, cause unknown (the four checks above came out clean). One
+  of the two 10-block events (long_depth d5) came 7.5 s after a ban wave
+  (§5), so that run is confounded.
+
+### 4.1 The reveal rate against "once per 10 days"
+
+The spec: "If the attacker can mine at least 48 work objects faster than
+the honest majority, he can avoid the lateness penalties. The probabilty of
+this happening is < 0.06% with α = 0.33. The attacker can expect to achieve
+this on average once per 10 days of selfish mining ... and the result will
+be, on average, a 3-block reorg." The comment of 2026-10-04 (question 6)
+shows the figures come from Rucknium's Strategy 2 formula in MRL #102; at
+α = 0.33 they are 0.0307 % per attempt and a 14.1-day mean interval (9.8
+days to even odds).
+
+- Model A (`sop_race_model.py tevador`, commit `450860c5`) reproduces that
+  arithmetic: a race to 48 objects, 0.0307 % per attempt.
+- Our attacker does not play that race. Measured, α = 0.33, d = 2: 2.98
+  reveals per canonical day in the simulator, 3.13 in Model B, every one
+  with at least 48 attacker objects (the logged decisions are all
+  `OBJECTIVE`). That is about 30× the spec's rate, and the ratio grows with
+  α (Model B reveals per day: 3.2 at α 0.33, 18.6 at 0.40, 45.9 at 0.45,
+  d = 2). The mean reveal depth, 2.3 blocks at d = 2, matches the spec's
+  "3-block reorg".
+- The spec's rate and the reveal rate are therefore different things, and
+  the docs previously scrutinised only "about 1 per 3 years" (§5).
+- **Hypothesis, not tested:** the rule requires `n_f ≥ k·w` on the *alt*
+  chain only, and then compares weights. The attacker reveals when its 48+
+  objects outweigh what is *in the honest blocks* at that moment. Honest
+  shares found but not yet in a block count for nothing until the next
+  honest block embeds them, and the give-up rule is in blocks (the attacker keeps mining up to d − 1
+  blocks, about 16 objects each, behind), not in objects. A race to 48 objects
+  against 48 honest objects is a rarer event. The reversals of §4.2 fit
+  this: a single honest block that embeds its pending shares makes the
+  honest branch heavier again. To test it, count honest pending shares at
+  each reveal in the logs, or give Model A the same stopping rule.
+
+### 4.2 Reveals reversed within seconds (whole-branch mode)
+
+The first flip-back scan matched timestamps of simulated day 1 only
+(`^2000-01-01`), so on a 240 h run it read the first day. The sentence in
+earlier drafts, "0 undone switches outside the rejudge cells", was therefore
+not a check of the 240 h runs. The scan is now day-aware, and it counts
+lines it cannot parse (`flipback_scan.py`, tests added). Re-run on the 16
+current 240 h runs (13 SoP, 3 stock), honest-001, output in
+`data/campaign7/analysis_out/flipback_scan_240h_{1,5}s.txt`:
+
+- 7 of the 13 SoP runs have one reveal that the node reversed within 5 s
+  (2 within 1 s): `long_rep` d2, `long_depth` d3, `long_depth_rep` d5,
+  `banlog`, `banfix`, `banfix_rep`, `banfix_rep2`. Of 367 reveals that is
+  1.9 %. The twelve 6 h share cells show none (48 reveals). One stock run
+  has one, an ordinary longest-chain tie.
+- All seven reversals are `OBJECTIVE` decisions in which one honest block
+  found on the displaced tip, 0.05–3.3 s after the reveal, made the honest
+  branch heavier. Honest against attacker blocks at the reversal: 3 v 4,
+  3 v 6 and 4 v 12 (the honest branch still shorter), 4 v 4 twice (equal;
+  plain cumulative difficulty would not flip), 5 v 4 and 4 v 3 (longer,
+  ordinary under any rule). Example: `fork 4426 OBJECTIVE alt 4386/3 vs
+  main 2754/6 (nf=86) -> SWITCH`, three honest blocks replacing six
+  attacker blocks.
+- So whole-branch mode is not immune to reversal. The shorter-branch cases
+  are what albinjm's question 1 asks about, and they happen even at this
+  network's near-zero delay. They are rare here (1 % of reveals) because
+  honest nodes switch within a second. The "one honest flip pair" noted
+  in §6.4 is unchanged: the day-aware scan finds none on honest-001.
 
 ## 5. Deep reorgs and the give-up depth
 
@@ -168,6 +264,20 @@ embedding its shares (Model B, about 677 canonical years per cell):
 | 3 | 0.677 | 1.5 years |
 | 5 | 2.44 | 5 months |
 
+- At higher α the model's deep-reorg rates are far larger (one 400-day
+  sweep, seed 11, about 260 canonical days per cell; coarse, in
+  `data/campaign7/modelb/alpha_sweep_400d_seed11.md`):
+
+  | α | d = 1 | d = 2 | d = 3 |
+  |---|---|---|---|
+  | 0.33 | 0 | 0 | 0 |
+  | 0.40 | 17 / yr | 28 / yr | 42 / yr |
+  | 0.45 | 143 / yr | 253 / yr | 361 / yr |
+
+  (Rates of 10+ block reorgs per canonical year; 0 at α = 0.33 means none in
+  the 400 days, consistent with 0.35–0.68 / yr above.) The headline
+  "defeats ... profit" at α = 0.45 therefore sits beside a 10+ reorg most
+  days in the model, which the simulator did not measure.
 - MRL #146 says "Monte Carlo simulations show that the attacker can
   achieve on average about 1 such reorg per 3 years of stubborn mining".
   - The figure comes from tevador's published simulator
@@ -275,10 +385,12 @@ and no ban. **All three runs pass:**
 - The only drops were 10 with score 0 in the seed-24680 run. They add
   nothing to the fail score.
 - Standard checks: the oracle re-derived every fork-choice decision (0
-  mismatches), and the flip-back scan found no undone switch. The one
-  honest flip pair it flagged (seed 24680, on four nodes) is an ordinary
-  race: two honest blocks 27 ms apart tied exactly, the tie draw picked
-  one, and 0.9 s later a new block extended the other.
+  mismatches). The day-aware flip-back scan found one reveal per run that
+  honest-001 reversed within 3.3 s (§4.2), the same 2 % rate as in the
+  banlog and long runs. The one honest flip pair it flagged (seed 24680,
+  on four nodes) is an ordinary race: two honest blocks 27 ms apart tied
+  exactly, the tie draw picked one, and 0.9 s later a new block extended
+  the other.
 - Attack rates match the earlier runs and Model B, so the move to Shadow
   v0.2.5 (every other run here used v0.2.4) shows no effect at this
   precision:
@@ -305,16 +417,52 @@ and peer churn, is not measured.
 
 ## 7. Spec findings (candidates for MRL #146; the owner decides)
 
-1. **The fork-choice loop is unspecified.** The spec does not say whether
-   blocks displaced by a reorg are judged again one at a time or as a
-   whole branch. We judge a displaced branch again as a whole
-   (`docs/20260930_sop_conformance.md`, convention 6). The readings differ
-   materially. Under the per-block "rejudge" reading
-   (`--sim-sop-rejudge-displaced`), switches were undone within a second
-   (flip-backs on the attacker's bridge: up to 3 per run, in 3 of 4 runs), so nodes can
-   disagree, and the attacker earned {0.043, 0.000} at α = 0.40 and
-   {0.000, 0.000} at α = 0.45. Under the whole-branch reading it earned
-   0.187 and 0.373 (§3).
+1. **The pairwise rule can say SWITCH in both directions, and the spec
+   does not say how displaced blocks are judged again.** (Restated
+   2026-10-08; the earlier draft offered "rejudge" and "whole branch" as
+   two readings with revenue {0.043, 0.000} v 0.187. That framing was
+   wrong, see below.)
+   - Stock monerod, after a reorg, sends every displaced block back
+     through `handle_alternative_block` (`blockchain.cpp:1163–1180`, v0.18.5.1),
+     so the fork choice runs again for each. Under cumulative difficulty
+     that check can never succeed, because the new main chain exceeds every
+     displaced block. A weight rule has no such guarantee.
+   - SoP's comparison is pairwise, and `n_f` counts only the alt side's
+     work objects, so which branch is "alt" decides the regime. Lateness is
+     also timed against whichever block is main at each height. The same
+     two branches can therefore be SWITCH one way and SWITCH the other.
+     Worked example 2 of the conformance doc (7 attacker blocks, weights
+     912 v 532), seen live in a log as `alt 4234/6 vs main 3796/4 -> SWITCH`
+     followed 1 ms later by `alt 1022/1 vs main 438/6 -> SWITCH`.
+   - **The `--sim-sop-rejudge-displaced` result is not a reading of the
+     spec.** It is monerod's one-at-a-time re-insertion acting on the
+     formal alt-only `n_f`: the re-check switches back inside the first
+     switch; the nested switch fails to re-file the attacker's blocks (the
+     duplicate check, `blockchain.cpp:2073`; 32 of 32 failed re-files in the
+     α = 0.45 bridge log); the outer switch then deletes them from the alt
+     store (`:1182–1186`). Honest nodes never saw the branch: in the three
+     runs with flip-backs only the bridge logs any decision or reorg, and
+     in `rejudge_rep` α = 0.40 no honest node evaluated a side block. The
+     attacker's {0.043, 0.000} and {0.000, 0.000} are what that accident
+     does to a revealed branch. They say nothing about SoP.
+   - **The pair's regime depends on the reading of `n_f`.** The issue
+     defines `n_f` as work objects in the alt chain "that are not contained
+     in the main chain" (alt only), but its prose says the lateness factors
+     apply when "the two chains differ by fewer than k*w work objects". Under
+     the prose reading the pair is objective whenever either side holds 48
+     (here the attacker does) and the flip cannot occur. The daemon and
+     oracle implement the formal, alt-only reading.
+   - Whole-branch mode (our default; displaced blocks stored unjudged and
+     judged again only when a new block extends them) matches tevador's
+     simulator, which treats a winning reveal as final, but that simulator
+     has no displaced blocks or P2P at all. Whole-branch mode also reverses
+     reveals, by a legitimate route (§4.2).
+   - Options, none chosen: (i) judge each pair symmetrically (prose
+     reading of `n_f`); (ii) keep displaced blocks out of re-judging until
+     extended (our default); (iii) have the spec say a reveal that won is
+     final until a new block extends the loser. Which to put to the thread
+     is the owner's call; the attacker-revenue numbers that came from the
+     accident should not be quoted.
 2. **SoP is a hard fork, not a soft fork.**
    - The issue requires miners to "set the `version_minor` block header
      field to be equal to the number of workshares included in the block".
@@ -355,14 +503,19 @@ hashrate, so its days are already canonical days (§5).
   - It adds what our micro network cannot show, the effect of delay. At a
     3 s mean, 10+ reorgs came about 81× as often as tevador's figure,
     15–16 % of honest workshares were lost to `version_minor` collisions,
-    and 10+ reorgs appeared even without an attacker at 5 s and above.
+    and 10+ reorgs appeared even without an attacker, at 0.13, 0.53, 2.89
+    and 3.94 per year at mean delays of 3, 5, 7 and 10 s (the 3 s figure is
+    a single event).
   - It asks whether a shorter branch with more shares is meant to replace
     a longer one past the cutoff (its question 1), and which chain the
     lateness factors judge (question 5). We apply Tables 4 and 5 to both
     chains: a main-chain block is on time by definition, and main-chain
-    shares are judged. That is its "both chains" reading, and it matches
-    tevador's comment of 2025-10-15 that a block's late share counts once
-    the penalty lapses.
+    shares are judged. That is its "both chains" reading. It is consistent with
+    tevador's comment of 2025-10-15 that a block with a late share "will
+    still benefit from it after ~3 blocks ... (provided that the block is
+    still part of the heaviest chain by that time)". Reading that as "main
+    chain blocks are judged too" is our inference; the comment does not
+    say "both chains".
 - **Not in the thread:**
   - the P2P ban cascade (that simulator has no P2P layer), which is a
     concrete consequence of exactly its question 1;
@@ -380,7 +533,7 @@ hashrate, so its days are already canonical days (§5).
 - **"Connected" control** (a miner that does not share on an SoP network):
   {0.387, 0.382}, consistent with α by z −0.45 and −1.88. It is NOT an
   upgrade-transition result: every simulated daemon skips the hard-fork
-  vote check (sim patch), so it is not a real non-upgraded node (cf. §7.2).
+  vote check (sim patch), so it is not a real non-upgraded node (§7 item 2).
 
 ## 9. Not established
 
@@ -392,9 +545,14 @@ hashrate, so its days are already canonical days (§5).
   the roadmap's stepped-up replica (about 300 nodes). An independent
   simulator with a 3 s mean delay (§7.1) reports 15–16 % of honest
   workshares lost and 10+ reorgs far more often than at zero delay.
-- **Other attackers.** Only the spec's stubborn attacker, a non-embedding
-  variant, ES and lead-2 were run. No attacker with a network advantage
-  (γ > 0) was run.
+- **Other attackers.** Only `window_stubborn`, a non-embedding variant, ES
+  and lead-2 were run. No attacker with a network advantage (γ > 0) was
+  run.
+- **Not tevador's T5 attacker.** `window_stubborn` reveals at the first
+  objective chance and gives up in blocks (d). His attacker (`blockhain-sim.py`
+  :15, :109, :113) gives up in work objects (5), reveals only when it
+  can orphan 10+ blocks, and uses honest shares in its first private block.
+  The headline is about a different attacker, weaker on the deep-reorg axis.
 - **Honest shares in the attacker's first block.** Our attacker's miner is
   offline and never embeds honest workshares. The spec's analysis lets an
   attacker use them in its first private block, which is why the
@@ -407,7 +565,17 @@ hashrate, so its days are already canonical days (§5).
 - **Mixed networks** (upgraded alongside non-upgraded nodes): see §8.
 - **α other than 0.33 at long horizons.** The 0.30/0.40/0.45 rows are 6 h,
   n = 3.
-- **The depth-tail reading** of §4 (sampling variation, not a mechanism).
+- **The depth excess** of §4: marginal, cause unknown, one run confounded
+  by bans.
+- **Latency.** The reversals of §4.2 are rare because propagation here is
+  near-instant. With realistic delay the window in which a honest block
+  can land on a freshly revealed tip is seconds, not milliseconds, and
+  albinjm's simulator finds 10+ reorgs without any attacker from 5 s mean
+  delay (§7.1). None of this is measured here.
+- **Model B at α ≥ 0.40.** Its 10+ reorg rates there (§5) are model
+  output; the simulator has only 6 h cells.
+- **Deployment of the ban fix:** other height-based heuristics in monero
+  (sync stalls on a falling peer height) were not checked.
 - **The ban fix at scale.** It was checked on this 12-daemon network only
   (§6.4).
 
@@ -419,7 +587,8 @@ hashrate, so its days are already canonical days (§5).
   (run dir, health, share).
 - **Checks:** `venv/bin/python scripts/sop_oracle.py check <SoP run dirs>`
   (exit 0: no mismatches; exit 2: a run had no SoP decisions); the
-  flip-back scan, `scripts/selfish_mining/flipback_scan.py <run dirs>`.
+  flip-back scan, `scripts/selfish_mining/flipback_scan.py <run dirs>`
+  (day-aware; `FLIP_WINDOW_S=5` widens the window from 1 s).
 - **Stored data:** `data/campaign7/` holds the analysis outputs, the Model B
   results and the matrix cell records behind these numbers (see its
   README). The raw run logs are not in the repository.
@@ -438,8 +607,11 @@ hashrate, so its days are already canonical days (§5).
 | `sop_shares.py budget`, `judged` | shares found, embedded and judged per miner |
 | `sop_model_compare.py model`, `shapes` | Model B runs (1000 years: `model sop 5 True 365250 1 sop_d5.json`), and per-reveal shapes and share budgets |
 | `sop_model_compare.py table` | the §4 table and tail tests |
-| `sop_model_compare.py depth-by-config`, `depth-test` | the §4 depth resampling tests, per give-up depth and for the d5 replication |
+| `sop_model_compare.py depth-by-config`, `depth-test`, `depth-pooled` | the §4 depth resampling tests, per give-up depth, for the d5 replication, and pooled over every d5 run in the given stats files |
 | `p2p_ban_replay.py replay`, `drops` | the fail-score replay of §6 (needs net.cn:DEBUG logs), and the scored drops grouped |
 
 The numbers above came from the same code before it moved into the
-repository. The moved modules reproduce every stored output exactly.
+repository. The moved modules reproduce every stored output exactly. The
+banfix reveal statistics of §6.4 and the pooled depth test of §4 were added
+after the review and are stored as `reveal_stats_banfix.json` and
+`depth_pooled_d5.txt` in `data/campaign7/analysis_out/`.

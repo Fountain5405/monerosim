@@ -131,9 +131,12 @@ over-predicts exactly where a rational attacker would operate.**
 > every SoP run until 2026-10-04 (fixed in `e2955754`). On the corrected
 > simulator:
 > - ES earns {0.000, 0.000} and lead-2 {0.015, 0.000} at α = 0.40.
-> - The spec's own stubborn attacker, embedding its shares, earns
->   0.015–0.025 at α = 0.33 (10 runs of 240 h; stock 0.287–0.310), and
->   stays below α up to α = 0.45.
+> - A stubborn attacker that reveals at the first chance (`window_stubborn`;
+>   not tevador's T5 attacker), embedding its shares, earns 0.015–0.025 at
+>   α = 0.33 (13 runs of 240 h; stock 0.287–0.310), about 0.14 at α = 0.40,
+>   and 0.37 at α = 0.45 (n = 3 at 6 h, so not distinguishable from α; Model
+>   B 0.36). It still succeeds about three times a canonical day at α = 0.33,
+>   d = 2, against the spec's "once per 10 days" (results doc §4.1).
 > - The "SoP lost both ES cells" result below was an artifact of the
 >   plain-difficulty fallback.
 >
@@ -446,9 +449,12 @@ results doc §5–§6).
    orphan rates have not been re-read on the §8 runs. *(Updated
    2026-10-07; the earlier text is in Appendix A.)*
 10. **Share-or-Perish (MRL #146, as specified) defeats the textbook
-    attackers and the spec's own stubborn attacker up to α = 0.45. Its
-    margin shrinks with α, and its 10+ block reorg rate depends on how long
-    the attacker holds on.** Campaign 7 on the corrected simulator
+    attackers and removes the profit of a first-chance stubborn attacker at
+    α ≤ 0.40 (at 0.45 the simulator cannot tell 0.37 from α; Model B says
+    0.36). Its margin shrinks with α, its reveal rate is about 30× the
+    spec's "once per 10 days", and its 10+ block reorg rate depends on how
+    long the attacker holds on.** (Revised 2026-10-08 after an independent
+    review; see the results doc.) Campaign 7 on the corrected simulator
     (`docs/20261007_sop_campaign7_results.md`); rewritten 2026-10-07, the
     earlier text is in Appendix A.
     - *Textbook attackers (α = 0.40, n = 2):* ES {0.000, 0.000} and lead-2
@@ -457,12 +463,15 @@ results doc §5–§6).
     - *The stubborn attacker* (`window_stubborn`): it withholds, reveals
       once its branch holds 48 work objects and outweighs honest, and gives
       up when honest leads by d blocks. Embedding its own shares, it earns:
-      - 0.015–0.025 at α = 0.33 (10 runs of 240 h, d = 2, 3, 5), against
+      - 0.015–0.025 at α = 0.33 (13 runs of 240 h, d = 2, 3, 5, including
+        the 3 `banfix` runs), against
         stock 0.287–0.310 (3 runs);
-      - 0.11–0.19 at α = 0.40 depending on d (6 h, n = 3; stock 0.38–0.46);
-      - 0.373 at α = 0.45 (stock 0.496).
+      - about 0.14 at α = 0.40 (cell means 0.11–0.19 over d = 1–3, 6 h,
+        n = 3; Model B 0.13–0.14; stock 0.38–0.46);
+      - 0.373 at α = 0.45 (draws 0.22, 0.47, 0.43; stock 0.496).
 
-      That is below α in every cell. Embedding no shares, it earns 0.000.
+      The cell means are below α in every cell; at α = 0.45 one draw is above
+      it. Embedding no shares, it earns 0.000.
     - *Model agreement:* an independent race model (Model B,
       `scripts/sop_race_model.py`) reproduces the revenue, the reveal
       rate, the orphan rates and the race shapes.

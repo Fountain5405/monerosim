@@ -68,3 +68,33 @@ def test_switch_onto_attacker_block_undone_within_window(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "onto-attacker= 1" in out
     assert "undone<1s= 1" in out
+
+
+def test_later_simulated_days_are_scanned(tmp_path, capsys):
+    """The 240 h runs span 2000-01-01 .. 2000-01-11; every day must be read,
+    and the window must work across midnight."""
+    att_bid = ID(200)
+    hon_bid = ID(1)
+    lines = reorg("2000-01-04 12:00:20.000", "M", 5, 5, 1, att_bid)
+    lines += reorg("2000-01-04 12:00:20.500", "M", 5, 5, 1, hon_bid)
+    lines += reorg("2000-01-05 23:59:59.800", "M", 9, 9, 1, att_bid)
+    lines += reorg("2000-01-06 00:00:00.200", "M", 9, 9, 1, hon_bid)
+    write_log(node_log(tmp_path, "honest-001"), lines)
+    write_log(node_log(tmp_path, "attacker-miner"),
+              [line("2000-01-01 00:00:00.500", "A", f"Found block <{att_bid}> at height 5")])
+
+    sys.argv = ["flipback_scan.py", str(tmp_path)]
+    main()
+    out = capsys.readouterr().out
+    assert "reorgs=  4" in out
+    assert "undone<1s= 2" in out
+
+
+def test_unparsed_timestamps_are_reported_not_dropped(tmp_path, capsys):
+    write_log(node_log(tmp_path, "honest-001"),
+              [line("2001-07-04 00:00:20.000", "M", "###### REORGANIZE on height: 5 of 5 with cum_difficulty 1")])
+    write_log(node_log(tmp_path, "attacker-miner"), [])
+
+    sys.argv = ["flipback_scan.py", str(tmp_path)]
+    main()
+    assert "unparsed-lines=1" in capsys.readouterr().out

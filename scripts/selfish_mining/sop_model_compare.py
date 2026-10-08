@@ -235,6 +235,33 @@ def depth_by_config(sims: dict, modelb_dir, n_iter: int = 100_000, seed: int = 7
     return rows
 
 
+def depth_pooled(sim_dicts: list, hs: list, n_iter: int = 100_000, seed: int = 11) -> dict:
+    """Every d5 share_sop2 a033 run in every stats dict (key contains
+    `__share_sop2_a033_d5`, so suffixed keys such as `_netcn_debug` count),
+    pooled and tested against Model B's d5 reveal depths `hs`, both tails.
+    The 2026-10-08 review asked for the pool over all eight d5 runs."""
+    obs, runs = [], 0
+    for sims in sim_dicts:
+        for k, s in sims.items():
+            if '__share_sop2_a033_d5' in k:
+                runs += 1
+                obs += _depths([s])
+    rng = random.Random(seed)
+    n, m = len(obs), mean(obs)
+    ge7, ge10 = sum(x >= 7 for x in obs), sum(x >= 10 for x in obs)
+    hi = lo = c7 = c10 = 0
+    for _ in range(n_iter):
+        s = rng.choices(hs, k=n)
+        sm = sum(s) / n
+        hi += sm >= m
+        lo += sm <= m
+        c7 += sum(x >= 7 for x in s) >= ge7
+        c10 += sum(x >= 10 for x in s) >= ge10
+    return {'runs': runs, 'n': n, 'mean': m, 'model_mean': mean(hs), 'p_mean_ge': hi / n_iter,
+            'p_mean_le': lo / n_iter, 'ge7': ge7, 'p_ge7': c7 / n_iter,
+            'ge10': ge10, 'p_ge10': c10 / n_iter}
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -290,6 +317,15 @@ def _cmd_depth_by_config(sim_json: str, modelb_dir: str) -> int:
     return 0
 
 
+def _cmd_depth_pooled(shapes_d5_json: str, sim_jsons: list) -> int:
+    hs = [r['h'] for r in json.loads(Path(shapes_d5_json).read_text())['reveals']]
+    r = depth_pooled([json.loads(Path(p).read_text()) for p in sim_jsons], hs)
+    print(f"pooled d5 ({r['runs']} runs): n={r['n']} mean {r['mean']:.2f} (B {r['model_mean']:.2f}) "
+          f"P(mean>=)={r['p_mean_ge']:.3f} P(mean<=)={r['p_mean_le']:.3f} "
+          f"P(#>=7 >= {r['ge7']})={r['p_ge7']:.3f} P(#>=10 >= {r['ge10']})={r['p_ge10']:.4f}")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -321,6 +357,10 @@ def main(argv=None) -> int:
     p.add_argument('sim_json')
     p.add_argument('modelb_dir')
 
+    p = sub.add_parser('depth-pooled')
+    p.add_argument('shapes_d5_json')
+    p.add_argument('sim_json', nargs='+')
+
     a = ap.parse_args(argv)
     if a.cmd == 'model':
         return _cmd_model(a.rule, a.d, a.embeds == 'True', a.days, a.seed, a.out_json)
@@ -332,6 +372,8 @@ def main(argv=None) -> int:
         return _cmd_depth_test(a.sim_json, a.banlog_json, a.shapes_d5_json)
     if a.cmd == 'depth-by-config':
         return _cmd_depth_by_config(a.sim_json, a.modelb_dir)
+    if a.cmd == 'depth-pooled':
+        return _cmd_depth_pooled(a.shapes_d5_json, a.sim_json)
     return 2
 
 

@@ -7,6 +7,12 @@ main): the chain-snapshot preload + mainnet-replica tooling
 (`feat/selfish-mining-experiments`). Both feature branches stay intact;
 new work happens on `dev`. Do not merge `dev` → `main` on your own.
 
+> **Notice (2026-10-08):** the Share-or-Perish numbers in this handoff
+> ({0.035, 0.000}, {0.440, 0.326}, "2,822 of 2,822", {0.405, 0.495}, "SoP
+> 0.000 in all four cells") were measured on a simulator that deviated from
+> the spec and carried a stale-block-id miner bug. They are superseded by
+> `docs/20261007_sop_campaign7_results.md` (§1). This file is a frozen log.
+
 ## What is on `dev` and what has been proven
 
 - Merge of `origin/main` (5183217b) + the replica branch (`683373dd`) + the

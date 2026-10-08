@@ -798,7 +798,8 @@ design + pre-registered predictions:
    the miner-tx extra nonce; fork choice counts embedded in-time uncles
    (node-local validation). A/B against core isolates the uncle term;
    pilot spec `test_configs/matrix/pop_uncles_pilot.yaml`.
-3. **Share-or-Perish** (planned, MRL #146): workshares at 1/w difficulty,
+3. **Share-or-Perish** (implemented; results in
+   `docs/20261007_sop_campaign7_results.md`; MRL #146): workshares at 1/w difficulty,
    l_b/l_w lateness pair, `version_minor`-serialized share mining.
 4. Lucky transactions (MRL #145): parked — transaction-weighted, and aimed
    at 51% attacks rather than selfish mining.

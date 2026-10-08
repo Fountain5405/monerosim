@@ -4,7 +4,7 @@ depth_mc and the per-config depth test)."""
 import json
 
 from scripts.selfish_mining.sop_model_compare import (binom_sf, comparison_tables, depth_by_config,
-                                                      depth_test, simulate_shapes)
+                                                      depth_pooled, depth_test, simulate_shapes)
 from scripts.sop_race_model import SimConfig, simulate
 
 
@@ -95,3 +95,18 @@ def test_comparison_tables_renders_header_and_one_row_per_config(tmp_path):
     assert sum(1 for l in first_table if l.startswith('| SoP d2 |')) == 1
     assert sum(1 for l in first_table if l.startswith('| SoP d3 |')) == 1
     assert sum(1 for l in first_table if l.startswith('| SoP d5 |')) == 1
+
+
+def test_depth_pooled_pools_every_d5_run_across_files_and_reports_both_tails():
+    """Review 2026-10-08: the replication test used only the banlog runs; the
+    pool must take every d5 share_sop2 run from every stats file (keys may
+    carry a suffix such as _netcn_debug) and skip other configs."""
+    a = {'r1__share_sop2_a033_d5': {'reveals': [{'honest_orphaned': 10}, {'honest_orphaned': 2}]},
+         'r1__share_sop2_a033_d2': {'reveals': [{'honest_orphaned': 9}]}}
+    b = {'r2__share_sop2_a033_d5_netcn_debug': {'reveals': [{'honest_orphaned': 1}]},
+         'r2__block_stock_a033_d2': {'reveals': [{'honest_orphaned': 1}]}}
+    r = depth_pooled([a, b], [1, 2, 3, 12], n_iter=500, seed=11)
+    assert r['n'] == 3 and r['ge10'] == 1 and r['runs'] == 2
+    for key in ('p_mean_ge', 'p_mean_le', 'p_ge10'):
+        assert 0.0 <= r[key] <= 1.0
+    assert r['p_mean_ge'] + r['p_mean_le'] >= 1.0

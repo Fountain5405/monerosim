@@ -2,25 +2,36 @@
 """Per node: reorgs onto the attacker's blocks, and whether each was undone
 within WINDOW_S of sim time (the re-insertion flip-back), plus honest-only
 reorg pairs that undo each other. Usage: flipback_scan.py RUN_DIR [...]"""
+import datetime
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-WINDOW_S = 1.0
-TS = re.compile(r'^2000-01-01 (\d\d):(\d\d):(\d\d)\.(\d{3})\t\[([^\]]*)\]\t\S+\t\S+\t\S+\t(.*)$')
+WINDOW_S = float(os.environ.get('FLIP_WINDOW_S', '1.0'))
+TS = re.compile(r'^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)\.(\d{3})\t\[([^\]]*)\]\t\S+\t\S+\t\S+\t(.*)$')
+EPOCH = datetime.date(2000, 1, 1)
 PREFILTER = ('REORGANIZE on height|alternative blockchain size|BLOCK SUCCESSFULLY ADDED|'
              'BLOCK ADDED AS ALTERNATIVE|\tid:\t<|\tHEIGHT [0-9]+, difficulty|'
              'SIM-SoP: fork|SIM-PoP|Failed to push ex-main')
 
 
-def lines(path):
+def lines(path, unparsed=None):
+    """Yield (sim seconds since 2000-01-01, thread, message). Lines the
+    prefilter selects but TS rejects are counted in unparsed[0], never dropped
+    silently (the first version read only day 1 of a 10-day run)."""
     out = subprocess.run(['grep', '-aE', PREFILTER, str(path)], capture_output=True, text=True)
     for raw in out.stdout.splitlines():
         m = TS.match(raw)
         if m:
-            hh, mm, ss, ms, thread, msg = m.groups()
-            yield int(hh) * 3600 + int(mm) * 60 + int(ss) + int(ms) / 1000, thread, msg
+            y, mo, d, hh, mm, ss, ms, thread, msg = m.groups()
+            day = (datetime.date(int(y), int(mo), int(d)) - EPOCH).days
+            if 0 <= day < 366:
+                yield day * 86400 + int(hh) * 3600 + int(mm) * 60 + int(ss) + int(ms) / 1000, thread, msg
+                continue
+        if unparsed is not None:
+            unparsed[0] += 1
 
 
 def attacker_ids(run):
@@ -30,10 +41,10 @@ def attacker_ids(run):
     return set(re.findall(r'[0-9a-f]{64}', out))
 
 
-def scan_node(path, att):
+def scan_node(path, att, unparsed=None):
     reorgs, pending, expect, main_id, last_dec = [], {}, {}, {}, {}
     final_main, failed_push = {}, 0
-    for t, th, msg in lines(path):
+    for t, th, msg in lines(path, unparsed):
         if 'Failed to push ex-main' in msg:
             failed_push += 1
         elif msg.startswith('SIM-SoP: fork') or msg.startswith('SIM-PoP'):
@@ -74,7 +85,8 @@ def main():
             node = log.parent.name.replace('monero-', '', 1)
             if node == 'attacker-miner':
                 continue
-            reorgs, final_main, failed = scan_node(log, att)
+            unparsed = [0]
+            reorgs, final_main, failed = scan_node(log, att, unparsed)
             to_att = [r for r in reorgs if any(i in att for _, i in r['adds'])]
             rev = 0
             details = []
@@ -92,9 +104,10 @@ def main():
             hh_pairs = sum(1 for a in reorgs for b in reorgs
                            if 0 < b['t'] - a['t'] <= WINDOW_S and a not in to_att and b not in to_att
                            and {h for h, _ in a['adds']} & {h for h, _ in b['adds']})
-            if reorgs or failed:
+            if reorgs or failed or unparsed[0]:
                 print(f'  {node:22s} reorgs={len(reorgs):3d} onto-attacker={len(to_att):2d} '
-                      f'undone<{WINDOW_S:.0f}s={rev:2d} honest-flip-pairs={hh_pairs:2d} failed-push={failed}')
+                      f'undone<{WINDOW_S:g}s={rev:2d} honest-flip-pairs={hh_pairs:2d} failed-push={failed}'
+                      + (f' unparsed-lines={unparsed[0]}' if unparsed[0] else ''))
                 for d in details:
                     print(d)
 

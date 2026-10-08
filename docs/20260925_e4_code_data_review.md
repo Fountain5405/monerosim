@@ -8,6 +8,10 @@ replication / SoP steps 1–6), audited against the committed patch
 records, and tevador's MRL #146 text (re-fetched). E1–E3 were not
 re-audited. Python suite at review time: 603 passed, 2 skipped.
 
+> **Notice (2026-10-08):** the SoP results quoted in this record (for
+> example "SoP ES lost both cells ({0.405, 0.495})" at its §3) are superseded
+> by `docs/20261007_sop_campaign7_results.md` §1. This file is a frozen log.
+
 **Verdict in one line:** the "SoP v2 works" result (finding 10) and the
 whole SoP v1/v2 arc (finding 8) are invalid — the SoP binary could not
 reorganize; the MRL #144 EXACT-uncle variant has never been measured —
