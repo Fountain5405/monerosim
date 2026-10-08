@@ -419,8 +419,10 @@ hashrate, so its days are already canonical days (§5).
   (run dir, health, share).
 - **Checks:** `venv/bin/python scripts/sop_oracle.py check <SoP run dirs>`
   (exit 0: no mismatches; exit 2: a run had no SoP decisions); the
-  flip-back scan, `.claude/campaign7/flipback_scan.py <run dirs>`, which is
-  campaign tooling and not yet in the repository.
+  flip-back scan, `scripts/selfish_mining/flipback_scan.py <run dirs>`.
+- **Stored data:** `data/campaign7/` holds the analysis outputs, the Model B
+  results and the matrix cell records behind these numbers (see its
+  README). The raw run logs are not in the repository.
 - **Model B:** `scripts/sop_race_model.py sweep --days 2000` and
   `... deep --years N`. The 1000-year runs and per-reveal shapes come from
   the analysis tooling below.

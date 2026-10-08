@@ -1,0 +1,64 @@
+{
+ "cell": "es_r2_sop2",
+ "values": {
+  "strategy": "es_r2",
+  "countermeasure": "sop2"
+ },
+ "config": "/scratch/monerosim_dev/monerosim/matrix_runs/pop_sop2_h10_fixed_rep/configs/es_r2_sop2.yaml",
+ "run_name": "pop_sop2_h10_fixed_rep__es_r2_sop2",
+ "returncode": 0,
+ "wall_s": 13265.5,
+ "run_dir": "/scratch/monerosim_dev/monerosim/archived_runs/20261004_111002_pop_sop2_h10_fixed_rep__es_r2_sop2",
+ "health": {
+  "ok": true,
+  "summary": "no-forks",
+  "forks_seen": 0,
+  "reorg_started": 0,
+  "reorg_success": 0,
+  "exceptions": 0,
+  "alt_added": 71,
+  "decisions": 70,
+  "sop_subjective": 70,
+  "share_weighted": 70,
+  "stale_ids": 0,
+  "invalid_chain": 0,
+  "agent_tracebacks": 0,
+  "split_depth": 0
+ },
+ "alpha": 0.4,
+ "alpha_eff": 0.4,
+ "release_lead": 2,
+ "eclipse": false,
+ "share": 0.0,
+ "share_honest_ref": 0.0,
+ "controlled": null,
+ "gamma": 0.0,
+ "n_ties": 60,
+ "attacker_orphan_rate": 1.0,
+ "network_orphan_rate": 0.44099378881987583,
+ "canonical_blocks": 90,
+ "preload_blocks": 994,
+ "msb_max_z": -0.8851506917580175,
+ "honest_ref": {
+  "node": "honest-001",
+  "blocks": 90,
+  "tip": 1084,
+  "bridge_tip": 1084,
+  "differing_heights": 0,
+  "first_divergence": null,
+  "share": 0.0
+ },
+ "theory": {
+  "es_gamma0": 0.4837209302325583,
+  "at_measured_gamma": 0.4837209302325583,
+  "mod_gamma0": 0.3644646924829157
+ },
+ "verdicts": [
+  [
+   "attacker share within modified<->ES band (release_lead=2)",
+   false
+  ]
+ ],
+ "all_verdicts_pass": false,
+ "attacker_found": 71
+}

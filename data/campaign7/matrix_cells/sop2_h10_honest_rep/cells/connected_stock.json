@@ -1,0 +1,71 @@
+{
+ "cell": "connected_stock",
+ "values": {
+  "attacker": "connected",
+  "countermeasure": "stock"
+ },
+ "config": "/scratch/monerosim_dev/monerosim/matrix_runs/sop2_h10_honest_rep/configs/connected_stock.yaml",
+ "run_name": "sop2_h10_honest_rep__connected_stock",
+ "returncode": 0,
+ "wall_s": 8765.1,
+ "run_dir": "/scratch/monerosim_dev/monerosim/archived_runs/20260930_181907_sop2_h10_honest_rep__connected_stock",
+ "health": {
+  "ok": true,
+  "summary": "ok",
+  "forks_seen": 11,
+  "reorg_started": 1,
+  "reorg_success": 1,
+  "exceptions": 0,
+  "alt_added": 13,
+  "decisions": 0,
+  "sop_subjective": 0,
+  "share_weighted": 0,
+  "stale_ids": 0,
+  "invalid_chain": 0,
+  "agent_tracebacks": 0,
+  "split_depth": 0
+ },
+ "alpha": 0.4,
+ "alpha_eff": 0.4,
+ "release_lead": 1,
+ "eclipse": false,
+ "share": 0.465,
+ "share_honest_ref": 0.465,
+ "controlled": null,
+ "gamma": 1.0,
+ "n_ties": 1,
+ "attacker_orphan_rate": 0.0,
+ "network_orphan_rate": 0.00497512437810943,
+ "canonical_blocks": 200,
+ "preload_blocks": 994,
+ "msb_max_z": 1.1469634629558605,
+ "honest_ref": {
+  "node": "honest-001",
+  "blocks": 200,
+  "tip": 1194,
+  "bridge_tip": 1194,
+  "differing_heights": 0,
+  "first_divergence": null,
+  "share": 0.465
+ },
+ "theory": {
+  "es_gamma0": 0.4837209302325583,
+  "at_measured_gamma": 0.5674418604651165
+ },
+ "verdicts": [
+  [
+   "attacker share vs Eyal-Sirer gamma=0 curve",
+   true
+  ],
+  [
+   "attacker share vs Eyal-Sirer theory at measured gamma",
+   false
+  ],
+  [
+   "attacker beats honest baseline (share > alpha)",
+   true
+  ]
+ ],
+ "all_verdicts_pass": false,
+ "attacker_found": 93
+}

@@ -1,0 +1,69 @@
+{
+ "cell": "share_sop2_a033_d2",
+ "values": {
+  "arm": "share",
+  "countermeasure": "sop2",
+  "alpha": "a033",
+  "depth": "d2"
+ },
+ "config": "/scratch/monerosim_dev/monerosim/matrix_runs/stubborn_h10_long_rep2/configs/share_sop2_a033_d2.yaml",
+ "run_name": "stubborn_h10_long_rep2__share_sop2_a033_d2",
+ "returncode": 0,
+ "wall_s": 100078.6,
+ "run_dir": "/scratch/monerosim_dev/monerosim/archived_runs/20261004_155751_stubborn_h10_long_rep2__share_sop2_a033_d2",
+ "health": {
+  "ok": true,
+  "summary": "ok",
+  "forks_seen": 2166,
+  "reorg_started": 469,
+  "reorg_success": 469,
+  "exceptions": 0,
+  "alt_added": 2394,
+  "decisions": 2863,
+  "sop_subjective": 2084,
+  "share_weighted": 2031,
+  "stale_ids": 0,
+  "invalid_chain": 0,
+  "agent_tracebacks": 0,
+  "split_depth": 0
+ },
+ "alpha": 0.32999999999999996,
+ "alpha_eff": 0.32999999999999996,
+ "release_lead": 1,
+ "eclipse": false,
+ "share": 0.0236423556383436,
+ "share_honest_ref": 0.0236423556383436,
+ "controlled": null,
+ "gamma": 0.0006205398696866273,
+ "n_ties": 3223,
+ "attacker_orphan_rate": 0.9512987012987013,
+ "network_orphan_rate": 0.32143898881866795,
+ "canonical_blocks": 6979,
+ "preload_blocks": 994,
+ "msb_max_z": 68.5882602103111,
+ "honest_ref": {
+  "node": "honest-001",
+  "blocks": 6979,
+  "tip": 7973,
+  "bridge_tip": 7973,
+  "differing_heights": 0,
+  "first_divergence": null,
+  "share": 0.0236423556383436
+ },
+ "theory": {
+  "es_gamma0": 0.326965257704292,
+  "at_measured_gamma": 0.3270292857763082
+ },
+ "verdicts": [
+  [
+   "attacker share vs Eyal-Sirer gamma=0 curve",
+   false
+  ],
+  [
+   "attacker share vs Eyal-Sirer theory at measured gamma",
+   false
+  ]
+ ],
+ "all_verdicts_pass": false,
+ "attacker_found": 3388
+}

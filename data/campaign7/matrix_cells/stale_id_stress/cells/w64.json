@@ -1,0 +1,70 @@
+{
+ "cell": "w64",
+ "values": {
+  "network": "w64"
+ },
+ "config": "/scratch/monerosim_dev/monerosim/matrix_runs/stale_id_stress/configs/w64.yaml",
+ "run_name": "stale_id_stress__w64",
+ "returncode": 0,
+ "wall_s": 903.2,
+ "run_dir": "/scratch/monerosim_dev/monerosim/archived_runs/20261004_102321_stale_id_stress__w64",
+ "health": {
+  "ok": true,
+  "summary": "no-forks",
+  "forks_seen": 0,
+  "reorg_started": 0,
+  "reorg_success": 0,
+  "exceptions": 0,
+  "alt_added": 0,
+  "decisions": 0,
+  "sop_subjective": 0,
+  "share_weighted": 0,
+  "stale_ids": 0,
+  "invalid_chain": 0,
+  "agent_tracebacks": 0,
+  "split_depth": 0
+ },
+ "alpha": 0.8,
+ "alpha_eff": 0.8,
+ "release_lead": 1,
+ "eclipse": false,
+ "share": 0.7924528301886793,
+ "share_honest_ref": 0.7924528301886793,
+ "controlled": null,
+ "gamma": 0.0,
+ "n_ties": 0,
+ "attacker_orphan_rate": 0.0,
+ "network_orphan_rate": 0.0,
+ "canonical_blocks": 53,
+ "preload_blocks": 994,
+ "msb_max_z": -0.6395929106742172,
+ "honest_ref": {
+  "node": "honest-001",
+  "blocks": 53,
+  "tip": 1047,
+  "bridge_tip": 1047,
+  "differing_heights": 0,
+  "first_divergence": null,
+  "share": 0.7924528301886793
+ },
+ "theory": {
+  "es_gamma0": 0.7211267605633805,
+  "at_measured_gamma": 0.7211267605633805
+ },
+ "verdicts": [
+  [
+   "attacker share vs Eyal-Sirer gamma=0 curve",
+   true
+  ],
+  [
+   "attacker share vs Eyal-Sirer theory at measured gamma",
+   true
+  ],
+  [
+   "attacker beats honest baseline (share > alpha)",
+   false
+  ]
+ ],
+ "all_verdicts_pass": false,
+ "attacker_found": 42
+}

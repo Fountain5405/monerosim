@@ -1,0 +1,21 @@
+=== d2: sim reveals 87, Model B reveals 38866
+  sim: mean a=5.22 mean h=2.28 att n/blk=10.76 hon n/blk=19.93 att first blk n=6.53 att last blk n=18.32 objects att=61.4 hon=47.6
+       a-h: +0:9% +1:14% +2:21% +3:24% +4:15% +5:5% +6:6% +7:6% +8:1%
+       h  : 1:33% 2:26% 3:26% 4:10% 5:2% 8:1%
+    B: mean a=5.31 mean h=2.52 att n/blk=10.28 hon n/blk=17.62 att first blk n=5.63 att last blk n=18.60 objects att=59.9 hon=47.0
+       a-h: +0:7% +1:18% +2:23% +3:21% +4:15% +5:8% +6:4% +7:2%
+       h  : 1:23% 2:33% 3:25% 4:12% 5:5% 6:2%
+=== d3: sim reveals 66, Model B reveals 39815
+  sim: mean a=5.29 mean h=3.21 att n/blk=10.59 hon n/blk=14.41 att first blk n=6.05 att last blk n=17.65 objects att=61.3 hon=49.5
+       a-h: -1:8% +0:11% +1:24% +2:20% +3:15% +4:12% +5:8% +6:2% +7:2%
+       h  : 1:17% 2:20% 3:27% 4:17% 5:9% 6:6% 7:3% 9:2%
+    B: mean a=5.22 mean h=2.87 att n/blk=10.60 hon n/blk=15.82 att first blk n=5.47 att last blk n=18.79 objects att=60.5 hon=48.3
+       a-h: -1:4% +0:12% +1:19% +2:21% +3:18% +4:12% +5:7% +6:4% +7:1%
+       h  : 1:18% 2:26% 3:27% 4:17% 5:8% 6:3% 7:1%
+=== d5: sim reveals 58, Model B reveals 34713
+  sim: mean a=5.43 mean h=3.83 att n/blk=10.85 hon n/blk=13.32 att first blk n=5.19 att last blk n=20.90 objects att=64.4 hon=54.8
+       a-h: -3:2% -2:3% -1:9% +0:9% +1:28% +2:19% +3:17% +4:9% +5:2% +6:3%
+       h  : 1:9% 2:19% 3:31% 4:7% 5:17% 6:5% 7:5% 8:3% 10:3%
+    B: mean a=5.16 mean h=3.35 att n/blk=10.97 hon n/blk=14.04 att first blk n=5.26 att last blk n=19.13 objects att=61.8 hon=50.4
+       a-h: -3:1% -2:4% -1:9% +0:13% +1:18% +2:19% +3:15% +4:10% +5:6% +6:3% +7:1%
+       h  : 1:15% 2:21% 3:22% 4:18% 5:12% 6:7% 7:3% 8:1%

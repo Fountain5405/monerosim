@@ -1,0 +1,24 @@
+##### d5
+== 20261004_155751_stubborn_h10_long_depth__share_sop2_a033_d5
+  2000-01-02 20:03:14 a=9 h=8 max(h-a)=2
+  2000-01-09 05:23:05 a=7 h=10 max(h-a)=4
+  2000-01-10 16:56:04 a=8 h=8 max(h-a)=3
+== 20261004_155751_stubborn_h10_long_depth_rep__share_sop2_a033_d5
+  2000-01-03 07:31:41 a=8 h=7 max(h-a)=1
+  2000-01-03 18:25:25 a=6 h=7 max(h-a)=3
+  2000-01-06 17:45:25 a=13 h=10 max(h-a)=1
+  2000-01-10 05:57:12 a=12 h=7 max(h-a)=1
+max(h-a) over all reveals: {0: 27, 1: 10, 2: 10, 3: 8, 4: 3}  (Model B: always < 5)
+##### d3
+== 20261004_155751_stubborn_h10_long_depth__share_sop2_a033_d3
+  2000-01-01 18:06:56 a=10 h=7 max(h-a)=0
+  2000-01-04 18:59:21 a=8 h=7 max(h-a)=1
+== 20261004_155751_stubborn_h10_long_depth_rep__share_sop2_a033_d3
+  2000-01-10 10:59:49 a=8 h=9 max(h-a)=2
+max(h-a) over all reveals: {0: 32, 1: 13, 2: 21}  (Model B: always < 3)
+##### d2
+== 20261004_155751_stubborn_h10_long__share_sop2_a033_d2
+== 20261004_155751_stubborn_h10_long_rep__share_sop2_a033_d2
+  2000-01-04 05:50:10 a=13 h=8 max(h-a)=0
+== 20261004_155751_stubborn_h10_long_rep2__share_sop2_a033_d2
+max(h-a) over all reveals: {0: 59, 1: 28}  (Model B: always < 2)
