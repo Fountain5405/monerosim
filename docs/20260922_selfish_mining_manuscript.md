@@ -489,8 +489,9 @@ results doc §5–§6).
       - the damage of finding 9;
       - at d = 5, honest nodes banned each other for 24 h in 3 of 5 runs.
         Monero's peer scoring punishes the height drop of a legitimate
-        switch to a shorter, heavier branch (results doc §6; a fix is
-        under test).
+        switch to a shorter, heavier branch (results doc §6). Not scoring
+        that height drop on SoP nodes removed every ban in three 240 h
+        re-runs (§6.4).
     - *Spec gaps* (checked against the issue text 2026-10-07):
       - re-judging displaced blocks is unspecified, and per-block
         re-judging cuts the attacker to {0.043, 0.000} at α = 0.40,
@@ -741,7 +742,7 @@ maps matrices to run directories. Launch commits:
 | `20261004_111002_*` | `b85fad1b` | 6 h SoP cells of `stubborn_h10{,_rep,_rep2}`; `stubborn_h10_rejudge*`, `pop_sop2_h10_fixed*`, `sop2_h10_honest*` | SoP α sweep; controls |
 | `20261004_1[56]*` | `34cd8ad5` (unpinned) | the 240 h SoP cells and `stubborn_h10_long_rep2`; unfinished and third-draw 6 h cells | SoP at α 0.33, d2 / d3 / d5; the Model B comparison |
 | `20261006_033956_*` | `487499f2` | `stubborn_h10_banlog{,_rep,_rep2}` | the P2P ban cascade, logged with net.cn:DEBUG |
-| `20261007_103711_*` | `e5631456` (fix `002cd40c`) | `stubborn_h10_banfix{,_rep,_rep2}` | the ban-cascade fix check (running) |
+| `20261007_103711_*` | `e5631456` (fix `002cd40c`) | `stubborn_h10_banfix{,_rep,_rep2}` | the ban-cascade fix check: 0 bans, 0 scored drops |
 
 Daemon: `monerod-sim` with the corrected SoP and the miner fix. The pop
 patch sha is `2d6499a8…`, installed 2026-10-03, except `stubborn_h10_banfix`
@@ -795,7 +796,8 @@ patch sha is `2d6499a8…`, installed 2026-10-03, except `stubborn_h10_banfix`
      selfish_scaled variant); the covert-bridge freeze defect. (The n=2
      repeats of the pop_sop2 verdict were done in campaign 7.)
 6. **After campaign 7** (2026-10-07):
-   - the ban-cascade fix check (`stubborn_h10_banfix*`, ends 2026-10-08);
+   - ~~the ban-cascade fix check~~ ✅ done 2026-10-08
+     (`stubborn_h10_banfix*`: 0 bans, 0 scored drops; results doc §6.4);
    - a stepped-up network (about 300 nodes, light-mode RandomX), to
      measure share propagation, the lateness window and P2P effects at
      scale, then feed the measured parameters into Model B;

@@ -1,11 +1,8 @@
 # Share-or-Perish (MRL #146) on the corrected simulator: campaign 7 results (2026-09-30 to 2026-10-07)
 
-**Status: DRAFT, 2026-10-07.** Sections 1–5 and 7–9 report finished,
-checked runs. Section 6 (the P2P ban cascade) reports a verified mechanism.
-Its fix is committed (`002cd40c`), but the runs that test it
-(`stubborn_h10_banfix{,_rep,_rep2}`) end about 2026-10-08 10:00–11:00 UTC,
-so §6.4 is still open. Preliminary results; not yet reported on MRL
-#146.
+**Status: DRAFT, 2026-10-08.** Every section reports finished, checked
+runs, including the check of the ban-cascade fix (§6.4). Preliminary
+results; not yet reported on MRL #146.
 
 ## Summary
 
@@ -14,7 +11,7 @@ so §6.4 is still open. Preliminary results; not yet reported on MRL
 | 1 | SoP defeats the spec's own stubborn attacker at α ≤ 0.45: it earns less than its hashrate share in every cell. At α = 0.33 its share falls from 0.30 (stock) to about 0.02. The margin shrinks with α: 0.11–0.19 at α = 0.40 and 0.37 at α = 0.45. | High at α = 0.33 (13 runs of 240 h). Moderate at 0.30/0.40/0.45 (6 h, n = 3). |
 | 2 | An independent race model (Model B) reproduces the simulator: attacker share, reveal rate, orphan rates, race shapes and, once replicated, reorg depth. | High for this attacker and topology. |
 | 3 | Reorgs of 10+ blocks depend on how far behind the attacker keeps mining. At α = 0.33 (Model B), an attacker that reveals at the first chance but keeps mining while up to 1, 2 or 4 blocks behind (give-up depth 2, 3, 5) causes one per 2.9, 1.5 and 0.41 years. The spec's "about 1 per 3 years" comes from tevador's simulator, whose attacker gives up once more than 5 work objects (under half a block) behind. It is one attacker's rate, not a bound. | Moderate–high (model, validated against the simulator at shallower depths). |
-| 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. | High for the mechanism (67 of 67 bans replayed exactly). The fix is committed; its check is pending (§6.4). |
+| 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. Not scoring that height drop on SoP nodes removed every ban in 3 re-runs. | High for the mechanism (67 of 67 bans replayed exactly) and for the fix on this network (0 bans, 0 scored drops, §6.4). |
 | 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and the two readings give very different attacker revenue; (b) the spec's `version_minor` rule makes most SoP blocks invalid to unupgraded nodes, so SoP is a hard fork; (c) the 10+ reorg figure is one attacker's rate, not a bound. | High (checked against the issue text and tevador's simulator, §7). |
 
 Every SoP number recorded before 2026-10-04 is superseded (§1), including
@@ -87,7 +84,7 @@ corrected in the same commit as this draft.
 | `stubborn_h10_long_depth{,_rep}` | share_sop2 α 0.33 at d3, d5 | 240 h, n = 2 | same | `20261004_155751_*` |
 | `stubborn_h10_banlog{,_rep,_rep2}` | the d5 cell + net.cn:DEBUG | 240 h, n = 3 | same | `20261006_033956_*` |
 | `stubborn_h10_rejudge{,_rep}`, `pop_sop2_h10_fixed{,_rep}`, `sop2_h10_honest{,_rep}` | controls (§8) | 6 h, n = 2 | same | `20261004_111002_*` |
-| `stubborn_h10_banfix{,_rep,_rep2}` | the banlog cells on the §6 fix | 240 h, n = 3 | pop `a51b85b0` / **v0.2.5** | `20261007_103711_*` (running) |
+| `stubborn_h10_banfix{,_rep,_rep2}` | the banlog cells on the §6 fix | 240 h, n = 3 | pop `a51b85b0` / **v0.2.5** | `20261007_103711_*` |
 
 Concurrent runs ran unpinned from 2026-10-04 15:57 UTC
 (`MONEROSIM_SHADOW_CPU_PINNING=0`, `34cd8ad5`). That no result depends on
@@ -257,24 +254,54 @@ come in network-wide episodes. With one or two connections per peer pair, a
 pair bans after about 4–6 episodes. The first d5 run had 8 episodes, the
 most of the depth runs, and its first wave came at the 4th.
 
-### 6.4 Fix (committed; check pending)
+### 6.4 Fix (committed and checked)
 
 `002cd40c`: with `--sim-share-or-perish`, `hit_score` logs "SIM-SoP: peer
 height drop not scored" and returns. Stock and PoP-only nodes keep stock
-scoring. `stubborn_h10_banfix{,_rep,_rep2}` re-run the banlog cells on that
-binary. The pass criteria are the hits still logged, each followed by the
-not-scored line, no score-5 drop and no ban. **Result: pending
-(2026-10-08).** These runs use Shadow v0.2.5; every other run here used
-v0.2.4. The pass criteria do not depend on it, and attack rates will be
-compared with the banlog runs as a check.
+scoring. `stubborn_h10_banfix{,_rep,_rep2}` re-ran the banlog cells on that
+binary (240 h each, same seeds, `net.cn:DEBUG`). The pass criteria were the
+hits still logged, each followed by the not-scored line, no scored drop
+and no ban. **All three runs pass:**
+
+| seed | shorter-branch switches (summed over nodes) | height-drop hits | "not scored" lines | scored drops | bans |
+|---|---|---|---|---|---|
+| 24680 | 33 | 330 | 330 | 0 | 0 |
+| 12345 | 22 | 244 | 244 | 0 | 0 |
+| 54321 | 44 | 364 | 364 | 0 | 0 |
+
+- Every hit still followed the peer's switch to a shorter branch (median
+  lag 17–27 s, at most 61 s), so the trigger is unchanged. Only the scoring
+  is gone.
+- The only drops were 10 with score 0 in the seed-24680 run. They add
+  nothing to the fail score.
+- Standard checks: the oracle re-derived every fork-choice decision (0
+  mismatches), and the flip-back scan found no undone switch. The one
+  honest flip pair it flagged (seed 24680, on four nodes) is an ordinary
+  race: two honest blocks 27 ms apart tied exactly, the tie draw picked
+  one, and 0.9 s later a new block extended the other.
+- Attack rates match the earlier runs and Model B, so the move to Shadow
+  v0.2.5 (every other run here used v0.2.4) shows no effect at this
+  precision:
+
+| | reveals per 1000 found | attacker share | mean reorg depth | reorgs of 7+ / 10+ |
+|---|---|---|---|---|
+| banfix (3 × 240 h) | 2.82 | 0.019–0.025 | 3.63 (88 reveals) | 4 / 0 |
+| banlog (3 × 240 h) | 2.18 | 0.015–0.020 | 3.31 (68 reveals) | 3 / 0 |
+| Model B, d = 5 | 2.63 | 0.020 | 3.35 | — |
+
+  The banfix mean depth is not significantly above Model B's (p = 0.08,
+  one-sided, the §4 depth test).
 
 ### 6.5 What it means for a deployment
 
 As specified, SoP would run on a P2P layer that treats a falling peer
 height as misbehaviour. A sustained stubborn attacker that holds on (d5)
 then makes honest nodes ban each other, isolating some for up to 24 h at a
-time. A deployment must change that scoring. How often it would bite on the
-real network, with real peer counts and peer churn, is not measured.
+time. A deployment must change that scoring. Our fix simply stops scoring
+height drops on SoP nodes, which also drops a check against peers that
+misreport their height, so a deployment would want a narrower rule. How
+often the cascade would bite on the real network, with real peer counts
+and peer churn, is not measured.
 
 ## 7. Spec findings (candidates for MRL #146; the owner decides)
 
@@ -308,7 +335,8 @@ real network, with real peer counts and peer churn, is not measured.
 3. **The 10+ reorg figure is one attacker's rate, not a bound** (§5).
 4. **The P2P ban cascade (§6).** The weight-based fork choice lets nodes
    switch to branches with fewer blocks, which conflicts with monero's
-   height-based peer scoring. Pending the fix check.
+   height-based peer scoring. Not scoring height drops on SoP nodes
+   removed every ban in three 240 h re-runs (§6.4).
 
 *Withdrawn after checking (2026-10-07):* "the per-time claims assume a
 fixed block rate". tevador's simulator sets difficulty from the honest
@@ -380,7 +408,8 @@ hashrate, so its days are already canonical days (§5).
 - **α other than 0.33 at long horizons.** The 0.30/0.40/0.45 rows are 6 h,
   n = 3.
 - **The depth-tail reading** of §4 (sampling variation, not a mechanism).
-- **The ban fix** (§6.4), pending.
+- **The ban fix at scale.** It was checked on this 12-daemon network only
+  (§6.4).
 
 ## 10. Reproduction
 
