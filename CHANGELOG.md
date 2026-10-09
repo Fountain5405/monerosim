@@ -329,15 +329,19 @@
 
 ### Changed
 
-- **RPC SSL is off by default:** every monerod gets `--rpc-ssl=disabled` and every
-  monero-wallet-rpc `--rpc-ssl=disabled --daemon-ssl=disabled`, unless the config
-  or raw args set them. This skips the RSA-4096 certificate generated on every
-  start, ~1.1 wall-s per daemon start under Shadow. P2P is unaffected; agents
-  already talked plain HTTP. Side effect: monerod's and cuprated's RPC now both
-  answer in plaintext, so the TLS-probe fingerprint in
-  `docs/20260724_cuprate_wallet_rpc.md` no longer shows inside simulations.
-  wallet-rpc still generates one certificate per create/open_wallet for its
-  MMS client, which no option reaches.
+- **RPC SSL is back to the stock default (`autodetect`):** the 2026-10-03 change that
+  passed `--rpc-ssl=disabled` to every monerod and `--rpc-ssl=disabled
+  --daemon-ssl=disabled` to every monero-wallet-rpc (`c77fe308`) is reverted.
+  With SSL off, any plain-HTTP RPC reply over ~128 KiB never completes under
+  Shadow; after the first transaction burst every wallet's `/getblocks.bin`
+  reply crosses that size, the wallet times out and stops sending, so
+  transaction load silently collapses (200-user A/B: 1,157-2,066 txs vs 3,027
+  with SSL on; the 1k scale rung sent 2,685 vs 18,953). `autodetect` keeps the
+  plain-`http://` Python agents working. Cost: ~1.1 wall-s more per process start.
+  Runs with no wallet traffic (e.g. the eclipse configs) can opt out with
+  `rpc-ssl: disabled` (see `docs/CONFIGURATION.md`). Write-up and open Shadow
+  questions: `docs/20261009_rpc_ssl_off_wallet_stall.md`. Results of runs made
+  between 2026-10-03 and 2026-10-09 with wallets and transactions are suspect.
 - **Corrected:** the sim-time-0 freeze with `model_unblocked_syscall_latency:
   false` (339e9431) is the `get_ticks_per_ns()` busy-wait never seeing time
   pass, not a "CPU-bound startup" (`docs/PERFORMANCE_AND_SCALE.md`).

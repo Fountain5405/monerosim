@@ -379,17 +379,6 @@ fn args_mention_hf_knob(args: Option<&Vec<String>>) -> bool {
         .unwrap_or(false)
 }
 
-/// True if any raw daemon arg sets --rpc-ssl (legacy `daemon_args` or
-/// per-phase `daemon_N_args`). `--rpc-ssl-*` flags (certificates, ciphers)
-/// do not count.
-fn args_mention_rpc_ssl(args: Option<&Vec<String>>) -> bool {
-    args.map(|v| {
-        v.iter()
-            .any(|a| a == "--rpc-ssl" || a.starts_with("--rpc-ssl="))
-    })
-    .unwrap_or(false)
-}
-
 /// Capability probe: does `binary --help` list --fakechain-hard-forks?
 /// A version check can't tell — the patched build prints the same tag as
 /// vanilla. Cached per path so a 300-agent config spawns the probe once
@@ -896,30 +885,6 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         merged_daemon_options
             .entry("max-connections-per-ip".to_string())
             .or_insert(OptionValue::Number(4));
-
-        // monerosim baseline: plaintext RPC. At its default (autodetect)
-        // monerod generates an RSA-4096 key and self-signed certificate on
-        // every start, which costs ~1.1 wall-s per daemon start under
-        // Shadow, and starts are serialized by the start-time stagger. RPC
-        // SSL has no effect on the P2P behaviour monerosim studies, and the
-        // Python agents and wallets talk plain HTTP. A floor like the one
-        // above: an explicit rpc-ssl in the options or the raw args wins.
-        // See docs/20261003_startup_cost.md.
-        let rpc_ssl_in_raw_args = args_mention_rpc_ssl(user_agent_config.daemon_args.as_ref())
-            || user_agent_config
-                .daemon_phases
-                .as_ref()
-                .map(|phases| {
-                    phases
-                        .values()
-                        .any(|p| args_mention_rpc_ssl(p.args.as_ref()))
-                })
-                .unwrap_or(false);
-        if !rpc_ssl_in_raw_args {
-            merged_daemon_options
-                .entry("rpc-ssl".to_string())
-                .or_insert(OptionValue::String("disabled".to_string()));
-        }
 
         // Mainnet-realism: if this node was selected as hidden, inject
         // --hide-my-port (advertise my_port=0). The node still binds/listens
@@ -1748,23 +1713,6 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod rpc_ssl_tests {
-    use super::*;
-
-    #[test]
-    fn detects_only_the_rpc_ssl_option() {
-        let v = |xs: &[&str]| xs.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert!(args_mention_rpc_ssl(Some(&v(&["--rpc-ssl=enabled"]))));
-        assert!(args_mention_rpc_ssl(Some(&v(&["--rpc-ssl", "enabled"]))));
-        assert!(!args_mention_rpc_ssl(Some(&v(&[
-            "--rpc-ssl-private-key=k.pem"
-        ]))));
-        assert!(!args_mention_rpc_ssl(Some(&v(&["--rpc-bind-port=18081"]))));
-        assert!(!args_mention_rpc_ssl(None));
-    }
 }
 
 #[cfg(test)]

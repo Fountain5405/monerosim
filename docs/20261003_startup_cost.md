@@ -2,8 +2,10 @@
 
 **Date:** 2026-10-03, measured on a 24-thread box (Ryzen 9 3900X, 12 cores,
 31 GB) following `docs/20261003_startup_ssl_runbook.md`.
-**Status:** Cause found and fixed behind flags. RPC SSL is now off by default
-(saves ~1.1 s per start). `run_sim.sh --bootfast` (shadowformonero v0.2.5)
+**Status:** Cause found and fixed behind flags. (RPC SSL was made off by default
+here and reverted on 2026-10-09: it stalls wallet sync, see
+`docs/20261009_rpc_ssl_off_wallet_stall.md`; the numbers below still hold for
+runs that opt in with `rpc-ssl: disabled`.) `run_sim.sh --bootfast` (shadowformonero v0.2.5)
 cuts a start from ~16 s to 0.43 s without changing how normal operation is
 charged; `run_sim.sh --allfast` does the same by charging every clock read
 1 µs. Neither is the default. Plain-language explanation of both:
@@ -73,8 +75,8 @@ arm. The changes act on start-up only.
 2. **Does disabling RPC SSL cut the per-start time?** Yes, by ~1.1 s (17.31 →
    16.19 s, -6.5%; Shadow wall -7.5%). That is the keygen, not the 17 s. Once
    the busy-wait is fixed it matters more: 1.69 → 0.43 s (D → E).
-3. **Default changed?** RPC SSL is now disabled by default for monerod and
-   monero-wallet-rpc (commit on this branch). The real cost is the busy-wait;
+3. **Default changed?** It was (c77fe308) and has since been reverted, 2026-10-09:
+   plain-HTTP RPC breaks wallet sync under Shadow. The real cost is the busy-wait;
    the fix is below.
 
 ### The open puzzle, resolved

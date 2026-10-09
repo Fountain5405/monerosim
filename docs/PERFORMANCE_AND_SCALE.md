@@ -197,9 +197,9 @@ sim-hours) and did not speed up with more workers. Measured and profiled in
   At Shadow's default `unblocked_vdso_latency` of 10 ns that is 10 million
   clock reads, each ~1.55 µs of real time with `native_preemption: true`.
 - ~1.2 s: the RSA-4096 certificate monerod and wallet-rpc generate for RPC SSL.
-  monerosim now passes `--rpc-ssl=disabled` to every monerod and
-  `--rpc-ssl=disabled --daemon-ssl=disabled` to every wallet-rpc unless you
-  set them (see `docs/CONFIGURATION.md`).
+  Turning it off (`rpc-ssl: disabled`) saves this but breaks wallet sync once
+  transactions flow (`docs/20261009_rpc_ssl_off_wallet_stall.md`), so monerosim
+  leaves it at the stock `autodetect` (see `docs/CONFIGURATION.md`).
 - ~0.3 s: everything else.
 
 Per start on a 70-host test (median, wall-seconds): 17.3 as before, 16.2

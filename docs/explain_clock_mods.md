@@ -178,8 +178,9 @@ Notes:
 - The two flags cannot be combined.
 - They also help daemons that restart in the middle of a run (turnover,
   upgrade phases), which pay the start-up cost again on every restart.
-- Separately, monerosim now turns the RPC SSL certificate off by default,
-  which saves about another second per start.
+- Separately, turning the RPC SSL certificate off saves about another second
+  per start, but it is not the default: with SSL off, wallets stop syncing once
+  transactions flow (`docs/20261009_rpc_ssl_off_wallet_stall.md`).
 - In config files, the same settings are `performance:` knobs:
   `unblocked_vdso_busy_threshold` and `unblocked_vdso_busy_latency` for
   `--bootfast`, `unblocked_vdso_latency` for `--allfast`.

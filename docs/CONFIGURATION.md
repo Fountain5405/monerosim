@@ -120,38 +120,41 @@ stock monerod's default of `1`). See the commented example above and
 
 ### RPC SSL
 
-RPC SSL is off unless you turn it on. monerosim passes `--rpc-ssl=disabled`
-to every monerod and `--rpc-ssl=disabled --daemon-ssl=disabled` to every
-monero-wallet-rpc. With SSL at its stock setting, monerod and wallet-rpc
-generate an RSA-4096 certificate on every start, ~1.1 wall-s per start under
-Shadow. RPC SSL has no effect on P2P, and the Python agents and wallets talk
-plain HTTP. See `docs/20261003_startup_cost.md`.
+RPC SSL is left at the stock Monero setting (`autodetect`): monerosim passes no
+`--rpc-ssl` / `--daemon-ssl` flags unless you set them. With `autodetect`
+monerod looks at the first bytes of each RPC connection and uses TLS only if
+the client starts a TLS handshake, so the Python agents, which speak plain
+`http://`, keep working, while monerod and wallet-rpc talk TLS to each other.
 
-To turn it back on for every node (stock Monero behaviour):
+**Do not turn RPC SSL off in a run that carries transactions.** Under Shadow, a
+plain-HTTP RPC reply larger than about 128 KiB never completes. A wallet's
+`/getblocks.bin` reply from its own daemon passes that size after the first
+transaction burst; the wallet times out after 210 s, retries with an even larger
+request, and stops sending. In a controlled 200-user test, SSL off gave
+1,157-2,066 transactions and thousands of `Unexpected recv fail` errors; SSL on
+gave 3,027 transactions and none. TLS sends 16 KiB records and avoids it. This
+was the default from 2026-10-03 to 2026-10-09 (`c77fe308`); see
+`docs/20261009_rpc_ssl_off_wallet_stall.md`.
+
+The only upside of turning it off is ~1.1 wall-s less per process start
+(`docs/20261003_startup_cost.md`). If you want that for a run with no wallet
+traffic, set it explicitly:
 
 ```yaml
 general:
   daemon_defaults:
-    rpc-ssl: autodetect
+    rpc-ssl: disabled
   wallet_defaults:
-    rpc-ssl: autodetect
-    daemon-ssl: autodetect
+    rpc-ssl: disabled
+    daemon-ssl: disabled
 ```
 
 For some nodes only, set the same keys in an agent's `daemon_options` /
 `wallet_options`. A raw `--rpc-ssl=...` / `--daemon-ssl=...` in the agent's
-args also works: monerosim then leaves that flag out instead of passing it
-twice.
+args also works.
 
-Use `autodetect`, not `enabled`. With `autodetect` monerod looks at the first
-bytes of each RPC connection and uses TLS only if the client starts a TLS
-handshake, so plain-HTTP clients keep working. `enabled` requires TLS on every
-connection, and the Python agents, which only speak plain `http://`, then
-cannot reach the daemon.
-
-With SSL off, monerod's and cuprated's RPC both answer in plaintext, so the
-TLS fingerprint described in `docs/20260724_cuprate_wallet_rpc.md` does not
-show inside simulations; turn SSL back on to study it.
+Use `autodetect`, not `enabled`: `enabled` requires TLS on every connection, so
+the plain-`http://` Python agents cannot reach the daemon.
 
 ## Performance Section
 
