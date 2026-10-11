@@ -357,6 +357,14 @@ RAM sub-linear with KSM). There is no observed algorithmic wall at 3k
 nodes; the binding constraints are now, in order: **disk (log volume),
 wall time, then RAM without KSM**.
 
+The same envelope holds for **synthetic (legacy) mining**: the fixes that
+unlocked the ladder — the flock hang, the worker count, `--bootfast`, the
+RPC SSL stall — are all mining-mode-independent, and per-monerod memory
+measured the same ~295 MB/daemon class on the 2,232-host eclipse
+reproduction (1,210 actual monerods; see the KSM section for the
+host-count trap). That config's 2026-10 rerun completed 50 sim-hours in
+15.6 wall-hours with `--bootfast` and no KSM at 374 GB peak.
+
 ### Disk is the new ceiling
 
 ~97% of run bytes are `net.p2p.msg` transaction-relay lines, and their
@@ -385,13 +393,19 @@ seed is shared. KSM deduplicates those pages across processes:
   once unmergeable per-node state (blockchain, peerlists) has grown.
 - **No wall-time cost measured** (wall to sim 4 h: 1.39 h vs 1.42 h); the
   `ksmd` kernel thread used ~0.4 core.
-- **The ~10× is a native-mining number.** The mergeable 256 MB RandomX
-  light cache exists because every monerod verifies real RandomX PoW. With
-  synthetic (legacy) mining there is no real PoW to verify, the cache is
-  never allocated, and per-node memory is already much lower — measured
-  ~156 MB/daemon without KSM on the 2,232-host eclipse run, vs ~305
-  MB/daemon on native-mining rungs. `--ksm` is harmless there but has far
-  less identical content to merge; expect a much smaller win (unmeasured).
+- **The ~10× should apply to synthetic-mining runs too.** Correctly
+  re-measured, the 2,232-host eclipse reproduction (synthetic mining) ran
+  **1,210 actual monerods** — the other ~1,050 hosts are lightweight
+  fake-peer/injector agents with no daemon — at **~295 MB/daemon**, the
+  same class as native's ~305. The RandomX cache region is evidently
+  allocated there as well (the preloaded chain carries real PoW that gets
+  verified at startup), so `--ksm` should merge it just the same —
+  unmeasured for synthetic, but the per-daemon sizes match. Two traps this
+  corrects: divide the daemon bucket by the **daemon count**, not the
+  process count (an earlier pass here divided by all 2,276 processes,
+  fake peers included, and wrongly read ~156 MB/daemon); and in
+  eclipse-style configs, extrapolate scale by daemons — the 1,000
+  fake-peer hosts cost ~26 GB in total, nearly free.
 
 KSM needs two things, both of which must be true:
 
