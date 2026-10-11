@@ -385,6 +385,13 @@ seed is shared. KSM deduplicates those pages across processes:
   once unmergeable per-node state (blockchain, peerlists) has grown.
 - **No wall-time cost measured** (wall to sim 4 h: 1.39 h vs 1.42 h); the
   `ksmd` kernel thread used ~0.4 core.
+- **The ~10× is a native-mining number.** The mergeable 256 MB RandomX
+  light cache exists because every monerod verifies real RandomX PoW. With
+  synthetic (legacy) mining there is no real PoW to verify, the cache is
+  never allocated, and per-node memory is already much lower — measured
+  ~156 MB/daemon without KSM on the 2,232-host eclipse run, vs ~305
+  MB/daemon on native-mining rungs. `--ksm` is harmless there but has far
+  less identical content to merge; expect a much smaller win (unmeasured).
 
 KSM needs two things, both of which must be true:
 
