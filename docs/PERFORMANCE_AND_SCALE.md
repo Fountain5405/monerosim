@@ -402,12 +402,16 @@ KSM needs two things, both of which must be true:
 
 2. **Every process opts in.** Merging is per-process opt-in via
    `prctl(PR_SET_MEMORY_MERGE, 1)`, which survives `execve` and `fork` —
-   so the unprivileged wrapper `scripts/ksm_exec.py` sets it and then
-   execs your command, covering Shadow and everything it starts:
+   so `run_sim.sh --ksm` re-execs itself through the unprivileged wrapper
+   `scripts/ksm_exec.py`, covering Shadow and everything it starts:
 
    ```bash
-   python3 scripts/ksm_exec.py ./run_sim.sh --config my.yaml --bootfast
+   ./run_sim.sh --config my.yaml --bootfast --ksm
    ```
+
+   The preflight reports whether the kernel side is actually enabled (and
+   prints the sudo line if not); the run proceeds either way, just with
+   ~10× the RAM. The wrapper can also be used directly for other commands.
 
 Per-machine guidance, updated for measured per-node costs (full-load
 figures assume a 16 h tx-loaded run; boot/light phases are ~3–5× cheaper
