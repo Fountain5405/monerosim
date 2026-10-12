@@ -4,6 +4,16 @@
 
 ### Added
 
+- **`general.emission: {mode: tail, from_height: auto|<H>}`**: mainnet's tail
+  emission (flat 0.6 XMR base reward) from block H on. New
+  `patches/monero-sim-tail-emission.patch` (`--sim-tail-emission-height`,
+  built into monerod-sim) switches the reward inside `get_block_reward`, so
+  coinbase validation, block-template filling and the dynamic fee all follow
+  (fees drop ~60× to mainnet's ~20 nanoXMR/byte). Consensus-relevant: the
+  generator injects the same height into every daemon and runs them all on
+  monerod-sim; refused together with cuprate nodes. `auto` = enough ~35 XMR
+  blocks to fund every user. Requires `./setup.sh --sim-binary`. See
+  docs/TAIL_EMISSION.md.
 - **`run_sim.sh --bootfast` / `--allfast`**: fast monero process starts. Every
   monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
   `get_ticks_per_ns()` static initializer, which spins on the clock until 100 ms

@@ -68,6 +68,8 @@ pub struct UserAgentProcessContext<'a> {
     pub turnover: Option<&'a crate::config::TurnoverConfig>,
     /// Block-production mode (generateblocks vs native monerod-sim mining).
     pub mining: crate::config::MiningConfig,
+    /// Block-reward schedule (stock vs tail emission).
+    pub emission: crate::config::EmissionConfig,
 }
 
 /// Process user agents
@@ -433,6 +435,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         simulation_stop_secs,
         turnover,
         mining,
+        emission,
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
@@ -617,6 +620,35 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
              node_implementations or the hard fork schedule."
         ));
     }
+    // Tail emission: one switch height for the whole run, injected into every
+    // daemon (a node with a different value rejects the first tail block and
+    // splits off). See docs/TAIL_EMISSION.md.
+    use crate::utils::emission::{
+        args_mention_tail_knob, binary_supports_tail_emission, resolve_tail_height,
+        SIM_TAIL_EMISSION_KNOB,
+    };
+    let funded_users = user_agents
+        .iter()
+        .filter(|(_, c)| c.has_wallet() && !c.is_miner())
+        .count();
+    let tail_height = resolve_tail_height(&emission, funded_users)
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    if tail_height.is_some() && !node_impl_assignment.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "general.emission.mode is tail but general.node_implementations assigns \
+             non-monerod nodes: cuprate computes block rewards itself and would reject \
+             the tail-emission chain. Remove node_implementations or the emission section."
+        ));
+    }
+    if let Some(h) = tail_height {
+        log::info!(
+            "Tail emission: 0.6 XMR base reward from height {} ({} funded user(s); all daemons -> monerod-sim)",
+            h,
+            funded_users
+        );
+    }
+    let mut tail_capability_cache: HashMap<String, bool> = HashMap::new();
+
     // Probe results for binary_supports_hf_schedule, shared across all agents.
     let mut hf_capability_cache: HashMap<String, bool> = HashMap::new();
 
@@ -828,6 +860,23 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                  from general.mining (mode: native) and the agent's hashrate; remove it.",
                 agent_id, SIM_HASH_INTERVAL_KNOB, SIM_RX_FULL_DATASET_KNOB
             ));
+        }
+        let tail_in_raw_args = args_mention_tail_knob(user_agent_config.daemon_args.as_ref())
+            || user_agent_config
+                .daemon_phases
+                .as_ref()
+                .map(|phases| phases.values().any(|p| args_mention_tail_knob(p.args.as_ref())))
+                .unwrap_or(false);
+        if merged_daemon_options.contains_key(SIM_TAIL_EMISSION_KNOB) || tail_in_raw_args {
+            return Err(color_eyre::eyre::eyre!(
+                "Agent '{}': {} is set directly in daemon options/args. It must be identical \
+                 on every node; set general.emission instead.",
+                agent_id, SIM_TAIL_EMISSION_KNOB
+            ));
+        }
+        if let Some(h) = tail_height {
+            merged_daemon_options
+                .insert(SIM_TAIL_EMISSION_KNOB.to_string(), OptionValue::Number(h as i64));
         }
         if native_mining && is_miner && has_daemon_phases {
             return Err(color_eyre::eyre::eyre!(
@@ -1134,6 +1183,15 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                         daemon_binary_path
                     ));
                 }
+                if tail_height.is_some()
+                    && !binary_supports_tail_emission(&daemon_binary_path, &mut tail_capability_cache)
+                {
+                    return Err(color_eyre::eyre::eyre!(
+                        "Agent '{}' phase {}: general.emission is tail but '{}' does not support \
+                         --{}. Every phase must run monerod-sim (./setup.sh --sim-binary).",
+                        agent_id, phase_num, daemon_binary_path, SIM_TAIL_EMISSION_KNOB
+                    ));
+                }
 
                 // Build environment for this phase
                 let mut daemon_env = monero_environment.clone();
@@ -1202,10 +1260,13 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 let is_native_miner = native_mining && is_miner;
                 match &user_agent_config.daemon {
                     // Native miners on an unnamed/stock daemon run the patched build.
-                    Some(DaemonConfig::Local(path)) if is_native_miner && (path == "monerod") => {
-                        log::info!(
-                            "Agent '{}': native mining -> daemon monerod-sim (was '{}')",
+                    Some(DaemonConfig::Local(path))
+                        if (is_native_miner || tail_height.is_some()) && (path == "monerod") =>
+                    {
+                        log::debug!(
+                            "Agent '{}': {} -> daemon monerod-sim (was '{}')",
                             agent_id,
+                            if is_native_miner { "native mining" } else { "tail emission" },
                             path
                         );
                         resolve_binary_path_for_shadow("monerod-sim").map_err(|e| {
@@ -1226,10 +1287,11 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                             )
                         })?
                     }
-                    _ if is_native_miner => {
-                        log::info!(
-                            "Agent '{}': native mining -> daemon monerod-sim (was unset)",
-                            agent_id
+                    _ if is_native_miner || tail_height.is_some() => {
+                        log::debug!(
+                            "Agent '{}': {} -> daemon monerod-sim (was unset)",
+                            agent_id,
+                            if is_native_miner { "native mining" } else { "tail emission" }
                         );
                         resolve_binary_path_for_shadow("monerod-sim").map_err(|e| {
                             color_eyre::eyre::eyre!(
@@ -1256,6 +1318,17 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                      with ./setup.sh --hardfork and set daemon: monerod-hf for this agent.",
                     agent_id,
                     daemon_binary_path
+                ));
+            }
+
+            if tail_height.is_some()
+                && !binary_supports_tail_emission(&daemon_binary_path, &mut tail_capability_cache)
+            {
+                return Err(color_eyre::eyre::eyre!(
+                    "Agent '{}': general.emission is tail but '{}' does not support --{}. \
+                     Build monerod-sim with ./setup.sh --sim-binary (daemons default to it in \
+                     tail mode; an explicit daemon: must point at it).",
+                    agent_id, daemon_binary_path, SIM_TAIL_EMISSION_KNOB
                 ));
             }
 

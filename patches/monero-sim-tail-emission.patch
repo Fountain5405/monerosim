@@ -1,0 +1,208 @@
+diff --git a/src/cryptonote_basic/cryptonote_basic_impl.cpp b/src/cryptonote_basic/cryptonote_basic_impl.cpp
+index c60a62689..48562db59 100644
+--- a/src/cryptonote_basic/cryptonote_basic_impl.cpp
++++ b/src/cryptonote_basic/cryptonote_basic_impl.cpp
+@@ -28,6 +28,7 @@
+ //
+ // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
+ 
++#include <limits>
+ #include "include_base_utils.h"
+ using namespace epee;
+ 
+@@ -80,6 +81,18 @@ namespace cryptonote {
+     return CRYPTONOTE_MAX_TX_SIZE;
+   }
+   //-----------------------------------------------------------------------------------------------
++  static uint64_t g_sim_tail_emission_height = std::numeric_limits<uint64_t>::max();
++  void set_sim_tail_emission_height(uint64_t height) { g_sim_tail_emission_height = height; }
++  uint64_t get_sim_tail_emission_height() { return g_sim_tail_emission_height; }
++  //-----------------------------------------------------------------------------------------------
++  bool get_block_reward_at_height(uint64_t height, size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version) {
++    // Pretend the supply is exhausted: the stock formula then floors the base
++    // reward at the tail subsidy, and the size penalty applies unchanged.
++    if (height >= g_sim_tail_emission_height)
++      already_generated_coins = MONEY_SUPPLY;
++    return get_block_reward(median_weight, current_block_weight, already_generated_coins, reward, version);
++  }
++  //-----------------------------------------------------------------------------------------------
+   bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version) {
+     static_assert(DIFFICULTY_TARGET_V2%60==0&&DIFFICULTY_TARGET_V1%60==0,"difficulty targets must be a multiple of 60");
+     const int target = version < 2 ? DIFFICULTY_TARGET_V1 : DIFFICULTY_TARGET_V2;
+diff --git a/src/cryptonote_basic/cryptonote_basic_impl.h b/src/cryptonote_basic/cryptonote_basic_impl.h
+index ca991f05e..1de3f0ec3 100644
+--- a/src/cryptonote_basic/cryptonote_basic_impl.h
++++ b/src/cryptonote_basic/cryptonote_basic_impl.h
+@@ -80,6 +80,15 @@ namespace cryptonote {
+   size_t get_min_block_weight(uint8_t version);
+   size_t get_max_tx_size();
+   bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version);
++  // Simulation only (--sim-tail-emission-height): from this block height on,
++  // the base reward is the tail subsidy regardless of already_generated_coins.
++  // UINT64_MAX (default) = stock emission. Consensus-relevant: every node in a
++  // network must use the same value.
++  void set_sim_tail_emission_height(uint64_t height);
++  uint64_t get_sim_tail_emission_height();
++  // get_block_reward for the block at `height`, honouring the sim tail switch.
++  // All consensus/template/fee call sites use this one.
++  bool get_block_reward_at_height(uint64_t height, size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version);
+   uint8_t get_account_address_checksum(const public_address_outer_blob& bl);
+   uint8_t get_account_integrated_address_checksum(const public_integrated_address_outer_blob& bl);
+ 
+diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
+index 9259b13bb..c46f01693 100644
+--- a/src/cryptonote_core/blockchain.cpp
++++ b/src/cryptonote_core/blockchain.cpp
+@@ -1357,7 +1357,7 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
+     get_last_n_blocks_weights(last_blocks_weights, CRYPTONOTE_REWARD_BLOCKS_WINDOW);
+     median_weight = epee::misc_utils::median(last_blocks_weights);
+   }
+-  if (!get_block_reward(median_weight, cumulative_block_weight, already_generated_coins, base_reward, version))
++  if (!get_block_reward_at_height(boost::get<txin_gen>(b.miner_tx.vin[0]).height, median_weight, cumulative_block_weight, already_generated_coins, base_reward, version))
+   {
+     MERROR_VER("block weight " << cumulative_block_weight << " is bigger than allowed for this blockchain");
+     return false;
+@@ -3780,7 +3780,7 @@ bool Blockchain::check_fee(size_t tx_weight, uint64_t fee) const
+     median = m_current_block_cumul_weight_limit / 2;
+     const uint64_t blockchain_height = m_db->height();
+     already_generated_coins = blockchain_height ? m_db->get_block_already_generated_coins(blockchain_height - 1) : 0;
+-    if (!get_block_reward(median, 1, already_generated_coins, base_reward, version))
++    if (!get_block_reward_at_height(m_db->height(), median, 1, already_generated_coins, base_reward, version))
+       return false;
+   }
+ 
+@@ -3888,7 +3888,7 @@ void Blockchain::get_dynamic_base_fee_estimate_2021_scaling(uint64_t grace_block
+ 
+   uint64_t already_generated_coins = db_height ? m_db->get_block_already_generated_coins(db_height - 1) : 0;
+   uint64_t base_reward;
+-  if (!get_block_reward(m_current_block_cumul_weight_limit / 2, 1, already_generated_coins, base_reward, version))
++  if (!get_block_reward_at_height(m_db->height(), m_current_block_cumul_weight_limit / 2, 1, already_generated_coins, base_reward, version))
+   {
+     MERROR("Failed to determine block reward, using placeholder " << print_money(BLOCK_REWARD_OVERESTIMATE) << " as a high bound");
+     base_reward = BLOCK_REWARD_OVERESTIMATE;
+@@ -3929,7 +3929,7 @@ uint64_t Blockchain::get_dynamic_base_fee_estimate(uint64_t grace_blocks) const
+ 
+   uint64_t already_generated_coins = db_height ? m_db->get_block_already_generated_coins(db_height - 1) : 0;
+   uint64_t base_reward;
+-  if (!get_block_reward(m_current_block_cumul_weight_limit / 2, 1, already_generated_coins, base_reward, version))
++  if (!get_block_reward_at_height(m_db->height(), m_current_block_cumul_weight_limit / 2, 1, already_generated_coins, base_reward, version))
+   {
+     MERROR("Failed to determine block reward, using placeholder " << print_money(BLOCK_REWARD_OVERESTIMATE) << " as a high bound");
+     base_reward = BLOCK_REWARD_OVERESTIMATE;
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+index ba584fe52..392e90880 100644
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -218,6 +218,17 @@ namespace cryptonote
+   // seconds after the first block of the same height) stop counting toward
+   // their chain's in-time weight, and reorgs follow the weighted rule with a
+   // k-block longest-chain fail-safe. Off by default; stock behavior otherwise.
++  // SIMULATION ONLY (monerosim patches/monero-sim-tail-emission.patch): from
++  // this block height on, every block's base reward is the tail subsidy
++  // (FINAL_SUBSIDY_PER_MINUTE x target minutes = 0.6 XMR), as on mainnet since
++  // 2022. Feeds coinbase construction and validation, block template filling
++  // and the dynamic fee, so all of them follow. CONSENSUS-RELEVANT: every node
++  // of a network must use the same value. Unset = stock emission.
++  static const command_line::arg_descriptor<uint64_t> arg_sim_tail_emission_height = {
++    "sim-tail-emission-height"
++  , "Simulation only: from this block height on, pay the tail-emission base reward (0.6 XMR) regardless of coins generated so far. Every node must use the same value. Unset = stock emission."
++  , std::numeric_limits<uint64_t>::max()
++  };
+   static const command_line::arg_descriptor<bool> arg_sim_publish_or_perish = {
+     "sim-publish-or-perish"
+   , "Simulation only: enable the Publish-or-Perish weighted fork-resolving policy (late blocks lose chain weight). Off by default."
+@@ -382,6 +393,7 @@ namespace cryptonote
+     command_line::add_arg(desc, arg_regtest_on);
+     command_line::add_arg(desc, arg_sim_relay_alt_blocks);
+   command_line::add_arg(desc, arg_sim_publish_or_perish);
++  command_line::add_arg(desc, arg_sim_tail_emission_height);
+   command_line::add_arg(desc, arg_sim_pop_k);
+   command_line::add_arg(desc, arg_sim_pop_delay_s);
+   command_line::add_arg(desc, arg_sim_pop_det_tie);
+@@ -528,6 +540,11 @@ namespace cryptonote
+   //-----------------------------------------------------------------------------------------------
+   bool core::init(const boost::program_options::variables_map& vm, const cryptonote::test_options *test_options, const GetCheckpointsCallback& get_checkpoints/* = nullptr */, bool allow_dns)
+   {
++    // SIMULATION ONLY: arm the tail-emission switch before anything can
++    // build, validate or price a block.
++    set_sim_tail_emission_height(command_line::get_arg(vm, arg_sim_tail_emission_height));
++    if (get_sim_tail_emission_height() != std::numeric_limits<uint64_t>::max())
++      MGINFO("SIM: tail emission (" << print_money(FINAL_SUBSIDY_PER_MINUTE * (DIFFICULTY_TARGET_V2 / 60)) << " base reward) from height " << get_sim_tail_emission_height());
+     start_time = std::time(nullptr);
+ 
+     const bool regtest = command_line::get_arg(vm, arg_regtest_on);
+diff --git a/src/cryptonote_core/cryptonote_tx_utils.cpp b/src/cryptonote_core/cryptonote_tx_utils.cpp
+index 7aea5cf50..140177c43 100644
+--- a/src/cryptonote_core/cryptonote_tx_utils.cpp
++++ b/src/cryptonote_core/cryptonote_tx_utils.cpp
+@@ -127,7 +127,7 @@ namespace cryptonote
+     in.height = height;
+ 
+     uint64_t block_reward;
+-    if(!get_block_reward(median_weight, current_block_weight, already_generated_coins, block_reward, hard_fork_version))
++    if(!get_block_reward_at_height(height, median_weight, current_block_weight, already_generated_coins, block_reward, hard_fork_version))
+     {
+       LOG_PRINT_L0("Block is too big");
+       return false;
+diff --git a/src/cryptonote_core/tx_pool.cpp b/src/cryptonote_core/tx_pool.cpp
+index 8af654185..ff1e9c978 100644
+--- a/src/cryptonote_core/tx_pool.cpp
++++ b/src/cryptonote_core/tx_pool.cpp
+@@ -1565,7 +1565,7 @@ namespace cryptonote
+     fee = 0;
+     
+     //baseline empty block
+-    if (!get_block_reward(median_weight, total_weight, already_generated_coins, best_coinbase, version))
++    if (!get_block_reward_at_height(m_blockchain.get_current_blockchain_height(), median_weight, total_weight, already_generated_coins, best_coinbase, version))
+     {
+       MERROR("Failed to get block reward for empty block");
+       return false;
+@@ -1619,7 +1619,7 @@ namespace cryptonote
+         // If we're getting lower coinbase tx,
+         // stop including more tx
+         uint64_t block_reward;
+-        if(!get_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, block_reward, version))
++        if(!get_block_reward_at_height(m_blockchain.get_current_blockchain_height(), median_weight, total_weight + meta.weight, already_generated_coins, block_reward, version))
+         {
+           LOG_PRINT_L2("  would exceed maximum block weight");
+           continue;
+diff --git a/tests/unit_tests/block_reward.cpp b/tests/unit_tests/block_reward.cpp
+index 9d06c8e86..cc4fccd23 100644
+--- a/tests/unit_tests/block_reward.cpp
++++ b/tests/unit_tests/block_reward.cpp
+@@ -230,4 +230,35 @@ namespace
+     ASSERT_TRUE(m_block_not_too_big);
+     ASSERT_EQ(m_block_reward, m_standard_block_reward * 15 / 64);
+   }
++
++  // monerosim patches/monero-sim-tail-emission.patch
++  TEST(sim_tail_emission, switches_at_height_and_keeps_penalty)
++  {
++    const uint64_t tail = FINAL_SUBSIDY_PER_MINUTE * 2; // 0.6 XMR at 2-min blocks
++    const size_t median = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5;
++    uint64_t r = 0, stock = 0;
++    ASSERT_TRUE(get_block_reward(median, 1, 0, stock, 16));
++    ASSERT_GT(stock, tail);
++
++    // off by default: identical to the stock function at any height
++    ASSERT_TRUE(get_block_reward_at_height(1000000, median, 1, 0, r, 16));
++    ASSERT_EQ(stock, r);
++
++    set_sim_tail_emission_height(100);
++    ASSERT_TRUE(get_block_reward_at_height(99, median, 1, 0, r, 16));
++    ASSERT_EQ(stock, r);
++    ASSERT_TRUE(get_block_reward_at_height(100, median, 1, 0, r, 16));
++    ASSERT_EQ(tail, r);
++    ASSERT_TRUE(get_block_reward_at_height(5000, median, 1, 0, r, 16));
++    ASSERT_EQ(tail, r);
++    // size penalty still applies to the tail reward: 1.5 x median -> 3/4
++    ASSERT_TRUE(get_block_reward_at_height(100, median, median * 3 / 2, 0, r, 16));
++    ASSERT_EQ(tail * 3 / 4, r);
++    // and the 2 x median hard cap still holds
++    ASSERT_FALSE(get_block_reward_at_height(100, median, 2 * median + 1, 0, r, 16));
++
++    set_sim_tail_emission_height(std::numeric_limits<uint64_t>::max());
++    ASSERT_TRUE(get_block_reward_at_height(5000, median, 1, 0, r, 16));
++    ASSERT_EQ(stock, r);
++  }
+ }

@@ -885,6 +885,7 @@ pub fn generate_agent_shadow_config(
         )?,
         turnover: config.general.turnover.as_ref(),
         mining: config.general.mining.clone(),
+        emission: config.general.emission.clone(),
     })?;
 
     // Calculate offset for script agents to avoid IP collisions
