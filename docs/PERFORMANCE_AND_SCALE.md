@@ -352,8 +352,10 @@ under-loaded).
 
 The headline: **network behavior is flat across a 3× node count.** Tx
 latency moves ~0.1 s at the median, propagation reaches everyone, peer
-counts hold ~90. Cost is roughly linear in nodes (wall ×~1.8 per rung;
-RAM sub-linear with KSM). There is no observed algorithmic wall at 3k
+counts hold ~90. Wall time grows ×~2 per rung because the relay work grows
+as txs × nodes (quadratic when users scale with nodes); Shadow's event
+throughput did not degrade (515k → 687k events/wall-s, 1k → 3k). RAM is
+sub-linear with KSM. See "Transaction rate vs block capacity" below. There is no observed algorithmic wall at 3k
 nodes; the binding constraints are now, in order: **disk (log volume),
 wall time, then RAM without KSM**.
 
@@ -364,6 +366,21 @@ measured the same ~295 MB/daemon class on the 2,232-host eclipse
 reproduction (1,210 actual monerods; see the KSM section for the
 host-count trap). That config's 2026-10 rerun completed 50 sim-hours in
 15.6 wall-hours with `--bootfast` and no KSM at 374 GB peak.
+
+### Transaction rate vs block capacity
+
+Keep the network-wide tx rate under the chain's capacity unless congestion
+is what you are studying. At low (default) fees blocks stay near the
+300 kB penalty-free minimum — about 150 txs, so **~4,500 txs per sim-hour
+at 2-min blocks**. The dynamic block size barely moves: miners only
+overshoot the median by what fees pay for (~1.5 kB here), so the median
+grew ~1.5% over 4 sim-hours of full blocks.
+
+The 3k rung (600 users × 12 tx/h ≈ 5,300/sim-h sent) crossed that line:
+from sim ~13 h the mempool backlog grew to ~3,000 txs and wall time per
+sim-hour doubled (190 → 368 min) at a constant send rate, because every
+node holds and re-announces every pending tx. Below capacity (1k rung)
+pace is flat. Analysis: `docs/20261012_3k_slowdown_decomposition.md`.
 
 ### Disk is the new ceiling
 
