@@ -38,6 +38,11 @@ emission until `from_height`, then tail:
   a 1.5× margin: `ceil(users × 10 × 1.5 / 35.18)`, at least 60. For 600 users
   that is height 256. Coins minted before the switch stay spendable after it,
   so funding can happen whenever the distributor gets to it.
+- With a chain snapshot (`general.mining.chain_snapshot`), `auto` counts from
+  the snapshot tip: the snapshot's coinbases belong to the run that generated
+  it, not to this run's wallets, so users are funded only from live blocks.
+  h50 (tip 1535) with 20 users gives height 1595. A literal height at or below
+  the tip logs a warning.
 - A literal height, e.g. `from_height: 0` for pure tail emission from genesis
   (only sensible for runs that fund few users).
 

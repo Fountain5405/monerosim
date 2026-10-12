@@ -653,34 +653,6 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
              node_implementations or the hard fork schedule."
         ));
     }
-    // Tail emission: one switch height for the whole run, injected into every
-    // daemon (a node with a different value rejects the first tail block and
-    // splits off). See docs/TAIL_EMISSION.md.
-    use crate::utils::emission::{
-        args_mention_tail_knob, binary_supports_tail_emission, resolve_tail_height,
-        SIM_TAIL_EMISSION_KNOB,
-    };
-    let funded_users = user_agents
-        .iter()
-        .filter(|(_, c)| c.has_wallet() && !c.is_miner())
-        .count();
-    let tail_height = resolve_tail_height(&emission, funded_users)
-        .map_err(|e| color_eyre::eyre::eyre!(e))?;
-    if tail_height.is_some() && !node_impl_assignment.is_empty() {
-        return Err(color_eyre::eyre::eyre!(
-            "general.emission.mode is tail but general.node_implementations assigns \
-             non-monerod nodes: cuprate computes block rewards itself and would reject \
-             the tail-emission chain. Remove node_implementations or the emission section."
-        ));
-    }
-    if let Some(h) = tail_height {
-        log::info!(
-            "Tail emission: 0.6 XMR base reward from height {} ({} funded user(s); all daemons -> monerod-sim)",
-            h,
-            funded_users
-        );
-    }
-    let mut tail_capability_cache: HashMap<String, bool> = HashMap::new();
 
     // Probe results for binary_supports_hf_schedule, shared across all agents.
     let mut hf_capability_cache: HashMap<String, bool> = HashMap::new();
@@ -714,6 +686,8 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     // generation time in this same process — strictly after main.rs's
     // stale-{daemon_data_dir} cleanup and before Shadow ever runs, never
     // inside the simulation itself.
+    // Height of the grafted snapshot's tip (0 = fresh chain); tail `auto` counts from it.
+    let mut snapshot_height: u64 = 0;
     if native_mining && mining.chain_snapshot != "off" {
         use crate::utils::chain_snapshot::{
             copy_template_into, ensure_template, preflight_check, read_monero_pin,
@@ -741,6 +715,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             let cache_dir =
                 ensure_template(&preset_dir, repo_root).map_err(|e| color_eyre::eyre::eyre!(e))?;
 
+            snapshot_height = manifest.height;
             let mut nodes_seeded = 0usize;
             let mut total_bytes = 0u64;
             for (id, cfg) in &user_agents {
@@ -769,6 +744,44 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             );
         }
     }
+
+    // Tail emission: one switch height for the whole run, injected into every
+    // daemon (a node with a different value rejects the first tail block and
+    // splits off). See docs/TAIL_EMISSION.md.
+    use crate::utils::emission::{
+        args_mention_tail_knob, binary_supports_tail_emission, resolve_tail_height,
+        SIM_TAIL_EMISSION_KNOB,
+    };
+    let funded_users = user_agents
+        .iter()
+        .filter(|(_, c)| c.has_wallet() && !c.is_miner())
+        .count();
+    let tail_height = resolve_tail_height(&emission, funded_users, snapshot_height)
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    if tail_height.is_some() && !node_impl_assignment.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "general.emission.mode is tail but general.node_implementations assigns \
+             non-monerod nodes: cuprate computes block rewards itself and would reject \
+             the tail-emission chain. Remove node_implementations or the emission section."
+        ));
+    }
+    if let Some(h) = tail_height {
+        log::info!(
+            "Tail emission: 0.6 XMR base reward from height {} ({} funded user(s), chain starts at {}; all daemons -> monerod-sim)",
+            h,
+            funded_users,
+            snapshot_height
+        );
+        if h <= snapshot_height && funded_users > 0 {
+            log::warn!(
+                "Tail emission starts at or below the chain snapshot tip ({}): the snapshot's \
+                 coinbases are not owned by this run's wallets, so users can only be funded \
+                 from 0.6 XMR blocks. Use from_height: auto unless that is intended.",
+                snapshot_height
+            );
+        }
+    }
+    let mut tail_capability_cache: HashMap<String, bool> = HashMap::new();
     let turnover_params: Option<(f64, f64, f64, f64, f64)> = match turnover {
         Some(c) => {
             let mean_session = parse_duration_to_seconds(&c.mean_session).map_err(|e| {

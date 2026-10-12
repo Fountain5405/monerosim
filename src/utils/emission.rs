@@ -32,9 +32,14 @@ pub fn auto_tail_height(funded_users: usize) -> u64 {
 }
 
 /// The tail switch height for this run, or None for stock emission.
+/// `chain_start` = tip height of a grafted chain snapshot (0 = fresh chain).
+/// The snapshot's coinbases belong to the generator run's wallets, so users
+/// are funded only from blocks mined live: `auto` counts from the tip. A
+/// literal `from_height` stays absolute.
 pub fn resolve_tail_height(
     cfg: &EmissionConfig,
     funded_users: usize,
+    chain_start: u64,
 ) -> Result<Option<u64>, String> {
     if !cfg.is_tail() {
         if cfg.from_height.is_some() {
@@ -43,9 +48,11 @@ pub fn resolve_tail_height(
         return Ok(None);
     }
     match &cfg.from_height {
-        None => Ok(Some(auto_tail_height(funded_users))),
+        None => Ok(Some(chain_start + auto_tail_height(funded_users))),
         Some(EmissionHeight::Height(h)) => Ok(Some(*h)),
-        Some(EmissionHeight::Keyword(k)) if k == "auto" => Ok(Some(auto_tail_height(funded_users))),
+        Some(EmissionHeight::Keyword(k)) if k == "auto" => {
+            Ok(Some(chain_start + auto_tail_height(funded_users)))
+        }
         Some(EmissionHeight::Keyword(k)) => Err(format!(
             "general.emission.from_height must be a block height or 'auto', got '{}'",
             k
@@ -100,16 +107,22 @@ mod tests {
 
     #[test]
     fn resolve() {
-        assert_eq!(resolve_tail_height(&EmissionConfig::default(), 600), Ok(None));
-        assert_eq!(resolve_tail_height(&tail(None), 600), Ok(Some(256)));
+        assert_eq!(resolve_tail_height(&EmissionConfig::default(), 600, 0), Ok(None));
+        assert_eq!(resolve_tail_height(&tail(None), 600, 0), Ok(Some(256)));
         assert_eq!(
-            resolve_tail_height(&tail(Some(EmissionHeight::Keyword("auto".into()))), 600),
+            resolve_tail_height(&tail(Some(EmissionHeight::Keyword("auto".into()))), 600, 0),
             Ok(Some(256))
         );
-        assert_eq!(resolve_tail_height(&tail(Some(EmissionHeight::Height(0))), 600), Ok(Some(0)));
-        assert!(resolve_tail_height(&tail(Some(EmissionHeight::Keyword("soon".into()))), 1).is_err());
+        // grafted snapshot: auto counts from its tip, a literal height stays absolute
+        assert_eq!(resolve_tail_height(&tail(None), 600, 1535), Ok(Some(1791)));
+        assert_eq!(
+            resolve_tail_height(&tail(Some(EmissionHeight::Height(100))), 600, 1535),
+            Ok(Some(100))
+        );
+        assert_eq!(resolve_tail_height(&tail(Some(EmissionHeight::Height(0))), 600, 0), Ok(Some(0)));
+        assert!(resolve_tail_height(&tail(Some(EmissionHeight::Keyword("soon".into()))), 1, 0).is_err());
         let stray = EmissionConfig { mode: EmissionMode::Stock, from_height: Some(EmissionHeight::Height(5)) };
-        assert!(resolve_tail_height(&stray, 1).is_err());
+        assert!(resolve_tail_height(&stray, 1, 0).is_err());
     }
 
     #[test]

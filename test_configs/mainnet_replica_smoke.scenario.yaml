@@ -24,6 +24,10 @@ general:
   mining:
     mode: native
     chain_snapshot: auto
+  # Mainnet's reward regime: 0.6 XMR/block tail emission (docs/TAIL_EMISSION.md).
+  # auto = snapshot tip + enough full-reward live blocks to fund every user.
+  emission:
+    mode: tail
   turnover:
     mean_session: 1h
     mean_downtime: 1h
