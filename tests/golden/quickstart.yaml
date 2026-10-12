@@ -58,7 +58,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=3.0.0.11
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -96,9 +95,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/miner-001_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -176,7 +173,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=2.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -214,9 +210,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/miner-002_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -294,7 +288,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=1.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -332,9 +325,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/miner-003_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -412,7 +403,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=177.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -450,9 +440,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/miner-004_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -530,7 +518,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=41.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -568,9 +555,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/miner-005_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -673,7 +658,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=176.9.0.187
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -721,7 +705,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=88.198.163.90
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -769,7 +752,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=192.99.8.110
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -817,7 +799,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=37.187.74.171
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -865,7 +846,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=88.99.195.15
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -913,7 +893,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=5.104.84.64
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -961,7 +940,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=123.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -1034,7 +1012,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=6.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -1075,9 +1052,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/user-01_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -1134,7 +1109,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=25.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -1175,9 +1149,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/user-02_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -1234,7 +1206,6 @@ hosts:
       - --max-log-file-size=0
       - --no-zmq
       - --non-interactive
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=27.0.0.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -1275,9 +1246,7 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/user-03_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
       - --log-level=1
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'

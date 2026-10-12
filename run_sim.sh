@@ -43,6 +43,7 @@ TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 
 TURNOVER_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --turnover-downtime
 TURNOVER_MAX_SESSION=""      # optional hard session ceiling (e.g. 6h) -> monerosim --turnover-max-session
 CLOCK_MODE=""                # "" = Shadow default clock charge; bootfast | allfast -> monerosim --bootfast / --allfast
+KSM_OPTIN=false              # --ksm: re-exec through scripts/ksm_exec.py (prctl PR_SET_MEMORY_MERGE)
 SHOW_MONITOR=true
 RUN_ANALYZE=false
 DO_BUILD=true
@@ -90,6 +91,13 @@ Options:
                          time instead of 10 ns, for the whole run. Starts as fast
                          as --bootfast; normal code runs slightly slower in
                          simulated time (~0.1 ms per block hop). Not with --bootfast.
+  --ksm                  Opt this run's processes into kernel same-page merging
+                         (KSM). Each monerod's 256 MB RandomX light cache is
+                         byte-identical across nodes; KSM deduplicates it and
+                         cuts RAM ~10x (measured 30 GB vs 305 GB at 1k nodes).
+                         No wall-time cost. Unprivileged; merging only happens
+                         if the kernel has it enabled (checked in preflight —
+                         needs root once per boot, see docs/PERFORMANCE_AND_SCALE.md).
   --archive-dir <dir>    Archive location (default: $MONEROSIM_ARCHIVE_BASE or archived_runs)
   --run-dir-file <path>  Write this run's directory (<archive>/<run_id>) to <path> as
                          soon as it is allocated, so a wrapper can tell its own run
@@ -150,6 +158,8 @@ EOF
     exit 0
 }
 
+ORIG_ARGS=("$@")
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --config)
@@ -182,6 +192,10 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             CLOCK_MODE="${1#--}"
+            shift
+            ;;
+        --ksm)
+            KSM_OPTIN=true
             shift
             ;;
         --archive-dir)
@@ -254,6 +268,23 @@ if [[ -z "$CONFIG" ]]; then
     echo -e "${YELLOW}Error: --config is required${NC}"
     echo "Run './run_sim.sh --help' for usage."
     exit 1
+fi
+
+# --ksm: re-exec through scripts/ksm_exec.py, which sets
+# prctl(PR_SET_MEMORY_MERGE, 1) before exec'ing us back. The property survives
+# exec and fork, so this bash, Shadow, and every process Shadow starts become
+# eligible for same-page merging. Unprivileged — actual merging still requires
+# root to have enabled KSM on the machine (preflight reports that).
+# MONEROSIM_KSM_ACTIVE=1 (exported just before the exec) stops the second
+# pass from re-exec'ing again.
+if [[ "$KSM_OPTIN" == true && "${MONEROSIM_KSM_ACTIVE:-0}" != "1" ]]; then
+    ksm_wrapper="$SCRIPT_DIR/scripts/ksm_exec.py"
+    if [[ ! -f "$ksm_wrapper" ]]; then
+        echo -e "${YELLOW}Error: --ksm needs $ksm_wrapper${NC}" >&2
+        exit 1
+    fi
+    export MONEROSIM_KSM_ACTIVE=1
+    exec python3 "$ksm_wrapper" "$0" "${ORIG_ARGS[@]}"
 fi
 
 # Defaults
@@ -629,6 +660,26 @@ preflight_checks() {
         fi
     elif [[ "$CLOCK_MODE" == "allfast" ]]; then
         log_ok "Clock: --allfast (1 us per clock read)"
+    fi
+
+    # --ksm opted the run's processes in (re-exec through scripts/ksm_exec.py),
+    # but the kernel only merges if root enabled it; that resets at every
+    # reboot. Warn (don't fail): the run works either way, just with ~10x the
+    # RAM (each monerod keeps its own 256 MB RandomX light cache).
+    if [[ "$KSM_OPTIN" == true ]]; then
+        if [[ "${MONEROSIM_KSM_ACTIVE:-0}" != "1" ]]; then
+            log_err "--ksm was given but this process is not KSM-mergeable (re-exec did not happen?)"
+            exit 1
+        fi
+        if [[ "$(cat /sys/kernel/mm/ksm/run 2>/dev/null || echo 0)" == "1" ]]; then
+            log_ok "KSM: opted in and kernel merging enabled (pages_to_scan=$(cat /sys/kernel/mm/ksm/pages_to_scan))"
+        else
+            log_warn "KSM: --ksm given but the kernel has merging disabled (/sys/kernel/mm/ksm/run != 1)"
+            log_warn "  The run proceeds, but without the ~10x RAM saving (each monerod keeps its"
+            log_warn "  own 256 MB RandomX light cache; ~320 MB/node instead of ~30-150 MB)"
+            log_info "  Enable (needs root, resets at every reboot):"
+            log_info "    sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/run'"
+        fi
     fi
 
     # Verify the installed monerod matches this checkout's pinned monero

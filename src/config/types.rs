@@ -468,6 +468,12 @@ pub struct GeneralConfig {
     /// docs/NATIVE_MINING.md and docs/superpowers/specs/2026-09-10-native-mining-design.md.
     #[serde(default)]
     pub mining: MiningConfig,
+
+    /// Block-reward schedule. Absent = stock emission (fresh-chain ~35 XMR
+    /// rewards). `mode: tail` = mainnet's tail emission (0.6 XMR/block) from
+    /// `from_height` on. See docs/TAIL_EMISSION.md.
+    #[serde(default)]
+    pub emission: EmissionConfig,
 }
 
 /// Default reachable fraction: 1.0 = all nodes reachable (perfect network).
@@ -531,6 +537,43 @@ pub enum MiningMode {
 impl Default for MiningMode {
     fn default() -> Self {
         MiningMode::Generateblocks
+    }
+}
+
+/// Block-reward schedule (see docs/TAIL_EMISSION.md).
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum EmissionMode {
+    /// Stock Monero emission for a fresh chain.
+    #[default]
+    Stock,
+    /// Flat tail-emission base reward (0.6 XMR) from `from_height` on, via
+    /// `--sim-tail-emission-height` (patches/monero-sim-tail-emission.patch).
+    Tail,
+}
+
+/// Height at which tail emission starts: a literal block height, or `auto`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum EmissionHeight {
+    Height(u64),
+    /// The string "auto": enough full-emission blocks to fund every user.
+    Keyword(String),
+}
+
+/// `general.emission` — the block-reward schedule.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct EmissionConfig {
+    #[serde(default)]
+    pub mode: EmissionMode,
+    /// Tail mode only. Absent = `auto`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_height: Option<EmissionHeight>,
+}
+
+impl EmissionConfig {
+    pub fn is_tail(&self) -> bool {
+        self.mode == EmissionMode::Tail
     }
 }
 
@@ -729,6 +772,7 @@ impl Default for GeneralConfig {
             node_implementations: BTreeMap::new(),
             experimental_cuprate_boot: false,
             mining: MiningConfig::default(),
+            emission: EmissionConfig::default(),
         }
     }
 }

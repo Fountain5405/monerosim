@@ -12,7 +12,11 @@ ratio = sim_time_reached / wall_time_elapsed
 A ratio of `1` means the sim takes exactly as long to run as the simulated
 duration. A ratio of `5` means a 6-hour sim finishes in 1h 12m. A ratio
 below `1` means you are watching simulated time crawl slower than your
-wristwatch — and below `~0.1` Shadow tends to stall entirely ("the cliff").
+wristwatch. This used to be read as a hard wall ("the cliff" at N=1000); the
+2026-10 scale ladder ran 3,011 nodes at an overall ratio of 0.44 — dropping to
+~0.19 during the peak-transaction hours — with zero failed processes. Ratios
+well below 1 are normal at scale and are not, by themselves, a stall. See
+[Scale limits and the 2026-10 scale ladder](#scale-limits-and-the-2026-10-scale-ladder).
 
 ## What makes a simulation slower
 
@@ -39,6 +43,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | `run_sim.sh --bootfast` (needs shadowformonero >= v0.2.5) | Every monero process start drops from ~16 to ~0.4 wall-s | None measurable: only a thread that reads the clock more than 10,000 times in a row is charged more. See [Start-up cost](#start-up-cost) |
 | `run_sim.sh --allfast` (= `performance.unblocked_vdso_latency: 1 us`) | Same start-up cut | Every clock read in every process charges 1 µs of sim time instead of 10 ns (~0.1 ms per block hop). See [Start-up cost](#start-up-cost) |
 | Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
+| **KSM enabled** (machine-level, plus `scripts/ksm_exec.py` wrapper) | ~10× less RAM per node; the single biggest scale enabler | Needs root once per boot; no wall-time cost measured. See [KSM](#ksm-kernel-same-page-merging) |
 
 ## Modeling syscall latency
 
@@ -197,9 +202,9 @@ sim-hours) and did not speed up with more workers. Measured and profiled in
   At Shadow's default `unblocked_vdso_latency` of 10 ns that is 10 million
   clock reads, each ~1.55 µs of real time with `native_preemption: true`.
 - ~1.2 s: the RSA-4096 certificate monerod and wallet-rpc generate for RPC SSL.
-  monerosim now passes `--rpc-ssl=disabled` to every monerod and
-  `--rpc-ssl=disabled --daemon-ssl=disabled` to every wallet-rpc unless you
-  set them (see `docs/CONFIGURATION.md`).
+  Turning it off (`rpc-ssl: disabled`) saves this but breaks wallet sync once
+  transactions flow (`docs/20261009_rpc_ssl_off_wallet_stall.md`), so monerosim
+  leaves it at the stock `autodetect` (see `docs/CONFIGURATION.md`).
 - ~0.3 s: everything else.
 
 Per start on a 70-host test (median, wall-seconds): 17.3 as before, 16.2
@@ -272,6 +277,12 @@ needs:
 | Literal category string, e.g. `"*:WARNING,blockchain:INFO,daemon.rpc:INFO"` | Passed through verbatim | Power-user override. You're on your own to keep what your tooling needs. |
 | `0` | All `MINFO` suppressed; only WARNING+ globally | **Avoid unless you don't care about per-host data.** The live block counter and post-run analyzer go silent. Useful only for pure Shadow-throughput benchmarking where the simulation summary is irrelevant. |
 
+One documented large-scale exception: from 2k nodes up, the scale ladder
+runs **relays** at `daemon_options: log-level: 0` while users and miners
+keep `monitor`. At those sizes the relay `net.p2p.msg` firehose dominates
+disk (see [Disk is the new ceiling](#disk-is-the-new-ceiling)), and the
+rungs are compared on the user+miner observer set only.
+
 YAML caveat: the literal-string form must be quoted because a leading
 `*` is a YAML alias marker:
 
@@ -303,33 +314,167 @@ config-generation time — `monitor` is a monerod-only shortcut and the
 wallet-rpc binary doesn't recognize it. The intent ("be quiet") is
 preserved.
 
-## Hard scale limits per machine
+## Scale limits and the 2026-10 scale ladder
 
-These are guardrail caps used by the auto-config — exceeding them doesn't
-immediately fail, but past the cap you are likely to hit stalls, OOM, or
-the Shadow host-count cliff:
+### The old N=1000 "cliff" was a misdiagnosis
 
-| RAM | Approx safe N (users) | Who this is |
-|---|---|---|
-| < 12 GB | 30 | Old laptop; swap-bound quickly (each host ~250 MB) |
-| 12–24 GB | 75 | **Typical laptop (16 GB is common)** |
-| 24–48 GB | 150 | **Typical desktop / workstation (32 GB is common)** |
-| 48–96 GB | 350 | Power-user workstation |
-| ≥ 96 GB | 600 | Server-class; top tier is also capped by the host-count cliff |
+Earlier versions of this section capped users at ~600 and warned of a
+reliable stall at N=1000 "even with abundant RAM and cores". Two real bugs
+produced those freezes, and both are fixed:
 
-Most general users are in the 16–32 GB tier and should plan for N ≤ 150
-unless they know their machine handles more. N ≥ 350 typically requires
-dedicated server hardware.
+- **The agents' blocking `flock`** on the shared transaction ledger hung
+  Shadow's worker threads in the kernel (fixed 2026-09-12: lock-free
+  per-writer JSONL; the same signature had silently killed at least four
+  earlier long runs that were written off as one-offs).
+- **Shadow's worker count on 2-socket boxes** counted 64 cores twice
+  (core_id repeats per socket), so `parallelism: 0` under-planned workers
+  and concurrent runs stacked on the same CPUs (fixed 2026-10-02:
+  run_sim.sh computes a CPU plan and tasksets each run).
 
-Cores add a second cap: `3 × cores`, whichever is lower. Shadow's per-host
-scheduler starts degrading past ~3 simulated hosts per physical core.
+With those, plus `--bootfast`, `monitor`-level logging, and KSM, the scale
+ladder (2026-10) ran three fully tx-loaded rungs cleanly:
 
-### Why isn't the top tier higher on a 1 TB / 256-core machine?
+| Rung | Nodes | Wall (16 h sim) | Overall ratio | Peak RAM | User txs (senders) | Tx latency med / max | Peers / node |
+|---|---|---|---|---|---|---|---|
+| 1k (200u / 800r) | 1,011 | 9.4 h | 1.7 | 98 GB | 18,953 (200/200) | 4.1 / 13.8 s | 86–90 |
+| 2k (400u / 1600r) | 2,011 | 20.4 h | 0.78 | 300 GB | 33,586 (400/400) | 3.8 / 13.8 s | 94–96 |
+| 3k (600u / 2400r) | 3,011 | 36.5 h | 0.44 | 438 GB | 39,969 (600/600) | 4.2 / 14.6 s | 91–93 |
 
-We observed a reliable stall at N=1000 even on a machine with abundant
-RAM and cores. The cause is not RAM or compute — Shadow's event queue and
-per-host scheduler scale non-linearly past ~1000 hosts. Until that is
-understood or fixed, the top tier is set conservatively at 600.
+All three: native mining (5 × 20 h/s), 5k-node CAIDA GML topology, RPC SSL
+`autodetect`, KSM on, 128 workers, users+miners at `monitor` and relays at
+`0`, 1 tx/user/300 s. **0 failed processes on every rung; every distinct tx
+hash reached every observer node** (205/405/605 observers). Configs:
+`test_configs/scale_ladder/`; run data:
+`/mnt/remote_spinny/20261007_monerosim_scale_ladder/` (the 1k/2k entries
+without `_ssl` are an earlier RPC-SSL-off attempt whose transaction load
+collapsed — see `docs/20261009_rpc_ssl_off_wallet_stall.md` — treat them as
+under-loaded).
+
+The headline: **network behavior is flat across a 3× node count.** Tx
+latency moves ~0.1 s at the median, propagation reaches everyone, peer
+counts hold ~90. Wall time grows ×~2 per rung because the relay work grows
+as txs × nodes (quadratic when users scale with nodes); Shadow's event
+throughput did not degrade (515k → 687k events/wall-s, 1k → 3k). RAM is
+sub-linear with KSM. See "Transaction rate vs block capacity" below. There is no observed algorithmic wall at 3k
+nodes; the binding constraints are now, in order: **disk (log volume),
+wall time, then RAM without KSM**.
+
+The same envelope holds for **synthetic (legacy) mining**: the fixes that
+unlocked the ladder — the flock hang, the worker count, `--bootfast`, the
+RPC SSL stall — are all mining-mode-independent, and per-monerod memory
+measured the same ~295 MB/daemon class on the 2,232-host eclipse
+reproduction (1,210 actual monerods; see the KSM section for the
+host-count trap). That config's 2026-10 rerun completed 50 sim-hours in
+15.6 wall-hours with `--bootfast` and no KSM at 374 GB peak.
+
+### Transaction rate vs block capacity
+
+Keep the network-wide tx rate under the chain's capacity unless congestion
+is what you are studying. At low (default) fees blocks stay near the
+300 kB penalty-free minimum — about 150 txs, so **~4,500 txs per sim-hour
+at 2-min blocks**. The dynamic block size barely moves: miners only
+overshoot the median by what fees pay for (~1.5 kB here), so the median
+grew ~1.5% over 4 sim-hours of full blocks.
+
+The 3k rung (600 users × 12 tx/h ≈ 5,300/sim-h sent) crossed that line:
+from sim ~13 h the mempool backlog grew to ~3,000 txs and wall time per
+sim-hour doubled (190 → 368 min) at a constant send rate, because every
+node holds and re-announces every pending tx. Below capacity (1k rung)
+pace is flat. Analysis: `docs/20261012_3k_slowdown_decomposition.md`.
+
+### Disk is the new ceiling
+
+~97% of run bytes are `net.p2p.msg` transaction-relay lines, and their
+volume scales as txs × nodes (peers/node itself grows with network size).
+In the final sim hours — when every user is transacting at full rate —
+the 3k rung burned 25–30 GB/h and the ratio dropped to ~0.19 (the
+"peak-log phase"; decomposed and design options in
+`docs/20261011_peak_log_phase_design_notes.md`). From 2k up, the ladder
+runs relays at `daemon_options: log-level: 0` while users+miners keep
+`monitor` — that is the documented mitigation, trading relay-node log
+detail for ~5× less disk. Budget roughly 130 GB (1k) / 180 GB (2k) /
+365 GB (3k) of run storage with that split, and pre-flight against the
+measured *peak* write rate, not the average — a full disk hangs Shadow
+silently rather than failing loudly.
+
+### KSM (kernel same-page merging)
+
+The single biggest RAM lever. Each monerod holds ~300 MB of private
+anonymous memory, of which one 256 MB region is the RandomX light
+(verification) cache — byte-identical in every node because the genesis
+seed is shared. KSM deduplicates those pages across processes:
+
+- **~10× less RAM.** Measured on the 1k rung at sim 4 h: 30 GB with KSM
+  vs 305 GB without (~30 MB/node vs ~305). Full 16 h tx-loaded runs
+  peaked at 98 / 300 / 438 GB for 1k / 2k / 3k — i.e. ~100–150 MB/node
+  once unmergeable per-node state (blockchain, peerlists) has grown.
+- **No wall-time cost measured** (wall to sim 4 h: 1.39 h vs 1.42 h); the
+  `ksmd` kernel thread used ~0.4 core.
+- **The ~10× should apply to synthetic-mining runs too.** Correctly
+  re-measured, the 2,232-host eclipse reproduction (synthetic mining) ran
+  **1,210 actual monerods** — the other ~1,050 hosts are lightweight
+  fake-peer/injector agents with no daemon — at **~295 MB/daemon**, the
+  same class as native's ~305. The RandomX cache region is evidently
+  allocated there as well (the preloaded chain carries real PoW that gets
+  verified at startup), so `--ksm` should merge it just the same —
+  unmeasured for synthetic, but the per-daemon sizes match. Two traps this
+  corrects: divide the daemon bucket by the **daemon count**, not the
+  process count (an earlier pass here divided by all 2,276 processes,
+  fake peers included, and wrongly read ~156 MB/daemon); and in
+  eclipse-style configs, extrapolate scale by daemons — the 1,000
+  fake-peer hosts cost ~26 GB in total, nearly free.
+
+KSM needs two things, both of which must be true:
+
+1. **Root enables it on the machine.** It is compiled into the kernel but
+   off by default, and it resets at every reboot:
+
+   ```bash
+   sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/run'
+   ```
+
+   `pages_to_scan=10000` (per 20 ms ksmd wake-up) keeps merging ahead of
+   thousands of node starts; the kernel default of 100 is far too slow.
+   Without root you can still *check* it:
+   `cat /sys/kernel/mm/ksm/run` (1 = on).
+
+2. **Every process opts in.** Merging is per-process opt-in via
+   `prctl(PR_SET_MEMORY_MERGE, 1)`, which survives `execve` and `fork` —
+   so `run_sim.sh --ksm` re-execs itself through the unprivileged wrapper
+   `scripts/ksm_exec.py`, covering Shadow and everything it starts:
+
+   ```bash
+   ./run_sim.sh --config my.yaml --bootfast --ksm
+   ```
+
+   The preflight reports whether the kernel side is actually enabled (and
+   prints the sudo line if not); the run proceeds either way, just with
+   ~10× the RAM. The wrapper can also be used directly for other commands.
+
+Per-machine guidance, updated for measured per-node costs (full-load
+figures assume a 16 h tx-loaded run; boot/light phases are ~3–5× cheaper
+per node):
+
+| RAM | Nodes without KSM (~320 MB/node) | Nodes with KSM, full load (~100–150 MB/node) | With KSM, light/short runs |
+|---|---|---|---|
+| 16 GB | ~40 | ~100–140 | ~300–400 |
+| 32 GB | ~85 | ~250–300 | ~600–800 |
+| 64 GB | ~180 | ~500–600 | ~1,200 |
+| 128 GB | ~380 | ~1,000–1,200 | ~2,500 |
+| 1 TB | ~2,800 | ~6,000+ (disk and wall time bind first) | — |
+
+Cores add a second cap: `3 × cores` simulated hosts. Shadow's per-host
+scheduler degrades past ~3 hosts per physical core; the 3k rung ran
+3,011 hosts on 128 physical cores (~24:1) with preemption on, at the
+cost of the peak-phase slowdown above.
+
+### Auto-config caps predate the ladder
+
+The guardrail table the auto-config uses (and its `N > cap` warnings) was
+calibrated before the flock and worker-count fixes and before KSM; it is
+conservative by roughly an order of magnitude on machines where KSM is
+enabled. Treat its warnings as advisory, not as measured limits — the
+ladder numbers above are the current measured capability.
 
 ## Auto-config guardrails
 
@@ -355,6 +500,10 @@ Estimated wall time for N=1000 users: ~1038 min (stop_time=360 min, predicted ra
 ⚠ Warning: N=1000 exceeds the per-machine safe cap (~600 for this hardware).
 ```
 
+(The cap that produced that warning predates the flock/worker-count fixes
+and KSM; see [Auto-config caps predate the
+ladder](#auto-config-caps-predate-the-ladder).)
+
 Power users who know their machine can bypass the guardrail by setting
 `transaction_interval` (and related fields) to explicit values per agent.
 
@@ -370,7 +519,7 @@ Cross-machine scaling sweep (all at `stop_time=6h`, 3 miners, no relays):
 | phantom | 24 | 31 GB | 160 | 6619 s | 3.3× | |
 | r7525 | 256 | 1 TB | 300 | 10 410 s | 2.1× | |
 | r7525 | 256 | 1 TB | 500 | 16 440 s | 1.3× | |
-| r7525 | 256 | 1 TB | 1000 | timeout | 0.06× | **the cliff** |
+| r7525 | 256 | 1 TB | 1000 | timeout | 0.06× | **"the cliff" — later shown to be the flock hang + worker-count bug, not a Shadow limit; see [above](#the-old-n1000-cliff-was-a-misdiagnosis)** |
 | ffcmp | 12 | 8 GB | 30 | 6395 s | 3.4× | swap-bound |
 
 Key observations:

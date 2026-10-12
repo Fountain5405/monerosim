@@ -35,6 +35,7 @@ Exit codes:
 import argparse
 import csv
 import glob
+import gzip
 import math
 import os
 import re
@@ -50,6 +51,19 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.native_mining_check import FOUND, REJECT  # noqa: E402  (do not modify that module)
 
 STALE = re.compile(r"found block at height (\d+) was not added to the main chain")
+
+
+def monerod_stdout_files(pattern: str) -> list:
+    """Files matching a `.../monerod*.stdout` glob, plain or gzipped by
+    scripts/compress_archives.sh."""
+    return sorted(glob.glob(pattern)) + sorted(glob.glob(pattern + ".gz"))
+
+
+def open_text(path: str):
+    """Open a log for reading as text, transparently if it is gzipped."""
+    if path.endswith(".gz"):
+        return gzip.open(path, "rt", errors="replace")
+    return open(path, errors="replace")
 
 _SIM_EPOCH = datetime(2000, 1, 1)
 _DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([smh]?)\s*$")
@@ -137,7 +151,7 @@ def parse_one_file(path: str, miner_id: str) -> list:
     """
     entries = []
     try:
-        fh = open(path, errors="replace")
+        fh = open_text(path)
     except OSError:
         return entries
     with fh:
@@ -177,7 +191,7 @@ def parse_all_miners(run_dir: Path, miner_ids) -> list:
     missing = []
     for mid in miner_ids:
         pattern = str(run_dir / "shadow.data" / "hosts" / mid / "monerod*.stdout")
-        files = sorted(glob.glob(pattern))
+        files = monerod_stdout_files(pattern)
         if not files:
             missing.append(mid)
             continue
@@ -240,9 +254,9 @@ def assign_regimes(accepted: list, join_time) -> None:
 def count_relay_rejections(run_dir: Path) -> int:
     count = 0
     pattern = str(run_dir / "shadow.data" / "hosts" / "relay-*" / "monerod*.stdout")
-    for f in glob.glob(pattern):
+    for f in monerod_stdout_files(pattern):
         try:
-            with open(f, errors="replace") as fh:
+            with open_text(f) as fh:
                 for line in fh:
                     if REJECT.search(line):
                         count += 1

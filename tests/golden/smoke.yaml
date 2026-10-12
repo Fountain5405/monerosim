@@ -24,7 +24,6 @@ hosts:
       - --prep-blocks-threads=1
       - --max-concurrency=1
       - --max-connections-per-ip=4
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=210.166.233.13
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -62,8 +61,6 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/miner-001_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'
@@ -163,7 +160,6 @@ hosts:
       - --prep-blocks-threads=1
       - --max-concurrency=1
       - --max-connections-per-ip=4
-      - --rpc-ssl=disabled
       - --rpc-bind-ip=91.0.1.10
       - --rpc-bind-port=18081
       - --confirm-external-bind
@@ -201,8 +197,6 @@ hosts:
       - --shared-ringdb-dir=TMPDIR/shared/user-001_ringdb
       - --confirm-external-bind
       - --allow-mismatched-daemon-version
-      - --daemon-ssl=disabled
-      - --rpc-ssl=disabled
       - --daemon-ssl-allow-any-cert
       environment:
         DIFFICULTY_CACHE_TTL: '30'

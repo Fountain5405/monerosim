@@ -1,0 +1,92 @@
+# Scale ladder, 2k rung: 5 miners, 400 users, 1600 relays, 16 h simulated.
+#
+# Built from the 200-user/800-relay benchmark (test_configs/20260511_200u_800r.scenario.yaml),
+# users and relays scaled at the same 1:4 ratio. Changed from the benchmark, identically on
+# every rung:
+#   - native mining (general.mining.mode: native): miners run monerod-sim with real RandomX
+#     and monerod's own difficulty adjustment; hashrate 5 x 20 = 100 literal h/s
+#   - topology gml_processing/5000_nodes_caida_with_loops.gml, so up to 5,000 hosts each get
+#     their own topology position
+#   - monerod log-level monitor (keeps the block/tx relay lines the analyzers parse), wallet 0
+#   - RPC SSL on (autodetect). With monerosim's default (SSL off, since 2026-10-03) a wallet's
+#     /getblocks.bin reply over ~128 KB stalls in Shadow's TCP (one large write; see
+#     docs/PEERLIST_DUMP_PATCH.md); after the first transaction burst every wallet stopped
+#     refreshing. TLS sends 16 KB records and avoids it. Measured 2026-10-08 (200-user
+#     reproducer): SSL off -> 78-105 failed wallet reads per 5 wallets; SSL on -> 0.
+#   - relays log at level 0, users and miners at monitor (20% of nodes on every rung): with
+#     real transaction load, monitor-level logs on every node would need ~770 GB at 2k.
+#     Cross-rung network analysis uses the user and miner nodes only (also on the 1k rung,
+#     where every node logs at monitor).
+# Unchanged: seed, miners, 1 tx per user every 300 s, auto start stagger, 16 h.
+# Run through ~/scale_ladder/ksm_exec.py (kernel same-page merging) on every rung.
+#
+# Expand (keep the 300 s interval; without the flag the generator raises it):
+#   python3 scripts/generate_config.py --from test_configs/scale_ladder/2k_400u_1600r.scenario.yaml \
+#       -o test_configs/scale_ladder/2k_400u_1600r.yaml --no-safe-tx-interval
+# Run: ./run_sim.sh --config test_configs/scale_ladder/2k_400u_1600r.yaml --bootfast
+general:
+  stop_time: 16h                       # Total simulation duration
+  simulation_seed: 12345
+  bootstrap_end_time: auto            # Calculated from agent spawn times
+  enable_dns_server: true
+  mining:
+    mode: native                       # real RandomX + monerod LWMA; hashrate = literal h/s
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: monitor
+    rpc-ssl: autodetect                # see header: RPC replies stall in Shadow without TLS
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 0
+    rpc-ssl: autodetect
+    daemon-ssl: autodetect
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s          # 1s stagger for small miner group
+    hashrate: [20, 20, 20, 20, 20]  # Total = 100 (required for initial miners)
+    can_receive_distributions: true
+
+  # --- 200 Users: Batched spawning (auto) ---
+  user-{001..400}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s               # Start after 20 minutes
+    start_time_stagger: auto        # BATCHED - exponential batch growth
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 800 Relay Nodes: Daemon-only, batched spawning (auto) ---
+  # No wallet or script - just monerod for network realism
+  relay-{0001..1600}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto        # BATCHED - same rule as large user group
+    daemon_options:
+      log-level: 0                     # disk: see header
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

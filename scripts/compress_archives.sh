@@ -2,10 +2,15 @@
 #
 # compress_archives.sh - gzip finished runs' daemon logs in place, losing nothing.
 #
-# For each run dir, compresses every daemon_logs/<node>/bitmonero.log (and
-# rotated bitmonero.log-*) that is not already .gz. Plain monerod logs shrink
-# about 14x (an 86 MB log-level-1 relay log measured 6.2 MB with gzip -6).
-# Read them back with zcat/zgrep or Python's gzip.open.
+# For each run dir, compresses (gzip -6, in place) every file not already .gz of:
+#   - daemon_logs/<node>/bitmonero.log and rotated bitmonero.log-*
+#   - shadow.data/hosts/<host>/monerod*.stdout: monerod's console log, which
+#     repeats bitmonero.log's lines in a shorter format (~60% of its size)
+# Agents' own stdout in shadow.data/hosts/ stays plain. Monerod logs shrink
+# 10-14x (a 219 MB relay bitmonero.log -> 17.5 MB; its 128 MB stdout -> 13 MB).
+# Read them back with zcat/zgrep or Python's gzip.open. selfish_mining_analysis.py
+# and native_daa_analysis.py read .gz stdout; native_mining_check.py does not
+# (gunzip the miners' stdout first, or run it before compressing).
 #
 # Live runs (owner pid still alive, see run_dir_lib.sh) are skipped: a running
 # sim still appends to its logs. Re-running is safe; .gz files are left alone.
@@ -17,7 +22,9 @@
 #   --peerlist-dumps  also compress daemon_logs/<node>/peerlist_dump.jsonl
 #                     (eclipse runs; analysis/eclipse/analyze_peerlist_dumps.py
 #                     reads .gz dumps)
-#   --jobs N          parallel gzip processes (default 8, run under nice)
+#   --jobs N          parallel gzip processes (default 8, run under nice). Each
+#                     does ~70-80 MB/s on these logs; on an idle many-core box
+#                     --jobs 32 is fine (disk speed then becomes the limit)
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,7 +40,7 @@ while [[ $# -gt 0 ]]; do
         -n|--dry-run)     DRY_RUN=true; shift ;;
         --peerlist-dumps) DUMPS=true; shift ;;
         --jobs)           JOBS="$2"; shift 2 ;;
-        -h|--help)        sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)        awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;;
         -*)               echo "unknown option: $1" >&2; exit 2 ;;
         *)                RUNS+=("$1"); shift ;;
     esac
@@ -52,6 +59,8 @@ candidates() {
     local names=(-name 'bitmonero.log' -o -name 'bitmonero.log-*')
     [[ "$DUMPS" == true ]] && names+=(-o -name 'peerlist_dump.jsonl')
     find "$1/daemon_logs" -mindepth 2 -maxdepth 3 -type f \( "${names[@]}" \) ! -name '*.gz' -print0 2>/dev/null
+    # monerod's console log; Shadow names it <binary>.<pid>.stdout.
+    find "$1/shadow.data/hosts" -mindepth 2 -maxdepth 2 -type f -name 'monerod*.stdout' -print0 2>/dev/null
 }
 
 gb() { awk -v b="$1" 'BEGIN { printf "%.2f GB", b / 1e9 }'; }
@@ -62,7 +71,7 @@ total_size() { [[ $# -gt 0 ]] || { echo 0; return; }; printf '%s\0' "$@" | xargs
 failed=0
 for run in "${RUNS[@]}"; do
     run="${run%/}"
-    [[ -d "$run/daemon_logs" ]] || continue
+    [[ -d "$run/daemon_logs" || -d "$run/shadow.data/hosts" ]] || continue
     if run_dir_is_live "$run"; then
         echo "Skipping $run: run is LIVE (owner pid $(awk '{print $1}' "$run/.owner_pid"))" >&2
         continue

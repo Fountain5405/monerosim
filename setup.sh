@@ -57,6 +57,7 @@ while [[ $# -gt 0 ]]; do
             echo "                         monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0) + flush_cache sim_alt_blocks RPC"
             echo "                         monero-sim-peerlist-dump.patch    --peerlist-dump-file (eclipse measurement)"
             echo "                         monero-sim-pop.patch              --sim-publish-or-perish (PoP countermeasure)"
+            echo "                         monero-sim-tail-emission.patch    --sim-tail-emission-height (mainnet 0.6 XMR reward)"
             echo "                         Built in a worktree; the primary monerod stays vanilla."
             echo "                         Installs ~/.monerosim/bin/monerod-sim and the alias monerod-hf."
             echo "                         --hardfork is accepted as a synonym."
@@ -1222,6 +1223,7 @@ install_sim_monerod() {
     #                                             + flush_cache sim_alt_blocks (drops the alt DB; RPC-opt-in)
     #   patches/monero-sim-peerlist-dump.patch    --peerlist-dump-file (measurement only)
     #   patches/monero-sim-pop.patch              --sim-publish-or-perish (countermeasure sims)
+    #   patches/monero-sim-tail-emission.patch    --sim-tail-emission-height (tail emission)
     # One build serves the fork-schedule, native-mining and eclipse-measurement
     # features; monerod-hf is kept as a symlink alias so the hard fork and
     # eclipse configs that name it keep working.
@@ -1231,6 +1233,7 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-selfish-relay.patch"
         "$SCRIPT_DIR/patches/monero-sim-peerlist-dump.patch"
         "$SCRIPT_DIR/patches/monero-sim-pop.patch"
+        "$SCRIPT_DIR/patches/monero-sim-tail-emission.patch"
     )
     local p
     for p in "${patches[@]}"; do

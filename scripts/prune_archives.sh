@@ -17,7 +17,8 @@
 #
 # Eclipse runs are the exception: nothing is deleted. Every node's peer-list
 # dump is the measurement, so the run is handed to compress_archives.sh
-# (bitmonero.log + peerlist_dump.jsonl gzipped in place) instead. A run counts
+# (bitmonero.log, monerod stdout and peerlist_dump.jsonl gzipped in place)
+# instead. A run counts
 # as eclipse when it has eclipse_metrics.jsonl, any daemon_logs/*/peerlist_dump,
 # or agents.eclipse_* in shadow_agents.yaml. Those configs carry no
 # simulation-monitor, so they never get a summary.txt; none is required here.

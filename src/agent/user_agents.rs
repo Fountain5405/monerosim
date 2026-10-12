@@ -71,6 +71,8 @@ pub struct UserAgentProcessContext<'a> {
     pub turnover: Option<&'a crate::config::TurnoverConfig>,
     /// Block-production mode (generateblocks vs native monerod-sim mining).
     pub mining: crate::config::MiningConfig,
+    /// Block-reward schedule (stock vs tail emission).
+    pub emission: crate::config::EmissionConfig,
 }
 
 /// Process user agents
@@ -370,17 +372,6 @@ fn args_mention_hf_knob(args: Option<&Vec<String>>) -> bool {
         .unwrap_or(false)
 }
 
-/// True if any raw daemon arg sets --rpc-ssl (legacy `daemon_args` or
-/// per-phase `daemon_N_args`). `--rpc-ssl-*` flags (certificates, ciphers)
-/// do not count.
-fn args_mention_rpc_ssl(args: Option<&Vec<String>>) -> bool {
-    args.map(|v| {
-        v.iter()
-            .any(|a| a == "--rpc-ssl" || a.starts_with("--rpc-ssl="))
-    })
-    .unwrap_or(false)
-}
-
 /// Capability probe: does `binary --help` list --fakechain-hard-forks?
 /// A version check can't tell — the patched build prints the same tag as
 /// vanilla. Cached per path so a 300-agent config spawns the probe once
@@ -436,6 +427,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         simulation_stop_secs,
         turnover,
         mining,
+        emission,
     } = ctx;
 
     // Filter agents that have daemon or wallet (user agents, not script-only)
@@ -661,6 +653,35 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
              node_implementations or the hard fork schedule."
         ));
     }
+    // Tail emission: one switch height for the whole run, injected into every
+    // daemon (a node with a different value rejects the first tail block and
+    // splits off). See docs/TAIL_EMISSION.md.
+    use crate::utils::emission::{
+        args_mention_tail_knob, binary_supports_tail_emission, resolve_tail_height,
+        SIM_TAIL_EMISSION_KNOB,
+    };
+    let funded_users = user_agents
+        .iter()
+        .filter(|(_, c)| c.has_wallet() && !c.is_miner())
+        .count();
+    let tail_height = resolve_tail_height(&emission, funded_users)
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    if tail_height.is_some() && !node_impl_assignment.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "general.emission.mode is tail but general.node_implementations assigns \
+             non-monerod nodes: cuprate computes block rewards itself and would reject \
+             the tail-emission chain. Remove node_implementations or the emission section."
+        ));
+    }
+    if let Some(h) = tail_height {
+        log::info!(
+            "Tail emission: 0.6 XMR base reward from height {} ({} funded user(s); all daemons -> monerod-sim)",
+            h,
+            funded_users
+        );
+    }
+    let mut tail_capability_cache: HashMap<String, bool> = HashMap::new();
+
     // Probe results for binary_supports_hf_schedule, shared across all agents.
     let mut hf_capability_cache: HashMap<String, bool> = HashMap::new();
 
@@ -939,6 +960,23 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 agent_id, SIM_HASH_INTERVAL_KNOB, SIM_RX_FULL_DATASET_KNOB
             ));
         }
+        let tail_in_raw_args = args_mention_tail_knob(user_agent_config.daemon_args.as_ref())
+            || user_agent_config
+                .daemon_phases
+                .as_ref()
+                .map(|phases| phases.values().any(|p| args_mention_tail_knob(p.args.as_ref())))
+                .unwrap_or(false);
+        if merged_daemon_options.contains_key(SIM_TAIL_EMISSION_KNOB) || tail_in_raw_args {
+            return Err(color_eyre::eyre::eyre!(
+                "Agent '{}': {} is set directly in daemon options/args. It must be identical \
+                 on every node; set general.emission instead.",
+                agent_id, SIM_TAIL_EMISSION_KNOB
+            ));
+        }
+        if let Some(h) = tail_height {
+            merged_daemon_options
+                .insert(SIM_TAIL_EMISSION_KNOB.to_string(), OptionValue::Number(h as i64));
+        }
         if native_mining && is_miner && has_daemon_phases {
             return Err(color_eyre::eyre::eyre!(
                 "Agent '{}': native mining does not support daemon phases on miners in this \
@@ -995,30 +1033,6 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         merged_daemon_options
             .entry("max-connections-per-ip".to_string())
             .or_insert(OptionValue::Number(4));
-
-        // monerosim baseline: plaintext RPC. At its default (autodetect)
-        // monerod generates an RSA-4096 key and self-signed certificate on
-        // every start, which costs ~1.1 wall-s per daemon start under
-        // Shadow, and starts are serialized by the start-time stagger. RPC
-        // SSL has no effect on the P2P behaviour monerosim studies, and the
-        // Python agents and wallets talk plain HTTP. A floor like the one
-        // above: an explicit rpc-ssl in the options or the raw args wins.
-        // See docs/20261003_startup_cost.md.
-        let rpc_ssl_in_raw_args = args_mention_rpc_ssl(user_agent_config.daemon_args.as_ref())
-            || user_agent_config
-                .daemon_phases
-                .as_ref()
-                .map(|phases| {
-                    phases
-                        .values()
-                        .any(|p| args_mention_rpc_ssl(p.args.as_ref()))
-                })
-                .unwrap_or(false);
-        if !rpc_ssl_in_raw_args {
-            merged_daemon_options
-                .entry("rpc-ssl".to_string())
-                .or_insert(OptionValue::String("disabled".to_string()));
-        }
 
         // Mainnet-realism: if this node was selected as hidden, inject
         // --hide-my-port (advertise my_port=0). The node still binds/listens
@@ -1272,6 +1286,15 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                         daemon_binary_path
                     ));
                 }
+                if tail_height.is_some()
+                    && !binary_supports_tail_emission(&daemon_binary_path, &mut tail_capability_cache)
+                {
+                    return Err(color_eyre::eyre::eyre!(
+                        "Agent '{}' phase {}: general.emission is tail but '{}' does not support \
+                         --{}. Every phase must run monerod-sim (./setup.sh --sim-binary).",
+                        agent_id, phase_num, daemon_binary_path, SIM_TAIL_EMISSION_KNOB
+                    ));
+                }
 
                 // Build environment for this phase
                 let mut daemon_env = monero_environment.clone();
@@ -1340,10 +1363,13 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                 let is_native_miner = native_mining && is_miner;
                 match &user_agent_config.daemon {
                     // Native miners on an unnamed/stock daemon run the patched build.
-                    Some(DaemonConfig::Local(path)) if is_native_miner && (path == "monerod") => {
-                        log::info!(
-                            "Agent '{}': native mining -> daemon monerod-sim (was '{}')",
+                    Some(DaemonConfig::Local(path))
+                        if (is_native_miner || tail_height.is_some()) && (path == "monerod") =>
+                    {
+                        log::debug!(
+                            "Agent '{}': {} -> daemon monerod-sim (was '{}')",
                             agent_id,
+                            if is_native_miner { "native mining" } else { "tail emission" },
                             path
                         );
                         resolve_binary_path_for_shadow("monerod-sim").map_err(|e| {
@@ -1364,10 +1390,11 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                             )
                         })?
                     }
-                    _ if is_native_miner => {
-                        log::info!(
-                            "Agent '{}': native mining -> daemon monerod-sim (was unset)",
-                            agent_id
+                    _ if is_native_miner || tail_height.is_some() => {
+                        log::debug!(
+                            "Agent '{}': {} -> daemon monerod-sim (was unset)",
+                            agent_id,
+                            if is_native_miner { "native mining" } else { "tail emission" }
                         );
                         resolve_binary_path_for_shadow("monerod-sim").map_err(|e| {
                             color_eyre::eyre::eyre!(
@@ -1394,6 +1421,17 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                      with ./setup.sh --hardfork and set daemon: monerod-hf for this agent.",
                     agent_id,
                     daemon_binary_path
+                ));
+            }
+
+            if tail_height.is_some()
+                && !binary_supports_tail_emission(&daemon_binary_path, &mut tail_capability_cache)
+            {
+                return Err(color_eyre::eyre::eyre!(
+                    "Agent '{}': general.emission is tail but '{}' does not support --{}. \
+                     Build monerod-sim with ./setup.sh --sim-binary (daemons default to it in \
+                     tail mode; an explicit daemon: must point at it).",
+                    agent_id, daemon_binary_path, SIM_TAIL_EMISSION_KNOB
                 ));
             }
 
@@ -1851,23 +1889,6 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod rpc_ssl_tests {
-    use super::*;
-
-    #[test]
-    fn detects_only_the_rpc_ssl_option() {
-        let v = |xs: &[&str]| xs.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert!(args_mention_rpc_ssl(Some(&v(&["--rpc-ssl=enabled"]))));
-        assert!(args_mention_rpc_ssl(Some(&v(&["--rpc-ssl", "enabled"]))));
-        assert!(!args_mention_rpc_ssl(Some(&v(&[
-            "--rpc-ssl-private-key=k.pem"
-        ]))));
-        assert!(!args_mention_rpc_ssl(Some(&v(&["--rpc-bind-port=18081"]))));
-        assert!(!args_mention_rpc_ssl(None));
-    }
 }
 
 #[cfg(test)]

@@ -3,6 +3,7 @@
 pub mod binary;
 pub mod chain_snapshot;
 pub mod duration;
+pub mod emission;
 pub mod mining;
 pub mod options;
 pub mod script;

@@ -88,6 +88,16 @@
   into `src/utils/seeded_hash.rs` (shared with the other seeded selections in
   `src/agent/user_agents.rs`). Absent config = unchanged behavior.
 
+- **`general.emission: {mode: tail, from_height: auto|<H>}`**: mainnet's tail
+  emission (flat 0.6 XMR base reward) from block H on. New
+  `patches/monero-sim-tail-emission.patch` (`--sim-tail-emission-height`,
+  built into monerod-sim) switches the reward inside `get_block_reward`, so
+  coinbase validation, block-template filling and the dynamic fee all follow
+  (fees drop ~60× to mainnet's ~20 nanoXMR/byte). Consensus-relevant: the
+  generator injects the same height into every daemon and runs them all on
+  monerod-sim; refused together with cuprate nodes. `auto` = enough ~35 XMR
+  blocks to fund every user. Requires `./setup.sh --sim-binary`. See
+  docs/TAIL_EMISSION.md.
 - **`run_sim.sh --bootfast` / `--allfast`**: fast monero process starts. Every
   monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
   `get_ticks_per_ns()` static initializer, which spins on the clock until 100 ms
@@ -211,6 +221,13 @@
   held ~870 GB of plain daemon logs. `analysis/eclipse/analyze_peerlist_dumps.py`
   now finds `peerlist_dump.jsonl.gz` too (it could already read them). Tests
   `scripts/test_compress_archives.py`, `scripts/test_peerlist_dump_layouts.py`.
+  Also compresses `shadow.data/hosts/<host>/monerod*.stdout`: monerod's console
+  log, the same lines as `bitmonero.log` in a shorter format, ~127 MB per relay
+  (140 GB in a 2232-host 50 h eclipse run); agents' stdout stays plain.
+  `selfish_mining_analysis.py` and `native_daa_analysis.py` read `.gz` stdout;
+  `native_mining_check.py` (left unchanged) does not, so run it before
+  compressing. gzip -6 measured 67-79 MB/s per job on these logs (`--jobs N`,
+  default 8).
 - **`scripts/prune_archives.sh` recognises eclipse runs** (`eclipse_metrics.jsonl`,
   any `daemon_logs/*/peerlist_dump.jsonl`, or `agents.eclipse_*` in
   `shadow_agents.yaml`) and compresses them with `compress_archives.sh
@@ -406,15 +423,19 @@
 
 ### Changed
 
-- **RPC SSL is off by default:** every monerod gets `--rpc-ssl=disabled` and every
-  monero-wallet-rpc `--rpc-ssl=disabled --daemon-ssl=disabled`, unless the config
-  or raw args set them. This skips the RSA-4096 certificate generated on every
-  start, ~1.1 wall-s per daemon start under Shadow. P2P is unaffected; agents
-  already talked plain HTTP. Side effect: monerod's and cuprated's RPC now both
-  answer in plaintext, so the TLS-probe fingerprint in
-  `docs/20260724_cuprate_wallet_rpc.md` no longer shows inside simulations.
-  wallet-rpc still generates one certificate per create/open_wallet for its
-  MMS client, which no option reaches.
+- **RPC SSL is back to the stock default (`autodetect`):** the 2026-10-03 change that
+  passed `--rpc-ssl=disabled` to every monerod and `--rpc-ssl=disabled
+  --daemon-ssl=disabled` to every monero-wallet-rpc (`c77fe308`) is reverted.
+  With SSL off, any plain-HTTP RPC reply over ~128 KiB never completes under
+  Shadow; after the first transaction burst every wallet's `/getblocks.bin`
+  reply crosses that size, the wallet times out and stops sending, so
+  transaction load silently collapses (200-user A/B: 1,157-2,066 txs vs 3,027
+  with SSL on; the 1k scale rung sent 2,685 vs 18,953). `autodetect` keeps the
+  plain-`http://` Python agents working. Cost: ~1.1 wall-s more per process start.
+  Runs with no wallet traffic (e.g. the eclipse configs) can opt out with
+  `rpc-ssl: disabled` (see `docs/CONFIGURATION.md`). Write-up and open Shadow
+  questions: `docs/20261009_rpc_ssl_off_wallet_stall.md`. Results of runs made
+  between 2026-10-03 and 2026-10-09 with wallets and transactions are suspect.
 - **Corrected:** the sim-time-0 freeze with `model_unblocked_syscall_latency:
   false` (339e9431) is the `get_ticks_per_ns()` busy-wait never seeing time
   pass, not a "CPU-bound startup" (`docs/PERFORMANCE_AND_SCALE.md`).

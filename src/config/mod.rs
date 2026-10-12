@@ -27,7 +27,8 @@ pub use errors::{PhaseValidationError, ValidationError};
 pub use phases::{DaemonPhase, WalletPhase, MIN_PHASE_GAP_SECONDS};
 pub use types::{
     AgentDefinitions, Config, DaemonConfig, DaemonSelectionStrategy, Distribution,
-    DistributionStrategy, FallbackSeedsMode, GeneralConfig, MiningConfig, MiningMode, Network,
-    PeerMode, PerformanceConfig, PrefixSharingConfig, RegionWeights, Topology, TurnoverConfig,
+    DistributionStrategy, EmissionConfig, EmissionHeight, EmissionMode, FallbackSeedsMode,
+    GeneralConfig, MiningConfig, MiningMode, Network, PeerMode, PerformanceConfig,
+    PrefixSharingConfig, RegionWeights, Topology, TurnoverConfig,
 };
 pub use validation::validate_daemon_phases;

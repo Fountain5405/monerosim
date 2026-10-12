@@ -35,26 +35,6 @@ pub fn build_wallet_args(
     let mut merged_wallet_options = merge_options(wallet_defaults, wallet_options);
     translate_wallet_log_level(&mut merged_wallet_options);
 
-    // Plaintext RPC by default, as for monerod (see user_agents.rs): skips the
-    // RSA-4096 certificate the RPC server generates on every start and the TLS
-    // probe to its daemon. (Each create/open_wallet still generates one for the
-    // MMS client; no flag reaches that.) wallet_defaults / wallet_options or a
-    // raw arg win.
-    for knob in ["rpc-ssl", "daemon-ssl"] {
-        let flag = format!("--{}", knob);
-        let in_custom = custom_args
-            .map(|v| {
-                v.iter()
-                    .any(|a| *a == flag || a.starts_with(&format!("{}=", flag)))
-            })
-            .unwrap_or(false);
-        if !in_custom {
-            merged_wallet_options
-                .entry(knob.to_string())
-                .or_insert(OptionValue::String("disabled".to_string()));
-        }
-    }
-
     let mut args = vec![
         format!("--daemon-address={}", daemon_address),
         format!("--rpc-bind-port={}", wallet_rpc_port),
@@ -186,56 +166,24 @@ pub fn add_wallet_process(args: WalletProcessArgs<'_>) -> String {
 mod tests {
     use super::*;
 
-    fn args(
-        wallet_options: Option<&BTreeMap<String, OptionValue>>,
-        custom: Option<&Vec<String>>,
-    ) -> Vec<String> {
-        build_wallet_args(
+    /// Plain-HTTP RPC replies over ~128 KiB never complete under Shadow, which
+    /// stalls wallet sync once transactions flow
+    /// (docs/20261009_rpc_ssl_off_wallet_stall.md), so no SSL flag is injected:
+    /// monero-wallet-rpc keeps its stock `autodetect`.
+    #[test]
+    fn no_ssl_flags_by_default() {
+        let a = build_wallet_args(
             "user-001",
             "10.0.0.1",
             "http://10.0.0.1:18081",
             18082,
             &BTreeMap::new(),
-            custom,
             None,
-            wallet_options,
+            None,
+            None,
             "/tmp/shared",
-        )
-    }
-
-    fn count(args: &[String], prefix: &str) -> usize {
-        args.iter().filter(|a| a.starts_with(prefix)).count()
-    }
-
-    #[test]
-    fn ssl_disabled_by_default() {
-        let a = args(None, None);
-        assert!(a.contains(&"--rpc-ssl=disabled".to_string()));
-        assert!(a.contains(&"--daemon-ssl=disabled".to_string()));
-    }
-
-    #[test]
-    fn explicit_wallet_option_wins() {
-        let mut opts = BTreeMap::new();
-        opts.insert(
-            "rpc-ssl".to_string(),
-            OptionValue::String("enabled".to_string()),
         );
-        let a = args(Some(&opts), None);
-        assert!(a.contains(&"--rpc-ssl=enabled".to_string()));
-        assert_eq!(count(&a, "--rpc-ssl="), 1);
-        assert!(a.contains(&"--daemon-ssl=disabled".to_string()));
-    }
-
-    #[test]
-    fn raw_arg_suppresses_default() {
-        // monero-wallet-rpc aborts on a duplicated option, so a raw
-        // --daemon-ssl must not be joined by the default one.
-        let custom = vec!["--daemon-ssl=enabled".to_string()];
-        let a = args(None, Some(&custom));
-        assert_eq!(count(&a, "--daemon-ssl="), 1);
-        assert!(a.contains(&"--rpc-ssl=disabled".to_string()));
-        // --daemon-ssl-allow-any-cert is a different option and stays.
-        assert!(a.contains(&"--daemon-ssl-allow-any-cert".to_string()));
+        assert!(!a.iter().any(|x| x.starts_with("--rpc-ssl=")));
+        assert!(!a.iter().any(|x| x.starts_with("--daemon-ssl=")));
     }
 }
