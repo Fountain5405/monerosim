@@ -513,6 +513,16 @@ pub struct TurnoverConfig {
     /// (matches the proven phase-gap minimum).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_downtime: Option<String>,
+    /// Optional grid for RETURN times (e.g. "5m"; default off). Each return
+    /// from an offline gap is snapped to the nearest multiple of the grid in
+    /// absolute sim time (never closer than `min_downtime` to the stop), so
+    /// returning daemons catch up together. Shadow runs one host on one
+    /// thread and the whole simulation waits for a catch-up; simultaneous
+    /// catch-ups run in parallel on different workers, so this trades
+    /// return-time randomness for wall-clock speed. Mean downtime is kept
+    /// (rounding to nearest); departures stay exponential.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_grid: Option<String>,
 }
 
 /// Default turnover participation fraction: 1.0 = every eligible node cycles.

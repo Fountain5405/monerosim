@@ -302,6 +302,7 @@ fn main() -> Result<()> {
                     min_session: None,
                     max_session: None,
                     min_downtime: None,
+                    return_grid: None,
                 });
         if let Some(s) = args.turnover_session {
             c.mean_session = s;

@@ -319,6 +319,7 @@ fn build_turnover_schedule(
     min_session: f64,
     max_session: f64,
     min_downtime: f64,
+    return_grid: u64,
 ) -> Vec<(u64, Option<u64>)> {
     const MAX_SESSIONS: usize = 1000; // safety backstop against pathological params
     if start_secs >= stop_secs {
@@ -349,6 +350,9 @@ fn build_turnover_schedule(
             f64::INFINITY,
         );
         t = end.saturating_add(d.round() as u64);
+        if return_grid > 0 {
+            t = snap_return(t, end, min_downtime, return_grid);
+        }
         k += 1;
         if t >= stop_secs {
             // Node left and does not return before the end — the last process
@@ -357,6 +361,18 @@ fn build_turnover_schedule(
         }
     }
     out
+}
+
+/// Snap a return time to the nearest multiple of `grid`, but never earlier
+/// than `stop + min_downtime` (then the next grid point at or after it).
+fn snap_return(t: u64, stop: u64, min_downtime: f64, grid: u64) -> u64 {
+    let nearest = (t + grid / 2) / grid * grid;
+    let earliest = stop.saturating_add(min_downtime.ceil() as u64);
+    if nearest >= earliest {
+        nearest
+    } else {
+        earliest.div_ceil(grid) * grid
+    }
 }
 
 /// The monerod CLI knob (added by patches/monero-fakechain-hardforks.patch)
@@ -782,7 +798,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
         }
     }
     let mut tail_capability_cache: HashMap<String, bool> = HashMap::new();
-    let turnover_params: Option<(f64, f64, f64, f64, f64)> = match turnover {
+    let turnover_params: Option<(f64, f64, f64, f64, f64, u64)> = match turnover {
         Some(c) => {
             let mean_session = parse_duration_to_seconds(&c.mean_session).map_err(|e| {
                 color_eyre::eyre::eyre!("turnover.mean_session '{}': {}", c.mean_session, e)
@@ -808,12 +824,27 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                     as f64,
                 None => 30.0,
             };
+            let return_grid = match &c.return_grid {
+                Some(s) => {
+                    let g = parse_duration_to_seconds(s).map_err(|e| {
+                        color_eyre::eyre::eyre!("turnover.return_grid '{}': {}", s, e)
+                    })?;
+                    if g == 0 {
+                        return Err(color_eyre::eyre::eyre!(
+                            "turnover.return_grid must be > 0 (omit it to disable)"
+                        ));
+                    }
+                    g
+                }
+                None => 0,
+            };
             Some((
                 mean_session,
                 mean_downtime,
                 min_session,
                 max_session,
                 min_downtime,
+                return_grid,
             ))
         }
         None => None,
@@ -1478,7 +1509,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             // (no turnover) emit the single always-on daemon as before.
             let turnover_schedule =
                 match (&turnover_params, turnover_set.contains(agent_id.as_str())) {
-                    (Some((ms, md, mins, maxs, mind)), true) => Some(build_turnover_schedule(
+                    (Some((ms, md, mins, maxs, mind, grid)), true) => Some(build_turnover_schedule(
                         simulation_seed,
                         agent_id,
                         effective_start_time,
@@ -1488,6 +1519,7 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
                         *mins,
                         *maxs,
                         *mind,
+                        *grid,
                     )),
                     _ => None,
                 };
@@ -1952,6 +1984,7 @@ mod turnover_tests {
             300.0,
             f64::INFINITY,
             30.0,
+            0,
         );
         assert!(
             sched.len() >= 2,
@@ -1991,6 +2024,7 @@ mod turnover_tests {
             300.0,
             f64::INFINITY,
             30.0,
+            0,
         );
         let b = build_turnover_schedule(
             99,
@@ -2002,6 +2036,7 @@ mod turnover_tests {
             300.0,
             f64::INFINITY,
             30.0,
+            0,
         );
         assert_eq!(a, b);
     }
@@ -2018,6 +2053,7 @@ mod turnover_tests {
             300.0,
             f64::INFINITY,
             30.0,
+            0,
         );
         assert_eq!(s, vec![(60000, None)]);
     }
@@ -2025,7 +2061,7 @@ mod turnover_tests {
     #[test]
     fn turnover_schedule_respects_max_session_ceiling() {
         let sched = build_turnover_schedule(
-            7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0,
+            7, "relay-7", 0, 200_000, 7200.0, 600.0, 300.0, 14400.0, 30.0, 0,
         );
         for (s, e) in &sched {
             if let Some(end) = e {
@@ -2036,6 +2072,35 @@ mod turnover_tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn turnover_return_grid_snaps_returns_only() {
+        let free = build_turnover_schedule(
+            12345, "relay-001", 1200, 57600, 3600.0, 3600.0, 300.0, f64::INFINITY, 30.0, 0,
+        );
+        let grid = build_turnover_schedule(
+            12345, "relay-001", 1200, 57600, 3600.0, 3600.0, 300.0, f64::INFINITY, 30.0, 300,
+        );
+        assert!(grid.len() >= 3, "expected several sessions, got {}", grid.len());
+        // First start (the bootstrap stagger) is untouched; every return is on
+        // the grid and still at least min_downtime after the previous stop.
+        assert_eq!(grid[0].0, 1200);
+        for w in grid.windows(2) {
+            let stop = w[0].1.expect("non-final session must have a stop");
+            assert_eq!(w[1].0 % 300, 0, "return {} off the 300 s grid", w[1].0);
+            assert!(w[1].0 >= stop + 30, "return {} too close to stop {}", w[1].0, stop);
+        }
+        // The first session draws the same length either way.
+        assert_eq!(free[0], grid[0]);
+    }
+
+    #[test]
+    fn snap_return_nearest_with_min_downtime_floor() {
+        assert_eq!(snap_return(1000, 500, 30.0, 300), 900); // nearest
+        assert_eq!(snap_return(1100, 500, 30.0, 300), 1200); // nearest (up)
+        assert_eq!(snap_return(890, 880, 30.0, 300), 1200); // 900 < 910 floor -> next point
+        assert_eq!(snap_return(1200, 0, 30.0, 300), 1200); // already on grid
     }
 
     // --- Gap G2: per-agent `turnover: bool` override -----------------------
