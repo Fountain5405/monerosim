@@ -382,6 +382,27 @@ sim-hour doubled (190 → 368 min) at a constant send rate, because every
 node holds and re-announces every pending tx. Below capacity (1k rung)
 pace is flat. Analysis: `docs/20261012_3k_slowdown_decomposition.md`.
 
+### Turnover catch-up is serial
+
+With turnover on, every returning daemon downloads and fully verifies the
+blocks it missed before it relays anything again (stock monerod ignores
+new txs while syncing). In simulated time that takes only the network
+round trips, because CPU costs no sim time. In wall time it is one host's
+crypto on one Shadow worker, and every other host waits at the round
+barrier, so all 128 workers show ~100% CPU, mostly kernel spin-waiting.
+Cost per restart ≈ txs missed while offline × verification cost, so it grows
+with downtime × tx rate.
+
+Measured on the full mainnet replica (2026-10-13; 1,107 hosts, 1 h on /
+1 h off turnover, ~500 restarts per sim-hour, ~850 txs per sim-hour):
+pace 2.2× before user activity, 0.25–0.4× after. The busiest host in every
+sampled minute was a daemon restarted 1–5 sim-minutes earlier. Example:
+relay-320 caught up 55 blocks / ~1,600 txs in 25 sim-s, using ~60 native
+CPU-s. The managed processes together used only ~2–3% of the box's CPU.
+The 118-host smoke run (8× fewer restarts, ~30× fewer txs per catch-up)
+ran at 7.4×. Budget wall time for turnover runs from downtime × tx rate,
+not from node count alone.
+
 ### Disk is the new ceiling
 
 ~97% of run bytes are `net.p2p.msg` transaction-relay lines, and their
