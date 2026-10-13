@@ -403,6 +403,12 @@ The 118-host smoke run (8× fewer restarts, ~30× fewer txs per catch-up)
 ran at 7.4×. Budget wall time for turnover runs from downtime × tx rate,
 not from node count alone.
 
+`general.turnover.return_grid: 5m` (off by default) snaps every return to
+the nearest 5-min mark (never closer than `min_downtime` to the stop), so
+returning daemons catch up together, in parallel on different workers.
+Departures stay exponential and mean downtime is unchanged. A/B pair:
+`test_configs/turnover_grid_ab_{free,grid}.scenario.yaml`.
+
 ### Disk is the new ceiling
 
 ~97% of run bytes are `net.p2p.msg` transaction-relay lines, and their
