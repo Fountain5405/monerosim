@@ -201,8 +201,8 @@ The IP list is **read live from the Monero source tree** at orchestrator startup
 
 The `general.fallback_seeds` field controls how monerosim handles this. (Note: distinct from `network.seed_nodes`, which is the explicit peer-discovery list for Hardcoded/Hybrid modes.)
 
-- **`auto` (default)**: orchestrator auto-injects 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP. The fallback path resolves inside the simulation. Adds 6 hosts to the simulation total.
-- **`custom`**: user declares agents named `monero-seed-NNN` (any subset, in any order). Their IPs are pinned to the fallback list in declaration order — useful for adding offline phases or custom timing.
+- **`auto` (default)**: orchestrator auto-injects 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP and running stock `monerod`. The fallback path resolves inside the simulation. Adds 6 hosts to the simulation total. A seed declared in `agents:` under its slot name replaces the injected one (this is how to pick its binary or timing). The injected seeds appear only in the generated `shadow_agents.yaml`, not in the expanded monerosim YAML.
+- **`custom`**: only the `monero-seed-NNN` agents the user declares exist (any subset, in any order). Each is pinned by slot number (`-001` gets the first fallback IP, and so on) — useful for adding offline phases or custom timing.
 - **`off`**: no seed hosts. Fallback warnings appear in the Shadow log. Use for backward compat with older configs.
 
 The pinning works through a Priority 0 lookup in the IP allocator (`src/ip/allocator.rs`): pre-registered agent→IP pairs short-circuit the normal geographic/AS allocation. See `src/agent/fallback_seeds.rs`.
