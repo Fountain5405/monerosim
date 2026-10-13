@@ -6,12 +6,13 @@
 # Shape: mainnet-replica smoke scaled to the full replica's per-restart cost:
 # 200 users at 300 s (the full run's network-wide tx rate), 100 relays,
 # 36 medium, 1 h / 1 h turnover, 10 h. Run both arms concurrently with
-# --parallelism 60 so box noise hits both alike.
+# parallelism 60 so box noise hits both alike.
 general:
   # 8h: the auto bootstrap floor is 4h (MIN_BOOTSTRAP_END_TIME_S) and funding
   # adds 1h, so activity can't start before 5h. The old 3h stop halted the sim
   # mid-bootstrap (before any distribution/activity) — it could never run.
   stop_time: 10h
+  parallelism: 60          # both arms run concurrently on 120 of 128 cores
   simulation_seed: 12345
   bootstrap_end_time: auto
   enable_dns_server: true
