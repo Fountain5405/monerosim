@@ -189,6 +189,15 @@ pub struct PerformanceConfig {
     /// "1 us". Passed through as experimental.unblocked_vdso_busy_latency.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unblocked_vdso_busy_latency: Option<String>,
+    /// Shadow worker spinning (experimental.use_worker_spinning; Shadow
+    /// default true). While waiting for the next scheduling round each
+    /// worker spins in a `sched_yield` loop instead of sleeping: lower
+    /// wake-up latency when rounds are short and balanced, but a core per
+    /// worker stays at 100% even when one straggler host (e.g. a turnover
+    /// catch-up) holds the round. `false` lets idle workers sleep. Does not
+    /// change simulated behaviour.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worker_spinning: Option<bool>,
 }
 
 impl Default for PerformanceConfig {
@@ -198,6 +207,7 @@ impl Default for PerformanceConfig {
             unblocked_vdso_latency: None,
             unblocked_vdso_busy_threshold: None,
             unblocked_vdso_busy_latency: None,
+            worker_spinning: None,
         }
     }
 }

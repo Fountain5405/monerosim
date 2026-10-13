@@ -1082,6 +1082,7 @@ pub fn generate_agent_shadow_config(
             unblocked_vdso_latency: config.performance.unblocked_vdso_latency.clone(),
             unblocked_vdso_busy_threshold: config.performance.unblocked_vdso_busy_threshold,
             unblocked_vdso_busy_latency: config.performance.unblocked_vdso_busy_latency.clone(),
+            use_worker_spinning: config.performance.worker_spinning,
         },
         network: ShadowNetwork {
             graph: shadow_graph,

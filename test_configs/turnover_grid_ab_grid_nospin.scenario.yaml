@@ -1,0 +1,135 @@
+# Turnover return-grid A/B (grid). Pair: test_configs/turnover_grid_ab_free.scenario.yaml;
+# the free/grid files differ ONLY in general.turnover.return_grid;
+# *_nospin adds ONLY performance.worker_spinning: false.
+# Question: does snapping turnover returns to a 5-min grid speed up a
+# catch-up-bound run (docs/PERFORMANCE_AND_SCALE.md "Turnover catch-up is
+# serial") without moving the topology metrics?
+# Shape: mainnet-replica smoke scaled to the full replica's per-restart cost:
+# 200 users at 300 s (the full run's network-wide tx rate), 100 relays,
+# 36 medium, 1 h / 1 h turnover, 10 h. Run all four arms concurrently with
+# parallelism 30 so box noise hits all alike.
+general:
+  # 8h: the auto bootstrap floor is 4h (MIN_BOOTSTRAP_END_TIME_S) and funding
+  # adds 1h, so activity can't start before 5h. The old 3h stop halted the sim
+  # mid-bootstrap (before any distribution/activity) — it could never run.
+  stop_time: 10h
+  parallelism: 30          # four arms (free/grid x spin on/off) run concurrently on 120 of 128 cores
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true
+  reachable_fraction: 0.01
+  mining:
+    mode: native
+    chain_snapshot: auto
+  # Mainnet's reward regime: 0.6 XMR/block tail emission (docs/TAIL_EMISSION.md).
+  # auto = snapshot tip + enough full-reward live blocks to fund every user.
+  emission:
+    mode: tail
+  turnover:
+    mean_session: 1h
+    mean_downtime: 1h
+    fraction: 1.0
+    return_grid: 5m
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 0
+
+performance:
+  worker_spinning: false   # idle Shadow workers sleep instead of spinning
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+  distribution:
+    strategy: Weighted
+    prefix_sharing:
+      fraction: 0.31
+      per_prefix: 3
+    weights:
+      north_america: 58
+      europe: 30
+      asia: 9
+      oceania: 3
+      south_america: 0
+      africa: 0
+
+agents:
+  # Miners are the hubs (native mining; caps ~0.25*N at this scale).
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [10, 10, 10, 10, 10]
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 25
+      in-peers: 25
+      hide-my-port: false
+
+  # Medium: pinned reachable, still turning over (G2).
+  medium-a-{001..036}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+
+  user-{001..200}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  relay-{001..100}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto
+
+  observer-{001..003}:
+    daemon: monerod-hf
+    start_time: 0s
+    start_time_stagger: 3s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: "peerlist_dump.jsonl"
+
+  # Real-node spies (variant R), 2 dense /24s.
+  spy-a-{001..006}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 832
+    daemon_options: &spy_opts
+      out-peers: 8
+      hide-my-port: false
+  spy-b-{001..006}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 833
+    daemon_options: *spy_opts
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
