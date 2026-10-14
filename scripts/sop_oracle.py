@@ -32,10 +32,15 @@ def parse_log_line(line: str) -> dict | None:
         return None
 
 
-def decide(rec: dict) -> dict:
+def decide(rec: dict, nf_rule: str = "alt") -> dict:
     """Recompute nf, regime, suffix weights and the expected outcome from
     the logged inputs (mode, reinsert, h0, hf, top, w, k, d_ms, alt, main)
-    only. Never reads the daemon's own result fields."""
+    only. Never reads the daemon's own result fields.
+
+    nf_rule "alt" is the issue's formal definition (n_f counts the alt
+    branch only), which the daemon implements. "either" is the reading the
+    issue's author has since described: the regime is objective once either
+    branch holds k*w work objects past the fork."""
     mode = rec.get("mode")
     reinsert = bool(rec.get("reinsert"))
     h0, hf, top = rec["h0"], rec["hf"], rec["top"]
@@ -45,11 +50,18 @@ def decide(rec: dict) -> dict:
     main_by_h = {b["h"]: b for b in main}
 
     nf = sum(1 + b.get("n_sh", 0) for b in alt)
+    nf_main = sum(1 + b.get("n_sh", 0) for b in main)
+    if nf_rule == "alt":
+        under_kw = nf < k * w
+    elif nf_rule == "either":
+        under_kw = nf < k * w and nf_main < k * w
+    else:
+        raise ValueError(f"unknown nf_rule {nf_rule!r}")
 
     # Convention 9: sim-only guard, the first alt block's difficulty below w
     # forces the objective regime.
     diff_alt0 = int(alt[0]["diff"]) if alt else 0
-    window_open = h0 < hf and nf < k * w and diff_alt0 >= w
+    window_open = h0 < hf and under_kw and diff_alt0 >= w
     regime = "subjective" if window_open else "objective"
 
     old_cutoff = top - 10 * w
@@ -99,8 +111,8 @@ def decide(rec: dict) -> dict:
 
     skip = mode == "whole_branch" and reinsert
 
-    return {"nf": nf, "regime": regime, "w_alt": w_alt, "w_main": w_main,
-            "expected": expected, "skip": skip}
+    return {"nf": nf, "nf_main": nf_main, "regime": regime, "w_alt": w_alt,
+            "w_main": w_main, "expected": expected, "skip": skip}
 
 
 def compare(rec: dict) -> list[str]:
