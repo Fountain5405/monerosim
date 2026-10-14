@@ -52,30 +52,31 @@ controls how monerosim handles those IPs:
 
 | Value | Behavior |
 |-------|----------|
-| `auto` (default) | Orchestrator auto-injects 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP and running stock `monerod`. Silences "no host exists" warnings. Adds 6 hosts to the simulation. A seed you declare yourself under that name replaces the injected one (see below). |
+| `auto` (default) | 6 daemon-only hosts named `monero-seed-001` … `monero-seed-006`, each pinned to one fallback IP and running stock `monerod` unless you declare them yourself (see below). Scenario expansion writes them into the expanded YAML. Silences "no host exists" warnings. Adds 6 hosts to the simulation. |
 | `custom` | Only the `monero-seed-001` … `monero-seed-006` agents you declare in the `agents:` section exist (any subset, in any order); undeclared slots get no host. Lets you customize start time, add offline phases, etc. |
 | `off` | No seed hosts. Miners alone serve the seed-node role. Some "no host exists" warnings will appear in the Shadow log. Use for backward compat with older configs. |
 
-**Seed hosts are not in the expanded config.** They are added when
-monerosim generates the Shadow config, so in `auto` mode they appear only
-in the generated `shadow_agents.yaml`, not in the scenario file or the
-expanded monerosim YAML.
+**Seed hosts are in the expanded config.** In `auto` mode, scenario
+expansion appends every `monero-seed-NNN` you did not declare to the
+expanded monerosim YAML (`daemon: monerod`, `start_time` 0s–5s), so the
+expanded file lists every host and you can edit the seeds there. A monerosim
+YAML written by hand still gets any missing seed injected when monerosim
+generates the Shadow config.
 
-**Choosing a seed's binary (or any other setting).** Declare the seed under
-its exact slot name. In both `auto` and `custom` mode, monerosim then uses
-your definition instead of injecting one, and still pins its IP and marks it
-as a seed node:
+**Choosing a seed's binary (or any other setting).** Declare the seeds under
+their exact slot names, most simply as one range group. In both `auto` and
+`custom` mode, monerosim then uses your definition instead of adding one, and
+still pins each IP and marks the host as a seed node:
 
 ```yaml
 agents:
-  monero-seed-001:
-    daemon: /path/to/monerod   # absolute path, ~/path, or monerod / monerod-sim / monerod-hf
+  monero-seed-{001..006}:
+    daemon: monerod-sim        # absolute path, ~/path, or monerod / monerod-sim / monerod-hf
     start_time: 0s
-  monero-seed-002:
-    daemon: /path/to/monerod
-    start_time: 1s
-  # ... through monero-seed-006
+    start_time_stagger: 1s     # without it a daemon-only group staggers by 5 s
 ```
+
+Single slots work too (`monero-seed-002:` with its own settings).
 
 - Pinning is by slot number, not declaration order: `monero-seed-001` always
   gets the first fallback IP, `-002` the second, and so on.
@@ -83,8 +84,13 @@ agents:
 - A name that doesn't match exactly (e.g. `monero-seed-1`) is an ordinary
   node, and the real seed is still injected.
 - Settings that reach every daemon (`daemon_defaults`, hard-fork schedules,
-  tail emission) must be accepted by the seed binary too; generation-time
-  preflight checks this. See `docs/HARDFORK_TESTING.md` for an example.
+  tail emission) must be accepted by the seed binary too. Generation probes
+  the seed binary only for the hard-fork schedule and native-mining flags,
+  not for every `daemon_defaults` flag. See `docs/HARDFORK_TESTING.md` for an
+  example.
+- Generation warns when the seeds run stock `monerod` and no other daemon
+  does: stock seeds can reject a modified network's blocks (SoP's
+  `version_minor` rule is a hard fork).
 
 ## Range Expansion
 
