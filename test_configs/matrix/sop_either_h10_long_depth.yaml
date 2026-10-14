@@ -1,0 +1,57 @@
+# Re-run of stubborn_h10_long_depth (campaign 7) under the n_f rule the issue's author
+# has described: --sim-sop-nf-rule=either on every SoP node (2026-10-14).
+# Same seed, cells and stop_time as stubborn_h10_long_depth; KSM on.
+name: sop_either_h10_long_depth
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 240h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+          sim-sop-nf-rule: either
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+          sim-sop-nf-rule: either
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-nf-rule: either
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-nf-rule: either
+  alpha:
+    a033:
+      attacker:
+        hashrate: 3.3
+      honest:
+        hashrate:
+        - 3.35
+        - 3.35
+  depth:
+    d3:
+      attacker:
+        attributes:
+          give_up_depth: '3'
+    d5:
+      attacker:
+        attributes:
+          give_up_depth: '5'
+ksm: true

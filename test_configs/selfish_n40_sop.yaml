@@ -1,0 +1,193 @@
+# Larger selfish-mining base for SoP (2026-10-14): 40 daemons instead of 12.
+# Derived from selfish_micro_sop.yaml (read its header for the design). Same
+# general settings, h10 chain snapshot and CAIDA topology; changes:
+# - 8 honest miners instead of 2. Total hashrate stays 10 h/s (the h10
+#   snapshot's equilibrium, D0 = 1,200), so block-rate and revenue numbers stay
+#   comparable with campaign 7; the matrix alpha axis sets the split.
+# - 24 relays instead of 2, starting 30 s .. 260 s.
+# - The attacker's offline miner and bridge, and the six declared seeds, as
+#   before. Matrix "relays" overlays reach the seeds too.
+# Daemons: 8 + 1 + 1 + 24 + 6 = 40.
+general:
+  fallback_seeds: custom
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  mining:
+    mode: native
+    chain_snapshot: h10
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-003:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-004:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-005:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-006:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-007:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  honest-008:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 0.8375
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    start_time: 0s
+    hashrate: 4
+    daemon_options:
+      offline: true
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: '0'
+      reaction_delay_ms: '200'
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 40s
+  relay-003:
+    daemon: monerod
+    start_time: 50s
+  relay-004:
+    daemon: monerod
+    start_time: 60s
+  relay-005:
+    daemon: monerod
+    start_time: 70s
+  relay-006:
+    daemon: monerod
+    start_time: 80s
+  relay-007:
+    daemon: monerod
+    start_time: 90s
+  relay-008:
+    daemon: monerod
+    start_time: 100s
+  relay-009:
+    daemon: monerod
+    start_time: 110s
+  relay-010:
+    daemon: monerod
+    start_time: 120s
+  relay-011:
+    daemon: monerod
+    start_time: 130s
+  relay-012:
+    daemon: monerod
+    start_time: 140s
+  relay-013:
+    daemon: monerod
+    start_time: 150s
+  relay-014:
+    daemon: monerod
+    start_time: 160s
+  relay-015:
+    daemon: monerod
+    start_time: 170s
+  relay-016:
+    daemon: monerod
+    start_time: 180s
+  relay-017:
+    daemon: monerod
+    start_time: 190s
+  relay-018:
+    daemon: monerod
+    start_time: 200s
+  relay-019:
+    daemon: monerod
+    start_time: 210s
+  relay-020:
+    daemon: monerod
+    start_time: 220s
+  relay-021:
+    daemon: monerod
+    start_time: 230s
+  relay-022:
+    daemon: monerod
+    start_time: 240s
+  relay-023:
+    daemon: monerod
+    start_time: 250s
+  relay-024:
+    daemon: monerod
+    start_time: 260s
+  monero-seed-001:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-002:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-003:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-004:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-005:
+    daemon: monerod-sim
+    start_time: 5s
+  monero-seed-006:
+    daemon: monerod-sim
+    start_time: 5s
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

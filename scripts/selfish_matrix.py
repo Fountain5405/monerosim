@@ -224,7 +224,7 @@ def _find_new_rundir(archive: Path, run_name: str, before: set) -> Path:
 
 
 def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
-             nice_level: int = 10) -> dict:
+             nice_level: int = 10, ksm: bool = False) -> dict:
     """Generate the cell config, launch its run, analyze it, persist the row.
     `values` is the axis->label mapping (recorded in the row); `overlays` is
     the axis->overlay mapping build_config consumes. The row json doubles as
@@ -243,10 +243,11 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
     run_name = _sanitize(f"{spec['name']}__{cell}")
     before = set(str(p) for p in archive.glob(f"*_{run_name}"))
     t0 = time.time()
-    proc = subprocess.run(
-        ["nice", f"-n{nice_level}", "./run_sim.sh", "--config", str(cfg_path),
-         "--name", run_name, "--no-monitor"],
-        cwd=REPO_ROOT, capture_output=True, text=True)
+    cmd = ["nice", f"-n{nice_level}", "./run_sim.sh", "--config", str(cfg_path),
+           "--name", run_name, "--no-monitor"]
+    if ksm:
+        cmd.append("--ksm")
+    proc = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
     row = {
         "cell": cell,
         "values": values,
@@ -398,6 +399,9 @@ def main() -> int:
     ap.add_argument("--reanalyze", action="store_true",
                     help="recompute health + analysis for cells that already ran (from their "
                          "archived run dirs), rewrite markers/table; launch nothing")
+    ap.add_argument("--ksm", action="store_true",
+                    help="pass --ksm to every run_sim.sh launch (also on with "
+                         "'ksm: true' in the spec); see docs/PERFORMANCE_AND_SCALE.md")
     args = ap.parse_args()
 
     spec = load_spec(args.spec)
@@ -427,13 +431,14 @@ def main() -> int:
 
     archive = Path(os.environ.get("MONEROSIM_ARCHIVE_BASE", DEFAULT_ARCHIVE))
     parallel = args.parallel or spec.get("parallel", 1)
+    ksm = args.ksm or bool(spec.get("ksm", False))
     rows = []
     if args.reanalyze:
         rows = reanalyze_cells(cells, workdir, archive)
     else:
         with ThreadPoolExecutor(max_workers=parallel) as pool:
             futs = {pool.submit(run_cell, spec, cell, values, overlays,
-                                workdir, archive): cell
+                                workdir, archive, ksm=ksm): cell
                     for cell, values, overlays in cells}
             for fut in as_completed(futs):
                 row = fut.result()

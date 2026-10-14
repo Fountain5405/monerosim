@@ -743,7 +743,12 @@ if [[ -x "$MONEROSIM_BIN/shadow" ]]; then
     #      pinned $SHADOWFORMONERO_REF for this monerosim release
     STAMP_FILE="$MONEROSIM_HOME/SHADOWFORMONERO_VERSION"
     REINSTALL_REASON=""
-    if ! "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -qE "dirty|shadowformonero"; then
+    # shadowformonero is tagged v0.x.y ("Shadow 3.3.0 — v0.2.5-0-g..."); stock
+    # Shadow is tagged v3.x. A clean build from a tag prints neither "dirty" nor
+    # "shadowformonero", so match the v0 tag too (fixed 2026-10-14: every
+    # setup run offered a needless rebuild). The stamp check below pins the
+    # exact version.
+    if ! "$MONEROSIM_BIN/shadow" --version 2>&1 | grep -qE "dirty|shadowformonero| v0\.[0-9]+\.[0-9]+-"; then
         REINSTALL_REASON="installed binary is stock Shadow, not shadowformonero — it lacks the Monero socket-compatibility patches"
     elif [[ ! -f "$STAMP_FILE" ]]; then
         REINSTALL_REASON="installed shadowformonero predates version stamping; cannot verify it matches the pinned ref ($SHADOWFORMONERO_REF)"
