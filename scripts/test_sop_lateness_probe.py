@@ -45,7 +45,10 @@ def test_nf_rule_either_closes_window_when_main_reaches_kw():
            "alt": _branch(10, 0, 0), "main": _branch(6, 8, 0)}
     assert decide(rec, "alt")["regime"] == "subjective"
     assert decide(rec, "either")["regime"] == "objective"
-    assert decide(rec)["regime"] == "subjective"  # default stays the formal rule
+    assert decide(rec)["regime"] == "subjective"  # no logged rule: formal "alt"
+    rec["nf_rule"] = "either"                     # the daemon logged "either"
+    assert decide(rec)["regime"] == "objective"
+    assert decide(rec, "alt")["regime"] == "subjective"  # explicit rule wins
 
 
 def test_nf_rule_rejects_unknown():

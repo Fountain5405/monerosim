@@ -32,15 +32,20 @@ def parse_log_line(line: str) -> dict | None:
         return None
 
 
-def decide(rec: dict, nf_rule: str = "alt") -> dict:
+def decide(rec: dict, nf_rule: str | None = None) -> dict:
     """Recompute nf, regime, suffix weights and the expected outcome from
     the logged inputs (mode, reinsert, h0, hf, top, w, k, d_ms, alt, main)
     only. Never reads the daemon's own result fields.
 
     nf_rule "alt" is the issue's formal definition (n_f counts the alt
-    branch only), which the daemon implements. "either" is the reading the
+    branch only), the daemon's default. "either" is the reading the
     issue's author has since described: the regime is objective once either
     branch holds k*w work objects past the fork."""
+    # Without an explicit rule, use the one the daemon logged
+    # (--sim-sop-nf-rule); records from before that flag mean "alt".
+    if nf_rule is None:
+        nf_rule = rec.get("nf_rule", "alt")
+
     mode = rec.get("mode")
     reinsert = bool(rec.get("reinsert"))
     h0, hf, top = rec["h0"], rec["hf"], rec["top"]
