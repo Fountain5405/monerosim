@@ -1216,7 +1216,9 @@ fi
 
 install_sim_monerod() {
     # monerod-sim = vanilla monero (monero.pin) + every vendored patch, each
-    # flag-gated and stock when its flag is absent:
+    # flag-gated and stock when its flag is absent, except one change: the pop
+    # patch drops the hard-fork vote test (version_minor >= fork version) for
+    # every block, flag or not, so an unflagged bridge can carry SoP blocks:
     #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
     #   patches/monero-sim-mining.patch           --sim-hash-interval-ms / --sim-rx-full-dataset
     #   patches/monero-sim-selfish-relay.patch    --sim-relay-alt-blocks (sim-only, gamma>0)

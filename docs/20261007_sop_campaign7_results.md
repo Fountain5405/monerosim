@@ -492,6 +492,16 @@ and peer churn, is not measured.
      final until a new block extends the loser. Which to put to the thread
      is the owner's call; the attacker-revenue numbers that came from the
      accident should not be quoted.
+   - *The author's view (2026-10, paraphrased):* the intended rule is the
+     symmetric one (option i): a comparison becomes objective once either
+     chain is k·w work objects past the fork point, and the author does not
+     expect a pair to cycle, because the weights should not depend on which
+     chain a node is on. Under that rule the example above is objective from
+     both sides and does not flip. Every campaign-7 SoP run used the formal,
+     alt-only reading. Still open: the issue times lateness against "the
+     main chain block of the same height", which changes when a node
+     switches; whether that alone can make a pair cycle while both chains
+     are under k·w is being tested.
 2. **The `version_minor` rule conflicts with the issue's soft-fork claim.**
    (Corrected 2026-10-14; the earlier heading was "SoP is a hard fork".)
    - The issue calls SoP "a soft-forking proposal that only introduces a

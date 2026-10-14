@@ -266,8 +266,9 @@ implemented:
 - **Hardfork-vote bypass**: `version_minor` normally carries the HF vote
   (must ≥ HF version); with it repurposed as the share count, every SoP
   block would fail version validation. The real proposal is a soft fork
-  superseding that rule — the sim bypasses both vote gates when SoP is
-  armed.
+  superseding that rule — the sim bypasses both vote gates for every
+  block, whether or not SoP is armed, so an unflagged bridge can carry SoP
+  blocks. (Corrected 2026-10-14: this said "when SoP is armed".)
 - v2 also fixes: the template cache must be invalidated when a new own
   share is pooled (the miner's post-share template refresh otherwise gets
   the stale cached template with no embedding).

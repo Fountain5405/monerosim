@@ -75,7 +75,7 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
   </header>
 
   <section aria-labelledby="qs">
-    <span class="eyebrow">Only the author can answer these</span>
+    <span class="eyebrow">Answered by the author in outline (gist, not quotes)</span>
     <h2 id="qs">Two questions about the spec</h2>
 
     <div class="q">
@@ -84,11 +84,13 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
       <blockquote>Formal: n_f counts work objects in the alt chain "not contained in the main chain".</blockquote>
       <blockquote>Prose: the lateness factors apply only if "the two chains differ by fewer than k*w work objects".</blockquote>
       <p>Under the formal reading, which branch is the alt one decides whether a comparison is subjective (receive times count) or objective. Under the prose reading, a pair is objective as soon as either side holds k·w = 48 objects. We implemented the formal reading.</p>
+      <p><b>Answered (gist):</b> the weight becomes objective once either chain is 48 work objects past the fork point, so the prose reading is the intended one. Our runs used the formal reading; re-runs under the intended rule are planned.</p>
     </div>
 
     <div class="q">
       <span class="lab">Q2 · What happens to blocks displaced by a reorg?</span>
       <p>The spec doesn't say. Stock monerod pushes every displaced block back through the fork choice after a reorg (<code>blockchain.cpp:1163–1180</code>). Under cumulative difficulty that check can never win. With SoP weights it can.</p>
+      <p><b>Answered (gist):</b> the author doesn't expect cycling, since under the intended rule the weights shouldn't change when a node switches chains. One open point: the issue measures lateness against the main-chain block at the same height, and that block changes on a switch. We're testing whether that can still cause a cycle while both chains are under 48 objects.</p>
     </div>
 
     <h3>Why it matters: one pair, both directions say SWITCH</h3>

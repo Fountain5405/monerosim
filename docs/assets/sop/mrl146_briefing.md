@@ -14,7 +14,8 @@ d blocks.
 
 ## Two questions about the spec
 
-Only the author can answer these.
+The author has answered both in outline (the gist is below; these are not
+quotes).
 
 ### Q1. Which `n_f` is intended?
 
@@ -33,11 +34,22 @@ The issue gives two rules that are not the same:
 
 We implemented the formal reading.
 
+**Answered (gist):** the weight becomes objective once either chain is 48
+work objects past the fork point, so the prose reading is the intended one.
+Our runs used the formal reading; re-runs under the intended rule are
+planned.
+
 ### Q2. What happens to blocks displaced by a reorg?
 
 The spec doesn't say. After a reorg, stock monerod pushes every displaced
 block back through the fork choice (`blockchain.cpp:1163–1180`). Under
 cumulative difficulty that check can never win. With SoP weights it can.
+
+**Answered (gist):** the author doesn't expect cycling, since under the
+intended rule the weights shouldn't change when a node switches chains.
+One open point: the issue measures lateness against the main-chain block at
+the same height, and that block changes on a switch. We're testing whether
+that can still cause a cycle while both chains are under 48 objects.
 
 ### Why it matters: one pair, both directions say SWITCH
 
