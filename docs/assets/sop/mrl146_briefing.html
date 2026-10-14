@@ -133,10 +133,10 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
         </div>
       </div>
       <div class="row">
-        <div class="k">SoP is a hard fork<small>version_minor rule</small></div>
+        <div class="k">version_minor<small>vs the soft-fork claim</small></div>
         <div class="v">
-          <p>The spec puts the workshare count in <code>version_minor</code>, which v0.18 uses as the hard-fork vote and requires to be at least 16 (<code>hardfork.cpp:109–113</code>). Honest blocks carry about 15 workshares on average, median 11, so most SoP blocks look like an old version to an unupgraded node.</p>
-          <p class="ev">Seen directly: an unmodified node rejected SoP blocks with "has old version" (<code>blockchain.cpp:1889</code>). Another field or an offset encoding would avoid it.</p>
+          <p>The issue calls SoP "a soft-forking proposal", and puts the workshare count in <code>version_minor</code>. v0.18 uses that field as the hard-fork vote and requires it to be at least 16 (<code>hardfork.cpp:109–113</code>). Honest blocks carry about 15 workshares on average, median 11.</p>
+          <p class="ev">Tested: an unmodified monerod on the same chain rejected every SoP block it was sent (10 of 10, each with at most 7 workshares) with "has old version: 16, current: 16" (<code>blockchain.cpp:4079</code>), and dropped the peer. The major version matched, so the vote is what failed. An offset (for example 16 + the share count) or another field would avoid it.</p>
         </div>
       </div>
       <div class="row">
@@ -144,21 +144,6 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
         <div class="v">
           <p>SoP nodes legitimately switch to a branch with fewer blocks. Stock monerod scores a peer whose reported height drops (<code>hit_score</code>), and the fail score never decays, so honest nodes ban each other for 24 h.</p>
           <p class="ev">With a depth-5 attacker: bans in 3 of 5 runs (48, 57 and 10); one relay stuck on a stale branch for 13.7 simulated hours. Replaying the fail score from the logs predicts all 67 bans. Not scoring height drops gave 0 bans in three 240 h re-runs; that fix is blunt and a deployment would want a narrower rule.</p>
-        </div>
-      </div>
-      <div class="row">
-        <div class="k">10+ block reorgs<small>depend on the attacker</small></div>
-        <div class="v">
-          <p>"About 1 per 3 years" is the rate for tevador's T5 attacker, which gives up more than 5 work objects behind. An attacker that holds on longer reorgs more often.</p>
-          <div class="scroll"><table>
-            <thead><tr><th>Give-up depth (α = 0.33)</th><th>One 10+ reorg per</th></tr></thead>
-            <tbody>
-              <tr><td class="num">2 blocks</td><td class="num">2.9 years</td></tr>
-              <tr><td class="num">3 blocks</td><td class="num">1.5 years</td></tr>
-              <tr><td class="num">5 blocks</td><td class="num">0.41 years</td></tr>
-            </tbody>
-          </table></div>
-          <p class="ev">Race-model output, validated against the simulator (share, orphan rates and race shapes agree; depth within about 5–10 %), at near-zero network delay. The simulator saw two in 48.7 days at depth 5.</p>
         </div>
       </div>
     </div>

@@ -17,7 +17,7 @@ restated (§7 item 1). The review's seven other points are in §9 and §10.
 | 2 | An independent race model (Model B) agrees with the simulator on attacker share, reveal rate, orphan rates and race shapes, within sampling error. Reorg depth differs by 5–10 % in a direction that changes with d; pooled over all eight d5 runs the simulator reads deeper (p = 0.03, one-sided; §4). Not explained. | High for share, rate and shapes. Moderate for depth. |
 | 3 | Reorgs of 10+ blocks depend on how far behind the attacker keeps mining. At α = 0.33 (Model B), an attacker that reveals at the first chance but keeps mining while up to 1, 2 or 4 blocks behind (give-up depth 2, 3, 5) causes one per 2.9, 1.5 and 0.41 years. The spec's "about 1 per 3 years" comes from tevador's simulator, whose attacker gives up once more than 5 work objects (under half a block) behind. It is one attacker's rate, not a bound. | Moderate–high (model, validated against the simulator at shallower depths). |
 | 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. Not scoring that height drop on SoP nodes removed every ban in 3 re-runs. | High for the mechanism (67 of 67 bans replayed exactly) and for the fix on this network (0 bans, 0 scored drops, §6.4). |
-| 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and the two readings give very different attacker revenue; (b) the spec's `version_minor` rule makes most SoP blocks invalid to unupgraded nodes, so SoP is a hard fork; (c) the 10+ reorg figure is one attacker's rate, not a bound. | High (checked against the issue text and tevador's simulator, §7). |
+| 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and under the formal (alt-only) reading of `n_f` the pairwise rule can say SWITCH in both directions (§7 item 1); (b) the `version_minor` rule conflicts with the issue's soft-fork claim: stock v0.18 requires it to be at least 16 (§7 item 2). The earlier gap (c), on the 10+ reorg figure, is withdrawn (§7 item 3). | (a) high; (b) tested: a stock monerod rejected 10 of 10 SoP blocks on the vote check (§7 item 2). Corrected 2026-10-14. |
 | 6 | **Reveal rate.** At α = 0.33 and d = 2 the simulator measures 2.98 reveals per canonical day (Model B 3.13), each with a branch of at least 48 work objects. The spec says an attacker avoids the lateness penalties "on average once per 10 days", about 30× less often. The reveals have a mean depth of 2.3 blocks, so the spec's "3-block reorg" is about right and the frequency is not. About 2 % of reveals are reversed within 3.3 s by one honest block (§4.2). | High for the measurement (simulator and Model B agree). Cause shown by a model ablation and by the logs of 3 runs (§4.1); replicates pending. |
 
 Every SoP number recorded before 2026-10-04 is superseded (§1), including
@@ -492,24 +492,51 @@ and peer churn, is not measured.
      final until a new block extends the loser. Which to put to the thread
      is the owner's call; the attacker-revenue numbers that came from the
      accident should not be quoted.
-2. **SoP is a hard fork, not a soft fork.**
-   - The issue requires miners to "set the `version_minor` block header
-     field to be equal to the number of workshares included in the block".
+2. **The `version_minor` rule conflicts with the issue's soft-fork claim.**
+   (Corrected 2026-10-14; the earlier heading was "SoP is a hard fork".)
+   - The issue calls SoP "a soft-forking proposal that only introduces a
+     new fork choice rule", and requires miners to "set the `version_minor`
+     block header field to be equal to the number of workshares included in
+     the block".
    - In monero v0.18, `version_minor` is the hard-fork vote. A block is
      valid only if that vote is at least the current fork version, 16
-     (`HardFork::do_check`, `hardfork.cpp:109–113`).
-   - So every SoP block with fewer than 16 workshares is invalid to an
+     (`HardFork::do_check`, `hardfork.cpp:109–113`; the same test in
+     `do_check_for_height`, reached from `blockchain.cpp:1887`).
+   - So a block with fewer than 16 workshares fails that test on an
      unupgraded node. Honest blocks here carry about 15 on average, with a
-     median of 11.
-   - The issue calls `tx_extra` placement of the shares "the simplest
-     backwards-compatible solution". That holds for the share data, not
-     for this field.
-   - Observed: an unmodified v0.18 bridge rejected SoP blocks with "has old
-     version" (`blockchain.cpp:1889`, run `20260930_161539`).
+     median of 11. An offset (for example 16 + the share count) or another
+     field would avoid it.
+   - Our `monerod-sim` removes the vote test for every block
+     (`patches/monero-sim-pop.patch`, hardfork.cpp hunks), so no SoP run
+     could show the rejection.
+   - *Tested 2026-10-14* (`test_configs/sop_stock_observer_smoke.yaml`;
+     runs `20261014_182618_sop_stock_observer`, 40 sim-min, and
+     `20261014_183122_sop_stock_observer_verify`, 20 sim-min): an honest SoP
+     network plus one unmodified, non-mining `monerod` on the same h50
+     snapshot chain. In both runs the stock node added none of the SoP
+     blocks it was sent and dropped the sending peer each time (10 of 10).
+     With its `verify` log category on, every rejection reads "has old
+     version: 16 / current: 16" (`blockchain.cpp:4079`,
+     `m_hardfork->check`). The major version matched the current fork, so
+     the part that failed is the vote: `version_minor` below 16. Those
+     blocks carried at most 7 workshares. No block reached 16 workshares in
+     these runs, so acceptance at 16 or more is inferred from the code, not
+     observed.
+   - *Correction:* an earlier version said an unmodified v0.18 bridge
+     rejected SoP blocks in run `20260930_161539`. That was wrong on both
+     counts. The only "has old version" lines in our archived runs are 11 on
+     the attacker's bridge in the sibling run
+     `20260930_161539_stubborn_h10_smoke__share_stock_a045_d2`, and that
+     bridge ran `monerod-sim`, whose vote test is removed, so those
+     rejections were not caused by `version_minor`.
 
    Our implementation follows the rule as written
    (`docs/20260930_sop_conformance.md`, convention 8).
-3. **The 10+ reorg figure is one attacker's rate, not a bound** (§5).
+3. *Withdrawn 2026-10-14:* "the 10+ reorg figure is one attacker's rate, not a
+   bound". tevador's comment of 2025-09-28 already tables the average time
+   between 10+ reorgs by configuration for the T5 attacker (about 2–3 years
+   only with w = 16 and unique workshares, days otherwise). Our rates for
+   attackers that hold on longer (§5) are extra data, not a gap in the spec.
 4. **The P2P ban cascade (§6).** The weight-based fork choice lets nodes
    switch to branches with fewer blocks, which conflicts with monero's
    height-based peer scoring. Not scoring height drops on SoP nodes

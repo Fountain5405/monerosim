@@ -89,8 +89,9 @@ Single slots work too (`monero-seed-002:` with its own settings).
   not for every `daemon_defaults` flag. See `docs/HARDFORK_TESTING.md` for an
   example.
 - Generation warns when the seeds run stock `monerod` and no other daemon
-  does: stock seeds can reject a modified network's blocks (SoP's
-  `version_minor` rule is a hard fork).
+  does: stock seeds can reject a modified network's blocks (stock monerod
+  rejects SoP blocks with fewer than 16 workshares on its hard-fork vote
+  check).
 
 ## Range Expansion
 

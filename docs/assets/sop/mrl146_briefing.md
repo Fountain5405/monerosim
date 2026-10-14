@@ -106,17 +106,18 @@ earns 0.015 and 0.000 (n = 2). This matches albinjm's result that no
 withholding strategy earns its fair share at α ≤ 0.33. We claim it only for
 α ≤ 0.40.
 
-### SoP is a hard fork (the `version_minor` rule)
+### The `version_minor` rule vs the soft-fork claim
 
-The spec puts the workshare count in `version_minor`. v0.18 uses that field
-as the hard-fork vote and requires it to be at least 16
-(`hardfork.cpp:109–113`). Honest blocks carry about 15 workshares on
-average, median 11. So most SoP blocks look like an old version to an
-unupgraded node.
+The issue calls SoP "a soft-forking proposal", and puts the workshare count
+in `version_minor`. v0.18 uses that field as the hard-fork vote and requires
+it to be at least 16 (`hardfork.cpp:109–113`). Honest blocks carry about 15
+workshares on average, median 11.
 
-We saw this directly: an unmodified node rejected SoP blocks with "has old
-version" (`blockchain.cpp:1889`). Another field or an offset encoding would
-avoid it.
+We tested it: an unmodified monerod on the same chain rejected every SoP
+block it was sent (10 of 10, each with at most 7 workshares) with "has old
+version: 16, current: 16" (`blockchain.cpp:4079`), and dropped the peer.
+The major version matched, so the vote is what failed. An offset (for
+example 16 + the share count) or another field would avoid it.
 
 ### Peer bans (stock P2P scoring)
 
@@ -132,23 +133,6 @@ With a depth-5 attacker:
 - Not scoring height drops gave 0 bans in three 240 h re-runs.
 
 That fix is blunt; a deployment would want a narrower rule.
-
-### 10+ block reorgs depend on the attacker
-
-"About 1 per 3 years" is the rate for tevador's T5 attacker, which gives up
-when it falls more than 5 work objects behind. An attacker that holds on
-longer reorgs more often:
-
-| Give-up depth (α = 0.33) | One 10+ reorg per |
-|---|---|
-| 2 blocks | 2.9 years |
-| 3 blocks | 1.5 years |
-| 5 blocks | 0.41 years |
-
-These rates come from a race model, at near-zero network delay. The model
-agrees with the simulator on share, orphan rates and race shapes, and on
-reorg depth to within about 5–10 %. The simulator itself saw two 10+ reorgs
-in 48.7 days at depth 5.
 
 ## Limits
 

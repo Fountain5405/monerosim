@@ -501,14 +501,19 @@ results doc §5–§6).
         switch to a shorter, heavier branch (results doc §6). Not scoring
         that height drop on SoP nodes removed every ban in three 240 h
         re-runs (§6.4).
-    - *Spec gaps* (checked against the issue text 2026-10-07):
-      - re-judging displaced blocks is unspecified, and per-block
-        re-judging cuts the attacker to {0.043, 0.000} at α = 0.40,
-        against 0.187 with whole-branch judging;
-      - the spec's `version_minor` rule makes most SoP blocks invalid to
-        unupgraded v0.18 nodes (the field is their hard-fork vote and must
-        be at least 16), so SoP is a hard fork;
-      - the 10+ reorg figure is one attacker's rate, not a bound.
+    - *Spec gaps* (checked against the issue text 2026-10-07; corrected
+      2026-10-14):
+      - re-judging displaced blocks is unspecified, and under the formal
+        (alt-only) reading of `n_f` the pairwise rule can say SWITCH in
+        both directions (results doc §7 item 1). The revenue from per-block
+        re-judging runs came from a monerod re-insertion accident and is
+        not quoted;
+      - the `version_minor` rule conflicts with the issue's soft-fork
+        claim: v0.18 uses the field as its hard-fork vote and requires at
+        least 16, and an unmodified monerod rejected every SoP block it was
+        sent (results doc §7 item 2).
+      - (Withdrawn: "the 10+ reorg figure is one attacker's rate". tevador's
+        2025-09-28 comment already tables it per configuration.)
     - *Not established:*
       - network scale (12 daemons, 2 honest miners);
       - attackers with a network advantage;

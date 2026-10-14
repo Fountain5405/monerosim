@@ -64,8 +64,9 @@ pub fn prepare_fallback_seeds(
 }
 
 /// Warn when the fallback seeds run stock `monerod` but no other daemon
-/// does: stock seeds can reject a modified network's blocks (SoP's
-/// `version_minor` rule is a hard fork). Compares the `daemon` field only;
+/// does: stock seeds can reject a modified network's blocks (stock monerod
+/// rejects SoP blocks with fewer than 16 workshares on its hard-fork vote
+/// check). Compares the `daemon` field only;
 /// `daemon_phases` are ignored, so upgrade configs that start everyone on
 /// `monerod` stay quiet. `Remote` and daemon-less agents are not counted.
 pub fn stock_seed_warning(agents: &AgentDefinitions) -> Option<String> {
