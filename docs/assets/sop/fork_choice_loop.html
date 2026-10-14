@@ -1,0 +1,579 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Fork-Choice Loop</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root{
+  --bg:#e5eceb; --surface:#f3f7f6; --surface-2:#dbe4e2; --ink:#14201e; --ink-2:#536361;
+  --line:#b6c5c2; --grid:#dde6e4; --guide:#9fb1ae;
+  --honest:#1b6884; --honest-bg:#d2e6ed;
+  --attack:#ad2539; --attack-bg:#f4dbde;
+  --hist:#7a8886; --hist-bg:#d6dedc;
+  --keep:#3a4846; --keep-bg:#e7edec;
+  --switch:#d27d0c; --switch-ink:#1a1000;
+  --stored:#768583;
+  --subj:#6a50a6; --obj:#3d7a32;
+  --tray-bg:#dce5e3; --focus:#1b6884;
+  --f-disp:"IBM Plex Sans Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0d1514; --surface:#141f1d; --surface-2:#1b2927; --ink:#d9e5e2; --ink-2:#91a3a0;
+    --line:#2d3e3b; --grid:#172321; --guide:#3e524f;
+    --honest:#5cb3d2; --honest-bg:#13303a;
+    --attack:#ee6a7e; --attack-bg:#38171e;
+    --hist:#879593; --hist-bg:#222e2c;
+    --keep:#c4d1ce; --keep-bg:#21302d;
+    --switch:#f1a23a; --switch-ink:#1a1000;
+    --stored:#7d8d8a;
+    --subj:#a895ea; --obj:#86c46e;
+    --tray-bg:#111b1a; --focus:#5cb3d2;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1514; --surface:#141f1d; --surface-2:#1b2927; --ink:#d9e5e2; --ink-2:#91a3a0;
+  --line:#2d3e3b; --grid:#172321; --guide:#3e524f;
+  --honest:#5cb3d2; --honest-bg:#13303a;
+  --attack:#ee6a7e; --attack-bg:#38171e;
+  --hist:#879593; --hist-bg:#222e2c;
+  --keep:#c4d1ce; --keep-bg:#21302d;
+  --switch:#f1a23a; --switch-ink:#1a1000;
+  --stored:#7d8d8a;
+  --subj:#a895ea; --obj:#86c46e;
+  --tray-bg:#111b1a; --focus:#5cb3d2;
+}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:clamp(16px,4vw,40px);padding-block:28px 48px}
+.mono,.num{font-family:var(--f-mono)}
+.mono,.num,table,.meters,.gauge,.verdict,.cap-step{font-variant-numeric:tabular-nums}
+h1,h2,h3{text-wrap:balance}
+h1{font-family:var(--f-disp);font-weight:600;font-size:clamp(2rem,5vw,2.9rem);line-height:1.05;letter-spacing:-.01em;margin:0}
+.dek{margin:.5rem 0 0;max-width:62ch;color:var(--ink-2);font-size:1.05rem}
+.top{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:18px}
+
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.tabs{display:flex;flex-wrap:wrap;gap:0 4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 7px;color:var(--ink-2);font-family:var(--f-mono);font-size:.9rem;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.tabs button:hover{color:var(--ink)}
+
+.params{font-family:var(--f-mono);font-size:.82rem;border:1px solid var(--line);background:var(--surface);padding:8px 12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:4px 24px;align-items:baseline}
+.params p{margin:0;font-weight:600}
+.params ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:2px 18px;color:var(--ink-2)}
+.params li{display:flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:12px;height:12px;border:1.5px solid}
+.sw.h{background:var(--honest-bg);border-color:var(--honest)}
+.sw.a{border-color:var(--attack);background:repeating-linear-gradient(45deg,var(--attack) 0 1.5px,var(--attack-bg) 1.5px 4px)}
+
+.layout{display:grid;gap:20px}
+@media (min-width:900px){.layout{grid-template-columns:minmax(0,1fr) 280px}}
+.stage-frame{border:1px solid var(--line);background:var(--surface)}
+#stage{display:block;width:100%;height:auto}
+
+/* SVG */
+.st-bg{fill:var(--surface)} .grid-ln{fill:none;stroke:var(--grid);stroke-width:1}
+.lane-lab{font-family:var(--f-mono);font-size:12px;fill:var(--ink-2);letter-spacing:.06em;text-transform:uppercase}
+.guide{fill:none;stroke:var(--guide);stroke-width:1.5}
+.guide.side{stroke-dasharray:5 4}
+.tray{fill:var(--tray-bg);stroke:var(--guide);stroke-dasharray:3 3}
+.fork{fill:var(--surface);stroke:var(--ink-2);stroke-width:1.5}
+.fork-lab{font-family:var(--f-mono);font-size:11px;fill:var(--ink-2);text-anchor:middle}
+.hist{fill:var(--hist-bg);stroke:var(--hist);stroke-width:1.5}
+.hist-t{font-family:var(--f-mono);font-size:13px;fill:var(--ink-2);text-anchor:middle}
+.body{stroke-width:1.6}
+.k-h{--kc:var(--honest)} .k-a{--kc:var(--attack)}
+.k-h .body{fill:var(--honest-bg);stroke:var(--honest)}
+.k-a .body{fill:var(--attack-bg);stroke:var(--attack)}
+.hatch-bg{fill:var(--attack-bg)} .hatch-ln{stroke:var(--attack);stroke-width:1.6}
+.bname{font-family:var(--f-mono);font-weight:600;font-size:18px;fill:var(--ink);text-anchor:middle}
+.bh{font-family:var(--f-mono);font-size:12px;fill:var(--ink-2);text-anchor:middle}
+.tag{font-family:var(--f-mono);font-size:13px;fill:var(--ink);text-anchor:middle;font-variant-numeric:tabular-nums}
+.dot circle{fill:var(--kc);stroke:var(--kc);stroke-width:1.2}
+.dot line{stroke:var(--kc);stroke-width:1.2;visibility:hidden}
+.dot.off circle{fill:var(--surface)}
+.dot.off line{visibility:visible}
+.dot{transform-box:fill-box;transform-origin:center}
+.dot.pulse{animation:pulse 650ms ease-out}
+@keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.9)}100%{transform:scale(1)}}
+.tag.flash{animation:flash 1s ease-out}
+@keyframes flash{0%{fill:var(--switch)}100%{fill:var(--ink)}}
+.unchecked .inner{opacity:.42}
+.unchecked .body{stroke-dasharray:4 3}
+.unchecked .tag{fill:var(--stored);font-style:italic}
+@media (max-width:600px){
+  .bname{font-size:22px} .bh{font-size:15px} .tag{font-size:16px} .lane-lab{font-size:15px} .hist-t{font-size:15px}
+}
+
+.caption{margin-top:12px;border-top:2px solid var(--ink);padding-top:10px;min-height:9rem}
+.cap-step{margin:0;font-family:var(--f-mono);font-size:.8rem;color:var(--ink-2)}
+.caption h2{font-family:var(--f-body);font-weight:600;font-size:1.15rem;margin:.15rem 0 .3rem}
+.caption p.text{margin:0;max-width:65ch}
+.matrix{margin-top:12px;border-collapse:collapse;font-family:var(--f-mono);font-size:.84rem;width:100%;max-width:65ch}
+.matrix th,.matrix td{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.matrix th{font-weight:400;color:var(--ink-2)}
+.matrix td{font-weight:600}
+.matrix td.v-SWITCH{color:var(--switch)} .matrix td.v-none{color:var(--stored);font-style:italic}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.controls button{background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:6px 12px;min-height:36px}
+.controls button:hover{border-color:var(--ink-2)}
+#btn-play{min-width:5.5rem;font-weight:600;border-color:var(--ink)}
+.speeds{display:flex;gap:0;margin-left:4px}
+.speeds button{font-family:var(--f-mono);font-size:.85rem;border-radius:0;margin-left:-1px}
+.speeds button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+#btn-continue{background:var(--switch);color:var(--switch-ink);border-color:var(--switch);font-weight:600}
+.keys{flex-basis:100%;font-size:.8rem;color:var(--ink-2);margin:2px 0 0}
+
+.panel{display:flex;flex-direction:column;gap:18px;align-content:start}
+.p-lab{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
+.meters,.gauge{transition:opacity .4s}
+.meters.dim,.gauge.dim{opacity:.38}
+.m-row{display:grid;grid-template-columns:2.8rem 1fr 3.6rem;align-items:center;gap:8px;margin-bottom:6px;font-size:.85rem}
+.m-row .m-lab{font-family:var(--f-mono);color:var(--ink-2)}
+.m-track{position:relative;height:16px;background:var(--surface-2)}
+.m-fill{position:absolute;inset:0 auto 0 0;width:0;transition:width .7s cubic-bezier(.45,0,.2,1)}
+.m-fill.h{background:var(--honest)}
+.m-fill.a{background:repeating-linear-gradient(45deg,var(--attack) 0 3px,var(--attack-bg) 3px 4.5px)}
+.m-val{font-family:var(--f-mono);text-align:right;font-weight:600}
+.m-axis{display:grid;grid-template-columns:2.8rem 1fr 3.6rem;gap:8px}
+.ticks{position:relative;height:20px;border-top:1px solid var(--ink-2);font-family:var(--f-mono);font-size:.68rem;color:var(--ink-2)}
+.ticks span{position:absolute;top:0;transform:translateX(-50%);padding-top:4px}
+.ticks span::before{content:"";position:absolute;left:50%;top:0;height:4px;border-left:1px solid var(--ink-2)}
+.g-track{position:relative;height:14px;background:var(--surface-2);margin-top:22px}
+.g-fill{position:absolute;inset:0 auto 0 0;width:0;transition:width .7s cubic-bezier(.45,0,.2,1),background-color .4s}
+.gauge.subj .g-fill{background:var(--subj)} .gauge.obj .g-fill{background:var(--obj)}
+.g-mark{position:absolute;left:80%;top:-22px;bottom:-4px;border-left:2px solid var(--ink)}
+.g-mark span{position:absolute;right:4px;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:.72rem}
+.g-axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.68rem;color:var(--ink-2);margin-top:3px}
+.g-read{margin-top:4px;font-size:.88rem;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.g-read .num{font-weight:600}
+.gauge.subj .g-state{color:var(--subj);font-weight:600}
+.gauge.obj .g-state{color:var(--obj);font-weight:600}
+.verdict{display:inline-block;font-family:var(--f-mono);font-weight:600;font-size:1.25rem;letter-spacing:.08em;padding:6px 14px;border:2px solid var(--line);color:var(--stored);min-width:7.5rem;text-align:center}
+.verdict[data-v="KEEP"]{border-color:var(--keep);color:var(--keep);background:var(--keep-bg)}
+.verdict[data-v="SWITCH"]{border-color:var(--switch);background:var(--switch);color:var(--switch-ink)}
+.verdict[data-v="STORED"]{border-style:dashed;border-color:var(--stored);color:var(--stored)}
+.verdict.stamp{animation:stamp 420ms cubic-bezier(.2,.8,.3,1.2)}
+@keyframes stamp{0%{transform:scale(1.5) rotate(-4deg);opacity:0}100%{transform:none;opacity:1}}
+
+.what{margin-top:40px;border-top:1px solid var(--line);padding-top:18px}
+.what h2{font-family:var(--f-disp);font-weight:600;font-size:1.5rem;margin:0 0 8px}
+.what ol{margin:0;padding-left:1.4rem;max-width:65ch}
+.what li{margin-bottom:.6rem}
+.what li::marker{font-family:var(--f-mono);color:var(--ink-2)}
+.sources{font-size:.8rem;color:var(--ink-2);max-width:80ch;margin-top:14px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
+</style>
+
+<div class="wrap">
+  <div class="top" role="banner">
+    <h1>Fork-Choice Loop</h1>
+    <p class="dek">What happens to blocks a reorg displaces: stock monerod versus Share-or-Perish (MRL #146).</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Acts">
+    <button type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="act-panel">1 · Stock monerod</button>
+    <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="act-panel">2 · SoP, stock re-check</button>
+    <button type="button" role="tab" id="tab-3" aria-selected="false" aria-controls="act-panel">3 · SoP, whole branch</button>
+  </div>
+
+  <div id="act-panel" role="tabpanel" aria-labelledby="tab-1">
+    <div class="params" id="params" hidden>
+      <p>w = 16 · k = 3 · k·w = 48 work objects · d = 5 s · one work object = diff/w = 76</p>
+      <ul>
+        <li><span class="sw h" aria-hidden="true"></span><span><b>H</b> seen 0:00 · workshares gossiped at −1:00</span></li>
+        <li><span class="sw a" aria-hidden="true"></span><span><b>A1–A6</b> seen 36:00 · workshares never gossiped</span></li>
+      </ul>
+    </div>
+
+    <div class="layout">
+      <div class="main-col">
+        <div class="stage-frame">
+          <svg id="stage" viewBox="0 0 764 440" role="img" aria-label="Act 1, step 1 of 8: One number per branch">
+            <defs>
+              <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="5" height="5" class="hatch-bg"/><line x1="0" y1="0" x2="0" y2="5" class="hatch-ln"/>
+              </pattern>
+              <pattern id="gridp" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M20 0H0V20" class="grid-ln"/>
+              </pattern>
+            </defs>
+            <rect width="764" height="440" class="st-bg"/>
+            <rect width="764" height="440" fill="url(#gridp)"/>
+            <rect x="178" y="320" width="582" height="114" class="tray"/>
+            <path d="M12 89H756" class="guide"/>
+            <path d="M168 89C180 89 172 229 190 229H756" class="guide side"/>
+            <text x="12" y="38" class="lane-lab">main chain</text>
+            <text x="12" y="178" class="lane-lab">side branch</text>
+            <text x="12" y="318" class="lane-lab">displaced</text>
+            <rect x="12" y="50" width="44" height="78" rx="2" class="hist"/><text x="34" y="94" class="hist-t">997</text>
+            <rect x="62" y="50" width="44" height="78" rx="2" class="hist"/><text x="84" y="94" class="hist-t">998</text>
+            <rect x="112" y="50" width="44" height="78" rx="2" class="hist"/><text x="134" y="94" class="hist-t">999</text>
+            <path d="M168 81l8 8-8 8-8-8z" class="fork"/>
+            <text x="168" y="146" class="fork-lab">fork</text>
+            <g id="blocks"></g>
+          </svg>
+        </div>
+
+        <div class="caption" id="caption" aria-live="polite">
+          <p class="cap-step" id="cap-step">Step 1 of 8</p>
+          <h2 id="cap-title">One number per branch</h2>
+          <p class="text" id="cap-text">monerod weighs a branch by cumulative difficulty: the sum of its blocks' difficulties. A block's difficulty depends only on the blocks before it, so every node gets the same number at any time. This node is on H1–H2, which adds 200 since the fork.</p>
+          <table class="matrix" id="matrix" hidden><tbody id="matrix-body"></tbody></table>
+        </div>
+
+        <div class="controls">
+          <button type="button" id="btn-prev">Prev</button>
+          <button type="button" id="btn-play">Play</button>
+          <button type="button" id="btn-next">Next</button>
+          <div class="speeds" role="group" aria-label="Speed">
+            <button type="button" id="speed-05" aria-pressed="false" data-speed="0.5">0.5×</button>
+            <button type="button" id="speed-1" aria-pressed="true" data-speed="1">1×</button>
+            <button type="button" id="speed-2" aria-pressed="false" data-speed="2">2×</button>
+          </div>
+          <button type="button" id="btn-continue" hidden>Continue to Act 2</button>
+          <p class="keys">Keys: ← → step · Space play/pause · 1 2 3 switch act</p>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="Fork-choice check">
+        <div>
+          <p class="p-lab">Branch weight</p>
+          <div class="meters dim" id="meters">
+            <div class="m-row"><span class="m-lab">main</span><div class="m-track"><div class="m-fill h" id="m-main"></div></div><span class="m-val" id="m-main-v">200</span></div>
+            <div class="m-row"><span class="m-lab">side</span><div class="m-track"><div class="m-fill a" id="m-side"></div></div><span class="m-val" id="m-side-v">0</span></div>
+            <div class="m-axis"><span></span><div class="ticks" id="ticks"></div><span></span></div>
+          </div>
+        </div>
+        <div class="gauge subj" id="gauge" hidden>
+          <p class="p-lab">n_f · work objects on the side branch</p>
+          <div class="g-track"><div class="g-fill" id="g-fill"></div><div class="g-mark"><span>k·w = 48</span></div></div>
+          <div class="g-axis"><span>0</span><span>60</span></div>
+          <div class="g-read"><span class="num" id="g-val">n_f = 0</span><span class="g-state" id="g-state">receive times count</span></div>
+        </div>
+        <div>
+          <p class="p-lab">Verdict</p>
+          <div class="verdict" id="verdict" data-v="none">—</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <section class="what" aria-labelledby="what-h">
+    <h2 id="what-h">What this shows</h2>
+    <ol>
+      <li>Stock monerod already re-checks displaced blocks. After every reorg it pushes each one back through the fork-choice check. Under cumulative difficulty that check can never win, so nobody had to decide whether it should happen.</li>
+      <li>Share-or-Perish's comparison can prefer each branch over the other. Its rules switch on n_f, which counts the side branch's work objects only, and they time blocks and workshares against whichever block is main at each height. Both depend on which branch the node is on.</li>
+      <li>So the spec has to say what happens to displaced blocks, or use a comparison that gives the same answer whichever branch is main. The issue's two readings of n_f differ exactly here: the formal one counts the alt chain only (the cycle is possible), the prose one ("the two chains differ by fewer than k·w work objects") makes the pair objective once either side holds k·w (no cycle here). Options: judge each pair symmetrically, judge a displaced branch again only once extended (our simulator's default), or say a winning reveal is final until the loser is extended. We have not picked one.</li>
+      <li>Revenue numbers from runs where monerod re-checked displaced blocks are not quoted: the attacker's blocks were deleted by an accident of monerod's re-insertion code (Act 2, step 9), not by any rule.</li>
+    </ol>
+    <p class="sources">Code: monero v0.18.5.1, src/cryptonote_core/blockchain.cpp (comparison :1980–1991 and :2096; switch :1099–1219; re-insertion :1167–1179). Rules: MRL #146, Tables 3–5. Example adapted from worked example 2 in docs/20260930_sop_conformance.md, replayed in arrival order.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const svg = $('stage'), NS = svg.namespaceURI, layer = $('blocks');
+  const X0 = 186, STEP = 82, BW = 74, BH = 78, LT = { main: 50, side: 190, tray: 330 };
+  const rmq = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = rmq.matches;
+  const fmt = n => n.toLocaleString('en-US');
+
+  // step: b = {id: [lane, tag, dotsFilled, unchecked]}, m = [main, side, dim], g = [n_f, dim] | null, v = verdict, t/x = caption, mx = matrix
+  const S = (b, m, g, v, t, x, mx) => ({ b, m, g, v, t, x, mx: !!mx });
+  const a1 = o => { const r = {}; for (const k in o) r[k] = [o[k], '100', 1]; return r; };
+  const As = (lane, tag, on, n = 6) => { const r = {}; for (let i = 1; i <= n; i++) r['A' + i] = [lane, tag, on]; return r; };
+  const rev = n => Object.assign({ H: ['main', '912', 1] }, As('side', '76', 0, n), { A1: ['side', '0 · late', 0] });
+  const HDR = 'Headers only';
+
+  const ACT1 = {
+    axis: 300, ticks: [0, 100, 200, 300], params: false,
+    blocks: [['H1', 1000, 'h', 0], ['H2', 1001, 'h', 0], ['A1', 1000, 'a', 0], ['A2', 1001, 'a', 0], ['A3', 1002, 'a', 0]],
+    matrix: ['On H, A arrives → SWITCH · 300 > 200', 'On A, H re-checked → KEEP · 200 < 300'],
+    steps: [
+      S(a1({ H1: 'main', H2: 'main' }), [200, 0, 1], null, null, 'One number per branch',
+        "monerod weighs a branch by cumulative difficulty: the sum of its blocks' difficulties. A block's difficulty depends only on the blocks before it, so every node gets the same number at any time. This node is on H1–H2, which adds 200 since the fork."),
+      S(a1({ H1: 'main', H2: 'main', A1: 'side' }), [200, 100], null, 'KEEP', 'A side block arrives',
+        'For each block that lands on a side branch, monerod adds up the side branch from the fork through that block and compares it with the main tip. 100 is not more than 200, so it keeps H.'),
+      S(a1({ H1: 'main', H2: 'main', A1: 'side', A2: 'side' }), [200, 200], null, 'KEEP', 'A tie keeps the current chain',
+        'The comparison is strict, so 200 against 200 keeps H.'),
+      S(a1({ H1: 'main', H2: 'main', A1: 'side', A2: 'side', A3: 'side' }), [200, 300], null, 'SWITCH', 'Heavier side branch',
+        '300 beats 200. monerod switches to the A branch.'),
+      S(a1({ H1: 'tray', H2: 'tray', A1: 'main', A2: 'main', A3: 'main' }), [300, 0, 1], null, null, 'The switch',
+        'monerod pops H2 and H1 back to the fork, then connects A1, A2 and A3 one at a time, validating each.'),
+      S(a1({ H1: 'side', H2: 'tray', A1: 'main', A2: 'main', A3: 'main' }), [300, 100], null, 'KEEP', 'Displaced blocks go back one at a time',
+        'Each displaced block goes back through the same check it would face as a new side block. H1 alone: 100 against 300. It is stored as a side block.'),
+      S(a1({ H1: 'side', H2: 'side', A1: 'main', A2: 'main', A3: 'main' }), [300, 200], null, 'KEEP', "The re-check can't win",
+        'H1–H2 come back with the 200 they always had, and 200 just lost to 300. A shorter piece of the displaced branch weighs even less.'),
+      S(a1({ H1: 'side', H2: 'side', A1: 'main', A2: 'main', A3: 'main' }), [300, 200], null, 'KEEP', 'Asking again changes nothing',
+        "Each branch has one number, whichever chain the node is on. A switch from H to A and a switch back from A to H can't both be right, so re-checking displaced blocks after every reorg is harmless.", 1),
+    ]
+  };
+
+  const SOP_BLOCKS = [['H', 1000, 'h', 11], ['A1', 1000, 'a', 8], ['A2', 1001, 'a', 8], ['A3', 1002, 'a', 8], ['A4', 1003, 'a', 8], ['A5', 1004, 'a', 8], ['A6', 1005, 'a', 8]];
+  const SOP_TICKS = [0, 1000, 2000, 3000, 4000];
+  const H_back = Object.assign({ H: ['main', '912', 1] }, As('tray', '76', 0));
+
+  const ACT2 = {
+    axis: 4500, ticks: SOP_TICKS, params: true, blocks: SOP_BLOCKS,
+    matrix: ['On H, A arrives · side n_f 54, past 48 → SWITCH · 4,104 > 912', 'On A, H re-checked · side n_f 12, under 48 → SWITCH · 912 > 456'],
+    steps: [
+      S({ H: ['main', '912', 1] }, [912, 0, 1], [0], null, 'Same loop, new weights',
+        "Share-or-Perish counts work objects: block headers and workshares, each worth diff/w = 76 here. While the side branch holds fewer than k·w = 48 of them, a node that was online before the fork also uses its own receive times: late blocks and shares that weren't seen early count 0. This node is on H: one block plus 11 workshares gossiped a minute earlier. 12 × 76 = 912."),
+      S(rev(1), [912, 0], [9], 'KEEP', 'A1 is late',
+        'The attacker reveals its branch. n_f = 9, under 48, so receive times count. A1 arrived 36 minutes after H at the same height, far more than d = 5 s: its header and shares weigh 0. Keep.'),
+      S(rev(2), [912, 76], [18], 'KEEP', 'Headers only',
+        "A2 is above H's height, so it can't be late. Its 8 workshares were never seen before the block, so they count 0. Only the header counts: 76. Keep."),
+      S(rev(3), [912, 152], [27], 'KEEP', HDR, 'n_f = 27. Side branch 152 against 912. Keep.'),
+      S(rev(4), [912, 228], [36], 'KEEP', HDR, 'n_f = 36. Side branch 228. Keep.'),
+      S(rev(5), [912, 304], [45], 'KEEP', HDR, 'n_f = 45, three short of 48. Side branch 304. Keep.'),
+      S(Object.assign({ H: ['main', '912', 1] }, As('side', '684', 1)), [912, 4104], [54], 'SWITCH', 'A6 crosses 48',
+        'With A6 the side branch holds 54 work objects. Past k·w, every lateness factor is 1, so the withheld workshares count too: 54 × 76 = 4,104 against 912. Switch.'),
+      S(Object.assign({ H: ['tray', '912', 1] }, As('main', '684', 1)), [null, null, 1], [null, 1], null, 'The switch',
+        'Same code as stock monerod: pop H, connect A1 to A6.'),
+      S(Object.assign({ H: ['side', '912', 1] }, As('main', '76', 0)), [456, 912], [12], 'SWITCH', 'Re-checking H flips it back',
+        "monerod pushes H back through the fork-choice check. Now H is the side branch, with 12 work objects: under 48, so receive times count again. H was on time and its workshares were gossiped early: 912. Lateness is timed against the main chain's block at each height, and the attacker's blocks are the main chain now, so all six headers count, A1 included. The withheld workshares still don't: 6 × 76 = 456. Switch back."),
+      S(H_back, [null, null, 1], [null, 1], null, 'Undone, by accident',
+        "In monerod this switch back runs inside the first switch, and it goes wrong: the duplicate check (blockchain.cpp:2073) refuses to store A1–A6 again, and the outer switch then deletes them from the side-block store (:1182–1186). The attacker's branch simply vanishes. That is an accident of monerod's code, not something the spec says, so the attacker revenue from those runs tells us nothing about SoP."),
+      S(H_back, [null, null, 1], [null, 1], null, 'Both directions say switch',
+        "n_f counts only the side branch's work objects, and lateness is timed against whichever block is main. So the same two branches are judged under different rules depending on which one the node is on. Check A again now and its 54 objects win again. The rule never settles on its own. (Under the issue's prose reading, where the factors apply only while the two chains differ by fewer than k·w objects, A's 54 make this pair objective both ways and the flip cannot happen.)", 1),
+    ]
+  };
+
+  const onA = As('main', '684', 1);
+  const stored = Object.assign({ H: ['side', 'not checked', 1, 1] }, onA);
+  const withN = Object.assign({}, stored, { N: ['main', 'honest', 1] });
+  const ACT3 = {
+    axis: 4500, ticks: SOP_TICKS, params: true, blocks: SOP_BLOCKS.concat([['N', 1006, 'h', 4]]),
+    matrix: ['On H, A arrives → SWITCH · 4,104 > 912', 'On A, H re-inserted → not checked'],
+    steps: [
+      S(Object.assign({ H: ['tray', '912', 1] }, onA), [null, null, 1], [null, 1], null, 'Same reveal, same switch',
+        'Everything up to the switch is the same: at A6 the side branch reaches 54 work objects and wins 4,104 to 912.'),
+      S(stored, [null, null, 1], [null, 1], 'STORED', 'Stored without a check',
+        'In whole_branch mode, our default, a displaced block is stored without being judged. The node stays on A.'),
+      S(withN, [null, null, 1], [null, 1], 'STORED', 'Nobody builds on H',
+        'Every node that saw the reveal switched, so honest miners now extend A. H is judged again only when a new block extends it, and none does.'),
+      S(withN, [null, null, 1], [null, 1], 'STORED', 'The reveal sticks',
+        "tevador's simulator makes the same assumption: a reveal that wins is final. The cycle from Act 2 is still in the rule; this mode just doesn't ask again. A reveal can still be reversed the legitimate way, when a new honest block extends H and makes it heavier: 7 of 367 reveals in our 240 h runs, each within 3.3 s.", 1),
+    ]
+  };
+
+  const ACTS = [ACT1, ACT2, ACT3];
+  const cur = { a: 0, s: 0 };
+  let blocks = [], speed = 1, playing = false, timer = null, lastVerdict = null;
+
+  const mk = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const restart = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
+
+  function build() {
+    const act = ACTS[cur.a];
+    layer.textContent = '';
+    blocks = act.blocks.map(([id, h, k, n]) => {
+      const g = mk('g', { class: 'blk k-' + k }, layer);
+      const inner = mk('g', { class: 'inner' }, g);
+      if (k === 'a') {
+        mk('path', { d: `M0 0H${BW - 12}L${BW} 12V${BH}H0Z`, class: 'body' }, inner);
+        mk('rect', { x: 1.5, y: 1.5, width: 7, height: BH - 3, fill: 'url(#hatch)' }, inner);
+      } else {
+        mk('rect', { width: BW, height: BH, rx: 2, class: 'body' }, inner);
+      }
+      const ny = n ? 23 : 36, hy = n ? 39 : 56;
+      mk('text', { x: BW / 2 + (k === 'a' ? 3 : 0), y: ny, class: 'bname' }, inner).textContent = id;
+      mk('text', { x: BW / 2 + (k === 'a' ? 3 : 0), y: hy, class: 'bh' }, inner).textContent = h;
+      const dots = [];
+      for (let i = 0; i < n; i++) {
+        const row = Math.floor(i / 6), inRow = row === 0 ? Math.min(n, 6) : n - 6, col = i % 6;
+        const cx = BW / 2 + (k === 'a' ? 3 : 0) + (col - (inRow - 1) / 2) * 11, cy = 55 + row * 12;
+        const d = mk('g', { class: 'dot' }, inner);
+        mk('circle', { cx, cy, r: 3.6 }, d);
+        mk('line', { x1: cx - 3, y1: cy + 3, x2: cx + 3, y2: cy - 3 }, d);
+        dots.push(d);
+      }
+      const tag = mk('text', { x: BW / 2, y: BH + 20, class: 'tag' }, g);
+      g.style.opacity = '0';
+      return { id, h, k, g, dots, tag, lane: null, on: null, text: null };
+    });
+    const ticks = $('ticks');
+    ticks.textContent = '';
+    for (const t of act.ticks) {
+      const s = document.createElement('span');
+      s.style.left = (t / act.axis * 100) + '%';
+      s.textContent = fmt(t);
+      ticks.appendChild(s);
+    }
+    const body = $('matrix-body');
+    body.textContent = '';
+    for (const row of act.matrix) {
+      const [sit, res] = row.split(' → ');
+      const tr = document.createElement('tr');
+      const th = document.createElement('th'); th.scope = 'row'; th.textContent = sit;
+      const td = document.createElement('td'); td.textContent = '→ ' + res;
+      td.className = 'v-' + (/^(SWITCH|KEEP)/.test(res) ? res.split(' ')[0] : 'none');
+      tr.append(th, td); body.appendChild(tr);
+    }
+    $('params').hidden = !act.params;
+    $('gauge').hidden = !act.steps[0].g;
+    ACTS.forEach((_, i) => $('tab-' + (i + 1)).setAttribute('aria-selected', String(i === cur.a)));
+    $('act-panel').setAttribute('aria-labelledby', 'tab-' + (cur.a + 1));
+    lastVerdict = null;
+  }
+
+  function render(animate) {
+    const act = ACTS[cur.a], st = act.steps[cur.s], N = act.steps.length;
+    const dur = Math.round(750 / speed), stag = Math.round(280 / speed);
+
+    // reorg choreography: displaced drop tip-first, then winners rise in height order
+    const target = B => st.b[B.id] ? st.b[B.id][0] : null;
+    const drops = blocks.filter(B => target(B) === 'tray' && B.lane && B.lane !== 'tray').sort((a, b) => b.h - a.h);
+    const rises = blocks.filter(B => target(B) === 'main' && B.lane && B.lane !== 'main').sort((a, b) => a.h - b.h);
+    const delay = new Map();
+    drops.forEach((B, i) => delay.set(B, i * stag));
+    const base = drops.length ? (drops.length - 1) * stag + dur * 0.8 : 0;
+    rises.forEach((B, i) => delay.set(B, base + i * stag));
+
+    for (const B of blocks) {
+      const s = st.b[B.id];
+      if (!s) {
+        B.g.style.transition = animate ? `opacity ${dur / 2}ms ease` : 'none';
+        B.g.style.opacity = '0';
+        B.lane = null;
+        continue;
+      }
+      const [lane, text, on, unchecked] = s;
+      const x = X0 + (B.h - 1000) * STEP, y = LT[lane], d = delay.get(B) || 0;
+      const appearing = !B.lane;
+      if (animate && appearing) {
+        B.g.style.transition = 'none';
+        B.g.style.transform = `translate(${x + 30}px,${y}px)`;
+        B.g.style.opacity = '0';
+        void B.g.getBoundingClientRect();
+      }
+      B.g.style.transition = animate ? `transform ${dur}ms cubic-bezier(.45,0,.2,1) ${d}ms, opacity ${dur}ms ease ${d}ms` : 'none';
+      B.g.style.transform = `translate(${x}px,${y}px)`;
+      B.g.style.opacity = '1';
+      B.g.classList.toggle('unchecked', !!unchecked);
+      if (B.text !== text) {
+        B.tag.textContent = text;
+        if (animate && !appearing && B.text !== null) restart(B.tag, 'flash');
+        B.text = text;
+      }
+      if (B.on !== on) {
+        B.dots.forEach(dt => {
+          dt.classList.toggle('off', !on);
+          if (animate && B.on !== null) restart(dt, 'pulse');
+        });
+        B.on = on;
+      }
+      B.lane = lane;
+    }
+
+    // meters
+    const [mv, sv, mdim] = st.m;
+    const mainA = Object.keys(st.b).some(id => id[0] === 'A' && st.b[id][0] === 'main');
+    const setBar = (id, v, k) => {
+      const f = $(id);
+      f.className = 'm-fill ' + k;
+      f.style.width = v == null ? '0%' : (Math.min(v, act.axis) / act.axis * 100) + '%';
+      $(id + '-v').textContent = v == null ? '—' : fmt(v);
+    };
+    setBar('m-main', mv, mainA ? 'a' : 'h');
+    setBar('m-side', sv, mainA ? 'h' : 'a');
+    $('meters').classList.toggle('dim', !!mdim);
+
+    // gauge
+    const gauge = $('gauge');
+    gauge.hidden = !st.g;
+    if (st.g) {
+      const [n, gdim] = st.g;
+      gauge.classList.toggle('dim', !!gdim);
+      $('g-fill').style.width = n == null ? '0%' : (n / 60 * 100) + '%';
+      const obj = n != null && n >= 48;
+      gauge.classList.toggle('obj', obj);
+      gauge.classList.toggle('subj', !obj);
+      $('g-val').textContent = n == null ? 'n_f = —' : 'n_f = ' + n;
+      $('g-state').textContent = n == null ? '' : obj ? 'everything counts' : 'receive times count';
+    }
+
+    // verdict
+    const v = $('verdict');
+    v.dataset.v = st.v || 'none';
+    v.textContent = st.v || '—';
+    if (animate && st.v && st.v !== lastVerdict) restart(v, 'stamp');
+    else v.classList.remove('stamp');
+    lastVerdict = st.v;
+
+    // caption
+    $('cap-step').textContent = `Step ${cur.s + 1} of ${N}`;
+    $('cap-title').textContent = st.t;
+    $('cap-text').textContent = st.x;
+    $('matrix').hidden = !st.mx;
+    svg.setAttribute('aria-label', `Act ${cur.a + 1}, step ${cur.s + 1} of ${N}: ${st.t}`);
+
+    const last = cur.s === N - 1, cont = $('btn-continue');
+    cont.hidden = !last;
+    cont.textContent = cur.a < 2 ? `Continue to Act ${cur.a + 2}` : 'Replay from Act 1';
+    $('btn-prev').disabled = cur.s === 0;
+    $('btn-next').disabled = last;
+  }
+
+  const lastIdx = () => ACTS[cur.a].steps.length - 1;
+  function setPlayBtn() { $('btn-play').textContent = playing ? 'Pause' : 'Play'; }
+  function pause() { playing = false; clearTimeout(timer); setPlayBtn(); }
+  function schedule() {
+    clearTimeout(timer);
+    if (!playing) return;
+    if (cur.s >= lastIdx()) { pause(); return; }
+    const st = ACTS[cur.a].steps[cur.s];
+    const ms = Math.min(10000, 2200 + 40 * (st.t.length + st.x.length)) / speed;
+    timer = setTimeout(() => { cur.s++; render(!reduced); schedule(); }, ms);
+  }
+  function setAct(a) { pause(); cur.a = a; cur.s = 0; build(); render(false); }
+  function play() {
+    if (cur.s >= lastIdx()) setAct((cur.a + 1) % 3);
+    playing = true; setPlayBtn(); schedule();
+  }
+  function next() { pause(); if (cur.s < lastIdx()) { cur.s++; render(!reduced); } }
+  function prev() { pause(); if (cur.s > 0) { cur.s--; render(false); } }
+
+  $('btn-prev').addEventListener('click', prev);
+  $('btn-next').addEventListener('click', next);
+  $('btn-play').addEventListener('click', () => playing ? pause() : play());
+  $('btn-continue').addEventListener('click', () => { setAct((cur.a + 1) % 3); if (!reduced) play(); $('btn-play').focus(); });
+  [1, 2, 3].forEach(i => $('tab-' + i).addEventListener('click', () => setAct(i - 1)));
+  document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => {
+    speed = +b.dataset.speed;
+    document.querySelectorAll('[data-speed]').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    schedule();
+  }));
+  document.addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); playing ? pause() : play(); }
+    else if (e.key === '1' || e.key === '2' || e.key === '3') setAct(+e.key - 1);
+  });
+  if (rmq.addEventListener) rmq.addEventListener('change', e => { reduced = e.matches; if (reduced) pause(); });
+
+  build();
+  render(false);
+  if (!reduced) play();
+})();
+</script>
+
+</body></html>

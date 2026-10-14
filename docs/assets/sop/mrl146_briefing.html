@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MRL #146 Briefing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column; questions first, findings as a ruled ledger, limits last. */
+:root{
+  --bg:#edf2f1; --surface:#f8faf9; --ink:#14201e; --ink-2:#4f605d; --line:#c3d0cd;
+  --honest:#1b6884; --honest-bg:#d6e8ee; --attack:#ad2539; --attack-bg:#f5dfe2;
+  --switch:#b86a06; --switch-bg:#f8e7cc; --ok:#3d7a32;
+  --f-disp:"IBM Plex Sans Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1615; --surface:#15201e; --ink:#d9e5e2; --ink-2:#97a8a5; --line:#2e3f3c;
+    --honest:#5cb3d2; --honest-bg:#13303a; --attack:#ee6a7e; --attack-bg:#3a1820;
+    --switch:#f1a23a; --switch-bg:#3a2a10; --ok:#86c46e;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1615; --surface:#15201e; --ink:#d9e5e2; --ink-2:#97a8a5; --line:#2e3f3c;
+  --honest:#5cb3d2; --honest-bg:#13303a; --attack:#ee6a7e; --attack-bg:#3a1820;
+  --switch:#f1a23a; --switch-bg:#3a2a10; --ok:#86c46e;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55}
+.wrap{max-width:760px;margin:0 auto;padding-inline:clamp(16px,4vw,32px);padding-block:32px 56px;display:grid;gap:36px}
+h1,h2,h3{text-wrap:balance;margin:0}
+h1{font-family:var(--f-disp);font-weight:600;font-size:clamp(2rem,6vw,2.6rem);line-height:1.05}
+h2{font-family:var(--f-disp);font-weight:600;font-size:1.45rem;line-height:1.15}
+h3{font-size:1.02rem;font-weight:600}
+p{margin:0;max-width:65ch}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.mono,code{font-family:var(--f-mono);font-size:.9em}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+header{display:grid;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:18px}
+.setup{color:var(--ink-2);font-size:.95rem}
+section{display:grid;gap:14px}
+.q{background:var(--surface);border:1px solid var(--line);padding:16px 18px;display:grid;gap:8px}
+.q .lab{font-family:var(--f-mono);font-weight:600;color:var(--switch)}
+blockquote{margin:0;padding-left:12px;border-left:3px solid var(--line);font-style:italic;color:var(--ink-2);max-width:62ch}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+thead th{font-family:var(--f-mono);font-weight:400;font-size:.78rem;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;border-bottom:1.5px solid var(--ink-2)}
+.verdict{font-family:var(--f-mono);font-weight:600;color:var(--switch);white-space:nowrap}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:.78rem;padding:1px 7px;border:1.5px solid}
+.chip.h{color:var(--honest);border-color:var(--honest);background:var(--honest-bg)}
+.chip.a{color:var(--attack);border-color:var(--attack);background:var(--attack-bg)}
+ul.opts{margin:0;padding-left:1.2rem;display:grid;gap:4px;max-width:65ch}
+.ledger{display:grid;gap:0;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:14px 0;border-bottom:1px solid var(--line)}
+@media (min-width:640px){.row{grid-template-columns:11rem minmax(0,1fr);gap:16px}}
+.row .k{font-family:var(--f-disp);font-weight:600;font-size:1.05rem}
+.row .k small{display:block;font-family:var(--f-mono);font-weight:400;font-size:.72rem;color:var(--ink-2);letter-spacing:.04em}
+.row .v{display:grid;gap:6px;min-width:0}
+.ev{font-size:.88rem;color:var(--ink-2)}
+.note{border:1px dashed var(--line);padding:12px 16px;font-size:.92rem;display:grid;gap:6px}
+footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Share-or-Perish · monero-project/research-lab #146</span>
+    <h1>MRL #146 Briefing</h1>
+    <p class="setup">SoP run as written (Tables 3–5, <code>version_minor</code> slot rule, w = 16, k = 3, d = 5 s) in monerod v0.18.5.1 under the Shadow network simulator: 12 daemons, real RandomX, 120 s blocks. Every fork-choice decision is logged and re-derived by an independent checker: 43,949 decisions, 0 mismatches. The attacker withholds, reveals once its branch holds 48 work objects and outweighs the honest chain, and gives up when honest leads by d blocks.</p>
+  </header>
+
+  <section aria-labelledby="qs">
+    <span class="eyebrow">Only the author can answer these</span>
+    <h2 id="qs">Two questions about the spec</h2>
+
+    <div class="q">
+      <span class="lab">Q1 · Which n_f is intended?</span>
+      <p>The issue gives two rules that are not the same:</p>
+      <blockquote>Formal: n_f counts work objects in the alt chain "not contained in the main chain".</blockquote>
+      <blockquote>Prose: the lateness factors apply only if "the two chains differ by fewer than k*w work objects".</blockquote>
+      <p>Under the formal reading, which branch is the alt one decides whether a comparison is subjective (receive times count) or objective. Under the prose reading, a pair is objective as soon as either side holds k·w = 48 objects. We implemented the formal reading.</p>
+    </div>
+
+    <div class="q">
+      <span class="lab">Q2 · What happens to blocks displaced by a reorg?</span>
+      <p>The spec doesn't say. Stock monerod pushes every displaced block back through the fork choice after a reorg (<code>blockchain.cpp:1163–1180</code>). Under cumulative difficulty that check can never win. With SoP weights it can.</p>
+    </div>
+
+    <h3>Why it matters: one pair, both directions say SWITCH</h3>
+    <p>An honest block <span class="chip h">H</span> with 11 workshares, all gossiped early, against 7 attacker blocks <span class="chip a">A1–A7</span>, each with 8 workshares that were never gossiped.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Node is on</th><th>Alt branch</th><th>Regime</th><th>Comparison</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>A1–A7</td><td>H (12 objects)</td><td>subjective</td><td class="num">912 vs 532</td><td class="verdict">SWITCH to H</td></tr>
+          <tr><td>H</td><td>A1–A7 (63 objects)</td><td>objective</td><td class="num">63 vs 12 objects</td><td class="verdict">SWITCH to A</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>n_f counts the alt side only, and lateness is timed against whichever block is main at each height, so the answer depends on which branch the node is already on. We saw this live: <code>alt 4234/6 vs main 3796/4 → SWITCH</code>, then 1 ms later <code>alt 1022/1 vs main 438/6 → SWITCH</code>. Under the prose reading the pair is objective in both directions once the attacker's side holds 48 objects, and the flip can't happen.</p>
+    <p>Options we see, none chosen:</p>
+    <ul class="opts">
+      <li>Judge each pair symmetrically (the prose reading of n_f).</li>
+      <li>Judge a displaced branch again only when a new block extends it (our simulator's default).</li>
+      <li>Say in the spec that a reveal that won is final until the losing branch is extended.</li>
+    </ul>
+    <p>Even with our default, 7 of 367 reveals in the 240 h runs (2 %) were reversed within 3.3 s, each by one honest block that made the honest branch heavier. In 3 of the 7 the honest branch was still the shorter one. This is albinjm's question 1, seen at near-zero network delay.</p>
+    <div class="note">
+      <p><b>Numbers not to quote.</b> In runs where monerod re-checked displaced blocks, the attacker's share came out near zero. That is an accident of monerod's code: the switch back runs inside the first switch, the duplicate check (<code>:2073</code>) refuses to store the attacker's blocks again, and the outer switch deletes them (<code>:1182–1186</code>). It says nothing about SoP.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="fs">
+    <span class="eyebrow">Implementation findings, with evidence</span>
+    <h2 id="fs">What we found</h2>
+    <div class="ledger">
+      <div class="row">
+        <div class="k">Profit<small>agrees with the thread</small></div>
+        <div class="v">
+          <div class="scroll"><table>
+            <thead><tr><th>α</th><th>Stock</th><th>SoP</th></tr></thead>
+            <tbody>
+              <tr><td class="num">0.33</td><td class="num">0.29–0.31</td><td class="num">0.015–0.025 <span class="ev">(13 × 240 h; give-up depth 2, 3, 5)</span></td></tr>
+              <tr><td class="num">0.40</td><td class="num">0.38–0.46</td><td class="num">≈ 0.14 <span class="ev">(nine 6 h runs, all below 0.29)</span></td></tr>
+            </tbody>
+          </table></div>
+          <p class="ev">Eyal–Sirer and lead-2 attackers at α = 0.40 earn 0.000 and 0.015 / 0.000 (n = 2). Matches albinjm's result that no withholding strategy earns its fair share at α ≤ 0.33. Claimed only for α ≤ 0.40.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="k">SoP is a hard fork<small>version_minor rule</small></div>
+        <div class="v">
+          <p>The spec puts the workshare count in <code>version_minor</code>, which v0.18 uses as the hard-fork vote and requires to be at least 16 (<code>hardfork.cpp:109–113</code>). Honest blocks carry about 15 workshares on average, median 11, so most SoP blocks look like an old version to an unupgraded node.</p>
+          <p class="ev">Seen directly: an unmodified node rejected SoP blocks with "has old version" (<code>blockchain.cpp:1889</code>). Another field or an offset encoding would avoid it.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="k">Peer bans<small>stock P2P scoring</small></div>
+        <div class="v">
+          <p>SoP nodes legitimately switch to a branch with fewer blocks. Stock monerod scores a peer whose reported height drops (<code>hit_score</code>), and the fail score never decays, so honest nodes ban each other for 24 h.</p>
+          <p class="ev">With a depth-5 attacker: bans in 3 of 5 runs (48, 57 and 10); one relay stuck on a stale branch for 13.7 simulated hours. Replaying the fail score from the logs predicts all 67 bans. Not scoring height drops gave 0 bans in three 240 h re-runs; that fix is blunt and a deployment would want a narrower rule.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="k">10+ block reorgs<small>depend on the attacker</small></div>
+        <div class="v">
+          <p>"About 1 per 3 years" is the rate for tevador's T5 attacker, which gives up more than 5 work objects behind. An attacker that holds on longer reorgs more often.</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Give-up depth (α = 0.33)</th><th>One 10+ reorg per</th></tr></thead>
+            <tbody>
+              <tr><td class="num">2 blocks</td><td class="num">2.9 years</td></tr>
+              <tr><td class="num">3 blocks</td><td class="num">1.5 years</td></tr>
+              <tr><td class="num">5 blocks</td><td class="num">0.41 years</td></tr>
+            </tbody>
+          </table></div>
+          <p class="ev">Race-model output, validated against the simulator (share, orphan rates and race shapes agree; depth within about 5–10 %), at near-zero network delay. The simulator saw two in 48.7 days at depth 5.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="ls">
+    <h2 id="ls">Limits</h2>
+    <ul class="opts">
+      <li>12 daemons, two honest miners, fast propagation. Realistic delay and many pools are not tested.</li>
+      <li>One attacker design. It is not tevador's T5 attacker, which gives up in objects and uses honest workshares in its first private block.</li>
+      <li>α = 0.40 rests on 6 h runs. α = 0.45 is not established: three 6 h runs gave 0.22, 0.47 and 0.43, too noisy to tell from α (a race model gives 0.36).</li>
+      <li>Three seeds, and we haven't verified that a seed fixes network placement. The ban fix is untested at scale.</li>
+    </ul>
+  </section>
+
+  <footer>Every number is from the campaign-7 results write-up (sections 2–9). Code references are to monero v0.18.5.1.</footer>
+</div>
+</body>
+</html>
