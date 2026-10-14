@@ -227,11 +227,12 @@ def test_expand_scenario_passes_through_network_and_general():
 
 def test_expand_scenario_relay_group_daemon_only():
     # A daemon-only relay group (no wallet/script) still expands with staggered
-    # start times and no wallet key.
+    # start times and no wallet key. Seeds off: this test is about the group.
     scenario = """
 general:
   stop_time: 1h
   bootstrap_end_time: auto
+  fallback_seeds: "off"
 network:
   path: g.gml
   peer_mode: Dynamic
@@ -242,7 +243,7 @@ agents:
     start_time_stagger: 5s
 """
     agents = _expand(scenario)["agents"]
-    assert len([a for a in agents if not a.startswith("monero-seed-")]) == 3
+    assert len(agents) == 3
     assert agents["relay-001"]["start_time"] == "0s"
     assert agents["relay-002"]["start_time"] == "5s"
     assert agents["relay-003"]["start_time"] == "10s"
@@ -252,11 +253,13 @@ agents:
 def test_expand_scenario_turnover_key_is_passed_through_verbatim():
     # Gap G2: `turnover` is an unrecognized per-group scalar to the parser
     # (not a time field, not a `_stagger` field) -> copied verbatim to every
-    # agent in the group, same as any other pass-through key.
+    # agent in the group, same as any other pass-through key. Seeds off: this
+    # test is about the group.
     scenario = """
 general:
   stop_time: 1h
   bootstrap_end_time: auto
+  fallback_seeds: "off"
 network:
   path: g.gml
   peer_mode: Dynamic
@@ -268,7 +271,7 @@ agents:
     turnover: true
 """
     agents = _expand(scenario)["agents"]
-    assert len([a for a in agents if not a.startswith("monero-seed-")]) == 3
+    assert len(agents) == 3
     for i in range(1, 4):
         assert agents[f"relay-{i:03d}"]["turnover"] is True
 

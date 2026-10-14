@@ -97,7 +97,9 @@ def test_from_output_agent_count(from_outputs):
     out_a, _ = from_outputs
     doc = yaml.safe_load(out_a.read_text())
     # 3 miners + 4 users + miner-distributor = 8.
-    assert len([a for a in doc["agents"] if not a.startswith("monero-seed-")]) == 8
+    # 8 scenario agents + the 6 fallback seeds auto mode writes out.
+    assert len(doc["agents"]) == 14
+    assert sum(a.startswith("monero-seed-") for a in doc["agents"]) == 6
     assert "miner-distributor" in doc["agents"]
 
 
