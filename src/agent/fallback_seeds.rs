@@ -52,11 +52,59 @@ pub fn prepare_fallback_seeds(
 
     let ips = resolve_fallback_ips(repo_dir);
 
-    match mode {
+    let (agents, pinned) = match mode {
         FallbackSeedsMode::Off => unreachable!(),
         FallbackSeedsMode::Auto => prepare_auto(&ips, user_agents, ip_registry),
         FallbackSeedsMode::Custom => prepare_custom(&ips, user_agents, ip_registry),
+    };
+    if let Some(msg) = stock_seed_warning(&agents) {
+        log::warn!("{}", msg);
     }
+    (agents, pinned)
+}
+
+/// Warn when the fallback seeds run stock `monerod` but no other daemon
+/// does: stock seeds can reject a modified network's blocks (SoP's
+/// `version_minor` rule is a hard fork). Compares the `daemon` field only;
+/// `daemon_phases` are ignored, so upgrade configs that start everyone on
+/// `monerod` stay quiet. `Remote` and daemon-less agents are not counted.
+pub fn stock_seed_warning(agents: &AgentDefinitions) -> Option<String> {
+    let is_seed =
+        |id: &str| (1..=MONERO_FALLBACK_SEED_IPS.len()).any(|n| fallback_seed_agent_id(n) == id);
+    let local_binary = |cfg: &AgentConfig| match &cfg.daemon {
+        Some(DaemonConfig::Local(b)) => Some(b.clone()),
+        _ => None,
+    };
+
+    let stock_seeds: Vec<&str> = agents
+        .agents
+        .iter()
+        .filter(|(id, cfg)| is_seed(id) && local_binary(cfg).as_deref() == Some("monerod"))
+        .map(|(id, _)| id.as_str())
+        .collect();
+    if stock_seeds.is_empty() {
+        return None;
+    }
+    let others: std::collections::BTreeSet<String> = agents
+        .agents
+        .iter()
+        .filter(|(id, _)| !is_seed(id))
+        .filter_map(|(_, cfg)| local_binary(cfg))
+        .collect();
+    if others.is_empty() || others.contains("monerod") {
+        return None;
+    }
+    let example = others.iter().next().cloned().unwrap_or_default();
+    Some(format!(
+        "Fallback seeds {} run stock monerod, but every other daemon runs {}. \
+         Stock seeds may reject this network's blocks. To give the seeds the \
+         network's binary, declare them in the scenario:\n  \
+         monero-seed-{{001..006}}:\n    daemon: {}\n    start_time: 0s\n    \
+         start_time_stagger: 1s",
+        stock_seeds.join(", "),
+        others.into_iter().collect::<Vec<_>>().join(", "),
+        example
+    ))
 }
 
 /// Try to extract IPs from the live Monero source; fall back to the
@@ -226,5 +274,84 @@ fn clone_agent_definitions(src: &AgentDefinitions) -> AgentDefinitions {
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect::<BTreeMap<_, _>>(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn node(binary: &str) -> AgentConfig {
+        let mut a = build_seed_agent(0);
+        a.attributes = None;
+        a.daemon = Some(DaemonConfig::Local(binary.to_string()));
+        a
+    }
+
+    fn script_only() -> AgentConfig {
+        let mut a = build_seed_agent(0);
+        a.attributes = None;
+        a.daemon = None;
+        a.script = Some("agents.simulation_monitor".to_string());
+        a
+    }
+
+    /// Six seeds on `seed_binary` plus the given non-seed agents.
+    fn network(seed_binary: &str, others: Vec<(&str, AgentConfig)>) -> AgentDefinitions {
+        let mut agents: BTreeMap<String, AgentConfig> = others
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
+        for i in 0..6 {
+            let mut seed = build_seed_agent(i);
+            seed.daemon = Some(DaemonConfig::Local(seed_binary.to_string()));
+            agents.insert(fallback_seed_agent_id(i + 1), seed);
+        }
+        AgentDefinitions { agents }
+    }
+
+    #[test]
+    fn warning_fires_when_only_seeds_are_stock() {
+        let d = network(
+            "monerod",
+            vec![("relay-001", node("monerod-sim")), ("relay-002", node("monerod-sim"))],
+        );
+        let msg = stock_seed_warning(&d).expect("should warn");
+        assert!(msg.contains("monero-seed-001"));
+        assert!(msg.contains("monero-seed-006"));
+        assert!(msg.contains("daemon: monerod-sim"));
+        assert!(msg.contains("monero-seed-{001..006}:"));
+    }
+
+    #[test]
+    fn warning_silent_when_a_non_seed_runs_monerod() {
+        let d = network(
+            "monerod",
+            vec![("relay-001", node("monerod-sim")), ("miner-001", node("monerod"))],
+        );
+        assert_eq!(stock_seed_warning(&d), None);
+    }
+
+    #[test]
+    fn warning_silent_when_seeds_are_not_stock() {
+        let d = network("monerod-sim", vec![("relay-001", node("monerod-sim"))]);
+        assert_eq!(stock_seed_warning(&d), None);
+    }
+
+    #[test]
+    fn warning_silent_without_non_seed_daemons() {
+        let d = network("monerod", vec![("simulation-monitor", script_only())]);
+        assert_eq!(stock_seed_warning(&d), None);
+    }
+
+    #[test]
+    fn warning_ignores_remote_daemons() {
+        let mut wallet = script_only();
+        wallet.daemon = Some(DaemonConfig::Remote {
+            address: "auto".to_string(),
+            strategy: None,
+        });
+        let d = network("monerod", vec![("wallet-001", wallet)]);
+        assert_eq!(stock_seed_warning(&d), None);
     }
 }
