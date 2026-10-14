@@ -166,13 +166,14 @@ def test_expand_scenario_agent_counts_and_ids():
     config = _expand(SMALL_SCENARIO)
     assert list(config.keys()) == ["general", "network", "agents"]
     agents = config["agents"]
-    # 3 miners + 4 users + 1 distributor singleton = 8 entries.
-    assert len(agents) == 8
+    # 3 miners + 4 users + 1 distributor singleton, then the 6 fallback seeds
+    # that auto mode writes last.
+    assert len(agents) == 14
     assert list(agents.keys()) == [
         "miner-001", "miner-002", "miner-003",
         "user-001", "user-002", "user-003", "user-004",
         "miner-distributor",
-    ]
+    ] + SEED_IDS
 
 
 def test_expand_scenario_miner_start_time_stagger_arithmetic():
@@ -241,7 +242,7 @@ agents:
     start_time_stagger: 5s
 """
     agents = _expand(scenario)["agents"]
-    assert len(agents) == 3
+    assert len([a for a in agents if not a.startswith("monero-seed-")]) == 3
     assert agents["relay-001"]["start_time"] == "0s"
     assert agents["relay-002"]["start_time"] == "5s"
     assert agents["relay-003"]["start_time"] == "10s"
@@ -267,6 +268,78 @@ agents:
     turnover: true
 """
     agents = _expand(scenario)["agents"]
-    assert len(agents) == 3
+    assert len([a for a in agents if not a.startswith("monero-seed-")]) == 3
     for i in range(1, 4):
         assert agents[f"relay-{i:03d}"]["turnover"] is True
+
+
+# ---------------------------------------------------------------------------
+# Fallback seeds written into the expanded config (auto mode)
+# ---------------------------------------------------------------------------
+
+SEED_IDS = [f"monero-seed-{i:03d}" for i in range(1, 7)]
+
+
+_expand_text = _expand
+
+
+def _with_general_line(line):
+    return SMALL_SCENARIO.replace("general:\n", f"general:\n  {line}\n", 1)
+
+
+def _with_agent_lines(lines):
+    return SMALL_SCENARIO.replace("agents:\n", "agents:\n" + lines, 1)
+
+
+@pytest.mark.parametrize("line", [None, "fallback_seeds: auto"])
+def test_seeds_added_in_auto_mode(line):
+    cfg = _expand_text(_with_general_line(line) if line else SMALL_SCENARIO)
+    assert list(cfg['agents'])[-6:] == SEED_IDS
+    for i, sid in enumerate(SEED_IDS):
+        assert dict(cfg['agents'][sid]) == {'daemon': 'monerod', 'start_time': f'{i}s'}
+
+
+@pytest.mark.parametrize("line", [
+    "fallback_seeds: custom", 'fallback_seeds: "off"', "fallback_seeds: off",
+])
+def test_seeds_not_added_when_off_or_custom(line):
+    cfg = _expand_text(_with_general_line(line))
+    assert not any(a.startswith("monero-seed-") for a in cfg['agents'])
+
+
+def test_seeds_partial_declaration_fills_missing():
+    cfg = _expand_text(_with_agent_lines(
+        "  monero-seed-{001..003}:\n    daemon: monerod-sim\n"
+        "    start_time: 0s\n    start_time_stagger: 1s\n"
+        "  monero-seed-005:\n    daemon: /opt/custom/monerod\n    start_time: 9s\n"
+    ))
+    for sid in SEED_IDS[:3]:
+        assert cfg['agents'][sid]['daemon'] == 'monerod-sim'
+    assert cfg['agents']['monero-seed-005']['daemon'] == '/opt/custom/monerod'
+    assert cfg['agents']['monero-seed-005']['start_time'] == '9s'
+    assert dict(cfg['agents']['monero-seed-004']) == {'daemon': 'monerod', 'start_time': '3s'}
+    assert dict(cfg['agents']['monero-seed-006']) == {'daemon': 'monerod', 'start_time': '5s'}
+    assert sum(1 for a in cfg['agents'] if a.startswith("monero-seed-")) == 6
+
+
+def test_seeds_declared_group_untouched():
+    cfg = _expand_text(_with_agent_lines(
+        "  monero-seed-{001..006}:\n    daemon: monerod-sim\n"
+        "    start_time: 0s\n    start_time_stagger: 1s\n"
+    ))
+    for i, sid in enumerate(SEED_IDS):
+        assert cfg['agents'][sid]['daemon'] == 'monerod-sim'
+        assert cfg['agents'][sid]['start_time'] == f'{i}s'
+    assert sum(1 for a in cfg['agents'] if a.startswith("monero-seed-")) == 6
+
+
+def test_seed_phase_changes_nothing_else():
+    with_seeds = _expand_text(SMALL_SCENARIO)
+    without = _expand_text(_with_general_line('fallback_seeds: custom'))
+    other = {k: v for k, v in with_seeds['agents'].items()
+             if not k.startswith("monero-seed-")}
+    assert other == dict(without['agents'])
+    g1, g2 = dict(with_seeds['general']), dict(without['general'])
+    g1.pop('fallback_seeds', None)
+    g2.pop('fallback_seeds', None)
+    assert g1 == g2

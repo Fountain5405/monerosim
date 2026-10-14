@@ -428,6 +428,12 @@ def expand_stagger(
     return [base_value] * count
 
 
+# Fallback seed slots written into the expanded config in `auto` mode. Must
+# match MONERO_FALLBACK_SEED_IPS in src/lib.rs (six mainnet IPs) and the
+# values build_seed_agent uses in src/agent/fallback_seeds.rs.
+FALLBACK_SEED_SLOTS = 6
+
+
 def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
                     respect_safe_tx_interval: bool = True) -> Dict[str, Any]:
     """
@@ -458,6 +464,7 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
         scenario, agents, total_nodes, activity_start_s, md_start_s,
         respect_safe_tx_interval
     )
+    _add_fallback_seeds(general, agents)
 
     # Build final config
     config['general'] = general
@@ -467,6 +474,27 @@ def expand_scenario(scenario: ScenarioConfig, seed: int = 12345,
     config['agents'] = agents
 
     return config
+
+
+def _add_fallback_seeds(general: Dict[str, Any], agents) -> None:
+    """Append the monero-seed-NNN slots the scenario did not declare (auto mode).
+
+    Runs last so seeds never enter node-count calibration. The values match the
+    Rust injector, so the generated Shadow config is unchanged; the expanded
+    file just lists every host. `custom`, "off" and False (PyYAML's reading of
+    an unquoted `off`) add nothing.
+    """
+    mode = general.get('fallback_seeds')
+    if mode is None:
+        mode = 'auto'
+    if mode != 'auto':
+        return
+    for i in range(FALLBACK_SEED_SLOTS):
+        agent_id = f"monero-seed-{i + 1:03d}"
+        if agent_id not in agents:
+            agents[agent_id] = OrderedDict(
+                [('daemon', 'monerod'), ('start_time', f"{i}s")]
+            )
 
 
 def _count_total_nodes(scenario: ScenarioConfig) -> int:
