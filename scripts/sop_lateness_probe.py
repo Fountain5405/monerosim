@@ -2,9 +2,12 @@
 """Can a Share-or-Perish pair say SWITCH in both directions?
 
 MRL #146 times lateness against "the main chain block of the same height".
-After a switch that block is a different one, so a pair's weights can depend
-on which branch the node is on, even under the symmetric n_f rule the
-issue's author has described ("either" in sop_oracle.decide).
+If that means the CURRENT main block, after a switch it is a different one,
+so a pair's weights can depend on which branch the node is on, even under
+the symmetric n_f rule ("either" in sop_oracle.decide). The issue's
+2026-10-15 revision fixes the reference per height (the first block there
+to join the node's main chain), which removes the dependence; records that
+log it ("ref", log v2) replay with it.
 
   example   the hand-worked honest race below, under both n_f rules
   replay    every logged SIM-SoP-DEC decision that switched: recompute it
@@ -40,16 +43,23 @@ def reverse(rec: dict) -> dict:
     return r
 
 
-def example_race(d_ms: int = 5000) -> dict:
+def example_race(d_ms: int = 5000, fixed_ref: bool = False) -> dict:
     """Two honest blocks at one height, seen 4 s apart, both far under k*w.
 
     X (main) is seen at t = 0 with 3 shares seen 2-4 s before it.
     Y (alt) is seen at t = 4 s with 2 shares seen 9-10 s before X.
+
+    fixed_ref: log the v2 reference the revised #146 (2026-10-15) uses, X's
+    seen time (X joined the main chain first), on both blocks; a switch no
+    longer moves it.
     """
     def blk(seen, shares):
-        return {"h": 1000, "id": "x" if seen == 0 else "y", "diff": "1216",
-                "seen": seen, "n_sh": len(shares),
-                "shares": [{"id": "s", "seen": t} for t in shares]}
+        b = {"h": 1000, "id": "x" if seen == 0 else "y", "diff": "1216",
+             "seen": seen, "n_sh": len(shares),
+             "shares": [{"id": "s", "seen": t} for t in shares]}
+        if fixed_ref:
+            b["ref"] = 0
+        return b
     x = blk(0, [-4000, -3000, -2000])
     y = blk(4000, [-10000, -9000])
     return {"mode": "whole_branch", "reinsert": False, "h0": 994, "hf": 1000,
@@ -61,12 +71,13 @@ def both_ways(rec: dict, nf_rule: str) -> tuple[dict, dict]:
 
 
 def _cmd_example() -> int:
-    rec = example_race()
-    for rule in RULES:
-        fwd, rev = both_ways(rec, rule)
-        print(f"n_f rule {rule}: on X: Y {fwd['w_alt']} vs X {fwd['w_main']} -> "
-              f"{fwd['expected']} ({fwd['regime']}); on Y: X {rev['w_alt']} vs "
-              f"Y {rev['w_main']} -> {rev['expected']} ({rev['regime']})")
+    for label, fixed in (("moving reference", False), ("fixed reference", True)):
+        rec = example_race(fixed_ref=fixed)
+        for rule in RULES:
+            fwd, rev = both_ways(rec, rule)
+            print(f"{label}, n_f rule {rule}: on X: Y {fwd['w_alt']} vs X {fwd['w_main']} -> "
+                  f"{fwd['expected']} ({fwd['regime']}); on Y: X {rev['w_alt']} vs "
+                  f"Y {rev['w_main']} -> {rev['expected']} ({rev['regime']})")
     return 0
 
 

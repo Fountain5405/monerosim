@@ -1,44 +1,5 @@
-diff --git a/src/cryptonote_basic/hardfork.cpp b/src/cryptonote_basic/hardfork.cpp
-index a0ea3633f..ca209ec15 100644
---- a/src/cryptonote_basic/hardfork.cpp
-+++ b/src/cryptonote_basic/hardfork.cpp
-@@ -106,10 +106,20 @@ uint8_t HardFork::get_effective_version(uint8_t voting_version) const
-   return voting_version;
- }
- 
-+// SIMULATION ONLY (monerosim monero-sim-pop.patch, Share-or-Perish MRL #146):
-+// version_minor may carry the embedded-workshare count (the proposal
-+// repurposes the vote field under a soft fork), so the vote comparison is
-+// dropped for EVERY block. It has to be dropped HERE, not only at the
-+// Blockchain callers: HardFork::add() re-runs do_check() and
-+// BlockchainDB::add_block ignores add()'s return, so a failing vote silently
-+// skipped set_hard_fork_version and the next pop_block threw MDB_NOTFOUND
-+// from on_block_popped -- every reorganization aborted in the 2026-09-24/25
-+// SoP runs (review F1). Fork activation on the simulated chains is
-+// height-scheduled with threshold 0, so ignoring votes moves no fork height.
- bool HardFork::do_check(uint8_t block_version, uint8_t voting_version) const
- {
--  return block_version == heights[current_fork_index].version
--      && voting_version >= heights[current_fork_index].version;
-+  (void)voting_version;
-+  return block_version == heights[current_fork_index].version;
- }
- 
- bool HardFork::check(const cryptonote::block &block) const
-@@ -120,9 +130,9 @@ bool HardFork::check(const cryptonote::block &block) const
- 
- bool HardFork::do_check_for_height(uint8_t block_version, uint8_t voting_version, uint64_t height) const
- {
-+  (void)voting_version;   // SIMULATION ONLY: see do_check
-   int fork_index = get_voted_fork_index(height);
--  return block_version == heights[fork_index].version
--      && voting_version >= heights[fork_index].version;
-+  return block_version == heights[fork_index].version;
- }
- 
- bool HardFork::check_for_height(const cryptonote::block &block, uint64_t height) const
 diff --git a/src/cryptonote_basic/miner.cpp b/src/cryptonote_basic/miner.cpp
-index 74845ce13..694fea534 100644
+index 74845ce13..3a04d67e2 100644
 --- a/src/cryptonote_basic/miner.cpp
 +++ b/src/cryptonote_basic/miner.cpp
 @@ -108,6 +108,7 @@ namespace cryptonote
@@ -121,7 +82,7 @@ index 74845ce13..694fea534 100644
 +        m_phandler->handle_workshare_found(get_block_hashing_blob(b), height);
 +        // #146 slot advance: the share just occupied slot b.minor_version;
 +        // subsequent hashes must carry minor_version = slot+1 and a
-+        // coinbase embedding shares 0..slot (tx_tree_hash covers them), or
++        // coinbase embedding shares major..slot (tx_tree_hash covers them), or
 +        // the eventual block's version_minor/sequence would not bind its
 +        // hashed header. Pull a fresh template; the loop refetches when
 +        // m_template_no moves.
@@ -168,7 +129,7 @@ index 8595d0c2c..0bd7401dc 100644
    };
  }
 diff --git a/src/cryptonote_basic/tx_extra.h b/src/cryptonote_basic/tx_extra.h
-index c168f48a7..d282d8986 100644
+index c168f48a7..7ab202621 100644
 --- a/src/cryptonote_basic/tx_extra.h
 +++ b/src/cryptonote_basic/tx_extra.h
 @@ -40,6 +40,8 @@
@@ -180,7 +141,7 @@ index c168f48a7..d282d8986 100644
  
  #define TX_EXTRA_NONCE_PAYMENT_ID           0x00
  #define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID 0x01
-@@ -178,7 +180,34 @@ namespace cryptonote
+@@ -178,7 +180,35 @@ namespace cryptonote
    //   varint tag;
    //   varint size;
    //   varint data[];
@@ -201,7 +162,8 @@ index c168f48a7..d282d8986 100644
 +  // One embedded Share-or-Perish workshare record (MRL #146): varint seq,
 +  // varint timestamp, 4B nonce, 32B tx_tree_hash, varint num_transactions
 +  // (version_major/prev_id/version_minor are implicit in the containing
-+  // block; version_minor == the share's sequence index).
++  // block; version_minor == the share's sequence index, counted from
++  // version_major since #146's 2026-10-15 revision).
 +  struct tx_extra_sim_workshare
 +  {
 +    std::string data;
@@ -216,14 +178,14 @@ index c168f48a7..d282d8986 100644
  }
  
  VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
-@@ -187,3 +216,5 @@ VARIANT_TAG(binary_archive, cryptonote::tx_extra_nonce, TX_EXTRA_NONCE);
+@@ -187,3 +217,5 @@ VARIANT_TAG(binary_archive, cryptonote::tx_extra_nonce, TX_EXTRA_NONCE);
  VARIANT_TAG(binary_archive, cryptonote::tx_extra_merge_mining_tag, TX_EXTRA_MERGE_MINING_TAG);
  VARIANT_TAG(binary_archive, cryptonote::tx_extra_additional_pub_keys, TX_EXTRA_TAG_ADDITIONAL_PUBKEYS);
  VARIANT_TAG(binary_archive, cryptonote::tx_extra_mysterious_minergate, TX_EXTRA_MYSTERIOUS_MINERGATE_TAG);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 3608364dd..61e22a703 100644
+index 3608364dd..3bf185805 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -297,7 +259,7 @@ index 3608364dd..61e22a703 100644
  
      CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, second chance");
      size_t coinbase_weight = get_transaction_weight(b.miner_tx);
-@@ -1740,6 +1772,101 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
+@@ -1740,6 +1772,104 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
          MDEBUG("Setting extra for block: " << b.miner_tx.extra.size() << ", try_count=" << try_count);
        }
      }
@@ -331,7 +293,10 @@ index 3608364dd..61e22a703 100644
 +    // for the template's (prev, height): this node's own AND those gossiped
 +    // by other miners ("On average, a block will contain w-1 workshares"; the
 +    // version_minor rule serializes share mining network-wide). One 0x76
-+    // field per share, slots 0..N-1, version_minor = N. Before 2026-09-30
++    // field per share, slots V..V+N-1, version_minor = V+N, V = version_major
++    // (#146 revised 2026-10-15, so stock nodes' fork-vote check
++    // version_minor >= version_major still passes; slots were 0..N-1 and
++    // version_minor = N before, which stock v0.18 rejected). Before 2026-09-30
 +    // only this node's own shares were embedded, so blocks carried about half
 +    // the spec's share count and each miner numbered its slots separately.
 +    // A share's PoW covers the slot it was mined under, so it can only sit
@@ -348,7 +313,7 @@ index 3608364dd..61e22a703 100644
 +      uint64_t n_embedded = 0, n_own = 0;
 +      for (auto &slot : by_slot)
 +      {
-+        if (slot.first != n_embedded)
++        if (slot.first != b.major_version + n_embedded)
 +          break;                    // gap: the prefix ends here
 +        std::sort(slot.second.begin(), slot.second.end());
 +        bool placed = false;
@@ -388,7 +353,7 @@ index 3608364dd..61e22a703 100644
 +        if (!placed)
 +          break;
 +      }
-+      b.minor_version = n_embedded;
++      b.minor_version = b.major_version + n_embedded;
 +      if (n_embedded)
 +      {
 +        cumulative_weight = txs_weight + get_transaction_weight(b.miner_tx);
@@ -399,7 +364,7 @@ index 3608364dd..61e22a703 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1993,866 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1996,881 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -907,8 +872,9 @@ index 3608364dd..61e22a703 100644
 +}
 +
 +// SIMULATION ONLY (Share-or-Perish, MRL #146): the ids of a block's embedded
-+// workshares in slot order, when the whole set conforms (slots 0..N-1,
-+// minor_version == N, every PoW meets diff/w), else empty. A non-conforming
++// workshares in slot order, when the whole set conforms (slots V..V+N-1,
++// minor_version == V+N with V = major_version, every PoW meets diff/w),
++// else empty. A non-conforming
 +// set counts as the header alone, in n_f and in weight
 +// (docs/20260930_sop_conformance.md, convention 8). Cached by block id,
 +// since a block's difficulty is fixed by its ancestry. Before 2026-09-30 the
@@ -931,14 +897,14 @@ index 3608364dd..61e22a703 100644
 +      blobdata share_blob;
 +      if (!sim_sop_check_embedded_share(height, bl, diff,
 +                                        boost::get<tx_extra_sim_workshare>(f).data,
-+                                        ids.size(), share_blob))
++                                        bl.major_version + ids.size(), share_blob))
 +      { ids.clear(); break; }
 +      crypto::hash sid;
 +      cn_fast_hash(share_blob.data(), share_blob.size(), sid);
 +      ids.push_back(sid);
 +    }
 +  }
-+  if (ids.size() != bl.minor_version)
++  if (bl.major_version + ids.size() != bl.minor_version)
 +    ids.clear();
 +  return m_sim_sop_block_share_ids.emplace(id, std::move(ids)).first->second;
 +}
@@ -980,6 +946,12 @@ index 3608364dd..61e22a703 100644
 +      *js << seen;
 +    else
 +      *js << "null";
++    const auto rit = m_sim_main_seen.find(height);
++    *js << ",\"ref\":";
++    if (rit != m_sim_main_seen.end())
++      *js << rit->second;
++    else
++      *js << "null";
 +    *js << ",\"n_sh\":" << shares.size();
 +    if (!old && !shares.empty())
 +    {
@@ -1005,13 +977,21 @@ index 3608364dd..61e22a703 100644
 +    unit = 1;   // sim-only floor: bootstrap difficulties < w would zero every
 +                // block (real Monero never sees diff < w)
 +
-+  bool main_known = seen_known;        // main-chain block, or alt ahead: main_seen = block_seen
++  // main_seen (#146 revised 2026-10-15): when the first block of this height
++  // to join this node's main chain was seen, recorded at that moment and
++  // never changed by later switches; the same reference on both chains, so
++  // a chain's weight no longer depends on which chain the node is on. No
++  // such block (alt ahead, or heights loaded from disk): main_seen =
++  // block_seen. Before this, main_seen was the CURRENT main block at the
++  // height, so it moved with every switch.
++  (void)on_main;
++  bool main_known = seen_known;
 +  int64_t main_seen = seen;
-+  if (!on_main && height <= top)
++  const auto mit = m_sim_main_seen.find(height);
++  if (mit != m_sim_main_seen.end())
 +  {
-+    const auto mit = m_sim_recv.find(get_block_id_by_height(height));
-+    main_known = mit != m_sim_recv.end();
-+    main_seen = main_known ? static_cast<int64_t>(mit->second) : 0;
++    main_known = true;
++    main_seen = static_cast<int64_t>(mit->second);
 +  }
 +  const int64_t d = static_cast<int64_t>(m_sim_sop_delay_ms);
 +  // l_b multiplies EVERY term (MRL #146 Table 3): a late block weighs zero
@@ -1163,7 +1143,7 @@ index 3608364dd..61e22a703 100644
 +          << " -> " << res << " (" << tie_draw << " tie)");
 +
 +  std::ostringstream js;
-+  js << "{\"v\":1,\"mode\":\"" << (m_sim_sop_rejudge ? "rejudge" : "whole_branch")
++  js << "{\"v\":2,\"mode\":\"" << (m_sim_sop_rejudge ? "rejudge" : "whole_branch")
 +     << "\",\"reinsert\":" << (reinsert ? "true" : "false")
 +     << ",\"skipped\":" << (skip ? "true" : "false")
 +     << ",\"h0\":" << m_sim_sop_h0 << ",\"hf\":" << hf << ",\"top\":" << top
@@ -1266,7 +1246,7 @@ index 3608364dd..61e22a703 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +2878,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +2896,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1277,7 +1257,7 @@ index 3608364dd..61e22a703 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +3091,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +3109,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1288,7 +1268,7 @@ index 3608364dd..61e22a703 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4089,7 +5080,9 @@ leave:
+@@ -4089,7 +5098,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1299,16 +1279,41 @@ index 3608364dd..61e22a703 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4691,6 +5684,30 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4513,6 +5524,16 @@ leave:
+   bvc.m_added_to_main_chain = true;
+   ++m_sync_counter;
+ 
++  // SIMULATION ONLY (Share-or-Perish, #146 revised 2026-10-15): main_seen
++  // for this height, if no block of this height has joined the main chain
++  // before. Reorganizations re-add blocks here; emplace keeps the original.
++  if (m_sim_sop_enabled)
++  {
++    const auto rit = m_sim_recv.find(id);
++    if (rit != m_sim_recv.end())
++      m_sim_main_seen.emplace(new_height - 1, rit->second);
++  }
++
+   // appears to be a NOP *and* is called elsewhere.  wat?
+   m_tx_pool.on_blockchain_inc(new_height, id);
+   get_difficulty_for_next_block(); // just to cache it
+@@ -4691,18 +5712,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
 +  // SIMULATION ONLY (Publish-or-Perish): remember when this node FIRST
 +  // received this block id (ms since epoch; Shadow virtualizes the clock).
 +  // emplace: re-submissions and P2P duplicates never move the timestamp.
++  bool sim_recorded = false;
 +  if (m_sim_pop_enabled)
-+    m_sim_recv.emplace(id, std::chrono::duration_cast<std::chrono::milliseconds>(
-+        std::chrono::system_clock::now().time_since_epoch()).count());
++    sim_recorded = m_sim_recv.emplace(id, std::chrono::duration_cast<std::chrono::milliseconds>(
++        std::chrono::system_clock::now().time_since_epoch()).count()).second;
++  // Share-or-Perish (#146 revised 2026-10-15): a block is "seen" only once it
++  // passes PoW and its parent is known. The time is recorded above so the
++  // fork choice made while handling this block can read it, and dropped
++  // again below if the block turns out orphaned or invalid; a later arrival
++  // that does qualify then sets it. Shadow's clock does not move inside
++  // this call, so the recorded time is the time of qualifying.
++  const bool sim_unseen_on_reject = sim_recorded && m_sim_sop_enabled;
 +  // SIMULATION ONLY diagnostics (review F5b): which received blocks carry
 +  // embedded uncle headers, so a fork decision's COUNTED/REJECTED lines can
 +  // be matched against them.
@@ -1330,8 +1335,28 @@ index 3608364dd..61e22a703 100644
    //check that block refers to chain tail
    if(!(bl.prev_id == get_tail_id()))
    {
+     //chain switching or wrong block
+     bvc.m_added_to_main_chain = false;
+     rtxn_guard.stop();
+-    return handle_alternative_block(bl, id, bvc, extra_block_txs);
++    const bool r = handle_alternative_block(bl, id, bvc, extra_block_txs);
++    if (sim_unseen_on_reject && (bvc.m_marked_as_orphaned || bvc.m_verifivation_failed))
++      m_sim_recv.erase(id);
++    return r;
+     //never relay alternative blocks
+   }
+ 
+   rtxn_guard.stop();
+-  return handle_block_to_main_chain(bl, id, bvc, extra_block_txs);
++  const bool r = handle_block_to_main_chain(bl, id, bvc, extra_block_txs);
++  if (sim_unseen_on_reject && bvc.m_verifivation_failed)
++    m_sim_recv.erase(id);
++  return r;
+ 
+   }
+   catch (const std::exception &e)
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 35079e858..9a8abd4e7 100644
+index 35079e858..cbce1458f 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1373,7 +1398,7 @@ index 35079e858..9a8abd4e7 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1210,6 +1235,65 @@ namespace cryptonote
+@@ -1210,6 +1235,66 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1386,6 +1411,7 @@ index 35079e858..9a8abd4e7 100644
 +    bool m_sim_pop_uncles = false;         // MRL #144: embed/count uncles (completes published PoP)
 +    bool m_sim_pop_uncles_header = false;  // MRL #144 EXACT: 80B PoW header field, trustless verification
 +    std::unordered_map<crypto::hash, uint64_t> m_sim_recv;  // block id -> first local receive time (ms)
++    std::unordered_map<uint64_t, uint64_t> m_sim_main_seen; // SoP: height -> seen time of the first block to join the main chain there (ms)
 +    std::mt19937_64 m_sim_pop_rng;         // rule-3 random tie-break
 +    bool sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
 +    difficulty_type sim_block_difficulty_at(uint64_t h) const;   // tip-clamped (alt heights above the tip)

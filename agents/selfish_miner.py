@@ -41,14 +41,15 @@ Attributes (via --attributes KEY VALUE):
                         blocks (default 2).
     embedded_shares     "true" to read a SoP daemon's per-block share count from
                         get_block_headers_range's minor_version field (the
-                        patched template sets b.minor_version = N) when
+                        patched template sets b.minor_version = major + N,
+                        MRL #146 as revised 2026-10-15) when
                         computing window_stubborn's attacker-side work-object
                         and weight counts (default off, which counts 0 shares
                         per attacker block; without SoP, minor_version is the
                         hard-fork vote, not a share count, hence opt-in). The
-                        honest side always counts minor_version as its share
-                        count, since on a Share-or-Perish network the honest
-                        template sets it that way.
+                        honest side always reads its share count that way,
+                        since on a Share-or-Perish network the honest
+                        template sets it so.
     weigh               window_stubborn's past-window comparison: "sop" (default,
                         MRL #146 weight -- unit * (1 + shares) per block, unit =
                         max(1, difficulty // sop_w)) or "difficulty" (plain
@@ -81,6 +82,14 @@ from agents.autonomous_miner import AutonomousMinerAgent
 from agents.monero_rpc import MoneroRPC, RPCError
 from agents.selfish_strategy import SelfishStrategy
 
+
+
+def sop_share_count(header: dict) -> int:
+    """Embedded Share-or-Perish shares in a block header from
+    get_block_headers_range. MRL #146 (revised 2026-10-15) numbers shares from
+    version_major, so version_minor = version_major + N; before that revision
+    the patched daemon set version_minor = N."""
+    return max(0, int(header["minor_version"]) - int(header["major_version"]))
 
 class SelfishMinerAgent(AutonomousMinerAgent):
     def __init__(self, agent_id: str, **kwargs):
@@ -223,13 +232,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         att_objects = 0
         att_weight = 0
         for h in att_headers:
-            n = int(h["minor_version"]) if self.embedded_shares else 0
+            n = sop_share_count(h) if self.embedded_shares else 0
             unit = max(1, self._header_difficulty(h) // self.sop_w)
             att_objects += 1 + n
             att_weight += unit * (1 + n)
         hon_weight = 0
         for h in hon_headers:
-            m = int(h["minor_version"])
+            m = sop_share_count(h)
             unit = max(1, self._header_difficulty(h) // self.sop_w)
             hon_weight += unit * (1 + m)
         return att_objects, att_weight, hon_weight

@@ -37,6 +37,10 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
     the logged inputs (mode, reinsert, h0, hf, top, w, k, d_ms, alt, main)
     only. Never reads the daemon's own result fields.
 
+    Lateness reference: a block entry carrying "ref" (log v2) is timed
+    against it on both branches; older records time an alt block against
+    the current main block at its height and a main block against itself.
+
     nf_rule "alt" is the issue's formal definition (n_f counts the alt
     branch only), the daemon's default. "either" is the reading the
     issue's author has since described: the regime is objective once either
@@ -77,7 +81,14 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
         if h <= old_cutoff:
             return diff  # Table 3: old blocks weigh diff(h); shares weigh 0.
         unit = max(1, diff // w)
-        if self_is_main:
+        if "ref" in b:
+            # Log v2 (#146 revised 2026-10-15): main_seen is fixed per height,
+            # the seen time of the first block there to join the node's main
+            # chain, the same on both branches; null when none has (alt
+            # ahead, or heights loaded from disk): main_seen = block_seen.
+            block_seen = b.get("seen")
+            main_seen = b["ref"] if b["ref"] is not None else block_seen
+        elif self_is_main:
             # The main chain block of height h is itself: trivially on time.
             main_seen = b.get("seen")
             block_seen = main_seen

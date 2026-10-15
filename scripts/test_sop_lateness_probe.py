@@ -17,6 +17,36 @@ def test_example_race_switches_both_ways(rule):
     assert (rev["w_alt"], rev["w_main"], rev["expected"]) == (4 * UNIT, 3 * UNIT, "SWITCH")
 
 
+@pytest.mark.parametrize("rule", ["alt", "either"])
+def test_fixed_reference_does_not_cycle(rule):
+    # Revised #146: both blocks are timed against X's seen time, on either
+    # branch. Y is 4 s late (< d, so on time); its 2 shares are early, X's 3
+    # are not (2-4 s before X <= d), so Y outweighs X from both sides.
+    fwd, rev = both_ways(example_race(fixed_ref=True), rule)
+    assert (fwd["w_alt"], fwd["w_main"], fwd["expected"]) == (3 * UNIT, 1 * UNIT, "SWITCH")
+    assert (rev["w_alt"], rev["w_main"], rev["expected"]) == (1 * UNIT, 3 * UNIT, "KEEP")
+
+
+def test_fixed_reference_late_block_weighs_zero_on_main_too():
+    # A block that joined the main chain by a switch is still timed against
+    # the original main block's seen time: 6 s after it is late (> d = 5 s).
+    rec = example_race(fixed_ref=True)
+    rec["alt"][0]["seen"] = 6000
+    rev = decide(reverse(rec), "either")
+    assert rev["w_main"] == 0
+
+
+def test_null_ref_means_block_seen():
+    rec = example_race(fixed_ref=True)
+    for b in rec["alt"] + rec["main"]:
+        b["ref"] = None
+    d = decide(rec, "either")
+    # Each block is its own reference, so neither is late. X's shares are
+    # 2-4 s before X (late); Y's are 13-14 s before Y (on time): Y = 1 + 2,
+    # X = 1 + 0.
+    assert (d["w_alt"], d["w_main"]) == (3 * UNIT, 1 * UNIT)
+
+
 def test_example_race_without_delay_gap_does_not_cycle():
     # With d = 0 every share seen before its reference counts on both sides,
     # so X (3 shares) beats Y (2 shares) from both sides.
