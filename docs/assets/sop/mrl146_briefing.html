@@ -73,7 +73,7 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
     <h1>MRL #146 Briefing</h1>
     <p class="setup">SoP (Tables 3–5, <code>version_minor</code> slot rule, w = 16, k = 3, d = 5 s) in monerod v0.18.5.1 under the Shadow network simulator: 12 daemons, real RandomX, 120 s blocks. Every fork-choice decision is logged and re-derived by an independent checker: 43,949 decisions, 0 mismatches. The attacker withholds, reveals once its branch holds 48 work objects and outweighs the honest chain, and gives up when honest leads by d blocks.</p>
     <div class="note">
-      <p><b>Update 2026-10-16.</b> tevador revised the issue on 2026-10-15 and answered albinjm's questions in the thread the same day. The revision settles both of our questions and the <code>version_minor</code> point. The simulator now follows the revised text; re-runs under it are in progress (results expected 2026-10-18). Unless marked otherwise, the numbers here come from campaign 7, which ran the earlier text.</p>
+      <p><b>Update 2026-10-16.</b> tevador revised the issue on 2026-10-15 and answered albinjm's questions in the thread the same day. The revision settles both of our questions and the <code>version_minor</code> point. The simulator now follows the revised rules, apart from one edge case that the next build fixes (see Limits); re-runs under them are in progress (results expected 2026-10-18). Unless marked otherwise, the numbers here come from campaign 7, which ran the earlier text.</p>
     </div>
   </header>
 
@@ -86,7 +86,7 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
         <tbody>
           <tr><td><code>n_f</code></td><td>Formal definition counts the alt chain only</td><td><code>n<sub>f</sub> = max(n<sub>main</sub>(h<sub>f</sub>), n<sub>alt</sub>(h<sub>f</sub>))</code>: objective once either chain holds 48 objects past the fork</td><td>This is the "either" rule we had added. Replaying campaign 7's 5,325 switches under it, 0 would reverse; under the alt-only rule, 2,220 of 5,340 would</td></tr>
           <tr><td><code>main_seen</code></td><td>"the main chain block of the same height", which changes when a node switches</td><td>Seen time of the first block at that height to join the node's main chain. Later switches don't change it. If no block there has been main, <code>main_seen = block_seen</code></td><td>Hand-worked honest race, blocks 4 s apart: under the old reference, both directions say SWITCH. Under the fixed one, SWITCH (228 vs 76) one way and KEEP (76 vs 228) the other. New-build smoke: 1,410 decisions, 0 oracle mismatches, 0 that would switch straight back</td></tr>
-          <tr><td>"Seen"</td><td>Not defined</td><td>Needs valid PoW and a known parent. Out-of-order blocks aren't seen until they have both</td><td>The simulator drops a block's receive time if the block is orphaned or fails verification</td></tr>
+          <tr><td>"Seen"</td><td>Not defined</td><td>Needs valid PoW and a known parent. Out-of-order blocks aren't seen until they have both</td><td>The simulator drops a block's receive time if the block is orphaned or fails verification. A gossiped share is kept only if its parent is known, and its PoW is checked when weights are computed</td></tr>
           <tr><td><code>version_minor</code></td><td>Equal to the workshare count</td><td><code>version_major</code> + the count. Shares are numbered from <code>version_major</code></td><td>An unmodified v0.18 node accepted a SoP block with 9 workshares. No block was rejected on the vote check</td></tr>
         </tbody>
       </table>
@@ -180,8 +180,9 @@ footer{font-size:.82rem;color:var(--ink-2);border-top:1px solid var(--line);padd
       <li>12 daemons, two honest miners, fast propagation. Realistic delay and many pools are not tested. A 40-daemon network is running now.</li>
       <li>One attacker design. It is not tevador's T5 attacker, which gives up when it falls a set number of work objects behind and uses honest workshares in its first private block.</li>
       <li>α = 0.40 rests on 6 h runs. α = 0.45 is not established: three 6 h runs gave 0.22, 0.47 and 0.43, too noisy to tell apart from α (a race model gives 0.36).</li>
-      <li>Three seeds, and we haven't verified that a seed fixes network placement. The ban fix is untested at scale.</li>
-      <li>So far, the revised rules have been run only in 6 h smoke runs and one stock-node check.</li>
+      <li>Three seeds. Parts of monerod aren't deterministic under Shadow, so a seed doesn't reproduce a run: each run is an independent draw. The ban fix is untested at scale.</li>
+      <li>So far, the revised rules have been run only in 6 h runs and one stock-node check.</li>
+      <li>One edge case remains in the current build. A node that started on the fork's last common block judges that fork subjectively; the revised text says objectively, because the node may have missed the gossip of shares mined on that block before it came online. It hit 4 decisions in the new build's runs so far and changed none of their outcomes. The next build fixes it.</li>
     </ul>
   </section>
 

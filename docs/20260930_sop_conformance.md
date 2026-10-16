@@ -106,6 +106,14 @@ Each is a choice. The oracle and the daemon must both follow it.
    later switches don't change it. Heights with no recorded time (loaded
    from disk, or the alt chain is ahead) log `ref: null`, which means
    `main_seen = block_seen`.
+
+   A gossiped share is recorded only if its parent (the block at `h - 1`
+   it builds on, main or alt) is known. Otherwise the node drops it and
+   doesn't relay it, so it first sees the share from another peer or
+   inside its block. The share's PoW is checked when weights are computed;
+   one that fails keeps a receive time but never counts. In the 12 stage-A
+   runs on the rev2 build, and the first part of three 240 h runs, no share
+   was dropped for an unknown parent.
 6. **Whole branches, not parts.** When a reorg displaces blocks, monerod
    re-inserts them one at a time. In `whole_branch` mode those re-insertions
    are stored without judging (`skipped: true`). A displaced branch is judged
@@ -145,8 +153,27 @@ Each is a choice. The oracle and the daemon must both follow it.
   the window when `h_0 < hf` (first alt block); the revised spec needs
   `h_0 <` the last common block. A node that came online exactly at the
   last common block's height gets a subjective window where the spec says
-  objective. Not fixed. It needs a daemon and oracle change, and we have
-  not checked whether any run had such a node.
+  objective. The strict test matters: the shares in such a fork were mined
+  on a block that existed before the node came online, so the node may
+  have missed their gossip. Not fixed in the current build (log v2); fixed
+  in log v3. Checked 2026-10-16 over the first 400 decisions of every node
+  log in 155 archived SoP runs: 134 of 78,430 decisions, in 7 runs, had
+  `h_0` at the last common block (forks off the snapshot tip). 45 of them
+  were subjective and become objective under the spec's test, and 2
+  outcomes change, both in a `rejudge` run. On the rev2 build: 4
+  decisions, in one smoke run, with no outcome change.
+- **`h_0` for a node that starts behind the network (found 2026-10-16).**
+  The daemon takes `h_0` as its database tip at startup. A node that
+  starts after the network has mined past that tip gets an `h_0` below the
+  height at which it came online, and judges forks it received only during
+  its initial sync as if it had seen them live. Every matrix daemon starts
+  on the snapshot tip, but not at once: miners at 0 s, seeds at 5 s, and
+  relays at 30 s and 60 s (12 daemons) or every 10 s up to 260 s (40
+  daemons). In the 40-daemon run checked, 18 of 24 relays started after the
+  first block. No decision was affected there: its first fork came 25
+  minutes in, at first alt block 1006. The issue doesn't say whether "the
+  block height when the node came online" is the node's own tip or the
+  network's. Not fixed.
 - *Resolved by the revision (found 2026-10-07):* **`n_f` counts shared
   workshares.** The earlier text counted the alt chain's work objects "that
   are not contained in the main chain". The daemon and the oracle count

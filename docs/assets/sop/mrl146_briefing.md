@@ -15,7 +15,8 @@ d blocks.
 > **Update 2026-10-16.** tevador revised the issue on 2026-10-15 and
 > answered albinjm's questions in the thread the same day. The revision
 > settles both of our questions below and the `version_minor` point. The
-> simulator now follows the revised text. Re-runs under it are in progress
+> simulator now follows the revised rules, apart from one edge case that the
+> next build fixes (see Limits). Re-runs under them are in progress
 > (results expected 2026-10-18). Unless marked otherwise, the numbers here
 > come from campaign 7, which ran the earlier text.
 
@@ -25,7 +26,7 @@ d blocks.
 |---|---|---|---|
 | `n_f` | Formal definition counts the alt chain only | <code>n<sub>f</sub> = max(n<sub>main</sub>(h<sub>f</sub>), n<sub>alt</sub>(h<sub>f</sub>))</code>: objective once either chain holds 48 objects past the fork | This is the "either" rule we had added. Replaying campaign 7's 5,325 switches under it, 0 would reverse; under the alt-only rule, 2,220 of 5,340 would |
 | `main_seen` | "the main chain block of the same height", which changes when a node switches | Seen time of the first block at that height to join the node's main chain. Later switches don't change it. If no block there has been main, `main_seen = block_seen` | Hand-worked honest race, blocks 4 s apart: under the old reference, both directions say SWITCH. Under the fixed one, SWITCH (228 vs 76) one way and KEEP (76 vs 228) the other. New-build smoke: 1,410 decisions, 0 oracle mismatches, 0 that would switch straight back |
-| "Seen" | Not defined | Needs valid PoW and a known parent. Out-of-order blocks aren't seen until they have both | The simulator drops a block's receive time if the block is orphaned or fails verification |
+| "Seen" | Not defined | Needs valid PoW and a known parent. Out-of-order blocks aren't seen until they have both | The simulator drops a block's receive time if the block is orphaned or fails verification. A gossiped share is kept only if its parent is known, and its PoW is checked when weights are computed |
 | `version_minor` | Equal to the workshare count | `version_major` + the count. Shares are numbered from `version_major` | An unmodified v0.18 node accepted a SoP block with 9 workshares. No block was rejected on the vote check |
 
 The `version_minor` change keeps the stock check `version_minor >= version_major`. In tevador's words, it "allows SoP to be deployed as a soft fork without removing the consensus rule".
@@ -165,10 +166,17 @@ doesn't touch this, and the thread hasn't discussed it.
 - α = 0.40 rests on 6 h runs.
 - α = 0.45 is not established. Three 6 h runs gave 0.22, 0.47 and 0.43, too
   noisy to tell apart from α itself; a race model gives 0.36.
-- Three seeds, and we haven't verified that a seed fixes network placement.
+- Three seeds. Parts of monerod aren't deterministic under Shadow, so a
+  seed doesn't reproduce a run: each run is an independent draw.
 - The ban fix is untested at scale.
-- So far, the revised rules have been run only in 6 h smoke runs and one
+- So far, the revised rules have been run only in 6 h runs and one
   stock-node check.
+- One edge case remains in the current build. A node that started on the
+  fork's last common block judges that fork subjectively; the revised text
+  says objectively, because the node may have missed the gossip of shares
+  mined on that block before it came online. It hit 4 decisions in the new
+  build's runs so far and changed none of their outcomes. The next build
+  fixes it.
 
 ---
 

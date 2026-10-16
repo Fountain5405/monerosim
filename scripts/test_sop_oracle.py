@@ -264,3 +264,16 @@ def test_cli_exit_1_on_mismatch(tmp_path):
 def test_cli_exit_2_when_no_decisions_found(tmp_path):
     _write_node_log(tmp_path, "node1", ["x\tnothing here"])
     assert main(["check", str(tmp_path)]) == 2
+
+
+def test_v3_h0_at_last_common_block_is_objective():
+    # h0 = 999 is the last common block when the first alt block is 1000.
+    # Revised #146 needs h0 < h_f (last common block): objective from v3 on;
+    # v1/v2 logs tested h0 < first alt block.
+    blk = {"h": 1000, "id": "a", "diff": "1216", "seen": 0, "n_sh": 0, "shares": []}
+    rec = {"mode": "whole_branch", "reinsert": False, "h0": 999, "hf": 1000,
+           "top": 1000, "w": 16, "k": 3, "d_ms": 5000, "nf_rule": "either",
+           "alt": [dict(blk)], "main": [dict(blk, id="m")]}
+    assert decide(dict(rec, v=2))["regime"] == "subjective"
+    assert decide(dict(rec, v=3))["regime"] == "objective"
+    assert decide(dict(rec, v=3, h0=998))["regime"] == "subjective"

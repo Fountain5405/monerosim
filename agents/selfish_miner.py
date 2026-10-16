@@ -210,10 +210,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         (att_objects, att_weight, hon_weight), or None (with a logged
         warning) on an RPCError or a header count mismatch on either side.
 
-        weigh="sop" (default): attacker shares per block are `minor_version`
-        when `embedded_shares` is on, else 0; honest shares are always
-        `minor_version`, since on a Share-or-Perish network the honest
-        template sets minor_version to the embedded share count.
+        weigh="sop" (default): attacker shares per block are
+        `minor_version - major_version` (sop_share_count) when
+        `embedded_shares` is on, else 0; honest shares always are, since on
+        a Share-or-Perish network the honest template sets minor_version to
+        major_version plus the embedded share count.
         weigh="difficulty": att_objects = block count; both weights are
         plain cumulative difficulty (a stock, non-SoP network)."""
         att_headers = self._read_range(self.daemon_rpc, fork, priv_height, "attacker")

@@ -43,8 +43,9 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
 
     nf_rule "either" is the issue's rule since its 2026-10-15 revision
     (n_f = max(n_main, n_alt)): the regime is objective once either branch
-    holds k*w work objects past the fork. "alt" is the earlier formal
-    definition (the alt branch only), still the daemon's default."""
+    holds k*w work objects past the fork, and the only rule the daemon
+    implements once its --sim-sop-nf-rule option is gone. "alt" is the
+    earlier formal definition (the alt branch only), for older logs."""
     # Without an explicit rule, use the one the daemon logged
     # (--sim-sop-nf-rule); records from before that flag mean "alt".
     if nf_rule is None:
@@ -70,7 +71,10 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
     # Convention 9: sim-only guard, the first alt block's difficulty below w
     # forces the objective regime.
     diff_alt0 = int(alt[0]["diff"]) if alt else 0
-    window_open = h0 < hf and under_kw and diff_alt0 >= w
+    # Log v3 follows the revised #146: its h_f is the last common block, hf - 1
+    # in the log (hf = the first alt block). Older logs tested h0 < hf.
+    online_before_fork = h0 < hf - 1 if rec.get("v", 1) >= 3 else h0 < hf
+    window_open = online_before_fork and under_kw and diff_alt0 >= w
     regime = "subjective" if window_open else "objective"
 
     old_cutoff = top - 10 * w
