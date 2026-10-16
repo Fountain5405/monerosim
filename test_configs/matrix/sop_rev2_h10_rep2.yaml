@@ -1,0 +1,109 @@
+# sop_either_h10_rep2 re-run on the pop patch following MRL #146's 2026-10-15
+# revision (main_seen fixed per height; version_minor = version_major + N).
+# Same seed, cells and options; only the monerod-sim build differs.
+# Re-run of stubborn_h10_rep2 (campaign 7) under the n_f rule the issue's author
+# has described: --sim-sop-nf-rule=either on every SoP node (2026-10-14).
+# Same seed, cells and stop_time as stubborn_h10_rep2; KSM on.
+name: sop_rev2_h10_rep2
+seed: 24680
+base: test_configs/selfish_micro_sop.yaml
+parallel: 4
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+          sim-sop-nf-rule: either
+    block:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+          sim-sop-nf-rule: either
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-nf-rule: either
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-nf-rule: either
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+  alpha:
+    a030:
+      attacker:
+        hashrate: 3
+      honest:
+        hashrate:
+        - 3.5
+        - 3.5
+    a040:
+      attacker:
+        hashrate: 4
+      honest:
+        hashrate:
+        - 3
+        - 3
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+    d1:
+      attacker:
+        attributes:
+          give_up_depth: '1'
+    d3:
+      attacker:
+        attributes:
+          give_up_depth: '3'
+exclude:
+- arm: share
+  countermeasure: stock
+- arm: block
+  countermeasure: sop2
+  alpha: a030
+- arm: block
+  countermeasure: sop2
+  depth: d1
+- arm: block
+  countermeasure: sop2
+  depth: d3
+- depth: d1
+  alpha: a030
+- depth: d1
+  alpha: a045
+- depth: d3
+  alpha: a030
+- depth: d3
+  alpha: a045
+ksm: true

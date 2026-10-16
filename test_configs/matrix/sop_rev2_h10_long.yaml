@@ -1,0 +1,73 @@
+# sop_either_h10_long re-run on the pop patch following MRL #146's 2026-10-15
+# revision (main_seen fixed per height; version_minor = version_major + N).
+# Same seed, cells and options; only the monerod-sim build differs.
+# Re-run of stubborn_h10_long (campaign 7) under the n_f rule the issue's author
+# has described: --sim-sop-nf-rule=either on every SoP node (2026-10-14).
+# Same seed, cells and stop_time as stubborn_h10_long; KSM on.
+name: sop_rev2_h10_long
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 240h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+          sim-sop-nf-rule: either
+    block:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+          sim-sop-nf-rule: either
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-nf-rule: either
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-nf-rule: either
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+  alpha:
+    a033:
+      attacker:
+        hashrate: 3.3
+      honest:
+        hashrate:
+        - 3.35
+        - 3.35
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+exclude:
+- arm: share
+  countermeasure: stock
+- arm: block
+  countermeasure: sop2
+ksm: true

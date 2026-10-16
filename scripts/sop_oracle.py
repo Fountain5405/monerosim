@@ -41,10 +41,10 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
     against it on both branches; older records time an alt block against
     the current main block at its height and a main block against itself.
 
-    nf_rule "alt" is the issue's formal definition (n_f counts the alt
-    branch only), the daemon's default. "either" is the reading the
-    issue's author has since described: the regime is objective once either
-    branch holds k*w work objects past the fork."""
+    nf_rule "either" is the issue's rule since its 2026-10-15 revision
+    (n_f = max(n_main, n_alt)): the regime is objective once either branch
+    holds k*w work objects past the fork. "alt" is the earlier formal
+    definition (the alt branch only), still the daemon's default."""
     # Without an explicit rule, use the one the daemon logged
     # (--sim-sop-nf-rule); records from before that flag mean "alt".
     if nf_rule is None:

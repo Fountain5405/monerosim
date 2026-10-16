@@ -9,6 +9,11 @@ about 30× the spec's own figure (§4.1); the α = 0.45 and reorg-depth claims
 are weaker than first written (rows 1 and 2, §4); the re-judging finding is
 restated (§7 item 1). The review's seven other points are in §9 and §10.
 
+**Update 2026-10-16.** The issue was revised on 2026-10-15. The revision
+settles both spec gaps in summary row 5: see §7 items 1 and 2, and §7.1 for
+the author's answers in the thread. Every run in this document used the
+earlier text. Re-runs under the revised text are campaign 8.
+
 ## Summary
 
 | # | Result | Confidence |
@@ -17,7 +22,7 @@ restated (§7 item 1). The review's seven other points are in §9 and §10.
 | 2 | An independent race model (Model B) agrees with the simulator on attacker share, reveal rate, orphan rates and race shapes, within sampling error. Reorg depth differs by 5–10 % in a direction that changes with d; pooled over all eight d5 runs the simulator reads deeper (p = 0.03, one-sided; §4). Not explained. | High for share, rate and shapes. Moderate for depth. |
 | 3 | Reorgs of 10+ blocks depend on how far behind the attacker keeps mining. At α = 0.33 (Model B), an attacker that reveals at the first chance but keeps mining while up to 1, 2 or 4 blocks behind (give-up depth 2, 3, 5) causes one per 2.9, 1.5 and 0.41 years. The spec's "about 1 per 3 years" comes from tevador's simulator, whose attacker gives up once more than 5 work objects (under half a block) behind. It is one attacker's rate, not a bound. | Moderate–high (model, validated against the simulator at shallower depths). |
 | 4 | **P2P ban cascade.** A SoP node legitimately switches to a branch with fewer blocks. Stock monero scores a peer down for that height drop and bans it for 24 h once its never-decaying fail score passes 10. Honest nodes banned each other in 3 of 5 depth-5 runs. Not scoring that height drop on SoP nodes removed every ban in 3 re-runs. | High for the mechanism (67 of 67 bans replayed exactly) and for the fix on this network (0 bans, 0 scored drops, §6.4). |
-| 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and under the formal (alt-only) reading of `n_f` the pairwise rule can say SWITCH in both directions (§7 item 1); (b) the `version_minor` rule conflicts with the issue's soft-fork claim: stock v0.18 requires it to be at least 16 (§7 item 2). The earlier gap (c), on the 10+ reorg figure, is withdrawn (§7 item 3). | (a) high; (b) tested: a stock monerod rejected 10 of 10 SoP blocks on the vote check (§7 item 2). Corrected 2026-10-14. |
+| 5 | Spec gaps: (a) how blocks displaced by a reorg are judged again is unspecified, and under the formal (alt-only) reading of `n_f` the pairwise rule can say SWITCH in both directions (§7 item 1); (b) the `version_minor` rule conflicts with the issue's soft-fork claim: stock v0.18 requires it to be at least 16 (§7 item 2). The earlier gap (c), on the 10+ reorg figure, is withdrawn (§7 item 3). | (a) high; (b) tested: a stock monerod rejected 10 of 10 SoP blocks on the vote check (§7 item 2). Corrected 2026-10-14. **Both resolved by the issue's 2026-10-15 revision** (§7); a stock node accepted a SoP block under the revised rule. |
 | 6 | **Reveal rate.** At α = 0.33 and d = 2 the simulator measures 2.98 reveals per canonical day (Model B 3.13), each with a branch of at least 48 work objects. The spec says an attacker avoids the lateness penalties "on average once per 10 days", about 30× less often. The reveals have a mean depth of 2.3 blocks, so the spec's "3-block reorg" is about right and the frequency is not. About 2 % of reveals are reversed within 3.3 s by one honest block (§4.2). | High for the measurement (simulator and Model B agree). Cause shown by a model ablation and by the logs of 3 runs (§4.1); replicates pending. |
 
 Every SoP number recorded before 2026-10-04 is superseded (§1), including
@@ -498,10 +503,32 @@ and peer churn, is not measured.
      expect a pair to cycle, because the weights should not depend on which
      chain a node is on. Under that rule the example above is objective from
      both sides and does not flip. Every campaign-7 SoP run used the formal,
-     alt-only reading. Still open: the issue times lateness against "the
-     main chain block of the same height", which changes when a node
-     switches; whether that alone can make a pair cycle while both chains
-     are under k·w is being tested.
+     alt-only reading. A second dependence remained: the issue timed
+     lateness against "the main chain block of the same height", which
+     changes when a node switches. A hand-worked honest race (two blocks
+     4 s apart, both chains far under k·w;
+     `python -m scripts.sop_lateness_probe example`) says SWITCH in both
+     directions under that reference, even with the symmetric `n_f`.
+   - *Resolved in the issue (2026-10-15).* The revision makes both rules
+     symmetric. `n_f = max(n_main(h_f), n_alt(h_f))`, which is our
+     `--sim-sop-nf-rule either`. `main_seen` is now the seen time of the
+     first block at that height to join the node's main chain. It is
+     recorded when that block joins and later switches don't change it. If
+     no block at that height has been main, `main_seen = block_seen`. "Seen" now needs valid
+     PoW and a known parent. The author's answer to albinjm's question 5:
+     "The 'original' main block can never be judged late even after a
+     chain switch."
+   - *Checked against the revision (2026-10-15, campaign 8).* The pop
+     patch now records `main_seen` per height when a block joins the main
+     chain. It drops a block's receive time if the block is orphaned or
+     fails verification, and logs the reference in each decision
+     (`"ref"`, log v2); the oracle uses it. The hand-worked race then gives
+     SWITCH (228 vs 76) one way and KEEP (76 vs 228) the other. Three 6 h
+     smoke cells on the new build (seed 12345) logged 1,410 decisions,
+     with 0 oracle mismatches and 0 switches that would reverse.
+     Replaying campaign 7 under the symmetric `n_f` (old reference), 0 of
+     5,325 switches would reverse; under the alt-only rule, 2,220 of 5,340
+     would.
 2. **The `version_minor` rule conflicts with the issue's soft-fork claim.**
    (Corrected 2026-10-14; the earlier heading was "SoP is a hard fork".)
    - The issue calls SoP "a soft-forking proposal that only introduces a
@@ -532,6 +559,16 @@ and peer churn, is not measured.
      blocks carried at most 7 workshares. No block reached 16 workshares in
      these runs, so acceptance at 16 or more is inferred from the code, not
      observed.
+   - *Resolved in the issue (2026-10-15).* `version_minor` is now
+     `version_major` plus the workshare count, and shares are numbered
+     from `version_major`. The stock check `version_minor >= version_major`
+     then always passes, and the issue says this "allows SoP to be deployed
+     as a soft fork without removing the consensus rule". The pop patch
+     follows it and no longer removes the vote test (`hardfork.cpp` is
+     stock again). Same stock-observer setup on the new build
+     (`archived_runs/20261015_181139_sop_stock_observer_smoke`): the stock
+     node accepted the SoP block at height 1536, which carried 9
+     workshares, and no node logged "has old version".
    - *Correction:* an earlier version said an unmodified v0.18 bridge
      rejected SoP blocks in run `20260930_161539`. That was wrong on both
      counts. The only "has old version" lines in our archived runs are 11 on
@@ -540,7 +577,7 @@ and peer churn, is not measured.
      bridge ran `monerod-sim`, whose vote test is removed, so those
      rejections were not caused by `version_minor`.
 
-   Our implementation follows the rule as written
+   Campaign 7 followed the earlier rule
    (`docs/20260930_sop_conformance.md`, convention 8).
 3. *Withdrawn 2026-10-14:* "the 10+ reorg figure is one attacker's rate, not a
    bound". tevador's comment of 2025-09-28 already tables the average time
@@ -582,10 +619,24 @@ hashrate, so its days are already canonical days (§5).
     still part of the heaviest chain by that time)". Reading that as "main
     chain blocks are judged too" is our inference; the comment does not
     say "both chains".
+- **tevador (comment of 2026-10-15)** announced the revision (§7 items 1
+  and 2) and answered albinjm:
+  - Question 1: a shorter chain with more work objects winning is
+    intended, since it "is much more likely to belong to the
+    hashrate-majority partition".
+  - Question 3: some honest shares will be late. Shares lost to duplicate
+    `version_minor` values are "unavoidable".
+  - Question 4: the weight becomes objective three blocks after the fork,
+    or slightly more with lost shares.
+  - Question 5: both chains, which is our reading.
+  - Question 6: tevador's simulation used α = 1/3.
+  - The ban cascade below is a consequence of the intended answer to
+    question 1.
 - **Not in the thread:**
   - the P2P ban cascade (that simulator has no P2P layer), which is a
     concrete consequence of exactly its question 1;
-  - the hard-fork consequence of the `version_minor` rule;
+  - the hard-fork consequence of the `version_minor` rule (addressed by
+    the 2026-10-15 revision, §7 item 2);
   - the size of the re-judging ambiguity (item 1).
 
 ## 8. Controls

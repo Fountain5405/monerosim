@@ -13,7 +13,13 @@ reference and in re-judging displaced blocks. Each deviation surfaced only
 after campaigns had run on it. With the oracle, a deviation shows up in the
 first smoke run.
 
-## The spec's rules (MRL #146, tevador, 2025-09-25)
+*Updated 2026-10-16 for the issue's revision of 2026-10-15:* `n_f` covers
+both chains, `main_seen` is fixed per height, "seen" is defined, and
+`version_minor` is offset by `version_major`. Log format v2 carries the
+lateness reference. The earlier text is kept below where runs depend on
+it, since every campaign-7 run used it.
+
+## The spec's rules (MRL #146, tevador, 2025-09-25; revised 2026-10-15)
 
 Source: <https://github.com/monero-project/research-lab/issues/146>.
 Parameters: `w = 16` (workshare ratio), `d = 5 s` (propagation delay),
@@ -27,19 +33,40 @@ Parameters: `w = 16` (workshare ratio), `d = 5 s` (propagation delay),
   `h > t - 10*w` weighs `l_b*diff(h)/w` for its header plus
   `l_b*l_w*diff(h)/w` for each workshare. A block at `h <= t - 10*w` weighs
   `diff(h)`, and its workshares weigh `0`.
-- **Fork variables.** "Let there be an alt-chain that forks off the main chain
-  at height `h_f` and contains `n_f` work objects that are not contained in
-  the main chain." `h_0` is "the block height when the node came online".
-  `block_seen` and `share_seen` are when the node first saw the evaluated
-  block or share. `main_seen` is when it first saw "the main chain block of
-  height h. If the main chain block of height h doesn't exist (i.e. the
-  alt-chain is ahead), we set `main_seen = block_seen`."
+- **Fork variables (revised).** `h_f` is the last common block of the alt
+  chain and the main chain. `n_chain(h)` is the number of work objects in a
+  chain from height `h+1` to its tip, and
+  `n_f = max(n_main(h_f), n_alt(h_f))`. `h_0` is "the block height when the
+  node came online". `block_seen` and `share_seen` are when the node first
+  saw the evaluated block or share.
+- **`main_seen` (revised).** It is "the unix timestamp when a block of height
+  `h` that became part of the node's main chain was first seen by the node.
+  This value is recorded when the block becomes part of the main chain and
+  is not changed by later chain switches. If no block of height `h` has been
+  part of the node's main chain (i.e. the alt chain is ahead), we set
+  `main_seen = block_seen`."
+- **"Seen" (new).** It "requires the block to pass PoW validation and have
+  a known parent block. Blocks arriving out of order are not considered
+  'seen' until they satisfy the rule."
+- *Earlier text (before 2026-10-15), used by campaign 7:* `n_f` counted the
+  alt chain's "work objects that are not contained in the main chain", and
+  `main_seen` was when the node first saw "the main chain block of height
+  h", which changes when the node switches. The daemon's
+  `--sim-sop-nf-rule alt` and the v1 log records reproduce it.
 - **Lateness (Tables 4 and 5).** `l_b = 0` if
   `h_0 < h_f && n_f < k*w && block_seen - main_seen > d`, else `1`.
   `l_w = 0` if `h_0 < h_f && n_f < k*w && main_seen - share_seen <= d`,
   else `1`. "The lateness factors can be distinct from 1 only if the node was
-  online before the fork height and the two chains differ by fewer than
-  `k*w` work objects."
+  online before the fork height and the depth of the fork is fewer than
+  `k*w` work objects." The author's comment of 2026-10-15 adds that lateness
+  is judged on both chains: "The 'original' main block can never be judged
+  late even after a chain switch."
+- **Workshare slots (revised).** Miners set `version_minor` to
+  `version_major` plus the number of included workshares. The shares carry
+  sequential `version_minor` values from `version_major` to
+  `version_minor - 1`. This keeps stock monerod's vote check
+  (`version_minor >= version_major`), so SoP stays a soft fork. *Earlier
+  text:* `version_minor` equalled the share count, with slots `0..N-1`.
 - **Ties.** "If a node sees two chains of the exact same weight, it makes a
   random selection."
 
@@ -59,13 +86,26 @@ Each is a choice. The oracle and the daemon must both follow it.
    forks shallower than `10*w = 160` blocks, every suffix block is inside the
    window either way.
 3. **`h_f`** is the height of the first alt block. `h_0 < h_f` means the node
-   was online before the first diverging block.
+   was online before the first diverging block. The revised text defines
+   `h_f` as the last common block, one lower, so the spec's test is
+   `h_0 < hf - 1` in our terms. The two differ only for a node whose `h_0`
+   is exactly the last common block's height (see Known deviations).
 4. **`share_seen` for a share never gossiped to the node** is the `seen` time of
    the block that contains it, since the node first sees the share inside that
    block.
 5. **Unknown receive times** (`seen` null) make the factor permissive (1).
    Grafted chain-snapshot blocks have no receive time, but they are older than
    any fork.
+
+   **Recording "seen" and `main_seen`.** The daemon records a block's
+   receive time when the block enters `add_new_block`. It drops that time
+   again if the block is orphaned (unknown parent) or fails verification,
+   which includes PoW. So a block that arrives out of order is seen when it
+   next arrives with a known parent. `main_seen` for height `h` is set once,
+   to the receive time of the first block at `h` to join the main chain;
+   later switches don't change it. Heights with no recorded time (loaded
+   from disk, or the alt chain is ahead) log `ref: null`, which means
+   `main_seen = block_seen`.
 6. **Whole branches, not parts.** When a reorg displaces blocks, monerod
    re-inserts them one at a time. In `whole_branch` mode those re-insertions
    are stored without judging (`skipped: true`). A displaced branch is judged
@@ -75,9 +115,10 @@ Each is a choice. The oracle and the daemon must both follow it.
    It is the daemon flag `--sim-sop-rejudge-displaced`, off by default.
 7. **One draw per tie.** The daemon caches the random draw per (alt tip, main
    tip) pair, so re-judging the same pair cannot re-roll it.
-8. **Share validity.** The slot rule itself is the spec's: miners set
-   `version_minor` to the number of included workshares, whose slots run
-   `0..N-1`. Every share's PoW must meet `diff/w`. The spec does not say
+8. **Share validity.** The slot rule itself is the spec's (revised:
+   `version_minor = version_major + N`, slots `version_major..version_minor-1`;
+   before 2026-10-15, `version_minor = N`, slots `0..N-1`). Every share's PoW
+   must meet `diff/w`. The spec does not say
    what follows from a violation; its "requires" suggests the block is
    invalid. Our convention is more lenient: `n_sh = 0`, and the block counts
    as its header alone, both in `n_f` and in weight. *(Relabelled
@@ -89,21 +130,33 @@ Each is a choice. The oracle and the daemon must both follow it.
 10. **Integer arithmetic.** `unit = max(1, floor(diff / w))`. A recent block
     weighs `unit * (l_b + l_b * (number of counted shares))`, and an old one
     weighs `diff`.
+11. **`n_f` rule.** The daemon flag `--sim-sop-nf-rule` picks the regime
+    test. `either` is the revised spec: the window is open while both
+    `nf` (alt) and `nf_main` are below `k*w`. `alt` is the earlier formal
+    reading, where only `nf` counts. The flag still defaults to `alt`, so a
+    spec run must pass `either`; every `sop_either_*` and `sop_rev2_*`
+    matrix spec does. The oracle uses the rule the record logs (`nf_rule`),
+    and records from before the flag mean `alt`.
 
 
-## Known deviation (found 2026-10-07)
+## Known deviations
 
-- **`n_f` counts shared workshares.** The spec counts the alt chain's work
-  objects "that are not contained in the main chain". The daemon and the
-  oracle count every alt block and every share it embeds. That includes
-  shares the main chain's block at the fork height also embeds; both
-  blocks have the same parent, so their shares can coincide.
-  - Affected: forks whose first blocks share workshares, e.g. two honest
-    miners' competing blocks. There `n_f` can reach `k*w` early, and the
-    window close sooner than the spec says.
-  - Not affected: attack forks in our setup, because the attacker's
-    offline miner never holds honest shares.
-  - Not fixed: it needs a daemon change and a rebuild.
+- **`h_0` at the last common block (found 2026-10-16).** Convention 3 opens
+  the window when `h_0 < hf` (first alt block); the revised spec needs
+  `h_0 <` the last common block. A node that came online exactly at the
+  last common block's height gets a subjective window where the spec says
+  objective. Not fixed. It needs a daemon and oracle change, and we have
+  not checked whether any run had such a node.
+- *Resolved by the revision (found 2026-10-07):* **`n_f` counts shared
+  workshares.** The earlier text counted the alt chain's work objects "that
+  are not contained in the main chain". The daemon and the oracle count
+  every alt block and every share it embeds, including shares the main
+  chain's block at the fork height also embeds; both blocks have the same
+  parent, so their shares can coincide. The revised `n_chain(h)` counts
+  every work object in the chain above `h`, which is what we count. Under
+  the earlier text it affected forks whose first blocks share workshares,
+  such as two honest miners' competing blocks, not attack forks in our
+  setup.
 
 ## Log line
 
@@ -112,7 +165,7 @@ message is `SIM-SoP-DEC ` followed by a single-line JSON object:
 
 | field | type | meaning |
 |---|---|---|
-| `v` | int | format version, `1` |
+| `v` | int | format version: `2` since 2026-10-15 (block entries carry `ref`), `1` before |
 | `mode` | str | `"whole_branch"` or `"rejudge"` |
 | `reinsert` | bool | evaluation triggered by re-inserting a displaced block |
 | `skipped` | bool | whole_branch mode skipped it; `result` is then `"KEEP"` |
@@ -122,7 +175,9 @@ message is `SIM-SoP-DEC ` followed by a single-line JSON object:
 | `w`, `k`, `d_ms` | int | parameters (`d` in milliseconds) |
 | `alt` | list | alt-suffix blocks, ascending height |
 | `main` | list | main-suffix blocks (`hf..top`), ascending height |
-| `nf` | int | the daemon's `n_f` |
+| `nf` | int | work objects in the alt suffix (`n_alt(h_f)`) |
+| `nf_main` | int | work objects in the main suffix (`n_main(h_f)`) |
+| `nf_rule` | str | `"alt"` or `"either"` (convention 11); absent in records from before the flag |
 | `regime` | str | `"subjective"` or `"objective"` |
 | `w_alt`, `w_main` | str | the daemon's suffix weights (decimal strings) |
 | `tie` | bool | `w_alt == w_main` |
@@ -130,7 +185,8 @@ message is `SIM-SoP-DEC ` followed by a single-line JSON object:
 | `result` | str | `"SWITCH"` or `"KEEP"` |
 
 Each block entry: `h` (int), `id` (hex), `diff` (decimal string), `seen` (ms
-or null), `n_sh` (int; 0 when the set does not conform), and `shares`, a list
+or null), `ref` (v2 only: `main_seen` for that height in ms, or null, see
+convention 5), `n_sh` (int; 0 when the set does not conform), and `shares`, a list
 in slot order of `{"id": hex, "seen": ms or null}`. `shares` is present when
 `n_sh > 0`. A share's `seen` is its first gossip receipt, or null if it never
 arrived by gossip.
@@ -138,10 +194,17 @@ arrived by gossip.
 The daemon skips the per-share list for main-suffix blocks at heights
 `<= top - 10*w`, which never occur in practice (see convention 2).
 
+The oracle times a v2 block entry against its `ref`, on both branches. A
+v1 entry has no `ref`. The oracle then times an alt block against the main
+block logged at its height, and a main block against itself: the earlier
+text's reference.
+
 ## Hand-worked cases (expected oracle results)
 
 `diff = 1216` everywhere, so `unit = 76`. `h0 = 994`, `hf = 1000`, `k*w = 48`,
-`d = 5000 ms`. Times are in ms.
+`d = 5000 ms`. Times are in ms. Cases 1–9 were written for the earlier
+text (rule `alt`, v1 reference); where the revised rules change the
+answer, the case says so.
 
 1. **Objective, shares decide (the smoke's T1 under the spec).** Alt: 7
    blocks at 1000..1006 with `n_sh` 8, 8, 9, 8, 9, 8, 9 (59 shares, `nf = 66`).
@@ -156,13 +219,15 @@ The daemon skips the per-share list for main-suffix blocks at heights
    and its shares count, so `w_alt = 76*12 = 912`. The main blocks have
    `l_b = 1` but their shares are not early, so `w_main = 76*7 = 532`.
    Result: SWITCH in `rejudge` mode. In `whole_branch` mode with
-   `reinsert: true` it is skipped (KEEP).
-3. **Late alt block.** Subjective. The alt block is seen 6000 after the main
-   block at its height, so `l_b = 0` and it weighs 0, shares included.
+   `reinsert: true` it is skipped (KEEP). *Under rule `either`:*
+   `nf_main = 7 + 56 = 63 >= 48`, so objective, `w_alt = 912`,
+   `w_main = 76*63 = 4788`, KEEP. The pair no longer flips.
+3. **Late alt block.** Subjective. The alt block is seen 6000 after
+   `main_seen` at its height, so `l_b = 0` and it weighs 0, shares included.
 4. **Share timing edge.** A share seen exactly `d` before `main_seen` does not
    count (`<= d`). One seen `d + 1` before it does.
 5. **Alt ahead.** An alt block at a height above `top` takes
-   `main_seen = its own seen`, so `l_b = 1`. Its shares count only if seen
+   `main_seen = its own seen` (v2: `ref: null`), so `l_b = 1`. Its shares count only if seen
    more than `d` before the block itself.
 6. **Late joiner.** With `h0 >= hf` the regime is objective, even with a
    small `nf`.
@@ -170,3 +235,16 @@ The daemon skips the per-share list for main-suffix blocks at heights
 8. **Non-conforming set.** `n_sh = 0`: the block is its header alone in
    `nf` and in weight.
 9. **Old block.** A suffix block at `h <= top - 160` weighs its `diff`.
+10. **Fixed reference (v2; `scripts/sop_lateness_probe.py`).** Two honest
+    blocks at 1000, both suffixes far under `k*w`. X, seen 0, joined the
+    main chain first, so `ref = 0` on both entries. X has 3 shares seen
+    -4000, -3000 and -2000. Y, seen 4000, has 2 shares seen -10000 and
+    -9000.
+    - Node on X: Y is on time (4000 <= d) and both its shares count, so
+      `w_alt = 228`. X's shares are not early, so `w_main = 76`. SWITCH.
+    - Node on Y: X is on time, with no shares counted, so `w_alt = 76`, and
+      `w_main = 228`. KEEP.
+    - Under the v1 reference, on the second side Y is main and is timed
+      against itself. X's shares are then 6–8 s before Y and count, so X
+      weighs 304 against Y's 228. Both sides say SWITCH, under either
+      `n_f` rule.
