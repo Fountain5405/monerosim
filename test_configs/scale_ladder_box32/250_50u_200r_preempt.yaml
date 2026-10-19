@@ -1,0 +1,1486 @@
+general:
+  stop_time: 8h
+  simulation_seed: 12345
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  mining:
+    mode: native
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true
+  daemon_defaults:
+    log-level: monitor
+    rpc-ssl: autodetect
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 0
+    rpc-ssl: autodetect
+    daemon-ssl: autodetect
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 20
+    can_receive_distributions: true
+  miner-002:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 20
+    can_receive_distributions: true
+  miner-003:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 20
+    can_receive_distributions: true
+  miner-004:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 3s
+    hashrate: 20
+    can_receive_distributions: true
+  miner-005:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 4s
+    hashrate: 20
+    can_receive_distributions: true
+  user-001:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2400s
+    transaction_interval: 300
+    activity_start_time: 18000
+    can_receive_distributions: true
+  user-002:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2405s
+    transaction_interval: 300
+    activity_start_time: 18023
+    can_receive_distributions: true
+  user-003:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2410s
+    transaction_interval: 300
+    activity_start_time: 18046
+    can_receive_distributions: true
+  user-004:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2415s
+    transaction_interval: 300
+    activity_start_time: 18069
+    can_receive_distributions: true
+  user-005:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2420s
+    transaction_interval: 300
+    activity_start_time: 18092
+    can_receive_distributions: true
+  user-006:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3600s
+    transaction_interval: 300
+    activity_start_time: 18115
+    can_receive_distributions: true
+  user-007:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3605s
+    transaction_interval: 300
+    activity_start_time: 18138
+    can_receive_distributions: true
+  user-008:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3610s
+    transaction_interval: 300
+    activity_start_time: 18161
+    can_receive_distributions: true
+  user-009:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3615s
+    transaction_interval: 300
+    activity_start_time: 18184
+    can_receive_distributions: true
+  user-010:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3620s
+    transaction_interval: 300
+    activity_start_time: 18207
+    can_receive_distributions: true
+  user-011:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3625s
+    transaction_interval: 300
+    activity_start_time: 18230
+    can_receive_distributions: true
+  user-012:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3630s
+    transaction_interval: 300
+    activity_start_time: 18253
+    can_receive_distributions: true
+  user-013:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3635s
+    transaction_interval: 300
+    activity_start_time: 18276
+    can_receive_distributions: true
+  user-014:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3640s
+    transaction_interval: 300
+    activity_start_time: 18299
+    can_receive_distributions: true
+  user-015:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 3645s
+    transaction_interval: 300
+    activity_start_time: 18322
+    can_receive_distributions: true
+  user-016:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4800s
+    transaction_interval: 300
+    activity_start_time: 18345
+    can_receive_distributions: true
+  user-017:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4805s
+    transaction_interval: 300
+    activity_start_time: 18368
+    can_receive_distributions: true
+  user-018:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4810s
+    transaction_interval: 300
+    activity_start_time: 18391
+    can_receive_distributions: true
+  user-019:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4815s
+    transaction_interval: 300
+    activity_start_time: 18414
+    can_receive_distributions: true
+  user-020:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4820s
+    transaction_interval: 300
+    activity_start_time: 18437
+    can_receive_distributions: true
+  user-021:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4825s
+    transaction_interval: 300
+    activity_start_time: 18460
+    can_receive_distributions: true
+  user-022:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4830s
+    transaction_interval: 300
+    activity_start_time: 18483
+    can_receive_distributions: true
+  user-023:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4835s
+    transaction_interval: 300
+    activity_start_time: 18506
+    can_receive_distributions: true
+  user-024:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4840s
+    transaction_interval: 300
+    activity_start_time: 18529
+    can_receive_distributions: true
+  user-025:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4845s
+    transaction_interval: 300
+    activity_start_time: 18552
+    can_receive_distributions: true
+  user-026:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4850s
+    transaction_interval: 300
+    activity_start_time: 18575
+    can_receive_distributions: true
+  user-027:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4855s
+    transaction_interval: 300
+    activity_start_time: 18598
+    can_receive_distributions: true
+  user-028:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4860s
+    transaction_interval: 300
+    activity_start_time: 18621
+    can_receive_distributions: true
+  user-029:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4865s
+    transaction_interval: 300
+    activity_start_time: 18644
+    can_receive_distributions: true
+  user-030:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4870s
+    transaction_interval: 300
+    activity_start_time: 18667
+    can_receive_distributions: true
+  user-031:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4875s
+    transaction_interval: 300
+    activity_start_time: 18690
+    can_receive_distributions: true
+  user-032:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4880s
+    transaction_interval: 300
+    activity_start_time: 18713
+    can_receive_distributions: true
+  user-033:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4885s
+    transaction_interval: 300
+    activity_start_time: 18736
+    can_receive_distributions: true
+  user-034:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4890s
+    transaction_interval: 300
+    activity_start_time: 18759
+    can_receive_distributions: true
+  user-035:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 4895s
+    transaction_interval: 300
+    activity_start_time: 18782
+    can_receive_distributions: true
+  user-036:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6000s
+    transaction_interval: 300
+    activity_start_time: 18805
+    can_receive_distributions: true
+  user-037:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6005s
+    transaction_interval: 300
+    activity_start_time: 18828
+    can_receive_distributions: true
+  user-038:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6010s
+    transaction_interval: 300
+    activity_start_time: 18851
+    can_receive_distributions: true
+  user-039:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6015s
+    transaction_interval: 300
+    activity_start_time: 18874
+    can_receive_distributions: true
+  user-040:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6020s
+    transaction_interval: 300
+    activity_start_time: 18897
+    can_receive_distributions: true
+  user-041:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6025s
+    transaction_interval: 300
+    activity_start_time: 18920
+    can_receive_distributions: true
+  user-042:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6030s
+    transaction_interval: 300
+    activity_start_time: 18943
+    can_receive_distributions: true
+  user-043:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6035s
+    transaction_interval: 300
+    activity_start_time: 18966
+    can_receive_distributions: true
+  user-044:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6040s
+    transaction_interval: 300
+    activity_start_time: 18989
+    can_receive_distributions: true
+  user-045:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6045s
+    transaction_interval: 300
+    activity_start_time: 19012
+    can_receive_distributions: true
+  user-046:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6050s
+    transaction_interval: 300
+    activity_start_time: 19035
+    can_receive_distributions: true
+  user-047:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6055s
+    transaction_interval: 300
+    activity_start_time: 19058
+    can_receive_distributions: true
+  user-048:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6060s
+    transaction_interval: 300
+    activity_start_time: 19081
+    can_receive_distributions: true
+  user-049:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6065s
+    transaction_interval: 300
+    activity_start_time: 19104
+    can_receive_distributions: true
+  user-050:
+    daemon: monerod
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 6070s
+    transaction_interval: 300
+    activity_start_time: 19127
+    can_receive_distributions: true
+  relay-001:
+    daemon: monerod
+    start_time: 1200s
+    daemon_options:
+      log-level: 0
+  relay-002:
+    daemon: monerod
+    start_time: 1205s
+    daemon_options:
+      log-level: 0
+  relay-003:
+    daemon: monerod
+    start_time: 1210s
+    daemon_options:
+      log-level: 0
+  relay-004:
+    daemon: monerod
+    start_time: 1215s
+    daemon_options:
+      log-level: 0
+  relay-005:
+    daemon: monerod
+    start_time: 1220s
+    daemon_options:
+      log-level: 0
+  relay-006:
+    daemon: monerod
+    start_time: 2400s
+    daemon_options:
+      log-level: 0
+  relay-007:
+    daemon: monerod
+    start_time: 2405s
+    daemon_options:
+      log-level: 0
+  relay-008:
+    daemon: monerod
+    start_time: 2410s
+    daemon_options:
+      log-level: 0
+  relay-009:
+    daemon: monerod
+    start_time: 2415s
+    daemon_options:
+      log-level: 0
+  relay-010:
+    daemon: monerod
+    start_time: 2420s
+    daemon_options:
+      log-level: 0
+  relay-011:
+    daemon: monerod
+    start_time: 2425s
+    daemon_options:
+      log-level: 0
+  relay-012:
+    daemon: monerod
+    start_time: 2430s
+    daemon_options:
+      log-level: 0
+  relay-013:
+    daemon: monerod
+    start_time: 2435s
+    daemon_options:
+      log-level: 0
+  relay-014:
+    daemon: monerod
+    start_time: 2440s
+    daemon_options:
+      log-level: 0
+  relay-015:
+    daemon: monerod
+    start_time: 2445s
+    daemon_options:
+      log-level: 0
+  relay-016:
+    daemon: monerod
+    start_time: 3600s
+    daemon_options:
+      log-level: 0
+  relay-017:
+    daemon: monerod
+    start_time: 3605s
+    daemon_options:
+      log-level: 0
+  relay-018:
+    daemon: monerod
+    start_time: 3610s
+    daemon_options:
+      log-level: 0
+  relay-019:
+    daemon: monerod
+    start_time: 3615s
+    daemon_options:
+      log-level: 0
+  relay-020:
+    daemon: monerod
+    start_time: 3620s
+    daemon_options:
+      log-level: 0
+  relay-021:
+    daemon: monerod
+    start_time: 3625s
+    daemon_options:
+      log-level: 0
+  relay-022:
+    daemon: monerod
+    start_time: 3630s
+    daemon_options:
+      log-level: 0
+  relay-023:
+    daemon: monerod
+    start_time: 3635s
+    daemon_options:
+      log-level: 0
+  relay-024:
+    daemon: monerod
+    start_time: 3640s
+    daemon_options:
+      log-level: 0
+  relay-025:
+    daemon: monerod
+    start_time: 3645s
+    daemon_options:
+      log-level: 0
+  relay-026:
+    daemon: monerod
+    start_time: 3650s
+    daemon_options:
+      log-level: 0
+  relay-027:
+    daemon: monerod
+    start_time: 3655s
+    daemon_options:
+      log-level: 0
+  relay-028:
+    daemon: monerod
+    start_time: 3660s
+    daemon_options:
+      log-level: 0
+  relay-029:
+    daemon: monerod
+    start_time: 3665s
+    daemon_options:
+      log-level: 0
+  relay-030:
+    daemon: monerod
+    start_time: 3670s
+    daemon_options:
+      log-level: 0
+  relay-031:
+    daemon: monerod
+    start_time: 3675s
+    daemon_options:
+      log-level: 0
+  relay-032:
+    daemon: monerod
+    start_time: 3680s
+    daemon_options:
+      log-level: 0
+  relay-033:
+    daemon: monerod
+    start_time: 3685s
+    daemon_options:
+      log-level: 0
+  relay-034:
+    daemon: monerod
+    start_time: 3690s
+    daemon_options:
+      log-level: 0
+  relay-035:
+    daemon: monerod
+    start_time: 3695s
+    daemon_options:
+      log-level: 0
+  relay-036:
+    daemon: monerod
+    start_time: 4800s
+    daemon_options:
+      log-level: 0
+  relay-037:
+    daemon: monerod
+    start_time: 4805s
+    daemon_options:
+      log-level: 0
+  relay-038:
+    daemon: monerod
+    start_time: 4810s
+    daemon_options:
+      log-level: 0
+  relay-039:
+    daemon: monerod
+    start_time: 4815s
+    daemon_options:
+      log-level: 0
+  relay-040:
+    daemon: monerod
+    start_time: 4820s
+    daemon_options:
+      log-level: 0
+  relay-041:
+    daemon: monerod
+    start_time: 4825s
+    daemon_options:
+      log-level: 0
+  relay-042:
+    daemon: monerod
+    start_time: 4830s
+    daemon_options:
+      log-level: 0
+  relay-043:
+    daemon: monerod
+    start_time: 4835s
+    daemon_options:
+      log-level: 0
+  relay-044:
+    daemon: monerod
+    start_time: 4840s
+    daemon_options:
+      log-level: 0
+  relay-045:
+    daemon: monerod
+    start_time: 4845s
+    daemon_options:
+      log-level: 0
+  relay-046:
+    daemon: monerod
+    start_time: 4850s
+    daemon_options:
+      log-level: 0
+  relay-047:
+    daemon: monerod
+    start_time: 4855s
+    daemon_options:
+      log-level: 0
+  relay-048:
+    daemon: monerod
+    start_time: 4860s
+    daemon_options:
+      log-level: 0
+  relay-049:
+    daemon: monerod
+    start_time: 4865s
+    daemon_options:
+      log-level: 0
+  relay-050:
+    daemon: monerod
+    start_time: 4870s
+    daemon_options:
+      log-level: 0
+  relay-051:
+    daemon: monerod
+    start_time: 4875s
+    daemon_options:
+      log-level: 0
+  relay-052:
+    daemon: monerod
+    start_time: 4880s
+    daemon_options:
+      log-level: 0
+  relay-053:
+    daemon: monerod
+    start_time: 4885s
+    daemon_options:
+      log-level: 0
+  relay-054:
+    daemon: monerod
+    start_time: 4890s
+    daemon_options:
+      log-level: 0
+  relay-055:
+    daemon: monerod
+    start_time: 4895s
+    daemon_options:
+      log-level: 0
+  relay-056:
+    daemon: monerod
+    start_time: 4900s
+    daemon_options:
+      log-level: 0
+  relay-057:
+    daemon: monerod
+    start_time: 4905s
+    daemon_options:
+      log-level: 0
+  relay-058:
+    daemon: monerod
+    start_time: 4910s
+    daemon_options:
+      log-level: 0
+  relay-059:
+    daemon: monerod
+    start_time: 4915s
+    daemon_options:
+      log-level: 0
+  relay-060:
+    daemon: monerod
+    start_time: 4920s
+    daemon_options:
+      log-level: 0
+  relay-061:
+    daemon: monerod
+    start_time: 4925s
+    daemon_options:
+      log-level: 0
+  relay-062:
+    daemon: monerod
+    start_time: 4930s
+    daemon_options:
+      log-level: 0
+  relay-063:
+    daemon: monerod
+    start_time: 4935s
+    daemon_options:
+      log-level: 0
+  relay-064:
+    daemon: monerod
+    start_time: 4940s
+    daemon_options:
+      log-level: 0
+  relay-065:
+    daemon: monerod
+    start_time: 4945s
+    daemon_options:
+      log-level: 0
+  relay-066:
+    daemon: monerod
+    start_time: 4950s
+    daemon_options:
+      log-level: 0
+  relay-067:
+    daemon: monerod
+    start_time: 4955s
+    daemon_options:
+      log-level: 0
+  relay-068:
+    daemon: monerod
+    start_time: 4960s
+    daemon_options:
+      log-level: 0
+  relay-069:
+    daemon: monerod
+    start_time: 4965s
+    daemon_options:
+      log-level: 0
+  relay-070:
+    daemon: monerod
+    start_time: 4970s
+    daemon_options:
+      log-level: 0
+  relay-071:
+    daemon: monerod
+    start_time: 4975s
+    daemon_options:
+      log-level: 0
+  relay-072:
+    daemon: monerod
+    start_time: 4980s
+    daemon_options:
+      log-level: 0
+  relay-073:
+    daemon: monerod
+    start_time: 4985s
+    daemon_options:
+      log-level: 0
+  relay-074:
+    daemon: monerod
+    start_time: 4990s
+    daemon_options:
+      log-level: 0
+  relay-075:
+    daemon: monerod
+    start_time: 4995s
+    daemon_options:
+      log-level: 0
+  relay-076:
+    daemon: monerod
+    start_time: 6000s
+    daemon_options:
+      log-level: 0
+  relay-077:
+    daemon: monerod
+    start_time: 6005s
+    daemon_options:
+      log-level: 0
+  relay-078:
+    daemon: monerod
+    start_time: 6010s
+    daemon_options:
+      log-level: 0
+  relay-079:
+    daemon: monerod
+    start_time: 6015s
+    daemon_options:
+      log-level: 0
+  relay-080:
+    daemon: monerod
+    start_time: 6020s
+    daemon_options:
+      log-level: 0
+  relay-081:
+    daemon: monerod
+    start_time: 6025s
+    daemon_options:
+      log-level: 0
+  relay-082:
+    daemon: monerod
+    start_time: 6030s
+    daemon_options:
+      log-level: 0
+  relay-083:
+    daemon: monerod
+    start_time: 6035s
+    daemon_options:
+      log-level: 0
+  relay-084:
+    daemon: monerod
+    start_time: 6040s
+    daemon_options:
+      log-level: 0
+  relay-085:
+    daemon: monerod
+    start_time: 6045s
+    daemon_options:
+      log-level: 0
+  relay-086:
+    daemon: monerod
+    start_time: 6050s
+    daemon_options:
+      log-level: 0
+  relay-087:
+    daemon: monerod
+    start_time: 6055s
+    daemon_options:
+      log-level: 0
+  relay-088:
+    daemon: monerod
+    start_time: 6060s
+    daemon_options:
+      log-level: 0
+  relay-089:
+    daemon: monerod
+    start_time: 6065s
+    daemon_options:
+      log-level: 0
+  relay-090:
+    daemon: monerod
+    start_time: 6070s
+    daemon_options:
+      log-level: 0
+  relay-091:
+    daemon: monerod
+    start_time: 6075s
+    daemon_options:
+      log-level: 0
+  relay-092:
+    daemon: monerod
+    start_time: 6080s
+    daemon_options:
+      log-level: 0
+  relay-093:
+    daemon: monerod
+    start_time: 6085s
+    daemon_options:
+      log-level: 0
+  relay-094:
+    daemon: monerod
+    start_time: 6090s
+    daemon_options:
+      log-level: 0
+  relay-095:
+    daemon: monerod
+    start_time: 6095s
+    daemon_options:
+      log-level: 0
+  relay-096:
+    daemon: monerod
+    start_time: 6100s
+    daemon_options:
+      log-level: 0
+  relay-097:
+    daemon: monerod
+    start_time: 6105s
+    daemon_options:
+      log-level: 0
+  relay-098:
+    daemon: monerod
+    start_time: 6110s
+    daemon_options:
+      log-level: 0
+  relay-099:
+    daemon: monerod
+    start_time: 6115s
+    daemon_options:
+      log-level: 0
+  relay-100:
+    daemon: monerod
+    start_time: 6120s
+    daemon_options:
+      log-level: 0
+  relay-101:
+    daemon: monerod
+    start_time: 6125s
+    daemon_options:
+      log-level: 0
+  relay-102:
+    daemon: monerod
+    start_time: 6130s
+    daemon_options:
+      log-level: 0
+  relay-103:
+    daemon: monerod
+    start_time: 6135s
+    daemon_options:
+      log-level: 0
+  relay-104:
+    daemon: monerod
+    start_time: 6140s
+    daemon_options:
+      log-level: 0
+  relay-105:
+    daemon: monerod
+    start_time: 6145s
+    daemon_options:
+      log-level: 0
+  relay-106:
+    daemon: monerod
+    start_time: 6150s
+    daemon_options:
+      log-level: 0
+  relay-107:
+    daemon: monerod
+    start_time: 6155s
+    daemon_options:
+      log-level: 0
+  relay-108:
+    daemon: monerod
+    start_time: 6160s
+    daemon_options:
+      log-level: 0
+  relay-109:
+    daemon: monerod
+    start_time: 6165s
+    daemon_options:
+      log-level: 0
+  relay-110:
+    daemon: monerod
+    start_time: 6170s
+    daemon_options:
+      log-level: 0
+  relay-111:
+    daemon: monerod
+    start_time: 6175s
+    daemon_options:
+      log-level: 0
+  relay-112:
+    daemon: monerod
+    start_time: 6180s
+    daemon_options:
+      log-level: 0
+  relay-113:
+    daemon: monerod
+    start_time: 6185s
+    daemon_options:
+      log-level: 0
+  relay-114:
+    daemon: monerod
+    start_time: 6190s
+    daemon_options:
+      log-level: 0
+  relay-115:
+    daemon: monerod
+    start_time: 6195s
+    daemon_options:
+      log-level: 0
+  relay-116:
+    daemon: monerod
+    start_time: 6200s
+    daemon_options:
+      log-level: 0
+  relay-117:
+    daemon: monerod
+    start_time: 6205s
+    daemon_options:
+      log-level: 0
+  relay-118:
+    daemon: monerod
+    start_time: 6210s
+    daemon_options:
+      log-level: 0
+  relay-119:
+    daemon: monerod
+    start_time: 6215s
+    daemon_options:
+      log-level: 0
+  relay-120:
+    daemon: monerod
+    start_time: 6220s
+    daemon_options:
+      log-level: 0
+  relay-121:
+    daemon: monerod
+    start_time: 6225s
+    daemon_options:
+      log-level: 0
+  relay-122:
+    daemon: monerod
+    start_time: 6230s
+    daemon_options:
+      log-level: 0
+  relay-123:
+    daemon: monerod
+    start_time: 6235s
+    daemon_options:
+      log-level: 0
+  relay-124:
+    daemon: monerod
+    start_time: 6240s
+    daemon_options:
+      log-level: 0
+  relay-125:
+    daemon: monerod
+    start_time: 6245s
+    daemon_options:
+      log-level: 0
+  relay-126:
+    daemon: monerod
+    start_time: 6250s
+    daemon_options:
+      log-level: 0
+  relay-127:
+    daemon: monerod
+    start_time: 6255s
+    daemon_options:
+      log-level: 0
+  relay-128:
+    daemon: monerod
+    start_time: 6260s
+    daemon_options:
+      log-level: 0
+  relay-129:
+    daemon: monerod
+    start_time: 6265s
+    daemon_options:
+      log-level: 0
+  relay-130:
+    daemon: monerod
+    start_time: 6270s
+    daemon_options:
+      log-level: 0
+  relay-131:
+    daemon: monerod
+    start_time: 6275s
+    daemon_options:
+      log-level: 0
+  relay-132:
+    daemon: monerod
+    start_time: 6280s
+    daemon_options:
+      log-level: 0
+  relay-133:
+    daemon: monerod
+    start_time: 6285s
+    daemon_options:
+      log-level: 0
+  relay-134:
+    daemon: monerod
+    start_time: 6290s
+    daemon_options:
+      log-level: 0
+  relay-135:
+    daemon: monerod
+    start_time: 6295s
+    daemon_options:
+      log-level: 0
+  relay-136:
+    daemon: monerod
+    start_time: 6300s
+    daemon_options:
+      log-level: 0
+  relay-137:
+    daemon: monerod
+    start_time: 6305s
+    daemon_options:
+      log-level: 0
+  relay-138:
+    daemon: monerod
+    start_time: 6310s
+    daemon_options:
+      log-level: 0
+  relay-139:
+    daemon: monerod
+    start_time: 6315s
+    daemon_options:
+      log-level: 0
+  relay-140:
+    daemon: monerod
+    start_time: 6320s
+    daemon_options:
+      log-level: 0
+  relay-141:
+    daemon: monerod
+    start_time: 6325s
+    daemon_options:
+      log-level: 0
+  relay-142:
+    daemon: monerod
+    start_time: 6330s
+    daemon_options:
+      log-level: 0
+  relay-143:
+    daemon: monerod
+    start_time: 6335s
+    daemon_options:
+      log-level: 0
+  relay-144:
+    daemon: monerod
+    start_time: 6340s
+    daemon_options:
+      log-level: 0
+  relay-145:
+    daemon: monerod
+    start_time: 6345s
+    daemon_options:
+      log-level: 0
+  relay-146:
+    daemon: monerod
+    start_time: 6350s
+    daemon_options:
+      log-level: 0
+  relay-147:
+    daemon: monerod
+    start_time: 6355s
+    daemon_options:
+      log-level: 0
+  relay-148:
+    daemon: monerod
+    start_time: 6360s
+    daemon_options:
+      log-level: 0
+  relay-149:
+    daemon: monerod
+    start_time: 6365s
+    daemon_options:
+      log-level: 0
+  relay-150:
+    daemon: monerod
+    start_time: 6370s
+    daemon_options:
+      log-level: 0
+  relay-151:
+    daemon: monerod
+    start_time: 6375s
+    daemon_options:
+      log-level: 0
+  relay-152:
+    daemon: monerod
+    start_time: 6380s
+    daemon_options:
+      log-level: 0
+  relay-153:
+    daemon: monerod
+    start_time: 6385s
+    daemon_options:
+      log-level: 0
+  relay-154:
+    daemon: monerod
+    start_time: 6390s
+    daemon_options:
+      log-level: 0
+  relay-155:
+    daemon: monerod
+    start_time: 6395s
+    daemon_options:
+      log-level: 0
+  relay-156:
+    daemon: monerod
+    start_time: 7200s
+    daemon_options:
+      log-level: 0
+  relay-157:
+    daemon: monerod
+    start_time: 7205s
+    daemon_options:
+      log-level: 0
+  relay-158:
+    daemon: monerod
+    start_time: 7210s
+    daemon_options:
+      log-level: 0
+  relay-159:
+    daemon: monerod
+    start_time: 7215s
+    daemon_options:
+      log-level: 0
+  relay-160:
+    daemon: monerod
+    start_time: 7220s
+    daemon_options:
+      log-level: 0
+  relay-161:
+    daemon: monerod
+    start_time: 7225s
+    daemon_options:
+      log-level: 0
+  relay-162:
+    daemon: monerod
+    start_time: 7230s
+    daemon_options:
+      log-level: 0
+  relay-163:
+    daemon: monerod
+    start_time: 7235s
+    daemon_options:
+      log-level: 0
+  relay-164:
+    daemon: monerod
+    start_time: 7240s
+    daemon_options:
+      log-level: 0
+  relay-165:
+    daemon: monerod
+    start_time: 7245s
+    daemon_options:
+      log-level: 0
+  relay-166:
+    daemon: monerod
+    start_time: 7250s
+    daemon_options:
+      log-level: 0
+  relay-167:
+    daemon: monerod
+    start_time: 7255s
+    daemon_options:
+      log-level: 0
+  relay-168:
+    daemon: monerod
+    start_time: 7260s
+    daemon_options:
+      log-level: 0
+  relay-169:
+    daemon: monerod
+    start_time: 7265s
+    daemon_options:
+      log-level: 0
+  relay-170:
+    daemon: monerod
+    start_time: 7270s
+    daemon_options:
+      log-level: 0
+  relay-171:
+    daemon: monerod
+    start_time: 7275s
+    daemon_options:
+      log-level: 0
+  relay-172:
+    daemon: monerod
+    start_time: 7280s
+    daemon_options:
+      log-level: 0
+  relay-173:
+    daemon: monerod
+    start_time: 7285s
+    daemon_options:
+      log-level: 0
+  relay-174:
+    daemon: monerod
+    start_time: 7290s
+    daemon_options:
+      log-level: 0
+  relay-175:
+    daemon: monerod
+    start_time: 7295s
+    daemon_options:
+      log-level: 0
+  relay-176:
+    daemon: monerod
+    start_time: 7300s
+    daemon_options:
+      log-level: 0
+  relay-177:
+    daemon: monerod
+    start_time: 7305s
+    daemon_options:
+      log-level: 0
+  relay-178:
+    daemon: monerod
+    start_time: 7310s
+    daemon_options:
+      log-level: 0
+  relay-179:
+    daemon: monerod
+    start_time: 7315s
+    daemon_options:
+      log-level: 0
+  relay-180:
+    daemon: monerod
+    start_time: 7320s
+    daemon_options:
+      log-level: 0
+  relay-181:
+    daemon: monerod
+    start_time: 7325s
+    daemon_options:
+      log-level: 0
+  relay-182:
+    daemon: monerod
+    start_time: 7330s
+    daemon_options:
+      log-level: 0
+  relay-183:
+    daemon: monerod
+    start_time: 7335s
+    daemon_options:
+      log-level: 0
+  relay-184:
+    daemon: monerod
+    start_time: 7340s
+    daemon_options:
+      log-level: 0
+  relay-185:
+    daemon: monerod
+    start_time: 7345s
+    daemon_options:
+      log-level: 0
+  relay-186:
+    daemon: monerod
+    start_time: 7350s
+    daemon_options:
+      log-level: 0
+  relay-187:
+    daemon: monerod
+    start_time: 7355s
+    daemon_options:
+      log-level: 0
+  relay-188:
+    daemon: monerod
+    start_time: 7360s
+    daemon_options:
+      log-level: 0
+  relay-189:
+    daemon: monerod
+    start_time: 7365s
+    daemon_options:
+      log-level: 0
+  relay-190:
+    daemon: monerod
+    start_time: 7370s
+    daemon_options:
+      log-level: 0
+  relay-191:
+    daemon: monerod
+    start_time: 7375s
+    daemon_options:
+      log-level: 0
+  relay-192:
+    daemon: monerod
+    start_time: 7380s
+    daemon_options:
+      log-level: 0
+  relay-193:
+    daemon: monerod
+    start_time: 7385s
+    daemon_options:
+      log-level: 0
+  relay-194:
+    daemon: monerod
+    start_time: 7390s
+    daemon_options:
+      log-level: 0
+  relay-195:
+    daemon: monerod
+    start_time: 7395s
+    daemon_options:
+      log-level: 0
+  relay-196:
+    daemon: monerod
+    start_time: 7400s
+    daemon_options:
+      log-level: 0
+  relay-197:
+    daemon: monerod
+    start_time: 7405s
+    daemon_options:
+      log-level: 0
+  relay-198:
+    daemon: monerod
+    start_time: 7410s
+    daemon_options:
+      log-level: 0
+  relay-199:
+    daemon: monerod
+    start_time: 7415s
+    daemon_options:
+      log-level: 0
+  relay-200:
+    daemon: monerod
+    start_time: 7420s
+    daemon_options:
+      log-level: 0
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 14400
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
+  monero-seed-001:
+    daemon: monerod
+    start_time: 0s
+  monero-seed-002:
+    daemon: monerod
+    start_time: 1s
+  monero-seed-003:
+    daemon: monerod
+    start_time: 2s
+  monero-seed-004:
+    daemon: monerod
+    start_time: 3s
+  monero-seed-005:
+    daemon: monerod
+    start_time: 4s
+  monero-seed-006:
+    daemon: monerod
+    start_time: 5s

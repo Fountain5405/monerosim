@@ -36,7 +36,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 |---|---|---|
 | `runahead: 500ms` (default 100ms) | Shadow batches more events before sync | Slightly less accurate timing between hosts |
 | `process_threads: 2` (default 1) | Thread-pool size inside each simulated daemon (monerod `--max-concurrency`/`--prep-blocks-threads`; cuprated pools). Not wallet-rpc, not Python agents, and **not** Shadow's worker threads (`parallelism`) | `1` = deterministic but slow. Cost scales with N x daemons: large values (the eclipse templates once used 64-192) multiply per-daemon thread state across every node. `0` = monerod sizes its pools from the host core count (256 here) in every node |
-| `native_preemption: true` (default false) | Shadow preempts long-running CPU-bound code so other hosts get scheduled | See [Native preemption](#native-preemption) — improves wall perf; breaks strict reproducibility |
+| `native_preemption: false` (Shadow default; auto `true` at >= 100 agents) | Skips the per-syscall preemption-timer bookkeeping | ~7% less wall time measured; a busy loop without syscalls can then freeze the run. See [Native preemption](#native-preemption) |
 | `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
 | `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | **Don't enable.** See [Modeling syscall latency](#modeling-syscall-latency) — empirically stalls Monerosim runs even at quickstart scale. |
@@ -137,43 +137,72 @@ the safe ones; this one is a foot-gun.
 
 ## Native preemption
 
-The `native_preemption` knob is a sibling perf lever to syscall-latency
-modeling — both trade a sliver of fidelity for meaningful throughput.
+`native_preemption` is a safety switch against hangs, not a speed knob:
+turning it on makes runs slightly *slower*. (Earlier versions of this
+section said the opposite; that was never measured, and the 2026-10 A/B
+below contradicts it.)
 
 ### What it is
 
-Shadow only gets scheduling control back from a managed process when
-that process makes a syscall. A CPU-bound code path with no syscalls
-(a tight verification loop, a hash chain) would otherwise monopolize
-the worker thread until it finally calls into the kernel.
+Shadow only gets control back from a managed process when that process
+makes a syscall. Code that runs without one keeps its Shadow worker, and
+because simulated time only advances when processes block or are charged
+latency, a loop that never makes a syscall freezes the whole simulation.
 
-- `false` (Shadow upstream default): Shadow waits for the next syscall
-  before it can deschedule the process.
-- `true` (our quickstart default): Shadow installs a signal-based timer
-  (SIGVTALRM via `setitimer`) that forcibly yields the process every
-  ~10ms of native CPU, so other hosts can make progress.
+- `false` (Shadow's default, and what the scale ladders use): Shadow
+  waits for the next syscall.
+- `true` (set in `quickstart`, the eclipse templates, and automatically
+  for configs with >= 100 agents unless set): after 100 ms of native CPU
+  without returning control (`native_preemption_native_interval`),
+  Shadow interrupts the code via a timer signal and moves its simulated
+  time forward 10 ms (`native_preemption_sim_interval`).
 
-### Why turning it on speeds things up
+### Why it exists here
 
-Block validation (CLSAG, Bulletproofs+) is the longest CPU stretch in
-monerod. Without preemption, one host doing a verify can starve every
-other host queued on the same worker thread. With many hosts per core
-— we recommend ≤3:1 but real ratios drift higher at scale — preemption
-is what keeps the round-robin fair.
+A 1,011-node upgrade run in May 2026 froze at sim 6 h 07 when one daemon
+hit "DB resize needed" and spun on a futex (`archived_runs/20260504_104925_large_upgrade_short/`).
+That is why `scripts/scenario_parser.py` turns preemption on for >= 100
+agents (`LARGE_SIM_NATIVE_PREEMPTION_THRESHOLD` in
+`scripts/timing_constants.py`). Setting `general.native_preemption: false`
+explicitly overrides it. Every scale-ladder rung does: the 1k/2k/3k
+rungs on the 128-core box and the 125/250/500 rungs on the 32 GB box all
+finished with 0 failed processes and no freeze. The risk is still real in
+principle; a freeze shows up as simulated time stuck in the live monitor,
+not as a crash.
 
-The win is most visible when `host_count > core_count`, which on the
-target hardware tier is always.
+### What it costs
 
-### What you give up
+- **Every syscall gets slower.** Each entry into Shadow's shim disables
+  the preemption timer and each return re-enables it (`setitimer` +
+  `rt_sigprocmask`), about 4 extra real syscalls per emulated one. Before
+  `--bootfast` this made every monero process start take ~17 s instead of
+  ~3 s (`docs/20261003_startup_cost.md`).
+- **Measured on a full run: ~7% more wall time.** The 250-node rung of the
+  32 GB ladder (`test_configs/scale_ladder_box32/250_50u_200r{,_preempt}.yaml`,
+  identical except for this line; 8 h sim, `--bootfast --ksm`, 16 workers):
 
-- **Strict reproducibility**: the exact preemption point depends on
-  wall-clock CPU timing, so two runs of the same seed can interleave
-  differently at the instruction level. Consensus-level outcomes still
-  match (Monero's protocol is deterministic), but per-host stdout
-  ordering, `Event` counts, and any forensic timestamp comparison
-  between runs may shift.
-- Tiny overhead from signal delivery itself — negligible compared to
-  the throughput gain.
+  | `native_preemption` | Wall | Ratio | Failed procs | Blocks | Txs created / in blocks |
+  |---|---|---|---|---|---|
+  | `false` | 1 h 13 m | 6.6 | 0 | 224 | 1,337 / 1,314 |
+  | `true` | 1 h 18 m | 6.2 | 0 | 240 | 1,353 / 1,335 |
+
+  The difference came from the boot and funding phase (sim ~1:45-5:00:
+  3 h 20 m of sim in 20 wall-min with `false`, 2 h 55 m with `true`); the
+  transaction phase ran at the same pace (~2 h 35 m of sim per 30 wall-min
+  in both). One pair, so treat ~7% as indicative.
+- **No strict reproducibility.** The preemption point depends on real CPU
+  time, so two runs with the same seed can interleave differently (the
+  block counts above differ for this reason, and because
+  `process_threads: 2` already makes runs non-deterministic).
+
+### Which to use
+
+- Short or well-trodden runs (the ladder workload): `false` is a little
+  faster and has not frozen in any measured run.
+- Long runs on unusual code paths (upgrades, hard forks, restarts, anything
+  that may resize LMDB or busy-wait), or any run you cannot babysit: `true`
+  is cheap insurance against losing the run to a freeze.
+- Strict reproducibility: `false`, with the recipe below.
 
 ### Interaction with `process_threads`
 
@@ -181,13 +210,13 @@ target hardware tier is always.
 |---|---|---|
 | `0` | `true` | Fully non-deterministic; every monerod sizes its pools from the host core count -- avoid |
 | `2` | `true` | Non-deterministic, small per-node pools (our quickstart and eclipse default) |
-| `0` | `false` | Non-deterministic without the throughput win — rarely useful |
+| `0` | `false` | Non-deterministic; avoid (see the `0` row above) |
 | `1` | `false` | Deterministic, slow — pick this for strict reproducibility |
 | `1` | `true` | Determinism guarantee is broken; treat as effectively non-deterministic |
 
 If you actually need bit-for-bit reproducibility (e.g., reproducing a
 known-good run for a paper), set `process_threads: 1` *and*
-`native_preemption: false`. Otherwise leave preemption on.
+`native_preemption: false`.
 
 ## Start-up cost
 
@@ -451,13 +480,18 @@ KSM needs two things, both of which must be true:
    off by default, and it resets at every reboot:
 
    ```bash
-   sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/run'
+   sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs && echo 1 > /sys/kernel/mm/ksm/run'
    ```
 
-   `pages_to_scan=10000` (per 20 ms ksmd wake-up) keeps merging ahead of
-   thousands of node starts; the kernel default of 100 is far too slow.
-   Without root you can still *check* it:
-   `cat /sys/kernel/mm/ksm/run` (1 = on).
+   The scan rate is `pages_to_scan` × 4 KB per `sleep_millisecs`;
+   10000 pages every 20 ms (~2 GB/s) keeps merging ahead of thousands of
+   node starts. The defaults are far too slow, and "enabled" alone is not
+   enough: kernel 100 pages / 20 ms is ~20 MB/s, and Ubuntu 6.8 ships
+   `sleep_millisecs=200`, so even `pages_to_scan=10000` gives only ~200 MB/s
+   there. Without root you can still *check* it:
+   `scripts/ksm_check.sh` reports run, scan rate, and the fix, including a
+   `/etc/tmpfiles.d` entry that reapplies the settings at every boot.
+   `run_sim.sh --ksm` runs it in preflight and `setup.sh` at the end.
 
 2. **Every process opts in.** Merging is per-process opt-in via
    `prctl(PR_SET_MEMORY_MERGE, 1)`, which survives `execve` and `fork` —
@@ -468,8 +502,8 @@ KSM needs two things, both of which must be true:
    ./run_sim.sh --config my.yaml --bootfast --ksm
    ```
 
-   The preflight reports whether the kernel side is actually enabled (and
-   prints the sudo line if not); the run proceeds either way, just with
+   The preflight reports whether the kernel side is enabled and scanning
+   fast enough (and prints the fix if not); the run proceeds either way, just with
    ~10× the RAM. The wrapper can also be used directly for other commands.
 
 Per-machine guidance, updated for measured per-node costs (full-load
@@ -479,15 +513,40 @@ per node):
 | RAM | Nodes without KSM (~320 MB/node) | Nodes with KSM, full load (~100–150 MB/node) | With KSM, light/short runs |
 |---|---|---|---|
 | 16 GB | ~40 | ~100–140 | ~300–400 |
-| 32 GB | ~85 | ~250–300 | ~600–800 |
+| 32 GB | ~85 | **~500 measured** (2026-10 32 GB ladder; 600 did not fit) | ~500: the boot-phase peak binds, not the tx load |
 | 64 GB | ~180 | ~500–600 | ~1,200 |
 | 128 GB | ~380 | ~1,000–1,200 | ~2,500 |
 | 1 TB | ~2,800 | ~6,000+ (disk and wall time bind first) | — |
 
 Cores add a second cap: `3 × cores` simulated hosts. Shadow's per-host
 scheduler degrades past ~3 hosts per physical core; the 3k rung ran
-3,011 hosts on 128 physical cores (~24:1) with preemption on, at the
+3,011 hosts on 128 physical cores (~24:1) with preemption off, at the
 cost of the peak-phase slowdown above.
+
+### The 32 GB ladder (2026-10-19)
+
+A Ryzen 9 5900XT (16 cores / 32 threads, 31 GB RAM) ran the 1k rung's
+workload scaled down (`test_configs/scale_ladder_box32/`: same seed,
+native mining 5 x 20 h/s, 5k CAIDA GML, RPC SSL on, 1 tx/user/300 s,
+users+miners at `monitor`, relays at `0`, `--bootfast --ksm`, KSM at
+10000 pages / 20 ms, 16 workers; each rung runs until every user has sent
+for >= 2 h). Run data: `archived_runs/box32_ladder_20261019/`.
+
+| Rung | Users / relays | Sim | Wall | Ratio | Peak RAM | KSM saved | Txs created / in blocks | Failed procs |
+|---|---|---|---|---|---|---|---|---|
+| 125 | 25 / 100 | 8 h | 51 m | 9.5 | ~8.6 GB | ~45 GB | 753 / 739 | 0 |
+| 250 | 50 / 200 | 8 h | 1 h 13 m | 6.6 | ~13 GB | ~79 GB | 1,337 / 1,314 | 0 |
+| 500 | 100 / 400 | 9 h | 2 h 36 m | 3.5 | ~23 GB | ~145 GB | 2,994 / 2,982 | 0 |
+| 600 | 120 / 480 | stopped at 2.5 h | 47 m | — | 29.4 GB + swap | ~147 GB | — | — |
+| 750 | 150 / 600 | stopped at 2.5 h | 50 m | — | >29 GB + swap | ~149 GB | — | — |
+
+The ceiling is RAM, at about 500 nodes, and it is set by the end of the
+boot phase (all relays up, users joining, ~45 min wall in), not by the
+transaction load: RAM stayed flat through the 500 rung's transaction
+hours. 600 and 750 were stopped by the ladder driver when free RAM fell
+below 1.5 GB (testing on a box that also hosts other services). Per
+node, 500 nodes used ~45 MB with KSM against the ~320 MB it would take
+without. CPU and disk were not binding (500 rung: 4.1 GB of run data).
 
 ### Auto-config caps predate the ladder
 
