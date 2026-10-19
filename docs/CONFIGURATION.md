@@ -73,7 +73,7 @@ general:
 | `bootstrap_end_time` | string | - | Bootstrap period end time |
 | `difficulty_cache_ttl` | u32 | 30 | Difficulty cache TTL (seconds) |
 | `process_threads` | u32 | 1 | Thread-pool size inside **each simulated daemon**: monerod gets `--max-concurrency=N --prep-blocks-threads=N`; cuprated pins its tokio/rayon/storage pools to N. Not applied to wallet-rpc or Python agents. **Not** Shadow's worker-thread count (that is `parallelism`): cost scales with N x number of daemons, so keep it small (1 or 2). `0` omits the monerod flags, so every node sizes its pools from the host's core count. |
-| `native_preemption` | bool | false | Shadow native preemption |
+| `native_preemption` | bool | false (auto `true` at >= 100 agents when unset) | Shadow native preemption: escapes busy loops, ~7% slower; see PERFORMANCE_AND_SCALE.md |
 | `daemon_defaults` | map | - | Default daemon CLI options |
 | `wallet_defaults` | map | - | Default wallet CLI options |
 | `runahead` | string | - | Shadow runahead duration |
