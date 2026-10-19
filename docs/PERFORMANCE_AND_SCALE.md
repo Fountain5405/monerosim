@@ -451,13 +451,18 @@ KSM needs two things, both of which must be true:
    off by default, and it resets at every reboot:
 
    ```bash
-   sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/run'
+   sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs && echo 1 > /sys/kernel/mm/ksm/run'
    ```
 
-   `pages_to_scan=10000` (per 20 ms ksmd wake-up) keeps merging ahead of
-   thousands of node starts; the kernel default of 100 is far too slow.
-   Without root you can still *check* it:
-   `cat /sys/kernel/mm/ksm/run` (1 = on).
+   The scan rate is `pages_to_scan` × 4 KB per `sleep_millisecs`;
+   10000 pages every 20 ms (~2 GB/s) keeps merging ahead of thousands of
+   node starts. The defaults are far too slow, and "enabled" alone is not
+   enough: kernel 100 pages / 20 ms is ~20 MB/s, and Ubuntu 6.8 ships
+   `sleep_millisecs=200`, so even `pages_to_scan=10000` gives only ~200 MB/s
+   there. Without root you can still *check* it:
+   `scripts/ksm_check.sh` reports run, scan rate, and the fix, including a
+   `/etc/tmpfiles.d` entry that reapplies the settings at every boot.
+   `run_sim.sh --ksm` runs it in preflight and `setup.sh` at the end.
 
 2. **Every process opts in.** Merging is per-process opt-in via
    `prctl(PR_SET_MEMORY_MERGE, 1)`, which survives `execve` and `fork` —
@@ -468,8 +473,8 @@ KSM needs two things, both of which must be true:
    ./run_sim.sh --config my.yaml --bootfast --ksm
    ```
 
-   The preflight reports whether the kernel side is actually enabled (and
-   prints the sudo line if not); the run proceeds either way, just with
+   The preflight reports whether the kernel side is enabled and scanning
+   fast enough (and prints the fix if not); the run proceeds either way, just with
    ~10× the RAM. The wrapper can also be used directly for other commands.
 
 Per-machine guidance, updated for measured per-node costs (full-load

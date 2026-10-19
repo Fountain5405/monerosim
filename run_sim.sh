@@ -671,14 +671,15 @@ preflight_checks() {
             log_err "--ksm was given but this process is not KSM-mergeable (re-exec did not happen?)"
             exit 1
         fi
-        if [[ "$(cat /sys/kernel/mm/ksm/run 2>/dev/null || echo 0)" == "1" ]]; then
-            log_ok "KSM: opted in and kernel merging enabled (pages_to_scan=$(cat /sys/kernel/mm/ksm/pages_to_scan))"
+        # scripts/ksm_check.sh also catches the kernel-default pages_to_scan=100,
+        # which is "enabled" but merges far too slowly to keep RAM down.
+        local ksm_report ksm_rc=0
+        ksm_report=$("$SCRIPT_DIR/scripts/ksm_check.sh") || ksm_rc=$?
+        if (( ksm_rc == 0 )); then
+            log_ok "$ksm_report (opted in)"
         else
-            log_warn "KSM: --ksm given but the kernel has merging disabled (/sys/kernel/mm/ksm/run != 1)"
-            log_warn "  The run proceeds, but without the ~10x RAM saving (each monerod keeps its"
-            log_warn "  own 256 MB RandomX light cache; ~320 MB/node instead of ~30-150 MB)"
-            log_info "  Enable (needs root, resets at every reboot):"
-            log_info "    sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/run'"
+            while IFS= read -r line; do log_warn "$line"; done <<< "$ksm_report"
+            log_warn "  The run proceeds, but RAM may approach ~320 MB/node instead of ~30-150 MB."
         fi
     fi
 
