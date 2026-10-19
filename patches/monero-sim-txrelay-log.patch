@@ -1,0 +1,360 @@
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+index 4e672b9a6..016f8f2be 100644
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -57,6 +57,7 @@ using namespace epee;
+ #include "hardforks/hardforks.h"
+ #include "tx_verification_utils.h"
+ #include "version.h"
++#include "cryptonote_protocol/sim_txrelay_log.h"
+ 
+ #include <boost/filesystem.hpp>
+ 
+@@ -1359,6 +1360,12 @@ namespace cryptonote
+       NOTIFY_NEW_TRANSACTIONS::request stem_req{};
+       for (auto& tx : txs)
+       {
++        // SIMULATION ONLY (--sim-log-txrelay): `was` stem/forward = embargo timer fired.
++        if (sim_txrelay_log::enabled() && std::get<2>(tx) != relay_method::none)
++        {
++          sim_txrelay_log::write("pool_relay", ",\"tx\":\"" + epee::string_tools::pod_to_hex(std::get<0>(tx)) +
++            "\",\"was\":\"" + sim_txrelay_log::relay_name(std::get<2>(tx)) + "\"");
++        }
+         switch (std::get<2>(tx))
+         {
+           default:
+diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.inl b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
+index a73c508fe..aa468abe4 100644
+--- a/src/cryptonote_protocol/cryptonote_protocol_handler.inl
++++ b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
+@@ -45,6 +45,9 @@
+ #include "common/pruning.h"
+ #include "common/util.h"
+ #include "misc_log_ex.h"
++#include "cryptonote_protocol/sim_txrelay_log.h"
++#include "string_tools.h"
++#include <boost/uuid/uuid_io.hpp>
+ 
+ #undef MONERO_DEFAULT_LOG_CATEGORY
+ #define MONERO_DEFAULT_LOG_CATEGORY "net.cn"
+@@ -939,6 +942,14 @@ namespace cryptonote
+ 
+     for (auto& tx : arg.txs)
+     {
++      // SIMULATION ONLY (--sim-log-txrelay): hash before the blob is moved below.
++      crypto::hash sim_hash = crypto::null_hash;
++      if (sim_txrelay_log::enabled())
++      {
++        cryptonote::transaction sim_tx;
++        cryptonote::parse_and_validate_tx_from_blob(tx, sim_tx, sim_hash);
++      }
++
+       tx_verification_context tvc{};
+       if (!m_core.handle_incoming_tx(tx, tvc, tx_relay, true) && !tvc.m_no_drop_offense)
+       {
+@@ -947,6 +958,18 @@ namespace cryptonote
+         return 1;
+       }
+ 
++      // Every stem receipt, and only the first receipt of a fluffed tx: fluffs
++      // arrive again from most peers, which would multiply the log by the peer count.
++      if (sim_txrelay_log::enabled() && (!arg.dandelionpp_fluff || tvc.m_relay != relay_method::none))
++      {
++        sim_txrelay_log::write("rx", ",\"tx\":\"" + epee::string_tools::pod_to_hex(sim_hash) +
++          "\",\"conn\":\"" + boost::uuids::to_string(context.m_connection_id) +
++          "\",\"addr\":\"" + context.m_remote_address.str() +
++          "\",\"dir\":\"" + (context.m_is_income ? "in" : "out") +
++          "\",\"fluff\":" + (arg.dandelionpp_fluff ? "true" : "false") +
++          ",\"result\":\"" + sim_txrelay_log::relay_name(tvc.m_relay) + "\"");
++      }
++
+       switch (tvc.m_relay)
+       {
+         case relay_method::local:
+diff --git a/src/cryptonote_protocol/levin_notify.cpp b/src/cryptonote_protocol/levin_notify.cpp
+index 0fbc7248b..46327d18c 100644
+--- a/src/cryptonote_protocol/levin_notify.cpp
++++ b/src/cryptonote_protocol/levin_notify.cpp
+@@ -45,10 +45,13 @@
+ #include "crypto/crypto.h"
+ #include "crypto/duration.h"
+ #include "cryptonote_basic/connection_context.h"
++#include "cryptonote_basic/cryptonote_format_utils.h"
+ #include "cryptonote_core/i_core_events.h"
+ #include "cryptonote_protocol/cryptonote_protocol_defs.h"
++#include "cryptonote_protocol/sim_txrelay_log.h"
+ #include "net/dandelionpp.h"
+ #include "p2p/net_node.h"
++#include "string_tools.h"
+ 
+ #undef MONERO_DEFAULT_LOG_CATEGORY
+ #define MONERO_DEFAULT_LOG_CATEGORY "net.p2p.tx"
+@@ -161,6 +164,49 @@ namespace levin
+       return get_out_connections(p2p, get_blockchain_height(p2p, core));
+     }
+ 
++    //! SIMULATION ONLY (--sim-log-txrelay): JSON array of the hashes of `txs`.
++    std::string sim_tx_hashes(const epee::span<const blobdata> txs)
++    {
++      std::string out{"["};
++      for (const blobdata& blob : txs)
++      {
++        cryptonote::transaction tx;
++        crypto::hash hash = crypto::null_hash;
++        cryptonote::parse_and_validate_tx_from_blob(blob, tx, hash);
++        if (out.size() > 1)
++          out += ',';
++        out += '"' + epee::string_tools::pod_to_hex(hash) + '"';
++      }
++      return out + "]";
++    }
++
++    //! SIMULATION ONLY (--sim-log-txrelay): `{"conn":..,"addr":..}` for a connection.
++    std::string sim_peer(connections& p2p, const boost::uuids::uuid& id)
++    {
++      std::string addr;
++      if (!id.is_nil())
++      {
++        p2p.for_connection(id, [&addr] (detail::p2p_context& context) {
++          addr = context.m_remote_address.str();
++          return true;
++        });
++      }
++      return "{\"conn\":\"" + boost::uuids::to_string(id) + "\",\"addr\":\"" + addr + "\"}";
++    }
++
++    //! SIMULATION ONLY (--sim-log-txrelay): JSON array of the stem connections in `map`.
++    std::string sim_stems(connections& p2p, const net::dandelionpp::connection_map& map)
++    {
++      std::string out{"["};
++      for (const boost::uuids::uuid& id : map)
++      {
++        if (out.size() > 1)
++          out += ',';
++        out += sim_peer(p2p, id);
++      }
++      return out + "]";
++    }
++
+     epee::levin::message_writer make_tx_message(std::vector<blobdata>&& txs, const bool pad, const bool fluff)
+     {
+       NOTIFY_NEW_TRANSACTIONS::request request{};
+@@ -529,7 +575,11 @@ namespace levin
+ 
+         assert(zone->strand.running_in_this_thread());
+         if (zone->map.update(std::move(out_connections)))
++        {
++          if (sim_txrelay_log::enabled() && zone->nzone == epee::net_utils::zone::public_ && zone->p2p)
++            sim_txrelay_log::write("stems", ",\"stems\":" + sim_stems(*zone->p2p, zone->map));
+           post(std::move(zone));
++        }
+       }
+ 
+       //! \pre Called within `zone_->strand`.
+@@ -554,6 +604,10 @@ namespace levin
+         if (!zone_ || !core_ || txs_.empty())
+           return;
+ 
++        const bool sim_log = sim_txrelay_log::enabled();
++        const std::string sim_txs = sim_log ? sim_tx_hashes(epee::to_span(txs_)) : std::string{};
++        const std::string sim_method = sim_log ? std::string{",\"method\":\""} + sim_txrelay_log::relay_name(tx_relay) + "\"" : std::string{};
++
+         if (!zone_->fluffing || tx_relay == relay_method::local)
+         {
+           core_->on_transactions_relayed(epee::to_span(txs_), relay_method::stem);
+@@ -565,6 +619,8 @@ namespace levin
+               /* Source is intentionally omitted in debug log for privacy - a
+                  nil uuid indicates source is that node. */
+               MDEBUG("Sent " << txs_.size() << " transaction(s) to " << destination << " using Dandelion++ stem");
++              if (sim_log)
++                sim_txrelay_log::write("stem", ",\"txs\":" + sim_txs + sim_method + ",\"to\":" + sim_peer(*zone_->p2p, destination));
+               return;
+             }
+ 
+@@ -573,7 +629,11 @@ namespace levin
+           }
+ 
+           MERROR("Unable to send transaction(s) via Dandelion++ stem");
++          if (sim_log)
++            sim_txrelay_log::write("fluff", ",\"txs\":" + sim_txs + sim_method + ",\"reason\":\"no_stem\"");
+         }
++        else if (sim_log)
++          sim_txrelay_log::write("fluff", ",\"txs\":" + sim_txs + sim_method + ",\"reason\":\"epoch\"");
+ 
+         core_->on_transactions_relayed(epee::to_span(txs_), relay_method::fluff);
+         fluff_notify::run(std::move(zone_), epee::to_span(txs_), source_);
+@@ -610,6 +670,8 @@ namespace levin
+ 
+         zone_->map = std::move(map_);
+         zone_->fluffing = fluffing_;
++        if (sim_txrelay_log::enabled() && zone_->nzone == epee::net_utils::zone::public_ && zone_->p2p)
++          sim_txrelay_log::write("epoch", std::string{",\"fluff\":"} + (fluffing_ ? "true" : "false") + ",\"stems\":" + sim_stems(*zone_->p2p, zone_->map));
+         update_channels::post(std::move(zone_));
+       }
+     };
+@@ -871,6 +933,12 @@ namespace levin
+     }
+     else
+     {
++      if (sim_txrelay_log::enabled() && zone_->nzone == epee::net_utils::zone::public_)
++      {
++        sim_txrelay_log::write("send", ",\"txs\":" + sim_tx_hashes(epee::to_span(txs)) +
++          ",\"method\":\"" + sim_txrelay_log::relay_name(tx_relay) + "\",\"src\":\"" +
++          (source.is_nil() ? std::string{"self"} : boost::uuids::to_string(source)) + "\"");
++      }
+       switch (tx_relay)
+       {
+         default:
+diff --git a/src/cryptonote_protocol/sim_txrelay_log.h b/src/cryptonote_protocol/sim_txrelay_log.h
+new file mode 100644
+index 000000000..acc2f1d37
+--- /dev/null
++++ b/src/cryptonote_protocol/sim_txrelay_log.h
+@@ -0,0 +1,84 @@
++// Simulation-only addition by monerosim, under the same BSD-3-Clause license as Monero.
++
++// SIMULATION ONLY (monerosim patches/monero-sim-txrelay-log.patch): ground-truth
++// log of Dandelion++ transaction relay, enabled with --sim-log-txrelay=<file>.
++// Each line is one JSON object {"t":<unix us>,"ev":...}. Under Shadow the clock
++// is simulated time. Measurement only: nothing here changes relay behaviour.
++// Event types are documented in monerosim docs/TXRELAY_LOG.md.
++
++#pragma once
++
++#include <atomic>
++#include <chrono>
++#include <cstdio>
++#include <mutex>
++#include <sstream>
++#include <string>
++
++#include "cryptonote_protocol/enums.h"
++
++namespace cryptonote
++{
++namespace sim_txrelay_log
++{
++  struct state
++  {
++    std::mutex lock;
++    std::atomic<std::FILE*> file{nullptr};
++  };
++
++  inline state& get_state()
++  {
++    static state s;
++    return s;
++  }
++
++  inline bool enabled() noexcept
++  {
++    return get_state().file.load(std::memory_order_acquire) != nullptr;
++  }
++
++  //! Opens `path` for appending; empty path leaves logging off. Returns false on error.
++  inline bool open(const std::string& path)
++  {
++    if (path.empty() || enabled())
++      return true;
++    std::FILE* f = std::fopen(path.c_str(), "a");
++    if (!f)
++      return false;
++    get_state().file.store(f, std::memory_order_release);
++    return true;
++  }
++
++  inline const char* relay_name(const relay_method method) noexcept
++  {
++    switch (method)
++    {
++      case relay_method::none: return "none";
++      case relay_method::local: return "local";
++      case relay_method::forward: return "forward";
++      case relay_method::stem: return "stem";
++      case relay_method::fluff: return "fluff";
++      case relay_method::block: return "block";
++    }
++    return "unknown";
++  }
++
++  //! Writes `{"t":<now>,"ev":"<ev>"<body>}`; `body` starts with a comma or is empty.
++  inline void write(const char* ev, const std::string& body)
++  {
++    state& s = get_state();
++    std::FILE* f = s.file.load(std::memory_order_acquire);
++    if (!f)
++      return;
++    const auto us = std::chrono::duration_cast<std::chrono::microseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++    std::ostringstream line;
++    line << "{\"t\":" << us << ",\"ev\":\"" << ev << "\"" << body << "}\n";
++    const std::string out = line.str();
++    std::lock_guard<std::mutex> guard{s.lock};
++    std::fputs(out.c_str(), f);
++    std::fflush(f); // Shadow kills daemons at stop_time; keep every line
++  }
++} // sim_txrelay_log
++} // cryptonote
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index 1dd04a912..03171ad42 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -160,6 +160,7 @@ namespace nodetool
+     const command_line::arg_descriptor<bool> arg_p2p_hide_my_port   =    {"hide-my-port", "Do not announce yourself as peerlist candidate", false, true};
+     const command_line::arg_descriptor<bool> arg_no_sync = {"no-sync", "Don't synchronize the blockchain with other peers", false};
+     const command_line::arg_descriptor<bool> arg_enable_dns_blocklist = {"enable-dns-blocklist", "Apply realtime blocklist from DNS", false};
++    const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
+     const command_line::arg_descriptor<std::string> arg_peerlist_dump_file = {"peerlist-dump-file", "MEASUREMENT ONLY (Shadow eclipse reproduction): if set, periodically append the full white+gray peer list as JSONL to this file. Off by default; read-only w.r.t. peering.", ""};
+ 
+     const command_line::arg_descriptor<bool>        arg_no_igd  = {"no-igd", "Disable UPnP port mapping"};
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index 80a7fe722..ea580dc59 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -547,6 +547,7 @@ namespace nodetool
+     extern const command_line::arg_descriptor<bool> arg_pad_transactions;
+     extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
+     extern const command_line::arg_descriptor<std::string> arg_peerlist_dump_file;
++    extern const command_line::arg_descriptor<std::string> arg_sim_log_txrelay;
+ }
+ 
+ POP_WARNINGS
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index c665dd8c8..8f903755a 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -61,6 +61,7 @@
+ #include "crypto/crypto.h"
+ #include "storages/levin_abstract_invoke2.h"
+ #include "cryptonote_core/cryptonote_core.h"
++#include "cryptonote_protocol/sim_txrelay_log.h"
+ #include "net/parse.h"
+ 
+ 
+@@ -122,6 +123,7 @@ namespace nodetool
+     command_line::add_arg(desc, arg_no_sync);
+     command_line::add_arg(desc, arg_enable_dns_blocklist);
+     command_line::add_arg(desc, arg_peerlist_dump_file);
++    command_line::add_arg(desc, arg_sim_log_txrelay);
+     command_line::add_arg(desc, arg_no_igd);
+     command_line::add_arg(desc, arg_igd);
+     command_line::add_arg(desc, arg_out_peers);
+@@ -452,6 +454,18 @@ namespace nodetool
+     m_offline = command_line::get_arg(vm, cryptonote::arg_offline);
+     m_use_ipv6 = command_line::get_arg(vm, arg_p2p_use_ipv6);
+     m_require_ipv4 = !command_line::get_arg(vm, arg_p2p_ignore_ipv4);
++    // Opened before the notifier below, whose constructor starts the first epoch.
++    // A relative path is resolved against the data dir, like --peerlist-dump-file.
++    std::string sim_txrelay_log_path = command_line::get_arg(vm, arg_sim_log_txrelay);
++    if (!sim_txrelay_log_path.empty() && sim_txrelay_log_path[0] != '/')
++      sim_txrelay_log_path = command_line::get_arg(vm, cryptonote::arg_data_dir) + "/" + sim_txrelay_log_path;
++    if (!cryptonote::sim_txrelay_log::open(sim_txrelay_log_path))
++    {
++      MERROR("Failed to open --sim-log-txrelay file " << sim_txrelay_log_path);
++      return false;
++    }
++    if (!sim_txrelay_log_path.empty())
++      MGINFO_RED("*** SIMULATION: --sim-log-txrelay is ON, writing Dandelion++ relay events to " << sim_txrelay_log_path << ". Measurement only. ***");
+     public_zone.m_notifier = cryptonote::levin::notify{
+       public_zone.m_net_server.get_io_context(), public_zone.m_net_server.get_config_shared(), nullptr, epee::net_utils::zone::public_, pad_txs, m_payload_handler.get_core()
+     };

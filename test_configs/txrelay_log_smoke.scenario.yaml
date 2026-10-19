@@ -1,0 +1,85 @@
+# Smoke test for the Dandelion++ relay log (patches/monero-sim-txrelay-log.patch,
+# --sim-log-txrelay; docs/TXRELAY_LOG.md). 34 daemons, all logging, ~1 h of
+# user transactions. Checks that every daemon writes txrelay.jsonl, that stems
+# chain across relays, and that every user tx has a ground-truth origin.
+#
+# Needs a monerod-sim built with the patch (./setup.sh --sim-binary). Before
+# that is installed, point `daemon:` at a local build instead, e.g.
+#   ~/.monerosim/build/monero-txrelay/build/release/bin/monerod
+# The fallback seeds are declared below so they log too: left to `auto` they run
+# stock monerod, which rejects the flag, and stems sent to them go unrecorded.
+#
+# Check: python3 analysis/spy/txrelay_check.py archived_runs/<run>
+#
+# Expand: python3 scripts/generate_config.py --from test_configs/txrelay_log_smoke.scenario.yaml \
+#             -o test_configs/txrelay_log_smoke.yaml
+# Run:    ./run_sim.sh --config test_configs/txrelay_log_smoke.yaml --bootfast
+general:
+  stop_time: 5h
+  simulation_seed: 12345
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  native_preemption: true
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..005}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  user-{001..008}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 40m
+    start_time_stagger: 10s
+    transaction_interval: 2m
+    activity_start_time: 4h
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  relay-{001..015}:
+    daemon: monerod-sim
+    start_time: 5m
+    start_time_stagger: 5s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  # Fallback seeds on the patched binary: well connected, so often stem peers.
+  monero-seed-{001..006}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 1s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 70m
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

@@ -1231,6 +1231,7 @@ install_sim_monerod() {
     #   patches/monero-sim-peerlist-dump.patch    --peerlist-dump-file (measurement only)
     #   patches/monero-sim-pop.patch              --sim-publish-or-perish (countermeasure sims)
     #   patches/monero-sim-tail-emission.patch    --sim-tail-emission-height (tail emission)
+    #   patches/monero-sim-txrelay-log.patch      --sim-log-txrelay (measurement only)
     # One build serves the fork-schedule, native-mining and eclipse-measurement
     # features; monerod-hf is kept as a symlink alias so the hard fork and
     # eclipse configs that name it keep working.
@@ -1241,6 +1242,7 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-peerlist-dump.patch"
         "$SCRIPT_DIR/patches/monero-sim-pop.patch"
         "$SCRIPT_DIR/patches/monero-sim-tail-emission.patch"
+        "$SCRIPT_DIR/patches/monero-sim-txrelay-log.patch"
     )
     local p
     for p in "${patches[@]}"; do

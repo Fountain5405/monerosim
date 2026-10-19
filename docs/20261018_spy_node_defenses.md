@@ -588,6 +588,8 @@ stem.
 
 - **Relay logging.** Neither spies nor honest nodes log the stem/fluff flag.
   The parsed line `Received NOTIFY_NEW_TRANSACTIONS (N txes)` doesn't carry it.
+  *(2026-10-19: I1 below is built on branch `feat/spy-relay-log`:
+  `patches/monero-sim-txrelay-log.patch`, `docs/TXRELAY_LOG.md`.)*
 - **Spy-side estimators.** No estimator uses only spy vantage points, and none
   reports precision and recall against ground truth by sender reachability.
 - **Exposure over time.** There is no per-node time series of the spy share of
