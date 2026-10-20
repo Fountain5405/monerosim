@@ -452,8 +452,9 @@ During the run every daemon also holds its own LMDB, ~3.2 KB per transaction
 per node: roughly 60 / 215 / 385 GB in all at the 1k / 2k / 3k rungs' tx
 counts, about as much as the logs from 2k up. Logs compress ~20x and chains
 ~1.4x with zstd, while page-level dedup of the chains falls to ~1.2x once
-transactions flow: `docs/20261020_storage_dedup_zfs.md` (a compressing
-filesystem created per run).
+transactions flow. About 78% of a chain is tx and block blobs that every node
+holds identically, so a shared blob store (a sim patch) could cut chains ~4x:
+`docs/20261020_storage_dedup_zfs.md`.
 
 ### KSM (kernel same-page merging)
 

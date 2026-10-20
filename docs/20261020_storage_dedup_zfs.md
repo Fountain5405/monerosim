@@ -1,11 +1,17 @@
-# Per-node chain and log storage: compress it, dedup doesn't pay
+# Per-node chain and log storage: share the blobs; dedup doesn't pay
 
 Status: an idea for scaling hardware, measured (2026-10-20); nothing is built.
 The question was whether the per-node blockchains can be shared the way KSM
 shares the RandomX cache, because 1k-node runs have used 300-500 GB of disk.
-Short answer: page-level dedup of the chains falls to ~1.2x once transactions
-flow, but a compressing filesystem under the run (ZFS or btrfs, created per run
-if wanted) would cut the logs ~20x and the chains ~1.4x.
+Short answer:
+- **Page-level dedup** of the chains falls to ~1.2x once transactions flow.
+- **The candidate is a sim patch** that keeps the chains' blobs (tx data and
+  blocks, ~78% of a chain's live pages, identical on every node) in one shared
+  store per run, addressed by hash, while each node keeps its own indexes. At
+  the 3k rung that would take the chains from ~385 GB to ~85 GB.
+- **Live compression** (a ZFS or btrfs filesystem under the run, created per
+  run if wanted) would cut peak disk too, logs ~20x and chains ~1.4x. Runs are
+  already compressed when archived, so this is lower priority.
 
 ## The problem
 
@@ -96,9 +102,55 @@ Whole-file ratios; per-record compression in a filesystem is somewhat lower.
   chains, and the database would vanish at process exit (turnover restarts, the
   chain archive).
 
-## The proposal: a compressing filesystem under the run's data
+## The candidate: a shared blob store (sim patch)
 
-Put the daemons' data directories (`general.daemon_data_dir`) and Shadow's data
+**Where a chain's bytes are.** Live pages by table in a 500 rung chain
+(`mdb_stat -a`, 2,331 live pages; the dupsort tables' sub-databases are in the
+remainder):
+
+| Part | Pages | Share | Same on every node? |
+|---|---|---|---|
+| `txs_prunable` (proofs, signatures) | 1,480 | 63% | yes: immutable, addressed by tx hash |
+| `txs_pruned` | 279 | 12% | yes |
+| `blocks` | 43 | 2% | yes |
+| `txpool_blob` | 27 | 1% | the same tx bytes, while pending |
+| indexes: outputs, key images, heights, `txs_prunable_hash`, metadata | ~500 | ~22% | per node: its view of its chain |
+
+**The patch.** A flag-gated sim patch in the style of the others (say
+`--sim-shared-blob-dir <dir>`), not a new engine. Each node keeps its own LMDB
+for the indexes and writes the blob values to a store shared by the run, one
+file per blob named by its hash, written once and never deleted during the run
+(a reorg drops the node's reference, not the file). At the 3k rung's sizes:
+~0.22 x 128 MB x 3,011 nodes of per-node indexes (~85 GB), plus one copy of the
+blobs (~0.1 GB). Compression would shrink the indexes further.
+
+**The rule that keeps it honest.** A node reads a blob only through its own
+index. Every "do I have this tx or block?" check (`tx_exists`, `block_exists`,
+the txpool lookups) must use the per-node tables, never the shared store, or
+nodes would know transactions they never received and propagation would break.
+The store holds bytes only.
+
+**Forks are fine.** Blobs are named by hash: each node's index points at its
+own branch, and another branch's blobs are just more files.
+
+**Locking.** Create-then-rename per file needs no cross-process locks. A shared
+LMDB would need cross-process mutexes, and whether Shadow's futex emulation
+handles those across simulated hosts is unknown, so avoid it.
+
+**Size and unknowns.** Probably a few hundred lines in `db_lmdb.cpp`: the add,
+get and remove paths for transaction data (pruned and prunable), blocks and
+txpool blobs. To check first:
+- code that walks the blob tables with cursors (pruning, `for_all_transactions`,
+  output distribution);
+- warm-start snapshots (`chain_snapshots/`) and the 1% chain archive, which must
+  carry the blobs they reference;
+- that a node's restart (turnover) still finds its blobs, which the
+  run-lifetime store gives for free.
+
+## Live compression (lower priority)
+
+Runs are compressed when they are archived. Compressing live would also cut
+peak disk during the run. Put the daemons' data directories (`general.daemon_data_dir`) and Shadow's data
 (`run_sim.sh --data-dir`) on a filesystem that compresses as it writes: a ZFS
 dataset with `compression=zstd`, or btrfs mounted with `compress=zstd`. No
 change to monerod, Shadow or monerosim. Record sizes for ZFS:
@@ -150,19 +202,30 @@ Points to settle:
   avoids that layer for big runs (the 32-thread box has ~26 GB free in
   ubuntu-vg and ~40 GB in sharevg).
 
-## Test plan
+## Next steps
 
-1. Install `zfsutils-linux` (or use btrfs); create a pool on a spare LV or a
-   file.
-2. Run one small config twice, on ext4 and on the compressed filesystem.
-   Compare wall time, `zfs get compressratio` per dataset, the ARC size, and
+1. **Measure real peak disk on a 1k+ run**, logs and chains separately, before
+   building anything: the chain sizes above are estimates from small runs.
+2. **The shared blob store**, if chains are as large as estimated: audit the
+   blob-table code paths, build the patch, and check on a small run that every
+   node's behaviour matches an unpatched run (same blocks, same txs, same relay
+   log), then compare per-node chain size.
+3. **Live compression**, if peak disk still binds: install `zfsutils-linux` (or
+   use btrfs), run one small config on ext4 and on the compressed filesystem,
+   and compare wall time, `zfs get compressratio` per dataset, the ARC size and
    peak disk.
-3. If that holds, a 1k run on the big box against an ext4 run.
 
 ## Considered and set aside
 
 - **Dedup** (ZFS, or the Shadow-plus-KSM variant above): ~1.2x on
   transaction-heavy chains.
+- **A different storage engine** (RocksDB, LevelDB). All chain storage goes
+  through `BlockchainDB` (112 pure virtual methods), whose only implementation
+  is LMDB (`db_lmdb.cpp`, ~5,700 lines). A new engine must reproduce reorgs,
+  global output indices (which decoy selection uses), key-image checks, the
+  txpool, pruning and the hard-fork table exactly, or node behaviour changes.
+  Its built-in compression gives the same ~1.4x as a compressing filesystem.
+  Disk speed costs no simulated time in Shadow, so speed is no reason either.
 - **A shared read-only base LMDB plus a per-node delta** (a monerod
   storage-layer patch): it saves only the shared base, which today is a
   236 KB warm-start snapshot. It would pay off for a large prebuilt history,
