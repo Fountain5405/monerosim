@@ -89,6 +89,14 @@ care.
 Every daemon runs `monerod-sim` with `sim-log-txrelay`, at `monitor` logging,
 so the run yields connection tokens and relay logs for X0, I3 and X1.
 
+Relays start linearly, one every 30 s from 20 min to 2.5 h, the two relay
+groups interleaved. The `auto` (batched) stagger doubles its waves up to 108
+relays 5 s apart; at ~5x real time that starts ~100 monerods in a minute, their
+256 MB RandomX caches outrun KSM, and the first pilot
+(`20261020_130027_x0_legacy_none_s12345`) ran out of RAM at sim 1 h 43 m.
+Linear, the second pilot's free RAM stayed above 8.8 GB through the relay
+boot.
+
 ## Cells (test_configs/x0/make_cells.sh)
 
 The cells are peer selection {`legacy`, `24`} × ban list {none, half} × seeds

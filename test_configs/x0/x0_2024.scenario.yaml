@@ -157,15 +157,21 @@ agents:
     activity_start_time: auto
     can_receive_distributions: true
 
+  # Linear, interleaved: one relay every 30 s from 20 min, all up by ~2.5 h
+  # (before bootstrap ends at 4 h). The auto (batched) stagger doubles its
+  # waves to 108 relays 5 s apart, which at ~5x real time starts ~100 monerods
+  # in a minute; their RandomX caches outrun KSM and a 32 GB box runs out of
+  # RAM (pilot 20261020_130027). Interleaving keeps list adopters and
+  # non-adopters booting together.
   relay-{001..130}:
     daemon: monerod-sim
-    start_time: 0s
-    start_time_stagger: auto
+    start_time: 1200s
+    start_time_stagger: 60s
     daemon_options: {ban-list: "@BANLIST@"}
   relay-{131..260}:
     daemon: monerod-sim
-    start_time: 0s
-    start_time_stagger: auto
+    start_time: 1230s
+    start_time_stagger: 60s
 
   # Always-on reachable light nodes: the "honest logging nodes" the 15% target
   # was measured at (Rucknium), with peerlist dumps.
