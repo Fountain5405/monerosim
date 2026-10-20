@@ -223,8 +223,23 @@ def _find_new_rundir(archive: Path, run_name: str, before: set) -> Path:
     return Path(new[-1]) if new else None
 
 
+def run_sim_cmd(cfg_path, run_name: str, nice_level: int = 10, ksm: bool = False,
+                bootfast: bool = False) -> list:
+    """The run_sim.sh command line for one cell. `ksm` and `bootfast` come from
+    the spec's 'ksm: true' / 'bootfast: true' keys or the matching CLI flags
+    (--bootfast: each monero process starts in ~0.4 wall-s instead of ~16;
+    docs/PERFORMANCE_AND_SCALE.md)."""
+    cmd = ["nice", f"-n{nice_level}", "./run_sim.sh", "--config", str(cfg_path),
+           "--name", run_name, "--no-monitor"]
+    if ksm:
+        cmd.append("--ksm")
+    if bootfast:
+        cmd.append("--bootfast")
+    return cmd
+
+
 def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
-             nice_level: int = 10, ksm: bool = False) -> dict:
+             nice_level: int = 10, ksm: bool = False, bootfast: bool = False) -> dict:
     """Generate the cell config, launch its run, analyze it, persist the row.
     `values` is the axis->label mapping (recorded in the row); `overlays` is
     the axis->overlay mapping build_config consumes. The row json doubles as
@@ -243,10 +258,7 @@ def run_cell(spec, cell, values, overlays, workdir: Path, archive: Path,
     run_name = _sanitize(f"{spec['name']}__{cell}")
     before = set(str(p) for p in archive.glob(f"*_{run_name}"))
     t0 = time.time()
-    cmd = ["nice", f"-n{nice_level}", "./run_sim.sh", "--config", str(cfg_path),
-           "--name", run_name, "--no-monitor"]
-    if ksm:
-        cmd.append("--ksm")
+    cmd = run_sim_cmd(cfg_path, run_name, nice_level, ksm=ksm, bootfast=bootfast)
     proc = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
     row = {
         "cell": cell,
@@ -402,6 +414,9 @@ def main() -> int:
     ap.add_argument("--ksm", action="store_true",
                     help="pass --ksm to every run_sim.sh launch (also on with "
                          "'ksm: true' in the spec); see docs/PERFORMANCE_AND_SCALE.md")
+    ap.add_argument("--bootfast", action="store_true",
+                    help="pass --bootfast to every run_sim.sh launch (also on with "
+                         "'bootfast: true' in the spec); see docs/PERFORMANCE_AND_SCALE.md")
     args = ap.parse_args()
 
     spec = load_spec(args.spec)
@@ -432,13 +447,14 @@ def main() -> int:
     archive = Path(os.environ.get("MONEROSIM_ARCHIVE_BASE", DEFAULT_ARCHIVE))
     parallel = args.parallel or spec.get("parallel", 1)
     ksm = args.ksm or bool(spec.get("ksm", False))
+    bootfast = args.bootfast or bool(spec.get("bootfast", False))
     rows = []
     if args.reanalyze:
         rows = reanalyze_cells(cells, workdir, archive)
     else:
         with ThreadPoolExecutor(max_workers=parallel) as pool:
             futs = {pool.submit(run_cell, spec, cell, values, overlays,
-                                workdir, archive, ksm=ksm): cell
+                                workdir, archive, ksm=ksm, bootfast=bootfast): cell
                     for cell, values, overlays in cells}
             for fut in as_completed(futs):
                 row = fut.result()

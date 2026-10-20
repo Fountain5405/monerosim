@@ -56,3 +56,4 @@ axes:
         attributes:
           give_up_depth: '2'
 ksm: true
+bootfast: true

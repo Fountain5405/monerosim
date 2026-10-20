@@ -839,3 +839,11 @@ def test_banfix_specs_equal_the_banlog_specs():
         _, cfgs = _plan_and_build(name)
         _, base = _plan_and_build(base_name)
         assert cfgs == base, name
+
+
+def test_run_sim_cmd_passes_ksm_and_bootfast():
+    from scripts.selfish_matrix import run_sim_cmd
+    base = ["nice", "-n10", "./run_sim.sh", "--config", "c.yaml", "--name", "r", "--no-monitor"]
+    assert run_sim_cmd("c.yaml", "r") == base
+    assert run_sim_cmd("c.yaml", "r", ksm=True) == base + ["--ksm"]
+    assert run_sim_cmd("c.yaml", "r", ksm=True, bootfast=True) == base + ["--ksm", "--bootfast"]
