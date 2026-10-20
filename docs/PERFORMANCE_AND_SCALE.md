@@ -548,6 +548,37 @@ below 1.5 GB (testing on a box that also hosts other services). Per
 node, 500 nodes used ~45 MB with KSM against the ~320 MB it would take
 without. CPU and disk were not binding (500 rung: 4.1 GB of run data).
 
+### Running the ladder on another box
+
+`scripts/run_scale_ladder.sh` runs rungs smallest first and stops at the
+first that fails or aborts. Rungs above 1000 nodes, with the same
+workload, are in `test_configs/scale_ladder_256g/` (1500 to 4000 nodes).
+For example:
+
+```
+scripts/ksm_check.sh        # must say ready; see "KSM" below
+setsid nohup scripts/run_scale_ladder.sh ~/ladder_$(date +%Y%m%d) \
+    test_configs/scale_ladder_box32/1000_200u_800r.scenario.yaml \
+    test_configs/scale_ladder_256g/*.scenario.yaml > ~/ladder.driver.out 2>&1 &
+```
+
+- **Per-box expansion.** Each rung is expanded on the box that runs it. The
+  users' activity stagger comes from that box's
+  `~/.monerosim/calibration.json`, so the driver sets `stop_time` itself:
+  the last user's activity start + 2 h, at least 8 h. On this 32-thread box
+  that is 13 h at 1000 nodes and 19 h at 1500, and it grows faster than
+  linearly.
+- **Capping long rungs.** RAM peaks at the end of the boot phase, so
+  `--max-stop HOURS` answers "does it fit" without the full transaction
+  phase. The latest users then never transact.
+- **Aborts.** A rung is aborted, with SIGINT and then SIGKILL to that rung's
+  `shadow` only, when MemAvailable falls below max(1.5 GB, 2% of RAM), when
+  swap grows by more than 1.5 GB, or when free disk falls below 50 GB.
+- **Output.** `ladder.log` holds a START, END or ABORT line per rung, with
+  the minimum MemAvailable. There is also a samples CSV per rung (RAM, swap,
+  KSM pages, disk, load every 30 s), the run log, and the expanded config
+  that ran.
+
 ### Auto-config caps predate the ladder
 
 The guardrail table the auto-config uses (and its `N > cap` warnings) was

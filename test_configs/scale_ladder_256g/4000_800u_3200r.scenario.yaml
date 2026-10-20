@@ -1,0 +1,79 @@
+# Scale ladder for a 256 GB box, 4000-node rung: 5 miners, 800 users, 3200 relays.
+#
+# Same workload as test_configs/scale_ladder_box32/ (the 32 GB ladder of 2026-10-19), so results
+# line up rung for rung: derived from test_configs/scale_ladder/1k_200u_800r.scenario.yaml
+# (same seed, native mining, 5k CAIDA GML, RPC SSL autodetect, 1 tx/user/300 s, users and
+# miners at monitor, relays at log-level 0).
+#
+# stop_time below is a placeholder: scripts/run_scale_ladder.sh expands the rung on the box
+# that runs it and sets stop_time = last user's activity start + 2 h (min 8 h). The activity
+# stagger comes from that box's calibration (~/.monerosim/calibration.json), so it differs
+# between machines.
+#
+# Run:    scripts/run_scale_ladder.sh <out_dir> test_configs/scale_ladder_256g/4000_800u_3200r.scenario.yaml
+general:
+  stop_time: 8h                        # placeholder: set by scripts/run_scale_ladder.sh
+  simulation_seed: 12345
+  bootstrap_end_time: auto            # Calculated from agent spawn times
+  enable_dns_server: true
+  mining:
+    mode: native                       # real RandomX + monerod LWMA; hashrate = literal h/s
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: false
+  daemon_defaults:
+    log-level: monitor
+    rpc-ssl: autodetect                # see header: RPC replies stall in Shadow without TLS
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 0
+    rpc-ssl: autodetect
+    daemon-ssl: autodetect
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  # --- 5 Miners: Generate blocks, hashrates must sum to 100 ---
+  miner-{001..005}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s          # 1s stagger for small miner group
+    hashrate: [20, 20, 20, 20, 20]  # Total = 100 (required for initial miners)
+    can_receive_distributions: true
+
+  # --- 800 Users: Batched spawning (auto) ---
+  user-{001..800}:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s               # Start after 20 minutes
+    start_time_stagger: auto        # BATCHED - exponential batch growth
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  # --- 3200 Relay Nodes: Daemon-only, batched spawning (auto) ---
+  # No wallet or script - just monerod for network realism
+  relay-{0001..3200}:
+    daemon: monerod
+    start_time: 0s
+    start_time_stagger: auto        # BATCHED - same rule as large user group
+    daemon_options:
+      log-level: 0                  # disk: relays quiet, users+miners at monitor
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300
