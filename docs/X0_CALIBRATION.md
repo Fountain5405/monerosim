@@ -66,20 +66,29 @@ box: 457 agents, of which 455 are daemons.
 | Class | Count | Notes |
 |---|---|---|
 | Miners (hubs) | 5 | native mining at 10 h/s each (the `h50` chain snapshot); 100 in / 100 out |
-| Medium | 48 | out-peers 16, 22 and 28; pinned reachable; turning over |
-| Users | 80 | wallets, 1 tx per 300 s; turning over |
-| Relays | 260 | turning over |
+| Medium | 48 | out-peers 16, 22 and 28; pinned reachable |
+| Users | 80 | wallets, 1 tx per 300 s |
+| Relays | 260 | |
 | Observers | 8 | always-on reachable light nodes with peer-list dumps |
 | Seeds | 6 | on `monerod-sim`, logging relays |
 | Spies | 48 | 6 /24s × 8 on NA nodes 828-833; each /24 announces through a different seed |
 
 **Ratios kept.** These follow the plan's I5 rule, which asks each preset to
 say what it keeps:
-- the replica's class shares, and 1 h / 1 h turnover;
+- the replica's class shares;
 - honest reachable at 17% (71 of 407);
 - spies at 40% of reachable IPs, in 6 dense spy-only /24s, each in its own
   /16;
 - honest prefix sharing of 0.31 × 3 (326 honest /24s).
+
+**Not kept: churn.** The replica turns users, relays and medium nodes over
+1 h on / 1 h off, which matches mainnet connection durations (S10). Nobody
+knows who churns on mainnet: relay operators mostly stay up, and some users
+keep a node up while others sync only to transact. The first experiments
+therefore run without churn, and churn rates are a later experiment. With
+churn on users, their daemons were offline half the time and wallets stalled
+in RPC timeouts: the pilot below made 118 user transactions instead of
+~1,200.
 
 **Not kept: mainnet's ~3,700 honest /24s against 6 spy /24s.** Here about 60
 reachable honest /24s face the spies' 6. Stock /24 dedup therefore leaves the
@@ -141,6 +150,20 @@ adds the relay-log and subnet-dedup patches (`./setup.sh --sim-binary`).
     against the target of about 5.
   - **Embargo rate:** the share of stems ended by an embargo timer.
 - **Verdict:** PASS or FAIL within 1.5× of each target.
+
+## Pilots
+
+| Run | Churn | Spies | Light outbound share | Fluff per hop | Notes |
+|---|---|---|---|---|---|
+| `20261020_130027_x0_legacy_none_s12345` | 1 h / 1 h | 48 (40% of reachable) | — | — | out of RAM at sim 1 h 43 m (batched relay waves); stopped |
+| `20261020_132230_x0_legacy_none_s12345` | 1 h / 1 h | 48 (40% of reachable) | 0.348 (target 0.15: FAIL) | 0.148 (176 txs) | 1 h 36 m wall; min free RAM 8.9 GB; 26 user agents stuck in RPC timeouts at the end, so Shadow exits 1 |
+
+With churn, the outbound share (0.35) roughly followed the spies' share of
+reachable IPs (0.40), as Kopyciok et al.'s 15.26% outbound followed their
+14.74% of IPs. The 40% figure is from Oct 2024 (#126) while the 15% target is
+Apr-May 2024 (Rucknium) and Feb 2025 (Kopyciok), so if the share stays high
+without churn, the replica's "2025" spy preset (14.7%, 7 /24s) is the matched
+pair to try.
 
 ## Targets and open questions
 

@@ -12,12 +12,17 @@
 #
 # Ratios kept (the plan's I5 rule: say which ones):
 #   - class shares as in the replica: 5 miner hubs, 12% medium, 2% observers,
-#     20% users, 64% relays; 1 h / 1 h turnover on users, relays and medium;
+#     20% users, 64% relays;
 #   - honest reachable ~17%: 5 miners + 48 medium + 8 observers + 6 seeds
 #     pinned, plus 1% of users and relays;
 #   - spies 40% of reachable IPs (S6, Oct 2024) in 6 dense /24s: 48 spies,
 #     8 per /24, on NA nodes 828-833 (spy-only /24s);
 #   - prefix sharing 0.31 x 3 among honest daemons (S13).
+# Not kept: churn. The replica's 1 h on / 1 h off turnover (S10's connection
+# durations) is off for the first experiments: who churns on mainnet is unknown
+# (relay operators mostly stay up; some users sync only to transact), and on
+# users it cut transactions ~10x (pilot 20261020_132230). Churn rates are a later
+# experiment; that pilot, with churn, gave a light-node outbound spy share of 0.35.
 # Not kept: mainnet's ~3,700 honest /24s against 6 spy /24s. Here ~60 honest
 # reachable /24s face 6, so stock /24 dedup leaves spies a larger share than on
 # mainnet, and the dedup cell's "~70% lower" target is the one to read with care.
@@ -45,17 +50,13 @@ general:
   progress: true
   runahead: 100ms
   process_threads: 2
-  native_preemption: true   # turnover restarts hit LMDB resize (S10); preemption avoids the livelock
+  native_preemption: true   # hang guard (auto-on at >= 100 agents anyway)
   reachable_fraction: 0.01
   mining:
     mode: native
     chain_snapshot: auto    # 5 x 10 h/s resolves chain_snapshots/h50, as in the replica
   emission:
     mode: tail
-  turnover:
-    mean_session: 1h
-    mean_downtime: 1h
-    fraction: 1.0           # pinned nodes (miners, observers, spies, seeds) are exempt
   daemon_defaults:
     log-level: monitor      # net.p2p.msg connection tokens for p_out
     max-log-file-size: 0
@@ -103,37 +104,31 @@ agents:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: auto
-    turnover: true
     daemon_options: {out-peers: 16, hide-my-port: false, ban-list: "@BANLIST@"}
   medium-a-{009..016}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: auto
-    turnover: true
     daemon_options: {out-peers: 16, hide-my-port: false}
   medium-b-{001..008}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: auto
-    turnover: true
     daemon_options: {out-peers: 22, hide-my-port: false, ban-list: "@BANLIST@"}
   medium-b-{009..016}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: auto
-    turnover: true
     daemon_options: {out-peers: 22, hide-my-port: false}
   medium-c-{001..008}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: auto
-    turnover: true
     daemon_options: {out-peers: 28, hide-my-port: false, ban-list: "@BANLIST@"}
   medium-c-{009..016}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: auto
-    turnover: true
     daemon_options: {out-peers: 28, hide-my-port: false}
 
   # ---------------- honest: light ----------------
