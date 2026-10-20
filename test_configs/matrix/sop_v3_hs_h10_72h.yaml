@@ -1,0 +1,103 @@
+# sop_v3_hs_h10_72h (2026-10-20): does Share-or-Perish still make window_stubborn
+# unprofitable when the attacker uses the honest shares the slot rule lets it use?
+# use_honest_shares hands the attacker's offline miner the honest shares on its
+# fork point before its first block (agents/selfish_miner.py); "built" is the
+# attacker of campaigns 7 and 8, which uses none. Same 12-daemon network,
+# options and 72 h stop time as sop_v3_h10_a045_72h. Needs monerod-sim with the
+# share RPCs (sim-pop patch 2026-10-19; setup.sh --sim-binary).
+#
+# Model B (sop_race_model.py sweep --honest-shares, 2000 days, seed 1;
+# data/campaign8/analysis_out/modelb_sweep_hs_*_20261020.md), attacker revenue
+# share (profitable only above alpha) and reveals per canonical day:
+#   cell       built          honest shares   stock (same d)
+#   a030 d2    0.009 (1.2)    0.022 (4.1)     0.263
+#   a040 d2    0.142 (18.1)   0.186 (26.4)    0.425
+#   a045 d2    0.356 (45.7)   0.395 (55.0)    0.510
+#   a045 d5    0.366 (47.1)   0.426 (59.7)    0.506
+# a045 is the cell that matters: with honest shares Model B is 0.024 (d5) to
+# 0.055 (d2) below break-even, and the daemon's built a045 d2 72 h run measured
+# 0.379 against Model B's 0.356. Built a045 d2 is left out: it has two 72 h
+# draws already (sop_rev2_h10_a045_72h, sop_v3_h10_a045_72h). Monerod runs
+# aren't seed-reproducible, so built and hs cells compare statistically, not
+# as pairs.
+name: sop_v3_hs_h10_72h
+seed: 24781
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+  shares:
+    hs:
+      attacker:
+        attributes:
+          use_honest_shares: 'true'
+    built:
+      attacker:
+        attributes:
+          use_honest_shares: 'false'
+  alpha:
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+    a040:
+      attacker:
+        hashrate: 4
+      honest:
+        hashrate:
+        - 3
+        - 3
+    a030:
+      attacker:
+        hashrate: 3
+      honest:
+        hashrate:
+        - 3.5
+        - 3.5
+  depth:
+    d5:
+      attacker:
+        attributes:
+          give_up_depth: '5'
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+exclude:
+- shares: built
+  alpha: a045
+  depth: d2
+- depth: d5
+  alpha: a040
+- depth: d5
+  alpha: a030
+ksm: true

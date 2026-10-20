@@ -19,5 +19,6 @@ Behind `docs/20261019_sop_campaign8_results.md`. The raw run logs are not in the
 | `modelb_hunt_a040_a045_d2_2000d_seed2_20261019.md`, `modelb_hunt_hs_a040_a045_d2_2000d_seed2_20261019.md` | `... hunt --alphas 0.40 0.45 --rules sop --give-ups d2 --days 2000 --seed 2 [--honest-shares]` | §6.2 |
 | `tevador_script_runs_20261019.md` | a summary of the closing `Time:` line of 8 runs of tevador's simulator (6 as published, 2 with `UNIQUE_SHARES = False`) | §6.1 |
 | `attacker_embedding_check_20261019.txt` | `venv/bin/python .claude/campaign8/embed_check.py 20261019_111740_deep_hunt_smoke__share_sop2_a045_d2` (own and gossiped shares embedded per node) | §6.2 |
+| `modelb_sweep_hs_a{0.30,0.33,0.40,0.45}_d{12,35}_2000d_seed1_20261020.md` | `venv/bin/python -m scripts.sop_race_model sweep --days 2000 --seed 1 --alphas A --ds D... --honest-shares` (window_stubborn revenue with and without honest shares) | header of `test_configs/matrix/sop_v3_hs_h10_72h.yaml` |
 
 The `*_20261018.txt` files are the same checks on B1 and n40a (h10_long, h10_long_rep, h10_long_depth d3, n40 share_sop2, n40_depth d5), run on 2026-10-18. `late_all_offline_20261018.txt` is the full late-start scan rerun after the `--offline` handling was added.

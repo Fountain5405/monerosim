@@ -474,3 +474,25 @@ def test_hunt_honest_shares_flag_sets_the_slot_rule_switches_on_sop_rows(monkeyp
     seen.clear()
     assert m.main(args) == 0
     assert not any(c.equal_start or c.early_honest_shares or c.positional_shares for c in seen)
+
+
+def test_sweep_honest_shares_adds_a_share_aware_sop_row(monkeypatch, capsys):
+    import importlib
+    srm = importlib.import_module("scripts.sop_race_model")
+    seen = []
+
+    def spy(cfg):
+        seen.append(cfg)
+        return srm.SimStats()
+
+    monkeypatch.setattr(srm, "simulate", spy)
+    srm.main(["sweep", "--days", "1"])                  # the default grid is unchanged
+    assert len(seen) == 4 * 3 * 3 and not any(c.early_honest_shares for c in seen)
+    seen.clear()
+    srm.main(["sweep", "--days", "1", "--alphas", "0.33", "--ds", "2", "--honest-shares"])
+    shared = [c for c in seen if c.early_honest_shares]
+    assert len(seen) == 4 and len(shared) == 1
+    c = shared[0]
+    assert (c.alpha, c.d, c.rule, c.attacker_embeds, c.equal_start, c.positional_shares) == \
+        (0.33, 2, "sop", True, True, True)
+    assert "| True + honest shares |" in capsys.readouterr().out

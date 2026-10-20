@@ -507,11 +507,21 @@ def _print_tevador(alpha: float, w: int, k: int) -> None:
     print("'once per 10 days'; the mean interval between successes is ln 2 larger.")
 
 
-def _sweep(days: float, seed: int) -> None:
-    alphas = [0.30, 0.33, 0.40, 0.45]
-    ds = [1, 2, 3]
-    variants = [("sop", True), ("sop", False), ("stock", False)]
+def _sweep(days: float, seed: int, alphas: Optional[List[float]] = None,
+           ds: Optional[List[int]] = None, honest_shares: bool = False) -> None:
+    alphas = alphas or [0.30, 0.33, 0.40, 0.45]
+    ds = ds or [1, 2, 3]
+    variants = [("sop", True, False), ("sop", False, False), ("stock", False, False)]
+    if honest_shares:
+        # The window_stubborn attacker using the honest shares the slot rule
+        # lets it use (2026-10-20). Under the d give-up, equal_start changes
+        # nothing (give-ups happen at honest blocks, when no honest share is
+        # pending); positional_shares needs it set.
+        variants.append(("sop", True, True))
     print(f"# Model B sweep: days={days} (fixed-rate), seed={seed}")
+    if honest_shares:
+        print("# 'True + honest shares': the SoP attacker's first block after a fork also embeds the "
+              "honest shares found on the fork point, one per slot.")
     print("# Per-day and per-year rates are per CANONICAL day (difficulty retargets on the\n"
           "# canonical chain); 'canon days' shows how many of those the run covered.\n")
     print("| alpha | d | rule | embeds | reveals | canon days | reveals/day | per 1000 found | "
@@ -519,11 +529,13 @@ def _sweep(days: float, seed: int) -> None:
     print("|--:|--:|:--|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|")
     for alpha in alphas:
         for d in ds:
-            for rule, embeds in variants:
+            for rule, embeds, slot in variants:
                 cfg = SimConfig(alpha=alpha, d=d, rule=rule, attacker_embeds=embeds,
-                                 days=days, seed=seed)
+                                 days=days, seed=seed, equal_start=slot,
+                                 early_honest_shares=slot, positional_shares=slot)
                 s = simulate(cfg)
-                print(f"| {alpha} | {d} | {rule} | {embeds} | {s.reveals} | "
+                label = "True + honest shares" if slot else embeds
+                print(f"| {alpha} | {d} | {rule} | {label} | {s.reveals} | "
                       f"{s.canonical_days:.1f} | {s.reveals_per_day:.4f} | "
                       f"{s.reveals_per_1000_found:.3f} | {s.mean_reorg_depth:.3f} | "
                       f"{s.max_reorg_depth} | {s.count_ge(3)} | {s.count_ge(10)} | "
@@ -633,6 +645,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_sw = sub.add_parser("sweep", help="Model B sweep over alpha/d/rule")
     p_sw.add_argument("--days", type=float, default=2000.0)
     p_sw.add_argument("--seed", type=int, default=1)
+    p_sw.add_argument("--alphas", type=float, nargs="+", default=None,
+                      help="default 0.30 0.33 0.40 0.45")
+    p_sw.add_argument("--ds", type=int, nargs="+", default=None, help="give-up depths, default 1 2 3")
+    p_sw.add_argument("--honest-shares", action="store_true",
+                      help="add a row per cell for the SoP attacker that embeds the honest shares the "
+                           "slot rule lets it use (SimConfig.equal_start, early_honest_shares, "
+                           "positional_shares)")
 
     p_deep = sub.add_parser("deep", help="Model B deep-reorg (10+) rate estimate")
     p_deep.add_argument("--years", type=float, default=3.0)
@@ -661,7 +680,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "tevador":
         _print_tevador(args.alpha, args.w, args.k)
     elif args.cmd == "sweep":
-        _sweep(args.days, args.seed)
+        _sweep(args.days, args.seed, args.alphas, args.ds, args.honest_shares)
     elif args.cmd == "deep":
         _deep(args.years, args.seed)
     elif args.cmd == "reconcile":
