@@ -36,6 +36,14 @@ comfortably ahead" arm (unlike eyal_sirer/lead_stubborn): waiting for honest
 to close in only risks losing the weight lead the attacker already has, and
 the spec's own analysis models revealing at the first opportunity once past
 the window.
+
+`deep_hunt` (2026-10-19) wants a deep reorg, not revenue: the Qubic-style
+10+ block tip pop. It is window_stubborn (same give-up rule, window and
+weight test) that never reveals before the honest branch holds
+`release_depth` blocks past the fork (default 10), so every reveal orphans
+at least that many honest blocks; until then it withholds even while
+ahead. tevador's MRL #146 simulator attacker is the same idea with a
+give-up of 5 work objects instead of whole blocks.
 """
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -55,7 +63,7 @@ class ReleaseDecision:
 class SelfishStrategy:
     def __init__(self, name: str, start_height: int, trail_depth: int = 1,
                  release_lead: int = 1, window_objects: int = 48,
-                 give_up_depth: int = 2):
+                 give_up_depth: int = 2, release_depth: int = 10):
         if name not in (
             "honest",
             "eyal_sirer",
@@ -63,6 +71,7 @@ class SelfishStrategy:
             "equal_fork_stubborn",
             "lead_stubborn",
             "window_stubborn",
+            "deep_hunt",
         ):
             raise ValueError(f"unknown strategy: {name}")
         self.name = name
@@ -78,6 +87,9 @@ class SelfishStrategy:
         self.give_up_depth = int(give_up_depth)
         if self.give_up_depth < 1:
             raise ValueError(f"give_up_depth must be >= 1, got {give_up_depth}")
+        self.release_depth = int(release_depth)   # deep_hunt only
+        if self.release_depth < 1:
+            raise ValueError(f"release_depth must be >= 1, got {release_depth}")
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
         self.last_weights = None   # window_stubborn: last branch_weights() result seen
 
@@ -110,6 +122,8 @@ class SelfishStrategy:
             return self._equal_fork_stubborn_decision(old_fork, pub_height, priv_height, a, h)
         if self.name == "window_stubborn":
             return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
+        if self.name == "deep_hunt":
+            return self._deep_hunt_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
         return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
 
     def _eyal_sirer_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
@@ -251,3 +265,17 @@ class SelfishStrategy:
         # Past the window and ahead by weight: reveal the whole branch and win.
         self.fork = priv_height
         return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
+
+    def _deep_hunt_decision(self, old_fork: int, pub_height: int, priv_height: int,
+                            a: int, h: int,
+                            branch_weights: Optional["Callable[[int, int, int], Optional[tuple]]"]
+                            ) -> ReleaseDecision:
+        """window_stubborn that waits for depth: give up exactly as
+        window_stubborn does, and once the honest branch holds
+        `release_depth` blocks past the fork, decide exactly as it does
+        (window, then weight). Before that, hold -- even while ahead, and
+        while honest hasn't moved -- so a reveal always orphans at least
+        `release_depth` honest blocks."""
+        if (a == 0 and h > 0) or (h - a >= self.give_up_depth) or h >= self.release_depth:
+            return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
+        return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)

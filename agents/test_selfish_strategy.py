@@ -367,3 +367,79 @@ def test_window_stubborn_default_branch_weights_uses_block_count_fallback():
     assert d.release_to == priv - 1 and s.fork == priv
     assert d.adopt_public is False
     assert s.last_weights == (48, 48, 47)
+
+
+# --- deep_hunt (2026-10-19): an attacker after a deep reorg, not revenue ---
+# It withholds until the honest branch holds release_depth blocks past the
+# fork, then reveals if it outweighs honest (the window still applies), and
+# gives up once honest leads by give_up_depth blocks.
+
+def test_deep_hunt_is_known_and_validates_release_depth():
+    import pytest
+    assert SelfishStrategy("deep_hunt", start_height=0).release_depth == 10
+    with pytest.raises(ValueError):
+        SelfishStrategy("deep_hunt", start_height=0, release_depth=0)
+
+
+def test_deep_hunt_holds_while_honest_branch_is_shorter_than_release_depth():
+    # Past the window and ahead by weight at every step, but the honest
+    # branch is shorter than release_depth: keep withholding.
+    s = SelfishStrategy("deep_hunt", start_height=0, release_depth=3, window_objects=0)
+    s.update(0, 1)                                                   # a=1,h=0 withhold
+    for pub, priv in ((1, 3), (2, 4)):                               # h=1, then h=2
+        d = s.update(pub, priv, branch_weights=lambda f, p, q: (p - f, 10 * (p - f), 5 * (q - f)))
+        assert d.release_to is None and d.adopt_public is False and d.forward_to == 0
+        assert s.fork == 0
+
+
+def test_deep_hunt_reveals_once_honest_reaches_release_depth_and_is_outweighed():
+    s = SelfishStrategy("deep_hunt", start_height=0, release_depth=3, window_objects=0)
+    s.update(0, 1)
+    s.update(2, 4, branch_weights=lambda f, p, q: (4, 40, 20))       # h=2 < 3: hold
+    d = s.update(3, 5, branch_weights=lambda f, p, q: (5, 50, 30))   # h=3: reveal
+    assert d.release_from == 0 and d.release_to == 4
+    assert d.adopt_public is False and d.forward_to is None
+    assert s.fork == 5
+    assert s.last_weights == (5, 50, 30)
+
+
+def test_deep_hunt_at_release_depth_but_not_heavier_holds():
+    s = SelfishStrategy("deep_hunt", start_height=0, release_depth=2, give_up_depth=3, window_objects=0)
+    s.update(0, 1)
+    d = s.update(2, 2, branch_weights=lambda f, p, q: (2, 20, 20))   # equal weight: hold
+    assert d.release_to is None and d.adopt_public is False and d.forward_to == 0
+    assert s.fork == 0
+
+
+def test_deep_hunt_respects_the_window():
+    # SoP: inside the window the branch can't win, whatever its weight.
+    s = SelfishStrategy("deep_hunt", start_height=0, release_depth=1, window_objects=48)
+    s.update(0, 1)
+    d = s.update(1, 3, branch_weights=lambda f, p, q: (47, 470, 16))
+    assert d.release_to is None and d.forward_to == 0
+    d = s.update(1, 4, branch_weights=lambda f, p, q: (48, 480, 16))
+    assert d.release_to == 3 and s.fork == 4
+
+
+def test_deep_hunt_gives_up_once_honest_leads_by_give_up_depth():
+    s = SelfishStrategy("deep_hunt", start_height=0, release_depth=10, give_up_depth=2, window_objects=0)
+    s.update(0, 1)
+    d = s.update(2, 1)                                  # a=1,h=2: h-a=1 < 2: hold
+    assert d.adopt_public is False and d.forward_to == 0
+    d = s.update(3, 1)                                  # h-a=2: give up
+    assert d.adopt_public is True and d.release_to is None and d.forward_to is None
+    assert s.fork == 3
+
+
+def test_deep_hunt_does_not_attack_without_a_private_lead():
+    s = SelfishStrategy("deep_hunt", start_height=0)
+    d = s.update(1, 0)                                  # a=0,h=1
+    assert d.adopt_public is True and s.fork == 1
+
+
+def test_deep_hunt_release_depth_comes_from_the_agent_attributes():
+    from agents.selfish_miner import SelfishMinerAgent
+    kw = SelfishMinerAgent.strategy_kwargs({"strategy": "deep_hunt", "release_depth": "12"})
+    assert kw["release_depth"] == 12
+    assert SelfishMinerAgent.strategy_kwargs({})["release_depth"] == 10
+    assert SelfishStrategy("deep_hunt", 0, **kw).release_depth == 12

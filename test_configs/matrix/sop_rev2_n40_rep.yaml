@@ -1,0 +1,74 @@
+# sop_either_n40 replicate (2026-10-19, error bars): re-run on the pop patch following MRL #146's 2026-10-15
+# revision (main_seen fixed per height; version_minor = version_major + N).
+# Same seed, cells and options; only the monerod-sim build differs.
+# 40-daemon SoP matrix (2026-10-14): sop_either_h10_long on test_configs/selfish_n40_sop.yaml,
+# n_f rule 'either', KSM on, honest hashrate split over 8 miners (same total).
+name: sop_rev2_n40_rep
+seed: 54321
+base: test_configs/selfish_n40_sop.yaml
+parallel: 1
+stop_time: 48h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    block:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+  alpha:
+    a033:
+      attacker:
+        hashrate: 3.3
+      honest:
+        hashrate:
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+exclude:
+- arm: share
+  countermeasure: stock
+- arm: block
+  countermeasure: sop2
+ksm: true

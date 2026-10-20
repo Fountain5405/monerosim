@@ -51,8 +51,8 @@ Parameters: `w = 16` (workshare ratio), `d = 5 s` (propagation delay),
 - *Earlier text (before 2026-10-15), used by campaign 7:* `n_f` counted the
   alt chain's "work objects that are not contained in the main chain", and
   `main_seen` was when the node first saw "the main chain block of height
-  h", which changes when the node switches. The daemon's
-  `--sim-sop-nf-rule alt` and the v1 log records reproduce it.
+  h", which changes when the node switches. The v1 log records reproduce
+  it (the oracle replays them with rule `alt`).
 - **Lateness (Tables 4 and 5).** `l_b = 0` if
   `h_0 < h_f && n_f < k*w && block_seen - main_seen > d`, else `1`.
   `l_w = 0` if `h_0 < h_f && n_f < k*w && main_seen - share_seen <= d`,
@@ -87,9 +87,23 @@ Each is a choice. The oracle and the daemon must both follow it.
    window either way.
 3. **`h_f`** is the height of the first alt block. `h_0 < h_f` means the node
    was online before the first diverging block. The revised text defines
-   `h_f` as the last common block, one lower, so the spec's test is
-   `h_0 < hf - 1` in our terms. The two differ only for a node whose `h_0`
-   is exactly the last common block's height (see Known deviations).
+   `h_f` as the last common block, one lower, so from log v3 the window
+   test is `h_0 < hf - 1` (the daemon: `h0 + 1 < hf`). Logs v1 and v2
+   tested `h_0 < hf`. The strict test keeps a fork off the block the node
+   started on objective: the node may have missed the gossip of shares
+   mined on that block before it came online.
+
+   `h_0` is the node's tip once it has caught up and follows the network
+   live. From log v3 the node comes online when monerod first counts it
+   as synchronized, which it must be before it mines: at its first sync
+   ("You are now synchronized with the network"), with `h_0` its tip
+   then. The attacker's private miner runs `--offline`, which monerod
+   counts as synchronized from startup; it never syncs, so it comes
+   online at startup with the database tip as `h_0`. The daemon logs
+   `SIM-SoP: online, h0=...` when the node comes online. Until then the
+   node judges every fork objectively (record field `online: false`):
+   its receive times are download times, not live observation. Logs v1
+   and v2 used the database tip at startup throughout.
 4. **`share_seen` for a share never gossiped to the node** is the `seen` time of
    the block that contains it, since the node first sees the share inside that
    block.
@@ -138,42 +152,45 @@ Each is a choice. The oracle and the daemon must both follow it.
 10. **Integer arithmetic.** `unit = max(1, floor(diff / w))`. A recent block
     weighs `unit * (l_b + l_b * (number of counted shares))`, and an old one
     weighs `diff`.
-11. **`n_f` rule.** The daemon flag `--sim-sop-nf-rule` picks the regime
-    test. `either` is the revised spec: the window is open while both
-    `nf` (alt) and `nf_main` are below `k*w`. `alt` is the earlier formal
-    reading, where only `nf` counts. The flag still defaults to `alt`, so a
-    spec run must pass `either`; every `sop_either_*` and `sop_rev2_*`
-    matrix spec does. The oracle uses the rule the record logs (`nf_rule`),
-    and records from before the flag mean `alt`.
+11. **`n_f` rule.** The window is open while both `nf` (alt) and
+    `nf_main` are below `k*w`: the revised spec, logged as
+    `nf_rule: "either"`. The daemon option `--sim-sop-nf-rule`, which also
+    offered the earlier alt-only reading (`alt`, its default), was removed
+    after campaign 8. The oracle uses the rule a record logs, and records
+    from before the option mean `alt`.
 
 
 ## Known deviations
 
-- **`h_0` at the last common block (found 2026-10-16).** Convention 3 opens
-  the window when `h_0 < hf` (first alt block); the revised spec needs
-  `h_0 <` the last common block. A node that came online exactly at the
-  last common block's height gets a subjective window where the spec says
-  objective. The strict test matters: the shares in such a fork were mined
-  on a block that existed before the node came online, so the node may
-  have missed their gossip. Not fixed in the current build (log v2); fixed
-  in log v3. Checked 2026-10-16 over the first 400 decisions of every node
-  log in 155 archived SoP runs: 134 of 78,430 decisions, in 7 runs, had
-  `h_0` at the last common block (forks off the snapshot tip). 45 of them
-  were subjective and become objective under the spec's test, and 2
-  outcomes change, both in a `rejudge` run. On the rev2 build: 4
-  decisions, in one smoke run, with no outcome change.
-- **`h_0` for a node that starts behind the network (found 2026-10-16).**
-  The daemon takes `h_0` as its database tip at startup. A node that
-  starts after the network has mined past that tip gets an `h_0` below the
-  height at which it came online, and judges forks it received only during
-  its initial sync as if it had seen them live. Every matrix daemon starts
-  on the snapshot tip, but not at once: miners at 0 s, seeds at 5 s, and
+- *Fixed in log v3:* **`h_0` at the last common block (found
+  2026-10-16).** Logs v1 and v2 opened the window when `h_0 < hf` (first
+  alt block); the revised spec needs `h_0 <` the last common block. A node
+  that came online exactly at the last common block's height got a
+  subjective window where the spec says objective. Over the first 400
+  decisions of every node log in 155 archived SoP runs, 134 of 78,430
+  decisions, in 7 runs, were such cases (forks off the snapshot tip); 45
+  were subjective, and 2 outcomes would change, both in a `rejudge` run.
+- *Fixed in log v3:* **`h_0` for a node that starts behind the network
+  (found 2026-10-16).** Logs v1 and v2 took `h_0` as the database tip at
+  startup. A node that started after the network had mined past that tip
+  got an `h_0` below the height at which it came online, so it could judge
+  forks it received only while catching up as if it had seen them live.
+  We read "the block height when the node came online" as the node's tip
+  once it has caught up and follows the network live; from log v3 that is
+  its tip at its first sync (convention 3). Every matrix daemon starts on
+  the snapshot tip, but not at once: miners at 0 s, seeds at 5 s, and
   relays at 30 s and 60 s (12 daemons) or every 10 s up to 260 s (40
-  daemons). In the 40-daemon run checked, 18 of 24 relays started after the
-  first block. No decision was affected there: its first fork came 25
-  minutes in, at first alt block 1006. The issue doesn't say whether "the
-  block height when the node came online" is the node's own tip or the
-  network's. Not fixed.
+  daemons). Checked 2026-10-19 over 166 archived SoP runs, 73 of them with
+  decisions up to height 1050 (11,152 decisions): 62 deciding nodes, all
+  relays, came online one to three blocks above their database tip (18 in
+  14 of 70 twelve-daemon runs, and 44 of the 72 relays in the three
+  40-daemon runs). None decided while catching up. 14 of their decisions were on
+  forks off a block at or below the height they came online at, all in
+  one run and all objective under either `h_0` (a branch held at least 57
+  work objects), so no regime or outcome changed. From log v3 a node also
+  judges every fork objectively until it comes online, so a fork it meets
+  while catching up is judged on work alone. No archived decision was
+  taken before its node came online.
 - *Resolved by the revision (found 2026-10-07):* **`n_f` counts shared
   workshares.** The earlier text counted the alt chain's work objects "that
   are not contained in the main chain". The daemon and the oracle count
@@ -192,11 +209,12 @@ message is `SIM-SoP-DEC ` followed by a single-line JSON object:
 
 | field | type | meaning |
 |---|---|---|
-| `v` | int | format version: `2` since 2026-10-15 (block entries carry `ref`), `1` before |
+| `v` | int | format version: `3` after campaign 8 (window test on the revised `h_f`, `h_0` from the first sync, `online`: convention 3), `2` from 2026-10-15 (block entries carry `ref`), `1` before |
 | `mode` | str | `"whole_branch"` or `"rejudge"` |
 | `reinsert` | bool | evaluation triggered by re-inserting a displaced block |
 | `skipped` | bool | whole_branch mode skipped it; `result` is then `"KEEP"` |
-| `h0` | int | the node's `h_0` |
+| `h0` | int | the node's `h_0` at this decision; from v3 the database tip until the node comes online, then the tip it came online at (convention 3) |
+| `online` | bool | from v3: whether the node had come online (convention 3); `false` forces the objective regime |
 | `hf` | int | height of the first alt block |
 | `top` | int | height of the main-chain tip |
 | `w`, `k`, `d_ms` | int | parameters (`d` in milliseconds) |
@@ -204,7 +222,7 @@ message is `SIM-SoP-DEC ` followed by a single-line JSON object:
 | `main` | list | main-suffix blocks (`hf..top`), ascending height |
 | `nf` | int | work objects in the alt suffix (`n_alt(h_f)`) |
 | `nf_main` | int | work objects in the main suffix (`n_main(h_f)`) |
-| `nf_rule` | str | `"alt"` or `"either"` (convention 11); absent in records from before the flag |
+| `nf_rule` | str | `"either"` from v3; `"alt"` or `"either"` in older records (convention 11); absent in records from before the option |
 | `regime` | str | `"subjective"` or `"objective"` |
 | `w_alt`, `w_main` | str | the daemon's suffix weights (decimal strings) |
 | `tie` | bool | `w_alt == w_main` |

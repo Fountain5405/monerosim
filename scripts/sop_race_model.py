@@ -33,6 +33,26 @@ day: about 1.45x under SoP at alpha 0.33, where the 240 h sim run found
 ~1050 blocks a day (2026-10-03). Before that, per-day rates were per
 fixed-rate day and too low by that factor. Compare with the simulator per
 block found (`reveals_per_1000_found`).
+
+`hunt` (2026-10-19) runs Model B for a deep-reorg hunter, the simulator's
+deep_hunt: it withholds until the honest branch holds `release_depth`
+blocks, then reveals if heavier, under SoP or stock, giving up d blocks
+behind or (SoP) more than N objects behind (tevador's attacker: 5).
+
+`reconcile` (2026-10-19) compares Model B with tevador's simulator
+(github.com/tevador/scratchpad, share-or-perish/blockhain-sim.py, commit
+59d6094c of 2026-10-17), the source of MRL #146's "about 1 reorg of 10+
+blocks per 3 years". It switches his attacker's five differences on one at a
+time (SimConfig.equal_start, early_honest_shares with positional_shares,
+either_window, tie_win_prob). Its last row keeps every early honest share (a
+union), as his UNIQUE_SHARES = False does. SoP's slot rule forbids that (one
+share per slot), so that row only checks the mechanics.
+
+`hunt --honest-shares` (2026-10-19) gives the SoP attacker the honest shares the
+slot rule lets it use: those found before either side's first block, in its own
+first block, and a level restart after a give-up. Under a block-count give-up
+(dN) the level restart changes nothing, because give-ups happen at honest blocks,
+when no honest share is pending.
 """
 from __future__ import annotations
 
@@ -253,6 +273,19 @@ class SimConfig:
     count_honest_pending: bool = False   # honest shares found but in no block count as honest weight
     give_up_objects: int = -1            # >= 0: give up once honest is more than this many objects
                                          # ahead (counted since the fork), instead of d blocks behind
+    release_depth: int = 0               # >= 1: reveal only once the honest branch holds this many
+                                         # blocks (deep_hunt, 2026-10-19); 0 = at the first chance
+    # tevador's attacker (blockhain-sim.py, 2026-10-17), for `reconcile`. Defaults reproduce Model B.
+    equal_start: bool = False            # after a give-up the attacker adopts honest's pending shares
+    early_honest_shares: bool = False    # honest shares found before either side has a block since the
+                                         # fork sit on the fork point, so the attacker's first block embeds them too
+    either_window: bool = False          # SoP window ends once EITHER branch holds (K - w) objects past
+                                         # its first block, not once the attacker's holds K
+    tie_win_prob: float = 0.0            # chance the attacker wins an exact weight tie; a lost tie ends
+                                         # the attack (tevador: GAMMA = 0.5)
+    positional_shares: bool = False      # SoP's slot rule, as tevador's UNIQUE_SHARES: a share's ID is its
+                                         # slot (its position in the finder's pending set), so an early honest
+                                         # share adds to the attacker only if it lacks that slot (needs equal_start)
 
 
 @dataclass
@@ -312,6 +345,8 @@ class SimStats:
 
 
 def simulate(cfg: SimConfig) -> SimStats:
+    if cfg.positional_shares and not cfg.equal_start:
+        raise ValueError("positional_shares needs equal_start (his share IDs assume a level start)")
     rng = random.Random(cfg.seed)
     rate = cfg.w / T_BLOCK_S  # objects/sec total
     n_objects = int(cfg.days * SECONDS_PER_DAY * rate)
@@ -344,13 +379,19 @@ def simulate(cfg: SimConfig) -> SimStats:
             if is_attacker:
                 att_pending += 1
             else:
+                # tevador: the attacker embeds it too; with positional IDs only if it
+                # lacks this share's position (hon_pending before the increment)
+                if cfg.early_honest_shares and not att_blocks and not hon_blocks \
+                        and (not cfg.positional_shares or hon_pending >= att_pending):
+                    att_pending += 1
+                    att_fork += 1
                 hon_pending += 1
             if obj_mode and hon_fork - att_fork > cfg.give_up_objects:
                 stats.hon_final_blocks += len(hon_blocks)
                 stats.att_orphaned_blocks += len(att_blocks)
                 reset_fork()
-                att_pending = 0
-                att_fork, hon_fork = 0, hon_pending
+                att_pending = hon_pending if cfg.equal_start else 0
+                att_fork, hon_fork = att_pending, hon_pending
             continue
 
         if is_attacker:
@@ -374,13 +415,15 @@ def simulate(cfg: SimConfig) -> SimStats:
             stats.hon_final_blocks += h
             stats.att_orphaned_blocks += a
             reset_fork()
-            att_pending = 0
-            att_fork, hon_fork = 0, hon_pending
+            att_pending = hon_pending if cfg.equal_start else 0
+            att_fork, hon_fork = att_pending, hon_pending
             # hon_pending carries on (not reset)
             continue
 
         if h == 0:
             continue  # withhold
+        if h < cfg.release_depth:
+            continue  # deep_hunt: hold until the honest branch is deep enough
 
         if cfg.rule == "sop":
             att_objects = sum(1 + n for n in att_blocks)
@@ -395,7 +438,22 @@ def simulate(cfg: SimConfig) -> SimStats:
             hon_weight = h
             K = 0
 
-        if att_objects >= K and att_weight > hon_weight:
+        past_window = att_objects >= K
+        if cfg.either_window and cfg.rule == "sop":
+            past_window = max(sum(1 + n for n in att_blocks[1:]),
+                              sum(1 + m for m in hon_blocks[1:])) >= cfg.K_objects - cfg.w
+        wins = att_weight > hon_weight
+        if past_window and not wins and att_weight == hon_weight and cfg.tie_win_prob > 0:
+            wins = rng.random() < cfg.tie_win_prob
+            if not wins:
+                # tevador: a lost tie ends the attack
+                stats.hon_final_blocks += h
+                stats.att_orphaned_blocks += a
+                reset_fork()
+                att_pending = hon_pending if cfg.equal_start else 0
+                att_fork, hon_fork = att_pending, hon_pending
+                continue
+        if past_window and wins:
             # reveal: attacker suffix final, honest suffix orphaned
             stats.reveals += 1
             stats.reorg_depths.append(h)
@@ -493,6 +551,76 @@ def _deep(years: float, seed: int) -> None:
         print(f"| {d} | {s.canonical_days / 365.25:.2f} | {n10} | {rate:.4f} | {years_per:.3f} |")
 
 
+def _reconcile(alpha: float, days: float, seed: int, give_up_objects: int, release_depth: int) -> None:
+    steps = [
+        (f"Model B (o{give_up_objects}, release_depth {release_depth})", {}),
+        ("+ equal start after a give-up", {"equal_start": True}),
+        ("+ embeds early honest shares, positional IDs",
+         {"early_honest_shares": True, "positional_shares": True}),
+        ("+ window on either branch", {"either_window": True}),
+        ("+ wins half of exact ties (= tevador)", {"tie_win_prob": 0.5}),
+        ("union of early honest shares (his UNIQUE_SHARES = False; the slot rule forbids it)",
+         {"positional_shares": False}),
+    ]
+    print(f"# Model B against tevador's simulator: alpha={alpha:.4f}, SoP, attacker embeds, "
+          f"days={days} (fixed-rate), seed={seed}")
+    print("# Switches are cumulative. Rates per CANONICAL day/year.\n")
+    print("| attacker | reveals | canon days | #>=10 | days per | per year |")
+    print("|:--|--:|--:|--:|--:|--:|")
+    acc = {}
+    for label, extra in steps:
+        acc.update(extra)
+        s = simulate(SimConfig(alpha=alpha, d=1, rule="sop", attacker_embeds=True, days=days, seed=seed,
+                               give_up_objects=give_up_objects, release_depth=release_depth, **acc))
+        n10 = s.count_ge(10)
+        per_day = n10 / s.canonical_days if s.canonical_days else 0.0
+        days_per = (1.0 / per_day) if per_day > 0 else math.inf
+        print(f"| {label} | {s.reveals} | {s.canonical_days:.0f} | {n10} | {days_per:.0f} | "
+              f"{per_day * 365.25:.3f} |")
+
+
+def _give_up_token(s: str) -> str:
+    """`hunt` give-up: "dN" (honest N blocks ahead, N >= 1) or "oN" (honest
+    more than N work objects ahead since the fork)."""
+    if len(s) < 2 or s[0] not in "do" or not s[1:].isdigit() or (s[0] == "d" and int(s[1:]) < 1):
+        raise argparse.ArgumentTypeError(f"give-up must be dN (N >= 1) or oN, got {s!r}")
+    return s
+
+
+def _hunt(alphas: List[float], rules: List[str], give_ups: List[str], release_depth: int,
+          days: float, seed: int, honest_shares: bool = False) -> None:
+    print(f"# Model B deep-reorg hunter: release_depth={release_depth}, days={days} "
+          f"(fixed-rate), seed={seed}")
+    if honest_shares:
+        print("# SoP attacker uses honest shares as the slot rule allows: its first block embeds the "
+              "honest shares found before either side's first block, and it restarts level after a give-up.")
+    print("# Every reveal orphans >= release_depth honest blocks. Rates are per CANONICAL "
+          "day/year; the object give-up (oN) is SoP-only.\n")
+    print("| alpha | rule | give-up | reveals | canon days | #>=10 | per day | per year | "
+          "days per | mean reorg | max reorg | revenue share | orphan frac |")
+    print("|--:|:--|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|")
+    for alpha in alphas:
+        for rule in rules:
+            for g in give_ups:
+                kind, n = g[0], int(g[1:])
+                if kind == "o" and rule != "sop":
+                    continue
+                slot = honest_shares and rule == "sop"
+                cfg = SimConfig(alpha=alpha, d=n if kind == "d" else 1, rule=rule,
+                                attacker_embeds=(rule == "sop"), days=days, seed=seed,
+                                give_up_objects=n if kind == "o" else -1,
+                                release_depth=release_depth, equal_start=slot,
+                                early_honest_shares=slot, positional_shares=slot)
+                s = simulate(cfg)
+                n10 = s.count_ge(10)
+                per_day = n10 / s.canonical_days if s.canonical_days else 0.0
+                days_per = (1.0 / per_day) if per_day > 0 else math.inf
+                print(f"| {alpha} | {rule} | {g} | {s.reveals} | {s.canonical_days:.1f} | {n10} | "
+                      f"{per_day:.4f} | {per_day * 365.25:.3f} | {days_per:.2f} | "
+                      f"{s.mean_reorg_depth:.2f} | {s.max_reorg_depth} | "
+                      f"{s.attacker_revenue_share:.4f} | {s.attacker_orphan_fraction:.4f} |")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -510,6 +638,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_deep.add_argument("--years", type=float, default=3.0)
     p_deep.add_argument("--seed", type=int, default=1)
 
+    p_hunt = sub.add_parser("hunt", help="Model B deep-reorg hunter (deep_hunt), SoP and stock")
+    p_hunt.add_argument("--alphas", type=float, nargs="+", default=[0.33, 0.40, 0.45])
+    p_hunt.add_argument("--rules", nargs="+", choices=["sop", "stock"], default=["sop", "stock"])
+    p_hunt.add_argument("--give-ups", nargs="+", type=_give_up_token, default=["d1", "d2", "o5"])
+    p_hunt.add_argument("--release-depth", type=int, default=10)
+    p_hunt.add_argument("--days", type=float, default=2000.0)
+    p_hunt.add_argument("--seed", type=int, default=1)
+    p_hunt.add_argument("--honest-shares", action="store_true",
+                        help="SoP attacker embeds the honest shares the slot rule lets it use "
+                             "(SimConfig.equal_start, early_honest_shares, positional_shares)")
+
+    p_rec = sub.add_parser("reconcile", help="Model B against tevador's deep-reorg simulator")
+    p_rec.add_argument("--alpha", type=float, default=1 / 3)   # his ATTACK_HR 3 of 9
+    p_rec.add_argument("--give-up-objects", type=int, default=5)   # his STUBBORNNESS
+    p_rec.add_argument("--release-depth", type=int, default=10)    # his MIN_REORG_DEPTH
+    p_rec.add_argument("--days", type=float, default=20000.0)
+    p_rec.add_argument("--seed", type=int, default=1)
+
     args = parser.parse_args(argv)
     t0 = time.time()
     if args.cmd == "tevador":
@@ -518,6 +664,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         _sweep(args.days, args.seed)
     elif args.cmd == "deep":
         _deep(args.years, args.seed)
+    elif args.cmd == "reconcile":
+        _reconcile(args.alpha, args.days, args.seed, args.give_up_objects, args.release_depth)
+    elif args.cmd == "hunt":
+        _hunt(args.alphas, args.rules, args.give_ups, args.release_depth, args.days, args.seed,
+              args.honest_shares)
     print(f"\n(elapsed: {time.time() - t0:.1f}s)")
     return 0
 

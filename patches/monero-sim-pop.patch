@@ -185,7 +185,7 @@ index c168f48a7..7ab202621 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 3608364dd..3bf185805 100644
+index 3608364dd..ebcc7ebb5 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -364,7 +364,7 @@ index 3608364dd..3bf185805 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1996,881 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1996,902 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -1018,10 +1018,11 @@ index 3608364dd..3bf185805 100644
 +
 +// SIMULATION ONLY (Share-or-Perish): the #146 fork choice over the divergent
 +// suffixes (docs/20260930_sop_conformance.md).
-+// - The regime is subjective iff this node was online before the fork
-+//   (h0 < h_f) and the alt branch holds fewer than k*w work objects. n_f
-+//   counts the alt branch only, per the spec's definition. Otherwise every
-+//   lateness factor is 1 and the share-counted weights still decide.
++// - The regime is subjective iff this node came online before the fork (h0
++//   below the last common block, #146's h_f) and both branches hold fewer
++//   than k*w work objects past it (the revised n_f). Otherwise, and before
++//   the node comes online, every lateness factor is 1 and the
++//   share-counted weights still decide.
 +// - Displaced blocks re-inserted by a reorg are stored without judging
 +//   (whole-branch comparison), unless --sim-sop-rejudge-displaced is set.
 +// - Exact ties get one random draw per (alt tip, main tip) pair.
@@ -1053,8 +1054,8 @@ index 3608364dd..3bf185805 100644
 +      nf += 1 + sim_sop_valid_share_count(e.height, e.bl, d);
 +    }
 +  }
-+  // Work objects on the main side of the fork, counted the same way. Logged
-+  // always; it decides the regime only under --sim-sop-nf-rule=either.
++  // Work objects on the main side of the fork, counted the same way
++  // (n_main(h_f)); with nf it decides the regime.
 +  uint64_t nf_main = 0;
 +  for (uint64_t h = fork + 1; h <= top; ++h)
 +  {
@@ -1062,15 +1063,17 @@ index 3608364dd..3bf185805 100644
 +    if (get_block_by_hash(get_block_id_by_height(h), main_bl))
 +      nf_main += 1 + sim_sop_valid_share_count(h, main_bl, m_db->get_block_difficulty(h));
 +  }
-+  // n_f rule: "alt" is the issue's formal definition (alt branch only);
-+  // "either" is the reading its author has described, objective once either
-+  // branch holds k*w work objects past the fork.
++  // #146 (revised 2026-10-15): n_f = max(n_main(h_f), n_alt(h_f)), so the
++  // regime is objective once either branch holds k*w work objects past the fork.
 +  const uint64_t kw = m_sim_sop_k * m_sim_sop_w;
-+  const bool under_kw = nf < kw && (!m_sim_sop_nf_either || nf_main < kw);
++  const bool under_kw = nf < kw && nf_main < kw;
 +  // The difficulty gate is sim-only (convention 9): at fakechain bootstrap
 +  // difficulty (< w) every weight collapses to the unit floor and forks
 +  // degenerate into per-node random ties. Real Monero never sees diff < w.
-+  const bool subjective = m_sim_sop_h0 < hf && under_kw
++  // #146's h_f is the last common block, hf - 1 here (hf = first alt block).
++  // Before the node comes online its receive times are download times, not
++  // live observation: objective.
++  const bool subjective = m_sim_sop_online && m_sim_sop_h0 + 1 < hf && under_kw
 +      && alt_diff.front() >= m_sim_sop_w;
 +
 +  std::ostringstream alt_js, main_js;
@@ -1143,14 +1146,15 @@ index 3608364dd..3bf185805 100644
 +          << " -> " << res << " (" << tie_draw << " tie)");
 +
 +  std::ostringstream js;
-+  js << "{\"v\":2,\"mode\":\"" << (m_sim_sop_rejudge ? "rejudge" : "whole_branch")
++  js << "{\"v\":3,\"mode\":\"" << (m_sim_sop_rejudge ? "rejudge" : "whole_branch")
 +     << "\",\"reinsert\":" << (reinsert ? "true" : "false")
 +     << ",\"skipped\":" << (skip ? "true" : "false")
-+     << ",\"h0\":" << m_sim_sop_h0 << ",\"hf\":" << hf << ",\"top\":" << top
++     << ",\"h0\":" << m_sim_sop_h0 << ",\"online\":" << (m_sim_sop_online ? "true" : "false")
++     << ",\"hf\":" << hf << ",\"top\":" << top
 +     << ",\"w\":" << m_sim_sop_w << ",\"k\":" << m_sim_sop_k << ",\"d_ms\":" << m_sim_sop_delay_ms
 +     << ",\"alt\":" << alt_js.str() << ",\"main\":" << main_js.str()
 +     << ",\"nf\":" << nf << ",\"nf_main\":" << nf_main
-+     << ",\"nf_rule\":\"" << (m_sim_sop_nf_either ? "either" : "alt")
++     << ",\"nf_rule\":\"either"
 +     << "\",\"regime\":\"" << (subjective ? "subjective" : "objective")
 +     << "\",\"w_alt\":\"" << w_alt << "\",\"w_main\":\"" << w_main
 +     << "\",\"tie\":" << (tie ? "true" : "false") << ",\"tie_draw\":";
@@ -1172,17 +1176,34 @@ index 3608364dd..3bf185805 100644
 +  m_sim_sop_enabled = true;
 +  m_sim_pop_enabled = true;   // arms the receive-time ledger (l_b/l_w clock)
 +  m_sim_pop_rng.seed(std::random_device{}());   // random tie-break (was default-seeded when SoP ran without --sim-publish-or-perish)
-+  m_sim_sop_h0 = get_current_blockchain_height() > 1 ? get_current_blockchain_height() - 1 : 0;   // #146 h0: height when this node came online (genesis nodes: 0 — h0 < hf must hold for fork 0 too, else a bootstrap-era banked chain dominates objectively forever)
++  m_sim_sop_h0 = get_current_blockchain_height() > 1 ? get_current_blockchain_height() - 1 : 0;   // #146 h_0 starts at the DB tip (see sim_sop_on_synchronized)
 +  MINFO("SIM-SoP: weight table armed (w=" << m_sim_sop_w
 +        << " delay_ms=" << delay_ms << " k=" << k << " mode="
 +        << (m_sim_sop_rejudge ? "rejudge" : "whole_branch") << ")");
 +}
 +
-+void Blockchain::set_sim_sop_nf_rule(bool either)
++// SIMULATION ONLY (Share-or-Perish): #146 h_0, "the block height when the
++// node came online", is the node's tip once it has caught up and follows the
++// network live. The node comes online when monerod first counts it as
++// synchronized, which it must be before it mines: at its first sync ("You
++// are now synchronized with the network"), with h0 its tip then, so a node
++// that starts behind the network gets the height it caught up to. An
++// --offline node (the attacker's private miner) counts as synchronized from
++// startup and never syncs: h0 is its DB tip. Until it comes online the node
++// judges every fork objectively. h0 is set once.
++void Blockchain::sim_sop_on_synchronized(bool offline)
 +{
-+  m_sim_sop_nf_either = either;
-+  MINFO("SIM-SoP: n_f rule " << (either ? "either" : "alt"));
++  CRITICAL_REGION_LOCAL(m_blockchain_lock);
++  if (!m_sim_sop_enabled || m_sim_sop_online)
++    return;
++  m_sim_sop_online = true;
++  const uint64_t db_tip = m_sim_sop_h0;
++  const uint64_t height = get_current_blockchain_height();
++  m_sim_sop_h0 = std::max(db_tip, height > 1 ? height - 1 : 0);
++  MINFO("SIM-SoP: online, h0=" << m_sim_sop_h0 << " ("
++        << (offline ? "--offline: synchronized at startup" : "first sync") << ", DB tip " << db_tip << ")");
 +}
++
 +
 +bool Blockchain::sim_pop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei)
 +{
@@ -1246,7 +1267,7 @@ index 3608364dd..3bf185805 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +2896,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +2917,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1257,7 +1278,7 @@ index 3608364dd..3bf185805 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +3109,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +3130,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1268,7 +1289,7 @@ index 3608364dd..3bf185805 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4089,7 +5098,9 @@ leave:
+@@ -4089,7 +5119,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1279,7 +1300,7 @@ index 3608364dd..3bf185805 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4513,6 +5524,16 @@ leave:
+@@ -4513,6 +5545,16 @@ leave:
    bvc.m_added_to_main_chain = true;
    ++m_sync_counter;
  
@@ -1296,7 +1317,7 @@ index 3608364dd..3bf185805 100644
    // appears to be a NOP *and* is called elsewhere.  wat?
    m_tx_pool.on_blockchain_inc(new_height, id);
    get_difficulty_for_next_block(); // just to cache it
-@@ -4691,18 +5712,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4691,18 +5733,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1356,7 +1377,7 @@ index 3608364dd..3bf185805 100644
    }
    catch (const std::exception &e)
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 35079e858..cbce1458f 100644
+index 35079e858..f332aeec9 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1392,8 +1413,8 @@ index 35079e858..cbce1458f 100644
 +
 +    // SIMULATION ONLY (step 3): arm the SoP weight table on the PoP engine.
 +    void set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k, bool rejudge_displaced = false);
-+    void set_sim_sop_nf_rule(bool either);
 +    bool sim_sop_enabled() const { return m_sim_sop_enabled; }
++    void sim_sop_on_synchronized(bool offline = false);   // #146 h0: the tip at the first sync (--offline: at startup)
 +
      /**
       * @brief gets the hardfork voting state object
@@ -1450,8 +1471,8 @@ index 35079e858..cbce1458f 100644
 +    uint64_t m_sim_sop_delay_ms = 5000;
 +    uint64_t m_sim_sop_k = 3;
 +    uint64_t m_sim_sop_h0 = 0;             // block height when this node came online (#146 h0)
++    bool m_sim_sop_online = false;         // h0 set (first sync, or startup if --offline); objective until then
 +    bool m_sim_sop_rejudge = false;        // re-judge displaced blocks one at a time (implementation-hazard arm)
-+    bool m_sim_sop_nf_either = false;      // regime: objective once EITHER branch holds k*w objects (default: alt only)
 +    uint64_t m_sim_sop_reinsert_depth = 0; // > 0 while a reorg re-inserts displaced blocks
 +    std::map<std::pair<crypto::hash, crypto::hash>, bool> m_sim_sop_tie_draws;   // (alt tip, main tip) -> switch
 +    bool sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
@@ -1466,10 +1487,10 @@ index 35079e858..cbce1458f 100644
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index 3e3f7a824..4dd555944 100644
+index 3e3f7a824..46ab4f363 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -212,6 +212,74 @@ namespace cryptonote
+@@ -212,6 +212,69 @@ namespace cryptonote
    , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
    , false
    };
@@ -1521,13 +1542,8 @@ index 3e3f7a824..4dd555944 100644
 +  };
 +  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_k = {
 +    "sim-sop-k"
-+  , "Simulation only: Share-or-Perish partition-recovery factor k (MRL #146): lateness applies only while the alt branch holds fewer than k*w work objects."
++  , "Simulation only: Share-or-Perish partition-recovery factor k (MRL #146): lateness applies only while both branches hold fewer than k*w work objects past the fork."
 +  , 3
-+  };
-+  static const command_line::arg_descriptor<std::string> arg_sim_sop_nf_rule = {
-+    "sim-sop-nf-rule"
-+  , "Simulation only: Share-or-Perish n_f rule. 'alt' (default): lateness applies while the alt branch holds fewer than k*w work objects (the issue's formal definition). 'either': it stops once either branch holds k*w work objects past the fork (the reading the issue's author has described)."
-+  , "alt"
 +  };
 +  static const command_line::arg_descriptor<bool> arg_sim_sop_rejudge_displaced = {
 +    "sim-sop-rejudge-displaced"
@@ -1544,7 +1560,7 @@ index 3e3f7a824..4dd555944 100644
    static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
      "max-txpool-weight"
    , "Set maximum txpool weight in bytes."
-@@ -355,6 +423,17 @@ namespace cryptonote
+@@ -355,6 +418,16 @@ namespace cryptonote
      command_line::add_arg(desc, arg_stagenet_on);
      command_line::add_arg(desc, arg_regtest_on);
      command_line::add_arg(desc, arg_sim_relay_alt_blocks);
@@ -1558,11 +1574,10 @@ index 3e3f7a824..4dd555944 100644
 +  command_line::add_arg(desc, arg_sim_sop_delay_s);
 +  command_line::add_arg(desc, arg_sim_sop_k);
 +  command_line::add_arg(desc, arg_sim_sop_rejudge_displaced);
-+  command_line::add_arg(desc, arg_sim_sop_nf_rule);
      command_line::add_arg(desc, arg_keep_fakechain);
      command_line::add_arg(desc, arg_fixed_difficulty);
      command_line::add_arg(desc, arg_fakechain_hard_forks);
-@@ -801,6 +880,37 @@ namespace cryptonote
+@@ -801,6 +874,37 @@ namespace cryptonote
  
      bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
      m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -1592,15 +1607,15 @@ index 3e3f7a824..4dd555944 100644
 +          command_line::get_arg(vm, arg_sim_sop_delay_s) * 1000,
 +          command_line::get_arg(vm, arg_sim_sop_k),
 +          command_line::get_arg(vm, arg_sim_sop_rejudge_displaced));
-+      const std::string nf_rule = command_line::get_arg(vm, arg_sim_sop_nf_rule);
-+      CHECK_AND_ASSERT_MES(nf_rule == "alt" || nf_rule == "either", false,
-+          "--sim-sop-nf-rule must be 'alt' or 'either', got '" << nf_rule << "'");
-+      m_blockchain_storage.set_sim_sop_nf_rule(nf_rule == "either");
++      // #146 h0: an --offline node counts as synchronized from startup (its
++      // protocol handler starts synchronized) and never syncs.
++      if (m_offline)
++        m_blockchain_storage.sim_sop_on_synchronized(true);
 +    }
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
-@@ -1453,6 +1563,43 @@ namespace cryptonote
+@@ -1453,6 +1557,43 @@ namespace cryptonote
      return true;
    }
    //-----------------------------------------------------------------------------------------------
@@ -1644,7 +1659,15 @@ index 3e3f7a824..4dd555944 100644
    bool core::is_synchronized() const
    {
      return m_pprotocol != nullptr && m_pprotocol->is_synchronized();
-@@ -1541,6 +1688,22 @@ namespace cryptonote
+@@ -1460,6 +1601,7 @@ namespace cryptonote
+   //-----------------------------------------------------------------------------------------------
+   void core::on_synchronized()
+   {
++    m_blockchain_storage.sim_sop_on_synchronized();   // SIMULATION ONLY: #146 h0, the tip once caught up
+     m_miner.on_synchronized();
+   }
+   //-----------------------------------------------------------------------------------------------
+@@ -1541,6 +1683,22 @@ namespace cryptonote
      add_new_block(*b, bvc, extra_block_txs);
      if(update_miner_blocktemplate && bvc.m_added_to_main_chain)
         update_miner_block_template();

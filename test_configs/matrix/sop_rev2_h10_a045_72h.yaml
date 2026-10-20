@@ -1,0 +1,109 @@
+# Deep-reorg probe (2026-10-19): sop_rev2_h10's share_sop2_a045_d2 cell run for 72 h
+# instead of 6 h. Model B predicts 10+ block reorgs most days at alpha 0.45 under SoP
+# (docs/20261007_sop_campaign7_results.md section 5); the simulator never measured it.
+# sop_either_h10 re-run on the pop patch following MRL #146's 2026-10-15
+# revision (main_seen fixed per height; version_minor = version_major + N).
+# Same seed, cells and options; only the monerod-sim build differs.
+# Re-run of stubborn_h10 (campaign 7) under the n_f rule the issue's author
+# has described: --sim-sop-nf-rule=either on every SoP node (2026-10-14).
+# Same seed, cells and stop_time as stubborn_h10; KSM on.
+name: sop_rev2_h10_a045_72h
+seed: 24680
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    block:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+  alpha:
+    a030:
+      attacker:
+        hashrate: 3
+      honest:
+        hashrate:
+        - 3.5
+        - 3.5
+    a040:
+      attacker:
+        hashrate: 4
+      honest:
+        hashrate:
+        - 3
+        - 3
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+    d1:
+      attacker:
+        attributes:
+          give_up_depth: '1'
+    d3:
+      attacker:
+        attributes:
+          give_up_depth: '3'
+exclude:
+- arm: share
+  countermeasure: stock
+- arm: block
+  countermeasure: sop2
+  alpha: a030
+- arm: block
+  countermeasure: sop2
+  depth: d1
+- arm: block
+  countermeasure: sop2
+  depth: d3
+- depth: d1
+  alpha: a030
+- depth: d1
+  alpha: a045
+- depth: d3
+  alpha: a030
+- depth: d3
+  alpha: a045
+ksm: true

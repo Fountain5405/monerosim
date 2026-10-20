@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Shares at a Fork</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#e5eceb; --surface:#f3f7f6; --surface-2:#dbe4e2; --ink:#14201e; --ink-2:#536361;
+  --line:#b6c5c2; --grid:#dde6e4; --guide:#9fb1ae;
+  --honest:#1b6884; --honest-bg:#d2e6ed;
+  --attack:#ad2539; --attack-bg:#f4dbde;
+  --hist:#7a8886; --hist-bg:#d6dedc;
+  --switch:#d27d0c; --switch-ink:#1a1000; --warn-ink:#8a4f00;
+  --fits:#3d7a32; --fits-bg:#dcebd6;
+  --focus:#1b6884;
+  --f-disp:"IBM Plex Sans Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0d1514; --surface:#141f1d; --surface-2:#1b2927; --ink:#d9e5e2; --ink-2:#91a3a0;
+    --line:#2d3e3b; --grid:#172321; --guide:#3e524f;
+    --honest:#5cb3d2; --honest-bg:#13303a;
+    --attack:#ee6a7e; --attack-bg:#38171e;
+    --hist:#879593; --hist-bg:#222e2c;
+    --switch:#f1a23a; --switch-ink:#1a1000; --warn-ink:#f1a23a;
+    --fits:#86c46e; --fits-bg:#1c2e18;
+    --focus:#5cb3d2;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1514; --surface:#141f1d; --surface-2:#1b2927; --ink:#d9e5e2; --ink-2:#91a3a0;
+  --line:#2d3e3b; --grid:#172321; --guide:#3e524f;
+  --honest:#5cb3d2; --honest-bg:#13303a;
+  --attack:#ee6a7e; --attack-bg:#38171e;
+  --hist:#879593; --hist-bg:#222e2c;
+  --switch:#f1a23a; --switch-ink:#1a1000; --warn-ink:#f1a23a;
+  --fits:#86c46e; --fits-bg:#1c2e18;
+  --focus:#5cb3d2;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:clamp(16px,4vw,40px);padding-block:28px 48px}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{text-wrap:balance}
+h1{font-family:var(--f-disp);font-weight:600;font-size:clamp(2rem,5vw,2.9rem);line-height:1.05;letter-spacing:-.01em;margin:0}
+.dek{margin:.5rem 0 0;max-width:62ch;color:var(--ink-2);font-size:1.05rem}
+.top{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:18px}
+code{font-family:var(--f-mono);font-size:.9em}
+
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.tabs{display:flex;flex-wrap:wrap;gap:0 4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 7px;color:var(--ink-2);font-family:var(--f-mono);font-size:.9rem;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.tabs button:hover{color:var(--ink)}
+
+.params{font-family:var(--f-mono);font-size:.82rem;border:1px solid var(--line);background:var(--surface);padding:8px 12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:4px 24px;align-items:baseline}
+.params p{margin:0;font-weight:600}
+.params ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:2px 18px;color:var(--ink-2)}
+.params li{display:flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:12px;height:12px;border:1.5px solid}
+.sw.h{background:var(--honest-bg);border-color:var(--honest)}
+.sw.a{border-color:var(--attack);background:repeating-linear-gradient(45deg,var(--attack) 0 1.5px,var(--attack-bg) 1.5px 4px)}
+.sw.t{border:1.5px dashed var(--guide)}
+.sw.x{border:1.5px dashed var(--switch)}
+
+.layout{display:grid;gap:20px}
+@media (min-width:900px){.layout{grid-template-columns:minmax(0,1fr) 280px}}
+.stage-frame{border:1px solid var(--line);background:var(--surface)}
+#stage{display:block;width:100%;height:auto}
+
+/* SVG */
+.st-bg{fill:var(--surface)} .grid-ln{fill:none;stroke:var(--grid);stroke-width:1}
+.lane-lab{font-family:var(--f-mono);font-size:12px;fill:var(--ink-2);letter-spacing:.06em;text-transform:uppercase}
+.guide{fill:none;stroke:var(--guide);stroke-width:1.5}
+.guide.priv{stroke-dasharray:5 4}
+.b0{fill:var(--hist-bg);stroke:var(--hist);stroke-width:1.5}
+.b0-t{font-family:var(--f-mono);font-weight:600;font-size:15px;fill:var(--ink);text-anchor:middle}
+.b0-s{font-family:var(--f-mono);font-size:11px;fill:var(--ink-2);text-anchor:middle}
+.frame{fill:var(--surface);stroke-width:1.6}
+.tpl .frame{stroke:var(--guide);stroke-dasharray:4 3}
+.blk .frame{fill:var(--surface-2)}
+.blk.k-h .frame{stroke:var(--honest)}
+.blk.k-a .frame{stroke:var(--attack)}
+.ghost .frame,.union .frame{fill:none;stroke:var(--attack);stroke-dasharray:4 3}
+.ghost{opacity:.85}
+.it-top{font-family:var(--f-mono);font-size:12.5px;fill:var(--ink);text-anchor:middle}
+.it-top.b{font-weight:600;font-size:14px}
+.it-bot{font-family:var(--f-mono);font-size:11.5px;fill:var(--ink-2);text-anchor:middle}
+.hatch-bg{fill:var(--attack-bg)} .hatch-ln{stroke:var(--attack);stroke-width:1.2;stroke-opacity:.55}
+.cb{stroke-width:1.5}
+.c-h .cb{fill:var(--honest-bg);stroke:var(--honest)}
+.c-a .cb{fill:url(#hatch);stroke:var(--attack)}
+.cnum{font-family:var(--f-mono);font-weight:600;font-size:14px;fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+.rej .cb{fill:none;stroke-dasharray:3 2}
+.xmark{stroke:var(--switch);stroke-width:3;stroke-linecap:round}
+.note{font-family:var(--f-mono);font-size:11.5px;fill:var(--warn-ink);text-anchor:middle}
+@media (max-width:600px){
+  .lane-lab{font-size:15px} .it-top{font-size:15px} .it-top.b{font-size:17px} .it-bot{font-size:14px}
+  .cnum{font-size:17px} .b0-t{font-size:18px} .b0-s{font-size:14px} .note{font-size:14px}
+}
+
+/* entrances */
+.e-pop{transform-box:fill-box;transform-origin:center;animation:pop 450ms cubic-bezier(.2,.8,.3,1.2) both}
+@keyframes pop{0%{transform:scale(.2);opacity:0}100%{transform:none;opacity:1}}
+.e-fly{animation:fly 800ms cubic-bezier(.45,0,.2,1) both}
+@keyframes fly{0%{transform:translate(var(--dx),var(--dy));opacity:0}12%{opacity:1}100%{transform:none;opacity:1}}
+.e-fade{animation:fade 500ms ease-out both}
+@keyframes fade{0%{opacity:0}100%{opacity:1}}
+.e-solid{transform-box:fill-box;transform-origin:center;animation:solid 500ms cubic-bezier(.2,.8,.3,1.2) both}
+@keyframes solid{0%{transform:scale(1.07);opacity:.35}100%{transform:none;opacity:1}}
+
+.caption{margin-top:12px;border-top:2px solid var(--ink);padding-top:10px;min-height:9rem}
+.cap-step{margin:0;font-family:var(--f-mono);font-size:.8rem;color:var(--ink-2)}
+.caption h2{font-family:var(--f-body);font-weight:600;font-size:1.15rem;margin:.15rem 0 .3rem}
+.caption p.text{margin:0;max-width:65ch}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.controls button{background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:6px 12px;min-height:36px}
+.controls button:hover{border-color:var(--ink-2)}
+#btn-play{min-width:5.5rem;font-weight:600;border-color:var(--ink)}
+.speeds{display:flex;gap:0;margin-left:4px}
+.speeds button{font-family:var(--f-mono);font-size:.85rem;border-radius:0;margin-left:-1px}
+.speeds button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+#btn-continue{background:var(--switch);color:var(--switch-ink);border-color:var(--switch);font-weight:600}
+.keys{flex-basis:100%;font-size:.8rem;color:var(--ink-2);margin:2px 0 0}
+
+.panel{display:flex;flex-direction:column;gap:18px;align-content:start}
+.p-lab{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
+.m-row{display:grid;grid-template-columns:6.2rem 1fr 2rem;align-items:center;gap:8px;margin-bottom:6px}
+.m-lab{font-family:var(--f-mono);color:var(--ink-2);font-size:.8rem}
+.m-track{position:relative;height:16px;background:var(--surface-2)}
+.m-fill{position:absolute;inset:0 auto 0 0;width:0;transition:width .6s cubic-bezier(.45,0,.2,1)}
+.m-fill.h{background:var(--honest)}
+.m-fill.a{background:repeating-linear-gradient(45deg,var(--attack) 0 3px,var(--attack-bg) 3px 4.5px)}
+.m-fill.g{background:repeating-linear-gradient(45deg,var(--attack) 0 1.5px,transparent 1.5px 5px);box-shadow:inset 0 0 0 1px var(--attack)}
+.m-fill.u{background:repeating-linear-gradient(90deg,var(--switch) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px var(--switch)}
+.m-val{font-family:var(--f-mono);text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.lead{font-family:var(--f-mono);font-size:1.5rem;font-weight:600;font-variant-numeric:tabular-nums;margin:0}
+.verdict{display:inline-block;font-family:var(--f-mono);font-weight:600;font-size:1.1rem;letter-spacing:.08em;padding:5px 12px;border:2px solid var(--line);color:var(--ink-2);min-width:7.5rem;text-align:center}
+.verdict[data-v="FITS"]{border-color:var(--fits);color:var(--fits);background:var(--fits-bg)}
+.verdict[data-v="REFUSED"]{border-color:var(--switch);background:var(--switch);color:var(--switch-ink)}
+.verdict[data-v="INVALID"]{border-color:var(--attack);color:var(--attack);background:var(--attack-bg)}
+.why{font-size:.85rem;color:var(--ink-2);margin:.4rem 0 0}
+
+.what{margin-top:40px;border-top:1px solid var(--line);padding-top:18px}
+.what h2{font-family:var(--f-disp);font-weight:600;font-size:1.5rem;margin:0 0 8px}
+.what p,.what ol{max-width:72ch}
+.what ol{margin:10px 0 0;padding-left:1.4rem}
+.what li{margin-bottom:.5rem}
+.what li::marker{font-family:var(--f-mono);color:var(--ink-2)}
+.table-scroll{overflow-x:auto;max-width:100%}
+.rates{border-collapse:collapse;font-size:.92rem;margin-top:10px;min-width:min(100%,560px)}
+.rates th,.rates td{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.rates th{font-weight:400;color:var(--ink-2);font-family:var(--f-mono);font-size:.8rem}
+.rates td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;font-weight:600}
+.rates td.n span{font-weight:400;color:var(--ink-2)}
+.rates tr.ref td{background:var(--surface)}
+.rates tr.bad td{color:var(--ink-2)}
+.rates tr.bad td.n{color:var(--warn-ink)}
+.sources{font-size:.8rem;color:var(--ink-2);max-width:80ch;margin-top:18px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top" role="banner">
+    <h1>Shares at a Fork</h1>
+    <p class="dek">Which workshares a private attacker's branch can carry under Share-or-Perish (MRL #146), and why the honest shares it can use gain it less than they seem to.</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Acts">
+    <button type="button" role="tab" id="tab-0" aria-selected="true" aria-controls="act-panel">1 · The slot rule</button>
+    <button type="button" role="tab" id="tab-1" aria-selected="false" aria-controls="act-panel">2 · A rival first block</button>
+    <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="act-panel">3 · Slot clashes</button>
+  </div>
+
+  <div id="act-panel" role="tabpanel" aria-labelledby="tab-0">
+    <div class="params">
+      <p>w = 16 · a share needs 1/w of the block difficulty · block weight = 1 + its shares</p>
+      <ul>
+        <li><span class="sw h" aria-hidden="true"></span><span>honest share (gossiped)</span></li>
+        <li><span class="sw a" aria-hidden="true"></span><span>attacker share (private)</span></li>
+        <li><span class="sw t" aria-hidden="true"></span><span>template being mined</span></li>
+        <li><span class="sw x" aria-hidden="true"></span><span>copy the attacker cannot use</span></li>
+      </ul>
+    </div>
+
+    <div class="layout">
+      <div class="main-col">
+        <div class="stage-frame">
+          <svg id="stage" viewBox="0 0 640 370" role="img" aria-label="">
+            <defs>
+              <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" class="hatch-bg"/><line x1="0" y1="0" x2="0" y2="6" class="hatch-ln"/>
+              </pattern>
+              <pattern id="gridp" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M20 0H0V20" class="grid-ln"/>
+              </pattern>
+            </defs>
+            <rect id="st-bg" width="640" height="370" class="st-bg"/>
+            <rect id="st-grid" width="640" height="370" fill="url(#gridp)"/>
+            <g id="static"></g>
+            <g id="scene"></g>
+          </svg>
+        </div>
+
+        <div class="caption" id="caption" aria-live="polite">
+          <p class="cap-step" id="cap-step"></p>
+          <h2 id="cap-title"></h2>
+          <p class="text" id="cap-text"></p>
+        </div>
+
+        <div class="controls">
+          <button type="button" id="btn-prev">Prev</button>
+          <button type="button" id="btn-play">Play</button>
+          <button type="button" id="btn-next">Next</button>
+          <div class="speeds" role="group" aria-label="Speed">
+            <button type="button" aria-pressed="false" data-speed="0.5">0.5×</button>
+            <button type="button" aria-pressed="true" data-speed="1">1×</button>
+            <button type="button" aria-pressed="false" data-speed="2">2×</button>
+          </div>
+          <button type="button" id="btn-continue" hidden>Continue</button>
+          <p class="keys">Keys: ← → step · Space play/pause · 1 2 3 switch act</p>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="Weights and checks">
+        <div>
+          <p class="p-lab" id="meter-lab">Weight</p>
+          <div id="meters">
+            <div class="m-row" data-row="h"><span class="m-lab" id="lab-h">honest</span><div class="m-track"><div class="m-fill h"></div></div><span class="m-val">0</span></div>
+            <div class="m-row" data-row="a"><span class="m-lab">attacker</span><div class="m-track"><div class="m-fill a"></div></div><span class="m-val">0</span></div>
+            <div class="m-row" data-row="g"><span class="m-lab">ignoring</span><div class="m-track"><div class="m-fill g"></div></div><span class="m-val">0</span></div>
+            <div class="m-row" data-row="u"><span class="m-lab">every share</span><div class="m-track"><div class="m-fill u"></div></div><span class="m-val">0</span></div>
+          </div>
+        </div>
+        <div id="lead-box">
+          <p class="p-lab">Attacker minus honest</p>
+          <p class="lead" id="lead">0</p>
+        </div>
+        <div id="verdict-box">
+          <p class="p-lab">Can the attacker use it?</p>
+          <div class="verdict" id="verdict" data-v="none">—</div>
+          <p class="why" id="why"></p>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <section class="what" aria-labelledby="rates-h">
+    <h2 id="rates-h">What it does to the deep-reorg rate</h2>
+    <p>tevador's MRL #146 post estimates about one reorg of 10 or more blocks every 3 years, for an attacker with a third of the hashrate. Model B (<code>scripts/sop_race_model.py</code>) gave about one every 21 years for a similar attacker. Switching his attacker's differences on one at a time shows where the gap comes from. In every row the attacker has α = 1/3, gives up when 5 work objects behind, and reveals once the honest branch is 10 blocks deep. Model B rows pool two seeds of 40,000 days each.</p>
+    <div class="table-scroll">
+      <table class="rates">
+        <thead><tr><th scope="col">attacker</th><th scope="col">10+ reorgs per year</th><th scope="col">about one every</th></tr></thead>
+        <tbody>
+          <tr><td>Model B as built: its first block carries only its own shares, and it restarts with none after giving up</td><td class="n">0.048</td><td class="n">21 years</td></tr>
+          <tr><td>+ restarts level with honest after giving up</td><td class="n">0.157</td><td class="n">6.4 years</td></tr>
+          <tr><td>+ its first block carries the honest shares it can use (act 2)</td><td class="n">0.335</td><td class="n">3.0 years</td></tr>
+          <tr><td>+ window on either branch and a coin flip on exact ties: tevador's attacker</td><td class="n">0.349</td><td class="n">2.9 years</td></tr>
+          <tr class="ref"><td>tevador's own script, 6 runs, 12,316 days</td><td class="n">0.47 <span>(0.27–0.77)</span></td><td class="n">2.1 years</td></tr>
+          <tr class="bad"><td>counting every early honest share (act 3: no valid block can carry them)</td><td class="n">34</td><td class="n">11 days</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ol>
+      <li>Restarting level: after giving up, the attacker adopts the honest tip. The honest shares already found on that tip are public, so its template carries them from the start.</li>
+      <li>The honest shares on the fork point give the next factor of two. They sit in both rival first blocks, so they stop counting as an honest lead (act 2).</li>
+      <li>The window and tie rules change almost nothing at this depth: by the time the honest branch is 10 blocks deep, the window has long passed.</li>
+      <li>Model B's tevador row and his script agree within their 95% ranges, 2.2–3.8 and 1.3–3.7 years.</li>
+      <li>The last row needs two shares in one slot (act 3), so no attacker can reach it. It only checks the mechanics: his script with <code>UNIQUE_SHARES = False</code> gives an attack every 11.1 days, and Model B every 10.8.</li>
+    </ol>
+
+    <h2 id="daemon-h" style="margin-top:28px">Our daemon attacker uses no honest shares</h2>
+    <p>In the monerod simulation the attacker's miner runs with <code>--offline</code> (<code>test_configs/selfish_micro_sop.yaml:91</code>). A node adds a share to its pool only when its own miner finds it or when the share arrives by gossip. Blocks handed to it do not add their shares (<code>patches/monero-sim-pop.patch:645</code> and its two callers). In the <code>deep_hunt</code> smoke run, the attacker's miner built 1,199 templates and embedded none of the honest shares. Each honest node's templates were about half gossiped shares, and those match the other honest node's own count, so the attacker's shares never reached them either.</p>
+    <p>So in share handling our daemon attacker is Model B as built: its first block carries only its own shares, and it restarts with none after giving up. That makes Model B as built the like-for-like model for the daemon runs. The table gives both versions at the daemon runs' settings: give up 2 blocks behind, and reveal once the honest branch is 10 blocks deep.</p>
+    <div class="table-scroll">
+      <table class="rates">
+        <thead><tr><th scope="col">α</th><th scope="col">as built: our daemon attacker</th><th scope="col">with the honest shares it could use</th><th scope="col">ratio</th></tr></thead>
+        <tbody>
+          <tr><td class="n">0.33</td><td class="n">0.35 <span>per year (13)</span></td><td class="n">0.65 <span>per year (24)</span></td><td class="n">about 2×</td></tr>
+          <tr><td class="n">0.40</td><td class="n">0.30 <span>per day</span></td><td class="n">0.40 <span>per day</span></td><td class="n">1.35×</td></tr>
+          <tr><td class="n">0.45</td><td class="n">5.3 <span>per day</span></td><td class="n">6.15 <span>per day</span></td><td class="n">1.16×</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ol>
+      <li>Rates are 10+ reorgs per canonical day or year. α 0.33 is one seed of 20,000 days (the reorg counts are in brackets). α 0.40 and 0.45 are two seeds of 2,000 days each, which agree within 2%.</li>
+      <li>The honest shares matter less as α grows: a stronger attacker wins often without the head start, so it adds proportionally less. At the object give-up tevador uses (5 behind) the ratio is larger, 2.5× at α 0.40 and 1.7× at α 0.45.</li>
+      <li>The daemon runs now going (α 0.45 for 72 h, α 0.40 for 240 h) should be read against the as-built column. They are too short to tell the columns apart: at α 0.45, over 2.7 canonical days, about 14 reorgs against 17.</li>
+      <li>A daemon attacker that used honest shares would need some way to hand gossiped shares to its offline miner, because blocks do not carry the shares still pending on their tip.</li>
+    </ol>
+
+    <p class="sources">Sources. Slot rule: <code>docs/20260930_sop_conformance.md:64-67</code>, <code>patches/monero-sim-pop.patch:302</code> and <code>:907-908</code>. A share must have the same parent as the block that carries it: <code>docs/20260930_sop_conformance.md:28-30</code>, <code>patches/monero-sim-pop.patch:310</code>. One share in both rival blocks: <code>docs/20260930_sop_conformance.md:197-199</code>. tevador's simulator: github.com/tevador/scratchpad, <code>share-or-perish/blockhain-sim.py</code> (commit 59d6094c, 2026-10-17). It names each share by its position (<code>shr = len(self.shares)</code>), which is its slot, and copies honest shares to the attacker while neither side has a block. Model B: <code>scripts/sop_race_model.py</code>, subcommands <code>reconcile</code> and <code>hunt --honest-shares</code>. Outputs and the embedding check: <code>data/campaign8/analysis_out/</code> (<code>modelb_*_20261019.md</code>, <code>tevador_script_runs_20261019.md</code>, <code>attacker_embedding_check_20261019.txt</code>). Write-up: <code>docs/20261019_sop_campaign8_results.md</code> §6.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const CELL = 30, GAP = 5, PAD = 7, BH = 46, X0 = 118, IGAP = 30, MAXW = 7;
+  const LANE_Y = {h: 104, a: 284};
+  const DUR = {pop: 450, fly: 800, fade: 500, solid: 500, reject: 800};
+  const motion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches: false};
+
+  const H = (s, id) => ({k: 'h', s, id});
+  const A = (s, id) => ({k: 'a', s, id});
+  const tpl = (id, parent, cells) => ({t: 'tpl', id, parent, cells});
+  const blk = (id, k, parent, cells) => ({t: 'blk', id, k, parent, cells});
+
+  // act 1
+  const s0 = H(0, 's0'), s1 = H(1, 's1'), s2 = H(2, 's2'), u0 = H(0, 'u0');
+  // act 2
+  const h0 = H(0, 'h0'), h1 = H(1, 'h1'), h2 = H(2, 'h2'), a3 = A(3, 'a3');
+  const t0 = H(0, 't0'), t1 = H(1, 't1'), b0 = A(0, 'b0'), g0 = A(0, 'g0');
+  // act 3
+  const ca0 = A(0, 'a0'), ch0 = H(0, 'h0'), ch1 = H(1, 'h1'), ca2 = A(2, 'a2'), ch2 = H(2, 'h2');
+
+  const ACTS = [
+    {
+      kind: 'single', b0sub: 'tip', lanes: {h: 'miners · public'},
+      meter: 'Next block · weight', labH: 'next block',
+      steps: [
+        {title: 'A share is a near-miss block',
+         text: 'Miners hash a block template on the current tip, B0. A hash that meets 1/w of the block difficulty (w = 16) is a workshare. It is gossiped to every node, and the next block on B0 can carry it.',
+         h: [tpl('T0', 'B0', [s0])], enter: {'h:s0': {a: 'pop', d: 300}}},
+        {title: 'Each share has a slot',
+         text: 'The template’s minor_version records how many shares it already carries, and that count is the slot of the next share found on it. The share’s proof of work covers its slot, so it fits that slot and no other.',
+         h: [tpl('T0', 'B0', [s0, s1, s2])], enter: {'h:s1': {a: 'pop'}, 'h:s2': {a: 'pop', d: 650}}},
+        {title: 'A block carries one share per slot',
+         text: 'A block lists its shares in slot order, 0, 1, 2 and so on, with no gaps and no slot twice. Its weight is 1 + its share count, so H1 with three shares weighs 4. A real block carries about w − 1 = 15 shares on average; these pictures use fewer.',
+         h: [blk('H1', 'h', 'B0', [s0, s1, s2])], enter: {'i:H1': {a: 'solid'}}},
+        {title: 'Shares belong to one parent',
+         text: 'Miners now build on H1. A share mined on B0 fits only a child of B0, so the next share starts again at slot 0, on H1. A share adds weight only once a block carries it.',
+         h: [blk('H1', 'h', 'B0', [s0, s1, s2]), tpl('T1', 'H1', [u0])],
+         enter: {'i:T1': {a: 'fade'}, 'h:u0': {a: 'pop', d: 450}}},
+      ],
+    },
+    {
+      kind: 'fork', b0sub: 'fork point', lanes: {h: 'honest · public', a: 'attacker · private'},
+      meter: 'First block after B0 · weight', labH: 'honest',
+      steps: [
+        {title: 'One fork point, two branches',
+         text: 'Everyone is mining on B0. The attacker keeps its blocks and its own shares private. Honest shares are gossiped, so the attacker sees each one as it is found.',
+         h: [tpl('HT', 'B0', [])], a: [tpl('AT', 'B0', [])], enter: {'i:HT': {a: 'fade'}, 'i:AT': {a: 'fade', d: 200}}},
+        {title: 'Honest shares fit both branches',
+         text: 'Three honest shares are found on B0. They fit any child of B0, so the attacker’s private template carries them too.',
+         h: [tpl('HT', 'B0', [h0, h1, h2])], a: [tpl('AT', 'B0', [h0, h1, h2])],
+         enter: {'h:h0': {a: 'pop'}, 'a:h0': {a: 'fly', from: 'h:h0', d: 350},
+                 'h:h1': {a: 'pop', d: 1000}, 'a:h1': {a: 'fly', from: 'h:h1', d: 1350},
+                 'h:h2': {a: 'pop', d: 2000}, 'a:h2': {a: 'fly', from: 'h:h2', d: 2350}},
+         verdict: {v: 'FITS', why: 'Same parent, B0, and a free slot.'}},
+        {title: 'The attacker adds slot 3',
+         text: 'Its template already holds slots 0 to 2, so the attacker’s next share is slot 3. It keeps that share private: the honest side never sees it.',
+         h: [tpl('HT', 'B0', [h0, h1, h2])], a: [tpl('AT', 'B0', [h0, h1, h2, a3])], enter: {'a:a3': {a: 'pop', d: 200}}},
+        {title: 'Honest finds H1',
+         text: 'H1 carries slots 0 to 2 and weighs 4. Honest miners move on to H1, and for the honest chain the shares on B0 are now spent, as they are after any block.',
+         h: [blk('H1', 'h', 'B0', [h0, h1, h2]), tpl('HT2', 'H1', [])], a: [tpl('AT', 'B0', [h0, h1, h2, a3])],
+         enter: {'i:H1': {a: 'solid'}, 'i:HT2': {a: 'fade', d: 500}}},
+        {title: 'The attacker is still on B0',
+         text: 'Its next block is also a child of B0, a rival to H1, so the honest shares on B0 still fit it. New honest shares do not: they are mined on H1, and a child of B0 cannot carry them.',
+         h: [blk('H1', 'h', 'B0', [h0, h1, h2]), tpl('HT2', 'H1', [t0])], a: [tpl('AT', 'B0', [h0, h1, h2, a3])],
+         x: [{t: 'rej', id: 'r1', lane: 'a', cell: t0, note: 'on H1, not B0'}],
+         enter: {'h:t0': {a: 'pop'}, 'x:r1': {a: 'reject', from: 'h:t0', d: 400}},
+         verdict: {v: 'REFUSED', why: 'Mined on H1; the attacker’s block is a child of B0.'}},
+        {title: 'The attacker finds A1',
+         text: 'A1 carries the honest slots 0 to 2 and its own slot 3. It weighs 5, one more than H1.',
+         h: [blk('H1', 'h', 'B0', [h0, h1, h2]), tpl('HT2', 'H1', [t0])], a: [blk('A1', 'a', 'B0', [h0, h1, h2, a3])],
+         enter: {'i:A1': {a: 'solid'}}},
+        {title: 'Without the honest shares',
+         text: 'An attacker that ignored honest shares would have mined its share at slot 0, so its A1 would carry one share and weigh 2, two behind H1. The honest shares sit in both rival blocks and cancel out. Using them only saves the attacker from starting behind.',
+         h: [blk('H1', 'h', 'B0', [h0, h1, h2]), tpl('HT2', 'H1', [t0])], a: [blk('A1', 'a', 'B0', [h0, h1, h2, a3])],
+         x: [{t: 'ghost', id: 'g', lane: 'a', top: 'ignoring honest', cells: [g0]}],
+         enter: {'x:g': {a: 'fade', d: 200}}},
+        {title: 'After the first blocks, nothing is shared',
+         text: 'The two branches now have different parents, so every later share fits one branch only. From here the race to a deep reorg runs on each side’s own shares.',
+         h: [blk('H1', 'h', 'B0', [h0, h1, h2]), tpl('HT2', 'H1', [t0, t1])],
+         a: [blk('A1', 'a', 'B0', [h0, h1, h2, a3]), tpl('AT2', 'A1', [b0])],
+         enter: {'h:t1': {a: 'pop', d: 200}, 'i:AT2': {a: 'fade', d: 500}, 'a:b0': {a: 'pop', d: 900}}},
+      ],
+    },
+    {
+      kind: 'fork', b0sub: 'fork point', lanes: {h: 'honest · public', a: 'attacker · private'},
+      meter: 'Template on B0 · weight', labH: 'honest',
+      steps: [
+        {title: 'Two shares, one slot',
+         text: 'Both sides are on B0 with no shares yet. Honest miners cannot see the attacker’s shares, so each side numbers its next share from what it knows.',
+         h: [tpl('HT', 'B0', [])], a: [tpl('AT', 'B0', [])], enter: {'i:HT': {a: 'fade'}, 'i:AT': {a: 'fade', d: 200}}},
+        {title: 'The attacker finds slot 0',
+         text: 'It keeps the share private, so honest miners are still mining for slot 0.',
+         h: [tpl('HT', 'B0', [])], a: [tpl('AT', 'B0', [ca0])], enter: {'a:a0': {a: 'pop', d: 200}}},
+        {title: 'Honest finds its own slot 0',
+         text: 'The attacker’s template already holds slot 0, and a block carries one share per slot. This honest share is no use to the attacker.',
+         h: [tpl('HT', 'B0', [ch0])], a: [tpl('AT', 'B0', [ca0])],
+         x: [{t: 'rej', id: 'r0', lane: 'a', cell: ch0, note: 'slot 0 taken'}],
+         enter: {'h:h0': {a: 'pop'}, 'x:r0': {a: 'reject', from: 'h:h0', d: 400}},
+         verdict: {v: 'REFUSED', why: 'Slot 0 already holds the attacker’s own share.'}},
+        {title: 'Honest slot 1 fits',
+         text: 'The next honest share is slot 1, the slot the attacker is waiting for, so it takes it. Both sides now carry two shares: the attacker’s own share only replaced an honest one.',
+         h: [tpl('HT', 'B0', [ch0, ch1])], a: [tpl('AT', 'B0', [ca0, ch1])],
+         enter: {'h:h1': {a: 'pop'}, 'a:h1': {a: 'fly', from: 'h:h1', d: 400}},
+         verdict: {v: 'FITS', why: 'Same parent, and slot 1 is free.'}},
+        {title: 'The attacker gets ahead',
+         text: 'It finds slot 2 before the honest side does, and now carries three shares to two. Its own shares count only when they land above the honest run.',
+         h: [tpl('HT', 'B0', [ch0, ch1])], a: [tpl('AT', 'B0', [ca0, ch1, ca2])], enter: {'a:a2': {a: 'pop', d: 200}}},
+        {title: 'Honest slot 2 clashes',
+         text: 'Honest miners find their own slot 2. The attacker already holds slot 2, so its lead is gone: three shares each.',
+         h: [tpl('HT', 'B0', [ch0, ch1, ch2])], a: [tpl('AT', 'B0', [ca0, ch1, ca2])],
+         x: [{t: 'rej', id: 'r2', lane: 'a', cell: ch2, note: 'slot 2 taken'}],
+         enter: {'h:h2': {a: 'pop'}, 'x:r2': {a: 'reject', from: 'h:h2', d: 400}},
+         verdict: {v: 'REFUSED', why: 'Slot 2 already holds the attacker’s own share.'}},
+        {title: 'Counting every share is wrong',
+         text: 'Counting every share it has seen, the attacker would claim five: its own two and the honest three. That needs two shares in slot 0 and two in slot 2, which no valid block can carry.',
+         h: [tpl('HT', 'B0', [ch0, ch1, ch2])], a: [tpl('AT', 'B0', [ca0, ch1, ca2])],
+         x: [{t: 'union', id: 'u', lane: 'a', cols: [[ca0, ch0], [ch1], [ca2, ch2]]}],
+         enter: {'x:u': {a: 'fade', d: 200}},
+         verdict: {v: 'INVALID', why: 'Two shares in one slot.'}},
+        {title: 'The rule',
+         text: 'The attacker’s first block carries the honest run plus its lead: its own shares above the honest run that honest miners have not matched yet. Before the first block, with a third of the hashrate, the lead is 0 or 1 at least three times in four. tevador’s simulator names each share by its slot, which is this rule.',
+         h: [tpl('HT', 'B0', [ch0, ch1, ch2])], a: [tpl('AT', 'B0', [ca0, ch1, ca2])], enter: {}},
+      ],
+    },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), scene = $('scene'), stat = $('static');
+  const tabs = [0, 1, 2].map(i => $('tab-' + i));
+  let actIdx = 0, stepIdx = 0, playing = false, speed = 1, timer = null;
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function txt(parent, x, y, cls, s) {
+    const t = el('text', {x, y, class: cls}, parent);
+    t.textContent = s;
+    return t;
+  }
+  function width(n) { const m = Math.max(n, 1); return PAD * 2 + m * CELL + (m - 1) * GAP; }
+  function drawCell(parent, c, x, y, extra) {
+    const g = el('g', {class: 'cell ' + (c.k === 'h' ? 'c-h' : 'c-a') + (extra ? ' ' + extra : '')}, parent);
+    el('rect', {x, y, width: CELL, height: CELL, rx: 2, class: 'cb'}, g);
+    txt(g, x + CELL / 2, y + CELL / 2 + 5, 'cnum', String(c.s));
+    return g;
+  }
+  function xmark(parent, x, y) {
+    const g = el('g', {class: 'xm'}, parent);
+    el('path', {d: `M${x + 6} ${y + 6}L${x + CELL - 6} ${y + CELL - 6}M${x + CELL - 6} ${y + 6}L${x + 6} ${y + CELL - 6}`, class: 'xmark'}, g);
+    return g;
+  }
+
+  function drawStatic(act) {
+    stat.textContent = '';
+    const fork = act.kind === 'fork';
+    const H_ = fork ? 370 : 190;
+    stage.setAttribute('viewBox', `0 0 640 ${H_}`);
+    $('st-bg').setAttribute('height', H_);
+    $('st-grid').setAttribute('height', H_);
+    const by = fork ? (LANE_Y.h + LANE_Y.a) / 2 : LANE_Y.h;
+    if (fork) {
+      el('path', {d: `M80 ${by}C100 ${by} 96 ${LANE_Y.h} 116 ${LANE_Y.h}H632`, class: 'guide'}, stat);
+      el('path', {d: `M80 ${by}C100 ${by} 96 ${LANE_Y.a} 116 ${LANE_Y.a}H632`, class: 'guide priv'}, stat);
+    } else {
+      el('path', {d: `M80 ${by}H632`, class: 'guide'}, stat);
+    }
+    el('rect', {x: 18, y: by - 40, width: 62, height: 80, rx: 3, class: 'b0'}, stat);
+    txt(stat, 49, by + 5, 'b0-t', 'B0');
+    txt(stat, 49, by + 58, 'b0-s', act.b0sub);
+    txt(stat, X0, 38, 'lane-lab', act.lanes.h);
+    if (act.lanes.a) txt(stat, X0, 218, 'lane-lab', act.lanes.a);
+  }
+
+  function drawItem(lane, it, x, y, nodes, pos) {
+    const w = width(it.cells.length);
+    const g = el('g', {class: it.t === 'blk' ? 'blk k-' + it.k : 'tpl'}, scene);
+    nodes['i:' + it.id] = g;
+    el('rect', {x, y: y - BH / 2, width: w, height: BH, rx: 3, class: 'frame'}, g);
+    txt(g, x + w / 2, y - BH / 2 - 9, it.t === 'blk' ? 'it-top b' : 'it-top', it.t === 'blk' ? it.id : 'mining on ' + it.parent);
+    txt(g, x + w / 2, y + BH / 2 + 17, 'it-bot', 'weight ' + (1 + it.cells.length));
+    it.cells.forEach((c, i) => {
+      const cx = x + PAD + i * (CELL + GAP), cy = y - CELL / 2, key = lane + ':' + c.id;
+      pos[key] = {x: cx, y: cy};
+      nodes[key] = drawCell(scene, c, cx, cy);
+    });
+    return w;
+  }
+
+  function drawExtra(ex, x, y, nodes, pos) {
+    const key = 'x:' + ex.id;
+    const g = el('g', {class: ex.t}, scene);
+    nodes[key] = g;
+    if (ex.t === 'rej') {
+      const cy = y - CELL / 2;
+      pos[key] = {x, y: cy};
+      drawCell(g, ex.cell, x, cy, 'rej');
+      xmark(g, x, cy);
+      txt(g, x + CELL / 2, y + BH / 2 + 17, 'note', ex.note);
+      return CELL;
+    }
+    if (ex.t === 'ghost') {
+      const w = width(ex.cells.length);
+      el('rect', {x, y: y - BH / 2, width: w, height: BH, rx: 3, class: 'frame'}, g);
+      txt(g, x, y - BH / 2 - 9, 'it-top', ex.top).style.textAnchor = 'start';
+      txt(g, x + w / 2, y + BH / 2 + 17, 'it-bot', 'weight ' + (1 + ex.cells.length));
+      ex.cells.forEach((c, i) => drawCell(g, c, x + PAD + i * (CELL + GAP), y - CELL / 2));
+      return w;
+    }
+    if (ex.t === 'union') {
+      const w = width(ex.cols.length) + 6;
+      const n = ex.cols.reduce((s, col) => s + col.length, 0);
+      el('rect', {x, y: y - BH / 2 - 6, width: w, height: BH + 6, rx: 3, class: 'frame'}, g);
+      txt(g, x + w / 2, y - BH / 2 - 15, 'it-top', 'every share');
+      txt(g, x + w / 2, y + BH / 2 + 17, 'note', 'weight ' + (1 + n) + ' · invalid');
+      ex.cols.forEach((col, i) => {
+        const cx = x + PAD + 6 + i * (CELL + GAP), cy = y - CELL / 2;
+        if (col.length > 1) {
+          drawCell(g, col[1], cx - 6, cy - 6);
+          drawCell(g, col[0], cx, cy);
+          xmark(g, cx, cy);
+        } else {
+          drawCell(g, col[0], cx, cy);
+        }
+      });
+      return w;
+    }
+    return 0;
+  }
+
+  function scaled(ms) { return Math.round(ms / speed) + 'ms'; }
+
+  function applyEnter(node, spec, pos, key) {
+    const d = spec.d || 0;
+    if (spec.a === 'fly' || spec.a === 'reject') {
+      const src = pos[spec.from], dst = pos[key];
+      if (!src || !dst) return;
+      node.style.setProperty('--dx', (src.x - dst.x) + 'px');
+      node.style.setProperty('--dy', (src.y - dst.y) + 'px');
+      node.classList.add('e-fly');
+      node.style.animationDuration = scaled(DUR.fly);
+      node.style.animationDelay = scaled(d);
+      if (spec.a === 'reject') {
+        node.querySelectorAll('.xm, .note').forEach(m => {
+          m.classList.add('e-pop');
+          m.style.animationDuration = scaled(DUR.pop);
+          m.style.animationDelay = scaled(d + DUR.fly);
+        });
+      }
+      return;
+    }
+    node.classList.add('e-' + spec.a);
+    node.style.animationDuration = scaled(DUR[spec.a] || 500);
+    node.style.animationDelay = scaled(d);
+  }
+
+  function stepLength(step) {
+    let end = 0;
+    for (const k in (step.enter || {})) {
+      const e = step.enter[k];
+      end = Math.max(end, (e.d || 0) + (DUR[e.a] || 500) + (e.a === 'reject' ? DUR.pop : 0));
+    }
+    return Math.max(4200, end + 2800);
+  }
+
+  function setMeter(row, v) {
+    const r = document.querySelector(`.m-row[data-row="${row}"]`);
+    if (v === null || v === undefined) { r.hidden = true; return; }
+    r.hidden = false;
+    r.querySelector('.m-fill').style.width = Math.min(100, v / MAXW * 100) + '%';
+    r.querySelector('.m-val').textContent = v;
+  }
+
+  function render(animate) {
+    const act = ACTS[actIdx], step = act.steps[stepIdx];
+    scene.textContent = '';
+    const nodes = {}, pos = {};
+    for (const lane of Object.keys(act.lanes)) {
+      const y = LANE_Y[lane];
+      let x = X0;
+      for (const it of (step[lane] || [])) x += drawItem(lane, it, x, y, nodes, pos) + IGAP;
+      for (const ex of (step.x || []).filter(e => e.lane === lane)) x += drawExtra(ex, x, y, nodes, pos) + IGAP;
+    }
+    if (animate && !motion.matches) {
+      const enter = step.enter || {};
+      for (const key in enter) if (nodes[key]) applyEnter(nodes[key], enter[key], pos, key);
+    }
+
+    // panel
+    const first = items => (items && items.length) ? 1 + items[0].cells.length : null;
+    const hw = first(step.h), aw = act.lanes.a ? first(step.a) : null;
+    const ghost = (step.x || []).find(e => e.t === 'ghost');
+    const union = (step.x || []).find(e => e.t === 'union');
+    $('meter-lab').textContent = act.meter;
+    $('lab-h').textContent = act.labH;
+    setMeter('h', hw);
+    setMeter('a', aw);
+    setMeter('g', ghost ? 1 + ghost.cells.length : null);
+    setMeter('u', union ? 1 + union.cols.reduce((s, c) => s + c.length, 0) : null);
+    const leadBox = $('lead-box');
+    leadBox.hidden = aw === null;
+    if (aw !== null) {
+      const L = aw - hw;
+      $('lead').textContent = (L > 0 ? '+' : L < 0 ? '−' : '') + Math.abs(L);
+    }
+    $('verdict-box').hidden = !act.lanes.a;
+    const v = $('verdict');
+    if (step.verdict) {
+      v.dataset.v = step.verdict.v;
+      v.textContent = step.verdict.v;
+      $('why').textContent = step.verdict.why;
+    } else {
+      v.dataset.v = 'none';
+      v.textContent = '—';
+      $('why').textContent = '';
+    }
+
+    // caption and labels
+    const n = act.steps.length;
+    $('cap-step').textContent = `Act ${actIdx + 1} · step ${stepIdx + 1} of ${n}`;
+    $('cap-title').textContent = step.title;
+    $('cap-text').textContent = step.text;
+    stage.setAttribute('aria-label', `Act ${actIdx + 1}, step ${stepIdx + 1} of ${n}: ${step.title}`);
+    $('btn-prev').disabled = stepIdx === 0;
+    $('btn-next').disabled = stepIdx === n - 1;
+    const atEnd = stepIdx === n - 1 && actIdx < ACTS.length - 1;
+    const cont = $('btn-continue');
+    cont.hidden = !atEnd;
+    if (atEnd) cont.textContent = `Continue to act ${actIdx + 2}`;
+  }
+
+  function setPlaying(p) {
+    playing = p;
+    $('btn-play').textContent = p ? 'Pause' : 'Play';
+    clearTimeout(timer);
+    if (p) schedule();
+  }
+  function schedule() {
+    clearTimeout(timer);
+    const step = ACTS[actIdx].steps[stepIdx];
+    timer = setTimeout(() => {
+      if (!playing) return;
+      if (stepIdx < ACTS[actIdx].steps.length - 1) {
+        stepIdx++;
+        render(true);
+        schedule();
+      } else {
+        setPlaying(false);
+      }
+    }, stepLength(step) / speed);
+  }
+  function setAct(i, play) {
+    actIdx = i;
+    stepIdx = 0;
+    tabs.forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
+    $('act-panel').setAttribute('aria-labelledby', 'tab-' + i);
+    drawStatic(ACTS[i]);
+    render(true);
+    setPlaying(!!play);
+  }
+  function next() {
+    if (stepIdx < ACTS[actIdx].steps.length - 1) { stepIdx++; render(true); }
+    setPlaying(false);
+  }
+  function prev() {
+    if (stepIdx > 0) { stepIdx--; render(false); }
+    setPlaying(false);
+  }
+  function togglePlay() {
+    if (playing) { setPlaying(false); return; }
+    if (stepIdx === ACTS[actIdx].steps.length - 1) {
+      if (actIdx < ACTS.length - 1) { setAct(actIdx + 1, true); return; }
+      stepIdx = 0;
+      render(true);
+    }
+    setPlaying(true);
+  }
+
+  tabs.forEach((t, i) => t.addEventListener('click', () => setAct(i)));
+  $('btn-next').addEventListener('click', next);
+  $('btn-prev').addEventListener('click', prev);
+  $('btn-play').addEventListener('click', togglePlay);
+  $('btn-continue').addEventListener('click', () => setAct(actIdx + 1, true));
+  document.querySelectorAll('.speeds button').forEach(b => b.addEventListener('click', () => {
+    speed = parseFloat(b.dataset.speed);
+    document.querySelectorAll('.speeds button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    if (playing) schedule();
+  }));
+  document.addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    else if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); togglePlay(); }
+    else if (e.key === '1' || e.key === '2' || e.key === '3') setAct(Number(e.key) - 1);
+  });
+
+  setAct(0);
+})();
+</script>
+</body>
+</html>

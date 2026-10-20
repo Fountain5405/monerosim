@@ -1,0 +1,103 @@
+# Scratch smoke for the #146 2026-10-15 revision (fixed main_seen, version_minor from version_major).
+# Re-run of stubborn_h10 (campaign 7) under the n_f rule the issue's author
+# has described: --sim-sop-nf-rule=either on every SoP node (2026-10-14).
+# Same seed, cells and stop_time as stubborn_h10; KSM on.
+name: sop_rev2_smoke
+seed: 12345
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    block:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+  alpha:
+    a030:
+      attacker:
+        hashrate: 3
+      honest:
+        hashrate:
+        - 3.5
+        - 3.5
+    a040:
+      attacker:
+        hashrate: 4
+      honest:
+        hashrate:
+        - 3
+        - 3
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+    d1:
+      attacker:
+        attributes:
+          give_up_depth: '1'
+    d3:
+      attacker:
+        attributes:
+          give_up_depth: '3'
+exclude:
+- arm: share
+  countermeasure: stock
+- arm: block
+  countermeasure: sop2
+  alpha: a030
+- arm: block
+  countermeasure: sop2
+  depth: d1
+- arm: block
+  countermeasure: sop2
+  depth: d3
+- depth: d1
+  alpha: a030
+- depth: d1
+  alpha: a045
+- depth: d3
+  alpha: a030
+- depth: d3
+  alpha: a045
+ksm: true

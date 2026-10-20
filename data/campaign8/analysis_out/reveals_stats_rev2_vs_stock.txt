@@ -1,0 +1,11 @@
+20261015_232916_sop_rev2_h10_long__share_sop2_a033_d2: found=10392 (att 3433, cell says 3433) reveals=34 other=4 unknown_old=0 per1000=3.27 depths={1: 10, 2: 8, 3: 7, 4: 8, 5: 1}
+20261015_232916_sop_rev2_h10_long_rep__share_sop2_a033_d2: found=10301 (att 3371, cell says 3371) reveals=40 other=9 unknown_old=0 per1000=3.88 depths={1: 6, 2: 14, 3: 9, 4: 8, 5: 2, 7: 1}
+20261015_232916_sop_rev2_h10_long_depth__share_sop2_a033_d3: found=10380 (att 3439, cell says 3439) reveals=29 other=10 unknown_old=0 per1000=2.79 depths={1: 5, 2: 7, 3: 6, 4: 7, 5: 2, 6: 2}
+20261016_213003_sop_rev2_h10_long_depth__share_sop2_a033_d5: found=10244 (att 3318, cell says 3318) reveals=37 other=13 unknown_old=0 per1000=3.61 depths={1: 8, 2: 5, 3: 7, 4: 6, 5: 8, 6: 2, 8: 1}
+20261016_213003_sop_rev2_h10_long_depth_rep__share_sop2_a033_d3: found=10421 (att 3459, cell says 3459) reveals=28 other=8 unknown_old=0 per1000=2.69 depths={1: 5, 2: 5, 3: 8, 4: 7, 5: 2, 7: 1}
+20261016_213003_sop_rev2_h10_long_depth_rep__share_sop2_a033_d5: found=10255 (att 3302, cell says 3302) reveals=26 other=12 unknown_old=0 per1000=2.54 depths={1: 3, 2: 10, 3: 4, 4: 4, 5: 2, 6: 2, 7: 1}
+20261015_232916_sop_rev2_n40__share_sop2_a033_d2: found=923 (att 632, cell says 632) reveals=8 other=3 unknown_old=0 per1000=8.67 depths={1: 3, 2: 1, 3: 2, 4: 2}
+20261017_015000_sop_rev2_n40_depth__share_sop2_a033_d5: found=970 (att 676, cell says 676) reveals=6 other=11 unknown_old=0 per1000=6.19 depths={3: 1, 4: 2, 6: 2, 7: 1}
+20260930_190000_stubborn_h10_long__block_stock_a033_d2: found=8944 (att 2992, cell says 2992) reveals=933 other=1 unknown_old=0 per1000=104.32 depths={1: 835, 2: 81, 3: 13, 4: 3, 5: 1}
+20260930_190000_stubborn_h10_long_rep__block_stock_a033_d2: found=8904 (att 2846, cell says 2846) reveals=860 other=3 unknown_old=0 per1000=96.59 depths={1: 767, 2: 76, 3: 14, 4: 3}
+20261004_155751_stubborn_h10_long_rep2__block_stock_a033_d2: found=8964 (att 2984, cell says 2984) reveals=899 other=1 unknown_old=0 per1000=100.29 depths={1: 796, 2: 80, 3: 18, 4: 2, 5: 2, 7: 1}

@@ -34,8 +34,8 @@ def parse_log_line(line: str) -> dict | None:
 
 def decide(rec: dict, nf_rule: str | None = None) -> dict:
     """Recompute nf, regime, suffix weights and the expected outcome from
-    the logged inputs (mode, reinsert, h0, hf, top, w, k, d_ms, alt, main)
-    only. Never reads the daemon's own result fields.
+    the logged inputs (mode, reinsert, h0, online, hf, top, w, k, d_ms, alt,
+    main) only. Never reads the daemon's own result fields.
 
     Lateness reference: a block entry carrying "ref" (log v2) is timed
     against it on both branches; older records time an alt block against
@@ -72,8 +72,13 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
     # forces the objective regime.
     diff_alt0 = int(alt[0]["diff"]) if alt else 0
     # Log v3 follows the revised #146: its h_f is the last common block, hf - 1
-    # in the log (hf = the first alt block). Older logs tested h0 < hf.
-    online_before_fork = h0 < hf - 1 if rec.get("v", 1) >= 3 else h0 < hf
+    # in the log (hf = the first alt block), and a node that has not come
+    # online yet ("online": false) judges objectively. Older logs tested
+    # h0 < hf.
+    if rec.get("v", 1) >= 3:
+        online_before_fork = rec["online"] and h0 < hf - 1
+    else:
+        online_before_fork = h0 < hf
     window_open = online_before_fork and under_kw and diff_alt0 >= w
     regime = "subjective" if window_open else "objective"
 

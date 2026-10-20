@@ -1,0 +1,56 @@
+# Deep-reorg hunter (2026-10-19, owner approved): does Share-or-Perish
+# (MRL #146) make a Qubic-style 10+ block tip pop easier or harder than stock
+# Monero? deep_hunt (agents/selfish_strategy.py) withholds until the honest
+# branch holds release_depth = 10 blocks past the fork, reveals if its branch
+# outweighs honest's under the network's rule (SoP weight on sop2, plain
+# difficulty on stock), and gives up once honest leads by give_up_depth blocks.
+# Same 12-daemon network and options as sop_rev2_h10. Model B's rates
+# (sop_race_model.py hunt, .claude/campaign8/deep_hunt/) set the stop times.
+# SoP at alpha 0.45, 72 h (Model B: about 5 10+ reorgs per canonical day).
+name: deep_hunt_sop_a045
+seed: 13581
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: deep_hunt
+          release_depth: '10'
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+          embedded_shares: 'true'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+  alpha:
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+ksm: true

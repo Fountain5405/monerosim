@@ -275,5 +275,21 @@ def test_v3_h0_at_last_common_block_is_objective():
            "top": 1000, "w": 16, "k": 3, "d_ms": 5000, "nf_rule": "either",
            "alt": [dict(blk)], "main": [dict(blk, id="m")]}
     assert decide(dict(rec, v=2))["regime"] == "subjective"
-    assert decide(dict(rec, v=3))["regime"] == "objective"
-    assert decide(dict(rec, v=3, h0=998))["regime"] == "subjective"
+    assert decide(dict(rec, v=3, online=True))["regime"] == "objective"
+    assert decide(dict(rec, v=3, online=True, h0=998))["regime"] == "subjective"
+
+
+def test_v3_objective_until_online():
+    # From v3 a node that has not come online yet (no first sync, no block
+    # mined) judges objectively: its receive times are download times. v1/v2
+    # records predate the field; a v3 record without it is malformed.
+    import pytest
+    blk = {"h": 1000, "id": "a", "diff": "1216", "seen": 0, "n_sh": 0, "shares": []}
+    rec = {"mode": "whole_branch", "reinsert": False, "h0": 998, "hf": 1000,
+           "top": 1000, "w": 16, "k": 3, "d_ms": 5000, "nf_rule": "either",
+           "alt": [dict(blk)], "main": [dict(blk, id="m")]}
+    assert decide(dict(rec, v=3, online=True))["regime"] == "subjective"
+    assert decide(dict(rec, v=3, online=False))["regime"] == "objective"
+    assert decide(dict(rec, v=2, online=False))["regime"] == "subjective"
+    with pytest.raises(KeyError):
+        decide(dict(rec, v=3))

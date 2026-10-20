@@ -1,0 +1,8 @@
+run: archived_runs/20261019_111740_deep_hunt_smoke__share_sop2_a045_d2
+file                                                         templates      own   remote max remote
+daemon_logs/monero-attacker-miner/bitmonero.log                   1199    14273        0          0
+daemon_logs/monero-honest-001/bitmonero.log                       1498    12646    12107         46
+daemon_logs/monero-honest-002/bitmonero.log                       1498    12194    12581         43
+shadow.data/hosts/attacker-miner/monerod-sim.1000.stdout          1199    14273        0          0
+shadow.data/hosts/honest-001/monerod-sim.1000.stdout              1498    12646    12107         46
+shadow.data/hosts/honest-002/monerod-sim.1000.stdout              1498    12194    12581         43

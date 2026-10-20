@@ -22,7 +22,7 @@ chain and the strategy sees the recruited hashrate as its own lead).
 Attributes (via --attributes KEY VALUE):
     strategy            "honest" | "eyal_sirer" | "trail_stubborn" |
                         "equal_fork_stubborn" | "lead_stubborn" |
-                        "window_stubborn"  (default "honest")
+                        "window_stubborn" | "deep_hunt"  (default "honest")
     bridges             comma-separated bridge agent ids (required)
     bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
     islands             comma-separated ISLAND bridge agent ids (optional;
@@ -37,8 +37,11 @@ Attributes (via --attributes KEY VALUE):
                         OBJECTS (a block counts as 1 + its embedded valid
                         shares) (default 48 = k*w). Only used by
                         window_stubborn -- see agents/selfish_strategy.py.
-    give_up_depth       window_stubborn: give up once honest leads by this many
-                        blocks (default 2).
+    give_up_depth       window_stubborn, deep_hunt: give up once honest leads by
+                        this many blocks (default 2).
+    release_depth       deep_hunt: reveal only once the honest branch holds this
+                        many blocks past the fork (default 10), so every reveal
+                        orphans at least that many honest blocks.
     embedded_shares     "true" to read a SoP daemon's per-block share count from
                         get_block_headers_range's minor_version field (the
                         patched template sets b.minor_version = major + N,
@@ -117,6 +120,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.release_lead = kw["release_lead"]
         self.window_objects = kw["window_objects"]
         self.give_up_depth = kw["give_up_depth"]
+        self.release_depth = kw["release_depth"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
@@ -164,7 +168,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             "trail_depth": int(attributes.get("trail_depth", "1") or 1),            # trail_stubborn only
             "release_lead": int(attributes.get("release_lead", "1") or 1),          # cash-out threshold
             "window_objects": int(attributes.get("window_objects", "48") or 48),    # window_stubborn only; "0" = no window
-            "give_up_depth": int(attributes.get("give_up_depth", "2") or 2),        # window_stubborn only
+            "give_up_depth": int(attributes.get("give_up_depth", "2") or 2),        # window_stubborn, deep_hunt
+            "release_depth": int(attributes.get("release_depth", "10") or 10),      # deep_hunt only
         }
 
     def _ensure_strategy(self, start_height: int) -> None:
@@ -173,7 +178,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             trail_depth=self.trail_depth,
                                             release_lead=self.release_lead,
                                             window_objects=self.window_objects,
-                                            give_up_depth=self.give_up_depth)
+                                            give_up_depth=self.give_up_depth,
+                                            release_depth=self.release_depth)
 
     @staticmethod
     def _header_difficulty(h) -> int:
@@ -755,12 +761,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height, branch_weights=self._branch_weights)
-        if (self.strategy_name == "window_stubborn" and decision.release_to is not None
+        if (self.strategy_name in ("window_stubborn", "deep_hunt") and decision.release_to is not None
                 and pub_height >= self.strategy.start_height):   # warm-up publishes everything
             fork = decision.release_from
             att_objects, att_weight, hon_weight = self.strategy.last_weights
             self.logger.info(
-                f"window_stubborn: reveal fork={fork} a={priv_height - fork} "
+                f"{self.strategy_name}: reveal fork={fork} a={priv_height - fork} "
                 f"h={pub_height - fork} objects={att_objects} weight={att_weight} "
                 f"honest_weight={hon_weight}")
 

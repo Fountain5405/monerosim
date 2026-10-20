@@ -1,0 +1,46 @@
+===== flip-back scan, B1 and n40a (2026-10-18)
+20261015_232916_sop_rev2_h10_long__share_sop2_a033_d2: rows=374 max=+10 rows>=10: 11  hist={2: 22, 3: 33, 4: 99, 5: 44, 6: 110, 7: 33, 9: 22, 10: 11}
+20261015_232916_sop_rev2_h10_long_rep__share_sop2_a033_d2: rows=440 max=+13 rows>=10: 11  hist={2: 22, 3: 33, 4: 121, 5: 110, 6: 77, 7: 44, 8: 22, 13: 11}
+20261015_232916_sop_rev2_h10_long_depth__share_sop2_a033_d3: rows=319 max=+8 rows>=10: 0  hist={3: 66, 4: 99, 5: 33, 6: 44, 7: 27, 8: 50}
+20261015_232916_sop_rev2_n40__share_sop2_a033_d2: rows=312 max=+8 rows>=10: 0  hist={3: 78, 5: 117, 6: 78, 8: 39}
+20261017_015000_sop_rev2_n40_depth__share_sop2_a033_d5: rows=234 max=+9 rows>=10: 0  hist={3: 39, 4: 39, 5: 61, 6: 17, 7: 39, 9: 39}
+===== flip-back scan, B2 and n40b (2026-10-19)
+20261016_213003_sop_rev2_h10_long_depth__share_sop2_a033_d5: rows=407 max=+10 rows>=10: 11  hist={2: 11, 3: 44, 4: 77, 5: 99, 6: 66, 7: 33, 8: 55, 9: 11, 10: 11}
+20261016_213003_sop_rev2_h10_long_depth_rep__share_sop2_a033_d3: rows=309 max=+11 rows>=10: 33  hist={2: 17, 3: 39, 4: 110, 5: 44, 6: 33, 7: 28, 8: 5, 10: 22, 11: 11}
+20261016_213003_sop_rev2_h10_long_depth_rep__share_sop2_a033_d5: rows=286 max=+8 rows>=10: 0  hist={3: 33, 4: 77, 5: 77, 6: 66, 7: 11, 8: 22}
+20261018_153722_sop_rev2_n40__block_stock_a033_d2: rows=6903 max=+5 rows>=10: 0  hist={2: 6236, 3: 589, 4: 39, 5: 39}
+===== flip-back scan of every archived run with "stock" in its name
+20260926_140803_pop_sop2_h10__es_r2_stock: rows=243 max=+2 rows>=10: 0  hist={2: 243}
+20260926_140803_pop_sop2_h10__es_stock: rows=210 max=+11 rows>=10: 11  hist={2: 155, 3: 33, 7: 11, 11: 11}
+20260926_140823_pop_sop2_h10_rep__es_r2_stock: rows=275 max=+14 rows>=10: 11  hist={2: 253, 7: 11, 13: 1, 14: 10}
+20260926_140823_pop_sop2_h10_rep__es_stock: rows=231 max=+14 rows>=10: 11  hist={2: 209, 7: 11, 14: 11}
+20260927_032741_pop_exact_relay__es_r2_stock_relay: rows=286 max=+4 rows>=10: 0  hist={2: 275, 4: 11}
+20260927_032741_pop_exact_relay__es_stock_relay: rows=220 max=+13 rows>=10: 11  hist={2: 165, 3: 22, 4: 11, 5: 11, 13: 11}
+20260927_032802_pop_exact_relay_rep__es_r2_stock_relay: rows=253 max=+8 rows>=10: 0  hist={2: 242, 8: 11}
+20260927_032802_pop_exact_relay_rep__es_stock_relay: rows=297 max=+6 rows>=10: 0  hist={2: 253, 3: 33, 6: 11}
+20260929_170204_pop_sop2_h10_reject__es_stock: rows=308 max=+8 rows>=10: 0  hist={2: 253, 3: 22, 4: 11, 6: 11, 8: 11}
+20260929_170225_pop_sop2_h10_reject_rep__es_stock: rows=209 max=+13 rows>=10: 22  hist={2: 154, 3: 22, 4: 11, 11: 11, 13: 11}
+20260929_184200_pop_sop2_h10_reject__es_r2_stock: rows=187 max=+14 rows>=10: 11  hist={2: 154, 3: 22, 14: 11}
+20260929_184621_pop_sop2_h10_reject_rep__es_r2_stock: rows=286 max=+7 rows>=10: 0  hist={2: 253, 3: 11, 6: 11, 7: 11}
+20260930_181721_stubborn_h10_smoke__block_stock_a045_d2: rows=88 max=+3 rows>=10: 0  hist={2: 66, 3: 22}
+20260930_181907_sop2_h10_honest_rep__connected_stock: rows=1 max=+2 rows>=10: 0  hist={2: 1}
+20260930_190000_stubborn_h10_long__block_stock_a033_d2: rows=10273 max=+6 rows>=10: 0  hist={2: 9200, 3: 886, 4: 143, 5: 33, 6: 11}
+20260930_190000_stubborn_h10_long_rep__block_stock_a033_d2: rows=9470 max=+5 rows>=10: 0  hist={2: 8452, 3: 831, 4: 154, 5: 33}
+20260930_212536_stubborn_h10__block_stock_a030_d2: rows=187 max=+3 rows>=10: 0  hist={2: 176, 3: 11}
+20260930_212706_stubborn_h10_rep__block_stock_a030_d2: rows=132 max=+4 rows>=10: 0  hist={2: 110, 4: 22}
+20260930_230809_stubborn_h10_rep__block_stock_a040_d2: rows=253 max=+4 rows>=10: 0  hist={2: 231, 3: 11, 4: 11}
+20260930_231027_stubborn_h10_rep__block_stock_a040_d1: rows=242 max=+2 rows>=10: 0  hist={2: 242}
+20260930_231057_stubborn_h10_rep__block_stock_a040_d3: rows=286 max=+5 rows>=10: 0  hist={2: 231, 3: 11, 4: 33, 5: 11}
+20260930_231127_stubborn_h10__block_stock_a040_d2: rows=165 max=+6 rows>=10: 0  hist={2: 132, 3: 11, 4: 11, 6: 11}
+20260930_231227_stubborn_h10_rep__block_stock_a045_d2: rows=330 max=+3 rows>=10: 0  hist={2: 275, 3: 55}
+20260930_231729_stubborn_h10__block_stock_a040_d1: rows=253 max=+2 rows>=10: 0  hist={2: 253}
+20260930_231729_stubborn_h10__block_stock_a040_d3: rows=220 max=+3 rows>=10: 0  hist={2: 187, 3: 33}
+20260930_231959_stubborn_h10__block_stock_a045_d2: rows=264 max=+5 rows>=10: 0  hist={2: 231, 3: 11, 4: 11, 5: 11}
+20261004_155751_stubborn_h10_long_rep2__block_stock_a033_d2: rows=9893 max=+8 rows>=10: 0  hist={2: 8758, 3: 882, 4: 198, 5: 22, 6: 22, 8: 11}
+20261004_155751_stubborn_h10_rep2__block_stock_a030_d2: rows=176 max=+2 rows>=10: 0  hist={2: 176}
+20261004_163532_stubborn_h10_rep2__block_stock_a040_d2: rows=253 max=+3 rows>=10: 0  hist={2: 209, 3: 44}
+20261004_164238_stubborn_h10_rep2__block_stock_a040_d1: rows=253 max=+2 rows>=10: 0  hist={2: 253}
+20261004_164510_stubborn_h10_rep2__block_stock_a040_d3: rows=297 max=+5 rows>=10: 0  hist={2: 209, 3: 55, 4: 22, 5: 11}
+20261004_164611_stubborn_h10_rep2__block_stock_a045_d2: rows=286 max=+4 rows>=10: 0  hist={2: 242, 3: 33, 4: 11}
+20261015_012354_sop_either_n40_speed__block_stock_a033_d2: rows=975 max=+3 rows>=10: 0  hist={2: 895, 3: 80}
+20261018_153722_sop_rev2_n40__block_stock_a033_d2: rows=6903 max=+5 rows>=10: 0  hist={2: 6236, 3: 589, 4: 39, 5: 39}

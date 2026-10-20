@@ -1,0 +1,9 @@
+20261015_232916_sop_rev2_h10_long__share_sop2_a033_d2: reveals=34 pending mean=41.1 median=39 would-be-blocked=33
+20261015_232916_sop_rev2_h10_long_rep__share_sop2_a033_d2: reveals=40 pending mean=40.0 median=43 would-be-blocked=39
+20261015_232916_sop_rev2_h10_long_depth__share_sop2_a033_d3: reveals=29 pending mean=40.6 median=39 would-be-blocked=29
+20261016_213003_sop_rev2_h10_long_depth__share_sop2_a033_d5: reveals=37 pending mean=44.5 median=45 would-be-blocked=37
+20261016_213003_sop_rev2_h10_long_depth_rep__share_sop2_a033_d3: reveals=28 pending mean=44.3 median=42 would-be-blocked=27
+20261016_213003_sop_rev2_h10_long_depth_rep__share_sop2_a033_d5: reveals=26 pending mean=35.4 median=30 would-be-blocked=26
+20261015_232916_sop_rev2_n40__share_sop2_a033_d2: reveals=8 pending mean=35.6 median=40 would-be-blocked=7
+20261017_015000_sop_rev2_n40_depth__share_sop2_a033_d5: reveals=6 pending mean=35.8 median=38 would-be-blocked=6
+ALL: reveals=208 pending mean=40.8 median=40 max=83; attacker lead at reveal (objects) mean=10.6 median=6; blocked if pending counted: 204 of 208

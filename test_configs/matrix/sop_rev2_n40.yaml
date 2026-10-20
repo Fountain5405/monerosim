@@ -21,7 +21,6 @@ axes:
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16
-          sim-sop-nf-rule: either
     block:
       attacker:
         attributes:
@@ -35,17 +34,14 @@ axes:
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16
-          sim-sop-nf-rule: either
       relays:
         daemon: monerod-sim
         daemon_options:
           sim-share-or-perish: true
-          sim-sop-nf-rule: either
       bridges:
         daemon: monerod-sim
         daemon_options:
           sim-share-or-perish: true
-          sim-sop-nf-rule: either
     stock:
       attacker:
         attributes:

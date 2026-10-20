@@ -1,0 +1,2 @@
+20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2: found=3030 (att 1417, cell says 1417) reveals=140 other=2 unknown_old=0 per1000=46.20 depths={1: 29, 2: 42, 3: 28, 4: 19, 5: 12, 6: 8, 7: 1, 10: 1}
+20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2: found=886 (att 606, cell says 606) reveals=7 other=7 unknown_old=0 per1000=7.90 depths={2: 3, 3: 2, 5: 2}

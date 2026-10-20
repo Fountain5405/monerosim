@@ -1,0 +1,101 @@
+... 120/160 dirs, 14 s
+... 160/160 dirs, 20 s
+scanned 160 dirs in 20 s
+before_online                      0
+capped_logs                        0
+decisions                          10878
+late_by_1                          34
+late_by_2                          22
+late_by_3                          4
+late_in_range                      14
+late_nodes_12d                     17
+late_nodes_40d                     43
+mined_before_sync                  2
+never_online                       0
+no_sync_banner                     2
+nodes_12d                          558
+nodes_40d                          78
+outcome_change                     0
+regime_change                      0
+rev2_spec_in_range                 16
+rev2_spec_in_range_skipped         2
+rev2_spec_outcome_diff             0
+rev2_spec_regime_diff              4
+runs_12d                           67
+runs_40d                           2
+runs_with_late_12d                 13
+runs_with_late_40d                 2
+spec_in_range                      86
+spec_in_range_skipped              44
+spec_outcome_diff                  2
+spec_regime_diff                   41
+started_after_first_block_12d      17
+started_after_first_block_40d      42
+late node kinds: {'monero-relay': 60}
+12d first block after start: n=67 min 26 s, median 152 s, <30 s 4, <60 s 15, <260 s 47
+40d first block after start: n=2 min 20 s, median 53 s, <30 s 1, <60 s 1, <260 s 2
+as run vs spec, differing (run, host, hf, db, online, as run, spec):
+   20260930_181907_pop_sop2_h10_fixed__es_r2_sop2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_181907_pop_sop2_h10_fixed__es_sop2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a040_d2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a040_d2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'SWITCH')
+   20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a040_d2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'SWITCH') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-honest-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-honest-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-honest-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-honest-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-honest-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-honest-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-003 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-003 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-003 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-004 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-004 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-004 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-005 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-005 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-005 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-006 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-006 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-monero-seed-006 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-relay-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-relay-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-relay-001 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-relay-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-relay-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20260930_211304_stubborn_h10_rep__share_sop2_a045_d2 monero-relay-002 hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261004_111002_pop_sop2_h10_fixed__es_r2_sop2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261004_111002_pop_sop2_h10_fixed__es_sop2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261004_111002_pop_sop2_h10_fixed__es_sop2 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261015_181628_sop_rev2_smoke__share_sop2_a040_d1 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261015_181628_sop_rev2_smoke__share_sop2_a040_d1 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261015_181628_sop_rev2_smoke__share_sop2_a040_d1 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+   20261015_181628_sop_rev2_smoke__share_sop2_a040_d1 monero-attacker-bridge hf=995 db=994 online=994 ('subjective', 'KEEP') ('objective', 'KEEP')
+h0 check failures (after-queue build):
+no banner (run, host, decisions, start s, first adds):
+   20261004_111002_stubborn_h10_rep2__share_sop2_a040_d1 monero-attacker-miner 2 0.0 [995, 996]
+   20261015_185016_sop_rev2_smoke__share_sop2_a040_d3 monero-attacker-miner 2 0.0 [995, 996]
+in range (run, host, hf, online, nf, nf_main, base, proposed):
+   20261015_215204 monero-relay-001 996 995 9 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-001 996 995 24 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-001 996 995 29 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-001 996 995 32 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-001 996 995 44 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-001 996 995 85 57 ('objective', 'SWITCH') ('objective', 'SWITCH')
+   20261015_215204 monero-relay-001 996 995 57 85 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-002 996 995 9 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-002 996 995 24 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-002 996 995 29 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-002 996 995 32 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-002 996 995 44 57 ('objective', 'KEEP') ('objective', 'KEEP')
+   20261015_215204 monero-relay-002 996 995 85 57 ('objective', 'SWITCH') ('objective', 'SWITCH')
+   20261015_215204 monero-relay-002 996 995 57 85 ('objective', 'KEEP') ('objective', 'KEEP')

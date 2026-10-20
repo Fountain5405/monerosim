@@ -290,3 +290,187 @@ def test_object_giveup_variant_runs_and_gives_up_earlier_when_stricter():
     strict = simulate(SimConfig(**base, give_up_objects=5))
     assert strict.reveals <= loose.reveals
     assert strict.att_final_blocks + strict.hon_final_blocks > 0
+
+
+
+def test_release_depth_zero_and_one_match_the_original_model():
+    """deep_hunt (2026-10-19): a reveal already needs h >= 1, so
+    release_depth 1 must change nothing, and 0 is the default."""
+    from scripts.sop_race_model import SimConfig, simulate
+    base = dict(alpha=0.40, d=2, rule='sop', attacker_embeds=True, days=30, seed=7)
+
+    def key(s):
+        return (s.reveals, s.reorg_depths, s.att_final_blocks, s.hon_final_blocks, s.att_orphaned_blocks)
+    assert key(simulate(SimConfig(**base))) == key(simulate(SimConfig(**base, release_depth=0))) \
+        == key(simulate(SimConfig(**base, release_depth=1)))
+
+
+def test_release_depth_makes_every_reveal_at_least_that_deep():
+    from scripts.sop_race_model import SimConfig, simulate
+    for rule, embeds in (("stock", False), ("sop", True)):
+        s = simulate(SimConfig(alpha=0.45, d=3, rule=rule, attacker_embeds=embeds, days=100, seed=11,
+                               release_depth=10))
+        assert s.reveals > 0, rule
+        assert min(s.reorg_depths) >= 10, rule
+        assert s.count_ge(10) == s.reveals, rule
+
+
+def test_release_depth_with_object_giveup_runs():
+    # tevador's deep-reorg attacker: give up once honest is 5 objects ahead.
+    from scripts.sop_race_model import SimConfig, simulate
+    s = simulate(SimConfig(alpha=0.45, d=2, rule='sop', attacker_embeds=True, days=60, seed=5,
+                           give_up_objects=5, release_depth=10))
+    assert all(d >= 10 for d in s.reorg_depths)
+    assert s.att_final_blocks + s.hon_final_blocks > 0
+
+
+def test_hunt_subcommand_prints_a_table(capsys):
+    from scripts.sop_race_model import main
+    assert main(["hunt", "--alphas", "0.45", "--rules", "stock", "sop", "--give-ups", "d2", "o5",
+                 "--days", "10", "--seed", "3"]) == 0
+    out = capsys.readouterr().out
+    assert "| 0.45 | stock | d2 |" in out
+    assert "| 0.45 | sop | o5 |" in out
+    assert "| 0.45 | stock | o5 |" not in out      # object give-up is SoP-only
+
+
+
+# --- tevador's deep-reorg attacker (share-or-perish/blockhain-sim.py, 2026-10-17) ---
+# Four switches, off by default, that make Model B's attacker his. simulate()
+# draws two numbers per object (attacker?, block?) plus one per tie coin, so
+# a scripted stream feeds it exact events.
+
+class _Scripted:
+    def __init__(self, values):
+        self.values = list(values)
+
+    def random(self):
+        assert self.values, "simulate() drew more numbers than scripted"
+        return self.values.pop(0)
+
+
+def _ev(attacker, block):
+    return [0.0 if attacker else 0.99, 0.0 if block else 0.99]
+
+
+def _run_scripted(monkeypatch, values, n_objects, **cfg):
+    from scripts import sop_race_model as m
+    monkeypatch.setattr(m.random, "Random", lambda seed: _Scripted(values))
+    base = dict(alpha=0.4, d=10, rule="sop", attacker_embeds=True, seed=1, release_depth=1)
+    base.update(cfg)
+    days = (n_objects + 0.5) * m.T_BLOCK_S / (m.SECONDS_PER_DAY * base.get("w", m.W_DEFAULT))
+    return m.simulate(m.SimConfig(days=days, **base))
+
+
+def test_early_honest_shares_go_into_the_attackers_first_block(monkeypatch):
+    # 4 honest shares before any block, 1 attacker share, then an attacker
+    # block and an honest block. Model B: 2 against 5, hold. With the switch
+    # the attacker's block embeds the 4 honest shares too: 6 against 5, reveal.
+    events = [(False, False)] * 4 + [(True, False), (True, True), (False, True)]
+    vals = [x for e in events for x in _ev(*e)]
+    plain = _run_scripted(monkeypatch, vals, len(events), K_objects=1)
+    shared = _run_scripted(monkeypatch, vals, len(events), K_objects=1, early_honest_shares=True)
+    assert plain.reveals == 0
+    assert shared.reveals == 1 and shared.reorg_depths == [1]
+
+
+def test_equal_start_gives_the_attacker_honests_pending_shares_after_a_give_up(monkeypatch):
+    # Object give-up at 2: the third honest share gives up. Model B restarts
+    # 3 objects behind and gives up again at the honest block (1 attacker
+    # block orphaned). Equal start restarts level, so the attacker still holds.
+    events = [(False, False)] * 3 + [(True, True), (False, True)]
+    vals = [x for e in events for x in _ev(*e)]
+    plain = _run_scripted(monkeypatch, vals, len(events), give_up_objects=2)
+    equal = _run_scripted(monkeypatch, vals, len(events), give_up_objects=2, equal_start=True)
+    assert plain.att_orphaned_blocks == 1
+    assert equal.att_orphaned_blocks == 0 and equal.reveals == 0
+
+
+def test_either_window_ends_the_window_on_the_honest_branch(monkeypatch):
+    # Attacker: 40 shares and a block (41 objects, under K = 48). Honest: three
+    # blocks, the last two with 15 shares each (32 objects past its first).
+    # Model B holds (attacker branch inside the window); either_window reveals,
+    # 41 against 33.
+    events = ([(True, False)] * 40 + [(True, True), (False, True)]
+              + [(False, False)] * 15 + [(False, True)] + [(False, False)] * 15 + [(False, True)])
+    vals = [x for e in events for x in _ev(*e)]
+    plain = _run_scripted(monkeypatch, vals, len(events))
+    either = _run_scripted(monkeypatch, vals, len(events), either_window=True)
+    assert plain.reveals == 0
+    assert either.reveals == 1 and either.reorg_depths == [3]
+
+
+def test_tie_win_prob_wins_or_ends_the_attack_on_an_exact_tie(monkeypatch):
+    # 4 attacker shares and a block (5), 4 honest shares and a block (5): a tie.
+    events = [(True, False)] * 4 + [(True, True)] + [(False, False)] * 4 + [(False, True)]
+    vals = [x for e in events for x in _ev(*e)]
+    plain = _run_scripted(monkeypatch, vals, len(events), K_objects=1)
+    assert plain.reveals == 0 and plain.att_orphaned_blocks == 0       # strict: hold
+    won = _run_scripted(monkeypatch, vals + [0.5], len(events), K_objects=1, tie_win_prob=0.75)
+    assert won.reveals == 1
+    lost = _run_scripted(monkeypatch, vals + [0.5], len(events), K_objects=1, tie_win_prob=0.25)
+    assert lost.reveals == 0 and lost.att_orphaned_blocks == 1 and lost.hon_final_blocks == 1
+
+
+def test_tevador_switches_default_off():
+    from scripts.sop_race_model import SimConfig, simulate
+    base = dict(alpha=0.40, d=2, rule="sop", attacker_embeds=True, days=30, seed=7, give_up_objects=5)
+    a = simulate(SimConfig(**base))
+    b = simulate(SimConfig(**base, equal_start=False, early_honest_shares=False, either_window=False,
+                           tie_win_prob=0.0))
+    assert (a.reveals, a.reorg_depths, a.att_final_blocks, a.att_orphaned_blocks) == \
+        (b.reveals, b.reorg_depths, b.att_final_blocks, b.att_orphaned_blocks)
+
+
+def test_reconcile_subcommand_prints_each_step(capsys):
+    from scripts.sop_race_model import main
+    assert main(["reconcile", "--days", "5", "--seed", "1"]) == 0
+    out = capsys.readouterr().out
+    assert "| Model B" in out and "(= tevador)" in out
+    assert out.count("\n| ") >= 6          # header plus five steps
+
+
+
+def test_positional_shares_drop_an_honest_share_whose_position_the_attacker_holds(monkeypatch):
+    # tevador's UNIQUE_SHARES: a share's ID is its position in the finder's
+    # pending set. Attacker share first (position 0), then an honest share
+    # (position 0 too): the attacker gains nothing, 2 against 2, hold. As a
+    # union it holds both, 3 against 2, reveal. Honest share first: no clash.
+    att_first = [(True, False), (False, False), (True, True), (False, True)]
+    hon_first = [(False, False), (True, False), (True, True), (False, True)]
+    cfg = dict(K_objects=1, early_honest_shares=True, equal_start=True)
+    for events, positional_reveals in ((att_first, 0), (hon_first, 1)):
+        vals = [x for e in events for x in _ev(*e)]
+        union = _run_scripted(monkeypatch, vals, len(events), **cfg)
+        positional = _run_scripted(monkeypatch, vals, len(events), positional_shares=True, **cfg)
+        assert union.reveals == 1
+        assert positional.reveals == positional_reveals
+
+
+def test_positional_shares_need_equal_start():
+    import pytest
+    from scripts.sop_race_model import SimConfig, simulate
+    with pytest.raises(ValueError):
+        simulate(SimConfig(alpha=0.3, d=1, rule="sop", attacker_embeds=True, days=1, seed=1,
+                           positional_shares=True))
+
+
+
+def test_hunt_honest_shares_flag_sets_the_slot_rule_switches_on_sop_rows(monkeypatch, capsys):
+    from scripts import sop_race_model as m
+    seen = []
+    real = m.simulate
+
+    def spy(cfg):
+        seen.append(cfg)
+        return real(cfg)
+
+    monkeypatch.setattr(m, "simulate", spy)
+    args = ["hunt", "--alphas", "0.4", "--rules", "sop", "stock", "--give-ups", "d2", "--days", "2"]
+    assert m.main(args + ["--honest-shares"]) == 0
+    assert "uses honest shares" in capsys.readouterr().out
+    flags = {(c.rule, c.equal_start, c.early_honest_shares, c.positional_shares) for c in seen}
+    assert flags == {("sop", True, True, True), ("stock", False, False, False)}
+    seen.clear()
+    assert m.main(args) == 0
+    assert not any(c.equal_start or c.early_honest_shares or c.positional_shares for c in seen)

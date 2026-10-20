@@ -1,0 +1,3 @@
+20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2: reveals=140 pending mean=16.3 median=14 would-be-blocked=85
+20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2: reveals=7 pending mean=32.0 median=33 would-be-blocked=7
+ALL: reveals=147 pending mean=17.0 median=14 max=57; attacker lead at reveal (objects) mean=13.9 median=10; blocked if pending counted: 92 of 147
