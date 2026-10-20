@@ -32,7 +32,10 @@ expand() {  # <dedup> <list: none|half> <seed> <banlist path> <out yaml>
     if grep -v '^\s*#' "$tmp" | grep -q "@BANLIST@"; then
         echo "unreplaced @BANLIST@ in $tmp" >&2; exit 1
     fi
-    "$PY" "$REPO/scripts/generate_config.py" --from "$tmp" -o "$5" > /dev/null
+    # --no-safe-tx-interval: without it the generator raises users' 300 s to
+    # this box's calibrated "safe" interval (3412 s on the 32-thread box), and
+    # users send ~2 txs each instead of ~30 (pilot 20261020_165536).
+    "$PY" "$REPO/scripts/generate_config.py" --from "$tmp" -o "$5" --no-safe-tx-interval > /dev/null
     rm -f "$tmp"
 }
 

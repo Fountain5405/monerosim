@@ -157,13 +157,21 @@ adds the relay-log and subnet-dedup patches (`./setup.sh --sim-binary`).
 |---|---|---|---|---|---|
 | `20261020_130027_x0_legacy_none_s12345` | 1 h / 1 h | 48 (40% of reachable) | — | — | out of RAM at sim 1 h 43 m (batched relay waves); stopped |
 | `20261020_132230_x0_legacy_none_s12345` | 1 h / 1 h | 48 (40% of reachable) | 0.348 (target 0.15: FAIL) | 0.148 (176 txs) | 1 h 36 m wall; min free RAM 8.9 GB; 26 user agents stuck in RPC timeouts at the end, so Shadow exits 1 |
+| `20261020_165536_x0_legacy_none_s12345_nochurn` | none | 48 (40% of reachable) | 0.286 (FAIL) | 0.213 (244 txs): implied 4.7 hops, PASS | 1 h 15 m wall; min free RAM 6.5 GB (KSM at 10000 pages until sim ~1 h, then 20000); exit 0 |
 
-With churn, the outbound share (0.35) roughly followed the spies' share of
-reachable IPs (0.40), as Kopyciok et al.'s 15.26% outbound followed their
-14.74% of IPs. The 40% figure is from Oct 2024 (#126) while the 15% target is
+Both pilots ran users at one tx per 3,412 s, not 300 s: `make_cells.sh`
+expanded without `--no-safe-tx-interval`, so the generator raised the
+interval to this box's calibrated "safe" value and users sent ~2 txs each
+(fixed; the cells now hold 300 s). The slot shares don't depend on the tx
+rate; the stems are from few transactions.
+
+Turning churn off lowered the outbound share from 0.35 to 0.29, still about
+twice the target. With churn, the share (0.35) roughly followed the spies'
+share of reachable IPs (0.40), as Kopyciok et al.'s 15.26% outbound followed
+their 14.74% of IPs. The 40% figure is from Oct 2024 (#126) while the 15% target is
 Apr-May 2024 (Rucknium) and Feb 2025 (Kopyciok), so if the share stays high
 without churn, the replica's "2025" spy preset (14.7%, 7 /24s) is the matched
-pair to try.
+pair to try. It does: 0.29 without churn.
 
 ## Targets and open questions
 
