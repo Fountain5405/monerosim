@@ -594,6 +594,8 @@ stem.
   reports precision and recall against ground truth by sender reachability.
 - **Exposure over time.** There is no per-node time series of the spy share of
   outbound and stem slots, because stem peers aren't logged.
+  *(2026-10-20: both are covered by I3 below, on the same branch:
+  `analysis/spy/spy_estimators.py`, `docs/SPY_ESTIMATORS.md`.)*
 - **Forwarding.** `spy_proxy` doesn't forward, so a backend never sees honest
   traffic the way a class-B backend does.
 - **Defenses.** monerod-sim has no flags for any of the defenses above.

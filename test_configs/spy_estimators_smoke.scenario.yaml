@@ -1,0 +1,96 @@
+# Smoke test for the spy-side estimators (analysis/spy/spy_estimators.py, spy
+# plan I3; docs/20261018_spy_node_defenses.md §5.2). Like
+# txrelay_log_smoke.scenario.yaml, every daemon logs relays, plus 6 variant-R
+# spies (logging monerod-sim, reachable) and mostly unreachable users, so the
+# stem-predecessor + reachability estimator has unreachable senders to find.
+# Not a calibrated preset (that is I5 / X0): it only checks the pipeline.
+#
+# Expected: sp_r precision for unreachable senders near 1 and recall near
+# their spies' stem share; combined recall above sp's.
+#
+# Check:  python3 analysis/spy/spy_estimators.py archived_runs/<run>
+#
+# Expand: python3 scripts/generate_config.py --from test_configs/spy_estimators_smoke.scenario.yaml \
+#             -o test_configs/spy_estimators_smoke.yaml
+# Run:    ./run_sim.sh --config test_configs/spy_estimators_smoke.yaml --bootfast
+general:
+  stop_time: 5h
+  simulation_seed: 12345
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  native_preemption: true
+  reachable_by_role:
+    user: 0.25
+    relay: 0.5
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..005}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [20, 20, 20, 20, 20]
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  user-{001..016}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 40m
+    start_time_stagger: 10s
+    transaction_interval: 2m
+    activity_start_time: 4h
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  relay-{001..015}:
+    daemon: monerod-sim
+    start_time: 5m
+    start_time_stagger: 5s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  # Variant-R spies: stock relay behaviour, but their logs are the spy's view.
+  spy-{001..006}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+
+  # Fallback seeds on the patched binary so stems through them are recorded.
+  monero-seed-{001..006}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 1s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 70m
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

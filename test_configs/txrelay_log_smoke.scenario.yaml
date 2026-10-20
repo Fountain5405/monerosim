@@ -3,9 +3,7 @@
 # user transactions. Checks that every daemon writes txrelay.jsonl, that stems
 # chain across relays, and that every user tx has a ground-truth origin.
 #
-# Needs a monerod-sim built with the patch (./setup.sh --sim-binary). Before
-# that is installed, point `daemon:` at a local build instead, e.g.
-#   ~/.monerosim/build/monero-txrelay/build/release/bin/monerod
+# Needs a monerod-sim built with the patch (./setup.sh --sim-binary).
 # The fallback seeds are declared below so they log too: left to `auto` they run
 # stock monerod, which rejects the flag, and stems sent to them go unrecorded.
 #
