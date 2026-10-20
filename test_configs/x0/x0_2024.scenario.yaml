@@ -1,0 +1,234 @@
+# X0: calibrate the lab (docs/20261018_spy_node_defenses.md §5.3). The mainnet
+# replica (mainnet_replica.scenario.yaml) scaled to ~400 honest daemons for a
+# 32 GB box, with the 2024 spy preset, every daemon on monerod-sim logging relays.
+#
+# Cells, made by test_configs/x0/make_cells.sh from the two markers below:
+#   peer selection   legacy (v0.18.4.2, before #9939) | 24 (stock /24 dedup)
+#                    <- `sim-subnet-dedup` under daemon_defaults
+#   ban list         none | on half of each honest class
+#                    <- the `ban-list: @BANLIST@` lines (cells without the list
+#                       drop them; the list is the spies' /24s, from
+#                       scripts/spy_ban_list.py)
+#
+# Ratios kept (the plan's I5 rule: say which ones):
+#   - class shares as in the replica: 5 miner hubs, 12% medium, 2% observers,
+#     20% users, 64% relays; 1 h / 1 h turnover on users, relays and medium;
+#   - honest reachable ~17%: 5 miners + 48 medium + 8 observers + 6 seeds
+#     pinned, plus 1% of users and relays;
+#   - spies 40% of reachable IPs (S6, Oct 2024) in 6 dense /24s: 48 spies,
+#     8 per /24, on NA nodes 828-833 (spy-only /24s);
+#   - prefix sharing 0.31 x 3 among honest daemons (S13).
+# Not kept: mainnet's ~3,700 honest /24s against 6 spy /24s. Here ~60 honest
+# reachable /24s face 6, so stock /24 dedup leaves spies a larger share than on
+# mainnet, and the dedup cell's "~70% lower" target is the one to read with care.
+#
+# Spies are variant R (stock relay behaviour, logging monerod-sim). They dial
+# only one fallback seed each (add-exclusive-node), which white-lists them and
+# gossips them on: Rucknium's Apr-May 2024 logs show the banned IPs almost
+# never dialed in, yet they were in peerlists. A spy that dials honest nodes
+# excludes itself from those nodes' outbound picks (its /24 joins their
+# connected subnets), and one that dials nobody is in nobody's peerlist
+# (test_configs/subnet_dedup_check.scenario.yaml). How spies reach peerlists is
+# the calibration knob if the targets miss: variant R does not poison
+# peerlists the way the 2024 proxies did.
+#
+# Targets (X0): spy share of honest outbound slots ~0.15 (legacy, no list),
+# ~0.07 (legacy, list), ~70% lower with /24 dedup; stem length geometric with
+# mean ~5; the embargo-timer rate. Pass: each within 1.5x, or a written reason.
+# Check: python3 analysis/spy/x0_calibration.py archived_runs/<run>
+general:
+  stop_time: 8h
+  simulation_seed: 12345
+  bootstrap_end_time: auto
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true   # turnover restarts hit LMDB resize (S10); preemption avoids the livelock
+  reachable_fraction: 0.01
+  mining:
+    mode: native
+    chain_snapshot: auto    # 5 x 10 h/s resolves chain_snapshots/h50, as in the replica
+  emission:
+    mode: tail
+  turnover:
+    mean_session: 1h
+    mean_downtime: 1h
+    fraction: 1.0           # pinned nodes (miners, observers, spies, seeds) are exempt
+  daemon_defaults:
+    log-level: monitor      # net.p2p.msg connection tokens for p_out
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    sim-log-txrelay: txrelay.jsonl
+    sim-subnet-dedup: legacy
+  wallet_defaults:
+    log-level: 0
+
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+  distribution:
+    strategy: Weighted
+    prefix_sharing:
+      fraction: 0.31
+      per_prefix: 3
+    weights:
+      north_america: 58
+      europe: 30
+      asia: 9
+      oceania: 3
+      south_america: 0
+      africa: 0
+
+agents:
+  # ---------------- honest: hubs (miners; caps ~0.25 N) ----------------
+  miner-{001..005}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [10, 10, 10, 10, 10]
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+      hide-my-port: false
+
+  # ---------------- honest: medium (out-peers in (12, 0.07 N]) ----------------
+  medium-a-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options: {out-peers: 16, hide-my-port: false, ban-list: "@BANLIST@"}
+  medium-a-{009..016}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options: {out-peers: 16, hide-my-port: false}
+  medium-b-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options: {out-peers: 22, hide-my-port: false, ban-list: "@BANLIST@"}
+  medium-b-{009..016}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options: {out-peers: 22, hide-my-port: false}
+  medium-c-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options: {out-peers: 28, hide-my-port: false, ban-list: "@BANLIST@"}
+  medium-c-{009..016}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    turnover: true
+    daemon_options: {out-peers: 28, hide-my-port: false}
+
+  # ---------------- honest: light ----------------
+  user-{001..040}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+    daemon_options: {ban-list: "@BANLIST@"}
+  user-{041..080}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.regular_user
+    start_time: 1200s
+    start_time_stagger: auto
+    transaction_interval: 300
+    activity_start_time: auto
+    can_receive_distributions: true
+
+  relay-{001..130}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+    daemon_options: {ban-list: "@BANLIST@"}
+  relay-{131..260}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: auto
+
+  # Always-on reachable light nodes: the "honest logging nodes" the 15% target
+  # was measured at (Rucknium), with peerlist dumps.
+  observer-{001..004}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 3s
+    daemon_options: {hide-my-port: false, peerlist-dump-file: peerlist_dump.jsonl, ban-list: "@BANLIST@"}
+  observer-{005..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 3s
+    daemon_options: {hide-my-port: false, peerlist-dump-file: peerlist_dump.jsonl}
+
+  # Fallback seeds on the patched binary so stems through them are logged.
+  monero-seed-{001..006}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 1s
+
+  # ---------------- spies: 2024 preset, variant R, announced via seeds ----------------
+  # Each spy /24 connects only to one fallback seed (monero-seed-001..006 in order).
+  spy-a-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 828
+    daemon_options: {hide-my-port: false, add-exclusive-node: "176.9.0.187:18080"}
+  spy-b-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 829
+    daemon_options: {hide-my-port: false, add-exclusive-node: "88.198.163.90:18080"}
+  spy-c-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 830
+    daemon_options: {hide-my-port: false, add-exclusive-node: "192.99.8.110:18080"}
+  spy-d-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 831
+    daemon_options: {hide-my-port: false, add-exclusive-node: "37.187.74.171:18080"}
+  spy-e-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 832
+    daemon_options: {hide-my-port: false, add-exclusive-node: "88.99.195.15:18080"}
+  spy-f-{001..008}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 833
+    daemon_options: {hide-my-port: false, add-exclusive-node: "5.104.84.64:18080"}
+
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: auto
+
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

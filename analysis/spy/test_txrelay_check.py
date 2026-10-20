@@ -91,4 +91,30 @@ def test_loop_and_unlogged_node(tmp_path):
     txs = [{"tx_hashes": ["cc"], "sender_id": "user-001"}, {"tx_hashes": ["dd"], "sender_id": "user-001"}]
     r = txrelay_check.check(write_run(tmp_path, logs, txs))
     assert r["stem_end"] == {"loop": 1, "unlogged_node": 1}
+    assert r["fluff_per_hop"] == 0.0  # no path ended in a fluff epoch
+
+
+def test_fluff_per_hop_counts_censored_hops(tmp_path):
+    # bb: 1 hop then a fluff epoch. ee: 2 hops then a loop back to user-001.
+    logs = {
+        "user-001": [
+            {"t": 10, "ev": "send", "txs": ["bb", "ee"], "method": "local", "src": "self"},
+            {"t": 11, "ev": "stem", "txs": ["bb", "ee"], "method": "local", "to": peer("relay-001")},
+        ],
+        "relay-001": [
+            {"t": 12, "ev": "rx", "tx": "bb", "conn": "x", "addr": "10.0.0.1:5000", "dir": "in", "fluff": False, "result": "stem"},
+            {"t": 12, "ev": "rx", "tx": "ee", "conn": "x", "addr": "10.0.0.1:5000", "dir": "in", "fluff": False, "result": "stem"},
+            {"t": 13, "ev": "fluff", "txs": ["bb"], "method": "stem", "reason": "epoch"},
+            {"t": 13, "ev": "stem", "txs": ["ee"], "method": "stem", "to": peer("relay-002")},
+        ],
+        "relay-002": [
+            {"t": 14, "ev": "rx", "tx": "ee", "conn": "y", "addr": "10.0.0.2:6000", "dir": "in", "fluff": False, "result": "stem"},
+            {"t": 15, "ev": "stem", "txs": ["ee"], "method": "stem", "to": peer("user-001")},
+        ],
+    }
+    txs = [{"tx_hashes": ["bb", "ee"], "sender_id": "user-001"}]
+    r = txrelay_check.check(write_run(tmp_path, logs, txs))
+    assert r["stem_end"] == {"epoch": 1, "loop": 1}
+    assert r["stem_hops_mean_by_end"] == {"epoch": 1, "loop": 2}
+    assert r["fluff_per_hop"] == round(1 / 3, 3)
     assert r["stem_hops_without_rx"] == 0

@@ -139,6 +139,7 @@ def check(run_dir):
 
     found = matched = 0
     hops, end_reasons, unmatched_stems = [], Counter(), 0
+    hops_by_end = defaultdict(list)
     for tx in txs:
         nodes = origin.get(tx, set())
         if not nodes:
@@ -149,6 +150,7 @@ def check(run_dir):
         path, reason = stem_path(tx, start, stems, ends, ip_map, logs)
         hops.append(len(path) - 1)
         end_reasons[reason] += 1
+        hops_by_end[reason].append(len(path) - 1)
         unmatched_stems += sum(1 for n in path[1:] if n in logs and n not in rx_stem.get(tx, set()))
 
     report.update({
@@ -157,6 +159,11 @@ def check(run_dir):
         "stem_hops_mean": round(statistics.mean(hops), 2) if hops else None,
         "stem_hops_hist": dict(sorted(Counter(hops).items())),
         "stem_end": dict(end_reasons),
+        "stem_hops_mean_by_end": {k: round(statistics.mean(v), 2) for k, v in sorted(hops_by_end.items())},
+        # Each hop onto a new relay is a trial that ends in a fluff epoch with
+        # p = 0.2 (stock); loops and missing logs censor paths. p-hat = epoch
+        # endings / relay hops, and 1 / p-hat is the uncensored mean length.
+        "fluff_per_hop": round(len(hops_by_end["epoch"]) / sum(hops), 3) if sum(hops) else None,
         "stem_hops_without_rx": unmatched_stems,
     })
     total_epochs = sum(n for n, _ in epochs.values())

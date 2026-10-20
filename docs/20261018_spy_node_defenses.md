@@ -623,7 +623,9 @@ stem.
 
   Ground truth comes from `transactions.json`, the agent registry and I1.
 - **I4, defense flags (monerod-sim, each off by default):**
-  - `--sim-subnet-dedup=none|24|16`;
+  - `--sim-subnet-dedup=none|24|16`; *(2026-10-20: built, plus `legacy` for
+    v0.18.4.2's selection; `patches/monero-sim-subnet-dedup.patch`,
+    `docs/X0_CALIBRATION.md`)*;
   - `--asmap <file>`, cherry-picked from #11474;
   - `--sim-addrbook-buckets` (N2);
   - `--sim-stem-filter=...` (N1);
@@ -646,6 +648,14 @@ stem.
 
   A 1,000-host replica can't hold mainnet's ratio of 9 spy /24s to ~3,700 honest
   ones, so each preset must state which ratio it keeps.
+
+  *(2026-10-20: the 2024 preset for X0 is built at ~400 honest daemons,
+  `test_configs/x0/`, with its kept ratios stated in `docs/X0_CALIBRATION.md`.
+  Building it showed that how variant-R spies reach peer lists decides their
+  share more than the grouping rule does. Spies that never dial are in nobody's
+  peer list. Spies that dial honest nodes land in those nodes' connected-subnet
+  sets, which counts inbound connections too, so the nodes then skip them. The
+  preset's spies announce through the seeds only.)*
 
 ### 5.3 The experiments
 

@@ -1,0 +1,72 @@
+# Check for --sim-subnet-dedup (patches/monero-sim-subnet-dedup.patch): 40
+# reachable relays and 12 spies packed into one /24 (topology_node 1190). Run
+# once per mode by changing `sim-subnet-dedup` under daemon_defaults:
+#   24      stock: at most one candidate per /24, so at most one spy per node
+#   legacy  v0.18.4.2: each spy IP is its own candidate until one connects;
+#           the spy /16 is then skipped, so still one spy per node, but more
+#           nodes have one
+#   none    no subnet grouping: several spies per node
+# The spies connect only to seed 001, which gossips them; 2024's spies almost
+# never dialed in.
+# Two miners only because Dynamic peer mode bootstraps every node from the
+# miners; no transactions. Only outbound peer choice is measured.
+#
+# Check: python3 analysis/spy/subnet_dedup_check.py archived_runs/<run>
+#
+# Expand: python3 scripts/generate_config.py --from test_configs/subnet_dedup_check.scenario.yaml \
+#             -o test_configs/subnet_dedup_check.yaml
+# Run:    ./run_sim.sh --config test_configs/subnet_dedup_check.yaml --bootfast
+general:
+  stop_time: 2h
+  simulation_seed: 12345
+  bootstrap_end_time: 1h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    sim-subnet-dedup: "24"
+  wallet_defaults:
+    log-level: 1
+
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+
+agents:
+  miner-{001..002}:
+    daemon: monerod-sim
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    start_time: 0s
+    start_time_stagger: 1s
+    hashrate: [50, 50]
+
+  relay-{001..040}:
+    daemon: monerod-sim
+    start_time: 5m
+    start_time_stagger: 5s
+
+  spy-{001..012}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 2s
+    topology_node: 1190
+    daemon_options:
+      hide-my-port: false
+      # Announce via one seed only. A spy that dials honest nodes puts its /24
+      # among their connected subnets, and both 24 and legacy then skip it,
+      # hiding the difference; a spy that never dials is in nobody's peerlist.
+      add-exclusive-node: "176.9.0.187:18080"   # monero-seed-001
+
+  # Seeds on the patched binary: the flag is in daemon_defaults.
+  monero-seed-{001..006}:
+    daemon: monerod-sim
+    start_time: 0s
+    start_time_stagger: 1s
