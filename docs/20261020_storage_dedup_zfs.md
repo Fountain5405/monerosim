@@ -45,14 +45,32 @@ ext4.
 rung: `archived_runs/20261019_125036_box32_500_100u_400r`, its three archived
 chains.)
 
-Before transactions, nodes write the same blocks in the same order and LMDB
-lays them out on the same pages. LMDB is copy-on-write, though: each node's
-txpool lives in the same file and fills in a different order, so page
-allocation diverges, and a page's header holds its own page number while branch
-pages hold their children's. The same data on a different page is a different
-4 KiB record, so only the chain from before user activity stays shared. With
-about a fifth of the pages common to all nodes, dedup can't pass ~1.25x however
-many nodes there are.
+**The data is identical; the bytes are not.** On the 500 rung's three
+chains, `mdb_dump` of every chain table (blocks, block_info, txs_pruned,
+txs_prunable, tx_indices, output_amounts, spent_keys) matches exactly, and even
+the txpools hold the same 26 entries. Records are also grouped onto pages the
+same way:
+
+| Plain leaf pages, 3 nodes (3x is the most possible) | Dedup |
+|---|---|
+| same set of keys on the page | 2.99x |
+| same keys and values, ignoring pointers to other pages | 2.79x |
+| same keys and values as stored | 2.46x |
+| whole raw 4 KiB page | 1.22x |
+
+What differs is page numbers. A page's header holds its own page number,
+records point to overflow pages (large values: blocks, proofs) and sub-tables
+by page number, and a page's free gap keeps bytes from its earlier versions.
+LMDB is copy-on-write: every write takes a page from that node's freelist,
+which depends on its whole write history (when its write transactions
+committed, what its txpool added and removed, which old snapshots RPC readers
+held), so the same page lands at a different number in each file. Only free
+space is stale: 179 of 2,512 pages. Byte-identical files would need
+deterministic page placement (the txpool in its own file, chain writes
+committed at the same block boundaries on every node, no reader-dependent
+reuse), which is too fragile to build on; sharing has to be logical (the
+shared base below). With about a fifth of the raw pages common to all nodes,
+page dedup can't pass ~1.25x however many nodes there are.
 
 **Compressibility** (zstd -3):
 
