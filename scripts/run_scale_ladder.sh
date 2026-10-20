@@ -97,6 +97,8 @@ for scen in "$@"; do
         note "LADDER STOP: expanding $scen failed (see $log)"; exit 1
     fi
     note "START $rung: last user active from $(( last / 60 )) min, stop_time ${stop_h}h"
+    daemons=$("$PY" -c 'import sys, yaml; a = yaml.safe_load(open(sys.argv[1]))["agents"]; print(sum(1 for v in (a.values() if isinstance(a, dict) else a) if v.get("daemon")))' "$cfg")
+    while IFS= read -r line; do note "  $line"; done < <(scripts/ksm_check.sh --quiet-ok --nodes "$daemons")
 
     echo "epoch,mem_avail_mb,swap_used_mb,ksm_sharing_pages,ksm_shared_pages,user_rss_mb,disk_free_gb,load1" > "$samples"
     # Own session, so an abort can find this rung's shadow and nothing else.

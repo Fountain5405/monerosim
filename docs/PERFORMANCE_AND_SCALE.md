@@ -480,15 +480,26 @@ KSM needs two things, both of which must be true:
    off by default, and it resets at every reboot:
 
    ```bash
-   sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs && echo 1 > /sys/kernel/mm/ksm/run'
+   sudo sh -c 'echo 20000 > /sys/kernel/mm/ksm/pages_to_scan && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs && echo 1 > /sys/kernel/mm/ksm/run'
    ```
 
    The scan rate is `pages_to_scan` × 4 KB per `sleep_millisecs`;
-   10000 pages every 20 ms (~2 GB/s) keeps merging ahead of thousands of
-   node starts. The defaults are far too slow, and "enabled" alone is not
-   enough: kernel 100 pages / 20 ms is ~20 MB/s, and Ubuntu 6.8 ships
-   `sleep_millisecs=200`, so even `pages_to_scan=10000` gives only ~200 MB/s
-   there. Without root you can still *check* it:
+   20000 pages every 20 ms is ~4 GB/s. The defaults are far too slow, and
+   "enabled" alone is not enough: kernel 100 pages / 20 ms is ~20 MB/s, and
+   Ubuntu 6.8 ships `sleep_millisecs=200`, so even `pages_to_scan=10000`
+   gives only ~200 MB/s there.
+
+   **Merge lag grows with node count.** A new page merges after about two
+   full scans, and a scan covers ~300 MB per monerod, so a new daemon's
+   RandomX cache stays unmerged for ~2 × N × 300 MB / rate: ~2 min at 455
+   daemons and 10000 pages; at 4000, ~20 min at 10000 and ~10 min at 20000.
+   The backlog is then starts per wall-minute × lag × 256 MB. On the X0 pilot of 2026-10-20 (~455 daemons,
+   relays starting ~9 per wall-minute) 10000 pages left ~20 relays' caches
+   unmerged (~5 GB); 20000 cut that to ~11 and free RAM rose from 7.5 to
+   11.9 GB, with ksmd under one core. ksmd is a single kernel thread, so past
+   roughly one core of scanning only slower starts help (the 256 GB ladder
+   rungs start at most 10 nodes per sim-minute). `scripts/ksm_check.sh
+   --nodes N` prints the expected lag. Without root you can still *check* it:
    `scripts/ksm_check.sh` reports run, scan rate, and the fix, including a
    `/etc/tmpfiles.d` entry that reapplies the settings at every boot.
    `run_sim.sh --ksm` runs it in preflight and `setup.sh` at the end.

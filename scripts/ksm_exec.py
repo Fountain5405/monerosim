@@ -6,7 +6,7 @@ setting survives exec and fork, so `ksm_exec.py ./run_sim.sh ...` makes Shadow a
 every process it starts eligible for merging. Unprivileged. Has no effect until
 root enables KSM (off by default, resets at every reboot):
 
-    sudo sh -c 'echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs && echo 1 > /sys/kernel/mm/ksm/run'
+    sudo sh -c 'echo 20000 > /sys/kernel/mm/ksm/pages_to_scan && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs && echo 1 > /sys/kernel/mm/ksm/run'
 
 (scripts/ksm_check.sh checks the scan rate without root.)
 
