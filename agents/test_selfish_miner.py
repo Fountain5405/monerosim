@@ -4,13 +4,13 @@ from agents.selfish_miner import SelfishMinerAgent
 from agents.monero_rpc import RPCError
 
 
-def _make_agent(strategy="eyal_sirer", start_height=0, reaction_ms=200):
+def _make_agent(strategy="eyal_sirer", start_height=0, reaction_ms=200, extra=()):
     a = SelfishMinerAgent(
         agent_id="attacker-miner",
         attributes=[["strategy", strategy],
                     ["bridge_agent", "attacker-bridge"],
                     ["attack_start_height", str(start_height)],
-                    ["reaction_delay_ms", str(reaction_ms)]],
+                    ["reaction_delay_ms", str(reaction_ms)]] + [list(kv) for kv in extra],
     )
     a.logger = MagicMock()
     # Own daemon (offline miner) and bridge daemon are mocked.
@@ -67,6 +67,120 @@ def test_forward_public_blocks_submits_new_honest_blocks():
     a.daemon_rpc.submit_block.reset_mock()
     a._forward_public_blocks(pub_height=3)
     a.daemon_rpc.submit_block.assert_not_called()
+
+
+# --- use_honest_shares (2026-10-19) ---------------------------------------
+
+def _share(i, tip="aa", height=5):
+    """One sim_get_workshares entry: share s<i> on parent `tip`."""
+    return {"id": f"s{i}", "height": height, "prev_id": tip, "slot": 1 + i,
+            "recv_ms": 1000 + i, "local": False, "blob": f"blob{i}"}
+
+
+def _sharing_agent():
+    return _make_agent(extra=[("use_honest_shares", "true")])
+
+
+def _loop_agent(use_honest_shares, miner_tip, bridge_tip):
+    """run_iteration with both chains at height 5 and the strategy and the
+    block feed stubbed out, so only the share relay reaches the share RPCs."""
+    a = _sharing_agent() if use_honest_shares else _make_agent()
+    a._start_synced = True
+    a.strategy = MagicMock()
+    a.strategy.update.return_value = MagicMock(release_to=None, forward_to=None, adopt_public=False)
+    a._forward_public_blocks = MagicMock()
+    a.bridge_rpc.get_info.return_value = {"height": 5, "top_block_hash": bridge_tip}
+    a.daemon_rpc.get_info.return_value = {"height": 5, "top_block_hash": miner_tip}
+    a.bridge_rpc.sim_get_workshares.return_value = [_share(0), _share(1)]
+    return a
+
+
+def test_use_honest_shares_is_off_by_default():
+    assert _make_agent().use_honest_shares is False
+    assert _sharing_agent().use_honest_shares is True
+
+
+def test_run_iteration_reads_no_shares_when_off():
+    a = _loop_agent(False, "aa", "aa")
+    a.run_iteration()
+    a.bridge_rpc.sim_get_workshares.assert_not_called()
+    a.daemon_rpc.sim_submit_workshare.assert_not_called()
+
+
+def test_run_iteration_hands_the_bridge_shares_on_the_public_tip_to_the_miner():
+    a = _loop_agent(True, "aa", "aa")
+    a.run_iteration()
+    a.bridge_rpc.sim_get_workshares.assert_called_once_with(prev_id="aa", min_height=5)
+    assert [c.args for c in a.daemon_rpc.sim_submit_workshare.call_args_list] == [("blob0", 5), ("blob1", 5)]
+
+
+def test_run_iteration_reads_no_shares_while_the_miner_tip_is_private():
+    # The miner's tip is not the bridge's: it is mining on its own private
+    # block, and a share fits only a child of the block it was mined on.
+    a = _loop_agent(True, "priv", "aa")
+    a.run_iteration()
+    a.bridge_rpc.sim_get_workshares.assert_not_called()
+    a.daemon_rpc.sim_submit_workshare.assert_not_called()
+
+
+def test_relay_honest_shares_hands_each_share_over_once_per_tip():
+    a = _sharing_agent()
+    a.bridge_rpc.sim_get_workshares.return_value = [_share(0), _share(1)]
+    a._relay_honest_shares(5, "aa", "aa")
+    a.bridge_rpc.sim_get_workshares.return_value = [_share(0), _share(1), _share(2)]
+    a._relay_honest_shares(5, "aa", "aa")          # next tick: only s2 is new
+    assert [c.args[0] for c in a.daemon_rpc.sim_submit_workshare.call_args_list] == ["blob0", "blob1", "blob2"]
+    a.bridge_rpc.sim_get_workshares.return_value = [_share(7, tip="bb", height=6)]
+    a._relay_honest_shares(6, "bb", "bb")          # a new public tip
+    assert a.daemon_rpc.sim_submit_workshare.call_args_list[-1].args == ("blob7", 6)
+    assert a._hs_submitted == 4
+
+
+def test_relay_honest_shares_retries_a_share_whose_submit_failed():
+    a = _sharing_agent()
+    a.bridge_rpc.sim_get_workshares.return_value = [_share(0)]
+    a.daemon_rpc.sim_submit_workshare.side_effect = [RPCError("Request failed: timeout"), True]
+    a._relay_honest_shares(5, "aa", "aa")
+    a._relay_honest_shares(5, "aa", "aa")
+    assert a.daemon_rpc.sim_submit_workshare.call_count == 2
+    assert a._hs_submitted == 1
+    assert a.use_honest_shares is True
+
+
+def test_relay_honest_shares_stops_loudly_on_a_daemon_without_the_share_rpcs():
+    a = _sharing_agent()
+    a.bridge_rpc.sim_get_workshares.side_effect = RPCError(
+        "RPC error: {'code': -32601, 'message': 'Method not found'}")
+    a._relay_honest_shares(5, "aa", "aa")
+    assert a.use_honest_shares is False
+    a.logger.error.assert_called_once()
+    a.daemon_rpc.sim_submit_workshare.assert_not_called()
+
+
+def test_sim_workshare_rpcs_build_their_requests(monkeypatch):
+    from agents.monero_rpc import MoneroRPC
+    rpc = MoneroRPC("127.0.0.1", 1)
+    calls = []
+    replies = iter([{"status": "OK", "workshares": [_share(0)]},
+                    {"status": "OK"},                       # epee drops an empty array
+                    {"status": "OK", "fresh": True}])
+    monkeypatch.setattr(rpc, "_make_request", lambda m, p=None: calls.append((m, p)) or next(replies))
+    assert rpc.sim_get_workshares(prev_id="aa", min_height=5) == [_share(0)]
+    assert rpc.sim_get_workshares() == []
+    assert rpc.sim_submit_workshare("blob0", 5) is True
+    assert calls == [("sim_get_workshares", {"min_height": 5, "prev_id": "aa"}),
+                     ("sim_get_workshares", {"min_height": 0}),
+                     ("sim_submit_workshare", {"blob": "blob0", "height": 5})]
+
+
+def test_sim_workshare_rpcs_raise_on_a_non_ok_status(monkeypatch):
+    from agents.monero_rpc import MoneroRPC
+    rpc = MoneroRPC("127.0.0.1", 1)
+    monkeypatch.setattr(rpc, "_make_request", lambda m, p=None: {"status": "BUSY"})
+    with pytest.raises(RPCError):
+        rpc.sim_get_workshares(prev_id="aa")
+    with pytest.raises(RPCError):
+        rpc.sim_submit_workshare("blob0", 5)
 
 
 def test_release_up_to_submits_private_blocks_to_bridge():

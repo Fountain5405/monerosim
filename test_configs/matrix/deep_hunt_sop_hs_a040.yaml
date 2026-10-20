@@ -1,0 +1,58 @@
+# Share-aware deep-reorg hunter (2026-10-19): use_honest_shares hands the
+# attacker's offline miner the honest shares SoP's slot rule lets it use (those
+# on its fork point before its first block, those on the honest tip after it
+# gives up), as tevador's simulated attacker has (results doc section 6).
+# Needs monerod-sim with the share RPCs (sim-pop patch 2026-10-19; setup.sh
+# --sim-binary). The agent logs an ERROR and uses no shares without them.
+# SoP at alpha 0.40, 240 h, the same cells as deep_hunt_sop_a040 but with the
+# attacker using honest shares. Model B (d2, release 10): 0.40 10+ reorgs per
+# canonical day with honest shares, 0.30 without. Like the a045 run, it checks
+# agreement with Model B's with-shares column; the count can't separate the two.
+name: deep_hunt_sop_hs_a040
+seed: 13682
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 240h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: deep_hunt
+          release_depth: '10'
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+          embedded_shares: 'true'
+          use_honest_shares: 'true'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+  alpha:
+    a040:
+      attacker:
+        hashrate: 4
+      honest:
+        hashrate:
+        - 3
+        - 3
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+ksm: true

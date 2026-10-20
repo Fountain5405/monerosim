@@ -78,6 +78,24 @@ Attributes (via --attributes KEY VALUE):
                         good as the bridge's view: pair it with a bridge that
                         runs the network's rule, and note that the bridge sees
                         the attacker's reveals first.
+    use_honest_shares   "true" to hand the offline miner the honest
+                        Share-or-Perish workshares the slot rule lets it use
+                        (default off, which is the attacker of campaigns 7
+                        and 8; 2026-10-19). While the miner mines on the
+                        public tip, each tick reads the first bridge's shares
+                        on that tip and submits the new ones to the miner,
+                        which pools them as if gossiped and embeds them as
+                        honest miners do: one share per slot, first seen wins.
+                        So its first block after a fork carries the honest
+                        shares found on the fork point, and after giving up it
+                        restarts level with honest, as tevador's simulated
+                        attacker does (docs/20261019_sop_campaign8_results.md
+                        §6). No share fits a private block, since a share fits
+                        only a child of the block it was mined on, so none are
+                        read while the miner's tip is private. The miner's own
+                        shares still never leave it. Needs monerod-sim with
+                        the share RPCs (sim-pop patch, 2026-10-19) on the
+                        miner and the first bridge.
 """
 import logging
 
@@ -125,6 +143,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
         self.reject_aware = str(self.attributes.get("reject_aware", "false")).strip().lower() in ("1", "true", "yes")
+        self.use_honest_shares = str(self.attributes.get("use_honest_shares", "false")).strip().lower() in ("1", "true", "yes")
+        self._hs_tip = None            # miner tip whose shares _hs_sent covers (use_honest_shares)
+        self._hs_sent = set()          # share ids already handed to the miner on _hs_tip
+        self._hs_submitted = 0         # honest shares handed to the miner, in all
+        self._hs_failures = 0          # failed share RPCs, for rate-limited warnings
         self.strategy = None
         self._forwarded_index = -1     # highest honest block index forwarded to the miner
         self._released_index = -1      # highest private block index released to the bridge
@@ -496,6 +519,64 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if tip_hash is not None:
             self._last_pub_tip_hash = tip_hash
 
+    def _relay_honest_shares(self, priv_height: int, priv_tip_hash, pub_tip_hash) -> None:
+        """use_honest_shares: hand the first bridge's honest workshares on the
+        miner's tip to the offline miner. The miner pools each one as if
+        gossiped, rebuilds its template when it is on the tip, and embeds by
+        the slot rule (one share per slot, first seen wins), so a share whose
+        slot the miner already filled with its own stays out.
+
+        Only while the miner mines on the public tip (its tip hash is the
+        bridge's): a share fits only a child of the block it was mined on,
+        so none fits a private block. That gives the attacker the honest
+        shares on its fork point before its first block, and those on the
+        honest tip after it gives up, and no others. Shares on the miner's
+        tip have height priv_height (the block count)."""
+        if not priv_tip_hash or priv_tip_hash != pub_tip_hash:
+            return
+        if priv_tip_hash != self._hs_tip:
+            self._hs_tip = priv_tip_hash
+            self._hs_sent = set()
+        try:
+            shares = self.bridge_rpc.sim_get_workshares(prev_id=priv_tip_hash, min_height=priv_height)
+        except RPCError as e:
+            self._share_rpc_failed("read the bridge's shares", e)
+            return
+        new = fresh = 0
+        for s in shares:
+            sid, blob = s.get("id"), s.get("blob")
+            if not sid or not blob or sid in self._hs_sent:
+                continue
+            try:
+                if self.daemon_rpc.sim_submit_workshare(blob, int(s.get("height", priv_height))):
+                    fresh += 1
+            except RPCError as e:
+                self._share_rpc_failed(f"submit share {sid}", e)
+                if not self.use_honest_shares:
+                    return
+                continue                            # retried next tick
+            self._hs_sent.add(sid)
+            new += 1
+        if new:
+            self._hs_submitted += new
+            self.logger.info(f"honest shares: handed {new} to the miner on tip {priv_tip_hash[:12]} "
+                             f"at height {priv_height} ({fresh} new to it; {self._hs_submitted} in all)")
+
+    def _share_rpc_failed(self, what: str, e: RPCError) -> None:
+        """A failed share RPC. A daemon without the share RPCs answers "Method
+        not found": say so once, as an error, and stop using honest shares,
+        so the run's attacker is the one without them and the log says why.
+        Anything else is retried next tick, with a warning on the first
+        failure and every 100th."""
+        if "method not found" in str(e).lower():
+            self.logger.error(f"use_honest_shares: cannot {what}: {e}. monerod-sim without the share "
+                              "RPCs (sim-pop patch, 2026-10-19)? This attacker now uses no honest shares.")
+            self.use_honest_shares = False
+            return
+        self._hs_failures += 1
+        if self._hs_failures % 100 == 1:
+            self.logger.warning(f"use_honest_shares: cannot {what}: {e} ({self._hs_failures} failures so far)")
+
     def _release_up_to(self, release_from: int, release_index: int) -> None:
         """Submit the attacker's divergent private blocks to the bridge in order.
 
@@ -730,10 +811,17 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             pub_info = self.bridge_rpc.get_info()
             pub_height = int(pub_info.get("height", 0))
             pub_tip_hash = pub_info.get("top_block_hash")
-            priv_height = int(self.daemon_rpc.get_info().get("height", 0))
+            priv_info = self.daemon_rpc.get_info()
+            priv_height = int(priv_info.get("height", 0))
         except RPCError as e:
             self.logger.warning(f"height read failed: {e}")
             return self._reaction_interval_s()
+
+        # 4a. use_honest_shares: while the miner mines on the public tip, hand
+        #     it the honest shares on that tip (the same get_info replies, so
+        #     no extra RPC on ticks with a private tip).
+        if self.use_honest_shares:
+            self._relay_honest_shares(priv_height, priv_info.get("top_block_hash"), pub_tip_hash)
 
         # 4b. Eclipse composition: sync own chain with the islands BOTH ways
         #     BEFORE the strategy looks at heights — victim blocks pulled in

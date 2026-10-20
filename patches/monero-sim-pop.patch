@@ -185,7 +185,7 @@ index c168f48a7..7ab202621 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 3608364dd..ebcc7ebb5 100644
+index 3608364dd..a8974340a 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -364,7 +364,7 @@ index 3608364dd..ebcc7ebb5 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1996,902 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1996,930 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -653,6 +653,34 @@ index 3608364dd..ebcc7ebb5 100644
 +        oldest = it;
 +    m_sim_shares.erase(oldest);
 +  }
++  return true;
++}
++//------------------------------------------------------------------
++// SIMULATION ONLY (2026-10-19): the pooled workshares at min_height or above,
++// on parent prev_id unless it is null_hash, ordered by height, slot and first
++// seen. Backs the sim_get_workshares RPC: a selfish-mining agent reads its
++// bridge's honest shares and hands them to its offline miner with
++// sim_submit_workshare (core::add_workshare_remote), which embeds them by the
++// slot rule like any gossiped share. False when Share-or-Perish is off.
++bool Blockchain::sim_list_workshares(uint64_t min_height, const crypto::hash &prev_id, std::vector<sim_workshare_info> &out)
++{
++  out.clear();
++  if (!m_sim_sop_enabled)
++    return false;
++  CRITICAL_REGION_LOCAL(m_blockchain_lock);
++  for (const auto &sh : m_sim_shares)
++  {
++    if (sh.second.height < min_height || (prev_id != crypto::null_hash && sh.second.prev_id != prev_id))
++      continue;
++    out.push_back({sh.first, sh.second.height, sh.second.prev_id, sh.second.seq, sh.second.recv_ms, sh.second.local, sh.second.blob});
++  }
++  std::sort(out.begin(), out.end(), [](const sim_workshare_info &a, const sim_workshare_info &b) {
++    if (a.height != b.height)
++      return a.height < b.height;
++    if (a.slot != b.slot)
++      return a.slot < b.slot;
++    return a.recv_ms < b.recv_ms;
++  });
 +  return true;
 +}
 +
@@ -1267,7 +1295,7 @@ index 3608364dd..ebcc7ebb5 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +2917,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +2945,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1278,7 +1306,7 @@ index 3608364dd..ebcc7ebb5 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +3130,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +3158,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1289,7 +1317,7 @@ index 3608364dd..ebcc7ebb5 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4089,7 +5119,9 @@ leave:
+@@ -4089,7 +5147,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1300,7 +1328,7 @@ index 3608364dd..ebcc7ebb5 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4513,6 +5545,16 @@ leave:
+@@ -4513,6 +5573,16 @@ leave:
    bvc.m_added_to_main_chain = true;
    ++m_sync_counter;
  
@@ -1317,7 +1345,7 @@ index 3608364dd..ebcc7ebb5 100644
    // appears to be a NOP *and* is called elsewhere.  wat?
    m_tx_pool.on_blockchain_inc(new_height, id);
    get_difficulty_for_next_block(); // just to cache it
-@@ -4691,18 +5733,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4691,18 +5761,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1377,7 +1405,7 @@ index 3608364dd..ebcc7ebb5 100644
    }
    catch (const std::exception &e)
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 35079e858..f332aeec9 100644
+index 35079e858..ea8608f24 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1388,7 +1416,7 @@ index 35079e858..f332aeec9 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -896,6 +897,30 @@ namespace cryptonote
+@@ -896,6 +897,46 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -1411,6 +1439,22 @@ index 35079e858..f332aeec9 100644
 +    // (local hit or gossiped); true only for a NEW share. See m_sim_shares.
 +    bool sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id, bool *extends_tip = nullptr);
 +
++    // SIMULATION ONLY (2026-10-19): list pooled workshares, for the
++    // sim_get_workshares RPC (a selfish-mining agent hands its offline miner
++    // the honest shares its bridge holds). Those at min_height or above, on
++    // parent prev_id unless it is null_hash, in slot order; false when
++    // Share-or-Perish is off.
++    struct sim_workshare_info {
++      crypto::hash id;
++      uint64_t height;
++      crypto::hash prev_id;
++      uint64_t slot;            // version_minor the share was mined under
++      uint64_t recv_ms;         // first seen at this node
++      bool local;               // captured by this node's own miner
++      blobdata blob;
++    };
++    bool sim_list_workshares(uint64_t min_height, const crypto::hash &prev_id, std::vector<sim_workshare_info> &out);
++
 +    // SIMULATION ONLY (step 3): arm the SoP weight table on the PoP engine.
 +    void set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k, bool rejudge_displaced = false);
 +    bool sim_sop_enabled() const { return m_sim_sop_enabled; }
@@ -1419,7 +1463,7 @@ index 35079e858..f332aeec9 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1210,6 +1235,66 @@ namespace cryptonote
+@@ -1210,6 +1251,66 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1872,6 +1916,189 @@ index 63655eed8..18e4828dd 100644
 +    }
  
    };
+ }
+diff --git a/src/rpc/core_rpc_server.cpp b/src/rpc/core_rpc_server.cpp
+index 912361a25..1356e0802 100644
+--- a/src/rpc/core_rpc_server.cpp
++++ b/src/rpc/core_rpc_server.cpp
+@@ -3544,6 +3544,68 @@ namespace cryptonote
+     return true;
+   }
+   //------------------------------------------------------------------------------------------------------------------------------
++  // SIMULATION ONLY (monerosim patches/monero-sim-pop.patch, 2026-10-19): the
++  // Share-or-Perish workshare pool, for a selfish-mining agent whose miner is
++  // offline. sim_get_workshares lists pooled shares (at min_height or above,
++  // on parent prev_id if given); sim_submit_workshare pools one as if a peer
++  // had gossiped it (core::add_workshare_remote: the same checks, a template
++  // refresh when it is on the tip, no relay). Unrestricted RPC only; an
++  // error unless --sim-share-or-perish is on.
++  bool core_rpc_server::on_sim_get_workshares(const COMMAND_RPC_SIM_GET_WORKSHARES::request& req, COMMAND_RPC_SIM_GET_WORKSHARES::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
++  {
++    RPC_TRACKER(sim_get_workshares);
++    crypto::hash prev_id = crypto::null_hash;
++    if (!req.prev_id.empty() && !epee::string_tools::hex_to_pod(req.prev_id, prev_id))
++    {
++      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
++      error_resp.message = "Failed to parse prev_id";
++      return false;
++    }
++    std::vector<Blockchain::sim_workshare_info> shares;
++    if (!m_core.get_blockchain_storage().sim_list_workshares(req.min_height, prev_id, shares))
++    {
++      error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
++      error_resp.message = "Share-or-Perish is off (--sim-share-or-perish)";
++      return false;
++    }
++    res.workshares.reserve(shares.size());
++    for (const auto &s : shares)
++    {
++      COMMAND_RPC_SIM_GET_WORKSHARES::workshare w;
++      w.id = epee::string_tools::pod_to_hex(s.id);
++      w.height = s.height;
++      w.prev_id = epee::string_tools::pod_to_hex(s.prev_id);
++      w.slot = s.slot;
++      w.recv_ms = s.recv_ms;
++      w.local = s.local;
++      w.blob = epee::string_tools::buff_to_hex_nodelimer(s.blob);
++      res.workshares.push_back(std::move(w));
++    }
++    res.status = CORE_RPC_STATUS_OK;
++    return true;
++  }
++  //------------------------------------------------------------------------------------------------------------------------------
++  bool core_rpc_server::on_sim_submit_workshare(const COMMAND_RPC_SIM_SUBMIT_WORKSHARE::request& req, COMMAND_RPC_SIM_SUBMIT_WORKSHARE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
++  {
++    RPC_TRACKER(sim_submit_workshare);
++    if (!m_core.get_blockchain_storage().sim_sop_enabled())
++    {
++      error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
++      error_resp.message = "Share-or-Perish is off (--sim-share-or-perish)";
++      return false;
++    }
++    cryptonote::blobdata blob;
++    if (!epee::string_tools::parse_hexstr_to_binbuff(req.blob, blob))
++    {
++      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_BLOCKBLOB;
++      error_resp.message = "Wrong share blob";
++      return false;
++    }
++    res.fresh = m_core.add_workshare_remote(blob, req.height);
++    res.status = CORE_RPC_STATUS_OK;
++    return true;
++  }
++  //------------------------------------------------------------------------------------------------------------------------------
+   bool core_rpc_server::on_rpc_access_submit_nonce(const COMMAND_RPC_ACCESS_SUBMIT_NONCE::request& req, COMMAND_RPC_ACCESS_SUBMIT_NONCE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
+   {
+     RPC_TRACKER(rpc_access_submit_nonce);
+diff --git a/src/rpc/core_rpc_server.h b/src/rpc/core_rpc_server.h
+index a3431ddc7..69696c6bd 100644
+--- a/src/rpc/core_rpc_server.h
++++ b/src/rpc/core_rpc_server.h
+@@ -181,6 +181,8 @@ namespace cryptonote
+         MAP_JON_RPC_WE("get_output_distribution", on_get_output_distribution, COMMAND_RPC_GET_OUTPUT_DISTRIBUTION)
+         MAP_JON_RPC_WE_IF("prune_blockchain",    on_prune_blockchain,           COMMAND_RPC_PRUNE_BLOCKCHAIN, !m_restricted)
+         MAP_JON_RPC_WE_IF("flush_cache",         on_flush_cache,                COMMAND_RPC_FLUSH_CACHE, !m_restricted)
++        MAP_JON_RPC_WE_IF("sim_get_workshares", on_sim_get_workshares, COMMAND_RPC_SIM_GET_WORKSHARES, !m_restricted)
++        MAP_JON_RPC_WE_IF("sim_submit_workshare", on_sim_submit_workshare, COMMAND_RPC_SIM_SUBMIT_WORKSHARE, !m_restricted)
+         MAP_JON_RPC_WE("rpc_access_info",        on_rpc_access_info,            COMMAND_RPC_ACCESS_INFO)
+         MAP_JON_RPC_WE("rpc_access_submit_nonce",on_rpc_access_submit_nonce,    COMMAND_RPC_ACCESS_SUBMIT_NONCE)
+         MAP_JON_RPC_WE("rpc_access_pay",         on_rpc_access_pay,             COMMAND_RPC_ACCESS_PAY)
+@@ -258,6 +260,8 @@ namespace cryptonote
+     bool on_get_output_distribution(const COMMAND_RPC_GET_OUTPUT_DISTRIBUTION::request& req, COMMAND_RPC_GET_OUTPUT_DISTRIBUTION::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+     bool on_prune_blockchain(const COMMAND_RPC_PRUNE_BLOCKCHAIN::request& req, COMMAND_RPC_PRUNE_BLOCKCHAIN::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+     bool on_flush_cache(const COMMAND_RPC_FLUSH_CACHE::request& req, COMMAND_RPC_FLUSH_CACHE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
++    bool on_sim_get_workshares(const COMMAND_RPC_SIM_GET_WORKSHARES::request& req, COMMAND_RPC_SIM_GET_WORKSHARES::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
++    bool on_sim_submit_workshare(const COMMAND_RPC_SIM_SUBMIT_WORKSHARE::request& req, COMMAND_RPC_SIM_SUBMIT_WORKSHARE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+     bool on_rpc_access_info(const COMMAND_RPC_ACCESS_INFO::request& req, COMMAND_RPC_ACCESS_INFO::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+     bool on_rpc_access_submit_nonce(const COMMAND_RPC_ACCESS_SUBMIT_NONCE::request& req, COMMAND_RPC_ACCESS_SUBMIT_NONCE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+     bool on_rpc_access_pay(const COMMAND_RPC_ACCESS_PAY::request& req, COMMAND_RPC_ACCESS_PAY::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+diff --git a/src/rpc/core_rpc_server_commands_defs.h b/src/rpc/core_rpc_server_commands_defs.h
+index 567010a8f..58ffc0a6c 100644
+--- a/src/rpc/core_rpc_server_commands_defs.h
++++ b/src/rpc/core_rpc_server_commands_defs.h
+@@ -2803,4 +2803,83 @@ namespace cryptonote
+     typedef epee::misc_utils::struct_init<response_t> response;
+   };
+ 
++  // SIMULATION ONLY (monerosim patches/monero-sim-pop.patch, 2026-10-19): the
++  // Share-or-Perish workshare pool, for a selfish-mining agent whose miner
++  // is offline (core_rpc_server::on_sim_get_workshares and
++  // on_sim_submit_workshare).
++  struct COMMAND_RPC_SIM_GET_WORKSHARES
++  {
++    struct request_t: public rpc_request_base
++    {
++      uint64_t min_height;
++      std::string prev_id;   // hex; empty = any parent
++
++      BEGIN_KV_SERIALIZE_MAP()
++        KV_SERIALIZE_PARENT(rpc_request_base)
++        KV_SERIALIZE_OPT(min_height, (uint64_t)0)
++        KV_SERIALIZE_OPT(prev_id, std::string())
++      END_KV_SERIALIZE_MAP()
++    };
++    typedef epee::misc_utils::struct_init<request_t> request;
++
++    struct workshare
++    {
++      std::string id;
++      uint64_t height;
++      std::string prev_id;
++      uint64_t slot;
++      uint64_t recv_ms;
++      bool local;
++      std::string blob;      // hex
++
++      BEGIN_KV_SERIALIZE_MAP()
++        KV_SERIALIZE(id)
++        KV_SERIALIZE(height)
++        KV_SERIALIZE(prev_id)
++        KV_SERIALIZE(slot)
++        KV_SERIALIZE(recv_ms)
++        KV_SERIALIZE(local)
++        KV_SERIALIZE(blob)
++      END_KV_SERIALIZE_MAP()
++    };
++
++    struct response_t: public rpc_response_base
++    {
++      std::vector<workshare> workshares;
++
++      BEGIN_KV_SERIALIZE_MAP()
++        KV_SERIALIZE_PARENT(rpc_response_base)
++        KV_SERIALIZE(workshares)
++      END_KV_SERIALIZE_MAP()
++    };
++    typedef epee::misc_utils::struct_init<response_t> response;
++  };
++
++  struct COMMAND_RPC_SIM_SUBMIT_WORKSHARE
++  {
++    struct request_t: public rpc_request_base
++    {
++      std::string blob;      // hex, as sim_get_workshares lists it
++      uint64_t height;
++
++      BEGIN_KV_SERIALIZE_MAP()
++        KV_SERIALIZE_PARENT(rpc_request_base)
++        KV_SERIALIZE(blob)
++        KV_SERIALIZE(height)
++      END_KV_SERIALIZE_MAP()
++    };
++    typedef epee::misc_utils::struct_init<request_t> request;
++
++    struct response_t: public rpc_response_base
++    {
++      bool fresh;            // new to this node's pool
++
++      BEGIN_KV_SERIALIZE_MAP()
++        KV_SERIALIZE_PARENT(rpc_response_base)
++        KV_SERIALIZE(fresh)
++      END_KV_SERIALIZE_MAP()
++    };
++    typedef epee::misc_utils::struct_init<response_t> response;
++  };
++
  }
 diff --git a/tests/unit_tests/test_protocol_pack.cpp b/tests/unit_tests/test_protocol_pack.cpp
 index 78bf01d4b..60592c254 100644

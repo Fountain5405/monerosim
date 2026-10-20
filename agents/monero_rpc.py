@@ -354,6 +354,33 @@ class MoneroRPC(BaseRPC):
             raise RPCError("flush_cache: sim_alt_blocks not confirmed (monerod-sim without the alt-flush patch?)")
         return result
 
+    def sim_get_workshares(self, prev_id: str = "", min_height: int = 0) -> List[Dict[str, Any]]:
+        """The Share-or-Perish workshares in this daemon's pool at
+        `min_height` or above, and on parent `prev_id` if given (monerod-sim
+        only: the sim-pop patch's sim_get_workshares, unrestricted RPC,
+        2026-10-19). Entries carry id, height, prev_id, slot, recv_ms, local
+        and blob (hex), in slot order. A daemon without --sim-share-or-perish
+        answers with an RPC error, and one without the patch with "Method not
+        found"."""
+        params = {"min_height": int(min_height)}
+        if prev_id:
+            params["prev_id"] = prev_id
+        result = self._make_request("sim_get_workshares", params) or {}
+        if result.get("status") != "OK":
+            raise RPCError(f"sim_get_workshares status: {result.get('status')}")
+        return result.get("workshares", [])        # epee leaves an empty array out
+
+    def sim_submit_workshare(self, blob: str, height: int) -> bool:
+        """Hand this daemon a workshare (hex blob, as sim_get_workshares lists
+        it) as if a peer had gossiped it: the same checks, pooled, and the
+        miner's template rebuilt when it is on the tip; never relayed
+        (monerod-sim only: the sim-pop patch's sim_submit_workshare,
+        unrestricted RPC, 2026-10-19). True if the share was new to the pool."""
+        result = self._make_request("sim_submit_workshare", {"blob": blob, "height": int(height)}) or {}
+        if result.get("status") != "OK":
+            raise RPCError(f"sim_submit_workshare status: {result.get('status')}")
+        return bool(result.get("fresh"))
+
     def get_transaction_pool(self) -> Dict[str, Any]:
         """
         Get information about the transaction pool (mempool).
