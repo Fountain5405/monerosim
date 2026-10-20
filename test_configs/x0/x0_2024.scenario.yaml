@@ -1,6 +1,6 @@
 # X0: calibrate the lab (docs/20261018_spy_node_defenses.md §5.3). The mainnet
 # replica (mainnet_replica.scenario.yaml) scaled to ~400 honest daemons for a
-# 32 GB box, with the 2024 spy preset, every daemon on monerod-sim logging relays.
+# 32 GB box, with spies at the 2025 share, every daemon on monerod-sim logging relays.
 #
 # Cells, made by test_configs/x0/make_cells.sh from the two markers below:
 #   peer selection   legacy (v0.18.4.2, before #9939) | 24 (stock /24 dedup)
@@ -15,14 +15,20 @@
 #     20% users, 64% relays;
 #   - honest reachable ~17%: 5 miners + 48 medium + 8 observers + 6 seeds
 #     pinned, plus 1% of users and relays;
-#   - spies 40% of reachable IPs (S6, Oct 2024) in 6 dense /24s: 48 spies,
-#     8 per /24, on NA nodes 828-833 (spy-only /24s);
+#   - spies ~15% of reachable IPs (Kopyciok et al., Feb 2025: 14.74% of IPs,
+#     15.26% of outbound): 12 spies, 2 in each of 6 spy-only /24s on NA nodes
+#     828-833. The pilots at #126's 40% (Oct 2024; 48 spies, 8 per /24) gave a
+#     light-node outbound share of 0.29-0.35 against the 15% target;
 #   - prefix sharing 0.31 x 3 among honest daemons (S13).
 # Not kept: churn. The replica's 1 h on / 1 h off turnover (S10's connection
 # durations) is off for the first experiments: who churns on mainnet is unknown
 # (relay operators mostly stay up; some users sync only to transact), and on
 # users it cut transactions ~10x (pilot 20261020_132230). Churn rates are a later
 # experiment; that pilot, with churn, gave a light-node outbound spy share of 0.35.
+# Not kept: dense spy /24s. Mainnet's spies fill their /24s (Rucknium: 240-254
+# of 254; Kopyciok: >=1,582 IPs in 7 /24s) while being ~15% of IPs; with ~71
+# honest reachable nodes here the same share leaves 2 spies per /24, so per-IP
+# (legacy) and per-/24 (stock) selection differ less than on mainnet.
 # Not kept: mainnet's ~3,700 honest /24s against 6 spy /24s. Here ~60 honest
 # reachable /24s face 6, so stock /24 dedup leaves spies a larger share than on
 # mainnet, and the dedup cell's "~70% lower" target is the one to read with care.
@@ -187,39 +193,39 @@ agents:
     start_time: 0s
     start_time_stagger: 1s
 
-  # ---------------- spies: 2024 preset, variant R, announced via seeds ----------------
+  # ---------------- spies: 2025 share, variant R, announced via seeds ----------------
   # Each spy /24 connects only to one fallback seed (monero-seed-001..006 in order).
-  spy-a-{001..008}:
+  spy-a-{001..002}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: 2s
     topology_node: 828
     daemon_options: {hide-my-port: false, add-exclusive-node: "176.9.0.187:18080"}
-  spy-b-{001..008}:
+  spy-b-{001..002}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: 2s
     topology_node: 829
     daemon_options: {hide-my-port: false, add-exclusive-node: "88.198.163.90:18080"}
-  spy-c-{001..008}:
+  spy-c-{001..002}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: 2s
     topology_node: 830
     daemon_options: {hide-my-port: false, add-exclusive-node: "192.99.8.110:18080"}
-  spy-d-{001..008}:
+  spy-d-{001..002}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: 2s
     topology_node: 831
     daemon_options: {hide-my-port: false, add-exclusive-node: "37.187.74.171:18080"}
-  spy-e-{001..008}:
+  spy-e-{001..002}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: 2s
     topology_node: 832
     daemon_options: {hide-my-port: false, add-exclusive-node: "88.99.195.15:18080"}
-  spy-f-{001..008}:
+  spy-f-{001..002}:
     daemon: monerod-sim
     start_time: 0s
     start_time_stagger: 2s
