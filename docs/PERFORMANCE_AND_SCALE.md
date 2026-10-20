@@ -447,6 +447,14 @@ detail for ~5× less disk. Budget roughly 130 GB (1k) / 180 GB (2k) /
 measured *peak* write rate, not the average — a full disk hangs Shadow
 silently rather than failing loudly.
 
+That budget counts archived run directories, which keep 1% of the chains.
+During the run every daemon also holds its own LMDB, ~3.2 KB per transaction
+per node: roughly 60 / 215 / 385 GB in all at the 1k / 2k / 3k rungs' tx
+counts, about as much as the logs from 2k up. Logs compress ~20x and chains
+~1.4x with zstd, while page-level dedup of the chains falls to ~1.2x once
+transactions flow: `docs/20261020_storage_dedup_zfs.md` (a compressing
+filesystem created per run).
+
 ### KSM (kernel same-page merging)
 
 The single biggest RAM lever. Each monerod holds ~300 MB of private
