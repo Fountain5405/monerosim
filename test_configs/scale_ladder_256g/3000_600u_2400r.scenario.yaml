@@ -5,6 +5,14 @@
 # (same seed, native mining, 5k CAIDA GML, RPC SSL autodetect, 1 tx/user/300 s, users and
 # miners at monitor, relays at log-level 0).
 #
+# One difference from box32: users and relays start linearly (users one per 15 s from 40 min,
+# relays one per 10 s from 20 min) instead of `start_time_stagger: auto`. Auto is batched: waves
+# double up to 200 agents 5 s apart, up to 24 starts per sim-minute with users and relays
+# overlapping. With --bootfast a start costs almost no wall time, so each wave lands within wall
+# minutes, and its unmerged 256 MB RandomX caches outrun KSM: the RAM peak then measures the
+# waves, not the network (the X0 pilot, archived_runs/20261020_130027_x0_legacy_none_s12345,
+# ran a 32 GB box out of RAM that way at ~320 daemons). Linear caps starts at 10 per sim-minute.
+#
 # stop_time below is a placeholder: scripts/run_scale_ladder.sh expands the rung on the box
 # that runs it and sets stop_time = last user's activity start + 2 h (min 8 h). The activity
 # stagger comes from that box's calibration (~/.monerosim/calibration.json), so it differs
@@ -50,23 +58,23 @@ agents:
     hashrate: [20, 20, 20, 20, 20]  # Total = 100 (required for initial miners)
     can_receive_distributions: true
 
-  # --- 600 Users: Batched spawning (auto) ---
+  # --- 600 Users: linear spawning, one per 15 s (see header) ---
   user-{001..600}:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.regular_user
-    start_time: 1200s               # Start after 20 minutes
-    start_time_stagger: auto        # BATCHED - exponential batch growth
+    start_time: 2400s               # after the first relays, as auto's first batch was
+    start_time_stagger: 15s         # linear; auto's batched waves outrun KSM (header)
     transaction_interval: 300
     activity_start_time: auto
     can_receive_distributions: true
 
-  # --- 2400 Relay Nodes: Daemon-only, batched spawning (auto) ---
+  # --- 2400 Relay Nodes: Daemon-only, linear spawning, one per 10 s ---
   # No wallet or script - just monerod for network realism
   relay-{0001..2400}:
     daemon: monerod
-    start_time: 0s
-    start_time_stagger: auto        # BATCHED - same rule as large user group
+    start_time: 1200s               # as auto's first batch
+    start_time_stagger: 10s         # linear (header)
     daemon_options:
       log-level: 0                  # disk: relays quiet, users+miners at monitor
 

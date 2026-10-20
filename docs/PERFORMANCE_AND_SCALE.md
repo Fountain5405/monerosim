@@ -548,19 +548,35 @@ below 1.5 GB (testing on a box that also hosts other services). Per
 node, 500 nodes used ~45 MB with KSM against the ~320 MB it would take
 without. CPU and disk were not binding (500 rung: 4.1 GB of run data).
 
+**The boot peak may be partly the start schedule.** These rungs use
+`start_time_stagger: auto`, which is batched: waves double up to 200 agents
+5 s apart. With `--bootfast` a start costs almost no wall time, so a wave
+lands within wall minutes, and the new daemons' 256 MB RandomX caches stay
+unmerged until KSM catches up. The X0 pilot of 2026-10-20
+(`archived_runs/20261020_130027_x0_legacy_none_s12345`, ~320 daemons) ran
+this box out of RAM that way: each memory spike matched a relay wave, and
+between waves the daemons held ~45 MB each. Rerun with relays one per 30 s,
+its free RAM stayed above 8.8 GB. The 600 and 750 rungs may fit with linear
+starts; that is unmeasured.
+
 ### Running the ladder on another box
 
 `scripts/run_scale_ladder.sh` runs rungs smallest first and stops at the
-first that fails or aborts. Rungs above 1000 nodes, with the same
-workload, are in `test_configs/scale_ladder_256g/` (1500 to 4000 nodes).
-For example:
+first that fails or aborts. Rungs of 1000 to 4000 nodes, with the same
+workload, are in `test_configs/scale_ladder_256g/`. For example:
 
 ```
 scripts/ksm_check.sh        # must say ready; see "KSM" below
 setsid nohup scripts/run_scale_ladder.sh ~/ladder_$(date +%Y%m%d) \
-    test_configs/scale_ladder_box32/1000_200u_800r.scenario.yaml \
     test_configs/scale_ladder_256g/*.scenario.yaml > ~/ladder.driver.out 2>&1 &
 ```
+
+- **Linear starts.** The 256 GB rungs start users one per 15 s from 40 min
+  and relays one per 10 s from 20 min, at most 10 starts per sim-minute,
+  instead of the batched `auto` (up to 24), so the boot peak measures the
+  network rather than the waves (see above). Bootstrap end and the users'
+  activity window are unchanged; the 4000 rung's last relay starts at 9.2 h
+  instead of 7.1 h. Their 1000 rung is therefore not the box32 one.
 
 - **Per-box expansion.** Each rung is expanded on the box that runs it. The
   users' activity stagger comes from that box's
