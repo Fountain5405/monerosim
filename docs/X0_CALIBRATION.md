@@ -248,6 +248,8 @@ the 4 h window; the report prints the quarters):
 | lean H=71 `24` | 0.018 | 0.0212 | 0.032, 0.024, 0.017, 0.014 |
 | lean H=150 `legacy` | 0.073 | 0.0679 | 0.069, 0.071, 0.068, 0.064 |
 | lean H=150 `24` | 0.0086 | 0.0282 | 0.047, 0.030, 0.022, 0.016 |
+| lean H=300 `legacy` | 0.073 | 0.0707 | 0.073, 0.073, 0.070, 0.067 |
+| lean H=300 `24` | 0.0045 | 0.0459 | 0.081, 0.046, 0.033, 0.024 |
 
 The model holds for `legacy` (7% off at H=150, the cap again). The `24` cells
 don't sit still: the share falls through the window, and at H=150 the average
@@ -264,6 +266,16 @@ selection also takes the 20 most recently seen candidates after the /24 dedup
 and picks among them with a cubic bias to the freshest (`get_random_index_with_fixed_probability`);
 the model ignores that, and a Monte Carlo of it over the observers' lists
 gives no higher a share than the uniform one.
+
+At H=300 the `24` cell is 10x the model on average and 5x in the last quarter,
+and the first quarter rises with H (0.032, 0.047, 0.081 at H=71, 150, 300; 13,
+26, 53 spies). In the first window 95 of 233 relays hold three or more spy
+outbound peers at once, up to five, so the one-per-/24 cap the model rests on
+is broken early; by the last window 4 hold two and none more. `legacy` breaks
+it too, less: 25 relays hold two or three in the first window. The likely path
+is the fallback to undeduplicated candidates (`step == 1`) when a new relay's
+small first peer list runs out of /24s, since its 12 slots fill within about 3
+sim-s of starting. The relay's list is not dumped, so this is not checked.
 
 So read a `24` cell by its last quarter, not its average, and give it a longer
 warmup before the transactions start (`make_lean.py --warmup 21600`; the
