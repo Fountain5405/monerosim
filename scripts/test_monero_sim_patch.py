@@ -67,3 +67,12 @@ def test_shares_relay_only_on_the_main_tip():
     i = t.index("::handle_notify_new_workshare(int command")
     body = t[i:i + 1500]
     assert "if (extends_tip)" in body and "relay_workshare(arg, context)" in body
+
+
+def test_colliding_share_seen_but_not_pooled():
+    """MRL #146 author, 2026-10-21 meeting: a colliding share is seen but does not enter the pool."""
+    t = PATCH.read_text()
+    assert "share slot taken" in t
+    i = t.index("+bool Blockchain::sim_add_workshare")
+    body = t[i:]
+    assert body.index("m_sim_recv.emplace(id, now_ms);") < body.index("share slot taken")

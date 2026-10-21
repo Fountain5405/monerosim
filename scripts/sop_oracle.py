@@ -232,6 +232,10 @@ def compare(rec: dict) -> list[str]:
         return msgs  # skipped records are not recomputed further.
 
     if rec.get("v", 1) >= 4:
+        for pool in ("pool_alt", "pool_main"):
+            slots = [x["slot"] for x in rec.get(pool, [])]
+            for slot in sorted({x for x in slots if slots.count(x) > 1}):
+                msgs.append(f"duplicate slot {slot} in {pool}")
         for key in ("n_alt", "n_main", "pool_alt_counted", "pool_main_counted"):
             if int(rec.get(key, -1)) != d[key]:
                 msgs.append(f"{key} {rec.get(key)} != expected {d[key]}")

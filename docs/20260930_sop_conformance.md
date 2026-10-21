@@ -178,11 +178,23 @@ Source: the issue body as edited 2026-10-16 22:07 and 2026-10-20 16:47 UTC
   `unit = max(1, diff // w)` per block; `unit_pool = max(1, pool_diff // w)`.
 - **Pool shares (convention 11, R2).** A chain's pool shares are the pooled
   shares with `prev_id` = the chain's tip and height tip+1 whose PoW passes
-  (`pow_ok`). Per slot keep the first seen; count the contiguous run of slots
-  `major, major+1, ...`. `pool_diff` is the tip block's difficulty (sim
-  convention, exact under constant difficulty).
+  (`pow_ok`). Count the contiguous run of slots `major, major+1, ...`.
+  `pool_diff` is the tip block's difficulty (sim convention, exact under
+  constant difficulty).
+  Settled by the author at the MRL meeting of 2026-10-21: when two shares on
+  the same parent collide on `minor_version`, only the first seen enters the
+  pool; the later one still gets a first-seen time, for the lateness check
+  when a block carries it. So a pool holds at most one share per (parent,
+  slot), and the later share is neither pooled nor relayed. The daemon logs it
+  as `SIM-SoP: share slot taken ...`, and the oracle flags a v4 pool list with
+  a repeated slot. Sim convention: PoW is checked at weight time, not at
+  admission, so an invalid share seen first would hold its slot; the
+  simulated miners only produce valid shares.
 - **Evaluation (convention 12, R3).** The fork choice runs when an alt block
-  arrives, as in monerod. A share arriving does not re-run it.
+  arrives, as in monerod. A share arriving does not re-run it. The author
+  confirmed at the 2026-10-21 meeting that the fork choice is meant to run
+  only when a new block or chain is received. `scripts/sop_v4_probes.py`
+  still counts the decisions a later share arrival would have flipped.
 - **Two chains (convention 13, R4).** main against the alt chain being
   extended. `alt_tips` counts alt tips whose fork is within 10*w of top.
 

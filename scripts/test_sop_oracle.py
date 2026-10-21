@@ -402,3 +402,12 @@ def test_pool_rule_all_changes_count_in_cli(tmp_path, capsys):
     _write_node_log(tmp_path, "a0", ["SIM-SoP-DEC " + json.dumps(r)])
     main(["check", str(tmp_path), "--pool-rule", "all"])
     assert "pool-rule all changes 1 outcomes" in capsys.readouterr().out
+
+
+def test_v4_compare_flags_duplicate_slot_in_pool():
+    alt = [blk4(100, 15), blk4(101, 15), blk4(102, 15)]
+    main = [blk4(100, 15), blk4(101, 15)]
+    r = rec_v4(alt, main, pool_main=[sh4(16, i=0), sh4(16, i=1)], n_alt=32, n_main=16, nakamoto=False,
+               regime="objective", w_alt="4800", w_main="3300", tie=False, tie_draw=None,
+               pool_alt_counted=0, pool_main_counted=1, result="SWITCH", nf=48, nf_main=32)
+    assert any("duplicate slot 16 in pool_main" in m for m in compare(r))
