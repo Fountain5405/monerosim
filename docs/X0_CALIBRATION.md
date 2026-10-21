@@ -182,6 +182,98 @@ stems fit Dandelion++: 0.191 fluff per hop (stock 0.2), so the implied
 uncensored mean is 5.2 hops. 12.5% of stems end in a loop (8.6% in the
 48-spy run). The 12-spy layout is the X0 baseline for the remaining cells.
 
+## Scaling the /24 cells (test_configs/x0/make_lean.py)
+
+**The gap.** The X0 cell puts 6 spy /24s against 69 honest reachable /24s.
+The model below puts stock dedup at 0.083 against 0.137 for `legacy`: 40%
+lower, where the target is ~70%. Mainnet has 6-9 spy /24s against ~3,700
+honest ones (0.2%).
+
+**What sets the share.** Two things:
+- *The pool a node picks from.* An unreachable node is in nobody's peer list,
+  so the 83% of daemons that are unreachable light nodes don't change it. The
+  reachable honest IPs and the spies do. `make_lean.py` builds the replica
+  with the unreachable majority cut to 40 users and the reachable honest set
+  grown to `--reachable`, with the spies (15% of reachable IPs) in
+  `--spy-subnets` /24s. Mainnet's /24 ratio then takes ~600 reachable honest
+  daemons and one dense spy /24 of ~106 spies (Rucknium saw 240-254 spies in
+  each /24), about 750 daemons instead of ~3,700. Relays start one every 20
+  sim-s, so the RandomX caches don't outrun KSM (the same rule as X0's linear
+  relay starts).
+- *The one-per-subnet cap.* After each pick a node skips every candidate in
+  the picked subnet (both rules; in the simulator a /16 holds one /24). So k
+  spy /24s can hold at most k of a node's 12 outbound slots, however many
+  spies they hold. `legacy` weights a subnet by its IPs, so a dense spy /24
+  is almost certain to get its one slot; dedup weights every /24 equally.
+
+`x0_calibration.py` prints a model line for every run: a Monte Carlo of that
+rule over the run's own pool (12 slots, every spy assumed to be in every peer
+list, no list dynamics, no inbound-connection skip). It is a reference, not a
+fit, and it has held so far:
+
+| Cell | Model | Measured |
+|---|---|---|
+| X0 `legacy/none`, 12 spies in 6 /24s | 0.137 | 0.132 (0.1335 in the capped rerun) |
+| X0 `legacy/half`, non-adopters | 0.137 | 0.1375 |
+| lean H=71, 13 spies in 1 /24, `legacy` | 0.075 | 0.061 |
+
+The first lean cell is why the model has the cap. A uniform pick over IPs
+predicted 0.155 for it, and the cell measured 0.061: a node can hold only one
+spy slot, so one dense /24 can't reach X0's 0.13 however many spies it has.
+That also means the `legacy` leg of a one-/24 cell is not the 0.15 baseline;
+the k=6 cells at H=300 are the `legacy` anchor at a larger honest set.
+
+| Cell | Daemons | Spies / spy /24s | Honest reachable / /24s | Model: `legacy` | Model: `24` |
+|---|---|---|---|---|---|
+| X0 | 419 | 12 / 6 | 71 / 69 | 0.137 | 0.083 |
+| lean H=71 | 124 | 13 / 1 | 71 / 60 | 0.075 | 0.018 |
+| lean H=150 | 216 | 26 / 1 | 150 / 125 | 0.073 | 0.009 |
+| lean H=300 | 393 | 53 / 1 | 300 / 242 | 0.073 | 0.0045 |
+| lean H=300, k=6 | 393 | 53 / 6 | 300 / 242 | 0.136 | 0.026 |
+| lean H=600 | 746 | 106 / 1 | 600 / 480 | 0.073 | 0.0024 |
+
+**Sweep.** Each row under `legacy` and `24`, no list, seed 12345. A cell that
+lands within ~20% of its model row says the rule and the pool explain the
+share, and the model can then be run on mainnet's pool. A `24` cell above its
+row means something else sets the share (how spies get into lists, or the
+inbound skip), and that, not the size of the replica, is what limits reading
+the result against mainnet.
+
+**Results so far** (light-node outbound share, window average and by quarter of
+the 4 h window; the report prints the quarters):
+
+| Cell | Model | Window average | By quarter |
+|---|---|---|---|
+| lean H=71 `legacy` | 0.075 | 0.061 | 0.070, 0.063, 0.060, 0.052 |
+| lean H=71 `24` | 0.018 | 0.0212 | 0.032, 0.024, 0.017, 0.014 |
+| lean H=150 `legacy` | 0.073 | 0.0679 | 0.069, 0.071, 0.068, 0.064 |
+| lean H=150 `24` | 0.0086 | 0.0282 | 0.047, 0.030, 0.022, 0.016 |
+
+The model holds for `legacy` (7% off at H=150, the cap again). The `24` cells
+don't sit still: the share falls through the window, and at H=150 the average
+is 3x the model while the last quarter is 1.9x and still falling. Outbound
+connections are not permanent here even without churn: an H=150 relay sees 32
+distinct honest peers over the window in 12 slots, so a slot turns over about
+every 1.5 h. Connections made at start from the small early peer lists hold
+more spies than the steady state, and under `24` they take a few hours to age
+out. The cause of the early excess is not isolated. It is not the relay's
+start time (the share is flat across relays in start order), and not the
+observers' lists (the spies sit mid-pack by `last_seen` there, and 175-entry
+lists hold all 26 spies and 149 honest in 125 /24s, the model's pool). Real
+selection also takes the 20 most recently seen candidates after the /24 dedup
+and picks among them with a cubic bias to the freshest (`get_random_index_with_fixed_probability`);
+the model ignores that, and a Monte Carlo of it over the observers' lists
+gives no higher a share than the uniform one.
+
+So read a `24` cell by its last quarter, not its average, and give it a longer
+warmup before the transactions start (`make_lean.py --warmup 21600`; the
+default is 3600). `lean_24_none_h150_k1_w6h` tests that: if its last quarter
+lands near 0.0086, the model is the steady state and the 4 h cells are still
+converging.
+
+**Not covered.** Stems and estimators at these sizes (the cells keep 40 users,
+so a few hundred txs), churn, and more than one seed per point.
+
 ## Targets and open questions
 
 | Cell | Target | Source |

@@ -548,6 +548,35 @@ below 1.5 GB (testing on a box that also hosts other services). Per
 node, 500 nodes used ~45 MB with KSM against the ~320 MB it would take
 without. CPU and disk were not binding (500 rung: 4.1 GB of run data).
 
+### Swap as headroom (2026-10-21)
+
+The same 32 GB box ran the X0 pilot cell (419 daemons and 85 wallets, 8 sim
+hours, `--bootfast --ksm`, KSM at 20000 pages / 20 ms) twice: uncapped, and
+inside a 12 GB cgroup with a 24 GB swap file on the NVMe (the box's own swap
+is a 4 GB file):
+
+```bash
+systemd-run --user --scope -p MemoryMax=12G -p MemorySwapMax=infinity \
+    ./run_sim.sh --config test_configs/x0/cells/x0_legacy_none_s12345.yaml --bootfast --ksm --no-monitor
+```
+
+| | Uncapped | 12 GB cap |
+|---|---|---|
+| Wall | 1 h 53 m | 2 h 1 m (+7%) |
+| Peak anonymous memory | ~16 GB | 16.0 GB: 11.0 GB in RAM, 5.0 GB in swap |
+| Read back from swap | — | 5.0 M pages (19.6 GB) over the run: ~700/s on average, ~1,000/s in the tx hours |
+| Time fully stalled on memory (PSI `full`) | — | 16 s in total |
+
+About a third of the footprint was cold enough to sit in swap, and paging it
+back cost ~7-10% of wall time at every sim hour, the tx-heavy ones included.
+The slowdown is roughly the page-in rate times the device's latency (NAND
+~100 µs), so a lower-latency swap device (Optane) should cost proportionally
+less at the same page-in rate; that is an expectation, not a measurement.
+Not tested: caps below 12 GB (more than ~1.3× oversubscription), where the
+hot set may start to be paged. The run's result moved slightly (light-node
+outbound spy share 0.1335 against 0.1318, 1,919 txs against 1,822) as any
+two runs of a cell do.
+
 ### Auto-config caps predate the ladder
 
 The guardrail table the auto-config uses (and its `N > cap` warnings) was

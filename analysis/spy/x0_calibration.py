@@ -53,11 +53,82 @@ def host_flags(run_dir):
     return adopter, mode
 
 
+def subnet_model(run_dir, out_peers=12, trials=2000, seed=1):
+    """Spies and honest reachable daemons by subnet, and the spy share outbound selection predicts.
+
+    Reachable = no `blocked_inbound_ports` in shadow_agents.yaml (seeds and miners
+    included: they are in peer lists). A node fills `out_peers` slots from the pool of
+    honest reachable IPs plus spies, and after each pick skips every candidate in the
+    picked subnet (monerosim gives each GML node its own a.b.0.0/24, so a /16 holds one
+    /24 and both rules skip the same set):
+      legacy  each IP is a candidate, so a subnet is picked in proportion to its IPs;
+      24      one candidate per /24, so every subnet is equally likely;
+      none    each IP is a candidate and nothing is skipped.
+    That is the whole model: no list dynamics, no inbound-connection skip, and every
+    spy is assumed to be in every peer list. It is the reference the measured shares
+    are read against (docs/X0_CALIBRATION.md, "Scaling the /24 cells"), not a fit.
+    The cap matters: k spy subnets can fill at most k of a node's slots, so one dense
+    spy /24 gives at most one, however many spies it holds.
+    """
+    import random
+    with open(Path(run_dir, "shadow_agents.yaml")) as f:
+        hosts = yaml.safe_load(f).get("hosts", {})
+    spy_ips, honest_ips = set(), set()
+    for name, h in hosts.items():
+        ip = h.get("ip_addr")
+        if not ip or not any("monerod" in str(p.get("path", "")) for p in h.get("processes", [])):
+            continue
+        if name.startswith("spy"):
+            spy_ips.add(ip)
+        elif not h.get("blocked_inbound_ports"):
+            honest_ips.add(ip)
+    honest_ips -= spy_ips
+    net24 = lambda ip: ip.rsplit(".", 1)[0]  # noqa: E731
+    groups = defaultdict(lambda: [0, 0])      # /24 -> [honest IPs, spy IPs]
+    for ip in honest_ips:
+        groups[net24(ip)][0] += 1
+    for ip in spy_ips:
+        groups[net24(ip)][1] += 1
+    keys = list(groups)
+    size = [sum(groups[k]) for k in keys]
+    is_spy = [groups[k][1] > 0 for k in keys]
+    rng = random.Random(seed)
+
+    def mc(mode):
+        spy_slots = 0
+        for _ in range(trials):
+            if mode == "none":
+                pool = [True] * len(spy_ips) + [False] * len(honest_ips)
+                picks = rng.sample(pool, min(out_peers, len(pool)))
+                spy_slots += sum(picks)
+                continue
+            idx = list(range(len(keys)))
+            for _slot in range(min(out_peers, len(idx))):
+                w = [size[i] for i in idx] if mode == "legacy" else None
+                i = rng.choices(idx, weights=w)[0]
+                idx.remove(i)
+                if is_spy[i]:
+                    # A mixed /24 holds both kinds; pick which in proportion to its IPs.
+                    spy_slots += 1 if groups[keys[i]][0] == 0 else int(
+                        rng.random() < groups[keys[i]][1] / size[i])
+        return round(spy_slots / (trials * out_peers), 4)
+
+    return {
+        "spies": len(spy_ips), "spy_24s": sum(is_spy),
+        "honest_reachable": len(honest_ips), "honest_reachable_24s": sum(1 for g in groups.values() if g[0]),
+        "out_peers": out_peers,
+        "legacy": mc("legacy"), "24": mc("24"), "none": mc("none"),
+    }
+
+
 def slot_shares(run_dir, window=300):
     """{group: {"out": share, "in": share, "nodes": n}} over the activity window.
 
     A slot is one (node, peer) pair seen in a snapshot window; shares are spy
-    slots / all slots, pooled over windows and nodes (slot-weighted).
+    slots / all slots, pooled over windows and nodes (slot-weighted). "light:q1".."light:q4"
+    are the light nodes' shares in each quarter of the window: outbound connections made
+    from small early peer lists last a while (about 1.5 h in the lean cells), so a /24 cell's
+    share falls over the window towards the model's steady state while a legacy cell's is flat.
     """
     by_ip, _, _, node_class, general = topology_metrics.load_run_meta(run_dir)
     adopter, _ = host_flags(run_dir)
@@ -65,7 +136,9 @@ def slot_shares(run_dir, window=300):
     t_from, t_to = topology_metrics.default_window_bounds(general)
     tot = defaultdict(lambda: Counter())
     nodes = defaultdict(set)
-    for w0, w1 in topology_metrics.make_windows(t_from, t_to, window):
+    wins = topology_metrics.make_windows(t_from, t_to, window)
+    for wi, (w0, w1) in enumerate(wins):
+        quarter = min(3, wi * 4 // len(wins)) + 1
         out_peers, in_peers = topology_metrics.snapshot_peer_sets(events, by_ip, w0, w1)
         for direction, peer_sets in (("out", out_peers), ("in", in_peers)):
             for node, peers in peer_sets.items():
@@ -75,7 +148,7 @@ def slot_shares(run_dir, window=300):
                 spies = sum(node_class.get(p) == "spy" for p in peers)
                 groups = ["honest", cls, "ban-list" if adopter.get(node) else "no-list"]
                 if cls in ("user", "relay", "observer"):
-                    groups.append("light")
+                    groups += ["light", f"light:q{quarter}"]
                 for g in groups:
                     tot[g][direction] += len(peers)
                     tot[g][direction + "_spy"] += spies
@@ -118,6 +191,7 @@ def analyze(run_dir, window=300):
         "run": str(run_dir),
         "cell": f"{mode}/{lists}",
         "slots": slot_shares(run_dir, window),
+        "model": subnet_model(run_dir),
         "stems": stem_metrics(run_dir),
     }
 
@@ -138,6 +212,14 @@ def render(r):
         m = r["slots"].get(g)
         if m:
             lines.append(f"{g:10} {m['nodes']:5} {m['out']!s:>13} {m['in']!s:>12}")
+    m = r.get("model")
+    if m:
+        lines.append(f"\nmodel ({m['out_peers']} slots, one per subnet): {m['spies']} spies in {m['spy_24s']} /24s, "
+                     f"{m['honest_reachable']} honest reachable in {m['honest_reachable_24s']} /24s: "
+                     f"legacy {m['legacy']}, 24 {m['24']}, none {m['none']}")
+    q = [(r["slots"].get(f"light:q{i}") or {}).get("out") for i in range(1, 5)]
+    if any(v is not None for v in q):
+        lines.append(f"light outbound share by quarter of the window: {q}")
     t = TARGETS.get(r["cell"])
     if t:
         v = r["slots"].get("light", {}).get("out")
