@@ -370,13 +370,18 @@ class MoneroRPC(BaseRPC):
             raise RPCError(f"sim_get_workshares status: {result.get('status')}")
         return result.get("workshares", [])        # epee leaves an empty array out
 
-    def sim_submit_workshare(self, blob: str, height: int) -> bool:
+    def sim_submit_workshare(self, blob: str, height: int, relay: bool = False) -> bool:
         """Hand this daemon a workshare (hex blob, as sim_get_workshares lists
         it) as if a peer had gossiped it: the same checks, pooled, and the
         miner's template rebuilt when it is on the tip; never relayed
         (monerod-sim only: the sim-pop patch's sim_submit_workshare,
-        unrestricted RPC, 2026-10-19). True if the share was new to the pool."""
-        result = self._make_request("sim_submit_workshare", {"blob": blob, "height": int(height)}) or {}
+        unrestricted RPC, 2026-10-19). relay=True: the daemon also relays it
+        when it extends its main tip (2026-10-21). True if the share was new
+        to the pool."""
+        params = {"blob": blob, "height": int(height)}
+        if relay:
+            params["relay"] = True
+        result = self._make_request("sim_submit_workshare", params) or {}
         if result.get("status") != "OK":
             raise RPCError(f"sim_submit_workshare status: {result.get('status')}")
         return bool(result.get("fresh"))

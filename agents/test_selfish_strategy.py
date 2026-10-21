@@ -1,4 +1,5 @@
 # agents/test_selfish_strategy.py
+import pytest
 from agents.selfish_strategy import SelfishStrategy, ReleaseDecision
 
 
@@ -366,7 +367,7 @@ def test_window_stubborn_default_branch_weights_uses_block_count_fallback():
     assert priv == 48
     assert d.release_to == priv - 1 and s.fork == priv
     assert d.adopt_public is False
-    assert s.last_weights == (48, 48, 47)
+    assert s.last_weights == (48, 48, 47, 47, 46)
 
 
 # --- deep_hunt (2026-10-19): an attacker after a deep reorg, not revenue ---
@@ -443,3 +444,41 @@ def test_deep_hunt_release_depth_comes_from_the_agent_attributes():
     assert kw["release_depth"] == 12
     assert SelfishMinerAgent.strategy_kwargs({})["release_depth"] == 10
     assert SelfishStrategy("deep_hunt", 0, **kw).release_depth == 12
+
+
+def _ws(rule, objects=32):
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=objects,
+                        give_up_depth=5, window_rule=rule)
+    s.fork = 100
+    return s
+
+
+def test_window_rule_default_is_v3():
+    assert SelfishStrategy("window_stubborn", 0).window_rule == "v3"
+
+
+def test_window_rule_rejects_unknown():
+    with pytest.raises(ValueError):
+        SelfishStrategy("window_stubborn", 0, window_rule="nope")
+
+
+def test_window_rule_20261020_excludes_first_block():
+    s = _ws("20261020")
+    # attacker 3 blocks, 60 objects of which 40 in its first block: 20 above it
+    d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (60, 6000, 1600, 20, 0))
+    assert d.release_to is None
+    d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (72, 7200, 1600, 32, 0))
+    assert d.release_to == 102
+
+
+def test_window_rule_20261020_either_branch():
+    s = _ws("20261020")
+    # honest branch is past 32 above its first block; attacker heavier -> reveal
+    d = s.update(pub_height=103, priv_height=104, branch_weights=lambda f, p, q: (40, 5000, 4900, 24, 33))
+    assert d.release_to == 103
+
+
+def test_window_rule_v3_unchanged():
+    s = _ws("v3", objects=48)
+    d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (60, 6000, 1600, 20, 0))
+    assert d.release_to == 102          # v3: 60 >= 48 counts the first block

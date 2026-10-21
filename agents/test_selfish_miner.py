@@ -1029,7 +1029,7 @@ def test_branch_weights_sop_mode_without_embedded_shares():
     result = a._branch_weights(5, 8, 7)
     # attacker shares ignored (embedded_shares off): objects=3, weight=1+2+3=6
     # honest shares always counted: unit*(1+m) = 1*6 + 2*2 = 10
-    assert result == (3, 6, 10)
+    assert result == (3, 6, 10, 2, 2)
     a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
     a.bridge_rpc.get_block_headers_range.assert_called_once_with(5, 6)
 
@@ -1044,7 +1044,7 @@ def test_branch_weights_sop_mode_with_embedded_shares():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 7, 5)
     # objects = (1+2)+(1+3) = 7; weight = 1*3 + 2*4 = 11; honest range empty -> 0
-    assert result == (7, 11, 0)
+    assert result == (7, 11, 0, 4, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1067,7 +1067,7 @@ def test_branch_weights_wide_difficulty_fallback():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 6, 5)
     # difficulty 16 // sop_w(16) = 1, unit=max(1,1)=1, weight=1*(1+0)=1
-    assert result == (1, 1, 0)
+    assert result == (1, 1, 0, 0, 0)
 
 
 def test_branch_weights_none_on_rpc_error_from_daemon():
@@ -1098,7 +1098,7 @@ def test_branch_weights_empty_honest_range():
         {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
     ]
     result = a._branch_weights(5, 6, 5)   # pub_height == fork: empty honest range
-    assert result == (1, 1, 0)
+    assert result == (1, 1, 0, 0, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1140,3 +1140,80 @@ def test_window_stubborn_reveal_is_logged():
     messages = [c.args[0] for c in a.logger.info.call_args_list]
     assert any("window_stubborn: reveal fork=0 a=2 h=1 objects=2 weight=2 honest_weight=1" in m
                for m in messages)
+
+
+# ---- tip shares (MRL #146 2026-10-20) ----
+from agents.selfish_miner import sop_pool_count
+
+
+def _s(slot, recv, i=0):
+    return {"id": f"x{slot}_{i}", "slot": slot, "recv_ms": recv, "blob": "00", "height": 7}
+
+
+class _FakeRPC:
+    def __init__(self, blocks=(), pool=(), tip_hash="tip"):
+        self.blocks, self.pool, self.tip_hash = list(blocks), list(pool), tip_hash
+        self.submitted = []
+
+    def get_block_headers_range(self, lo, hi):
+        return [{"hash": f"h{lo + i}", "difficulty": 1600, "major_version": 16,
+                 "minor_version": 16 + n} for i, n in enumerate(self.blocks)]
+
+    def get_info(self):
+        return {"top_block_hash": self.tip_hash}
+
+    def sim_get_workshares(self, prev_id="", min_height=0):
+        return [{**_s(slot, i), "height": min_height} for i, slot in enumerate(self.pool)]
+
+    def sim_submit_workshare(self, blob, height, relay=False):
+        self.submitted.append((blob, height, relay))
+        return True
+
+
+@pytest.fixture
+def make_miner():
+    def make(attributes=None, priv_blocks=(), pub_blocks=(), pub_pool=(), priv_pool=()):
+        extra = [[k, v] for k, v in (attributes or {}).items()]
+        a = _make_agent(strategy="window_stubborn", extra=extra)
+        a.daemon_rpc = _FakeRPC(priv_blocks, priv_pool)
+        a.bridge_rpc = _FakeRPC(pub_blocks, pub_pool)
+        a.bridge_rpcs = [a.bridge_rpc]
+        return a
+    return make
+
+
+def test_sop_pool_count_first_seen_per_slot():
+    assert sop_pool_count([_s(16, 5), _s(16, 3, 1), _s(17, 9)], 16) == 2
+
+
+def test_sop_pool_count_stops_at_gap():
+    assert sop_pool_count([_s(16, 1), _s(18, 2)], 16) == 1
+
+
+def test_branch_weights_tip_shares(make_miner):
+    m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true"},
+                   priv_blocks=[15, 15], pub_blocks=[15, 15],
+                   pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
+    att_objects, att_w, hon_w, att_x1, hon_x1 = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert (att_objects, att_x1, hon_x1) == (32, 16, 16)
+    assert att_w == 3200 + 300 and hon_w == 3200 + 500
+
+
+def test_branch_weights_without_tip_shares_is_v3(make_miner):
+    m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true"},
+                   priv_blocks=[15, 15], pub_blocks=[15, 15], pub_pool=[16, 17], priv_pool=[16])
+    w = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert w[1] == 3200 and w[2] == 3200
+
+
+def test_tip_shares_wait_for_bridge_tip(make_miner):
+    m = make_miner(attributes={"tip_shares": "true"}, priv_pool=[16, 17])
+    m.bridge_rpc.tip_hash = "old"
+    m._queue_tip_delivery("newtip", 103)
+    m._deliver_tip_shares()
+    assert m.bridge_rpc.submitted == []                      # bridge not on the tip yet
+    m.bridge_rpc.tip_hash = "newtip"
+    m._deliver_tip_shares()
+    assert [r for (_, _, r) in m.bridge_rpc.submitted] == [True, True]
+    m._deliver_tip_shares()
+    assert len(m.bridge_rpc.submitted) == 2                  # delivered once

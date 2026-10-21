@@ -226,3 +226,12 @@ def test_get_block_headers_range_defaults_to_empty_list(mocker):
     mocker.patch.object(rpc, "_make_request", return_value={})
 
     assert rpc.get_block_headers_range(0, 0) == []
+
+
+def test_sim_submit_workshare_relay_param(mocker):
+    rpc = MoneroRPC("127.0.0.1", 1)
+    mk = mocker.patch.object(rpc, "_make_request", return_value={"status": "OK", "fresh": True})
+    assert rpc.sim_submit_workshare("ab", 5, relay=True) is True
+    mk.assert_called_with("sim_submit_workshare", {"blob": "ab", "height": 5, "relay": True})
+    rpc.sim_submit_workshare("ab", 5)
+    mk.assert_called_with("sim_submit_workshare", {"blob": "ab", "height": 5})

@@ -185,7 +185,7 @@ index c168f48a7..7ab202621 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 3608364dd..a8974340a 100644
+index 3608364dd..1071aae96 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -364,7 +364,7 @@ index 3608364dd..a8974340a 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1996,930 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1996,1087 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -584,14 +584,15 @@ index 3608364dd..a8974340a 100644
 +// like embedded uncle headers. First-seen time goes into the shared
 +// m_sim_recv ledger so l_b and l_w read one clock. Returns true only for a
 +// NEW share (duplicates keep their first-seen and do not re-relay).
-+bool Blockchain::sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id, bool *extends_tip)
++bool Blockchain::sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id, bool *extends_tip,
++                                   crypto::hash *prev_out, uint64_t *slot_out)
 +{
 +  if (extends_tip)
 +    *extends_tip = false;
 +  if (!m_sim_sop_enabled)
 +    return false;   // dormant node: no pool, no relay (stock behaviour in mixed networks)
 +  CRITICAL_REGION_LOCAL(m_blockchain_lock);
-+  if (height < 1 || height > get_current_blockchain_height())
++  if (height < 1 || height > get_current_blockchain_height() + 10 * m_sim_sop_w)
 +  {
 +    MINFO("SIM-SoP: share rejected (height " << height << " vs chain height " << get_current_blockchain_height() << ")");
 +    return false;
@@ -607,7 +608,9 @@ index 3608364dd..a8974340a 100644
 +  // The share must continue something we know at height-1: the main-chain
 +  // block, or an alt block competing there (during races the template's
 +  // parent can itself be off the main chain).
-+  bool parent_known = get_block_id_by_height(height - 1) == bh.prev_id;
++  const uint64_t top_h = get_current_blockchain_height() - 1;
++  const bool parent_on_main = height - 1 <= top_h && get_block_id_by_height(height - 1) == bh.prev_id;
++  bool parent_known = parent_on_main;
 +  if (!parent_known)
 +  {
 +    m_db->for_all_alt_blocks([&](const crypto::hash &alt_id, const alt_block_data_t &data, const cryptonote::blobdata_ref*) {
@@ -620,6 +623,27 @@ index 3608364dd..a8974340a 100644
 +  {
 +    MINFO("SIM-SoP: share rejected (unknown parent " << bh.prev_id << " at height " << (height - 1) << ")");
 +    return false;
++  }
++  if (!parent_on_main)
++  {
++    // alternate workshare (spec 2.3): the alt chain must fork within 10*w of the main chain
++    crypto::hash cur = bh.prev_id;
++    uint64_t steps = 0;
++    alt_block_data_t alt_data;
++    cryptonote::blobdata alt_blob;
++    while (steps < 10 * m_sim_sop_w && m_db->get_alt_block(cur, &alt_data, &alt_blob))
++    {
++      cryptonote::block b;
++      if (!parse_and_validate_block_from_blob(alt_blob, b))
++        break;
++      cur = b.prev_id;
++      ++steps;
++    }
++    if (steps >= 10 * m_sim_sop_w || !m_db->block_exists(cur))
++    {
++      MINFO("SIM-SoP: share rejected (alternate chain forks " << steps << "+ blocks deep)");
++      return false;
++    }
 +  }
 +
 +  cn_fast_hash(blob.data(), blob.size(), id);
@@ -642,6 +666,10 @@ index 3608364dd..a8974340a 100644
 +  ent.blob = blob;
 +  ent.local = local;
 +  ent.seq = bh.minor_version;   // the slot the share was mined under (#146)
++  if (prev_out)
++    *prev_out = bh.prev_id;
++  if (slot_out)
++    *slot_out = ent.seq;
 +  m_sim_shares.emplace(id, ent);
 +  // Bound the pool by first-seen order (rates are ~w-1 per block per miner;
 +  // 1024 covers many heights of multi-miner gossip).
@@ -899,6 +927,80 @@ index 3608364dd..a8974340a 100644
 +      && check_hash(pow, share_target);
 +}
 +
++// SIMULATION ONLY (MRL #146 2026-10-20): a pooled share's PoW, the full PoW
++// blob as gossiped, against diff/w at `height`.
++bool Blockchain::sim_sop_pool_share_pow_ok(const blobdata &blob, uint64_t height, uint8_t major, difficulty_type diff)
++{
++  const difficulty_type target = diff / m_sim_sop_w ? diff / m_sim_sop_w : 1;
++  crypto::hash pow;
++  return get_block_longhash(this, blob, pow, height, major, nullptr, 0) && check_hash(pow, target);
++}
++
++// SIMULATION ONLY (MRL #146 2026-10-20, conformance convention 11): pool
++// shares that extend `tip_id` at height tip_height+1 and pass PoW; first seen
++// per slot; the contiguous run of slots from `major` counts. Appends the
++// pool entries to `js` as [{"id","slot","seen","pow_ok"}].
++uint64_t Blockchain::sim_sop_tip_shares(const crypto::hash &tip_id, uint64_t tip_height, uint8_t major,
++                                        difficulty_type diff, std::ostringstream *js)
++{
++  std::map<uint64_t, uint64_t> first_seen;   // slot -> earliest recv of a PoW-valid share
++  bool any = false;
++  if (js)
++    *js << "[";
++  for (const auto &sh : m_sim_shares)
++  {
++    if (sh.second.prev_id != tip_id || sh.second.height != tip_height + 1)
++      continue;
++    // RandomX per share per decision is costly: cache by share id (a share's
++    // height, and so its difficulty, is fixed by its parent).
++    auto pit = m_sim_sop_pool_pow_ok.find(sh.first);
++    if (pit == m_sim_sop_pool_pow_ok.end())
++    {
++      if (m_sim_sop_pool_pow_ok.size() > 4096)
++        m_sim_sop_pool_pow_ok.clear();
++      pit = m_sim_sop_pool_pow_ok.emplace(sh.first,
++          sim_sop_pool_share_pow_ok(sh.second.blob, sh.second.height, major, diff)).first;
++    }
++    const bool ok = pit->second;
++    if (js)
++      *js << (any ? "," : "") << "{\"id\":\"" << epee::string_tools::pod_to_hex(sh.first)
++          << "\",\"slot\":" << sh.second.seq << ",\"seen\":" << sh.second.recv_ms
++          << ",\"pow_ok\":" << (ok ? "true" : "false") << "}";
++    any = true;
++    if (!ok)
++      continue;
++    auto it = first_seen.find(sh.second.seq);
++    if (it == first_seen.end() || sh.second.recv_ms < it->second)
++      first_seen[sh.second.seq] = sh.second.recv_ms;
++  }
++  if (js)
++    *js << "]";
++  uint64_t n = 0;
++  while (first_seen.count(major + n))
++    ++n;
++  return n;
++}
++
++// SIMULATION ONLY (conformance convention 13): alt tips whose fork point is
++// within 10*w of the main tip (diagnostic for the pairwise comparison).
++uint64_t Blockchain::sim_sop_alt_tips_in_window(uint64_t top)
++{
++  std::unordered_set<crypto::hash> ids, parents;
++  m_db->for_all_alt_blocks([&](const crypto::hash &id, const alt_block_data_t &data, const cryptonote::blobdata_ref *blob) {
++      if (data.height + 10 * m_sim_sop_w > top)
++        ids.insert(id);
++      cryptonote::block b;
++      if (blob && parse_and_validate_block_from_blob(*blob, b))
++        parents.insert(b.prev_id);
++      return true;
++  }, true);
++  uint64_t n = 0;
++  for (const auto &id : ids)
++    if (!parents.count(id))
++      ++n;
++  return n;
++}
++
 +// SIMULATION ONLY (Share-or-Perish, MRL #146): the ids of a block's embedded
 +// workshares in slot order, when the whole set conforms (slots V..V+N-1,
 +// minor_version == V+N with V = major_version, every PoW meets diff/w),
@@ -1091,18 +1193,38 @@ index 3608364dd..a8974340a 100644
 +    if (get_block_by_hash(get_block_id_by_height(h), main_bl))
 +      nf_main += 1 + sim_sop_valid_share_count(h, main_bl, m_db->get_block_difficulty(h));
 +  }
-+  // #146 (revised 2026-10-15): n_f = max(n_main(h_f), n_alt(h_f)), so the
-+  // regime is objective once either branch holds k*w work objects past the fork.
-+  const uint64_t kw = m_sim_sop_k * m_sim_sop_w;
-+  const bool under_kw = nf < kw && nf_main < kw;
++  // #146 (2026-10-16 22:07): n_max counts each branch's work objects above
++  // h_f+1, so the first block after the fork (patch hf) is not counted;
++  // pool shares are not counted either.
++  uint64_t n_alt = 0, n_main = 0;
++  {
++    bool first_alt = true;
++    size_t j = 0;
++    for (const auto &e : alt_chain)
++    {
++      const uint64_t n = 1 + sim_sop_valid_share_count(e.height, e.bl, alt_diff[j++]);
++      if (!first_alt)
++        n_alt += n;
++      first_alt = false;
++    }
++    for (uint64_t h = hf + 1; h <= top; ++h)
++    {
++      cryptonote::block main_bl;
++      if (get_block_by_hash(get_block_id_by_height(h), main_bl))
++        n_main += 1 + sim_sop_valid_share_count(h, main_bl, m_db->get_block_difficulty(h));
++    }
++  }
++  const uint64_t window = m_sim_sop_k > 0 ? (m_sim_sop_k - 1) * m_sim_sop_w : 0;
++  const uint64_t h_max = std::max(top, alt_chain.back().height);
++  const bool nakamoto = h_max - fork >= 10 * m_sim_sop_w;
 +  // The difficulty gate is sim-only (convention 9): at fakechain bootstrap
 +  // difficulty (< w) every weight collapses to the unit floor and forks
 +  // degenerate into per-node random ties. Real Monero never sees diff < w.
 +  // #146's h_f is the last common block, hf - 1 here (hf = first alt block).
 +  // Before the node comes online its receive times are download times, not
 +  // live observation: objective.
-+  const bool subjective = m_sim_sop_online && m_sim_sop_h0 + 1 < hf && under_kw
-+      && alt_diff.front() >= m_sim_sop_w;
++  const bool subjective = !nakamoto && m_sim_sop_online && m_sim_sop_h0 + 1 < hf
++      && std::max(n_alt, n_main) < window && alt_diff.front() >= m_sim_sop_w;
 +
 +  std::ostringstream alt_js, main_js;
 +  difficulty_type w_alt = 0, w_main = 0;
@@ -1112,7 +1234,8 @@ index 3608364dd..a8974340a 100644
 +  {
 +    if (i)
 +      alt_js << ",";
-+    w_alt += sim_sop_weight(e.height, e.bl, alt_diff[i], subjective, false, &alt_js);
++    const difficulty_type wa = sim_sop_weight(e.height, e.bl, alt_diff[i], subjective, false, &alt_js);
++    w_alt += nakamoto ? alt_diff[i] : wa;   // nakamoto: header difficulty only (Table 3)
 +    ++i;
 +  }
 +  alt_js << "]";
@@ -1126,9 +1249,32 @@ index 3608364dd..a8974340a 100644
 +    if (!first)
 +      main_js << ",";
 +    first = false;
-+    w_main += sim_sop_weight(h, main_bl, m_db->get_block_difficulty(h), subjective, true, &main_js);
++    const difficulty_type dh = m_db->get_block_difficulty(h);
++    const difficulty_type wm = sim_sop_weight(h, main_bl, dh, subjective, true, &main_js);
++    w_main += nakamoto ? dh : wm;
 +  }
 +  main_js << "]";
++
++  // Pool shares on each chain's tip (MRL #146 2026-10-20); always logged,
++  // counted only in the objective regime.
++  const crypto::hash alt_tip = get_block_hash(alt_chain.back().bl);
++  const crypto::hash main_tip = get_block_id_by_height(top);
++  const uint8_t major = alt_chain.back().bl.major_version;
++  const difficulty_type pool_diff_alt = alt_diff.back();
++  const difficulty_type pool_diff_main = m_db->get_block_difficulty(top);
++  std::ostringstream pool_alt_js, pool_main_js;
++  const uint64_t pool_alt = sim_sop_tip_shares(alt_tip, alt_chain.back().height, major, pool_diff_alt, &pool_alt_js);
++  const uint64_t pool_main = sim_sop_tip_shares(main_tip, top, major, pool_diff_main, &pool_main_js);
++  uint64_t pool_alt_counted = 0, pool_main_counted = 0;
++  if (!nakamoto && !subjective)
++  {
++    pool_alt_counted = pool_alt;
++    pool_main_counted = pool_main;
++    const difficulty_type ua = pool_diff_alt / m_sim_sop_w ? pool_diff_alt / m_sim_sop_w : 1;
++    const difficulty_type um = pool_diff_main / m_sim_sop_w ? pool_diff_main / m_sim_sop_w : 1;
++    w_alt += ua * pool_alt;
++    w_main += um * pool_main;
++  }
 +
 +  const bool tie = w_alt == w_main;
 +  bool sw = false;
@@ -1161,12 +1307,15 @@ index 3608364dd..a8974340a 100644
 +  if (!subjective)
 +    MINFO("SIM-SoP: fork " << fork << " OBJECTIVE alt " << w_alt << "/" << alt_len
 +          << " vs main " << w_main << "/" << main_len
-+          << " (h0=" << m_sim_sop_h0 << " nf=" << nf << " nf_main=" << nf_main << ") -> " << res
++          << " (h0=" << m_sim_sop_h0 << " nf=" << nf << " nf_main=" << nf_main
++          << " n_alt=" << n_alt << " n_main=" << n_main << (nakamoto ? " nakamoto" : "")
++          << " pool=" << pool_alt_counted << "/" << pool_main_counted << ") -> " << res
 +          << (tie_draw ? std::string(" (") + tie_draw + " tie)" : std::string())
 +          << (skip ? " (reinsert, skipped)" : ""));
 +  else if (!tie_draw)
 +    MINFO("SIM-SoP: fork " << fork << " alt " << w_alt << "/" << alt_len
-+          << " vs main " << w_main << "/" << main_len << " -> " << res
++          << " vs main " << w_main << "/" << main_len
++          << " (n_alt=" << n_alt << " n_main=" << n_main << ") -> " << res
 +          << (skip ? " (reinsert, skipped)" : ""));
 +  else
 +    MINFO("SIM-SoP: fork " << fork << " TIE " << w_alt << "/" << alt_len
@@ -1174,7 +1323,7 @@ index 3608364dd..a8974340a 100644
 +          << " -> " << res << " (" << tie_draw << " tie)");
 +
 +  std::ostringstream js;
-+  js << "{\"v\":3,\"mode\":\"" << (m_sim_sop_rejudge ? "rejudge" : "whole_branch")
++  js << "{\"v\":4,\"mode\":\"" << (m_sim_sop_rejudge ? "rejudge" : "whole_branch")
 +     << "\",\"reinsert\":" << (reinsert ? "true" : "false")
 +     << ",\"skipped\":" << (skip ? "true" : "false")
 +     << ",\"h0\":" << m_sim_sop_h0 << ",\"online\":" << (m_sim_sop_online ? "true" : "false")
@@ -1182,8 +1331,16 @@ index 3608364dd..a8974340a 100644
 +     << ",\"w\":" << m_sim_sop_w << ",\"k\":" << m_sim_sop_k << ",\"d_ms\":" << m_sim_sop_delay_ms
 +     << ",\"alt\":" << alt_js.str() << ",\"main\":" << main_js.str()
 +     << ",\"nf\":" << nf << ",\"nf_main\":" << nf_main
-+     << ",\"nf_rule\":\"either"
-+     << "\",\"regime\":\"" << (subjective ? "subjective" : "objective")
++     << ",\"nf_rule\":\"either\""
++     << ",\"n_alt\":" << n_alt << ",\"n_main\":" << n_main
++     << ",\"nakamoto\":" << (nakamoto ? "true" : "false") << ",\"major\":" << unsigned(major)
++     << ",\"alt_tip\":\"" << epee::string_tools::pod_to_hex(alt_tip)
++     << "\",\"main_tip\":\"" << epee::string_tools::pod_to_hex(main_tip)
++     << "\",\"pool_alt\":" << pool_alt_js.str() << ",\"pool_main\":" << pool_main_js.str()
++     << ",\"pool_diff_alt\":\"" << pool_diff_alt << "\",\"pool_diff_main\":\"" << pool_diff_main
++     << "\",\"pool_alt_counted\":" << pool_alt_counted << ",\"pool_main_counted\":" << pool_main_counted
++     << ",\"alt_tips\":" << sim_sop_alt_tips_in_window(top)
++     << ",\"regime\":\"" << (nakamoto ? "nakamoto" : (subjective ? "subjective" : "objective"))
 +     << "\",\"w_alt\":\"" << w_alt << "\",\"w_main\":\"" << w_main
 +     << "\",\"tie\":" << (tie ? "true" : "false") << ",\"tie_draw\":";
 +  if (tie_draw)
@@ -1295,7 +1452,7 @@ index 3608364dd..a8974340a 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +2945,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +3102,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1306,7 +1463,7 @@ index 3608364dd..a8974340a 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +3158,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +3315,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1317,7 +1474,7 @@ index 3608364dd..a8974340a 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4089,7 +5147,9 @@ leave:
+@@ -4089,7 +5304,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1328,7 +1485,7 @@ index 3608364dd..a8974340a 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4513,6 +5573,16 @@ leave:
+@@ -4513,6 +5730,16 @@ leave:
    bvc.m_added_to_main_chain = true;
    ++m_sync_counter;
  
@@ -1345,7 +1502,7 @@ index 3608364dd..a8974340a 100644
    // appears to be a NOP *and* is called elsewhere.  wat?
    m_tx_pool.on_blockchain_inc(new_height, id);
    get_difficulty_for_next_block(); // just to cache it
-@@ -4691,18 +5761,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4691,18 +5918,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1405,7 +1562,7 @@ index 3608364dd..a8974340a 100644
    }
    catch (const std::exception &e)
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 35079e858..ea8608f24 100644
+index 35079e858..37ecd55da 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1416,7 +1573,7 @@ index 35079e858..ea8608f24 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -896,6 +897,46 @@ namespace cryptonote
+@@ -896,6 +897,47 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -1437,7 +1594,8 @@ index 35079e858..ea8608f24 100644
 +
 +    // SIMULATION ONLY (Share-or-Perish, MRL #146, step 2): pool a workshare
 +    // (local hit or gossiped); true only for a NEW share. See m_sim_shares.
-+    bool sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id, bool *extends_tip = nullptr);
++    bool sim_add_workshare(const blobdata &blob, uint64_t height, bool local, crypto::hash &id, bool *extends_tip = nullptr,
++                           crypto::hash *prev_out = nullptr, uint64_t *slot_out = nullptr);
 +
 +    // SIMULATION ONLY (2026-10-19): list pooled workshares, for the
 +    // sim_get_workshares RPC (a selfish-mining agent hands its offline miner
@@ -1463,7 +1621,7 @@ index 35079e858..ea8608f24 100644
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1210,6 +1251,66 @@ namespace cryptonote
+@@ -1210,6 +1252,72 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1527,11 +1685,17 @@ index 35079e858..ea8608f24 100644
 +    const std::vector<crypto::hash> &sim_sop_block_shares(uint64_t height, const cryptonote::block &bl, difficulty_type diff);
 +    uint64_t sim_sop_valid_share_count(uint64_t height, const cryptonote::block &bl, difficulty_type diff);
 +    std::unordered_map<crypto::hash, std::vector<crypto::hash>> m_sim_sop_block_share_ids;   // block id -> conforming embedded share ids
++    // SIMULATION ONLY (MRL #146 2026-10-20): counted pool shares on a chain tip.
++    uint64_t sim_sop_tip_shares(const crypto::hash &tip_id, uint64_t tip_height, uint8_t major,
++                                difficulty_type diff, std::ostringstream *js);
++    bool sim_sop_pool_share_pow_ok(const blobdata &blob, uint64_t height, uint8_t major, difficulty_type diff);
++    uint64_t sim_sop_alt_tips_in_window(uint64_t top);
++    std::unordered_map<crypto::hash, bool> m_sim_sop_pool_pow_ok;   // share id -> PoW passes (cache)
      bool m_db_default_sync;
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index 3e3f7a824..46ab4f363 100644
+index 3e3f7a824..1b8bde240 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
 @@ -212,6 +212,69 @@ namespace cryptonote
@@ -1659,7 +1823,7 @@ index 3e3f7a824..46ab4f363 100644
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
-@@ -1453,6 +1557,43 @@ namespace cryptonote
+@@ -1453,6 +1557,59 @@ namespace cryptonote
      return true;
    }
    //-----------------------------------------------------------------------------------------------
@@ -1669,12 +1833,15 @@ index 3e3f7a824..46ab4f363 100644
 +  // will contain it.
 +  bool core::handle_workshare_found(const blobdata& share_blob, uint64_t height)
 +  {
-+    crypto::hash id;
-+    if (!m_blockchain_storage.sim_add_workshare(share_blob, height, true, id))
++    crypto::hash id, prev_id;
++    uint64_t slot = 0;
++    bool extends_tip = false;
++    if (!m_blockchain_storage.sim_add_workshare(share_blob, height, true, id, &extends_tip, &prev_id, &slot))
 +      return false;
 +    // "blockchain" category: visible at log-level monitor (core's own
 +    // default category INFO is not).
-+    MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: pooled local share " << id << " at height " << height);
++    MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: pooled local share " << id << " at height " << height
++          << " prev " << prev_id << " slot " << slot << " tip " << (extends_tip ? 1 : 0));
 +    NOTIFY_NEW_WORKSHARE::request arg{};
 +    arg.blob = share_blob;
 +    arg.height = height;
@@ -1683,14 +1850,18 @@ index 3e3f7a824..46ab4f363 100644
 +    return true;
 +  }
 +  //-----------------------------------------------------------------------------------------------
-+  bool core::add_workshare_remote(const blobdata& share_blob, uint64_t height)
++  bool core::add_workshare_remote(const blobdata& share_blob, uint64_t height, bool *extends_tip_out)
 +  {
-+    crypto::hash id;
++    crypto::hash id, prev_id;
++    uint64_t slot = 0;
 +    bool extends_tip = false;
-+    const bool fresh = m_blockchain_storage.sim_add_workshare(share_blob, height, false, id, &extends_tip);
++    const bool fresh = m_blockchain_storage.sim_add_workshare(share_blob, height, false, id, &extends_tip, &prev_id, &slot);
++    if (extends_tip_out)
++      *extends_tip_out = extends_tip;
 +    if (fresh)
 +    {
-+      MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: pooled remote share " << id << " at height " << height);
++      MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: pooled remote share " << id << " at height " << height
++            << " prev " << prev_id << " slot " << slot << " tip " << (extends_tip ? 1 : 0));
 +      // MRL #146: blocks include every published share, and the
 +      // version_minor rule serializes share mining network-wide, so a remote
 +      // share for the tip moves this node's miner to the next slot.
@@ -1700,10 +1871,19 @@ index 3e3f7a824..46ab4f363 100644
 +    return fresh;
 +  }
 +  //-----------------------------------------------------------------------------------------------
++  bool core::relay_workshare_blob(const blobdata& share_blob, uint64_t height)
++  {
++    NOTIFY_NEW_WORKSHARE::request arg{};
++    arg.blob = share_blob;
++    arg.height = height;
++    cryptonote_connection_context exclude_context = {};
++    return m_pprotocol->relay_workshare(arg, exclude_context);
++  }
++  //-----------------------------------------------------------------------------------------------
    bool core::is_synchronized() const
    {
      return m_pprotocol != nullptr && m_pprotocol->is_synchronized();
-@@ -1460,6 +1601,7 @@ namespace cryptonote
+@@ -1460,6 +1617,7 @@ namespace cryptonote
    //-----------------------------------------------------------------------------------------------
    void core::on_synchronized()
    {
@@ -1711,7 +1891,7 @@ index 3e3f7a824..46ab4f363 100644
      m_miner.on_synchronized();
    }
    //-----------------------------------------------------------------------------------------------
-@@ -1541,6 +1683,22 @@ namespace cryptonote
+@@ -1541,6 +1699,22 @@ namespace cryptonote
      add_new_block(*b, bvc, extra_block_txs);
      if(update_miner_blocktemplate && bvc.m_added_to_main_chain)
         update_miner_block_template();
@@ -1735,10 +1915,10 @@ index 3e3f7a824..46ab4f363 100644
  
      CATCH_ENTRY_L0("core::handle_incoming_block()", false);
 diff --git a/src/cryptonote_core/cryptonote_core.h b/src/cryptonote_core/cryptonote_core.h
-index 99df370fe..f0de93622 100644
+index 99df370fe..53fe62cb5 100644
 --- a/src/cryptonote_core/cryptonote_core.h
 +++ b/src/cryptonote_core/cryptonote_core.h
-@@ -230,6 +230,23 @@ namespace cryptonote
+@@ -230,6 +230,29 @@ namespace cryptonote
        */
       virtual bool handle_block_found(block& b, block_verification_context &bvc) override;
  
@@ -1757,7 +1937,13 @@ index 99df370fe..f0de93622 100644
 +      * @brief SIMULATION ONLY: pool a remotely gossiped workshare (first-seen
 +      * bookkeeping); the caller relays it onward only when this returns true
 +      */
-+     bool add_workshare_remote(const blobdata& share_blob, uint64_t height);
++     bool add_workshare_remote(const blobdata& share_blob, uint64_t height, bool *extends_tip = nullptr);
++
++     /**
++      * @brief SIMULATION ONLY (MRL #146 2.3): gossip an already pooled
++      * workshare (the sim_submit_workshare RPC's relay option)
++      */
++     bool relay_workshare_blob(const blobdata& share_blob, uint64_t height);
 +
       /**
        * @copydoc Blockchain::create_block_template
@@ -1822,10 +2008,10 @@ index 1719d8c43..c45262e11 100644
      //bool get_payload_sync_data(HANDSHAKE_DATA::request& hshd, cryptonote_connection_context& context);
      bool should_drop_connection(cryptonote_connection_context& context, uint32_t next_stripe);
 diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.inl b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
-index 3ad26a3de..a73c508fe 100644
+index 3ad26a3de..2baf4ce05 100644
 --- a/src/cryptonote_protocol/cryptonote_protocol_handler.inl
 +++ b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
-@@ -2661,6 +2661,48 @@ skip:
+@@ -2661,6 +2661,50 @@ skip:
      return true;
    }
    //------------------------------------------------------------------------------------------------------------------------
@@ -1839,9 +2025,11 @@ index 3ad26a3de..a73c508fe 100644
 +    // "blockchain" category: must be visible at log-level monitor (this
 +    // file's net.cn INFO is suppressed there — the capture-diagnostics trap).
 +    MCLOG(el::Level::Info, "blockchain", el::Color::Default, "SIM-SoP: workshare received (" << arg.blob.size() << " B, height " << arg.height << ")");
-+    if (!m_core.add_workshare_remote(arg.blob, arg.height))
++    bool extends_tip = false;
++    if (!m_core.add_workshare_remote(arg.blob, arg.height, &extends_tip))
 +      return 1;             // duplicate / unparsable / unknown parent — keep first-seen, don't relay
-+    relay_workshare(arg, context);
++    if (extends_tip)        // MRL #146 2.3: alternate workshares are pooled, not relayed
++      relay_workshare(arg, context);
 +    return 1;
 +  }
 +  //------------------------------------------------------------------------------------------------------------------------
@@ -1874,7 +2062,7 @@ index 3ad26a3de..a73c508fe 100644
    template<class t_core>
    bool t_cryptonote_protocol_handler<t_core>::relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay)
    {
-@@ -2695,6 +2737,17 @@ skip:
+@@ -2695,6 +2739,17 @@ skip:
        MERROR("Negative score hit");
        return;
      }
@@ -1918,10 +2106,10 @@ index 63655eed8..18e4828dd 100644
    };
  }
 diff --git a/src/rpc/core_rpc_server.cpp b/src/rpc/core_rpc_server.cpp
-index 912361a25..1356e0802 100644
+index 912361a25..3f5281161 100644
 --- a/src/rpc/core_rpc_server.cpp
 +++ b/src/rpc/core_rpc_server.cpp
-@@ -3544,6 +3544,68 @@ namespace cryptonote
+@@ -3544,6 +3544,72 @@ namespace cryptonote
      return true;
    }
    //------------------------------------------------------------------------------------------------------------------------------
@@ -1982,7 +2170,11 @@ index 912361a25..1356e0802 100644
 +      error_resp.message = "Wrong share blob";
 +      return false;
 +    }
-+    res.fresh = m_core.add_workshare_remote(blob, req.height);
++    bool extends_tip = false;
++    res.fresh = m_core.add_workshare_remote(blob, req.height, &extends_tip);
++    res.relayed = false;
++    if (req.relay && res.fresh && extends_tip)
++      res.relayed = m_core.relay_workshare_blob(blob, req.height);
 +    res.status = CORE_RPC_STATUS_OK;
 +    return true;
 +  }
@@ -2013,10 +2205,10 @@ index a3431ddc7..69696c6bd 100644
      bool on_rpc_access_submit_nonce(const COMMAND_RPC_ACCESS_SUBMIT_NONCE::request& req, COMMAND_RPC_ACCESS_SUBMIT_NONCE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
      bool on_rpc_access_pay(const COMMAND_RPC_ACCESS_PAY::request& req, COMMAND_RPC_ACCESS_PAY::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
 diff --git a/src/rpc/core_rpc_server_commands_defs.h b/src/rpc/core_rpc_server_commands_defs.h
-index 567010a8f..58ffc0a6c 100644
+index 567010a8f..489fafe1a 100644
 --- a/src/rpc/core_rpc_server_commands_defs.h
 +++ b/src/rpc/core_rpc_server_commands_defs.h
-@@ -2803,4 +2803,83 @@ namespace cryptonote
+@@ -2803,4 +2803,87 @@ namespace cryptonote
      typedef epee::misc_utils::struct_init<response_t> response;
    };
  
@@ -2078,11 +2270,13 @@ index 567010a8f..58ffc0a6c 100644
 +    {
 +      std::string blob;      // hex, as sim_get_workshares lists it
 +      uint64_t height;
++      bool relay;            // also gossip it when fresh and it extends the main tip
 +
 +      BEGIN_KV_SERIALIZE_MAP()
 +        KV_SERIALIZE_PARENT(rpc_request_base)
 +        KV_SERIALIZE(blob)
 +        KV_SERIALIZE(height)
++        KV_SERIALIZE_OPT(relay, false)
 +      END_KV_SERIALIZE_MAP()
 +    };
 +    typedef epee::misc_utils::struct_init<request_t> request;
@@ -2090,10 +2284,12 @@ index 567010a8f..58ffc0a6c 100644
 +    struct response_t: public rpc_response_base
 +    {
 +      bool fresh;            // new to this node's pool
++      bool relayed;          // gossiped onward
 +
 +      BEGIN_KV_SERIALIZE_MAP()
 +        KV_SERIALIZE_PARENT(rpc_response_base)
 +        KV_SERIALIZE(fresh)
++        KV_SERIALIZE(relayed)
 +      END_KV_SERIALIZE_MAP()
 +    };
 +    typedef epee::misc_utils::struct_init<response_t> response;

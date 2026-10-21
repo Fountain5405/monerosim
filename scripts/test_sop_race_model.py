@@ -5,7 +5,7 @@ import random
 from scripts.sop_race_model import (
     K_DEFAULT, W_DEFAULT, RaceResult, SimConfig, a1_race_to_k,
     a2_strategy2_objects, a3_strategy2_formula, binom_sf_ge, objects_per_day,
-    reg_incomplete_beta, run_model_a, simulate, simulate_race_to_k,
+    reg_incomplete_beta, run_model_a, RULE_PRESETS, simulate, simulate_race_to_k,
 )
 
 
@@ -496,3 +496,24 @@ def test_sweep_honest_shares_adds_a_share_aware_sop_row(monkeypatch, capsys):
     assert (c.alpha, c.d, c.rule, c.attacker_embeds, c.equal_start, c.positional_shares) == \
         (0.33, 2, "sop", True, True, True)
     assert "| True + honest shares |" in capsys.readouterr().out
+
+
+def test_presets():
+    assert RULE_PRESETS["20261015"] == {}
+    assert RULE_PRESETS["20261020"] == {"either_window": True, "count_honest_pending": True,
+                                        "count_attacker_pending": True}
+
+
+def test_default_unchanged_by_new_field():
+    base = dict(alpha=0.4, d=2, rule="sop", attacker_embeds=True, days=30, seed=3)
+    a = simulate(SimConfig(**base))
+    b = simulate(SimConfig(**base, count_attacker_pending=False))
+    assert a.attacker_revenue_share == b.attacker_revenue_share
+
+
+def test_attacker_pending_helps_the_attacker():
+    base = dict(alpha=0.45, d=5, rule="sop", attacker_embeds=True, days=200, seed=1,
+                either_window=True, count_honest_pending=True)
+    without = simulate(SimConfig(**base)).attacker_revenue_share
+    with_ = simulate(SimConfig(**base, count_attacker_pending=True)).attacker_revenue_share
+    assert with_ >= without

@@ -4,7 +4,9 @@ docs/20260930_sop_conformance.md: diff = 1216 everywhere, unit = 76,
 h0 = 994, hf = 1000, k = 3, w = 16 (k*w = 48), d_ms = 5000, unless a case
 overrides one of these.
 """
-from scripts.sop_oracle import check_log, compare, decide, main, parse_log_line
+import json
+
+from scripts.sop_oracle import check_log, compare, decide, main, parse_log_line, pool_count
 
 DIFF = "1216"
 UNIT = 76
@@ -293,3 +295,110 @@ def test_v3_objective_until_online():
     assert decide(dict(rec, v=2, online=False))["regime"] == "subjective"
     with pytest.raises(KeyError):
         decide(dict(rec, v=3))
+
+
+D4 = 5000
+DIFF4 = 1600            # unit 100
+
+
+def blk4(h, n_sh=0, seen=1000, ref=1000, diff=DIFF4):
+    return {"h": h, "id": f"{h:064x}", "diff": str(diff), "seen": seen, "ref": ref,
+            "n_sh": n_sh, "shares": [{"id": f"s{h}_{i}", "seen": seen - 10000} for i in range(n_sh)]}
+
+
+def sh4(slot, seen=500, pow_ok=True, i=0):
+    return {"id": f"p{slot}_{i}", "slot": slot, "seen": seen, "pow_ok": pow_ok}
+
+
+def rec_v4(alt, main, pool_alt=(), pool_main=(), h0=10, online=True, major=16, **kw):
+    hf = alt[0]["h"]
+    r = {"v": 4, "mode": "whole_branch", "reinsert": False, "skipped": False, "h0": h0,
+         "online": online, "hf": hf, "top": main[-1]["h"] if main else hf - 1,
+         "w": W, "k": K, "d_ms": D4, "alt": alt, "main": main, "major": major,
+         "pool_alt": list(pool_alt), "pool_main": list(pool_main),
+         "pool_diff_alt": str(DIFF4), "pool_diff_main": str(DIFF4)}
+    r.update(kw)
+    return r
+
+
+def test_pool_count_slot_rule():
+    assert pool_count([sh4(16), sh4(17), sh4(18)], 16) == 3
+
+
+def test_v4_duplicate_slot_counts_once():
+    assert pool_count([sh4(16, 500, i=0), sh4(16, 400, i=1), sh4(17)], 16) == 2
+    assert pool_count([sh4(16, 500, i=0), sh4(16, 400, i=1), sh4(17)], 16, rule="all") == 3
+
+
+def test_v4_slot_gap_stops_the_run():
+    assert pool_count([sh4(16), sh4(18), sh4(19)], 16) == 1
+
+
+def test_v4_bad_pow_is_not_in_the_pool():
+    assert pool_count([sh4(16, pow_ok=False), sh4(17)], 16) == 0
+
+
+def test_v4_first_block_excluded_from_window():
+    # alt: first block 40 objects, then two blocks of 16 = 32 above h_f+1 -> objective
+    alt = [blk4(100, 39), blk4(101, 15), blk4(102, 15)]
+    main = [blk4(100, 15), blk4(101, 15)]
+    d = decide(rec_v4(alt, main))
+    assert d["n_alt"] == 32 and d["n_main"] == 16
+    assert d["regime"] == "objective"
+    # one object fewer above the first block: subjective
+    alt2 = [blk4(100, 39), blk4(101, 15), blk4(102, 14)]
+    assert decide(rec_v4(alt2, main))["regime"] == "subjective"
+
+
+def test_v4_pool_shares_turn_switch_into_keep():
+    alt = [blk4(100, 15), blk4(101, 15), blk4(102, 15)]            # 48 objects
+    main = [blk4(100, 15), blk4(101, 15)]                           # 32 objects, 16 above h_f+1
+    assert decide(rec_v4(alt, main))["expected"] == "SWITCH"      # 4800 vs 3200
+    pool = [sh4(16 + i) for i in range(17)]                        # 17 counted -> 3200 + 1700
+    d = decide(rec_v4(alt, main, pool_main=pool))
+    assert d["regime"] == "objective" and d["pool_main_counted"] == 17
+    assert d["w_main"] == 4900 and d["expected"] == "KEEP"
+
+
+def test_v4_pool_shares_ignored_when_subjective():
+    alt = [blk4(100, 2, seen=9000)]                                # late, inside the window
+    main = [blk4(100, 2)]
+    d = decide(rec_v4(alt, main, pool_main=[sh4(19)], pool_alt=[sh4(19)]))
+    assert d["regime"] == "subjective"
+    assert d["pool_main_counted"] == 0 and d["pool_alt_counted"] == 0
+
+
+def test_v4_nakamoto_past_10w():
+    alt = [blk4(100 + i) for i in range(161)]
+    main = [blk4(100 + i, 15) for i in range(160)]
+    d = decide(rec_v4(alt, main, pool_main=[sh4(16)]))
+    assert d["regime"] == "nakamoto"
+    assert d["w_alt"] == 161 * DIFF4 and d["w_main"] == 160 * DIFF4
+    assert d["expected"] == "SWITCH"
+
+
+def test_v4_compare_flags_wrong_pool_count():
+    alt = [blk4(100, 15), blk4(101, 15), blk4(102, 15)]
+    main = [blk4(100, 15), blk4(101, 15)]
+    r = rec_v4(alt, main, pool_main=[sh4(16)], n_alt=32, n_main=16, nakamoto=False,
+               regime="objective", w_alt="4800", w_main="3300", tie=False, tie_draw=None,
+               pool_alt_counted=0, pool_main_counted=0, result="SWITCH", nf=48, nf_main=32)
+    msgs = compare(r)
+    assert any("pool_main_counted" in m for m in msgs)
+
+
+def test_v3_records_unchanged():
+    alt = [blk4(100, 15), blk4(101, 15), blk4(102, 15)]
+    main = [blk4(100, 15), blk4(101, 15)]
+    r = rec_v4(alt, main, v=3, nf_rule="either")
+    d = decide(r)
+    assert "n_alt" not in d and d["regime"] == "objective"   # 48 objects, old rule
+
+def test_pool_rule_all_changes_count_in_cli(tmp_path, capsys):
+    alt = [blk4(100, 15), blk4(101, 15), blk4(102, 15)]
+    main_ = [blk4(100, 15), blk4(101, 15)]
+    pool = [sh4(16, 500, i=0), sh4(16, 400, i=1)] + [sh4(17 + i) for i in range(15)]
+    r = rec_v4(alt, main_, pool_main=pool, w_alt="0", w_main="0")
+    _write_node_log(tmp_path, "a0", ["SIM-SoP-DEC " + json.dumps(r)])
+    main(["check", str(tmp_path), "--pool-rule", "all"])
+    assert "pool-rule all changes 1 outcomes" in capsys.readouterr().out

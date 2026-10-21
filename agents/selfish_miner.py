@@ -96,6 +96,18 @@ Attributes (via --attributes KEY VALUE):
                         shares still never leave it. Needs monerod-sim with
                         the share RPCs (sim-pop patch, 2026-10-19) on the
                         miner and the first bridge.
+    tip_shares          "true" for MRL #146 2026-10-20 tip shares (default
+                        off): the pool shares on each branch's tip (first
+                        seen per slot, contiguous from the major version)
+                        add unit each to that branch's weight, and after a
+                        cash-out the miner's shares on its tip are published
+                        to the bridges, with relay, once a bridge is on that
+                        tip. Needs monerod-sim with the relay param (Task 6).
+    window_rule         "v3" (default) or "20261020": which reveal window
+                        the window_stubborn / deep_hunt strategies use; the
+                        latter counts objects above each branch's first
+                        block and fires when either branch passes
+                        window_objects (2026-10-16).
 """
 import logging
 
@@ -111,6 +123,19 @@ def sop_share_count(header: dict) -> int:
     version_major, so version_minor = version_major + N; before that revision
     the patched daemon set version_minor = N."""
     return max(0, int(header["minor_version"]) - int(header["major_version"]))
+
+def sop_pool_count(shares, major: int) -> int:
+    """Pool shares that count for a tip under MRL #146 (2026-10-20), as the
+    daemon counts them (conformance convention 11): first seen per slot,
+    the contiguous run of slots from `major`. PoW is not checked here."""
+    first = {}
+    for s in sorted(shares, key=lambda s: int(s.get("recv_ms", 0))):
+        first.setdefault(int(s.get("slot", -1)), s)
+    n = 0
+    while major + n in first:
+        n += 1
+    return n
+
 
 class SelfishMinerAgent(AutonomousMinerAgent):
     def __init__(self, agent_id: str, **kwargs):
@@ -139,11 +164,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.window_objects = kw["window_objects"]
         self.give_up_depth = kw["give_up_depth"]
         self.release_depth = kw["release_depth"]
+        self.window_rule = kw["window_rule"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
         self.reject_aware = str(self.attributes.get("reject_aware", "false")).strip().lower() in ("1", "true", "yes")
         self.use_honest_shares = str(self.attributes.get("use_honest_shares", "false")).strip().lower() in ("1", "true", "yes")
+        self.tip_shares = str(self.attributes.get("tip_shares", "false")).strip().lower() in ("1", "true", "yes")
+        self._tip_delivery = None
         self._hs_tip = None            # miner tip whose shares _hs_sent covers (use_honest_shares)
         self._hs_sent = set()          # share ids already handed to the miner on _hs_tip
         self._hs_submitted = 0         # honest shares handed to the miner, in all
@@ -193,6 +221,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             "window_objects": int(attributes.get("window_objects", "48") or 48),    # window_stubborn only; "0" = no window
             "give_up_depth": int(attributes.get("give_up_depth", "2") or 2),        # window_stubborn, deep_hunt
             "release_depth": int(attributes.get("release_depth", "10") or 10),      # deep_hunt only
+            "window_rule": attributes.get("window_rule", "v3") or "v3",            # window_stubborn, deep_hunt
         }
 
     def _ensure_strategy(self, start_height: int) -> None:
@@ -202,7 +231,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             release_lead=self.release_lead,
                                             window_objects=self.window_objects,
                                             give_up_depth=self.give_up_depth,
-                                            release_depth=self.release_depth)
+                                            release_depth=self.release_depth,
+                                            window_rule=self.window_rule)
 
     @staticmethod
     def _header_difficulty(h) -> int:
@@ -259,19 +289,82 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             hon_weight = sum(self._header_difficulty(h) for h in hon_headers)
             return att_objects, att_weight, hon_weight
 
-        att_objects = 0
-        att_weight = 0
-        for h in att_headers:
+        att_objects = att_weight = att_first = 0
+        for i, h in enumerate(att_headers):
             n = sop_share_count(h) if self.embedded_shares else 0
             unit = max(1, self._header_difficulty(h) // self.sop_w)
             att_objects += 1 + n
             att_weight += unit * (1 + n)
-        hon_weight = 0
-        for h in hon_headers:
+            if i == 0:
+                att_first = 1 + n
+        hon_weight = hon_objects = hon_first = 0
+        for i, h in enumerate(hon_headers):
             m = sop_share_count(h)
             unit = max(1, self._header_difficulty(h) // self.sop_w)
+            hon_objects += 1 + m
             hon_weight += unit * (1 + m)
-        return att_objects, att_weight, hon_weight
+            if i == 0:
+                hon_first = 1 + m
+        if self.tip_shares:
+            att_weight += self._tip_pool_weight(self.daemon_rpc, att_headers, priv_height)
+            hon_weight += self._tip_pool_weight(self.bridge_rpc, hon_headers, pub_height)
+        return att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first
+
+    def _tip_pool_weight(self, rpc, headers, height: int) -> int:
+        """unit * the counted pool shares on the branch's tip (MRL #146
+        2026-10-20; counted only under the objective score, which is the only
+        regime the reveal test is reached in)."""
+        if not headers:
+            return 0
+        tip = headers[-1]
+        try:
+            shares = rpc.sim_get_workshares(prev_id=tip.get("hash", ""), min_height=height)
+        except RPCError as e:
+            self._share_rpc_failed("read tip shares", e)
+            return 0
+        major = int(tip.get("major_version", 0))
+        unit = max(1, self._header_difficulty(tip) // self.sop_w)
+        return unit * sop_pool_count([s for s in shares if int(s.get("height", height)) == height], major)
+
+    def _queue_tip_delivery(self, tip_hash: str, height: int) -> None:
+        """After a reveal: publish the miner's shares on its (now public) tip
+        once the bridge has switched to it, so they extend the bridge's main
+        tip and relay (2026-10-20 tip shares). Before the switch they would be
+        alternate shares, pooled but not relayed."""
+        if self.tip_shares and tip_hash:
+            self._tip_delivery = {"tip": tip_hash, "height": int(height), "ticks": 20}
+
+    def _deliver_tip_shares(self) -> None:
+        job = self._tip_delivery
+        if not job:
+            return
+        try:
+            on_tip = self.bridge_rpc.get_info().get("top_block_hash") == job["tip"]
+        except RPCError as e:
+            self.logger.warning(f"tip shares: bridge get_info: {e}")
+            on_tip = False
+        if not on_tip:
+            job["ticks"] -= 1
+            if job["ticks"] <= 0:
+                self.logger.info(f"tip shares: bridge never reached {job['tip'][:12]}; not delivered")
+                self._tip_delivery = None
+            return
+        try:
+            shares = self.daemon_rpc.sim_get_workshares(prev_id=job["tip"], min_height=job["height"])
+        except RPCError as e:
+            self._share_rpc_failed("read the miner's tip shares", e)
+            self._tip_delivery = None
+            return
+        sent = 0
+        for s in shares:
+            for rpc in self.bridge_rpcs:
+                try:
+                    rpc.sim_submit_workshare(s["blob"], int(s.get("height", job["height"])), relay=True)
+                    sent += 1
+                except RPCError as e:
+                    self._share_rpc_failed(f"submit tip share {s.get('id')}", e)
+        self.logger.info(f"tip shares: published {len(shares)} on {job['tip'][:12]} ({sent} submissions)")
+        self._tip_delivery = None
 
     def _lookup_agents(self, agent_ids, connected_ids, rpcs, what: str) -> None:
         """Resolve agent ids to RPC endpoints from the shared registry,
@@ -852,7 +945,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         if (self.strategy_name in ("window_stubborn", "deep_hunt") and decision.release_to is not None
                 and pub_height >= self.strategy.start_height):   # warm-up publishes everything
             fork = decision.release_from
-            att_objects, att_weight, hon_weight = self.strategy.last_weights
+            att_objects, att_weight, hon_weight = self.strategy.last_weights[:3]
             self.logger.info(
                 f"{self.strategy_name}: reveal fork={fork} a={priv_height - fork} "
                 f"h={pub_height - fork} objects={att_objects} weight={att_weight} "
@@ -890,8 +983,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         # 7. Release per decision. The offline miner's chain already contains
         #    victim blocks (pulled above), so the release cashes the combined
         #    branch unchanged.
+        self._deliver_tip_shares()
         if decision.release_to is not None:
             self._release_up_to(decision.release_from, decision.release_to)
+            if self.strategy.fork > decision.release_from:
+                self._queue_tip_delivery(priv_info.get("top_block_hash"), priv_height)
+                self._deliver_tip_shares()
             # 7b. A cash-out moved the fork to the attacker's tip on the
             #     assumption that the reveal wins. Check it.
             if self.reject_aware and self.strategy.fork > decision.release_from:

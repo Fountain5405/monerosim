@@ -50,3 +50,20 @@ def test_sop_does_not_score_a_peers_height_drop():
     assert code[:1] == ["if (m_core.get_blockchain_storage().sim_sop_enabled())"], added
     assert "return;" in code, added
     assert "+    bool sim_sop_enabled() const { return m_sim_sop_enabled; }" in lines
+
+
+def test_sop_log_v4_and_window_rule():
+    """MRL #146 2026-10-16/2026-10-20 (docs/20260930_sop_conformance.md, log v4)."""
+    t = PATCH.read_text()
+    assert '{\\"v\\":4' in t
+    assert "(m_sim_sop_k - 1) * m_sim_sop_w" in t          # window = (k-1)*w
+    assert "sim_sop_tip_shares(" in t                      # pool shares on a tip
+    assert '\\"pool_main_counted\\":' in t
+
+
+def test_shares_relay_only_on_the_main_tip():
+    """Spec 2.3: pool shares on the tip relay; alternate shares do not."""
+    t = PATCH.read_text()
+    i = t.index("::handle_notify_new_workshare(int command")
+    body = t[i:i + 1500]
+    assert "if (extends_tip)" in body and "relay_workshare(arg, context)" in body

@@ -1,0 +1,40 @@
+# sop_v4_smoke (2026-10-21): first run of the MRL #146 2026-10-20 rule (log v4,
+# docs/superpowers/specs/2026-10-21-sop-rev20261020-design.md). A smoke, 6 h.
+name: sop_v4_smoke
+seed: 27790
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 6h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+ksm: true
+bootfast: true

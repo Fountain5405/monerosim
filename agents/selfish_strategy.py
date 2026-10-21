@@ -63,7 +63,8 @@ class ReleaseDecision:
 class SelfishStrategy:
     def __init__(self, name: str, start_height: int, trail_depth: int = 1,
                  release_lead: int = 1, window_objects: int = 48,
-                 give_up_depth: int = 2, release_depth: int = 10):
+                 give_up_depth: int = 2, release_depth: int = 10,
+                 window_rule: str = "v3"):
         if name not in (
             "honest",
             "eyal_sirer",
@@ -90,6 +91,9 @@ class SelfishStrategy:
         self.release_depth = int(release_depth)   # deep_hunt only
         if self.release_depth < 1:
             raise ValueError(f"release_depth must be >= 1, got {release_depth}")
+        if window_rule not in ("v3", "20261020"):
+            raise ValueError(f"unknown window_rule: {window_rule}")
+        self.window_rule = window_rule
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
         self.last_weights = None   # window_stubborn: last branch_weights() result seen
 
@@ -253,12 +257,19 @@ class SelfishStrategy:
         if h == 0:
             return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
 
-        weights = branch_weights(old_fork, priv_height, pub_height) if branch_weights else (a, a, h)
+        weights = branch_weights(old_fork, priv_height, pub_height) if branch_weights \
+            else (a, a, h, max(a - 1, 0), max(h - 1, 0))
         self.last_weights = weights
         if weights is None:
             return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
-        att_objects, att_weight, hon_weight = weights
-        if att_objects < self.window_objects or att_weight <= hon_weight:
+        att_objects, att_weight, hon_weight = weights[:3]
+        if self.window_rule == "20261020":
+            # MRL #146 2026-10-16: objective once EITHER branch holds (k-1)*w
+            # objects above its first block (window_objects = 32 in the specs).
+            past = len(weights) >= 5 and max(weights[3], weights[4]) >= self.window_objects
+        else:
+            past = att_objects >= self.window_objects
+        if not past or att_weight <= hon_weight:
             # Inside the window, or not ahead by weight: hold.
             return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
 

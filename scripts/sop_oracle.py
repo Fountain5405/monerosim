@@ -32,6 +32,77 @@ def parse_log_line(line: str) -> dict | None:
         return None
 
 
+def pool_count(entries: list, major: int, rule: str = "slot") -> int:
+    """Pool shares that count for a chain tip (convention 11): PoW-valid
+    entries; rule "slot" keeps the first seen per slot and counts the
+    contiguous run from `major`; rule "all" counts every valid entry."""
+    ok = [e for e in entries if e.get("pow_ok")]
+    if rule == "all":
+        return len(ok)
+    if rule != "slot":
+        raise ValueError(f"unknown pool rule {rule!r}")
+    slots = {e["slot"] for e in ok}
+    n = 0
+    while major + n in slots:
+        n += 1
+    return n
+
+
+def _lateness_weight(b: dict, window_open: bool, w: int, d_ms: int) -> int:
+    """One block's weight under a v2+ reference (`ref`), Tables 3-5."""
+    diff = int(b["diff"])
+    unit = max(1, diff // w)
+    block_seen = b.get("seen")
+    main_seen = b["ref"] if b.get("ref") is not None else block_seen
+    l_b = 1
+    if window_open and block_seen is not None and main_seen is not None \
+            and block_seen - main_seen > d_ms:
+        l_b = 0
+    counted = 0
+    for s in b.get("shares") or []:
+        share_seen = s.get("seen") if s.get("seen") is not None else block_seen
+        late = (window_open and main_seen is not None and share_seen is not None
+                and main_seen - share_seen <= d_ms)
+        counted += 0 if late else 1
+    return unit * l_b * (1 + counted)
+
+
+def decide_v4(rec: dict, pool_rule: str = "slot") -> dict:
+    """The rule as edited 2026-10-16 and 2026-10-20 (conformance doc,
+    "Revised 2026-10-16 and 2026-10-20"), from logged inputs only."""
+    h0, hf, top = rec["h0"], rec["hf"], rec["top"]
+    w, k, d_ms = rec["w"], rec["k"], rec["d_ms"]
+    alt = rec.get("alt") or []
+    main = rec.get("main") or []
+    n_alt = sum(1 + b.get("n_sh", 0) for b in alt[1:])
+    n_main = sum(1 + b.get("n_sh", 0) for b in main if b["h"] != hf)
+    h_max = max(top, alt[-1]["h"] if alt else top)
+    nakamoto = h_max - (hf - 1) >= 10 * w
+    diff_alt0 = int(alt[0]["diff"]) if alt else 0
+    window_open = (not nakamoto and rec["online"] and h0 < hf - 1
+                   and max(n_alt, n_main) < (k - 1) * w and diff_alt0 >= w)
+    regime = "nakamoto" if nakamoto else ("subjective" if window_open else "objective")
+
+    pa = pm = 0
+    if regime == "nakamoto":
+        w_alt = sum(int(b["diff"]) for b in alt)
+        w_main = sum(int(b["diff"]) for b in main)
+    else:
+        w_alt = sum(_lateness_weight(b, window_open, w, d_ms) for b in alt)
+        w_main = sum(_lateness_weight(b, window_open, w, d_ms) for b in main)
+        if regime == "objective":
+            major = rec["major"]
+            pa = pool_count(rec.get("pool_alt") or [], major, pool_rule)
+            pm = pool_count(rec.get("pool_main") or [], major, pool_rule)
+            w_alt += pa * max(1, int(rec["pool_diff_alt"]) // w)
+            w_main += pm * max(1, int(rec["pool_diff_main"]) // w)
+    expected = "SWITCH" if w_alt > w_main else ("KEEP" if w_alt < w_main else "TIE")
+    skip = rec.get("mode") == "whole_branch" and bool(rec.get("reinsert"))
+    return {"n_alt": n_alt, "n_main": n_main, "regime": regime, "w_alt": w_alt,
+            "w_main": w_main, "pool_alt_counted": pa, "pool_main_counted": pm,
+            "expected": expected, "skip": skip}
+
+
 def decide(rec: dict, nf_rule: str | None = None) -> dict:
     """Recompute nf, regime, suffix weights and the expected outcome from
     the logged inputs (mode, reinsert, h0, online, hf, top, w, k, d_ms, alt,
@@ -48,6 +119,8 @@ def decide(rec: dict, nf_rule: str | None = None) -> dict:
     earlier formal definition (the alt branch only), for older logs."""
     # Without an explicit rule, use the one the daemon logged
     # (--sim-sop-nf-rule); records from before that flag mean "alt".
+    if rec.get("v", 1) >= 4:
+        return decide_v4(rec)
     if nf_rule is None:
         nf_rule = rec.get("nf_rule", "alt")
 
@@ -158,9 +231,14 @@ def compare(rec: dict) -> list[str]:
             msgs.append(f"skipped record result {rec.get('result')!r} != KEEP")
         return msgs  # skipped records are not recomputed further.
 
-    daemon_nf = int(rec["nf"])
-    if daemon_nf != d["nf"]:
-        msgs.append(f"nf {daemon_nf} != expected {d['nf']}")
+    if rec.get("v", 1) >= 4:
+        for key in ("n_alt", "n_main", "pool_alt_counted", "pool_main_counted"):
+            if int(rec.get(key, -1)) != d[key]:
+                msgs.append(f"{key} {rec.get(key)} != expected {d[key]}")
+    else:
+        daemon_nf = int(rec["nf"])
+        if daemon_nf != d["nf"]:
+            msgs.append(f"nf {daemon_nf} != expected {d['nf']}")
     if rec.get("regime") != d["regime"]:
         msgs.append(f"regime {rec.get('regime')!r} != expected {d['regime']!r}")
     daemon_w_alt = int(rec["w_alt"])
@@ -206,7 +284,19 @@ def check_log(path) -> dict:
             "mismatches": mismatches, "details": details}
 
 
-def _cmd_check(run_dirs: list[str]) -> int:
+def _pool_rule_changes(path) -> int:
+    n = 0
+    with open(path, errors="replace") as f:
+        for line in f:
+            rec = parse_log_line(line)
+            if rec and rec.get("v", 1) >= 4 \
+                    and decide_v4(rec, "all")["expected"] != decide_v4(rec)["expected"]:
+                n += 1
+    return n
+
+
+def _cmd_check(run_dirs: list[str], pool_rule: str = "slot") -> int:
+    changed = 0
     any_empty = False
     total_mismatches = 0
     all_details = []
@@ -221,8 +311,12 @@ def _cmd_check(run_dirs: list[str]) -> int:
             print(f"{node:30s} decisions={rep['decisions']} skipped={rep['skipped']} "
                   f"ties={rep['ties']} mismatches={rep['mismatches']}")
             all_details.extend(rep["details"])
+            if pool_rule == "all":
+                changed += _pool_rule_changes(log)
         if run_decisions == 0:
             any_empty = True
+    if pool_rule == "all":
+        print(f"pool-rule all changes {changed} outcomes")
     for d in all_details[:20]:
         print(f"  ! {d['file']}:{d['line']} {'; '.join(d['messages'])}")
     if any_empty:
@@ -237,9 +331,10 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     pc = sub.add_parser("check")
     pc.add_argument("run_dirs", nargs="+")
+    pc.add_argument("--pool-rule", choices=("slot", "all"), default="slot")
     a = ap.parse_args(argv)
     if a.cmd == "check":
-        return _cmd_check(a.run_dirs)
+        return _cmd_check(a.run_dirs, a.pool_rule)
     return 2
 
 

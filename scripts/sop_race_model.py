@@ -286,6 +286,17 @@ class SimConfig:
     positional_shares: bool = False      # SoP's slot rule, as tevador's UNIQUE_SHARES: a share's ID is its
                                          # slot (its position in the finder's pending set), so an early honest
                                          # share adds to the attacker only if it lacks that slot (needs equal_start)
+    count_attacker_pending: bool = False  # MRL #146 2026-10-20: the attacker's own shares on its
+                                          # tip count for it under the objective score (it publishes
+                                          # them at the reveal)
+
+
+# MRL #146 rule versions for the SoP rule (the stock rule ignores them).
+RULE_PRESETS = {
+    "20261015": {},
+    "20261020": {"either_window": True, "count_honest_pending": True,
+                 "count_attacker_pending": True},
+}
 
 
 @dataclass
@@ -442,6 +453,8 @@ def simulate(cfg: SimConfig) -> SimStats:
         if cfg.either_window and cfg.rule == "sop":
             past_window = max(sum(1 + n for n in att_blocks[1:]),
                               sum(1 + m for m in hon_blocks[1:])) >= cfg.K_objects - cfg.w
+        if cfg.count_attacker_pending and cfg.rule == "sop" and past_window:
+            att_weight += att_pending
         wins = att_weight > hon_weight
         if past_window and not wins and att_weight == hon_weight and cfg.tie_win_prob > 0:
             wins = rng.random() < cfg.tie_win_prob
@@ -508,7 +521,8 @@ def _print_tevador(alpha: float, w: int, k: int) -> None:
 
 
 def _sweep(days: float, seed: int, alphas: Optional[List[float]] = None,
-           ds: Optional[List[int]] = None, honest_shares: bool = False) -> None:
+           ds: Optional[List[int]] = None, honest_shares: bool = False,
+           rule_version: str = "20261015") -> None:
     alphas = alphas or [0.30, 0.33, 0.40, 0.45]
     ds = ds or [1, 2, 3]
     variants = [("sop", True, False), ("sop", False, False), ("stock", False, False)]
@@ -519,6 +533,7 @@ def _sweep(days: float, seed: int, alphas: Optional[List[float]] = None,
         # pending); positional_shares needs it set.
         variants.append(("sop", True, True))
     print(f"# Model B sweep: days={days} (fixed-rate), seed={seed}")
+    print(f"# rule version: {rule_version}")
     if honest_shares:
         print("# 'True + honest shares': the SoP attacker's first block after a fork also embeds the "
               "honest shares found on the fork point, one per slot.")
@@ -532,7 +547,8 @@ def _sweep(days: float, seed: int, alphas: Optional[List[float]] = None,
             for rule, embeds, slot in variants:
                 cfg = SimConfig(alpha=alpha, d=d, rule=rule, attacker_embeds=embeds,
                                  days=days, seed=seed, equal_start=slot,
-                                 early_honest_shares=slot, positional_shares=slot)
+                                 early_honest_shares=slot, positional_shares=slot,
+                                 **(RULE_PRESETS[rule_version] if rule == "sop" else {}))
                 s = simulate(cfg)
                 label = "True + honest shares" if slot else embeds
                 print(f"| {alpha} | {d} | {rule} | {label} | {s.reveals} | "
@@ -600,9 +616,11 @@ def _give_up_token(s: str) -> str:
 
 
 def _hunt(alphas: List[float], rules: List[str], give_ups: List[str], release_depth: int,
-          days: float, seed: int, honest_shares: bool = False) -> None:
+          days: float, seed: int, honest_shares: bool = False,
+          rule_version: str = "20261015") -> None:
     print(f"# Model B deep-reorg hunter: release_depth={release_depth}, days={days} "
           f"(fixed-rate), seed={seed}")
+    print(f"# rule version: {rule_version}")
     if honest_shares:
         print("# SoP attacker uses honest shares as the slot rule allows: its first block embeds the "
               "honest shares found before either side's first block, and it restarts level after a give-up.")
@@ -622,7 +640,8 @@ def _hunt(alphas: List[float], rules: List[str], give_ups: List[str], release_de
                                 attacker_embeds=(rule == "sop"), days=days, seed=seed,
                                 give_up_objects=n if kind == "o" else -1,
                                 release_depth=release_depth, equal_start=slot,
-                                early_honest_shares=slot, positional_shares=slot)
+                                early_honest_shares=slot, positional_shares=slot,
+                                **(RULE_PRESETS[rule_version] if rule == "sop" else {}))
                 s = simulate(cfg)
                 n10 = s.count_ge(10)
                 per_day = n10 / s.canonical_days if s.canonical_days else 0.0
@@ -653,6 +672,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                            "slot rule lets it use (SimConfig.equal_start, early_honest_shares, "
                            "positional_shares)")
 
+    p_sw.add_argument("--rule-version", choices=list(RULE_PRESETS), default="20261015")
+
     p_deep = sub.add_parser("deep", help="Model B deep-reorg (10+) rate estimate")
     p_deep.add_argument("--years", type=float, default=3.0)
     p_deep.add_argument("--seed", type=int, default=1)
@@ -668,6 +689,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="SoP attacker embeds the honest shares the slot rule lets it use "
                              "(SimConfig.equal_start, early_honest_shares, positional_shares)")
 
+    p_hunt.add_argument("--rule-version", choices=list(RULE_PRESETS), default="20261015")
+
     p_rec = sub.add_parser("reconcile", help="Model B against tevador's deep-reorg simulator")
     p_rec.add_argument("--alpha", type=float, default=1 / 3)   # his ATTACK_HR 3 of 9
     p_rec.add_argument("--give-up-objects", type=int, default=5)   # his STUBBORNNESS
@@ -680,14 +703,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "tevador":
         _print_tevador(args.alpha, args.w, args.k)
     elif args.cmd == "sweep":
-        _sweep(args.days, args.seed, args.alphas, args.ds, args.honest_shares)
+        _sweep(args.days, args.seed, args.alphas, args.ds, args.honest_shares, args.rule_version)
     elif args.cmd == "deep":
         _deep(args.years, args.seed)
     elif args.cmd == "reconcile":
         _reconcile(args.alpha, args.days, args.seed, args.give_up_objects, args.release_depth)
     elif args.cmd == "hunt":
         _hunt(args.alphas, args.rules, args.give_ups, args.release_depth, args.days, args.seed,
-              args.honest_shares)
+              args.honest_shares, args.rule_version)
     print(f"\n(elapsed: {time.time() - t0:.1f}s)")
     return 0
 
