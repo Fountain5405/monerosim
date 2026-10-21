@@ -158,6 +158,7 @@ adds the relay-log and subnet-dedup patches (`./setup.sh --sim-binary`).
 | `20261020_130027_x0_legacy_none_s12345` | 1 h / 1 h | 48 (40% of reachable) | — | — | out of RAM at sim 1 h 43 m (batched relay waves); stopped |
 | `20261020_132230_x0_legacy_none_s12345` | 1 h / 1 h | 48 (40% of reachable) | 0.348 (target 0.15: FAIL) | 0.148 (176 txs) | 1 h 36 m wall; min free RAM 8.9 GB; 26 user agents stuck in RPC timeouts at the end, so Shadow exits 1 |
 | `20261020_165536_x0_legacy_none_s12345_nochurn` | none | 48 (40% of reachable) | 0.286 (FAIL) | 0.213 (244 txs): implied 4.7 hops, PASS | 1 h 15 m wall; min free RAM 6.5 GB (KSM at 10000 pages until sim ~1 h, then 20000); exit 0 |
+| `20261020_181726_x0_legacy_none_s12345_spies12` | none | 12 (15% of reachable) | 0.132 (PASS) | 0.191 (1,828 txs): implied 5.2 hops, PASS | users at 300 s: 1,822 txs created, 1,798 in blocks; 1 h 53 m wall; min free RAM 7.6 GB; 11 GB archive; exit 0 |
 
 Both pilots ran users at one tx per 3,412 s, not 300 s: `make_cells.sh`
 expanded without `--no-safe-tx-interval`, so the generator raised the
@@ -172,6 +173,14 @@ their 14.74% of IPs. The 40% figure is from Oct 2024 (#126) while the 15% target
 Apr-May 2024 (Rucknium) and Feb 2025 (Kopyciok), so if the share stays high
 without churn, the replica's "2025" spy preset (14.7%, 7 /24s) is the matched
 pair to try. It does: 0.29 without churn.
+
+With 12 spies (2 per /24, about 15% of reachable IPs) and no churn, the
+light-node outbound share is 0.132 against the 0.15 target, so the share
+follows the spies' share of IPs here too. This run is also the first at the
+300 s tx interval (1,822 txs, against 236 and 176 in the earlier pilots). The
+stems fit Dandelion++: 0.191 fluff per hop (stock 0.2), so the implied
+uncensored mean is 5.2 hops. 12.5% of stems end in a loop (8.6% in the
+48-spy run). The 12-spy layout is the X0 baseline for the remaining cells.
 
 ## Targets and open questions
 
