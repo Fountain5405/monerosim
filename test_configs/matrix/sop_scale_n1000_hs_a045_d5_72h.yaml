@@ -1,0 +1,96 @@
+# sop_scale_n1000_hs_a045_d5_72h (2026-10-21): does the share-aware
+# window_stubborn attacker still beat Share-or-Perish at alpha 0.45, depth 5,
+# when 1,000 relays sit between it and the honest miners instead of 2?
+#
+# Why this cell. On the 12-daemon network it came out above break-even in all
+# three 72 h draws (alpha = 0.45; one draw each, run-to-run spread not
+# measured):
+#   share-aware hs d5   0.503   (sop_v3_hs_h10_72h)
+#   share-aware hs d5   0.520   (sop_v3_hs_tail_h10_72h, tail emission from 995)
+#   as built d5         0.460   (sop_v3_hs_h10_72h)
+# Model B (sop_race_model.py sweep --honest-shares) said 0.426 for hs d5 and 0.366
+# as built. The question here is whether that gap depends on the network being
+# only 12 daemons.
+#
+# What a bigger network can change (hypotheses, not predictions; nothing in this
+# file is a forecast of the result):
+#   - the hops between honest miners and the attacker's bridge, so the tie
+#     split gamma (12-node draws: 0.05-0.11) and the orphan rates;
+#   - the arrival time of gossiped shares and blocks at each honest miner
+#     relative to the SoP lateness bound, so which branch a share counts for;
+#   - the honest miners' view of the attacker's released branch.
+# Read it against the 12-node cells by share, gamma, network_orphan_rate and
+# the reveals stats (sop_reveals.py), and treat one 72 h draw as one draw.
+#
+# Network: test_configs/selfish_micro_sop.yaml plus 1,000 daemon-only relays,
+# one started per 10 s from 20 min (the linear start from
+# docs/PERFORMANCE_AND_SCALE.md; the last relay at 11,190 s = 3.1 h). 1,013
+# hosts on gml_processing/1200_nodes_caida_with_loops.gml (1,200 positions; the
+# ladder used the 5,000-node map for 1,011+ hosts). Miners and difficulty are
+# the 12-node base's, so D0 = 1200 and block time stay at 120 s. The first
+# 3.1 h (about 4% of the blocks) run while the relays are still joining;
+# bootstrap_end_time stays 10 m as in the 12-node cells (the ladder's 4 h
+# covered its whole ramp). Regenerate the base with
+# scripts/make_sop_scale_base.py.
+# 20 of the 1,000 relays log at monitor level for the oracle; the rest at 0.
+#
+# Run it only after the n300 smoke (sop_scale_n300_hs_a045_d5_8h.yaml) has
+# measured the ratio. Wall time is 72 / ratio hours; the ladder's reference
+# points under a transaction load, none measured without one on this box:
+# 1,011 nodes ratio 1.7 on 128 workers, 500 nodes ratio 3.5 on 16 workers.
+# RAM: 1,011 nodes peaked at 98 GB with KSM in the ladder (this box has 251 GB).
+# Disk: the 12-host 72 h cell is 2.8 GB; quiet relays keep this far below the
+# ladder's 130 GB budget for 1k, but check df first.
+#
+# CPU: takes every free physical core; run it alone (see the n300 header).
+#
+# After it: scripts/sop_oracle.py check <run>; sum the "SIM-SoP: embedding ... own,
+# ... remote" log lines per node (patches/monero-sim-pop.patch): the attacker
+# miner's remote total must be > 0, and each honest node's remote total must not
+# exceed the other honest miner's own total (else an attacker share leaked; the
+# 12-node runs sit about 2% below it); scripts/selfish_mining/sop_reveals.py
+# stats; python -m scripts.sop_lateness_probe replay.
+name: sop_scale_n1000_hs_a045_d5_72h
+seed: 27781
+base: test_configs/selfish_micro_sop_scale1000.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+          use_honest_shares: 'true'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+  alpha:
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+ksm: true
+bootfast: true

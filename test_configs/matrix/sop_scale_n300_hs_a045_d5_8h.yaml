@@ -1,0 +1,80 @@
+# sop_scale_n300_hs_a045_d5_8h (2026-10-21): rung 1 of the SoP scale check. A
+# SMOKE, not a measurement: 8 simulated hours is about 240 blocks, far too few
+# to read an attacker revenue share from. It answers four things before the
+# 1,000-node run (sop_scale_n1000_hs_a045_d5_72h.yaml) is committed to:
+#   1. wall-clock ratio (sim s per wall s) on this box once the relays are up,
+#      so the 72 h run's wall time (72 / ratio hours) is a number, not a guess;
+#   2. peak RAM and per-node RAM (compare the ladder: ~100-150 MB/node with
+#      KSM under tx load, docs/PERFORMANCE_AND_SCALE.md);
+#   3. whether the run freezes: this base has native_preemption: true (the
+#      12-daemon cells' setting), the ladder used false, and the perf doc says
+#      true can freeze runs. A freeze shows as sim time not advancing in the
+#      progress log; the fix to try is native_preemption: false in
+#      test_configs/selfish_micro_sop.yaml's general section, then regenerate;
+#   4. whether the share-aware attacker still works with 300 relays between it
+#      and the honest miners: its miner embeds gossiped shares (the remote
+#      count on its "SIM-SoP: embedding ... own, ... remote" log lines,
+#      patches/monero-sim-pop.patch, is > 0) and scripts/sop_oracle.py check
+#      reports 0 mismatches on every node that logs decisions.
+#
+# Network: test_configs/selfish_micro_sop.yaml (the 12-daemon base, unchanged
+# miners: attacker 4.5 h/s, honest 2.75 + 2.75, D0 1200) plus 300 daemon-only
+# relays, one started per 10 s from 20 min (the other box's linear start),
+# the last at 4,190 s. 313 hosts on gml_processing/1200_nodes_caida_with_loops.gml.
+# Regenerate the base with scripts/make_sop_scale_base.py (see its header).
+#
+# Arm = the 12-daemon sop_v3_hs_h10_72h cell share_sop2_hs_a045_d5, unchanged:
+# window_stubborn, reject_aware, embedded_shares, window_objects 48, weigh sop,
+# give_up_depth 5, use_honest_shares true, SoP w=16 on the honest miners and the
+# attacker; the relays target (every added relay, the six seeds, the two old
+# relays) and the bridge run monerod-sim with SoP on.
+#
+# CPU: the run takes every free physical core (run_sim_helpers.py cpu-plan), so
+# start it when no other 12-daemon lane is running; with two lanes up it gets
+# the 4 cores left and "workers will share". The base's own comment warns that
+# fewer Shadow workers than hosts stalls native-mining cells when many cells
+# run concurrently; one scale run alone is the ladder's configuration.
+name: sop_scale_n300_hs_a045_d5_8h
+seed: 27782
+base: test_configs/selfish_micro_sop_scale300.yaml
+parallel: 1
+stop_time: 8h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+          use_honest_shares: 'true'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+  alpha:
+    a045:
+      attacker:
+        hashrate: 4.5
+      honest:
+        hashrate:
+        - 2.75
+        - 2.75
+ksm: true
+bootfast: true
