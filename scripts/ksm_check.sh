@@ -13,12 +13,31 @@
 # persistent). Exit status: 0 = ready, 1 = enabled but scanning too slowly,
 # 2 = disabled or unavailable. Read-only; never needs root.
 #
-# Usage: scripts/ksm_check.sh [--quiet-ok]
+# With --nodes N it also prints the merge lag to expect for N monerods. A new
+# page merges after about two full scans, and a scan covers ~300 MB per
+# monerod, so lag ~ 2 x N x 300 MB / scan rate; the unmerged backlog is then
+# about (monerod starts per wall-minute) x lag x 256 MB. The X0 pilot of
+# 2026-10-20 (~455 daemons, relays starting ~9 per wall-minute) matched this:
+# ~20 relays' caches unmerged at 10000 pages, ~11 at 20000. Informational only,
+# since ksmd is one kernel thread (~0.4 core at 10000 pages there, about one
+# core at most): past that, only slower node starts shrink the backlog.
+#
+# Usage: scripts/ksm_check.sh [--quiet-ok] [--nodes N]
 
 KSM_DIR=/sys/kernel/mm/ksm
-RECOMMENDED_PAGES=10000
+RECOMMENDED_PAGES=20000
 RECOMMENDED_SLEEP_MS=20
-MIN_RATE_MB=1000           # recommended is ~2 GB/s
+MIN_RATE_MB=1000           # recommended is ~4 GB/s
+MB_PER_NODE=300            # mergeable anon memory one scan covers per monerod
+
+quiet_ok=0; nodes=
+while (( $# )); do
+    case $1 in
+        --quiet-ok) quiet_ok=1; shift ;;
+        --nodes) nodes=$2; shift 2 ;;
+        *) echo "usage: $0 [--quiet-ok] [--nodes N]" >&2; exit 2 ;;
+    esac
+done
 
 if [[ ! -r "$KSM_DIR/run" ]]; then
     echo "KSM: not available in this kernel ($KSM_DIR missing); --ksm will have no effect"
@@ -53,5 +72,10 @@ if (( rate_mb < MIN_RATE_MB )); then
     exit 1
 fi
 
-[[ "$1" == "--quiet-ok" ]] || echo "KSM: ready (run=1, pages_to_scan=$pages every ${sleep_ms} ms, ~${rate_mb} MB/s)"
+(( quiet_ok )) || echo "KSM: ready (run=1, pages_to_scan=$pages every ${sleep_ms} ms, ~${rate_mb} MB/s)"
+if [[ -n $nodes ]]; then
+    rec_mb=$(( RECOMMENDED_PAGES * 4096 * 1000 / RECOMMENDED_SLEEP_MS / 1000000 ))
+    echo "KSM: ~$(( 2 * nodes * MB_PER_NODE / rate_mb )) s merge lag for $nodes monerods at this rate" \
+         "(~$(( 2 * nodes * MB_PER_NODE / rec_mb )) s at the recommended $RECOMMENDED_PAGES pages / $RECOMMENDED_SLEEP_MS ms)"
+fi
 exit 0
