@@ -160,6 +160,42 @@ Each is a choice. The oracle and the daemon must both follow it.
     from before the option mean `alt`.
 
 
+## Revised 2026-10-16 and 2026-10-20 (log v4)
+
+Source: the issue body as edited 2026-10-16 22:07 and 2026-10-20 16:47 UTC
+(GitHub edit history). Rules for v4 records; v1-v3 records keep the rules above.
+
+- **Window (2026-10-16).** `n_max` is the larger branch's count of work objects
+  above h_f+1: the first block after the fork (its header and its shares) is not
+  counted, nor are pool shares. Subjective iff the node came online before the
+  fork (`online` and `h0 < hf - 1`, with `hf` the first fork block in the log),
+  `h_max - h_f < 10*w`, `n_max < (k-1)*w`, and the first alt block's difficulty
+  is >= w (convention 9). Else objective if `h_max - h_f < 10*w`, else nakamoto.
+  `h_max` = max(top, last alt height); `h_f` = hf - 1.
+- **Scores (Table 3, 2026-10-20).** nakamoto: header diff, shares 0, pool 0.
+  objective: header unit, each valid embedded share unit, each counted pool
+  share on the chain's tip unit_pool. subjective: as v2/v3 (l_b, l_w), pool 0.
+  `unit = max(1, diff // w)` per block; `unit_pool = max(1, pool_diff // w)`.
+- **Pool shares (convention 11, R2).** A chain's pool shares are the pooled
+  shares with `prev_id` = the chain's tip and height tip+1 whose PoW passes
+  (`pow_ok`). Per slot keep the first seen; count the contiguous run of slots
+  `major, major+1, ...`. `pool_diff` is the tip block's difficulty (sim
+  convention, exact under constant difficulty).
+- **Evaluation (convention 12, R3).** The fork choice runs when an alt block
+  arrives, as in monerod. A share arriving does not re-run it.
+- **Two chains (convention 13, R4).** main against the alt chain being
+  extended. `alt_tips` counts alt tips whose fork is within 10*w of top.
+
+Log v4 (`SIM-SoP-DEC`): all v3 fields (with `"v":4`), plus
+`n_alt`, `n_main` (objects above h_f+1), `nakamoto` (bool), `major` (int),
+`alt_tip`, `main_tip` (hex ids), `pool_alt`, `pool_main` (lists of
+`{"id","slot","seen","pow_ok"}`), `pool_diff_alt`, `pool_diff_main` (strings),
+`pool_alt_counted`, `pool_main_counted` (ints), `alt_tips` (int). `regime` is
+one of `subjective`, `objective`, `nakamoto`. `nf`/`nf_main` keep their v3
+meaning for older tools.
+Share admissions log `SIM-SoP: pooled (local|remote) share <id> at height <h>
+prev <prev_id> slot <s> tip <0|1>` (for the R3 probe).
+
 ## Known deviations
 
 - *Fixed in log v3:* **`h_0` at the last common block (found
