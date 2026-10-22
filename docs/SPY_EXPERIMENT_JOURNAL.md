@@ -407,6 +407,14 @@ one attributed transaction) for senders with 20 or more transactions: about 50% 
 -70% to -80%. The width follows the observed seed spread of 4-8%, plus a margin for the
 cell's trend.
 
+**P3b, filed 2026-10-22 15:00, before these cells are queued.** X1 `half` cells, seed 12345.
+`core` with the list (one spy /24, listed in full) on half the honest nodes: the adopters
+see no spies, so the population share is about half of `core` without the list, i.e.
+0.002-0.005, and `sp_r` recall falls with it; P(at least one attributed transaction) for
+senders with 20 or more transactions under 5%. `tail` with the list at 50% adoption and
+50% coverage (10 of the 21 /24s): as P3, 0.050-0.060. Non-adopters' share equals the
+no-list cell's within seed noise (4-8%); adopters' share about half of theirs.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -441,6 +449,7 @@ in the conversation.
 | 10-22 13:40 | Seeds 23456 and 34567 of the long-warmup cell and of its `legacy` partner queued on `simbox2` (4 cells, about 7 h) | the plan wants 3 seeds per cell; the P1 result sat on the edge of its interval | remove lines from `~/queue/q.txt` on `simbox2` | agent |
 | 10-22 14:40 | Commit the uncommitted work in three commits on `feat/spy-relay-log`, not pushed | the user asked to commit; push was not asked for | `git reset --soft HEAD~3` | user asked, agent split |
 | 10-22 14:40 | X1 `core` and `tail` cells (no list, seed 12345) queued on `phantom` behind `x0_24_half_s34567`, i.e. start about 16:30 | `phantom` would idle; the instruments are verified at replica scale (E8); P3 was filed in advance; the cells are at H=300 so memory is not a risk (H=300 cells bottomed at 8 GB free) | delete the two lines from `x0_queue3.txt` (scratchpad) before 16:30 | agent |
+| 10-22 15:00 | X1 `half` cells (`core` with the list in full; `tail` with 10 of 21 /24s listed) queued on `phantom` after the two no-list cells; P3b filed first | the `half` cells are needed whatever the no-list results are; queueing now keeps the box busy overnight; a surprise in the first two cells can still be answered by deleting the last two lines | delete the two lines from `x0_queue3.txt` before they start (about 21:00 and 23:10) | agent |
 | 10-22 14:40 | X1 starts before X0's replicates finish | X0's remaining runs do not change the stock-binary baseline X1 needs; both boxes are otherwise full | - | agent |
 | 10-22 14:40 | `simbox2` keeps the old `make_lean.py`/`spy_ban_list.py` until an X1 cell has to run there | the cells it runs now were generated here with the layout check and copied (md5 checked) | - | agent |
 | 10-22 14:40 | The spy ban list for X1 tail cells names the densest 50% of /24s at first | the real list names the dense fleet and part of the tail; the true coverage is unknown, so 100% and 50% bracket it | `--ban-coverage` | agent |
