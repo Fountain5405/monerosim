@@ -250,6 +250,8 @@ the 4 h window; the report prints the quarters):
 | lean H=150 `24` | 0.0086 | 0.0282 | 0.047, 0.030, 0.022, 0.016 |
 | lean H=300 `legacy` | 0.073 | 0.0707 | 0.073, 0.073, 0.070, 0.067 |
 | lean H=300 `24` | 0.0045 | 0.0459 | 0.081, 0.046, 0.033, 0.024 |
+| lean H=300, k=6 `legacy` | 0.136 | 0.2453 | 0.246, 0.247, 0.246, 0.243 |
+| lean H=300, k=6 `24` | 0.0264 | 0.1026 | 0.137, 0.106, 0.091, 0.080 |
 
 The model holds for `legacy` (3-7% off at H=150 and 300, the cap again). The
 `24` cells don't sit still: the share falls through the window, the first
@@ -257,6 +259,15 @@ quarter rises with H (0.032, 0.047, 0.081 at H=71, 150, 300; 13, 26, 53
 spies), and in the first window 95 of 233 H=300 relays hold three or more spy
 outbound peers at once, up to five, so the one-per-/24 cap the model rests on
 is broken early. By the last window 4 hold two and none more.
+
+With six spy /24s (53 spies, about 9 per /24) the `legacy` cell is flat at
+0.245, 1.8x its model and 1.6x X0's 0.15 target. The model draws uniformly
+over IPs; the real selection takes the 20 most recently seen candidates and
+favours the freshest, and a Monte Carlo of that over the observers' final
+lists gives 0.186, so recency accounts for most of it and about 1.3x is left.
+The `k=6` `24` cell shows the same drain as the one-/24 cells (0.137 down to
+0.080). So the model's one-per-/24 cap is a ceiling, not a prediction, once
+there are several spy /24s. X0, with 2 spies per /24, measured 0.132.
 
 **Where the early excess comes from: the gray list drains.** A monerod fills
 30% of its outbound slots (4 of 12) from its gray list, uniformly, and the
