@@ -19,3 +19,19 @@ share fluff_per_hop=0.235 stem_txs=1841 run=/home/lever65/monerosim_archives/202
 share fluff_per_hop=0.192 stem_txs=1092 run=/home/lever65/monerosim_archives/20261022_114249_lean_24_none_h300_k6_w6h_s12345
 13:36 QUEUE EMPTY
 13:41 START lean_24_none_h300_k6_w6h_s23456 run=/home/lever65/monerosim_archives/20261022_134108_lean_24_none_h300_k6_w6h_s23456
+15:34 DONE lean_24_none_h300_k6_w6h_s23456 exit=0 wall=112m min_avail_mb=12863 light_out_share=0.0574
+share fluff_per_hop=0.193 stem_txs=1092 run=/home/lever65/monerosim_archives/20261022_134108_lean_24_none_h300_k6_w6h_s23456
+15:34 START lean_legacy_none_h300_k6_s23456 run=/home/lever65/monerosim_archives/20261022_153451_lean_legacy_none_h300_k6_s23456
+16:54 DONE lean_legacy_none_h300_k6_s23456 exit=0 wall=78m min_avail_mb=13428 light_out_share=0.2485
+share fluff_per_hop=0.175 stem_txs=1024 run=/home/lever65/monerosim_archives/20261022_153451_lean_legacy_none_h300_k6_s23456
+16:54 START lean_24_none_h300_k6_w6h_s34567 run=/home/lever65/monerosim_archives/20261022_165425_lean_24_none_h300_k6_w6h_s34567
+18:47 DONE lean_24_none_h300_k6_w6h_s34567 exit=0 wall=111m min_avail_mb=12823 light_out_share=0.0529
+share fluff_per_hop=0.209 stem_txs=1076 run=/home/lever65/monerosim_archives/20261022_165425_lean_24_none_h300_k6_w6h_s34567
+18:47 START lean_legacy_none_h300_k6_s34567 run=/home/lever65/monerosim_archives/20261022_184706_lean_legacy_none_h300_k6_s34567
+20:08 DONE lean_legacy_none_h300_k6_s34567 exit=0 wall=80m min_avail_mb=13725 light_out_share=0.2519
+share fluff_per_hop=0.187 stem_txs=1065 run=/home/lever65/monerosim_archives/20261022_184706_lean_legacy_none_h300_k6_s34567
+20:08 QUEUE EMPTY
+20:11 START lean_24_none_h300_k1_w6h_m53_s12345 run=/home/lever65/monerosim_archives/20261022_201141_lean_24_none_h300_k1_w6h_m53_s12345
+22:05 DONE lean_24_none_h300_k1_w6h_m53_s12345 exit=0 wall=112m min_avail_mb=12881 light_out_share=0.0173
+share fluff_per_hop=0.203 stem_txs=1092 run=/home/lever65/monerosim_archives/20261022_201141_lean_24_none_h300_k1_w6h_m53_s12345
+22:05 START lean_24_none_h300_k1_w6h_m26_s12345 run=/home/lever65/monerosim_archives/20261022_220525_lean_24_none_h300_k1_w6h_m26_s12345

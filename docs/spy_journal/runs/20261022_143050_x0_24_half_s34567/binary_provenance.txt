@@ -1,0 +1,23 @@
+archived_at: 2026-10-22T14:30:51Z
+monerod: sha256=743e168a396011eca75066596169e7526c7f13ed9c1b9a957f6ac54c02cc12b9 mtime=2026-10-20T12:58:36Z
+monerod-sim: sha256=ecaadf741f639ef22c2793122a4225a8634a2dab6726b915257719b301c0e788 mtime=2026-10-20T13:00:10Z
+--- monerod-sim.provenance ---
+binary: monerod-sim (alias: monerod-hf)
+base: v0.18.5.1 (monero.pin)
+patch: patches/monero-fakechain-hardforks.patch
+patch_sha256: 732924a33a90978d3236758dbbb1e971bda69bbb51c3079a9489d24644d842fa
+patch: patches/monero-sim-mining.patch
+patch_sha256: b25b83ccc9ed0acc3b422112b073cf0742442efe8a06b254bf6dab9f455dab79
+patch: patches/monero-sim-selfish-relay.patch
+patch_sha256: 4d4c86d6044eac36c32a06a0929a3c21db5e08d13e8ee6f952186d7b300d9dca
+patch: patches/monero-sim-peerlist-dump.patch
+patch_sha256: b99de1927045e48a29ff90bb1e594f17e1e3d639bb389a1ddca2b9fef11549b1
+patch: patches/monero-sim-pop.patch
+patch_sha256: 44825cd1ee308ec2bdd127686dad24a7c83cb1a59dc9577681768ceaf002e948
+patch: patches/monero-sim-tail-emission.patch
+patch_sha256: 5a6e3937f0b56abf36a3be2747c66cee4b7195e049f7e88ddfffc53214e0767e
+patch: patches/monero-sim-txrelay-log.patch
+patch_sha256: aa205115ff75400eb0f9b526595b07b3b916098a373d20556affd2bf690f992a
+patch: patches/monero-sim-subnet-dedup.patch
+patch_sha256: eb85a3007f29ea7578760b10db8b545c1ab55cecdf096caa7d75e0e14b345c5c
+built: 2026-10-20T13:00:10Z

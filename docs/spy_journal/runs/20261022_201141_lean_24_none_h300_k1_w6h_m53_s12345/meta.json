@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_201141_lean_24_none_h300_k1_w6h_m53_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k1_w6h_m53_s12345",
+ "archived_at": "2026-10-22T20:11:42Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "1h 52m",
+ "exit_code": 0,
+ "min_avail_mb": 12881,
+ "txs_created": 1057,
+ "txs_in_blocks": 1040,
+ "note": "P5 diagnostic: core with 53 spies; 0.0173, relays 0.0197, users 0.0068; share per spy matches the 113-spy cell",
+ "scored_cell": "24/none",
+ "spies": 53,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0173,
+ "light_out_quarters": [
+  0.021,
+  0.0181,
+  0.0161,
+  0.0143
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.203,
+ "stem_txs": 1092,
+ "stem_hops_implied": 4.93,
+ "embargo_rate": 0.0
+}

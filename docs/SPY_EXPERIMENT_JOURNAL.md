@@ -5,12 +5,12 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox2` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-22, 14:35).** X0, the calibration, is under way: the
-`legacy` leg passes its targets, the /24-dedup leg reads 44-48% below `legacy` on the
-replica and 76% below on the lean k=6 cell (one seed; replicates queued), against a
-target of about 70%. X1 has
-instruments and two candidate presets, with nothing run yet. Entries E1-E13
-below; open questions in section 6.
+**Status (2026-10-22, 20:12).** X0, the calibration, is essentially done. The `legacy` leg
+passes its targets (3 seeds per cell). The /24-dedup leg reads 45-47% below `legacy` on the
+69-/24 replica and 77% below on the lean k=6 cell (3 seeds), against a target of about 70%.
+X1 has begun: the `core` and `tail` presets without a list are in (E14, E15), both with an
+unexplained excess of spies on the lab's relays, and diagnostic cells for it are running. Entries E1-E15 below; open
+questions in section 6.
 
 ## 1. How this journal works
 
@@ -78,10 +78,39 @@ through the seeds only, and do not poison peer lists or multiplex ports.
   Ubuntu 22.04.5 to 24.04.5 and rebuilt on 2026-10-22 (E9). Archives in
   `~/monerosim_archives`.
 
+- `simbox3` (`lever65@192.168.1.176`, hostname `virt76`): a **shared KVM guest**, not bare
+  metal. 40 vCPUs (40 single-core sockets), AMD EPYC "cpu family 23" (Zen generation),
+  BogoMIPS 5589 (about 2.8 GHz, so each thread is probably well below a 5900XT's), 100 GB
+  RAM, 8 GB swap, a 298 GB virtio root with ~96 GB free (267 MB/s direct writes). Other
+  accounts live on it (`user`, `user12`, `rclusterworker`; 148 GB under `/home`) and the VM had
+  been up 50 days with nothing running except an idle `screen` session. Upgraded on 2026-10-22
+  from Ubuntu 22.04.5 to 24.04.5 (kernel 6.8.0-147, glibc 2.39, gcc 13.3), like the other two
+  boxes. Rust 1.99.1 via `rustup`, KSM set by hand, archives in `~/monerosim_archives`. Not
+  validated until its H=71 run is in the register; the first results will say how fast it is
+  and whether it behaves like the bare-metal boxes.
+
 **Queue and guards.** Cells run one at a time from a queue file by
 `docs/spy_journal/drivers/x0_queue*.sh`, which kills Shadow if free RAM drops below
 1.5 GB, free disk below 30 GB, or swap grows past its allowance while RAM is short,
 then scores the run. Event logs of the queues are in `docs/spy_journal/logs/*.events`.
+
+**Memory by cell** (peak of the simulator processes' memory, sampled every 30 s, from each
+run's `memory_samples.csv`; KSM on; one seed each; 2026-10-22). The lowest *free* RAM on a 32 GB
+box is in the register.
+
+| Cell | Daemons | Processes | Peak, GB | Peak at sim hour |
+|---|---|---|---|---|
+| lean H=71 | 124 | 223 | 9.3-9.7 | 0 (start-up) |
+| lean H=150 | 216 | 315 | 9.1-10.2 | 3-9 |
+| lean H=300 | 393 | 492 | 15.3-16.3 | 6.4-6.9 |
+| X0 replica | 419 | 598 | 16.0-17.7 | 7.5-7.7 |
+| X1 `core` (113 spies) | 453 | 552 | 18.3 | 10.7 |
+| lean H=600 | 746 | 845 | 24.4 | 6-7 |
+
+About 9 GB of that is a start-up spike that does not depend on the size: the 67 hub daemons
+(miners, medium nodes, observers, seeds) start at t=0 with their RandomX caches not yet merged
+by KSM. After that memory grows with simulated time (blocks, pools, logs). A 12 GB cgroup
+with a 24 GB swap file on NVMe ran the X0 cell 7% slower (`docs/PERFORMANCE_AND_SCALE.md`).
 
 **Layout rule.** A spy /24 must hold only spies. Placement is sequential from each
 region's first node and prefix sharing packs relays onto its last nodes, so spy pins
@@ -142,6 +171,14 @@ own selection rule and its spy layout.
 | `20261022_103027_x0_24_half_s23456` | phantom | 12 / 6 | 71 / 67 | 0.0373 (0.0845) | 0.043, 0.039, 0.035, 0.032 | 0.197 | 1804 | 1h 57m | 9.1 | 0 | X0 24/half replicate; inside the pre-registered 0.031-0.038 (P2); falls 0.043 to 0.032 across the window |
 | `20261022_114249_lean_24_none_h300_k6_w6h_s12345` | simbox2 | 53 / 6 | 300 / 242 | 0.0598 (0.0264) | 0.065, 0.061, 0.059, 0.055 | 0.192 | 1092 | 1h 52m | 12.7 | 0 | P1: long-warmup k=6 dedup cell (6.4 h after the last relay start); see E13 |
 | `20261022_122958_x0_24_none_s34567` | phantom | 12 / 6 | 71 / 69 | 0.0690 (0.0825) | 0.073, 0.069, 0.068, 0.067 | 0.206 | 1849 | 1h 58m | 10.7 | 0 | X0 24/none replicate; inside the pre-registered 0.066-0.078 (P2) |
+| `20261022_134108_lean_24_none_h300_k6_w6h_s23456` | simbox2 | 53 / 6 | 300 / 240 | 0.0574 (0.0265) | 0.060, 0.058, 0.057, 0.055 | 0.193 | 1092 | 1h 52m | 12.6 | 0 | E13 replicate (P4): inside 0.050-0.070, Q4 8% below Q1 |
+| `20261022_143050_x0_24_half_s34567` | phantom | 12 / 6 | 71 / 69 | 0.0382 (0.0825) | 0.042, 0.040, 0.036, 0.035 | 0.194 | 1865 | 1h 57m | 11.0 | 0 | X0 24/half replicate; 0.0382, just above the pre-registered 0.031-0.038 (P2 miss by 0.0002) |
+| `20261022_153451_lean_legacy_none_h300_k6_s23456` | simbox2 | 53 / 6 | 300 / 240 | 0.2485 (0.1362) | 0.238, 0.247, 0.254, 0.254 | 0.175 | 1024 | 1h 18m | 13.1 | 0 | E13 legacy partner (P4): inside 0.22-0.27; fluff per hop 0.175 |
+| `20261022_163001_lean_24_none_h300_k1_w6h_m113_s12345` | phantom | 113 / 1 | 300 / 242 | 0.0352 (0.0045) | 0.045, 0.037, 0.032, 0.027 | 0.195 | 1082 | 2h 1m | 9.5 | 0 | X1 core, no list (P3): light share 0.0352 vs predicted 0.005-0.01, carried by relays (0.041; users 0.006); see E14 |
+| `20261022_165425_lean_24_none_h300_k6_w6h_s34567` | simbox2 | 53 / 6 | 300 / 243 | 0.0529 (0.0262) | 0.059, 0.053, 0.051, 0.049 | 0.209 | 1076 | 1h 51m | 12.5 | 0 | E13 replicate (P4): inside 0.050-0.070, Q4 16% below Q1 |
+| `20261022_183408_lean_24_none_h300_k21_w6h_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1946 (0.0822) | 0.198, 0.195, 0.195, 0.191 | 0.225 | 1092 | 1h 53m | 11.9 | 0 | X1 tail, no list (P3): light share 0.1946 vs predicted 0.07-0.08, relays 0.222, users 0.055; sp_r recall 0.038, precision 1.00; see E15 |
+| `20261022_184706_lean_legacy_none_h300_k6_s34567` | simbox2 | 53 / 6 | 300 / 243 | 0.2519 (0.1361) | 0.245, 0.252, 0.256, 0.253 | 0.187 | 1065 | 1h 20m | 13.4 | 0 | E13 legacy partner (P4): inside 0.22-0.27 |
+| `20261022_201141_lean_24_none_h300_k1_w6h_m53_s12345` | simbox2 | 53 / 1 | 300 / 242 | 0.0173 (0.0045) | 0.021, 0.018, 0.016, 0.014 | 0.203 | 1092 | 1h 52m | 12.6 | 0 | P5 diagnostic: core with 53 spies; 0.0173, relays 0.0197, users 0.0068; share per spy matches the 113-spy cell |
 <!-- register:end -->
 
 ## 4. Entries
@@ -285,24 +322,24 @@ quarters 0.067, 0.062, 0.061, 0.059 against 0.070, 0.063, 0.060, 0.052. The gene
 cell yaml is byte-identical on the two boxes. The two boxes are used interchangeably
 from here; both are recorded in the register.
 
-### E10. X0 replicates (2026-10-22, in progress)
+### E10. X0 replicates (2026-10-22; all 12 replica cells have 3 seeds)
 
-Light-node outbound share by cell and seed. Blank = not finished.
+Light-node outbound share by cell and seed. Means: `legacy/none` 0.1345, `legacy/half`
+0.0669, `24/none` 0.0709, `24/half` 0.0367 (spreads 0.006, 0.0057, 0.0044, 0.0035).
 
 | Cell | 12345 | 23456 | 34567 | Target |
 |---|---|---|---|---|
 | `legacy/none` | 0.132 | 0.1385 | 0.133 | ~0.15 |
 | `legacy/half` | 0.0687 | 0.0689 | 0.0632 | ~0.07 |
 | `24/none` | 0.0703 | 0.0734 | 0.0690 | ~70% below `legacy/none` |
-| `24/half` | 0.0347 | 0.0373 | | ~70% below `legacy/half` |
+| `24/half` | 0.0347 | 0.0373 | 0.0382 | ~70% below `legacy/half` |
 
 **So far.** `legacy` has all three seeds in both cells and passes both targets:
 `legacy/none` within 0.006 of each other (4% of the mean, 0.9x the target),
 `legacy/half` 0.0687, 0.0689, 0.0632 (mean 0.0669, spread 0.0057 = 8.5% of the mean, 0.96x
 the target). The third `legacy/half` seed also has more fluff per hop than any other
-cell (0.235 against 0.19-0.22; implied 4.3 hops, still inside the 1.5x window around 5). `24/none` has all three seeds (mean 0.0709, 47% below `legacy/none`'s 0.1345, spread 0.0044);
-`24` is 44-48% below `legacy` in the five `24` cells so far
-(0.0703, 0.0734 and 0.0690 against 0.1345; 0.0347 and 0.0373 against 0.0669), which is 1.7-1.8x
+cell (0.235 against 0.19-0.22; implied 4.3 hops, still inside the 1.5x window around 5). `24/none` is 47% below `legacy/none` (0.0709 against 0.1345) and `24/half` 45% below
+`legacy/half` (0.0367 against 0.0669); each of the six `24` cells is 44-48% below its `legacy` mean, which is 1.7-1.8x
 above the 0.04 the target implies, so outside the 1.5x window and needing a written reason. The
 reason: this replica has 69 honest /24s against 6 spy /24s and the model puts stock
 dedup at 0.083 against 0.137 for `legacy`, 39% lower, not 70%; the measurement is 85-89%
@@ -361,7 +398,104 @@ free RAM, 1,092 stem transactions, 0.192 fluff per hop (implied 5.2 hops).
   is not measured.
 - The `legacy` partner ran with a 1 h warmup and a different box; `legacy` is flat, so
   this should not matter, but the replicates below pair them by seed.
-- One seed. Seeds 23456 and 34567 are queued, with their `legacy` partners (P4).
+- One seed at first. Seeds 23456 and 34567 are queued, with their `legacy` partners (P4).
+
+| Seed | `24`, 6.4 h warmup | By quarter | `legacy` (1 h warmup) | Dedup effect |
+|---|---|---|---|---|
+| 12345 | 0.0598 | 0.0647, 0.0613, 0.0585, 0.0549 | 0.2453 | -76% |
+| 23456 | 0.0574 | 0.0603, 0.0576, 0.0566, 0.0554 | 0.2485 | -77% |
+| 34567 | 0.0529 | 0.0590, 0.0534, 0.0505, 0.0494 | 0.2519 | -79% |
+| mean | 0.0567 | | 0.2486 | -77% |
+
+*2026-10-22 15:36:* seed 23456 reads 0.0574, inside P4's 0.050-0.070, with Q4 8% below Q1
+(P4: 5-25%). The two seeds differ by 4%.
+*2026-10-22 18:48:* seed 34567 reads 0.0529 (P4 0.050-0.070 hit; Q4 16% below Q1, inside
+5-25%). The three `24` seeds: mean 0.0567, spread 0.0069 (12% of the mean), all still
+falling across the window.
+*2026-10-22 20:10:* the seed-34567 `legacy` partner reads 0.2519 (P4 hit), so the dedup
+effect for that seed is -79%. **Three seeds: -76%, -77%, -79% (mean -77%), inside P4's -70% to
+-80% for all three.** This closes the third X0 target at a larger honest set: the lean k=6
+cell meets it (-77% against about -70%) where the 69-/24 replica cannot (-45% to -47%, E10).
+Caveats unchanged: the `24` shares are still falling across the window, the spy /24 ratio is
+ten times mainnet's, and E14 shows the lab's relays hold more spies than the model gives.
+*2026-10-22 16:56:* the seed-23456 `legacy` partner reads 0.2485 (flat: 0.238, 0.247, 0.254,
+0.254; P4 0.22-0.27), so the dedup effect for that seed is -77% (P4: -70% to -80%).
+
+### E14. X1 `core`, no list: the lab's relays hold spies the model does not predict (2026-10-22 16:30-18:34, `phantom`)
+
+**Setup.** `lean_24_none_h300_k1_w6h_m113_s12345`: H=300 reachable honest (453 daemons with the
+113 spies), 113 spies in one /24 (27% of reachable IPs), stock `24` selection, 40 unreachable
+users, activity 8 h to 12 h. 122 min wall, exit 0, 9,771 MB lowest free RAM, 1,082 stem
+transactions, 0.195 fluff per hop. Estimators: 2 min 20 s, 2.9 GB.
+**Prediction (P3, in advance):** outbound share 0.005-0.01 (model 0.0045), `sp_r` precision
+1.00, recall equal to the first-hop ceiling, under 5% of 20-transaction senders exposed.
+**Result.**
+- **Light-node outbound share 0.0352**, by quarter 0.045, 0.0375, 0.0319, 0.0272: 3.5-7x
+  the predicted range, 7.8x the model, and still falling. **Missed.**
+- By class: **relays 0.0413**, users 0.006, observers 0.0045, medium hubs 0.0035, miners 0.1169
+  (5 nodes), seeds' inbound 0.4063. The users and observers sit at the model; the relays carry
+  the excess. By start order the relays read 0.030, 0.033, 0.046, 0.057 (earliest to latest),
+  so even the earliest quarter, aged 11 h at the end, is 6.6x the model.
+- The observers' final white lists hold the 113 spies as 27% of 412 IPs and an empty gray
+  list; the recency Monte Carlo (`adhoc/recency_model.py`) over them gives 0.0047 at 2 h and
+  0.0001 at the end, so white-list selection with recency does not explain the relays.
+- Estimators, on the 40 unreachable users' 1,020 transactions: `sp_r` precision **1.000**,
+  recall **0.004** (4 transactions), equal to the ground-truth first-hop ceiling (4 of 1,017):
+  **hit**. Users' own outbound share is 0.006, consistent with that recall. 3 of 40 senders
+  with 20 or more transactions had one attributed (7.5%, against a predicted under 5%;
+  one sender is 2.5%): **marginal miss**. Busy reachable nodes (5): 6 of 62 transactions
+  stemmed to a spy (0.097).
+**Reading.** The scored senders (users) behave as the model says, so for the question X1 asks
+(who is deanonymized) this preset gives few exposures. But the lab's relays hold 7-9x more spy
+slots than the rule predicts, in a cell built with a 6.4 h warmup to avoid exactly that. That
+is the same discrepancy as E5's unexplained 1.5x, 4-5x larger here, and it undercuts the claim
+that the long warmup reaches a steady state. Candidates, none tested: spy connections made
+during the relays' first hours persist far longer than the 1.5 h estimated in E5; the relays'
+gray lists keep refilling with spies (113 spies re-gossiped) in a way the observers' do not;
+a fallback to the undeduplicated list. A probe version of this cell (first and last 3 relays'
+peer lists and `net.p2p` DEBUG pick logs) is queued next (decision below).
+
+### E15. X1 `tail`, no list: the same relay excess, 2.4x the model (2026-10-22 18:34-20:29, `phantom`)
+
+**Setup.** `lean_24_none_h300_k21_w6h_m2_n600_s12345`: 42 spies in 21 /24s (2 each, GML nodes
+600-620, the layout check clean), H=300 reachable honest, stock `24`, 40 unreachable users,
+activity 8 h to 12 h. 114 min wall, exit 0, 12,206 MB lowest free RAM, 1,092 stem
+transactions, 0.225 fluff per hop (implied 4.4 hops, inside the window around 5).
+**Prediction (P3, in advance):** outbound share 0.07-0.08 (model 0.0822 at its usual 85%),
+`sp_r` precision 1.00, recall equal to the ceiling and within 20% of the share, about 50% of
+20-transaction senders exposed.
+**Result.**
+- **Light-node outbound share 0.1946**, flat by quarter (0.198, 0.195, 0.195, 0.191): 2.4x the
+  model and 2.5x the top of the predicted range. **Missed.** It exceeds even the model's `legacy`
+  value (0.122) and `none` value (0.123), so stock dedup is giving this fleet *more* slots than
+  uniform selection would.
+- By class: relays **0.2219**, observers 0.0938, medium hubs 0.1026, miners 0.1469, users
+  **0.0554**, seeds' inbound 0.3047. As in E14, the users sit at or below the model and the
+  relays far above it. There is no decay across the window, unlike every `24` cell with a
+  short warmup.
+- Estimators, on the 40 unreachable users' 1,031 transactions: `sp_r` precision **1.000**,
+  recall **0.038** (39 transactions), equal to the ground-truth first-hop ceiling (hit), but
+  not within 20% of the cell's share (it is 0.69x the users' own 0.0554; **miss as written**).
+  15 of 40 senders with 20 or more transactions had a transaction attributed (37.5%, 95%
+  interval about 23-54%; predicted about 50%): **marginal miss**. The 5 busy reachable nodes:
+  11 of 61 transactions stemmed to a spy (0.18), `combined` precision 0.21.
+  Unreachable nodes' median spy share of stem peers 0.039; of outbound peers 0.053.
+**Reading (untested).** In both cells the excess is in the relays, which are reachable and so
+take in peer lists from every node that dials them, while the users, who nobody dials, take in
+only what their own outbound handshakes return. A relay's gray list is refilled by that
+gossip with the spies' many IPs (the seeds hand out whites with spies at their share of IPs,
+27% in `core`), and honest entries leave the gray list for the white list as they are
+connected to while the spies' remaining IPs stay. If gray picks (30% of the 12 slots) then
+find only spy /24s, the dedup has no unconnected candidate and falls back to the
+undeduplicated list (step 1). That would put the relays near 0.3 x (spy-only gray list), and
+the `tail` relays at 0.22 and the `core` relays at 0.04 are in the right order for 21 spy
+/24s against 1. The probe cell (relay peer lists and pick logs) and P5's 53- and 26-spy cells
+test it.
+**Consequence for X1 as designed.** The scored senders are the unreachable users, and the
+metric that matters for them is their own outbound and stem share: 0.006 (`core`) and 0.055
+(`tail`). If the relay excess is real network behaviour it also exposes the *reachable* senders
+(busy nodes at 0.10 and 0.18); if it is an artifact of the lab's static, small, churn-free
+peer lists, it overstates the spies' reach. Which one it is decides what X1 can claim.
 
 ## 5. Pre-registered predictions
 
@@ -391,7 +525,19 @@ minimum width.
 
 *Outcome, 2026-10-22 12:30:* `24/half` 23456 read **0.0373, inside the predicted
 0.031-0.038 (a hit, at the top edge).** *2026-10-22 14:31:* `24/none` 34567 read **0.0690,
-inside the predicted 0.066-0.078 (a hit).** Score so far: 2 hits, 1 miss.
+inside the predicted 0.066-0.078 (a hit).** *2026-10-22 16:31:* `24/half` 34567 read **0.0382, just above the predicted 0.031-0.038
+(a miss by 0.0002).** Final score for P2: 2 hits, 2 misses, both misses by under 10% of
+the interval edge. The intervals were too tight for the seed spread of 4-8%; the predictions
+for the new seeds (P4) use that spread.
+
+*Outcome for `core`, no list, 2026-10-22 about 19:00 (E14):* share **missed** (0.0352 against
+0.005-0.01); precision and recall-equals-ceiling **hit**; exposure **marginal miss** (7.5%
+against under 5%). `tail` and the `half` cells (P3b) are pending, and P3b's core figures
+assume the model holds, which E14 puts in doubt.
+
+*Outcome for `tail`, no list, 2026-10-22 20:33 (E15):* share **missed** (0.1946 against
+0.07-0.08); precision hit; recall equals the ceiling (hit) but is not within 20% of the share
+(miss); exposure 37.5% against about 50% (marginal miss).
 
 **P3, filed 2026-10-22 11:30.** X1 `core` and `tail`, no list: `sp_r` precision 1.00 for
 unreachable senders; `sp_r` recall equal to the first-hop ceiling and within 20% of the
@@ -414,6 +560,30 @@ see no spies, so the population share is about half of `core` without the list, 
 senders with 20 or more transactions under 5%. `tail` with the list at 50% adoption and
 50% coverage (10 of the 21 /24s): as P3, 0.050-0.060. Non-adopters' share equals the
 no-list cell's within seed noise (4-8%); adopters' share about half of theirs.
+
+**P5, filed 2026-10-22 20:10, before the cells were queued at 20:11.** Two competing readings of E14's
+relay excess, tested by `lean_24_none_h300_k1_w6h_m53_s12345` and `..._m26_...` (as `core`, but
+53 and 26 spies in the one /24; same 6.4 h warmup). If the excess scales with the spies'
+share of the peer lists (the poisoning reading), the light-node share is 0.012-0.025 at 53 and
+0.006-0.015 at 26, and the relays still read 3x the model or more. If it does not (a
+persistent early-phase effect), both read 0.025-0.045. Prior: 60% for the first, because the
+H=150 cell with 26 spies and a 6.4 h warmup read 0.0145. A result in neither range counts as a
+miss for both.
+
+**P6, filed 2026-10-22 21:06, before anything is queued on `simbox3`.** (a) The platform check:
+`lean_legacy_none_h71_k1_s12345` on `simbox3` (24.04 after the upgrade, a VM) reads 0.055-0.066
+(0.061 on `phantom`, 0.0614 on `simbox2`); if it does not, nothing else run there is used.
+(b) The X1 replicates, seeds 23456 and 34567: `core`, no list: light-node share 0.028-0.042
+(E14: 0.0352), users' share 0.004-0.009, `sp_r` precision 1.00 and recall equal to the
+ceiling; `tail`, no list: share 0.17-0.22 (E15: 0.1946), users' share 0.045-0.065, recall
+0.03-0.05. Wider than P3's because the 0.8-12% seed spreads seen so far call for it.
+
+*Outcome, 53 spies, 2026-10-22 22:06:* light-node share **0.0173** (relays 0.0197, users 0.0068,
+observers 0.0, medium 0.0022; by quarter 0.021, 0.018, 0.016, 0.014), inside the 0.012-0.025
+that the spy-count reading predicted and outside the 0.025-0.045 of the other: **the count
+reading is supported.** Share per spy IP: 0.0352/113 = 3.1e-4 at 113 spies and 0.0173/53 =
+3.3e-4 at 53, i.e. the excess is proportional to the number of spy IPs in the one /24, which
+a per-/24 rule should not see at all. The 26-spy cell is still running.
 
 ## 6. Open questions
 
@@ -450,6 +620,12 @@ in the conversation.
 | 10-22 14:40 | Commit the uncommitted work in three commits on `feat/spy-relay-log`, not pushed | the user asked to commit; push was not asked for | `git reset --soft HEAD~3` | user asked, agent split |
 | 10-22 14:40 | X1 `core` and `tail` cells (no list, seed 12345) queued on `phantom` behind `x0_24_half_s34567`, i.e. start about 16:30 | `phantom` would idle; the instruments are verified at replica scale (E8); P3 was filed in advance; the cells are at H=300 so memory is not a risk (H=300 cells bottomed at 8 GB free) | delete the two lines from `x0_queue3.txt` (scratchpad) before 16:30 | agent |
 | 10-22 15:00 | X1 `half` cells (`core` with the list in full; `tail` with 10 of 21 /24s listed) queued on `phantom` after the two no-list cells; P3b filed first | the `half` cells are needed whatever the no-list results are; queueing now keeps the box busy overnight; a surprise in the first two cells can still be answered by deleting the last two lines | delete the two lines from `x0_queue3.txt` before they start (about 21:00 and 23:10) | agent |
+| 10-22 15:00 | A fourth, small commit (`c977cd44`: P3b and the queue decisions), beyond the three the user asked for | keeps the committed journal in step with the queued runs | `git reset --soft HEAD~1` | agent; no more commits without asking |
+| 10-22 ~18:55 | A probe version of the `core` cell (`..._p3_m113`, first/last 3 relays dump peer lists and log `net.p2p` DEBUG) queued next on `phantom`, ahead of the two `half` cells | E14's relays hold 7-9x the modelled spy share after a 6.4 h warmup; every later X1 number rests on knowing why, and E5 found the cause the same way | remove the line from `x0_queue3.txt` before about 20:40 | agent |
+| 10-22 20:10 | Two diagnostic cells for E14 on `simbox2` (`core` with 53 and 26 spies in the /24), ahead of any X1 replicate; P5 filed first | `simbox2` is idle and the probe cell on `phantom` does not start until about 20:40; the spy count is the one factor that differs between the cells that drained (E5) and this one; P5 separates the two readings | `~/queue/q.txt` on `simbox2` | agent |
+| 10-22 21:06 | Upgrade `simbox3` to Ubuntu 24.04.5 after all (full-upgrade, then release upgrade); the 22.04 build was killed | the user said to ("no one really uses it") after seeing that it is shared; 24.04 matches the other two boxes (gcc 13, glibc 2.39), which removes the compiler as a reason for results to differ. The full-upgrade also updated the R packages another account installed | restore from nothing: there is no backup of the VM | user |
+| 10-22 21:30 | During the `simbox3` upgrade: rebooted while `dpkg --configure --pending` was still running (my error: the reboot sat in the same command as the check, with no gate), then finished the configuration by hand; `grub-pc` would not configure because its saved install device pointed at a disk that no longer exists (`/dev/disk/by-id/ata-QEMU_HARDDISK_QM00001`; the VM's disk is now virtio `vda`), so I set `grub-pc/install_devices` to `/dev/vda` (BIOS boot, with a 1 MB BIOS boot partition) and reconfigured | a half-configured bootloader package leaves apt broken and risks the next kernel update; the VM had booted fine twice, so the old boot code was intact | none needed (the box boots and `dpkg --audit` is clean); the grub-install writes to `vda`'s boot area | agent |
+| 10-22 ~20:55 | Set up the user's new VM (`simbox3`) with the HWE kernel only, not a release upgrade, and rebooted it once | it is shared (other accounts, 148 GB of their data, 50 days of uptime); the user said I might upgrade it, and `--ksm` needs only kernel 6.4 or newer; keeping the userland leaves others' R/Python alone. Costs: the binary is built with gcc 11 and glibc 2.35, unlike the 24.04 boxes, so the H=71 validation decides whether it can be used. The reboot ended one idle `screen` session (`transfer`, a bare shell, 29 days old) | `apt remove` the 6.8 kernel and boot the old one from GRUB; `rm -rf ~/monerosim ~/.cargo` | agent |
 | 10-22 14:40 | X1 starts before X0's replicates finish | X0's remaining runs do not change the stock-binary baseline X1 needs; both boxes are otherwise full | - | agent |
 | 10-22 14:40 | `simbox2` keeps the old `make_lean.py`/`spy_ban_list.py` until an X1 cell has to run there | the cells it runs now were generated here with the layout check and copied (md5 checked) | - | agent |
 | 10-22 14:40 | The spy ban list for X1 tail cells names the densest 50% of /24s at first | the real list names the dense fleet and part of the tail; the true coverage is unknown, so 100% and 50% bracket it | `--ban-coverage` | agent |

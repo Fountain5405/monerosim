@@ -1,0 +1,21 @@
+cell 24/none   /home/lever65/monerosim_archives/20261022_165425_lean_24_none_h300_k6_w6h_s34567
+
+group      nodes spy share out spy share in
+honest       340        0.0516       0.0101
+light        281        0.0529       0.0004
+observer       8         0.052       0.0001
+user          40        0.0139          0.0
+relay        233        0.0597       0.0004
+medium        48        0.0281       0.0003
+miner          5        0.1001       0.0006
+monero-seed     6        0.0097         0.31
+no-list      340        0.0516       0.0101
+
+model (12 slots, one per subnet): 53 spies in 6 /24s, 300 honest reachable in 243 /24s: legacy 0.136, 24 0.0262, none 0.1514
+light outbound share by quarter of the window: [0.059, 0.0534, 0.0505, 0.0494]
+
+stems: 1076 txs, mean hops 4.5, 4.28 on paths ended by a fluff epoch
+  fluff per hop 0.209 (stock 0.2): implied uncensored mean 4.78 hops (target ~5)
+  ended {'epoch': 1013, 'no_stem': 15, 'loop': 48}
+  embargo rate 0.0, loop rate 0.0446, fluff epochs 0.199, hops without rx 0
+  hops histogram {0: 2, 1: 217, 2: 185, 3: 142, 4: 118, 5: 100, 6: 73, 7: 49, 8: 44, 9: 43, 10: 18, 11: 26, 12: 12, 13: 10, 14: 14, 15: 4, 16: 5, 17: 5, 18: 6, 19: 1, 20: 1, 32: 1}

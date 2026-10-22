@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_163001_lean_24_none_h300_k1_w6h_m113_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k1_w6h_m113_s12345",
+ "archived_at": "2026-10-22T16:30:37Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 1m",
+ "exit_code": 0,
+ "min_avail_mb": 9771,
+ "txs_created": 1082,
+ "txs_in_blocks": 1066,
+ "note": "X1 core, no list (P3): light share 0.0352 vs predicted 0.005-0.01, carried by relays (0.041; users 0.006); see E14",
+ "scored_cell": "24/none",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0352,
+ "light_out_quarters": [
+  0.045,
+  0.0375,
+  0.0319,
+  0.0272
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.195,
+ "stem_txs": 1082,
+ "stem_hops_implied": 5.13,
+ "embargo_rate": 0.0
+}

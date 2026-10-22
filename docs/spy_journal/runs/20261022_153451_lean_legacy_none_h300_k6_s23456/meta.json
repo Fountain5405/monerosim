@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_153451_lean_legacy_none_h300_k6_s23456",
+ "box": "simbox2",
+ "cell": "lean_legacy_none_h300_k6_s23456",
+ "archived_at": "2026-10-22T15:34:52Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "1h 18m",
+ "exit_code": 0,
+ "min_avail_mb": 13428,
+ "txs_created": 1017,
+ "txs_in_blocks": 984,
+ "note": "E13 legacy partner (P4): inside 0.22-0.27; fluff per hop 0.175",
+ "scored_cell": "legacy/none",
+ "spies": 53,
+ "spy_24s": 6,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.2485,
+ "light_out_quarters": [
+  0.2383,
+  0.247,
+  0.2543,
+  0.254
+ ],
+ "model_out": 0.1362,
+ "fluff_per_hop": 0.175,
+ "stem_txs": 1024,
+ "stem_hops_implied": 5.71,
+ "embargo_rate": 0.0
+}
