@@ -1,0 +1,60 @@
+# sop_v4_noown_72h (2026-10-22): follow-up to sop_v4_h10_72h cell 4
+# (share_sop2_hs_a045_d2, attacker share 0.078). Same cell with
+# count_own_tip_shares 'false': the reveal test no longer counts the
+# attacker's own miner tip shares, which under "fork choice runs only on a
+# new block or chain" (author, MRL meeting 2026-10-21) can never count at
+# reveal time -- 30 of 67 reveals in cell 4 were rejected by the bridge and
+# the private branch popped. Everything else identical; the countermeasure
+# name differs so cell/run names and matrix_outputs do not collide.
+# Race model, 20-Oct rule without count_attacker_pending ("20261020_noown",
+# 2000 d, +honest shares): revenue share 0.094 (0.105 with own pending).
+name: sop_v4_noown_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_noown:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  shares:
+    hs:
+      attacker:
+        attributes:
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+ksm: true
+bootfast: true

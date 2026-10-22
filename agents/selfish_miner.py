@@ -103,6 +103,17 @@ Attributes (via --attributes KEY VALUE):
                         cash-out the miner's shares on its tip are published
                         to the bridges, with relay, once a bridge is on that
                         tip. Needs monerod-sim with the relay param (Task 6).
+    count_own_tip_shares
+                        "false" drops the attacker's OWN tip shares from the
+                        reveal-test weight while keeping the honest side's
+                        (default "true", the 2026-10-21 build). Under "fork
+                        choice runs only on a new block or chain" (author, MRL
+                        meeting 2026-10-21) the miner's shares reach the
+                        bridges only after the switch, so the bridge scores
+                        the private branch without them and rejects reveals
+                        the attacker thought it won. The post-cash-out
+                        delivery of the miner's shares (tip_shares) is
+                        unchanged.
     window_rule         "v3" (default) or "20261020": which reveal window
                         the window_stubborn / deep_hunt strategies use; the
                         latter counts objects above each branch's first
@@ -171,6 +182,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.reject_aware = str(self.attributes.get("reject_aware", "false")).strip().lower() in ("1", "true", "yes")
         self.use_honest_shares = str(self.attributes.get("use_honest_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.tip_shares = str(self.attributes.get("tip_shares", "false")).strip().lower() in ("1", "true", "yes")
+        self.count_own_tip_shares = str(self.attributes.get("count_own_tip_shares", "true")).strip().lower() in ("1", "true", "yes")
         self._tip_delivery = None
         self._hs_tip = None            # miner tip whose shares _hs_sent covers (use_honest_shares)
         self._hs_sent = set()          # share ids already handed to the miner on _hs_tip
@@ -306,7 +318,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             if i == 0:
                 hon_first = 1 + m
         if self.tip_shares:
-            att_weight += self._tip_pool_weight(self.daemon_rpc, att_headers, priv_height)
+            if self.count_own_tip_shares:
+                att_weight += self._tip_pool_weight(self.daemon_rpc, att_headers, priv_height)
             hon_weight += self._tip_pool_weight(self.bridge_rpc, hon_headers, pub_height)
         return att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first
 

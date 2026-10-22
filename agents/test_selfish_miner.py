@@ -1206,6 +1206,19 @@ def test_branch_weights_without_tip_shares_is_v3(make_miner):
     assert w[1] == 3200 and w[2] == 3200
 
 
+def test_branch_weights_own_tip_shares_excluded(make_miner):
+    # count_own_tip_shares "false": the attacker's own tip shares leave the
+    # reveal-test weight (they reach the bridge only after the switch, so the
+    # bridge never counts them at reveal time); the honest side keeps its
+    # pool shares on the public tip.
+    m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true",
+                               "count_own_tip_shares": "false"},
+                   priv_blocks=[15, 15], pub_blocks=[15, 15],
+                   pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
+    att_objects, att_w, hon_w, att_x1, hon_x1 = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert att_w == 3200 and hon_w == 3200 + 500
+
+
 def test_tip_shares_wait_for_bridge_tip(make_miner):
     m = make_miner(attributes={"tip_shares": "true"}, priv_pool=[16, 17])
     m.bridge_rpc.tip_hash = "old"

@@ -502,6 +502,7 @@ def test_presets():
     assert RULE_PRESETS["20261015"] == {}
     assert RULE_PRESETS["20261020"] == {"either_window": True, "count_honest_pending": True,
                                         "count_attacker_pending": True}
+    assert RULE_PRESETS["20261020_noown"] == {"either_window": True, "count_honest_pending": True}
 
 
 def test_default_unchanged_by_new_field():

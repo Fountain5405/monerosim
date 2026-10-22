@@ -296,6 +296,11 @@ RULE_PRESETS = {
     "20261015": {},
     "20261020": {"either_window": True, "count_honest_pending": True,
                  "count_attacker_pending": True},
+    # 20261020 without count_attacker_pending: the attacker does NOT count its
+    # own tip shares in the reveal test (under "fork choice runs only on a new
+    # block or chain" they reach the network only after the switch). Matches
+    # the count_own_tip_shares "false" attacker (2026-10-22 follow-up cell).
+    "20261020_noown": {"either_window": True, "count_honest_pending": True},
 }
 
 
