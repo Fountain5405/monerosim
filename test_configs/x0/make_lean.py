@@ -15,6 +15,13 @@ Same classes, sizes and hubs as x0_2024.scenario.yaml (5 miners, 48 medium, 8 ob
 (15% of reachable IPs, variant R, announced through the seeds), and --users unreachable
 users. Relays start one every --interval sim-seconds so RandomX caches don't outrun KSM.
 
+Spy /24s beyond 6 need --spy-node0 away from 828: placement is sequential from each region's first
+node and prefix sharing packs relays onto its last ones, and the script refuses a cell in which a spy
+/24 also holds an honest daemon. X1's two 2026-09 presets at H=300 (docs/20261018_spy_node_defenses.md
+§5.3; /24 counts keep mainnet's spy : honest ratio, 9 : 3,732 dense, ~322 : 3,732 tail):
+  core  --reachable 300 --spy-subnets 1  --spies-per-subnet 113 --dedup 24 --warmup 21600
+  tail  --reachable 300 --spy-subnets 21 --spies-per-subnet 2   --dedup 24 --warmup 21600 --spy-node0 600
+
 Usage: test_configs/x0/make_lean.py --reachable 600 --spy-subnets 1 [--dedup 24] [--list half]
 Writes test_configs/x0/cells/lean_<dedup>_<list>_h<H>_k<K>_s<seed>.yaml
 """
@@ -26,6 +33,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import yaml
+
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 PY = REPO / "venv" / "bin" / "python"
@@ -36,6 +45,7 @@ OUT = HERE / "cells"
 SEED_IPS = ["176.9.0.187", "88.198.163.90", "192.99.8.110", "37.187.74.171", "88.99.195.15", "5.104.84.64"]
 FIXED_HONEST = 5 + 48 + 8 + 6   # miners + medium + observers + seeds
 SPY_NODE0 = 828                  # NA GML nodes 828.. as in X0
+MONEROSIM = REPO / "target" / "release" / "monerosim"
 # --probe: the monitor log categories plus net.p2p:DEBUG, which logs each outbound pick's
 # "Looking at N subnet-deduplicated peers out of M" and the candidate it considers.
 PROBE_LOG = ("*:WARNING,blockchain:INFO,txpool:INFO,net.p2p:DEBUG,net.p2p.msg:INFO,daemon.rpc:INFO,"
@@ -108,16 +118,20 @@ def agents_yaml(a, ban):
                                          ban if adopter else ""))
     w("  monero-seed-{001..006}:\n    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: 1s\n")
 
-    counts = [a.spies // 6 + (1 if j < a.spies % 6 else 0) for j in range(6)]
+    # One group per spy /24 once there are more than 6 (each group dials one fallback seed, so
+    # the seeds are shared round-robin); up to 6 /24s the groups stay a-f, as in X0.
+    groups = max(6, a.spy_subnets)
+    counts = [a.spies // groups + (1 if j < a.spies % groups else 0) for j in range(groups)]
     for j, n in enumerate(counts):
         if n <= 0:
             continue
-        letter = "abcdef"[j]
-        w(f"  spy-{letter}-{{001..{n:03d}}}:")
+        tag = "abcdefghijklmnopqrstuvwxyz"[j] if j < 26 else f"x{j}"
+        w(f"  spy-{tag}-{{001..{n:03d}}}:")
         w("    daemon: monerod-sim")
         w(f"    start_time: {10 * j}s\n    start_time_stagger: 60s")
-        w(f"    topology_node: {SPY_NODE0 + (j % a.spy_subnets)}")
-        w("    daemon_options: " + opts({"hide-my-port": "false", "add-exclusive-node": f'"{SEED_IPS[j]}:18080"'}, ""))
+        w(f"    topology_node: {a.spy_node0 + (j % a.spy_subnets)}")
+        w("    daemon_options: " + opts({"hide-my-port": "false",
+                                         "add-exclusive-node": f'"{SEED_IPS[j % len(SEED_IPS)]}:18080"'}, ""))
     w("\n  miner-distributor:\n    script: agents.miner_distributor\n    wait_time: auto\n")
     w("  simulation-monitor:\n    script: agents.simulation_monitor\n    poll_interval: 300")
     return "\n".join(L) + "\n"
@@ -152,14 +166,38 @@ def expand(a, ban, out):
         Path(name).unlink(missing_ok=True)
 
 
+def check_layout(cell):
+    """Fail if a spy /24 holds an honest daemon: placement is sequential from each region's first node
+    and prefix sharing packs relays onto the region's last nodes, so pins there can collide. Costs a
+    dry run of monerosim (seconds). Returns the colliding /24s."""
+    with tempfile.TemporaryDirectory() as tmp:
+        subprocess.run([str(MONEROSIM), "--config", str(cell), "--output", tmp], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        hosts = yaml.safe_load(Path(tmp, "shadow_agents.yaml").read_text())["hosts"]
+    subnets = {}
+    for name, h in hosts.items():
+        ip = h.get("ip_addr")
+        if ip and any("monerod" in str(p.get("path", "")) for p in h.get("processes", [])):
+            subnets.setdefault(ip.rsplit(".", 1)[0], set()).add(name.startswith("spy"))
+    return sorted(s for s, kinds in subnets.items() if len(kinds) == 2)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--reachable", type=int, default=71, help="honest reachable daemons (X0: 71)")
     ap.add_argument("--spies", type=int, default=None, help="default: 15%% of reachable IPs (0.1765 x reachable)")
     ap.add_argument("--spy-subnets", type=int, default=1, help="spy /24s (X0: 6)")
+    ap.add_argument("--spy-node0", type=int, default=SPY_NODE0,
+                    help="first GML node for the spy /24s (North America is nodes 0-849; honest agents sit "
+                         "on its first ~250 nodes and its last ~25, so 828.. collides beyond 6 /24s: use 600)")
+    ap.add_argument("--spies-per-subnet", type=int, default=None,
+                    help="spy daemons in each spy /24; sets --spies to this x --spy-subnets")
     ap.add_argument("--users", type=int, default=40, help="unreachable users with wallets")
     ap.add_argument("--dedup", choices=["legacy", "24", "none"], default="legacy")
     ap.add_argument("--list", choices=["none", "half"], default="none")
+    ap.add_argument("--ban-coverage", type=float, default=1.0,
+                    help="with --list half: fraction of the spy /24s the list names, densest first "
+                         "(scripts/spy_ban_list.py --coverage); the real list misses part of a diversified tail")
     ap.add_argument("--seed", type=int, default=12345)
     ap.add_argument("--interval", type=int, default=20, help="sim-seconds between relay starts")
     ap.add_argument("--probe", type=int, default=0,
@@ -170,22 +208,35 @@ def main():
                          "connections made from the early, small peer lists last ~1.5 h, so a /24 cell's "
                          "share falls for ~3 h of activity (use 21600 to start near steady state)")
     a = ap.parse_args()
+    if a.spies_per_subnet is not None:
+        if a.spies is not None:
+            ap.error("--spies and --spies-per-subnet are alternatives")
+        a.spies = a.spies_per_subnet * a.spy_subnets
     if a.spies is None:
         a.spies = round(0.1765 * a.reachable)
     OUT.mkdir(exist_ok=True)
-    wtag = ("" if a.warmup == 3600 else f"_w{a.warmup // 3600}h") + (f"_p{a.probe}" if a.probe else "")
+    wtag = (("" if a.warmup == 3600 else f"_w{a.warmup // 3600}h") + (f"_p{a.probe}" if a.probe else "")
+            + (f"_m{a.spies_per_subnet}" if a.spies_per_subnet is not None else "")
+            + (f"_n{a.spy_node0}" if a.spy_node0 != SPY_NODE0 else "")
+            + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
     out = OUT / f"{stem}.yaml"
     ban = ""
     if a.list == "half":
-        ban_file = OUT / f"banlist_h{a.reachable}_k{a.spy_subnets}_s{a.seed}.txt"
+        ban_file = OUT / f"banlist_{stem.removeprefix('lean_').split('_', 2)[2]}.txt"
         probe = OUT / f".probe_{stem}.yaml"
         expand(a, "", probe)
-        subprocess.run([str(PY), str(REPO / "scripts" / "spy_ban_list.py"), str(probe), "-o", str(ban_file)],
+        subprocess.run([str(PY), str(REPO / "scripts" / "spy_ban_list.py"), str(probe), "-o", str(ban_file),
+                        "--coverage", str(a.ban_coverage), "--seed", str(a.seed)],
                        check=True, stdout=subprocess.DEVNULL)
         probe.unlink(missing_ok=True)
         ban = str(ban_file)
     expand(a, ban, out)
+    shared = check_layout(out)
+    if shared:
+        out.unlink()
+        sys.exit(f"{stem}: {len(shared)} spy /24s also hold honest daemons ({', '.join(shared[:4])}...); "
+                 f"try --spy-node0 (now {a.spy_node0})")
     print(out)
 
 
