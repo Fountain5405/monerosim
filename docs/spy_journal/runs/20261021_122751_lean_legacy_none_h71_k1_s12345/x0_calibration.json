@@ -1,0 +1,96 @@
+[
+  {
+    "run": "/mnt/ssdpool/monerosim_archives/20261021_122751_lean_legacy_none_h71_k1_s12345",
+    "cell": "legacy/none",
+    "slots": {
+      "honest": {
+        "out": 0.0423,
+        "in": 0.0059,
+        "nodes": 111
+      },
+      "medium": {
+        "out": 0.0394,
+        "in": 0.0,
+        "nodes": 48
+      },
+      "no-list": {
+        "out": 0.0423,
+        "in": 0.0059,
+        "nodes": 111
+      },
+      "miner": {
+        "out": 0.0183,
+        "in": 0.0,
+        "nodes": 5
+      },
+      "monero-seed": {
+        "out": 0.0,
+        "in": 0.0501,
+        "nodes": 6
+      },
+      "observer": {
+        "out": 0.0694,
+        "in": 0.0,
+        "nodes": 8
+      },
+      "light": {
+        "out": 0.061,
+        "in": 0.0,
+        "nodes": 52
+      },
+      "relay": {
+        "out": 0.0753,
+        "in": 0.0,
+        "nodes": 4
+      },
+      "user": {
+        "out": 0.0579,
+        "in": 0.0,
+        "nodes": 40
+      }
+    },
+    "model": {
+      "spies": 13,
+      "spy_24s": 1,
+      "honest_reachable": 71,
+      "honest_reachable_24s": 60,
+      "per_ip": 0.1548,
+      "per_24": 0.0164
+    },
+    "stems": {
+      "txs": 1061,
+      "stem_hops_mean": 4.09,
+      "stem_hops_mean_epoch": 3.83,
+      "fluff_per_hop": 0.22,
+      "stem_hops_implied": 4.55,
+      "stem_hops_hist": {
+        "0": 4,
+        "1": 228,
+        "2": 159,
+        "3": 152,
+        "4": 136,
+        "5": 100,
+        "6": 72,
+        "7": 50,
+        "8": 55,
+        "9": 49,
+        "10": 19,
+        "11": 17,
+        "12": 8,
+        "13": 9,
+        "14": 1,
+        "15": 1,
+        "16": 1
+      },
+      "stem_end": {
+        "epoch": 956,
+        "loop": 97,
+        "no_stem": 8
+      },
+      "embargo_rate": 0.0,
+      "loop_rate": 0.0914,
+      "fluff_epoch_share": 0.194,
+      "stem_hops_without_rx": 0
+    }
+  }
+]

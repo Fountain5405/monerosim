@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_074903_x0_legacy_none_s34567",
+ "box": "simbox2",
+ "cell": "x0_legacy_none_s34567",
+ "archived_at": "2026-10-22T07:49:03Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "1h 54m",
+ "exit_code": 0,
+ "min_avail_mb": 11915,
+ "txs_created": 1843,
+ "txs_in_blocks": 1729,
+ "note": "X0 legacy/none replicate",
+ "scored_cell": "legacy/none",
+ "spies": 12,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": 0.133,
+ "light_out_quarters": [
+  0.1326,
+  0.1315,
+  0.1341,
+  0.1337
+ ],
+ "model_out": 0.1363,
+ "fluff_per_hop": 0.194,
+ "stem_txs": 1844,
+ "stem_hops_implied": 5.15,
+ "embargo_rate": 0.0
+}

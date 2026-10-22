@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_114249_lean_24_none_h300_k6_w6h_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k6_w6h_s12345",
+ "archived_at": "2026-10-22T11:42:50Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "1h 52m",
+ "exit_code": 0,
+ "min_avail_mb": 12954,
+ "txs_created": 1053,
+ "txs_in_blocks": 1050,
+ "note": "P1: long-warmup k=6 dedup cell (6.4 h after the last relay start); see E13",
+ "scored_cell": "24/none",
+ "spies": 53,
+ "spy_24s": 6,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0598,
+ "light_out_quarters": [
+  0.0647,
+  0.0613,
+  0.0585,
+  0.0549
+ ],
+ "model_out": 0.0264,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1092,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

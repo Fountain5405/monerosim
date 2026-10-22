@@ -1,0 +1,23 @@
+cell legacy/none   /mnt/ssdpool/monerosim_archives/20261021_235957_lean_legacy_none_h600_k1_s12345
+
+group      nodes spy share out spy share in
+honest       640        0.0666       0.0118
+light        581        0.0749       0.0007
+observer       8        0.0712       0.0004
+user          40         0.052          0.0
+relay        533        0.0767       0.0007
+medium        48        0.0382       0.0009
+miner          5        0.0095       0.0003
+monero-seed     6           0.0       0.4755
+no-list      640        0.0666       0.0118
+
+model (12 slots, one per subnet): 106 spies in 1 /24s, 600 honest reachable in 480 /24s: legacy 0.0726, 24 0.0024, none 0.1511
+light outbound share by quarter of the window: [0.0693, 0.0809, 0.0767, 0.0724]
+
+target: light-node outbound share ~0.15; measured 0.0749: FAIL
+
+stems: 1022 txs, mean hops 4.45, 4.34 on paths ended by a fluff epoch
+  fluff per hop 0.216 (stock 0.2): implied uncensored mean 4.63 hops (target ~5)
+  ended {'epoch': 980, 'no_stem': 17, 'loop': 25}
+  embargo rate 0.0, loop rate 0.0245, fluff epochs 0.198, hops without rx 0
+  hops histogram {0: 2, 1: 202, 2: 174, 3: 148, 4: 126, 5: 99, 6: 46, 7: 56, 8: 39, 9: 32, 10: 20, 11: 18, 12: 20, 13: 7, 14: 7, 15: 7, 16: 3, 17: 4, 18: 7, 19: 1, 21: 1, 22: 1, 23: 1, 25: 1}

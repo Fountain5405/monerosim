@@ -1,0 +1,102 @@
+[
+  {
+    "run": "/mnt/ssdpool/monerosim_archives/20261021_135555_lean_legacy_none_h150_k1_s12345",
+    "cell": "legacy/none",
+    "slots": {
+      "honest": {
+        "out": 0.0475,
+        "in": 0.0067,
+        "nodes": 190
+      },
+      "medium": {
+        "out": 0.0358,
+        "in": 0.0,
+        "nodes": 48
+      },
+      "no-list": {
+        "out": 0.0475,
+        "in": 0.0067,
+        "nodes": 190
+      },
+      "miner": {
+        "out": 0.0099,
+        "in": 0.0,
+        "nodes": 5
+      },
+      "monero-seed": {
+        "out": 0.0003,
+        "in": 0.1421,
+        "nodes": 6
+      },
+      "observer": {
+        "out": 0.0599,
+        "in": 0.0,
+        "nodes": 8
+      },
+      "light": {
+        "out": 0.0679,
+        "in": 0.0,
+        "nodes": 131
+      },
+      "relay": {
+        "out": 0.0711,
+        "in": 0.0,
+        "nodes": 83
+      },
+      "user": {
+        "out": 0.0629,
+        "in": 0.0,
+        "nodes": 40
+      }
+    },
+    "model": {
+      "spies": 26,
+      "spy_24s": 1,
+      "honest_reachable": 150,
+      "honest_reachable_24s": 125,
+      "out_peers": 12,
+      "legacy": 0.0731,
+      "24": 0.0086,
+      "none": 0.1489
+    },
+    "stems": {
+      "txs": 1006,
+      "stem_hops_mean": 4.68,
+      "stem_hops_mean_epoch": 4.5,
+      "fluff_per_hop": 0.201,
+      "stem_hops_implied": 4.98,
+      "stem_hops_hist": {
+        "0": 5,
+        "1": 198,
+        "2": 143,
+        "3": 133,
+        "4": 117,
+        "5": 84,
+        "6": 76,
+        "7": 56,
+        "8": 47,
+        "9": 42,
+        "10": 22,
+        "11": 29,
+        "12": 18,
+        "13": 4,
+        "14": 6,
+        "15": 10,
+        "16": 3,
+        "17": 2,
+        "18": 4,
+        "19": 2,
+        "20": 5
+      },
+      "stem_end": {
+        "epoch": 945,
+        "loop": 50,
+        "no_stem": 11
+      },
+      "embargo_rate": 0.0,
+      "loop_rate": 0.0497,
+      "fluff_epoch_share": 0.198,
+      "stem_hops_without_rx": 0
+    }
+  }
+]

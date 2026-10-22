@@ -1,0 +1,107 @@
+[
+  {
+    "run": "/mnt/ssdpool/monerosim_archives/20261021_102615_x0_legacy_half_s12345",
+    "cell": "legacy/half",
+    "slots": {
+      "honest": {
+        "out": 0.0735,
+        "in": 0.002,
+        "nodes": 407
+      },
+      "medium": {
+        "out": 0.0851,
+        "in": 0.0,
+        "nodes": 48
+      },
+      "ban-list": {
+        "out": 0.0,
+        "in": 0.0,
+        "nodes": 198
+      },
+      "no-list": {
+        "out": 0.1375,
+        "in": 0.0035,
+        "nodes": 209
+      },
+      "miner": {
+        "out": 0.0851,
+        "in": 0.0,
+        "nodes": 5
+      },
+      "monero-seed": {
+        "out": 0.1445,
+        "in": 0.0225,
+        "nodes": 6
+      },
+      "observer": {
+        "out": 0.1553,
+        "in": 0.0,
+        "nodes": 8
+      },
+      "light": {
+        "out": 0.0687,
+        "in": 0.0,
+        "nodes": 348
+      },
+      "relay": {
+        "out": 0.0667,
+        "in": 0.0,
+        "nodes": 260
+      },
+      "user": {
+        "out": 0.0665,
+        "in": 0.0,
+        "nodes": 80
+      }
+    },
+    "model": {
+      "spies": 12,
+      "spy_24s": 6,
+      "honest_reachable": 71,
+      "honest_reachable_24s": 69,
+      "per_ip": 0.1446,
+      "per_24": 0.08
+    },
+    "stems": {
+      "txs": 1887,
+      "stem_hops_mean": 4.13,
+      "stem_hops_mean_epoch": 3.68,
+      "fluff_per_hop": 0.209,
+      "stem_hops_implied": 4.78,
+      "stem_hops_hist": {
+        "0": 4,
+        "1": 395,
+        "2": 350,
+        "3": 266,
+        "4": 203,
+        "5": 179,
+        "6": 120,
+        "7": 111,
+        "8": 71,
+        "9": 56,
+        "10": 43,
+        "11": 23,
+        "12": 25,
+        "13": 13,
+        "14": 8,
+        "15": 5,
+        "16": 5,
+        "17": 4,
+        "18": 1,
+        "19": 2,
+        "22": 1,
+        "25": 1,
+        "26": 1
+      },
+      "stem_end": {
+        "epoch": 1628,
+        "loop": 245,
+        "no_stem": 14
+      },
+      "embargo_rate": 0.0,
+      "loop_rate": 0.1298,
+      "fluff_epoch_share": 0.197,
+      "stem_hops_without_rx": 0
+    }
+  }
+]

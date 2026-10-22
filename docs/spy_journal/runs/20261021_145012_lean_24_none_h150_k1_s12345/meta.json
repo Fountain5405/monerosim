@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_145012_lean_24_none_h150_k1_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h150_k1_s12345",
+ "archived_at": "2026-10-21T14:50:13Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "53m 5s",
+ "exit_code": 0,
+ "min_avail_mb": 15260,
+ "txs_created": 998,
+ "txs_in_blocks": 989,
+ "note": "1 h warmup: the average reads the gray-list drain, not steady state (0.047 to 0.016 by quarter)",
+ "scored_cell": "24/none",
+ "spies": 26,
+ "spy_24s": 1,
+ "honest_reachable": 150,
+ "honest_reachable_24s": 125,
+ "light_out": 0.0282,
+ "light_out_quarters": [
+  null,
+  null,
+  null,
+  null
+ ],
+ "model_out": 0.0086,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1011,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

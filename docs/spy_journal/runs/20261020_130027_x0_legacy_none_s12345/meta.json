@@ -1,0 +1,30 @@
+{
+ "run_id": "20261020_130027_x0_legacy_none_s12345",
+ "box": "phantom",
+ "cell": "x0_legacy_none_s12345",
+ "archived_at": "2026-10-20T13:00:28Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "18m 18s",
+ "exit_code": 1,
+ "min_avail_mb": 487,
+ "txs_created": 0,
+ "txs_in_blocks": 0,
+ "note": "Pilot, 48 spies (40% of reachable), churn 1 h/1 h; ran out of RAM at sim 1 h 43 m (batched relay waves); stopped, no result",
+ "scored_cell": "legacy/none",
+ "spies": 48,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": null,
+ "light_out_quarters": [
+  null,
+  null,
+  null,
+  null
+ ],
+ "model_out": 0.3148,
+ "fluff_per_hop": null,
+ "stem_txs": 0,
+ "stem_hops_implied": null,
+ "embargo_rate": null
+}

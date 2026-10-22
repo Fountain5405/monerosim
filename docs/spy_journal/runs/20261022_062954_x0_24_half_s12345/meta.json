@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_062954_x0_24_half_s12345",
+ "box": "phantom",
+ "cell": "x0_24_half_s12345",
+ "archived_at": "2026-10-22T06:29:55Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 57m",
+ "exit_code": 0,
+ "min_avail_mb": 11216,
+ "txs_created": 1844,
+ "txs_in_blocks": 1810,
+ "note": "X0 24/half, seed 12345; 49% below legacy/half",
+ "scored_cell": "24/half",
+ "spies": 12,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": 0.0347,
+ "light_out_quarters": [
+  0.0371,
+  0.0358,
+  0.0335,
+  0.0326
+ ],
+ "model_out": 0.0825,
+ "fluff_per_hop": 0.199,
+ "stem_txs": 1845,
+ "stem_hops_implied": 5.03,
+ "embargo_rate": 0.0
+}

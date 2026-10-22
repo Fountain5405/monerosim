@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_021628_lean_24_none_h600_k1_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h600_k1_s12345",
+ "archived_at": "2026-10-22T02:17:05Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 12m",
+ "exit_code": 0,
+ "min_avail_mb": 1574,
+ "txs_created": 966,
+ "txs_in_blocks": 933,
+ "note": "746 daemons, min free 1.57 GB; 1 h warmup so drain-dominated (0.009, 0.104, 0.072, 0.055); above the 0.083 one-slot ceiling in Q2 (fallback path)",
+ "scored_cell": "24/none",
+ "spies": 106,
+ "spy_24s": 1,
+ "honest_reachable": 600,
+ "honest_reachable_24s": 480,
+ "light_out": 0.0611,
+ "light_out_quarters": [
+  0.009,
+  0.1039,
+  0.0716,
+  0.055
+ ],
+ "model_out": 0.0024,
+ "fluff_per_hop": 0.196,
+ "stem_txs": 1023,
+ "stem_hops_implied": 5.1,
+ "embargo_rate": 0.0
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_004924_x0_legacy_none_s12345_swaptest",
+ "box": "phantom",
+ "cell": "x0_legacy_none_s12345_swaptest",
+ "archived_at": "2026-10-21T00:50:00Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 1m",
+ "exit_code": 0,
+ "min_avail_mb": 11591,
+ "txs_created": 1919,
+ "txs_in_blocks": 1918,
+ "note": "Swap-as-headroom test of the X0 cell under memory pressure (docs/PERFORMANCE_AND_SCALE.md) [2026-10-22] correction: the run was capped to 12 GB by a cgroup with a 24 GB swap file, so the box-level free RAM shown (11.3 GiB) reflects the cap, not the cell's ~16 GB peak",
+ "scored_cell": "legacy/none",
+ "spies": 12,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": 0.1335,
+ "light_out_quarters": [
+  0.1326,
+  0.1355,
+  0.1335,
+  0.1324
+ ],
+ "model_out": 0.1366,
+ "fluff_per_hop": 0.215,
+ "stem_txs": 1919,
+ "stem_hops_implied": 4.65,
+ "embargo_rate": 0.0
+}

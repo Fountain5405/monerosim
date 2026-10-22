@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_131143_lean_24_none_h71_k1_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h71_k1_s12345",
+ "archived_at": "2026-10-21T13:11:43Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "43m 29s",
+ "exit_code": 0,
+ "min_avail_mb": 15627,
+ "txs_created": 1029,
+ "txs_in_blocks": 995,
+ "note": "Lean H=71 under /24 dedup, 1 h warmup",
+ "scored_cell": "24/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.0212,
+ "light_out_quarters": [
+  null,
+  null,
+  null,
+  null
+ ],
+ "model_out": 0.0181,
+ "fluff_per_hop": 0.196,
+ "stem_txs": 1031,
+ "stem_hops_implied": 5.1,
+ "embargo_rate": 0.0
+}

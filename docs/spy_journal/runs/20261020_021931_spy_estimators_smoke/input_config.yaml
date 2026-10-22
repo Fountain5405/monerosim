@@ -1,0 +1,377 @@
+general:
+  stop_time: 5h
+  simulation_seed: 12345
+  bootstrap_end_time: 4h
+  enable_dns_server: true
+  shadow_log_level: error
+  progress: true
+  runahead: 500ms
+  process_threads: 2
+  native_preemption: true
+  reachable_by_role:
+    user: 0.25
+    relay: 0.5
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+agents:
+  miner-001:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 20
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  miner-002:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 20
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  miner-003:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 20
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  miner-004:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 3s
+    hashrate: 20
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  miner-005:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 4s
+    hashrate: 20
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-001:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2400s
+    transaction_interval: 120
+    activity_start_time: 14400
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-002:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2410s
+    transaction_interval: 120
+    activity_start_time: 14407
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-003:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2420s
+    transaction_interval: 120
+    activity_start_time: 14414
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-004:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2430s
+    transaction_interval: 120
+    activity_start_time: 14421
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-005:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2440s
+    transaction_interval: 120
+    activity_start_time: 14428
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-006:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2450s
+    transaction_interval: 120
+    activity_start_time: 14435
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-007:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2460s
+    transaction_interval: 120
+    activity_start_time: 14442
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-008:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2470s
+    transaction_interval: 120
+    activity_start_time: 14449
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-009:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2480s
+    transaction_interval: 120
+    activity_start_time: 14456
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-010:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2490s
+    transaction_interval: 120
+    activity_start_time: 14463
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-011:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2500s
+    transaction_interval: 120
+    activity_start_time: 14470
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-012:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2510s
+    transaction_interval: 120
+    activity_start_time: 14477
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-013:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2520s
+    transaction_interval: 120
+    activity_start_time: 14484
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-014:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2530s
+    transaction_interval: 120
+    activity_start_time: 14491
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-015:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2540s
+    transaction_interval: 120
+    activity_start_time: 14498
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  user-016:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 2550s
+    transaction_interval: 120
+    activity_start_time: 14505
+    can_receive_distributions: true
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-001:
+    daemon: 'monerod-sim'
+    start_time: 300s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-002:
+    daemon: 'monerod-sim'
+    start_time: 305s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-003:
+    daemon: 'monerod-sim'
+    start_time: 310s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-004:
+    daemon: 'monerod-sim'
+    start_time: 315s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-005:
+    daemon: 'monerod-sim'
+    start_time: 320s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-006:
+    daemon: 'monerod-sim'
+    start_time: 325s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-007:
+    daemon: 'monerod-sim'
+    start_time: 330s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-008:
+    daemon: 'monerod-sim'
+    start_time: 335s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-009:
+    daemon: 'monerod-sim'
+    start_time: 340s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-010:
+    daemon: 'monerod-sim'
+    start_time: 345s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-011:
+    daemon: 'monerod-sim'
+    start_time: 350s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-012:
+    daemon: 'monerod-sim'
+    start_time: 355s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-013:
+    daemon: 'monerod-sim'
+    start_time: 360s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-014:
+    daemon: 'monerod-sim'
+    start_time: 365s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  relay-015:
+    daemon: 'monerod-sim'
+    start_time: 370s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  spy-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+  spy-002:
+    daemon: 'monerod-sim'
+    start_time: 2s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+  spy-003:
+    daemon: 'monerod-sim'
+    start_time: 4s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+  spy-004:
+    daemon: 'monerod-sim'
+    start_time: 6s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+  spy-005:
+    daemon: 'monerod-sim'
+    start_time: 8s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+  spy-006:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+      hide-my-port: false
+  monero-seed-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  monero-seed-002:
+    daemon: 'monerod-sim'
+    start_time: 1s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  monero-seed-003:
+    daemon: 'monerod-sim'
+    start_time: 2s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  monero-seed-004:
+    daemon: 'monerod-sim'
+    start_time: 3s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  monero-seed-005:
+    daemon: 'monerod-sim'
+    start_time: 4s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  monero-seed-006:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      sim-log-txrelay: txrelay.jsonl
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 4200
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

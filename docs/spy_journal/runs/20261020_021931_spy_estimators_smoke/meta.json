@@ -1,0 +1,30 @@
+{
+ "run_id": "20261020_021931_spy_estimators_smoke",
+ "box": "phantom",
+ "cell": "spy_estimators_smoke",
+ "archived_at": "2026-10-20T02:19:31Z",
+ "monerod_sim_sha": "b0c9fb0b2309",
+ "wall": "9m 45s",
+ "exit_code": 0,
+ "min_avail_mb": 13093,
+ "txs_created": 363,
+ "txs_in_blocks": 357,
+ "note": "I3 pipeline smoke: 48 daemons, 6 spies, 363 txs (docs/SPY_ESTIMATORS.md); not a calibrated preset",
+ "scored_cell": "24/none",
+ "spies": 6,
+ "spy_24s": 6,
+ "honest_reachable": 22,
+ "honest_reachable_24s": 22,
+ "light_out": 0.203,
+ "light_out_quarters": [
+  0.1973,
+  0.1987,
+  0.2096,
+  0.2064
+ ],
+ "model_out": 0.2176,
+ "fluff_per_hop": 0.221,
+ "stem_txs": 363,
+ "stem_hops_implied": 4.52,
+ "embargo_rate": 0.0
+}
