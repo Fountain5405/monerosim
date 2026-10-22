@@ -251,37 +251,67 @@ the 4 h window; the report prints the quarters):
 | lean H=300 `legacy` | 0.073 | 0.0707 | 0.073, 0.073, 0.070, 0.067 |
 | lean H=300 `24` | 0.0045 | 0.0459 | 0.081, 0.046, 0.033, 0.024 |
 
-The model holds for `legacy` (7% off at H=150, the cap again). The `24` cells
-don't sit still: the share falls through the window, and at H=150 the average
-is 3x the model while the last quarter is 1.9x and still falling. Outbound
-connections are not permanent here even without churn: an H=150 relay sees 32
-distinct honest peers over the window in 12 slots, so a slot turns over about
-every 1.5 h. Connections made at start from the small early peer lists hold
-more spies than the steady state, and under `24` they take a few hours to age
-out. The cause of the early excess is not isolated. It is not the relay's
-start time (the share is flat across relays in start order), and not the
-observers' lists (the spies sit mid-pack by `last_seen` there, and 175-entry
-lists hold all 26 spies and 149 honest in 125 /24s, the model's pool). Real
-selection also takes the 20 most recently seen candidates after the /24 dedup
-and picks among them with a cubic bias to the freshest (`get_random_index_with_fixed_probability`);
-the model ignores that, and a Monte Carlo of it over the observers' lists
-gives no higher a share than the uniform one.
-
-At H=300 the `24` cell is 10x the model on average and 5x in the last quarter,
-and the first quarter rises with H (0.032, 0.047, 0.081 at H=71, 150, 300; 13,
-26, 53 spies). In the first window 95 of 233 relays hold three or more spy
+The model holds for `legacy` (3-7% off at H=150 and 300, the cap again). The
+`24` cells don't sit still: the share falls through the window, the first
+quarter rises with H (0.032, 0.047, 0.081 at H=71, 150, 300; 13, 26, 53
+spies), and in the first window 95 of 233 H=300 relays hold three or more spy
 outbound peers at once, up to five, so the one-per-/24 cap the model rests on
-is broken early; by the last window 4 hold two and none more. `legacy` breaks
-it too, less: 25 relays hold two or three in the first window. The likely path
-is the fallback to undeduplicated candidates (`step == 1`) when a new relay's
-small first peer list runs out of /24s, since its 12 slots fill within about 3
-sim-s of starting. The relay's list is not dumped, so this is not checked.
+is broken early. By the last window 4 hold two and none more.
 
-So read a `24` cell by its last quarter, not its average, and give it a longer
-warmup before the transactions start (`make_lean.py --warmup 21600`; the
-default is 3600). `lean_24_none_h150_k1_w6h` tests that: if its last quarter
-lands near 0.0086, the model is the steady state and the 4 h cells are still
-converging.
+**Where the early excess comes from: the gray list drains.** A monerod fills
+30% of its outbound slots (4 of 12) from its gray list, uniformly, and the
+rest from the white list. `make_lean.py --probe 3` (`lean_24_none_h300_k1_p3`,
+12 relays at the head and tail of the start order, `net.p2p` at DEBUG,
+0.0467 with quarters 0.083, 0.046, 0.034, 0.025: it reproduces the plain
+cell) logs every pick's pool:
+
+| Relay age | Gray picks | Mean gray list | Mean /24 candidates | Spy picks |
+|---|---|---|---|---|
+| 0-30 min | 348 | 205 | 131 | 3 (0.9%) |
+| 30-60 min | 219 | 145 | 90 | 3 (1.4%) |
+| 60-90 min | 223 | 90 | 52 | 27 (12%) |
+| 90-120 min | 155 | 57 | 34 | 42 (27%) |
+| 120-150 min | 89 | 20 | 10 | 20 (22%) |
+| over 150 min | 5 | 1 | 1 | 0 |
+
+The honest entries leave the gray list as the relay learns the network (its
+white list grows to all 352 IPs), while the spies stay: after the first spy in
+the /24 the dedup skips the rest. With 300 honest nodes and no churn the gray
+list is drained in about 2.5 h and what is left is mostly spy IPs. With no
+unconnected /24 among the candidates, step 0 finds none and the fallback picks
+from the undeduplicated list: 39 of 39 such picks were spies, and 23 of 38
+with one candidate left. The startup picks are fine (216 entries, 139 /24
+candidates, 2 spies in 144), so it is not the small first list. The spy connections
+made in this phase age out over the next hours, which is the decay. After the drain a relay picks only from the white
+list, and there the spies are picked at about the uniform rate (12 spy picks
+in 1,707, against 7.9 expected); a Monte Carlo of the real recency-biased
+selection over those relays' own late white lists gives 0.0049 against the
+uniform 0.0045.
+
+On mainnet the gray list holds thousands of unverified peers and churn keeps
+refilling it, so it would not drain; the drain is the static, small, no-churn
+network. The `legacy` cells have the same fallback and drift down more
+slowly (H=71: 0.070 to 0.052).
+
+**Reading a `24` cell.** Give it a long warmup before the transactions start
+(`make_lean.py --warmup 21600`; the default is 3600) and read its last
+quarter, not its average.
+`lean_24_none_h150_k1_w6h` is the H=150 `24` cell with the transactions
+starting 8 h in instead of 3 h (80 min wall):
+
+| Cell | Model | Window average | By quarter |
+|---|---|---|---|
+| lean H=150 `24`, 6 h warmup | 0.0086 | 0.0145 | 0.016, 0.014, 0.015, 0.013 |
+
+The share is flat, so the decay is the drain and it is over by then. The 4 h
+cell's last quarter (0.016) was already near this plateau. The plateau is
+still 1.7x the model (0.17 of nodes holding a spy slot against 0.10). Ruled
+out: connection lifetime (spy and honest stretches are both 8.3 windows),
+recency, and the startup list. The relay's inbound connections block about 25
+/24s from its candidates, which adds about 12% (the model skips only the
+node's own picks). That leaves about 1.5x unexplained. The probe cell cannot
+resolve it: after the drain it has 1,298 white picks and the spy share of
+them is 10 against 6 expected, a 1.3-sigma difference.
 
 **Not covered.** Stems and estimators at these sizes (the cells keep 40 users,
 so a few hundred txs), churn, and more than one seed per point.

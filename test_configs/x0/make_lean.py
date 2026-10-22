@@ -36,6 +36,10 @@ OUT = HERE / "cells"
 SEED_IPS = ["176.9.0.187", "88.198.163.90", "192.99.8.110", "37.187.74.171", "88.99.195.15", "5.104.84.64"]
 FIXED_HONEST = 5 + 48 + 8 + 6   # miners + medium + observers + seeds
 SPY_NODE0 = 828                  # NA GML nodes 828.. as in X0
+# --probe: the monitor log categories plus net.p2p:DEBUG, which logs each outbound pick's
+# "Looking at N subnet-deduplicated peers out of M" and the candidate it considers.
+PROBE_LOG = ("*:WARNING,blockchain:INFO,txpool:INFO,net.p2p:DEBUG,net.p2p.msg:INFO,daemon.rpc:INFO,"
+             "global:INFO,stacktrace:INFO,logging:INFO,msgwriter:INFO,verify:FATAL,serialization:FATAL,perf.*:FATAL")
 
 
 def opts(d, ban):
@@ -79,13 +83,22 @@ def agents_yaml(a, ban):
     ra = (r + 1) // 2
     rb = r - ra
     T = a.interval
-    for tag, n, first, adopter, off in (("a", ra, 1, True, 0), ("b", rb, 1, False, T)):
+    for tag, n, adopter, off in (("a", ra, True, 0), ("b", rb, False, T)):
         if n <= 0:
             continue
-        w(f"  relay-r-{tag}-{{001..{n:03d}}}:")
-        w("    daemon: monerod-sim")
-        w(f"    start_time: {1200 + off}s\n    start_time_stagger: {2 * T}s")
-        w("    daemon_options: " + opts({"hide-my-port": "false"}, ban if adopter else ""))
+        k = min(a.probe, n // 2)
+        # head and tail relays of each start order are probes; the middle is plain
+        for lo, hi, probe in ((1, k, True), (k + 1, n - k, False), (n - k + 1, n, True)):
+            if lo > hi:
+                continue
+            w(f"  relay-r-{tag}-{{{lo:03d}..{hi:03d}}}:")
+            w("    daemon: monerod-sim")
+            w(f"    start_time: {1200 + off + (lo - 1) * 2 * T}s\n    start_time_stagger: {2 * T}s")
+            extra = {"hide-my-port": "false"}
+            if probe:
+                extra["peerlist-dump-file"] = "peerlist_dump.jsonl"
+                extra["log-level"] = f'"{PROBE_LOG}"'
+            w("    daemon_options: " + opts(extra, ban if adopter else ""))
     w("")
 
     for rng, adopter in (("001..004", True), ("005..008", False)):
@@ -149,6 +162,9 @@ def main():
     ap.add_argument("--list", choices=["none", "half"], default="none")
     ap.add_argument("--seed", type=int, default=12345)
     ap.add_argument("--interval", type=int, default=20, help="sim-seconds between relay starts")
+    ap.add_argument("--probe", type=int, default=0,
+                    help="relays at the head and at the tail of each start order that dump their peer list "
+                         "every 30 s and log net.p2p at DEBUG (a few MB each; 0 = none)")
     ap.add_argument("--warmup", type=int, default=3600,
                     help="sim-seconds between the last relay start and the first user activity; outbound "
                          "connections made from the early, small peer lists last ~1.5 h, so a /24 cell's "
@@ -157,7 +173,7 @@ def main():
     if a.spies is None:
         a.spies = round(0.1765 * a.reachable)
     OUT.mkdir(exist_ok=True)
-    wtag = "" if a.warmup == 3600 else f"_w{a.warmup // 3600}h"
+    wtag = ("" if a.warmup == 3600 else f"_w{a.warmup // 3600}h") + (f"_p{a.probe}" if a.probe else "")
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
     out = OUT / f"{stem}.yaml"
     ban = ""
