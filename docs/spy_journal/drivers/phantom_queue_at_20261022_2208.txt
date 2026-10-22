@@ -1,0 +1,2 @@
+lean_24_half_h300_k1_w6h_m113_s12345
+lean_24_half_h300_k21_w6h_m2_n600_c50_s12345
