@@ -131,6 +131,10 @@ with a 24 GB swap file on NVMe ran the X0 cell 7% slower (`docs/PERFORMANCE_AND_
 ~19: at chain height 2112 (about 20.4 h) every daemon re-derives its RandomX cache at once and the box ran out of
 memory in seconds, which the driver's 20 s sampling cannot catch. `simbox3` (100 GB) is the only box for longer
 cells until the spike has been measured there.
+*(2026-10-23 10:40: superseded. The spike was measured on `simbox3` (80 GB in 90 s, E18) and swap cannot cover it; the
+`--sim-fixed-randomx-seed` patch removes it (P9, E20) and is now in `monerod-sim` on all three boxes. Cells that stop after about
+simulated hour 19 need `make_lean.py --fixed-rx-seed`; the 30 h cells on `phantom` (passed block 2112 at simulated 20:12)
+and `simbox2` (20:05) ran through it with 11-13 GB free.)*
 
 **Layout rule.** A spy /24 must hold only spies. Placement is sequential from each
 region's first node and prefix sharing packs relays onto its last nodes, so spy pins
