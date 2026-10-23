@@ -23,11 +23,15 @@
 # the last at 4,190 s. 313 hosts on gml_processing/1200_nodes_caida_with_loops.gml.
 # Regenerate the base with scripts/make_sop_scale_base.py (see its header).
 #
-# Arm = the 12-daemon sop_v3_hs_h10_72h cell share_sop2_hs_a045_d5, unchanged:
-# window_stubborn, reject_aware, embedded_shares, window_objects 48, weigh sop,
-# give_up_depth 5, use_honest_shares true, SoP w=16 on the honest miners and the
-# attacker; the relays target (every added relay, the six seeds, the two old
-# relays) and the bridge run monerod-sim with SoP on.
+# Arm = the v4 campaign cell share_sop2_hs_a045_d5 (sop_v4_h10_72h, measured
+# 0.054 over 72 h on 12 daemons; docs/20261022_sop_v4_results.md):
+# window_stubborn, reject_aware, embedded_shares, window_rule 20261020,
+# window_objects 32, weigh sop, give_up_depth 5, use_honest_shares true,
+# tip_shares true (the counting attacker; count_own_tip_shares defaults
+# true), SoP w=16 on the honest miners and the attacker; the relays target
+# (every added relay, the six seeds, the two old relays) and the bridge run
+# monerod-sim with SoP on. Updated 2026-10-23 from the pre-v4 attacker
+# (window_objects 48, no window_rule, no tip_shares).
 #
 # CPU: the run takes every free physical core (run_sim_helpers.py cpu-plan), so
 # start it when no other 12-daemon lane is running; with two lanes up it gets
@@ -47,9 +51,11 @@ axes:
           strategy: window_stubborn
           reject_aware: 'true'
           embedded_shares: 'true'
-          window_objects: '48'
+          window_rule: '20261020'
+          window_objects: '32'
           weigh: sop
           use_honest_shares: 'true'
+          tip_shares: 'true'
           give_up_depth: '5'
         daemon_options:
           sim-share-or-perish: true
