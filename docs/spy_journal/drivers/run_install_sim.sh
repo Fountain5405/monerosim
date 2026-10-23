@@ -6,7 +6,7 @@ SCRIPT_DIR="$HOME/monerosim"
 MONEROSIM_HOME="$HOME/.monerosim"
 MONEROSIM_BIN="$MONEROSIM_HOME/bin"
 MONERO_DIR="$SCRIPT_DIR/sibling_repos/monero"
-BUILD_JOBS=40
+BUILD_JOBS=${BUILD_JOBS:-$(nproc)}
 log_info() { echo "[info] $*"; }
 log_ok()   { echo "[ok] $*"; }
 log_err()  { echo "[err] $*" >&2; }

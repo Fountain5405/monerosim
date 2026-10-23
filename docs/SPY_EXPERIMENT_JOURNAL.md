@@ -13,7 +13,7 @@ to nothing but spies about 2-3 h after they start, the fallback then picks spies
 connections outlast the 6 h warmup. Every `24` share measured so far is therefore the tail of a
 transient. P7 (filed 22:36) tests whether a 16 h and a 24 h warmup remove it; those cells are
 queued on `phantom` and `simbox3`. `simbox3`, the third box, passed its platform check
-(P6a, 0.0641; about 2x slower than `phantom`) and is running the 24 h cell. Entries E1-E20 below; open questions in section 6.
+(P6a, 0.0641; about 2x slower than `phantom`) and is running the 24 h cell. Entries E1-E21 below; open questions in section 6.
 
 ## 1. How this journal works
 
@@ -207,6 +207,8 @@ own selection rule and its spy layout.
 | `20261023_024331_lean_24_none_h300_k21_w13h_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1662 (0.0822) | 0.167, 0.169, 0.167, 0.163 | 0.211 | 1099 | 2h 37m | 11.5 | 0 | E19 / P8a: X1 tail, no list, 13 h warmup (stop 19 h, window 15-19 h), seed 12345; 0.1662 vs 0.1946 at the 6 h warmup (E15); flat by quarter |
 | `20261023_024332_lean_24_half_h300_k21_w13h_m2_n600_c50_s12345` | simbox2 | 42 / 21 | 300 / 242 | 0.1309 (0.0822) | 0.130, 0.130, 0.130, 0.133 | 0.207 | 1096 | 2h 32m | 12.5 | 0 | E19 / P8b: X1 tail, ban list on half the nodes naming 10 of 21 /24s, 13 h warmup, seed 12345; 0.1309 = 0.79 x the no-list cell |
 | `20261023_035553_lean_24_none_h71_k1_w18h_fx_s12345` | simbox3 | 13 / 1 | 71 / 60 | 0.0094 (0.0181) | 0.011, 0.008, 0.009, 0.010 | 0.214 | 1147 | 3h 29m | 86.5 | 0 | E20 / P9: patched monerod-sim (--sim-fixed-randomx-seed on every daemon), H=71, to 22.5 h simulated; passed block 2112 at sim 19:55 with no memory step; all 124 daemons end at height 2188 |
+| `20261023_052647_lean_24_none_h300_k21_w13h_m2_n600_s23456` | simbox2 | 42 / 21 | 300 / 240 | 0.1626 (0.0831) | 0.165, 0.166, 0.161, 0.159 | 0.192 | 1099 | 2h 33m | 12.5 | 0 | E21 / P10b: seed replicate of the 13 h tail cell (seed 23456); 0.1626 vs 0.1662 for seed 12345 |
+| `20261023_052647_lean_24_none_h300_k21_w13h_p3_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1626 (0.0822) | 0.163, 0.162, 0.164, 0.162 | 0.191 | 1097 | 2h 37m | 11.5 | 0 | E21 / P10a: the tail probe (first/last 3 relays of each start order log picks and dump lists), 13 h warmup, seed 12345; 0.1626 vs 0.1662 without the probe |
 <!-- register:end -->
 
 ## 4. Entries
@@ -740,6 +742,51 @@ about 30 GB by the same arithmetic, which would have shown.
 **Next.** The 24 h `core` cell with the flag (P7b) started on `simbox3` at 07:27. `phantom` and `simbox2` are rebuilt
 with the patch once their cells end (about 08:05); then all three run long cells with `--fixed-rx-seed`.
 
+### E21. The `tail` excess is the stock rule's steady state; `core`'s has a gap left (2026-10-23 05:26-08:06, `phantom` and `simbox2`)
+
+Two 13 h-warmup `tail` cells (stop 19 h, window 15-19 h; P10). **(a) The probe** `lean_24_none_h300_k21_w13h_p3_m2_n600_s12345`
+(`phantom`, 158 min, 11.8 GB lowest free RAM): the same cell as E19's with the first and last 3 relays of each start order
+logging picks and dumping lists. Light-node share **0.1626** (E19 without the probe: 0.1662; by quarter 0.1629, 0.1621,
+0.1639, 0.1616). `sp_r` precision 1.000, recall 0.047 (49 of 1,028, its ceiling), 20 of 40 senders exposed.
+**(b) The seed replicate** `..._s23456` (`simbox2`, 153 min): light-node share **0.1626** (seed 12345: 0.1662; by quarter
+0.1651, 0.1658, 0.1611, 0.1586), users 0.0502, `sp_r` precision 1.000, recall **0.031** (32 of 1,027, its ceiling), 16 of 40 senders
+exposed. The seed moves the share by 2%; it moves the recall ceiling from 0.059 to 0.031, which P10b did not allow for.
+**What the picks say** (12 probe relays, `probe_picks.py`; the script's "uniform expects" column assumes one spy /24 and does
+not apply; for 21 spy /24s among about 239 candidate /24s the uniform share is 21/239 = 0.088):
+
+| Picks | n | spies | share |
+|---|---|---|---|
+| Gray, relay age under 1 h | 570 | 86 | 0.15 |
+| White, age 1-3 h | 469 | 132 | **0.281** |
+| White, age over 3 h | 6,430 | 1,356 | **0.211** |
+| Gray, age over 3 h | 38 | 0 | - |
+
+Early gray picks are near uniform (0.12-0.17); after the lists settle every pick is a white-list pick and a fifth of them
+are spies, 2.4x the uniform 0.088. **H1 of P10, "the drain's connections persist and new picks are at the model" (0.06-0.11),
+is refuted; H2, "the steady-state picks favour spies" (0.12 or more), is supported.**
+**The stock rule explains it.** `recency_model.py`'s Monte Carlo of the rule (one random IP per unconnected /24, sort by
+`last_seen`, keep the 20 newest, cubic bias) over the probe relays' own white lists after 3 h (540 dumps) gives **0.190** spy
+share per slot; the cell's relays hold 0.1836 (other relays) to 0.1995 (probe relays), and the picks are 0.211. In those lists
+the spies' mean `last_seen` rank percentile is 0.39 (newer than the middle). The same model over the *observers'* lists, which
+is what E14 used to rule recency out, gives 0.060-0.079 (spy rank 0.58, older): the observers do not make outbound connections
+the way relays do, so their lists are not the relays'. The same model over the `core` probe relays' lists gives 0.0054, the
+model's value, so recency does not explain `core`.
+**Connection lifetimes** (`conn_life.py`, the window): in the `tail`, a (relay, peer) pair appears in 12.8 five-minute windows for
+spies (2.0 stretches, about 32 min each) and 21.5 for honest peers (2.5 stretches, about 43 min); in `core`, 18.5 windows in
+1.14 stretches for spies (about 81 min) and 19.4 in 2.41 for honest peers (about 40 min). A slot is refilled within the hour.
+**Reading.** (1) The `tail` excess (0.163-0.166 light, 0.185-0.19 relays, against the 0.0822 ceiling) is a stationary property
+of the stock selection rule in these lists, not a transient: P11a, the 30 h `tail` cell, should read above its predicted
+0.10-0.16 if this is right. (2) Why the spies are newer in the relays' lists was not tested; a feedback is plausible (a
+connection refreshes the peer's `last_seen`, so a peer once connected is picked again), and whether it exists on mainnet is open.
+(3) **A correction to E16.** E16 said the spy connections made during the drain "stay up". The lifetimes above say they last an hour
+or two, not until hour 8-12, and in the `core` probe the 12 probe relays hold 0.0295 of their slots in the window (the other
+relays 0.0417) against white picks of 0.0047 over ages above 3 h. The drain's gray picks (E16) explain the peak at hour 3.5, but
+the slow decay to hour 12 is **not** explained by persistence and is not yet explained. P7b (the 24 h `core` cell) will show
+where it ends. (`probe_relay_share.py` gives the slot shares.)
+**Scores (P10).** (a) H2 supported, H1 refuted, as above; the gray-pick clause (at least 90% spies at 0-1 candidates) could not be
+tested (5 picks). (b) light share 0.1626 in 0.14-0.19: hit; users 0.0502 in 0.035-0.06: hit; precision 1.000: hit; recall 0.031
+outside 0.045-0.07: **missed**, though equal to its ceiling; 16 of 40 in 15-23: hit.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -900,6 +947,23 @@ chain and layout are the same, the random draws are not): light share **0.14-0.1
 precision 1.000 and recall within 0.045-0.07 and equal to the ground-truth ceiling, 20+-transaction senders exposed
 15-23 of 40.
 
+*Outcome, 2026-10-23 08:29 (E21):* (a) H2 supported (white picks of spies 0.211 after 3 h, against 0.06-0.11 for H1); the stock rule's recency model over the relays' own lists gives 0.190. (b) share, users, precision and exposure in range; recall 0.031 (ceiling 0.031) below 0.045-0.07: missed.
+
+**P11, filed 2026-10-23 07:30, before the cells are queued (E20).** Two 24 h-warmup cells with `--sim-fixed-randomx-seed` on every
+daemon (stop at 30 h, window 26-30 h, seed 12345), the first long cells that can run on the 32 GB boxes.
+(a) `tail`, no list (`lean_24_none_h300_k21_w24h_m2_n600_fx_s12345`, `phantom`): the relays' spy share fell by 12% between
+hours 8 and 19 (E19), which if it continues gives a light-node share of **0.10-0.16** (E19: 0.1662 at a 13 h
+warmup; the ceiling is 0.0822). A value above 0.16 means the excess is a steady state, not a slow transient (H2 of P10).
+Prior 55% for the range.
+(b) `core` with the list on half the honest nodes (`lean_24_half_h300_k1_w24h_m113_fx_s12345`, `simbox2`): if `core`'s excess
+decays to the model (P7b: 0.005-0.014 without a list), the list gives about 0.5 x that: light-node share **0.0025-0.007**
+(E17: 0.0162 at a 6 h warmup, which was 0.46 x the no-list cell). Unreachable users with 20 or more transactions
+exposed: at most 1 of 40. `sp_r` precision 1.00 where it makes any guess.
+Both runs also test whether a 32 GB box holds 30 simulated hours: lowest free RAM above 4 GB (the 12 h `core` cell bottomed
+at 9.8 GB, the 20 h one at 10.3 GB, and `simbox2`'s memory was flat for two hours before the boundary).
+
+*Note, 2026-10-23 08:29:* E21 gives a reason to expect (a) to read **above** 0.16 (the `tail` excess looks like a steady state of the stock rule at about 0.16-0.17 light), which would be a miss of the range, not a contradiction of the data.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -957,6 +1021,8 @@ in the conversation.
 | 10-23 03:58 | New patch `patches/monero-sim-fixed-randomx-seed.patch` (`--sim-fixed-randomx-seed`, off by default; pins the RandomX seed height to 0, so there is no epoch change at block 2113), added to `setup.sh`'s list; `make_lean.py --fixed-rx-seed` puts the flag in `daemon_defaults`. Built into `monerod-sim` on `simbox3` only (old binary kept as `~/.monerosim/bin/monerod-sim.pre-fixedseed`) by running `install_sim_monerod` alone | swap cannot cover the spike: `simbox3`'s 24 h cell tripped the guard at 350 MB free after growing by 80 GB in 90 s and still rising (E18); the patch removes the cause. Below block 2113 the seed is height 0 either way, so cells that stop earlier behave identically. Risk: a different build from the other boxes; the flag does nothing unless set | `git checkout setup.sh`, delete the patch; on `simbox3` copy the `.pre-fixedseed` binary and provenance back | agent |
 | 10-23 03:58 | `simbox3` queue restarted at 03:55: P9's patch test (`lean_24_none_h71_k1_w18h_fx_s12345`, to 23 h simulated), then the 24 h `core` cell with the flag (`..._w24h_m113_fx_s12345`, P7b), then the four 6 h replicates | the patch must pass block 2113 before anything depends on it; the 24 h cell is the one P7 needs; the replicates stay as filler | edit `~/queue/q.txt` on `simbox3` | agent |
 | 10-23 05:28 | Two more 19 h cells (P10 filed first): a `tail` probe (`..._w13h_p3_m2_n600_s12345`) on `phantom` and a seed replicate of the 13 h `tail` cell (seed 23456) on `simbox2` | the `tail` relay excess did not decay (E19), so its cause is unknown and X1's headline cell rests on it; both boxes were idle; both cells stop at hour 19 so the stock binary is safe | delete the lines from the queue files | agent |
+| 10-23 08:05 | Rebuilt `monerod-sim` with the fixed-seed patch on `simbox2` (old binary kept as `~/.monerosim/bin/monerod-sim.pre-fixedseed`; new sha256 `345d4ced95f1...`), then started `lean_24_half_h300_k1_w24h_m113_fx_s12345` (P11b, 30 simulated hours) | P9 passed on `simbox3` (E20); the box was idle and this is the first long cell it can run | restore the `.pre-fixedseed` binary and provenance | agent |
+| 10-23 08:10 | Same on `phantom` (new sha256 `1472ed18703f...`), then started `lean_24_none_h300_k21_w24h_m2_n600_fx_s12345` (P11a, 30 simulated hours) | as above; the memory of a 30 h run on a 32 GB box is unmeasured, the driver's 1.5 GB guard applies | restore the `.pre-fixedseed` binary and provenance | agent |
 | 10-22 14:40 | X1 starts before X0's replicates finish | X0's remaining runs do not change the stock-binary baseline X1 needs; both boxes are otherwise full | - | agent |
 | 10-22 14:40 | `simbox2` keeps the old `make_lean.py`/`spy_ban_list.py` until an X1 cell has to run there | the cells it runs now were generated here with the layout check and copied (md5 checked) | - | agent |
 | 10-22 14:40 | The spy ban list for X1 tail cells names the densest 50% of /24s at first | the real list names the dense fleet and part of the tail; the true coverage is unknown, so 100% and 50% bracket it | `--ban-coverage` | agent |
