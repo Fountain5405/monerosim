@@ -24,7 +24,8 @@ the `tail` fleet to 0.093 light (E25; the list naming 10 of 21: 0.131): adopters
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
 the whole network) is open question 8. Running: `simbox2` has P15 (the `legacy` `tail` replicate at seed 23456); `phantom` has
-P16a (`tail` at 1 per /24, 24 h); `simbox3` finishes a 6 h filler, then P16b (8 per /24, 24 h), then the last two fillers. Entries
+P16a (`tail` at 1 per /24, 24 h); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
+seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
 E1-E25 below; predictions P1-P16 in section 5.
 
 ## 1. How this journal works
@@ -250,6 +251,7 @@ own selection rule and its spy layout.
 | `20261023_140542_lean_24_none_h300_k1_w6h_m113_s23456` | simbox3 | 113 / 1 | 300 / 240 | 0.0428 (0.0046) | 0.055, 0.045, 0.039, 0.033 | 0.203 | 1083 | 3h 8m | 77.5 | 0 | E10 replicate (filler): core at a 6 h warmup, seed 23456, on simbox3; light 0.0428 against 0.0352 at seed 12345 on phantom (the transient's tail at hours 8-12, so seed spread here is spread in the drain, not in a steady state) |
 | `20261023_151500_lean_24_none_h300_k21_w13h_m1_n600_s12345` | phantom | 21 / 21 | 300 / 242 | 0.1978 (0.0822) | 0.197, 0.196, 0.201, 0.198 | 0.192 | 1099 | 2h 32m | 12.2 | 0 | E24/P13a: tail at 1 spy per /24 (21 spies); light 0.1978 flat against 0.1662 at 2 per /24 (E19) and 0.1749 at 8 (P13b): P13a's dilution range 0.18-0.27 hit, but the three points are not 1/m and the E24 candidate-count expectation (0.16-0.18) was wrong; relays 0.225, users 0.0605 |
 | `20261023_153612_lean_24_half_h300_k21_w13h_m2_n600_s12345` | simbox2 | 42 / 21 | 300 / 242 | 0.0928 (0.0822) | 0.091, 0.094, 0.095, 0.091 | 0.193 | 1095 | 2h 34m | 12.6 | 0 | E25/P14: the tail cell with the full 21-/24 ban list on half the honest nodes (165 adopters); light 0.0928 (P14's 0.08-0.12 hit), adopters 0.0 (hit), the scorer's non-adopter group 0.1537 (0.17-0.24 missed below, slot-weighted with the five 100-peer miners), relays 0.1058 = 1.14x light (hit); the 50% list read 0.1309 and no list 0.1662 (E19) |
+| `20261023_171700_lean_24_none_h300_k21_w6h_m2_n600_s23456` | simbox3 | 42 / 21 | 300 / 240 | 0.1763 (0.0831) | 0.177, 0.176, 0.177, 0.175 | 0.216 | 1095 | 2h 59m | 79.8 | 0 | simbox3 filler: tail 6 h seed replicate (seed 23456) of the E10/E19 cell; light 0.1763 |
 <!-- register:end -->
 
 ## 4. Entries
@@ -421,6 +423,15 @@ the long-warmup k=6 cell (section 5, P1).
 Both defenses together (`24/half` against `legacy/none`) are -74%; that is not the
 dedup effect.
 Embargo rate reads 0.0 in every cell and the plan gives no reference figure (section 6).
+
+*2026-10-23 20:40, X1 presets at the 6 h warmup, seed replicates (`simbox3` fillers, run while its queue
+waited for the 24 h cells).* `core` (113 spies, 1 /24): seed 12345 0.0352 (`phantom`, E14), seed 23456 **0.0428**
+(+22%; quarters 0.055, 0.045, 0.039, 0.033 against 0.045, 0.037, 0.032, 0.027). `tail` (42 spies, 21 /24s): seed 12345
+0.1946 (`phantom`, E15), seed 23456 **0.1763** (-9%; quarters 0.177, 0.176, 0.177, 0.175 against 0.198, 0.195,
+0.195, 0.191). Both cells read the same way as their first seeds: `core` is still inside its drain transient at 6 h (every
+quarter falls), which is where a 22% seed spread is expected (E22 puts the transient's size at 7x the model here), and
+`tail` is flat from the first quarter. Exposure in the `tail` replicate: `sp_r` precision 1.00, recall 0.067, 21 of 40
+twenty-transaction users attributed (seed 12345: 18 of 40). The seed-34567 fillers for both cells are queued behind P16b.
 
 ### E11. Spy-/24 placement and the ban-list coverage knob (2026-10-22)
 
