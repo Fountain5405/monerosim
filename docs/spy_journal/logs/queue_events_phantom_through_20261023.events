@@ -84,3 +84,7 @@ share fluff_per_hop=0.191 stem_txs=1097 run=/mnt/ssdpool/monerosim_archives/2026
 12:01 DONE lean_24_none_h300_k21_w24h_m2_n600_fx_s12345 exit=0 wall=228m min_avail_mb=10925 light_out_share=0.1572
 share fluff_per_hop=0.196 stem_txs=1099 run=/mnt/ssdpool/monerosim_archives/20261023_081108_lean_24_none_h300_k21_w24h_m2_n600_fx_s12345
 12:01 QUEUE EMPTY
+12:37 START lean_legacy_none_h300_k21_w13h_m2_n600_s12345 run=/mnt/ssdpool/monerosim_archives/20261023_123723_lean_legacy_none_h300_k21_w13h_m2_n600_s12345
+15:14 DONE lean_legacy_none_h300_k21_w13h_m2_n600_s12345 exit=0 wall=156m min_avail_mb=11768 light_out_share=0.2857
+share fluff_per_hop=0.224 stem_txs=1099 run=/mnt/ssdpool/monerosim_archives/20261023_123723_lean_legacy_none_h300_k21_w13h_m2_n600_s12345
+15:15 START lean_24_none_h300_k21_w13h_m1_n600_s12345 run=/mnt/ssdpool/monerosim_archives/20261023_151500_lean_24_none_h300_k21_w13h_m1_n600_s12345

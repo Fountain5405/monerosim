@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_123723_lean_legacy_none_h300_k21_w13h_m2_n600_s12345",
+ "box": "phantom",
+ "cell": "lean_legacy_none_h300_k21_w13h_m2_n600_s12345",
+ "archived_at": "2026-10-23T12:37:58Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "2h 35m",
+ "exit_code": 0,
+ "min_avail_mb": 11768,
+ "txs_created": 1037,
+ "txs_in_blocks": 1026,
+ "note": "E23/P12: the legacy (v0.18.4.2 selection) partner of the 13 h tail cell (E19: 0.1662); light 0.2857 flat, 2.34x the legacy model (0.122); relays 0.3256, no decay from hour 5 to 19 and a stationary start-order gradient (quarters 0.18/0.27/0.37/0.48). P12's 0.16-0.26 missed above; the 24/legacy ratio is 0.58, below the predicted 0.65-1.0: stock /24 dedup cuts this diversified fleet's share by 42%",
+ "scored_cell": "legacy/none",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.2857,
+ "light_out_quarters": [
+  0.2862,
+  0.2831,
+  0.2856,
+  0.288
+ ],
+ "model_out": 0.1221,
+ "fluff_per_hop": 0.224,
+ "stem_txs": 1099,
+ "stem_hops_implied": 4.46,
+ "embargo_rate": 0.0
+}

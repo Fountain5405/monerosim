@@ -5,7 +5,7 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-23, 14:15).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+**Status (2026-10-23, 15:25).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
 cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
 target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
 its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
@@ -14,12 +14,13 @@ drain that ends at the model in about a day (0.0044 light against the model's 0.
 on half the nodes, 0.0025 (0.57x the no-list cell) and no user exposed. `tail` (42
 spies in 21 /24s): 0.157, a slow per-relay relaxation set by when the relay started, the latest-started relays still at 3x
 the model's ceiling after 30 h; the stock rule's recency bias over the relays' own lists reproduces it (E21), and E22
-infers why it survives for a /24-diversified spy and not a dense one (P13 tests that). For the unreachable users X1 scores,
+infers why it survives for a /24-diversified spy and not a dense one (P13 tests that). Under the old rule (v0.18.4.2, E23) the
+same fleet reads 0.286, 2.34x its model, with no relaxation at all: stock dedup removes 42% of its slots (the models said 33%), and
+the lock-in is not a dedup artefact. For the unreachable users X1 scores,
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
-the whole network) is open question 8. Running: P12 (the `legacy` partner of the `tail` cell, `phantom`) and P13b (`tail` at
-8 spies per /24, `simbox2`); queued: P13a (`tail` at 1 spy per /24, `phantom`); `simbox3` is on the four 6 h-warmup filler
-replicates. Entries E1-E22 below; predictions P1-P13 in section 5.
+the whole network) is open question 8. Running: P13a (`tail` at 1 spy per /24, `phantom`) and P13b (`tail` at 8 spies per /24,
+`simbox2`); `simbox3` is on the four 6 h-warmup filler replicates. Entries E1-E23 below; predictions P1-P13 in section 5.
 
 ## 1. How this journal works
 
@@ -170,7 +171,7 @@ afterwards and are clean.
   scratch directory; they are kept as they ran in `docs/spy_journal/adhoc/`. They are
   not tested and are not maintained.
 - The queue event logs are snapshots (`queue_events_<box>_through_<date>.events`), refreshed when the journal is
-  updated; the latest are through 2026-10-23 14:05 (`simbox3`) and 12:12 (`phantom`, `simbox2`); the earlier snapshots are kept.
+  updated; the latest are through 2026-10-23 15:15 (`phantom`), 14:05 (`simbox3`) and 12:12 (`simbox2`); the earlier snapshots are kept.
 - Entries E1-E12 were written after the fact (section 1); E13 onwards were written when the result came in.
 - *(2026-10-23 14:40, from the review)* The `half` ban list at `--ban-coverage 0.5` is tie-broken with the simulation seed
   (open question 9), so a seed replicate of a `half` `tail` cell also changes which 10 of the 21 /24s are banned. One such
@@ -239,6 +240,7 @@ own selection rule and its spy layout.
 | `20261023_072719_lean_24_none_h300_k1_w24h_m113_fx_s12345` | simbox3 | 113 / 1 | 300 / 242 | 0.0044 (0.0045) | 0.004, 0.005, 0.004, 0.004 | 0.199 | 1093 | 6h 33m | 76.6 | 0 | E22c/P7b: the 24 h-warmup core cell (no list) on the patched binary, 1.6x slower than the 32 GB boxes; light 0.0044 at the model (0.0045), relays 0.0050; P7b's light range 0.005-0.014 missed by 0.0006 below (its floor sat above the model), E18's relay extrapolation 0.005-0.007 hit at the edge; 1 of 40 twenty-tx users exposed; no memory step at block 2112 (daemons 15.6-16.0 GB from hour 6 to 24) |
 | `20261023_080537_lean_24_half_h300_k1_w24h_m113_fx_s12345` | simbox2 | 113 / 1 | 300 / 242 | 0.0025 (0.0045) | 0.002, 0.003, 0.003, 0.002 | 0.197 | 1090 | 4h 4m | 9.7 | 0 | E22 / P11b: X1 core with the spy ban list on half the honest nodes, 24 h warmup with --sim-fixed-randomx-seed (stop 30 h, window 26-30 h), seed 12345; 0.0025 flat by quarter (6 h warmup, E17: 0.0162); adopters 0.0, non-adopters 0.0148 (with the miners); relays 0.0027, users 0.0019; sp_r made no guess (0 of 1,015 user txs stemmed to a spy), 0 of 40 exposed; relay curve reaches the half-list model (0.0023) by hour 28; min free RAM 10.0 GB over 30 simulated hours |
 | `20261023_081108_lean_24_none_h300_k21_w24h_m2_n600_fx_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1572 (0.0822) | 0.159, 0.159, 0.157, 0.153 | 0.196 | 1099 | 3h 47m | 10.7 | 0 | E22 / P11a: X1 tail, no list, 24 h warmup with --sim-fixed-randomx-seed (stop 30 h, window 26-30 h), seed 12345; 0.1572 (6 h warmup 0.1946, 13 h 0.1662); relays 0.1805, users 0.0431; sp_r precision 1.00, recall 0.035 at its ceiling, 12 of 40 exposed; min free RAM 10.9 GB over 30 simulated hours on a 32 GB box |
+| `20261023_123723_lean_legacy_none_h300_k21_w13h_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.2857 (0.1221) | 0.286, 0.283, 0.286, 0.288 | 0.224 | 1099 | 2h 35m | 11.5 | 0 | E23/P12: the legacy (v0.18.4.2 selection) partner of the 13 h tail cell (E19: 0.1662); light 0.2857 flat, 2.34x the legacy model (0.122); relays 0.3256, no decay from hour 5 to 19 and a stationary start-order gradient (quarters 0.18/0.27/0.37/0.48). P12's 0.16-0.26 missed above; the 24/legacy ratio is 0.58, below the predicted 0.65-1.0: stock /24 dedup cuts this diversified fleet's share by 42% |
 <!-- register:end -->
 
 ## 4. Entries
@@ -948,6 +950,62 @@ that decays with a 5-6 h time constant and ends at the stock model in about a da
 the list on half the nodes, 0.25% and none. `tail` (a) is the opposite case, and P13 asks whether the IPs per /24 is what
 separates them.
 
+### E23. The `legacy` partner of the `tail` cell: the old rule gave this fleet 1.7x what stock dedup gives it (2026-10-23 12:37-15:14, `phantom`)
+
+Prediction P12 (filed and committed 12:36; the run started 12:37). `lean_legacy_none_h300_k21_w13h_m2_n600_s12345`: the `tail`
+layout (42 spies in 21 /24s, `--spy-node0 600`) under v0.18.4.2's selection (`--sim-subnet-dedup=legacy`, byte for byte the tag's
+`make_new_connection_from_peerlist`), 13 h warmup, window 15-19 h, seed 12345, stock RandomX (the cell stops at 19 h). Its `24`
+partner is E19's `20261023_024331_..._s12345`: same box, same seed, 0.1662. 156 min wall, exit 0, lowest free RAM 11.5 GiB,
+1,099 stem txs, 0.224 fluff per hop, loop rate 0.063.
+
+**Shares.** Light-node share **0.2857**, by quarter 0.2862, 0.2831, 0.2856, 0.2880: flat (Q4 is 0.6% above Q1). Relays
+**0.3256** (1.14x light), users 0.0747, observers 0.1774, medium 0.1755, miners 0.1425. The `legacy` model for this layout is
+0.1221 (12 slots, cubic recency over a 20-entry white list, no /24 collapse), so the cell sits at **2.34x** its model; the `24`
+partner sits at 2.02x its ceiling (0.1662 against 0.0822). The pair:
+
+| Selection | Light | Relays | Users | Observers | `sp_r` recall (= ceiling) | 20+-tx users exposed | Model |
+|---|---|---|---|---|---|---|---|
+| `legacy` (this run) | 0.2857 | 0.3256 | 0.0747 | 0.1774 | 0.077 | 23 of 40 | 0.1221 |
+| `24` (E19, same seed and box) | 0.1662 | 0.1881 | 0.0478 | 0.1219 | 0.059 | 18 of 40 | 0.0822 |
+| `24` / `legacy` | 0.58 | 0.58 | 0.64 | 0.69 | 0.77 | 0.78 | 0.67 |
+
+**The relay curve** (all 233 relays and by start-order quarter, `spy_share_vs_time.py`; the full curve is `spy_share_vs_time.txt`
+in the run's folder):
+
+| Sim hour | 2 | 3 | 3.5 | 4 | 6 | 8 | 12 | 15 | 19 |
+|---|---|---|---|---|---|---|---|---|---|
+| All relays | 0.1690 | 0.2549 | 0.2902 | 0.3001 | 0.3223 | 0.3173 | 0.3371 | 0.3282 | 0.3255 |
+| Earliest-started quarter | 0.156 | 0.181 | 0.185 | 0.174 | 0.178 | 0.182 | 0.198 | 0.178 | 0.176 |
+| Latest-started quarter | 0.167 | 0.329 | 0.414 | 0.450 | 0.477 | 0.460 | 0.493 | 0.490 | 0.482 |
+
+At hour 2 the four quarters are alike (0.16-0.19, already above the model: under `legacy` the early gray-list picks are spy-rich
+too). Between hours 2 and 4 the share rises to 0.30 and the quarters separate; from hour 5 to 19 nothing moves: all relays
+0.32-0.34, the earliest-started quarter 0.17-0.20, the latest 0.46-0.49, a 2.7x gradient that is stationary over 14 hours. Under
+`24` the same layout (E19, E22a) shows the same gradient with a slow relaxation in the early starters; under `legacy` not even that.
+
+**Estimators** (40 unreachable users, 1,033 txs): `sp_r` 80 guesses, 80 correct: precision **1.000**, recall **0.077**, equal to
+its ceiling (80 of 1,030 user txs were stemmed straight to a spy); **23 of 40** senders with 20 or more txs exposed (58%; the `24`
+partner 18 of 40). The 5 busy reachable nodes (66 txs): `sp` 24 of 25 correct (precision 0.96, recall 0.36); `combined` exposes
+all 4 with 10-19 txs and the one with 5-9. Unreachable nodes' median spy share of stem peers 0.058, of outbound peers 0.067
+(`24`: 0.029 and 0.044); reachable nodes 0.271 and 0.263 (`24`: 0.151 and 0.158). 75% of unreachable and 99% of reachable nodes
+had a spy stem peer at some point in the window.
+
+**Score (P12).** Light 0.2857 against 0.16-0.26: **miss, above**, which P12 defined as "the old rule was worse against this fleet
+than X0's k=6 anchor suggests" (E4, E13: `legacy` at 1.8x the model with 6 spy /24s; here 2.34x with 21). Flat by quarter: hit
+(Q4 within 10% of Q1). Relays 1.0-1.2x light: hit (1.14x). `24`/`legacy` ratio 0.65-1.0: **miss, below** (0.58). The reading P12
+was filed to test, "below 0.16 means stock dedup gives a /24-diversified spy more slots than the old rule", is refuted: it gives fewer.
+
+**What this means.** (1) The review's first gap is closed with a measurement: stock /24 dedup takes **42%** of this diversified
+fleet's light-node slots away compared with v0.18.4.2 (the models said 33%). Dedup is a defence against a 2-per-/24 fleet, a weaker
+one than against a dense one (`core`: at the model after a day, E22c), and it does not remove the lock-in. (2) The recency lock-in
+is not a dedup artefact: it is larger under the old rule, where every spy IP is its own candidate (42 candidates against 21 /24s),
+and there it does not relax at all within 19 h. The excess over the model grows with the number of distinct spy candidates the
+selection sees. Under `legacy`: at the model with 1 spy /24 (X0's k=1 cells), 1.8x with 6 /24s (E4, E13), 2.34x with 21 /24s and
+42 IPs (this run). Under `24`: at the model with 1 /24 once the transient is gone (E22c), 2.0x with 21 /24s (E19). P13 (1 and 8 spies
+per /24 at the same 21 /24s, running) varies the IPs per /24 at a fixed candidate count under `24`. (3) For X1's unreachable users:
+under the old rule 23 of 40 twenty-transaction senders are attributed within the window at precision 1, against 18 of 40 under
+stock; the per-transaction chance is 0.077 against 0.059. The reachable hubs are hit harder: `sp` recall 0.36 against 0.24.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1152,6 +1210,12 @@ sat at the model with one spy /24 (the cap) and at 1.8x it with six (0.2453 agai
 Light-node share **0.16-0.26**, flat by quarter (Q4 within 10% of Q1, as every `legacy` cell has been), relays 1.0-1.2x light; prior
 60%. Below 0.16 means stock dedup really does give a /24-diversified spy more slots than the old rule (what E15 read off the model);
 above 0.26 means the old rule was worse against this fleet than X0's k=6 anchor suggests. The `24`/`legacy` ratio for the pair: 0.65-1.0.
+
+*Outcome, 2026-10-23 15:25 (E23):* light **0.2857**, above 0.16-0.26: **miss (above)**; flat (Q4 0.6% above Q1): hit; relays 1.14x
+light: hit; `24`/`legacy` ratio **0.58**, below 0.65-1.0: **miss (below)**. Both misses point the same way: the old rule was worse
+against this fleet than the k=6 anchor suggested (2.34x the model against 1.8x), so stock dedup removes more than the models' 33%
+(42%). The reading P12 was filed to test, "dedup gives a diversified spy more slots than the old rule", is refuted. 23 of 40 users
+exposed, relays flat at 0.32-0.34 from hour 5 to 19 with a stationary start-order gradient (neither was predicted).
 
 **P13, filed 2026-10-23 12:36, before the cells are queued (E22's dilution reading).** The `tail` layout at 21 /24s, `24` selection,
 13 h warmup, window 15-19 h, seed 12345, with 1 and with 8 spies per /24: `lean_24_none_h300_k21_w13h_m1_n600_s12345` (21 spies,
