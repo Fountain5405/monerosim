@@ -5,7 +5,7 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-23, 18:05).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+**Status (2026-10-23, 18:30).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
 cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
 target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
 its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
@@ -18,12 +18,14 @@ infers why it survives for a /24-diversified spy and not a dense one (P13 tests 
 same fleet reads 0.286, 2.34x its model, with no relaxation at all: stock dedup removes 42% of its slots (the models said 33%), and
 the lock-in is not a dedup artefact. Spies per /24 (E24, P13): at 13 h, 1 per /24 reads 0.198, 2 per /24 0.166, 8 per /24 0.175;
 the 1-to-2 step is the dilution E22 expected at a third of the 1/m size, the 8-per-/24 window is still inside its drain's transient,
-and the steady state goes to P16 (24 h warmups at 1 and 8 per /24). For the unreachable users X1 scores,
+and the steady state goes to P16 (24 h warmups at 1 and 8 per /24). The ban list naming all 21 spy /24s on half the nodes takes
+the `tail` fleet to 0.093 light (E25; the list naming 10 of 21: 0.131): adopters at zero, the other half 12% above the no-list cell,
+7 of 40 users exposed against 18. For the unreachable users X1 scores,
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
-the whole network) is open question 8. Running: `simbox2` has P14 (the full-coverage `half` `tail` cell) then P15 (the `legacy`
-`tail` replicate at seed 23456); `phantom` has P16a (`tail` at 1 per /24, 24 h); `simbox3` finishes a 6 h filler, then P16b (8 per
-/24, 24 h), then the last two fillers. Entries E1-E24 below; predictions P1-P16 in section 5.
+the whole network) is open question 8. Running: `simbox2` has P15 (the `legacy` `tail` replicate at seed 23456); `phantom` has
+P16a (`tail` at 1 per /24, 24 h); `simbox3` finishes a 6 h filler, then P16b (8 per /24, 24 h), then the last two fillers. Entries
+E1-E25 below; predictions P1-P16 in section 5.
 
 ## 1. How this journal works
 
@@ -174,7 +176,7 @@ afterwards and are clean.
   scratch directory; they are kept as they ran in `docs/spy_journal/adhoc/`. They are
   not tested and are not maintained.
 - The queue event logs are snapshots (`queue_events_<box>_through_<date>.events`), refreshed when the journal is
-  updated; the latest are through 2026-10-23 17:49 (`phantom`), 15:29 (`simbox2`) and 14:05 (`simbox3`); the earlier snapshots are kept.
+  updated; the latest are through 2026-10-23 18:12 (`simbox2`), 17:49 (`phantom`) and 14:05 (`simbox3`); the earlier snapshots are kept.
 - Entries E1-E12 were written after the fact (section 1); E13 onwards were written when the result came in.
 - *(2026-10-23 14:40, from the review)* The `half` ban list at `--ban-coverage 0.5` is tie-broken with the simulation seed
   (open question 9), so a seed replicate of a `half` `tail` cell also changes which 10 of the 21 /24s are banned. One such
@@ -247,6 +249,7 @@ own selection rule and its spy layout.
 | `20261023_123723_lean_legacy_none_h300_k21_w13h_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.2857 (0.1221) | 0.286, 0.283, 0.286, 0.288 | 0.224 | 1099 | 2h 35m | 11.5 | 0 | E23/P12: the legacy (v0.18.4.2 selection) partner of the 13 h tail cell (E19: 0.1662); light 0.2857 flat, 2.34x the legacy model (0.122); relays 0.3256, no decay from hour 5 to 19 and a stationary start-order gradient (quarters 0.18/0.27/0.37/0.48). P12's 0.16-0.26 missed above; the 24/legacy ratio is 0.58, below the predicted 0.65-1.0: stock /24 dedup cuts this diversified fleet's share by 42% |
 | `20261023_140542_lean_24_none_h300_k1_w6h_m113_s23456` | simbox3 | 113 / 1 | 300 / 240 | 0.0428 (0.0046) | 0.055, 0.045, 0.039, 0.033 | 0.203 | 1083 | 3h 8m | 77.5 | 0 | E10 replicate (filler): core at a 6 h warmup, seed 23456, on simbox3; light 0.0428 against 0.0352 at seed 12345 on phantom (the transient's tail at hours 8-12, so seed spread here is spread in the drain, not in a steady state) |
 | `20261023_151500_lean_24_none_h300_k21_w13h_m1_n600_s12345` | phantom | 21 / 21 | 300 / 242 | 0.1978 (0.0822) | 0.197, 0.196, 0.201, 0.198 | 0.192 | 1099 | 2h 32m | 12.2 | 0 | E24/P13a: tail at 1 spy per /24 (21 spies); light 0.1978 flat against 0.1662 at 2 per /24 (E19) and 0.1749 at 8 (P13b): P13a's dilution range 0.18-0.27 hit, but the three points are not 1/m and the E24 candidate-count expectation (0.16-0.18) was wrong; relays 0.225, users 0.0605 |
+| `20261023_153612_lean_24_half_h300_k21_w13h_m2_n600_s12345` | simbox2 | 42 / 21 | 300 / 242 | 0.0928 (0.0822) | 0.091, 0.094, 0.095, 0.091 | 0.193 | 1095 | 2h 34m | 12.6 | 0 | E25/P14: the tail cell with the full 21-/24 ban list on half the honest nodes (165 adopters); light 0.0928 (P14's 0.08-0.12 hit), adopters 0.0 (hit), the scorer's non-adopter group 0.1537 (0.17-0.24 missed below, slot-weighted with the five 100-peer miners), relays 0.1058 = 1.14x light (hit); the 50% list read 0.1309 and no list 0.1662 (E19) |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1095,6 +1098,47 @@ predicted, at about a third of the 1/m size; the 8-per-/24 cell cannot be placed
 drain's transient. The steady-state comparison needs the 24 h warmup that E22a already gives for 2 per /24 (0.1572): P16 files
 1 and 8 per /24 at 24 h.
 
+### E25. The full ban list on half the nodes, `tail`: adopters at zero, the other half carries 12% more (2026-10-23 15:36-18:12, `simbox2`)
+
+Prediction P14 (filed and committed 15:33; the run started 15:36). `lean_24_half_h300_k21_w13h_m2_n600_s12345`: the `tail` layout
+(42 spies in 21 /24s) under `24`, 13 h warmup, window 15-19 h, seed 12345, with the ban list naming all 21 spy /24s on 165 of the
+340 honest nodes: 117 relays (the `relay-r-a` half), 24 medium nodes, 20 users and 4 observers adopt; 116 relays, 24 medium, 20 users,
+4 observers, the 5 miners and the seeds do not. 155 min wall, exit 0, lowest free RAM 12.6 GiB, 1,095 stem txs, 0.193 fluff per hop.
+Partners on the same seed: no list 0.1662 (E19, `phantom`); the list naming 10 of the 21 /24s on the same 165 nodes 0.1309 (E19, `simbox2`).
+
+**Shares.** Light-node share **0.0928**, by quarter 0.0913, 0.0943, 0.0945, 0.0912: flat. Adopters (165 nodes) **0.0000**. The
+scorer's non-adopter group (175 nodes, slot-weighted, with the 5 miners' 500 slots at 0.1244) 0.1537. Relays 0.1058, users 0.0268,
+observers 0.0450, medium 0.0424, miners 0.1244. Because every adopter is at zero, the non-adopters' own shares follow by class:
+relays 0.1058 x 233/116 = **0.213** (no list: 0.188), users 0.0268 x 40/20 = **0.054** (0.048), observers 0.090 (0.122), medium
+0.085, and the non-adopting light nodes together 0.0928 x 281/140 = **0.186** against 0.1662 without the list. The other half carries
+**12% more** spy share than in the no-list cell: the same direction as `core`'s 3.4x (E22b), at a far smaller size.
+
+| Cell (seed 12345, 13 h warmup) | Light | Adopters | Scorer's non-adopters | Relays | Users | `sp_r` recall (= ceiling) | 20+-tx users exposed |
+|---|---|---|---|---|---|---|---|
+| No list (E19) | 0.1662 | - | 0.1662 | 0.1881 | 0.0478 | 0.059 | 18 of 40 |
+| List naming 10 of 21 /24s, half the nodes (E19) | 0.1309 | 0.0777 | 0.1398 | 0.1472 | 0.0474 | 0.050 | 20 of 40 |
+| List naming all 21 /24s, half the nodes (this run) | 0.0928 | 0.0000 | 0.1537 | 0.1058 | 0.0268 | 0.022 | 7 of 40 |
+
+**The relay curve** (all 233 relays, adopters included at zero, so the non-adopting relays read about twice these values;
+`spy_share_vs_time.txt` in the run's folder): 0.064 at hour 2, 0.128 at 3.5, 0.118 at 5, 0.115 at 8, 0.110 at 12, 0.103 at 15,
+0.105 at 19. The non-adopting relays therefore go from about 0.26 at the drain peak to 0.21 at hour 19, an 18% fall over hours 3.5-19
+against the no-list cell's 12% over hours 8-19.
+**Estimators** (40 unreachable users, 1,031 txs): `sp_r` 23 guesses, 23 correct: precision **1.000**, recall **0.022**, equal to its
+ceiling (23 of 1,030); **7 of 40** senders with 20 or more txs exposed, all of them necessarily among the 20 non-adopting users (7 of
+20, 35%, against 18 of 40, 45%, without the list). The 5 busy reachable nodes (64 txs): `sp` 4 of 21 correct (precision 0.19);
+`combined` exposes 2 of the 4 with 10-19 txs and the one with 5-9. Medians: unreachable nodes' spy share of stem peers 0.0 (37.5%
+ever had one), of outbound peers 0.0 (47.5%); reachable nodes 0.0 and 0.009.
+**Score (P14).** Light 0.0928 in 0.08-0.12: **hit**. Adopters 0.0000, at most 0.005: **hit**. Non-adopters 0.1537 against 0.17-0.24:
+**miss, below**, as the clause was written (it named the scorer's slot-weighted group, as E22b did); the quantity the clause was about,
+the non-adopting light nodes, reads 0.186, inside the range. Relays 1.14x light in 1.0-1.25: hit. Exposure 7 of 40 in 5-12: **hit**.
+`sp_r` precision 1.00 and recall at its ceiling: hit.
+**What this means.** Open question 7's pair is complete for `tail` at 13 h: naming 10 of the 21 spy /24s on half the nodes takes the
+fleet from 0.166 to 0.131 light (-21%), naming all 21 takes it to 0.093 (-44%), and the users who adopt are not exposed at all
+(precision-1 attribution needs a spy first hop, and adopters have none). The list's cost to non-adopters is real but small, +12%,
+against +240% in `core`, where the list on half the nodes left the spies' 113 IPs competing for the other half's single slot. For X1:
+with the stock rule and a complete list on half the network, a 2-per-/24 fleet of 42 attributes 7 of 40 twenty-transaction users
+within 4 h instead of 18, all of them non-adopters; what it does to the half that adopts is nothing.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1339,6 +1383,10 @@ precision 1.00 and recall at its ceiling; unreachable users with 20 or more tran
 the list, E19; the adopting half's users cannot be exposed by `sp_r`, whose guess needs a spy first hop). Prior 55% for the light
 range. Above 0.12 means the non-adopters absorb more than the adopters' lost slots (as `core`'s 3.4x hints); below 0.08 means the
 list also lowers the non-adopters' share, a network effect worth a cell of its own.
+
+*Outcome, 2026-10-23 18:30 (E25):* light **0.0928** in 0.08-0.12: **hit**; adopters 0.0000: hit; the scorer's non-adopter group 0.1537
+against 0.17-0.24: **miss, below** (the clause named the slot-weighted group; the non-adopting light nodes read 0.186, inside); relays
+1.14x light: hit; 7 of 40 exposed in 5-12: hit; `sp_r` precision 1.000, recall 0.022 at its ceiling: hit.
 
 **P16, filed 2026-10-23 18:05, before the cells are queued (E24: the spies-per-/24 question at steady state).** Two 24 h-warmup
 cells with `--sim-fixed-randomx-seed` (stop at 30 h, window 26-30 h, seed 12345), the `tail` layout at 21 /24s under `24`, with 1 and

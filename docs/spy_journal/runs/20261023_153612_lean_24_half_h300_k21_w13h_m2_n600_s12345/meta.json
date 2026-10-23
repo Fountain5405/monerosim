@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_153612_lean_24_half_h300_k21_w13h_m2_n600_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_half_h300_k21_w13h_m2_n600_s12345",
+ "archived_at": "2026-10-23T15:36:12Z",
+ "monerod_sim_sha": "345d4ced95f1",
+ "wall": "2h 34m",
+ "exit_code": 0,
+ "min_avail_mb": 12882,
+ "txs_created": 1072,
+ "txs_in_blocks": 1044,
+ "note": "E25/P14: the tail cell with the full 21-/24 ban list on half the honest nodes (165 adopters); light 0.0928 (P14's 0.08-0.12 hit), adopters 0.0 (hit), the scorer's non-adopter group 0.1537 (0.17-0.24 missed below, slot-weighted with the five 100-peer miners), relays 0.1058 = 1.14x light (hit); the 50% list read 0.1309 and no list 0.1662 (E19)",
+ "scored_cell": "24/half",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0928,
+ "light_out_quarters": [
+  0.0913,
+  0.0943,
+  0.0945,
+  0.0912
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.193,
+ "stem_txs": 1095,
+ "stem_hops_implied": 5.18,
+ "embargo_rate": 0.0
+}
