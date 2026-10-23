@@ -24,12 +24,14 @@ the `tail` fleet to 0.093 light (E25; the list naming 10 of 21: 0.131): adopters
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
 the whole network) is open question 8. The `legacy` `tail` cell replicates to 1% across seeds (E23b, P15 hit on all four clauses:
-0.2826 against 0.2857, `24`/`legacy` 0.575). Running: `simbox2` has P17 (42 spy /24s at 1 spy each, the candidate-count test);
+0.2826 against 0.2857, `24`/`legacy` 0.575). The same 42 spies spread over 42 /24s read **0.3369**, 2.20x their 0.1531 ceiling, and
+expose 27 of 40 users (E27, P17 five of six): under the stock rule the excess is a 2.0-2.4x multiplier on the subnet model in every
+layout tried, so the operator's lever is /24s, not IPs. Running: `simbox2` has P19 (E27's seed replicate);
 `phantom` finished
 P16a at 21:38 (E26: 1 per /24 at 26-30 h reads 0.1911, flat from hour 10, five of five clauses hit) and runs P18 (P17's `legacy`
 control); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
 seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
-E1-E26 below; predictions P1-P18 in section 5.
+E1-E27 below; predictions P1-P19 in section 5.
 
 ## 1. How this journal works
 
@@ -257,6 +259,7 @@ own selection rule and its spy layout.
 | `20261023_171700_lean_24_none_h300_k21_w6h_m2_n600_s23456` | simbox3 | 42 / 21 | 300 / 240 | 0.1763 (0.0831) | 0.177, 0.176, 0.177, 0.175 | 0.216 | 1095 | 2h 59m | 79.8 | 0 | simbox3 filler: tail 6 h seed replicate (seed 23456) of the E10/E19 cell; light 0.1763 |
 | `20261023_175508_lean_24_none_h300_k21_w24h_m1_n600_fx_s12345` | phantom | 21 / 21 | 300 / 242 | 0.1911 (0.0822) | 0.191, 0.189, 0.192, 0.192 | 0.203 | 1109 | 3h 41m | 10.6 | 0 | P16a: tail at 1 spy per /24, 24 h warmup (window 26-30 h), fixed RandomX seed; light 0.1911 (13 h cell: 0.1978), flat; relays 0.2187; all P16a clauses hit |
 | `20261023_181247_lean_legacy_none_h300_k21_w13h_m2_n600_s23456` | simbox2 | 42 / 21 | 300 / 240 | 0.2826 (0.1223) | 0.285, 0.283, 0.283, 0.279 | 0.193 | 1097 | 2h 32m | 12.7 | 0 | P15: legacy tail at seed 23456 (E23's seed replicate); light 0.2826 vs 0.2857 at seed 12345, flat; 24/legacy ratio 0.575; 24 of 40 users exposed |
+| `20261023_205427_lean_24_none_h300_k42_w13h_m1_n600_s12345` | simbox2 | 42 / 42 | 300 / 242 | 0.3369 (0.1531) | 0.339, 0.338, 0.337, 0.334 | 0.214 | 1098 | 2h 33m | 12.5 | 0 | P17: tail's 42 spies spread over 42 /24s at 1 each, stock 24; light 0.3369 = 2.20x the 0.1531 ceiling, flat; 27 of 40 users exposed |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1201,6 +1204,61 @@ Lowest free RAM 10.6 GiB above 8: hit. Five of five.
 move afterwards, at 1 spy per /24 as at 2 (E22a, 0.1572 at 24 h). The question left for P16b is whether 8 per /24 settles below
 these two once its larger drain has passed, and for P17 whether the excess follows the candidate count (42 /24s at 1 each).
 
+### E27. The same 42 spies in 42 /24s: the excess is a multiplier on the ceiling, 2.2x, and 27 of 40 users are exposed (2026-10-23 20:54-23:30, `simbox2`)
+
+Prediction P17 (filed and committed 20:54, `dda6ddcc`; the run started 20:54). `lean_24_none_h300_k42_w13h_m1_n600_s12345`:
+`tail`'s 42 spies spread over **42 /24s at 1 spy each** (`--spy-subnets 42 --spies-per-subnet 1 --spy-node0 600`, 384 daemons),
+stock `24` selection, 13 h warmup, window 15-19 h, seed 12345, stock RandomX. The run's `model` line: 42 spies in 42 /24s, 300 honest
+reachable in 242 /24s, `24` **0.1531** (`legacy` 0.1238). 154 min wall, exit 0, lowest free RAM 12.5 GiB, 1,098 stem txs, 0.214
+fluff per hop.
+
+**Shares.** Light-node share **0.3369**, by quarter 0.3387, 0.3375, 0.3371, 0.3344: flat (Q4 1.3% below Q1). Relays **0.3746**
+(1.11x light), users **0.133**, observers 0.256, medium 0.2168, miners 0.2725. Against the ceiling: **2.20x**. The stock-rule
+`tail` family at 13 h, all with 300 honest reachable in 242 /24s:
+
+| Cell | Spies | Spy /24s | Ceiling | Light | Light / ceiling | Users | 20+-tx users exposed |
+|---|---|---|---|---|---|---|---|
+| E19, 2 per /24 | 42 | 21 | 0.0822 | 0.1662 | 2.02x | 0.0478 | 18 of 40 |
+| E24a, 1 per /24 | 21 | 21 | 0.0822 | 0.1978 | 2.41x | 0.0556 | 17 of 40 |
+| E24, 8 per /24 | 168 | 21 | 0.0822 | 0.1749 | 2.13x | 0.0545 | 17 of 40 |
+| **this run, 1 per /24** | 42 | **42** | **0.1531** | **0.3369** | **2.20x** | **0.133** | **27 of 40** |
+| E23, `legacy`, 2 per /24 | 42 | 21 | 0.1221 | 0.2857 | 2.34x | 0.0747 | 23 of 40 |
+
+Doubling the /24 count at a fixed spy count doubles the light share (0.166 to 0.337, 2.03x) and nearly triples the users' share
+(0.048 to 0.133). The ratio to the ceiling stays where it has been for every cell of this family, 2.0-2.4x: the excess is a
+multiplier on the model, not a fixed increment (the additive reading put this cell at 0.27) and not a saturating lock-in.
+
+**The relay curve** (all 233 relays and by start-order quarter; full curve in the run's folder):
+
+| Sim hour | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 15 | 17 | 19 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| All relays | 0.187 | 0.273 | 0.325 | 0.359 | 0.363 | 0.373 | 0.386 | 0.379 | 0.377 | 0.384 | 0.370 |
+| Earliest-started quarter | 0.225 | 0.217 | 0.227 | 0.238 | 0.247 | 0.234 | 0.228 | 0.236 | 0.238 | 0.247 | 0.226 |
+| Latest-started quarter | 0.169 | 0.316 | 0.416 | 0.471 | 0.492 | 0.516 | 0.540 | 0.525 | 0.505 | 0.530 | 0.517 |
+
+Hour 2 sits at 0.19, already above the 0.153 ceiling (the early gray-list picks are spy-rich, as in E23). The share settles by hour 5
+and reads 0.36-0.39 to hour 19. The start-order gradient is the family's: the earliest-started quarter 0.22-0.25 for the whole
+run, 1.5x the ceiling, the latest 0.50-0.54. P17 said the latest quarter would pass 0.6 and it did not: at 42 /24s the late starters
+hold 6 of 12 slots on spies, the same 6 as at 21 /24s under `legacy` (0.46-0.49) and more than the 4 at 21 /24s under `24`
+(0.31-0.34), so the latest quarter scales less than proportionally even as the fleet average scales in proportion.
+
+**Estimators** (40 unreachable users, 1,033 txs): `sp_r` **130 guesses, 130 correct** (precision 1.000, recall **0.126**, equal to its
+ceiling: 130 of 1,031 user txs were stemmed straight to a spy), **27 of 40** twenty-transaction users exposed within the 4 h window
+(`tail` at 2 per /24: 18 of 40; `legacy` `tail`: 23 of 40). The 5 busy reachable nodes (65 txs): `sp` 7 of 15 correct, `combined`
+exposes none of them at precision above 0.5.
+
+**Score (P17).** Light 0.3369 in 0.30-0.40: hit. Flat: hit. Relays 1.11x light in 1.05-1.25: hit. Users 0.133 in 0.08-0.14: hit.
+Relay curve stationary from hour 5: hit. Latest-started quarter above 0.6: **miss** (0.50-0.54). Five of six.
+
+**What this means.** (1) The candidate-count reading is confirmed in the form that matters: under the stock rule a spy operator's
+light-node share is about 2.2x the subnet model's prediction for their /24 count, so the lever is the number of /24s, not the number
+of IPs. 42 IPs in 21 /24s read 0.166; the same 42 IPs in 42 /24s read 0.337 and attribute 27 of 40 users within 4 h at precision 1.
+(2) Stock dedup's defence against a fleet is therefore its cost in /24s: it halves what a 2-per-/24 fleet gets (E23), and gives a
+1-per-/24 fleet nothing to lose. A 42-/24 ban list for this fleet is 42 entries, which is the size of question for open question 7.
+(3) The excess over the model is a property of the stock rule's recency selection against a static white list, not of the layout:
+2.0-2.4x across five layouts and two rules. Why 2.2 and not 1 is open question 10. (4) For X1: this is the worst-case `tail`
+layout at 42 spies, and the first cell in which the users' own share passes 0.1.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1491,6 +1549,11 @@ gradient (latest-started quarter above 0.6). Below 0.30 means the excess does no
 means more than proportional. Prior 50%. Exposure recorded, not predicted (precision 1 at the ceiling expected). Lowest free RAM on
 `simbox2` above 12 GB.
 
+*Outcome, 2026-10-23 23:40:* light **0.3369**, inside 0.30-0.40: hit (2.20x the run's 0.1531 ceiling). Flat: hit (Q4 1.3% below
+Q1). Relays 1.11x light: hit. Users 0.133, inside 0.08-0.14: hit. Relay curve stationary from hour 5: hit. Latest-started quarter
+above 0.6: **miss** (0.50-0.54). Five of six; the candidate-count reading holds as a multiplier on the ceiling, and the additive
+reading (0.27) is refuted (E27).
+
 **P18, filed 2026-10-23 21:43, before the cell is queued (P17's `legacy` control).** `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`
 on `phantom`: P17's layout (42 spies in 42 /24s at 1 each) under v0.18.4.2's selection, 13 h warmup, window 15-19 h, seed 12345. Under
 `legacy` every IP is its own candidate, so this cell shows the selection the same 42 candidates as E23's `tail` cell (42 IPs in 21
@@ -1501,6 +1564,12 @@ in `tail`, has nothing to remove here), flat by quarter, relays 1.05-1.25x light
 matters even where the selection ignores it (list dynamics by /24); above 0.32 means the skip cost `tail`'s spies more than the
 model says. Prior 60%. Paired with P17 this separates the two rules at a fixed layout: P17's read over this one is the `24`/`legacy`
 ratio at 42 /24s, against 0.58 at 21 /24s. Lowest free RAM on `phantom` above 10 GB.
+
+**P19, filed 2026-10-23 23:45, before the cell is queued (E27's seed spread).** `lean_24_none_h300_k42_w13h_m1_n600_s23456` on
+`simbox2`: E27's cell at seed 23456 (same box). The family's seed spreads so far are 1-2% (E21: 0.1626 against 0.1662; E23b: 0.2826
+against 0.2857). Light-node share **0.32-0.36**, flat by quarter, relays 1.05-1.2x light, users 0.11-0.15, `sp_r` precision 1 at
+its ceiling, 23-31 of 40 users exposed. Prior 70%. Below 0.32 or above 0.36 means this layout's seed spread is larger than the
+family's, and E27's 2.20x needs the third seed before it is quoted.
 
 ## 6. Open questions
 
@@ -1549,6 +1618,15 @@ ratio at 42 /24s, against 0.58 at 21 /24s. Lowest free RAM on `phantom` above 10
    a constant tie-break seed (later cells then ban a different set from that cell's unless the constant is 12345); a
    separate `--list-seed` defaulting to 12345, which keeps the existing cell's list; or leave it and replicate the
    list rather than the seed. Nothing is changed until a `half` `tail` replicate is queued; the owner's call.
+
+10. **Why 2.2x and not 1x** (added 2026-10-23 23:45, from E27). Under the stock rule every `tail`-family layout reads 2.0-2.4x the
+    subnet model (E19 2.02x, E24a 2.41x, E24 2.13x, E26 2.32x at 30 h, E27 2.20x), and `legacy` reads 2.34x its own (E23). The
+    multiplier is set within six hours of the gray-list drain, has a start-order gradient (earliest-started relays about 1.5x the
+    ceiling, latest about 3.5x), and does not relax in 30 h. E21 traced it to the recency bias over the relays' own white lists,
+    which the model leaves out, but no cell has yet varied the thing that would pin it: the white-list cap (20), the recency
+    exponent, or the lists' age structure. Candidate probes: a cell with the relays' lists seeded from a long-running node's
+    `print_pl` dump (open question 8), or a `--sim-*` flag that flattens the recency pick to uniform, which should take the
+    multiplier to 1 if E21's reading is right.
 
 ## 7. Decisions log
 
@@ -1599,6 +1677,7 @@ in the conversation.
 | 10-23 18:10 | Three registered `simbox3` archives (P6a `20261022_222209_lean_legacy_none_h71_k1_s12345`, the TRIP run `20261022_234237_..._w24h_m113_s12345`, P9's patch test `20261023_035553_..._w18h_fx_s12345`) copied to `phantom`'s pool (`/mnt/ssdpool/monerosim_archives/`, rsync, file counts and bytes verified equal) and then removed from `simbox3` | `simbox3` had 60 GB free with a 7.6 GB filler archive growing and a 508-daemon 30 h cell (P16b, about 15 GB) next; the 45 GB floor would have been crossed. Nothing is lost: the register holds each run's scoring files and the raw archives are on `phantom` | copy them back with rsync from `phantom` | agent |
 | 10-23 20:55 | `simbox2` drained at 20:47 (P15 done). Instead of leaving it idle for the handover to the selfish-mining project, P17 was filed and queued there: `lean_24_none_h300_k42_w13h_m1_n600_s12345` (42 spy /24s at 1 spy each, 384 daemons, ~2.5 h), the first direct test of the candidate-count reading that E23 and E24 arrived at | The other project's agent has no key on the control box yet, so the box would sit idle tonight; the cell costs 2.5 h and settles whether the excess scales with the number of distinct candidates. Risk: delays the handover by one cell. Undo: kill the driver by pid; the cell yaml is on both boxes (md5 d4ce41fd) |
 | 10-23 21:43 | `phantom` drained at 21:38 (P16a done, E26). P18 filed and queued there: `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`, P17's layout under the old rule (~2.5 h) | Pairs with P17 so the two rules are compared at the 42-/24 layout as E19/E23 compared them at 21; tests whether the /24 layout matters where the selection ignores it. Risk: 2.5 h of the generator box, 27 GB free is enough for 384 daemons. Undo: kill the driver by pid; cell md5 67c4fc98 |
+| 10-23 23:45 | `simbox2` drained at 23:30 (P17 done, E27). P19 filed and queued there: the seed-23456 replicate of E27's cell (~2.5 h) | E27 is the strongest single number in the journal (0.337 light, 27 of 40 users exposed) and the family's other headline cells have a seed replicate (E21, E23b); the other project cannot use the box before morning. Risk: the handover slips one more cell. Undo: kill the driver by pid; cell md5 16faa462 on both boxes |
 
 ## 8. Files
 
