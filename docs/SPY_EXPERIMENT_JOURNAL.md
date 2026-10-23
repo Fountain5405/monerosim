@@ -1228,6 +1228,25 @@ as `core`'s transient did in P5, not the per-/24 dilution). `sp_r` precision 1.0
 recorded, not predicted. (b)'s lowest free RAM on a 32 GB box: above 6 GB (the 453-daemon cells bottomed at 9.8-10.9 GB). None of
 the three cells needs the fixed-seed flag (they stop at 19 h), so they compare directly with E19 and E21.
 
+**P14, filed 2026-10-23 15:35, before the cell is queued (open question 7's planned 100% point; E19, E22b).**
+`lean_24_half_h300_k21_w13h_m2_n600_s12345` on `simbox2`: the `tail` layout under `24`, 13 h warmup, window 15-19 h, seed 12345,
+with the ban list on half the honest nodes naming all 21 spy /24s (`--list half --ban-coverage 1.0`). Its partners: no list 0.1662
+(E19, `phantom`) and 0.1626 (E21, seed 23456, `simbox2`); the list naming 10 of the 21 /24s 0.1309 (E19, `simbox2`). In `core` the
+full list took the adopters to 0.0000 and lifted the non-adopters to 3.4x the no-list value (E22b: 0.0148 against 0.0044), light
+0.57x. Here the adopters' share goes to 0 by construction (every spy /24 is refused), and the non-adopters are expected a little
+above the no-list cell (the 50% cell implies about +8%: adopters at about half of 0.166 and light 0.1309 leave about 0.18 for the
+non-adopters). Light-node share **0.08-0.12**; adopters at most 0.005; non-adopters 0.17-0.24; relays 1.0-1.25x light. `sp_r`
+precision 1.00 and recall at its ceiling; unreachable users with 20 or more transactions exposed **5-12 of 40** (18 of 40 without
+the list, E19; the adopting half's users cannot be exposed by `sp_r`, whose guess needs a spy first hop). Prior 55% for the light
+range. Above 0.12 means the non-adopters absorb more than the adopters' lost slots (as `core`'s 3.4x hints); below 0.08 means the
+list also lowers the non-adopters' share, a network effect worth a cell of its own.
+
+**P15, filed 2026-10-23 15:35, before the cell is queued (E23's seed spread).** `lean_legacy_none_h300_k21_w13h_m2_n600_s23456` on
+`simbox2`: E23's cell at the other seed and on the other box, as E21 did for the `24` cell (0.1626 against E19's 0.1662, a 2%
+spread). Light-node share **0.26-0.31**, flat by quarter (Q4 within 10% of Q1), relays 1.05-1.25x light; the `24`/`legacy` ratio for
+the seed-23456 pair (0.1626 over this read) **0.52-0.63**. Prior 65%. Below 0.26 means E23's 2.34x was the high end of its seed
+spread and the 42% claim weakens toward the models' 33%; above 0.31 strengthens it.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -1318,6 +1337,7 @@ in the conversation.
 | 10-23 12:36 | Record fixes from the user's review: the two aborted 24 h `core` runs registered (`simbox3` TRIP `20261022_234237`, `phantom` STOPPED `20261023_003351`), E18 given the measured spike as a dated addendum, open questions 1, 3, 4 and 5 closed with dated lines (4 after reading the 0.18.5.1 embargo code), the status and binary paragraphs refreshed, three misplaced decision rows moved into date order, `run_register.py --box` help names `simbox3` | the journal's own rule is that nothing is deleted and the status must be current; the user asked for it after the review | revert the commit | user asked, agent did |
 | 10-23 12:36 | P12 (the `legacy` partner of the `tail` cell) and P13 (`tail` at 1 and 8 spies per /24) filed, then the three cells queued: `phantom` runs the `legacy` partner then the 1-per-/24 cell, `simbox2` the 8-per-/24 cell (copied, md5 checked); all stop at 19 h simulated on the stock rule without the flag | the user said to file the two new cells; both boxes were idle; the `legacy` partner is the missing measurement behind "dedup gives the diversified spy more slots", and the per-/24 pair tests E22's dilution reading | delete the lines from `x0_queue3.txt` (scratchpad, `phantom`) and `~/queue/q.txt` (`simbox2`); `kill` the driver pids | user asked, agent queued |
 | 10-23 14:40 | The two plan deviations the review found unstated (tx rate about 150x mainnet, variant R spies) and the `half`-list tie-break confound are stated in the record (section 2, Known gaps, open question 9); `spy_ban_list.py` and `make_lean.py` are not changed | the user approved the record fixes, not code changes; a different tie-break would make later `half` tail cells incomparable with the seed-12345 one already run (`20261023_024332_..._c50`), so which way to go is the owner's call | revert the journal lines | agent |
+| 10-23 15:35 | `simbox2`, idle after P13b, gets two 19 h cells: the full-coverage `half` `tail` cell (P14, open question 7's planned 100% point) and then the seed-23456 replicate of E23's `legacy` `tail` cell (P15); both filed and committed before queueing, both generated on `phantom` and copied with an md5 check | the 100% list is the headline X1 cell for `tail` and was planned next to the 50% one ("start at 100% and 50%"); the replicate turns E23's single-seed 42% into a two-seed claim; neither needs P13a's result (17:50), while the candidate-count follow-up it suggests (42 /24s at 1 spy each) does, so that waits | remove the lines from `~/queue/q.txt` on `simbox2`, or kill the driver by pid | agent |
 
 ## 8. Files
 
