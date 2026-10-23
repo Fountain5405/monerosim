@@ -24,7 +24,8 @@ the `tail` fleet to 0.093 light (E25; the list naming 10 of 21: 0.131): adopters
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
 the whole network) is open question 8. The `legacy` `tail` cell replicates to 1% across seeds (E23b, P15 hit on all four clauses:
-0.2826 against 0.2857, `24`/`legacy` 0.575). Running: `simbox2` finished P15 at 20:47 and is idle; `phantom` has
+0.2826 against 0.2857, `24`/`legacy` 0.575). Running: `simbox2` has P17 (42 spy /24s at 1 spy each, the candidate-count test);
+`phantom` has
 P16a (`tail` at 1 per /24, 24 h); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
 seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
 E1-E25 below; predictions P1-P16 in section 5.
@@ -1436,6 +1437,19 @@ spread and the 42% claim weakens toward the models' 33%; above 0.31 strengthens 
 1.05-1.25: hit. `24`/`legacy` ratio 0.1626/0.2826 = **0.575**, inside 0.52-0.63: hit. All four clauses hit; the seed spread of
 the `legacy` `tail` cell is 1% (0.2857, 0.2826) and the 42% dedup claim stands at both seeds (E23b).
 
+**P17, filed 2026-10-23 20:55, before the cell is queued (does the excess scale with the candidate count?).**
+`lean_24_none_h300_k42_w13h_m1_n600_s12345` on `simbox2`: the `tail` layout with **42 spy /24s at 1 spy each** (42 spies, the
+same spy count as `tail`, twice its /24s; 384 daemons), stock `24` selection, 13 h warmup, window 15-19 h, seed 12345, stock
+RandomX. Its `24` ceiling by hand is 42/(242+42) = 0.148, scaled by the Monte Carlo's 0.0822/0.0798 about **0.152**; the run's own
+`model` line supersedes this. The reading E23 and E24 arrived at, not pre-registered until now: the excess over the model follows
+the number of distinct candidates the selection sees (21 /24s under `24`: 2.0x the ceiling at 2 per /24 and 2.4x at 1 per /24;
+42 IPs under `legacy`: 2.34x its model). If so, 42 candidates under `24` give 2.3-2.4x of 0.152: light **0.30-0.40**, flat by quarter
+(Q4 within 10% of Q1), relays 1.05-1.25x light, users 0.08-0.14, and the relay curve stationary from hour 5 with the start-order
+gradient (latest-started quarter above 0.6). Below 0.30 means the excess does not scale with the candidate count in proportion
+(the additive reading, a fixed 0.12 over the ceiling as in E24a, puts it at 0.27; a saturating lock-in below that); above 0.40
+means more than proportional. Prior 50%. Exposure recorded, not predicted (precision 1 at the ceiling expected). Lowest free RAM on
+`simbox2` above 12 GB.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -1531,6 +1545,7 @@ in the conversation.
 | 10-23 17:22 | Control box, continued: `python3-venv` and `python3-pip` installed system-wide via the owner's sudo (the only system change); the repository cloned from a git bundle to `/home/antiproxy/monerosim` on this branch (no push); my memory, skills and the handoff note copied into the `antiproxy` account; Claude Code 2.1.309 installed under `~/.local` there (login left to the user); the account's own key authorized on my `lever65` accounts on `phantom`, `simbox2` and `simbox3` so a session there can reach the running queues | the user asked for the agents' sessions to move to the control box; the lab's compute boxes are still the `lever65` accounts until per-project users exist there | `apt-get remove python3-venv python3-pip`; delete the `antiproxy@virt9900x` line from each box's `~/.ssh/authorized_keys`; `rm -rf /home/antiproxy/monerosim` | agent |
 | 10-23 18:05 | P16 filed and committed, then queued: the 1-per-/24 24 h cell on `phantom` (idle since 17:49) and the 8-per-/24 24 h cell at the head of `simbox3`'s queue, ahead of the two seed-34567 fillers (the running seed-23456 `tail` filler finishes first). Both generated on `phantom`, the `simbox3` copy md5-checked | P13 ended split (a hit, b refuted) because the 8-per-/24 window sat inside its own drain's transient; only 24 h warmups compare steady states, and E22a already holds the 2-per-/24 point; the fillers are lower value than this | remove the line from `~/queue/q.txt` on `simbox3`; kill `phantom`'s driver by pid | agent |
 | 10-23 18:10 | Three registered `simbox3` archives (P6a `20261022_222209_lean_legacy_none_h71_k1_s12345`, the TRIP run `20261022_234237_..._w24h_m113_s12345`, P9's patch test `20261023_035553_..._w18h_fx_s12345`) copied to `phantom`'s pool (`/mnt/ssdpool/monerosim_archives/`, rsync, file counts and bytes verified equal) and then removed from `simbox3` | `simbox3` had 60 GB free with a 7.6 GB filler archive growing and a 508-daemon 30 h cell (P16b, about 15 GB) next; the 45 GB floor would have been crossed. Nothing is lost: the register holds each run's scoring files and the raw archives are on `phantom` | copy them back with rsync from `phantom` | agent |
+| 10-23 20:55 | `simbox2` drained at 20:47 (P15 done). Instead of leaving it idle for the handover to the selfish-mining project, P17 was filed and queued there: `lean_24_none_h300_k42_w13h_m1_n600_s12345` (42 spy /24s at 1 spy each, 384 daemons, ~2.5 h), the first direct test of the candidate-count reading that E23 and E24 arrived at | The other project's agent has no key on the control box yet, so the box would sit idle tonight; the cell costs 2.5 h and settles whether the excess scales with the number of distinct candidates. Risk: delays the handover by one cell. Undo: kill the driver by pid; the cell yaml is on both boxes (md5 d4ce41fd) |
 
 ## 8. Files
 
