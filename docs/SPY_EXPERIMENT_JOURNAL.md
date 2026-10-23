@@ -23,7 +23,8 @@ the `tail` fleet to 0.093 light (E25; the list naming 10 of 21: 0.131): adopters
 7 of 40 users exposed against 18. For the unreachable users X1 scores,
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
-the whole network) is open question 8. Running: `simbox2` has P15 (the `legacy` `tail` replicate at seed 23456); `phantom` has
+the whole network) is open question 8. The `legacy` `tail` cell replicates to 1% across seeds (E23b, P15 hit on all four clauses:
+0.2826 against 0.2857, `24`/`legacy` 0.575). Running: `simbox2` finished P15 at 20:47 and is idle; `phantom` has
 P16a (`tail` at 1 per /24, 24 h); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
 seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
 E1-E25 below; predictions P1-P16 in section 5.
@@ -252,6 +253,7 @@ own selection rule and its spy layout.
 | `20261023_151500_lean_24_none_h300_k21_w13h_m1_n600_s12345` | phantom | 21 / 21 | 300 / 242 | 0.1978 (0.0822) | 0.197, 0.196, 0.201, 0.198 | 0.192 | 1099 | 2h 32m | 12.2 | 0 | E24/P13a: tail at 1 spy per /24 (21 spies); light 0.1978 flat against 0.1662 at 2 per /24 (E19) and 0.1749 at 8 (P13b): P13a's dilution range 0.18-0.27 hit, but the three points are not 1/m and the E24 candidate-count expectation (0.16-0.18) was wrong; relays 0.225, users 0.0605 |
 | `20261023_153612_lean_24_half_h300_k21_w13h_m2_n600_s12345` | simbox2 | 42 / 21 | 300 / 242 | 0.0928 (0.0822) | 0.091, 0.094, 0.095, 0.091 | 0.193 | 1095 | 2h 34m | 12.6 | 0 | E25/P14: the tail cell with the full 21-/24 ban list on half the honest nodes (165 adopters); light 0.0928 (P14's 0.08-0.12 hit), adopters 0.0 (hit), the scorer's non-adopter group 0.1537 (0.17-0.24 missed below, slot-weighted with the five 100-peer miners), relays 0.1058 = 1.14x light (hit); the 50% list read 0.1309 and no list 0.1662 (E19) |
 | `20261023_171700_lean_24_none_h300_k21_w6h_m2_n600_s23456` | simbox3 | 42 / 21 | 300 / 240 | 0.1763 (0.0831) | 0.177, 0.176, 0.177, 0.175 | 0.216 | 1095 | 2h 59m | 79.8 | 0 | simbox3 filler: tail 6 h seed replicate (seed 23456) of the E10/E19 cell; light 0.1763 |
+| `20261023_181247_lean_legacy_none_h300_k21_w13h_m2_n600_s23456` | simbox2 | 42 / 21 | 300 / 240 | 0.2826 (0.1223) | 0.285, 0.283, 0.283, 0.279 | 0.193 | 1097 | 2h 32m | 12.7 | 0 | P15: legacy tail at seed 23456 (E23's seed replicate); light 0.2826 vs 0.2857 at seed 12345, flat; 24/legacy ratio 0.575; 24 of 40 users exposed |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1026,6 +1028,17 @@ per /24 at the same 21 /24s, running) varies the IPs per /24 at a fixed candidat
 under the old rule 23 of 40 twenty-transaction senders are attributed within the window at precision 1, against 18 of 40 under
 stock; the per-transaction chance is 0.077 against 0.059. The reachable hubs are hit harder: `sp` recall 0.36 against 0.24.
 
+**(b) The seed replicate** (P15; `lean_legacy_none_h300_k21_w13h_m2_n600_s23456`, `simbox2`, 18:12-20:47, 153 min, exit 0,
+lowest free RAM 12.7 GiB, 1,097 stem txs, 0.193 fluff per hop). Light-node share **0.2826** (seed 12345: 0.2857, a 1% spread),
+by quarter 0.2851, 0.2835, 0.2829, 0.2791 (Q4 2% below Q1). Relays **0.319** (1.13x light), users 0.0868, observers 0.2007,
+miners 0.1428. Its `24` partner at the same seed and box is E21's 0.1626, so the `24`/`legacy` ratio is **0.575**: stock dedup
+removes 42.5% of this fleet's light slots at seed 23456, 41.8% at seed 12345. The relay curve has E23's shape: all relays 0.159
+at hour 2, 0.269 at hour 3, 0.299 at hour 4, then 0.31-0.33 from hour 5 to 19 with no trend (hour 19: 0.318); the earliest-started
+quarter sits at 0.17-0.20 and the latest at 0.46-0.48 for the whole 14 hours. Estimators: `sp_r` 92 guesses, 92 correct
+(precision 1.00, recall 0.089), **24 of 40** twenty-transaction users exposed (seed 12345: 23 of 40); `combined` exposes all 5
+busy reachable nodes. Both seeds now agree on every number E23 rests on: the old rule gives this fleet 1.7x what stock gives it,
+the excess is 2.3x the `legacy` model, and it is stationary.
+
 ### E24. Spies per /24 (P13): eight per /24 lock in as two do, so the dilution reading is refuted (2026-10-23 12:37-15:29, `simbox2`; the 1-per-/24 cell on `phantom` to follow)
 
 Prediction P13 (filed and committed 12:36; both runs started 12:37). The `tail` layout at 21 /24s under `24`, 13 h warmup, window
@@ -1418,6 +1431,10 @@ cells bottomed at 10.9-12.2 GB); (b) on `simbox3` (100 GB) above 60 GB.
 spread). Light-node share **0.26-0.31**, flat by quarter (Q4 within 10% of Q1), relays 1.05-1.25x light; the `24`/`legacy` ratio for
 the seed-23456 pair (0.1626 over this read) **0.52-0.63**. Prior 65%. Below 0.26 means E23's 2.34x was the high end of its seed
 spread and the 42% claim weakens toward the models' 33%; above 0.31 strengthens it.
+
+*Outcome, 2026-10-23 20:55:* light **0.2826**, inside 0.26-0.31: hit. Flat: hit (Q4 2% below Q1). Relays 1.13x light, inside
+1.05-1.25: hit. `24`/`legacy` ratio 0.1626/0.2826 = **0.575**, inside 0.52-0.63: hit. All four clauses hit; the seed spread of
+the `legacy` `tail` cell is 1% (0.2857, 0.2826) and the 42% dedup claim stands at both seeds (E23b).
 
 ## 6. Open questions
 
