@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_123723_lean_24_none_h300_k21_w13h_m8_n600_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k21_w13h_m8_n600_s12345",
+ "archived_at": "2026-10-23T12:37:24Z",
+ "monerod_sim_sha": "345d4ced95f1",
+ "wall": "2h 49m",
+ "exit_code": 0,
+ "min_avail_mb": 3438,
+ "txs_created": 1073,
+ "txs_in_blocks": 1073,
+ "note": "E24/P13b: tail at 8 spies per /24 (168 spies, 508 daemons); light 0.1749 against the 2-per-/24 cell's 0.1662 (E19): P13's dilution reading refuted (threshold 0.16); relays 0.36 at hour 5 falling to 0.18 at hour 19 (not stationary; -30% over hours 8-19 against -12% at m=2); 17 of 40 users exposed; free RAM 3.4 GB at boot (sim 10 min), 8.5 GB after the first simulated hour, so the 6 GB clause is missed",
+ "scored_cell": "24/none",
+ "spies": 168,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1749,
+ "light_out_quarters": [
+  0.179,
+  0.1778,
+  0.1744,
+  0.1685
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.205,
+ "stem_txs": 1073,
+ "stem_hops_implied": 4.88,
+ "embargo_rate": 0.0
+}
