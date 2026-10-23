@@ -35,3 +35,10 @@ share fluff_per_hop=0.187 stem_txs=1065 run=/home/lever65/monerosim_archives/202
 22:05 DONE lean_24_none_h300_k1_w6h_m53_s12345 exit=0 wall=112m min_avail_mb=12881 light_out_share=0.0173
 share fluff_per_hop=0.203 stem_txs=1092 run=/home/lever65/monerosim_archives/20261022_201141_lean_24_none_h300_k1_w6h_m53_s12345
 22:05 START lean_24_none_h300_k1_w6h_m26_s12345 run=/home/lever65/monerosim_archives/20261022_220525_lean_24_none_h300_k1_w6h_m26_s12345
+23:57 DONE lean_24_none_h300_k1_w6h_m26_s12345 exit=0 wall=110m min_avail_mb=13658 light_out_share=0.0095
+share fluff_per_hop=0.2 stem_txs=1096 run=/home/lever65/monerosim_archives/20261022_220525_lean_24_none_h300_k1_w6h_m26_s12345
+23:57 START lean_24_none_h300_k1_w16h_m113_s12345 run=/home/lever65/monerosim_archives/20261022_235712_lean_24_none_h300_k1_w16h_m113_s12345
+02:36 DONE lean_24_none_h300_k1_w16h_m113_s12345 exit=137 wall=158m min_avail_mb=10286 light_out_share=0.0099
+share fluff_per_hop=0.214 stem_txs=501 run=/home/lever65/monerosim_archives/20261022_235712_lean_24_none_h300_k1_w16h_m113_s12345
+02:36 STOPPING QUEUE after lean_24_none_h300_k1_w16h_m113_s12345 (trip='' exit=137)
+02:43 START lean_24_half_h300_k21_w13h_m2_n600_c50_s12345 run=/home/lever65/monerosim_archives/20261023_024332_lean_24_half_h300_k21_w13h_m2_n600_c50_s12345

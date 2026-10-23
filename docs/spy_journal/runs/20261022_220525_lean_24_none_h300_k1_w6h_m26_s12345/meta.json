@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_220525_lean_24_none_h300_k1_w6h_m26_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k1_w6h_m26_s12345",
+ "archived_at": "2026-10-22T22:05:26Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "1h 50m",
+ "exit_code": 0,
+ "min_avail_mb": 13658,
+ "txs_created": 1096,
+ "txs_in_blocks": 1073,
+ "note": "P5 diagnostic: X1 core with 26 spies in the one /24 (6.4 h warmup, seed 12345); 0.0095 inside the 0.006-0.015 count-reading range",
+ "scored_cell": "24/none",
+ "spies": 26,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0095,
+ "light_out_quarters": [
+  0.0114,
+  0.0094,
+  0.0088,
+  0.0084
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.2,
+ "stem_txs": 1096,
+ "stem_hops_implied": 5.0,
+ "embargo_rate": 0.0
+}
