@@ -1,0 +1,67 @@
+# sop_v4_o5_72h (2026-10-23): the v4 campaign cell share_sop2_hs_a045_d5
+# (sop_v4_h10_72h.yaml) with the attacker's give-up changed from "honest leads
+# by 5 BLOCKS" to the race model's "honest holds MORE THAN 5 work OBJECTS more
+# than the private branch since the fork" (give_up_objects 5; tevador's
+# simulator attacker; sop_race_model.py give_up_objects). Everything else is
+# the campaign's: window_rule 20261020, window_objects 32, tip_shares, honest
+# shares, count_own_tip_shares default true.
+#
+# Why. Under the block rule the v4 attacker spent 17-27 h of every 72 h alpha
+# 0.45 run (and 6.5 of the n300 smoke's 8 h) in a dead state: past the window
+# and behind by weight it can never reveal, yet its block count keeps pace with
+# honest's (equal difficulty, 4.5 vs 5.5 h/s), so the 5-block honest lead
+# rarely arrives and it mines a branch that is 100% orphaned
+# (docs/20261023_sop_scale_n300_smoke.md). The old-rule (v3) runs lost 0-11 h
+# the same way. The objects rule ends such a branch within a few shares, so
+# the attacker's hashrate goes to fresh forks. Two draws (parallel 2, run-to-run
+# noise at this cell is ~ +/-0.03, docs/20261022_sop_v4_results.md s4): read the
+# shares against 0.054 (d5, n=1) and the stuck time (gaps > 2 h between
+# attacker events, scratch gaps.py in the smoke doc) against 19 h.
+name: sop_v4_o5_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '5'
+          give_up_objects: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
+ksm: true
+bootfast: true

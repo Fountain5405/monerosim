@@ -39,6 +39,17 @@ Attributes (via --attributes KEY VALUE):
                         window_stubborn -- see agents/selfish_strategy.py.
     give_up_depth       window_stubborn, deep_hunt: give up once honest leads by
                         this many blocks (default 2).
+    give_up_objects     window_stubborn, deep_hunt (2026-10-23): -1 (default)
+                        keeps the block-depth give-up; >= 0 replaces it with
+                        the race model's (sop_race_model.py give_up_objects,
+                        tevador's attacker): give up once the honest branch
+                        holds MORE THAN this many work objects more than the
+                        private one since the fork -- blocks, their embedded
+                        shares, and the pending tip-pool shares on each tip
+                        (own ones included, whatever count_own_tip_shares
+                        says: they are the attacker's work). Needs weigh
+                        "sop". The block rule strands the attacker past the
+                        window (docs/20261023_sop_scale_n300_smoke.md).
     release_depth       deep_hunt: reveal only once the honest branch holds this
                         many blocks past the fork (default 10), so every reveal
                         orphans at least that many honest blocks.
@@ -176,6 +187,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.give_up_depth = kw["give_up_depth"]
         self.release_depth = kw["release_depth"]
         self.window_rule = kw["window_rule"]
+        self.give_up_objects = kw["give_up_objects"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
@@ -183,6 +195,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.use_honest_shares = str(self.attributes.get("use_honest_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.tip_shares = str(self.attributes.get("tip_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.count_own_tip_shares = str(self.attributes.get("count_own_tip_shares", "true")).strip().lower() in ("1", "true", "yes")
+        if self.give_up_objects >= 0 and self.weigh != "sop":
+            raise ValueError(f"give_up_objects needs weigh 'sop', got weigh {self.weigh!r}")
         self._tip_delivery = None
         self._hs_tip = None            # miner tip whose shares _hs_sent covers (use_honest_shares)
         self._hs_sent = set()          # share ids already handed to the miner on _hs_tip
@@ -234,6 +248,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             "give_up_depth": int(attributes.get("give_up_depth", "2") or 2),        # window_stubborn, deep_hunt
             "release_depth": int(attributes.get("release_depth", "10") or 10),      # deep_hunt only
             "window_rule": attributes.get("window_rule", "v3") or "v3",            # window_stubborn, deep_hunt
+            "give_up_objects": int(attributes.get("give_up_objects", "-1") or -1),  # window_stubborn, deep_hunt; -1 = block rule
         }
 
     def _ensure_strategy(self, start_height: int) -> None:
@@ -244,7 +259,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             window_objects=self.window_objects,
                                             give_up_depth=self.give_up_depth,
                                             release_depth=self.release_depth,
-                                            window_rule=self.window_rule)
+                                            window_rule=self.window_rule,
+                                            give_up_objects=self.give_up_objects)
 
     @staticmethod
     def _header_difficulty(h) -> int:
@@ -277,9 +293,16 @@ class SelfishMinerAgent(AutonomousMinerAgent):
     def _branch_weights(self, fork: int, priv_height: int, pub_height: int):
         """window_stubborn's work-object count and weight, per MRL #146: each
         recent block weighs `unit * (1 + its valid embedded shares)`, with
-        `unit = max(1, difficulty // sop_w)`. Returns
-        (att_objects, att_weight, hon_weight), or None (with a logged
-        warning) on an RPCError or a header count mismatch on either side.
+        `unit = max(1, difficulty // sop_w)`. Returns, for weigh="sop",
+        (att_objects, att_weight, hon_weight, att_objects above the first
+        attacker block, honest objects above the first honest block,
+        att_objects + the attacker's pending tip-pool shares, hon_objects +
+        the honest pending tip-pool shares) -- the last two are the give-up
+        currency of `give_up_objects` (pool shares only when tip_shares is
+        on; the own-tip ones count here whatever count_own_tip_shares says,
+        which governs the reveal-test WEIGHT only); for weigh="difficulty",
+        (att_objects, att_weight, hon_weight). None (with a logged warning)
+        on an RPCError or a header count mismatch on either side.
 
         weigh="sop" (default): attacker shares per block are
         `minor_version - major_version` (sop_share_count) when
@@ -317,16 +340,23 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             hon_weight += unit * (1 + m)
             if i == 0:
                 hon_first = 1 + m
+        att_pool = hon_pool = 0
         if self.tip_shares:
+            att_pool = self._tip_pool_count(self.daemon_rpc, att_headers, priv_height)
+            hon_pool = self._tip_pool_count(self.bridge_rpc, hon_headers, pub_height)
             if self.count_own_tip_shares:
-                att_weight += self._tip_pool_weight(self.daemon_rpc, att_headers, priv_height)
-            hon_weight += self._tip_pool_weight(self.bridge_rpc, hon_headers, pub_height)
-        return att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first
+                att_weight += self._tip_unit(att_headers) * att_pool
+            hon_weight += self._tip_unit(hon_headers) * hon_pool
+        return (att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first,
+                att_objects + att_pool, hon_objects + hon_pool)
 
-    def _tip_pool_weight(self, rpc, headers, height: int) -> int:
-        """unit * the counted pool shares on the branch's tip (MRL #146
-        2026-10-20; counted only under the objective score, which is the only
-        regime the reveal test is reached in)."""
+    def _tip_unit(self, headers) -> int:
+        return max(1, self._header_difficulty(headers[-1]) // self.sop_w) if headers else 0
+
+    def _tip_pool_count(self, rpc, headers, height: int) -> int:
+        """The counted pool shares on the branch's tip (MRL #146 2026-10-20;
+        counted only under the objective score, which is the only regime the
+        reveal test is reached in). Weight = _tip_unit(headers) * this."""
         if not headers:
             return 0
         tip = headers[-1]
@@ -336,8 +366,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self._share_rpc_failed("read tip shares", e)
             return 0
         major = int(tip.get("major_version", 0))
-        unit = max(1, self._header_difficulty(tip) // self.sop_w)
-        return unit * sop_pool_count([s for s in shares if int(s.get("height", height)) == height], major)
+        return sop_pool_count([s for s in shares if int(s.get("height", height)) == height], major)
 
     def _queue_tip_delivery(self, tip_hash: str, height: int) -> None:
         """After a reveal: publish the miner's shares on its (now public) tip

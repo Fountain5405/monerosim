@@ -367,7 +367,7 @@ def test_window_stubborn_default_branch_weights_uses_block_count_fallback():
     assert priv == 48
     assert d.release_to == priv - 1 and s.fork == priv
     assert d.adopt_public is False
-    assert s.last_weights == (48, 48, 47, 47, 46)
+    assert s.last_weights == (48, 48, 47, 47, 46, 48, 47)
 
 
 # --- deep_hunt (2026-10-19): an attacker after a deep reorg, not revenue ---
@@ -482,3 +482,67 @@ def test_window_rule_v3_unchanged():
     s = _ws("v3", objects=48)
     d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (60, 6000, 1600, 20, 0))
     assert d.release_to == 102          # v3: 60 >= 48 counts the first block
+
+
+# --- give_up_objects: the race model's objects give-up (2026-10-23) ---
+
+def _wo(o, d=5):
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=32,
+                        give_up_depth=d, window_rule="20261020", give_up_objects=o)
+    s.fork = 100
+    return s
+
+
+def _w7(att, hon, att_tot, hon_tot, att_w=1000, hon_w=2000):
+    return lambda f, p, q: (att, att_w, hon_w, max(att - 1, 0), max(hon - 1, 0), att_tot, hon_tot)
+
+
+def test_give_up_objects_default_is_off():
+    assert SelfishStrategy("window_stubborn", 0).give_up_objects == -1
+
+
+def test_give_up_objects_gives_up_once_honest_exceeds_by_more_than_o():
+    s = _wo(5)
+    d = s.update(pub_height=102, priv_height=102, branch_weights=_w7(30, 35, 30, 35))   # ahead by 5: hold
+    assert d.adopt_public is False and d.release_to is None and s.fork == 100
+    d = s.update(pub_height=102, priv_height=102, branch_weights=_w7(30, 35, 30, 36))   # by 6: give up
+    assert d.adopt_public is True and d.release_to is None and d.forward_to is None and s.fork == 102
+
+
+def test_give_up_objects_counts_pending_pool_shares():
+    s = _wo(5)
+    # branch objects equal; the honest tip pool holds 6 more pending shares -> give up
+    d = s.update(pub_height=102, priv_height=102, branch_weights=_w7(30, 30, 30, 36))
+    assert d.adopt_public is True and s.fork == 102
+
+
+def test_give_up_objects_replaces_the_block_depth_rule():
+    s = _wo(5, d=1)
+    # honest leads by 2 blocks (the block rule at d=1 would give up) but not by objects: hold
+    d = s.update(pub_height=103, priv_height=101, branch_weights=_w7(40, 36, 40, 36))
+    assert d.adopt_public is False and s.fork == 100
+
+
+def test_give_up_objects_still_adopts_when_no_private_block():
+    s = _wo(5)
+
+    def _boom(f, p, q):
+        raise AssertionError("branch_weights must not be called when a == 0")
+
+    d = s.update(pub_height=101, priv_height=100, branch_weights=_boom)   # a=0, h=1
+    assert d.adopt_public is True and s.fork == 101
+
+
+def test_give_up_objects_holds_on_short_or_missing_weights():
+    s = _wo(5)
+    d = s.update(pub_height=102, priv_height=102, branch_weights=lambda f, p, q: (30, 3000, 1000))
+    assert d.adopt_public is False and d.release_to is None
+    d = s.update(pub_height=102, priv_height=102, branch_weights=lambda f, p, q: None)
+    assert d.adopt_public is False and d.release_to is None
+
+
+def test_give_up_objects_then_reveals_when_past_window_and_heavier():
+    s = _wo(5)
+    d = s.update(pub_height=102, priv_height=103,
+                 branch_weights=lambda f, p, q: (50, 5000, 3000, 34, 30, 50, 40))
+    assert d.release_to == 102 and d.release_from == 100 and s.fork == 103

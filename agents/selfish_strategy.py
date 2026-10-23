@@ -31,7 +31,16 @@ cumulative difficulty -- each recent block weighs
 none): the attacker then reveals as soon as it is heavier. The attacker withholds while its branch is still inside the
 window or its weight does not exceed honest's, reveals once BOTH the window
 and the weight conditions hold, and gives up once honest leads by
-`give_up_depth` blocks. Past the window there is no "withhold while
+`give_up_depth` blocks -- or, with `give_up_objects >= 0` (2026-10-23), once
+the honest branch holds MORE THAN that many work objects more than the
+private one, counted since the fork and including each side's pending
+tip-pool shares (tevador's simulator attacker and sop_race_model.py's
+`give_up_objects`; the block-depth rule is then not applied). The block
+rule can strand the attacker: past the window and behind by weight it can
+never reveal, yet its block count keeps pace with honest's (the same
+difficulty, a hashrate ratio of 0.45:0.55), so the honest lead rarely
+reaches 5 blocks -- 17-27 h of each 72 h v4 run at alpha 0.45 were spent
+that way (docs/20261023_sop_scale_n300_smoke.md). Past the window there is no "withhold while
 comfortably ahead" arm (unlike eyal_sirer/lead_stubborn): waiting for honest
 to close in only risks losing the weight lead the attacker already has, and
 the spec's own analysis models revealing at the first opportunity once past
@@ -64,7 +73,7 @@ class SelfishStrategy:
     def __init__(self, name: str, start_height: int, trail_depth: int = 1,
                  release_lead: int = 1, window_objects: int = 48,
                  give_up_depth: int = 2, release_depth: int = 10,
-                 window_rule: str = "v3"):
+                 window_rule: str = "v3", give_up_objects: int = -1):
         if name not in (
             "honest",
             "eyal_sirer",
@@ -88,6 +97,7 @@ class SelfishStrategy:
         self.give_up_depth = int(give_up_depth)
         if self.give_up_depth < 1:
             raise ValueError(f"give_up_depth must be >= 1, got {give_up_depth}")
+        self.give_up_objects = int(give_up_objects)   # window_stubborn, deep_hunt: -1 = block rule
         self.release_depth = int(release_depth)   # deep_hunt only
         if self.release_depth < 1:
             raise ValueError(f"release_depth must be >= 1, got {release_depth}")
@@ -249,19 +259,34 @@ class SelfishStrategy:
         (never withhold-while-comfortably-ahead, unlike eyal_sirer) in every
         other case -- past the window, waiting for honest to close in only
         risks losing the weight lead already held, and the spec's own
-        analysis models revealing at the first opportunity."""
-        if (a == 0 and h > 0) or (h - a >= self.give_up_depth):
+        analysis models revealing at the first opportunity.
+
+        `give_up_objects >= 0` replaces the block-depth give-up with the
+        race model's: give up once honest's work objects since the fork
+        (blocks + embedded shares + pending tip-pool shares, weights[6])
+        exceed the attacker's (weights[5]) by MORE THAN give_up_objects.
+        That needs the 7-element branch_weights tuple; a shorter one (the
+        "difficulty" weigh) or None holds, as a failed read does."""
+        give_up = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
+        hold = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+        if (a == 0 and h > 0) or (self.give_up_objects < 0 and h - a >= self.give_up_depth):
             self.fork = pub_height
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
+            return give_up
 
         if h == 0:
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+            return hold
 
         weights = branch_weights(old_fork, priv_height, pub_height) if branch_weights \
-            else (a, a, h, max(a - 1, 0), max(h - 1, 0))
+            else (a, a, h, max(a - 1, 0), max(h - 1, 0), a, h)
         self.last_weights = weights
         if weights is None:
-            return ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+            return hold
+        if self.give_up_objects >= 0:
+            if len(weights) < 7:
+                return hold
+            if weights[6] - weights[5] > self.give_up_objects:
+                self.fork = pub_height
+                return give_up
         att_objects, att_weight, hon_weight = weights[:3]
         if self.window_rule == "20261020":
             # MRL #146 2026-10-16: objective once EITHER branch holds (k-1)*w

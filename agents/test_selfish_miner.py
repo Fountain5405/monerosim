@@ -1014,6 +1014,28 @@ def test_window_stubborn_attributes_parse_overrides():
     assert a.strategy.window_objects == 10 and a.strategy.give_up_depth == 3
 
 
+def test_give_up_objects_attribute_default_off_and_override():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["strategy", "window_stubborn"], ["bridges", "b1"]])
+    a.logger = MagicMock()
+    assert a.give_up_objects == -1
+    a._ensure_strategy(0)
+    assert a.strategy.give_up_objects == -1
+    b = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "window_stubborn"], ["bridges", "b1"], ["give_up_objects", "5"]])
+    b.logger = MagicMock()
+    assert b.give_up_objects == 5
+    b._ensure_strategy(0)
+    assert b.strategy.give_up_objects == 5
+    assert SelfishMinerAgent.strategy_kwargs({})["give_up_objects"] == -1
+
+
+def test_give_up_objects_rejects_difficulty_weigh():
+    with pytest.raises(ValueError):
+        SelfishMinerAgent(agent_id="atk", attributes=[
+            ["strategy", "window_stubborn"], ["bridges", "b1"],
+            ["give_up_objects", "5"], ["weigh", "difficulty"]])
+
+
 def test_branch_weights_sop_mode_without_embedded_shares():
     a = _make_agent(strategy="window_stubborn")
     assert a.embedded_shares is False
@@ -1029,7 +1051,7 @@ def test_branch_weights_sop_mode_without_embedded_shares():
     result = a._branch_weights(5, 8, 7)
     # attacker shares ignored (embedded_shares off): objects=3, weight=1+2+3=6
     # honest shares always counted: unit*(1+m) = 1*6 + 2*2 = 10
-    assert result == (3, 6, 10, 2, 2)
+    assert result == (3, 6, 10, 2, 2, 3, 8)   # totals: no tip_shares -> branch objects
     a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
     a.bridge_rpc.get_block_headers_range.assert_called_once_with(5, 6)
 
@@ -1044,7 +1066,7 @@ def test_branch_weights_sop_mode_with_embedded_shares():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 7, 5)
     # objects = (1+2)+(1+3) = 7; weight = 1*3 + 2*4 = 11; honest range empty -> 0
-    assert result == (7, 11, 0, 4, 0)
+    assert result == (7, 11, 0, 4, 0, 7, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1067,7 +1089,7 @@ def test_branch_weights_wide_difficulty_fallback():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 6, 5)
     # difficulty 16 // sop_w(16) = 1, unit=max(1,1)=1, weight=1*(1+0)=1
-    assert result == (1, 1, 0, 0, 0)
+    assert result == (1, 1, 0, 0, 0, 1, 0)
 
 
 def test_branch_weights_none_on_rpc_error_from_daemon():
@@ -1098,7 +1120,7 @@ def test_branch_weights_empty_honest_range():
         {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
     ]
     result = a._branch_weights(5, 6, 5)   # pub_height == fork: empty honest range
-    assert result == (1, 1, 0, 0, 0)
+    assert result == (1, 1, 0, 0, 0, 1, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1194,9 +1216,10 @@ def test_branch_weights_tip_shares(make_miner):
     m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true"},
                    priv_blocks=[15, 15], pub_blocks=[15, 15],
                    pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
-    att_objects, att_w, hon_w, att_x1, hon_x1 = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot = m._branch_weights(fork=100, priv_height=102, pub_height=102)
     assert (att_objects, att_x1, hon_x1) == (32, 16, 16)
     assert att_w == 3200 + 300 and hon_w == 3200 + 500
+    assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # give-up objects include the pending pool shares
 
 
 def test_branch_weights_without_tip_shares_is_v3(make_miner):
@@ -1215,8 +1238,9 @@ def test_branch_weights_own_tip_shares_excluded(make_miner):
                                "count_own_tip_shares": "false"},
                    priv_blocks=[15, 15], pub_blocks=[15, 15],
                    pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
-    att_objects, att_w, hon_w, att_x1, hon_x1 = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot = m._branch_weights(fork=100, priv_height=102, pub_height=102)
     assert att_w == 3200 and hon_w == 3200 + 500
+    assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # own pool shares still count as the attacker's work
 
 
 def test_tip_shares_wait_for_bridge_tip(make_miner):

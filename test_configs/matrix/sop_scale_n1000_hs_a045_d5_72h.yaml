@@ -1,3 +1,7 @@
+# HOLD (2026-10-23): the smoke ran (docs/20261023_sop_scale_n300_smoke.md:
+# ratio 1.91, +15 GB, no freeze, oracle clean) but this attacker sat stranded
+# 6.5 of its 8 h under the block-depth give-up. Re-point the arm to
+# give_up_objects '5' once sop_v4_o5_72h has measured it on 12 daemons.
 # sop_scale_n1000_hs_a045_d5_72h (2026-10-21): does the share-aware
 # window_stubborn attacker still beat Share-or-Perish at alpha 0.45, depth 5,
 # when 1,000 relays sit between it and the honest miners instead of 2?

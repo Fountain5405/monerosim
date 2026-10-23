@@ -6,6 +6,15 @@ not changed since — edit history checked 2026-10-22). Companion to
 (log v3) on the same cells. Design: `docs/superpowers/specs/2026-10-21-sop-rev20261020-design.md`;
 conformance: `docs/20260930_sop_conformance.md` (revised 2026-10-20 section).
 
+> **Caveat (2026-10-23):** the attacker in every run below gives up only
+> when honest leads by `give_up_depth` *blocks*; past the window and behind
+> by weight its block count keeps pace with honest's, so it sat stranded
+> (no reveal, no concession, every block orphaned) for 17-27 h of each 72 h
+> alpha-0.45 run. The race model puts an objects-give-up attacker (o5) at
+> 0.36 for alpha 0.45 against the 0.05-0.11 measured here. The collapse
+> below is therefore partly the attacker's; see
+> `docs/20261023_sop_scale_n300_smoke.md` and the `sop_v4_o5_72h` spec.
+
 ## Summary
 
 - **The revised rule collapses the attack at every alpha tested.** Attacker
@@ -103,6 +112,8 @@ variants, w/k sweeps, learned policies) needs multiple samples per cell.
   noise presumably scales with the share, but only the 0.10 cell is measured.
 - Whether the model's central values hold at other cells (it sat below the
   sim on cell 4, above it on noown, both within noise).
+- How much of the alpha-0.45 collapse is the block-depth give-up: the
+  attacker was stranded 17-27 h per run (2026-10-23 caveat above).
 - The scale question: all of the above is 12 daemons. `sop_scale_n1000`
   (1000 nodes, 300-node smoke first) is the pending test of the same rule
   at realistic fan-out.
