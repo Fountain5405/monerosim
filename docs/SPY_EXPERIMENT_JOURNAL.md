@@ -1549,7 +1549,7 @@ gradient (latest-started quarter above 0.6). Below 0.30 means the excess does no
 means more than proportional. Prior 50%. Exposure recorded, not predicted (precision 1 at the ceiling expected). Lowest free RAM on
 `simbox2` above 12 GB.
 
-*Outcome, 2026-10-23 23:40:* light **0.3369**, inside 0.30-0.40: hit (2.20x the run's 0.1531 ceiling). Flat: hit (Q4 1.3% below
+*Outcome, 2026-10-23 23:33:* light **0.3369**, inside 0.30-0.40: hit (2.20x the run's 0.1531 ceiling). Flat: hit (Q4 1.3% below
 Q1). Relays 1.11x light: hit. Users 0.133, inside 0.08-0.14: hit. Relay curve stationary from hour 5: hit. Latest-started quarter
 above 0.6: **miss** (0.50-0.54). Five of six; the candidate-count reading holds as a multiplier on the ceiling, and the additive
 reading (0.27) is refuted (E27).
@@ -1565,7 +1565,7 @@ matters even where the selection ignores it (list dynamics by /24); above 0.32 m
 model says. Prior 60%. Paired with P17 this separates the two rules at a fixed layout: P17's read over this one is the `24`/`legacy`
 ratio at 42 /24s, against 0.58 at 21 /24s. Lowest free RAM on `phantom` above 10 GB.
 
-**P19, filed 2026-10-23 23:45, before the cell is queued (E27's seed spread).** `lean_24_none_h300_k42_w13h_m1_n600_s23456` on
+**P19, filed 2026-10-23 23:35, before the cell is queued (E27's seed spread).** `lean_24_none_h300_k42_w13h_m1_n600_s23456` on
 `simbox2`: E27's cell at seed 23456 (same box). The family's seed spreads so far are 1-2% (E21: 0.1626 against 0.1662; E23b: 0.2826
 against 0.2857). Light-node share **0.32-0.36**, flat by quarter, relays 1.05-1.2x light, users 0.11-0.15, `sp_r` precision 1 at
 its ceiling, 23-31 of 40 users exposed. Prior 70%. Below 0.32 or above 0.36 means this layout's seed spread is larger than the
@@ -1619,7 +1619,7 @@ family's, and E27's 2.20x needs the third seed before it is quoted.
    separate `--list-seed` defaulting to 12345, which keeps the existing cell's list; or leave it and replicate the
    list rather than the seed. Nothing is changed until a `half` `tail` replicate is queued; the owner's call.
 
-10. **Why 2.2x and not 1x** (added 2026-10-23 23:45, from E27). Under the stock rule every `tail`-family layout reads 2.0-2.4x the
+10. **Why 2.2x and not 1x** (added 2026-10-23 23:35, from E27). Under the stock rule every `tail`-family layout reads 2.0-2.4x the
     subnet model (E19 2.02x, E24a 2.41x, E24 2.13x, E26 2.32x at 30 h, E27 2.20x), and `legacy` reads 2.34x its own (E23). The
     multiplier is set within six hours of the gray-list drain, has a start-order gradient (earliest-started relays about 1.5x the
     ceiling, latest about 3.5x), and does not relax in 30 h. E21 traced it to the recency bias over the relays' own white lists,
@@ -1677,7 +1677,7 @@ in the conversation.
 | 10-23 18:10 | Three registered `simbox3` archives (P6a `20261022_222209_lean_legacy_none_h71_k1_s12345`, the TRIP run `20261022_234237_..._w24h_m113_s12345`, P9's patch test `20261023_035553_..._w18h_fx_s12345`) copied to `phantom`'s pool (`/mnt/ssdpool/monerosim_archives/`, rsync, file counts and bytes verified equal) and then removed from `simbox3` | `simbox3` had 60 GB free with a 7.6 GB filler archive growing and a 508-daemon 30 h cell (P16b, about 15 GB) next; the 45 GB floor would have been crossed. Nothing is lost: the register holds each run's scoring files and the raw archives are on `phantom` | copy them back with rsync from `phantom` | agent |
 | 10-23 20:55 | `simbox2` drained at 20:47 (P15 done). Instead of leaving it idle for the handover to the selfish-mining project, P17 was filed and queued there: `lean_24_none_h300_k42_w13h_m1_n600_s12345` (42 spy /24s at 1 spy each, 384 daemons, ~2.5 h), the first direct test of the candidate-count reading that E23 and E24 arrived at | The other project's agent has no key on the control box yet, so the box would sit idle tonight; the cell costs 2.5 h and settles whether the excess scales with the number of distinct candidates. Risk: delays the handover by one cell. Undo: kill the driver by pid; the cell yaml is on both boxes (md5 d4ce41fd) |
 | 10-23 21:43 | `phantom` drained at 21:38 (P16a done, E26). P18 filed and queued there: `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`, P17's layout under the old rule (~2.5 h) | Pairs with P17 so the two rules are compared at the 42-/24 layout as E19/E23 compared them at 21; tests whether the /24 layout matters where the selection ignores it. Risk: 2.5 h of the generator box, 27 GB free is enough for 384 daemons. Undo: kill the driver by pid; cell md5 67c4fc98 |
-| 10-23 23:45 | `simbox2` drained at 23:30 (P17 done, E27). P19 filed and queued there: the seed-23456 replicate of E27's cell (~2.5 h) | E27 is the strongest single number in the journal (0.337 light, 27 of 40 users exposed) and the family's other headline cells have a seed replicate (E21, E23b); the other project cannot use the box before morning. Risk: the handover slips one more cell. Undo: kill the driver by pid; cell md5 16faa462 on both boxes |
+| 10-23 23:35 | `simbox2` drained at 23:30 (P17 done, E27). P19 filed and queued there: the seed-23456 replicate of E27's cell (~2.5 h) | E27 is the strongest single number in the journal (0.337 light, 27 of 40 users exposed) and the family's other headline cells have a seed replicate (E21, E23b); the other project cannot use the box before morning. Risk: the handover slips one more cell. Undo: kill the driver by pid; cell md5 16faa462 on both boxes |
 
 ## 8. Files
 
