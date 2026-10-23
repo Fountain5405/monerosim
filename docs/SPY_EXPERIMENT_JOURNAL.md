@@ -1464,7 +1464,7 @@ else (the drain's size, or small-number effects at 21 spies). Prior 60% for (a),
 `sp_r` precision 1.00 and recall at its ceiling in both. Lowest free RAM: (a) on `phantom` above 8 GB (432 daemons; the 453-daemon
 cells bottomed at 10.9-12.2 GB); (b) on `simbox3` (100 GB) above 60 GB.
 
-*Outcome (a), 2026-10-23 21:50:* light **0.1911**, inside 0.18-0.22: hit. Flat: hit (Q4 0.6% above Q1). Relays 0.2187, inside
+*Outcome (a), 2026-10-23 21:40:* light **0.1911**, inside 0.18-0.22: hit. Flat: hit (Q4 0.6% above Q1). Relays 0.2187, inside
 0.20-0.26: hit. Users 0.0522, inside 0.05-0.08: hit. Lowest free RAM 10.6 GiB: hit. The 13 h cell's 0.1978 fell 3% in thirteen more
 hours and the relay curve is flat from hour 10 to 30 (E26). (b) is running on `simbox3` (started 20:19).
 
@@ -1491,7 +1491,7 @@ gradient (latest-started quarter above 0.6). Below 0.30 means the excess does no
 means more than proportional. Prior 50%. Exposure recorded, not predicted (precision 1 at the ceiling expected). Lowest free RAM on
 `simbox2` above 12 GB.
 
-**P18, filed 2026-10-23 21:55, before the cell is queued (P17's `legacy` control).** `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`
+**P18, filed 2026-10-23 21:43, before the cell is queued (P17's `legacy` control).** `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`
 on `phantom`: P17's layout (42 spies in 42 /24s at 1 each) under v0.18.4.2's selection, 13 h warmup, window 15-19 h, seed 12345. Under
 `legacy` every IP is its own candidate, so this cell shows the selection the same 42 candidates as E23's `tail` cell (42 IPs in 21
 /24s, 0.2857 and 0.2826); its model is the same too (42 spy IPs against 300 honest, about 0.122; the run's `model` line supersedes).
@@ -1598,7 +1598,7 @@ in the conversation.
 | 10-23 18:05 | P16 filed and committed, then queued: the 1-per-/24 24 h cell on `phantom` (idle since 17:49) and the 8-per-/24 24 h cell at the head of `simbox3`'s queue, ahead of the two seed-34567 fillers (the running seed-23456 `tail` filler finishes first). Both generated on `phantom`, the `simbox3` copy md5-checked | P13 ended split (a hit, b refuted) because the 8-per-/24 window sat inside its own drain's transient; only 24 h warmups compare steady states, and E22a already holds the 2-per-/24 point; the fillers are lower value than this | remove the line from `~/queue/q.txt` on `simbox3`; kill `phantom`'s driver by pid | agent |
 | 10-23 18:10 | Three registered `simbox3` archives (P6a `20261022_222209_lean_legacy_none_h71_k1_s12345`, the TRIP run `20261022_234237_..._w24h_m113_s12345`, P9's patch test `20261023_035553_..._w18h_fx_s12345`) copied to `phantom`'s pool (`/mnt/ssdpool/monerosim_archives/`, rsync, file counts and bytes verified equal) and then removed from `simbox3` | `simbox3` had 60 GB free with a 7.6 GB filler archive growing and a 508-daemon 30 h cell (P16b, about 15 GB) next; the 45 GB floor would have been crossed. Nothing is lost: the register holds each run's scoring files and the raw archives are on `phantom` | copy them back with rsync from `phantom` | agent |
 | 10-23 20:55 | `simbox2` drained at 20:47 (P15 done). Instead of leaving it idle for the handover to the selfish-mining project, P17 was filed and queued there: `lean_24_none_h300_k42_w13h_m1_n600_s12345` (42 spy /24s at 1 spy each, 384 daemons, ~2.5 h), the first direct test of the candidate-count reading that E23 and E24 arrived at | The other project's agent has no key on the control box yet, so the box would sit idle tonight; the cell costs 2.5 h and settles whether the excess scales with the number of distinct candidates. Risk: delays the handover by one cell. Undo: kill the driver by pid; the cell yaml is on both boxes (md5 d4ce41fd) |
-| 10-23 21:55 | `phantom` drained at 21:38 (P16a done, E26). P18 filed and queued there: `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`, P17's layout under the old rule (~2.5 h) | Pairs with P17 so the two rules are compared at the 42-/24 layout as E19/E23 compared them at 21; tests whether the /24 layout matters where the selection ignores it. Risk: 2.5 h of the generator box, 27 GB free is enough for 384 daemons. Undo: kill the driver by pid; cell md5 67c4fc98 |
+| 10-23 21:43 | `phantom` drained at 21:38 (P16a done, E26). P18 filed and queued there: `lean_legacy_none_h300_k42_w13h_m1_n600_s12345`, P17's layout under the old rule (~2.5 h) | Pairs with P17 so the two rules are compared at the 42-/24 layout as E19/E23 compared them at 21; tests whether the /24 layout matters where the selection ignores it. Risk: 2.5 h of the generator box, 27 GB free is enough for 384 daemons. Undo: kill the driver by pid; cell md5 67c4fc98 |
 
 ## 8. Files
 
