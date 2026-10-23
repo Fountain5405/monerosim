@@ -81,6 +81,15 @@ CAIDA topology with weighted regions and prefix sharing 0.31 x 3. Spies are vari
 (stock `monerod-sim` that dials one fallback seed and logs relays); they announce
 through the seeds only, and do not poison peer lists or multiplex ports.
 
+*Deviations from the plan's X1, stated 2026-10-23 14:40 (the review found them unstated):* (1) **Transaction rate.** Each of the
+40 users is configured with `transaction_interval: 300`, one transaction every 5 minutes (the 4 h windows carry 1,000-1,100 stem
+transactions), against about one a day for a mainnet wallet: roughly 150x. This inflates the relayed-stem cover for *reachable*
+senders and so the `combined` estimator's precision on busy nodes; the slot shares, the headline metric, do not depend on it (E2).
+It also sets the time scale of the exposure counts: "12 of 40 senders with 20 or more transactions exposed within 4 h" is a
+per-20-transactions figure, which at mainnet rates is weeks, not hours; what carries over is the spy's chance per transaction.
+(2) **Spy type.** The plan's X1 spies are an 8-port, list-poisoning fleet; the lab's are variant R (above). A list-poisoning spy
+would fill real gray lists with spy entries, which would make the lab's gray-list drain (E16) more like mainnet, not less.
+
 **Boxes.**
 - `phantom`: Ryzen 9 5900XT (32 threads), 32 GB (four 8 GB DIMMs at 2133 MT/s),
   ASRock X570, Ubuntu 24.04.5, kernel 6.8.0-146, glibc 2.39; 4 GB swap plus a
@@ -161,8 +170,11 @@ afterwards and are clean.
   scratch directory; they are kept as they ran in `docs/spy_journal/adhoc/`. They are
   not tested and are not maintained.
 - The queue event logs are snapshots (`queue_events_<box>_through_<date>.events`), refreshed when the journal is
-  updated; the latest are through 2026-10-23 12:12 and the earlier snapshots are kept.
+  updated; the latest are through 2026-10-23 14:05 (`simbox3`) and 12:12 (`phantom`, `simbox2`); the earlier snapshots are kept.
 - Entries E1-E12 were written after the fact (section 1); E13 onwards were written when the result came in.
+- *(2026-10-23 14:40, from the review)* The `half` ban list at `--ban-coverage 0.5` is tie-broken with the simulation seed
+  (open question 9), so a seed replicate of a `half` `tail` cell also changes which 10 of the 21 /24s are banned. One such
+  cell has run so far (seed 12345); no replicate is affected yet.
 
 ## 3. Run register
 
@@ -1191,6 +1203,14 @@ the three cells needs the fixed-seed flag (they stop at 19 h), so they compare d
    drain is only a lab effect, either lengthen the warmup (P7), cap the white list in the
    simulator to the lab's ratio, or restart the relays after the drain and clear the gray
    list. Any of the three changes the experiment, so it is the user's call.
+9. **The `half` list's tie-break is seeded by the simulation seed** (added 2026-10-23 14:40, from the review).
+   `make_lean.py` passes `--seed <simulation seed>` to `spy_ban_list.py`, which orders equally dense /24s by a shuffle
+   with that seed. In `tail` every /24 holds 2 spies, so all 21 are ties, and a seed-23456 replicate of the
+   `--ban-coverage 0.5` cell bans a different 10 of the 21: a seed replicate would vary the seed and the banned set
+   together. Only one such cell has run (`20261023_024332_lean_24_half_h300_k21_w13h_m2_n600_c50_s12345`). Options:
+   a constant tie-break seed (later cells then ban a different set from that cell's unless the constant is 12345); a
+   separate `--list-seed` defaulting to 12345, which keeps the existing cell's list; or leave it and replicate the
+   list rather than the seed. Nothing is changed until a `half` `tail` replicate is queued; the owner's call.
 
 ## 7. Decisions log
 
@@ -1233,6 +1253,7 @@ in the conversation.
 | 10-23 08:10 | Same on `phantom` (new sha256 `1472ed18703f...`), then started `lean_24_none_h300_k21_w24h_m2_n600_fx_s12345` (P11a, 30 simulated hours) | as above; the memory of a 30 h run on a 32 GB box is unmeasured, the driver's 1.5 GB guard applies | restore the `.pre-fixedseed` binary and provenance | agent |
 | 10-23 12:36 | Record fixes from the user's review: the two aborted 24 h `core` runs registered (`simbox3` TRIP `20261022_234237`, `phantom` STOPPED `20261023_003351`), E18 given the measured spike as a dated addendum, open questions 1, 3, 4 and 5 closed with dated lines (4 after reading the 0.18.5.1 embargo code), the status and binary paragraphs refreshed, three misplaced decision rows moved into date order, `run_register.py --box` help names `simbox3` | the journal's own rule is that nothing is deleted and the status must be current; the user asked for it after the review | revert the commit | user asked, agent did |
 | 10-23 12:36 | P12 (the `legacy` partner of the `tail` cell) and P13 (`tail` at 1 and 8 spies per /24) filed, then the three cells queued: `phantom` runs the `legacy` partner then the 1-per-/24 cell, `simbox2` the 8-per-/24 cell (copied, md5 checked); all stop at 19 h simulated on the stock rule without the flag | the user said to file the two new cells; both boxes were idle; the `legacy` partner is the missing measurement behind "dedup gives the diversified spy more slots", and the per-/24 pair tests E22's dilution reading | delete the lines from `x0_queue3.txt` (scratchpad, `phantom`) and `~/queue/q.txt` (`simbox2`); `kill` the driver pids | user asked, agent queued |
+| 10-23 14:40 | The two plan deviations the review found unstated (tx rate about 150x mainnet, variant R spies) and the `half`-list tie-break confound are stated in the record (section 2, Known gaps, open question 9); `spy_ban_list.py` and `make_lean.py` are not changed | the user approved the record fixes, not code changes; a different tie-break would make later `half` tail cells incomparable with the seed-12345 one already run (`20261023_024332_..._c50`), so which way to go is the owner's call | revert the journal lines | agent |
 
 ## 8. Files
 
