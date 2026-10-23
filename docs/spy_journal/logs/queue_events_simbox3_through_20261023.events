@@ -1,0 +1,11 @@
+22:22 START lean_legacy_none_h71_k1_s12345 run=/home/lever65/monerosim_archives/20261022_222209_lean_legacy_none_h71_k1_s12345
+23:42 DONE lean_legacy_none_h71_k1_s12345 exit=0 wall=79m min_avail_mb=88061 light_out_share=0.0641
+share fluff_per_hop=0.218 stem_txs=1093 run=/home/lever65/monerosim_archives/20261022_222209_lean_legacy_none_h71_k1_s12345
+23:42 START lean_24_none_h300_k1_w24h_m113_s12345 run=/home/lever65/monerosim_archives/20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345
+03:46 TRIP lean_24_none_h300_k1_w24h_m113_s12345: avail_mb=350 swap_growth_mb=4277 disk_gb=81; killing Shadow (pid 30223)
+03:48 DONE lean_24_none_h300_k1_w24h_m113_s12345 exit=1 wall=243m min_avail_mb=10049 light_out_share=? fluff_per_hop=? stem_txs=0 run=/home/lever65/monerosim_archives/20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345
+03:48 STOPPING QUEUE after lean_24_none_h300_k1_w24h_m113_s12345 (trip='avail_mb=350 swap_growth_mb=4277 disk_gb=81' exit=1)
+03:55 START lean_24_none_h71_k1_w18h_fx_s12345 run=/home/lever65/monerosim_archives/20261023_035553_lean_24_none_h71_k1_w18h_fx_s12345
+07:27 DONE lean_24_none_h71_k1_w18h_fx_s12345 exit=0 wall=209m min_avail_mb=88550 light_out_share=0.0094
+share fluff_per_hop=0.214 stem_txs=1147 run=/home/lever65/monerosim_archives/20261023_035553_lean_24_none_h71_k1_w18h_fx_s12345
+07:27 START lean_24_none_h300_k1_w24h_m113_fx_s12345 run=/home/lever65/monerosim_archives/20261023_072719_lean_24_none_h300_k1_w24h_m113_fx_s12345

@@ -213,6 +213,8 @@ own selection rule and its spy layout.
 | `20261023_035553_lean_24_none_h71_k1_w18h_fx_s12345` | simbox3 | 13 / 1 | 71 / 60 | 0.0094 (0.0181) | 0.011, 0.008, 0.009, 0.010 | 0.214 | 1147 | 3h 29m | 86.5 | 0 | E20 / P9: patched monerod-sim (--sim-fixed-randomx-seed on every daemon), H=71, to 22.5 h simulated; passed block 2112 at sim 19:55 with no memory step; all 124 daemons end at height 2188 |
 | `20261023_052647_lean_24_none_h300_k21_w13h_m2_n600_s23456` | simbox2 | 42 / 21 | 300 / 240 | 0.1626 (0.0831) | 0.165, 0.166, 0.161, 0.159 | 0.192 | 1099 | 2h 33m | 12.5 | 0 | E21 / P10b: seed replicate of the 13 h tail cell (seed 23456); 0.1626 vs 0.1662 for seed 12345 |
 | `20261023_052647_lean_24_none_h300_k21_w13h_p3_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1626 (0.0822) | 0.163, 0.162, 0.164, 0.162 | 0.191 | 1097 | 2h 37m | 11.5 | 0 | E21 / P10a: the tail probe (first/last 3 relays of each start order log picks and dump lists), 13 h warmup, seed 12345; 0.1626 vs 0.1662 without the probe |
+| `20261023_080537_lean_24_half_h300_k1_w24h_m113_fx_s12345` | simbox2 | 113 / 1 | 300 / 242 | 0.0025 (0.0045) | 0.002, 0.003, 0.003, 0.002 | 0.197 | 1090 | 4h 4m | 9.7 | 0 | E22 / P11b: X1 core with the spy ban list on half the honest nodes, 24 h warmup with --sim-fixed-randomx-seed (stop 30 h, window 26-30 h), seed 12345; 0.0025 flat by quarter (6 h warmup, E17: 0.0162); adopters 0.0, non-adopters 0.0148 (with the miners); relays 0.0027, users 0.0019; sp_r made no guess (0 of 1,015 user txs stemmed to a spy), 0 of 40 exposed; relay curve reaches the half-list model (0.0023) by hour 28; min free RAM 10.0 GB over 30 simulated hours |
+| `20261023_081108_lean_24_none_h300_k21_w24h_m2_n600_fx_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1572 (0.0822) | 0.159, 0.159, 0.157, 0.153 | 0.196 | 1099 | 3h 47m | 10.7 | 0 | E22 / P11a: X1 tail, no list, 24 h warmup with --sim-fixed-randomx-seed (stop 30 h, window 26-30 h), seed 12345; 0.1572 (6 h warmup 0.1946, 13 h 0.1662); relays 0.1805, users 0.0431; sp_r precision 1.00, recall 0.035 at its ceiling, 12 of 40 exposed; min free RAM 10.9 GB over 30 simulated hours on a 32 GB box |
 <!-- register:end -->
 
 ## 4. Entries
@@ -791,6 +793,84 @@ where it ends. (`probe_relay_share.py` gives the slot shares.)
 tested (5 picks). (b) light share 0.1626 in 0.14-0.19: hit; users 0.0502 in 0.035-0.06: hit; precision 1.000: hit; recall 0.031
 outside 0.045-0.07: **missed**, though equal to its ceiling; 16 of 40 in 15-23: hit.
 
+### E22. The 30 h cells: the `tail` excess relaxes slowly and by start order (2026-10-23 08:11-12:01, `phantom`; `simbox2` and `simbox3` to follow)
+
+The first cells run with `--sim-fixed-randomx-seed` on every daemon (E20), so a 32 GB box could pass block 2113:
+24 h warmup, stop at 30 h simulated, window 26-30 h, seed 12345. Predictions P11 (filed 07:30).
+
+**(a) `tail`, no list** (`lean_24_none_h300_k21_w24h_m2_n600_fx_s12345`, `phantom`, 227 min wall, exit 0, lowest free RAM
+10.9 GB, 1,099 stem txs, 0.196 fluff per hop). Light-node share **0.1572**, by quarter 0.1591, 0.1593, 0.1572, 0.1535 (a 3.5%
+fall across the window). Relays **0.1805**, users 0.0431, observers 0.0483, medium 0.0895, miners 0.1139. The same cell at the
+three warmups:
+
+| Warmup (window) | Light | Relays | Users | Observers | 20+-tx users exposed |
+|---|---|---|---|---|---|
+| 6 h (8-12 h), E15 | 0.1946 | 0.2219 | 0.0554 | 0.0938 | 15 of 40 |
+| 13 h (15-19 h), E19 | 0.1662 | 0.1881 | 0.0478 | 0.1219 | 18 of 40 |
+| 24 h (26-30 h), this run | 0.1572 | 0.1805 | 0.0431 | 0.0483 | 12 of 40 |
+
+The relays' spy share against simulated time in this run (`spy_share_vs_time.py`), all 233 relays and by start-order quarter:
+
+| Sim hour | 8 | 12 | 15 | 19 | 23 | 26 | 28 | 30 |
+|---|---|---|---|---|---|---|---|---|
+| All relays | 0.2035 | 0.1946 | 0.1996 | 0.1934 | 0.1875 | 0.1820 | 0.1808 | 0.1783 |
+| Earliest-starting quarter | 0.130 | 0.108 | 0.109 | 0.112 | 0.090 | 0.087 | 0.093 | 0.086 |
+| Latest-starting quarter | 0.291 | 0.286 | 0.282 | 0.260 | 0.272 | 0.245 | 0.253 | 0.243 |
+
+The ceiling for 21 spy /24s is 0.0822. The whole population falls 12% in 22 hours; the excess over the ceiling falls from 0.121 at
+8 h to 0.096 at 30 h, about 2.5% an hour and slowing. The earliest-started quarter of relays reaches the ceiling by hour 23; the
+latest-started quarter is still at three times it at hour 30; the observers, which started at t=0, fall from 0.12 to 0.05. So
+the excess is neither the flat steady state E21 expected nor the transient that P7 hoped for in `core`: it is a **per-relay
+state, set by when the relay started, that relaxes slowly**, if at all, in the late starters. (E21's recency reading fits this:
+a connection refreshes a peer's `last_seen`, the stock rule puts about a third of its white picks on the single newest unconnected
+/24, so whatever a relay was connected to after its gray list drained is what it keeps re-picking. What breaks the lock is a
+disconnection that is not followed by a re-pick, which is slow in a network without churn. That mechanism is inferred, not shown.)
+**Estimators** (40 unreachable users, 1,030 txs): `sp_r` precision **1.000**, recall **0.035** (36 txs), equal to its ceiling (36 of
+1,026); **12 of 40** senders with 20 or more txs exposed (30%; 95% interval about 17-47%). The 5 busy reachable nodes: `sp` 3 of
+69 (0.043), `combined` exposes 3 of the 4 nodes with 10-19 txs at a precision of 0.09. Unreachable nodes' median spy share of
+stem peers 0.019, of outbound peers 0.036; reachable nodes 0.125 and 0.146.
+**Memory.** Free RAM never fell below 10.9 GB over 30 simulated hours (P11's clause: above 4 GB), and the box passed block 2112
+at simulated 20:12 with no step. A 32 GB box runs a 30 h H=300 cell with the flag.
+**Score (P11a).** 0.1572 is inside 0.10-0.16, at the top edge: **hit**. The 08:29 note expected a value above 0.16 (a flat steady
+state); it was wrong by 0.003, and the curve says why: there is a decay, but it is slow and confined to the relays that started
+early. Users 0.0431 and exposure 12 of 40 were not predicted in P11a.
+**What this means for X1.** The spies' share of the unreachable users' own stems in the `tail` preset is 0.035-0.06 at every warmup
+(recall at its ceiling each time), so for the senders X1 scores the answer is stable: about one unreachable user in three with 20 or
+more transactions has at least one attributed within 4 hours at this spy density, with precision 1. The relays' share, which decides
+the reachable senders' exposure, is 0.18-0.22 and depends on when the relay started; its mainnet counterpart is untested (open question 8).
+
+**(b) `core` with the ban list on half the honest nodes** (`lean_24_half_h300_k1_w24h_m113_fx_s12345`, `simbox2`, 244 min wall, exit 0,
+lowest free RAM 10.0 GB, 1,090 stem txs, 0.197 fluff per hop; written 12:16). Light-node share **0.0025**, by quarter 0.0024, 0.0026,
+0.0026, 0.0024: flat. Relays 0.0027, users 0.0019, observers 0.0, medium 0.0029, miners 0.0631. Adopters (165 nodes) **0.0000**,
+non-adopters (175, with the 5 miners at 100 out-peers) 0.0148, all honest 0.0081. The same cell at the 6 h warmup (E17) read 0.0162
+(non-adopters 0.0415). Half the no-list model (0.0045) is 0.0023. The relays' spy share against simulated time:
+
+| Sim hour | 4 | 6 | 8 | 12 | 15 | 18 | 23 | 28 | 30 |
+|---|---|---|---|---|---|---|---|---|---|
+| All relays | 0.1036 | 0.0559 | 0.0327 | 0.0154 | 0.0111 | 0.0079 | 0.0038 | 0.0025 | 0.0023 |
+
+The excess over 0.0023 halves every 4-5 h (a time constant of about 6 h over hours 8-18, as E18's 5 h for the no-list cell) and is
+gone by hour 28; at hour 30 the start-order quarters read 0.0026, 0.0013, 0.0000, 0.0052, i.e. no start-order structure. **In `core`
+the excess is a transient and it ends at the model.** The gap left by E21's correction (the slow decay from hour 3.5 to 12 that
+persistence did not explain) is at least bounded: whatever carries it is gone in a day.
+**Estimators** (40 unreachable users, 1,019 txs): `sp_r` made **no guess**; 0 of 1,015 user txs were stemmed straight to a spy, so
+**0 of 40** senders exposed. The 5 busy reachable nodes (medium hubs, 71 txs): `sp` 8 of 71 correct at a precision of 0.47, `fs` 6
+correct of 516 guesses. In the window 10% of unreachable and 16% of reachable nodes ever held a spy outbound slot (median 0).
+**Memory.** Lowest free RAM 10.0 GB over 30 simulated hours; block 2112 passed at simulated 20:05 with no step.
+**Score (P11b).** 0.0025 is inside 0.0025-0.007, at the bottom edge: **hit**. Exposure 0 of 40 against at most 1: **hit**. Precision
+1.00 where `sp_r` guesses: not tested (no guess). Free RAM above 4 GB: **hit**.
+
+**Why `tail` locks in and `core` does not (inferred, not shown).** The stock rule takes one *random* IP per unconnected /24 before it
+sorts by `last_seen` (verified in v0.18.5.1, `make_new_connection_from_peerlist`: a uniform shuffle, the first entry per /24, then
+the sort and the top 20). A spy /24 of 2 IPs puts its just-disconnected, freshest IP forward half the time; a /24 of 113 puts it
+forward 1 time in 113, and the stale rest of the time. So the recency feedback of (a) is diluted by the number of IPs the spy packs
+into a /24: a diversified spy (1-3 IPs per /24, as in the ban list's tail) gets the lock-in, a dense one does not. A cheap test, not
+yet filed: the `tail` layout at 1 and at 8 spies per /24 (`--spies-per-subnet`), same /24 count; the prediction is a larger excess at
+1 and a smaller one at 8.
+
+*(c) The 24 h `core` without the list (`simbox3`, P7b) is added here when it finishes (about 13:30). It gives the no-list base for (b)'s
+0.5x ratio and the end point of E18's curve.*
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -967,6 +1047,15 @@ Both runs also test whether a 32 GB box holds 30 simulated hours: lowest free RA
 at 9.8 GB, the 20 h one at 10.3 GB, and `simbox2`'s memory was flat for two hours before the boundary).
 
 *Note, 2026-10-23 08:29:* E21 gives a reason to expect (a) to read **above** 0.16 (the `tail` excess looks like a steady state of the stock rule at about 0.16-0.17 light), which would be a miss of the range, not a contradiction of the data.
+
+*Outcome (a), 2026-10-23 12:07 (E22):* light-node share **0.1572**, inside 0.10-0.16 at the top edge: **hit**; relays 0.1805, users
+0.0431, 12 of 40 exposed, lowest free RAM 10.9 GB (above 4 GB: hit). The 08:29 note's "above 0.16" missed by 0.003: the excess
+decays, slowly (relays 0.2035 at hour 8 to 0.1783 at hour 30), and only in the relays that started early. (b) is pending on `simbox2`.
+
+*Outcome (b), 2026-10-23 12:16 (E22):* light-node share **0.0025**, inside 0.0025-0.007 at the bottom edge: **hit**; 0 of 40 twenty-transaction
+users exposed (at most 1: hit); `sp_r` made no guess, so the precision clause is untested; lowest free RAM 10.0 GB (hit). The relays
+reach half the no-list model (0.0023) by hour 28: in `core` the excess is a transient that a day removes. The 0.5x ratio to the no-list
+cell is checked against P7b when `simbox3` finishes.
 
 ## 6. Open questions
 
