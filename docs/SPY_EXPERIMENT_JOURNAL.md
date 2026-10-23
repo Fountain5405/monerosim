@@ -5,15 +5,19 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-22, 22:39).** X0, the calibration, is done: the `legacy` leg passes its targets
-(3 seeds per cell) and the /24-dedup leg reads 45-47% below `legacy` on the 69-/24 replica and 77%
-below on the lean k=6 cell. X1 has begun, and E16 explains its main surprise: the lab's relays
-hold far more spies than the selection model predicts (E14, E15) because their gray lists drain
-to nothing but spies about 2-3 h after they start, the fallback then picks spies, and those
-connections outlast the 6 h warmup. Every `24` share measured so far is therefore the tail of a
-transient. P7 (filed 22:36) tests whether a 16 h and a 24 h warmup remove it; those cells are
-queued on `phantom` and `simbox3`. `simbox3`, the third box, passed its platform check
-(P6a, 0.0641; about 2x slower than `phantom`) and is running the 24 h cell. Entries E1-E21 below; open questions in section 6.
+**Status (2026-10-23, 12:36).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
+target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
+its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
+both presets at a 24 h warmup. `core` (113 spies in one /24): the relay excess of E14-E16 is a transient of the gray-list
+drain that ends at the model in about a day; with the ban list on half the nodes, 0.0025 and no user exposed. `tail` (42
+spies in 21 /24s): 0.157, a slow per-relay relaxation set by when the relay started, the latest-started relays still at 3x
+the model's ceiling after 30 h; the stock rule's recency bias over the relays' own lists reproduces it (E21), and E22
+infers why it survives for a /24-diversified spy and not a dense one (P13 tests that). For the unreachable users X1 scores,
+the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
+within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
+the whole network) is open question 8. Running: P7b (`core`, no list, 24 h, `simbox3`). Queued: P12 (the `legacy` partner
+of the `tail` cell) and P13 (`tail` at 1 and 8 spies per /24). Entries E1-E22 below; predictions P1-P13 in section 5.
 
 ## 1. How this journal works
 
@@ -65,6 +69,9 @@ Built 2026-10-20 13:00 UTC on `phantom` (sha256 `ecaadf741f63...`) and
 2026-10-22 02:58 UTC on `simbox2` (sha256 `39709561bce4...`); the two are not bit
 identical (build time and paths), but their provenance files match line for line
 apart from the time stamp.
+*(2026-10-23: rebuilt with `monero-sim-fixed-randomx-seed` appended (E20): `simbox3` 03:58 UTC, sha256 `4258da26e187...`;
+`simbox2` 08:05, `345d4ced95f1...`; `phantom` 08:10, `1472ed18703f...`. The old binaries are kept beside them as
+`monerod-sim.pre-fixedseed`. The flag is off unless a cell sets it, and below block 2113 the behaviour is identical either way.)*
 
 **Simulator settings.** Shadow (shadowformonero), `--bootfast --ksm`, KSM at 20,000
 pages per 20 ms, `runahead 100ms`, `native_preemption`, 2 process threads (KSM at 10,000 pages in the first pilots), 5,000-node
@@ -151,8 +158,8 @@ afterwards and are clean.
 - The exploratory scripts behind the gray-list-drain findings were run from a
   scratch directory; they are kept as they ran in `docs/spy_journal/adhoc/`. They are
   not tested and are not maintained.
-- The queue event logs are snapshots through 2026-10-22 ~11:30; later events are in
-  the register and are added to the logs when the journal is next updated.
+- The queue event logs are snapshots (`queue_events_<box>_through_<date>.events`), refreshed when the journal is
+  updated; the latest are through 2026-10-23 12:12 and the earlier snapshots are kept.
 - Entries E1-E12 were written after the fact (section 1); E13 onwards were written when the result came in.
 
 ## 3. Run register
@@ -207,7 +214,9 @@ own selection rule and its spy layout.
 | `20261022_220525_lean_24_none_h300_k1_w6h_m26_s12345` | simbox2 | 26 / 1 | 300 / 242 | 0.0095 (0.0045) | 0.011, 0.009, 0.009, 0.008 | 0.200 | 1096 | 1h 50m | 13.3 | 0 | P5 diagnostic: X1 core with 26 spies in the one /24 (6.4 h warmup, seed 12345); 0.0095 inside the 0.006-0.015 count-reading range |
 | `20261022_222209_lean_legacy_none_h71_k1_s12345` | simbox3 | 13 / 1 | 71 / 60 | 0.0641 (0.0750) | 0.067, 0.067, 0.063, 0.059 | 0.218 | 1093 | 1h 19m | 86.0 | 0 | P6a platform check (H=71 legacy, seed 12345): 0.0641 inside 0.055-0.066; phantom 0.061, simbox2 0.0614; wall 79 min vs 43 phantom and 36 simbox2 |
 | `20261022_223103_lean_24_half_h300_k1_w6h_m113_s12345` | phantom | 113 / 1 | 300 / 242 | 0.0162 (0.0045) | 0.022, 0.017, 0.014, 0.011 | 0.192 | 1078 | 2h 0m | 9.8 | 0 | E17: X1 core with the spy ban list on half the honest nodes (list in full, seed 12345, 6.4 h warmup); 0.0162 = 0.46 x the no-list cell |
+| `20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345` | simbox3 | 113 / 1 | 300 / 242 | - (0.0045) | - | - | 0 | 4h 3m | 9.8 | 1 | E18: the 24 h-warmup core cell (no list) on the UNPATCHED binary, TRIPPED by the driver at 03:46 (350 MB free): the summed process memory went from 16.6 GB to 79.9 GB between two 35 s samples at simulated 21.4 h, as the chain reached block 2112 (the RandomX seed change) and every daemon re-derived its cache; no result. Rerun with --sim-fixed-randomx-seed as P7b |
 | `20261022_235712_lean_24_none_h300_k1_w16h_m113_s12345` | simbox2 | 113 / 1 | 300 / 242 | 0.0099 (0.0045) | 0.010, 0.010, 0.009, - | 0.214 | 501 | 2h 37m | 10.0 | 137 | E18 / P7a, PARTIAL: killed by the kernel OOM (exit 137) at sim 20:26:35 = block 2112, the RandomX seed change; scored window is 18-20.4 h of 18-22 h. Light share 0.0099 (provisional) |
+| `20261023_003351_lean_24_none_h300_k1_w24h_m113_s12345` | phantom | - / - | - / - | - (-) | - | - | - | - | 10.3 | - | E18: the 24 h-warmup core cell (no list, unpatched binary) STOPPED by the agent at 02:40 at simulated 17.8 h, before its window and before block 2112, after simbox2's copy of the 16 h cell was OOM-killed at that block (decision 10-23 02:40); no result; the same cell was rerun with --sim-fixed-randomx-seed (P7b, simbox3) |
 | `20261023_024331_lean_24_none_h300_k21_w13h_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.1662 (0.0822) | 0.167, 0.169, 0.167, 0.163 | 0.211 | 1099 | 2h 37m | 11.5 | 0 | E19 / P8a: X1 tail, no list, 13 h warmup (stop 19 h, window 15-19 h), seed 12345; 0.1662 vs 0.1946 at the 6 h warmup (E15); flat by quarter |
 | `20261023_024332_lean_24_half_h300_k21_w13h_m2_n600_c50_s12345` | simbox2 | 42 / 21 | 300 / 242 | 0.1309 (0.0822) | 0.130, 0.130, 0.130, 0.133 | 0.207 | 1096 | 2h 32m | 12.5 | 0 | E19 / P8b: X1 tail, ban list on half the nodes naming 10 of 21 /24s, 13 h warmup, seed 12345; 0.1309 = 0.79 x the no-list cell |
 | `20261023_035553_lean_24_none_h71_k1_w18h_fx_s12345` | simbox3 | 13 / 1 | 71 / 60 | 0.0094 (0.0181) | 0.011, 0.008, 0.009, 0.010 | 0.214 | 1147 | 3h 29m | 86.5 | 0 | E20 / P9: patched monerod-sim (--sim-fixed-randomx-seed on every daemon), H=71, to 22.5 h simulated; passed block 2112 at sim 19:55 with no memory step; all 124 daemons end at height 2188 |
@@ -679,6 +688,14 @@ is 0.0285 at 12 h, 0.0093 at 18 h and 0.0055 at 20.5 h: a time constant of about
 hour 26 and 0.0008 by hour 30, so the 24 h cell (window 26-30 h) should read near 0.005-0.007 (relays),
 which is inside P7b's range. That is an extrapolation of one curve.
 
+*2026-10-23 12:36 (added after the review; the numbers were in the decisions log and section 2 only):* `simbox3`'s unpatched
+copy of the 24 h cell (`20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345`, now in the register) measured the spike. Between
+two memory samples 55 s apart at simulated 21.4 h (03:44:46 and 03:45:41 wall), the summed memory of the simulator's processes rose
+from 16.6 GB to 79.9 GB and the box's free RAM fell from 80.3 GB to 10.0 GB; the driver's next 20 s sample read 350 MB free and it
+killed Shadow at 03:46 (swap had grown by 4.3 GB). 453 daemons at 256 MB each is 116 GB, so the box ran out before every cache was
+built; the miner's log puts block 2112 at about simulated 21:24 in that cell. This is why swap cannot cover it and the patch (E20)
+was written instead. `phantom`'s copy, stopped at simulated 17.8 h (`20261023_003351_...`), is also in the register now, with no result.
+
 ### E19. X1 `tail` at a 13 h warmup, with and without the list: the excess barely decays (2026-10-23 02:43-05:22, `phantom` and `simbox2`)
 
 Two cells of the `tail` preset (42 spies in 21 /24s, `--spy-node0 600`, `24` selection, seed 12345), each with
@@ -1057,19 +1074,56 @@ users exposed (at most 1: hit); `sp_r` made no guess, so the precision clause is
 reach half the no-list model (0.0023) by hour 28: in `core` the excess is a transient that a day removes. The 0.5x ratio to the no-list
 cell is checked against P7b when `simbox3` finishes.
 
+**P12, filed 2026-10-23 12:36, before the cell is queued (E22; the review's first gap).** `lean_legacy_none_h300_k21_w13h_m2_n600_s12345`
+on `phantom`: the `tail` layout (42 spies in 21 /24s) under v0.18.4.2's selection (`legacy`, verified byte for byte against the
+tag), 13 h warmup, window 15-19 h, seed 12345: the measured partner that the `24` reading (0.1662 in E19, 0.1626 in E21) has lacked;
+until now "dedup gives this fleet more slots than the old rule" rests on the model's `legacy` value, 0.122. Measured `legacy` cells
+sat at the model with one spy /24 (the cap) and at 1.8x it with six (0.2453 against 0.136, E4, E13), most of which recency explained.
+Light-node share **0.16-0.26**, flat by quarter (Q4 within 10% of Q1, as every `legacy` cell has been), relays 1.0-1.2x light; prior
+60%. Below 0.16 means stock dedup really does give a /24-diversified spy more slots than the old rule (what E15 read off the model);
+above 0.26 means the old rule was worse against this fleet than X0's k=6 anchor suggests. The `24`/`legacy` ratio for the pair: 0.65-1.0.
+
+**P13, filed 2026-10-23 12:36, before the cells are queued (E22's dilution reading).** The `tail` layout at 21 /24s, `24` selection,
+13 h warmup, window 15-19 h, seed 12345, with 1 and with 8 spies per /24: `lean_24_none_h300_k21_w13h_m1_n600_s12345` (21 spies,
+`phantom`, after P12) and `..._m8_...` (168 spies, 508 daemons, `simbox2`). The 2-per-/24 cell reads 0.163-0.166 light, an excess of
+about 0.08 over the 0.0822 ceiling. If the recency lock-in is diluted by the IPs the spy packs into a /24 (E22: the stock rule puts
+one *random* IP per /24 forward before sorting by `last_seen`), the excess scales about as 1/m: (a) m=1: light **0.18-0.27**, relays
+0.21-0.31, users 0.05-0.08; (b) m=8: light **0.09-0.14**, relays 0.10-0.16, users 0.03-0.05. Prior 50% that both land in range.
+(a) at or below 0.166 refutes the dilution reading; (b) at or above 0.16 refutes it too (the excess would then follow the spy count,
+as `core`'s transient did in P5, not the per-/24 dilution). `sp_r` precision 1.00 and recall at its ceiling in both; exposure is
+recorded, not predicted. (b)'s lowest free RAM on a 32 GB box: above 6 GB (the 453-daemon cells bottomed at 9.8-10.9 GB). None of
+the three cells needs the fixed-seed flag (they stop at 19 h), so they compare directly with E19 and E21.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
    per-relay peer-list dumps, or a different mechanism.
+   *2026-10-23:* resolved as far as E16-E22 go. The H=150 "plateau" at a 6 h warmup was the tail of the gray-list drain (E16)
+   plus the recency lock-in (E21, E22); the only `24` cell read at a true long warmup with one spy /24 (H=71, 18 h, E20) sits at
+   0.5x the model, so the model is not a reference in either direction and recency is the dominant unmodelled factor.
 2. **k=6 `legacy` 1.3x above the recency model** (E4).
 3. **The -70% dedup target.** Met on the lean k=6 cell (E13, -76%, one seed) and missed on
    the replica (-44% to -48%, E10); replicates of the first are queued (P4).
+   *2026-10-23:* closed by E13's three seeds (-76%, -77%, -79%, all inside P4). The caveat stands that those `24` cells were read
+   in the drain's tail (E16), so the steady-state effect against a dense spy is larger, and against a /24-diversified spy the
+   question is P12.
 4. **Embargo rate is 0.0 in every cell.** No reference value in the plan; a loop rate
    of 0.10-0.15 means stems do end by loop. Check whether the timer path can fire at
    this tx rate before calling X0's last target passed.
+   *2026-10-23 (review):* **closed; the 0.0 is stock behaviour.** In v0.18.5.1 the embargo is drawn from
+   `crypto::random_poisson_seconds{39}`, a `std::poisson_distribution` (sd about 6 s, so almost never below 25 s), armed in
+   `tx_memory_pool::set_relayed` when the node stems a tx (`meta.dandelionpp_stem`), and cancelled when the fluff comes back
+   (`add_tx` upgrades the entry to `fluff`, which clears the stem flag); `core::on_idle` polls the pool for due txs on every tick,
+   gated by `m_next_check`. A fluff reaches every stem holder in about 5-20 s, so the timer fires only on a black-holed stem. The
+   detection path is right (`pool_relay` with `was` = `stem` or `forward`; in the H=71 `24` run all 18,827 `pool_relay` events are
+   `was=fluff`, the periodic re-relays). X0's last target has no reference value and is read as "stems fluff before any embargo
+   fires", which holds; the embargo becomes a metric in X4 (the black-hole adversary).
 5. **Reachable nodes show a higher spy outbound share than unreachable ones** in E8
    (0.117 against 0.066); the reachable class holds the medium hubs, which run 16-28
    outbound slots. Not yet separated.
+   *2026-10-23:* explained by E14-E22: the reachable relays carry the excess (the gray-list drain, then the recency lock-in),
+   because they take in peer lists from everyone who dials them; the unreachable users sit near the model in every cell. The
+   medium hubs add a little on top (0.08-0.10 in the `tail` cells against 0.18 for the relays).
 6. **Poisoned lists, port multiplexing, forwarding spies** (I2).
 7. **Ban-list coverage** to use for the tail preset's headline cells; start at 100% and
    50%.
@@ -1097,13 +1151,16 @@ in the conversation.
 | 10-22 13:40 | Seeds 23456 and 34567 of the long-warmup cell and of its `legacy` partner queued on `simbox2` (4 cells, about 7 h) | the plan wants 3 seeds per cell; the P1 result sat on the edge of its interval | remove lines from `~/queue/q.txt` on `simbox2` | agent |
 | 10-22 14:40 | Commit the uncommitted work in three commits on `feat/spy-relay-log`, not pushed | the user asked to commit; push was not asked for | `git reset --soft HEAD~3` | user asked, agent split |
 | 10-22 14:40 | X1 `core` and `tail` cells (no list, seed 12345) queued on `phantom` behind `x0_24_half_s34567`, i.e. start about 16:30 | `phantom` would idle; the instruments are verified at replica scale (E8); P3 was filed in advance; the cells are at H=300 so memory is not a risk (H=300 cells bottomed at 8 GB free) | delete the two lines from `x0_queue3.txt` (scratchpad) before 16:30 | agent |
+| 10-22 14:40 | X1 starts before X0's replicates finish | X0's remaining runs do not change the stock-binary baseline X1 needs; both boxes are otherwise full | - | agent |
+| 10-22 14:40 | `simbox2` keeps the old `make_lean.py`/`spy_ban_list.py` until an X1 cell has to run there | the cells it runs now were generated here with the layout check and copied (md5 checked) | - | agent |
+| 10-22 14:40 | The spy ban list for X1 tail cells names the densest 50% of /24s at first | the real list names the dense fleet and part of the tail; the true coverage is unknown, so 100% and 50% bracket it | `--ban-coverage` | agent |
 | 10-22 15:00 | X1 `half` cells (`core` with the list in full; `tail` with 10 of 21 /24s listed) queued on `phantom` after the two no-list cells; P3b filed first | the `half` cells are needed whatever the no-list results are; queueing now keeps the box busy overnight; a surprise in the first two cells can still be answered by deleting the last two lines | delete the two lines from `x0_queue3.txt` before they start (about 21:00 and 23:10) | agent |
 | 10-22 15:00 | A fourth, small commit (`c977cd44`: P3b and the queue decisions), beyond the three the user asked for | keeps the committed journal in step with the queued runs | `git reset --soft HEAD~1` | agent; no more commits without asking |
 | 10-22 ~18:55 | A probe version of the `core` cell (`..._p3_m113`, first/last 3 relays dump peer lists and log `net.p2p` DEBUG) queued next on `phantom`, ahead of the two `half` cells | E14's relays hold 7-9x the modelled spy share after a 6.4 h warmup; every later X1 number rests on knowing why, and E5 found the cause the same way | remove the line from `x0_queue3.txt` before about 20:40 | agent |
 | 10-22 20:10 | Two diagnostic cells for E14 on `simbox2` (`core` with 53 and 26 spies in the /24), ahead of any X1 replicate; P5 filed first | `simbox2` is idle and the probe cell on `phantom` does not start until about 20:40; the spy count is the one factor that differs between the cells that drained (E5) and this one; P5 separates the two readings | `~/queue/q.txt` on `simbox2` | agent |
+| 10-22 ~20:55 | Set up the user's new VM (`simbox3`) with the HWE kernel only, not a release upgrade, and rebooted it once | it is shared (other accounts, 148 GB of their data, 50 days of uptime); the user said I might upgrade it, and `--ksm` needs only kernel 6.4 or newer; keeping the userland leaves others' R/Python alone. Costs: the binary is built with gcc 11 and glibc 2.35, unlike the 24.04 boxes, so the H=71 validation decides whether it can be used. The reboot ended one idle `screen` session (`transfer`, a bare shell, 29 days old) | `apt remove` the 6.8 kernel and boot the old one from GRUB; `rm -rf ~/monerosim ~/.cargo` | agent |
 | 10-22 21:06 | Upgrade `simbox3` to Ubuntu 24.04.5 after all (full-upgrade, then release upgrade); the 22.04 build was killed | the user said to ("no one really uses it") after seeing that it is shared; 24.04 matches the other two boxes (gcc 13, glibc 2.39), which removes the compiler as a reason for results to differ. The full-upgrade also updated the R packages another account installed | restore from nothing: there is no backup of the VM | user |
 | 10-22 21:30 | During the `simbox3` upgrade: rebooted while `dpkg --configure --pending` was still running (my error: the reboot sat in the same command as the check, with no gate), then finished the configuration by hand; `grub-pc` would not configure because its saved install device pointed at a disk that no longer exists (`/dev/disk/by-id/ata-QEMU_HARDDISK_QM00001`; the VM's disk is now virtio `vda`), so I set `grub-pc/install_devices` to `/dev/vda` (BIOS boot, with a 1 MB BIOS boot partition) and reconfigured | a half-configured bootloader package leaves apt broken and risks the next kernel update; the VM had booted fine twice, so the old boot code was intact | none needed (the box boots and `dpkg --audit` is clean); the grub-install writes to `vda`'s boot area | agent |
-| 10-22 ~20:55 | Set up the user's new VM (`simbox3`) with the HWE kernel only, not a release upgrade, and rebooted it once | it is shared (other accounts, 148 GB of their data, 50 days of uptime); the user said I might upgrade it, and `--ksm` needs only kernel 6.4 or newer; keeping the userland leaves others' R/Python alone. Costs: the binary is built with gcc 11 and glibc 2.35, unlike the 24.04 boxes, so the H=71 validation decides whether it can be used. The reboot ended one idle `screen` session (`transfer`, a bare shell, 29 days old) | `apt remove` the 6.8 kernel and boot the old one from GRUB; `rm -rf ~/monerosim ~/.cargo` | agent |
 | 10-22 22:22 | The `simbox3` queue holds the H=71 `legacy` validation first, then the four X1 replicates (`core` and `tail`, seeds 23456 and 34567, no list), all generated on `phantom` and copied with an md5 check; the driver is the `simbox2` one (`~/queue/x0_queue.sh`). The replicates run on even if the validation fails | P6 was filed at 21:06; an idle 40-vCPU box earns nothing by waiting for a 1-2 h result, and a failed P6a only means the replicate results are discarded (they stay in the register, flagged) | edit `~/queue/q.txt` on `simbox3` to remove cells; to stop the driver, `kill` the pid of `queue/x0_queue.sh` (it kills Shadow on a TERM) | agent |
 | 10-22 22:25 | Archives on `simbox3` are kept, not deleted after each run (this changes the 21:06 plan) | the archives are 2-8 GB (the H=300 `core` cell is 7.7 GB on `phantom`, the H=71 cell 2.7 GB), so five runs need about 35 GB of the 88 GB free; the driver's 30 GB floor stops the queue first. Prune only when free space falls below 45 GB, after the estimators and the register entry | `rm -rf ~/monerosim_archives/<run>` once registered | agent |
 | 10-22 22:37 | Probe read (E16). On `phantom` the queued `half` tail cell (`..._c50`) was replaced by `lean_24_none_h300_k1_w16h_m113_s12345` (the `core` cell with a 16 h warmup); the running `half` core cell (started 22:31) was left to finish | E16 shows every `24` share so far is the tail of a transient, so a 50%-list tail cell at a 6 h warmup would measure the list's effect on the transient, not at steady state; the 16 h cell is one of the two P7 points (filed 22:36 first) | re-add `lean_24_half_h300_k21_w6h_m2_n600_c50_s12345` to `x0_queue3.txt` (scratchpad) | agent |
@@ -1116,9 +1173,8 @@ in the conversation.
 | 10-23 05:28 | Two more 19 h cells (P10 filed first): a `tail` probe (`..._w13h_p3_m2_n600_s12345`) on `phantom` and a seed replicate of the 13 h `tail` cell (seed 23456) on `simbox2` | the `tail` relay excess did not decay (E19), so its cause is unknown and X1's headline cell rests on it; both boxes were idle; both cells stop at hour 19 so the stock binary is safe | delete the lines from the queue files | agent |
 | 10-23 08:05 | Rebuilt `monerod-sim` with the fixed-seed patch on `simbox2` (old binary kept as `~/.monerosim/bin/monerod-sim.pre-fixedseed`; new sha256 `345d4ced95f1...`), then started `lean_24_half_h300_k1_w24h_m113_fx_s12345` (P11b, 30 simulated hours) | P9 passed on `simbox3` (E20); the box was idle and this is the first long cell it can run | restore the `.pre-fixedseed` binary and provenance | agent |
 | 10-23 08:10 | Same on `phantom` (new sha256 `1472ed18703f...`), then started `lean_24_none_h300_k21_w24h_m2_n600_fx_s12345` (P11a, 30 simulated hours) | as above; the memory of a 30 h run on a 32 GB box is unmeasured, the driver's 1.5 GB guard applies | restore the `.pre-fixedseed` binary and provenance | agent |
-| 10-22 14:40 | X1 starts before X0's replicates finish | X0's remaining runs do not change the stock-binary baseline X1 needs; both boxes are otherwise full | - | agent |
-| 10-22 14:40 | `simbox2` keeps the old `make_lean.py`/`spy_ban_list.py` until an X1 cell has to run there | the cells it runs now were generated here with the layout check and copied (md5 checked) | - | agent |
-| 10-22 14:40 | The spy ban list for X1 tail cells names the densest 50% of /24s at first | the real list names the dense fleet and part of the tail; the true coverage is unknown, so 100% and 50% bracket it | `--ban-coverage` | agent |
+| 10-23 12:36 | Record fixes from the user's review: the two aborted 24 h `core` runs registered (`simbox3` TRIP `20261022_234237`, `phantom` STOPPED `20261023_003351`), E18 given the measured spike as a dated addendum, open questions 1, 3, 4 and 5 closed with dated lines (4 after reading the 0.18.5.1 embargo code), the status and binary paragraphs refreshed, three misplaced decision rows moved into date order, `run_register.py --box` help names `simbox3` | the journal's own rule is that nothing is deleted and the status must be current; the user asked for it after the review | revert the commit | user asked, agent did |
+| 10-23 12:36 | P12 (the `legacy` partner of the `tail` cell) and P13 (`tail` at 1 and 8 spies per /24) filed, then the three cells queued: `phantom` runs the `legacy` partner then the 1-per-/24 cell, `simbox2` the 8-per-/24 cell (copied, md5 checked); all stop at 19 h simulated on the stock rule without the flag | the user said to file the two new cells; both boxes were idle; the `legacy` partner is the missing measurement behind "dedup gives the diversified spy more slots", and the per-/24 pair tests E22's dilution reading | delete the lines from `x0_queue3.txt` (scratchpad, `phantom`) and `~/queue/q.txt` (`simbox2`); `kill` the driver pids | user asked, agent queued |
 
 ## 8. Files
 

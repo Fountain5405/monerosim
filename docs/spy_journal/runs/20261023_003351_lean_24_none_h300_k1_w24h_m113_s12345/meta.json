@@ -1,0 +1,13 @@
+{
+ "run_id": "20261023_003351_lean_24_none_h300_k1_w24h_m113_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k1_w24h_m113_s12345",
+ "archived_at": "2026-10-23T00:34:25Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": null,
+ "exit_code": null,
+ "min_avail_mb": 10590,
+ "txs_created": null,
+ "txs_in_blocks": null,
+ "note": "E18: the 24 h-warmup core cell (no list, unpatched binary) STOPPED by the agent at 02:40 at simulated 17.8 h, before its window and before block 2112, after simbox2's copy of the 16 h cell was OOM-killed at that block (decision 10-23 02:40); no result; the same cell was rerun with --sim-fixed-randomx-seed (P7b, simbox3)"
+}

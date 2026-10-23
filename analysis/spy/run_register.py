@@ -141,7 +141,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("add")
     a.add_argument("archive_dir")
-    a.add_argument("--box", required=True, help="the machine the run was on (phantom, simbox2)")
+    a.add_argument("--box", required=True, help="the machine the run was on (phantom, simbox2, simbox3)")
     a.add_argument("--note", default="")
     a.add_argument("--estimators", default="", help="spy_estimators.py report(s), comma-separated .txt/.json")
     n = sub.add_parser("annotate")

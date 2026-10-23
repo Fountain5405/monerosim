@@ -1,0 +1,45 @@
+============================================================
+MONEROSIM SIMULATION SUMMARY
+============================================================
+
+Run:            lean_24_none_h300_k1_w24h_m113_s12345
+Wall time:      4h 3m
+Exit code:      1
+
+SUCCESS CRITERIA
+----------------------------------------
+  Blocks created                 PASS
+  Nodes funded                   PASS
+  Blocks propagated (actual)     PASS
+  Transactions broadcast         FAIL
+  Transactions in blocks         FAIL
+
+  Result: SOME CHECKS FAILED
+
+NETWORK
+----------------------------------------
+  Nodes online:     453
+  Sync:             100%
+  Block height:     2111
+  Blocks mined:     2110
+  Alerts:           0
+
+TRANSACTIONS
+----------------------------------------
+  Created:          0
+  In blocks:        0
+
+NODE STATUS (final)
+----------------------------------------
+  Node                  Height      Balance  Conns  Pool TXs
+  medium-a-001            2107            -     41         -
+  medium-a-002            2107            -     40         -
+  medium-a-003            2107            -     35         -
+  medium-a-004            2107            -     45         -
+  medium-a-005            2107            -     29         -
+  medium-a-006            2107            -     45         -
+  medium-a-007            2107            -     36         -
+  medium-a-008            2107            -     42         -
+  medium-a-009            2107            -     29         -
+  medium-a-010            2107            -     36         -
+  medium-a-011            2107            -     18         -

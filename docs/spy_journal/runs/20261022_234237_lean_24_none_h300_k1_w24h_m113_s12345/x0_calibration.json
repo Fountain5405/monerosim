@@ -1,0 +1,30 @@
+[
+  {
+    "run": "/home/lever65/monerosim_archives/20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345",
+    "cell": "24/none",
+    "slots": {},
+    "model": {
+      "spies": 113,
+      "spy_24s": 1,
+      "honest_reachable": 300,
+      "honest_reachable_24s": 242,
+      "out_peers": 12,
+      "legacy": 0.0819,
+      "24": 0.0045,
+      "none": 0.2712
+    },
+    "stems": {
+      "txs": 0,
+      "stem_hops_mean": null,
+      "stem_hops_mean_epoch": null,
+      "fluff_per_hop": null,
+      "stem_hops_implied": null,
+      "stem_hops_hist": {},
+      "stem_end": {},
+      "embargo_rate": null,
+      "loop_rate": null,
+      "fluff_epoch_share": 0.198,
+      "stem_hops_without_rx": 0
+    }
+  }
+]

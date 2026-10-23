@@ -1,0 +1,11 @@
+cell 24/none   /home/lever65/monerosim_archives/20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345
+
+group      nodes spy share out spy share in
+
+model (12 slots, one per subnet): 113 spies in 1 /24s, 300 honest reachable in 242 /24s: legacy 0.0819, 24 0.0045, none 0.2712
+
+stems: 0 txs, mean hops None, None on paths ended by a fluff epoch
+  fluff per hop None (stock 0.2): implied uncensored mean None hops (target ~5)
+  ended {}
+  embargo rate None, loop rate None, fluff epochs 0.198, hops without rx 0
+  hops histogram {}
