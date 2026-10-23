@@ -6,8 +6,8 @@
 # Edit the queue file while it runs: it is re-read before each cell.
 set -u
 REPO=/home/lever65/monerosim
-S=/tmp/claude-1002/-home-lever65-monerosim/df57b8d8-00c1-4e9b-8f85-c70f598c44e3/scratchpad
-ARCH=/mnt/ssdpool/monerosim_archives
+S=/home/lever65/queue
+ARCH=/home/lever65/monerosim_archives
 Q=$1
 EV=$S/x0_queue.events
 mkdir -p "$ARCH"
