@@ -60,6 +60,7 @@ while [[ $# -gt 0 ]]; do
             echo "                         monero-sim-tail-emission.patch    --sim-tail-emission-height (mainnet 0.6 XMR reward)"
             echo "                         monero-sim-txrelay-log.patch      --sim-log-txrelay (Dandelion++ relay log)"
             echo "                         monero-sim-subnet-dedup.patch     --sim-subnet-dedup (outbound peer grouping; stock = 24)"
+            echo "                         monero-sim-fixed-randomx-seed.patch --sim-fixed-randomx-seed (no RandomX epoch change at block 2113)"
             echo "                         Built in a worktree; the primary monerod stays vanilla."
             echo "                         Installs ~/.monerosim/bin/monerod-sim and the alias monerod-hf."
             echo "                         --hardfork is accepted as a synonym."
@@ -1235,6 +1236,7 @@ install_sim_monerod() {
     #   patches/monero-sim-tail-emission.patch    --sim-tail-emission-height (tail emission)
     #   patches/monero-sim-txrelay-log.patch      --sim-log-txrelay (measurement only)
     #   patches/monero-sim-subnet-dedup.patch     --sim-subnet-dedup (outbound peer grouping; stock = 24)
+    #   patches/monero-sim-fixed-randomx-seed.patch --sim-fixed-randomx-seed (no RandomX epoch change at block 2113)
     # One build serves the fork-schedule, native-mining and eclipse-measurement
     # features; monerod-hf is kept as a symlink alias so the hard fork and
     # eclipse configs that name it keep working.
@@ -1247,6 +1249,7 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-tail-emission.patch"
         "$SCRIPT_DIR/patches/monero-sim-txrelay-log.patch"
         "$SCRIPT_DIR/patches/monero-sim-subnet-dedup.patch"
+        "$SCRIPT_DIR/patches/monero-sim-fixed-randomx-seed.patch"
     )
     local p
     for p in "${patches[@]}"; do

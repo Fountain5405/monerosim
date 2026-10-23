@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_024331_lean_24_none_h300_k21_w13h_m2_n600_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k21_w13h_m2_n600_s12345",
+ "archived_at": "2026-10-23T02:43:31Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 37m",
+ "exit_code": 0,
+ "min_avail_mb": 11826,
+ "txs_created": 1044,
+ "txs_in_blocks": 1040,
+ "note": "E19 / P8a: X1 tail, no list, 13 h warmup (stop 19 h, window 15-19 h), seed 12345; 0.1662 vs 0.1946 at the 6 h warmup (E15); flat by quarter",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1662,
+ "light_out_quarters": [
+  0.1665,
+  0.1688,
+  0.1672,
+  0.1625
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.211,
+ "stem_txs": 1099,
+ "stem_hops_implied": 4.74,
+ "embargo_rate": 0.0
+}

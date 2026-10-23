@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_024332_lean_24_half_h300_k21_w13h_m2_n600_c50_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_half_h300_k21_w13h_m2_n600_c50_s12345",
+ "archived_at": "2026-10-23T02:43:32Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "2h 32m",
+ "exit_code": 0,
+ "min_avail_mb": 12758,
+ "txs_created": 1046,
+ "txs_in_blocks": 1044,
+ "note": "E19 / P8b: X1 tail, ban list on half the nodes naming 10 of 21 /24s, 13 h warmup, seed 12345; 0.1309 = 0.79 x the no-list cell",
+ "scored_cell": "24/half",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1309,
+ "light_out_quarters": [
+  0.13,
+  0.1302,
+  0.1302,
+  0.1329
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.207,
+ "stem_txs": 1096,
+ "stem_hops_implied": 4.83,
+ "embargo_rate": 0.0
+}

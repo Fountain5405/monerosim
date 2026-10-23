@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_035553_lean_24_none_h71_k1_w18h_fx_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h71_k1_w18h_fx_s12345",
+ "archived_at": "2026-10-23T03:55:54Z",
+ "monerod_sim_sha": "4258da26e187",
+ "wall": "3h 29m",
+ "exit_code": 0,
+ "min_avail_mb": 88550,
+ "txs_created": 1147,
+ "txs_in_blocks": 1142,
+ "note": "E20 / P9: patched monerod-sim (--sim-fixed-randomx-seed on every daemon), H=71, to 22.5 h simulated; passed block 2112 at sim 19:55 with no memory step; all 124 daemons end at height 2188",
+ "scored_cell": "24/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.0094,
+ "light_out_quarters": [
+  0.0105,
+  0.0083,
+  0.0088,
+  0.0099
+ ],
+ "model_out": 0.0181,
+ "fluff_per_hop": 0.214,
+ "stem_txs": 1147,
+ "stem_hops_implied": 4.67,
+ "embargo_rate": 0.0
+}

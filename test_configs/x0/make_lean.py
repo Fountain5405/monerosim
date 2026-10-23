@@ -145,6 +145,8 @@ def scenario_text(a, ban):
     stop = bootstrap + 4 * 3600
     head = re.sub(r"(?m)^(  simulation_seed:).*", rf"\1 {a.seed}", head)
     head = re.sub(r"(?m)^(    sim-subnet-dedup:).*", rf'\1 "{a.dedup}"', head)
+    if a.fixed_rx_seed:
+        head = re.sub(r"(?m)^(    sim-subnet-dedup:)", r"    sim-fixed-randomx-seed: true\n\1", head)
     head = re.sub(r"(?m)^(  stop_time:).*", rf"\1 {stop}s", head)
     head = re.sub(r"(?m)^(  bootstrap_end_time:).*", rf"\1 {bootstrap}s", head)
     n_spy = a.spies
@@ -199,6 +201,11 @@ def main():
                     help="with --list half: fraction of the spy /24s the list names, densest first "
                          "(scripts/spy_ban_list.py --coverage); the real list misses part of a diversified tail")
     ap.add_argument("--seed", type=int, default=12345)
+    ap.add_argument("--fixed-rx-seed", action="store_true",
+                    help="every daemon gets --sim-fixed-randomx-seed (needs a monerod-sim built with "
+                         "patches/monero-sim-fixed-randomx-seed.patch). Without it a cell that runs past chain height "
+                         "2113 (about 20 h) has all its daemons re-derive their RandomX cache at once and a 32 GB box "
+                         "runs out of memory (journal E18); with it there is no limit on --warmup")
     ap.add_argument("--interval", type=int, default=20, help="sim-seconds between relay starts")
     ap.add_argument("--probe", type=int, default=0,
                     help="relays at the head and at the tail of each start order that dump their peer list "
@@ -218,7 +225,8 @@ def main():
     wtag = (("" if a.warmup == 3600 else f"_w{a.warmup // 3600}h") + (f"_p{a.probe}" if a.probe else "")
             + (f"_m{a.spies_per_subnet}" if a.spies_per_subnet is not None else "")
             + (f"_n{a.spy_node0}" if a.spy_node0 != SPY_NODE0 else "")
-            + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else ""))
+            + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else "")
+            + ("_fx" if a.fixed_rx_seed else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
     out = OUT / f"{stem}.yaml"
     ban = ""

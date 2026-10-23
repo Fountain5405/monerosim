@@ -1,0 +1,71 @@
+diff --git a/src/crypto/hash-ops.h b/src/crypto/hash-ops.h
+--- a/src/crypto/hash-ops.h
++++ b/src/crypto/hash-ops.h
+@@ -97,6 +97,10 @@
+ void rx_slow_hash_free_state(void);
+ uint64_t rx_seedheight(const uint64_t height);
+ void rx_seedheights(const uint64_t height, uint64_t *seed_height, uint64_t *next_height);
++/* Simulation only (--sim-fixed-randomx-seed): nonzero pins the RandomX seed height to 0 (the genesis
++   hash) for every chain height, so the seed epoch never changes. Consensus-relevant: every node of a
++   network must use the same setting. 0 (default) = stock epochs. */
++void rx_set_fixed_seed(int fixed);
+ 
+ void rx_set_main_seedhash(const char *seedhash, size_t max_dataset_init_threads);
+ void rx_slow_hash(const char *seedhash, const void *data, size_t length, char *result_hash);
+diff --git a/src/crypto/rx-slow-hash.c b/src/crypto/rx-slow-hash.c
+--- a/src/crypto/rx-slow-hash.c
++++ b/src/crypto/rx-slow-hash.c
+@@ -176,7 +176,16 @@
+   return blocks;
+ }
+ 
++/* SIMULATION ONLY (monerosim patches/monero-sim-fixed-randomx-seed.patch). At block 2048 + 64 + 1 = 2113
++   (about 20 h into a Shadow run) the stock rule moves the RandomX seed, and every node of a simulated
++   network derives its new 256 MB cache in the same minute; KSM cannot merge them as fast, and a 450-daemon
++   run grows by 100 GB or more. Pinning the seed height to 0 removes the epoch change. */
++static int g_sim_fixed_seed = 0;
++void rx_set_fixed_seed(int fixed) { g_sim_fixed_seed = fixed; }
++
+ uint64_t rx_seedheight(const uint64_t height) {
++  if (g_sim_fixed_seed)
++    return 0;
+   const uint64_t seedhash_epoch_lag = get_seedhash_epoch_lag();
+   const uint64_t seedhash_epoch_blocks = get_seedhash_epoch_blocks();
+   uint64_t s_height =  (height <= seedhash_epoch_blocks+seedhash_epoch_lag) ? 0 :
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -230,6 +230,13 @@
+   , "Simulation only: from this block height on, pay the tail-emission base reward (0.6 XMR) regardless of coins generated so far. Every node must use the same value. Unset = stock emission."
+   , std::numeric_limits<uint64_t>::max()
+   };
++  // SIMULATION ONLY (monerosim patches/monero-sim-fixed-randomx-seed.patch): never change the RandomX seed
++  // (see rx_set_fixed_seed in crypto/rx-slow-hash.c). CONSENSUS-RELEVANT: every node of a network must set it.
++  static const command_line::arg_descriptor<bool> arg_sim_fixed_randomx_seed = {
++    "sim-fixed-randomx-seed"
++  , "Simulation only: keep the RandomX seed at the genesis hash for every height (no epoch change at block 2113). Every node must use the same setting. Off by default."
++  , false
++  };
+   static const command_line::arg_descriptor<bool> arg_sim_publish_or_perish = {
+     "sim-publish-or-perish"
+   , "Simulation only: enable the Publish-or-Perish weighted fork-resolving policy (late blocks lose chain weight). Off by default."
+@@ -437,6 +444,7 @@
+     command_line::add_arg(desc, arg_sim_relay_alt_blocks);
+   command_line::add_arg(desc, arg_sim_publish_or_perish);
+   command_line::add_arg(desc, arg_sim_tail_emission_height);
++  command_line::add_arg(desc, arg_sim_fixed_randomx_seed);
+   command_line::add_arg(desc, arg_sim_pop_k);
+   command_line::add_arg(desc, arg_sim_pop_delay_s);
+   command_line::add_arg(desc, arg_sim_pop_det_tie);
+@@ -595,6 +603,11 @@
+     set_sim_tail_emission_height(command_line::get_arg(vm, arg_sim_tail_emission_height));
+     if (get_sim_tail_emission_height() != std::numeric_limits<uint64_t>::max())
+       MGINFO("SIM: tail emission (" << print_money(FINAL_SUBSIDY_PER_MINUTE * (DIFFICULTY_TARGET_V2 / 60)) << " base reward) from height " << get_sim_tail_emission_height());
++    if (command_line::get_arg(vm, arg_sim_fixed_randomx_seed))
++    {
++      crypto::rx_set_fixed_seed(1);
++      MGINFO("SIM: RandomX seed fixed at the genesis hash (no epoch change)");
++    }
+     start_time = std::time(nullptr);
+ 
+     const bool regtest = command_line::get_arg(vm, arg_regtest_on);
