@@ -5,7 +5,7 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-23, 15:45).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+**Status (2026-10-23, 18:05).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
 cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
 target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
 its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
@@ -16,14 +16,14 @@ spies in 21 /24s): 0.157, a slow per-relay relaxation set by when the relay star
 the model's ceiling after 30 h; the stock rule's recency bias over the relays' own lists reproduces it (E21), and E22
 infers why it survives for a /24-diversified spy and not a dense one (P13 tests that). Under the old rule (v0.18.4.2, E23) the
 same fleet reads 0.286, 2.34x its model, with no relaxation at all: stock dedup removes 42% of its slots (the models said 33%), and
-the lock-in is not a dedup artefact. Eight spies per /24 lock in as two do (E24, P13b: 0.175 against 0.166), so E22's dilution
-reading is refuted; the excess seems to follow the number of distinct candidates the selection sees (/24s under `24`, IPs under
-`legacy`), and the 1-per-/24 cell (P13a) is the next read on that. For the unreachable users X1 scores,
+the lock-in is not a dedup artefact. Spies per /24 (E24, P13): at 13 h, 1 per /24 reads 0.198, 2 per /24 0.166, 8 per /24 0.175;
+the 1-to-2 step is the dilution E22 expected at a third of the 1/m size, the 8-per-/24 window is still inside its drain's transient,
+and the steady state goes to P16 (24 h warmups at 1 and 8 per /24). For the unreachable users X1 scores,
 the answer is stable across warmups: `sp_r` precision 1, recall 0.035-0.06, 12-18 of 40 twenty-transaction senders exposed
 within 4 h in `tail`, 0-3 of 40 in `core`. Whether mainnet relays behave like the lab's (no churn, a white list that holds
-the whole network) is open question 8. Running: P13a (`tail` at 1 spy per /24, `phantom`, about 17:50); `simbox2` runs P14 (the
-full-coverage `half` `tail` cell) and then P15 (the `legacy` `tail` replicate at seed 23456); `simbox3` is on the four 6 h-warmup
-filler replicates. Entries E1-E24 below; predictions P1-P15 in section 5.
+the whole network) is open question 8. Running: `simbox2` has P14 (the full-coverage `half` `tail` cell) then P15 (the `legacy`
+`tail` replicate at seed 23456); `phantom` has P16a (`tail` at 1 per /24, 24 h); `simbox3` finishes a 6 h filler, then P16b (8 per
+/24, 24 h), then the last two fillers. Entries E1-E24 below; predictions P1-P16 in section 5.
 
 ## 1. How this journal works
 
@@ -174,7 +174,7 @@ afterwards and are clean.
   scratch directory; they are kept as they ran in `docs/spy_journal/adhoc/`. They are
   not tested and are not maintained.
 - The queue event logs are snapshots (`queue_events_<box>_through_<date>.events`), refreshed when the journal is
-  updated; the latest are through 2026-10-23 15:29 (`simbox2`), 15:15 (`phantom`) and 14:05 (`simbox3`); the earlier snapshots are kept.
+  updated; the latest are through 2026-10-23 17:49 (`phantom`), 15:29 (`simbox2`) and 14:05 (`simbox3`); the earlier snapshots are kept.
 - Entries E1-E12 were written after the fact (section 1); E13 onwards were written when the result came in.
 - *(2026-10-23 14:40, from the review)* The `half` ban list at `--ban-coverage 0.5` is tie-broken with the simulation seed
   (open question 9), so a seed replicate of a `half` `tail` cell also changes which 10 of the 21 /24s are banned. One such
@@ -246,6 +246,7 @@ own selection rule and its spy layout.
 | `20261023_123723_lean_24_none_h300_k21_w13h_m8_n600_s12345` | simbox2 | 168 / 21 | 300 / 242 | 0.1749 (0.0822) | 0.179, 0.178, 0.174, 0.169 | 0.205 | 1073 | 2h 49m | 3.4 | 0 | E24/P13b: tail at 8 spies per /24 (168 spies, 508 daemons); light 0.1749 against the 2-per-/24 cell's 0.1662 (E19): P13's dilution reading refuted (threshold 0.16); relays 0.36 at hour 5 falling to 0.18 at hour 19 (not stationary; -30% over hours 8-19 against -12% at m=2); 17 of 40 users exposed; free RAM 3.4 GB at boot (sim 10 min), 8.5 GB after the first simulated hour, so the 6 GB clause is missed |
 | `20261023_123723_lean_legacy_none_h300_k21_w13h_m2_n600_s12345` | phantom | 42 / 21 | 300 / 242 | 0.2857 (0.1221) | 0.286, 0.283, 0.286, 0.288 | 0.224 | 1099 | 2h 35m | 11.5 | 0 | E23/P12: the legacy (v0.18.4.2 selection) partner of the 13 h tail cell (E19: 0.1662); light 0.2857 flat, 2.34x the legacy model (0.122); relays 0.3256, no decay from hour 5 to 19 and a stationary start-order gradient (quarters 0.18/0.27/0.37/0.48). P12's 0.16-0.26 missed above; the 24/legacy ratio is 0.58, below the predicted 0.65-1.0: stock /24 dedup cuts this diversified fleet's share by 42% |
 | `20261023_140542_lean_24_none_h300_k1_w6h_m113_s23456` | simbox3 | 113 / 1 | 300 / 240 | 0.0428 (0.0046) | 0.055, 0.045, 0.039, 0.033 | 0.203 | 1083 | 3h 8m | 77.5 | 0 | E10 replicate (filler): core at a 6 h warmup, seed 23456, on simbox3; light 0.0428 against 0.0352 at seed 12345 on phantom (the transient's tail at hours 8-12, so seed spread here is spread in the drain, not in a steady state) |
+| `20261023_151500_lean_24_none_h300_k21_w13h_m1_n600_s12345` | phantom | 21 / 21 | 300 / 242 | 0.1978 (0.0822) | 0.197, 0.196, 0.201, 0.198 | 0.192 | 1099 | 2h 32m | 12.2 | 0 | E24/P13a: tail at 1 spy per /24 (21 spies); light 0.1978 flat against 0.1662 at 2 per /24 (E19) and 0.1749 at 8 (P13b): P13a's dilution range 0.18-0.27 hit, but the three points are not 1/m and the E24 candidate-count expectation (0.16-0.18) was wrong; relays 0.225, users 0.0605 |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1066,6 +1067,34 @@ spy /24 has no steady excess while 21 do is then the open point. A sketch, not a
 most one slot per node and the recency re-pick competes with 242 honest /24s for that slot, while a relay drained into 21 spy /24s
 holds several spy slots and every disconnection re-picks among 21 freshly-seen spy /24s.
 
+**(a) 1 per /24** (`lean_24_none_h300_k21_w13h_m1_n600_s12345`, 21 spies, `phantom`, 153 min wall, exit 0, lowest free RAM 12.2 GiB,
+1,099 stem txs, 0.192 fluff per hop; written 18:05). Light-node share **0.1978**, by quarter 0.1969, 0.1955, 0.2005, 0.1984: flat.
+Relays 0.2250, users 0.0605, observers 0.0939, medium 0.0826, miners 0.1434; the ceiling is 0.0822, so **2.41x**. The three cells at 13 h:
+
+| Spies per /24 | Spies | Light | Relays | Users | `sp_r` recall (= ceiling) | 20+-tx users exposed | Relays, hour 8 to 19 |
+|---|---|---|---|---|---|---|---|
+| 1 (this run) | 21 | 0.1978 | 0.2250 | 0.0605 | 0.052 | 16 of 40 | 0.221 to 0.225, +2% |
+| 2 (E19) | 42 | 0.1662 | 0.1881 | 0.0478 | 0.059 | 18 of 40 | -12% |
+| 8 ((b) above) | 168 | 0.1749 | 0.1968 | 0.0545 | 0.063 | 17 of 40 | 0.261 to 0.183, -30% |
+
+**The relay curve** at 1 per /24 has no drain peak and no decay: 0.106 at hour 2, 0.199 at 3.5, 0.208 at 5, 0.221 at 8, 0.221 at 12,
+0.225 at 19 (`spy_share_vs_time.txt` in the run's folder). The start-order quarters sit at 0.11-0.13 / 0.17-0.19 / 0.22-0.25 / 0.29-0.35
+from hour 4 on, a 2.9x gradient, stationary. This is the `legacy` cell's shape (E23) at a lower level: with 21 spies there is nothing
+to drain, and what the window reads is the lock-in alone.
+**Estimators** (40 unreachable users, 1,034 txs): `sp_r` 54 guesses, 54 correct: precision **1.000**, recall **0.052**, equal to its
+ceiling (54 of 1,033); **16 of 40** senders with 20 or more txs exposed. The 5 busy reachable nodes (65 txs): `sp` 10 of 18 correct
+(precision 0.56); `combined` exposes all 5 at a precision of 0.20. Unreachable nodes' median spy share of stem peers 0.035, of
+outbound peers 0.048; reachable nodes 0.173 and 0.174.
+**Score (P13a).** Light 0.1978 in 0.18-0.27: **hit**; relays 0.2250 in 0.21-0.31: hit; users 0.0605 in 0.05-0.08: hit; `sp_r`
+precision 1.00 and recall at its ceiling: hit. P13 as a whole: (a) hit, (b) refuted, so the 1/m dilution reading is **not**
+supported as filed (the prior was 50% that both land).
+**Reading, revised (18:05).** The expectation written at 15:45 for (a), 0.16-0.18 under a "candidate count" reading, was **wrong**
+(0.198): the number of spy /24s is not the whole story either. What the three points say: going from 1 to 2 spies per /24 lowers
+the fleet's steady share (0.198 to 0.166, neither window holding a transient), which is the direction E22's dilution reading
+predicted, at about a third of the 1/m size; the 8-per-/24 cell cannot be placed, because its window is still inside its own
+drain's transient. The steady-state comparison needs the 24 h warmup that E22a already gives for 2 per /24 (0.1572): P16 files
+1 and 8 per /24 at 24 h.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1294,6 +1323,10 @@ at its ceiling (hit), 17 of 40 exposed (recorded). Lowest free RAM 3.4 GB at boo
 clause is **missed**. The cell is not stationary (relays -30% over hours 8-19, against -12% at 2 per /24), so the steady-state lock-in
 at 8 per /24 is not separated from the transient. (a) is pending on `phantom`.
 
+*Outcome (a), 2026-10-23 18:05 (E24):* light **0.1978** in 0.18-0.27: **hit**; relays 0.2250 (0.21-0.31) and users 0.0605 (0.05-0.08):
+hits; `sp_r` precision 1.000, recall 0.052 at its ceiling: hit; 16 of 40 exposed (recorded). P13 overall: (a) hit, (b) refuted; the 1/m
+scaling is not supported, a weaker dilution from 1 to 2 per /24 is; the steady state at 8 per /24 goes to P16.
+
 **P14, filed 2026-10-23 15:35, before the cell is queued (open question 7's planned 100% point; E19, E22b).**
 `lean_24_half_h300_k21_w13h_m2_n600_s12345` on `simbox2`: the `tail` layout under `24`, 13 h warmup, window 15-19 h, seed 12345,
 with the ban list on half the honest nodes naming all 21 spy /24s (`--list half --ban-coverage 1.0`). Its partners: no list 0.1662
@@ -1306,6 +1339,20 @@ precision 1.00 and recall at its ceiling; unreachable users with 20 or more tran
 the list, E19; the adopting half's users cannot be exposed by `sp_r`, whose guess needs a spy first hop). Prior 55% for the light
 range. Above 0.12 means the non-adopters absorb more than the adopters' lost slots (as `core`'s 3.4x hints); below 0.08 means the
 list also lowers the non-adopters' share, a network effect worth a cell of its own.
+
+**P16, filed 2026-10-23 18:05, before the cells are queued (E24: the spies-per-/24 question at steady state).** Two 24 h-warmup
+cells with `--sim-fixed-randomx-seed` (stop at 30 h, window 26-30 h, seed 12345), the `tail` layout at 21 /24s under `24`, with 1 and
+with 8 spies per /24: `lean_24_none_h300_k21_w24h_m1_n600_fx_s12345` (21 spies, `phantom`) and `lean_24_none_h300_k21_w24h_m8_n600_fx_s12345`
+(168 spies, 508 daemons, `simbox3`, inserted ahead of the two remaining fillers). The 2-per-/24 partner exists (E22a: 0.1572 light,
+0.1805 relays at 24 h; 0.1662 at 13 h). At 13 h the three read 0.198 / 0.166 / 0.175 (E24), but the 8-per-/24 cell was still shedding
+its 168-spy drain (relays -30% over hours 8-19) while the 1-per-/24 cell was flat from hour 5; the question is the steady state.
+(a) 1 per /24: light **0.18-0.22**, flat by quarter (the 13 h cell rose 2% over hours 8-19; E22a's 2-per-/24 cell fell 5% from 13 h
+to 24 h), relays 0.20-0.26, users 0.05-0.08. (b) 8 per /24: if the IPs per /24 dilute the lock-in (E22's reading, which P13b could
+not test cleanly), the steady state sits below the 2-per-/24 cell's 0.157: light **0.10-0.15**, relays 0.11-0.17, and the relay
+curve flat over hours 20-30 (within 10%). At or above 0.155 means no dilution at steady state either, and the 1-to-2 gap is something
+else (the drain's size, or small-number effects at 21 spies). Prior 60% for (a), 50% for (b). Exposure recorded, not predicted;
+`sp_r` precision 1.00 and recall at its ceiling in both. Lowest free RAM: (a) on `phantom` above 8 GB (432 daemons; the 453-daemon
+cells bottomed at 10.9-12.2 GB); (b) on `simbox3` (100 GB) above 60 GB.
 
 **P15, filed 2026-10-23 15:35, before the cell is queued (E23's seed spread).** `lean_legacy_none_h300_k21_w13h_m2_n600_s23456` on
 `simbox2`: E23's cell at the other seed and on the other box, as E21 did for the `24` cell (0.1626 against E19's 0.1662, a 2%
@@ -1406,6 +1453,7 @@ in the conversation.
 | 10-23 15:35 | `simbox2`, idle after P13b, gets two 19 h cells: the full-coverage `half` `tail` cell (P14, open question 7's planned 100% point) and then the seed-23456 replicate of E23's `legacy` `tail` cell (P15); both filed and committed before queueing, both generated on `phantom` and copied with an md5 check | the 100% list is the headline X1 cell for `tail` and was planned next to the 50% one ("start at 100% and 50%"); the replicate turns E23's single-seed 42% into a two-seed claim; neither needs P13a's result (17:50), while the candidate-count follow-up it suggests (42 /24s at 1 spy each) does, so that waits | remove the lines from `~/queue/q.txt` on `simbox2`, or kill the driver by pid | agent |
 | 10-23 17:18 | A control box for the agents is set up at the user's request: VM `virt9900x` (192.168.1.140, 12 vCPU, 11 GB, Ubuntu 24.04, no experiments on it). Two users created there with `adduser --disabled-password`, no sudo: `antiproxy` (this lab; my key authorized) and `selfishmining` (the other project's agent; `.ssh` created, no key). Nothing of the owner's `lever65` account was touched | the user wants every agent's session on one control box, each project under its own Unix user with its own clone, with experiments run remotely on compute boxes (the lab is to move its big cells to a 256 GB Threadripper, the selfish-mining sims to the small boxes); separate users make the separation enforced | `sudo deluser --remove-home antiproxy` (and `selfishmining`) on the control box | user (decision), agent (execution) |
 | 10-23 17:22 | Control box, continued: `python3-venv` and `python3-pip` installed system-wide via the owner's sudo (the only system change); the repository cloned from a git bundle to `/home/antiproxy/monerosim` on this branch (no push); my memory, skills and the handoff note copied into the `antiproxy` account; Claude Code 2.1.309 installed under `~/.local` there (login left to the user); the account's own key authorized on my `lever65` accounts on `phantom`, `simbox2` and `simbox3` so a session there can reach the running queues | the user asked for the agents' sessions to move to the control box; the lab's compute boxes are still the `lever65` accounts until per-project users exist there | `apt-get remove python3-venv python3-pip`; delete the `antiproxy@virt9900x` line from each box's `~/.ssh/authorized_keys`; `rm -rf /home/antiproxy/monerosim` | agent |
+| 10-23 18:05 | P16 filed and committed, then queued: the 1-per-/24 24 h cell on `phantom` (idle since 17:49) and the 8-per-/24 24 h cell at the head of `simbox3`'s queue, ahead of the two seed-34567 fillers (the running seed-23456 `tail` filler finishes first). Both generated on `phantom`, the `simbox3` copy md5-checked | P13 ended split (a hit, b refuted) because the 8-per-/24 window sat inside its own drain's transient; only 24 h warmups compare steady states, and E22a already holds the 2-per-/24 point; the fillers are lower value than this | remove the line from `~/queue/q.txt` on `simbox3`; kill `phantom`'s driver by pid | agent |
 
 ## 8. Files
 
