@@ -5,7 +5,7 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-24, 00:26).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+**Status (2026-10-24, 03:08).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
 cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
 target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
 its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
@@ -29,13 +29,16 @@ expose 27 of 40 users (E27, P17 five of six): under the stock rule the excess is
 layout tried, so the operator's lever is /24s, not IPs. Under the old rule the same 42 IPs read 0.2984 in 42 /24s against 0.2857
 in 21 (E28, P18 four of four): the layout is irrelevant where the selection counts IPs, and stock dedup gives the spread fleet
 **1.13x** what the old rule gave it, against 0.58x for the packed fleet. E27 replicates to 1% at seed 23456 (0.334, E27b; P19 five
-of six, the users' clause missed on a 25% user-level seed spread). Running: `simbox2` finished P19 at 02:10 and is idle, awaiting
-the handover;
+of six, the users' clause missed on a 25% user-level seed spread). The full 42-entry ban list on half the nodes takes the spread
+fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to zero, non-adopters +10%, exposed users from 27 to 15
+of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
+the stock rule's /24 counting gave the spread fleet. Running: `simbox2` finished P19 at 02:10 and is idle, awaiting the handover;
+`phantom` finished P20 at 03:02 and is idle until P16b's reading picks the next cell;
 `phantom` finished
 P16a at 21:38 (E26: 1 per /24 at 26-30 h reads 0.1911, flat from hour 10, five of five clauses hit) and runs P18 (P17's `legacy`
 control); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
 seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
-E1-E28 below; predictions P1-P20 in section 5.
+E1-E29 below; predictions P1-P20 in section 5.
 
 ## 1. How this journal works
 
@@ -266,6 +269,7 @@ own selection rule and its spy layout.
 | `20261023_205427_lean_24_none_h300_k42_w13h_m1_n600_s12345` | simbox2 | 42 / 42 | 300 / 242 | 0.3369 (0.1531) | 0.339, 0.338, 0.337, 0.334 | 0.214 | 1098 | 2h 33m | 12.5 | 0 | P17: tail's 42 spies spread over 42 /24s at 1 each, stock 24; light 0.3369 = 2.20x the 0.1531 ceiling, flat; 27 of 40 users exposed |
 | `20261023_214454_lean_legacy_none_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.2984 (0.1237) | 0.299, 0.296, 0.297, 0.302 | 0.199 | 1100 | 2h 33m | 10.5 | 0 | P18: the 42-/24 one-spy-each layout under legacy (P17's control); light 0.2984 = 2.41x its 0.1237 model, flat; 24/legacy at 42 /24s 1.13 (stock dedup gives this fleet more); 24 of 40 exposed |
 | `20261023_233601_lean_24_none_h300_k42_w13h_m1_n600_s23456` | simbox2 | 42 / 42 | 300 / 240 | 0.3340 (0.1539) | 0.328, 0.334, 0.338, 0.336 | 0.197 | 1097 | 2h 32m | 12.5 | 0 | P19: E27's 42-/24 cell at seed 23456; light 0.334 vs 0.3369 (1% spread), 2.17x ceiling, flat; users 0.103 (seed 12345: 0.133); 26 of 40 exposed |
+| `20261024_002607_lean_24_half_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.1840 (0.1531) | 0.187, 0.184, 0.183, 0.182 | 0.207 | 1095 | 2h 34m | 10.6 | 0 | P20: the 42-/24 spread fleet with the full 42-entry ban list on half the nodes; light 0.184 (no list: 0.3369, 0.55x), adopters 0.0, 15 of 40 exposed |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1311,6 +1315,45 @@ honest side loses 19% of its weight and the spies lose none. The models say 1.24
 spreads one IP per /24 gained slots from #9939; a fleet that packs /24s lost 42%. (3) For open question 7: the stock rule leaves
 the ban list as the only defence against the spread layout, and that list has one entry per spy. P20 measures it.
 
+### E29. The full ban list on half the nodes against the spread fleet: adopters at zero, the other half carries 10% more, 15 of 40 exposed (2026-10-24 00:26-03:02, `phantom`)
+
+Prediction P20 (filed and committed 00:26, `5f19ce9b`; the run started 00:26). `lean_24_half_h300_k42_w13h_m1_n600_s12345`: E27's
+spread fleet (42 spies in 42 /24s) with the ban list naming all 42 spy /24s on half the honest nodes (`--list half --ban-coverage
+1.0`, 165 adopters, 175 non-adopters, the same seeded half as E25), stock `24`, 13 h warmup, window 15-19 h, seed 12345. 155 min
+wall, exit 0, lowest free RAM 10.6 GiB, 1,095 stem txs, 0.207 fluff per hop, loop rate 0.059.
+
+**Shares.** Light-node share **0.184** (no list, E27: 0.3369; **0.55x**), by quarter 0.1869, 0.1845, 0.1827, 0.1821: flat (Q4 2.6%
+below Q1). Adopters (165 nodes) **0.0000**. The scorer's non-adopter group (175 nodes, slot-weighted, with the 5 miners' 500 slots at
+0.2618) 0.3156. Relays 0.2088, users 0.0528, observers 0.1206, medium 0.1064. With every adopter at zero the non-adopters' own
+shares follow by class: relays 0.2088 x 233/116 = **0.419** (no list: 0.3746, +12%), users 0.0528 x 40/20 = **0.106** (0.133 and
+0.103 at the two seeds), observers 0.241 (0.256), and the non-adopting light nodes together 0.184 x 281/140 = **0.369** against
+0.3369 without the list: **+10%**. The two ban-list cells side by side:
+
+| Fleet (seed 12345, 13 h, full list on half the nodes) | Light, no list | Light, list | Ratio | Non-adopting light nodes | Exposed, no list | Exposed, list |
+|---|---|---|---|---|---|---|
+| `tail`, 42 spies in 21 /24s (E19, E25) | 0.1662 | 0.0928 | 0.56 | 0.186 (+12%) | 18 of 40 | 7 of 40 |
+| spread, 42 spies in 42 /24s (E27, this run) | 0.3369 | 0.184 | 0.55 | 0.369 (+10%) | 27 of 40 | 15 of 40 |
+
+**The relay curve** (all 233 relays, adopters included at zero, so the non-adopting relays read about twice these values): 0.164 at
+hour 3, 0.192 at 5, 0.206 at 8, 0.21 from hour 8 to 19 (hour 19: 0.207); the start-order gradient is there (earliest quarter 0.11,
+latest 0.29) and nothing relaxes. The non-adopting relays sit near 0.41-0.42 from hour 8 on.
+
+**Estimators** (40 unreachable users, 1,033 txs): `sp_r` 52 guesses, 52 correct (precision **1.000**, recall 0.050, at its ceiling),
+**15 of 40** twenty-transaction users exposed, necessarily all among the 20 non-adopting users (15 of 20, 75%; E27: 27 of 40, 68%).
+The list protects the adopting users completely and leaves the non-adopting users slightly worse off than before.
+
+**Score (P20).** Light 0.184 in 0.17-0.21: hit. Adopters 0.0000 at most 0.005: hit. Non-adopting light nodes 0.369 in 0.34-0.42: hit.
+Users 0.0528 in 0.05-0.09: hit. `sp_r` precision 1: hit. Exposed 15 of 40 in 9-16, all non-adopters: hit. Relays 1.13x light in
+1.05-1.25: hit. Flat: hit. Eight of eight.
+
+**What this means.** (1) The ban list's effect does not depend on the fleet's layout: on half the nodes it removes 44-45% of the
+fleet's light-node slots whether the fleet packs /24s or spreads them, because adopters go to exactly zero and non-adopters pick up
+10-12% more. Its cost is one entry per spy /24, which for the spread fleet is one per spy. (2) For open question 7 the answer at
+coverage 1.0 is now measured on both presets: adopters are fully protected, non-adopters are not protected at all, and the network
+total falls by the adopters' share less the 10-12% refill. A list on half the network halves the exposed users and no more. (3) The
+spread fleet with the list on half the nodes (0.184) still beats the packed fleet without any list (0.166): against a spreading
+operator, half the network adopting a complete list recovers only what the stock rule's /24 counting gave away (E28).
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1645,6 +1688,11 @@ below 0.17 means the list does more against the spread fleet than against the pa
 refilled by spies to the same degree); above 0.21 means the non-adopters absorb more than +25%. Lowest free RAM on `phantom`
 above 10 GB.
 
+*Outcome, 2026-10-24 03:08:* light **0.184**, inside 0.17-0.21 (0.55x E27): hit. Adopters 0.0000: hit. Non-adopting light nodes
+0.369, inside 0.34-0.42 (+10%): hit. Users 0.0528: hit. `sp_r` precision 1: hit. Exposed **15 of 40**, inside 9-16, all non-adopters:
+hit. Relays 1.13x light: hit. Flat: hit. Lowest free RAM 10.6 GiB: hit. Eight of eight (E29): the list's effect is the same 0.55x on
+the spread fleet as on the packed one.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -1754,6 +1802,7 @@ in the conversation.
 | 10-23 23:35 | `simbox2` drained at 23:30 (P17 done, E27). P19 filed and queued there: the seed-23456 replicate of E27's cell (~2.5 h) | E27 is the strongest single number in the journal (0.337 light, 27 of 40 users exposed) and the family's other headline cells have a seed replicate (E21, E23b); the other project cannot use the box before morning. Risk: the handover slips one more cell. Undo: kill the driver by pid; cell md5 16faa462 on both boxes |
 | 10-24 00:26 | `phantom` drained at 00:20 (P18 done, E28). P20 filed and queued there: E27's spread fleet with the full 42-entry ban list on half the nodes (`lean_24_half_h300_k42_w13h_m1_n600_s12345`, ~2.5 h) | E27/E28 leave the ban list as the only defence against a 1-per-/24 fleet (open question 7 at 42 /24s); E25 is the template. Risk: 2.5 h of the generator box, 27 GB free. Undo: kill the driver by pid; cell md5 31fe7669, ban list `banlist_h300_k42_w13h_m1_n600_s12345.txt` (42 lines) |
 | 10-24 02:14 | `simbox2` drained at 02:10 (P19 done, E27b) and is left idle: nothing new queued | The user's plan gives the small boxes to the selfish-mining project once their queues drain, and the open questions left (P16b, P20) are running on the other two boxes; a further cell here would only delay the handover. Risk: idle hardware until the other agent has its key. Undo: queue a cell (`~/queue/q.txt`, restart the driver) |
+| 10-24 03:08 | `phantom` drained at 03:02 (P20 done, E29) and is left idle until P16b lands (~03:30) | The next cell depends on P16b's reading (whether 8 per /24 settles below 2 per /24 at steady state): if the multiplier holds there too, the spread fleet's 24 h steady state (`k42_w24h_m1_fx`) is the natural headline cell; open question 10's probe needs a monerod-sim flag first. Risk: under an hour idle. Undo: queue a cell |
 
 ## 8. Files
 

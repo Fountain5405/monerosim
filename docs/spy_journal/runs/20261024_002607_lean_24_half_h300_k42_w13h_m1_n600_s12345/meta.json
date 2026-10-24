@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_002607_lean_24_half_h300_k42_w13h_m1_n600_s12345",
+ "box": "phantom",
+ "cell": "lean_24_half_h300_k42_w13h_m1_n600_s12345",
+ "archived_at": "2026-10-24T00:26:42Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "2h 34m",
+ "exit_code": 0,
+ "min_avail_mb": 10834,
+ "txs_created": 1008,
+ "txs_in_blocks": 1003,
+ "note": "P20: the 42-/24 spread fleet with the full 42-entry ban list on half the nodes; light 0.184 (no list: 0.3369, 0.55x), adopters 0.0, 15 of 40 exposed",
+ "scored_cell": "24/half",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.184,
+ "light_out_quarters": [
+  0.1869,
+  0.1845,
+  0.1827,
+  0.1821
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.207,
+ "stem_txs": 1095,
+ "stem_hops_implied": 4.83,
+ "embargo_rate": 0.0
+}
