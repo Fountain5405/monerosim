@@ -53,7 +53,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 0s
       expected_final_state: running
     - path: /bin/bash
@@ -72,7 +72,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       shutdown_time: 1680s
       expected_final_state:
@@ -121,7 +121,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 0s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -149,7 +149,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2s
       expected_final_state: running
     - path: /bin/bash
@@ -168,7 +168,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       shutdown_time: 1680s
       expected_final_state:
@@ -189,7 +189,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 15s
       shutdown_time: 1680s
       expected_final_state:
@@ -216,7 +216,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 1s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -262,7 +262,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 0s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -290,7 +290,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2s
       expected_final_state: running
     - path: /bin/bash
@@ -309,7 +309,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       shutdown_time: 1680s
       expected_final_state:
@@ -330,7 +330,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 15s
       shutdown_time: 1680s
       expected_final_state:
@@ -376,7 +376,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 0s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -420,7 +420,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 1s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -464,7 +464,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -508,7 +508,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 3s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -552,7 +552,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 4s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -596,7 +596,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -640,7 +640,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 30s
       expected_final_state: running
     bandwidth_down: '1000000000'

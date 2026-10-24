@@ -37,7 +37,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 1s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -81,7 +81,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 0s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -110,7 +110,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2s
       expected_final_state: running
     - path: /bin/bash
@@ -129,7 +129,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       shutdown_time: 21480s
       expected_final_state:
@@ -150,7 +150,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 15s
       shutdown_time: 21480s
       expected_final_state:
@@ -196,7 +196,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 1s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -225,7 +225,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 3s
       expected_final_state: running
     - path: /bin/bash
@@ -244,7 +244,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 6s
       shutdown_time: 21480s
       expected_final_state:
@@ -265,7 +265,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 16s
       shutdown_time: 21480s
       expected_final_state:
@@ -311,7 +311,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -340,7 +340,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 4s
       expected_final_state: running
     - path: /bin/bash
@@ -359,7 +359,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 7s
       shutdown_time: 21480s
       expected_final_state:
@@ -380,7 +380,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 17s
       shutdown_time: 21480s
       expected_final_state:
@@ -426,7 +426,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 3s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -455,7 +455,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       expected_final_state: running
     - path: /bin/bash
@@ -474,7 +474,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 8s
       shutdown_time: 21480s
       expected_final_state:
@@ -495,7 +495,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 18s
       shutdown_time: 21480s
       expected_final_state:
@@ -541,7 +541,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 4s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -570,7 +570,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 6s
       expected_final_state: running
     - path: /bin/bash
@@ -589,7 +589,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 9s
       shutdown_time: 21480s
       expected_final_state:
@@ -610,7 +610,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 19s
       shutdown_time: 21480s
       expected_final_state:
@@ -637,7 +637,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 4200s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -684,7 +684,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 0s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -731,7 +731,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 1s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -778,7 +778,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -825,7 +825,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 3s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -872,7 +872,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 4s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -919,7 +919,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -966,7 +966,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 300s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -991,7 +991,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 5s
       expected_final_state: running
     bandwidth_down: '1000000000'
@@ -1038,7 +1038,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2400s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -1067,7 +1067,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2402s
       expected_final_state: running
     - path: /bin/bash
@@ -1086,7 +1086,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2405s
       shutdown_time: 21480s
       expected_final_state:
@@ -1135,7 +1135,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2410s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -1164,7 +1164,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2412s
       expected_final_state: running
     - path: /bin/bash
@@ -1183,7 +1183,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2415s
       shutdown_time: 21480s
       expected_final_state:
@@ -1232,7 +1232,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2420s
       expected_final_state: running
     - path: HOME/.monerosim/bin/monero-wallet-rpc
@@ -1261,7 +1261,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2422s
       expected_final_state: running
     - path: /bin/bash
@@ -1280,7 +1280,7 @@ hosts:
         PYTHONHASHSEED: '0'
         PYTHONUNBUFFERED: '1'
         SIMULATION_SEED: '12345'
-        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.12/site-packages
+        VENV_SITE_PACKAGES: REPO_ROOT/venv/lib/python3.X/site-packages
       start_time: 2425s
       shutdown_time: 21480s
       expected_final_state:

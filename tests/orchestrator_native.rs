@@ -5,33 +5,12 @@
 //! `tests/golden/native.yaml`. Run with `UPDATE_GOLDEN=1` to refresh the
 //! checked-in golden file after intentional output changes.
 
+mod common;
+
+use common::normalize;
 use monerosim::{config_loader, orchestrator};
-use regex::Regex;
 use std::path::Path;
 use tempfile::TempDir;
-
-/// Redact machine-local paths so the golden diff is portable across hosts.
-/// Order matters: longer/more-specific patterns first.
-fn normalize(yaml: &str) -> String {
-    // /tmp/<random>/ tempdirs from the test run.
-    let yaml = Regex::new(r"/tmp/[A-Za-z0-9_.-]+/")
-        .unwrap()
-        .replace_all(yaml, "TMPDIR/")
-        .into_owned();
-    // The repo's absolute path embeds in wrapper script / data-dir paths.
-    let cwd = std::env::current_dir()
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-    let yaml = yaml.replace(&cwd, "REPO_ROOT");
-    // The user's $HOME embeds in resolved monerod / wallet paths.
-    if let Ok(home) = std::env::var("HOME") {
-        if !home.is_empty() {
-            return yaml.replace(&home, "HOME");
-        }
-    }
-    yaml
-}
 
 #[test]
 fn native_fixture_yaml_matches_golden() {

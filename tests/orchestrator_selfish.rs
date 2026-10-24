@@ -1,30 +1,10 @@
 // tests/orchestrator_selfish.rs
+mod common;
+
+use common::normalize;
 use monerosim::{config_loader, orchestrator};
-use regex::Regex;
 use std::path::Path;
 use tempfile::TempDir;
-
-/// Redact machine-local paths so the golden diff is portable across hosts.
-/// Order matters: longer/more-specific patterns first. Copied verbatim from
-/// `tests/orchestrator_native.rs` (not a shared module) so the golden here is
-/// host-portable too.
-fn normalize(yaml: &str) -> String {
-    let yaml = Regex::new(r"/tmp/[A-Za-z0-9_.-]+/")
-        .unwrap()
-        .replace_all(yaml, "TMPDIR/")
-        .into_owned();
-    let cwd = std::env::current_dir()
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-    let yaml = yaml.replace(&cwd, "REPO_ROOT");
-    if let Ok(home) = std::env::var("HOME") {
-        if !home.is_empty() {
-            return yaml.replace(&home, "HOME");
-        }
-    }
-    yaml
-}
 
 #[test]
 fn selfish_fixture_yaml_matches_golden() {

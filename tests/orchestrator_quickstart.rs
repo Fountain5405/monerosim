@@ -5,32 +5,12 @@
 //! and users). Cargo runs tests from the crate root, so the relative
 //! `gml_processing/...` path inside the fixture resolves correctly.
 
+mod common;
+
+use common::normalize;
 use monerosim::{config_loader, orchestrator};
-use regex::Regex;
 use std::path::Path;
 use tempfile::TempDir;
-
-/// Redact machine-local paths so the golden diff is portable across hosts.
-fn normalize(yaml: &str) -> String {
-    // /tmp/<random>/ tempdirs from the test run.
-    let yaml = Regex::new(r"/tmp/[A-Za-z0-9_.-]+/")
-        .unwrap()
-        .replace_all(yaml, "TMPDIR/")
-        .into_owned();
-    // Repo absolute path embeds in wrapper scripts / data-dir paths.
-    let cwd = std::env::current_dir()
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-    let yaml = yaml.replace(&cwd, "REPO_ROOT");
-    // $HOME embeds in resolved monerod / wallet paths.
-    if let Ok(home) = std::env::var("HOME") {
-        if !home.is_empty() {
-            return yaml.replace(&home, "HOME");
-        }
-    }
-    yaml
-}
 
 #[test]
 fn quickstart_fixture_yaml_matches_golden() {

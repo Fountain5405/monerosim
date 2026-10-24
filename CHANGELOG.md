@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Golden-file tests failed outside a Python 3.12 venv or under `/tmp`**
+  (`tests/orchestrator_{native,quickstart,smoke,selfish}.rs`). The goldens
+  embedded the venv's `python3.12` site-packages path, so a checkout whose venv
+  uses another Python (Ubuntu 22.04 ships 3.10) or has no venv failed all four,
+  and a checkout under `/tmp/<dir>/` had its repo path turned into `TMPDIR/...`
+  before the repo-root replacement could match. The five copies of the
+  normalizer are now one helper, `tests/common/mod.rs` (tested in
+  `tests/golden_normalize.rs`), which replaces the repo root first and masks the
+  Python version as `python3.X`.
+
 ## [0.4.0] — 2026-10-24
 
 Faster, leaner and larger runs, plus native mining. Shadow now gets every free
