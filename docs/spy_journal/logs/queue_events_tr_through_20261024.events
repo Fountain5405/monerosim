@@ -2,3 +2,7 @@
 06:12 DONE lean_legacy_none_h71_k1_s12345 exit=0 wall=43m min_avail_mb=170713 light_out_share=0.0624
 share fluff_per_hop=0.171 stem_txs=953 run=/fast/antiproxy/monerosim_archives/20261024_052857_lean_legacy_none_h71_k1_s12345
 06:12 QUEUE EMPTY
+06:17 START lean_24_none_h300_k42_w24h_m1_n600_fx_s23456 run=/fast/antiproxy/monerosim_archives/20261024_061705_lean_24_none_h300_k42_w24h_m1_n600_fx_s23456
+09:36 DONE lean_24_none_h300_k42_w24h_m1_n600_fx_s23456 exit=0 wall=197m min_avail_mb=160216 light_out_share=0.3524
+share fluff_per_hop=0.191 stem_txs=1101 run=/fast/antiproxy/monerosim_archives/20261024_061705_lean_24_none_h300_k42_w24h_m1_n600_fx_s23456
+09:36 QUEUE EMPTY

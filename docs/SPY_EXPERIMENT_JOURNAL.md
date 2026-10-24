@@ -34,11 +34,12 @@ fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to z
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
-buys share. Running (06:19): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), runs P23, the
-seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
+buys share. Running (09:46): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
+(E34: **0.3524**, the seed-23456 read of the 24 h spread fleet, 5% above P21's; four of seven) and runs P24, open question 10's probe
+(`--sim-uniform-whitelist-pick` on E27's cell, started 09:42, ~2 h); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and is idle for the archive-pool move; `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
 `simbox2` is idle for the handover to the selfish-mining project. Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E33 below; predictions P1-P25 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E34 below; predictions P1-P25 in section 5.
 
 ## 1. How this journal works
 
@@ -279,7 +280,11 @@ own selection rule and its spy layout.
 | `20261023_214454_lean_legacy_none_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.2984 (0.1237) | 0.299, 0.296, 0.297, 0.302 | 0.199 | 1100 | 2h 33m | 10.5 | 0 | P18: the 42-/24 one-spy-each layout under legacy (P17's control); light 0.2984 = 2.41x its 0.1237 model, flat; 24/legacy at 42 /24s 1.13 (stock dedup gives this fleet more); 24 of 40 exposed |
 | `20261023_233601_lean_24_none_h300_k42_w13h_m1_n600_s23456` | simbox2 | 42 / 42 | 300 / 240 | 0.3340 (0.1539) | 0.328, 0.334, 0.338, 0.336 | 0.197 | 1097 | 2h 32m | 12.5 | 0 | P19: E27's 42-/24 cell at seed 23456; light 0.334 vs 0.3369 (1% spread), 2.17x ceiling, flat; users 0.103 (seed 12345: 0.133); 26 of 40 exposed |
 | `20261024_002607_lean_24_half_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.1840 (0.1531) | 0.187, 0.184, 0.183, 0.182 | 0.207 | 1095 | 2h 34m | 10.6 | 0 | P20: the 42-/24 spread fleet with the full 42-entry ban list on half the nodes; light 0.184 (no list: 0.3369, 0.55x), adopters 0.0, 15 of 40 exposed |
+| `20261024_031641_lean_24_none_h300_k1_w6h_m113_s34567` | simbox3 | 113 / 1 | 300 / 243 | 0.0348 (0.0045) | 0.046, 0.037, 0.030, 0.026 | 0.195 | 1068 | 3h 17m | 77.3 | 0 | E10 replicate (filler): core at the 6 h warmup, seed 34567: 0.0348 against seed 12345's 0.0352 and seed 23456's 0.0428; every quarter falls (drain transient); sp_r precision 1.00, recall 0.009, 3 of 39 heavy users exposed |
+| `20261024_033150_lean_24_none_h300_k42_w24h_m1_n600_fx_s12345` | phantom | 42 / 42 | 300 / 242 | 0.3354 (0.1531) | 0.331, 0.333, 0.337, 0.341 | 0.193 | 1100 | 3h 45m | 10.3 | 0 | P21: the spread fleet (42 spies in 42 /24s) at a 24 h warmup, window 26-30 h: 0.3354 against E27's 0.3369 at 13 h; flat (quarters 0.331-0.341); sp_r precision 1.00, recall 0.134, 33 of 40 heavy users exposed |
 | `20261024_052857_lean_legacy_none_h71_k1_s12345` | zenith2alpha | 13 / 1 | 71 / 60 | 0.0624 (0.0750) | 0.059, 0.062, 0.062, 0.065 | 0.171 | 953 | 41m 48s | 166.7 | 0 | P22, the Threadripper's platform check (H=71 legacy, seed 12345): 0.0624 against phantom 0.0610, simbox2 0.0614, simbox3 0.0641; hit on all four clauses; first run on zenith2alpha (64 threads, 251 GB), live run on /fast |
+| `20261024_061705_lean_24_none_h300_k42_w24h_m1_n600_fx_s23456` | zenith2alpha | 42 / 42 | 300 / 240 | 0.3524 (0.1539) | 0.351, 0.351, 0.354, 0.353 | 0.191 | 1101 | 3h 16m | 156.5 | 0 | P23: P21's seed-23456 replicate on zenith2alpha, 24 h warmup, window 26-30 h: 0.3524 against P21's 0.3354 (1.051x) and E27b's 0.334 at 13 h; flat (quarters 0.351-0.354); relays 0.4002, +3% over hours 20-30; sp_r precision 1.00, recall 0.109, 29 of 40 heavy users exposed; wall 3 h 16 m |
+| `20261024_072708_lean_legacy_none_h71_k1_s12345` | phantom | 13 / 1 | 71 / 60 | 0.0628 (0.0749) | 0.062, 0.065, 0.060, 0.064 | 0.208 | 1086 | 43m 26s | 19.7 | 0 | P25: the ten-patch monerod-sim (b8d6fbb6, --sim-uniform-whitelist-pick present, off) on the H=71 legacy cell: 0.0628 against 0.0610 on the nine-patch binary; all checks; no daemon logs the flag; hit on all clauses |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1468,6 +1473,35 @@ twenty-transaction users attributed (E31 on the Threadripper: 26 of 35). **P25 h
 within the spread the same cell shows across boxes and binaries, and the `_up` probe (P24) may be read. Register
 `20261024_072708_lean_legacy_none_h71_k1_s12345`, box `phantom`.
 
+### E34. The spread fleet's 24 h steady state at a second seed: 0.3524, 5% above P21 and 5.5% above the same seed's 13 h read (2026-10-24 06:17-09:36, `zenith2alpha`)
+
+**Cell.** `lean_24_none_h300_k42_w24h_m1_n600_fx_s23456` (P23): P21's cell at seed 23456 (E27's spread fleet, 42 spies in 42 /24s at 1 each,
+300 honest reachable in 240 /24s, 40 users, `24` selection, no list, 384 daemons, 24 h warmup, window 26-30 h, fixed RandomX seed), the first
+cell generated on the control box with `make_cell.sh` (md5 `93e4bfa5`), run on the Threadripper with Shadow at 32 workers. Wall 3 h 16 m, exit 0,
+all checks, 382 nodes at 100% sync, height 2396, lowest free RAM 160 GB.
+
+**Reading.** Light-node outbound share **0.3524** (P21, seed 12345: 0.3354; E27b, this seed at 13 h: 0.334; E27: 0.3369), 2.29x the subnet
+model's 0.1539, by quarter 0.3512, 0.3515, 0.3540, 0.3527 (+0.4% across the window, the flattest 24 h read so far). By class: users 0.1046,
+observers 0.1968, relays 0.4002 (1.14x light), miners 0.2519, seeds 0.0763. The relays' curve: 0.387 (h10), 0.394 (h20), 0.398 (h26),
+0.399 (h28), 0.408 (h30), +5% over hours 10-30 and +3% over hours 20-30 (P21: +10% over 20-30). By start-order quarter at hour 30: 0.236,
+0.339, 0.452, 0.602 (P21: 0.240, 0.326, 0.429, 0.549): the earliest-started relays at 1.5x the ceiling in both seeds, the latest-started at
+3.9x here against 3.6x. Exposure: the spies saw all 1101 txs; `sp_r` precision 1.00, recall 0.109, **29 of 40** twenty-transaction users
+attributed (P21: 33; E27: 27; E27b: about 20).
+
+**P23: four of seven clauses hit.** Flatness by quarter, relays 1.05-1.2x light, users 0.09-0.15 and 20-30 exposed hit. The share missed
+0.31-0.35 by 0.002 and its ratio to P21, 1.051x, missed the 0.95-1.05x band by 0.001x; the wall, 3 h 16 m, missed "under 2.5 h". The filed
+reading of a share outside the range ("the spread fleet has no seed-stable steady state") claims more than a 0.7% overshoot supports. What
+the two seeds show: the 24 h steady state is seed-sensitive at the 5% level (0.335 and 0.352), the same spread the 13 h reads had (0.334,
+0.337) but not the same ordering, since seed 23456 moved +5.5% from 13 h to 26-30 h while seed 12345 moved -0.4%. So E27's 2.2x stands as
+the family's value with a +/-3% seed band around 0.344, and "steady state" means light nodes flat within any one window while the relays'
+lock-in (E21) adds a few percent per ten hours. The between-seed difference sits in the relays (0.376 to 0.400, +6.5%), not the users
+(0.127 to 0.105) or the observers (0.201 to 0.197). The wall clause: 32 Shadow workers on the Threadripper gained 13% over phantom's 16
+(3 h 16 m against 3 h 45 m); Shadow does not scale with workers at this size, so the box's value to the lab is its 250 GB (160 GB free
+during this run), bigger cells rather than faster ones.
+
+**Register.** `20261024_061705_lean_24_none_h300_k42_w24h_m1_n600_fx_s23456`, box `zenith2alpha`; estimators and `spy_share_vs_time.txt` in
+the run's folder; events in `logs/queue_events_tr_through_20261024.events`.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1845,6 +1879,10 @@ share **0.31-0.35** (P21's range) and **0.95-1.05x P21's value** once P21 lands 
 light; users 0.09-0.15; 20-30 of 40 users exposed (wider than P21's 22-30: E27b's user clause missed on a 25% user-level seed spread). Prior 75%.
 Wall under 2.5 h (phantom's P21 takes ~4 h on 16 workers; this box runs 32). Both inside 0.31-0.35 but outside 0.95-1.05x of each other means
 the 24 h steady state is seed-sensitive at the few-percent level; either outside the range means the spread fleet has no seed-stable steady state.
+*Outcome, 2026-10-24 09:46:* **four of seven.** Light **0.3524** (0.31-0.35 missed by 0.002; 1.051x P21's 0.3354, the 0.95-1.05x band
+missed by 0.001x), quarters 0.3512-0.3527 (+0.4%, hit), relays 0.4002 = 1.14x light (hit), users 0.1046 (hit), 29 of 40 exposed (hit), lowest
+free RAM 160 GB, wall 3 h 16 m with Shadow at 32 workers (under 2.5 h missed: twice phantom's workers gained 13%). Read as seed sensitivity
+at the 5% level rather than the filed "no seed-stable steady state". E34.
 
 **P24, filed 2026-10-24 06:24, before the cell is queued (open question 10's probe: the white-list pick made uniform).**
 `lean_24_none_h300_k42_w13h_m1_n600_up_s12345` on `zenith2alpha` after P23 (md5 `33ca7b5b`; E27's cell plus `--sim-uniform-whitelist-pick`
@@ -1992,6 +2030,8 @@ in the conversation.
 | 10-24 07:21 | `phantom` drained at 07:19 (P21 done, E32). Its `~/queue/x0_queue.events` symlink replaced by a real copy (109 lines); `monerod-sim` rebuilt there with the ten patches (`run_install_sim.sh`, 12 jobs, ~3 min with ccache; sha256 `b8d6fbb6...`, `--help` lists the flag), then P21 scored | nothing ran on the box; the P25 check needs the new binary | reinstall from the nine-patch list | agent |
 | 10-24 07:27 | P25 queued on `phantom` (`lean_legacy_none_h71_k1_s12345`, flag off, the ten-patch binary's platform check, 0.055-0.066, ~45 min) with the standard driver `~/queue/x0_queue.sh` (archives on the ssd pool) | filed at 06:3x and committed before the queue; the old driver `x0_queue2.sh` exited with its queue | kill the driver by pid | agent |
 | 10-24 08:14 | `phantom` drained at 08:11 (P25 done, E33) and is left idle: nothing queued | the archive-pool move to the Threadripper's array waits on the user's word about a ZFS child dataset; its first steps (an NFS mount on phantom and a 293 GB copy off its ssd pool) want the box idle, and the next headline cells belong on `zenith2alpha`. Risk: idle hardware until then. Undo: queue a cell | agent |
+| 10-24 09:38 | P23 done on `zenith2alpha` at 09:36 (E34, 0.3524). Its `monerod-sim` rebuilt with the ten patches while the two scoring scripts ran (`run_install_sim.sh`, 24 jobs; sha256 `9cae7db31344...`, provenance lists 10 patches, `--help` lists the flag) | nothing of the lab's ran there and the scorers do not touch the binary; P24 needs it | reinstall from the nine-patch list | agent |
+| 10-24 09:42 | P24 queued on `zenith2alpha`: `lean_24_none_h300_k42_w13h_m1_n600_up_s12345` (md5 `33ca7b5b` checked on the box before the start; the standard driver; Shadow at 32 workers; the first daemon logs carry the `--sim-uniform-whitelist-pick` line) | filed 06:24 and committed as `6ba2809b`; the box is validated (E31) and its binary carries the flag; E21's recency-pick reading has waited for this test since E21 | kill the driver by pid; the cell leaves no other state | agent |
 
 ## 8. Files
 

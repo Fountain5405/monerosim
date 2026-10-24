@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_061705_lean_24_none_h300_k42_w24h_m1_n600_fx_s23456",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w24h_m1_n600_fx_s23456",
+ "archived_at": "2026-10-24T06:17:42Z",
+ "monerod_sim_sha": "bb53709efe74",
+ "wall": "3h 16m",
+ "exit_code": 0,
+ "min_avail_mb": 160216,
+ "txs_created": 1082,
+ "txs_in_blocks": 1070,
+ "note": "P23: P21's seed-23456 replicate on zenith2alpha, 24 h warmup, window 26-30 h: 0.3524 against P21's 0.3354 (1.051x) and E27b's 0.334 at 13 h; flat (quarters 0.351-0.354); relays 0.4002, +3% over hours 20-30; sp_r precision 1.00, recall 0.109, 29 of 40 heavy users exposed; wall 3 h 16 m",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.3524,
+ "light_out_quarters": [
+  0.3512,
+  0.3515,
+  0.354,
+  0.3527
+ ],
+ "model_out": 0.1539,
+ "fluff_per_hop": 0.191,
+ "stem_txs": 1101,
+ "stem_hops_implied": 5.24,
+ "embargo_rate": 0.0
+}
