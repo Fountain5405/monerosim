@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_033150_lean_24_none_h300_k42_w24h_m1_n600_fx_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k42_w24h_m1_n600_fx_s12345",
+ "archived_at": "2026-10-24T03:32:26Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "3h 45m",
+ "exit_code": 0,
+ "min_avail_mb": 10597,
+ "txs_created": 1040,
+ "txs_in_blocks": 1038,
+ "note": "P21: the spread fleet (42 spies in 42 /24s) at a 24 h warmup, window 26-30 h: 0.3354 against E27's 0.3369 at 13 h; flat (quarters 0.331-0.341); sp_r precision 1.00, recall 0.134, 33 of 40 heavy users exposed",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3354,
+ "light_out_quarters": [
+  0.3308,
+  0.3329,
+  0.3366,
+  0.3411
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.193,
+ "stem_txs": 1100,
+ "stem_hops_implied": 5.18,
+ "embargo_rate": 0.0
+}

@@ -35,10 +35,10 @@ of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
 buys share. Running (06:19): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), runs P23, the
-seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` runs P21 (the spread fleet at a 24 h warmup, ETA
-~07:30); `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
+seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and runs P25 since
+07:27 (the ten-patch binary's flag-off check, ~45 min); `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
 `simbox2` is idle for the handover to the selfish-mining project. Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E31 below; predictions P1-P23 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E32 below; predictions P1-P25 in section 5.
 
 ## 1. How this journal works
 
@@ -1434,6 +1434,29 @@ change, not a Shadow one.
 **Register.** `20261024_052857_lean_legacy_none_h71_k1_s12345`, box `zenith2alpha`; estimators and `spy_share_vs_time.txt` in the run's
 folder; events in `logs/queue_events_tr_through_20261024.events`.
 
+### E32. The spread fleet's 24 h steady state: 0.3354, E27's number, with relays still creeping and 33 of 40 users exposed (2026-10-24 03:31-07:19, `phantom`)
+
+**Cell.** `lean_24_none_h300_k42_w24h_m1_n600_fx_s12345` (P21): E27's spread fleet, 42 spies in 42 /24s at 1 each, 300 honest reachable in 242 /24s,
+40 users, `24` selection, no list, 384 daemons, **24 h warmup**, window 26-30 h, fixed RandomX seed, seed 12345. Wall 3 h 45 m on 16 workers,
+exit 0, all checks, 382 nodes at 100% sync, height 2398, lowest free RAM 10.6 GB (the 32 GB box's floor for this size).
+
+**Reading.** Light-node outbound share **0.3354** (E27 at 13 h: 0.3369; E27b, seed 23456: 0.334), 2.19x the subnet model's 0.1531, by quarter
+0.3308, 0.3329, 0.3366, 0.3411 (+3% across the window). By class: users 0.1272, observers 0.2005, relays 0.3758 (1.12x light), miners 0.2677,
+seeds 0.1299. The relays' curve from hour 10 to 30: 0.358, 0.351, 0.350 (h20), 0.365 (h26), 0.375 (h28), 0.386 (h30), a 10% rise over the
+last ten hours, with the start-order gradient of E21 intact and widening: by start-order quarter at hour 30, 0.240, 0.326, 0.429, 0.549
+(the latest-started relays at 3.6x the ceiling, the earliest at 1.6x). Exposure: the spies saw all 1100 txs; `sp_r` precision 1.00, recall
+0.134, **33 of 40** twenty-transaction users attributed (E27: 27 of 40; E27b: about 20).
+
+**P21: five of seven clauses hit.** Share, flatness by quarter, relays 1.05-1.2x light, users 0.09-0.15, `sp_r` precision and the 10 GB floor
+hit; the relays' flatness over hours 10-30 (within 5%) missed by a 10% rise, and 22-30 exposed users missed high at 33. What it settles: the
+spread fleet's 2.2x over the model is a steady state of the light nodes (the three reads at 13 h, 13 h/seed 23456 and 26-30 h agree to 1%),
+so E27's number can be quoted as such. What it adds: the relays are not stationary even at 30 h, the latest-started ones still rising, which is
+the recency lock-in of E21 continuing to feed on itself; and the exposure count at a fixed share spans 20-33 of 40 across seeds and windows,
+the least stable number in this family (a 4 h window over 40 users is small; it should be reported as a range, not a point).
+
+**Register.** `20261024_033150_lean_24_none_h300_k42_w24h_m1_n600_fx_s12345`, box `phantom`; estimators and `spy_share_vs_time.txt` in the
+run's folder; events in `logs/queue_events_phantom_through_20261024.events` (phantom's `~/queue/x0_queue.events`, now a real file).
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1787,6 +1810,10 @@ curves from hour 10. Light-node share **0.31-0.35** (0.92-1.04x E27's 0.3369), b
 exposed. Prior 70%. Below 0.31 means the spread fleet's excess relaxes where the packed fleets' did not; above 0.35 means it still
 grows after 19 h. Lowest free RAM on `phantom` above 10 GB; about 4 h wall.
 
+*Outcome, 2026-10-24 07:29:* **five of seven.** Light **0.3354** (hit), quarters 0.3308-0.3411 (+3%, hit), relays 0.3758 = 1.12x light (hit) but
+0.350 at hour 20 to 0.386 at hour 30 (+10%, the flatness clause missed), users 0.1272 (hit), `sp_r` precision 1.00 (hit), 33 of 40 exposed
+(missed high), lowest free RAM 10.6 GB (hit). Wall 3 h 45 m. E32.
+
 **P22, filed 2026-10-24 05:15, before the cell is queued (the Threadripper's platform check).** `lean_legacy_none_h71_k1_s12345`
 on `zenith2alpha` (192.168.1.33: Threadripper 3970X, 64 threads, 251 GB, Ubuntu 24.04.5, a fresh `setup.sh --clean --sim-binary` build,
 live run on the Optane `/fast`), the cell that validated `simbox2` and `simbox3`: phantom 0.0610, simbox2 0.0614, simbox3 0.0641. Light-node
@@ -1947,6 +1974,8 @@ in the conversation.
 | 10-24 06:01 | The cell generator moves to the control box. The owner gave `antiproxy` sudo here and ran `setup.sh` plain (its apt dependencies, Shadow, vanilla `monerod`); I ran the `--sim-binary` step alone (`run_install_sim.sh`, 5 jobs, 3 min: `monerod-sim` sha256 `fb7df009...`, 9 patches, `--help` probe passes) and restored phantom's `calibration.json` (md5 `e5276ee0`), which setup had replaced with this box's own (p95 28.2 ms against phantom's 36.7 ms; kept beside it as `calibration.json.virt9900x`). Also copied from phantom: its 1.5 MB chain-snapshot template cache (key `a17488322c7a9c0a`, manifest-keyed, so a cache hit here needs no daemon). `scripts/calibrate.py:_get_core_count` honours `MONEROSIM_CORES` (923 unit tests pass) and `docs/spy_journal/drivers/make_cell.sh` wraps `make_lean.py` with the pin and a calibration md5 check. Verified byte-identical to phantom on two cells (section 2 addendum). An hour of hand-copying binaries and libraries from phantom preceded this and was discarded: the five missing shared libraries were setup.sh's own apt list, which is where this should have started | the user asked whether the generator could run here; the rule's two host inputs are pinnable, so phantom is out of the loop for every cell | generate on phantom again; `git revert` this commit; `rm -rf ~/.monerosim ~/monerosim/{target,sibling_repos}` on the control box | user (decision), agent (execution) |
 | 10-24 06:17 | P22 hit on all four clauses (0.0624, 43 min, checks pass, provenance equal apart from `built:`). P23 filed and queued on `zenith2alpha`: P21's seed-23456 replicate (`lean_24_none_h300_k42_w24h_m1_n600_fx_s23456`, md5 `93e4bfa5`, the first cell generated on the control box with `make_cell.sh`, copied with an md5 check) | the Threadripper is validated and idle; P21 lands at ~07:30 and the headline 24 h steady state deserves a second seed as E27 got (E27b); the probe for open question 10 needs a `--sim-*` patch first, which this run leaves time to write. Risk: ~2.5 h of the box. Undo: kill the driver by pid | agent |
 | 10-24 06:26 | Open question 10's probe flag written and built: `patches/monero-sim-uniform-whitelist-pick.patch` adds `--sim-uniform-whitelist-pick` (off by default; on, the white-list pick is `crypto::rand_idx` over the same candidates instead of the cubic `get_random_index_with_fixed_probability`; a startup log line names it). Made on the control box from a scratch worktree with the nine vendored patches applied and committed as base; all ten apply in order on a fresh worktree; appended to `setup.sh`'s list; `make_lean.py --uniform-pick` puts it in `daemon_defaults` and tags the name `_up`; 924 unit tests pass. Built here (`monerod-sim` sha256 `1e0edfb3...`, 10 patches, `--help` lists the flag). The probe cell `lean_24_none_h300_k42_w13h_m1_n600_up_s12345` generated with `make_cell.sh` (md5 `33ca7b5b`, one line from E27's cell). P24 (the probe, on `zenith2alpha` after P23) and P25 (the flag-off check, on `phantom` after P21) filed; committed as `6ba2809b` and pushed to both boxes' clones. Rebuilds there only after their running cells end (a mapped binary is not replaced under live daemons); `simbox3` keeps the nine-patch binary until its queue drains | the handoff's next step; E21's reading has never been tested by varying the pick itself | remove the patch from `setup.sh`'s list and rebuild; the flag is off by default, so no existing cell changes | agent |
+| 10-24 07:21 | `phantom` drained at 07:19 (P21 done, E32). Its `~/queue/x0_queue.events` symlink replaced by a real copy (109 lines); `monerod-sim` rebuilt there with the ten patches (`run_install_sim.sh`, 12 jobs, ~3 min with ccache; sha256 `b8d6fbb6...`, `--help` lists the flag), then P21 scored | nothing ran on the box; the P25 check needs the new binary | reinstall from the nine-patch list | agent |
+| 10-24 07:27 | P25 queued on `phantom` (`lean_legacy_none_h71_k1_s12345`, flag off, the ten-patch binary's platform check, 0.055-0.066, ~45 min) with the standard driver `~/queue/x0_queue.sh` (archives on the ssd pool) | filed at 06:3x and committed before the queue; the old driver `x0_queue2.sh` exited with its queue | kill the driver by pid | agent |
 
 ## 8. Files
 
