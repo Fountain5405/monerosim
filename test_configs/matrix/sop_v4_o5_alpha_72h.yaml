@@ -53,6 +53,14 @@ axes:
     a040:
       attacker: {hashrate: 4}
       honest: {hashrate: [3, 3]}
+    # 2026-10-24: crossing point. At 0.45 this attacker gets 0.21, at 0.40
+    # 0.055, at 0.33 0.000; where does it reach honest mining's share?
+    a048:
+      attacker: {hashrate: 4.8}
+      honest: {hashrate: [2.6, 2.6]}
+    a050:
+      attacker: {hashrate: 5}
+      honest: {hashrate: [2.5, 2.5]}
   sample:
     s1:
       attacker:

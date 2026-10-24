@@ -65,5 +65,14 @@ axes:
       attacker:
         attributes:
           sample: '2'
+    # 2026-10-24: two more draws of the headline cell (noise ~ +/-0.03 at n=2).
+    s3:
+      attacker:
+        attributes:
+          sample: '3'
+    s4:
+      attacker:
+        attributes:
+          sample: '4'
 ksm: true
 bootfast: true
