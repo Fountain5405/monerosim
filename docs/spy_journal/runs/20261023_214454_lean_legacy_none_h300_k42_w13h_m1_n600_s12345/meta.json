@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_214454_lean_legacy_none_h300_k42_w13h_m1_n600_s12345",
+ "box": "phantom",
+ "cell": "lean_legacy_none_h300_k42_w13h_m1_n600_s12345",
+ "archived_at": "2026-10-23T21:45:29Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "2h 33m",
+ "exit_code": 0,
+ "min_avail_mb": 10731,
+ "txs_created": 1019,
+ "txs_in_blocks": 1017,
+ "note": "P18: the 42-/24 one-spy-each layout under legacy (P17's control); light 0.2984 = 2.41x its 0.1237 model, flat; 24/legacy at 42 /24s 1.13 (stock dedup gives this fleet more); 24 of 40 exposed",
+ "scored_cell": "legacy/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.2984,
+ "light_out_quarters": [
+  0.2991,
+  0.2959,
+  0.297,
+  0.3016
+ ],
+ "model_out": 0.1237,
+ "fluff_per_hop": 0.199,
+ "stem_txs": 1100,
+ "stem_hops_implied": 5.03,
+ "embargo_rate": 0.0
+}
