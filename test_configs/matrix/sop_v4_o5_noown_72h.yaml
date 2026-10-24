@@ -46,9 +46,21 @@ axes:
         daemon: monerod-sim
         daemon_options: {sim-share-or-perish: true}
   alpha:
+    # 2026-10-24: noown measured 0.288/0.279 at a045 vs 0.209/0.210 with own
+    # tip shares counted (docs/20261024_sop_o5_grid_results.md): the stronger
+    # attacker, so the sweep is repeated with it (round 3; a040 first on box81).
+    a040:
+      attacker: {hashrate: 4}
+      honest: {hashrate: [3, 3]}
     a045:
       attacker: {hashrate: 4.5}
       honest: {hashrate: [2.75, 2.75]}
+    a048:
+      attacker: {hashrate: 4.8}
+      honest: {hashrate: [2.6, 2.6]}
+    a050:
+      attacker: {hashrate: 5}
+      honest: {hashrate: [2.5, 2.5]}
   sample:
     s1:
       attacker:
