@@ -5,7 +5,7 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-24, 03:31).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+**Status (2026-10-24, 06:19).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
 cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
 target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
 its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
@@ -34,13 +34,11 @@ fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to z
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
-buys share. Running: `simbox2` finished P19 at 02:10 and is idle, awaiting the handover; `phantom` has P21 (the spread fleet at a
-24 h warmup);
-`phantom` finished
-P16a at 21:38 (E26: 1 per /24 at 26-30 h reads 0.1911, flat from hour 10, five of five clauses hit) and runs P18 (P17's `legacy`
-control); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
-seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
-E1-E30 below; predictions P1-P21 in section 5.
+buys share. Running (06:19): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), runs P23, the
+seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` runs P21 (the spread fleet at a 24 h warmup, ETA
+~07:30); `simbox3` runs the last two seed-34567 fillers (until ~09:45; the seed-23456 fillers are in E10: `core` 0.0428, `tail` 0.1763);
+`simbox2` is idle for the handover to the selfish-mining project. Since 10-24 the session runs on the control box and cells are generated
+there (`make_cell.sh`, section 2 addendum). Entries E1-E31 below; predictions P1-P23 in section 5.
 
 ## 1. How this journal works
 
@@ -281,6 +279,7 @@ own selection rule and its spy layout.
 | `20261023_214454_lean_legacy_none_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.2984 (0.1237) | 0.299, 0.296, 0.297, 0.302 | 0.199 | 1100 | 2h 33m | 10.5 | 0 | P18: the 42-/24 one-spy-each layout under legacy (P17's control); light 0.2984 = 2.41x its 0.1237 model, flat; 24/legacy at 42 /24s 1.13 (stock dedup gives this fleet more); 24 of 40 exposed |
 | `20261023_233601_lean_24_none_h300_k42_w13h_m1_n600_s23456` | simbox2 | 42 / 42 | 300 / 240 | 0.3340 (0.1539) | 0.328, 0.334, 0.338, 0.336 | 0.197 | 1097 | 2h 32m | 12.5 | 0 | P19: E27's 42-/24 cell at seed 23456; light 0.334 vs 0.3369 (1% spread), 2.17x ceiling, flat; users 0.103 (seed 12345: 0.133); 26 of 40 exposed |
 | `20261024_002607_lean_24_half_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.1840 (0.1531) | 0.187, 0.184, 0.183, 0.182 | 0.207 | 1095 | 2h 34m | 10.6 | 0 | P20: the 42-/24 spread fleet with the full 42-entry ban list on half the nodes; light 0.184 (no list: 0.3369, 0.55x), adopters 0.0, 15 of 40 exposed |
+| `20261024_052857_lean_legacy_none_h71_k1_s12345` | zenith2alpha | 13 / 1 | 71 / 60 | 0.0624 (0.0750) | 0.059, 0.062, 0.062, 0.065 | 0.171 | 953 | 41m 48s | 166.7 | 0 | P22, the Threadripper's platform check (H=71 legacy, seed 12345): 0.0624 against phantom 0.0610, simbox2 0.0614, simbox3 0.0641; hit on all four clauses; first run on zenith2alpha (64 threads, 251 GB), live run on /fast |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1405,6 +1404,29 @@ spy densities: with many spy IPs behind each candidate /24 the early spy-rich pi
 replacement draw still sees 21 spy /24s. (3) For the operator the lesson of E27 stands unchanged: IPs per /24 cost money and buy a
 smaller share per IP; /24s buy share in proportion. (4) The 8-per-/24 steady state is not measured; a longer cell would need a
 third day of simulated time (about 11 h wall on `simbox3`) and is not queued: the question it answers is second order.
+
+### E31. The Threadripper reads 0.0624 on the H=71 `legacy` cell: validated (2026-10-24 05:28-06:12, `zenith2alpha`)
+
+**Cell.** `lean_legacy_none_h71_k1_s12345` (13 spies in one /24, 71 honest reachable in 60 /24s, 40 users, `legacy` selection, 6 h,
+124 daemons), the platform check that validated `simbox2` (E6) and `simbox3` (P6a). First run on `zenith2alpha` (192.168.1.33: Threadripper
+3970X, 64 threads, 251 GB, Ubuntu 24.04.5), a fresh `setup.sh --clean --sim-binary` build (`monerod-sim` sha256 `bb53709e...`, provenance
+equal to phantom's apart from `built:`), live run on the Optane `/fast`, KSM at the box's existing 10000 pages / 20 ms, Shadow on 32 workers
+(the physical cores). Wall 41 min 48 s (43 min to the driver's DONE), exit 0, all five checks, 124 nodes at 100% sync, height 1676, 0 failed
+processes, lowest free RAM 170.7 GB.
+
+**Reading (P22).** Light-node outbound share **0.0624** (phantom 0.0610, simbox2 0.0614, simbox3 0.0641; the `legacy` model's one-spy-slot
+ceiling 0.075), by quarter 0.059, 0.0625, 0.0624, 0.0651. Relays 0.077-0.083 over the first three hours, then noisy on 50-57 slots
+(0.039-0.083), as on the other boxes at this size. The spies saw all 953 txs; `sp_r` precision 1.00, recall 0.087 (ground truth: 78 of 897
+user txs stemmed straight to a spy), 26 of 35 twenty-transaction senders and 5 of 5 ten-to-nineteen exposed in the 4 h window.
+**P22 hit on all four clauses** (section 5). The box takes the lab's headline cells from here.
+
+**Not pre-registered.** The wall time equals phantom's (43 min on 16 workers) despite twice the workers: at 124 daemons Shadow's wall is set
+by its serial per-round path, not by cores. The Threadripper's gain for this lab is RAM and daemon count (a 508-daemon cell left 75 GB free
+on simbox3's 100 GB), not speed per cell; the driver still runs one cell at a time, so two or three cells side by side there is a driver
+change, not a Shadow one.
+
+**Register.** `20261024_052857_lean_legacy_none_h71_k1_s12345`, box `zenith2alpha`; estimators and `spy_share_vs_time.txt` in the run's
+folder; events in `logs/queue_events_tr_through_20261024.events`.
 
 ## 5. Pre-registered predictions
 

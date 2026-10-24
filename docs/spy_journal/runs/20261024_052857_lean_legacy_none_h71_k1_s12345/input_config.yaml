@@ -1,0 +1,888 @@
+general:
+  stop_time: 21600s
+  simulation_seed: 12345
+  bootstrap_end_time: 7200s
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  runahead: 100ms
+  process_threads: 2
+  native_preemption: true
+  reachable_fraction: 0.01
+  mining:
+    mode: native
+    chain_snapshot: auto
+  emission:
+    mode: tail
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+    sim-log-txrelay: txrelay.jsonl
+    sim-subnet-dedup: legacy
+  wallet_defaults:
+    log-level: 0
+network:
+  path: gml_processing/5000_nodes_caida_with_loops.gml
+  peer_mode: Dynamic
+  distribution:
+    strategy: Weighted
+    prefix_sharing:
+      fraction: 0.31
+      per_prefix: 3
+    weights:
+      north_america: 58
+      europe: 30
+      asia: 9
+      oceania: 3
+      south_america: 0
+      africa: 0
+agents:
+  miner-001:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 0s
+    hashrate: 10
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+      hide-my-port: false
+  miner-002:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 1s
+    hashrate: 10
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+      hide-my-port: false
+  miner-003:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 2s
+    hashrate: 10
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+      hide-my-port: false
+  miner-004:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 3s
+    hashrate: 10
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+      hide-my-port: false
+  miner-005:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.autonomous_miner
+    start_time: 4s
+    hashrate: 10
+    can_receive_distributions: true
+    daemon_options:
+      out-peers: 100
+      in-peers: 100
+      hide-my-port: false
+  medium-a-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-002:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-003:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-004:
+    daemon: 'monerod-sim'
+    start_time: 15s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-005:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-006:
+    daemon: 'monerod-sim'
+    start_time: 25s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-007:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-008:
+    daemon: 'monerod-sim'
+    start_time: 35s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-009:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-010:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-011:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-012:
+    daemon: 'monerod-sim'
+    start_time: 15s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-013:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-014:
+    daemon: 'monerod-sim'
+    start_time: 25s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-015:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-a-016:
+    daemon: 'monerod-sim'
+    start_time: 35s
+    daemon_options:
+      out-peers: 16
+      hide-my-port: false
+  medium-b-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-002:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-003:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-004:
+    daemon: 'monerod-sim'
+    start_time: 15s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-005:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-006:
+    daemon: 'monerod-sim'
+    start_time: 25s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-007:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-008:
+    daemon: 'monerod-sim'
+    start_time: 35s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-009:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-010:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-011:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-012:
+    daemon: 'monerod-sim'
+    start_time: 15s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-013:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-014:
+    daemon: 'monerod-sim'
+    start_time: 25s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-015:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-b-016:
+    daemon: 'monerod-sim'
+    start_time: 35s
+    daemon_options:
+      out-peers: 22
+      hide-my-port: false
+  medium-c-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-002:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-003:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-004:
+    daemon: 'monerod-sim'
+    start_time: 15s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-005:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-006:
+    daemon: 'monerod-sim'
+    start_time: 25s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-007:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-008:
+    daemon: 'monerod-sim'
+    start_time: 35s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-009:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-010:
+    daemon: 'monerod-sim'
+    start_time: 5s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-011:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-012:
+    daemon: 'monerod-sim'
+    start_time: 15s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-013:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-014:
+    daemon: 'monerod-sim'
+    start_time: 25s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-015:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  medium-c-016:
+    daemon: 'monerod-sim'
+    start_time: 35s
+    daemon_options:
+      out-peers: 28
+      hide-my-port: false
+  user-001:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1200s
+    transaction_interval: 300
+    activity_start_time: 10800
+    can_receive_distributions: true
+  user-002:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1205s
+    transaction_interval: 300
+    activity_start_time: 10811
+    can_receive_distributions: true
+  user-003:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1210s
+    transaction_interval: 300
+    activity_start_time: 10822
+    can_receive_distributions: true
+  user-004:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1215s
+    transaction_interval: 300
+    activity_start_time: 10833
+    can_receive_distributions: true
+  user-005:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1220s
+    transaction_interval: 300
+    activity_start_time: 10844
+    can_receive_distributions: true
+  user-006:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1225s
+    transaction_interval: 300
+    activity_start_time: 10855
+    can_receive_distributions: true
+  user-007:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1230s
+    transaction_interval: 300
+    activity_start_time: 10866
+    can_receive_distributions: true
+  user-008:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1235s
+    transaction_interval: 300
+    activity_start_time: 10877
+    can_receive_distributions: true
+  user-009:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1240s
+    transaction_interval: 300
+    activity_start_time: 10888
+    can_receive_distributions: true
+  user-010:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1245s
+    transaction_interval: 300
+    activity_start_time: 10899
+    can_receive_distributions: true
+  user-011:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1250s
+    transaction_interval: 300
+    activity_start_time: 10910
+    can_receive_distributions: true
+  user-012:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1255s
+    transaction_interval: 300
+    activity_start_time: 10921
+    can_receive_distributions: true
+  user-013:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1260s
+    transaction_interval: 300
+    activity_start_time: 10932
+    can_receive_distributions: true
+  user-014:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1265s
+    transaction_interval: 300
+    activity_start_time: 10943
+    can_receive_distributions: true
+  user-015:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1270s
+    transaction_interval: 300
+    activity_start_time: 10954
+    can_receive_distributions: true
+  user-016:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1275s
+    transaction_interval: 300
+    activity_start_time: 10965
+    can_receive_distributions: true
+  user-017:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1280s
+    transaction_interval: 300
+    activity_start_time: 10976
+    can_receive_distributions: true
+  user-018:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1285s
+    transaction_interval: 300
+    activity_start_time: 10987
+    can_receive_distributions: true
+  user-019:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1290s
+    transaction_interval: 300
+    activity_start_time: 10998
+    can_receive_distributions: true
+  user-020:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1295s
+    transaction_interval: 300
+    activity_start_time: 11009
+    can_receive_distributions: true
+  user-021:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1200s
+    transaction_interval: 300
+    activity_start_time: 11020
+    can_receive_distributions: true
+  user-022:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1205s
+    transaction_interval: 300
+    activity_start_time: 11031
+    can_receive_distributions: true
+  user-023:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1210s
+    transaction_interval: 300
+    activity_start_time: 11042
+    can_receive_distributions: true
+  user-024:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1215s
+    transaction_interval: 300
+    activity_start_time: 11053
+    can_receive_distributions: true
+  user-025:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1220s
+    transaction_interval: 300
+    activity_start_time: 11064
+    can_receive_distributions: true
+  user-026:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1225s
+    transaction_interval: 300
+    activity_start_time: 11075
+    can_receive_distributions: true
+  user-027:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1230s
+    transaction_interval: 300
+    activity_start_time: 11086
+    can_receive_distributions: true
+  user-028:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1235s
+    transaction_interval: 300
+    activity_start_time: 11097
+    can_receive_distributions: true
+  user-029:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1240s
+    transaction_interval: 300
+    activity_start_time: 11108
+    can_receive_distributions: true
+  user-030:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1245s
+    transaction_interval: 300
+    activity_start_time: 11119
+    can_receive_distributions: true
+  user-031:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1250s
+    transaction_interval: 300
+    activity_start_time: 11130
+    can_receive_distributions: true
+  user-032:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1255s
+    transaction_interval: 300
+    activity_start_time: 11141
+    can_receive_distributions: true
+  user-033:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1260s
+    transaction_interval: 300
+    activity_start_time: 11152
+    can_receive_distributions: true
+  user-034:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1265s
+    transaction_interval: 300
+    activity_start_time: 11163
+    can_receive_distributions: true
+  user-035:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1270s
+    transaction_interval: 300
+    activity_start_time: 11174
+    can_receive_distributions: true
+  user-036:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1275s
+    transaction_interval: 300
+    activity_start_time: 11185
+    can_receive_distributions: true
+  user-037:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1280s
+    transaction_interval: 300
+    activity_start_time: 11196
+    can_receive_distributions: true
+  user-038:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1285s
+    transaction_interval: 300
+    activity_start_time: 11207
+    can_receive_distributions: true
+  user-039:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1290s
+    transaction_interval: 300
+    activity_start_time: 11218
+    can_receive_distributions: true
+  user-040:
+    daemon: 'monerod-sim'
+    wallet: 'monero-wallet-rpc'
+    script: agents.regular_user
+    start_time: 1295s
+    transaction_interval: 300
+    activity_start_time: 11229
+    can_receive_distributions: true
+  relay-r-a-001:
+    daemon: 'monerod-sim'
+    start_time: 1200s
+    daemon_options:
+      hide-my-port: false
+  relay-r-a-002:
+    daemon: 'monerod-sim'
+    start_time: 1240s
+    daemon_options:
+      hide-my-port: false
+  relay-r-b-001:
+    daemon: 'monerod-sim'
+    start_time: 1220s
+    daemon_options:
+      hide-my-port: false
+  relay-r-b-002:
+    daemon: 'monerod-sim'
+    start_time: 1260s
+    daemon_options:
+      hide-my-port: false
+  observer-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-002:
+    daemon: 'monerod-sim'
+    start_time: 3s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-003:
+    daemon: 'monerod-sim'
+    start_time: 6s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-004:
+    daemon: 'monerod-sim'
+    start_time: 9s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-005:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-006:
+    daemon: 'monerod-sim'
+    start_time: 3s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-007:
+    daemon: 'monerod-sim'
+    start_time: 6s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  observer-008:
+    daemon: 'monerod-sim'
+    start_time: 9s
+    daemon_options:
+      hide-my-port: false
+      peerlist-dump-file: peerlist_dump.jsonl
+  monero-seed-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+  monero-seed-002:
+    daemon: 'monerod-sim'
+    start_time: 1s
+  monero-seed-003:
+    daemon: 'monerod-sim'
+    start_time: 2s
+  monero-seed-004:
+    daemon: 'monerod-sim'
+    start_time: 3s
+  monero-seed-005:
+    daemon: 'monerod-sim'
+    start_time: 4s
+  monero-seed-006:
+    daemon: 'monerod-sim'
+    start_time: 5s
+  spy-a-001:
+    daemon: 'monerod-sim'
+    start_time: 0s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '176.9.0.187:18080'
+  spy-a-002:
+    daemon: 'monerod-sim'
+    start_time: 60s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '176.9.0.187:18080'
+  spy-a-003:
+    daemon: 'monerod-sim'
+    start_time: 120s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '176.9.0.187:18080'
+  spy-b-001:
+    daemon: 'monerod-sim'
+    start_time: 10s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '88.198.163.90:18080'
+  spy-b-002:
+    daemon: 'monerod-sim'
+    start_time: 70s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '88.198.163.90:18080'
+  spy-c-001:
+    daemon: 'monerod-sim'
+    start_time: 20s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '192.99.8.110:18080'
+  spy-c-002:
+    daemon: 'monerod-sim'
+    start_time: 80s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '192.99.8.110:18080'
+  spy-d-001:
+    daemon: 'monerod-sim'
+    start_time: 30s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '37.187.74.171:18080'
+  spy-d-002:
+    daemon: 'monerod-sim'
+    start_time: 90s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '37.187.74.171:18080'
+  spy-e-001:
+    daemon: 'monerod-sim'
+    start_time: 40s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '88.99.195.15:18080'
+  spy-e-002:
+    daemon: 'monerod-sim'
+    start_time: 100s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '88.99.195.15:18080'
+  spy-f-001:
+    daemon: 'monerod-sim'
+    start_time: 50s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '5.104.84.64:18080'
+  spy-f-002:
+    daemon: 'monerod-sim'
+    start_time: 110s
+    topology_node: 828
+    daemon_options:
+      hide-my-port: false
+      add-exclusive-node: '5.104.84.64:18080'
+  miner-distributor:
+    script: agents.miner_distributor
+    wait_time: 7200
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

@@ -1,0 +1,4 @@
+05:28 START lean_legacy_none_h71_k1_s12345 run=/fast/antiproxy/monerosim_archives/20261024_052857_lean_legacy_none_h71_k1_s12345
+06:12 DONE lean_legacy_none_h71_k1_s12345 exit=0 wall=43m min_avail_mb=170713 light_out_share=0.0624
+share fluff_per_hop=0.171 stem_txs=953 run=/fast/antiproxy/monerosim_archives/20261024_052857_lean_legacy_none_h71_k1_s12345
+06:12 QUEUE EMPTY
