@@ -36,7 +36,7 @@ the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-3
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
 buys share. Running (06:19): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), runs P23, the
 seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` runs P21 (the spread fleet at a 24 h warmup, ETA
-~07:30); `simbox3` runs the last two seed-34567 fillers (until ~09:45; the seed-23456 fillers are in E10: `core` 0.0428, `tail` 0.1763);
+~07:30); `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
 `simbox2` is idle for the handover to the selfish-mining project. Since 10-24 the session runs on the control box and cells are generated
 there (`make_cell.sh`, section 2 addendum). Entries E1-E31 below; predictions P1-P23 in section 5.
 
@@ -460,6 +460,12 @@ waited for the 24 h cells).* `core` (113 spies, 1 /24): seed 12345 0.0352 (`phan
 quarter falls), which is where a 22% seed spread is expected (E22 puts the transient's size at 7x the model here), and
 `tail` is flat from the first quarter. Exposure in the `tail` replicate: `sp_r` precision 1.00, recall 0.067, 21 of 40
 twenty-transaction users attributed (seed 12345: 18 of 40). The seed-34567 fillers for both cells are queued behind P16b.
+*2026-10-24 06:46, the third seed.* `core` seed 34567 reads **0.0348** (`simbox3`, 197 min, 453 daemons, 79 GB free at the lowest):
+-1% against seed 12345's 0.0352, quarters 0.046, 0.0371, 0.0305, 0.0265 against 0.045, 0.037, 0.032, 0.027, so the seed-23456 read
+(0.0428) is the outlier of the three and the 6 h `core` cell's seed spread is 0.0348-0.0428 (mean 0.0376, every quarter falling in all
+three). Exposure: `sp_r` precision 1.00, recall 0.009, 3 of 39 twenty-transaction users attributed (0-3 of 40 in the other `core` cells).
+Relays show the drain transient's late rise with its start-order gradient (0.055 to 0.135 across the quarters at hour 6), as E16 described.
+The `tail` seed-34567 filler started at 06:36 and is the last cell in `simbox3`'s queue.
 
 ### E11. Spy-/24 placement and the ban-list coverage knob (2026-10-22)
 
