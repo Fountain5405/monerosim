@@ -35,10 +35,10 @@ of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
 buys share. Running (06:19): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), runs P23, the
-seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and runs P25 since
-07:27 (the ten-patch binary's flag-off check, ~45 min); `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
+seed-23456 replicate of P21's 24 h spread-fleet cell (started 06:17, ~2.5 h); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
+(E33: 0.0628, the ten-patch binary passes its flag-off check) and is idle for the archive-pool move; `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
 `simbox2` is idle for the handover to the selfish-mining project. Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E32 below; predictions P1-P25 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E33 below; predictions P1-P25 in section 5.
 
 ## 1. How this journal works
 
@@ -1457,6 +1457,17 @@ the least stable number in this family (a 4 h window over 40 users is small; it 
 **Register.** `20261024_033150_lean_24_none_h300_k42_w24h_m1_n600_fx_s12345`, box `phantom`; estimators and `spy_share_vs_time.txt` in the
 run's folder; events in `logs/queue_events_phantom_through_20261024.events` (phantom's `~/queue/x0_queue.events`, now a real file).
 
+### E33. The ten-patch binary passes its flag-off check on phantom: 0.0628 (2026-10-24 07:27-08:11, `phantom`)
+
+`lean_legacy_none_h71_k1_s12345` (P25) on `phantom`'s `monerod-sim` rebuilt from all ten vendored patches (`patches/monero-sim-uniform-whitelist-pick.patch`
+added that morning, sha256 `b8d6fbb6...`), the flag off as in every cell without `_up`. Light-node share **0.0628** (this box on the nine-patch binary:
+0.0610; simbox2 0.0614, simbox3 0.0641, zenith2alpha 0.0624), by quarter 0.0622, 0.065, 0.0597, 0.064; users 0.0597, observers 0.0725, relays 0.0735.
+Exit 0, all five checks, 124 nodes at 100% sync, wall 44 min, lowest free RAM 20.2 GB. The archive holds all 124 daemons' outputs: every one logs the
+subnet-dedup patch's startup line, none the uniform-pick line, so the flag was off everywhere. `sp_r` precision 1.00, recall 0.072, 23 of 40
+twenty-transaction users attributed (E31 on the Threadripper: 26 of 35). **P25 hit on all clauses**: the new patch leaves the flag-off path where it was,
+within the spread the same cell shows across boxes and binaries, and the `_up` probe (P24) may be read. Register
+`20261024_072708_lean_legacy_none_h71_k1_s12345`, box `phantom`.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1853,6 +1864,10 @@ test Shadow offers), all five checks, wall under 50 min, the run's `binary_prove
 uniform-pick line. Prior 90%: the flag-off path is unchanged by inspection; this is the platform-range check every binary change has had
 (P9/E20, P22/E31). Outside the range means the build, not the flag, changed something, and no `_up` cell is read until that is understood.
 
+*Outcome, 2026-10-24 08:14:* **hit on all clauses.** Light **0.0628** (nine-patch binary on the same box: 0.0610; the four-box spread 0.061-0.064),
+quarters 0.0622, 0.065, 0.0597, 0.064; all five checks, 124 nodes at 100% sync; wall 44 min; the run's `binary_provenance.txt` lists ten patches
+(`monerod-sim` sha256 `b8d6fbb6...`); 124 daemon outputs in the archive, all with the dedup patch's startup line, none with the uniform-pick line. E33.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -1976,6 +1991,7 @@ in the conversation.
 | 10-24 06:26 | Open question 10's probe flag written and built: `patches/monero-sim-uniform-whitelist-pick.patch` adds `--sim-uniform-whitelist-pick` (off by default; on, the white-list pick is `crypto::rand_idx` over the same candidates instead of the cubic `get_random_index_with_fixed_probability`; a startup log line names it). Made on the control box from a scratch worktree with the nine vendored patches applied and committed as base; all ten apply in order on a fresh worktree; appended to `setup.sh`'s list; `make_lean.py --uniform-pick` puts it in `daemon_defaults` and tags the name `_up`; 924 unit tests pass. Built here (`monerod-sim` sha256 `1e0edfb3...`, 10 patches, `--help` lists the flag). The probe cell `lean_24_none_h300_k42_w13h_m1_n600_up_s12345` generated with `make_cell.sh` (md5 `33ca7b5b`, one line from E27's cell). P24 (the probe, on `zenith2alpha` after P23) and P25 (the flag-off check, on `phantom` after P21) filed; committed as `6ba2809b` and pushed to both boxes' clones. Rebuilds there only after their running cells end (a mapped binary is not replaced under live daemons); `simbox3` keeps the nine-patch binary until its queue drains | the handoff's next step; E21's reading has never been tested by varying the pick itself | remove the patch from `setup.sh`'s list and rebuild; the flag is off by default, so no existing cell changes | agent |
 | 10-24 07:21 | `phantom` drained at 07:19 (P21 done, E32). Its `~/queue/x0_queue.events` symlink replaced by a real copy (109 lines); `monerod-sim` rebuilt there with the ten patches (`run_install_sim.sh`, 12 jobs, ~3 min with ccache; sha256 `b8d6fbb6...`, `--help` lists the flag), then P21 scored | nothing ran on the box; the P25 check needs the new binary | reinstall from the nine-patch list | agent |
 | 10-24 07:27 | P25 queued on `phantom` (`lean_legacy_none_h71_k1_s12345`, flag off, the ten-patch binary's platform check, 0.055-0.066, ~45 min) with the standard driver `~/queue/x0_queue.sh` (archives on the ssd pool) | filed at 06:3x and committed before the queue; the old driver `x0_queue2.sh` exited with its queue | kill the driver by pid | agent |
+| 10-24 08:14 | `phantom` drained at 08:11 (P25 done, E33) and is left idle: nothing queued | the archive-pool move to the Threadripper's array waits on the user's word about a ZFS child dataset; its first steps (an NFS mount on phantom and a 293 GB copy off its ssd pool) want the box idle, and the next headline cells belong on `zenith2alpha`. Risk: idle hardware until then. Undo: queue a cell | agent |
 
 ## 8. Files
 
