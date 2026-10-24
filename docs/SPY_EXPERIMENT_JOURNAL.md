@@ -1543,6 +1543,12 @@ right; a `print_pl`-seeded list (open question 8) tests the age structure from t
 **Register.** `20261024_094257_lean_24_none_h300_k42_w13h_m1_n600_up_s12345`, box `zenith2alpha`; estimators and `spy_share_vs_time.txt` in
 the run's folder; events in `logs/queue_events_tr_through_20261024.events`.
 
+*2026-10-24 14:41, the Monte Carlo rerun (`adhoc/recency_model.py`, modes added; `recency_relays.py <archive> 24,24u,24all`) over E21's 540 relay
+white lists after hour 3:* stock draw 0.1905 per slot, uniform over the same 20 **0.2172**, uniform over every unconnected /24 **0.0796** against the
+cell's 0.0822 ceiling. The model agrees with the sim that the draw's shape barely matters (it puts the uniform draw 14% above the cubic where the sim
+read 5% below, both small) and says the cap is the whole multiplier: with every /24 drawable, the spies get their subnet share and no more. P26 tests
+that in the sim.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1950,6 +1956,28 @@ uniform-pick line. Prior 90%: the flag-off path is unchanged by inspection; this
 quarters 0.0622, 0.065, 0.0597, 0.064; all five checks, 124 nodes at 100% sync; wall 44 min; the run's `binary_provenance.txt` lists ten patches
 (`monerod-sim` sha256 `b8d6fbb6...`); 124 daemon outputs in the archive, all with the dedup patch's startup line, none with the uniform-pick line. E33.
 
+**P26, filed 2026-10-24 14:41, before the cell is queued (open question 10: the candidate cap lifted and the draw uniform).**
+`lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s12345` on `zenith2alpha` (md5 `1c7d3c44`; P24's cell plus `sim-whitelist-candidates: 0`, the only
+differing line), on the eleven-patch binary (`patches/monero-sim-whitelist-candidates.patch`: `--sim-whitelist-candidates N` replaces the stock
+path's cap of 20 on the subnet-deduplicated, `last_seen`-ordered white-list candidates; 0 = every unconnected /24 is a candidate). With the cap
+lifted and the draw uniform (P24's flag) the pick is uniform over every unconnected /24 in the relay's white list: the subnet model's assumption
+made literal. The Monte Carlo over E21's 540 relay lists gives, per slot, 0.1905 for the stock draw (2.3x that cell's 0.0822 ceiling), 0.2172
+for the uniform draw over the same 20, and **0.0796 (0.97x)** with the cap lifted. If E35's reading is right: (a) light-node share **0.13-0.19**
+(0.85-1.25x the ceiling 0.1531; E27 0.3369, P24 0.3207); (b) the start-order gradient gone, the latest-started quarter of relays at most 1.3x
+the earliest over hours 15-19 (P24: 2.6x); (c) every daemon log carries the `--sim-whitelist-candidates 0` line; (d) at most 20 of 40 users
+exposed (E27 27, P24 28); (e) relays within 1.25x the ceiling. Prior 70%. At or above 0.28 the cap is not the mechanism either and the excess
+must sit in the lists' composition (which /24s are in the white list at all, open question 8); 0.19-0.28 means the cap is part of it and
+something else remains. Wall under 2.5 h (P24 took 2 h 15 m).
+
+**P27, filed 2026-10-24 14:42, before the cell is queued (the cap lifted, the stock draw kept).** `lean_24_none_h300_k42_w13h_m1_n600_wc0_s12345`
+on `zenith2alpha` behind P26 (md5 `3ac6e34d`; E27's cell plus `sim-whitelist-candidates: 0`, the only differing line): every unconnected /24 is a
+candidate but the draw stays the stock cubic one, which over a long `last_seen`-ordered list concentrates on its newest few. The Monte Carlo over
+E21's relay lists (mode `24allc`) gives **0.1242 per slot, 1.51x** the ceiling, against 2.3x with the cap and 0.97x with the cap lifted and the draw
+uniform. The pair P26/P27 separates the two halves of the stock rule: the cap (which 20 are drawable) and the draw's shape over whatever is
+drawable. Light-node share **0.19-0.28** (1.25-1.8x the 0.1531 ceiling); the gradient reduced but present (latest-started quarter 1.3-2.5x the
+earliest); flag line in every daemon log; 20-27 of 40 users exposed. Prior 60%. Below 0.19 means the cubic draw over the full list is as good as
+uniform and only the cap mattered; at or above 0.28 means the draw over a long list recovers the whole excess by itself. Wall under 2.5 h.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -2012,6 +2040,9 @@ quarters 0.0622, 0.065, 0.0597, 0.064; all five checks, 124 nodes at 100% sync; 
     relays' lists (E21, rank 0.39). Open: (a) rerun `recency_model.py` with a uniform draw over its 20 to see if it predicts 0.32 from the
     E21 list dumps; (b) a flag that lifts the 20 cap (draw over every unconnected /24 in the white list); (c) why the spies are newer: the
     connection-refreshes-`last_seen` feedback is untested.
+    *2026-10-24 14:41:* (a) done: the Monte Carlo gives 0.0796 (0.97x the ceiling) with the cap lifted, 0.2172 with it kept and the draw uniform. (b) built:
+    `--sim-whitelist-candidates` (eleventh patch); P26 runs E27's cell with the cap at 0 and the uniform draw, P27 with the cap at 0 and the stock
+    draw (Monte Carlo: 0.1242, 1.51x).
 
 ## 7. Decisions log
 
@@ -2088,6 +2119,7 @@ in the conversation.
 | 10-24 14:17 | Pool copies switched from NFS to rsync over ssh into the Threadripper's `antiproxy` account (phantom's, simbox3's and simbox2's `lever65` keys added to its `authorized_keys`; `--chmod=Dugo+rwx,Fugo+rw`): over NFS the 100k-file pool moved at ~5 MB/s although the link does 99 MB/s. simbox2's handover started at the user's word: its 21 archives (172 GB) copying since 14:17, `~/BOX_HANDOVER.md` written there (copy in `docs/spy_journal/BOX_HANDOVER_simbox2.md`) for the selfish-mining agent; the box leaves the lab. Nothing is deleted on any source box until the copies are verified and the user says so | phantom (.22) and simbox2 (.25) go to the selfish-mining project; the lab keeps `zenith2alpha` and `simbox3` | re-copy from the sources, which stay | agent |
 | 10-24 14:25 | `phantom`'s handover note written (`~/BOX_HANDOVER.md` there, copy in `docs/spy_journal/BOX_HANDOVER_phantom.md`): the lab's footprint (the 304 GB pool, copying out; `~/.monerosim`; `~/queue`; the old sessions' scratch) against the owner's workstation contents and the real testnet daemon; the 77 GB `archived_runs/` in the clone is the selfish-mining project's own earlier output, not the lab's. The box leaves the lab when the pool copy is verified | the user asked that both .22 and .25 be explained for the selfish-mining agent | none needed | agent |
 | 10-24 14:28 | `selfishmining` accounts created on `phantom` (uid 1004) and `simbox2` (uid 1003) at the user's word: passwordless sudo (`/etc/sudoers.d/selfishmining`), empty `~/.ssh/authorized_keys` for the user to fill; nothing of `lever65`'s touched. Both handover notes also placed on the coordinator at `/srv/lab_handover/` (world-readable) for the selfish-mining agent, which runs there | the user chose separate accounts over sharing `lever65`; the agent reads the notes from the box it runs on | `userdel -r selfishmining` on each box; `rm -r /srv/lab_handover` | agent |
+| 10-24 14:41 | Open question 10, next probe: `patches/monero-sim-whitelist-candidates.patch` (`--sim-whitelist-candidates N`, default 20 = stock, 0 = no cap; the cap line of the stock `24` path only, `legacy` untouched; startup log line when not 20) made from the ten-patch worktree committed as base; appended to `setup.sh`; `make_lean.py --wl-cands N` (`_wcN`). Built on the control box (`monerod-sim` sha256 `73084f13b316...`, 11 patches, `--help` lists both flags). Cells generated with `make_cell.sh`: `lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s12345` (md5 `1c7d3c44`, P26) and `..._wc0_s12345` (md5 `3ac6e34d`, the cap lifted with the stock cubic draw; the Monte Carlo's `24allc` mode gives 0.1242 = 1.51x, P27 filed 14:42). P26 filed; `zenith2alpha` to be rebuilt and P26 queued | E35 left the cap as the leading candidate and the Monte Carlo (0.0796 with it lifted) says so too | remove the patch from `setup.sh`'s list and rebuild; default 20 changes nothing for existing cells | agent |
 
 ## 8. Files
 
