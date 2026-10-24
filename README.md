@@ -1,8 +1,8 @@
 # Monerosim
 
-**Status:** 0.3.1 — public beta. Config formats and CLI behavior may
-change between minor versions (0.2.x → 0.3.0); patch releases
-(0.3.0 → 0.3.1) are bug-fix only and config-compatible. Production
+**Status:** 0.4.0 — public beta. Config formats and CLI behavior may
+change between minor versions (0.3.x → 0.4.0); patch releases
+(0.4.0 → 0.4.1) are bug-fix only and config-compatible. Production
 use is discouraged. Pin to a tagged release if you need stability.
 See [Known limitations](#known-limitations) below before relying on it.
 

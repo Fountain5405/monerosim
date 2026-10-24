@@ -2,6 +2,39 @@
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-24
+
+Faster, leaner and larger runs, plus native mining. Shadow now gets every free
+physical core (on a two-socket box it used only half) and concurrent runs no
+longer share CPUs. The opt-in `--bootfast`/`--allfast` cut a relay's monerod
+start from 16.1 s to 0.43 s (a 70-host run: 1106 s -> 93 s of Shadow wall time),
+and the opt-in `--ksm` stores each node's identical RandomX cache once (1k nodes:
+30 GB instead of 305 GB). Scale-ladder configs reach 4000 nodes, and agents no
+longer deadlock Shadow on a blocking file lock. New simulation features: native
+mining (`general.mining.mode: native`, on a `monerod-sim` built from the vendored
+`patches/`), mainnet tail emission, chain-snapshot preloads and a lock-free
+per-writer transaction ledger. The selfish-mining, eclipse and spy research
+tooling is included as well.
+
+### Upgrading from 0.3.1
+
+- **Rebuild the binaries.** This release pins Shadow fork `v0.2.5` (0.3.1 pinned
+  `v0.2.4`), and `run_sim.sh` exits when the installed Shadow does not match
+  `shadowformonero.pin`. Run `./update.sh --all --rebuild`; add `--sim-binary` if
+  you use native mining, tail emission or the hard-fork schedule (it builds
+  `monerod-sim`). `monero.pin` stays at `v0.18.5.1`.
+- **Host floors.** cmake >= 3.18.4 and kernel >= 5.10 are now required:
+  `setup.sh` gates cmake and warns on the kernel, and `run_sim.sh` refuses an
+  older kernel. `scripts/check_host.sh` checks a host before you clone.
+- **Transaction ledger.** During a run, transactions are written to
+  `shared/transactions/<agent_id>.jsonl`, one file per writer. Archives still
+  contain `transaction_registry/transactions.json`, so only tools that read the
+  live shared directory mid-run need changes.
+- **`memory_samples.csv` columns changed.** It now records PSS in MB for the run's
+  own process tree, by category (`shadow_mb`, `daemon_mb`, `wallet_mb`,
+  `agents_mb`, ...; full list under Changed). Scripts that parse the old columns
+  need updating.
+
 ### Added
 - **Proxy spy agent** (`agents.spy_proxy`, variant P): a simulation-only
   Levin front-end that proxies a backend monerod's real chain state and
@@ -12,18 +45,23 @@
   `agents/test_spy_proxy.py`.
 
 - **Chain-snapshot difficulty preload for native mining** (`general.mining.chain_snapshot:
-  auto | off | <preset name or path>`, default `auto`, native mode only): grafts a
+  off | auto | <preset name or path>`, default `off`, native mode only): grafts a
   pre-mined chain — already at the target equilibrium difficulty with a full
   720-block DAA window — onto every node before Shadow starts, skipping the
-  ~24h cold-start warm-up a fresh regtest chain otherwise needs. `auto` is a
-  soft default: with no matching preset it warns and continues without a
+  ~24h cold-start warm-up a fresh regtest chain otherwise needs. A run
+  preloads only when its config says so (`auto`, a preset name, or a path):
+  with `auto` as the default, a committed 10 h/s preset would have silently
+  started every legacy 10 h/s config at height 336. `auto` is a
+  soft mode: with no matching preset it warns and continues without a
   snapshot rather than erroring (several matches, or an explicit preset
   name/path that's missing or mismatched, are still hard errors); YAML
   booleans are accepted as aliases (`false` == `off`, `true` == `auto`).
   `patches/monero-sim-mining.patch` gained a generation-only
   `--sim-timestamp-offset <seconds>` flag (mined block templates timestamped
   `now - offset`, so a snapshot's tip can land safely before a consumer run's
-  Shadow epoch); `scripts/chain_snapshot.py` exports a generator run's chain
+  Shadow epoch; the offset is also applied on the cached-template refresh path,
+  which at first shifted only the first ~2 blocks);
+  `scripts/chain_snapshot.py` exports a generator run's chain
   into a git-trackable preset (`blocks.jsonl.gz` + `manifest.json`) and
   materializes a machine-local LMDB template cache from one (real PoW
   re-verified via `submit_block`), keyed by
@@ -96,7 +134,10 @@
   (fees drop ~60× to mainnet's ~20 nanoXMR/byte). Consensus-relevant: the
   generator injects the same height into every daemon and runs them all on
   monerod-sim; refused together with cuprate nodes. `auto` = enough ~35 XMR
-  blocks to fund every user. Requires `./setup.sh --sim-binary`. See
+  blocks to fund every user; with a chain snapshot, `auto` counts from the snapshot
+  tip (its coinbases belong to the generator run's wallets), e.g. h50 + 20 users ->
+  height 1595, and a literal height at or below the tip warns. Requires
+  `./setup.sh --sim-binary`. See
   docs/TAIL_EMISSION.md.
 - **`run_sim.sh --bootfast` / `--allfast`**: fast monero process starts. Every
   monerod / monero-wallet-rpc start spent ~16 of its ~17 wall-s in monero's
@@ -111,6 +152,8 @@
   `unblocked_vdso_busy_latency` (`--bootfast`) and `unblocked_vdso_latency`
   (`--allfast`). `--bootfast` needs **shadowformonero v0.2.5** (pin bumped; adds
   `experimental.unblocked_vdso_busy_threshold` / `_latency`); run_sim.sh checks.
+  `scripts/selfish_matrix.py` takes `bootfast: true` in a matrix spec (or
+  `--bootfast` on its command line), like `ksm`.
   Investigation, clock-read measurements and scripts:
   `docs/20261003_startup_cost.md`, `analysis/startup_cost/`.
 - **`patches/monero-sim-selfish-relay.patch`** (`--sim-relay-alt-blocks`, off by
@@ -138,8 +181,11 @@
   simulated TCP stalls the large un-chunked `get_peer_list` RPC response.
   `./setup.sh --sim-binary` (`--hardfork` is a synonym) applies every vendored
   patch into the single `monerod-sim` build, with a per-patch tripwire and
-  provenance; the primary `monerod` stays vanilla. The eclipse scenarios run
-  only their dumping nodes on `monerod-hf` (the `monerod-sim` alias). Rationale
+  provenance; the primary `monerod` stays vanilla. With `--sim-binary`, setup's
+  optional test simulation is `test_configs/native_micro.yaml` (2 miners at 20 +
+  5 h/s, real RandomX, 2 stock relays validating the PoW, 3 h simulated) instead
+  of the quickstart. The eclipse scenarios run only their dumping nodes on
+  `monerod-hf` (the `monerod-sim` alias). Rationale
   in `docs/PEERLIST_DUMP_PATCH.md`.
 - `gml_processing/5000_nodes_caida_with_loops.gml`: regenerated 5,000-node CAIDA
   topology (AS 0-4999) for >1,200-host runs.
@@ -163,7 +209,10 @@
   `--sim-rx-full-dataset` by default for the full-speed RandomX dataset);
   monerod's own difficulty algorithm drives block timing and `hashrate` is
   read as literal hashes/second (not a weight, as in `generateblocks` mode).
-  Validators need no patch. Default stays `generateblocks`.
+  Fractional rates (e.g. `4.5`) are accepted; the interval is whole milliseconds,
+  so a rate more than 2 % from `1000/round(1000/H)` is rejected at validation
+  (also in the AI-config validator). Validators need no patch. Default stays
+  `generateblocks`.
   See `docs/NATIVE_MINING.md`.
   Validated at 300 nodes over 10 sim-hours with a 200 h/s miner joining at
   4h: difficulty follows monerod's own window formula within 6% at every
@@ -171,10 +220,16 @@
   (`docs/NATIVE_MINING.md` §7).
   **Change:** `./setup.sh --hardfork` now builds `monerod-sim` (hard-fork +
   mining patches) and installs `monerod-hf` as a symlink alias; `--sim-binary`
-  is the new spelling.
+  is the new spelling. `setup.sh` removes the `monerod-sim` slot before copying
+  (`cp -f` through a symlink would overwrite its target), then points the
+  `monerod-hf` symlink at it. `update.sh --sim-binary` (`--hardfork` is a synonym)
+  rebuilds `monerod-sim`; `run_sim.sh` preflight probes `monerod-sim` (falling
+  back to `monerod-hf`) for the hard-fork-schedule and/or native-mining flags the
+  config actually needs.
   AI config generator: understands `general.mining.mode: native` (literal
   hashes/second, mirror guards, worked example); request extras via
-  `AI_CONFIG_REQUEST_EXTRAS` (e.g. z.ai GLM thinking off); Ollama-only body
+  `AI_CONFIG_REQUEST_EXTRAS` (e.g. z.ai GLM thinking off; a malformed value
+  prints an error and exits 1, not a traceback); Ollama-only body
   fields sent only to local endpoints.
 
 - Selfish-mining apparatus (phase 1): an offline attacker miner + connected
@@ -199,8 +254,6 @@
   configs: `test_configs/selfish_phase2/fanout_{1,3,6}.yaml` and
   `stub_{trail,equalfork,lead}.yaml` (alpha=0.4, 3 miners + 12 relays so
   gamma is measurable). See docs/SELFISH_MINING.md §8.
-
-### Added
 - **Pinned-path guard** (`run_sim.sh`, `check_pinned_paths`): an explicit
   `general.shared_dir` / `general.daemon_data_dir` in the YAML (or a pre-set
   `MONEROSIM_SHARED_DIR` / `MONEROSIM_DAEMON_DATA_DIR`) opts a run out of the
@@ -219,8 +272,11 @@
   also compresses eclipse peer-list dumps; `--dry-run` only reports. A log-level-1
   relay log measured 86 MB -> 6.2 MB; on one box the eleven finished eclipse runs
   held ~870 GB of plain daemon logs. `analysis/eclipse/analyze_peerlist_dumps.py`
-  now finds `peerlist_dump.jsonl.gz` too (it could already read them). Tests
-  `scripts/test_compress_archives.py`, `scripts/test_peerlist_dump_layouts.py`.
+  now finds `peerlist_dump.jsonl.gz` too (it could already read them). Archiving
+  now keeps each node's dump as `daemon_logs/<node>/peerlist_dump.jsonl` (it used
+  to be deleted with the daemon data dir), and the analyser reads that archived
+  layout or a raw run tree. Tests `scripts/test_compress_archives.py`,
+  `scripts/test_peerlist_dump_layouts.py`.
   Also compresses `shadow.data/hosts/<host>/monerod*.stdout`: monerod's console
   log, the same lines as `bitmonero.log` in a shorter format, ~127 MB per relay
   (140 GB in a 2232-host 50 h eclipse run); agents' stdout stays plain.
@@ -235,6 +291,62 @@
   `summary.txt` (eclipse configs have no simulation-monitor, which is what writes
   it), and `--force` would have kept only `monero-miner-001`'s logs, deleting every
   other node's peer-list dump, the study's measurement data.
+- **`run_sim.sh --ksm` and `scripts/ksm_check.sh`** (kernel same-page merging):
+  `--ksm` re-execs the run through `scripts/ksm_exec.py` (`prctl PR_SET_MEMORY_MERGE`),
+  so Shadow and every managed process are mergeable and each monerod's identical
+  256 MB RandomX cache is stored once (1k-node rung: 30 GB vs 305 GB, no wall cost).
+  Preflight fails if the re-exec did not happen and reports the kernel state; with
+  merging disabled it warns with the exact `sudo` line and the run proceeds at ~10x
+  the RAM. `scripts/ksm_check.sh` (also called by `setup.sh`) catches a scan rate too
+  slow to keep up (`pages_to_scan` x 4 KB / `sleep_millisecs`; Ubuntu 6.8 defaults
+  merge ~2 MB/s), prints the one-off and `/etc/tmpfiles.d` fixes, recommends 20000
+  pages / 20 ms, and `--nodes N` prints the merge lag to expect. See
+  `docs/PERFORMANCE_AND_SCALE.md`.
+- **Scale ladder**: `scripts/run_scale_ladder.sh <out_dir> <rung.scenario.yaml>...`
+  runs rungs smallest first and stops at the first failure or abort. It expands each
+  rung on the box, sets `stop_time` = last user's activity start + 2 h (at least 8 h;
+  `--max-stop` caps it), runs with `--bootfast --ksm`, and a RAM / swap / disk
+  watchdog signals only the rung's own Shadow. Rungs: `test_configs/scale_ladder_256g/`
+  (1000-4000 nodes for a 256 GB box, 1 user : 4 relays, users start one per 15 s and
+  relays one per 10 s so start waves do not outrun KSM); `test_configs/scale_ladder/`
+  (1k/2k/2.5k/3k, native mining, 5k-node GML); `test_configs/scale_ladder_box32/`
+  (125-1000 nodes for a 32-thread box).
+- **Fallback seeds are written into the expanded config.** In `general.fallback_seeds:
+  auto` mode (or unset) scenario expansion (`scripts/scenario_parser.py`) appends any
+  `monero-seed-001..006` the scenario did not declare, with the Rust injector's values
+  (stock `monerod`, start 0-5 s), after calibration so no other value changes;
+  `custom` and `off` add nothing. The injector stays for hand-written YAMLs, and
+  `tests/fallback_seed_parity.rs` pins that both give the same `shadow_agents.yaml`.
+  A new warning (`src/agent/fallback_seeds.rs`) fires when the seeds run stock
+  `monerod` but none of the other agents' local daemons does (e.g. all run
+  `monerod-sim`): stock seeds can reject a modified network's blocks. See
+  `docs/SCENARIO_FORMAT.md`.
+- **SoP run health check catches more failures** (`scripts/sop_health_check.py`,
+  research tooling that `run_sim.sh` does not call): stale-id blocks
+  (`Found block <id>` equal to the node's earlier `SIM-SoP: share <id>`), end-of-run
+  chain splits (each node's final chain rebuilt from its log and compared by PoW; a
+  `split_depth` above 3 marks the run failed), and `Sent invalid chain` lines. Agent
+  tracebacks are counted in each host's `bash.*.stdout`/`.stderr`, and any one marks
+  the run failed (`AGENT-TB n`). A 240 h SoP run had split for 3.3 sim-days and a
+  stock attacker had raised on every tick, and both read "ok".
+- **`scripts/check_host.sh`**: read-only host preflight, runnable before cloning
+  (`ssh HOST 'bash -s' < scripts/check_host.sh`); separates hard blockers (kernel
+  < 5.10, tested by issuing `pidfd_open(PIDFD_NONBLOCK)`) from quick fixes (cmake,
+  python) and what `setup.sh` handles. The README now lists the cmake >= 3.18.4 and
+  kernel >= 5.10 floors (Ubuntu 20.04 meets neither). `setup.sh` preflight gates
+  cmake >= 3.18.4 and warns on an old kernel; `run_sim.sh` refuses kernel < 5.10
+  (`MONEROSIM_SKIP_KERNEL_CHECK=1` overrides). Both failures used to surface late
+  (a Shadow SIGABRT ~30 s into a run).
+- **`scripts/native_daa_analysis.py`**: reads a finished native-mining run's miner
+  stdout, builds the accepted chain (stale finds excluded, same-height races
+  deduplicated, checked against `summary.txt`), splits it at a late joiner and checks
+  LWMA equilibrium, cadence and share expectations; emits `blocks.csv`, `report.md`
+  and an optional PNG. End difficulty and last-2h cadence are compared with theory
+  from monerod's own DAA window (still filling in a 10 h run), not a fixed band, and
+  the end-difficulty verdict passes within +/-25% of the target. Tests in
+  `scripts/test_native_daa_analysis.py`.
+- **`scripts/matrix_pairs.py`**: pairs the draws of a replicated matrix (e.g.
+  `pop_sop2_h10` + `pop_sop2_h10_rep`) into one table per cell.
 
 ### Fixed
 
@@ -292,6 +404,10 @@
   any checkout), held until the new Shadow is visible: two quickstarts started
   20 s apart from one checkout got the same 18 CPUs, because cargo's build lock
   released both onto the launch within 6 ms of each other after a rebuild.
+  `MONEROSIM_SHADOW_CPU_PINNING=0` skips the plan and `taskset` and starts Shadow
+  with `--use-cpu-pinning false` (worker count as configured), for many small
+  concurrent runs that would otherwise stack on the same CPUs; each run records
+  its CPU decision in `shadow_output/cpu_plan.txt`.
 - **Eclipse probe dumps failed `gzip -d` ("unexpected end of file", issue #11).**
   `agents/eclipse_probe.py` held one gzip stream open for the whole run and only
   flushed it; the probe is always killed from outside, so the gzip trailer was never
@@ -392,7 +508,10 @@
   (`transaction_registry/`, `daemon_logs/` — what `run_sim.sh`'s own
   archiving leaves behind) > the live `shadow_output/run_env.sh` breadcrumb
   path *if it still exists* (a finished run has had it `rm -rf`'d) > a clear
-  error naming both candidates tried. See
+  error naming both candidates tried. An exported `MONEROSIM_SHARED_DIR` /
+  `MONEROSIM_DAEMON_DATA_DIR` that exists is honoured too (flag > exported dir >
+  archived copy > live breadcrumb; a stale export is ignored), so the documented
+  `export` workflow analyses the pinned dir, not the newest archived run. See
   `docs/20260721_per_run_tmp_namespacing.md` §6a.
 - **Success criteria are tri-state and no longer misreport mining-only runs.**
   The monitor marked `transactions_created_broadcast` / `transactions_in_blocks`
@@ -431,6 +550,28 @@
   `regularfile_flock`, 62 spinning). Locks now poll with `LOCK_NB` and sleep 50 ms
   between attempts (sleep yields simulated time), timing out after 120 s
   (`agents/file_locking.py`).
+- **Preflight probed `~/.monerosim/bin`, not the daemons the config names**
+  (`scripts/run_sim_helpers.py` `daemon_capabilities()`, `run_sim.sh`): a config
+  pointing agents at its own patched build by path was hard-failed, and the only
+  escape was an environment override that disabled the check entirely. Each
+  distinct binary is now probed for the flags its own agents need (pure-script agents
+  excluded; native miners probe `monerod-sim`); the version pin is enforced only for
+  binaries we install. When the patched daemon is missing, the message names both
+  `monerod-sim` and `monerod-hf` (missing, dangling symlink, not executable).
+- **`run_sim.sh` could unmount another user's ramdisk.** `sweep_orphan_ramdisks`
+  took a `/tmp/monerosim_ramdisk_*` mount with no open files for an orphan, but a
+  non-root `lsof` cannot see other users' processes; mounts it does not own are skipped.
+- **`SimulationMonitorAgent` ignored an explicit `shared_dir`**
+  (`agents/simulation_monitor/agent.py`): it was never passed to `BaseAgent`, so the
+  `MONEROSIM_SHARED_DIR` default replaced it. Harmless in real runs, wrong for callers
+  and tests that pass the argument.
+- **`peers:` pins to a daemon-less agent were accepted**
+  (`src/topology/peer_connections.rs`):
+  a wallet-only agent passed the check and the pinning node dialed a closed port
+  forever. Only agents with a local daemon are pinnable now.
+- Small `run_sim.sh` message fixes: the disk-shortfall tips name
+  `scripts/sweep_stale_runs.sh` and list reclaimable dead-owner `/tmp` run dirs; the
+  `--bootfast` preflight line says "past the 10,000th" read.
 
 ### Changed
 
@@ -443,6 +584,8 @@
   transaction load silently collapses (200-user A/B: 1,157-2,066 txs vs 3,027
   with SSL on; the 1k scale rung sent 2,685 vs 18,953). `autodetect` keeps the
   plain-`http://` Python agents working. Cost: ~1.1 wall-s more per process start.
+  Net effect versus 0.3.1: none; 0.3.1 passed no `--rpc-ssl` flag and already used
+  the stock default.
   Runs with no wallet traffic (e.g. the eclipse configs) can opt out with
   `rpc-ssl: disabled` (see `docs/CONFIGURATION.md`). Write-up and open Shadow
   questions: `docs/20261009_rpc_ssl_off_wallet_stall.md`. Results of runs made
@@ -466,6 +609,12 @@
   archive still contains `transaction_registry/transactions.json` (materialized at
   archive time). Only tools that read `transactions.json` from the **live** shared
   directory during a run are affected.
+- **Monero is built without Trezor/Ledger support** (`setup.sh`): both configure calls
+  (vanilla monerod + monero-wallet-rpc, and the `monerod-sim` worktree) pass
+  `-DUSE_DEVICE_TREZOR=OFF -DCMAKE_DISABLE_FIND_PACKAGE_HIDAPI=TRUE`. Hardware wallets
+  cannot exist inside Shadow; Trezor pulled in the protobuf toolchain and ~20
+  translation units, and Ledger support is gated on HIDAPI. No source patch; the built
+  `monero-wallet-rpc` no longer links hidapi, libusb, udev or protobuf.
 
 ## [0.3.1] — 2026-09-05
 
