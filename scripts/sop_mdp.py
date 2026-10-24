@@ -389,7 +389,132 @@ def build_tables_v(keys: np.ndarray, caps: Caps, own_pending: bool, stubborn=Non
 
 
 # ---------------------------------------------------------------------------
-# Average reward (ratio objective via rho)
+# Compact tables: ~35 B/state. publish/reveal/give_up all reset to one of a
+# few hundred states keyed by the pending counts, so per (state, event) only
+# the hold successor and a legality bitmask are stored; rewards (a or h of the
+# post-event state) are recomputed from the decoded columns each sweep.
+# ---------------------------------------------------------------------------
+
+B_HOLD, B_PUB, B_REV, B_GIV = 1, 2, 4, 8
+
+
+class Compact:
+    def __init__(self, keys, caps: Caps, own_pending: bool, stubborn=None):
+        self.keys, self.caps, self.own, self.stubborn = keys, caps, own_pending, stubborn
+        N = len(keys)
+        self.cols = [c.astype(np.int16) for c in decode(keys)]
+        self.hold = -np.ones((N, 4), dtype=np.int32)
+        self.legal = np.zeros((N, 4), dtype=np.uint8)
+        P = caps.p_max + 1
+        z = np.zeros(P * P, dtype=np.int64)
+        pa = np.repeat(np.arange(P), P); ph = np.tile(np.arange(P), P)
+        self.r_pub = self._lookup(encode([z, z, z, pa, z, z, ph])).reshape(P, P)
+        self.r_rev = self._lookup(encode([z[:P], z[:P], z[:P], np.arange(P), z[:P], z[:P], z[:P]]))
+        self.r_giv = self._lookup(encode([z[:P], z[:P], z[:P], z[:P], z[:P], z[:P], np.arange(P)]))
+        for e, (is_att, is_blk) in enumerate(EVENTS):
+            post = v_event(self.cols, is_att, is_blk, caps)
+            masks = (v_stubborn_masks(post, caps, *stubborn) if stubborn else v_masks(post, caps, own_pending))
+            bits = (masks[HOLD].astype(np.uint8) * B_HOLD | masks[PUBLISH].astype(np.uint8) * B_PUB
+                    | masks[REVEAL].astype(np.uint8) * B_REV | masks[GIVE_UP].astype(np.uint8) * B_GIV)
+            self.legal[:, e] = bits
+            m = masks[HOLD]
+            if m.any():
+                k = encode([c[m] for c in post])
+                self.hold[m, e] = self._lookup(k, strict=True)
+
+    def _lookup(self, k, strict=False):
+        idx = np.searchsorted(self.keys, k)
+        ok = (idx < len(self.keys))
+        ok[ok] = self.keys[idx[ok]] == k[ok]
+        if strict:
+            assert ok.all(), "successor not in the enumerated set"
+        return np.where(ok, idx, -1).astype(np.int32)
+
+    def sweep(self, V, rho, optimise: bool):
+        """One relative-VI sweep: returns Vn (unnormalised) and, if asked, the argmax."""
+        N = len(self.keys)
+        p = event_probs(self.alpha)
+        Vn = np.zeros(N)
+        for e, (is_att, is_blk) in enumerate(EVENTS):
+            post = v_event(self.cols, is_att, is_blk, self.caps)
+            a_p, pa_p, h_p, ph_p = post[0].astype(np.int64), post[3].astype(np.int64), post[4].astype(np.int64), post[6].astype(np.int64)
+            lg = self.legal[:, e]
+            best = np.full(N, -np.inf) if optimise else np.zeros(N)
+            # hold
+            m = (lg & B_HOLD) > 0
+            q = V[np.where(m, self.hold[:, e], 0)]
+            self._fold(best, q, m, optimise)
+            # publish / reveal: reward a (1 - rho)
+            for bit, nxt in ((B_PUB, self.r_pub[pa_p, ph_p]), (B_REV, self.r_rev[pa_p])):
+                m = (lg & bit) > 0
+                q = a_p * (1.0 - rho) + V[np.where(m, nxt, 0)]
+                self._fold(best, q, m, optimise)
+            # give up: reward -rho h
+            m = (lg & B_GIV) > 0
+            q = -rho * h_p + V[np.where(m, self.r_giv[ph_p], 0)]
+            self._fold(best, q, m, optimise)
+            Vn += p[e] * best
+        return Vn
+
+    @staticmethod
+    def _fold(best, q, m, optimise):
+        if optimise:
+            np.maximum(best, np.where(m, q, -np.inf), out=best)
+        else:
+            best += np.where(m, q, 0.0)
+
+    def gain(self, rho, optimise, iters=5000, tol=1e-7):
+        N = len(self.keys)
+        V = np.zeros(N)
+        g = 0.0
+        for it in range(iters):
+            Vn = self.sweep(V, rho, optimise)
+            g = Vn[0]
+            Vn -= g
+            span = np.max(np.abs(Vn - V))
+            V = Vn
+            if span < tol:
+                break
+        return g, V, it + 1
+
+    def share(self, alpha, optimise, verbose=False):
+        self.alpha = alpha
+        lo, hi, V = 0.0, 1.0, None
+        while hi - lo > 1e-5:
+            mid = 0.5 * (lo + hi)
+            g, V, it = self.gain(mid, optimise)
+            if verbose:
+                print(f"  rho={mid:.5f} gain={g:+.3e} ({it} sweeps)", file=sys.stderr, flush=True)
+            if g > 0:
+                lo = mid
+            else:
+                hi = mid
+        return 0.5 * (lo + hi), V
+
+    def policy(self, V, rho):
+        """Chosen action per (state, event) where more than one is legal; -1 elsewhere."""
+        N = len(self.keys)
+        pol = -np.ones((N, 4), dtype=np.int8)
+        for e, (is_att, is_blk) in enumerate(EVENTS):
+            post = v_event(self.cols, is_att, is_blk, self.caps)
+            a_p, pa_p, h_p, ph_p = post[0].astype(np.int64), post[3].astype(np.int64), post[4].astype(np.int64), post[6].astype(np.int64)
+            lg = self.legal[:, e]
+            multi = np.array([bin(x).count("1") for x in range(16)], dtype=np.int8)[lg] > 1
+            best = np.full(N, -np.inf)
+            cands = [(HOLD, B_HOLD, V[np.where(lg & B_HOLD, self.hold[:, e], 0)]),
+                     (PUBLISH, B_PUB, a_p * (1 - rho) + V[np.where(lg & B_PUB, self.r_pub[pa_p, ph_p], 0)]),
+                     (REVEAL, B_REV, a_p * (1 - rho) + V[np.where(lg & B_REV, self.r_rev[pa_p], 0)]),
+                     (GIVE_UP, B_GIV, -rho * h_p + V[np.where(lg & B_GIV, self.r_giv[ph_p], 0)])]
+            for act, bit, q in cands:
+                q = np.where((lg & bit) > 0, q, -np.inf)
+                better = q > best + 1e-12
+                pol[better & multi, e] = act
+                np.maximum(best, q, out=best)
+        return pol
+
+
+# ---------------------------------------------------------------------------
+# Average reward (ratio objective via rho): dense-table reference versions
 # ---------------------------------------------------------------------------
 
 def _q_event(nxt, ra, rh, rho, V, e, act):
@@ -504,8 +629,9 @@ def cmd_evaluate(args):
     stub = (args.give_up_objects, own_test, own_net)
     t = time.time()
     keys = enumerate_keys(caps, own_net, stubborn=stub, verbose=args.verbose)
-    nxt, ra, rh = build_tables_v(keys, caps, own_net, stubborn=stub)
-    rho, _ = share_for(nxt, ra, rh, event_probs(args.alpha), optimise=False, verbose=args.verbose)
+    print(f"chain states: {len(keys):,}  [enumerated in {time.time() - t:.0f}s]", file=sys.stderr, flush=True)
+    C = Compact(keys, caps, own_net, stubborn=stub)
+    rho, _ = C.share(args.alpha, optimise=False, verbose=args.verbose)
     print(f"window_stubborn give_up_objects={args.give_up_objects} test_own_pending={args.test_own_pending} "
           f"network_own_pending={args.own_pending} alpha={args.alpha}")
     print(f"chain states: {len(keys):,}  attacker revenue share: {rho:.4f}  [{time.time() - t:.1f}s]")
@@ -516,23 +642,22 @@ def cmd_solve(args):
     caps, own_net = caps_of(args), args.own_pending == "count"
     t = time.time()
     keys = enumerate_keys(caps, own_net, verbose=args.verbose)
-    nxt, ra, rh = build_tables_v(keys, caps, own_net)
     print(f"alpha={args.alpha} own_pending={args.own_pending} caps: {caps}  states: {len(keys):,}  "
           f"[enumerated in {time.time() - t:.0f}s]", file=sys.stderr, flush=True)
-    rho, V = share_for(nxt, ra, rh, event_probs(args.alpha), optimise=True, verbose=args.verbose)
-    pol = policy_from_V(nxt, ra, rh, event_probs(args.alpha), rho, V)
-    multi = (nxt >= 0).sum(axis=2) > 1
+    C = Compact(keys, caps, own_net)
+    rho, V = C.share(args.alpha, optimise=True, verbose=args.verbose)
+    pol = C.policy(V, rho)
+    multi = pol >= 0
     counts = {n: int(((pol == i) & multi).sum()) for i, n in enumerate(ACTION_NAMES)}
     print(f"optimal attacker revenue share at alpha={args.alpha}: {rho:.4f}  "
           f"(honest mining {args.alpha:.2f}; states {len(keys):,}; {time.time() - t:.0f}s)")
     print("action counts over decision (state, event) pairs: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
     if args.out:
-        cols = decode(keys)
         table = {}
         for e, (is_att, is_blk) in enumerate(EVENTS):
-            post = v_event(cols, is_att, is_blk, caps)
+            post = v_event(C.cols, is_att, is_blk, caps)
             rows = np.nonzero(multi[:, e])[0]
-            pk = encode([c[rows] for c in post])
+            pk = encode([c[rows].astype(np.int64) for c in post])
             for r, k in zip(rows, pk):
                 table[str(int(k))] = ACTION_NAMES[pol[r, e]]
         with open(args.out, "w") as fh:

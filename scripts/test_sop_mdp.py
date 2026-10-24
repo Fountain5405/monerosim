@@ -103,6 +103,24 @@ def test_vectorised_stubborn_matches_scalar(own):
             assert sorted(perm[int(x)] for x in nxt_s[i, e] if x >= 0) == sorted(int(x) for x in nxt_v[perm[i], e] if x >= 0)
 
 
+@pytest.mark.parametrize("own", [False, True])
+def test_compact_solver_matches_dense_on_small_caps(own):
+    caps = M.Caps(3, 3, 40, 10, 12)
+    keys = M.enumerate_keys(caps, own)
+    nxt, ra, rh = M.build_tables_v(keys, caps, own)
+    probs = M.event_probs(0.45)
+    rho_dense, _ = M.share_for(nxt, ra, rh, probs, optimise=True)
+    C = M.Compact(keys, caps, own)
+    rho_c, _ = C.share(0.45, optimise=True)
+    assert abs(rho_dense - rho_c) < 2e-4, (rho_dense, rho_c)
+    stub = (5, own, own)
+    keys = M.enumerate_keys(caps, own, stubborn=stub)
+    nxt, ra, rh = M.build_tables_v(keys, caps, own, stubborn=stub)
+    rho_dense, _ = M.share_for(nxt, ra, rh, probs, optimise=False)
+    rho_c, _ = M.Compact(keys, caps, own, stubborn=stub).share(0.45, optimise=False)
+    assert abs(rho_dense - rho_c) < 2e-4, (rho_dense, rho_c)
+
+
 def test_enumeration_grows_with_caps():
     n_small = len(M.enumerate_keys(M.Caps(3, 3, 40, 12, 12), False))
     n_big = len(M.enumerate_keys(M.Caps(3, 3, 60, 16, 16), False))
@@ -121,9 +139,8 @@ def test_stubborn_chain_matches_race_model_monte_carlo(own):
     acceptance (network counts own pending iff the test does) reproduces the
     Monte Carlo share within its noise."""
     alpha = 0.45
-    caps = M.Caps(a_max=10, h_max=10, d_max=200, p_max=48, deficit=60)
+    caps = M.Caps(a_max=5, h_max=5, d_max=96, p_max=32, deficit=32)
     keys = M.enumerate_keys(caps, own, stubborn=(5, own, own))
-    nxt, ra, rh = M.build_tables_v(keys, caps, own, stubborn=(5, own, own))
-    rho, _ = M.share_for(nxt, ra, rh, M.event_probs(alpha), optimise=False)
+    rho, _ = M.Compact(keys, caps, own, stubborn=(5, own, own)).share(alpha, optimise=False)
     mc = sum(_mc_share(alpha, own, seed=s) for s in range(1, 4)) / 3
     assert abs(rho - mc) < 0.03, (rho, mc)
