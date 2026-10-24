@@ -8,18 +8,22 @@ def run(entries, spy, mode, rng, slots=12):
     conn = set(); n_spy = 0
     sub = (lambda ip: ip.rsplit('.',1)[0]) if True else None   # sim IPs are a.b.0.x so /24 == /16
     for _ in range(slots):
-        if mode == "24":
+        # modes (2026-10-24, E35): "24" stock (20 newest /24s, cubic draw); "24u" the same 20, uniform draw
+        # (--sim-uniform-whitelist-pick); "24all" every unconnected /24, uniform draw (the cap lifted); "legacy".
+        if mode in ("24", "24u", "24all"):
             order = entries[:]; rng.shuffle(order)
             seen = set(conn); cand = []
             for ip, ls in order:
                 s = sub(ip)
                 if s not in seen: seen.add(s); cand.append((ip, ls))
             if not cand: break
-            cand.sort(key=lambda e: -e[1]); cand = cand[:20]
+            cand.sort(key=lambda e: -e[1])
+            if mode != "24all": cand = cand[:20]
         else:  # legacy: every IP a candidate, skip connected subnets, recency order
             cand = [e for e in sorted(entries, key=lambda e: (-e[1], rng.random())) if sub(e[0]) not in conn][:20]
             if not cand: break
-        ip, _ = cand[cubic(len(cand)-1, rng)]
+        idx = rng.randrange(len(cand)) if mode in ("24u", "24all") else cubic(len(cand)-1, rng)
+        ip, _ = cand[idx]
         conn.add(sub(ip)); n_spy += ip in spy
     return n_spy
 def main(rd, trials=300):

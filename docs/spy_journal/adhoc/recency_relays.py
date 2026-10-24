@@ -5,7 +5,8 @@ rd = sys.argv[1]
 H = yaml.safe_load(open(rd + "/shadow_agents.yaml"))["hosts"]
 spy = {v["ip_addr"] for k, v in H.items() if k.startswith("spy")}
 rng = random.Random(7)
-tot = {"24": [0, 0]}
+MODES = sys.argv[2].split(",") if len(sys.argv) > 2 else ["24"]
+tot = {m: [0, 0] for m in MODES}
 ranks = []
 for f in sorted(glob.glob(rd + "/daemon_logs/monero-relay-r-*/peerlist_dump.jsonl")):
     rows = [json.loads(l) for l in open(f)]
@@ -16,7 +17,9 @@ for f in sorted(glob.glob(rd + "/daemon_logs/monero-relay-r-*/peerlist_dump.json
         ls = sorted(ent, key=lambda e: -e[1])
         sp = [i for i, e in enumerate(ls) if e[0] in spy]
         if sp: ranks.append(sum(sp) / len(sp) / len(ls))
-        for _ in range(40):
-            tot["24"][0] += run(ent, spy, "24", rng); tot["24"][1] += 12
+        for m in MODES:
+            for _ in range(40):
+                tot[m][0] += run(ent, spy, m, rng); tot[m][1] += 12
 print("relay white lists after 3 h: n dumps used", len(ranks), " mean spy rank percentile %.2f" % (sum(ranks) / len(ranks)))
-print("white-only /24 selection with recency (top 20, cubic) over those lists: spy share per slot %.4f" % (tot["24"][0] / tot["24"][1]))
+for m in MODES:
+    print("mode %-6s spy share per slot %.4f  (24: 20 newest /24s, cubic; 24u: same 20, uniform; 24all: every unconnected /24, uniform)" % (m, tot[m][0] / tot[m][1]))
