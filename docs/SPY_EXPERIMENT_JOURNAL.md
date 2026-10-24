@@ -5,7 +5,7 @@ The single record of the experiments for the spy (proxy) node test plan,
 `simbox3` only. The Share-or-Perish (MRL #146) campaigns run on another box
 under another agent and are not recorded here.
 
-**Status (2026-10-24, 03:08).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
+**Status (2026-10-24, 03:31).** X0, the calibration, is closed: the `legacy` leg passes its targets (3 seeds per
 cell), the /24-dedup leg reads -45% on the 69-/24 replica and -77% on the lean k=6 cell (3 seeds), and the embargo
 target is read as "stems fluff before any timer fires", which is the stock behaviour (open question 4, closed). X1 has
 its first long cells: the `--sim-fixed-randomx-seed` patch (E20) lets a 32 GB box run 30 simulated hours, and E22 gives
@@ -32,13 +32,15 @@ in 21 (E28, P18 four of four): the layout is irrelevant where the selection coun
 of six, the users' clause missed on a 25% user-level seed spread). The full 42-entry ban list on half the nodes takes the spread
 fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to zero, non-adopters +10%, exposed users from 27 to 15
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
-the stock rule's /24 counting gave the spread fleet. Running: `simbox2` finished P19 at 02:10 and is idle, awaiting the handover;
-`phantom` finished P20 at 03:02 and is idle until P16b's reading picks the next cell;
+the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
+(-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
+buys share. Running: `simbox2` finished P19 at 02:10 and is idle, awaiting the handover; `phantom` has P21 (the spread fleet at a
+24 h warmup);
 `phantom` finished
 P16a at 21:38 (E26: 1 per /24 at 26-30 h reads 0.1911, flat from hour 10, five of five clauses hit) and runs P18 (P17's `legacy`
 control); `simbox3` runs P16b (8 per /24, 24 h, started 20:19), then the last two fillers (the
 seed-23456 6 h fillers are in E10: `core` 0.0428, `tail` 0.1763). Entries
-E1-E29 below; predictions P1-P20 in section 5.
+E1-E30 below; predictions P1-P21 in section 5.
 
 ## 1. How this journal works
 
@@ -266,6 +268,7 @@ own selection rule and its spy layout.
 | `20261023_171700_lean_24_none_h300_k21_w6h_m2_n600_s23456` | simbox3 | 42 / 21 | 300 / 240 | 0.1763 (0.0831) | 0.177, 0.176, 0.177, 0.175 | 0.216 | 1095 | 2h 59m | 79.8 | 0 | simbox3 filler: tail 6 h seed replicate (seed 23456) of the E10/E19 cell; light 0.1763 |
 | `20261023_175508_lean_24_none_h300_k21_w24h_m1_n600_fx_s12345` | phantom | 21 / 21 | 300 / 242 | 0.1911 (0.0822) | 0.191, 0.189, 0.192, 0.192 | 0.203 | 1109 | 3h 41m | 10.6 | 0 | P16a: tail at 1 spy per /24, 24 h warmup (window 26-30 h), fixed RandomX seed; light 0.1911 (13 h cell: 0.1978), flat; relays 0.2187; all P16a clauses hit |
 | `20261023_181247_lean_legacy_none_h300_k21_w13h_m2_n600_s23456` | simbox2 | 42 / 21 | 300 / 240 | 0.2826 (0.1223) | 0.285, 0.283, 0.283, 0.279 | 0.193 | 1097 | 2h 32m | 12.7 | 0 | P15: legacy tail at seed 23456 (E23's seed replicate); light 0.2826 vs 0.2857 at seed 12345, flat; 24/legacy ratio 0.575; 24 of 40 users exposed |
+| `20261023_201931_lean_24_none_h300_k21_w24h_m8_n600_fx_s12345` | simbox3 | 168 / 21 | 300 / 242 | 0.1497 (0.0822) | 0.153, 0.151, 0.150, 0.145 | 0.190 | 1079 | 6h 52m | 73.8 | 0 | P16b: tail at 8 spies per /24 (168 spies, 508 daemons), 24 h warmup, window 26-30 h; light 0.1497 (1.82x ceiling) but still falling (relays 0.18 at hour 20, 0.155 at 30); 16 of 39 exposed |
 | `20261023_205427_lean_24_none_h300_k42_w13h_m1_n600_s12345` | simbox2 | 42 / 42 | 300 / 242 | 0.3369 (0.1531) | 0.339, 0.338, 0.337, 0.334 | 0.214 | 1098 | 2h 33m | 12.5 | 0 | P17: tail's 42 spies spread over 42 /24s at 1 each, stock 24; light 0.3369 = 2.20x the 0.1531 ceiling, flat; 27 of 40 users exposed |
 | `20261023_214454_lean_legacy_none_h300_k42_w13h_m1_n600_s12345` | phantom | 42 / 42 | 300 / 242 | 0.2984 (0.1237) | 0.299, 0.296, 0.297, 0.302 | 0.199 | 1100 | 2h 33m | 10.5 | 0 | P18: the 42-/24 one-spy-each layout under legacy (P17's control); light 0.2984 = 2.41x its 0.1237 model, flat; 24/legacy at 42 /24s 1.13 (stock dedup gives this fleet more); 24 of 40 exposed |
 | `20261023_233601_lean_24_none_h300_k42_w13h_m1_n600_s23456` | simbox2 | 42 / 42 | 300 / 240 | 0.3340 (0.1539) | 0.328, 0.334, 0.338, 0.336 | 0.197 | 1097 | 2h 32m | 12.5 | 0 | P19: E27's 42-/24 cell at seed 23456; light 0.334 vs 0.3369 (1% spread), 2.17x ceiling, flat; users 0.103 (seed 12345: 0.133); 26 of 40 exposed |
@@ -1354,6 +1357,47 @@ total falls by the adopters' share less the 10-12% refill. A list on half the ne
 spread fleet with the list on half the nodes (0.184) still beats the packed fleet without any list (0.166): against a spreading
 operator, half the network adopting a complete list recovers only what the stock rule's /24 counting gave away (E28).
 
+### E30. Eight spies per /24 at 26-30 h: below the 2-per-/24 cell, but still draining after thirty hours (2026-10-23 20:19 to 2026-10-24 03:16, `simbox3`)
+
+Prediction P16(b) (filed and committed 18:05; the run started 20:19). `lean_24_none_h300_k21_w24h_m8_n600_fx_s12345`: the `tail`
+layout at **8 spies per /24** (168 spies in 21 /24s, 508 daemons), stock `24` selection, **24 h warmup**, window 26-30 h, fixed
+RandomX seed, seed 12345. Its 13 h partner is E24 (0.1749 at hours 15-19, falling). 413 min wall, exit 0, lowest free RAM 75.6 GiB
+on the 100 GB box, 1,079 stem txs, 0.19 fluff per hop.
+
+**Shares.** Light-node share **0.1497**, by quarter 0.1531, 0.1514, 0.1497, 0.1448: **not flat**, Q4 is 5.4% below Q1. Relays
+**0.1677** (1.12x light), users 0.0417, observers 0.1642, medium 0.0942, miners 0.0871. Against the 0.0822 ceiling: 1.82x at 26-30 h,
+against 2.13x at 15-19 h. The spies-per-/24 series at the 24 h warmup, all 21 /24s, stock rule:
+
+| Spies per /24 | Spies | Light at 26-30 h | Light / ceiling | Light at 15-19 h | Relay curve, hours 20-30 | Exposed |
+|---|---|---|---|---|---|---|
+| 1 (E26) | 21 | 0.1911 | 2.32x | 0.1978 | flat, 0.218-0.220 | 16 of 40 |
+| 2 (E22a) | 42 | 0.1572 | 1.91x | 0.1662 | about -5% | - |
+| 8 (this run) | 168 | **0.1497** | **1.82x** | 0.1749 | **0.181 to 0.155, -14%** | 16 of 39 |
+
+**The relay curve** (all 233 relays and by start-order quarter; full curve in the run's folder): 0.127 at hour 2, 0.180 at 3, a peak
+of **0.394 at hour 4** (the gray-list drain of 168 spies; `core`'s 113 spies peaked at the same hour), then 0.323 at 6, 0.274 at 8,
+0.245 at 10, 0.222 at 12, 0.199 at 16, 0.181 at 20, 0.183 at 24, 0.172 at 26, 0.163 at 28, **0.155 at 30**. The fall from hour 20 to
+30 is 14%; the last four hours fall 10%. The start-order quarters are much closer than in the 1- and 2-per-/24 cells: at hour 30 the
+earliest 0.099, the latest 0.200 (2.0x; E26 at the same hour: 0.129 and 0.325, 2.5x).
+
+**Estimators** (40 unreachable users, 1,007 txs; one user fell to 10-19 txs): `sp_r` 46 guesses, 46 correct (precision 1.000,
+recall 0.046), **16 of 39** twenty-transaction users exposed; the 5 busy reachable nodes: `sp` 8 of 15 correct.
+
+**Score (P16b).** Light 0.1497 in 0.10-0.15: **hit, by 0.0003**, and the cell is not at steady state, so the number this clause
+was about (the steady state) is lower still: the direction is right. Relays 0.1677 in 0.11-0.17: hit. Relay curve flat over hours
+20-30 within 10%: **miss** (-14%). Free RAM above 60 GB: hit. Three of four, with the flatness miss qualifying the first hit.
+
+**What this means.** (1) The spies-per-/24 question (E22, E24, P13, P16) resolves into two effects. Packing more spies into the same
+/24s does lower the fleet's steady-state share under the stock rule, 2.32x the ceiling at 1 per /24, 1.91x at 2, at most 1.82x at 8,
+so E22's dilution is real; but it is small next to the /24 count (E27: doubling the /24s doubles the share), and most of the 1-to-8
+gap at any fixed hour is the drain transient, which scales with the spy count: 168 spies take more than thirty hours to shed,
+where 21 settle in six. (2) The cell that "stays stationary" and the cell that "decays like `core`" are the same rule at different
+spy densities: with many spy IPs behind each candidate /24 the early spy-rich picks keep being replaced by other spies in the same
+/24 as connections churn, which is the `core` behaviour in miniature, and the decay toward the ceiling is slow because every
+replacement draw still sees 21 spy /24s. (3) For the operator the lesson of E27 stands unchanged: IPs per /24 cost money and buy a
+smaller share per IP; /24s buy share in proportion. (4) The 8-per-/24 steady state is not measured; a longer cell would need a
+third day of simulated time (about 11 h wall on `simbox3`) and is not queued: the question it answers is second order.
+
 ## 5. Pre-registered predictions
 
 Filed before the results; the time is when this section was written.
@@ -1621,6 +1665,12 @@ cells bottomed at 10.9-12.2 GB); (b) on `simbox3` (100 GB) above 60 GB.
 0.20-0.26: hit. Users 0.0522, inside 0.05-0.08: hit. Lowest free RAM 10.6 GiB: hit. The 13 h cell's 0.1978 fell 3% in thirteen more
 hours and the relay curve is flat from hour 10 to 30 (E26). (b) is running on `simbox3` (started 20:19).
 
+*Outcome (b), 2026-10-24 03:31:* light **0.1497**, inside 0.10-0.15 by 0.0003: hit as written, but the cell is still draining
+(Q4 5.4% below Q1; relays 0.181 at hour 20, 0.155 at hour 30). Relays 0.1677, inside 0.11-0.17: hit. Relay curve flat over hours
+20-30 within 10%: **miss** (-14%). Free RAM 75.6 GiB above 60: hit. Three of four. The dilution is real but small (1.82x the ceiling
+at most, against 1.91x at 2 per /24 and 2.32x at 1); the 1-to-8 gap at a fixed hour is mostly the drain transient, which scales with
+the spy count (E30).
+
 **P15, filed 2026-10-23 15:35, before the cell is queued (E23's seed spread).** `lean_legacy_none_h300_k21_w13h_m2_n600_s23456` on
 `simbox2`: E23's cell at the other seed and on the other box, as E21 did for the `24` cell (0.1626 against E19's 0.1662, a 2%
 spread). Light-node share **0.26-0.31**, flat by quarter (Q4 within 10% of Q1), relays 1.05-1.25x light; the `24`/`legacy` ratio for
@@ -1692,6 +1742,14 @@ above 10 GB.
 0.369, inside 0.34-0.42 (+10%): hit. Users 0.0528: hit. `sp_r` precision 1: hit. Exposed **15 of 40**, inside 9-16, all non-adopters:
 hit. Relays 1.13x light: hit. Flat: hit. Lowest free RAM 10.6 GiB: hit. Eight of eight (E29): the list's effect is the same 0.55x on
 the spread fleet as on the packed one.
+
+**P21, filed 2026-10-24 03:31, before the cell is queued (the spread fleet's steady state).** `lean_24_none_h300_k42_w24h_m1_n600_fx_s12345`
+on `phantom`: E27's cell (42 spies in 42 /24s at 1 each, 384 daemons) with a **24 h warmup**, window 26-30 h, fixed RandomX seed,
+seed 12345. The 21-/24 family moved -3% (1 per /24, E26) and -5% (2 per /24, E22a) from the 13 h window to the 24 h one, with flat
+curves from hour 10. Light-node share **0.31-0.35** (0.92-1.04x E27's 0.3369), by quarter flat (Q4 within 5% of Q1), relays
+1.05-1.2x light and flat from hour 10 to 30 within 5%, users 0.09-0.15, `sp_r` precision 1 at its ceiling, 22-30 of 40 users
+exposed. Prior 70%. Below 0.31 means the spread fleet's excess relaxes where the packed fleets' did not; above 0.35 means it still
+grows after 19 h. Lowest free RAM on `phantom` above 10 GB; about 4 h wall.
 
 ## 6. Open questions
 
@@ -1803,6 +1861,8 @@ in the conversation.
 | 10-24 00:26 | `phantom` drained at 00:20 (P18 done, E28). P20 filed and queued there: E27's spread fleet with the full 42-entry ban list on half the nodes (`lean_24_half_h300_k42_w13h_m1_n600_s12345`, ~2.5 h) | E27/E28 leave the ban list as the only defence against a 1-per-/24 fleet (open question 7 at 42 /24s); E25 is the template. Risk: 2.5 h of the generator box, 27 GB free. Undo: kill the driver by pid; cell md5 31fe7669, ban list `banlist_h300_k42_w13h_m1_n600_s12345.txt` (42 lines) |
 | 10-24 02:14 | `simbox2` drained at 02:10 (P19 done, E27b) and is left idle: nothing new queued | The user's plan gives the small boxes to the selfish-mining project once their queues drain, and the open questions left (P16b, P20) are running on the other two boxes; a further cell here would only delay the handover. Risk: idle hardware until the other agent has its key. Undo: queue a cell (`~/queue/q.txt`, restart the driver) |
 | 10-24 03:08 | `phantom` drained at 03:02 (P20 done, E29) and is left idle until P16b lands (~03:30) | The next cell depends on P16b's reading (whether 8 per /24 settles below 2 per /24 at steady state): if the multiplier holds there too, the spread fleet's 24 h steady state (`k42_w24h_m1_fx`) is the natural headline cell; open question 10's probe needs a monerod-sim flag first. Risk: under an hour idle. Undo: queue a cell |
+| 10-24 03:31 | P16b's 16.6 GB archive (`20261023_201931_..._w24h_m8_n600_fx_s12345`) copied from `simbox3` to `phantom`'s pool (`/mnt/ssdpool/monerosim_archives/`, 3,254 files and 16,644,449,296 bytes on both sides) and removed on `simbox3`: 52 GB free became 63 GB | The two seed-34567 fillers add about 10 GB and the 45 GB floor would have been crossed. Risk: none measured (counts and bytes equal). Undo: copy it back |
+| 10-24 03:31 | P21 filed and queued on `phantom`: the spread fleet at a 24 h warmup (`lean_24_none_h300_k42_w24h_m1_n600_fx_s12345`, ~4 h) | E27-E29 make the spread fleet the headline layout and its steady state is unmeasured; E30 showed the 21-/24 fleets settle in six hours, so a flat 24 h read would let E27's 2.2x be quoted as a steady state. Risk: 4 h of the generator box. Undo: kill the driver by pid; cell md5 dd1f63eb |
 
 ## 8. Files
 

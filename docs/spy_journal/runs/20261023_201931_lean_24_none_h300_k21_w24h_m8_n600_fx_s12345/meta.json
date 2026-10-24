@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_201931_lean_24_none_h300_k21_w24h_m8_n600_fx_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k21_w24h_m8_n600_fx_s12345",
+ "archived_at": "2026-10-23T20:19:32Z",
+ "monerod_sim_sha": "4258da26e187",
+ "wall": "6h 52m",
+ "exit_code": 0,
+ "min_avail_mb": 75580,
+ "txs_created": 945,
+ "txs_in_blocks": 934,
+ "note": "P16b: tail at 8 spies per /24 (168 spies, 508 daemons), 24 h warmup, window 26-30 h; light 0.1497 (1.82x ceiling) but still falling (relays 0.18 at hour 20, 0.155 at 30); 16 of 39 exposed",
+ "scored_cell": "24/none",
+ "spies": 168,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1497,
+ "light_out_quarters": [
+  0.1531,
+  0.1514,
+  0.1497,
+  0.1448
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.19,
+ "stem_txs": 1079,
+ "stem_hops_implied": 5.26,
+ "embargo_rate": 0.0
+}
