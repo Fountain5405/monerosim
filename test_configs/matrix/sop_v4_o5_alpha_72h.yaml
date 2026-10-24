@@ -1,0 +1,66 @@
+# sop_v4_o5_alpha_72h (2026-10-24): the objects-give-up attacker of
+# sop_v4_o5_72h (give_up_objects 5: 0.209/0.210 at alpha 0.45 over 72 h, 0 h
+# stranded) at alpha 0.33 and 0.40, two draws each, so the share-vs-alpha
+# curve of the 2026-10-20 rule is read with an attacker that keeps acting.
+# Hashrates are sop_v4_h10_72h's (10 h/s total in every alpha cell; a033 is
+# 3.3 + 2 x 3.35). Everything else is the o5 spec's: window_stubborn,
+# reject_aware, embedded_shares, window_rule 20261020, window_objects 32,
+# weigh sop, use_honest_shares, tip_shares, count_own_tip_shares default
+# true, give_up_depth 5 (never reached before the objects rule fires), SoP
+# w=16 on honest miners and the attacker, monerod-sim with SoP on relays
+# and bridges. Block-rule (d2) reference points: a033 built 0.0xx, a040 hs
+# d2 and a045 hs d2 in docs/20261022_sop_v4_results.md; alpha itself is the
+# honest-mining share. Run-to-run noise at a045 is ~ +/-0.03 (same doc s4).
+# Runs two draws per lane box (box80: a033, box82: a040) through
+# .claude/campaign9/run_lane.py; results rsynced to tr and reanalyzed there.
+name: sop_v4_o5_alpha_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '5'
+          give_up_objects: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a033:
+      attacker: {hashrate: 3.3}
+      honest: {hashrate: [3.35, 3.35]}
+    a040:
+      attacker: {hashrate: 4}
+      honest: {hashrate: [3, 3]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
+ksm: true
+bootfast: true

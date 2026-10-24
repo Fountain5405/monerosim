@@ -1,0 +1,62 @@
+# sop_v4_o5_noown_72h (2026-10-24): sop_v4_o5_72h (objects give-up, alpha
+# 0.45, 0.209/0.210 over 72 h) with count_own_tip_shares 'false': the
+# attacker's reveal test no longer counts its own miner's tip shares, which
+# under "fork choice runs only on a new block or chain" (author, MRL meeting
+# 2026-10-21) can never count at reveal time. The block-rule version of this
+# question (sop_v4_noown_72h, d2) gave 0.078 -> ? ; with the objects rule the
+# attacker no longer strands, so this reads the own-shares effect on an
+# attacker that acts for the whole 72 h. Two draws (sample s1, s2). The
+# countermeasure name differs from sop2 so cell/run names and
+# matrix_outputs do not collide. Race model, 20261020_noown, 2000 d,
+# +honest shares, give_up_objects 5: see docs for the number.
+# Runs on box81 (two lanes) through .claude/campaign9/run_lane.py; results
+# rsynced to tr and reanalyzed there.
+name: sop_v4_o5_noown_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          give_up_objects: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_noown:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
+ksm: true
+bootfast: true
