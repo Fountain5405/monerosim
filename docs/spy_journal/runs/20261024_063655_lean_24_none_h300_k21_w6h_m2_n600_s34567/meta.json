@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_063655_lean_24_none_h300_k21_w6h_m2_n600_s34567",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k21_w6h_m2_n600_s34567",
+ "archived_at": "2026-10-24T06:36:56Z",
+ "monerod_sim_sha": "4258da26e187",
+ "wall": "3h 9m",
+ "exit_code": 0,
+ "min_avail_mb": 81472,
+ "txs_created": 1056,
+ "txs_in_blocks": 1054,
+ "note": "simbox3 filler: tail 6 h, third seed (34567): 0.1812 against 0.1946 (12345) and 0.1763 (23456), mean 0.1840; flat (quarters 0.179-0.183); E10 addendum",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 243,
+ "light_out": 0.1812,
+ "light_out_quarters": [
+  0.1833,
+  0.1825,
+  0.1789,
+  0.1801
+ ],
+ "model_out": 0.0819,
+ "fluff_per_hop": 0.204,
+ "stem_txs": 1086,
+ "stem_hops_implied": 4.9,
+ "embargo_rate": 0.0
+}

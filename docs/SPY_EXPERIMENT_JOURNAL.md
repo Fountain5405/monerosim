@@ -34,10 +34,10 @@ fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to z
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
-buys share. Running (09:46): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
+buys share. Running (09:55): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
 (E34: **0.3524**, the seed-23456 read of the 24 h spread fleet, 5% above P21's; four of seven) and runs P24, open question 10's probe
 (`--sim-uniform-whitelist-pick` on E27's cell, started 09:42, ~2 h); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
-(E33: 0.0628, the ten-patch binary passes its flag-off check) and is idle for the archive-pool move; `simbox3` runs the last seed-34567 filler (`tail`, since 06:36, until ~09:50; the `core` one read 0.0348 at 06:36, E10's third seed);
+(E33: 0.0628, the ten-patch binary passes its flag-off check) and is idle for the archive-pool move; `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348) and is idle;
 `simbox2` is idle for the handover to the selfish-mining project. Since 10-24 the session runs on the control box and cells are generated
 there (`make_cell.sh`, section 2 addendum). Entries E1-E34 below; predictions P1-P25 in section 5.
 
@@ -284,6 +284,7 @@ own selection rule and its spy layout.
 | `20261024_033150_lean_24_none_h300_k42_w24h_m1_n600_fx_s12345` | phantom | 42 / 42 | 300 / 242 | 0.3354 (0.1531) | 0.331, 0.333, 0.337, 0.341 | 0.193 | 1100 | 3h 45m | 10.3 | 0 | P21: the spread fleet (42 spies in 42 /24s) at a 24 h warmup, window 26-30 h: 0.3354 against E27's 0.3369 at 13 h; flat (quarters 0.331-0.341); sp_r precision 1.00, recall 0.134, 33 of 40 heavy users exposed |
 | `20261024_052857_lean_legacy_none_h71_k1_s12345` | zenith2alpha | 13 / 1 | 71 / 60 | 0.0624 (0.0750) | 0.059, 0.062, 0.062, 0.065 | 0.171 | 953 | 41m 48s | 166.7 | 0 | P22, the Threadripper's platform check (H=71 legacy, seed 12345): 0.0624 against phantom 0.0610, simbox2 0.0614, simbox3 0.0641; hit on all four clauses; first run on zenith2alpha (64 threads, 251 GB), live run on /fast |
 | `20261024_061705_lean_24_none_h300_k42_w24h_m1_n600_fx_s23456` | zenith2alpha | 42 / 42 | 300 / 240 | 0.3524 (0.1539) | 0.351, 0.351, 0.354, 0.353 | 0.191 | 1101 | 3h 16m | 156.5 | 0 | P23: P21's seed-23456 replicate on zenith2alpha, 24 h warmup, window 26-30 h: 0.3524 against P21's 0.3354 (1.051x) and E27b's 0.334 at 13 h; flat (quarters 0.351-0.354); relays 0.4002, +3% over hours 20-30; sp_r precision 1.00, recall 0.109, 29 of 40 heavy users exposed; wall 3 h 16 m |
+| `20261024_063655_lean_24_none_h300_k21_w6h_m2_n600_s34567` | simbox3 | 42 / 21 | 300 / 243 | 0.1812 (0.0819) | 0.183, 0.182, 0.179, 0.180 | 0.204 | 1086 | 3h 9m | 79.6 | 0 | simbox3 filler: tail 6 h, third seed (34567): 0.1812 against 0.1946 (12345) and 0.1763 (23456), mean 0.1840; flat (quarters 0.179-0.183); E10 addendum |
 | `20261024_072708_lean_legacy_none_h71_k1_s12345` | phantom | 13 / 1 | 71 / 60 | 0.0628 (0.0749) | 0.062, 0.065, 0.060, 0.064 | 0.208 | 1086 | 43m 26s | 19.7 | 0 | P25: the ten-patch monerod-sim (b8d6fbb6, --sim-uniform-whitelist-pick present, off) on the H=71 legacy cell: 0.0628 against 0.0610 on the nine-patch binary; all checks; no daemon logs the flag; hit on all clauses |
 <!-- register:end -->
 
@@ -471,6 +472,12 @@ twenty-transaction users attributed (seed 12345: 18 of 40). The seed-34567 fille
 three). Exposure: `sp_r` precision 1.00, recall 0.009, 3 of 39 twenty-transaction users attributed (0-3 of 40 in the other `core` cells).
 Relays show the drain transient's late rise with its start-order gradient (0.055 to 0.135 across the quarters at hour 6), as E16 described.
 The `tail` seed-34567 filler started at 06:36 and is the last cell in `simbox3`'s queue.
+*2026-10-24 09:55, the third `tail` seed.* `tail` seed 34567 reads **0.1812** (`simbox3`, 189 min, 384 daemons, 81 GB free at the lowest):
+-7% against seed 12345's 0.1946 and +3% against seed 23456's 0.1763, quarters 0.1833, 0.1825, 0.1789, 0.1801 (flat, as both earlier seeds),
+so the 6 h `tail` cell's three seeds span 0.176-0.195 (mean 0.1840, +/-5%), 2.2x the subnet model's 0.0819: the same +/-5% seed band E34 finds
+for the spread fleet at 24 h, and the number to quote for this cell. Exposure: `sp_r` precision 1.00, recall 0.043, 17 of 39 twenty-transaction
+users attributed (seeds 12345 and 23456: 18 and 21 of 40). Relays 0.2062 (1.14x light) with the start-order gradient at hour 10 (0.145 to 0.294
+across the quarters, 1.8x to 3.6x the ceiling), as in every `24` cell since E16. `simbox3`'s queue is empty; it keeps the nine-patch binary.
 
 ### E11. Spy-/24 placement and the ban-list coverage knob (2026-10-22)
 
@@ -2032,6 +2039,7 @@ in the conversation.
 | 10-24 08:14 | `phantom` drained at 08:11 (P25 done, E33) and is left idle: nothing queued | the archive-pool move to the Threadripper's array waits on the user's word about a ZFS child dataset; its first steps (an NFS mount on phantom and a 293 GB copy off its ssd pool) want the box idle, and the next headline cells belong on `zenith2alpha`. Risk: idle hardware until then. Undo: queue a cell | agent |
 | 10-24 09:38 | P23 done on `zenith2alpha` at 09:36 (E34, 0.3524). Its `monerod-sim` rebuilt with the ten patches while the two scoring scripts ran (`run_install_sim.sh`, 24 jobs; sha256 `9cae7db31344...`, provenance lists 10 patches, `--help` lists the flag) | nothing of the lab's ran there and the scorers do not touch the binary; P24 needs it | reinstall from the nine-patch list | agent |
 | 10-24 09:42 | P24 queued on `zenith2alpha`: `lean_24_none_h300_k42_w13h_m1_n600_up_s12345` (md5 `33ca7b5b` checked on the box before the start; the standard driver; Shadow at 32 workers; the first daemon logs carry the `--sim-uniform-whitelist-pick` line) | filed 06:24 and committed as `6ba2809b`; the box is validated (E31) and its binary carries the flag; E21's recency-pick reading has waited for this test since E21 | kill the driver by pid; the cell leaves no other state | agent |
+| 10-24 09:55 | `simbox3` drained at 09:49 (the `tail` seed-34567 filler, E10's third seed, 0.1812) and left idle: nothing queued | its disk is at 49 GB free (the 45 GB floor for the shared VM); its archives go to the Threadripper's array with the pool move, which waits on the user's word; no filed prediction needs its nine-patch binary | queue a cell with the standard driver | agent |
 
 ## 8. Files
 
