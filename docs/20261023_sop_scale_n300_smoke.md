@@ -102,11 +102,33 @@ reveal-test weight). `_branch_weights` now returns the two totals as
 elements 5 and 6 of its tuple; needs `weigh sop`. 10 new unit tests; the
 Python suite is 328 passing.
 
-Follow-up spec `test_configs/matrix/sop_v4_o5_72h.yaml`: the a045 hs d5
-cell with `give_up_objects 5`, two draws. Expected: stuck time near 0,
-share well above 0.054 (model: ~0.36), many more, smaller reveals. Not
-launched; run with the campaign queue (`.claude/campaign9/`), check_run
-gate as before, then `sop_stuck_time.py` on the run dirs.
+### 3.1 Measured: `sop_v4_o5_72h` (2026-10-23 11:13-17:24Z)
+
+Two draws of the a045 hs cell with `give_up_objects 5`, 72 h each, 12
+daemons, seed 27791, build `23162f3a`, both lanes at once, 6.1 h wall each.
+Both PASS the check gate (oracle 0 mismatches on 12 nodes, probes, lateness,
+reveal stats and embed ok). Runs
+`archived_runs/20261023_111307_sop_v4_o5_72h__share_sop2_a045_s{1,2}`.
+
+| draw | share | blocks | reveals (deliv./rej.) | A3 deliveries (tip shares) | att. orphan | net. orphan | stuck h |
+|---|---|---|---|---|---|---|---|
+| s1 | 0.209 | 1886 | 174 (110/64) | 110 (34) | 0.72 | 0.41 | 0.0 |
+| s2 | 0.210 | 1920 | 160 (103/57) | 103 (44) | 0.71 | 0.40 | 0.0 |
+| block rule d5 (v4 campaign, n=1) | 0.054 | 1886 | 54 (31/23) | 62 | 0.96 | 0.43 | 19.0 |
+
+The two draws agree to 0.001 (the block-rule cell's run-to-run spread at
+the 0.10 level was ~±0.03). The objects give-up quadruples the attacker's
+share at this cell, triples its reveal count, and removes the stranding
+entirely. It stays well under the model's 0.36 and under alpha, so SoP
+still holds the attacker below break-even here; but the campaign's
+"collapse" at alpha 0.45 is now measured to be mostly the old give-up
+rule. The gap to the model is the network: 37% of reveals were rejected by
+the bridge (the model has no rejection path) and A3 tip-share delivery
+reached only 34-44 of the delivered reveals.
+
+The scale specs (n300, n1000) were re-pointed to this attacker on
+2026-10-24. Open: the o5 attacker at alpha 0.33 and 0.40, the noown
+variant, and the model's reconciliation at this cell.
 
 ## 4. Not established
 
@@ -115,8 +137,7 @@ gate as before, then `sop_stuck_time.py` on the run dirs.
   fails to pull ahead. Over 6-hour windows across 14 runs the honest side
   averages ~5.8 h/s and the attacker ~4.3, both within noise of nominal.
 - Whether the objects attacker's share at 300 or 1,000 relays differs from
-  12 daemons: the scale specs still carry the block-rule attacker; re-point
-  them (`give_up_objects '5'`) once the 12-daemon o5 result is in.
+  the 12-daemon 0.21 (the scale specs now carry it; neither has run).
 - The model's 0.36 is a fixed-rate, no-delay model; its reveal count under
   o5 (79/day) means the simulator's reveal path (A3 share delivery, bridge
   rejection) will be exercised far more than before.

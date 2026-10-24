@@ -1,7 +1,8 @@
-# HOLD (2026-10-23): the smoke ran (docs/20261023_sop_scale_n300_smoke.md:
-# ratio 1.91, +15 GB, no freeze, oracle clean) but this attacker sat stranded
-# 6.5 of its 8 h under the block-depth give-up. Re-point the arm to
-# give_up_objects '5' once sop_v4_o5_72h has measured it on 12 daemons.
+# 2026-10-24: arm re-pointed to the objects give-up (give_up_objects '5'),
+# measured on 12 daemons at 0.209/0.210 over 72 h with 0 h stranded
+# (sop_v4_o5_72h, docs/20261023_sop_scale_n300_smoke.md s3.1). The block-rule
+# attacker this spec carried before sat stranded 6.5 of the smoke's 8 h
+# (same doc s2); the 12-daemon reference for the block rule is 0.054.
 # sop_scale_n300_hs_a045_d5_8h (2026-10-21): rung 1 of the SoP scale check. A
 # SMOKE, not a measurement: 8 simulated hours is about 240 blocks, far too few
 # to read an attacker revenue share from. It answers four things before the
@@ -61,6 +62,7 @@ axes:
           use_honest_shares: 'true'
           tip_shares: 'true'
           give_up_depth: '5'
+          give_up_objects: '5'
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16

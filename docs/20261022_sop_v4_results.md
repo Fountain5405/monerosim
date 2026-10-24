@@ -10,10 +10,12 @@ conformance: `docs/20260930_sop_conformance.md` (revised 2026-10-20 section).
 > when honest leads by `give_up_depth` *blocks*; past the window and behind
 > by weight its block count keeps pace with honest's, so it sat stranded
 > (no reveal, no concession, every block orphaned) for 17-27 h of each 72 h
-> alpha-0.45 run. The race model puts an objects-give-up attacker (o5) at
-> 0.36 for alpha 0.45 against the 0.05-0.11 measured here. The collapse
-> below is therefore partly the attacker's; see
-> `docs/20261023_sop_scale_n300_smoke.md` and the `sop_v4_o5_72h` spec.
+> alpha-0.45 run. Measured 2026-10-23 (`sop_v4_o5_72h`, two 72 h draws):
+> the same cell with the objects give-up (`give_up_objects 5`) earns
+> **0.209 and 0.210** against the 0.054 below, with 0 h stranded; the race
+> model says 0.36. The collapse below is therefore mostly the attacker's
+> give-up rule, not the revision alone; see
+> `docs/20261023_sop_scale_n300_smoke.md` §3.1.
 
 ## Summary
 

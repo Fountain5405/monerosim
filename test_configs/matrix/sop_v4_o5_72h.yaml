@@ -15,8 +15,10 @@
 # the same way. The objects rule ends such a branch within a few shares, so
 # the attacker's hashrate goes to fresh forks. Two draws (parallel 2, run-to-run
 # noise at this cell is ~ +/-0.03, docs/20261022_sop_v4_results.md s4): read the
-# shares against 0.054 (d5, n=1) and the stuck time (gaps > 2 h between
-# attacker events, scratch gaps.py in the smoke doc) against 19 h.
+# shares against 0.054 (d5, n=1) and the stuck time
+# (scripts/selfish_mining/sop_stuck_time.py) against 19 h.
+# Result (2026-10-23): 0.209 and 0.210, stuck 0 h, both PASS
+# (docs/20261023_sop_scale_n300_smoke.md s3.1).
 name: sop_v4_o5_72h
 seed: 27791
 base: test_configs/selfish_micro_sop.yaml
