@@ -43,3 +43,5 @@ verification. **Do not delete or move that folder before then.** Running your ow
 The lab's journal is `docs/SPY_EXPERIMENT_JOURNAL.md` on branch `feat/spy-relay-log`.
 
 *Verified 2026-10-24 16:05 UTC:* the pool copy finished (rsync exit 23 came only from directory-timestamp lines on folders the NFS pass had created), a dry-run rsync against the array lists nothing left to send, and both sides hold 100,813 files in 38 runs. The lab needs nothing further from `/mnt/ssdpool/monerosim_archives`; it may be deleted when the owner says so. The lab also stopped pushing into `~/monerosim` (its `phantom` remote removed), so that checkout is the owner's alone from here.
+
+*Deleted 2026-10-24 18:26 UTC (owner's go):* `/mnt/ssdpool/monerosim_archives` removed after a final dry-run rsync against the array the same minute (100,813 files in 38 runs on both sides, nothing left to send; `~/queue/final_dryrun.txt`). `/mnt/ssdpool` is now 18 GB used of 440 GB (422 GB free). Nothing of the lab's pool remains on this box; `~/queue/` is deletable too.

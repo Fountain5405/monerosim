@@ -45,3 +45,5 @@ Questions: the lab's journal is `docs/SPY_EXPERIMENT_JOURNAL.md` on branch `feat
 the coordinator-side notes are in the `antiproxy` account there.
 
 *Verified 2026-10-24 15:48 UTC:* the copy finished (`EXIT 0`), a dry-run rsync against the array lists nothing left to send, and both sides hold 58,373 files. The lab needs nothing further from this folder; it may be deleted when the owner says so.
+
+*Deleted 2026-10-24 18:26 UTC (owner's go):* `~/monerosim_archives` removed after a final dry-run rsync against the array the same minute (58,373 files in 21 runs on both sides, nothing left to send; `~/queue/final_dryrun.txt`). `/` is now 494 GB used of 885 GB (347 GB free). Nothing of the lab's pool remains on this box.
