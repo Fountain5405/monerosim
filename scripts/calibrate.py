@@ -348,9 +348,17 @@ SHADOW_EVENT_COST_S = 3.0
 
 
 def _get_core_count(num_cores=None):
-    """Resolve core count: explicit > nproc > conservative fallback."""
+    """Resolve core count: explicit > MONEROSIM_CORES > nproc > conservative fallback.
+
+    MONEROSIM_CORES pins the count when a scenario is generated on a box other
+    than the one it is calibrated for (the stagger depends on it, so the same
+    cell must come out byte-for-byte wherever it is generated).
+    """
     if num_cores and num_cores > 0:
         return num_cores
+    env = os.environ.get("MONEROSIM_CORES")
+    if env and env.isdigit() and int(env) > 0:
+        return int(env)
     try:
         n = os.cpu_count()
         return n if n else 4
