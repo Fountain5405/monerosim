@@ -1,0 +1,2 @@
+IMHO, what's needed is to put SoP into an MDP framework and count the states. If there are too many states to fully solve, then you could try a modified MDP with reinforcement learning. Modified MDP with reinforcement learning has been used recently for more complex selfish mining countermeasures that have too many states to feasibly solve in traditional MDP.
+
