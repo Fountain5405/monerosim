@@ -42,7 +42,7 @@ pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not t
 cubic draw, 1.51x in the model; started 17:15, due ~19:15); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and has left the lab (its 38 archives on the Threadripper's array, the pool's home since 10-24; the source deleted 18:26); `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348) and is idle;
 `simbox2` is handed over to the selfish-mining project (its 21 archives on the array, the source deleted 18:26, handover note written). Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E36 below; predictions P1-P27 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E36 below; predictions P1-P28 in section 5.
 
 ## 1. How this journal works
 
@@ -2033,6 +2033,16 @@ drawable. Light-node share **0.19-0.28** (1.25-1.8x the 0.1531 ceiling); the gra
 earliest); flag line in every daemon log; 20-27 of 40 users exposed. Prior 60%. Below 0.19 means the cubic draw over the full list is as good as
 uniform and only the cap mattered; at or above 0.28 means the draw over a long list recovers the whole excess by itself. Wall under 2.5 h.
 
+**P28, filed 2026-10-24 18:45, before the cell is queued (P26 at a second seed).** `lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s23456` on
+`zenith2alpha` behind P27 (md5 `975cee8e`; P26's cell with `simulation_seed: 23456`, the only differing line). E36's reading rests on one seed;
+the family's seed band is about 5% on the aggregate (E27 0.3369 and E27b 0.334 at this seed; E34) and about 25% at the user level (P19). If E36
+holds: (a) light-node share **0.145-0.170** (0.95-1.11x the ceiling 0.1531; P26 0.1577); (b) relays within 1.15x the ceiling and the latest-started
+quarter at most 1.3x the earliest over hours 15-19; (c) both flag lines in every daemon log; (d) users' share **0.14-0.19** and **at least 32 of
+40** users exposed (P26 0.1647 and 37; the stock cell 27-28), the exposure reading of E36; (e) the earliest-started quarter of relays again below
+the ceiling, 0.75-0.95x (P26 0.82x; this clause asks whether that is structure or noise, prior 55% on its own). Prior 75% on (a)-(d). An aggregate
+below 0.13 or above 0.19 means E36's 1.03x does not hold across seeds and the Monte Carlo's agreement was luck; fewer than 28 exposed means the
+exposure rise was seed noise. Wall under 2.75 h.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -2185,6 +2195,7 @@ in the conversation.
 | 10-24 16:06 | `phantom`'s pool verified on the array (38 runs, 100,813 files both sides, dry-run rsync clean). The archive pool is now `/spinny/readfrom/20261024_monerosim_research_effort/archives/` on the Threadripper: 67 runs, 179,953 files, ~830 GB apparent in ~35 GB of disk. `phantom` leaves the lab: the `phantom` git remote removed from the control-box clone (the owner's checkout is no longer pushed into), its handover note carries the verification (that note's copy went out in `2b3cf087`, whose journal row this is). Source folders on phantom and simbox2 stay until the owner deletes them | the user asked to be told when the copy verified; nothing of the lab's remains to do on .22 | `git remote add phantom ssh://phantom/home/lever65/monerosim` | agent |
 | 10-24 18:26 | Source archive folders deleted on the user's word: `phantom:/mnt/ssdpool/monerosim_archives` (38 runs, 100,813 files; `/mnt/ssdpool` 322 -> 18 GB used, 422 GB free) and `simbox2:~/monerosim_archives` (21 runs, 58,373 files; `/` 665 -> 494 GB used, 347 GB free), each `rm -rf` run only after a final dry-run rsync against the array in the same minute listed nothing to send (regular files transferred 0 of 100,813 and 0 of 58,373; `~/queue/final_dryrun.txt` on each box). Dated deletion lines appended to both handover notes (on the boxes, in `/srv/lab_handover/`, in `docs/spy_journal/`). The array is now the only copy of those 59 runs; simbox3's 5 and the Threadripper's own stay local as well | the user said "go ahead and delete the source archives on .22 and .25" after the 16:06 verification | none: the sources are gone; the array copy was verified twice (16:06 and 18:26) | user |
 | 10-24 18:40 | P26 scored on `zenith2alpha` (estimators and `spy_share_vs_time` detached there, the six small files fetched, run 74 in the register) and written up as E36: five of six clauses, the cap confirmed as the whole multiplier, the exposure clause missed upward (37 of 40). P26's archive stays on `/fast` until P27 ends (no extra disk traffic under a timed run), then moves to the array. P27 running since 17:15 (68% at 18:32, due ~19:15); E37 when it lands. Then the queue turns to a second seed of P26 (`s23456`, the 1% replication the family has had since E27b) and to the users' side of open question 10 | the cap reading is one cell deep and the exposure finding reverses the policy reading, so it needs a replicate before anything is claimed; the owner decides which number the defense work targets | none | agent |
+| 10-24 18:45 | P28 filed: P26 at seed 23456 (`make_cell.sh`, the same arguments with `--seed 23456`; md5 `975cee8e`; the diff against P26's cell is the seed line alone), to run on `zenith2alpha` behind P27 by appending it to `q.txt` (the driver reads the next line when P27 ends, so no idle gap). simbox3 was the alternative but sits at 49 GB free with its 5 local archives still in place (deleting them is the user's call), below the lab's 45 GB floor once a 384-daemon archive lands, and still runs the nine-patch binary | the cap result reverses the policy reading of open question 10 and is one seed deep; the family's replicate practice (E27b) is a second seed before any claim | remove the line from `q.txt` before P27 ends, or stop the driver by pid | agent |
 
 ## 8. Files
 
